@@ -1,7 +1,8 @@
 """Secure multiparty computation (MPC) layer.
 
 Houses the *non-linear* half of the hybrid private-inference split: linear layers run under
-FHE (CKKS, GPU-capable), non-linear layers (ReLU, argmax, comparison) run under secret-sharing
+FHE (CKKS on the CPU backends here; no GPU CKKS run is measured), non-linear layers (ReLU, argmax,
+comparison) run under secret-sharing
 MPC — the standard 2026 architecture (EncFormer; Gazelle→Delphi→BOLT→Bumblebee→BLB;
 RhombusEnd2End/HEonGPU). The MPC engine is **MPyC** (MIT, pure-Python, Shamir secret sharing
 with secure comparison), installed from PyPI (the wheel is the same code as upstream lschoe/mpyc;

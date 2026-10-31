@@ -178,22 +178,32 @@ const HYBRID_INFERENCE: Step[] = [
       // the conv block: 152 for this student against 3 for a lone dot product.
       const rot = m["fhe_total_rotations"] ?? m["fhe_conv_rotations"] ?? m["fhe_dense_rotations"];
       const shape = m["fhe_conv_output_shape"];
-      // The medical page evaluates the published student end to end under CKKS; every other use
-      // case runs its linear student as a packed dot product. Name whichever actually happened.
-      const kindTxt = shape ? `encrypted CNN ${shape}` : "CKKS dot product";
-      return `FHE-linear · ${kindTxt} · ${f(m, "fhe_linear_ms")} ms`
+      // The medical page evaluates the published student's conv and dense layers under CKKS,
+      // decrypting between layers (ReLU and pooling run in the clear, in the client); every other
+      // use case runs its linear model as a packed dot product. Name whichever actually happened.
+      // The decryption note is its own separator-delimited part, so the canvas lane (first two parts)
+      // keeps the shape and the stage list below it carries the rest.
+      const kindTxt = shape ? `CNN layers under CKKS ${shape} · decrypted between layers` : "CKKS dot product";
+      // The ms carry their cost-model scale: `fhe_linear_ms` is the measured time times
+      // `fhe_bench_scale` (x33 on genomics, x9 on the generic demo, x1 where a student sets the size),
+      // while the rotation count beside it is raw.
+      return `FHE-linear · ${kindTxt} · ${f(m, "fhe_linear_ms")} ms at x${f(m, "fhe_bench_scale")} cost-model scale`
         + (rot == null ? "" : ` · ${rot} rotations`);
     } },
   { stageId: "private_inference", kind: "mpc-bidir",
-    label: (m) => `MPC-non-linear · shares · ${f(m, "mpc_nonlinear_ms")} ms · ${f(m, "mpc_comm_kb")} KB` },
+    // KiB: `mpc_comm_kb` is bytes / 1024.
+    label: (m) => `MPC-non-linear · shares · ${f(m, "mpc_nonlinear_ms")} ms · ${f(m, "mpc_comm_kb")} KiB`
+      + `, both at x${f(m, "fhe_bench_scale")} cost-model scale` },
 ];
 
-// The quantum-secure ALTERNATIVE the benchmark scores against (the `quantum_comparison` stage runs a
-// real QOTP+QCNN private inference). Rendered as a full-width bar so it's clear QSMPC-FHE is executed
-// and the quantum-advantage / security-score are produced by an actual run, not asserted.
+// The QSMPC-FHE comparison row. The `quantum_comparison` stage simulates an UNTRAINED QOTP +
+// Clifford+T circuit on random input: the pad is never undone, so its output follows the key rather
+// than the input, and it predicts nothing. It is not a QCNN and not a private inference, and no
+// advantage or security score is derived from it. Rendered as a full-width bar because it is not an
+// exchange between the parties.
 // `inference` picks which backend the run SURFACES as primary (clientCompute reads it at the
-// private_inference stage). Both are computed either way, so this bar says which one was surfaced
-// rather than implying the selector did nothing.
+// private_inference stage). The class this bar prints came from that backend - CKKS, or the trained
+// QCNN, which runs unencrypted - never from the comparison circuit, and the bar says so.
 const QSMPC_COMPARE: Step = {
   stageId: "quantum_comparison", kind: "compare",
   label: (m, c) => {
@@ -205,17 +215,17 @@ const QSMPC_COMPARE: Step = {
     // "" and "ckks" are the SAME run - clientCompute does `config.inference || "ckks"`, so there is
     // no per-use-case default behind the empty value; the label says so rather than implying one.
     const ran = m["primary_inference_backend"];
-    const primary = ran === "qcnn-trained" ? "trained QCNN surfaced as primary"
-      : ran == null ? "inference not run"
-      : String(c.inference ?? "") === "qcnn" ? "CKKS surfaced as primary (QCNN selected, no trained weights ship)"
-      : String(c.inference ?? "") === "ckks" ? "CKKS surfaced as primary"
-      : "CKKS surfaced as primary (default)";
+    const primary = ran === "qcnn-trained" ? "page class from the trained QCNN (unencrypted, not this circuit)"
+      : ran == null ? "no CKKS or trained-QCNN class to report"
+      : String(c.inference ?? "") === "qcnn" ? "page class from CKKS (QCNN selected, no trained weights ship)"
+      : String(c.inference ?? "") === "ckks" ? "page class from CKKS"
+      : "page class from CKKS (default)";
     const cls = m["primary_inference_class"];
     // No "advantage N/10" suffix: the quantum-advantage score is retired from display and this stage
     // no longer emits `quantum_advantage_score` (see `quantumAdvantage` in clientCompute.ts).
-    return `QSMPC-FHE comparison · QOTP + QCNN (T-gates) · ${primary}`
-      + (cls == null ? "" : ` · class ${cls}`)
-      + ` · ${f(m, "qsmpc_t_gates")} T-gates counted`;
+    return `QSMPC-FHE comparison · untrained QOTP + Clifford+T circuit · ${f(m, "qsmpc_t_gates")} T-gates counted`
+      + ` · ${primary}`
+      + (cls == null ? "" : ` · class ${cls}`);
   },
 };
 
@@ -276,21 +286,32 @@ const FEDERATED_STEP: Step = {
   // The accuracy carries its denominator, read from the run. It was added when the bundled samples
   // were 16 and 12 rows and a score rested on 4 or 3 held-out rows; they are 400 rows each now, an
   // 80-row held-out split, and the denominator still says how much a score rests on.
+  // "untrained" is w = 0, which predicts class 0 for every row (sigmoid(0) = 0.5 is not above 0.5):
+  // the all-class-0 rate, not the majority rate, and the label says which.
   label: (m) => `federated train · ${f(m, "qfl_aggregation")} · acc `
-    + `${f(m, "federated_baseline_accuracy")} untrained -> ${f(m, "federated_accuracy")} `
+    + `${f(m, "federated_baseline_accuracy")} untrained (every row class 0) -> ${f(m, "federated_accuracy")} `
     + `on ${f(m, "federated_eval_rows")} held-out rows`,
 };
 
-/** The caption's first sentence for parties that compute together over a network. */
-const overWan = (who: string) => () =>
-  `No trusted third party and no raw data shared: ${who} meet over a WAN under the session key.`;
+/** The caption's first sentence for parties that compute together over a network.
+ *
+ *  Each says what holds and what does not. It read "No trusted third party and no raw data shared"
+ *  for all four, which overstated two of them: the PSI's HMAC key is held by both banks, so over a
+ *  small ID space either could recover the other's list from the tags; and every federated mask is
+ *  derived from the one session key, which the aggregator also holds. */
+const overWan = (who: string, what: string) => () =>
+  `${who} meet over a WAN under the session key. ${what}`;
+const PSI_HOLDS = "No third party sees either list: each side sends HMAC tags of its list, not the list, "
+  + "though over a small ID space either side could recover the other's list from the tags (a "
+  + "production PSI would use an OPRF-based protocol).";
 
 export const USECASE_SPECS: Record<string, Spec> = {
   finance_aml: {
     a: { name: "Bank A", sub: "blacklist + fraud model · LAN" },
     b: { name: "Bank B", sub: "candidate accounts · LAN" },
     inferenceClient: "b",
-    meet: overWan("Bank A and Bank B"),
+    meet: overWan("Bank A and Bank B", `${PSI_HOLDS} The federated masks also all derive from the session `
+      + "key, which Bank B, the aggregator, holds, so they hide no update from it."),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -315,7 +336,9 @@ export const USECASE_SPECS: Record<string, Spec> = {
     a: { name: "Hospitals", sub: "patient data (never leaves) · LAN" },
     b: { name: "Aggregator", sub: "global model · LAN" },
     inferenceClient: "a",
-    meet: overWan("the hospitals and the aggregator"),
+    meet: overWan("The hospitals and the aggregator", "No patient row leaves a hospital, but every "
+      + "federated mask is derived from the session key, which the aggregator also holds, so it could "
+      + "unmask each update."),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -333,7 +356,9 @@ export const USECASE_SPECS: Record<string, Spec> = {
     a: { name: "Cohorts", sub: "allele counts (never leave) · LAN" },
     b: { name: "Analysis site", sub: "pooled count, PRS model · LAN" },
     inferenceClient: "a",
-    meet: overWan("the cohorts and the analysis site"),
+    meet: overWan("The cohorts and the analysis site", "Each cohort splits its allele count into two "
+      + "additive shares mod p and only shares are summed, though in this demo one step receives both "
+      + "shares of every cohort."),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -369,7 +394,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "qkd_key_agreement", kind: "q-arrow",
         label: (m, c) => `${qkdName(c)}${eveTag(m)} · QBER ${f(m, "qber")}${optiTag(m, c)}`,
         hidden: pqcOnly, ok: qkdOk },
-      { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
+      { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS stage: softmax attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
       publishedStep("qml_ids"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
@@ -396,7 +421,8 @@ export const USECASE_SPECS: Record<string, Spec> = {
       // The abort has to reach the arrow. With Eve at 0.5 the log said "QSDC ABORTED: error 0.158 >
       // 0.11 - telemetry withheld" while this label read "QSDC direct telemetry · secrecy 0
       // bit/carrier" with a done tick beside it - which reads as delivered-but-not-secret, the
-      // opposite of what happened. The inline eavesdrop check is this page's headline feature and
+      // opposite of what happened. The eavesdropper test (an analytic secrecy-capacity bound with
+      // Eve's error included; no check carriers are sampled) is this page's headline feature and
       // the diagram was the one surface that did not show it firing.
       //
       // AND THE FIX DID NOT FIX IT. Keying the abort off `qsdc_eavesdrop_detected` moved it onto a
@@ -454,7 +480,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     a: { name: "Party A", sub: "generic · a list, the input" },
     b: { name: "Party B", sub: "generic · a list, the model" },
     inferenceClient: "a",
-    meet: overWan("Party A and Party B"),
+    meet: overWan("Party A and Party B", PSI_HOLDS),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -579,7 +605,7 @@ export function captionOf(usecase: string, c: DiagramConfig = {}): string {
   const infers = visibleSteps(usecase, c).some((s) => s.stageId === "private_inference");
   return [
     spec.meet(c),
-    infers ? "MPC-FHE hybrid: linear layers under CKKS, the non-linear argmax as MPC, scored against QSMPC-FHE." : "",
+    infers ? "MPC-FHE hybrid: linear layers under CKKS, decrypted by the client, and the argmax as two-party MPC; the QSMPC-FHE bar is a simulated comparison circuit beside it, not a score." : "",
     pqcOnly(c) ? "This profile has no quantum channel, and the proof of concept runs in this tab."
       : "The quantum channel is simulated, and the proof of concept runs in this tab.",
   ].filter(Boolean).join(" ");

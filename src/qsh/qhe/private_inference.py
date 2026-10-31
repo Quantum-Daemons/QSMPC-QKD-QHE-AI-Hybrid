@@ -1,7 +1,9 @@
-"""QHE private inference protocol (client-private input, server-private model).
+"""A SKETCH of the report's QHE private-inference deliverable (WS4); no private inference runs here.
 
-Ties the QCNN (:mod:`~qsh.qhe.qcnn`) to the QOTP encryption layer to sketch the report's WS4
-deliverable: a data owner obtains a prediction from a server-held model without revealing its input.
+Places the untrained QCNN-style circuit (:mod:`~qsh.qhe.qcnn`) beside the QOTP encryption layer to
+sketch the report's WS4 deliverable, in which a data owner obtains a prediction from a server-held
+model without revealing its input. The circuit is evaluated in plaintext, and neither the input nor
+the model is kept from anyone by this code.
 
 READ THE SCOPE BELOW BEFORE QUOTING THIS MODULE. An earlier version of this header listed three
 "security properties reported", two of which the code does not establish, and the corrections were
@@ -9,9 +11,10 @@ written into the function bodies while the header kept asserting the original cl
 stops at line 12 got exactly the retracted version, contradicted twenty lines later - which is how a
 stale header outranks an accurate body.
 
-What holds:
-  * input privacy -- the state the server sees under a random Pauli frame is maximally mixed (QOTP),
-    and that is a real, standard property.
+What holds, as a property of the SCHEME:
+  * input privacy -- a state under a uniformly random Pauli frame is maximally mixed (QOTP), and
+    that is a real, standard property. This code checks it on a fixed tiny basis state, not on
+    ``x``, and never sends an encrypted state to anyone.
 
 What does NOT hold, stated here rather than only at the point of use:
   * model privacy is NOT established. It rested on "Pauli-gate concealment" via

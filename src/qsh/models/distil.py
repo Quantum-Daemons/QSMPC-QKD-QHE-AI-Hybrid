@@ -1,20 +1,24 @@
 """Teacher (plaintext, real) -> student (encrypted, small), and the measured cost of the gap.
 
-Homomorphic evaluation is cost-bounded and will stay that way: the largest model demonstrated
-end-to-end under CKKS is 8B parameters at roughly a 10^4x runtime gap (IACR ePrint 2026/935), and
-EncFormer's own authors put their secure BERT pipeline at "roughly 3x10^4 slower" than plaintext.
-So a project that wants both a real industry model *and* real encryption has exactly two honest
-options: shrink the model until it fits the cipher, or state plainly that the crypto demo runs on
-something smaller than the headline model.
+Homomorphic evaluation is cost-bounded AT THE OPERATING POINT THIS DEMO TARGETS - one browser tab,
+SEAL compiled to single-threaded WASM - not in general, and not forever: Park et al.
+(arXiv:2601.18511v2) run Llama-3-8B under CKKS on eight GPUs, and Cheddar (ASPLOS 2026) runs
+ResNet-20 under CKKS in about 0.7-1.3 s per image on one GPU. EncFormer's own authors put their
+secure BERT pipeline at "roughly 3x10^4 slower" than plaintext. So a project that wants both a real
+industry model *and* encryption inside one tab has two honest options: shrink the model until it
+fits the cipher at that operating point, or state plainly that the crypto demo runs on something
+smaller than the headline model.
 
 This module takes the second option and makes it measurable. For each use case:
 
     teacher   the registry's T2 model - the real 2026 literature architecture, plaintext
-    student   the registry's T1 model - linear or tiny-CNN, evaluated under real CKKS/MPC
+    student   the registry's T1 model - linear or tiny-CNN, designed to be evaluated under CKKS/MPC
 
 and reports :class:`FidelityReport`, whose headline field ``agreement`` is how often the student
 reproduces the teacher's decision on held-out data. ``metric_delta`` is what that costs in the
-industry's own metric.
+industry's own metric. Both predictions are computed IN PLAINTEXT here, so this measures the
+distillation; what CKKS noise costs is measured separately, per run, in the browser
+(``encrypted_agreement``), and only for the model the page actually encrypts.
 
 This generalises what ``qsh.usecases.finance_aml._fraud_model`` already did for one vertical
 (XGBoost teacher -> logistic student) to all of them, and turns an incidental number into a
@@ -33,7 +37,8 @@ import numpy as np
 
 @dataclass
 class FidelityReport:
-    """What the encrypted student costs, relative to the plaintext teacher it replaces."""
+    """What the student (the encrypted tier's model) costs, relative to the plaintext teacher it
+    replaces. Both sides are scored in plaintext; this is distillation fidelity, not CKKS fidelity."""
 
     teacher_key: str
     student_key: str
@@ -265,10 +270,12 @@ def save_student(student, out_dir, *, n_features: int, teacher_key: str,
     intercept = np.asarray(estimator.intercept_, dtype=float)
     (out / "weights.json").write_text(json.dumps({
         "kind": "logistic-linear",
-        "note": ("The CKKS-linear student: this is what is evaluated under homomorphic encryption. "
-                 "Small by necessity -- encrypted evaluation is cost-bounded -- and distilled "
-                 "against the teacher's own decisions, so `agreement` measures substitution rather "
-                 "than two independent fits that happen to correlate."),
+        "note": ("The CKKS-linear student: the model this use case's encrypted tier is designed "
+                 "to evaluate under homomorphic encryption. Small because it has to close at this "
+                 "demo's operating point (CKKS in one browser tab), not because encrypted "
+                 "evaluation is cost-bounded in general; distilled against the teacher's own "
+                 "decisions, so `agreement` measures substitution rather than two independent fits "
+                 "that happen to correlate."),
         "teacher_key": teacher_key, "student_key": student_key,
         "n_features": int(n_features),
         # The standardisation the student was FIT on. Without it the published weights cannot be

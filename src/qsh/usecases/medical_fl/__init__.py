@@ -1,11 +1,16 @@
 """Medical federated learning + private inference use case (deep).
 
 Several hospitals jointly train a diagnostic model without sharing patient data
-(federated learning + quantum-safe secure aggregation), then a clinician runs a
+(federated learning with pairwise-mask aggregation), then a clinician runs a
 private inference that never exposes the patient's record to the server.
 
-Maps to: QHE/FHE (private inference) + QSMPC-style secure aggregation on a PQC+QKD
-transport. Default data: Wisconsin breast-cancer (bundled, fast). Set
+The aggregation masks cancel exactly but hide nothing here: their pair keys are a public
+constant (see :mod:`qsh.ai.federated`). And the inference keeps the record from the server, not
+the model from the client: where the CNN variant runs the masked FHE-to-MPC conversion, it
+protects CKKS slot 0 only (see :mod:`qsh.mpc.secret_inference`).
+
+Maps to: QHE/FHE (private inference) + secure-aggregation-style masking on a PQC
+transport with simulated QKD key material. Default data: Wisconsin breast-cancer (bundled, fast). Set
 ``config['dataset']='medmnist'`` for the heavier MedMNIST CNN variant locally.
 
 Run:  ``python -m qsh.orchestration.pipeline --usecase medical_fl``
@@ -32,7 +37,7 @@ from ...orchestration.stages import (
 
 
 class FederatedTrainingStage(Stage):
-    """Train across virtual hospitals with quantum-safe secure aggregation."""
+    """Train across virtual hospitals with pairwise-mask aggregation (public demo keys)."""
 
     name = "federated_training"
 
@@ -62,7 +67,7 @@ class FederatedTrainingStage(Stage):
             ctx.data["cnn_model"] = model               # the genuine model the FHE run will infer
         elif use_qfl:
             # Quantum Federated Learning: a hybrid quantum-classical model (PennyLane VQC head +
-            # classical body) federated across hospitals under quantum-safe secure aggregation.
+            # classical body) federated across hospitals with pairwise-mask aggregation.
             bus.log(f"Quantum Federated Learning across {n_hosp} hospitals — hybrid quantum-classical "
                     f"VQC (PennyLane), secure aggregation on", self.name)
             res = federated_train(

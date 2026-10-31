@@ -1,8 +1,10 @@
-// Client-side QML-IDS mirror — trains a genuine multiclass softmax logistic classifier in-browser on the
-// 8-class QKD attack signatures from src/qsh/qml_ids/attacks.py (Al-Kuwari et al. 2026, arXiv:2509.14282),
-// and reports MEASURED accuracy + binary attack-F1 on a held-out split. Honest scope: cited-methodology
-// synthetic telemetry (no commercial-OK real QKD-attack dataset exists); a lightweight linear model, not
-// the backend's RF/QSVC — so the demo's IDS numbers are measured, not a canned constant.
+// Client-side QML-IDS mirror - trains a genuine multiclass softmax logistic classifier in-browser on
+// synthetic QKD telemetry generated like src/qsh/qml_ids/attacks.py, and reports MEASURED macro F1,
+// accuracy and binary attack-F1 on a held-out split (a quarter of the generated rows by default).
+// Honest scope: the 8 CLASSES follow Al-Kuwari et al. 2026 (arXiv:2509.14282); the 7 features and
+// every signature value below are this project's own design (the paper uses 9 different features and
+// a QLSTM), so no number here is comparable with the paper's. A lightweight linear model, not the
+// backend's RF/QSVC - so the demo's IDS numbers are measured, not a canned constant.
 import { idsCfg } from "./config";
 import { rng } from "./quantumSim";
 

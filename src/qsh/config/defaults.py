@@ -209,8 +209,8 @@ class QKDConfig:
     finite_key_deviation: str = "tighter"
     # THE SATELLITE'S (the #78 fix, the user's choice, 2026-10-30). On a pass Chernoff already wins
     # nearly every count, so splitting eps between the two bounds costs more than choosing per count
-    # gains: Liao et al. 2017's pass carries 226,073 bits under Chernoff against 226,056 under the
-    # union, and the default pass 139,251 against 139,201. Round 82's register called the union "the
+    # gains: Liao et al. 2017's pass carries 226,072 bits under Chernoff against 226,056 under the
+    # union, and the default pass 139,251 against 139,200. Round 82's register called the union "the
     # tightest of the three on every block measured", which held on the fibre only.
     free_space_finite_key_deviation: str = "chernoff"
     # --- free-space (satellite downlink) channel ---
@@ -398,7 +398,8 @@ class QKDConfig:
     #:     Cs = Q_Bob[1 - h(e) - g h(e_x + e_z)],   g = Q_Eve/Q_Bob = 10^(loss_dB/10)  (Qi Eq. 8)
     #:
     #: so the threshold FALLS with channel loss: 0.0757 at 0 dB, 0.0286 at Qi et al.'s g = 2.57,
-    #: and about 5.5e-6 on this project's 800 km downlink (37.0 dB with the detector). Until Round 75
+    #: and about 6.5e-5 on this project's 800 km downlink (g = 532.66 from 27.26 dB: the downlink's
+    #: 32.21 dB less 7.96 dB of station optics, plus 3.01 dB for the detector). Until Round 75
     #: this read 0.11 / ~0.048 / ~0.0003 - the pooled h(e_chk) form, without the detector, on a
     #: downlink budget that had no receiver optics. Using 0.11 on a lossy link is wrong in the PERMISSIVE direction - it passes a
     #: channel whose secrecy capacity is already zero. The satellite path therefore computes Cs
@@ -708,8 +709,10 @@ class CryptoConfig:
     fhe: str = "tenseal-cpu"
     sig: str = "ml-dsa-65"
     # PQC+QKD key combiner: "hkdf" = dual-PRF KDF (default, byte-compatible) | "its_toeplitz" =
-    # information-theoretic leakage-resilient Toeplitz + Quantum-Leftover-Hash-Lemma combiner
-    # (Giestinhas & Spiller, arXiv:2603.26907). Not "secure-if-either" — XOR already gives that.
+    # the Toeplitz + Quantum-Leftover-Hash-Lemma combiner of Giestinhas & Spiller (arXiv:2603.26907),
+    # seeded here with SHAKE-256 of its own inputs. The paper's leakage-resilience property needs a
+    # seed independent of the input, so as implemented it is computational, like HKDF, and not
+    # information-theoretic. Nor is its claimed property "secure-if-either" - XOR already gives that.
     hybrid_combiner_mode: str = "hkdf"
 
 

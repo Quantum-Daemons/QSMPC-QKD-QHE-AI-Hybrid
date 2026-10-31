@@ -156,7 +156,9 @@ difference would explain a 9x gap.
 
 Total encrypted latency is not comparable across deployment classes, but it is checkable against the
 requirement each vertical actually has. Fraud scoring, clinical decision support and compliance
-checks are interactive-batch work - seconds, not milliseconds.
+checks are interactive-batch work - seconds, not milliseconds. **That 1-10 s window is this note's
+own assumption, not a cited requirement: no source for it was recorded, and the code tests only its
+upper end, that the measured run takes at most 10 s** (stated 2026-10-30).
 
 Neither number the page previously showed answered this. The benchmark panel's `total` is
 `fhe_linear_ms + mpc_nonlinear_ms`, both scaled by `benchScale()`, so it is a projection rather than
@@ -172,13 +174,15 @@ convolution", which is the same scope error the section above withdraws: `real.f
 convolution's. The per-stage split is in `docs/verification-log.md` under "with the scopes
 separated".
 
-| use case | measured encrypted inference | inside a 1-10 s window |
+| use case | measured encrypted inference | at most 10 s (the code's test) |
 |---|---|---|
-| finance | 700 ms | yes |
+| finance | 700 ms | yes, and below the window's assumed lower end |
 | medical | 1,269 ms (convolution 84.35 ms, the student's dense layers 506.69 ms) | yes |
 
-Both are inside it with room. The page reports the verdict rather than leaving two numbers for a
-reader to compare, and a page that leaves the window will say so.
+Both pass the 10 s test with room. A run under 1 s, as finance's is, sits below the assumed window
+rather than inside it, which is not a failure; the column read "inside a 1-10 s window" with "yes" for
+both until 2026-10-30. The page reports the verdict rather than leaving two numbers for a reader to
+compare, and a page whose run exceeds 10 s will say so.
 
 ## One-time cost a visitor feels
 

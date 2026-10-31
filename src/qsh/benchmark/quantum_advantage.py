@@ -1,12 +1,22 @@
-"""Quantum-advantage metric contrasting the QSMPC-FHE path with classical MPC-FHE.
+"""RETIRED composite "quantum-advantage" score (QSMPC-FHE path against classical MPC-FHE).
 
-The standout quantum win in this PoC is **communication**: Rate-1 QFHE has a
-ciphertext/plaintext ratio ~1.3 vs classical CKKS ~10^3, alongside an information-theoretic
-(vs computational) security model. This module turns those into a single tiered 0-10 score
-so the benchmark can headline "quantum advantage" quantitatively.
+Retired from every page of the demo on 2026-10-23 and displayed nowhere. It is still computed in
+the full deployment: ``GET /api/benchmark`` returns it (``api/main.py``) and the comparison stage
+writes it into the run artifact (``qsh.orchestration.stages``). Removing it from both is deferred.
 
-It is a transparent weighted geometric mean of three ratios, not a hardware quantum-supremacy
-claim (the quantum path is simulated).
+Why it is retired, so nobody quotes it. Its communication ratio divides a CKKS byte ratio by the
+byte ratio of a classically SIMULATED state vector, which are not the same quantity. The Rate-1
+QFHE paper it was motivated by (Chardouvelis, Doettling and Malavolta, TCC 2021, IACR ePrint
+2020/1454) reports no concrete ciphertext/plaintext ratio, and its security rests on the quantum
+hardness of LWE, so it is computational, not information-theoretic; classical FHE also reaches
+rate 1 (Gentry and Halevi, TCC 2019; Brakerski, Doettling, Garg and Malavolta, TCC 2019). The
+1.5 security multiplier below still fires on the QSMPC row's label, which keeps the substring the
+scorer tests so no unrendered score moves, although no run here is information-theoretically
+secure. The ``interpretation`` string it returns ("more communication-compact") is therefore not
+a finding.
+
+It is a weighted geometric mean of three ratios, not a hardware quantum-supremacy claim (the
+quantum path is simulated).
 """
 
 from __future__ import annotations

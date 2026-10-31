@@ -21,8 +21,10 @@ export default function Value() {
       <h2>What is new here, and what is not</h2>
       <KeyPoints items={[
         <><b>Not new:</b> secure multiparty computation in a browser (webSPDZ, JIFF, MPyC-Web).</>,
-        <><b>Unusual:</b> homomorphic <i>evaluation</i> in a browser - every artefact found encrypts in the
-          browser and evaluates on a server.</>,
+        <><b>Not new either:</b> homomorphic <i>evaluation</i> in a browser - node-seal, the SEAL build this
+          demo uses, benchmarks CKKS evaluation in three browsers, and she-wasm (AsiaCCS 2018) evaluates
+          two-level HE in WebAssembly. <b>Not found:</b> a peer-reviewed 2025-2026 report of encrypted
+          neural-network inference inside a browser tab.</>,
       ]} />
       <p className="lead">
         {/* "then QKD-derived key material" until 2026-10-24: the browser's bb84() returns a count and
@@ -46,14 +48,15 @@ export default function Value() {
           <tbody>
             <tr><td>MPC in a browser</td><td>webSPDZ (IACR ePrint 2025/487) compiles MP-SPDZ to WASM over WebRTC/WebSockets and names JIFF and MPyC-Web as earlier engines</td><td>not new</td><td>a garbled-circuit 2PC (Polytune) re-implements a known idea</td></tr>
             <tr><td>FHE encrypt / decrypt in a browser</td><td>IACR ePrint 2026/515 treats client-side operations as encryption and decryption; Zama's TFHE-rs WASM API supports key generation, encryption and decryption</td><td>common</td><td>-</td></tr>
-            <tr><td>FHE <i>evaluation</i> in a browser</td><td>none found; TFHE-rs WASM documents that it does <b>not</b> support FHE computation, citing WASM threading and the 2&nbsp;GB memory ceiling</td><td>unusual</td><td>node-seal evaluates a real CKKS dot product and convolution in the tab</td></tr>
+            <tr><td>HE <i>evaluation</i> in a browser</td><td>node-seal (Microsoft SEAL in WebAssembly) benchmarks CKKS evaluation operations such as rotation in Chrome, Firefox and Safari; she-wasm (Attrapadung et al., AsiaCCS 2018) evaluates two-level HE in WebAssembly. TFHE-rs WASM documents that it does <b>not</b> support FHE computation, citing WASM threading and the 2&nbsp;GB memory ceiling</td><td>not new</td><td>node-seal evaluates a real CKKS dot product and convolution in the tab</td></tr>
+            <tr><td>Encrypted neural-network inference in a browser tab</td><td>no peer-reviewed 2025-2026 report found; an absence of evidence from a search that was not exhaustive</td><td>not found</td><td>on the medical page, the conv and dense layers of a small CNN student under CKKS, decrypted between layers, with ReLU and pooling in the clear</td></tr>
           </tbody>
         </table>
         <Details summary="How the prior-art search was run">
           <p>
             This project's own verification rule is that a novelty claim has to survive an adversarial
-            search for prior art. Applied to its own headline claim, the honest answer is asymmetric, and
-            both halves are stated here rather than only the flattering one.
+            search for prior art. Applied to its own headline claim, the answer is that neither half is new
+            on its own, which is why the claim is the composition.
           </p>
           <p>
             Secure multiparty computation has been compiled to WebAssembly before. <b>webSPDZ</b> (IACR
@@ -62,11 +65,16 @@ export default function Value() {
             of this demo is a re-implementation of a known idea, not a first.
           </p>
           <p>
-            The search for a browser that <b>evaluates</b> a homomorphic circuit came back empty. Every
-            artefact found encrypts in the browser and evaluates on a server - IACR ePrint 2026/515
-            defines "client-side operations" as encryption and decryption while users offload large
-            computations to servers, and Zama's own TFHE-rs WASM API documents that it supports key
-            generation, encryption and decryption but not FHE computation.
+            Homomorphic <b>evaluation</b> in a browser has been done before too. node-seal, the
+            WebAssembly build of Microsoft SEAL this demo runs, publishes benchmarks of CKKS evaluation
+            operations such as rotation in Chrome, Firefox and Safari, and she-wasm (Attrapadung et al.,
+            AsiaCCS 2018) evaluates two-level homomorphic encryption in WebAssembly. Much of the
+            literature still treats the browser as the encrypting end only - IACR ePrint 2026/515 defines
+            "client-side operations" as encryption and decryption while users offload large computations
+            to servers, and Zama's TFHE-rs WASM API supports key generation, encryption and decryption but
+            not FHE computation. What the search did not find is a peer-reviewed 2025-2026 report of
+            encrypted neural-network inference inside a browser tab; that is an absence of evidence, not
+            a proof.
           </p>
         </Details>
       </div>
@@ -78,8 +86,8 @@ export default function Value() {
         <div className="card"><h3>Regulation sets the clock</h3>
           <KeyPoints items={[
             "NIST FIPS 203/204/205 are final (August 2024).",
-            "US: EO 14412 binds federal agencies; CNSA 2.0 binds national security systems only.",
-            "EU: AI Act high-risk transparency is deferred to 2027/2028; Art. 50 applies now.",
+            "US: EO 14412 binds federal high value assets and high impact systems (not national security systems); CNSA 2.0 binds national security systems only.",
+            "EU: AI Act high-risk transparency is deferred to 2027/2028; Art. 50 applies from 2 Aug 2026, with a grace period to 2 Dec 2026 for Art. 50(2) systems already on the market.",
           ]} />
           <p><a href="#clock">Every date, with its scope</a></p>
         </div>
@@ -103,17 +111,17 @@ export default function Value() {
         <table className="facts-table small">
           <thead><tr><th>Lever</th><th>Mechanism</th><th>Limit</th></tr></thead>
           <tbody>
-            <tr><td>Regulatory readiness</td><td>Crypto-agility lets an operator select the CNSA 2.0 parameter sets ML-KEM-1024 (here inside an X25519 hybrid) and ML-DSA-87; XAI audit trails prepare for explanation duties</td><td>The defaults are not CNSA 2.0 (ML-KEM-768, ML-DSA-65, a SHA-256 combiner), and nothing here is FIPS 140-3- or NIAP-validated</td></tr>
+            <tr><td>Regulatory readiness</td><td>Crypto-agility lets an operator select ML-KEM-1024 and ML-DSA-87, the CNSA 2.0 algorithm sizes; XAI audit trails prepare for explanation duties</td><td>No selectable configuration is CNSA 2.0: ML-KEM-1024 always runs inside an X25519 hybrid, the combiner is always HKDF-SHA256, and the defaults are ML-KEM-768 and ML-DSA-65. Nothing here is FIPS 140-3- or NIAP-validated</td></tr>
             <tr><td>Loss avoidance</td><td>QML-IDS could reduce the breach probability for long-retention data; the PQC hybrid key exchange addresses HNDL exposure of session keys</td><td>The QKD layer is simulated here</td></tr>
             <tr><td>New privacy-preserving services</td><td>Cross-bank AML PSI, federated medical models, confidential genomics, free-space <b>satellite QKD</b> links - services over data that previously couldn't be combined or trusted</td><td>Simulated here; this demo finds that QSDC cannot close over a LEO downlink</td></tr>
-            <tr><td>Operational savings</td><td><b>OptiQKD</b> (AI-tuned decoy/basis parameters, with a convergence metric) automates QKD calibration and failover; a <b>QRNG</b> entropy source (min-entropy-bounded) plus a config-gated leakage-resilient PQC+QKD combiner harden the key material; one config change migrates algorithms</td><td>The reference framework reports +14&ndash;25% in simulation; nothing here is field-validated</td></tr>
+            <tr><td>Operational savings</td><td><b>OptiQKD</b> (gradient-free coordinate ascent over decoy and basis parameters, with a convergence metric) points at automated QKD calibration; one config change migrates algorithms</td><td>The reference framework reports +14-25% in simulation; nothing here is field-validated, and no failover is implemented. In the browser the <b>QRNG</b>&apos;s bits feed only its own metrics, and the PQC+QKD combiner is seeded with SHAKE-256 of its own inputs and fed a fixed QKD-domain constant, so neither hardens a key</td></tr>
           </tbody>
         </table>
       </div>
 
       <div className="note" style={{ marginTop: 24 }}>
         Benefits are framed as a research/PoC investment thesis. Concrete ROI depends on
-        field validation of the simulated quantum-channel results (the M3/M4 gates in the source report).
+        field validation of the simulated quantum-channel results.
       </div>
     </div>
   );

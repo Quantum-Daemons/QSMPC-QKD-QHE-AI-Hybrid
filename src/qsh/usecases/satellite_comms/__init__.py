@@ -37,7 +37,8 @@ A ground station and a LEO satellite establish a PQC-first hybrid session, distr
 key over a **free-space BB84** downlink (high loss, atmospheric turbulence, background
 counts), then transmit mission telemetry by **Quantum Secure Direct Communication** (QSDC,
 report §6) — a direct message transfer with an inline eavesdrop check, which suits a
-satellite link where re-keying round-trips are costly. The delivered telemetry is also
+satellite link where re-keying round-trips are costly (though DL04-family QSDC is itself two-way
+and only the downlink leg is modelled; see :mod:`qsh.qkd.qsdc`). The delivered telemetry is also
 sealed in the AES-256-GCM session for an auditable, signed record.
 
 Maps to: WS1 (AI-QKD, here over a free-space channel) + the report's QSDC / QT-QSS section.
@@ -480,9 +481,11 @@ class QSDCStage(Stage):
 class TelemetryAnomalyStage(Stage):
     """Private satellite-telemetry anomaly detection on the *encrypted* downlinked telemetry (CKKS).
 
-    After QSDC delivers the mission telemetry, a real (FHE-friendly linear) anomaly detector — trained
-    on ESA-ADB-style multi-channel telemetry — scores the encrypted window and returns a signed
-    nominal/anomaly verdict, so a relay/ground partner can flag faults without seeing the raw telemetry.
+    After QSDC delivers the mission telemetry, an FHE-friendly linear anomaly detector - trained in
+    the pipeline on the bundled NASA SMAP/MSL windows (``_anomaly_model``), not one of the published
+    satellite students - scores the encrypted window and returns a signed nominal/anomaly verdict,
+    so a relay/ground partner can flag faults without seeing the raw telemetry. Full deployment
+    only: the public satellite page has no FHE or MPC stage, and scores its telemetry in plaintext.
     """
 
     name = "telemetry_anomaly"

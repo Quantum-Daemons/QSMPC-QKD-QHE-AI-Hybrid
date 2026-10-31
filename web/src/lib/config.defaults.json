@@ -131,9 +131,9 @@
       "url": "https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic"
     },
     "satellite_comms": {
-      "licence": "US Government work (17 U.S.C. 105)",
-      "licence_checked": "2026-08-03",
-      "provenance": "real NASA SMAP/MSL spacecraft telemetry (Telemanom / NASA JPL). No provider states a licence; 17 U.S.C. 105 removes US copyright domestically but is not a grant \u2014 see DATA_LICENSES.md.",
+      "licence": "no licence granted for the data",
+      "licence_checked": "2026-10-30",
+      "provenance": "real NASA SMAP/MSL spacecraft telemetry (Telemanom / NASA JPL). No source grants a licence for the data: the Telemanom LICENSE is a Caltech copyright covering its software, and JPL is operated by Caltech, so the data is not shown to be a US Government work under 17 U.S.C. 105 either - see DATA_LICENSES.md.",
       "url": "https://github.com/khundman/telemanom"
     }
   },
@@ -921,15 +921,15 @@
         "label": "Multi-PNA+EU transaction GNN",
         "metric": {
           "baseline": 0.6323,
-          "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17)",
+          "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17). Same metric and corpus, different protocol: that figure uses a 60/20/20 split by transaction order and IBM's Graph Feature Preprocessor updated over the test window; this project tests on the last 30 percent of transactions (fit 56, validation 14) with its own graph features, whose structural block is fitted on the training window.",
           "ceiling": 0.7401,
-          "ceiling_source": "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55). PREPRINT - no venue confirmed, which is why it is named as such. It replaces Multi-PNA+EU (AAAI-24, 68.16 +/- 2.65): that row is in the SAME table with two better ones above it (MEGA-GIN 70.83, MEGA-PNA 74.01) and has not been the ceiling since December 2024. Verified by reading the table, not the abstract.",
+          "ceiling_source": "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55); the paper's v3 is accepted for publication in TMLR (2026). It is not the table's highest row: the same table prints MEGA-GenAgg at 74.88 +/- 0.38 and MEGA(PNA)-GIN at 74.69 +/- 0.50, and Multi-PNA (68.16 +/- 2.65) below all three.",
           "companion": "auprc",
           "comparison_caveat": "",
           "display": "minority-class F1 (laundering)",
           "name": "minority_class_f1"
         },
-        "notes": "Reference architecture only - never trained or published here. Message-passing needs the graph neighbourhood at inference, so every tier ships the stateless gradient-boosting variant instead. Kept as a spec because it is the published state of the art this project's GBM is measured against, not because an artifact exists.",
+        "notes": "Reference architecture only - never trained or published here. Message passing needs each account's graph neighbourhood at scoring time, which this demo's browser tier does not hold, so every tier ships the gradient-boosting model, which scores one precomputed feature row per transaction. That is a choice for this operating point, not an impossibility: Bilgi et al. (arXiv:2610.18054, preprint) run a 2-layer GNN under CKKS on AMLworld HI-Small at 5.31 s per inference on one GPU, with the graph structure visible to the server. Kept as a spec for the architecture it names. It is no longer the best published figure on this split: the MEGA rows above it are (see the ceiling).",
         "onnx_domains": [],
         "params": null,
         "runs_encrypted": false,
@@ -941,7 +941,7 @@
           "auprc": 0.12334101789973353,
           "auprc_baseline": 0.0015234617040716665,
           "auroc": 0.9525582593503528,
-          "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a tuning one: the gap is unreachable at any threshold, because measured AUPRC is far below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph; this project computes per-account scalar aggregates. A degree is one number per account, whereas a GFP feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. GFP ships in `snapml` under a Proprietary licence and is excluded by this project's commercial-OK-only rule, but the licence is not itself the cause - the architecture is, and it is reimplementable without `snapml`, simply at more cost than renaming aggregates. Reachability is computed to 4 hops against injected CYCLE attempts of up to 10; that was previously recorded as a main cause and is NOT one - the GFP paper (arXiv:2402.08593) decomposes its own contribution and caps multi-hop cycle and scatter-gather features at about 4% relative, while fan-in/fan-out, which is reimplemented here, carries more than 30%. The evaluation is strictly inductive and temporally split. Per-account aggregates are causal (each row sees only edges strictly before it); the structural block - cycle closure, scatter-gather, bank diversity, burst degree - is still fitted on the training window, because recomputing sparse reachability at every timestep is not tractable here. Reported as measured; not adjusted to close the gap. Full workings: references/finance-gap-investigation.md.",
+          "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a tuning one: the gap is unreachable at any threshold, because measured AUPRC is far below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph; this project computes per-account scalar aggregates. A degree is one number per account, whereas a GFP feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. GFP ships in `snapml` under a Proprietary licence and is excluded by this project's commercial-OK-only rule, but the licence is not itself the cause - the architecture is, and it is reimplementable without `snapml`, simply at more cost than renaming aggregates. Reachability is computed to 4 hops against injected CYCLE attempts of up to 10; that was previously recorded as a main cause and is NOT one - the GFP paper (arXiv:2402.08593) decomposes its own contribution, and its Table 5 (HI-Small, XGBoost, batch 128) gives fan-in/fan-out, which is reimplemented here, 37 F1 points (19.75 to 56.88) and multi-hop cycle and scatter-gather patterns 1.7 more (to 58.60; 'up to 4%' in its text is F1 points, not a relative gain). The evaluation is strictly inductive and temporally split. Per-account aggregates are causal (each row sees only edges strictly before it); the structural block - cycle closure, scatter-gather, bank diversity, burst degree - is still fitted on the training window, because recomputing sparse reachability at every timestep is not tractable here. Reported as measured; not adjusted to close the gap. Full workings: references/finance-gap-investigation.md.",
           "calibration": {
             "a": -0.5853491088584304,
             "b": 1.6417462922842536,
@@ -993,7 +993,7 @@
             "opset": null
           },
           "git_sha": "67138f8-dirty",
-          "hf_revision": "18e1155696ccf35a5124c4e191910a6dcd237528",
+          "hf_revision": "2df918615504eb6a4490548614051987b2c3ba84",
           "minority_class_f1": 0.15194805194805194,
           "n_test": 1523504,
           "n_train": 3554841,
@@ -1001,7 +1001,7 @@
           "split": "temporal, inductive",
           "wall_clock_s": 96.6
         },
-        "architecture": "GFP (graph features) + XGBoost",
+        "architecture": "per-account and structural graph features computed by this project (not IBM's Graph Feature Preprocessor) + XGBoost",
         "artifacts": [
           {
             "browser_runnable": true,
@@ -1034,23 +1034,23 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "eval_sample_reason": null,
-        "eval_split": "a draw from the held-out temporal test window, the last 30 percent of the timeline, enriched to 2 percent laundering",
+        "eval_split": "a draw from the held-out temporal test window, the last 30 percent of the transactions in time order, enriched to 2 percent laundering",
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "18e1155696ccf35a5124c4e191910a6dcd237528",
+        "hf_revision": "2df918615504eb6a4490548614051987b2c3ba84",
         "hf_revision_stale": null,
         "key": "finance_aml.gbm",
-        "label": "Graph-feature-preprocessed gradient boosting",
+        "label": "Graph-feature gradient boosting",
         "metric": {
           "baseline": 0.6323,
-          "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17)",
+          "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17). Same metric and corpus, different protocol: that figure uses a 60/20/20 split by transaction order and IBM's Graph Feature Preprocessor updated over the test window; this project tests on the last 30 percent of transactions (fit 56, validation 14) with its own graph features, whose structural block is fitted on the training window.",
           "ceiling": 0.7401,
-          "ceiling_source": "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55). PREPRINT - no venue confirmed, which is why it is named as such. It replaces Multi-PNA+EU (AAAI-24, 68.16 +/- 2.65): that row is in the SAME table with two better ones above it (MEGA-GIN 70.83, MEGA-PNA 74.01) and has not been the ceiling since December 2024. Verified by reading the table, not the abstract.",
+          "ceiling_source": "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55); the paper's v3 is accepted for publication in TMLR (2026). It is not the table's highest row: the same table prints MEGA-GenAgg at 74.88 +/- 0.38 and MEGA(PNA)-GIN at 74.69 +/- 0.50, and Multi-PNA (68.16 +/- 2.65) below all three.",
           "companion": "auprc",
           "comparison_caveat": "",
           "display": "minority-class F1 (laundering)",
           "name": "minority_class_f1"
         },
-        "notes": "Stateless at inference, so this is the browser-tier finance model.",
+        "notes": "The browser-tier finance model: it scores one feature row per transaction with no message passing at scoring time. That row is not stateless - its per-account and structural features are computed from the account's earlier transactions - so a deployment needs that history to score a new transaction.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -1063,7 +1063,7 @@
           "agreement": 0.982943,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.361913,
-          "hf_revision": "f3b06875c5736751cddcbbb9e0557135433aea01",
+          "hf_revision": "64a1775a0b007c19b4acf755232880f6ad066478",
           "metric_delta": 0.090554,
           "metric_delta_pp": 9.0554,
           "metric_name": "minority_class_f1",
@@ -1104,23 +1104,23 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "eval_sample_reason": null,
-        "eval_split": "the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, the last 30 percent of the timeline, enriched to 2 percent laundering",
+        "eval_split": "the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, the last 30 percent of the transactions in time order, enriched to 2 percent laundering",
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": "f3b06875c5736751cddcbbb9e0557135433aea01",
+        "hf_revision": "64a1775a0b007c19b4acf755232880f6ad066478",
         "hf_revision_stale": null,
         "key": "finance_aml.student",
         "label": "CKKS-linear fraud student",
         "metric": {
           "baseline": 0.6323,
-          "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17)",
+          "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17). Same metric and corpus, different protocol: that figure uses a 60/20/20 split by transaction order and IBM's Graph Feature Preprocessor updated over the test window; this project tests on the last 30 percent of transactions (fit 56, validation 14) with its own graph features, whose structural block is fitted on the training window.",
           "ceiling": 0.7401,
-          "ceiling_source": "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55). PREPRINT - no venue confirmed, which is why it is named as such. It replaces Multi-PNA+EU (AAAI-24, 68.16 +/- 2.65): that row is in the SAME table with two better ones above it (MEGA-GIN 70.83, MEGA-PNA 74.01) and has not been the ceiling since December 2024. Verified by reading the table, not the abstract.",
+          "ceiling_source": "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55); the paper's v3 is accepted for publication in TMLR (2026). It is not the table's highest row: the same table prints MEGA-GenAgg at 74.88 +/- 0.38 and MEGA(PNA)-GIN at 74.69 +/- 0.50, and Multi-PNA (68.16 +/- 2.65) below all three.",
           "companion": "auprc",
           "comparison_caveat": "",
           "display": "minority-class F1 (laundering)",
           "name": "minority_class_f1"
         },
-        "notes": "Runs under real CKKS. crypto_fidelity is measured against the teacher every run.",
+        "notes": "Built to run under CKKS, but no code path here encrypts THIS model. The public page's CKKS step evaluates the 8-feature linear model bundled with the PaySim sample and re-scores this 33-parameter AMLworld student in plaintext ONNX; the full deployment's finance pipeline encrypts its own PaySim-trained surrogate. Its agreement with the teacher (`agreement`) is measured offline, at training time, in plaintext; each browser run measures `encrypted_agreement`, CKKS against plaintext for the model it encrypts.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -1198,7 +1198,7 @@
           },
           "wall_clock_s": 1.5
         },
-        "architecture": "per-SNP effect-weight vector; genome-wide-significance thresholding (P<5e-8)",
+        "architecture": "per-variant effect-weight vector over 313 variants (PGS000004: hard-thresholding stepwise forward regression, p < 1e-5)",
         "artifacts": [
           {
             "browser_runnable": false,
@@ -1227,13 +1227,13 @@
           "baseline": 0.633,
           "baseline_source": "PGS Catalog PPM001647 for PGS000004 (PRS313): AUROC 0.633 (95% CI 0.624-0.641), n=400,812 Europeans - 4,340 cases and 396,472 controls - from Jia et al., JNCI Cancer Spectrum 2020 (doi:10.1093/jncics/pkaa021). Verified at the Catalog REST record 2026-08-11. TWO CAVEATS THAT MAKE THIS A CITATION AND NOT A TARGET, both from the record itself: the model is fitted WITH COVARIATES - 'family history of cancer (in first-degree relatives), genotyping array' - which a bare weighted dot product does not have; and the cohort was 'missing 25 variants (8%) based on availability of variants in the cohort', so the published figure is for 288 of the 313 variants, not all of them. This replaced PGS000001's C-index 0.628 (PPM017270) when the score changed. That figure was a Harrell's C-index over censored follow-up, not an AUROC, and the two are not directly comparable - a C-index is computed over time-to-event pairs and an AUROC over a fixed case/control split. PGS000004 publishes a genuine AUROC, so the switch also removes that comparability problem rather than only changing the number.",
           "ceiling": 0.668,
-          "ceiling_source": "Highest AUROC among PGS000004's OWN Catalog performance records: 0.668 (PPM012913, n=302,425, European). Measured across all 28 AUROC records for this score on 2026-08-11, not taken from a range quoted elsewhere - a first attempt at this line read the first page of results only and put the ceiling at 0.6573, which is a real record but not the maximum. European records span 0.5877-0.668 over 22 entries; the largest cohort is PPM012918 at n=5,328,392 with 0.665. The previous ceiling of 0.69 was chosen against a C-index scale, so it was never a bound on an AUROC for this score even though it happens to sit close to one. WORTH READING BESIDE THIS USE CASE'S FINDING: the lowest of the 28 is 0.55 (PPM005171, n=3,801, 'African unspecified'), against 0.5877-0.668 for European samples. The published record set shows the same ancestry gap this page demonstrates by a different route.",
+          "ceiling_source": "Highest AUROC among PGS000004's OWN Catalog performance records: 0.668 (PPM012913, n=302,425, European). NOT THE BARE SCORE: that record evaluates PGS000004 combined with the iCARE-Lit classical risk factors (age at menarche, parity, BMI, family history and others) for 5-year absolute risk (Hurson et al., Int J Epidemiol 2022), so a weighted dot product alone is not expected to reach it. Measured across all 28 AUROC records for this score on 2026-08-11, not taken from a range quoted elsewhere - a first attempt at this line read the first page of results only and put the ceiling at 0.6573, which is a real record but not the maximum. European records span 0.5877-0.668 over 22 entries; the largest cohort is PPM012918 at n=5,328,392 with 0.665. The previous ceiling of 0.69 was chosen against a C-index scale, so it was never a bound on an AUROC for this score even though it happens to sit close to one. WORTH READING BESIDE THIS USE CASE'S FINDING: the lowest of the 28 is 0.55 (PPM005171, n=3,801, 'African unspecified'), against 0.5877-0.668 for European samples. The published record set shows the same ancestry gap this page demonstrates by a different route.",
           "companion": "",
           "comparison_caveat": "",
           "display": "AUROC (European ancestry)",
           "name": "auroc_eur"
         },
-        "notes": "Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an earlier revision of this note called it an AUROC drop, but 1000 Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is computable from it and genomics_prs.py records auroc=null rather than inventing one. PGS000004 (PRS313) is Mavaddat et al. (AJHG 2018), 313 variants - not PRS-CS or LDpred2, which are Bayesian-shrinkage methods this score does not use. An earlier architecture string named that family and contradicted this project's own training script. Until Round 31 this page ran PGS000001, the 77-variant Mavaddat 2015 score selected by genome-wide significance (P<5e-8); the switch is recorded because the variant count and the baseline both changed with it. The finding is the by_super_population.*.frac_above_global_cut rows listed above: one globally-set high-risk cut flags a far larger share of AFR than of EUR, a gap driven by allele-frequency differences rather than by risk. Read those rows, not this sentence - they are recomputed on every training run, so no figure quoted in prose here can drift away from them. The published European AUROC baseline comes from a phenotyped cohort that is access-controlled, which is why it cannot be reproduced on this page.",
+        "notes": "WHAT RUNS UNDER CKKS DIFFERS BY TIER. The browser's CKKS step is a sign test on the 8 largest-effect of the 313 variants (W = [-w/2, +w/2], b = 0), not the 313-variant score; the full deployment evaluates all 313 against a 75th-percentile cut. Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an earlier revision of this note called it an AUROC drop, but 1000 Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is computable from it and genomics_prs.py records auroc=null rather than inventing one. PGS000004 (PRS313) is Mavaddat et al. (AJHG 2018), 313 variants - not PRS-CS or LDpred2, which are Bayesian-shrinkage methods this score does not use. An earlier architecture string named that family and contradicted this project's own training script. Until Round 31 this page ran PGS000001, the 77-variant Mavaddat 2015 score selected by genome-wide significance (P<5e-8); the switch is recorded because the variant count and the baseline both changed with it. The finding is the by_super_population.*.frac_above_global_cut rows listed above: one globally-set high-risk cut flags a far larger share of AFR than of EUR, a gap driven by allele-frequency differences rather than by risk. Read those rows, not this sentence - they are recomputed on every training run, so no figure quoted in prose here can drift away from them. The published European AUROC baseline comes from a phenotyped cohort that is access-controlled, which is why it cannot be reproduced on this page.",
         "onnx_domains": [],
         "params": null,
         "runs_encrypted": true,
@@ -1254,7 +1254,7 @@
             "opset": 18
           },
           "git_sha": "61b855e-dirty",
-          "hf_revision": "a04fe6cdbc2b39e9e860ba736a880044f57bb466",
+          "hf_revision": "110241259374dd66680026ee6a1b8c1bb7e2acf3",
           "macro_f1": 0.8249158249158248,
           "n_parameters": 11171266,
           "resolution": 28,
@@ -1294,7 +1294,7 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "attribution": "Yang, Shi, Wei, Liu, Zhao, Ke, Pfister & Ni, 'MedMNIST v2 - A large-scale lightweight benchmark for 2D and 3D biomedical image classification', Scientific Data 10:41 (2023), CC BY 4.0. BreastMNIST is derived from Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of breast ultrasound images', Data in Brief 28:104863 (2020).",
+          "attribution": "Yang, Shi, Wei, Liu, Zhao, Ke, Pfister & Ni, 'MedMNIST v2 - A large-scale lightweight benchmark for 2D and 3D biomedical image classification', Scientific Data 10:41 (2023), and Yang, Shi & Ni, 'MedMNIST Classification Decathlon: A Lightweight AutoML Benchmark for Medical Image Analysis', IEEE ISBI 2021; CC BY 4.0. BreastMNIST is derived from Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of breast ultrasound images', Data in Brief 28:104863 (2020).",
           "licence": "CC-BY-4.0 asserted by MedMNIST; the BUSI authors publish no licence",
           "name": "MedMNIST v2 BreastMNIST",
           "publishable": true,
@@ -1303,7 +1303,7 @@
         "eval_sample_reason": null,
         "eval_split": "the official BreastMNIST test split, whole",
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
-        "hf_revision": "a04fe6cdbc2b39e9e860ba736a880044f57bb466",
+        "hf_revision": "110241259374dd66680026ee6a1b8c1bb7e2acf3",
         "hf_revision_stale": null,
         "key": "medical_fl.resnet18",
         "label": "ResNet-18 on BreastMNIST",
@@ -1317,7 +1317,7 @@
           "display": "AUC",
           "name": "auc"
         },
-        "notes": "The small tier: fits the browser comfortably and has a clean published baseline.",
+        "notes": "The small tier: fits the browser comfortably and has a clean published baseline. Its training regime is not the baseline's: torchvision's 7x7 stride-2 stem with max-pool, early-stopped at 39 of at most 60 epochs at lr 3e-4 (manifest.json), where MedMNIST v2's 28-px ResNets use a 3x3 stride-1 stem without max-pool and 100 epochs at lr 1e-3. Close, not like for like.",
         "onnx_domains": [
           "ai.onnx"
         ],
@@ -1338,7 +1338,7 @@
             "opset": 18
           },
           "git_sha": "85209a9-dirty",
-          "hf_revision": "8026dd29ca086839feceb8371fa9f44455a94f66",
+          "hf_revision": "fda4caf892f53cc57d6be157318e64706ef82c88",
           "macro_f1": 0.6492063492063492,
           "n_parameters": 23505858,
           "resolution": 28,
@@ -1371,7 +1371,7 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "attribution": "Yang, Shi, Wei, Liu, Zhao, Ke, Pfister & Ni, 'MedMNIST v2 - A large-scale lightweight benchmark for 2D and 3D biomedical image classification', Scientific Data 10:41 (2023), CC BY 4.0. BreastMNIST is derived from Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of breast ultrasound images', Data in Brief 28:104863 (2020).",
+          "attribution": "Yang, Shi, Wei, Liu, Zhao, Ke, Pfister & Ni, 'MedMNIST v2 - A large-scale lightweight benchmark for 2D and 3D biomedical image classification', Scientific Data 10:41 (2023), and Yang, Shi & Ni, 'MedMNIST Classification Decathlon: A Lightweight AutoML Benchmark for Medical Image Analysis', IEEE ISBI 2021; CC BY 4.0. BreastMNIST is derived from Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of breast ultrasound images', Data in Brief 28:104863 (2020).",
           "licence": "CC-BY-4.0 asserted by MedMNIST; the BUSI authors publish no licence",
           "name": "MedMNIST v2 BreastMNIST",
           "publishable": true,
@@ -1380,13 +1380,13 @@
         "eval_sample_reason": null,
         "eval_split": "the official BreastMNIST test split, whole, the same rows as medical_fl.resnet18",
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet50",
-        "hf_revision": "8026dd29ca086839feceb8371fa9f44455a94f66",
+        "hf_revision": "fda4caf892f53cc57d6be157318e64706ef82c88",
         "hf_revision_stale": null,
         "key": "medical_fl.resnet50",
         "label": "ResNet-50 on BreastMNIST (published comparison)",
         "metric": {
           "baseline": 0.857,
-          "baseline_source": "ResNet-50 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.857 / ACC 0.812). Note this is BELOW the ResNet-18 baseline of 0.901 on the same corpus and the same 100-epoch Adam regime: on 780 images the deeper network loses. That is the published finding, and it is why this model exists here - to reproduce it rather than to win.",
+          "baseline_source": "ResNet-50 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.857 / ACC 0.812). Note this is BELOW the ResNet-18 baseline of 0.901 on the same corpus and the same 100-epoch Adam regime: on 780 images the deeper network loses. That is the published finding, and it is why this model exists here - to test it rather than to win, under a training regime that differs from the paper's (see the model's notes).",
           "ceiling": 0.919,
           "ceiling_source": "Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
           "companion": "accuracy",
@@ -1394,7 +1394,7 @@
           "display": "AUC",
           "name": "auc"
         },
-        "notes": "Trained to test a published claim rather than to win one. MedMNIST v2 reports ResNet-50 at AUC 0.857 against ResNet-18's 0.901 on this corpus, so the expected outcome is that the larger model scores LOWER, and it is reported either way. It replaces a DenseNet-121 entry that named a dataset with no loader, no fetch command and no artefact directory, and linked a Hugging Face repo that did not exist. Architectures benchmarked only ImageNet-pretrained (AlexNet, VGG16, DenseNet-121, EfficientNet-B4 in MedMNIST+) are deliberately absent: this project dropped ImageNet weights over redistribution terms, so their published numbers are not comparable to a from-scratch run.",
+        "notes": "Trained to test a published claim rather than to win one. MedMNIST v2 reports ResNet-50 at AUC 0.857 against ResNet-18's 0.901 on this corpus, so the expected outcome is that the larger model scores LOWER, and it is reported either way. The regime here is not the published one: torchvision's 7x7 stride-2 stem with max-pool, early-stopped at 27 of at most 60 epochs at lr 3e-4, against MedMNIST v2's 3x3 stride-1 stem without max-pool and 100 epochs at lr 1e-3. It replaces a DenseNet-121 entry that named a dataset with no loader, no fetch command and no artefact directory, and linked a Hugging Face repo that did not exist. Architectures benchmarked only ImageNet-pretrained (AlexNet, VGG16, DenseNet-121, EfficientNet-B4 in MedMNIST+) are deliberately absent: this project dropped ImageNet weights over redistribution terms, so their published numbers are not comparable to a from-scratch run.",
         "onnx_domains": [
           "ai.onnx"
         ],
@@ -1409,7 +1409,7 @@
           "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline. The reason is representational rather than cryptographic: 3,226 parameters over a 14x14 input is a REPRESENTATION choice, not a feasibility limit - and this note said 'a CKKS-feasibility budget' until Round 32, which overstated how forced it was. Kim et al. (arXiv:2506.15258) do HE chest-X-ray inference on a VQGAN latent at downsampling factor 8 rather than on pixels, so the alternative to downsampling 28->14 is re-representing the input. The browser already runs onnxruntime-web, so such an encoder would run locally in plaintext with no privacy loss. Recorded as the sixth falsifiable trigger in the additional-model decision in docs/deliverable-verification.md, not acted on - and note that f=8 on a 28x28 input gives 3.5x3.5, so the transfer is the open measurement rather than a citation. This sentence claimed the trigger existed for two rounds while the table held five rows and none of them was this one; the trigger was written, and the decision moved to a tracked file so the claim can be checked. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
           "both_scored_zero": false,
           "disagreement_on_positives": 0.149123,
-          "hf_revision": "0f1e96a0f32622e3af26693278207a378eaa87e0",
+          "hf_revision": "d8a1d544333b6dd91f448cae92ace7bf7791ac93",
           "majority_class_rate": 0.730769,
           "metric_delta": 0.096154,
           "metric_delta_pp": 9.6154,
@@ -1453,7 +1453,7 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "attribution": "Yang, Shi, Wei, Liu, Zhao, Ke, Pfister & Ni, 'MedMNIST v2 - A large-scale lightweight benchmark for 2D and 3D biomedical image classification', Scientific Data 10:41 (2023), CC BY 4.0. BreastMNIST is derived from Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of breast ultrasound images', Data in Brief 28:104863 (2020).",
+          "attribution": "Yang, Shi, Wei, Liu, Zhao, Ke, Pfister & Ni, 'MedMNIST v2 - A large-scale lightweight benchmark for 2D and 3D biomedical image classification', Scientific Data 10:41 (2023), and Yang, Shi & Ni, 'MedMNIST Classification Decathlon: A Lightweight AutoML Benchmark for Medical Image Analysis', IEEE ISBI 2021; CC BY 4.0. BreastMNIST is derived from Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of breast ultrasound images', Data in Brief 28:104863 (2020).",
           "licence": "CC-BY-4.0 asserted by MedMNIST; the BUSI authors publish no licence",
           "name": "MedMNIST v2 BreastMNIST",
           "publishable": true,
@@ -1462,7 +1462,7 @@
         "eval_sample_reason": null,
         "eval_split": "the official BreastMNIST test split, whole, at 14x14",
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-ckks-student",
-        "hf_revision": "0f1e96a0f32622e3af26693278207a378eaa87e0",
+        "hf_revision": "d8a1d544333b6dd91f448cae92ace7bf7791ac93",
         "hf_revision_stale": null,
         "key": "medical_fl.student",
         "label": "FHE-feasible diagnostic CNN",
@@ -1476,7 +1476,7 @@
           "display": "AUC",
           "name": "auc"
         },
-        "notes": "Genuine encrypted convolution: im2col + CKKS dot_plain, ReLU/max-pool under MPC.",
+        "notes": "Genuine encrypted convolution (im2col + CKKS dot_plain), but not end to end under CKKS. In the browser each layer's output is decrypted, ReLU and average pooling run in plaintext in the client, and the class is the argmax of decrypted logits; the page's MPC argmax runs on the WDBC logistic regression, not on this CNN. The full deployment's hybrid path, which runs a federated CNN of this shape rather than these weights, keeps ReLU on secret shares (MPyC) and pools each share locally; its masked conversion protects only CKKS slot 0 (see qsh.mpc.secret_inference).",
         "onnx_domains": [
           "ai.onnx"
         ],
@@ -1502,7 +1502,7 @@
             "opset": 17
           },
           "git_sha": "5ba453e-dirty",
-          "hf_revision": "93be9a22bab82ccd99d23521f48da4a761305e42",
+          "hf_revision": "0cb46a727c5e4c6b438222fbacb367bf8ef76ed8",
           "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: Kim et al. (AAAI 2022) show that under point adjustment even a random anomaly score can reach state-of-the-art. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
           "n_anomaly_intervals": 320,
           "n_events_scored": 3,
@@ -1548,7 +1548,7 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "attribution": "Kotowski et al., 'European Space Agency Benchmark for Anomaly Detection in Satellite Telemetry', arXiv:2406.17826. Data: ESA Anomaly Dataset, Zenodo record 12528696, CC BY 3.0 IGO.",
+          "attribution": "Kotowski et al., 'European Space Agency Dataset and Benchmark for Real-World Anomaly Detection in Spacecraft Time Series', Journal of Data-centric Machine Learning Research (DMLR), 2026 (earlier version: arXiv:2406.17826). Data: De Canio, Kotowski & Haskamp, 'ESA Anomaly Dataset', Zenodo record 12528696 (2024), CC BY 3.0 IGO.",
           "licence": "CC-BY-3.0-IGO",
           "name": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
           "publishable": true,
@@ -1557,21 +1557,21 @@
         "eval_sample_reason": null,
         "eval_split": "windows drawn at random from the held-out temporal test window, the last 30 percent of the resampled timeline",
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
-        "hf_revision": "93be9a22bab82ccd99d23521f48da4a761305e42",
+        "hf_revision": "0cb46a727c5e4c6b438222fbacb367bf8ef76ed8",
         "hf_revision_stale": null,
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (per channel)",
         "metric": {
           "baseline": 0.968,
-          "baseline_source": "ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal events, so it was the wrong comparator and the lenient one. Verified against the paper (arXiv:2406.17826 v2) in Round 24. THREE protocol differences remain and none of them are closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; (3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are anomalies, against 3 in the window scored here. So this remains an indicative target, and the sample-size gap is roughly tenfold.",
+          "baseline_source": "ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal events, so it was the wrong comparator and the lenient one. Verified against the paper (arXiv:2406.17826 v2) in Round 24. FOUR protocol differences remain and none of them are closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; (3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are anomalies, against 3 in the window scored here; (4) ESA-ADB resamples Mission1 at 0.033 Hz, about one sample per 30 s, chosen from the dominant rate of channels 41-46, while this model resamples to 300 s, so its 250-step window spans about 20.8 hours where the benchmark's would span about 2.1, and short events can vanish. So this remains an indicative target, and the sample-size gap is roughly tenfold.",
           "ceiling": null,
           "ceiling_source": "",
           "companion": "event_wise_f0_5_full_channels",
-          "comparison_caveat": "The two bars are event-wise F0.5 under the same overlap rule, and that is where the agreement stops. This project's scored window contains THREE labelled anomaly events; ESA-ADB's Mission1 lightweight test partition contains 29, roughly a tenfold difference in the denominator - at three events, one extra false alarm moves the score by 0.26, which is larger than most of the gap being read off this chart. The splits differ too (last 30 percent here, half the mission there), and ESA-ADB multiplies event precision by the time-level true-negative rate, which this figure does not. Treat 0.968 as an indicative target, not as a score this bar was competing against.",
+          "comparison_caveat": "The two bars are event-wise F0.5 under the same overlap rule, and that is where the agreement stops. This project's scored window contains THREE labelled anomaly events; ESA-ADB's Mission1 lightweight test partition contains 29, roughly a tenfold difference in the denominator. None of the three is caught here (tp 0, fp 2, fn 3), so the score is 0 and another false alarm cannot lower it; catching one event with the same two false alarms would lift it to 0.33. The splits differ too (last 30 percent here, half the mission there), so does the resampling (300 s here, about 30 s there), and ESA-ADB multiplies event precision by the time-level true-negative rate, which this figure does not. Treat 0.968 as an indicative target, not as a score this bar was competing against.",
           "display": "event-wise F0.5",
           "name": "event_wise_f0_5"
         },
-        "notes": "Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: windowed isolation forest wins the ESA-ADB Mission2 lightweight subset outright. RETRACTION, Round 19: a Round 18 note here claimed this forecaster was about 22x WORSE than persistence. That was a measurement error of ours, not a property of the model -- the probe resampled at 60s while the model is trained at 300s (see `resample` in the achieved record). Preprocessing for any evaluation must be read from this record rather than hardcoded, which is now what scripts/prep_model_inputs.py does. RETRAINED IN ROUND 71. The weights published until then were trained with a z-score fitted on the whole series, test window included: the trainer was fixed in Round 34 and the model was never retrained, so its feature_spec.json still carried whole-series constants. With the constants fitted on the training window, next-step MAE over all 441,600 test windows is 0.0250 against 0.0764 for persistence, about 3.1x better. The event-wise figure fell to 0 (tp=0 fp=2 fn=3): the detector still flags 2 points of 441,600 and neither lands in one of the 3 scored events, where the two leaky runs had caught one and recorded 0.714286 and 0.454545. Point-adjusted F1 fell with it, from 0.9937 to 0, which is how much one flagged point inside a long event carries under point adjustment; the isolation-forest baseline reproduces exactly (0.000248). Treat the event-wise figure as a single draw from a wide distribution, which is the instability arXiv:2607.11969 (2026-07) describes for overlap-based metrics: three events cannot rank detectors.",
+        "notes": "Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset in the paper's Table 2 (all events, 0.949), though not in Supplementary Table 9 (anomalies only, 0.000). RETRACTION, Round 19: a Round 18 note here claimed this forecaster was about 22x WORSE than persistence. That was a measurement error of ours, not a property of the model -- the probe resampled at 60s while the model is trained at 300s (see `resample` in the achieved record). Preprocessing for any evaluation must be read from this record rather than hardcoded, which is now what scripts/prep_model_inputs.py does. RETRAINED IN ROUND 71. The weights published until then were trained with a z-score fitted on the whole series, test window included: the trainer was fixed in Round 34 and the model was never retrained, so its feature_spec.json still carried whole-series constants. With the constants fitted on the training window, next-step MAE over all 441,600 test windows is 0.0250 against 0.0764 for persistence, about 3.1x better. The event-wise figure fell to 0 (tp=0 fp=2 fn=3): the detector still flags 2 points of 441,600 and neither lands in one of the 3 scored events, where the two leaky runs had caught one and recorded 0.714286 and 0.454545. Point-adjusted F1 fell with it, from 0.9937 to 0, which is how much one flagged point inside a long event carries under point adjustment; the isolation-forest baseline reproduces exactly (0.000248). Treat the event-wise figure as a single draw from a wide distribution: three events cannot rank detectors. With 0 of 3 events detected, the exact (Clopper-Pearson) 95% interval for recall runs from 0 to 0.71.",
         "onnx_domains": [
           "ai.onnx"
         ],
@@ -1584,7 +1584,7 @@
           "agreement": 0.975641,
           "both_scored_zero": true,
           "disagreement_on_positives": 0.0,
-          "hf_revision": "b18afd4ee2683143cacc03b0ab2356d6697ceb5e",
+          "hf_revision": "bbdaf67524d97960464b013a4b655b3bbc8f1858",
           "metric_delta": 0.0,
           "metric_delta_pp": 0.0,
           "metric_name": "event_wise_f0_5",
@@ -1618,7 +1618,7 @@
         ],
         "browser_runnable": true,
         "dataset": {
-          "attribution": "Kotowski et al., 'European Space Agency Benchmark for Anomaly Detection in Satellite Telemetry', arXiv:2406.17826. Data: ESA Anomaly Dataset, Zenodo record 12528696, CC BY 3.0 IGO.",
+          "attribution": "Kotowski et al., 'European Space Agency Dataset and Benchmark for Real-World Anomaly Detection in Spacecraft Time Series', Journal of Data-centric Machine Learning Research (DMLR), 2026 (earlier version: arXiv:2406.17826). Data: De Canio, Kotowski & Haskamp, 'ESA Anomaly Dataset', Zenodo record 12528696 (2024), CC BY 3.0 IGO.",
           "licence": "CC-BY-3.0-IGO",
           "name": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
           "publishable": true,
@@ -1627,21 +1627,21 @@
         "eval_sample_reason": "its metric, event-wise F0.5, is defined over contiguous runs of a timeline and cannot be re-scored from independent rows, which is what the browser evaluator scores",
         "eval_split": null,
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-ckks-student",
-        "hf_revision": "b18afd4ee2683143cacc03b0ab2356d6697ceb5e",
+        "hf_revision": "bbdaf67524d97960464b013a4b655b3bbc8f1858",
         "hf_revision_stale": null,
         "key": "satellite_comms.student",
         "label": "CKKS-linear telemetry anomaly student",
         "metric": {
           "baseline": 0.968,
-          "baseline_source": "ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal events, so it was the wrong comparator and the lenient one. Verified against the paper (arXiv:2406.17826 v2) in Round 24. THREE protocol differences remain and none of them are closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; (3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are anomalies, against 3 in the window scored here. So this remains an indicative target, and the sample-size gap is roughly tenfold.",
+          "baseline_source": "ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal events, so it was the wrong comparator and the lenient one. Verified against the paper (arXiv:2406.17826 v2) in Round 24. FOUR protocol differences remain and none of them are closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; (3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are anomalies, against 3 in the window scored here; (4) ESA-ADB resamples Mission1 at 0.033 Hz, about one sample per 30 s, chosen from the dominant rate of channels 41-46, while this model resamples to 300 s, so its 250-step window spans about 20.8 hours where the benchmark's would span about 2.1, and short events can vanish. So this remains an indicative target, and the sample-size gap is roughly tenfold.",
           "ceiling": null,
           "ceiling_source": "",
           "companion": "event_wise_f0_5_full_channels",
-          "comparison_caveat": "The two bars are event-wise F0.5 under the same overlap rule, and that is where the agreement stops. This project's scored window contains THREE labelled anomaly events; ESA-ADB's Mission1 lightweight test partition contains 29, roughly a tenfold difference in the denominator - at three events, one extra false alarm moves the score by 0.26, which is larger than most of the gap being read off this chart. The splits differ too (last 30 percent here, half the mission there), and ESA-ADB multiplies event precision by the time-level true-negative rate, which this figure does not. Treat 0.968 as an indicative target, not as a score this bar was competing against.",
+          "comparison_caveat": "The two bars are event-wise F0.5 under the same overlap rule, and that is where the agreement stops. This project's scored window contains THREE labelled anomaly events; ESA-ADB's Mission1 lightweight test partition contains 29, roughly a tenfold difference in the denominator. None of the three is caught here (tp 0, fp 2, fn 3), so the score is 0 and another false alarm cannot lower it; catching one event with the same two false alarms would lift it to 0.33. The splits differ too (last 30 percent here, half the mission there), so does the resampling (300 s here, about 30 s there), and ESA-ADB multiplies event precision by the time-level true-negative rate, which this figure does not. Treat 0.968 as an indicative target, not as a score this bar was competing against.",
           "display": "event-wise F0.5",
           "name": "event_wise_f0_5"
         },
-        "notes": "The one published model with no browser evaluation sample, and the reason is the metric rather than the weights. Round 21 gave the other three students samples; this one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows -- which is exactly what the browser evaluator scores. Shipping a per-row metric instead would verify a number nobody published for it. It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. Worth reading alongside its numbers: since the Round 71 retrain the teacher and the student both score 0.0 event-wise F0.5 on this split, so their agreement is agreement about finding nothing, and there is no fidelity claim to make.",
+        "notes": "The one published model with no browser evaluation sample, and the reason is the metric rather than the weights. Round 21 gave the other three students samples; this one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows -- which is exactly what the browser evaluator scores. Shipping a per-row metric instead would verify a number nobody published for it. It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. Worth reading alongside its numbers: since the Round 71 retrain the teacher and the student both score 0.0 event-wise F0.5 on this split, so their agreement is agreement about finding nothing, and there is no fidelity claim to make. No code path here evaluates this student under CKKS today: the satellite page has no private-inference stage, and the full deployment's telemetry stage encrypts its own SMAP/MSL model.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -1665,8 +1665,7 @@
           },
           "f1": 0.918918918918919,
           "git_sha": "89d2fca-dirty",
-          "hf_revision": "48ec0ea48f28cfeb5ae279a8548fe6f56718f5d0",
-          "hf_revision_invalidated_by_retrain": "6039a4fb2d2db7ccb2a638e94cf9c06d8799a6e3",
+          "hf_revision": "4882460d8e0a35a9f87ae280e9adac281f9bbba3",
           "n_features": 19,
           "n_test_segments": 529,
           "n_train_segments": 1594,
@@ -1708,7 +1707,7 @@
         "eval_sample_reason": null,
         "eval_split": "the benchmark's own test partition, whole",
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ad",
-        "hf_revision": "48ec0ea48f28cfeb5ae279a8548fe6f56718f5d0",
+        "hf_revision": "4882460d8e0a35a9f87ae280e9adac281f9bbba3",
         "hf_revision_stale": null,
         "key": "satellite_comms.opssat",
         "label": "OPS-SAT segment anomaly detector",
@@ -1722,7 +1721,7 @@
           "display": "AUC PR",
           "name": "auc_pr"
         },
-        "notes": "Segment CLASSIFICATION on real OPS-SAT telemetry, which is a different task from the Telemanom forecaster above: this one is scored against the 30 algorithms published with the dataset, not against persistence, and the two numbers must not be read as a comparison. Chosen because its corpus is CC BY 4.0 and 507 KB - the one case in this project where the data itself can be redistributed alongside the weights.",
+        "notes": "Segment CLASSIFICATION on real OPS-SAT telemetry, which is a different task from the Telemanom forecaster above: this one is scored against the 30 algorithms published with the dataset, not against persistence, and the two numbers must not be read as a comparison. Chosen because its corpus is CC BY 4.0 and small, so the whole test partition can be redistributed alongside the weights. The benchmark's split is stratified random, so these scores do not measure generalisation over time. The card's metrics are the scikit-learn model's before export; the published ONNX graph scores accuracy 0.9509 on the same 529 test segments against 0.9660 recorded here, so the browser's re-score reproduces the graph, not the card.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -1736,8 +1735,7 @@
           "auc_pr": 0.968055,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.070796,
-          "hf_revision": "8d8ca70b9a40bc65496422e36ee7d10bbe49ee2a",
-          "hf_revision_invalidated_by_retrain": "1dd6ca4236018f2635bb5d7b04c830d2e58773d5",
+          "hf_revision": "a248ee5db0a768723271aafa9aff104b7cc8158f",
           "metric_delta": 0.014571,
           "metric_delta_pp": 1.4571,
           "metric_name": "minority_class_f1",
@@ -1753,7 +1751,7 @@
           "teacher_params": 117,
           "teacher_scored_zero": false
         },
-        "architecture": "logistic regression over 18 published per-segment features + `sampling`",
+        "architecture": "logistic regression over the quadratic expansion (209 terms) of the 18 published per-segment features + `sampling`",
         "artifacts": [
           {
             "browser_runnable": true,
@@ -1781,7 +1779,7 @@
         "eval_sample_reason": null,
         "eval_split": "the benchmark's own test partition, whole",
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ckks-student",
-        "hf_revision": "8d8ca70b9a40bc65496422e36ee7d10bbe49ee2a",
+        "hf_revision": "a248ee5db0a768723271aafa9aff104b7cc8158f",
         "hf_revision_stale": null,
         "key": "satellite_comms.opssat_student",
         "label": "CKKS-linear OPS-SAT segment student",
@@ -1795,7 +1793,7 @@
           "display": "AUC PR",
           "name": "auc_pr"
         },
-        "notes": "19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. The ring carries orders of magnitude more slots than this feature map needs, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681, the latter matching the teacher exactly.",
+        "notes": "19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. The ring carries orders of magnitude more slots than this feature map needs, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681 (0.968055 against the teacher's 0.968107, equal at four decimals). No code path here evaluates this student under CKKS today: the satellite page has no private-inference stage, and the browser re-scores the published ONNX graph in plaintext.",
         "onnx_domains": [
           "ai.onnx",
           "ai.onnx.ml"
@@ -1919,9 +1917,9 @@
             "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
             "opset": 17
           },
-          "framing": "Architecture comparison, not a performance claim. The data is synthetic because no commercial-OK real attack corpus exists. Every published QML-IDS figure we could verify sits below a random forest on the same data, and arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
+          "framing": "Architecture comparison, not a performance claim. The published model is the random forest; the quantum-kernel SVC and the variational QNN are recorded beside it and not published. The data is synthetic because no commercial-OK real QKD-attack corpus exists. Published QML-IDS results are mixed rather than uniformly below a random forest: Al-Kuwari et al. (arXiv:2509.14282) report a hybrid QLSTM at 94.7% against their own random forest, while arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
           "git_sha": "67dcd50-dirty",
-          "hf_revision": "a928ab536d631edc35ed685d1e164db96674df23",
+          "hf_revision": "2173185ff4a3c0766c46f8337a504fe7abc45ab4",
           "n_classes": 8,
           "n_samples": 2400,
           "quantum_beats_classical": false,
@@ -1934,7 +1932,7 @@
           "quantum_svc_macro_f1": 0.831611,
           "wall_clock_s": 341.5
         },
-        "architecture": "PCA -> angle embedding -> StronglyEntanglingLayers; fidelity quantum kernel",
+        "architecture": "published ONNX: a 200-tree scikit-learn random forest over 7 telemetry features. Offline comparisons, not in the ONNX: a quantum-kernel SVC (PCA -> angle embedding; its fidelity kernel is exactly the classical product kernel prod cos^2((x_i - x'_i)/2)) and a variational QNN (StronglyEntanglingLayers, 25 parameters)",
         "artifacts": [
           {
             "browser_runnable": true,
@@ -1954,7 +1952,7 @@
         "browser_runnable": true,
         "dataset": {
           "attribution": "",
-          "licence": "generated by this repository",
+          "licence": "no licence granted; synthetic rows generated by this repository's own code",
           "name": "QKD attack telemetry (synthetic, methodology-grounded)",
           "publishable": true,
           "url": "https://arxiv.org/abs/2509.14282"
@@ -1962,10 +1960,10 @@
         "eval_sample_reason": null,
         "eval_split": "the held-out quarter of the seed-42 stratified split, whole",
         "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
-        "hf_revision": "a928ab536d631edc35ed685d1e164db96674df23",
+        "hf_revision": "2173185ff4a3c0766c46f8337a504fe7abc45ab4",
         "hf_revision_stale": null,
         "key": "telecom_ids.qml",
-        "label": "Quantum-kernel SVC + variational QNN",
+        "label": "Random-forest QKD-attack classifier, with quantum-kernel SVC and QNN comparisons",
         "metric": {
           "baseline": null,
           "baseline_source": "Architecture showcase, not a performance claim. On THIS project's synthetic telemetry neither quantum model beats the classical random forest (RF macro F1 0.987 vs variational QNN 0.467). Published results are MIXED, not uniformly below a random forest -- an earlier revision of this note claimed they were, and the very paper cited here contradicts it: Al-Kuwari et al. (arXiv:2509.14282) Table VIII reports a hybrid QLSTM at 94.7% accuracy / 94.7% F1 against their own random-forest baseline on the same generated data. What remains well-founded is caution about evaluation quality rather than a universal ranking: arXiv:2512.05069 was withdrawn by its own authors for evaluation that was 'insufficient to fully support the conclusions'. That single withdrawal is thin support for a field-wide claim, so the anchor is now a survey: Kaissar, Bou Nassif & Bouridane, Future Internet 18(5):234 (2026-04-27, CC BY 4.0, DOI 10.3390/fi18050234), systematic to January 2026, finds that 'most current approaches rely on simulated quantum environments and legacy datasets, while evaluation practices remain inconsistent across studies' - active but methodologically early, which is a different and better-founded statement than 'worse than a random forest'. The Al-Kuwari paper is now peer-reviewed: IET Quantum Communication 7(1), DOI 10.1049/qtc2.70028 (2026-02-23). And the nearest strong 2026 result is CLASSICAL, which corroborates the framing here - but it is a DIFFERENT problem and Round 46 stopped calling it the same one. IACR ePrint 2026/1282 reaches 96.9% recall / 97.6% precision with physics-aware temporal features plus XGBoost against 17.3% for static QBER thresholding - but its abstract, read at source, is entanglement-based BBM92, a 24-dimensional feature space over 30-second sliding windows, binary detection of blended sub-threshold attacks on simulated FSO telemetry. This model classifies 8 BB84 attack TYPES from per-session physical observables. Neither the protocol, the label space nor the feature space matches, so it is an anchor, not a baseline.",
@@ -1976,7 +1974,7 @@
           "display": "macro F1 (synthetic QKD-attack telemetry)",
           "name": "macro_f1"
         },
-        "notes": "Shown as an architecture comparison against a random forest on identical data.",
+        "notes": "The published model and its headline accuracy are the random forest's. The quantum-kernel SVC (macro F1 0.832) and the variational QNN (0.467) are an architecture comparison recorded at training time on identical data; neither runs on the page. The SVC's kernel uses no entangling gate, so it is computable classically in closed form.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -1987,7 +1985,7 @@
       {
         "achieved": {
           "aggregate_accuracy": 0.982897,
-          "baseline_gap_note": "There is no baseline number to have a gap to, and that is a deliberate registry decision rather than a missing measurement: the two figures usually quoted for this corpus (99.61% for a CNN, 99.71% for a hybrid quantum-classical Quan-ConvCNN, Wang/Fok/Thing) are ACCURACIES, and this model is judged on macro F1, so putting them in `baseline` would render an accuracy beside a macro F1 as though the two were the same scale. WHAT THE GAP ACTUALLY IS, now that it has been measured properly. This model scores about 0.9829 accuracy with every row identifier and every host fingerprint dropped, so it sits about 1.3 points below those published accuracies rather than the 24 points it sat below them last round. Against the 9-class multiclass figure that is directly comparable in task - BiTAD, Future Internet 17(11) 482, accuracy 0.9047 - it is above, though on its own split rather than a shared one, so that is an anchor and not a head-to-head. THE CORRECTION THAT MATTERS. Round 49 recorded that restoring the corpus's integer row counters reproduces the published range and implied the published range was therefore explained by them. The first half is still measured true here and is recorded every run as `leak_counterfactual_accuracy`. The second half does not follow and is withdrawn: 0.9829 is reachable on this corpus with no identifiers at all, using one additional flow statistic (`IdleTime`) that Combined.csv does not carry, so most of the gap Round 49 attributed to leakage was its own choice of export. What the counterfactual shows is what a row counter is worth, which is a statement about this corpus and not about anyone's paper.",
+          "baseline_gap_note": "There is no baseline number to have a gap to, and that is a deliberate registry decision rather than a missing measurement: the two figures usually quoted for this corpus (99.61% for a classical CNN, 99.71% for a hybrid quantum-classical Quan-ConvCNN, Wang/Fok/Thing) are ACCURACIES on the BINARY benign-versus-malicious task, and this model is judged on 9-class macro F1, so putting them in `baseline` would render an accuracy beside a macro F1 as though the two were the same scale. WHAT THE COMPARISON CAN AND CANNOT SAY. This model scores about 0.9829 9-class accuracy with every row identifier and every host fingerprint dropped. Set beside binary accuracies, the 1.3-point difference is not a gap on one task. The 9-class anchors are the dataset paper's random forest at 99.48% accuracy on its top-10 features (Samarakoon et al., arXiv:2212.01298) and BiTAD (Future Internet 17(11) 482) at 0.9047; this model sits between them, on its own stratified random split rather than a shared one, so each is an anchor and not a head-to-head. WHAT THE COUNTERFACTUAL SHOWS. Restoring the corpus's integer row counters takes accuracy to about 0.9997, recorded every run as `leak_counterfactual_accuracy`: that is what a row counter is worth on this corpus. It does not show what the published figures used, because 0.9829 is reachable here with no identifiers at all, using one additional flow statistic (`IdleTime`) that Combined.csv does not carry. Whether the published figures lean on identifiers is OPEN: the dataset paper's top-10 inputs include the sequence number `Seq` and `Offset`, Wang/Fok/Thing's inputs include `Offset`, both columns are dropped here, and no published ablation settles it.",
           "class_counts": {
             "Benign": 477737,
             "HTTPFlood": 140812,
@@ -2079,7 +2077,7 @@
           },
           "framing": "Real 5G network traffic, 9 attack classes, 47 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. IT IS FITTED ON THE FIELDS-PRESERVED EXPORT (113 columns) AND WAS FITTED ON Combined.csv (52) UNTIL ROUND 50, which is the single most important thing to know about the numbers here: the same rows and the same classes, but the narrow export omits `IdleTime` and that one column is worth 22 points of accuracy. `idle_time_ablation` re-measures this every run by refitting without it, and the result reproduces what this model used to score. Two controls are recorded beside the headline and both are worth more than the headline. `idle_time_ablation` says the old weakness was a choice of export, not a property of the corpus. `leak_counterfactual_accuracy` says that restoring four integer row counters takes accuracy to about 0.9997, which is not a better model but a leak.",
           "git_sha": "c89ff94-dirty",
-          "hf_revision": "a3cbe059e97cdde5cacc301294c14d6d61a5ae26",
+          "hf_revision": "f07f0672b82858b11d4498b3a030f1554088ecaf",
           "idle_time_ablation": {
             "what_this_means": "Removing `IdleTime` ALONE costs essentially the same accuracy as removing all six columns Combined.csv omits, and both land on the score this model published while it was fitted on Combined.csv. The other five - `Dir`, `Flgs`, `TcpOpt`, `sVlan`, `dVlan` - are worth 0.0006 accuracy between them. So the model's former weakness was one absent flow statistic, not the corpus and not the method. THAT IS REDUNDANCY AND NOT EMPTINESS, stated because the shorter version would be false. Two of those five are individually strong - `Dir` scores one-vs-rest AUC 0.9811 on ICMPFlood and `TcpOpt` 0.9433 on SlowrateDoS, both above the 0.90 threshold `single_feature_leak_check` uses, and both appear in its flagged list. What the ablation shows is that the other 41 columns already carry what they carry. `IdleTime` IS NOT AN IDENTIFIER and the distinction is the same one `leak_counterfactual_*` exists to draw: it takes 17 distinct integer values over 1,215,890 rows, so it cannot encode a row position, and it separates `SlowrateDoS` - an attack defined by holding a connection idle - at one-vs-rest AUC 0.9574. A row counter that scores that well describes where a row sits in a file. This describes what the traffic did.",
             "without_all_six_columns_combined_lacks": {
@@ -2309,13 +2307,13 @@
         "eval_sample_reason": null,
         "eval_split": "a per-class-floored draw from the held-out quarter of the seed-42 stratified split",
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-gbm",
-        "hf_revision": "a3cbe059e97cdde5cacc301294c14d6d61a5ae26",
+        "hf_revision": "f07f0672b82858b11d4498b3a030f1554088ecaf",
         "hf_revision_stale": null,
         "key": "telecom_ids.nidd",
         "label": "5G-NIDD network-attack classifier (9 classes)",
         "metric": {
           "baseline": null,
-          "baseline_source": "Two published figures on 5G-NIDD are usually quoted - Wang, Fok & Thing report 99.61% accuracy for a CNN and 99.71% for a hybrid quantum-classical Quan-ConvCNN - and BOTH are accuracies, which is why no number appears in `baseline`. Three caveats. (1) Those are hybrid quantum-classical results with a 0.10-point spread, and the authors' own claim is about generalisation to UNSEEN attacks rather than about the headline; `references/REFERENCES.md` WS2 records this. (2) Accuracy is the wrong comparator on a corpus whose two majority classes are 39.3% and 37.6% of the rows. (3) MEASURED HERE: an identical gradient-boosted model reaches accuracy 0.9997 with the corpus's integer row counters restored, so the published range is reproducible from row identifiers alone. ROUND 50 CORRECTED WHAT THAT THIRD POINT WAS TAKEN TO MEAN. It was written when this model scored 0.7610 and read as evidence that the published figures probably leaned on those counters, on the unstated premise that nothing else could close a 24-point gap. Something else could. Refitted on the corpus's 113-column export with every identifier and every host fingerprint dropped, the same configuration scores 0.9829 - about 1.3 points below the published accuracies rather than 24 - and the column that closes the gap is one flow statistic, `IdleTime`, which the 52-column export does not carry. The leak measurement stands as a fact about row counters. The insinuation about the papers does not, and is withdrawn. These figures are an anchor and not a target that has been beaten or missed.",
+          "baseline_source": "Two published figures on 5G-NIDD are usually quoted - Wang, Fok & Thing report 99.61% accuracy for a classical CNN and 99.71% for a hybrid quantum-classical Quan-ConvCNN - and BOTH are accuracies on the BINARY benign-versus-malicious task, while this model is scored on 9 classes, which is why no number appears in `baseline`. The 9-class anchors are the dataset paper's random forest at 99.48% accuracy on its top-10 features (Samarakoon et al., arXiv:2212.01298) and BiTAD (Future Internet 17(11):482) at 90.47%. Caveats. (1) The Wang, Fok & Thing authors' own claim is about generalisation to UNSEEN attacks rather than about the headline; `references/REFERENCES.md` WS2 records this. (2) Accuracy is the wrong comparator on a corpus whose two majority classes are 39.3% and 37.6% of the rows. (3) MEASURED HERE: an identical gradient-boosted model reaches accuracy 0.9997 with the corpus's integer row counters restored, and 0.9829 with every identifier and every host fingerprint dropped; the column that lifts it from the 0.7608 of the 52-column export is one flow statistic, `IdleTime`, which that export does not carry. (4) Whether published figures lean on row identifiers is OPEN: those top-10 inputs include the Argus sequence number `Seq` and `Offset`, Wang, Fok & Thing's inputs include `Offset`, both columns are dropped here as identifiers, and no published ablation settles it. (5) This model's figures come from a stratified random split, which flatters: when Wang, Fok & Thing train on one base station and test on the other, their accuracies fall from above 98% to about 78-82%. These figures are an anchor and not a target that has been beaten or missed.",
           "ceiling": null,
           "ceiling_source": "",
           "companion": "aggregate_accuracy",
@@ -2323,7 +2321,7 @@
           "display": "macro F1 across 9 network-attack classes",
           "name": "macro_f1"
         },
-        "notes": "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from the QKD-layer attack classifier on this same page, with zero overlap in label space or feature space, so neither score is the other's baseline. REFITTED IN ROUND 50 ON A WIDER EXPORT OF THE SAME CORPUS, which is the fact that explains every number here. It trained on `Combined.csv` (52 columns) and scored accuracy 0.7608; it now trains on `BTS1_BTS2_fields_preserved.csv` (113 columns) and scores about 0.9829. The rows are identical and the method is unchanged. One column does all of it: `IdleTime`, a flow statistic the narrow export omits. Removing it alone from the wide fit returns the model to 0.7616, and that ablation is re-measured on every run as `idle_time_ablation`. It is not an identifier - 17 distinct integer values over 1.2 million rows - and it separates SlowrateDoS, an attack defined by idling, at one-vs-rest AUC 0.9574. READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT - STILL. Every other model here reports an aggregate that flatters and a per-class figure that does not. On this corpus macro F1 is the OPTIMISTIC number and aggregate accuracy the pessimistic one, and the refit shrank that inversion without removing it: the gap was 0.1655 (0.9263 macro F1 against 0.7608 accuracy) and is about 0.0121 (0.9950 against 0.9829). The mechanism is the same one as before, not a new one - Benign and UDPFlood are 39.3% and 37.6% of the rows and remain the only pair that confuses, so accuracy is dominated by them while the macro average is carried by seven classes at 0.9999 or better. The residual error is 1.71% of the test split against 23.92% before, and it is one direction: UDPFlood predicted as Benign. THE LEAK COUNTERFACTUAL IS STILL RECORDED EVERY RUN and its claim is now narrower. Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, the same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. Round 49 read that as an explanation for the published 99.6-99.7% figures; it is not, because 0.9829 is reachable here with no identifiers at all -- see M_NIDD's baseline_source, which withdraws that reading.",
+        "notes": "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from the QKD-layer attack classifier on this same page, with zero overlap in label space or feature space, so neither score is the other's baseline. REFITTED IN ROUND 50 ON A WIDER EXPORT OF THE SAME CORPUS, which is the fact that explains every number here. It trained on `Combined.csv` (52 columns) and scored accuracy 0.7608; it now trains on `BTS1_BTS2_fields_preserved.csv` (113 columns) and scores about 0.9829. The rows are identical and the method is unchanged. One column does all of it: `IdleTime`, a flow statistic the narrow export omits. Removing it alone from the wide fit returns the model to 0.7616, and that ablation is re-measured on every run as `idle_time_ablation`. It is not an identifier - 17 distinct integer values over 1.2 million rows - and it separates SlowrateDoS, an attack defined by idling, at one-vs-rest AUC 0.9574. READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT - STILL. Every other model here reports an aggregate that flatters and a per-class figure that does not. On this corpus macro F1 is the OPTIMISTIC number and aggregate accuracy the pessimistic one, and the refit shrank that inversion without removing it: the gap was 0.1655 (0.9263 macro F1 against 0.7608 accuracy) and is about 0.0121 (0.9950 against 0.9829). The mechanism is the same one as before, not a new one - Benign and UDPFlood are 39.3% and 37.6% of the rows and remain the only pair that confuses, so accuracy is dominated by them while the macro average is carried by seven classes at 0.9999 or better. The residual error is 1.71% of the test split against 23.92% before, and it is one direction: UDPFlood predicted as Benign. THE LEAK COUNTERFACTUAL IS STILL RECORDED EVERY RUN and its claim is now narrower. Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, the same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. That shows what a row counter is worth on this corpus. It does not show what the published figures used, and 0.9829 is reachable here with no identifiers at all; whether those figures lean on identifiers stays open -- see M_NIDD's baseline_source.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -2359,7 +2357,7 @@
         "browser_runnable": false,
         "dataset": {
           "attribution": "",
-          "licence": "generated by this repository",
+          "licence": "no licence granted; synthetic rows generated by this repository's own code",
           "name": "QKD attack telemetry (synthetic, methodology-grounded)",
           "publishable": true,
           "url": "https://arxiv.org/abs/2509.14282"
@@ -2381,7 +2379,7 @@
           "display": "macro F1 (synthetic QKD-attack telemetry)",
           "name": "macro_f1"
         },
-        "notes": "Distilled from telecom_ids.qml's PROBABILITIES, not its argmax: on 8 classes the argmax discards exactly the minority-class signal macro F1 is computed from, and hard-label distillation is a defect this project has already made once. Read n_classes_predicted before macro_f1 - a linear student that stops emitting a class scores 0 on it by construction, which reads as poor discrimination rather than an absent output.",
+        "notes": "Distilled from the random forest published as telecom_ids.qml, from its PROBABILITIES, not its argmax: on 8 classes the argmax discards exactly the minority-class signal macro F1 is computed from, and hard-label distillation is a defect this project has already made once. Read n_classes_predicted before macro_f1 - a linear student that stops emitting a class scores 0 on it by construction, which reads as poor discrimination rather than an absent output.",
         "onnx_domains": [],
         "params": 64,
         "runs_encrypted": true,

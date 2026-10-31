@@ -2,32 +2,47 @@
 
 The 2026-standard secure-inference split (EncFormer, npj/IACR 2026; the Gazelle→Delphi→BOLT→
 Bumblebee→BLB lineage; the RhombusEnd2End/HEonGPU reference): **linear** ops (matmul/conv) run
-homomorphically under CKKS (GPU-accelerable via HEonGPU), while **non-linear** ops (ReLU, argmax,
+homomorphically under CKKS, while **non-linear** ops (ReLU, argmax,
 comparison) run under **secret-sharing MPC** — they are cheap homomorphically only as low-degree
-polynomials, so a real hybrid delegates them to MPC.
+polynomials, so a real hybrid delegates them to MPC. Here the CKKS half runs on the configured CPU
+backend (TenSEAL or OpenFHE): HEonGPU is a build-gated reference adapter with no Python API
+(qsh.fhe.backends.HeongpuBackend raises), and no HEonGPU run is measured in this repository.
 
 The non-linear half uses **MPyC** (MIT, Shamir secret sharing + secure comparison), run as THREE
 parties in separate processes over loopback TCP (:mod:`qsh.mpc.parties`): threshold t = 1,
 statistical security 40, and the bytes on the wire MEASURED. A real deployment runs one party per
 host, so these timings are loopback figures.
 
-THE CONVERSIONS ARE MASKED (Round 75). The roles: a CLIENT, who holds the CKKS key and the input; a
-SERVER, who holds the model; a HELPER, the third Shamir party.
+THE CONVERSIONS ARE MASKED IN SLOT 0 ONLY, AND THE CONVERSION IS NOT MODEL-PRIVATE. The roles: a
+CLIENT, who holds the CKKS key and the input; a SERVER, who holds the model; a HELPER, the third
+Shamir party.
 - FHE to MPC: the server evaluates ``W h + b`` on the client's ciphertext and adds a fresh mask ``r``
-  INSIDE the ciphertext, so the client decrypts ``z + r`` and never ``z``. The MPC runs on the sum
-  of the client's ``z + r`` and the server's ``-r``.
+  INSIDE the ciphertext, and the decrypt call returns slot 0, ``z + r``. The MPC runs on the sum of
+  the client's ``z + r`` and the server's ``-r``. WHAT THAT DOES NOT HIDE, confirmed locally on the
+  TenSEAL backend: ``_fhe_linear`` adds ``b + r`` as a SCALAR, which TenSEAL adds to EVERY slot, and
+  ``ct.dot`` leaves running partial sums of the products ``x_i * w_i`` in the other slots. The
+  client holds the secret key, so it can decode the whole plaintext: differences between slots
+  cancel ``r`` and give ``z`` and each product ``x_i * w_i``, and since the client knows ``x`` it
+  recovers the server's weight row from ONE query. So the statement "the client decrypts ``z + r``
+  and never ``z``" holds for slot 0 only. The fix (independent uniform masks in every slot, or a
+  one-hot selector before masking, plus noise flooding, and a test that decodes all slots) is not
+  made here; ``tests/test_mpc.py`` checks slot 0 only. The convolution path adds its mask the same
+  way and has not been checked slot by slot.
 - MPC to FHE: the MPC adds a second server mask ``s`` to its result and opens ``a + s`` to the client
   alone. The client encrypts that, and the server adds ``-s`` inside the ciphertext before the next
-  layer, so neither party ever holds ``a``.
-- The decision: the MPC opens the class index to the client, and nothing else.
+  layer, so neither party holds ``a`` in the clear; the next linear layer's ciphertext then carries
+  the same slot leak as above.
+- The decision: the MPC opens the class index to the client, and nothing else; the CKKS slots
+  around it are the gap described above.
 Linear steps between non-linear ones (average pooling, flattening) run on each party's share
 locally, which an additive sharing allows. This is the shape of Gazelle's and Delphi's conversions;
 they mask exactly over a ring, and this one masks over the reals because CKKS is approximate.
 
-What real masks give: ``r`` is uniform on ``[-2^b, 2^b)`` from the OS CSPRNG, ``b = mpc_mask_bits``.
-Seen through it, two candidate values within ``B`` of zero are ``B / 2^b`` apart in statistical
-distance, per value, and the client's whole view of a run at most ``n`` times that for ``n`` masked
-values. Each run reports ``n``, its largest ``|value|`` and that bound. Statistical, not perfect, and
+What real masks give, IN SLOT 0: ``r`` is uniform on ``[-2^b, 2^b)`` from the OS CSPRNG,
+``b = mpc_mask_bits``. Seen through it, two candidate values within ``B`` of zero are ``B / 2^b``
+apart in statistical distance, per value, and the slot-0 view of a run at most ``n`` times that for
+``n`` masked values. Each run reports ``n``, its largest ``|value|`` and that bound; the bound says
+nothing about the other CKKS slots, which leak as described above. Statistical, not perfect, and
 smaller than the MPC's own 2^-40 for the shipped b = 30: the mask must fit 64-bit fixed point (its
 integer part holds 2^31), and larger masks cost precision (measured: 5e-7 at 2^30, 8e-6 at 2^36,
 2e-4 at 2^40 through a CKKS round trip on TenSEAL).
@@ -149,8 +164,10 @@ def _fhe_linear(backend, x, W, b, *, server_share=None, mask=None):
 
     Unmasked (``mask=None``): encrypt, dot, decrypt, then add the bias - the plaintext fallback.
     Masked: the key holder encrypts its share ``x``, the server adds ``server_share`` and then, per
-    output, the bias and its mask inside the ciphertext, so decryption yields ``W·(x + share) + b +
-    mask`` and the unmasked value is never decrypted.
+    output, the bias and its mask inside the ciphertext, so slot 0 decrypts to
+    ``W @ (x + share) + b + mask``. The bias and mask go in as one SCALAR, which the backend adds
+    to every slot, so the other slots still let the key holder recover the unmasked value and the
+    weights (module docstring). Slot 0 is the only slot this masks.
     """
     ct = backend.encrypt(np.asarray(x, dtype=float))
     if mask is None:
@@ -180,9 +197,11 @@ def hybrid_private_inference(layers, x, backend, *, use_mpc: bool = True) -> dic
     With ``use_mpc=False`` the non-linear ops run in plaintext after an unmasked decryption: the
     fallback, with no privacy from the key holder.
 
-    The harness plays all three roles in one process, so it can also reconstruct what no role sees:
-    the logits and the largest masked value, reported to check fidelity and the masks' bound. They
-    are the simulator's view, not the client's: the client receives the class index.
+    The harness plays all three roles in one process, so it can also reconstruct the logits and the
+    largest masked value, reported to check fidelity and the masks' bound. The MPC opens only the
+    class index to the client, but the client can see more than that: each masked linear output
+    is masked in CKKS slot 0 only, and decoding the other slots with its key gives it the unmasked
+    outputs and the weights (module docstring).
     """
     from .layers import ConvSpec, normalize_layers, plaintext_forward
 
@@ -216,6 +235,9 @@ def hybrid_private_inference(layers, x, backend, *, use_mpc: bool = True) -> dic
         "mpc_sec_param": k if use_mpc else 0,
         "mpc_comparisons": run["n_compare"],
         "mpc_engine": f"mpyc-shamir, {m} parties (t={t}), loopback TCP" if use_mpc else "plaintext-fallback",
+        # What the MPC OPENS to the client. Not everything the client can learn: the CKKS slots
+        # beyond slot 0 are unmasked (module docstring). The string is kept as-is until that is
+        # fixed, because tests and the benchmark row read it.
         "client_learns": "the class index" if use_mpc else "every intermediate value",
         "n_layers": len(specs),
         "arch_class": arch_class,
@@ -224,7 +246,8 @@ def hybrid_private_inference(layers, x, backend, *, use_mpc: bool = True) -> dic
         b, n, top = run["mask_bits"], run["masked_values"], run["max_abs_masked"]
         out.update({
             "mask_bits": b, "masked_values": n, "max_abs_masked_value": round(top, 6),
-            # per value B / 2^b; the client's whole view of the run at most n times that
+            # per value B / 2^b; the slot-0 view of the run at most n times that. Not a bound on
+            # the other CKKS slots, which are unmasked (module docstring).
             "mask_statistical_distance": float(n * top / 2.0 ** b),
         })
     return out

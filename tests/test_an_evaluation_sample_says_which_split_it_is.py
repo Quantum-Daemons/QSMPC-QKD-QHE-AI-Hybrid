@@ -63,10 +63,10 @@ def _without_docstrings(source: str) -> ast.Module:
 PREP_TREE = _without_docstrings((REPO / "scripts" / "prep_model_inputs.py").read_text())
 PREP = ast.unparse(PREP_TREE)
 
-#: Samples built before Round 71 and not rebuilt in it. Their files carry no `split` key; the page
-#: prints the registry's declaration for them, which is what the second test pins.
-BUILT_BEFORE_ROUND_71 = {"satellite_comms.opssat", "satellite_comms.opssat_student", "telecom_ids.qml",
-                         "telecom_ids.nidd"}
+#: Samples built before Round 71 and not rebuilt since. Their files carry no `split` key; the page
+#: prints the registry's declaration for them, which is what the second test pins. Round 83 rebuilt
+#: satellite_comms.opssat and telecom_ids.qml for their wording, so they carry it now.
+BUILT_BEFORE_ROUND_71 = {"satellite_comms.opssat_student", "telecom_ids.nidd"}
 
 
 def _published():

@@ -2,7 +2,8 @@
 """Build the bundled REAL finance (PaySim) + satellite (NASA SMAP/MSL) samples from Kaggle downloads.
 
 This is a **one-time provenance script** (run by a maintainer, not at runtime). It turns the large raw
-Kaggle datasets into the small, commercial-OK real samples the repo ships + the demo loads:
+Kaggle datasets into the small real samples the repo ships + the demo loads (PaySim under CC BY-SA 4.0;
+SMAP/MSL with no licence granted for the data, see below):
 
   data/finance/paysim_sample.tsv                  PaySim simulator output (synthetic) -> the 8 AML features + label
   data/satellite/smap_msl_telemetry.tsv           real NASA SMAP/MSL telemetry (6 channels) + anomaly label
@@ -18,10 +19,12 @@ made federated accuracy worse than the constant predictor, and every gate would 
 Sources (licences re-read 2026-08-03 -- see DATA_LICENSES.md for what each actually grants):
   * PaySim  : Kaggle `ealaxi/paysim1`, license **CC-BY-SA-4.0** (Lopez-Rojas et al. 2016 mobile-money simulator).
   * NASA SMAP/MSL : Kaggle `patrickfleith/nasa-anomaly-detection-dataset-smap-msl`; the underlying data is
-    NASA JPL spacecraft telemetry (Hundman et al. 2018, KDD; the Telemanom project). Per NASA's official data
-    policy (NASA Science Data Portal + STI), US-Government works are not copyrightable (17 U.S.C. s.105) and
-    NASA-mission data carries NO licence statement from any provider. 17 U.S.C. s.105 removes US
-    copyright domestically but is not an affirmative grant -- see DATA_LICENSES.md.
+    NASA JPL spacecraft telemetry (Hundman et al. 2018, KDD; the Telemanom project). NO SOURCE GRANTS A
+    LICENCE FOR THE DATA. The Telemanom repository's LICENSE.txt is "Copyright (c) 2018, California
+    Institute of Technology" with BSD-style terms for its software and says nothing about the data, and
+    the Kaggle mirror says "Data files (c) Original Authors". Nor is the data shown to be a US Government
+    work: 17 U.S.C. 105 covers works prepared by federal officers or employees, and JPL is a NASA centre
+    operated by Caltech -- see DATA_LICENSES.md.
 
 Obtain the raw data first (needs Kaggle API creds in ~/.kaggle/kaggle.json):
   kaggle datasets download -d ealaxi/paysim1 -p /tmp/kaggle_dl/paysim --unzip
@@ -54,9 +57,14 @@ SAT_PROVENANCE = BUNDLED_DEMO_SAMPLES["satellite_comms"][0]
 
 
 def _paysim_features(df):
-    """Map REAL PaySim columns -> the 8 AML features (in FIN_NAMES order). 5 are direct real fields
-    (amount, velocity_24h, night_tx, new_payee, amount_zscore); 3 (cross_border, device_risk,
-    geo_mismatch) repurpose PaySim fraud signatures since PaySim has no geo/device fields."""
+    """Map PaySim (simulator) columns -> the 8 AML-named features (in FIN_NAMES order).
+
+    The NAMES are this project's labels, not PaySim fields, and three of them describe something
+    else: PaySim has no geo or device fields, so `cross_border` is "type is TRANSFER or CASH_OUT",
+    `device_risk` is the origin-balance inconsistency flag and `geo_mismatch` measures how far the
+    destination's balance change falls short of the amount. The other five are computed from PaySim
+    fields as their names say; `amount` is log1p(amount) and `amount_zscore` is a z-score of that
+    same value, so the two carry one signal."""
     import numpy as np
     amount = df["amount"].to_numpy(float)
     log_amt = np.log1p(amount)

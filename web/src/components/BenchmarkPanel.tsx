@@ -96,8 +96,8 @@ export default function BenchmarkPanel(
             <table className="facts-table small">
               <thead><tr><th>Row</th><th>What ran</th><th>Measured</th><th>Not comparable</th></tr></thead>
               <tbody>
-                <tr><td>MPC-FHE</td><td>real CKKS (node-seal) + garbled-circuit 2PC between notional parties</td><td>latency, communication, ct/pt</td><td>ct/pt measures CKKS slot use</td></tr>
-                <tr><td style={{ color: "#b072ff" }}>QSMPC-FHE</td><td>state-vector simulation of a QOTP-protected RY/RZ/CNOT circuit (<code>quantum_comparison</code> stage)</td>
+                <tr><td>MPC-FHE</td><td>on finance, medical and genomics: real CKKS (node-seal) + a garbled-circuit 2PC argmax between notional parties. Telecom and satellite run neither, so the row is absent there</td><td>latency, communication, ct/pt</td><td>ct/pt measures CKKS slot use</td></tr>
+                <tr><td style={{ color: "#b072ff" }}>QSMPC-FHE</td><td>state-vector simulation of an untrained QOTP + Clifford+T circuit on random input - RY encoding, an X/Z pad, then rounds of H, a CNOT ring and T (<code>quantum_comparison</code> stage). The pad is never undone and nothing is trained, so it predicts nothing; it is not a QCNN</td>
                   {/* "counted from the circuit" is true of the BROWSER row and false of the Python one.
                       `qsh/qhe/qcnn.py` builds no T gates; its `t_count()` is a Solovay-Kitaev budget,
                       ceil(3*log2(1/eps)) per rotation times the parameter count, returning 630 at 8 qubits.
@@ -109,7 +109,7 @@ export default function BenchmarkPanel(
                                               : " are counted from the circuit")
                     : " T-gates are estimated"}</td>
                   <td>ct/pt is a dash: a quantum ciphertext has no size in bytes</td></tr>
-                <tr><td>plaintext</td><td>the published model, unencrypted</td><td>latency</td><td>a different model and computation</td></tr>
+                <tr><td>plaintext</td><td>the published model, unencrypted, where the use case publishes one (genomics does not, so the row is absent there)</td><td>latency</td><td>a different model and computation</td></tr>
               </tbody>
             </table>
             <ul className="key-points" style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12.5 }}>
@@ -126,9 +126,9 @@ export default function BenchmarkPanel(
                 the one-time pad maps n qubits to n qubits plus a 2n-bit classical key.
               </p>
               <p>
-                The 0–100 composite: 14 of its 17 weights carried no stated rationale, it scored a
-                zero-secure-key run 100/100, and the 68-vs-96 gap it displayed was mostly an artefact of which
-                arguments two functions happened to pass.
+                The 0-100 composite: 14 of the 17 weights behind its five components carried no stated
+                rationale, it scored a zero-secure-key run 100/100, and the 68-vs-96 gap it displayed was mostly
+                an artefact of which arguments two functions happened to pass.
               </p>
             </Details>
           </div>
@@ -180,7 +180,8 @@ export default function BenchmarkPanel(
                     non-comparability rather than hide a measurement. The two bars time different work. */}
                 <p className="muted" style={{ fontSize: 11, margin: "0 0 6px" }}>
                   Different computations, not a speed comparison: MPC-FHE runs a real CKKS and garbled-circuit
-                  inference; QSMPC-FHE simulates an untrained 8-qubit circuit on random input.
+                  inference; QSMPC-FHE simulates an untrained QOTP + Clifford+T circuit (8 qubits by default) on
+                  random input.
                 </p>
                 <ChartReadout hint={HINT_KEYBOARD}>
                   <ResponsiveContainer width="100%" height={220}>
@@ -216,7 +217,7 @@ export default function BenchmarkPanel(
           {!compact && split && (
             <div className="card" style={{ marginTop: 14, borderColor: MPC_COLOR }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
-                <h3 style={{ margin: 0 }}>Hybrid split — linear → FHE · non-linear → MPC</h3>
+                <h3 style={{ margin: 0 }}>Hybrid split - linear layers to FHE, argmax to MPC</h3>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <span className="tag">{(split.device || "cpu").toUpperCase()}</span>
                   <span className="tag">{split.model_size}</span>
@@ -230,8 +231,11 @@ export default function BenchmarkPanel(
                 </p>
               )}
               <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>
-                Linear layers (matmul/conv) run under CKKS/FHE{split.device === "gpu" ? " (GPU)" : ""}; non-linear
-                layers (ReLU/argmax) run under MPC — MPyC secret sharing on the server, and in the browser <code>Polytune</code> garbled circuits (MPyC is pure Python and is not in the bundle). {split.backend}.
+                Linear layers (matmul/conv) run under CKKS/FHE{split.device === "gpu" ? " (GPU)" : ""}. On the
+                server, ReLU and argmax run under MPyC secret sharing; in the browser only the argmax runs as
+                a <code>Polytune</code> garbled-circuit 2PC, and the medical student&apos;s ReLU and pooling run in the
+                clear in the client after each layer is decrypted (MPyC is pure Python and is not in the
+                bundle). {split.backend}.
               </p>
               <div className="grid cols-2">
                 <ChartReadout hint={HINT_KEYBOARD}>
@@ -249,7 +253,7 @@ export default function BenchmarkPanel(
                 <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
                   <div><span style={{ color: FHE_COLOR }}>■</span> FHE-linear: <b>{split.fhe_linear_ms} ms</b></div>
                   <div><span style={{ color: MPC_COLOR }}>■</span> MPC-non-linear: <b>{split.mpc_nonlinear_ms} ms</b></div>
-                  <div className="muted">MPC communication: <b>{split.mpc_comm_kb ?? "—"} KB</b></div>
+                  <div className="muted">MPC communication: <b>{split.mpc_comm_kb ?? "-"} KiB</b></div>
                   <div className="muted">total: <b>{split.latency_ms} ms</b> / inference</div>
                   {/* WHAT THIS NUMBER IS, because directly under "total: 707 ms" and labelled
                       "client compute (wall-clock)" it read as the whole computation costing 0.07 ms
@@ -274,9 +278,9 @@ export default function BenchmarkPanel(
               <p className="muted small" style={{ marginTop: 0 }}>
                 Reported, not scored. Each row is checkable against a published standard, measured in
                 this run, or simulated by this run's analytic quantum-channel model (every QKD row - no
-                QKD device exists here), and says which. There is no composite: the 0–100 score this
-                replaced summed five weights that were chosen rather than derived, and it awarded a
-                perfect 100 to a run whose quantum channel produced zero secure key bits.
+                QKD device exists here), and says which. There is no composite: the 0-100 score this
+                replaced summed five components built from weights that were chosen rather than derived,
+                and it awarded a perfect 100 to a run whose quantum channel produced zero secure key bits.
               </p>
               <table className="mini-table">
                 <tbody>
@@ -307,7 +311,7 @@ export default function BenchmarkPanel(
                 {/* The last column was headed "model" and rendered `security_model`, so the table
                     had no model column at all while appearing to have one. Both are shown now, and
                     the model one matters here: these rows are not all the same model. */}
-                <thead><tr><th>path</th><th>model</th><th>backend</th><th>size</th><th>latency ms</th><th>FHE-lin ms</th><th>MPC-nl ms</th><th>comm KB</th><th>accuracy</th><th>ct/pt</th><th>security model</th></tr></thead>
+                <thead><tr><th>path</th><th>model</th><th>backend</th><th>size</th><th>latency ms</th><th>FHE-lin ms</th><th>MPC-nl ms</th><th>comm KiB</th><th>accuracy</th><th>ct/pt</th><th>security model</th></tr></thead>
                 <tbody>
                   {rows.map((r, i) => (
                     <tr key={i}>
@@ -333,9 +337,10 @@ export default function BenchmarkPanel(
               {rows.some((r) => r.path === "plaintext") && (
                 <p className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
                   The plaintext row is a reference point, not a denominator. It is a different model
-                  from the encrypted rows — the published Hugging Face model on its own corpus, against
-                  the distilled student the FHE path evaluates — so dividing one latency by the other
-                  does not give an FHE overhead. Compare the model column before comparing the times.
+                  from the encrypted rows - the published Hugging Face model on its own corpus, against
+                  the page&apos;s bundled linear model (on medical, the CNN student) that the FHE path
+                  evaluates - so dividing one latency by the other does not give an FHE overhead. Compare
+                  the model column before comparing the times.
                 </p>
               )}
             </div>

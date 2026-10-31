@@ -305,7 +305,11 @@ class OptiQKDStage(Stage):
 
 
 class QSMPCComputeStage(Stage):
-    """Quantum-secure multiparty computation: PSI or secure summation."""
+    """Multiparty computation: keyed-hash PSI or secure summation.
+
+    The PSI is classical (HMAC under the session key both parties hold): it keeps the sets from
+    third parties on the channel, not from each other (see :mod:`qsh.qsmpc.qot`).
+    """
 
     name = "qsmpc_compute"
 
@@ -446,7 +450,12 @@ def _hybrid_bench_row(ctx, reg, x, base_model):
 
 
 class PrivateInferenceStage(Stage):
-    """QHE/FHE private inference (classical CKKS or quantum QCNN)."""
+    """Private inference under classical CKKS, or a QCNN class that is NOT encrypted.
+
+    The stage keeps its name and its `qhe_*` artifact keys, but only the CKKS branch is private:
+    the QCNN branch runs the trained circuit on plaintext features (no QOTP mask, no homomorphic
+    step), and its untrained fallback only demonstrates QOTP hiding on a separate state.
+    """
 
     name = "private_inference"
 
@@ -524,19 +533,26 @@ class PrivateInferenceStage(Stage):
                 if mine is None or theirs is None or base is None:
                     absent = ", ".join(n for n, v in (("model", mine), ("classical", theirs),
                                                       ("baseline", base)) if v is None)
+                    # "QCNN inference", not "QHE private inference": this path applies no QOTP
+                    # mask and no homomorphic step; the trained circuit runs on plaintext features.
                     bus.log(
-                        f"QHE private inference (TRAINED QCNN): class={cls} "
+                        f"QCNN inference (trained, NOT encrypted): class={cls} "
                         f"(<Z0>={expectation:.4f}). Headline metric '{head}' is not populated in "
                         f"the weights file ({absent} missing), so no held-out comparison is "
                         f"reported for this run.", self.name)
                 else:
                     bus.metric("qhe_headline_metric", round(float(mine), 4), self.name)
+                    # The width/rounds pair, NOT a parameter count: `layers x n_qubits` (24 for
+                    # finance) is not how many angles the artifact trains (77 for finance). The
+                    # verdict sentence is literal and true of every artifact this path loads today
+                    # (finance and medical); making it computed is deferred.
                     bus.log(
-                        f"QHE private inference (TRAINED QCNN): class={cls} "
-                        f"(<Z0>={expectation:.4f}, {weights['layers']}x{weights['n_qubits']} trained "
-                        f"angles). Held-out {label} {mine:.4f} against a baseline of {base:.4f} and "
-                        f"logistic regression at {theirs:.4f} on the same split - the classical "
-                        f"model is ahead, and this reports it rather than implying advantage.",
+                        f"QCNN inference (trained, NOT encrypted): class={cls} "
+                        f"(<Z0>={expectation:.4f}; {weights['n_qubits']} wires, {weights['layers']} "
+                        f"conv rounds per stage). Held-out {label} {mine:.4f} against a baseline of "
+                        f"{base:.4f} and logistic regression at {theirs:.4f} on the same split - the "
+                        f"classical model is ahead, and this reports it rather than implying "
+                        f"advantage.",
                         self.name)
             else:
                 # No trained circuit here: report the QOTP hiding demonstration, which this module
@@ -646,7 +662,8 @@ class ExplainabilityStage(Stage):
 
 class QuantumComparisonStage(Stage):
     """Assemble the live-run benchmark: the measured MPC-FHE row (from PrivateInferenceStage) +
-    a QSMPC-FHE comparison row + quantum-advantage -> ``ctx.artifacts['benchmark_result']``.
+    a QSMPC-FHE comparison row + the retired quantum-advantage score (kept in the artifact, shown
+    nowhere; see :mod:`qsh.benchmark.quantum_advantage`) -> ``ctx.artifacts['benchmark_result']``.
 
     This is the Round-7 unification: a single Run animates the live E2E pipeline AND produces the
     benchmark for that very run (the live config's MPC-FHE row uses the run's real measured

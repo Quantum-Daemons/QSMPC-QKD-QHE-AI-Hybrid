@@ -72,8 +72,10 @@ export default function SdnControlPlanePanel({
   const topo: SdnTopology = useMemo(() => {
     const t = buildTopology({ usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
                               secretKeyRatePerPulse, sourceRateHz, pulses });
-    // Draw down a realistic slice so the remaining budget is visibly finite. This said "so eskr
-    // differs from skr" while both fields held the same session total - the sentence described a
+    // Draw down a FIXED 25% slice - an illustrative allocation to the MCP agent, not a measured
+    // demand - so the remaining budget is visibly finite; the note under the link table says so,
+    // because the 75% left in "key budget" is otherwise unexplained. This said "so eskr differs
+    // from skr" while both fields held the same session total - the sentence described a
     // difference between two copies of one number.
     if (t.apps.length) allocate(t, t.apps[0].app_id, Math.round(keyBudgetBits * 0.25));
     return t;
@@ -116,7 +118,7 @@ export default function SdnControlPlanePanel({
               <tr><td>x source repetition rate</td><td><b>{(topo.source_rate_hz / 1e6).toLocaleString()} MHz</b></td><td>{usecase === "satellite_comms"
                 ? <>an assumption; default 100 MHz, the Micius source&apos;s (Liao et al., <i>Nature</i> <b>549</b>, 43, 2017), whose measured rate is not reproduced or claimed here</>
                 : <>an assumption; default 1 GHz, the clock Rusca et al. (<i>Appl. Phys. Lett.</i> <b>112</b>, 171104, 2018) state for this page&apos;s detector set - a simulation set, not a measured link. With their 100 ns dead time the per-pulse rate depends on it too</>}</td></tr>
-              <tr><td>channel time</td><td>{topo.channel_seconds == null ? "n/a"
+              <tr><td>channel time of the key block</td><td>{topo.channel_seconds == null ? "n/a"
                 : topo.channel_seconds >= 1 ? `${topo.channel_seconds.toFixed(1)} s` : `${(topo.channel_seconds * 1e3).toFixed(3)} ms`}</td><td>{usecase === "satellite_comms"
                 ? <>the key block&apos;s pulses divided by that rate - one pass by default (Round 79), so the key budget below, the block&apos;s composable finite key, is spent over the pass&apos;s link time</>
                 : <>the key block&apos;s pulses divided by that rate (Round 80), so the key budget below, the block&apos;s composable finite key, is spent over the block&apos;s link time</>}</td></tr>
@@ -151,10 +153,10 @@ export default function SdnControlPlanePanel({
       <div className="grid cols-3" style={{ marginTop: 12 }}>
         {[
           ["Application", "SAE · MCP agent", "out of scope of QKD 015", "requests keys, issues intents"],
-          ["Control", "SDN controller + KME", "GS QKD 015 / 018 · ITU-T Y.3804, Y.3805",
+          ["Control", "SDN controller", "GS QKD 015 / 018 - ITU-T Y.3804, Y.3805",
             "topology, path computation, key relay, resource allocation"],
-          ["Quantum / link", "QKD modules + SDN agent", "GS QKD 004 / 014 / 020",
-            "key generation and delivery"],
+          ["Quantum / link", "QKD node: modules, KME, SDN agent", "GS QKD 004 / 014 / 020; the KME sits in the node (GS QKD 015 cl. 4.2)",
+            "key generation, key management and delivery"],
         ].map(([plane, who, spec, does]) => (
           <div key={plane} className="card" style={{ padding: 12 }}>
             <div style={{ fontWeight: 700, fontSize: 13 }}>{plane}</div>
@@ -172,6 +174,7 @@ export default function SdnControlPlanePanel({
         <p className="muted small">No key association — the PQC-only profile carries the session
           on hybrid PQC key establishment alone.</p>
       ) : (
+        <>
         <table className="mini-table">
           <tbody>
             {/* `skr` and `eskr` now carry the quantity the spec's name promises - bit/s - because
@@ -207,6 +210,11 @@ export default function SdnControlPlanePanel({
             })}
           </tbody>
         </table>
+        <p className="muted small" style={{ marginTop: 6 }}>
+          key budget: the run&apos;s secure bits less a fixed 25% that this panel allocates to the MCP
+          agent to show the budget drawing down - an illustrative allocation, not a measured demand.
+        </p>
+        </>
       )}
 
       {topo.links.some((l) => l.qkdl_type === "VIRT") && (

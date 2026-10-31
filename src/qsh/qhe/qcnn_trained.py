@@ -20,9 +20,12 @@ that scored exactly the majority-class rate.
 
 WHAT THIS MODULE DOES. Loads the weights fitted by ``scripts/train/qcnn_variational.py`` and
 evaluates the same circuit. The implementation is deliberately the plain-numpy one that was used as
-the INDEPENDENT reimplementation when the trainer was verified: it agreed with the torch training
-circuit to 2.4e-07 after a crossed-CNOT bug in the trainer was found by exactly that comparison. Two
-implementations that were checked against each other are worth more than one that was not.
+the INDEPENDENT reimplementation when the trainer was verified: on the circuit of that time it
+agreed with the torch training circuit to 2.4e-07, after a crossed-CNOT bug in the trainer was found
+by exactly that comparison. On the current shared-filter circuit the cross-language test measures
+about 1.1e-06 (finance) and 4.7e-07 (medical) over 24 rows. Two implementations that were checked
+against each other are worth more than one that was not. It serves the two binary artifacts only;
+the 8-class telecom circuit is implemented by the trainer and the browser.
 
 WHAT IT DOES NOT DO. No QOTP mask on this path. Undoing a Pauli frame through Clifford+T is not
 implemented anywhere in this repository - ``T X T-dagger`` is not Pauli - so hiding and prediction
@@ -57,8 +60,13 @@ def load_weights(usecase: str) -> dict | None:
 def infer(features, weights: dict) -> tuple[float, int, float]:
     """Return ``(expectation, cls, logit)`` for one feature vector.
 
-    Mirrors ``scripts/train/qcnn_variational.py`` gate for gate: RY(tanh(z)*pi) data encoding, then
-    ``layers`` rounds of trainable RY plus a CNOT ring, then <Z0>.
+    Mirrors ``scripts/train/qcnn_variational.py`` gate for gate: RY(tanh(z)*pi) data encoding; then
+    per stage ``layers`` rounds of one shared 8-angle two-qubit filter (RY, RZ on each wire, CNOT,
+    RZ, RY on each wire) on the disjoint pairs, and a CRY pool per pair with one shared angle per
+    stage, halving the register; then a per-survivor RZ, RY block (and a CNOT ring only when more
+    than one wire survives, which no binary artifact has); then <Z0>. Because the filter touches only
+    disjoint pairs and a pooled wire is never touched again, this is a tree of two-qubit blocks:
+    classically simulable in linear time at any width. No QOTP mask is applied.
 
     The tanh encoding is not cosmetic. The features arriving here are z-scores, and the first
     version of the trained model min-max scaled them against RAW units instead - which pinned seven

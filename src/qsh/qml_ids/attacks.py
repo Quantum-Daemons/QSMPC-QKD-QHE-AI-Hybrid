@@ -9,7 +9,9 @@ that phrasing had leaked into the README and two docs before being caught again 
 
 Each attack leaves a characteristic signature in the QKD telemetry
 (QBER level/variance, sift ratio, detector-click statistics, timing jitter,
-multi-photon rate). These features train the intrusion detector.
+multi-photon rate). These features train the intrusion detector. Only the CLASS LIST
+comes from Al-Kuwari et al.; the 7 features and every signature value below are this
+project's own design, and the paper uses a different feature set.
 
 The report carefully separates two noise sources: (a) QKD *channel* environment
 noise and (b) the NISQ hardware noise of the *QML inference engine*. This module

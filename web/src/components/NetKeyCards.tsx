@@ -16,7 +16,8 @@ import StageBadge from "./StageBadge";
  * from an in-tab ML-KEM-768 + X25519 hybrid through the SAME combiner as the session key. The IKEv2
  * schedule is RFC 7296 key derivation (checked against NIST CAVP) extended by RFC 9370 and RFC 8784,
  * which have no official vectors and are labelled computed-per-spec. No packet leaves the tab; the
- * tunnels themselves run in the companion network demo.
+ * tunnels themselves run in the companion network demo, keyed differently (its WireGuard PSKs are
+ * HKDF of QKD and PQC-HPKE, and Rosenpass's), so these are schedules of the same kinds, not its keys.
  *
  * The modules load on click: the ML-KEM vector file alone is about 69 KB.
  */
@@ -79,7 +80,7 @@ export default function NetKeyCards() {
         <h3>WireGuard handshake keyed by a PQC hybrid PSK (Noise_IKpsk2) <StageBadge kind="notional" /></h3>
         <KeyPointsInline items={[
           "Both peers run in this tab; the cryptography is real, the network is not.",
-          "The 32-byte preshared key comes from a fresh ML-KEM-768 + X25519 hybrid through the session key's own combiner.",
+          "The 32-byte preshared key comes from a fresh ML-KEM-768 + X25519 hybrid through the session key's own combiner - not either PSK the network demo's WireGuard lanes use (HKDF of QKD and PQC-HPKE; Rosenpass).",
           "The Noise core is checked against the official cacophony vector on every run; the WireGuard framing follows the whitepaper and has no published vector.",
         ]} />
         <button className="btn" disabled={busy === "wg"}
@@ -103,7 +104,7 @@ export default function NetKeyCards() {
       </div>
 
       <div className="card">
-        <h3>IKEv2 key schedule: ML-KEM-768 (RFC 9370) and a PPK (RFC 8784) <StageBadge kind="real" /></h3>
+        <h3>IKEv2 key schedule: ML-KEM-768 as an RFC 9370 additional key exchange (draft-ietf-ipsecme-ikev2-mlkem) and a PPK (RFC 8784) <StageBadge kind="real" /></h3>
         <KeyPointsInline items={[
           "IKE_SA_INIT on ECP-256, then an IKE_INTERMEDIATE ML-KEM-768 exchange, then a post-quantum preshared key; both peers derive every key and the page compares them.",
           "The RFC 7296 derivation is checked against NIST CAVP SP 800-135 vectors; the RFC 9370 and RFC 8784 layers have no official vectors and are computed per the RFCs.",
