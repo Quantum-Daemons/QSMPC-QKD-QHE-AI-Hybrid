@@ -131,7 +131,7 @@ class QKDKeyAgreementStage(Stage):
         # THE KEY'S BLOCK (Round 80, the user's choice): the run's own controls, else the configured
         # fibre block (`QKDConfig.finite_key_block*`), resolved once here and handed to the model so
         # the key and the metrics below describe the same block.
-        from ..qkd.bb84 import QKDParams
+        from ..qkd.bb84 import fibre_source
         from ..qkd.finite_key import (
             block_counts,
             blocks_for_positive_key,
@@ -147,8 +147,14 @@ class QKDKeyAgreementStage(Stage):
         eps_sec = float(_cfg("qkd_eps_sec", cfg.finite_key_eps_sec))
         # The statistics (Round 82), one control for the fibre and the satellite alike.
         deviation = str(_cfg("fk_deviation", cfg.finite_key_deviation))
+        # THE INTENSITY PAIR (Round 84, the user's choice): the run's, else the configured one. The
+        # same source reaches the block, the model, the bound below and OptiQKD's baseline, so the key
+        # and every figure beside it describe one pair. Twin of the browser's `fibreIntensities`.
+        intensities = str(_cfg("qkd_intensities", cfg.intensity_preset))
+        source = fibre_source(intensities)
+        ctx.data["fibre_qkd_params"] = source
         block_pulses = fibre_block_pulses(
-            params, params_for_source(QKDParams(), eps_sec=eps_sec, deviation=deviation), kind=block_kind,
+            params, params_for_source(source, eps_sec=eps_sec, deviation=deviation), kind=block_kind,
             run_pulses=n_pulses,
             seconds=float(_cfg("qkd_block_seconds", cfg.finite_key_block_seconds)),
             pa_bits=float(_cfg("qkd_block_pa_bits", cfg.finite_key_block_pa_bits)))
@@ -163,7 +169,8 @@ class QKDKeyAgreementStage(Stage):
             result = run_e91(n_pulses, params, visibility=cfg.e91_visibility, seed=ctx.config.get("seed", 0))
         else:
             result = provider(n_pulses=n_pulses, params=params, seed=ctx.config.get("seed", 0),
-                              block_pulses=block_pulses, eps_sec=eps_sec, deviation=deviation, **extra)
+                              block_pulses=block_pulses, eps_sec=eps_sec, deviation=deviation,
+                              qkd_params=source, **extra)
         # Five decimals here and four in `api/inference_service.py:79`, for the same metric name on
         # the same panel. Left AT five deliberately rather than narrowed: a displayed QBER of
         # 0.01578 against 0.0158 is a presentation difference on a quantity whose own sampling noise
@@ -205,7 +212,10 @@ class QKDKeyAgreementStage(Stage):
             bus.metric("qkd_finite_key_bound", "Rusca et al. 2018 (one decoy)", self.name)
             bus.metric("qkd_eps_sec", eps_sec, self.name)
             bus.metric("qkd_fk_deviation", deviation, self.name)
-            fk = params_for_source(QKDParams(), eps_sec=eps_sec, deviation=deviation)
+            bus.metric("qkd_intensities", intensities, self.name)
+            bus.metric("qkd_mu_signal", source.mu_signal, self.name)
+            bus.metric("qkd_mu_decoy", source.mu_decoy, self.name)
+            fk = params_for_source(source, eps_sec=eps_sec, deviation=deviation)
             bus.metric("qkd_block_units_for_key",
                        blocks_for_positive_key(*block_counts([(result.block_pulses, params)], fk), fk), self.name)
         bus.metric("secure_key_bits", result.secure_key_bits, self.name)
@@ -287,8 +297,9 @@ class OptiQKDStage(Stage):
                            n_pulses=int(ctx.config.get("qkd_opt_pulses", cfg.optimize_n_pulses)),
                            protocol=ctx.config.get("qkd_protocol", cfg.protocol),
                            seed=ctx.config.get("seed", 0),
-                           # the satellite's own source (Micius's 0.8 / 0.1, vacuum), when it ran
-                           baseline=ctx.data.get("sat_qkd_params"))
+                           # the link's own source: the satellite's (Micius's 0.8 / 0.1, vacuum) when
+                           # it ran, else the fibre run's intensity pair (Round 84)
+                           baseline=ctx.data.get("sat_qkd_params") or ctx.data.get("fibre_qkd_params"))
         bus.metric("qkd_skr_improvement_pct", round(res.improvement_pct, 1), self.name)
         bus.metric("qkd_optimized_skr", round(res.best_skr, 6), self.name)
         bus.metric("qkd_baseline_skr", round(res.baseline_skr, 6), self.name)

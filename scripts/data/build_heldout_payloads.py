@@ -59,11 +59,10 @@ OPSSAT_RECORD = ("Data: Ruszczak, B., Kotowski, K., Nalepa, J. & Evans, D., 'OPS
                  "detection dataset for satellite telemetry', Zenodo (2024), "
                  "doi:10.5281/zenodo.12588359 (version 1).")
 
-#: The satellite demo sample's provenance. The registry's `BUNDLED_DEMO_SAMPLES["satellite_comms"]`
-#: still names SMAP/MSL, and `tests/test_demo_provenance.py` holds the shipped file to that text; the
-#: integrator note C3-for-integrator.md sets the registry to exactly this string. It is a constant
-#: here, not read from the registry, because reading it would write the SMAP/MSL text into an
-#: OPS-SAT file until that note is applied.
+#: The satellite demo sample's provenance, and the registry's `BUNDLED_DEMO_SAMPLES["satellite_comms"]`
+#: word for word (Round 84); `tests/test_demo_provenance.py` holds the shipped file to the registry's
+#: text. It is a constant here rather than read from the registry because it was written while the
+#: registry still named SMAP/MSL; the two must now change together.
 SATELLITE_PROVENANCE = (
     "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588359, version 1, "
     "CC-BY-4.0): 19 precomputed per-segment features of the benchmark's test partition. The demo's "

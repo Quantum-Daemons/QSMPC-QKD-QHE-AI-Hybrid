@@ -218,6 +218,27 @@ class QKDParams:
     p_decoy: float = 0.5
 
 
+#: The fibre's two intensity pairs (Round 84): "block_key" is `QKDConfig.mu_signal` / `mu_decoy`, more
+#: key on the default block; "first_key" is `QKDConfig.first_key_mu_*`, the fewest pulses to any key.
+#: Twin of `INTENSITY_PRESETS` in web/src/lib/quantumSim.ts.
+INTENSITY_PRESETS = ("block_key", "first_key")
+
+
+def fibre_source(preset: str | None = None) -> QKDParams:
+    """The fibre's one-decoy source at the intensity pair `preset` names (None: the configured default).
+
+    Everything but the two intensities is the bare `QKDParams()`, so "block_key" is exactly the source
+    every fibre caller ran before Round 84. Twin of `fibreIntensities` in the browser.
+    """
+    q = _qkd_cfg()
+    name = q.intensity_preset if preset is None else str(preset)
+    if name == "block_key":
+        return QKDParams(mu_signal=q.mu_signal, mu_decoy=q.mu_decoy)
+    if name == "first_key":
+        return QKDParams(mu_signal=q.first_key_mu_signal, mu_decoy=q.first_key_mu_decoy)
+    raise ValueError(f"intensities {name!r}: one of {INTENSITY_PRESETS}")
+
+
 def click_mix(qkd_params: QKDParams, q_mu: float, q_nu: float, y0: float) -> float:
     """Bob's detection probability per pulse, averaged over what Alice sends: signal, decoy and (the
     remaining share) vacuum. `quantumSim.ts::clickMix` is the twin."""

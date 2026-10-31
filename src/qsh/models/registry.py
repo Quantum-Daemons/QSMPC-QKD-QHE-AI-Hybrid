@@ -645,7 +645,7 @@ BUNDLED_DEMO_SAMPLES: dict[str, tuple[str, DatasetSpec]] = {
     # under data/satellite/. The string is
     # `SATELLITE_PROVENANCE` in scripts/data/build_heldout_payloads.py, which writes the file.
     "satellite_comms": (
-        "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588358, "
+        "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588359, version 1, "
         "CC-BY-4.0): 19 precomputed per-segment features of the benchmark's test partition. The demo's "
         "anomaly regression is fitted here on 370 of those 529 segments and the verdict is drawn from "
         "the other 159; it is not the published satellite_comms.opssat model.",

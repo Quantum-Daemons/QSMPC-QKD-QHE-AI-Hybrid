@@ -360,7 +360,7 @@ class QKDConfig:
     # needs 3.60e6 (3,595,158), 9 percent more; under Hoeffding alone at mu = 0.336, nu = 0.119, 5.23e6,
     # the pair 2.3 percent above. But the block a key is computed on is the default 1e7-bit
     # privacy-amplification block (`finite_key_block` below), and on it the SHIPPED pair carries more:
-    # 5,214,327 bits in 5.33e9 pulses against 4,977,637 in 5.25e9 at 0.399/0.098, 9.78e-4 against
+    # 5,214,327 bits in 5.33e9 pulses against 4,977,636 in 5.25e9 at 0.399/0.098, 9.78e-4 against
     # 9.49e-4 bits per pulse sent, and 2.0 percent below the best of a 0.02 x 0.01 grid over the two
     # intensities at p_signal = p_z = 0.5 (9.98e-4 at mu = 0.36, nu = 0.20). Kept, then: on that block
     # the pair clears its own thresholds about 1,480 and 1,000 times over (default statistics,
@@ -400,6 +400,16 @@ class QKDConfig:
     #   python -c "from qsh.qkd.finite_key import optimise_parameters; print(optimise_parameters()[0])"
     mu_signal: float = 0.3416         # minimises the pulses a positive key needs (Round 47); GYS: ~0.5
     mu_decoy: float = 0.1417          # decoy mean photon number, optimised jointly with the signal
+    # THE OTHER PAIR, AND A CHOICE BETWEEN THE TWO (Round 84, the user's choice: make both selectable).
+    # The paragraph above has the trade on the shipped 50 km fibre: `mu_signal` / `mu_decoy` carry more
+    # key on the default 1e7-bit block (5,214,327 bits against 4,977,636), and this pair needs the
+    # fewest pulses before any key exists under the default statistics (3,312,035 against 3,595,158).
+    # A fibre run takes the pair `intensity_preset` names, or its own `qkd_intensities`:
+    # "block_key" (the two fields above) or "first_key" (these two). `qkd.bb84.fibre_source` reads
+    # them in Python and `fibreIntensities` in the browser; the satellite keeps its profile's source.
+    first_key_mu_signal: float = 0.399
+    first_key_mu_decoy: float = 0.098
+    intensity_preset: str = "block_key"
     basis_prob: float = 0.5           # P(Z basis) — biased-basis (efficient) BB84 raises the sift ratio
     #: QBER abort threshold, and it is a FIBRE-QKD post-processing figure - not a QSDC one.
     #:

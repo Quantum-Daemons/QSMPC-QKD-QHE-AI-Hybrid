@@ -287,6 +287,14 @@ visible number.
   under this project's (Round 82: (A16) as printed puts them on the safe side; Table I is checked
   under the Hoeffding statistics it was computed with); the time to fill a block within 10 percent.
   E91 keeps its asymptotic count, labelled.
+- **Fibre intensities** (Round 84, the user's choice) - the fibre source's signal and decoy
+  intensities are one of two pairs, chosen on the page and in a run's `qkd_intensities`. Both were
+  found by the finite-key optimiser and they answer different questions on the shipped 50 km fibre:
+  the default, signal 0.3416 and decoy 0.1417, carries more key on the default block (5,214,327
+  bits against 4,977,636); signal 0.399 and decoy 0.098 needs the fewest pulses before any key
+  exists (3,312,035 against 3,595,158, under the default statistics). The pair reaches the block,
+  the bound, the distance chart and OptiQKD's baseline in both languages, which a test checks by
+  running both stages. The satellite keeps its own profile's source.
 - **3D views** (three.js, loaded only where drawn) - the per-qubit reduced Bloch vectors through the
   QSMPC-FHE comparison circuit (the untrained QOTP + Clifford+T circuit, on one illustrative input, not
   the trained QCNN that decides a page's class), an illustration of the one-time pad on one qubit, and the satellite geometry the

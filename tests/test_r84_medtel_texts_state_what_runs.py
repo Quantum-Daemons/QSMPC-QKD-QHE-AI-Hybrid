@@ -212,7 +212,7 @@ def test_the_intensity_comments_name_each_optimums_objective() -> None:
     src = (REPO / "src" / "qsh" / "config" / "defaults.py").read_text(encoding="utf-8")
     assert "the shipped 2e7 block clears either threshold" not in src
     assert "MINIMISES THE PULSES A POSITIVE KEY NEEDS" in src
-    assert "5,214,327 bits in 5.33e9 pulses against 4,977,637 in 5.25e9 at 0.399/0.098" in src
+    assert "5,214,327 bits in 5.33e9 pulses against 4,977,636 in 5.25e9 at 0.399/0.098" in src
     assert "3.31e6 pulses (3,312,035)" in src and "3.60e6 (3,595,158)" in src
 
 

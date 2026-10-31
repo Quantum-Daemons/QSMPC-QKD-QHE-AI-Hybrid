@@ -151,7 +151,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
                 );
               })()
             : <FibreDistanceCharts misalignment={Number(run.params.qkd_misalignment ?? FIBER.misalignment)}
-                eve={Number(run.params.qkd_eve ?? 0)} />}
+                eve={Number(run.params.qkd_eve ?? 0)}
+                intensities={run.params.qkd_intensities as string | undefined} />}
         </div>
       )}
 

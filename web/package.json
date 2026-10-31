@@ -40,7 +40,7 @@
     "gif.js": "^0.2.0",
     "html-to-image": "^1.11.13",
     "node-seal": "^7.0.0",
-    "onnxruntime-web": "^1.27.0",
+    "onnxruntime-web": "1.31.1",
     "papaparse": "^5.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -57,5 +57,11 @@
     "mermaid": "^12.2.0",
     "typescript": "^5.6.3",
     "vite": "~6.4.5"
+  },
+  "overrides": {
+    "@huggingface/transformers": {
+      "onnxruntime-web": "$onnxruntime-web",
+      "onnxruntime-common": "1.31.1"
+    }
   }
 }

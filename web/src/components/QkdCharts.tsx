@@ -5,7 +5,7 @@ import {
 
 import { api } from "../lib/api";
 import { qkdCfg, securityScoringCfg } from "../lib/config";
-import { bb84, e91, FIBER, h2, qsdcLink, type ChannelParams } from "../lib/quantumSim";
+import { bb84, e91, FIBER, fibreIntensities, h2, qsdcLink, type ChannelParams } from "../lib/quantumSim";
 import { rangeAtElevationKm } from "../lib/satNetwork";
 import { ChartReadout, HINT_KEYBOARD, ReadoutTooltip } from "./ChartReadout";
 
@@ -84,15 +84,18 @@ function defaultBlockText(): string {
 
 /** Fibre-distance curves for a fibre QKD run: BB84's asymptotic rate with and without decoy states, the
  *  composable finite key a run reports, and E91's CHSH value. */
-export function FibreDistanceCharts({ misalignment, eve }: { misalignment: number; eve: number }) {
+export function FibreDistanceCharts({ misalignment, eve, intensities }: { misalignment: number; eve: number;
+                                                                         intensities?: string }) {
   const fEC = qkdCfg().error_correction_eff;
+  // The run's intensity pair (Round 84), so the curves are the source the run sent.
+  const pair = fibreIntensities(intensities);
   const { rows, sDi, sDd, noDecoyNowhere, share } = useMemo(() => {
     // A zero rate is drawn as a gap (null), not as a point: a log axis has no zero, and a line dropping
     // to the axis floor would read as a tiny positive rate.
     const out: { km: number; decoy: number | null; nodecoy: number | null; finite: number | null; s: number;
                  e91rate: number }[] = [];
     for (let km = 0; km <= 160; km += 10) {
-      const ch = { ...FIBER, distanceKm: km, misalignment, eveFraction: eve };
+      const ch = { ...FIBER, distanceKm: km, misalignment, eveFraction: eve, ...pair };
       const b = bb84(1_000_000, ch, 1);
       const e = e91(1_000_000, ch, 1);
       const nd = b.secretKeyRateNonDecoy ?? 0;
@@ -115,7 +118,7 @@ export function FibreDistanceCharts({ misalignment, eve }: { misalignment: numbe
     const qDi = solve((q) => 1 - fEC * h2(q) - h2((1 + Math.sqrt(Math.max(0, (chsh(q) / 2) ** 2 - 1))) / 2));
     return { rows: out, sDi: chsh(qDi), sDd: chsh(qDd), noDecoyNowhere: out.every((r) => r.nodecoy == null),
              share: shares.length ? [Math.min(...shares), Math.max(...shares)] : null };
-  }, [misalignment, eve, fEC]);
+  }, [misalignment, eve, fEC, pair.muSignal, pair.muDecoy]);
   // Where this axis's 50 km falls on Rusca et al.'s: both are fibre at the same dB/km, theirs with
   // 6 dB of receiver loss, this model's with only its detectors'.
   const detectorDb = -10 * Math.log10(FIBER.detectorEff);
@@ -132,7 +135,8 @@ export function FibreDistanceCharts({ misalignment, eve }: { misalignment: numbe
           {noDecoyNowhere && <> Here the counterfactual is <b>zero at every distance shown</b> - the
             multi-photon fraction exceeds the detection probability - so no second curve appears: the decoy
             states carry the whole link.</>}
-          {" "}Every line takes the bases at even odds (pZ = 0.5), where Rusca et al. 2018 optimise that
+          {" "}Every line is at the run&apos;s intensities, signal {pair.muSignal} and decoy {pair.muDecoy},
+          and takes the bases at even odds (pZ = 0.5), where Rusca et al. 2018 optimise that
           bias. Distance is fibre at {FIBER.lossDbPerKm} dB/km plus the detectors&apos; {detectorDb.toFixed(1)} dB;
           Rusca et al.&apos;s Table I distances carry {RUSCA_TABLE_I_RECEIVER_DB} dB of receiver loss, so 50 km
           here is their {ruscaKmAt50.toFixed(0)} km.

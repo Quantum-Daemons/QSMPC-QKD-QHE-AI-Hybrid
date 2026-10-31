@@ -172,6 +172,8 @@ export const makeDefaultParams = () => ({
   // is the other's.
   fk_deviation: qkdCfg().finite_key_deviation,
   sat_fk_deviation: qkdCfg().free_space_finite_key_deviation,
+  // Round 84: the fibre's intensity pair, "block_key" or "first_key" (QKDConfig.intensity_preset).
+  qkd_intensities: qkdCfg().intensity_preset,
   qkd_distance_km: qkdCfg().distance_km,
   qkd_eve: qkdCfg().eve_intercept_fraction,
   qkd_misalignment: qkdCfg().misalignment,

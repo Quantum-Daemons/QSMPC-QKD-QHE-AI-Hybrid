@@ -5,7 +5,7 @@
 import {
   hasTrainedQcnn, qcnnWidths, readsInferenceBackend, runsFibreQkd, runsQsmpc, type usePipelineRun,
 } from "../lib/usePipelineRun";
-import { atmosphericLossDb, channelLossDb, FREE_SPACE, freeSpaceLink, qsdcLink } from "../lib/quantumSim";
+import { atmosphericLossDb, channelLossDb, fibreIntensities, FREE_SPACE, freeSpaceLink, qsdcLink } from "../lib/quantumSim";
 import { linkProfiles, profileValues, qkdCfg } from "../lib/config";
 import { rangeAtElevationKm } from "../lib/satNetwork";
 
@@ -464,7 +464,24 @@ export default function ParameterPanel({ run }: { run: Run }) {
             </div>
             <StatisticsSelect id="pp-qkdstat" name="fk_deviation" value={String(p.fk_deviation)} dim={e91} why={why}
               dflt={qkdCfg().finite_key_deviation}
-              onChange={(v) => setParams({ ...params, fk_deviation: v })} /></>);
+              onChange={(v) => setParams({ ...params, fk_deviation: v })} />
+            {/* THE INTENSITY PAIR (Round 84, the user's choice: make both selectable). Two pairs that
+                optimise different things on this fibre; QKDConfig.first_key_mu_signal has the trade. */}
+            {(() => {
+              const blockKey = fibreIntensities("block_key"), firstKey = fibreIntensities("first_key");
+              const noDecoy = e91 ? "No effect on E91: an entangled source sends no signal or decoy pulses. " : "";
+              return (
+            <div style={{ minWidth: 220, flex: "2 1 220px" }}>
+              <label className="muted" htmlFor="pp-qkdmu" style={{ fontSize: 12, opacity: e91 ? 0.45 : 1 }}
+                title={noDecoy + `The mean photon numbers of the signal and the decoy the source sends. The two pairs answer different questions on this fibre, both found by the finite-key optimiser: ${blockKey.muSignal} / ${blockKey.muDecoy} carries more composable key on the default block, and ${firstKey.muSignal} / ${firstKey.muDecoy} needs the fewest pulses before any key exists. The default is the first.`}>Intensities (signal / decoy)</label>
+              <select id="pp-qkdmu" name="qkd_intensities" value={String(p.qkd_intensities)} style={{ width: "100%", opacity: e91 ? 0.45 : 1 }}
+                aria-disabled={e91 ? true : undefined}
+                onChange={(e) => setParams({ ...params, qkd_intensities: e.target.value })}>
+                <option value="block_key">{`${blockKey.muSignal} / ${blockKey.muDecoy}: more key per block`}</option>
+                <option value="first_key">{`${firstKey.muSignal} / ${firstKey.muDecoy}: fewest pulses to a first key`}</option>
+              </select>
+            </div>);
+            })()}</>);
             })()}
             {/* THE KEY BLOCK (Round 79). The key is the finite-key length of a block of link time;
                 which block is the choice the published practice settles (QKDConfig.free_space_block). */}

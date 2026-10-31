@@ -144,6 +144,23 @@ export function sourceOf(p: ChannelParams): { mu: number; nu: number; pSignal: n
   };
 }
 
+/** The fibre's two intensity pairs (Round 84, the user's choice: make both selectable). "block_key" is
+ *  config `mu_signal` / `mu_decoy`, more key on the default block; "first_key" is config
+ *  `first_key_mu_*`, the fewest pulses before any key exists. `QKDConfig` has the measured trade. Twin
+ *  of `qkd.bb84.INTENSITY_PRESETS`. */
+export type IntensityPreset = "block_key" | "first_key";
+export const INTENSITY_PRESETS: IntensityPreset[] = ["block_key", "first_key"];
+
+/** The intensities a fibre run sends at the pair `preset` names (unset: config `intensity_preset`),
+ *  as the `ChannelParams` fields `sourceOf` reads. Twin of `qkd.bb84.fibre_source`. */
+export function fibreIntensities(preset?: unknown): { muSignal: number; muDecoy: number } {
+  const cfg = qkdCfg();
+  const name = preset == null ? String(cfg.intensity_preset) : String(preset);
+  if (name === "block_key") return { muSignal: Number(cfg.mu_signal), muDecoy: Number(cfg.mu_decoy) };
+  if (name === "first_key") return { muSignal: Number(cfg.first_key_mu_signal), muDecoy: Number(cfg.first_key_mu_decoy) };
+  throw new Error(`intensities ${name}: one of ${INTENSITY_PRESETS.join(", ")}`);
+}
+
 /** Bob's detection probability per pulse averaged over what Alice sends - signal, decoy and the
  *  vacuum's remaining share - which is what the dead time sees. Twin of `bb84.py::click_mix`. */
 export function clickMix(src: { pSignal: number; pDecoy: number }, qMu: number, qNu: number,

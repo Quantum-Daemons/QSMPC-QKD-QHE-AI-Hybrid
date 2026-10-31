@@ -1,6 +1,7 @@
 ---
 license: other
 license_name: cc-by-3.0-igo
+license_link: https://creativecommons.org/licenses/by/3.0/igo/
 library_name: onnx
 pipeline_tag: time-series-forecasting
 tags:
@@ -15,10 +16,11 @@ tags:
 
 2 x LSTM(80), sequence length 250, dropout 0.3, non-parametric dynamic threshold with pruning
 
-Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
+Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid),
 a quantum-safe orchestration demo.
-This is the **plaintext** model for the `satellite_comms` use case; the encrypted
-path runs a distilled student, not this model.
+This is the **plaintext** model for the `satellite_comms` use case. No code path
+evaluates this model under encryption; what each use case encrypts, if anything,
+is stated in the notes below.
 
 ## Measured performance
 

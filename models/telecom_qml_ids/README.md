@@ -1,6 +1,7 @@
 ---
 license: other
 license_name: no-licence-granted
+license_link: https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid/blob/main/DATA_LICENSES.md
 library_name: onnx
 pipeline_tag: tabular-classification
 tags:
@@ -15,10 +16,11 @@ tags:
 
 published ONNX: a 200-tree scikit-learn random forest over 7 telemetry features. Offline comparisons, not in the ONNX: a quantum-kernel SVC (PCA -> angle embedding; its fidelity kernel is exactly the classical product kernel prod cos^2((x_i - x'_i)/2)) and a variational QNN (StronglyEntanglingLayers, 25 parameters)
 
-Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
+Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid),
 a quantum-safe orchestration demo.
-This is the **plaintext** model for the `telecom_ids` use case; the encrypted
-path runs a distilled student, not this model.
+This is the **plaintext** model for the `telecom_ids` use case. No code path
+evaluates this model under encryption; what each use case encrypts, if anything,
+is stated in the notes below.
 
 ## Measured performance
 

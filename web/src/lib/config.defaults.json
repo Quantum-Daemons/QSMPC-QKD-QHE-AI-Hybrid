@@ -128,7 +128,7 @@
     "satellite_comms": {
       "licence": "CC-BY-4.0",
       "licence_checked": "2026-10-31",
-      "provenance": "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588358, CC-BY-4.0): 19 precomputed per-segment features of the benchmark's test partition. The demo's anomaly regression is fitted here on 370 of those 529 segments and the verdict is drawn from the other 159; it is not the published satellite_comms.opssat model.",
+      "provenance": "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588359, version 1, CC-BY-4.0): 19 precomputed per-segment features of the benchmark's test partition. The demo's anomaly regression is fitted here on 370 of those 529 segments and the verdict is drawn from the other 159; it is not the published satellite_comms.opssat model.",
       "url": "https://doi.org/10.5281/zenodo.12588359"
     }
   },
@@ -1497,7 +1497,7 @@
             "opset": 17
           },
           "git_sha": "5ba453e-dirty",
-          "hf_revision": "0cb46a727c5e4c6b438222fbacb367bf8ef76ed8",
+          "hf_revision_invalidated_by_retrain": "0cb46a727c5e4c6b438222fbacb367bf8ef76ed8",
           "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: Kim et al. (AAAI 2022) show that under point adjustment even a random anomaly score can reach state-of-the-art. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
           "n_anomaly_intervals": 320,
           "n_events_scored": 3,
@@ -1552,8 +1552,8 @@
         "eval_sample_reason": null,
         "eval_split": "windows drawn at random from the held-out temporal test window, the last 30 percent of the resampled timeline",
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
-        "hf_revision": "0cb46a727c5e4c6b438222fbacb367bf8ef76ed8",
-        "hf_revision_stale": null,
+        "hf_revision": null,
+        "hf_revision_stale": "0cb46a727c5e4c6b438222fbacb367bf8ef76ed8",
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (per channel)",
         "metric": {
@@ -2397,6 +2397,8 @@
     "finite_key_block_seconds": 1.0,
     "finite_key_deviation": "tighter",
     "finite_key_eps_sec": 1e-09,
+    "first_key_mu_decoy": 0.098,
+    "first_key_mu_signal": 0.399,
     "free_space_atmospheric_db": 5.5,
     "free_space_atmospheric_ref_km": 1200.0,
     "free_space_beam_divergence_urad": 10.0,
@@ -2426,6 +2428,7 @@
     "free_space_station_altitude_km": 0.89,
     "free_space_vacuum_decoy": true,
     "free_space_wavelength_nm": 848.6,
+    "intensity_preset": "block_key",
     "isl_profile": "micius_type_2019",
     "misalignment": 0.01,
     "mu_decoy": 0.1417,

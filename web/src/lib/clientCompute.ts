@@ -25,7 +25,7 @@ import { generateQuantumBits } from "./clientQRNG";
 import { outOfView, satBlock, satChannel } from "./satLink";
 import { blockCounts, blocksForPositiveKey, DEVIATION_LABELS, fibreBlockPulses, FINITE_KEY_BOUNDS, finiteKeySourceOf,
   keyLength, scaleCounts, type Deviation } from "./finiteKey";
-import { bb84, channelLossDb, e91, FIBER, h2, inView, intrinsicQber,
+import { bb84, channelLossDb, e91, FIBER, fibreIntensities, h2, inView, intrinsicQber,
   keyRateWithClock, linkElevationDeg, qsdcLink, qsdcSecrecyCapacity, sourceOf, sourceRateHz, type ChannelParams,
   qcnnExpectation,
   qcnnInferTrained, qotpQcnnInfer, rng, taggedFraction,
@@ -302,7 +302,9 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     // floor is the honest value there. Reading `qkd_misalignment` unconditionally would have
     // substituted the fibre page's - always, since that key is never absent.
     misalignment: Number(config?.qkd_misalignment ?? FIBER.misalignment),
-    eveFraction: eveFrac };
+    eveFraction: eveFrac,
+    // The run's intensity pair (Round 84), as the stage ran it: the facts quote its signal intensity.
+    ...fibreIntensities(config?.qkd_intensities) };
   // Which decoy bound this run's rate is, by the source it modelled: Micius sends a vacuum state.
   const boundName = sourceOf(runChannel).vacuum
     ? "vacuum + weak decoy-state bound (Ma, Qi, Zhao & Lo, Phys. Rev. A 72, 012326, 2005, Eqs. 34 and 37)"
@@ -2180,7 +2182,11 @@ export function runClientPipeline(
           eveFraction: Number(config.qkd_eve ?? qkdCfg().eve_intercept_fraction),
           // The run's clock, the same value the bit/s below is computed from: with a dead time the
           // per-pulse rate depends on it (Round 76), so the two cannot come from different places.
-          sourceRateHz: sourceRateHz(config?.qkd_source_rate_mhz, Number(qkdCfg().source_rate_hz)) };
+          sourceRateHz: sourceRateHz(config?.qkd_source_rate_mhz, Number(qkdCfg().source_rate_hz)),
+          // The run's intensity pair (Round 84, the user's choice). On the channel, so the block, the
+          // model, the bound and OptiQKD's baseline all read it through `sourceOf`. Twin of the
+          // Python stage's `fibre_source(qkd_intensities)`.
+          ...fibreIntensities(config.qkd_intensities) };
         // config.qkd_protocol genuinely selects which physical QKD model runs (BB84 decoy-state vs E91/CHSH),
         // so switching it visibly moves QBER / SKR / secure-key-bits — independently of the OptiQKD toggle.
         const protocol = String(config.qkd_protocol ?? qkdCfg().protocol);
@@ -2228,6 +2234,9 @@ export function runClientPipeline(
           metric(stage, "qkd_finite_key_bound", fkSrc.vacuum ? FINITE_KEY_BOUNDS.vacuum : FINITE_KEY_BOUNDS.oneDecoy);
           metric(stage, "qkd_eps_sec", fkSrc.epsSec);
           metric(stage, "qkd_fk_deviation", fkSrc.deviation);
+          metric(stage, "qkd_intensities", String(config.qkd_intensities ?? qkdCfg().intensity_preset));
+          metric(stage, "qkd_mu_signal", sourceOf(chan).mu);
+          metric(stage, "qkd_mu_decoy", sourceOf(chan).nu);
           // How many of this block, pooled, a key needs: 1 when it carries one.
           metric(stage, "qkd_block_units_for_key",
                  blocksForPositiveKey(...blockCounts([[blockPulses, chan]], fkSrc), fkSrc));
@@ -2298,7 +2307,7 @@ export function runClientPipeline(
             : `basis p=${r2(opt.bestParams.basisProb)}, mu_signal=${r2(opt.bestParams.muSignal)}, `
               + `mu_decoy=${r2(opt.bestParams.muDecoy)}`;
           // WHAT THE SEARCH DOES NOT DO (Round 84), stated from this run's own numbers. Nothing it
-          // finds is applied: the key above was computed at the shipped intensities. Its basis bias
+          // finds is applied: the key above was computed at the run's intensity pair. Its basis bias
           // has no counterpart in that key, which takes the bases at even odds (`finiteKeySourceOf`,
           // pZ = 0.5); the rate is linear in the sift ratio, so the bias's share is exact. And at
           // its tuned intensities this run's block can carry LESS composable key per pulse: on the
@@ -2344,8 +2353,8 @@ export function runClientPipeline(
                     ? `: ${r1(Math.abs(tunedKey.changePct))}% ${tunedKey.changePct < 0 ? "less" : "more"} key per pulse sent. `
                     : ". ")
                 : "")
-              + `The gain is over this demo's default parameters (symmetric bases), not over a tuned `
-              + `static link, so it is not comparable with published gains such as arXiv:2603.04192v2's +14-25%.`);
+              + `The gain is over this run's parameters (its intensity pair, symmetric bases), not over a `
+              + `tuned static link, so it is not comparable with published gains such as arXiv:2603.04192v2's +14-25%.`);
         }
         break;
       }

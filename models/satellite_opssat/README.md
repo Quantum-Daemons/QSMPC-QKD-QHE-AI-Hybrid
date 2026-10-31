@@ -1,6 +1,5 @@
 ---
-license: other
-license_name: cc-by-4.0
+license: cc-by-4.0
 library_name: onnx
 pipeline_tag: tabular-classification
 tags:
@@ -15,10 +14,11 @@ tags:
 
 gradient-boosted trees over 18 published per-segment features + `sampling`
 
-Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
+Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid),
 a quantum-safe orchestration demo.
-This is the **plaintext** model for the `satellite_comms` use case; the encrypted
-path runs a distilled student, not this model.
+This is the **plaintext** model for the `satellite_comms` use case. No code path
+evaluates this model under encryption; what each use case encrypts, if anything,
+is stated in the notes below.
 
 ## Measured performance
 
@@ -46,10 +46,10 @@ path runs a distilled student, not this model.
 
 - **Dataset**: OPS-SAT-AD
 - **Licence**: CC-BY-4.0
-- **Source**: https://doi.org/10.5281/zenodo.12588358 (licence read 2026-08-05)
+- **Source**: https://doi.org/10.5281/zenodo.12588359 (licence read 2026-10-31)
 - **Attribution (CC-BY-4.0)**: Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, CC BY 4.0.
 
-2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 18 published per-segment features plus a `sampling` metadata column, and the benchmark's own train/test split. That split is stratified random, not temporal, so scores on it do not measure generalisation over time. Ruszczak et al., Scientific Data 12 (2025). CC BY 4.0, which permits redistributing the data with credit; the per-segment feature table is about 507 KB, the raw segment file much larger. A different task from ESA-ADB: segment classification, not forecasting, so its score is not comparable with the Telemanom model's and neither is the other's baseline.
+2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 18 published per-segment features plus a `sampling` metadata column, and the benchmark's own train/test split. That split is stratified random, not temporal, so scores on it do not measure generalisation over time. Ruszczak et al., Scientific Data 12 (2025). CC BY 4.0, which permits redistributing the data with credit; the per-segment feature table is about 507 KB, the raw segment file much larger. A different task from ESA-ADB: segment classification, not forecasting, so its score is not comparable with the Telemanom model's and neither is the other's baseline. Pinned to version 1 (Zenodo record 12588359), the files this project downloads; version 2 (record 15108715) changes the files and adds a LICENSE file.
 
 ## Notes and limitations
 
