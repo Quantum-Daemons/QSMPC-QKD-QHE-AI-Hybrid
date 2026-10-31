@@ -7267,7 +7267,9 @@ behaviour, the words now say what the code does today and the change is listed b
 
 **The user's decisions of 2026-10-31.** Republish every Hugging Face artefact this round's wording
 reaches, with the four evaluation samples whose generator wording changed and will not change
-again; Telemanom's sample waits for Round 84, which changes the sentence it would carry. On
+again; Telemanom's sample waits for Round 84, which changes the sentence it would carry. (The walk
+then found Telemanom's old sentence on the satellite page, and the owner had it republished the same
+day; see below.) On
 5G-NIDD the republish also carries the corrected `export_report.json` (`opset` null rather than 0,
 fixed in the repository two rounds ago and never republished).
 
@@ -7441,6 +7443,15 @@ the registry, and re-pinned each:
   `satellite_comms.student` bbdaf67, and `telecom_ids.nidd` f07f067, which also carries its
   corrected `export_report.json`.
 
+**Telemanom, a second time.** Walking the deploy, the satellite page's run log and its SHAP section
+printed the Telemanom sample's `provenance`, fetched from the Hub, ending "Unlike the NASA SMAP/MSL
+sample this page uses for the FHE/MPC pipeline", next to the page's own "no FHE or MPC stage runs on
+this page". The repository's generator had been corrected; the published sample had not, because
+this round had left it for Round 84. With the owner's approval it was regenerated (the `provenance`
+the only field changed; the windows and the z-score constants are the published ones) and
+republished: `satellite_comms.telemanom` 0cb46a7, `eval_sample.json` the only file changed. A text
+the browser fetches is checked where the browser fetches it.
+
 Each commit's changed files were listed from the Hub's tree at the old and new revisions, and they
 are exactly the files named above. Every pinned card returns 200 and hashes to the local file; every
 pinned sample returns 200, except `satellite_comms.student`'s, which the registry declares absent
@@ -7450,8 +7461,8 @@ sets visibility on every run, so a republish without `--public` would have made 
 among those built before Round 71.
 
 **Still waiting on a regeneration.**
-- Telemanom's sample: its `provenance` names the SMAP/MSL sample the page's anomaly step scores,
-  which Round 84 replaces, so it is regenerated and republished once, in that round.
+- Telemanom's sample, once more: its corrected `provenance` names the SMAP/MSL sample the page's
+  anomaly step scores, which Round 84 replaces, so that round regenerates and republishes it again.
 - `web/public/data/satellite/telemetry.json`. Its generator (`scripts/prep_real_kaggle_data.py`)
   needs the Kaggle download, which is not on this machine, so its `provenance` field was set to the
   generator's own constant, `SAT_PROVENANCE`, which is what the generator writes. That constant was
