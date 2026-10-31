@@ -292,7 +292,8 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
 - **GPU/vendor & licensing** - Blackwell+CUDA13 narrows the quantum-GPU stack to CUDA-Q/cuQuantum.
   The FHE stack is deliberately **commercial-OK** (TenSEAL Apache-2.0, OpenFHE BSD-2, HEonGPU Apache-2.0);
   **DESILO was removed** because its license is non-commercial. Multiple swappable backends avoid lock-in.
-- **Scope discipline** - the trained QCNNs ship at 8 wires, and telecom's also at 7, for reproducibility
+- **Scope discipline** - the trained QCNNs ship at 8 wires (medical, telecom) and at 4 (finance, one wire per feature
+  since its Round 84 retrain on four columns), and telecom's also at 7, for reproducibility
   (Round 84 removed the 9-wire finance and medical artifacts: their pad wire changed no class). The demo's
   **QSMPC-FHE (quantum) comparison row is a genuine in-browser state-vector simulation** of an untrained
   QOTP + Clifford+T circuit (8 qubits by default, not a trained QCNN): its latency is **measured** and its

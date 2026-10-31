@@ -102,7 +102,9 @@ def test_every_pair_of_shipped_widths_gives_a_different_class_somewhere(director
 
 def test_finance_and_medical_ship_one_width_and_no_q9_artifact_remains() -> None:
     widths = _declared_widths()
-    assert widths.get("finance_aml") == [8] and widths.get("medical_fl") == [8], widths
+    # Finance is 4 since its Round 84 retrain on the four columns its linear model reads, one per
+    # wire (tests/test_r84_qcnnfin_four_columns.py); medical stays at its eight features.
+    assert widths.get("finance_aml") == [4] and widths.get("medical_fl") == [8], widths
     assert widths.get("telecom_ids") == [7, 8], widths
     left = sorted(str(p.relative_to(REPO)) for p in
                   [*REPO.glob("models/qcnn_*_q9/*"), *PUBLIC.glob("*/qcnn_weights_q9.json")])

@@ -252,10 +252,10 @@ DS_PAYSIM = DatasetSpec(
 )
 
 #: The eight columns of the bundled PaySim sample, `data/finance/paysim_sample.tsv`, in file order.
-#: It is also the order the finance QCNN artifact (`models/qcnn_finance`, `feature_names`) was trained
-#: on and is fed in, by position. The names are this project's AML-style labels for quantities
-#: computed from PaySim fields by `scripts/prep_real_kaggle_data.py` (`_paysim_features`); PaySim
-#: records no geography and no device.
+#: Since Round 84 no shipped model reads all eight; the finance QCNN artifact (`models/qcnn_finance`)
+#: was the last, until its retrain on PAYSIM_MODEL_FEATURES. The names are this project's AML-style
+#: labels for quantities computed from PaySim fields by `scripts/prep_real_kaggle_data.py`
+#: (`_paysim_features`); PaySim records no geography and no device.
 PAYSIM_SAMPLE_COLUMNS: tuple[str, ...] = (
     "amount", "velocity_24h", "cross_border", "night_tx",
     "new_payee", "amount_zscore", "device_risk", "geo_mismatch",
@@ -263,7 +263,9 @@ PAYSIM_SAMPLE_COLUMNS: tuple[str, ...] = (
 
 #: The four columns the demo's linear model reads (the bundled PaySim surrogate that the finance page
 #: encrypts for its one-row step and explains with exact linear SHAP, and the full deployment's
-#: `usecases/finance_aml` model), each with what it is in PaySim's terms.
+#: `usecases/finance_aml` model), each with what it is in PaySim's terms. The finance QCNN artifact
+#: (`models/qcnn_finance`) reads the same four since Round 84, one per wire in this order (its
+#: `feature_names`).
 PAYSIM_MODEL_FEATURES: dict[str, str] = {
     "amount": "log(1 + amount), the transaction amount in local currency",
     "cross_border": ("1 if the PaySim transaction type is TRANSFER or CASH_OUT, else 0; PaySim records "

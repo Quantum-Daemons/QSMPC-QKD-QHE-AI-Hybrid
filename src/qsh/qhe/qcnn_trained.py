@@ -23,9 +23,9 @@ evaluates the same circuit. The implementation is deliberately the plain-numpy o
 the INDEPENDENT reimplementation when the trainer was verified: on the circuit of that time it
 agreed with the torch training circuit to 2.4e-07, after a crossed-CNOT bug in the trainer was found
 by exactly that comparison. On the current shared-filter circuit the cross-language test measures
-about 1.1e-06 (finance) and 4.7e-07 (medical) over 24 rows. Two implementations that were checked
-against each other are worth more than one that was not. It serves the two binary artifacts only;
-the 8-class telecom circuit is implemented by the trainer and the browser.
+about 7.6e-07 (finance, four wires) and 1.3e-06 (medical) over 24 rows. Two implementations that
+were checked against each other are worth more than one that was not. It serves the two binary
+artifacts only; the 8-class telecom circuit is implemented by the trainer and the browser.
 
 WHAT IT DOES NOT DO. No QOTP mask on this path. Undoing a Pauli frame through Clifford+T is not
 implemented anywhere in this repository - ``T X T-dagger`` is not Pauli - so hiding and prediction
@@ -173,9 +173,9 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
 
     x = np.asarray(features, dtype=float).ravel()
     # The caller's units are the artifact's to name, and assuming them is how the first trained model
-    # became as meaningless as the untrained one. finance arrives RAW and mixed-scale (log amount, a
-    # z-score, five binary flags), so it must be standardised here with the moments fitted at
-    # training time; medical, since Round 84, likewise.
+    # became as meaningless as the untrained one. finance arrives RAW and mixed-scale (a log amount
+    # and three binary flags since its Round 84 retrain), so it must be standardised here with the
+    # moments fitted at training time; medical, since Round 84, likewise.
     #
     # ROUND 84: medical declares `raw` too. It was `zscore`, fed z-scores made with the caller's own
     # StandardScaler rather than the trainer's training-split moments, and that moved 2 of 86

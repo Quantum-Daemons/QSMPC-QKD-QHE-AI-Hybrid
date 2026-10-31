@@ -47,7 +47,8 @@ def _fraud_model(seed: int = 0, n_tx: int | None = None
     Both models read the four columns of ``registry.PAYSIM_MODEL_FEATURES``, selected by name from
     the loader's eight. Returns ``(surrogate, flagged_tx, model_meta, baseline, flagged_raw)``:
     ``flagged_tx`` is the scored transaction in those four columns, and ``flagged_raw`` the SAME
-    transaction in all eight, the columns the finance QCNN artifact was trained on.
+    transaction in all eight of the loader's columns, from which ``_qcnn_features`` takes the
+    finance QCNN artifact's own columns by name (since its Round 84 retrain, these same four).
     """
     import xgboost as xgb
     from sklearn.linear_model import LogisticRegression
@@ -86,9 +87,9 @@ def _fraud_model(seed: int = 0, n_tx: int | None = None
 def _qcnn_features(raw_row: np.ndarray) -> np.ndarray | None:
     """The scored transaction in the finance QCNN artifact's own columns, in raw units.
 
-    The artifact was trained on all eight bundled columns and declares `input_space: "raw"`; the
-    stage falls back to `features`, the linear model's FOUR columns, when this is absent, which would
-    hand an 8-wire circuit a 4-value row. Mapped by the artifact's `feature_names`, so a reordered
+    The artifact names its columns in `feature_names` (since its Round 84 retrain, the linear
+    model's four) and declares `input_space: "raw"`; the stage falls back to `features` when this
+    is absent, which is right only while the artifact reads exactly the model's columns in order. Mapped by the artifact's `feature_names`, so a reordered
     artifact is read correctly and an unknown column is refused. None when no artifact ships.
     """
     from ...models.registry import PAYSIM_SAMPLE_COLUMNS
@@ -147,7 +148,7 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     from ...models.registry import PAYSIM_MODEL_FEATURES
 
     ctx.data["feature_names"] = list(PAYSIM_MODEL_FEATURES)
-    # The same transaction in the trained QCNN's eight raw columns, only where it will be read: a run
+    # The same transaction in the trained QCNN's own raw columns (its `feature_names`), only where it will be read: a run
     # that selects the QCNN (as `usecases/medical_fl` does for its own artifact).
     if ctx.config.get("inference") == "qcnn":
         qcnn_row = _qcnn_features(flagged_raw)

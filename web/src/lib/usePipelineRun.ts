@@ -82,9 +82,11 @@ export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
  * it did not make the range honest.
  *
  * WHY THE SETS DIFFER, and it is a property of the data rather than a choice. A wire must carry a
- * feature or be padded, so the floor is the feature count: telecom has 7 features, finance and
- * medical have 8, and `qcnn_variational.py` refuses a narrower run outright ("8 features exceeds 7
- * wires"). Telecom can therefore be narrowed and the others can only be widened.
+ * feature or be padded, so the floor is the feature count: telecom has 7 features, medical 8 and
+ * finance 4, and `qcnn_variational.py` refuses a narrower run outright ("8 features exceeds 7
+ * wires"). Telecom can therefore be narrowed and the others can only be widened. Finance ships at
+ * its floor: since its Round 84 retrain it encodes the four columns the finance linear model reads,
+ * one per wire, so its one trained width is 4.
  *
  * Kept beside `QCNN_USECASES` and gated the same way - `tests/test_qcnn_usecases.py` compares this
  * against `web/public/data/<dir>/qcnn_weights*.json` in BOTH directions, so adding a width without
@@ -96,7 +98,7 @@ export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
  * of its widths because they are different trained circuits whose classes differ.
  */
 export const QCNN_WIDTHS: Record<string, number[]> = {
-  finance_aml: [8],
+  finance_aml: [4],
   medical_fl: [8],
   telecom_ids: [7, 8],
 };

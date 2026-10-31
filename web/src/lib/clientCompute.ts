@@ -80,8 +80,9 @@ const decisionMargin = (row: number[]) => {
  * What makes a trained QCNN classically simulable, in the artifact's own words (`circuit.simulability`,
  * Round 84), with the reference added where the artifact does not carry it. The two QCNN log lines
  * were literals - "two-qubit blocks on disjoint pairs" on telecom, "a tree of two-qubit blocks" on
- * finance and medical - and telecom's SU(4) circuit on every neighbouring pair is neither. Finance's
- * artifact predates the field, and is the tree.
+ * finance and medical - and telecom's SU(4) circuit on every neighbouring pair is neither. Every
+ * shipped artifact carries the field since finance's Round 84 retrain; the default below is for one
+ * that does not, which this file reads as the tree.
  */
 const qcnnSimulability = (w: QcnnWeights) => {
   const said = w.circuit?.simulability ?? "a tree of two-qubit blocks, so classically simulable by construction";
@@ -3569,13 +3570,22 @@ export function runClientPipeline(
           // z-scores to medical's raw-input model while its bundle shipped no raw rows). The pairing
           // is asserted in tests/test_the_encoder_receives_the_space_the_artifact_declares.py.
           const qcnnFeats = w ? (realIn?.bySpace?.[w.input_space] ?? (realIn ? undefined : feats)) : undefined;
-          if (w && !qcnnFeats) {
+          // AS WIDE AS THE ARTIFACT READS, or refused (Round 84). The row goes in by position and is
+          // sliced to the wire count, so a bundled row of another width - the eight-column finance
+          // block beside the four-feature retrain - would hand the circuit its first columns, which
+          // are not the ones its `feature_names` lists.
+          const qcnnWidth = w ? (w.n_features ?? w.n_qubits) : 0;
+          const qcnnMisfit = !!(w && qcnnFeats && realIn && qcnnFeats.length !== qcnnWidth);
+          if (w && (!qcnnFeats || qcnnMisfit)) {
             const cls = artifacts.fhe_prediction ?? inf.prediction;
             artifacts.primary_inference = { backend: "ckks", class: cls };
             metric(stage, "primary_inference_class", cls);
             metric(stage, "primary_inference_backend", "ckks");
-            emit("log", stage, `QCNN selected, but the bundled sample ships no rows in the space the `
-              + `trained QCNN declares (${w.input_space}); not running it. Reporting the CKKS class.`);
+            emit("log", stage, qcnnMisfit
+              ? `QCNN selected, but the bundled sample's ${w.input_space} row has ${qcnnFeats!.length} `
+                + `values and the trained QCNN reads ${qcnnWidth}; not running it. Reporting the CKKS class.`
+              : `QCNN selected, but the bundled sample ships no rows in the space the `
+                + `trained QCNN declares (${w.input_space}); not running it. Reporting the CKKS class.`);
           } else if (w && qcnnFeats) {
             // MEASURED, on the same footing as the CKKS tier's `fhe_ms_per_rotation`. The QCNN was
             // reported by accuracy alone while every encrypted figure carried a latency, so the two
@@ -3592,9 +3602,9 @@ export function runClientPipeline(
             metric(stage, "qcnn_expectation_z0", r2(qc.expectation));
             metric(stage, "qcnn_inference_ms", r2(qcnnMs));
             metric(stage, "qcnn_qubits", qc.qubits);
-            // Report the metric the CORPUS warrants, not always accuracy. At finance's 6% fraud
-            // rate accuracy reads 0.97 against a 0.95 majority baseline and says almost nothing,
-            // while minority-class F1 is 0.71 against an all-positive 0.10. The trainer decides
+            // Report the metric the CORPUS warrants, not always accuracy. At finance's 5% fraud
+            // rate accuracy reads 0.955 against a 0.948 majority baseline and says almost nothing,
+            // while minority-class F1 is 0.229 against an all-positive 0.098. The trainer decides
             // which is the headline and ships it in `headline_metric`.
             // Three regimes, matching `headline_metric` in the artifact. The multiclass arm reads
             // the uniform-random floor rather than the constant-predictor one: it is the higher of

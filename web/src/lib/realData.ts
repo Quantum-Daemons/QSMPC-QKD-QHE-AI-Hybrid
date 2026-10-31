@@ -170,9 +170,11 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       // The same transaction in raw units, for any consumer whose artifact declares `raw`. Indexed,
       // not re-drawn: a second random pick would hand the QCNN a different transaction from the one
       // the CKKS tier and the SHAP panel are describing, and the page would attribute one row's
-      // explanation to another row's prediction. Each space keeps its own width: `zscore` is the
-      // model's four columns, `raw` the eight the finance QCNN artifact was trained on, in the order
-      // `names_by_space.raw` gives and the circuit reads by position.
+      // explanation to another row's prediction. `raw` is the same four columns as `zscore`, in
+      // `names` order, unstandardised: what the finance QCNN artifact reads since its Round 84
+      // retrain, in the order its `feature_names` lists and the circuit reads by position. Each
+      // space keeps the width the file ships rather than this one, so a raw block of another width
+      // reaches the QCNN branch whole and is refused there instead of being cut to its first columns.
       return { values: row.slice(0, width), bySpace: rowBySpace(ds, idx, Number.MAX_SAFE_INTEGER),
                names: ds.names, provenance: ds.provenance, model: ds.model,
                baseline: columnMeans(rows, width) };

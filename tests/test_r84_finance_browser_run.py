@@ -1,15 +1,17 @@
 """Round 84: the browser's finance run encrypts and explains the four-column model, and the QCNN
-still gets its own eight columns.
+gets its own columns: since its Round 84 retrain, the same four.
 
 WHY THIS EXISTS
 
 `realData.realInput("finance_aml")` sliced every row, every space and the SHAP reference point to
 eight columns, and `FEATURE_NAMES` named the eight. With the model refitted on four columns
 (`tests/test_r84_finance_paysim_model.py`), a slice to the model's own width is what keeps the CKKS
-row, the SHAP bars and the reference point in one space, while the finance QCNN artifact, trained on
-all eight and fed by position, must still receive its eight raw values. Both are checked by RUNNING
-the browser code in node: `realInput` on its own, and the pipeline through `private_inference` with
-the CKKS default and with the trained QCNN selected.
+row, the SHAP bars and the reference point in one space, while the finance QCNN artifact, fed by
+position, must receive exactly the raw columns it was trained on. Those were the eight until the
+artifact was retrained on the model's four (tests/test_r84_qcnnfin_four_columns.py); this file's two
+QCNN checks were updated with it. Both are checked by RUNNING the browser code in node: `realInput`
+on its own, and the pipeline through `private_inference` with the CKKS default and with the trained
+QCNN selected.
 
 WHAT EACH FAILS ON AT THE BASE COMMIT (de1111c)
 
@@ -18,7 +20,8 @@ WHAT EACH FAILS ON AT THE BASE COMMIT (de1111c)
 - The explanation's bars include `device_risk` (the base model's top driver) and the run's XAI log
   line names it.
 - The trained QCNN still running on finance is a no-regression guard: it held at the base commit,
-  where the payload's only block was eight wide, and must hold now that `samples` is four wide.
+  where the payload's only block was eight wide, and must hold now that `samples` is four wide. It
+  runs at the artifact's four wires since the retrain.
 
 The garbled-circuit argmax is a gitignored wasm build, so a plaintext argmax stands in for it here,
 as in tests/test_r84_integrator_wiring.py; nothing below asserts anything about it.
@@ -134,15 +137,18 @@ def run(tmp_path_factory) -> dict:
     return json.loads(proc.stdout.strip().splitlines()[-1])
 
 
-def test_real_input_is_the_models_four_columns_and_the_qcnns_eight(run) -> None:
+def test_real_input_is_the_models_four_columns_and_the_qcnns_four(run) -> None:
+    """The QCNN half updated in Round 84 (qcnnfin): `raw` is the artifact's four columns, which are
+    the model's four, so it is as wide as `values` and named by the same `names`."""
     d = json.loads(PAYLOAD.read_text())
+    w = json.loads((WEB / "public" / "data" / "finance" / "qcnn_weights.json").read_text())
     one = run["realInput"]
     idx = int(0.37 * len(d["samples"]))
-    assert one["names"] == FOUR
+    assert one["names"] == FOUR == w["feature_names"]
     assert one["values"] == d["samples"][idx] and len(one["values"]) == 4
     assert one["bySpace"]["zscore"] == one["values"]
     assert one["bySpace"]["raw"] == d["samples_by_space"]["raw"][idx]
-    assert len(one["bySpace"]["raw"]) == 8 == len(d["names_by_space"]["raw"])
+    assert len(one["bySpace"]["raw"]) == 4 == w["n_features"] == w["n_qubits"]
     assert len(one["baseline"]) == 4
     assert [len(r) for r in one["model"]["W"]] == [4, 4]
 
@@ -166,8 +172,9 @@ def test_the_ckks_run_encrypts_and_explains_the_four_column_model(run) -> None:
     assert fed["federated_accuracy_source"] == "bundled finance_aml sample, 400 rows"
 
 
-def test_the_trained_qcnn_still_runs_on_its_own_eight_raw_columns(run) -> None:
+def test_the_trained_qcnn_still_runs_on_its_own_four_raw_columns(run) -> None:
+    """Updated in Round 84 (qcnnfin): the artifact the page loads is the four-wire retrain."""
     pi = run["qcnn"]["metrics"]["private_inference"]
     assert pi["primary_inference_backend"] == "qcnn-trained", pi
-    assert pi["qcnn_qubits"] == 8
+    assert pi["qcnn_qubits"] == 4
     assert run["qcnn"]["primary"]["backend"] == "qcnn-trained"

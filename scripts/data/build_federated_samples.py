@@ -45,10 +45,11 @@ block reports the fitting-row figures beside a 5-fold cross-validation of the sa
 the false-positive rate on the TSV's legitimate rows that were not drawn, so neither is mistaken
 for the other.
 
-``samples_by_space.raw`` keeps ALL EIGHT columns, in the TSV's order. That block feeds the finance
-QCNN artifact (``models/qcnn_finance``), which was trained on the eight and is fed by position; the
-payload names its columns in ``names_by_space.raw`` and declares its constant and duplicated
-columns in ``eda_by_space.raw``. Retraining that artifact on the four is outside this script.
+``samples_by_space.raw`` holds the SAME four columns, in the same order, unstandardised. That block
+feeds the finance QCNN artifact (``models/qcnn_finance``), which since its Round 84 retrain reads
+these four in raw units, in this order (its ``feature_names``), and standardises them with its own
+training moments; it was trained on all eight until then, and the eight-wide block, with the
+``names_by_space`` and ``eda_by_space`` entries that named and described it, is gone.
 
 Run:  .venv/bin/python scripts/data/build_federated_samples.py
 """
@@ -76,9 +77,10 @@ from qsh.models.registry import (  # noqa: E402
     PAYSIM_SAMPLE_COLUMNS,
 )
 
-#: The TSV's eight columns, in file order: the order the finance QCNN artifact is fed in.
+#: The TSV's eight columns, in file order: the row layout this builder parses.
 FIN_TSV_NAMES = list(PAYSIM_SAMPLE_COLUMNS)
-#: The four the bundled linear model reads, in this order (`samples`, `names`, `model.W`).
+#: The four the bundled linear model reads, in this order (`samples`, `names`, `model.W`), and the
+#: four the finance QCNN reads in the same order (`samples_by_space.raw`, its `feature_names`).
 FIN_NAMES = list(PAYSIM_MODEL_FEATURES)
 
 #: The eight WDBC columns the medical demo has always shipped, by scikit-learn feature name.
@@ -162,29 +164,6 @@ def _eda(X: np.ndarray, names: list[str]) -> dict:
                  "column twice; both are kept rather than removed so the feature order stays the "
                  "one the backend, the registry and the published weights all use."),
     }
-
-
-def _eda_raw(X: np.ndarray, names: list[str]) -> dict:
-    """`_eda` for a block in SOURCE units, with duplicates found as affine copies.
-
-    The QCNN standardises each raw wire with its own training moments, so two raw columns related by
-    a positive affine map become the same wire however different their raw values look. `_eda`
-    compares raw values and would miss exactly that pair (`amount`, `amount_zscore`), so the copies
-    are found here on the columns' z-scores instead.
-    """
-    out = _eda(X, names)
-    sd = X.std(axis=0)
-    Z = (X - X.mean(axis=0)) / np.where(sd > 0, sd, 1.0)
-    out["duplicates"] = [[names[i], names[j]]
-                         for i in range(len(names)) for j in range(i + 1, len(names))
-                         if sd[i] > 0 and sd[j] > 0
-                         and float(np.max(np.abs(Z[:, i] - Z[:, j]))) <= 1e-4]
-    out["note"] = ("Per-column statistics of samples_by_space.raw, the eight columns the finance "
-                   "QCNN artifact is fed by position. `degenerate` names columns constant in these "
-                   "rows; `duplicates` names pairs that are affine copies of each other, which the "
-                   "artifact's per-wire standardisation turns into one wire twice. The linear model "
-                   "in `model` reads only the four columns in `names`.")
-    return out
 
 
 def _fit_paysim_surrogate(X: np.ndarray, y: np.ndarray, seed: int):
@@ -288,8 +267,8 @@ def build_finance(n: int, seed: int) -> dict:
     eda["note"] = ("Per-column statistics of `samples`, the four standardised columns the linear "
                    "model reads. `degenerate` names columns that carry effectively no signal and "
                    "`duplicates` names pairs that are the same column twice. The columns left out "
-                   "of the model are in `excluded_features`; the eight the QCNN is fed are described "
-                   "in eda_by_space.raw.")
+                   "of the model are in `excluded_features`; samples_by_space.raw holds the same "
+                   "four columns unstandardised, the finance QCNN's input.")
     return {
         "provenance": BUNDLED_DEMO_SAMPLES["finance_aml"][0],
         # What CC BY-SA 4.0 asks to travel with Adapted Material (sections 3(a)(1) and 3(b)): the
@@ -305,8 +284,9 @@ def build_finance(n: int, seed: int) -> dict:
                           "paysim_sample.tsv (itself a fraud-enriched subset of the Kaggle file), "
                           "whose eight columns are quantities computed from PaySim fields under "
                           f"AML-style names; `samples` keeps {len(FIN_NAMES)} of them, standardised "
-                          "and rounded to 5 decimals, and samples_by_space.raw all eight, "
-                          "unstandardised. Adapted Material, shared under CC BY-SA 4.0."),
+                          "and rounded to 5 decimals, and samples_by_space.raw the same "
+                          f"{len(FIN_NAMES)}, unstandardised and rounded to 5 decimals. Adapted "
+                          "Material, shared under CC BY-SA 4.0."),
         "names": FIN_NAMES,
         # What each name means in PaySim's terms, and what was left out and why. The names relabel
         # PaySim quantities (`cross_border` is a transaction-type flag), so a file that shipped the
@@ -321,8 +301,9 @@ def build_finance(n: int, seed: int) -> dict:
         # `samples` is StandardScaler output and must stay that way: the distilled CKKS-linear model
         # above is fitted on it, and the exact-linear SHAP panel attributes in the same space. But
         # `models/qcnn_finance/weights.json` declares `input_space: "raw"` - its moments were fitted
-        # by the trainer on the whole raw TSV - so the browser standardises whatever it is handed a
-        # SECOND time, with a DIFFERENT scaler (the trainer's, not this file's 70% fit).
+        # by the trainer on its own training split of the raw TSV - so the browser standardises
+        # whatever it is handed a SECOND time, with a DIFFERENT scaler (the trainer's, not this
+        # file's 70% fit).
         #
         # Measured on the shipped pair before this field existed: wire 0 (`amount`) encoded to a
         # tanh range of [-0.99999992, -0.99982701], sd 3.3e-05; 556 of 3200 values saturated; 69 of
@@ -336,11 +317,12 @@ def build_finance(n: int, seed: int) -> dict:
         # The mismatch cannot be undone in the browser - this file ships no numeric scaler constants,
         # and the two scalers differ - so the raw columns have to come from here.
         #
-        # ALL EIGHT, IN THE TSV'S ORDER. The artifact was trained on the eight and the browser hands
-        # it this row by position, so the block is wider than `samples` and names its own columns.
+        # THE MODEL'S FOUR, IN `names` ORDER (Round 84). The artifact was retrained on the four
+        # columns `samples` carries, and its `feature_names` lists them in this order; the browser
+        # hands it this row by position, so the block is exactly as wide as `samples` and is named
+        # by `names`. It was the TSV's eight while the artifact read the eight.
         "feature_space": "zscore",
-        "samples_by_space": {"raw": [[round(float(v), 5) for v in r] for r in X8]},
-        "names_by_space": {"raw": FIN_TSV_NAMES},
+        "samples_by_space": {"raw": [[round(float(v), 5) for v in r] for r in X]},
         "labels": [int(v) for v in y],
         "model": {"W": [[0.0] * len(FIN_NAMES), [float(w) for w in student.coef_[0]]],
                   "b": [0.0, float(student.intercept_[0])]},
@@ -352,7 +334,6 @@ def build_finance(n: int, seed: int) -> dict:
                     "browser reshuffles with its own run seed, so this is not - and cannot be - "
                     "aligned with any particular train/test split it makes."),
         "eda": eda,
-        "eda_by_space": {"raw": _eda_raw(X8, FIN_TSV_NAMES)},
     }
 
 

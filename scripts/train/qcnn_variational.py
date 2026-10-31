@@ -40,6 +40,17 @@ sys.path.insert(0, str(REPO / "src"))
 
 N_QUBITS = 8
 
+#: The width a use case's UNSUFFIXED artifact, `models/qcnn_<usecase>`, is trained at where that is
+#: not N_QUBITS: the default of `--qubits`, and the one width whose directory carries no `_q<n>`.
+#: The width follows the features. `circuit()` encodes feature j on wire j as RY(c * pi * tanh(z_j)),
+#: `main()` refuses fewer wires than features and leaves every further wire unencoded, so the
+#: narrowest width the trainer accepts is the feature count, and a wider register adds only wires
+#: that carry no feature: the one such wire measured on this tree (a ninth for eight features) gave
+#: identical metrics at five of five seeds on finance and on medical
+#: (references/qcnn-width-ablation.md). Finance encodes four features since Round 84, so its artifact
+#: is four wires, a power of two that pools four wires to two and two to one with no orphan.
+SHIPPED_WIDTH = {"finance": 4}
+
 #: The circuits this trainer builds, by the name an artifact records in `circuit.name`. Both share
 #: the encoding, `layer_plan`, the pooling pattern (survivor `a` of each pair, orphan into the first
 #: survivor), the per-survivor F block and both heads; they differ in the convolution and the pool.
@@ -61,8 +72,8 @@ ARCHS = ("tree", "hur-su4")
 #: indexing on every gate forces a device-to-host synchronisation per gate on CUDA, which made a
 #: 400-epoch SU(4) run several times slower than it needs to be. The cached tensors come from the same
 #: expressions, so every gate indexes the same values in the same order and every result is
-#: bit-identical - checked by regenerating the shipped finance artifact at seed 0 with the cache in
-#: place (theta, scale and bias max |diff| 0).
+#: bit-identical - checked by regenerating the then-shipped eight-wire finance artifact at seed 0
+#: with the cache in place (theta, scale and bias max |diff| 0).
 _INDEX: dict = {}
 
 
@@ -606,6 +617,20 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
     return (p * sign).sum(1)
 
 
+def artifact_dir(usecase: str, nq: int) -> Path:
+    """Where `main()` writes a run's artifact when no `--out` is given.
+
+    `models/qcnn_<usecase>` at the use case's shipped width (`SHIPPED_WIDTH`, else N_QUBITS) and
+    `models/qcnn_<usecase>_q<nq>` at any other, so a run at another width cannot overwrite the
+    artifact the page serves. A function rather than an expression inside `main()`, so a test can
+    assert that every shipped artifact's recorded command writes the directory it ships from without
+    running the trainer against `models/`: four wires for finance since Round 84 had to land in
+    `models/qcnn_finance`, where an expression keyed to N_QUBITS alone wrote `qcnn_finance_q4`.
+    """
+    suffix = "" if nq == SHIPPED_WIDTH.get(usecase, N_QUBITS) else f"_q{nq}"
+    return REPO / "models" / f"qcnn_{usecase}{suffix}"
+
+
 def shuffled_split(n: int, seed: int) -> tuple[np.ndarray, int, int]:
     """(permutation, train cut, validation cut) of `n` rows: 70 / 15 / 15 after a seeded shuffle.
 
@@ -650,13 +675,23 @@ def load(usecase: str):
             "is a performance claim about real links.")
 
     if usecase == "finance":
+        # THE FOUR COLUMNS THE FINANCE LINEAR MODEL READS (Round 84), by name from the registry, in
+        # its order: that order is `feature_names`, the order every inference path feeds the wires
+        # in. It read every TSV column but the label until then, eight, two of them (`device_risk`,
+        # `geo_mismatch`) computed from PaySim's balance columns, which the dataset's description
+        # says must not be used for fraud detection because fraudulent transactions are cancelled
+        # (registry.PAYSIM_EXCLUDED_FEATURES and PAYSIM_BALANCE_WARNING).
         import pandas as pd
+
+        from qsh.models.registry import PAYSIM_MODEL_FEATURES
         df = pd.read_csv(REPO / "data" / "finance" / "paysim_sample.tsv", sep="\t", comment="#")
-        cols = [c for c in df.columns if c != "isFraud"]
+        cols = list(PAYSIM_MODEL_FEATURES)
         X, y = df[cols].to_numpy(float), df["isFraud"].to_numpy(int)
         return X, y, cols, ("PaySim simulator output (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; "
                             "Lopez-Rojas et al. 2016) - SYNTHETIC transactions from aggregated real "
-                            "mobile-money logs, 8 AML features, the same 8 the browser pipeline feeds")
+                            "mobile-money logs; the four columns the finance linear model reads "
+                            "(amount, cross_border, night_tx, new_payee), none built from PaySim's "
+                            "balance columns")
     raise SystemExit(f"no loader for {usecase!r}")
 
 
@@ -701,8 +736,9 @@ def main() -> int:
     # benchmark row and the untrained fallback, while the trained branch read w.n_qubits and got 8
     # whatever the visitor chose. Telecom carries 7 features on 8 wires, so 7 is the width its data
     # actually asks for and the pad wire is the thing worth measuring.
-    ap.add_argument("--qubits", type=int, default=N_QUBITS,
-                    help="circuit width; must be >= the feature count")
+    ap.add_argument("--qubits", type=int, default=None,
+                    help="circuit width; must be >= the feature count (default: the use case's "
+                         f"shipped width, {SHIPPED_WIDTH} or {N_QUBITS})")
     ap.add_argument("--epochs", type=int, default=120)
     ap.add_argument("--seed", type=int, default=0)
     # 1 by default: reproducibility of a published artifact outweighs training speed for a model
@@ -721,8 +757,10 @@ def main() -> int:
     # c = 0.5 keeps the tails apart (fidelity at most 0.015 there). Pre-registered over five seeds,
     # 2026-10-30: c = 0.5 against c = 1 gained +0.042 medical accuracy and +0.050 / +0.051 telecom
     # macro F1 at 8 / 7 wires, better on 5 of 5 seeds each; finance did not gain at 0.5, and 0.75
-    # failed its confirmatory run on fresh seeds, so finance stays at 1. Recorded in the artifact
-    # as `encoding_scale`, which every inference path multiplies the angle by.
+    # failed its confirmatory run on fresh seeds, so finance stays at 1. That finance arm ran on the
+    # eight-column input; the Round 84 retrain on four columns kept c = 1 as decided rather than
+    # re-choosing it on its own test rows. Recorded in the artifact as `encoding_scale`, which every
+    # inference path multiplies the angle by.
     ap.add_argument("--encoding-scale", type=float, default=1.0,
                     help="c in RY(c * pi * tanh(z)); 0 < c <= 1 (default 1)")
     #: Exploration only: write the artifact somewhere other than the models/ directory it ships
@@ -794,10 +832,11 @@ def main() -> int:
     #
     #   medical  raw WDBC units since Round 84 (see above); the bundle must ship the rows in that
     #            space, keyed `raw`, as finance's does.
-    #   finance  the bundled sample is RAW and mixed-scale - `amount` is log 0..17.7, `amount_zscore`
-    #            is already a z-score, five columns are binary 0/1 - and all 16 bundled rows are found
-    #            in this tsv within 1e-3, so the browser supplies exactly these units. It therefore
-    #            MUST standardise, with the moments fitted here and shipped alongside.
+    #   finance  raw and mixed-scale - `amount` is a log amount from 0 to 17.7 and the other three
+    #            columns are binary 0/1 - and the browser's bundled sample ships the same four columns
+    #            in these units (`samples_by_space.raw` of paysim_sample.json, its rows drawn from
+    #            this tsv), so this MUST standardise, with the moments fitted here and shipped
+    #            alongside.
     #
     # Either way the encoding is RY(c*tanh(z)*pi): bounded, smooth, order-preserving. tanh on a raw
     # log-amount of 14 would saturate at 1.0 and throw the column away, which is why standardising
@@ -810,7 +849,8 @@ def main() -> int:
     # RY(tanh(0)*pi) = RY(0) = identity - the wire is genuinely unencoded rather than carrying a
     # constant. A constant would be a zero-variance feature the entangling layers still rotate, which
     # looks like an input at training time and means nothing at inference.
-    nq = int(a.qubits)
+    shipped_width = SHIPPED_WIDTH.get(a.usecase, N_QUBITS)
+    nq = int(a.qubits if a.qubits is not None else shipped_width)
     if Xs.shape[1] < nq:
         pad = nq - Xs.shape[1]
         print(f"  {Xs.shape[1]} features on {nq} wires: {pad} wire(s) left unencoded (RY(0))")
@@ -916,10 +956,11 @@ def main() -> int:
     # Classical baselines on the identical split - the number that decides whether this ships.
     #
     # AND THE RIGHT METRIC, which is not always accuracy. This project treats accuracy on an
-    # imbalanced problem as a defect: at finance's 6.33% fraud rate the QCNN scores 0.9692 accuracy
-    # against a 0.9367 majority baseline, which reads as a good model and says almost nothing. Its
-    # minority-class F1 is 0.6992 against an all-positive baseline of 0.1191 - still a real 5.9x
-    # lift, but a very different sentence. Both are recorded; the imbalanced case leads with F1.
+    # imbalanced problem as a defect: at finance's 5.17% test prevalence the shipped four-column
+    # QCNN scores 0.955 accuracy against a 0.9483 majority baseline, which reads as a good model and
+    # says almost nothing. Its minority-class F1 is 0.2286 against an all-positive baseline of
+    # 0.0983 - a 2.3x lift, and a very different sentence. Both are recorded; the imbalanced case
+    # leads with F1.
     from sklearn.linear_model import LogisticRegression
     from sklearn.metrics import f1_score
     lr = LogisticRegression(max_iter=2000).fit(Xs[tr], y[tr])
@@ -1013,9 +1054,8 @@ def main() -> int:
     # weights and not the artifact.
     #
     # `_q{nq}` is the directory Round 40 created by hand, so nothing moves: the naming that already
-    # exists becomes the naming the trainer produces.
-    suffix = "" if nq == N_QUBITS else f"_q{nq}"
-    out = Path(a.out) if a.out else REPO / "models" / f"qcnn_{a.usecase}{suffix}"
+    # exists becomes the naming the trainer produces. See `artifact_dir` for the unsuffixed width.
+    out = Path(a.out) if a.out else artifact_dir(a.usecase, nq)
     out.mkdir(parents=True, exist_ok=True)
     # The flags that change the weights, and only those - `--out` moves the file, not the model.
     # `--arch` and `--encoding-scale` are written out even at their defaults so the command an
@@ -1098,7 +1138,9 @@ def main() -> int:
                               "init. Re-running this command on a CUDA device regenerates theta, "
                               "scale, bias and every metric bit for bit: five consecutive runs of "
                               "each Round 47 artifact, and two independent runs of each Round 84 "
-                              "one (the pre-registered experiment and the retrain), max |diff| 0. "
+                              "one (for medical and telecom the pre-registered experiment and the "
+                              "retrain, for finance the four-column retrain and a repeat of it), "
+                              "max |diff| 0. "
                               "That is true only since the multiclass readout stopped using "
                               "index_add_, whose CUDA atomicAdd made the same seeded command land "
                               "on macro F1 0.809846 or 0.807781 depending on the run. On a CPU it "

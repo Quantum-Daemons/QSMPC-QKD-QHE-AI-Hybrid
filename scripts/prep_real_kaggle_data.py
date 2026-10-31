@@ -59,9 +59,10 @@ from qsh.models.registry import (  # noqa: E402
 )
 
 # ----- finance column layout: the registry's, in TSV order -----------------------------------------
-# The TSV keeps all eight columns because the finance QCNN artifact was trained on them and reads
-# them by position. The demo's linear model, here and in usecases/finance_aml, reads four of them
-# (PAYSIM_MODEL_FEATURES); the reasons the other four are not inputs are PAYSIM_EXCLUDED_FEATURES.
+# The TSV keeps all eight columns, the layout its readers parse; no shipped model reads all eight.
+# The demo's linear model, here and in usecases/finance_aml, and the finance QCNN artifact since its
+# Round 84 retrain read four of them (PAYSIM_MODEL_FEATURES); the reasons the other four are not
+# inputs are PAYSIM_EXCLUDED_FEATURES.
 FIN_NAMES = list(PAYSIM_SAMPLE_COLUMNS)
 #: The comment block that heads the TSV, written here and checked against the shipped file by
 #: tests/test_r84_finance_paysim_model.py, so a regeneration cannot drop the balance-column note.
@@ -96,8 +97,9 @@ def _paysim_features(df):
     `device_risk` and `geo_mismatch` read oldbalanceOrg, newbalanceOrig, oldbalanceDest and
     newbalanceDest, which the dataset's description says must not be used for fraud detection
     because fraudulent transactions are cancelled (registry.PAYSIM_BALANCE_WARNING). They are still
-    written, because the finance QCNN artifact was trained on all eight columns; no linear model in
-    this repository reads them (registry.PAYSIM_EXCLUDED_FEATURES)."""
+    written, so the TSV keeps the layout its readers parse; no model in this repository reads them
+    since the finance QCNN artifact's Round 84 retrain on four columns
+    (registry.PAYSIM_EXCLUDED_FEATURES)."""
     import numpy as np
     amount = df["amount"].to_numpy(float)
     log_amt = np.log1p(amount)

@@ -376,7 +376,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
             {hasTrainedQcnn(usecase) && qcnnWidths(usecase).length === 1 && (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <span className="muted" style={{ fontSize: 12 }}
-                title="One trained width ships for this use case. A ninth wire was offered until Round 84; it carried no feature and gave the same class as 8 wires on every row, so it was removed rather than left as a choice that changes nothing. The circuit runs unencrypted and is simulated exactly on 2^n amplitudes, so it is classically simulable at this size.">QCNN qubits</span>
+                title="One trained width ships for this use case: one wire per feature the circuit encodes, so a wider register would only add wires that carry no feature. The circuit runs unencrypted and is simulated exactly on 2^n amplitudes, so it is classically simulable at this size.">QCNN qubits</span>
               <div style={{ fontSize: 13, padding: "3px 0" }}>{qcnnWidths(usecase)[0]} wires (the one trained width)</div>
             </div>)}
             {/* Only the secure-sum path reads it, and only genomics/finance run that path. The old

@@ -124,9 +124,9 @@ def test_the_payload_reports_its_own_eda(usecase: str) -> None:
 
     ``velocity_24h`` is non-zero in 2 of the 4,000 bundled PaySim rows. Since Round 84 the finance
     model no longer reads it (nor ``amount_zscore``, ``device_risk`` or ``geo_mismatch``), so
-    finance's ``samples`` carry four columns and nothing degenerate; the eight the QCNN artifact is
-    still fed, ``velocity_24h`` among them, are declared in ``eda_by_space.raw`` and checked by
-    tests/test_r84_finance_paysim_model.py. Carrying a column unannounced is how the next person
+    finance's ``samples`` carry four columns and nothing degenerate, and so does the raw block the
+    QCNN artifact is fed since its retrain on the same four (checked by
+    tests/test_r84_finance_paysim_model.py). Carrying a column unannounced is how the next person
     spends an afternoon on a feature that never moves.
     """
     eda = _payload(usecase).get("eda")

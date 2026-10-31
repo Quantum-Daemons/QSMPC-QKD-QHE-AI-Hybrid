@@ -18,10 +18,13 @@ WHAT IS ASSERTED, AND WHAT EACH FAILS ON AT THE BASE COMMIT (de1111c)
 - The builder reproduces the shipped payload byte for byte. A drift guard, not a behaviour test:
   it holds at the base commit too, where the eight-column builder wrote the eight-column file.
 - The evaluation block and the model reproduce from the shipped rows. Base: no evaluation block.
-- The raw block the QCNN is fed is the artifact's eight columns in its order, with the constant and
-  the duplicated column declared. Base: no `names_by_space` and no `eda_by_space`.
+- The raw block the QCNN is fed is the artifact's own columns in its order: the same four as
+  `samples`, unstandardised, since the artifact's Round 84 retrain on those four (it was the eight,
+  named in `names_by_space` and described in `eda_by_space`, while the artifact read the eight).
+  Base: an eight-wide block beside an eight-feature artifact.
 - The TSV header carries the balance-column note, written by the generator. Base: neither.
-- The Python use case reads the same four columns and hands the QCNN its own eight. Base: eight.
+- The Python use case reads the same four columns and hands the QCNN the same four, the artifact's
+  own, in its order. Base: eight.
 - Visitor text and the browser's fallback names. Base: the blurb names device_risk; FEATURE_NAMES
   lists the eight.
 """
@@ -125,23 +128,26 @@ def test_the_stated_fitting_row_figures_reproduce_from_the_shipped_rows() -> Non
     assert fit["accuracy"] < 0.95 and cv["accuracy"] < 0.95
 
 
-def test_the_qcnn_feed_keeps_the_artifacts_own_eight_columns_and_declares_its_degeneracies() -> None:
+def test_the_qcnn_feed_is_the_artifacts_own_four_columns_in_its_order() -> None:
+    """Updated in Round 84 (qcnnfin): the artifact was retrained on the four model columns, so the
+    block it is fed is those four, named by `names`, and the eight-column fields that named and
+    described the old block (`names_by_space`, `eda_by_space`) are gone with it."""
     d, w = _payload(), json.loads(QCNN.read_text())
     raw = d["samples_by_space"]["raw"]
-    assert d["names_by_space"]["raw"] == EIGHT == w["feature_names"]
-    assert len(raw) == len(d["samples"]) and {len(r) for r in raw} == {w["n_features"]}
-    # The SAME transactions in both spaces: the model's columns of the raw block, z-scored with the
-    # file's own scaler (first 70 percent), are the `samples` block.
-    keep = [EIGHT.index(n) for n in d["names"]]
-    R = np.asarray(raw, dtype=float)[:, keep]
+    assert d["names"] == FOUR == w["feature_names"], (d["names"], w["feature_names"])
+    assert not LEAKY & set(w["feature_names"]), "the QCNN reads a balance-derived column again"
+    assert len(raw) == len(d["samples"]) and {len(r) for r in raw} == {w["n_features"]} == {4}
+    assert "names_by_space" not in d and "eda_by_space" not in d, (
+        "the payload still names or describes an eight-column raw block it no longer ships")
+    # The SAME transactions in both spaces, column for column: the raw block, z-scored with the
+    # file's own scaler (first 70 percent), is the `samples` block.
+    R = np.asarray(raw, dtype=float)
     cut = int(len(R) * 0.7)
     Z = (R - R[:cut].mean(axis=0)) / R[:cut].std(axis=0)
     assert float(np.abs(Z - np.asarray(d["samples"])).max()) < 1e-4
-    # What the circuit's wires carry, declared: a constant column and an affine copy.
-    eda = d["eda_by_space"]["raw"]
-    assert eda["degenerate"] == ["velocity_24h"]
-    assert eda["duplicates"] == [["amount", "amount_zscore"]]
+    # Nothing the wires carry is constant or a copy, in either space.
     assert d["eda"]["degenerate"] == [] and d["eda"]["duplicates"] == []
+    assert float(R.std(axis=0).min()) > 0.1
 
 
 def test_the_tsv_header_carries_the_balance_note_and_the_generator_writes_it() -> None:
@@ -171,7 +177,9 @@ def test_the_tsv_figures_the_registry_quotes_hold() -> None:
     assert np.corrcoef(a, z)[0, 1] > 0.99999
 
 
-def test_the_python_pipeline_reads_the_same_four_and_feeds_the_qcnn_its_eight() -> None:
+def test_the_python_pipeline_reads_the_same_four_and_feeds_the_qcnn_the_same_four() -> None:
+    """Updated in Round 84 (qcnnfin): the artifact reads the model's four columns, so the QCNN's row
+    is the scored transaction's `features` themselves, in the artifact's order."""
     pytest.importorskip("xgboost")
     from qsh.qhe.qcnn_trained import load_weights
     from qsh.usecases.finance_aml import build
@@ -183,11 +191,11 @@ def test_the_python_pipeline_reads_the_same_four_and_feeds_the_qcnn_its_eight() 
     assert np.asarray(ctx.data["explain_baseline"]).shape == (4,)
     assert ctx.data["_finance_model"]["features"] == FOUR
     w = load_weights("finance_aml")
+    assert w["feature_names"] == FOUR
     q = np.asarray(ctx.data["qcnn_features"])
-    assert q.shape == (len(w["feature_names"]),) == (8,)
-    # The QCNN's row is the scored transaction itself: its model columns are `features`.
-    idx = [w["feature_names"].index(n) for n in FOUR]
-    np.testing.assert_allclose(q[idx], ctx.data["features"], rtol=0, atol=0)
+    assert q.shape == (len(w["feature_names"]),) == (4,)
+    # The QCNN's row is the scored transaction itself, column for column, in raw units.
+    np.testing.assert_allclose(q, ctx.data["features"], rtol=0, atol=0)
 
 
 def test_the_visitor_text_and_the_browser_fallback_names_follow_the_model() -> None:

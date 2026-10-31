@@ -702,7 +702,9 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   vector is a few hundred amplitudes anyway.
   **The paper does not predict that logistic regression beats the circuit; that is measured here.**
   The trained QCNN loses to or ties logistic regression on the identical split (finance
-  minority-class F1 **0.735294** vs **0.865672**; medical accuracy **0.883721** vs **0.953488**
+  minority-class F1 **0.228571** vs **0.439024** at the shipped seed since its Round 84 retrain on
+  the four columns the linear model reads, and over five seeds the circuit leads on 2 and trails on
+  3, a mean difference of +0.0426 that five seeds do not separate; medical accuracy **0.883721** vs **0.953488**
   until Round 84, and since its retrain at c = 0.5 a tie, **0.953488** each at the shipped seed, with
   logistic regression ahead by 0.0186 over five seeds), and Bowles
   et al. (next entry) report the same direction across 160 datasets. Corrected 2026-10-30: this said
