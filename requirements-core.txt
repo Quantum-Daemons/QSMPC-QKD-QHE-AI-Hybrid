@@ -15,7 +15,7 @@ qiskit-aer>=0.15            # CPU build. qiskit-aer-gpu is not an option here, a
 pennylane>=0.38
 
 # Post-quantum cryptography (NIST FIPS 203/204/205)
-liboqs-python>=0.10        # ML-KEM / ML-DSA / SLH-DSA via Open Quantum Safe liboqs
+liboqs-python>=0.16.0.2    # ML-KEM / ML-DSA / SLH-DSA via liboqs; >=0.16.0.2 for GHSA-w696-4vrr-x6x3 (short keys zero-padded)
 cryptography>=42.0         # classical X25519 etc. for hybrid KEM
 
 # Classical ML helpers used by QKD optimizer / QML-IDS baselines

@@ -333,8 +333,11 @@ DS_1000G = DatasetSpec(
 DS_OPSSAT_AD = DatasetSpec(
     name="OPS-SAT-AD",
     licence="CC-BY-4.0",
-    url="https://doi.org/10.5281/zenodo.12588358",
-    licence_checked="2026-08-05",
+    # The VERSION DOI of record 12588359 (v1), the files `datasets.OPSSAT_FETCH` downloads. The concept
+    # DOI 10.5281/zenodo.12588358 now resolves to v2 (record 15108715), whose files differ and which
+    # adds notebooks and a LICENSE file, so citing it named data this project does not use (Round 84).
+    url="https://doi.org/10.5281/zenodo.12588359",
+    licence_checked="2026-10-31",
     publishable=True,
     notes=(
         "2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% "
@@ -344,7 +347,9 @@ DS_OPSSAT_AD = DatasetSpec(
         "permits redistributing the data with credit; the per-segment feature table is about "
         "507 KB, the raw segment file much larger. A different task "
         "from ESA-ADB: segment classification, not forecasting, so its score is not comparable "
-        "with the Telemanom model's and neither is the other's baseline."
+        "with the Telemanom model's and neither is the other's baseline. Pinned to version 1 "
+        "(Zenodo record 12588359), the files this project downloads; version 2 (record 15108715) "
+        "changes the files and adds a LICENSE file."
     ),
     # Its DATA is redistributed here -- the whole published test partition ships inside two HF repos
     # as eval_sample.json -- so the CC BY credit is a condition on this project's own distribution,

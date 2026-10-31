@@ -60,8 +60,7 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
 
     front = [
         "---",
-        "license: other",
-        f"license_name: {_licence_slug(spec.dataset.licence)}",
+        *_hub_licence(spec.dataset.licence),
         "library_name: onnx" if "onnx" in tags else "library_name: transformers",
         f"pipeline_tag: {_pipeline_tag(spec)}",
         "tags:",
@@ -75,7 +74,7 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
         "",
         f"{spec.architecture}",
         "",
-        "Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),",
+        f"Part of [QSMPC-QKD-QHE-AI-Hybrid]({REPO_URL}),",
         "a quantum-safe orchestration demo."]
     if spec.runs_encrypted:
         # "and the demo runs it that way" was true of some students only: the public page encrypts
@@ -89,8 +88,12 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
                  "teacher rather than against the published literature. Its agreement with the",
                  "teacher was measured offline, in plaintext."]
     else:
-        body += [f"This is the **plaintext** model for the `{spec.usecase}` use case; the encrypted",
-                 "path runs a distilled student, not this model."]
+        # "the encrypted path runs a distilled student" was false for most teachers: nothing is
+        # distilled from the ResNet-50 or the 5G-NIDD model, the satellite page runs no encrypted
+        # stage, and the finance page encrypts a bundled PaySim model (Round 84).
+        body += [f"This is the **plaintext** model for the `{spec.usecase}` use case. No code path",
+                 "evaluates this model under encryption; what each use case encrypts, if anything,",
+                 "is stated in the notes below."]
     body += [
         "",
         "## Measured performance",
@@ -159,6 +162,28 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
 
 def _licence_slug(licence: str) -> str:
     return licence.split(";")[0].strip().lower().replace(" ", "-")[:40] or "unknown"
+
+
+REPO_URL = "https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid"
+
+#: Licences the Hub lists by identifier: a card naming one of these uses it directly, so the Hub
+#: indexes the repo under that licence instead of "other" (Round 84; Hub model-card specification).
+_HUB_LICENCE_IDS = {"CDLA-Sharing-1.0": "cdla-sharing-1.0", "CC-BY-4.0": "cc-by-4.0"}
+
+#: For the rest, `license: other` takes a name and a link (the Hub's documented practice).
+_LICENCE_LINKS = {
+    "CC-BY-3.0-IGO": "https://creativecommons.org/licenses/by/3.0/igo/",
+    "CC-BY-4.0 asserted by MedMNIST": "https://creativecommons.org/licenses/by/4.0/",
+}
+
+
+def _hub_licence(licence: str) -> list[str]:
+    """The card's licence front matter: a Hub identifier where one exists, else name and link."""
+    if licence in _HUB_LICENCE_IDS:
+        return [f"license: {_HUB_LICENCE_IDS[licence]}"]
+    head = licence.split(";")[0].strip()
+    link = _LICENCE_LINKS.get(head, f"{REPO_URL}/blob/main/DATA_LICENSES.md")
+    return ["license: other", f"license_name: {_licence_slug(licence)}", f"license_link: {link}"]
 
 
 def _pipeline_tag(spec: registry.ModelSpec) -> str:

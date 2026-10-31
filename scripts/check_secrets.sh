@@ -25,6 +25,19 @@ if git ls-files | grep -q 'browser-verification-checklist'; then
   bad "the browser verification checklist is tracked - it must never be published"
 else ok "verification checklist untracked"; fi
 
+# A PDF that ever entered the history and is no longer tracked was removed for a reason - on 2026-10-31
+# four reference PDFs with no redistribution grant were rewritten out of the whole history. Reachable
+# history must hold no PDF that the tree has dropped, so pushing an old branch back fails here. This
+# needs the full history: a shallow clone (CI's checkout) sees only its own commits.
+if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
+  ok "shallow clone; the history check runs where the full history is (scripts/ci_local.sh)"
+else
+  gone=$(comm -23 <(git log --all --format= --name-only --diff-filter=A -- '*.pdf' | sort -u) \
+                  <(git ls-files '*.pdf' | sort -u))
+  if [ -n "$gone" ]; then bad "a PDF removed from the tree is still in the history: $(echo "$gone" | head -3 | tr '\n' ' ')"
+  else ok "no PDF in the history that the tree has dropped"; fi
+fi
+
 # --- contents -----------------------------------------------------------------------------------
 # An absolute home directory names a local account. /home/user/ is the placeholder and passes.
 # `git grep -E` everywhere, then GNU grep's PCRE for the placeholder: a git built without PCRE would
