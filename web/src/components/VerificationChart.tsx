@@ -16,15 +16,16 @@
 //                 0.60 -> 0.99.
 //
 // recharts is already a dependency (BenchmarkPanel), so this costs no bundle growth.
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart, ReferenceLine,
+  Bar, BarChart, CartesianGrid, Cell, Customized, Legend, Line, LineChart, ReferenceLine,
   ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis,
 } from "recharts";
 
 import type { ModelEvalResult } from "../lib/onnxInference";
 import { modelsFor } from "../lib/config";
 import Details from "./Details";
+import { CanvasMarks, corners, type MarkSeries, NO_MARK } from "./CanvasMarks";
 import { ChartReadout, HINT_KEYBOARD, HINT_POINTER, ReadoutTooltip } from "./ChartReadout";
 
 const AXIS = { fontSize: 10, stroke: "#8a94a6" };
@@ -55,6 +56,16 @@ const yAxisTitle = (text: string, dx: number) =>
 const compactTick = (v: number) =>
   v >= 1e6 ? `${+(v / 1e6).toFixed(1)}M` : v >= 1e3 ? `${+(v / 1e3).toFixed(1)}k` : String(+v.toFixed(2));
 const GRID = "#2a3040";
+/** The scatter marks the three canvas charts draw (`CanvasMarks`, Round 85), as constants so a
+ *  series' legend `<Scatter>` and its canvas points take one colour, and the contrast gate reads it. */
+const MARK_BLUE = "#4f9dff";
+const MARK_RED = "#ff6b6b";
+const MARK_SLATE = "#8296b5";
+const MARK_AMBER = "#f5a623";
+const MARK_ORANGE = "#e07a3c";
+const MARK_VIOLET = "#b072ff";
+/** A legend-only `<Scatter>`'s data: its points are on the canvas. */
+const NO_POINTS: never[] = [];
 /** The card every chart in this file is drawn on (`--panel`). Stroked around stacked segments
  *  as a separator, so each segment meets this colour rather than its neighbour. */
 const CARD = "#151c2c";
@@ -209,6 +220,15 @@ const bitsOf = (e: number | null | undefined) =>
  */
 export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot }) {
   const captionId = useId();
+  // Every row, on the canvas (`CanvasMarks`): the plaintext score across, the decrypted one up.
+  const marks = useMemo<MarkSeries[]>(() => {
+    const pts = plot?.points ?? [];
+    const differs = pts.filter((p) => !p.agree).map((p) => ({ x: p.plain, y: p.enc }));
+    return [{ name: "agrees (circle)", fill: MARK_BLUE, shape: "circle",
+              points: pts.filter((p) => p.agree).map((p) => ({ x: p.plain, y: p.enc })) },
+            ...(differs.length ? [{ name: "argmax differs (cross)", fill: MARK_RED, shape: "cross" as const,
+                                    points: differs }] : [])];
+  }, [plot]);
   if (!plot?.points?.length) return null;
   let mismatches = 0, worst = 0, lo = Infinity, hi = -Infinity;
   // Loops, not `Math.max(...)` spreads: finance hands over 8,192 points.
@@ -396,21 +416,23 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
                    label={yAxisTitle(logit ? "encrypted logit (decrypted)" : "encrypted score (decrypted)", 14)} />
             <ReferenceLine segment={[{ x: lo, y: lo }, { x: hi, y: hi }]} stroke="#8a94a6"
                            strokeDasharray="4 4" ifOverflow="extendDomain" />
-            <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => v.toFixed(6)} />
             {/* SHAPE as well as fill (SC 1.4.1): red here means the ENCRYPTED path disagreed with
                 plaintext, and a reader who cannot separate red from blue must still see which points
                 are the disagreements. The shape is named in the series name, so the legend, the
-                tooltip and the figcaption all say it.
+                readout and the figcaption all say it.
                 `isAnimationActive={false}` IS LOAD-BEARING: `shape` moves recharts onto `<Symbols>`,
                 whose `size` animates, and with animation on every symbol stayed at `d="M0,0"` -
-                present, positioned, invisible. Found only on the deployed page. */}
-            <Scatter name="agrees (circle)" data={plot.points.filter((p) => p.agree)}
-                     fill="#4f9dff" shape="circle" isAnimationActive={false} />
+                present, positioned, invisible. Found only on the deployed page.
+                The points themselves are on the canvas (Round 85); these keep the legend. */}
+            <Scatter name="agrees (circle)" data={NO_POINTS}
+                     fill={MARK_BLUE} shape="circle" isAnimationActive={false} />
             {mismatches > 0 && (
-              <Scatter name="argmax differs (cross)" data={plot.points.filter((p) => !p.agree)}
-                       fill="#ff6b6b" shape="cross" isAnimationActive={false} />
+              <Scatter name="argmax differs (cross)" data={NO_POINTS}
+                       fill={MARK_RED} shape="cross" isAnimationActive={false} />
             )}
             {mismatches > 0 && <Legend wrapperStyle={{ fontSize: 10 }} />}
+            <Customized component={<CanvasMarks series={marks} xName="plaintext" yName="encrypted"
+                                                format={(v: number) => v.toFixed(6)} />} />
           </ScatterChart>
         </ResponsiveContainer>
         </MarksHidden>
@@ -418,6 +440,32 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
       {plot.plane ? <DecisionPlane plot={plot} plane={plot.plane} /> : null}
     </figure>
   );
+}
+
+/** The decision plane's outcome series, in the order the legend keys them, flips last and on top.
+ *  Built from the same filters the counts table uses, so the canvas draws what the table counts. */
+function decisionMarks(plot: EncryptedAgreementPlot, plane: { x: PlaneAxis; y: PlaneAxis }): MarkSeries[] {
+  const logY = plane.y.scale === "log";
+  const pts = plot.points.filter((p) => typeof p.x === "number" && typeof p.y === "number"
+    && typeof p.label === "number" && typeof p.encCls === "number");
+  // A row at or below zero has no place on a log axis; the caption counts the ones left out.
+  const drawn = logY ? pts.filter((p) => (p.y as number) > 0) : pts;
+  const xy = (p: AgreementPoint) => ({ x: p.x as number, y: p.y as number });
+  const names = plot.classNames ?? [];
+  const nameOf = (c: number) => names[c] ?? `class ${c}`;
+  const cell = (t: number, d: number) => drawn.filter((p) => p.label === t && p.encCls === d).map(xy);
+  const out: MarkSeries[] = plot.classes === 2
+    ? [{ name: `${nameOf(0)}, called ${nameOf(0)} (circle)`, fill: MARK_SLATE, shape: "circle", points: cell(0, 0) },
+       { name: `${nameOf(0)}, called ${nameOf(1)} (diamond)`, fill: MARK_AMBER, shape: "diamond", points: cell(0, 1) },
+       { name: `${nameOf(1)}, called ${nameOf(1)} (triangle)`, fill: MARK_ORANGE, shape: "triangle", points: cell(1, 1) },
+       { name: `${nameOf(1)}, called ${nameOf(0)} (square)`, fill: MARK_VIOLET, shape: "square", points: cell(1, 0) }]
+    : [{ name: "class right (circle)", fill: MARK_SLATE, shape: "circle",
+         points: drawn.filter((p) => p.label === p.encCls).map(xy) },
+       { name: "class wrong (triangle)", fill: MARK_ORANGE, shape: "triangle",
+         points: drawn.filter((p) => p.label !== p.encCls).map(xy) }];
+  const flips = drawn.filter((p) => !p.agree).map(xy);
+  if (flips.length) out.push({ name: "encryption changed the decision (cross)", fill: MARK_RED, shape: "cross", points: flips });
+  return out;
 }
 
 /**
@@ -434,6 +482,7 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
  */
 function DecisionPlane({ plot, plane }: { plot: EncryptedAgreementPlot; plane: { x: PlaneAxis; y: PlaneAxis } }) {
   const captionId = useId(), tableId = useId();
+  const marks = useMemo(() => decisionMarks(plot, plane), [plot, plane]);
   const pts = plot.points.filter((p) => typeof p.x === "number" && typeof p.y === "number"
     && typeof p.label === "number" && typeof p.encCls === "number");
   if (!pts.length) return null;
@@ -442,14 +491,8 @@ function DecisionPlane({ plot, plane }: { plot: EncryptedAgreementPlot; plane: {
   const logY = plane.y.scale === "log";
   // A row at or below zero has no place on a log axis. Counted and said, not silently clipped.
   const offAxis = logY ? pts.filter((p) => (p.y as number) <= 0).length : 0;
-  const drawn = logY ? pts.filter((p) => (p.y as number) > 0) : pts;
-  const xy = (p: AgreementPoint) => ({ x: p.x as number, y: p.y as number });
   const flips = pts.filter((p) => !p.agree);
   const binary = plot.classes === 2;
-  // Outcome groups. Binary: true class by encrypted decision, four groups. Multiclass: right or wrong.
-  const cell = (t: number, d: number) => drawn.filter((p) => p.label === t && p.encCls === d).map(xy);
-  const right = drawn.filter((p) => p.label === p.encCls).map(xy);
-  const wrong = drawn.filter((p) => p.label !== p.encCls).map(xy);
   const count = (f: (p: AgreementPoint) => boolean) => pts.filter(f).length;
   return (
     <figure className="chart-figure" style={{ marginTop: 10 }}>
@@ -502,33 +545,38 @@ function DecisionPlane({ plot, plane }: { plot: EncryptedAgreementPlot; plane: {
                    scale={logY ? "log" : "auto"} domain={logY ? [0.9, "auto"] : undefined}
                    allowDataOverflow={logY}
                    label={yAxisTitle(plane.y.label + (logY ? " (log)" : ""), 24)} />
-            <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => v.toLocaleString()} />
             <Legend verticalAlign="top" align="right" height={30} wrapperStyle={{ fontSize: 10 }} />
-            {/* Literal fills, one per outcome: the contrast gate resolves a colour only from a
-                literal or a top-level constant, and an unresolvable mark fails it. */}
+            {/* Fills from top-level constants, one per outcome: the contrast gate resolves a colour
+                only from a literal or a top-level constant, and an unresolvable mark fails it. The
+                points are on the canvas (Round 85); these keep the legend, and the corners keep the
+                automatic domain. */}
             {binary ? (
               <>
-                <Scatter name={`${nameOf(0)}, called ${nameOf(0)} (circle)`} data={cell(0, 0)}
-                         fill="#8296b5" shape="circle" isAnimationActive={false} />
-                <Scatter name={`${nameOf(0)}, called ${nameOf(1)} (diamond)`} data={cell(0, 1)}
-                         fill="#f5a623" shape="diamond" isAnimationActive={false} />
-                <Scatter name={`${nameOf(1)}, called ${nameOf(1)} (triangle)`} data={cell(1, 1)}
-                         fill="#e07a3c" shape="triangle" isAnimationActive={false} />
-                <Scatter name={`${nameOf(1)}, called ${nameOf(0)} (square)`} data={cell(1, 0)}
-                         fill="#b072ff" shape="square" isAnimationActive={false} />
+                <Scatter name={`${nameOf(0)}, called ${nameOf(0)} (circle)`} data={NO_POINTS}
+                         fill={MARK_SLATE} shape="circle" isAnimationActive={false} />
+                <Scatter name={`${nameOf(0)}, called ${nameOf(1)} (diamond)`} data={NO_POINTS}
+                         fill={MARK_AMBER} shape="diamond" isAnimationActive={false} />
+                <Scatter name={`${nameOf(1)}, called ${nameOf(1)} (triangle)`} data={NO_POINTS}
+                         fill={MARK_ORANGE} shape="triangle" isAnimationActive={false} />
+                <Scatter name={`${nameOf(1)}, called ${nameOf(0)} (square)`} data={NO_POINTS}
+                         fill={MARK_VIOLET} shape="square" isAnimationActive={false} />
               </>
             ) : (
               <>
-                <Scatter name="class right (circle)" data={right}
-                         fill="#8296b5" shape="circle" isAnimationActive={false} />
-                <Scatter name="class wrong (triangle)" data={wrong}
-                         fill="#e07a3c" shape="triangle" isAnimationActive={false} />
+                <Scatter name="class right (circle)" data={NO_POINTS}
+                         fill={MARK_SLATE} shape="circle" isAnimationActive={false} />
+                <Scatter name="class wrong (triangle)" data={NO_POINTS}
+                         fill={MARK_ORANGE} shape="triangle" isAnimationActive={false} />
               </>
             )}
             {flips.length > 0 && (
-              <Scatter name="encryption changed the decision (cross)" data={flips.filter((p) => !logY || (p.y as number) > 0).map(xy)}
-                       fill="#ff6b6b" shape="cross" isAnimationActive={false} />
+              <Scatter name="encryption changed the decision (cross)" data={NO_POINTS}
+                       fill={MARK_RED} shape="cross" isAnimationActive={false} />
             )}
+            <Scatter data={corners(marks)} fill={MARK_SLATE} shape={NO_MARK} legendType="none"
+                     isAnimationActive={false} />
+            <Customized component={<CanvasMarks series={marks} xName={plane.x.label} yName={plane.y.label}
+                                                format={(v: number) => v.toLocaleString()} />} />
           </ScatterChart>
         </ResponsiveContainer>
         </MarksHidden>
@@ -619,6 +667,12 @@ const REAL_2D_PATH: Record<string, string> = {
 export function RealDataScatter({ usecase, card = false }: { usecase: string; card?: boolean }) {
   const [data, setData] = useState<Real2D | null>(null);
   const captionId = useId();
+  // The two classes, on the canvas (`CanvasMarks`, Round 85), at the opacities the SVG symbols had.
+  const marks = useMemo<MarkSeries[]>(() => (data?.points?.length ? [0, 1].map((c) => ({
+    name: data.class_names[c], fill: c ? MARK_ORANGE : MARK_SLATE, shape: c ? "triangle" as const : "circle" as const,
+    opacity: c ? 0.85 : 0.75,
+    points: data.points.filter((p) => p[2] === c).map((p) => ({ x: p[0], y: p[1] })),
+  })) : []), [data]);
   useEffect(() => {
     const rel = REAL_2D_PATH[usecase];
     if (!rel) { setData(null); return; }
@@ -639,8 +693,6 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
   // The single decision point. Everything below - including the frame, when `card` is set - is
   // downstream of it, so there is no second place that can answer this question differently.
   if (!data?.points?.length) return null;
-  const neg = data.points.filter((p) => p[2] === 0).map((p) => ({ x: p[0], y: p[1] }));
-  const pos = data.points.filter((p) => p[2] === 1).map((p) => ({ x: p[0], y: p[1] }));
   const logY = data.y.scale === "log";
   // A zero has no place on a log axis; finance has 26. Said, not silently clipped.
   const offAxis = logY ? data.points.filter((p) => p[1] <= 0).length : 0;
@@ -726,13 +778,16 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
                    domain={logY ? [0.9, "auto"] : undefined}
                    allowDataOverflow={logY}
                    label={yAxisTitle(data.y.label + (logY ? " (log)" : ""), 24)} />
-            <Tooltip content={<ReadoutTooltip />} cursor={{ strokeDasharray: "3 3" }}
-                     formatter={(v: number) => v.toLocaleString()} />
             <Legend verticalAlign="top" align="right" height={18} wrapperStyle={{ fontSize: 10 }} />
-            <Scatter name={data.class_names[0]} data={neg} fill="#8296b5" fillOpacity={0.75}
+            {/* The points are on the canvas (Round 85); these keep the legend, the corners the domain. */}
+            <Scatter name={data.class_names[0]} data={NO_POINTS} fill={MARK_SLATE} fillOpacity={0.75}
                      shape="circle" isAnimationActive={false} />
-            <Scatter name={data.class_names[1]} data={pos} fill="#e07a3c" fillOpacity={0.85}
+            <Scatter name={data.class_names[1]} data={NO_POINTS} fill={MARK_ORANGE} fillOpacity={0.85}
                      shape="triangle" isAnimationActive={false} />
+            <Scatter data={corners(marks)} fill={MARK_SLATE} shape={NO_MARK} legendType="none"
+                     isAnimationActive={false} />
+            <Customized component={<CanvasMarks series={marks} xName={data.x.label} yName={data.y.label}
+                                                format={(v: number) => v.toLocaleString()} />} />
           </ScatterChart>
         </ResponsiveContainer>
         </MarksHidden>

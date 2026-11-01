@@ -44,6 +44,12 @@ export function ChartReadout({ hint, children }: { hint: string; children: React
   );
 }
 
+/** The enclosing readout line, for a layer that is not a recharts Tooltip: `CanvasMarks` writes the
+ *  point under the pointer into it (Round 85). Null outside a `ChartReadout`. */
+export function useReadoutLine(): ReadoutContextValue | null {
+  return useContext(ReadoutContext);
+}
+
 type Entry = { name?: unknown; value?: unknown; unit?: unknown; dataKey?: unknown; payload?: unknown };
 type Formatter = (value: unknown, name: unknown, entry: Entry, index: number, payload: Entry[]) => unknown;
 
