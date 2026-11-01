@@ -255,7 +255,7 @@ dependency away rather than hypothetical. Nothing here builds or calls it today:
 build-gated reference adapter, and HEonGPU exposes no Python API.
 
 **No standard requires testing for this.** The HomomorphicEncryption.org standard contains no
-testing or conformance clause and states that CKKS "is not described in this standard"; ISO/IEC 28033 is not published, and the part that matters here is **Part 3** - mechanisms for arithmetic on approximate numbers, i.e. CKKS - which reached **FDIS stage 50.00 on 2026-06-11** (Part 1 general: DIS 40.60, 2025-12-11; Part 4: FDIS 50.00; Part 5: WD 20.60). Part 1 scopes correctness out. Naming "Parts 1-4 at DIS" was imprecise in both directions: Part 3 is further along than DIS and is the CKKS part, so this claim has a shelf life of months and carries a date for that reason. Checked 2026-08-10. So this section is a
+testing or conformance clause and states that CKKS "is not described in this standard"; ISO/IEC 28033 is not published, and the part that matters here is **Part 3** - mechanisms for arithmetic on approximate numbers, i.e. CKKS - which is at its FDIS ballot, **stage 50.20** (read at iso.org on 2026-11-01; FDIS 50.00 since 2026-06-11). The other parts, as read on 2026-08-10: Part 1 general DIS 40.60 (2025-12-11), Part 4 FDIS 50.00, Part 5 WD 20.60. Part 1 scopes correctness out. Naming "Parts 1-4 at DIS" was imprecise in both directions: Part 3 is further along than DIS and is the CKKS part, so this claim has a shelf life of months and carries a date for that reason. Checked 2026-08-10. So this section is a
 statement of known limitations, not a conformance gap against any published requirement.
 
 ## Explicitly out of scope (PoC)

@@ -39,7 +39,7 @@ For scale, the nearest working system costs 40 s to 8.4 minutes per switch on na
 CPU at ring degree $`2^{16}`$, against this project's 8192.
 
 **ISO/IEC 28033-5** is titled *Mechanisms for scheme switching* and is the laggard of that series at
-Working Draft 20.60 (2025-08-16), while Part 3 (CKKS) is at FDIS 50.00. The standards process agrees
+Working Draft 20.60 (2025-08-16), while Part 3 (CKKS) is at its FDIS ballot (stage 50.20, read 2026-11-01). The standards process agrees
 with the literature about maturity.
 
 ## What the goal actually needs: two contexts, not one hybrid
