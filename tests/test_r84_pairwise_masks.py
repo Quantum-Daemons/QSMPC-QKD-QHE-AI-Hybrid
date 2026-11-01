@@ -169,7 +169,8 @@ def test_python_masks_cancel_in_the_sum(n: int, rnd: int) -> None:
     ups = [np.random.default_rng(10 * n + c).normal(size=(17,)) for c in range(n)]
     masked = [agg.mask_update(c, u, round_index=rnd) for c, u in enumerate(ups)]
     assert len(agg.public_keys) == n and all(len(pk) == 32 for pk in agg.public_keys)
-    np.testing.assert_allclose(agg.aggregate(masked), np.sum(ups, axis=0), atol=1e-9)
+    # In the ring since Round 85: exactly the quantised sum, so within n half-steps of the real one.
+    np.testing.assert_allclose(agg.aggregate(masked), np.sum(ups, axis=0), rtol=0, atol=n * 0.5 / SCALE)
     assert not any(np.allclose(m, u) for m, u in zip(masked, ups)), "an update went out unmasked"
 
 
@@ -189,16 +190,15 @@ def test_python_pair_seed_is_the_hkdf_of_the_x25519_secret() -> None:
     for rnd in ROUNDS:
         for i in range(K):
             for j in range(i + 1, K):
-                words = np.array(_words(_seed(i, j), rnd, P), dtype=np.float64)
                 assert fed.pair_mask_words(_seed(i, j), rnd, P).tolist() == _words(_seed(i, j), rnd, P)
-                np.testing.assert_array_equal(fed._mask(_seed(i, j), (P,), rnd), words / 2 ** 31 - 1)
-    # Client c's masked update is its update plus the masks of its pairs, signed by the order.
+    # Client c's masked share is its quantised update plus the masks of its pairs, signed by the order,
+    # modulo 2^32 (Round 85; the browser's `maskedShare`).
     u = np.array(UPDATES[1])
-    expected = u.copy()
+    expected = [_js_round(v * SCALE) % 2 ** 32 for v in UPDATES[1]]
     for j in (0, 2, 3):
-        m = np.array(_words(_seed(1, j), 2, P), dtype=np.float64) / 2 ** 31 - 1
-        expected += m if 1 < j else -m
-    np.testing.assert_array_equal(agg.mask_update(1, u, round_index=2), expected)
+        words = _words(_seed(1, j), 2, P)
+        expected = [(e + w if 1 < j else e - w) % 2 ** 32 for e, w in zip(expected, words, strict=True)]
+    assert agg.mask_update(1, u, round_index=2).tolist() == expected
 
 
 def test_python_default_keys_are_fresh_per_run_and_not_the_public_constant() -> None:
@@ -209,13 +209,17 @@ def test_python_default_keys_are_fresh_per_run_and_not_the_public_constant() -> 
     assert not np.allclose(a.mask_update(0, u, 1), b.mask_update(0, u, 1)), "two runs masked alike"
     # The base commit's default: every pair key sha256(f"pair-{i}-{j}"), each round's mask SHAKE-256 of
     # the key and the round, as reals in [-1, 1). Anyone holding the constant could unmask an update.
+    # Read as ring words since Round 85, the shares' arithmetic: stripping them must not recover u.
     def constant_mask(i: int, j: int, rnd: int) -> np.ndarray:
         raw = hashlib.shake_256(hashlib.sha256(f"pair-{i}-{j}".encode()).digest()
-                                + b"|qsh/qfl-pairwise-mask/v1|r" + str(rnd).encode()).digest(8 * P)
-        return (np.frombuffer(raw, dtype=np.uint64).astype(np.float64) / 2 ** 64 - 0.5) * 2.0
+                                + b"|qsh/qfl-pairwise-mask/v1|r" + str(rnd).encode()).digest(4 * P)
+        return np.frombuffer(raw, dtype="<u4")
     masked = a.mask_update(0, u, 1)
-    stripped = masked - sum(constant_mask(0, j, 1) for j in range(1, K))
-    assert not np.allclose(stripped, u), "the public constant still unmasks client 0's update"
+    stripped = masked.copy()
+    for j in range(1, K):
+        stripped = stripped - constant_mask(0, j, 1)
+    assert not np.allclose(fed.dequantise(stripped), u, rtol=0, atol=1 / SCALE), (
+        "the public constant still unmasks client 0's update")
 
 
 def test_python_fixed_private_keys_reproduce_a_run() -> None:
@@ -246,7 +250,8 @@ def test_python_aggregator_inputs_hold_no_private_key() -> None:
     assert "private_keys" not in repr(agg)
     # The aggregation step is a function of the masked updates alone: no instance, no key.
     assert list(inspect.signature(fed.SecureAggregator.aggregate).parameters) == ["masked_updates"]
-    np.testing.assert_allclose(fed.SecureAggregator.aggregate(masked), np.sum(UPDATES, axis=0), atol=1e-9)
+    np.testing.assert_allclose(fed.SecureAggregator.aggregate(masked), np.sum(UPDATES, axis=0),
+                               rtol=0, atol=K * 0.5 / SCALE)
 
 
 # ---------------------------------------------------------------------------------------------

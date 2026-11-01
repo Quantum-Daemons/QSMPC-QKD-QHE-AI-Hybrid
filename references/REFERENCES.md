@@ -803,8 +803,8 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   by HKDF-SHA256, the pairwise key agreement of Bonawitz et al. (Round 83 additions, below), so the
   aggregator, which receives only the public keys and the masked updates, cannot remove a mask on its
   own. Their double masking and secret-shared keys for dropouts, their malicious-security protocol and
-  any authentication of the public keys are not implemented, every client runs in one tab or one
-  process, and the Python masks are reals that hide an update only partially
+  any authentication of the public keys are not implemented, and every client runs in one tab or one
+  process; since Round 85 both tiers mask modulo 2^32, so the masks cancel exactly
   ([what each step protects](../docs/threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)).
 
 - **Quantum Federated Learning: A Comprehensive Survey** - Nguyen, Uddin, Shaon, Rahman, Dobre and

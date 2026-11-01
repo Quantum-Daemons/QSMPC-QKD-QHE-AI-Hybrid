@@ -355,8 +355,10 @@ class QSMPCComputeStage(Stage):
             bus.metric("psi_set_size_b", res.size_b, self.name)
             bus.metric("psi_blind_evaluations", res.blind_evaluations, self.name)
             bus.metric("psi_protocol", res.protocol, self.name)
+            bus.metric("psi_oprf_backend", res.oprf_backend, self.name)
             bus.log(f"PSI complete: {res.intersection_size} shared accounts over "
-                    f"{res.size_a}x{res.size_b} by the {res.protocol}. {learned_summary(res, a, b)}. "
+                    f"{res.size_a}x{res.size_b} by the {res.protocol}, its OPRF on {res.oprf_backend}. "
+                    f"{learned_summary(res, a, b)}. "
                     f"Its messages are sealed under the PQC session key; {a} and {b} run in this "
                     "process (notional parties), and the OPRF rests on a discrete-log assumption, so it "
                     "is not post-quantum", self.name)

@@ -24,7 +24,8 @@ step "1/18 test suite (pytest -m 'not slow')"
 # not the other, and their skip-when-esbuild-is-absent is exactly the hole a one-language fix ships
 # through. This machine HAS esbuild, so the variable costs nothing and turns a silent skip - from a
 # stray `npm ci` failure, a pruned node_modules, a renamed binary - into a failure.
-HF_HUB_OFFLINE=1 QSH_REQUIRE_BROWSER_GATES=1 "$PY" -m pytest -m "not slow" -q -p no:warnings \
+# QSH_REQUIRE_LIBSODIUM=1, also as ci.yml sets it, does the same for the OPRF's libsodium (Round 85).
+HF_HUB_OFFLINE=1 QSH_REQUIRE_BROWSER_GATES=1 QSH_REQUIRE_LIBSODIUM=1 "$PY" -m pytest -m "not slow" -q -p no:warnings \
     >/tmp/ci_pytest.log 2>&1 \
   && ok "tests" || { bad "tests"; tail -20 /tmp/ci_pytest.log; }
 

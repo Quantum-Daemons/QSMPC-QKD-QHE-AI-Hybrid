@@ -17,6 +17,9 @@ pennylane>=0.38
 # Post-quantum cryptography (NIST FIPS 203/204/205)
 liboqs-python>=0.16.0.2    # ML-KEM / ML-DSA / SLH-DSA via liboqs; >=0.16.0.2 for GHSA-w696-4vrr-x6x3 (short keys zero-padded)
 cryptography>=42.0         # classical X25519 etc. for hybrid KEM
+pysodium>=0.7.19           # libsodium's ristretto255 for the OPRF PSI (qsh.qsmpc.oprf); needs the system
+                           # libsodium, 1.0.18 or later (Debian/Ubuntu libsodium23, EL9 libsodium). Without
+                           # it the OPRF falls back to pure Python, which is not constant-time.
 
 # Classical ML helpers used by QKD optimizer / QML-IDS baselines
 scikit-learn>=1.4

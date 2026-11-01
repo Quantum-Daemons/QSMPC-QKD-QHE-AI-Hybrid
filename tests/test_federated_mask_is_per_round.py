@@ -41,7 +41,7 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
-from qsh.ai.federated import SecureAggregator  # noqa: E402
+from qsh.ai.federated import SECAGG_SCALE, SecureAggregator, dequantise, quantise  # noqa: E402
 
 
 def _updates(k: int, seed: int = 0) -> list[np.ndarray]:
@@ -70,8 +70,10 @@ def test_the_recoverable_delta_is_actually_gone() -> None:
     """
     agg = SecureAggregator(4)
     u1, u2 = _updates(4, seed=1)[0], _updates(4, seed=2)[0]
-    leaked = agg.mask_update(0, u1, round_index=0) - agg.mask_update(0, u2, round_index=1)
-    assert not np.allclose(leaked, u1 - u2), (
+    # The shares are in the ring (Round 85), so the difference is taken there and read back: with a
+    # reused mask it would be u1 - u2 to within the 2^-20 quantisation.
+    leaked = dequantise(agg.mask_update(0, u1, round_index=0) - agg.mask_update(0, u2, round_index=1))
+    assert not np.allclose(leaked, u1 - u2, rtol=0, atol=2 / SECAGG_SCALE), (
         "differencing two rounds of one client's masked shares recovered the plaintext update "
         "delta - the exact per-client information pairwise masking exists to hide"
     )
@@ -88,7 +90,10 @@ def test_the_masks_still_cancel_exactly(rounds: int) -> None:
     ups = _updates(5, seed=3)
     agg = SecureAggregator(5)
     masked = [agg.mask_update(c, u, round_index=rounds) for c, u in enumerate(ups)]
-    np.testing.assert_allclose(agg.aggregate(masked), np.sum(ups, axis=0), atol=1e-9)
+    # Exactly, in the ring (Round 85): the aggregate is the sum of the quantised updates to the bit.
+    exact = dequantise(sum(quantise(u, 5).astype(np.uint64) for u in ups) % 2**32)
+    np.testing.assert_array_equal(agg.aggregate(masked), exact)
+    np.testing.assert_allclose(agg.aggregate(masked), np.sum(ups, axis=0), rtol=0, atol=5 * 0.5 / SECAGG_SCALE)
 
 
 def test_every_round_index_gives_a_distinct_mask() -> None:
