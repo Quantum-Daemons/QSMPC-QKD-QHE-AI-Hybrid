@@ -17,7 +17,7 @@ import StageBadge, { type StageKind } from "./StageBadge";
  * badged "notional" like the garbled-circuit 2PC; the quantum one-time pad uses a seeded mask. Each
  * pair of federated clients agrees its mask seed by X25519, so the aggregator, which receives only the
  * public keys and the masked updates, cannot remove a mask alone, and the session key seeds no mask;
- * the PSI's HMAC key is held by both banks.
+ * the PSI is an OPRF keyed by one side alone, its messages sealed under the session key (oprfPsi.ts).
  */
 type Box = { x: number; y: number; w: number; title: string; lines: string[]; kind: StageKind; id: string };
 
@@ -37,7 +37,7 @@ const BOXES: Box[] = [
   { id: "qkd", x: 670, y: ROW1, w: 250, title: "QKD link (BB84 decoy / E91)",
     lines: ["analytic channel model", "yields a key LENGTH,", "not key bytes"], kind: "simulated" },
   { id: "qsmpc", x: 10, y: ROW2, w: 170, title: "QSMPC",
-    lines: ["PSI: HMAC under a key", "both sides hold; secure", "sum: additive shares"], kind: "notional" },
+    lines: ["PSI: RFC 9497 OPRF,", "one side keys it; secure", "sum: additive shares"], kind: "notional" },
   { id: "fl", x: 200, y: ROW2, w: 176, title: "Federated training",
     lines: ["finance, medical:", "FedAvg; pairwise masks", "seeded by X25519 per pair"], kind: "notional" },
   { id: "pi", x: 396, y: ROW2, w: 180, title: "Private inference",

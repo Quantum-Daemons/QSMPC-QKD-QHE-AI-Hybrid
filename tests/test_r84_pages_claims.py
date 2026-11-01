@@ -203,11 +203,14 @@ def test_hndl_is_a_risk_not_an_observed_campaign(rendered) -> None:
 
 
 def test_the_value_table_states_the_limits_the_code_has(rendered) -> None:
+    """The PSI's limit is the OPRF PSI's since Round 84 (psi): semi-honest and not post-quantum. The
+    keyed hash whose key both banks held, which the row stated before, no longer runs."""
     t = _text(rendered["client"]["value"])
     assert "QML-IDS could reduce" not in t, "the classical classifier is credited to QML again"
     assert "previously couldn't be combined" not in t
+    assert "The PSI is an HMAC" not in t and "OPRF-based protocol" not in t, "the retired keyed-hash PSI is described again"
     for needle in (
-        "The PSI is an HMAC under a key both banks hold, so over a small ID space either bank could recover the other's list",
+        "The PSI is semi-honest and not post-quantum: it runs RFC 9497's OPRF over ristretto255",
         "Each pair of federated clients agrees its mask seed by X25519, so the aggregator cannot remove a mask alone, "
         "though every client runs in this tab and there is no dropout recovery or authentication of the public keys",
         "The classifier is classical: the page runs a softmax and the published random forest",

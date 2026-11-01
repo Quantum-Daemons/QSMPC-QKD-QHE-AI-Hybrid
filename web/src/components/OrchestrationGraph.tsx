@@ -76,7 +76,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "data", label: "Banks' Data" },
     { id: "pqc_handshake", label: "PQC Handshake\n(ML-KEM + X25519)" },
     { id: "qkd_key_agreement", label: "QKD Key" },
-    { id: "qsmpc_compute", label: "QSMPC\n(keyed-hash PSI)" },
+    { id: "qsmpc_compute", label: "QSMPC\n(OPRF PSI)" },
     { id: "federated_training", label: "Federated Training\n(size-weighted FedAvg, demo)" },
     { id: "private_inference", label: "Private Inference\n(CKKS + 2PC argmax)" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(untrained QOTP +\nClifford+T circuit)" },

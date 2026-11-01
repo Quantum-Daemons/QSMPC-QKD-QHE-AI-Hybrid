@@ -134,12 +134,17 @@ def test_the_threat_model_holds_one_table_of_what_each_step_protects() -> None:
                  "Secure sum (genomics)", "Private inference"):
         assert step in rows, f"the table has no row for {step!r}: {rows}"
     flat = re.sub(r"\s+", " ", section)
-    # The secure-aggregation fact is the X25519 key agreement since Round 84 (secagg); it read the
-    # public constant `sha256(f"pair-{i}-{j}")`, which no longer derives any mask.
-    for fact in ("No QKD bit enters it", "Pinkas, Schneider and Zohner",
+    # The PSI row's facts are the OPRF PSI's since Round 84 (psi): its RFC and suite, what Bank B
+    # learns, and its two limits; the keyed hash it stated no longer runs, so its two facts went. The
+    # secure-aggregation fact is the X25519 key agreement since Round 84 (secagg); it read the public
+    # constant `sha256(f"pair-{i}-{j}")`, which no longer derives any mask.
+    for fact in ("No QKD bit enters it", "RFC 9497's OPRF, mode 0x00, suite ristretto255-SHA512",
+                 '"Unconditional input secrecy"', "**No malicious security**", "**Not post-quantum**",
                  "derives its mask seed from their X25519 shared secret by HKDF-SHA256",
-                 "Every CKKS slot the key holder can decode", "`masked_slots`", "OPRF-based protocol"):
+                 "Every CKKS slot the key holder can decode", "`masked_slots`"):
         assert fact in flat, f"the owner table no longer states {fact!r}"
+    for retired in ("Pinkas, Schneider and Zohner", "OPRF-based protocol", "HMAC-SHA256 of both banks' lists"):
+        assert retired not in flat, f"the owner table still describes the retired keyed-hash PSI: {retired!r}"
     for rel in ("README.md", "docs/architecture.md", "docs/findings.md", "docs/use-cases.md",
                 "docs/models-and-benchmarks.md"):
         assert _links_to(rel, THREAT), f"{rel} restates what the browser protects without the owner's link"

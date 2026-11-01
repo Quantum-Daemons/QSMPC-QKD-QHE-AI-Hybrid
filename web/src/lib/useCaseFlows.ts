@@ -133,7 +133,8 @@ const optiTag = (m: M, c: DiagramConfig) => {
 // One line wide, two pages deep.
 //
 // `mpc-bidir` is the honest style: additive secret-sharing IS secret-share traffic, and the legend
-// already names it. PSI stays classical-bidirectional - it is a WebCrypto keyed hash.
+// already names it. PSI stays classical-bidirectional - it is the OPRF exchange of oprfPsi.ts, whose
+// three messages are sealed under the session key.
 const qsmpcOpOf = (c: DiagramConfig, usecaseDefault: "psi" | "sum") =>
   (String(c.qsmpcOp ?? "") === "psi" || String(c.qsmpcOp ?? "") === "sum")
     ? (String(c.qsmpcOp) as "psi" | "sum")
@@ -146,7 +147,7 @@ const qsmpcLabel = (dflt: "psi" | "sum") => (m: M, c: DiagramConfig) =>
     // a use case with none. The label used to say neither, beside cohort headers saying allele counts.
     ? `secure sum of ${m["qsms_inputs"] === "allele_counts" ? "allele counts"
         : m["qsms_inputs"] === "stand_ins" ? "stand-in values" : "inputs"} over GF(${f(m, "qsms_prime")}) · pooled = ${f(m, "secure_sum")}`
-    : `keyed-hash PSI · shared flagged = ${f(m, "psi_intersection_size")}`;
+    : `OPRF PSI (RFC 9497) · shared flagged = ${f(m, "psi_intersection_size")}`;
 
 const f = (m: M, k: string, d = "—") => {
   const v = m[k];
@@ -302,15 +303,18 @@ const FEDERATED_STEP: Step = {
 /** The caption's first sentence for parties that compute together over a network.
  *
  *  Each says what holds and what does not. It read "No trusted third party and no raw data shared"
- *  for all four, which overstated two of them: the PSI's HMAC key is held by both banks, so over a
- *  small ID space either could recover the other's list from the tags; and every federated mask is
- *  derived from the one session key, which the aggregator also holds (until Round 84, when each pair
- *  of clients came to agree its own mask seed by X25519). */
+ *  for all four, which overstated two of them: the PSI was then an HMAC whose key both banks held, so
+ *  over a small ID space either could recover the other's list from the tags; and every federated mask
+ *  was derived from the one session key, which the aggregator also holds. Since Round 84 the PSI is an
+ *  OPRF and each pair of clients agrees its own mask seed by X25519. */
 const overWan = (who: string, what: string) => () =>
   `${who} meet over a WAN under the session key. ${what}`;
-const PSI_HOLDS = "No third party sees either list: each side sends HMAC tags of its list, not the list, "
-  + "though over a small ID space either side could recover the other's list from the tags (a "
-  + "production PSI would use an OPRF-based protocol).";
+// Side A is the OPRF client and side B the server in both specs that use it (oprfPsi.ts), so the
+// sentence names the sides rather than the banks: the generic demo's parties use it too.
+const PSI_HOLDS = "In the PSI, side A blinds its IDs and side B evaluates them under an OPRF key only B holds "
+  + "(RFC 9497 over ristretto255), so A learns the shared IDs and the size of B's list and B only the "
+  + "size of A's; the messages are sealed under the session key, and the PSI is semi-honest and not "
+  + "post-quantum.";
 
 export const USECASE_SPECS: Record<string, Spec> = {
   finance_aml: {
@@ -498,7 +502,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     ],
   },
   // The E2E page's generic flow (Round 81), so that page's canvas has something to draw for every
-  // entry in its selector. Its stages are clientCompute's `demo` flow: a keyed-hash PSI over two
+  // entry in its selector. Its stages are clientCompute's `demo` flow: an OPRF PSI over two
   // generated account lists, then the MPC-FHE inference on synthetic features. No industry, so no
   // industry's names: the parties say what each holds.
   demo: {
@@ -578,7 +582,9 @@ export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: Diag
             many: { noun: usecase === "genomics" ? "cohort" : "party",
                     count: runCount(m, "qsms_parties", usecase === "genomics" ? Number(cfg.data?.genomics_biobanks ?? 4)
                       : Number(cfg.qsmpc?.n_parties ?? 5)) } }
-        : { a: "PSI: HMAC tags of its list", b: "PSI: HMAC tags of its list", flow: "both", channel: "classical" };
+        // The OPRF PSI (oprfPsi.ts): side A blinds and intersects, side B evaluates under its own key.
+        : { a: "OPRF client: blinds its IDs, intersects", b: "OPRF server: evaluates under its own key",
+            flow: "both", channel: "classical" };
     case "federated_training":
       return { a: "trains locally, masks its update", b: "FedAvg: sums the masked updates", flow: "both", channel: "classical",
                many: { noun: usecase === "medical_fl" ? "hospital" : "client",
@@ -605,10 +611,12 @@ export const visibleSteps = (usecase: string, c: DiagramConfig): Step[] =>
 /** A step's drawing kind under this configuration. */
 export const kindOf = (s: Step, c: DiagramConfig): Kind => (typeof s.kind === "function" ? s.kind(c) : s.kind);
 
-/** Whether a step reads the PQC session key. The keyed-hash PSI and the federated masks' seed are
- *  the only two readers of `_sessionKey` in clientCompute, so the canvas's key bus runs to them. */
+/** Whether a step reads the PQC session key. The OPRF PSI is the only reader of `_sessionKey` in
+ *  clientCompute: it derives the two keys its three messages are sealed under (oprfPsi.ts,
+ *  `psiTranscriptKeys`), so the canvas's key bus runs to it. The federated masks take their seeds
+ *  from an X25519 agreement per pair of clients (clientQFL.ts), and the secure sum reads no key. */
 export const consumesSessionKey = (step: Step, row: CanvasRow): boolean =>
-  step.stageId === "federated_training" || (step.stageId === "qsmpc_compute" && row.channel === "classical");
+  step.stageId === "qsmpc_compute" && row.channel === "classical";
 
 /** The kinds of lane a run with this configuration draws, and whether it draws the key bus: what the
  *  canvas's legend may list. The legend listed all five on every use case until Round 81, so the

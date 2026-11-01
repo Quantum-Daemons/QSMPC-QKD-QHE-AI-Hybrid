@@ -360,15 +360,42 @@ papers. Where the two used to overlap, that file is the owner.
   File: none in the repository since Round 45 (CC BY-NC-ND 4.0, excluded; `DATA_LICENSES.md`
   section 8)
   Decoy-state BB84 plus SHA-256 commitment QOT, giving private set intersection on bank-blacklist
-  data. `src/qsh/qsmpc/qot.py` simulates the 1-of-2 QOT primitive. **The finance use case does not
-  use it, and its set intersection does not keep the two lists private from each other.** It is an
-  HMAC-SHA256 of both lists under the one session key both banks hold (`private_set_intersection` in
-  `qot.py`, `keyedHashPSI` in the browser), so over a small identifier space either bank can hash
-  every candidate identifier and read the other's list: the naive-hashing failure Pinkas, Schneider
-  and Zohner describe (Round 83 additions, below). What holds is narrower: no third party sees
-  either list, and the channel is protected by the PQC session. A production PSI would use an
-  OPRF-based protocol. Corrected 2026-10-30: this line said the use case implemented the paper's
+  data. `src/qsh/qsmpc/qot.py` sketches the 1-of-2 QOT primitive. **The finance use case does not
+  use it.** Its set intersection is a classical, semi-honest DH-OPRF PSI on RFC 9497's OPRF over
+  ristretto255 (`src/qsh/qsmpc/psi.py`, `web/src/lib/oprfPsi.ts`; the RFC 9497 entry below), which is
+  not post-quantum. Corrected 2026-10-30: this line said the use case implemented the paper's
   construction in simulation.
+
+- **RFC 9497, "Oblivious Pseudorandom Functions (OPRFs) Using Prime-Order Groups"** - Davidson,
+  Faz-Hernandez, Sullivan and Wood, IRTF (CFRG), December 2023 `[link]`
+  URL: https://www.rfc-editor.org/rfc/rfc9497.txt (read 2026-11-01; SHA-256 of the text
+  `95160517617374655fe23af2c6cec311eae326deb7689239f97641fd5a560432`)
+  The finance PSI's OPRF, mode 0x00 with the suite ristretto255-SHA512: the context string (section
+  3.1), GenerateKeyPair and DeriveKeyPair (3.2, 3.2.1), Blind, BlindEvaluate, Finalize and Evaluate
+  (3.3.1), and the suite's HashToGroup, HashToScalar and serialization (4.1), implemented in
+  `src/qsh/qsmpc/oprf.py` and run in the browser with `@noble/curves`' `ristretto255_oprf`. Section
+  7.1 gives the server *"Unconditional input secrecy"* (it *"does not learn anything about the client
+  input x, even with unbounded computation"*); section 7.2.1 rests pseudorandomness on the One-More
+  Gap Computational Diffie-Hellman assumption, which is why the PSI is not post-quantum; section
+  7.2.3 puts the cost of Q BlindEvaluate queries to one key at about log2(Q)/2 bits and names
+  rotating keys as a mitigation (the PSI's key is fresh per run); section 7.4 requires constant-time
+  operations on secret data, which the Python implementation does not provide. Appendix A.1.1's two
+  OPRF-mode vectors are checked in both tiers by `tests/test_r84_oprf_psi.py`.
+- **RFC 9496, "The ristretto255 and decaf448 Groups"** - de Valence, Grigg, Hamburg, Lovecruft,
+  Tankersley and Valsorda, IRTF (CFRG), December 2023 `[link]`
+  URL: https://www.rfc-editor.org/rfc/rfc9496.txt (read 2026-11-01; SHA-256 of the text
+  `d875c6e703827da487eae8f0656fd25e4a278f1dcb0f06041669adad27c03ff3`)
+  The prime-order group under the OPRF. `src/qsh/qsmpc/oprf.py` implements section 4: the constants
+  (4.1), SQRT_RATIO_M1 (4.2), Decode, Encode and Equals (4.3.1 to 4.3.3) and the element derivation
+  from 64 bytes (4.3.4). Appendix A's generator multiples, invalid encodings, element-derivation
+  outputs and square-root ratios are checked by `tests/test_r84_oprf_psi.py`.
+- **RFC 9380, "Hashing to Elliptic Curves"** - Faz-Hernandez, Scott, Sullivan, Wahby and Wood, IRTF
+  (CFRG), August 2023 `[link]`
+  URL: https://www.rfc-editor.org/rfc/rfc9380.txt (read 2026-11-01; SHA-256 of the text
+  `a2e6ab02b2117d6f52ac293020857752972b2e23ae005c33f612e40436ff4b6d`)
+  Section 5.3.1, expand_message_xmd, and Appendix B, hash_to_ristretto255 (the element derivation of
+  64 expanded bytes), which RFC 9497's ristretto255-SHA512 suite uses for HashToGroup. Appendix K.3's
+  SHA-512 vectors check `expand_message_xmd` in `tests/test_r84_oprf_psi.py`.
 
 - **Quantum-secure multiparty deep learning** - Sulimany, Vadlamani, Hamerly, Iyengar and
   Englund, Physical Review X 15, 041056, published 24 Dec 2025 `[R]`
@@ -2329,9 +2356,9 @@ in the technical report.
   Read in the proceedings PDF. Section 1.1: the naive solution, in which both parties hash their
   inputs and compare the hashes, *"is insecure if the input domain is not large or does not have high
   entropy"*, because one party can hash every likely item and compare. A keyed hash whose key both
-  parties hold is the same construction between those two parties, which is why the finance
-  use case's keyed-hash intersection does not keep the banks' lists private from each other (WS3,
-  the Zhang et al. entry). It grounds that correction; nothing here implements its protocol.
+  parties hold is the same construction between those two parties. It is why the finance use case's
+  intersection is an OPRF whose key only one bank holds (the RFC 9497 entry in WS3); nothing here
+  implements this paper's protocol.
 - **Bonawitz, Ivanov, Kreuter, Marcedone, McMahan, Patel, Ramage, Segal and Seth, "Practical Secure
   Aggregation for Federated Learning on User-Held Data"**, arXiv:1611.04482 (2016-11-14, NIPS 2016
   workshop on Private Multi-Party Machine Learning);

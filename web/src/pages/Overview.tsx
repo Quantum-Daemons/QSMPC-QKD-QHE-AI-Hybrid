@@ -126,8 +126,8 @@ export default function Overview() {
               <td>Seven QKD attack types plus normal traffic - eight classes; classical RF baseline against a PennyLane variational quantum classifier</td>
               <td>Synthetic telemetry. The page runs a softmax and the random forest published as telecom_ids.qml; the quantum-kernel SVC and the QNN are offline figures, not run here, and the SVC&apos;s fidelity kernel equals a classical product kernel</td></tr>
             <tr><td>WS3 · QSMPC × QKD</td>
-              <td>Shamir + d-level QFT secure summation, quantum oblivious transfer, quantum-safe private set intersection</td>
-              <td><StageBadge kind="notional" /> classical PSI and additive-share secure sum, all parties in this tab. The PSI is an HMAC under a session key both banks hold, so over a small ID space either bank could recover the other&apos;s list; a production PSI would use an OPRF-based protocol. The QFT and QOT forms run in the full deployment, simulated</td></tr>
+              <td>Shamir + d-level QFT secure summation, quantum oblivious transfer, private set intersection over the PQC channel</td>
+              <td><StageBadge kind="notional" /> classical PSI and additive-share secure sum, all parties in this tab. The PSI runs RFC 9497&apos;s OPRF over ristretto255: Bank A learns the shared accounts and the size of Bank B&apos;s list, Bank B only the size of Bank A&apos;s. It is semi-honest and not post-quantum, and its messages are sealed under the PQC session key. The QFT and QOT forms run in the full deployment, simulated</td></tr>
             {/* "Rate-1 QFHE transport" named a scheme the code does not run: Rate-1 QFHE
                 (Chardouvelis, Doettling, Malavolta, TCC 2021) is homomorphic, and
                 `qhe/rate1_qfhe.py` has no Eval - it pads a state and sends the pad under the hybrid
@@ -155,7 +155,7 @@ export default function Overview() {
           </div>
           <div className="card">
             <h3>WS3 · QSMPC × QKD</h3>
-            <p>Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, and quantum-safe private set intersection.</p>
+            <p>Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, and a private set intersection on RFC 9497&apos;s OPRF whose messages are sealed under the PQC session key. The OPRF itself rests on a discrete-log assumption, so the PSI is not post-quantum.</p>
           </div>
           <div className="card">
             <h3>WS4 · QHE × AI</h3>

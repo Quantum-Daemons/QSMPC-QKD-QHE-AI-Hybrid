@@ -9,16 +9,16 @@ wires the real primitives end to end with per-party timing:
     QKD   : BB84 over a 50 km fibre channel -> shared QKD key (eavesdrop check via QBER)
     Alice : initiates the PQC handshake (ML-KEM + X25519), QKD key mixed in
     Bob   : derives the same PQC+QKD session
-    Alice : keyed-hash PSI of her blacklist against Bob's suspicious set (hashes only)
+    Alice+Bob : OPRF PSI of her blacklist against Bob's suspicious set: Alice blinds her IDs,
+                Bob evaluates them under a key fresh to the run and sends his own outputs
     Bob   : private (CKKS) inference on a flagged record
 
 Reuses :mod:`~qsh.pqc.hybrid_kem`, :mod:`~qsh.pqc.transport`, :mod:`~qsh.qkd.bb84`,
-:mod:`~qsh.qkd.channel`, :mod:`~qsh.qsmpc.qot`, :mod:`~qsh.fhe.ckks_inference`, and scores
-the run with :mod:`~qsh.benchmark.security`. No raw identifier crosses the wire, but the keyed
-hashes are no protection between the two parties: both hold the session key, and over this
-7-digit ID space either can hash every candidate and recover the other's set (see
-:func:`qsh.qsmpc.qot.private_set_intersection`). What holds is that no third party on the
-channel learns either set.
+:mod:`~qsh.qkd.channel`, :mod:`~qsh.qsmpc.psi`, :mod:`~qsh.fhe.ckks_inference`, and scores
+the run with :mod:`~qsh.benchmark.security`. The PSI is the semi-honest DH-OPRF PSI of
+:mod:`qsh.qsmpc.psi` (RFC 9497, ristretto255-SHA512): Alice learns the intersection and the size of
+Bob's set, Bob learns the size of Alice's and nothing else about her IDs, and its messages are
+sealed under the session key. It is not post-quantum and has no malicious security.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
     from ..pqc.transport import establish_initiator, establish_responder
     from ..qkd.bb84 import QKDParams, derive_shared_key, run_bb84
     from ..qkd.channel import ChannelParams
-    from ..qsmpc.qot import private_set_intersection
+    from ..qsmpc.psi import learned_summary, oprf_psi
     from .security import compute_security_score
 
     rng = np.random.default_rng(seed)
@@ -81,13 +81,13 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
     session_agree = chan_alice.session_key == chan_bob.session_key
     session_key = chan_alice.session_key
 
-    # --- Phase 4: keyed-hash PSI (Alice blacklist and Bob suspicious set); hashes only, which
-    # either party can invert over this ID space because both hold the key ---
+    # --- Phase 4: OPRF PSI (Alice's blacklist against Bob's suspicious set), sealed under the
+    # session key; Alice learns the intersection, Bob the size of Alice's list ---
     shared = {f"ACCT-{int(x)}" for x in rng.integers(10**6, 10**7, n_shared)}
     alice_blacklist = sorted(shared | {f"A-{int(x)}" for x in rng.integers(10**6, 10**7, 200)})
     bob_suspicious = sorted(shared | {f"B-{int(x)}" for x in rng.integers(10**6, 10**7, 180)})
     t = time.perf_counter()
-    psi = private_set_intersection(alice_blacklist, bob_suspicious, session_key)
+    psi = oprf_psi(alice_blacklist, bob_suspicious, session_key)
     timing["psi_ms"] = _ms(t)
 
     # --- Phase 5: Bob runs private (CKKS) inference on a flagged record ---
@@ -113,7 +113,7 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
              "ms": timing["alice_pqc_handshake_ms"]},
             {"name": "PQC handshake (respond)", "party": "Bob",
              "ms": timing["bob_pqc_handshake_ms"]},
-            {"name": "Private set intersection", "party": "Alice", "ms": timing["psi_ms"]},
+            {"name": "Private set intersection (OPRF)", "party": "Alice+Bob", "ms": timing["psi_ms"]},
             {"name": "Private inference (CKKS)", "party": "Bob",
              "ms": timing["private_inference_ms"]},
         ],
@@ -127,6 +127,11 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
         "psi_intersection_size": psi.intersection_size,
         "psi_ground_truth": len(shared),
         "psi_correct": psi.intersection_size == len(shared),
+        "psi_protocol": psi.protocol,
+        "psi_set_size_a": psi.size_a,
+        "psi_set_size_b": psi.size_b,
+        "psi_blind_evaluations": psi.blind_evaluations,
+        "psi_learned": learned_summary(psi, "Alice", "Bob"),
         "private_inference_class": out["prediction"],
         "private_inference_error": out["max_abs_error"],
         "security_score": sec["total"],

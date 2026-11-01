@@ -19,14 +19,14 @@ export interface UseCaseMeta {
 export const USECASES: UseCaseMeta[] = [
   {
     id: "finance_aml", title: "Finance — cross-bank AML / PSI", nav: "Finance — AML", industry: "finance",
-    blurb: "Two banks find shared flagged accounts with a keyed-hash PSI over a PQC-protected channel, then score a transaction under CKKS. No third party sees either list, but both banks hold the HMAC key, so over a small ID space either could recover the other's list; a production PSI would use an OPRF-based protocol. The scored rows are PaySim simulator output, and the model reads four quantities computed from them under AML-style names: amount, cross_border (the TRANSFER or CASH_OUT type, since PaySim records no geography), night_tx and new_payee. None is built from PaySim's balance columns, which the dataset's description says must not be used for fraud detection.",
+    blurb: "Two banks find shared flagged accounts with an OPRF-based PSI (RFC 9497 over ristretto255), then score a transaction under CKKS. Bank A blinds its IDs and Bank B evaluates them under an OPRF key only it holds, so Bank A learns the shared accounts and the size of Bank B's list, Bank B learns only the size of Bank A's, and neither can test IDs against the other's list on its own. The PSI is semi-honest and not post-quantum, both banks run in this tab, and its messages are sealed under the PQC session key. The scored rows are PaySim simulator output, and the model reads four quantities computed from them under AML-style names: amount, cross_border (the TRANSFER or CASH_OUT type, since PaySim records no geography), night_tx and new_payee. None is built from PaySim's balance columns, which the dataset's description says must not be used for fraud detection.",
     inference: true,
     agenticTool: "score_transaction",
     // Was "... why must an AML agent ... run over a quantum-safe MCP channel rather than sharing the
-    // blacklists?". That presupposes the lists stay private, and this page says the keyed-hash PSI
-    // lets either bank recover the other's list over a small ID space. The question now asks what is
-    // hidden instead of asserting it.
-    agenticPrompt: "In one sentence, when two banks' agents match flagged accounts with a keyed-hash PSI over a quantum-safe MCP channel, what is hidden, and from whom?",
+    // blacklists?", which asserted the answer. The question asks what is hidden, and from whom, because
+    // the OPRF PSI hides different things from each bank: Bank A learns the shared accounts and the
+    // size of Bank B's list, Bank B only the size of Bank A's.
+    agenticPrompt: "In one sentence, when two banks' agents match flagged accounts with an OPRF-based PSI over a quantum-safe MCP channel, what is hidden, and from whom?",
   },
   {
     id: "medical_fl", title: "Medical — federated learning + private inference", nav: "Medical — FL", industry: "healthcare",

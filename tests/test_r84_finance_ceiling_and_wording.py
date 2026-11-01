@@ -14,8 +14,9 @@ WHY THIS EXISTS
    doi:10.1007/978-3-031-80408-3_6; arXiv:2411.02926). Trees are not CKKS-native, which is the
    true part.
 3. The finance agentic prompt asked why the agent "must ... run over a quantum-safe MCP channel
-   rather than sharing the blacklists", presupposing the lists stay private, while the page says the
-   keyed-hash PSI lets either bank recover the other's list over a small ID space.
+   rather than sharing the blacklists", presupposing what the answer should state, while the page
+   said the keyed-hash PSI then in use let either bank recover the other's list over a small ID space.
+   The prompt names the OPRF PSI that replaced it in Round 84 (tests/test_r84_oprf_psi.py).
 
 Each test fails at the base commit (de1111c) on the text it checks.
 """
@@ -83,4 +84,5 @@ def test_the_finance_agentic_prompt_asks_rather_than_asserts() -> None:
     assert m, "finance agenticPrompt not found"
     prompt = m.group(1)
     assert "rather than sharing the blacklists" not in prompt and "must" not in prompt
-    assert "keyed-hash PSI" in prompt and "what is hidden, and from whom" in prompt
+    # The construction the page runs, by name: the OPRF PSI since Round 84 (psi), the keyed hash before.
+    assert "OPRF-based PSI" in prompt and "keyed-hash" not in prompt and "what is hidden, and from whom" in prompt

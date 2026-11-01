@@ -20,7 +20,8 @@
  *      telemetry, which the browser then sends under the session key with QSDC skipped, is drawn
  *      as the classical exchange it is. Both figures drew a quantum QSDC arrow there until Round 80;
  *   6. the legend lists the lanes the canvas draws and no others, and the key bus exactly where a
- *      stage reads the session key (the PSI, the federated masks). Until Round 81 it listed all five
+ *      stage reads the session key (the PSI, which seals its OPRF messages under keys derived from it;
+ *      since Round 84 the federated masks take their seeds from X25519). Until Round 81 it listed all five
  *      everywhere, so telecom and satellite explained CKKS, MPC and key lanes neither draws;
  *   7. the caption says what the run does: the MPC-FHE sentence only where a private inference
  *      runs, no WAN between a satellite and its ground station, and no simulated quantum channel
@@ -44,7 +45,7 @@ const check = (name, ok, detail) => { if (!ok) failures.push(`${name}: ${detail}
 
 const dir = mkdtempSync(join(tmpdir(), "qsh-canvas-"));
 const entry = join(dir, "entry.ts");
-writeFileSync(entry, `export { USECASE_SPECS, canvasRow, visibleSteps, kindOf, drawnChannels, captionOf } from ${JSON.stringify(MODULE)};\n`
+writeFileSync(entry, `export { USECASE_SPECS, canvasRow, visibleSteps, kindOf, drawnChannels, captionOf, consumesSessionKey } from ${JSON.stringify(MODULE)};\n`
   + `export { appConfig } from ${JSON.stringify(join(WEB, "src/lib/config"))};\n`
   + `export { USECASES } from ${JSON.stringify(join(WEB, "src/lib/useCases"))};\n`);
 const out = join(dir, "bundle.mjs");
@@ -95,8 +96,9 @@ check("parties", sum?.row.many?.count === cohorts && sum?.row.channel === "mpc",
 const sum5 = find(rowsOf("genomics", {}, { qsms_parties: 5 }), "qsmpc_compute");
 check("parties", sum5?.row.many?.count === 5, `a run reporting 5 parties to the sum draws ${sum5?.row.many?.count}`);
 const psi = find(rowsOf("finance_aml"), "qsmpc_compute");
-check("psi", !psi?.row.many && psi?.row.flow === "both" && psi?.row.channel === "classical",
-  "finance's PSI is not drawn as a two-way exchange between the two banks under the session key");
+check("psi", !psi?.row.many && psi?.row.flow === "both" && psi?.row.channel === "classical"
+  && /OPRF client/.test(psi?.row.a ?? "") && /OPRF server/.test(psi?.row.b ?? ""),
+  "finance's PSI is not drawn as the OPRF exchange between the two banks (Bank A the client, Bank B the server) under the session key");
 
 // 4. The inference's client.
 const clientOf = (usecase) => {
@@ -122,8 +124,9 @@ for (const usecase of ["telecom_ids", "satellite_comms"]) {
 }
 for (const usecase of Object.keys(m.USECASE_SPECS)) {
   const l = legend(usecase);
-  const readsKey = rowsOf(usecase).some(({ s, row }) => s.stageId === "federated_training"
-    || (s.stageId === "qsmpc_compute" && row.channel === "classical"));
+  // Only the PSI reads the session key (Round 84): the federated masks' seeds are agreed per pair of
+  // clients by X25519, so a federated stage must not draw the key bus.
+  const readsKey = rowsOf(usecase).some(({ s, row }) => s.stageId === "qsmpc_compute" && row.channel === "classical");
   check("legend", l.keyBus === readsKey,
     `${usecase}'s legend ${l.keyBus ? "lists" : "omits"} the key bus, and ${readsKey ? "a" : "no"} stage reads the session key`);
   check("legend", !legend(usecase, { qkd: "pqc-only" }).lanes.includes("quantum"),
@@ -131,6 +134,12 @@ for (const usecase of Object.keys(m.USECASE_SPECS)) {
 }
 check("legend", legend("genomics").keyBus === false && legend("genomics", { qsmpcOp: "psi" }).keyBus === true,
   "genomics' key bus does not follow its QSMPC op: none for the secure sum, one for the PSI");
+check("legend", legend("medical_fl").keyBus === false,
+  "medical's legend lists the key bus, but its federated masks take their seeds from X25519, not the session key");
+for (const usecase of Object.keys(m.USECASE_SPECS)) {
+  const fed = rowsOf(usecase).filter(({ s, row }) => s.stageId === "federated_training" && m.consumesSessionKey(s, row));
+  check("legend", fed.length === 0, `${usecase}: the key bus reaches federated_training, which reads no session key`);
+}
 
 // 7. The caption.
 for (const usecase of Object.keys(m.USECASE_SPECS)) {

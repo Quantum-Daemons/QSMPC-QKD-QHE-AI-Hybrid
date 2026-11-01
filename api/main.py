@@ -168,10 +168,11 @@ def benchmark(workload: str = "linear", samples: int = 20, model_size: str = "me
 
 @app.post("/api/alice-bob")
 def alice_bob(body: RunConfig | None = None) -> dict:
-    """Two-party Alice<->Bob E2E: PQC handshake, simulated QKD, keyed-hash PSI, private inference.
+    """Two-party Alice<->Bob E2E: PQC handshake, simulated QKD, OPRF PSI, private inference.
 
-    The PSI is a classical keyed hash under a key both parties hold, not the QOT primitive, and it
-    keeps the sets from third parties, not from each other (see qsh.qsmpc.qot).
+    The PSI is the classical DH-OPRF PSI of qsh.qsmpc.psi (RFC 9497, ristretto255-SHA512), not the
+    QOT primitive: Alice learns the intersection and the size of Bob's set, Bob the size of hers.
+    It is semi-honest and not post-quantum, and its messages are sealed under the session key.
     """
     from qsh.benchmark.alice_bob_e2e import run_alice_bob_e2e
 

@@ -4,11 +4,12 @@ Two banks want to find accounts that *both* have flagged as suspicious, then pri
 score a transaction against a shared fraud model -- over a PQC channel with simulated QKD
 key material folded in.
 
-What the matching does NOT do is keep the lists private from each other: it is a keyed-hash
-PSI under a session key both banks hold, so over this small ID space either bank can hash
-every candidate ID and recover the other's list (see :func:`qsh.qsmpc.qot.private_set_intersection`).
-What holds is that no third party on the channel sees either list. A production PSI would use an
-OPRF-based protocol.
+The matching is a semi-honest DH-OPRF PSI on RFC 9497's OPRF over ristretto255
+(:mod:`qsh.qsmpc.psi`): Bank A blinds its IDs, Bank B evaluates them under a key fresh to the run and
+sends its own outputs, and Bank A learns the intersection and the size of Bank B's list while Bank B
+learns the size of Bank A's. Neither can test IDs against the other's list offline. It has no
+malicious security, it is not post-quantum (a discrete-log assumption), the two banks are notional
+parties in one process, and its messages are sealed under the PQC session key.
 
 Maps to: QSMPC×QKD (private set intersection) + QHE/FHE (private inference) on a
 PQC-first hybrid transport. Data: the bundled PaySim simulator sample (synthetic transactions,

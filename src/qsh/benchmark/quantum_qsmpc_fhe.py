@@ -130,7 +130,7 @@ def run_quantum(
                # one, with no FHE-to-MPC boundary because both act on the encrypted state. Here
                # nothing is evaluated on an encrypted state (the circuit runs in plaintext beside
                # a QOTP hiding check), the T figure is a Solovay-Kitaev ESTIMATE, and the finance
-               # pipeline's PSI is a classical keyed hash, not QOT-based secure MPC.
+               # pipeline's PSI is a classical OPRF PSI (RFC 9497), not QOT-based secure MPC.
                "linear_analogue": "Clifford gates",
                "nonlinear_analogue": f"T-gates (×{qc.t_count()}, the non-linear cost)",
                "no_fhe_mpc_boundary": True,

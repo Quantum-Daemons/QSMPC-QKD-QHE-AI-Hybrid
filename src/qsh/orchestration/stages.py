@@ -316,42 +316,50 @@ class OptiQKDStage(Stage):
 
 
 class QSMPCComputeStage(Stage):
-    """Multiparty computation: keyed-hash PSI or secure summation.
+    """Multiparty computation: the OPRF private set intersection or secure summation.
 
-    The PSI is classical (HMAC under the session key both parties hold): it keeps the sets from
-    third parties on the channel, not from each other (see :mod:`qsh.qsmpc.qot`).
+    The PSI is a semi-honest DH-OPRF PSI on RFC 9497's OPRF over ristretto255
+    (:mod:`qsh.qsmpc.psi`): Bank A learns the intersection and |B|, Bank B learns |A|. It is not
+    post-quantum and has no malicious security; its messages are sealed under the PQC session key.
     """
 
     name = "qsmpc_compute"
 
     def run(self, ctx, bus, reg):
         op = ctx.config.get("qsmpc_op", "psi")
-        # No all-zero default. `ctx.data.get("session_key", b"\x00" * 32)` would have run the
-        # keyed-hash PSI under a key of 32 zero bytes - public knowledge - while the log line below
-        # still read "PSI complete", which is a security property the run did not provide reported as
-        # if it had. `PQCHandshakeStage` always precedes this stage and a failed stage aborts the run,
-        # so this raise is unreachable today; that is why making it a raise costs nothing, and this
-        # round moved key material between stages, which is exactly the change that would reach it.
-        # The browser twin at `web/src/lib/clientCompute.ts` refuses identically.
-        key = ctx.data.get("session_key")
-        if not key:
-            raise RuntimeError(
-                "qsmpc_compute needs the PQC session key: keyed-hash PSI has no unkeyed mode"
-            )
         if op == "psi":
-            from ..qsmpc.qot import multiparty_psi, private_set_intersection
+            from ..qsmpc.psi import learned_summary, oprf_psi
 
-            sets = ctx.data.get("sets")
-            if sets and len(sets) > 2:
-                res = multiparty_psi(sets, key)
-            else:
-                a, b = (sets or (ctx.data.get("set_a", []), ctx.data.get("set_b", [])))[:2] \
-                    if sets else (ctx.data.get("set_a", []), ctx.data.get("set_b", []))
-                res = private_set_intersection(a, b, key)
+            # THE SESSION KEY, AND WHAT IT DOES HERE. The PSI's privacy between the banks comes from
+            # Bank B's OPRF key, which only Bank B holds; the PQC session key seals the three
+            # messages (`qsmpc/psi.py`), which keeps the transcript from a third party, including one
+            # that records it now and attacks ristretto255 later, and hides nothing between the
+            # banks. There is no unsealed mode, so no key means no run: a default of 32 zero bytes,
+            # public knowledge, once stood here while the log still read "PSI complete".
+            # `PQCHandshakeStage` always precedes this stage and a failed stage aborts the run, so
+            # this raise is unreachable today. The browser twin in `web/src/lib/clientCompute.ts`
+            # refuses identically. The secure sum below reads no key and needs none.
+            key = ctx.data.get("session_key")
+            if not key:
+                raise RuntimeError(
+                    "qsmpc_compute needs the PQC session key: the OPRF PSI's messages are sealed "
+                    "under it, and there is no unsealed mode"
+                )
+            res = oprf_psi(ctx.data.get("set_a", []), ctx.data.get("set_b", []), key)
+            # The parties by the names the canvas gives them: the banks on finance, Party A and Party B
+            # wherever else the PSI runs (the generic demo, or another use case set to PSI).
+            a, b = ("Bank A", "Bank B") if ctx.usecase == "finance_aml" else ("Party A", "Party B")
             ctx.artifacts["psi_intersection"] = list(res.intersection)
             bus.metric("psi_intersection_size", res.intersection_size, self.name)
-            bus.log(f"PSI complete: |A∩B|={res.intersection_size} "
-                    f"(sizes {res.size_a},{res.size_b})", self.name)
+            bus.metric("psi_set_size_a", res.size_a, self.name)
+            bus.metric("psi_set_size_b", res.size_b, self.name)
+            bus.metric("psi_blind_evaluations", res.blind_evaluations, self.name)
+            bus.metric("psi_protocol", res.protocol, self.name)
+            bus.log(f"PSI complete: {res.intersection_size} shared accounts over "
+                    f"{res.size_a}x{res.size_b} by the {res.protocol}. {learned_summary(res, a, b)}. "
+                    f"Its messages are sealed under the PQC session key; {a} and {b} run in this "
+                    "process (notional parties), and the OPRF rests on a discrete-log assumption, so it "
+                    "is not post-quantum", self.name)
         elif op == "sum":
 
             from ..config import get_config

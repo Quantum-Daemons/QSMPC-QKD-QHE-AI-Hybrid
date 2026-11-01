@@ -33,7 +33,7 @@ and is not new, the positioning (quantum-safe, not quantum-advantage) and the fo
 | QKD from a satellite | Micius downlink; the key is the finite key of one pass; a trusted relay and a constellation | simulated | Liao et al. 2017's pass (detections within 1 percent; the key 0.75 of theirs on one basis, 1.50 on both, as they keyed it), 23 measured Micius nights, Lim et al. 2014 |
 | QRNG | quantum-measurement simulation with SP 800-90B health tests and seeded or seedless extraction | simulated source, real tests | NIST SP 800-90B |
 | Private inference | CKKS linear layers (node-seal) and a garbled-circuit 2PC for the argmax (Polytune); between the medical CNN's encrypted layers, ReLU and pooling run in plaintext | real protocols, notional parties | plaintext against CKKS on the same inputs |
-| QSMPC | a keyed-hash set intersection (it does not hide either bank's list from the other) and secure summation; quantum forms in the full deployment | computed in the browser with both parties in one tab (notional parties), simulated quantum forms | the plaintext result |
+| QSMPC | a semi-honest set intersection on RFC 9497's OPRF over ristretto255 (not post-quantum) and secure summation; quantum forms in the full deployment | computed in the browser with both parties in one tab (notional parties), simulated quantum forms | the plaintext result; the RFC 9496 and RFC 9497 test vectors, in Python and in the browser |
 | QHE and QML | quantum one-time pad, an untrained Clifford+T comparison circuit, trained QCNNs (not encrypted), a QML intrusion detector | simulated circuits | the QCNNs against a logistic-regression baseline on the same split |
 | Models | eleven published models, run with ONNX Runtime in the browser | real inference | per-model metrics and model cards |
 | Agentic AI | a small language model in the browser over a quantum-safe MCP channel | real | signed tool results |
@@ -116,7 +116,7 @@ flowchart TB
   Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
-  P["PSI: HMAC-SHA256 keyed by the session key, over two banks' account lists"]
+  P["PSI: OPRF (RFC 9497, ristretto255-SHA512) over two banks' account lists"]
   FL["Federated training, in the browser: 4 clients, 6 rounds of FedAvg, pairwise masks"]
   I["Private inference: CKKS linear layer (node-seal), garbled-circuit argmax (Polytune)"]
   X["Explainability: exact linear SHAP, signed"]

@@ -1,6 +1,6 @@
 // Client-side compute for the public demo: in-browser equivalents of the backend
 // benchmark + E2E pipeline, so the demo runs entirely in the browser (PQC via @noble,
-// QKD/QBER via quantumSim, private inference via onnxruntime-web, PSI via WebCrypto HMAC).
+// QKD/QBER via quantumSim, private inference via onnxruntime-web, PSI via RFC 9497's OPRF in oprfPsi.ts).
 // The security-score and quantum-advantage formulas mirror src/qsh/benchmark/{security,
 // quantum_advantage}.py. Neither is RENDERED: the 0-100 composite was retired in Round 22 and the
 // quantum-advantage score on 2026-10-23 (see `quantumAdvantage`).
@@ -39,6 +39,7 @@ import { heldOutCorpus, realInput, realInputCorpus, realSatelliteAnomaly, realFe
   type HeldOutCorpus, type RealInput, realAlleleCounts } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
 import { isClientDemo } from "./demoMode";
+import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -593,30 +594,6 @@ export function quantumAdvantage(classical: any, quantum: any, w?: { comm: numbe
       `Quantum path is ~${Math.round(comm)}x more communication-compact` +
       (lat > 1 ? ` and ${lat.toFixed(1)}x faster` : "") + `; ${tier} advantage.`,
   };
-}
-
-// --------------------------------------------------------------------------- //
-//  Keyed-hash PSI over WebCrypto HMAC-SHA256 (mirror of qsmpc/qot.py)
-// --------------------------------------------------------------------------- //
-// WHAT IT DOES NOT HIDE. Both parties hold the HMAC key (the PQC session key), so either can hash
-// every candidate ID offline and read the other's list from its tags: over this demo's ID space
-// ("acct-" plus up to six digits) that is about a million HMACs. What holds is that no third party
-// sees either list and the channel is PQC-protected. A production PSI would use an OPRF-based
-// protocol (Pinkas, Schneider and Zohner, USENIX Security 2014, on hash-comparison PSI).
-async function hmacHex(key: Uint8Array, msg: string): Promise<string> {
-  const k = await crypto.subtle.importKey(
-    "raw", key as unknown as BufferSource, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const data = new TextEncoder().encode(msg) as unknown as BufferSource;
-  const sig = await crypto.subtle.sign("HMAC", k, data);
-  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-export async function keyedHashPSI(setA: string[], setB: string[], key: Uint8Array) {
-  const hb = new Map<string, string>();
-  for (const e of setB) hb.set(await hmacHex(key, e), e);
-  const inter: string[] = [];
-  for (const e of setA) if (hb.has(await hmacHex(key, e))) inter.push(e);
-  return { intersection: inter, size_a: setA.length, size_b: setB.length, intersection_size: inter.length };
 }
 
 // --------------------------------------------------------------------------- //
@@ -1496,8 +1473,12 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
   const shared = Array.from({ length: nShared }, acct);
   const aliceList = [...shared, ...Array.from({ length: 200 }, () => `A-${Math.floor(u() * 9e6 + 1e6)}`)];
   const bobList = [...shared, ...Array.from({ length: 180 }, () => `B-${Math.floor(u() * 9e6 + 1e6)}`)];
+  // The OPRF PSI (oprfPsi.ts, RFC 9497): Alice blinds her list, Bob evaluates under a key fresh to
+  // this run and sends his own outputs, and the three messages are sealed under `sessionKey`. Alice
+  // learns the intersection and |Bob's list|, Bob learns |Alice's list|. The lists come from the seeded
+  // generator as before; the key, the blinds and Bob's shuffle come from the CSPRNG.
   t = performance.now();
-  const psi = await keyedHashPSI(aliceList, bobList, sessionKey);
+  const psi = await oprfPSI(aliceList, bobList, sessionKey);
   timing.psi_ms = r2(performance.now() - t);
 
   t = performance.now();
@@ -1517,7 +1498,7 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
       { name: "QKD (BB84)", party: "Alice+Bob", ms: timing.qkd_negotiation_ms },
       { name: "PQC handshake (initiate)", party: "Alice", ms: timing.alice_pqc_handshake_ms },
       { name: "PQC handshake (respond)", party: "Bob", ms: timing.bob_pqc_handshake_ms },
-      { name: "Private set intersection", party: "Alice", ms: timing.psi_ms },
+      { name: "Private set intersection (OPRF)", party: "Alice+Bob", ms: timing.psi_ms },
       { name: "Private inference (ONNX)", party: "Bob", ms: timing.private_inference_ms },
     ],
     timing_ms: timing, total_ms: totalMs,
@@ -1540,6 +1521,8 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
       : "no secure key bits, so nothing to mix even in principle",
     psi_intersection_size: psi.intersection_size, psi_ground_truth: uniqShared,
     psi_correct: psi.intersection_size === uniqShared,
+    psi_protocol: psi.protocol, psi_set_size_a: psi.size_a, psi_set_size_b: psi.size_b,
+    psi_blind_evaluations: psi.blind_evaluations, psi_learned: psiLearnedSummary(psi, "Alice", "Bob"),
     private_inference_class: inf.prediction, private_inference_backend: inf.backend,
     security_score: sec.total, security_components: sec.components, security_summary: sec.summary,
     ttp_free: true, raw_data_shared: false,
@@ -2717,24 +2700,8 @@ export function runClientPipeline(
         break;
       }
       case "qsmpc_compute": {
-        // No all-zero fallback. `?? new Uint8Array(32)` silently substituted 32 zero bytes when the
-        // handshake had not run, and the stage then reported "keyed-hash PSI" over a keyed hash
-        // whose key is public knowledge - a security property the run does not provide, stated as
-        // if it did. The federated path below already refuses rather than degrades, for exactly this
-        // reason, and its comment says why: "the claim is written once and the fallback is taken
-        // forever."
-        //
-        // `pqc_handshake` precedes this stage in every flow that reaches it, so the throw is
-        // unreachable today. That is the argument FOR making it a throw rather than against it: this
-        // round moved key material between stages, and if the ordering changes again this fails
-        // loudly instead of quietly weakening the PSI to an unkeyed one.
-        const key = (config as any)._sessionKey as Uint8Array | undefined;
-        if (!key || key.length === 0) {
-          throw new Error(
-            "qsmpc_compute needs the PQC session key: keyed-hash PSI has no unkeyed mode",
-          );
-        }
-        // genomics defaults to QSMS secure summation; others to keyed-hash PSI (matches the backend)
+        // genomics defaults to QSMS secure summation; others to the OPRF PSI (matches the backend).
+        // Only the PSI reads the session key, so its guard is in the PSI branch below.
         const op = config.qsmpc_op || (usecase === "genomics" ? "sum" : "psi");
         if (op === "sum") {
           // QSMS additive secret-sharing over a prime field Z_p (config.prime; 0/auto = the smallest prime
@@ -2839,9 +2806,26 @@ export function runClientPipeline(
               + `passes its statevector bound, so it samples the protocol's measurement outcomes `
               + `analytically and simulates no GHZ state` : ""));
         } else {
-          // finance PSI: the counterparty set size scales with the transaction volume (config.aml_transactions)
-          // — more transactions ⇒ larger PSI sets ⇒ more HMAC compute + a larger intersection (bounded for
-          // demo responsiveness; the cap is an honest perf guard, not a silent fallback).
+          // THE OPRF PSI (oprfPsi.ts, RFC 9497 mode 0x00 over ristretto255): Bank A blinds its IDs,
+          // Bank B evaluates them under a key fresh to this run and sends its own outputs shuffled,
+          // and Bank A intersects. What keeps the lists apart is the OPRF: Bank A cannot compute Bank
+          // B's PRF without Bank B, and Bank B sees only uniform blinded elements. The PQC session key
+          // seals the three messages, which keeps the transcript from a third party, including one
+          // that records it now and attacks ristretto255 later; it hides nothing between the banks.
+          // There is no unsealed mode, so no key means no run: `?? new Uint8Array(32)` once put 32
+          // zero bytes, public knowledge, in its place here while the stage still reported a PSI.
+          // `pqc_handshake` precedes this stage in every flow that reaches it, so this throw is
+          // unreachable today and fails loudly if the ordering ever changes.
+          const key = (config as any)._sessionKey as Uint8Array | undefined;
+          if (!key || key.length === 0) {
+            throw new Error("qsmpc_compute needs the PQC session key: the OPRF PSI's messages are sealed "
+              + "under it, and there is no unsealed mode");
+          }
+          // The set sizes scale with the transaction volume (config.aml_transactions): more transactions,
+          // larger sets, more OPRF evaluations (about 1 ms each in node) and a larger intersection. The
+          // cap bounds the work for responsiveness and is stated in the Parameters panel. The IDs come
+          // from the run's seeded generator, as before; the key, the blinds and Bank B's shuffle come
+          // from the CSPRNG and take no draw from it.
           const nTx = Number(config.aml_transactions);
           const txv = Number.isFinite(nTx) && nTx > 0 ? nTx : dataCfg().aml_transactions;
           const perParty = usecase === "finance_aml" ? Math.max(20, Math.min(2000, Math.round(txv / 20))) : 40;
@@ -2849,13 +2833,20 @@ export function runClientPipeline(
           const shared = Array.from({ length: nShared }, () => `acct-${Math.floor(u() * 1e6)}`);
           const a = [...shared, ...Array.from({ length: perParty }, () => `a-${Math.floor(u() * 1e6)}`)];
           const b = [...shared, ...Array.from({ length: perParty }, () => `b-${Math.floor(u() * 1e6)}`)];
-          const psi = await keyedHashPSI(a, b, key);
+          const psi = await oprfPSI(a, b, key);
+          // The parties by the names the canvas gives them: the banks on finance, Party A and Party B
+          // wherever else the PSI runs (the generic demo, or another use case set to PSI).
+          const [pa, pb] = usecase === "finance_aml" ? ["Bank A", "Bank B"] : ["Party A", "Party B"];
           artifacts.psi_intersection = psi.intersection;
           metric(stage, "psi_intersection_size", psi.intersection_size);
-          metric(stage, "psi_set_size", a.length);
-          emit("log", stage, `PSI complete: ${psi.intersection_size} shared accounts over ${a.length}x${b.length} `
-            + "(keyed-hash PSI: both sides hold the HMAC key, so over this ID space either could recover the "
-            + "other's list from its tags; a production PSI would use an OPRF-based protocol)");
+          metric(stage, "psi_set_size_a", psi.size_a);
+          metric(stage, "psi_set_size_b", psi.size_b);
+          metric(stage, "psi_blind_evaluations", psi.blind_evaluations);
+          metric(stage, "psi_protocol", psi.protocol);
+          emit("log", stage, `PSI complete: ${psi.intersection_size} shared accounts over ${psi.size_a}x${psi.size_b} `
+            + `by the ${psi.protocol}. ${psiLearnedSummary(psi, pa, pb)}. Its messages are sealed under the PQC `
+            + `session key; ${pa} and ${pb} run in this tab (notional parties), and the OPRF rests on a `
+            + "discrete-log assumption, so it is not post-quantum");
         }
         break;
       }
