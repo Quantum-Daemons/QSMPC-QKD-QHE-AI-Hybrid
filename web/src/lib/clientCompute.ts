@@ -3101,6 +3101,9 @@ export function runClientPipeline(
         // The bundled real linear model where one ships, else placeholder weights (the published ONNX
         // model runs separately, below). inf.provenance records which, and the UI shows it.
         const inf = await privateInference(usecase, feats, realIn?.model ?? null);
+        // Whether the class CKKS surfaces comes from the model the SHAP bars below explain (Round 84):
+        // set where the CKKS class is, read where `explanation_is_of_reported_class` is.
+        let ckksClassIsTheExplainedModels = false;
         const clientMs = r2(performance.now() - t);
         artifacts.client_compute_ms = clientMs;
         metric(stage, "client_compute_ms", clientMs);
@@ -3150,6 +3153,9 @@ export function runClientPipeline(
             ? 1
             : benchScale(usecase, config.model_size ?? "medium", config.workload ?? "linear");
           artifacts.fhe_prediction = real.prediction;
+          // The garbled-circuit argmax over CKKS logits of `realIn.model` when the encryption evaluated
+          // it; over the demo pattern otherwise, which the bars do not explain.
+          ckksClassIsTheExplainedModels = real.encryptedRealModel;
           // WHICH model the encryption evaluated. Until Round 38 this was always the demo pattern
           // while the class and the SHAP bars came from the bundled model, so every `fhe_*` figure
           // on finance and genomics described a weight vector that appeared nowhere else on the page.
@@ -3519,6 +3525,9 @@ export function runClientPipeline(
           // say), or the garbled-circuit protocol not completing, which includes it ABORTING on a
           // failed check. Until Round 68 both were reported as the first.
           artifacts.fhe_prediction = inf.prediction;
+          // `privateInference` scored the same weights the bars explain: `realIn.model`, or the
+          // placeholder pair `linearShap` is given when no model ships.
+          ckksClassIsTheExplainedModels = true;
           const representative = mpcFheRow(usecase, config.workload ?? "linear", config.model_size ?? "medium", null, secFromConfig(config, metrics));
           const cause = real.failed === "mpc"
             ? `the garbled-circuit MPC did not run to completion (${real.reason})`
@@ -3696,12 +3705,13 @@ export function runClientPipeline(
         // exact for weights that mean nothing, so say which case this is rather than let a reader
         // assume the explanation describes the industry model.
         artifacts.explanation_provenance = realIn?.model?.W ? "real bundled model" : "placeholder weights";
-        // KNOWN WRONG ON THE CKKS PATH, left for a behaviour change. On finance, medical and genomics
-        // the CKKS stage evaluates the SAME bundled model explained here (`fhe_model` says so), and
-        // the reported class is that model's argmax - so the bars ARE an attribution of it there,
-        // and this `false` makes the panel call the class "a different computation". It is right
-        // only when the trained QCNN surfaced the class. TODO: set it from the surfaced backend.
-        artifacts.explanation_is_of_reported_class = false;
+        // FROM THE BACKEND THAT SURFACED THE CLASS (Round 84). Round 83 left this `false` on every
+        // path, so on finance, medical and genomics, where CKKS evaluates the same bundled model
+        // explained here and reports its argmax, the panel called the class "a different
+        // computation". It is false when the trained QCNN surfaced the class, or when the encryption
+        // evaluated the demo pattern rather than the explained model.
+        artifacts.explanation_is_of_reported_class =
+          artifacts.primary_inference?.backend === "ckks" && ckksClassIsTheExplainedModels;
         metric(stage, "explanation_model", artifacts.explanation_provenance);
         metric(stage, "explanation_top_contribution", artifacts.explanation.top_features[0]?.contribution ?? 0);
         emit("log", stage, `XAI: top driver = ${artifacts.explanation.top_features[0]?.feature}`);
@@ -3774,10 +3784,12 @@ export function runClientPipeline(
           // missing: the payload recorded which FHE backend was chosen but not which MPC one, and
           // recorded the QKD family but not the protocol that actually ran - so an E91 run and a
           // BB84 run signed byte-identical config records.
-          // `fhe`/`mpc` record the in-browser BACKENDS, not what the config carries. They are named
-          // on every use case, including satellite, whose flow runs neither, and telecom, which runs
-          // a CKKS check of its student and no MPC; recording what each flow ran is a behaviour change
-          // still to make. In the client-only demo the
+          // `fhe`/`mpc` record the in-browser BACKENDS THIS RUN EXECUTED (Round 84), not what the
+          // config carries: CKKS when a CKKS evaluation reported (`fhe_model` from the encrypted
+          // hybrid, `encrypted_rows_scored` from a batch), the garbled-circuit argmax when it was
+          // checked against the clear one (`mpc_matches_clear`), else null. Until Round 84 both were
+          // named on every use case, including satellite, whose flow runs neither, and telecom, which
+          // runs a CKKS check of its student and no MPC. In the client-only demo the
           // selects are replaced by a badge reading "node-seal CKKS + garbled-circuit 2PC", while the
           // state still held the server-side defaults `tenseal-cpu` and
           // `mpyc-shamir` - nobody chose them and neither executed. `config.fhe` and `config.mpc`
@@ -3786,8 +3798,12 @@ export function runClientPipeline(
           // saying so. A signed record of the wrong thing is worse than an unsigned one, because
           // the signature is what invites a reader to trust it.
           config: { kem: config.kem ?? null, qkd: config.qkd ?? null, sig: config.sig ?? null,
-                    fhe: isClientDemo() ? "node-seal-ckks" : (config.fhe ?? null),
-                    mpc: isClientDemo() ? "polytune-garbled-circuit-2pc-wasm" : (config.mpc ?? null),
+                    fhe: isClientDemo()
+                      ? (metrics.fhe_model != null || metrics.encrypted_rows_scored != null ? "node-seal-ckks" : null)
+                      : (config.fhe ?? null),
+                    mpc: isClientDemo()
+                      ? (metrics.mpc_matches_clear != null ? "polytune-garbled-circuit-2pc-wasm" : null)
+                      : (config.mpc ?? null),
                     qkd_protocol: config.qkd_protocol ?? null,
                     combiner: config.combiner ?? null },
           metrics: { ...metrics },

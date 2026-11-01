@@ -45,10 +45,9 @@ The `pqc/` module adds a config-gated PQC+QKD key combiner (`transport.py`,
 `hybrid_combiner_mode = hkdf | its_toeplitz`). `its_toeplitz` is the Toeplitz+QLHL extractor of
 arXiv:2603.26907, seeded here with SHAKE-256 of its own inputs; the paper's leakage-resilience
 property needs a seed independent of the input, so as implemented the combiner is computational, not
-information-theoretic, like HKDF. Its QKD input is a simulated key at best: the browser mixes no
-QKD key into any session key and its MCP channel's "QKD-domain" input is a fixed 32-byte constant,
-while the full deployment folds 256 or more simulated sifted bits into the session key (HKDF-SHA256
-by default). The QRNG post-processing and the combiner mode are both runtime-selectable - see
+information-theoretic, like HKDF. Its QKD input is a simulated key at best, and the browser mixes
+none into any key ([what each tier mixes in](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)).
+The QRNG post-processing and the combiner mode are both runtime-selectable - see
 `crypto-agility.md`.
 
 **QKD networking control plane.** Two modules model it, so the Agentic-AI panel beside it is not
@@ -129,17 +128,13 @@ and a helper. The conversions between the halves are masked, as Gazelle's and De
   inside the next ciphertext;
 - the final MPC opens the class index to the client and nothing else.
 
-**Until Round 84 the masking protected slot 0 only, and the conversion was not model-private.** The
-bias and the mask were added as one scalar, which CKKS adds to every slot. A key holder who decoded
-all slots of one masked dot product read the bare mask in the zero-padded slots and partial sums of
-the products in the low slots, so one query recovered the unmasked output and the layer's whole
-weight row (confirmed locally with the TenSEAL backend: the output to 1.4e-6, the weights to 3.3e-6).
-The fix is a mask independent in every slot, real and imaginary parts, from the OS CSPRNG, added as
-a vector encrypted under the client's key, which also re-randomises the ciphertext
-(`src/qsh/fhe/masking.py`, used by the dense layer and the convolution alike).
-`tests/test_r84_c1_slot_masking.py` decodes every slot with the client's own key and checks that no
-linear combination of them predicts a product. On OpenFHE the context is real-typed, so the
-imaginary parts cannot be flooded there; such runs say so in `masked_slots` and report no margin.
+**Every slot is masked, not slot 0 alone**, by `src/qsh/fhe/masking.py`, which
+`tests/test_r84_c1_slot_masking.py` checks by decoding every slot with the client's own key and
+finding no linear combination that predicts a product; until Round 84 one scalar mask left the bare
+mask in the zero-padded slots and partial sums of the products in the low ones, and one query
+recovered the unmasked output and the layer's weight row (confirmed with the TenSEAL backend: the
+output to 1.4e-6, the weights to 3.3e-6). What the masking now hides, and the OpenFHE exception, are
+in [the threat model's table](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment).
 
 **What the client decodes is statistically hidden, not perfectly.** CKKS is approximate, so the
 masks are real numbers, uniform on $`[-2^{30}, 2^{30})`$ from the OS CSPRNG, where Gazelle and Delphi
@@ -161,7 +156,8 @@ observes plaintext intermediates, was present here through the unmasked slots un
 every slot masked, what the client decodes is bounded per run by `view_statistical_distance`; the
 claim is the semi-honest, honest-majority one above, and the class index remains an output.
 The browser tier is different and says so: its 2PC runs on logits the tab has decrypted, for a model
-that is published anyway (`web/src/lib/clientMPC.ts`).
+that is published anyway (`web/src/lib/clientMPC.ts`;
+[what each tier protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)).
 
 **This is a trip-wire, not just background.** If the non-linear path is ever changed to plaintext
 client offload for the latency win, or the conversions lose their masks, eprint 2026/1527 becomes
@@ -261,7 +257,9 @@ FHE-feasible by design at this demo's operating point - MedMNIST-scale, not ResN
 boundary: the Python QOTP demo evaluates Clifford gates on the encrypted state with Pauli key updates,
 the browser's comparison circuit applies its T gates to the padded state without correcting or
 decrypting it, so it measures cost only, and the Rate-1 module is a transport with no `Eval`, so it
-evaluates nothing. **On ct/pt:** the QSMPC-FHE row's ct/pt is **not rendered** (a dash), on either transport. A one-time pad maps $`n`$ qubits to $`n`$ qubits plus a $`2n`$-bit classical key, so a qubit ratio of 1.0 leaves out the key, and the Python row's 1.2769 divides by the bytes of a classically simulated state vector; neither can share a column with the CKKS byte ratio. The Rate-1 QFHE paper (Chardouvelis, Doettling, Malavolta, TCC 2021) reports no concrete ratio. The pages' **lightweight / medium / large** model-size selector was removed, because it scaled
+evaluates nothing. **On ct/pt:** the QSMPC-FHE row's ct/pt is **not rendered** (a dash), on either
+transport, because no quantum ratio can share a column with the CKKS byte ratio
+([what ct/pt measures](models-and-benchmarks.md#what-ctpt-measures)). The pages' **lightweight / medium / large** model-size selector was removed, because it scaled
 invented MLPs rather than the models that exist; `tier_architectures` and `workload_multipliers` remain
 in the config for the CLI benchmark's `--model-size` and `--workload`. On the pages, the benchmark costs
 the encrypted student where a use case has one.
@@ -328,7 +326,8 @@ cost - genomics and the generic demo - and labels it so):
   FedAvg of a 4-weight logistic regression whose features come from `qcnnExpectation`, a closed-form
   `tanh(mean(sin(x_i + 0.5 i)))` with no circuit or state vector behind it, so nothing quantum is
   computed in the browser's QFL stage; round accuracy is genuinely computed, and its pairwise masks
-  are HKDF outputs of the one PQC session key, which the aggregator also holds.
+  are HKDF outputs of the one PQC session key, which the aggregator also holds
+  ([what that hides](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)).
 - **Real MCP server** (`src/qsh/mcp/server.py`, full deployment only) - an **`MCPServer`** server (MCP Python
   SDK, MIT) exposing the 5 per-industry tools; `pqc/mcp_bridge.secure_agent_call` now **dispatches the
   real tool** and seals the **ML-DSA-signed result** back over an AES-GCM channel keyed by a PQC
@@ -341,11 +340,11 @@ cost - genomics and the generic demo - and labels it so):
   33-parameter CKKS-linear student (the browser's CKKS step runs a linear surrogate over four columns
   of the PaySim demo sample); medical: a MedMNIST CNN; **genomics: the PGS-Catalog polygenic risk score**
   PGS000072, whose full 183-variant dot product runs under CKKS in the browser and in the full
-  deployment, against a 90th-percentile cut over the bundled panel; telecom: synthetic QKD-attack data, where the
-  published `telecom_ids.qml` ONNX is a random forest and the quantum-kernel SVC runs only offline
-  (its fidelity kernel equals the classical product kernel); satellite: ESA-ADB telemetry for the
-  trained models, with a CKKS anomaly score in the full deployment only (the browser's satellite page
-  runs a plaintext score). The FHE-*encrypted*
+  deployment, against a 90th-percentile cut over the bundled panel; telecom: synthetic QKD-attack data,
+  whose published `telecom_ids.qml` is a random forest
+  ([and why](findings.md#telecom-the-classical-forest-wins)); satellite: ESA-ADB telemetry for the
+  trained models, with a CKKS anomaly score in the full deployment only
+  ([which pages encrypt](models-and-benchmarks.md#which-pages-encrypt)). The FHE-*encrypted*
   inference is the FHE-feasible part; the full model is the real industry architecture (honest crypto scope).
 
 **Backend layout (kept lean).** Modules: `pqc/` (hybrid KEM, transport, signatures,

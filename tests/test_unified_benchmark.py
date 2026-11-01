@@ -32,12 +32,13 @@ def test_inference_usecase_unifies_run_and_benchmark(usecase):
     # per-stage split metrics are on the event bus (drive the diagram + RunMonitor)
     m = pipe.bus.metrics()
     assert m["fhe_linear_ms"] > 0 and m["mpc_nonlinear_ms"] > 0
-    # the benchmark is assembled from the run: MPC-FHE + QSMPC-FHE + advantage
+    # the benchmark is assembled from the run: MPC-FHE + QSMPC-FHE. The retired composite score is
+    # withheld, as in the browser (Round 84); tests/test_r84_retired_score_withheld.py says why.
     br = ctx.artifacts["benchmark_result"]
     assert br["live"] is True
     paths = {r["path"] for r in br["results"]}
     assert paths == {"MPC-FHE", "QSMPC-FHE"}
-    assert br["advantage"] and br["advantage"]["score"] > 0
+    assert br["advantage"] is None
     # the benchmark rides into the ML-DSA-signed summary
     assert "benchmark_result" in ctx.artifacts["summary"]["artifacts"]
 

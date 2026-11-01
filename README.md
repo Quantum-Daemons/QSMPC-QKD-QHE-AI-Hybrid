@@ -30,13 +30,18 @@ and is not new, the positioning (quantum-safe, not quantum-advantage) and the fo
 |---|---|---|---|
 | Post-quantum cryptography | ML-KEM-768 + X25519 hybrid key agreement, ML-DSA-65 signatures | real, in the browser and in Python | FIPS 203 and FIPS 204; NIST's ACVP cases for ML-KEM-768 |
 | QKD on fibre | BB84 decoy-state and E91; the BB84 key is a composable finite key over a privacy-amplification block of 1e7 key-basis bits, E91's stays asymptotic | simulated channel, real bounds | Ma et al. 2005; Rusca et al. 2018 Table I (26 dB row within 2 percent); Yin et al. 2020's Chernoff-type statistics |
-| QKD from a satellite | Micius downlink; the key is the finite key of one pass; a trusted relay and a constellation | simulated | Liao et al. 2017's pass (detections within 1 percent; the key 0.75 of theirs), 23 measured Micius nights, Lim et al. 2014 |
+| QKD from a satellite | Micius downlink; the key is the finite key of one pass; a trusted relay and a constellation | simulated | Liao et al. 2017's pass (detections within 1 percent; the key 0.75 of theirs on one basis, 1.50 on both, as they keyed it), 23 measured Micius nights, Lim et al. 2014 |
 | QRNG | quantum-measurement simulation with SP 800-90B health tests and seeded or seedless extraction | simulated source, real tests | NIST SP 800-90B |
 | Private inference | CKKS linear layers (node-seal) and a garbled-circuit 2PC for the argmax (Polytune); between the medical CNN's encrypted layers, ReLU and pooling run in plaintext | real protocols, notional parties | plaintext against CKKS on the same inputs |
 | QSMPC | a keyed-hash set intersection (it does not hide either bank's list from the other) and secure summation; quantum forms in the full deployment | computed in the browser with both parties in one tab (notional parties), simulated quantum forms | the plaintext result |
 | QHE and QML | quantum one-time pad, an untrained Clifford+T comparison circuit, trained QCNNs (not encrypted), a QML intrusion detector | simulated circuits | the QCNNs against a logistic-regression baseline on the same split |
 | Models | eleven published models, run with ONNX Runtime in the browser | real inference | per-model metrics and model cards |
 | Agentic AI | a small language model in the browser over a quantum-safe MCP channel | real | signed tool results |
+
+What each step hides, in the browser and in the full deployment:
+[`docs/threat-model.md`](docs/threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment).
+How the QKD keys are counted, and checked against Rusca et al.'s table and the flown keys:
+[`docs/models-and-benchmarks.md`](docs/models-and-benchmarks.md#the-qkd-key-blocks).
 
 ---
 
@@ -449,21 +454,21 @@ tests/        pytest suite
 
 | Document | What it holds |
 |---|---|
-| [`docs/use-cases.md`](docs/use-cases.md) | what is and is not new, the positioning, the four workstreams, the industry use cases |
+| [`docs/use-cases.md`](docs/use-cases.md) | what is and is not new, the positioning, the four workstreams, the industry use cases, the trained QCNNs |
 | [`docs/architecture.md`](docs/architecture.md) | the pipeline contract, faithful hybrid inference, the SPA's shape, the compute topologies |
 | [`docs/development.md`](docs/development.md) | the quickstart with its notes, the dev environment, GPU, FHE, MPC, Rust/WASM, advisories, languages, submodules |
-| [`docs/models-and-benchmarks.md`](docs/models-and-benchmarks.md) | the datasets, the MPC-FHE against QSMPC-FHE benchmark, model tiers, what the pages show |
-| [`docs/findings.md`](docs/findings.md) | the WS3 and WS4 challenges, and every concern and recommendation recorded so far |
+| [`docs/models-and-benchmarks.md`](docs/models-and-benchmarks.md) | the datasets, the MPC-FHE against QSMPC-FHE benchmark and what its ct/pt measures, model tiers, what the pages show, which pages encrypt, the QKD key blocks |
+| [`docs/findings.md`](docs/findings.md) | the WS3 and WS4 challenges, the per-industry models and their caveats, and every concern and recommendation recorded so far |
 | [`docs/deployment.md`](docs/deployment.md) | the deployment runbook and tiers |
-| [`docs/threat-model.md`](docs/threat-model.md) | the threat model |
+| [`docs/threat-model.md`](docs/threat-model.md) | the threat model, and what each step protects in the browser and in the full deployment |
 | [`docs/crypto-agility.md`](docs/crypto-agility.md) | the crypto-agility registry and its rules |
-| [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md) | the PQC roadmap and future tracks |
+| [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md) | the PQC roadmap, NSA's and BSI's positions on QKD, and future tracks |
 | [`docs/ai-act-art50-gap-analysis.md`](docs/ai-act-art50-gap-analysis.md) | the EU AI Act Art. 50 gap analysis |
 | [`docs/deliverable-verification.md`](docs/deliverable-verification.md) | the verification register, round by round |
 | [`docs/verification-log.md`](docs/verification-log.md) | the verification log |
 | [`report/technical-report.pdf`](report/technical-report.pdf) | the technical report |
 | [`references/REFERENCES.md`](references/REFERENCES.md) | the annotated primary sources |
-| [`DATA_LICENSES.md`](DATA_LICENSES.md) | the datasets and their licences |
+| [`DATA_LICENSES.md`](DATA_LICENSES.md) | the datasets and their licences, and the submodules |
 
 ---
 

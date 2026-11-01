@@ -58,8 +58,10 @@ def _tracked_pdfs() -> list[str]:
 def _section_8() -> str:
     text = LICENCES.read_text()
     start = text.index("## 8. Bundled reference PDFs")
-    end = text.index("\n## ", start + 10)
-    return text[start:end]
+    # Section 8 runs to the next top-level section or to the end of the file: since Round 84 it is
+    # the last section, the submodule table that followed it having merged into section 6a.
+    end = text.find("\n## ", start + 10)
+    return text[start:end if end != -1 else len(text)]
 
 
 def test_section_8_exists_and_is_not_empty() -> None:

@@ -4,7 +4,7 @@
 > AND THE 9-WIRE OPTION FOR FINANCE AND MEDICAL WAS REMOVED.**
 >
 > **Telecom now ships `hur-su4` at both widths**: Hur, Kim and Park's 15-angle SU(4) block on every
-> nearest-neighbour bond, their pooling, and the encoding RY(c * pi * tanh(z)) at c = 0.5 (both
+> nearest-neighbour bond, their pooling, and the encoding $`R_Y(c \pi \tanh z)`$ at $`c = 0.5`$ (both
 > chosen by pre-registered experiments of 2026-10-30; see `models/qcnn_telecom/README.md`). Every
 > width figure below this banner belongs to the retired disjoint-pair tree. On the new circuit, macro
 > F1 by seed, from the pre-registered half-angle experiment (seed 0 at each width IS the shipped
@@ -39,8 +39,8 @@
 > copies are deleted and the width control on those two pages names the one trained width instead of
 > offering a choice. The measurements below stay as the record of why.
 >
-> **Medical moved too**, on the same tree: c = 0.5 (+0.042 accuracy over five seeds, better on 5 of 5)
-> and raw input standardised with the artifact's own moments. Its 8-wire figures below are c = 1.
+> **Medical moved too**, on the same tree: $`c = 0.5`$ (+0.042 accuracy over five seeds, better on 5 of 5)
+> and raw input standardised with the artifact's own moments. Its 8-wire figures below are $`c = 1`$.
 
 > **DEADLINE EXECUTED Round 49. RE-RUN AT FIVE SEEDS ON THE CURRENT CIRCUIT. THE PAD-WIRE FINDING
 > IS CONFIRMED AND STRENGTHENED; THE TELECOM FINDING IS NOT - ITS DIRECTION HOLDS AND ITS

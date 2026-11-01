@@ -134,7 +134,8 @@ RFC text above.
 boringtun (https://github.com/cloudflare/boringtun, BSD-3-Clause) at commit
 `6dcc889a95ad82400932f785d874421d70308195` (2026-06-15), file `boringtun/src/noise/handshake.rs`
 (36430 bytes, SHA-256 `6c2e3eada1e0095f6dae7829540c135c6251f71602f439d818ad6ca3c7a2a262`), hardcodes
-`INITIAL_CHAIN_KEY` = Hash(Construction) and `INITIAL_CHAIN_HASH` = Hash(Ci || Identifier). The two
+`INITIAL_CHAIN_KEY` $`= \mathrm{Hash}(\mathrm{Construction})`$ and `INITIAL_CHAIN_HASH`
+$`= \mathrm{Hash}(C_i \Vert \mathrm{Identifier})`$. The two
 32-byte constants were parsed from the source, converted to hex, and confirmed with Python's
 `hashlib.blake2s` before being stored. wireguard-go computes the same values at start-up
 (`device/noise-protocol.go`, `init()`) instead of publishing them, so no authoritative implementation

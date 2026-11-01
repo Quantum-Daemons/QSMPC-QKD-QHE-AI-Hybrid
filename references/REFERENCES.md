@@ -106,7 +106,7 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   user's choice), and no link is operated below "10 deg elevation angle", where "A single-orbit
   experiment ends".
   ROUND 77 CORRECTED THE CROSS-CHECK. Round 75 compared the "~12 kbit/s at 645 km" with half of every
-  detection at mu = 0.8, as if every pulse were a signal, and found 12.2. Liao counted signal states
+  detection at $`\mu = 0.8`$, as if every pulse were a signal, and found 12.2. Liao counted signal states
   only: 1,671,072 sifted of 3,551,136 detections is 0.47057, against 0.47059 for signal-only
   sifting at 50 / 25 / 25 and 0.5 for all states. Counted that way, the model of Round 75 was 2.9 dB
   low at 645 km and 2.5 dB high at 1200 km. The model of Round 77 integrates the whole pass of 19
@@ -436,9 +436,8 @@ papers. Where the two used to overlap, that file is the owner.
   information-theoretic. **The paper reports no concrete ratio**: the 1.32 this repository once called
   its "literature value" is not in it. That constant and the Overview card it fed were removed on
   2026-10-23, and the quantum-advantage score built on the same comparison was retired from display
-  then; the full deployment's `/api/benchmark` still computes and returns it (`api/main.py`,
-  `src/qsh/benchmark/quantum_advantage.py`), and no page shows it. Corrected 2026-10-30: this said
-  the score was removed. Informs
+  then. The module is kept (`src/qsh/benchmark/quantum_advantage.py`), but neither tier computes it
+  for a run and no page shows it. Informs
   `src/qsh/qhe/rate1_qfhe.py` (QOTP plus a KEM-masked key; no Eval).
 - **Classical rate-1 FHE, the counterpart the comparison above omitted** `[R]`
   Gentry and Halevi, "Compressible FHE with Applications to PIR", TCC 2019, LNCS 11892, pp. 438-464,
@@ -1169,37 +1168,26 @@ boundary**, not displaying a value.
 
 - **Microsoft SEAL, `SECURITY.md`** `[link]`
   URL: https://github.com/microsoft/SEAL/blob/main/SECURITY.md
-  Verified 2026-08-12. Verbatim: *"The CKKS scheme requires particular care because it is approximate:
-  decryption returns the message plus a secret-key-dependent error term rather than the exact
-  message"*; *"Releasing such decryptions to any party other than the secret key owner can therefore
-  leak the secret key, even when only ordinary computation results are shared"*; *"Formally, the CKKS
-  implementation in Microsoft SEAL does not provide IND-CPA-D security ...; it targets only IND-CPA
-  security"*; *"Any mitigation, such as adding noise to decrypted values before they are shared (noise
-  flooding), must be implemented by the application before a decrypted CKKS value crosses a trust
-  boundary."* Bears on `web/src/lib/clientFHE.ts` and on the threat model's CPAD section. Note what the
-  last sentence implies for this deployment: **SEAL provides no noise flooding**, so there is no
-  parameter to set and the gap is upstream rather than declined.
+  Verified 2026-08-12. The upstream security statement for the cipher on the page. Four of its
+  sentences are quoted verbatim in the threat model's CPAD section
+  ([`../docs/threat-model.md`](../docs/threat-model.md#what-ckks-does-and-does-not-promise-here)): that CKKS decryption returns the message plus a
+  secret-key-dependent error, that releasing such decryptions can leak the key, that SEAL's CKKS
+  targets IND-CPA and not IND-CPA-D, and that noise flooding is the application's job before a value
+  crosses a trust boundary, so SEAL itself provides none. Bears on `web/src/lib/clientFHE.ts`.
 - **IBM HElib, `CKKS-security.md`** `[link]`
   URL: https://github.com/homenc/HElib/blob/master/CKKS-security.md
-  Verified 2026-08-12. The mechanism in one sentence: *"since the scheme itself adds some error, the
-  attacker could learn something from the decryption result even if it knows what the decrypted result
-  was supposed to be. Specifically, it learns the error, which may leak information about the secret
-  key."* The query count Li and Micciancio is usually credited with is here rather than in that paper's
-  reachable text: *"sometimes as few as a single decryption"*. And the cost of the fix: *"to withstand
-  an attack that has access to the results from decryption of D ciphertexts, the bits parameter should
-  be increased roughly by a factor of sqrt(D)"*. HElib implements noise flooding **inside decryption**
-  with a settable accuracy target, which is the contrast that makes SEAL's position specific.
+  Verified 2026-08-12. Three passages are quoted verbatim in the same section: the mechanism (a
+  decryption result leaks the error, and with it the key), the query count Li and Micciancio is
+  usually credited with, which is here rather than in that paper's reachable text, and the scaling law
+  for HElib's own noise flooding, which it implements inside decryption with a settable accuracy
+  target - the contrast that makes SEAL's position specific.
 - **OpenFHE security documentation** `[link]`
   URL: https://openfhe.org/ - the security documentation on the project site; the deep-link path is
-  deliberately not recorded, because only the text below was captured and a guessed path would be worse
-  than a search for "decryption queries" from the landing page.
-  Verified 2026-08-12. Verbatim: *"By default, OpenFHE chooses a configuration where a relatively large
-  number of decryption queries of the same or related ciphertexts can be tolerated. The lower bound for
-  the tolerated number of such decryption queries is N_d = 128 (but in practical computations, N_d is
-  at least 10,000)."* It also scopes the threat: the attack *"applies to the setting where decryption
-  results need to be shared between multiple parties, e.g., in the threshold FHE setting."* OpenFHE
-  offers `NOISE_FLOODING_DECRYPT` and `CKKS_M_FACTOR`; it is the backend `qsh/fhe/backends.py` uses on
-  the server side, so this is the one place in the project where the mitigation is configurable at all.
+  deliberately not recorded, because only the text quoted in the threat model was captured and a
+  guessed path would be worse than a search for "decryption queries" from the landing page.
+  Verified 2026-08-12. The tolerated number of decryption queries and the scope it gives the attack
+  (decryption results shared between parties, as in threshold FHE) are quoted verbatim in the same
+  section, with the two options OpenFHE offers, `NOISE_FLOODING_DECRYPT` and `CKKS_M_FACTOR`.
 - **Guo, Nabokov, Suvanto, Johansson, "Key Recovery Attacks on Approximate Homomorphic Encryption with
   Non-Worst-Case Noise Flooding Countermeasures", USENIX Security 2024** `[link]`
   URL: https://portal.research.lu.se/ - search the title; the record path is not recorded here because
@@ -2225,10 +2213,9 @@ reason.
   failure probability of 10-9", "the secure final key is 629,000 bits", error correction at "an
   inefficiency fec = 1.44", and 310,400 bits with detector-efficiency mismatch, the key "finally
   shared". Their Eq. (7) is applied "to the divided data among two bases X and Z": "both bases are
-  used for key generation". The bound here on the same session, keyed on the Z basis, gives 0.56 of
-  the 629,000 under Hoeffding and 0.69 under Chernoff; keyed on both bases (Round 84), 868,462 bits
-  under Chernoff, 2.80 of the final 310,400. Its Chernoff bounds cite
-  Zhang et al. 2017 (its ref. [46]), below.
+  used for key generation". How the model's key on the same session compares, on one basis and on
+  both: [`../docs/models-and-benchmarks.md`](../docs/models-and-benchmarks.md#the-qkd-key-blocks). Its
+  Chernoff bounds cite Zhang et al. 2017 (its ref. [46]), below.
 - **Yin, Zhou, Gu, Xie, Lu and Chen, "Tight security bounds for decoy-state quantum key
   distribution"**, Sci. Rep. 10, 14312 (2020). arXiv:2002.06530 `[link]`
   URL: https://arxiv.org/abs/2002.06530
@@ -2275,7 +2262,7 @@ reason.
 Read 2026-10-28. The user chose a finite key at every fibre site and asked the published practice to
 decide its block. What each source grounds is stated.
 
-- **Rusca et al. 2018** (arXiv:1801.03443), re-read for its channel and its blocks: n_Z, the Z-basis
+- **Rusca et al. 2018** (arXiv:1801.03443), re-read for its channel and its blocks: $`n_Z`$, the Z-basis
   detections, "defines the privacy amplification (PA) block size"; Table I's 1e7 and 1e9 rows with the
   time each block takes (14 s at 26 dB, 20 min at 46 dB, for 1e7); and "the detector and the internal
   losses of Bob's apparatus are included in the global attenuation". The last is the finding of the
@@ -2288,7 +2275,7 @@ decide its block. What each source grounds is stated.
   key distribution"**, Appl. Phys. Lett. 117, 144003 (2020). arXiv:2007.15447 `[link]`
   URL: https://arxiv.org/abs/2007.15447
   VERIFIED in the arXiv text: "one privacy amplification block consists of 4192 error correction
-  blocks" of 1944 bits, 8,149,248 bits, at eps_sec 1e-9 and eps_cor 1e-15.
+  blocks" of 1944 bits, 8,149,248 bits, at $`\epsilon_{sec} = 10^{-9}`$ and $`\epsilon_{cor} = 10^{-15}`$.
 - **Li et al., "High-rate quantum key distribution exceeding 110 Mb/s"**, Nat. Photon. 17, 416 (2023).
   arXiv:2307.02364 `[link]` URL: https://arxiv.org/abs/2307.02364
   VERIFIED in the arXiv text and supplement: the 1-decoy protocol "within a realistic finite-key size
@@ -2300,7 +2287,7 @@ decide its block. What each source grounds is stated.
   network** (npj Quantum Inf. 2019); **the Tokyo QKD Network** (arXiv:1103.3566); **SECOQC** (New J.
   Phys. 2009); **SwissQuantum** (arXiv:1203.4940). READ by the round's research: deployed systems fix
   the block as bits (1e6 to 1e8) and let the time follow; none fixes it as a pulse count.
-- **Lim et al. 2014** re-read: the "post-processing block size" is n_X, a count of key-basis
+- **Lim et al. 2014** re-read: the "post-processing block size" is $`n_X`$, a count of key-basis
   detections, evaluated at 1e4 to 1e9.
 - **ETSI GS QKD 005 (2010) and GS QKD 016 V2.1.1 (2024)**, read by the round's research: the block
   size must be specified; neither gives a value. A search-engine summary claiming ETSI recommends 1e8

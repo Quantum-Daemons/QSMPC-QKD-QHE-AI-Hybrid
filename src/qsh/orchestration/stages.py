@@ -696,13 +696,14 @@ class ExplainabilityStage(Stage):
 
 class QuantumComparisonStage(Stage):
     """Assemble the live-run benchmark: the measured MPC-FHE row (from PrivateInferenceStage) +
-    a QSMPC-FHE comparison row + the retired quantum-advantage score (kept in the artifact, shown
-    nowhere; see :mod:`qsh.benchmark.quantum_advantage`) -> ``ctx.artifacts['benchmark_result']``.
+    a QSMPC-FHE comparison row -> ``ctx.artifacts['benchmark_result']``. Its ``advantage`` is None:
+    the retired quantum-advantage score (:mod:`qsh.benchmark.quantum_advantage`) is not computed for
+    a run any more (Round 84), as the browser's is not.
 
     This is the Round-7 unification: a single Run animates the live E2E pipeline AND produces the
     benchmark for that very run (the live config's MPC-FHE row uses the run's real measured
     FHE-linear/MPC-non-linear latency). Use cases without a private-inference stage (telecom/
-    satellite) still get the QSMPC-FHE security row (advantage stays None -> the panel shows compact).
+    satellite) still get the QSMPC-FHE security row.
     """
 
     name = "quantum_comparison"
@@ -710,7 +711,6 @@ class QuantumComparisonStage(Stage):
     def run(self, ctx, bus, reg):
         import numpy as np
 
-        from ..benchmark.quantum_advantage import quantum_advantage
         from ..benchmark.quantum_qsmpc_fhe import run_quantum
 
         model_size = ctx.config.get("model_size", "medium")
@@ -737,20 +737,18 @@ class QuantumComparisonStage(Stage):
         q.model_size = model_size
         q_row = q.to_row()
 
-        c_bench = ctx.data.get("_mpc_fhe_bench")         # live measured MPC-FHE BenchResult (or None)
         c_row = ctx.artifacts.get("mpc_fhe_row")
         results = [r for r in (c_row, q_row) if r]
-        adv = quantum_advantage(c_bench, q) if c_bench is not None else None
 
-        # `advantage` stays in the artifact for backwards compatibility - the Python module is kept,
-        # as the retired 0-100 composite was - but it is no longer EMITTED: no metric, no log line.
-        # The UI renders it nowhere (BenchmarkPanel, the agent prompt and the diagram label were all
-        # cut on 2026-10-23), so a log line here would be the one place a visitor still read
-        # "quantum advantage 10/10 (dominant)" in a full deployment. Its inputs divided a CKKS byte
-        # ratio by a QOTP qubit ratio and a real encrypted inference by a simulated untrained circuit.
+        # `advantage` is None, as in the browser (Round 84, the defects round Round 83 left it to).
+        # Until then the retired 0-100 composite was still computed here and carried in the artifact,
+        # which reaches the ML-DSA-signed summary, though no page showed it. Its inputs divided a CKKS
+        # byte ratio by a QOTP qubit ratio and a real encrypted inference by a simulated untrained
+        # circuit. The key stays, so a reader sees the score withheld rather than missing; the module
+        # `qsh.benchmark.quantum_advantage` is kept for its own tests.
         ctx.artifacts["benchmark_result"] = {
             "workload": workload, "model_size": model_size,
-            "results": results, "advantage": adv, "live": True,
+            "results": results, "advantage": None, "live": True,
         }
         bus.log(f"benchmark assembled from the live run: "
                 f"{'MPC-FHE (measured) + ' if c_row else ''}QSMPC-FHE comparison", self.name)

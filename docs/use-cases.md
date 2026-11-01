@@ -43,36 +43,13 @@ recorded in [`docs/deliverable-verification.md`](deliverable-verification.md) an
 > as a market benefit - it is broadly unproven in 2026 (e.g. classical tensor-network simulation matching
 > annealing results), and the numeric "quantum advantage" score the benchmark used to print is
 > **retired from every page of the demo** (2026-10-23): its inputs measured different things on the two
-> sides, and only the full deployment's `/api/benchmark` response still carries it. For the QCNN specifically the evidence is sharper than "unproven": Bermejo, Braccia,
-> Rudolph, Holmes, Cincio and Cerezo show that randomly initialised QCNNs **can only act on
-> low-bodyness measurements of their input and are efficiently classically simulable** with Pauli
-> shadows, and argue that QCNN successes largely reflect benchmark simplicity
-> (PRX Quantum 7, 020304, 2026; [arXiv:2408.12739](https://arxiv.org/abs/2408.12739)). The trained
-> QCNNs here are simulable for a more direct reason. Finance's and medical's blocks act on disjoint
-> pairs of wires over a product angle encoding, so each is, up to its small final readout block, a
-> tree of two-qubit blocks that a classical computer evaluates exactly, the regime of that paper's
-> Section IV.B, "Classical datasets". Telecom's circuit, since Round 84, is Hur, Kim and Park's SU(4)
-> block on every neighbouring pair, which is not a tree: its survivors are entangled. It is simulated
-> exactly on $`2^n`$ amplitudes at 7 or 8 wires, so it is classically simulable at this size, and
-> classical data in a product angle encoding is still that section's regime. Nothing on the QCNN
-> path is encrypted, so it is not homomorphic evaluation either. On the same split, logistic
-> regression beats or ties every trained QCNN: it ties medical at the shipped seed (accuracy 0.9535
-> each, the same class on all 86 held-out rows) and leads it by 0.0186 over five seeds, and both
-> figures are printed side by side on the page. Two circuit widths ship for telecom so the effect of
-> the register size can be read rather than assumed: the eighth wire encodes no feature, and on the
-> SU(4) circuit seven wires beat eight on five of five seeds (mean macro F1 0.9705 against 0.9537,
-> paired p = 0.041), so the padding wire buys nothing and measurably costs something
-> ([`references/qcnn-width-ablation.md`](../references/qcnn-width-ablation.md)). Relatedly, Li, Wu, Li and Yung separate observable concentration from loss of
-> parameter sensitivity and show that **avoiding concentration is necessary but not sufficient for
-> trainability** ([arXiv:2603.18479](https://arxiv.org/abs/2603.18479), Mar 2026, rev. Jun 2026); the
-> untrained circuit this project removed from its inference path failed exactly the concentration
-> symptom, with $`|\langle Z_0 \rangle| < 0.21`$ for every input tested.
+> sides, and no run computes it any more: `advantage` is null in the browser and in the full deployment. For the QCNN specifically the evidence is sharper than "unproven": the trained QCNNs here are
+> classically simulable, nothing on their path is encrypted, and logistic regression beats or ties
+> each of them on the same split ([what the trained QCNNs are](#what-the-trained-qcnns-are)).
 >
 > The production-relevant output is the **security posture table** - per-row facts, each
-> traceable to FIPS 203/204 or to the run that produced it. The 0-100 composite that used to hold that
-> role was **retired in Round 22**: 14 of its 17 weights carried no stated rationale and it scored a
-> run with zero secure key bits 100/100 (see
-> [`references/security-scoring-fact-check.md`](../references/security-scoring-fact-check.md)). The whole stack is deliberately a
+> traceable to FIPS 203/204 or to the run that produced it - which replaced a 0-100 composite score
+> ([why it was retired](../references/security-scoring-fact-check.md#why-the-existing-score-had-to-go)). The whole stack is deliberately a
 > **hybrid** (PQC-classical + QKD/QHE quantum-simulated + FHE/MPC-classical + AI) - the pragmatic 2026
 > pioneering-product shape.
 
@@ -85,8 +62,8 @@ Four workstreams (WS), unified by one pipeline and a crypto-agility registry:
 | WS | Theme | What's implemented |
 |----|-------|--------------------|
 | **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (Ma et al.'s own one-decoy bound, section 3.5 Eq. 41, which leaves the vacuum yield $`Y_0`$ to Eve), over **Rusca et al. 2018's stated detector set** (SNSPDs at efficiency 0.5, 1e-8 dark counts per gate, a 1% error floor, 1 GHz with a 100 ns dead time charged by their Eq. B3; a simulation set, not a measured link) (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection (intercept-resend's $`0.25 f`$ disturbance composed independently with the channel error, $`a + b - 2ab`$, in both languages); a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 13 tests assert Ma et al. PRA 72, 012326 (2005) values rather than this project's own - decoy reaches past 140 km where non-decoy dies near 40, and at the customary $`\mu = 0.1`$ a non-decoy link's tagged fraction exceeds 1 at **zero** distance, so it yields no key even back-to-back; a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that can seed the BB84/E91 basis choices in Python (opt-in, off by default; in the browser its bits feed only the health metrics); a config-gated PQC+QKD key combiner (HKDF, or a Toeplitz+QLHL extractor seeded with SHAKE-256 of its own inputs, so computational rather than information-theoretic); and **OptiQKD** - a measured AI optimizer (scikit-learn surrogate + gradient-free search) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
-| **WS2** | **QML-IDS** intrusion detection | 8 classes = **7 QKD attack types + normal traffic**; RandomForest baseline + PennyLane variational quantum classifier and a quantum-kernel SVC, both offline (the published `telecom_ids.qml` ONNX is the random forest, and the SVC's fidelity kernel equals the classical product kernel). Scored on macro F1, not attack-vs-normal F1 |
-| **WS3** | **QSMPC x QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, and a keyed-hash PSI over the PQC channel (not private between the two banks over a small ID space; a production PSI would use an OPRF-based protocol) |
+| **WS2** | **QML-IDS** intrusion detection | 8 classes = **7 QKD attack types + normal traffic**; RandomForest baseline + PennyLane variational quantum classifier and a quantum-kernel SVC, both offline; the published `telecom_ids.qml` is the random forest, which neither beats ([why](findings.md#telecom-the-classical-forest-wins)). Scored on macro F1, not attack-vs-normal F1 |
+| **WS3** | **QSMPC x QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, and a keyed-hash PSI over the PQC channel, not private between the two banks ([what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)) |
 | **WS4** | **QHE x AI** | Quantum one-time pad (perfectly hiding as a scheme; the demo's pad is seeded); a trained variational QCNN that predicts in the clear (no T gate, no mask), beside an untrained QOTP + Clifford+T comparison circuit in the browser that counts T gates and predicts nothing (the Python module has no T gate); Rate-1 quantum **transport** (no `Eval`, so not QFHE); classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU, commercial-OK; HEonGPU is a build-gated GPU reference adapter that does not run here) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) in the full deployment, a Polytune garbled-circuit 2PC between notional parties in the browser - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`). The full deployment runs the medical use case's small CNN on **real MedMNIST images** under that hybrid; the browser runs the published student's convolution and dense layers under CKKS on a tabular (WDBC) row tiled to the image size, not on an image, decrypting between layers to apply ReLU and pooling in plaintext |
 
 **Crypto-agility is the headline library strategy** - in the EU NIS Cooperation Group sense
@@ -101,7 +78,7 @@ change, not a rewrite. There is **no in-band negotiation and no silent fallback*
 Cross-cutting: **PQC-first hybrid** (ML-KEM-768 + X25519, ML-DSA-65 - the hybrid-first
 approach the EU roadmap recommends), **crypto-agility**
 (operator-selected, modular provider replacement), **federated learning with pairwise masking** (the
-masks cancel exactly, but they hide nothing from a session-key holder in this demo) - including a **Quantum
+masks cancel exactly, but hide nothing from a session-key holder: [what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)) - including a **Quantum
 Federated Learning** option (a PennyLane hybrid quantum-classical VQC over this repo's own FedAvg; in the
 browser it runs on every finance and medical run rather than behind a toggle, over the page's own
 bundled sample, as a logistic regression over a closed-form feature map with no circuit behind it), **explainable AI**
@@ -127,10 +104,12 @@ official filesystem MCP server); the public demo keeps the zero-server client mi
 
 The **public demo computes real encrypted inference in the browser** on the finance, medical and
 genomics pages - node-seal **CKKS** (a genuine homomorphic linear layer) + a real **Polytune
-garbled-circuit 2PC** for the non-linear argmax; telecom runs a CKKS check of its student and the
-satellite page runs neither - so those FHE/MPC figures are **measured client-side, zero VPS compute**.
-The model and the data are public, and the PSI and secure-aggregation steps keep nothing private
-between the parties in one tab, so this demonstrates the computation rather than a privacy property.
+garbled-circuit 2PC** for the non-linear argmax, so those FHE/MPC figures are **measured client-side,
+zero VPS compute** (telecom runs a CKKS check of its student and the satellite page runs neither:
+[which pages encrypt](models-and-benchmarks.md#which-pages-encrypt)). The model and the data are
+public, and the PSI and secure-aggregation steps keep nothing private between the parties in one tab
+([what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)), so this demonstrates the computation rather than a privacy
+property.
 
 ### Industry use cases
 
@@ -170,3 +149,37 @@ private-inference stage, and an in-browser federated stage on every finance and 
 "Quantum Federated Learning" label notwithstanding, nothing quantum is computed in it) - zero `/api`
 compute; the **full local** deployment adds the server-side PennyLane QFL + the real MCP server. See [`docs/architecture.md`](architecture.md)
 for the full diagram.
+
+## What the trained QCNNs are
+
+The trained QCNNs that decide a page's class when Inference is set to QCNN run on few qubits:
+finance at 4 wires, one per feature over the four columns its linear model reads; medical at 8; and
+telecom at 8 and at 7. No 9-wire artefact ships: the 9-wire finance and medical circuits were removed
+because their pad wire changed no class. Nothing on the QCNN path is encrypted, so it is not
+homomorphic evaluation either.
+
+**They are classically simulable.** Bermejo, Braccia, Rudolph, Holmes, Cincio and Cerezo show that
+randomly initialised QCNNs **can only act on low-bodyness measurements of their input and are
+efficiently classically simulable** with Pauli shadows, and argue that QCNN successes largely reflect
+benchmark simplicity (PRX Quantum 7, 020304, 2026; [arXiv:2408.12739](https://arxiv.org/abs/2408.12739)).
+The trained QCNNs here are simulable for a more direct reason. Finance's and medical's blocks act on
+disjoint pairs of wires over a product angle encoding, so each is, up to its small final readout
+block, a tree of two-qubit blocks that a classical computer evaluates exactly, the regime of that
+paper's Section IV.B, "Classical datasets". Telecom's circuit is Hur, Kim and Park's SU(4) block on
+every neighbouring pair, which is not a tree: its survivors are entangled. It is simulated exactly on
+$`2^n`$ amplitudes at 7 or 8 wires, so it is classically simulable at this size, and classical data
+in a product angle encoding is still that section's regime.
+
+**Logistic regression beats or ties every trained QCNN on the same split.** It ties medical at the
+shipped seed (accuracy 0.9535 each, the same class on all 86 held-out rows) and leads it by 0.0186
+over five seeds, and both figures are printed side by side on the page. Two circuit widths ship for
+telecom so the effect of the register size can be read rather than assumed: the eighth wire encodes
+no feature, and on the SU(4) circuit seven wires beat eight on five of five seeds (mean macro F1
+0.9705 against 0.9537, paired p = 0.041), so the padding wire buys nothing and measurably costs
+something ([`references/qcnn-width-ablation.md`](../references/qcnn-width-ablation.md)).
+
+Relatedly, Li, Wu, Li and Yung separate observable concentration from loss of parameter sensitivity
+and show that **avoiding concentration is necessary but not sufficient for trainability**
+([arXiv:2603.18479](https://arxiv.org/abs/2603.18479), Mar 2026, rev. Jun 2026); the untrained
+circuit this project removed from its inference path failed exactly the concentration symptom, with
+$`|\langle Z_0 \rangle| < 0.21`$ for every input tested.

@@ -21,13 +21,19 @@ the papers.
 
 Of 17 fields in `SecurityScoringConfig`, exactly one is traceable to a citation (`leakage_low 0.1`,
 Sulimany et al., PRX 15 041056). Two are traceable by name only. Fourteen are unexplained and none
-carries a stated rationale. The maxima sum to exactly 30+30+20+10+10 = 100, which is the signature of
-a number designed backwards from its total.
+carries a stated rationale. The maxima sum to exactly $`30 + 30 + 20 + 10 + 10 = 100`$, which is the
+signature of a number designed backwards from its total. And it awarded a perfect 100/100 to a run
+whose quantum channel produced zero secure key bits (the QBER threshold below).
 
-The headline 68-to-96 gap was mostly an artefact of the call sites rather than of the cryptography:
-+12 for a substring match on a hand-written label, +10 because the classical call passed no QBER
-while the quantum call passed a literal, +6 for the same pattern on leakage. Sixteen of the 28 points
-were a difference in which arguments two functions chose to supply.
+The headline 68-to-96 gap, which the benchmark table's Security column printed as `68 / 100` and
+`96 / 100`, was mostly an artefact of the call sites rather than of the cryptography: +12 for a
+substring match on a hand-written label, +10 because the classical call passed no QBER while the
+quantum call passed a literal `0.0128`, +6 for the same pattern on a leakage bound nothing measured.
+Sixteen of the 28 points were a difference in which arguments two functions chose to supply. And
+separately, the classical row was scored without QKD key material while the quantum row assumed 256
+bits. Round 22 closed both halves in both languages, then retired the composite rather than keep
+rendering it. The lesson generalises past this metric: when two rows are compared, verify they were
+scored under ONE transport configuration before believing the gap.
 
 It also barely moved - 2 of 5 selectors reached it, giving 4 distinct values on a 0-100 axis whose
 bottom 63 percent was unreachable - and in the Python path both rows were literal constants for every
@@ -51,7 +57,8 @@ prior state, because the prior state at least did not claim external grounding.
 
 One idea from arXiv:2605.17061 transfers, without any of its content: **per-dimension verdicts
 sourced from specifications, rather than a synthesised number.** This project already used that shape
-successfully in the provenance badge's five-state enum.
+successfully in the provenance badge's enum of states (four today:
+[the threat model](../docs/threat-model.md#what-a-results-provenance-badge-says)).
 
 So the composite was retired in favour of reported facts, each traceable to a standard or to this
 run:
@@ -66,6 +73,12 @@ run:
 
 Every one of these is per-use-case verifiable in the E2E simulator, which a synthesised score is not.
 That was the deciding argument.
+
+**Where the composite stands now.** `src/qsh/benchmark/security.py` still computes it for backwards
+compatibility, and the full deployment's `/api/benchmark` returns it in each row, but no page renders
+it: the security posture table and the benchmark table's Security model column took its place, and
+the benchmark panel carries only a note on why it was retired
+([`../docs/models-and-benchmarks.md`](../docs/models-and-benchmarks.md#per-use-case-architectures)).
 
 ## Defects fixed regardless of presentation
 

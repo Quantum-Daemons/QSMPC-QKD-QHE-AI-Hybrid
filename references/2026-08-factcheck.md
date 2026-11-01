@@ -101,7 +101,7 @@ which sets `Y0 = 0` in the estimate; `tests/test_the_decoy_bound_is_the_one_deco
 **BOTH CONFIRMED Round 53, and the first is worse than reported.**
 
 *`f_ec = 1.22` is not Table 1.* Table 1's columns are $`\lambda`$, $`\alpha`$, $`e_{\mathrm{detector}}`$, $`Y_0`$, $`\eta_{\mathrm{Bob}}`$ and
-**f = 2MHz / 0.1MHz - a repetition rate**. 1.22 is from the prose: *"use f(e) = 1.22, which is the
+**$`f`$ = 2 MHz / 0.1 MHz - a repetition rate**. 1.22 is from the prose: *"use f(e) = 1.22, which is the
 upper bound of f(e) in secure distance for this experiment"*. Four of the five defaults ARE Table 1;
 the docstring said all five were. A correct number under a wrong provenance - the harder kind to
 notice, because nothing computed from it is wrong.

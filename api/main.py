@@ -156,14 +156,14 @@ async def ws(websocket: WebSocket, run_id: str) -> None:
 
 @app.get("/api/benchmark")
 def benchmark(workload: str = "linear", samples: int = 20, model_size: str = "medium") -> dict:
-    from qsh.benchmark.runner import compute_advantage, run_benchmark
+    from qsh.benchmark.runner import run_benchmark
 
     results = run_benchmark(workload, out_dir=RESULTS_DIR, n_samples=samples,
                             include_openfhe=True, model_size=model_size)
     # `advantage` is the RETIRED composite score (qsh.benchmark.quantum_advantage): its inputs are
-    # not comparable and no page shows it. Returning None here, as the browser does, is deferred.
+    # not comparable and no page shows it, so this returns None, as the browser does (Round 84).
     return {"workload": workload, "model_size": model_size,
-            "results": [r.to_row() for r in results], "advantage": compute_advantage(results)}
+            "results": [r.to_row() for r in results], "advantage": None}
 
 
 @app.post("/api/alice-bob")

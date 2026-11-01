@@ -20,7 +20,7 @@ $`p = 0.269`$ - so the run reproduced the theorem rather than hitting a bug.
 **Label it 2014, not 2026.** It is the best citation for this and it is twelve years old.
 
 Reaffirmed since: Nikolopoulos, arXiv:2512.00916 (2025-11-30) shows F1/AUPRC/MCC/accuracy "induce
-degenerate thresholds", with the F1 coefficient (1-pi)/(2pi) diverging as prevalence falls.
+degenerate thresholds", with the F1 coefficient $`(1-\pi)/(2\pi)`$ diverging as prevalence falls.
 
 ## 2. Youden's J is defensible, but it is NOT what 2026 recommends
 

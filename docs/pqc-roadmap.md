@@ -16,16 +16,22 @@ below are the recommended future tracks (PoC milestones M3/M4).
   **2035** is the NSM-10 goal. A 2033 date appears only in the 2022 advisory's per-technology table,
   not in CNSSP 15 or the FAQ. The required parameter sets are ML-KEM-1024, ML-DSA-87, AES-256 and
   SHA-384/512; this repository's defaults (ML-KEM-768 + X25519, ML-DSA-65, HKDF-SHA256) are none of
-  them, so nothing here is CNSA 2.0 by default (ML-KEM-1024 and ML-DSA-87 are selectable). NSA's QKD
-  position is not "non-recommended standalone": the FAQ answers **"No"** to protecting an NSS with QKD,
-  in any configuration. Verified 2026-10-23 against FAQ Ver. 2.2 and CNSSP 15; nsa.gov still returns
-  HTTP 403 to scripts, so the FAQ was read from an archived copy of the PDF the NSA resource hub links.
-  On QKD, **BSI TR-02102-1 v2026-01 section 2.1 "Use of Quantum-Safe Mechanisms"** (pp.28-29; the QKD
-  paragraph is on p.29) says QKD *"is currently not ready for use from a security point of view... the
-  BSI does not recommend QKD protocols at this time"*. What BSI does recommend is a hybrid of a
-  quantum-safe and a classical key agreement (section 2.2). The ML-KEM + X25519 layer has that shape,
-  but only its ML-KEM half is BSI-recommended (Table 2.7): X25519 is neither among BSI's recommended
-  curves (Table B.3 lists only the Brainpool curves) nor among its TLS 1.3 groups (TR-02102-2 v2026-01,
+  them, so nothing here is CNSA 2.0 by default (ML-KEM-1024 and ML-DSA-87 are selectable). **NSA does
+  not endorse QKD in any form for national security systems**, and its position is not
+  "non-recommended standalone": the FAQ answers *"Can I use a QKD system to protect my national
+  security system from a quantum computer?"* with **"No"**, in any configuration; its page on Quantum
+  Key Distribution and Quantum Cryptography says NSA *"does not support the usage of QKD or QC to
+  protect communications in National Security Systems"*; and it publishes no PQC+QKD hybrid
+  recommendation. Verified 2026-10-23 against FAQ Ver. 2.2 and CNSSP 15; nsa.gov still returns HTTP
+  403 to scripts, so the FAQ was read from an archived copy of the PDF the NSA resource hub links.
+- **BSI TR-02102-1 v2026-01** - on QKD, section 2.1 "Use of Quantum-Safe Mechanisms" (pp.28-29; the
+  QKD paragraph is on p.29) says QKD *"is currently not ready for use from a security point of view...
+  the BSI does not recommend QKD protocols at this time"*. What BSI does recommend, in section 2.2
+  "Key Derivation and Hybridisation" (p.29), is *"a hybrid key agreement mechanism that combines a
+  quantum-safe and a classical mechanism"*, which *"should remain secure as long as one of the methods
+  used is secure"*; section 2.2 does not mention QKD. The ML-KEM + X25519 layer has that shape, but
+  only its ML-KEM half is BSI-recommended (Table 2.7): X25519 is neither among BSI's recommended curves
+  (Table B.3 lists only the Brainpool curves) nor among its TLS 1.3 groups (TR-02102-2 v2026-01,
   Table 10), and for TLS BSI intends to recommend SecP256r1MLKEM768 and SecP384r1MLKEM1024 once their
   RFC is adopted (TR-02102-2 section 3.4.2). Keeping QKD as an optional, simulated add-on to that
   hybrid, never standalone, is **this project's** choice; neither BSI nor NSA recommends it.
@@ -95,6 +101,9 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
    for batched CNN/Transformer private inference; compare HEonGPU (GPU) vs OpenFHE (CPU) CKKS.
 6. **Continuous PQC inventory** - scan dependencies/protocols for quantum-vulnerable
    crypto (a "crypto bill of materials") to drive migration priority.
+7. **Finance AML graph features** - per-transaction subgraph patterns, the architectural difference
+   behind the finance model's gap to its published baseline:
+   [`findings.md`](findings.md#finance-the-gap-to-the-published-baseline-is-architectural).
 
 ## Timeline anchors
 
@@ -325,15 +334,3 @@ vendor-specific third.
 Recorded as a gap rather than a task. Implementing 004 would be a real piece of work and this project
 has no application that needs a key stream today - but "we implement the ETSI key-delivery interface"
 is a claim that should say **which one**, and a buyer's technical due diligence will ask.
-
-## The finance AML feature architecture, if that gap is ever closed
-
-Round 24 measured why `finance_aml.gbm` sat at 0.0808 against a published 0.6323 - it has since
-risen to 0.1519 by making the per-account aggregates causal - and ruled out the
-threshold, unseen accounts, and the 4-hop reachability limit - see
-`../references/finance-gap-investigation.md`. The residual is architectural: IBM's Graph Feature
-Preprocessor differs from this pipeline in feature ARCHITECTURE, not in licence - the mechanism is
-derived in `../references/finance-gap-investigation.md` and is not restated here. That difference is
-implementable without `snapml` and is a bounded, well-specified workstream. A measured intermediate
-step already exists: causal prior-at-time aggregation beat the shipped approach by 1.45x AUPRC at
-matched feature count, with no leakage.

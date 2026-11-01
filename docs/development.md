@@ -189,8 +189,9 @@ library through its published package does not require vendoring its source tree
 | `mpyc` | **non-linear MPC** - Shamir ReLU/argmax, the hybrid's non-linear half | pip | MIT |
 | `pennylane` | variational quantum layers (QFL, QML-IDS) | pip | Apache-2.0 |
 | `qiskit` / `qiskit-aer` | circuit authoring + state-vector simulation | pip | Apache-2.0 |
-| **Alisah-Ozcan/HEonGPU** | GPU CKKS for the MPC-FHE benchmark | **submodule** | Apache-2.0 |
-| **chart21/hpmpc** (PIGEON) | GPU secret-sharing MPC for the same benchmark | **submodule** | MIT |
+
+The two submodules, HEonGPU and hpmpc, serve the GPU MPC-FHE benchmark; their pins, licences and the
+unlicensed submodule one level below hpmpc are in [`DATA_LICENSES.md`](../DATA_LICENSES.md#6a-git-submodules).
 
 **Client-side / AI OSS (npm, all commercial-OK):** `@noble/post-quantum` **0.7.0** (MIT) for
 in-browser ML-KEM and ML-DSA. The pin matters: **0.2.1 accepted all 2,595 malformed encapsulation

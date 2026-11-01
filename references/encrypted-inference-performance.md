@@ -131,7 +131,7 @@ slightly smaller modulus both point the same way, and neither is quantified here
 reading is "the same order, this host faster", not a speedup claim.
 
 **n=16384 is NOT comparable, and quoting it as one would be the error this document exists to
-avoid.** The published row is at log(q)=438; this project runs 200 bits at that ring. Key-switching
+avoid.** The published row is at $`\log q = 438`$; this project runs 200 bits at that ring. Key-switching
 cost grows with the number of RNS limbs, so most of the gap between the published 41.2 ms and the
 6.73 ms measured here is the modulus, not the platform. The two numbers are recorded together only
 so the difference in parameters is visible.

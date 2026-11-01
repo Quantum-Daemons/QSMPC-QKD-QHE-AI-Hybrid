@@ -108,7 +108,8 @@ for (const run of [{ name: "ckks", config: { seed: 0, qfl: true } },
     });
   });
   result[run.name] = { logs, metrics, explanation: artifacts?.explanation ?? null,
-                       primary: artifacts?.primary_inference ?? null };
+                       primary: artifacts?.primary_inference ?? null,
+                       explainsClass: artifacts?.explanation_is_of_reported_class ?? null };
 }
 console.log(JSON.stringify(result));
 process.exit(0);
@@ -178,3 +179,19 @@ def test_the_trained_qcnn_still_runs_on_its_own_four_raw_columns(run) -> None:
     assert pi["primary_inference_backend"] == "qcnn-trained", pi
     assert pi["qcnn_qubits"] == 4
     assert run["qcnn"]["primary"]["backend"] == "qcnn-trained"
+
+
+def test_the_explanation_flag_follows_the_backend_that_surfaced_the_class(run) -> None:
+    """Round 84, deferred from Round 83: on the CKKS path the bars explain the reported class.
+
+    The encrypted stage set `explanation_is_of_reported_class` false on every run, so the SHAP panel
+    told a visitor that the class came from "a different computation" when CKKS had evaluated the
+    very model the bars explain and reported its argmax. It is false only when the trained QCNN
+    surfaced the class.
+    """
+    ckks, qcnn = run["ckks"], run["qcnn"]
+    assert ckks["primary"]["backend"] == "ckks"
+    assert ckks["metrics"]["private_inference"]["fhe_model"].startswith("bundled real model")
+    assert ckks["explainsClass"] is True
+    assert qcnn["primary"]["backend"] == "qcnn-trained"
+    assert qcnn["explainsClass"] is False

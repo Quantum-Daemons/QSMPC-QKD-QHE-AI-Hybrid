@@ -219,10 +219,9 @@ this as synthetic; it is never presented as measured on real traffic.
 - **The encrypted-tier students are published too.** `finance_aml.student` (33 params),
   `medical_fl.student` (3226), `satellite_comms.student` (49) and `satellite_comms.opssat_student`
   (210) are the models sized for CKKS. They are distilled from the teachers on the same corpora and
-  inherit the same licences, and their small `weights.json` files are also tracked in git. In the
-  browser, CKKS evaluates the medical student (and the bundled telecom student); the finance page's
-  CKKS step runs a linear surrogate over the PaySim demo sample instead, and the satellite page runs
-  no CKKS step.
+  inherit the same licences, and their small `weights.json` files are also tracked in git. Which of
+  them CKKS evaluates in the browser is in
+  [`docs/models-and-benchmarks.md`](docs/models-and-benchmarks.md#which-pages-encrypt).
 
 - **ImageNet-derived weights: the question was removed, not answered.** An earlier revision of this
   file analysed whether ImageNet-pretrained weights could be redistributed and concluded it could not
@@ -378,14 +377,15 @@ that build clean. CC0 is the one licence class under which vendoring needs no fu
 
 ### 6a. Git submodules
 
-Two upstream projects are vendored as submodules rather than installed from a package index, and
-neither appeared in this document until Round 22 audited them. A submodule is a dependency whose
-licence and maintenance status travel with the repository, so it belongs here with the rest.
+Two upstream projects are vendored as submodules rather than installed from a package index, both for
+the GPU MPC-FHE benchmark path, and neither appeared in this document until Round 22 audited them. A
+submodule is a dependency whose licence and maintenance status travel with the repository, so it
+belongs here with the rest. This is the one table of them; `docs/development.md` links here.
 
-| Submodule | Upstream | Licence | Pinned commit | Upstream default branch | Last push |
-|---|---|---|---|---|---|
-| `submodules/HEonGPU` | Alisah-Ozcan/HEonGPU | Apache-2.0 | `1928a14bb002` | same commit - at HEAD | 2026-05-11 |
-| `submodules/hpmpc` | chart21/hpmpc | MIT | `155c93572d74` | same commit - at HEAD | 2026-07-25 |
+| Submodule | Upstream | Used for | Licence | Commercial use | Pinned commit | Upstream default branch | Last push |
+|---|---|---|---|---|---|---|---|
+| `submodules/HEonGPU` | Alisah-Ozcan/HEonGPU | GPU CKKS for the MPC-FHE benchmark | Apache-2.0 | yes | `1928a14bb002` | at the pinned commit, unmoved since 2026-05-11 | 2026-05-11 |
+| `submodules/hpmpc` | chart21/hpmpc (PIGEON) | GPU secret-sharing MPC for the same benchmark | MIT | yes | `155c93572d74` | at the pinned commit, unmoved since 2026-03-02 | 2026-07-25 |
 
 Both are permissive and commercial-OK, neither is archived, and **both pins are the current head of
 their upstream default branch** - checked against the GitHub API rather than assumed, since a
@@ -396,6 +396,27 @@ One nuance worth recording rather than smoothing: hpmpc's default branch has not
 tags, so "actively maintained" and "the branch we track is moving" are different statements and only
 the first is true here. Re-check both on each round; the condition to act on is an archived upstream,
 a licence change, or a default branch that has not moved in a year.
+
+**The hazard is one level down, and it is an ABSENT licence rather than a restrictive one** (checked
+2026-08-10). `hpmpc` declares two submodules of its own:
+
+| Path | Upstream | Licence |
+|---|---|---|
+| `nn/PIGEON` | `chart21/flexNN` | MIT |
+| `nn/Pygeon` | `chart21/pygeon` | **none - all rights reserved by default** |
+
+A repository with no licence file grants no permissions at all, which is a stronger restriction than
+GPL, not a weaker one. `chart21/pygeon` holds PyTorch export and training scripts and is not needed
+by anything here.
+
+**Neither nested submodule is populated in this checkout**, so nothing unlicensed is present today.
+The exposure is a future `git submodule update --init --recursive`, which would fetch it silently -
+and this project's rule is commercial-OK-only. Recorded because the failure mode is a routine command
+rather than a decision, and because absent licences do not appear in any scanner: an automated
+licence check looks for a restrictive SPDX identifier and finds nothing, which reads as clean.
+
+**Do not initialise submodules recursively in this repository.** `--init` without `--recursive` is
+sufficient for both direct submodules, and neither builds anything that needs the nested pair.
 
 ## 7. Rejected as NOT commercial-OK
 
@@ -520,34 +541,3 @@ governed by the size and copyright rules above, and are not adjudicated in that 
 Enforced by `tests/test_bundled_reference_pdfs_carry_a_grant.py`, which derives the corpus from
 `git ls-files` rather than a glob - so a newly committed PDF is in scope the moment it is tracked,
 and cannot be admitted by editing a list.
-
-## Vendored submodules, and a transitive licence that is absent rather than restrictive
-
-Checked 2026-08-10. Both direct submodules are commercially permissive and both are at their
-upstream tip:
-
-| Submodule | Licence | Upstream tip | Commercial use |
-|---|---|---|---|
-| `submodules/HEonGPU` | Apache-2.0 | 2026-05-11 | yes |
-| `submodules/hpmpc` | MIT | 2026-03-02 | yes |
-
-**The hazard is one level down, and it is an ABSENT licence rather than a restrictive one.** `hpmpc`
-declares two submodules of its own:
-
-| Path | Upstream | Licence |
-|---|---|---|
-| `nn/PIGEON` | `chart21/flexNN` | MIT |
-| `nn/Pygeon` | `chart21/pygeon` | **none - all rights reserved by default** |
-
-A repository with no licence file grants no permissions at all, which is a stronger restriction than
-GPL, not a weaker one. `chart21/pygeon` holds PyTorch export and training scripts and is not needed
-by anything here.
-
-**Neither nested submodule is populated in this checkout**, so nothing unlicensed is present today.
-The exposure is a future `git submodule update --init --recursive`, which would fetch it silently -
-and this project's rule is commercial-OK-only. Recorded because the failure mode is a routine command
-rather than a decision, and because absent licences do not appear in any scanner: an automated
-licence check looks for a restrictive SPDX identifier and finds nothing, which reads as clean.
-
-**Do not initialise submodules recursively in this repository.** `--init` without `--recursive` is
-sufficient for both direct submodules, and neither builds anything that needs the nested pair.
