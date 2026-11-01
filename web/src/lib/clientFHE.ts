@@ -225,6 +225,29 @@ function outputMask(c: SealCtx, stride: number, count: number): any {
 }
 
 /**
+ * Every SEAL object a computation allocates, freed when it ends (Round 85).
+ *
+ * node-seal's objects live in the WASM heap, which the JS collector neither sees nor frees: an object
+ * nobody deletes stays allocated for the life of the tab. Only `encryptedDense` and `decryptOutputs`
+ * deleted theirs, so each held-out evaluation left every ciphertext's input, weights, products and
+ * rotations behind: about 330 MB per finance run, measured in node over six runs with the collector
+ * forced between them, and the heap does not shrink. Started fourteen times with nothing else
+ * changed, the finance page stopped responding in headless Chrome, its renderer past 5 GB (a desktop
+ * Chrome walking the page's selections stopped at its twelfth run); a 32-bit WASM heap cannot grow
+ * past 4 GiB. `drop` frees a spent rotation or accumulator at once, so the peak stays one layer's
+ * worth, and `close`, in a `finally`, frees the rest even when SEAL throws.
+ */
+class SealScope {
+  private readonly live = new Set<{ delete(): void }>();
+  constructor(private readonly seal: any) {}
+  pt(): any { return this.hold(new this.seal.Plaintext()); }
+  ct(): any { return this.hold(new this.seal.Ciphertext()); }
+  drop(o: { delete(): void }): void { if (this.live.delete(o)) o.delete(); }
+  close(): void { for (const o of this.live) o.delete(); this.live.clear(); }
+  private hold<T extends { delete(): void }>(o: T): T { this.live.add(o); return o; }
+}
+
+/**
  * Decrypt a layer's OUTPUTS and nothing else (Round 84), each with its bias added under encryption.
  *
  * Until this existed every path here decrypted the whole rotate-and-add result and added the bias in
@@ -249,21 +272,25 @@ function outputMask(c: SealCtx, stride: number, count: number): any {
 function decryptOutputs(c: SealCtx, acc: any, stride: number, count: number,
                         bias: (i: number) => number): number[] {
   const { seal, encoder, decryptor, evaluator, slots } = c;
-  const masked = new seal.Ciphertext();
-  evaluator.multiplyPlain(acc, outputMask(c, stride, count), masked);
-  const add = uniformFlood(slots, CKKS_FLOOD_BITS);
-  for (let i = 0; i < count; i++) add[i * stride] = bias(i);
-  const ptAdd = new seal.Plaintext();
-  encoder.encode(add, masked.scale(), ptAdd);
-  evaluator.addPlainInplace(masked, ptAdd);
-  const out = new seal.Plaintext();
-  decryptor.decrypt(masked, out);
-  const dec = encoder.decodeFloat64(out);
-  const values = Array.from({ length: count }, (_, i) => dec[i * stride]);
-  // Freed now rather than at the next GC: three full-ring objects per output, and the WASM heap is
-  // not a pressure the JS collector sees. (node-seal's finalizers would free them eventually.)
-  masked.delete(); ptAdd.delete(); out.delete();
-  return values;
+  // Freed when this returns: three full-ring objects per output, and the WASM heap is not a pressure
+  // the JS collector sees. "node-seal's finalizers would free them eventually" stood here until
+  // Round 85; nothing frees them but `delete` (see `SealScope`).
+  const sc = new SealScope(seal);
+  try {
+    const masked = sc.ct();
+    evaluator.multiplyPlain(acc, outputMask(c, stride, count), masked);
+    const add = uniformFlood(slots, CKKS_FLOOD_BITS);
+    for (let i = 0; i < count; i++) add[i * stride] = bias(i);
+    const ptAdd = sc.pt();
+    encoder.encode(add, masked.scale(), ptAdd);
+    evaluator.addPlainInplace(masked, ptAdd);
+    const out = sc.pt();
+    decryptor.decrypt(masked, out);
+    const dec = encoder.decodeFloat64(out);
+    return Array.from({ length: count }, (_, i) => dec[i * stride]);
+  } finally {
+    sc.close();
+  }
 }
 
 /** One ciphertext's worth of the stride-packed linear layer. `rows.length` is at most
@@ -277,47 +304,54 @@ async function batchCiphertext(
   rows.forEach((row, r) => {
     for (let i = 0; i < n; i++) xPad[r * sumWidth + i] = row[i] ?? 0;
   });
-  const ptX = seal.PlainText ? seal.PlainText() : new seal.Plaintext();
-  encoder.encode(xPad, scale, ptX);
-  const ctX = new seal.Ciphertext();
-  encryptor.encrypt(ptX, ctX);
-  let ctBytes: number | null = null;
-  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
+  const sc = new SealScope(seal);                    // finance fills 64 of these a run (`SealScope`)
+  try {
+    const ptX = sc.pt();
+    encoder.encode(xPad, scale, ptX);
+    const ctX = sc.ct();
+    encryptor.encrypt(ptX, ctX);
+    let ctBytes: number | null = null;
+    try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
 
-  const perClass: number[][] = [];
-  let rotations = 0, multiplies = 0, rotateMs = 0;   // see `encryptedLinear` for why rotations are timed
-  for (let j = 0; j < W.length; j++) {
-    if (W[j].every((v) => v === 0)) {
-      perClass.push(rows.map(() => b[j] ?? 0));      // all-zero row: the logit is the bias
-      continue;
+    const perClass: number[][] = [];
+    let rotations = 0, multiplies = 0, rotateMs = 0;   // see `encryptedLinear` for why rotations are timed
+    for (let j = 0; j < W.length; j++) {
+      if (W[j].every((v) => v === 0)) {
+        perClass.push(rows.map(() => b[j] ?? 0));      // all-zero row: the logit is the bias
+        continue;
+      }
+      const wPad = new Float64Array(slots);
+      for (let r = 0; r < rows.length; r++) {
+        for (let i = 0; i < n; i++) wPad[r * sumWidth + i] = W[j][i] ?? 0;   // TILED at the same stride
+      }
+      const ptW = sc.pt();
+      encoder.encode(wPad, scale, ptW);
+      let acc = sc.ct();
+      evaluator.multiplyPlain(ctX, ptW, acc);
+      multiplies++;
+      for (let s = 1; s < sumWidth; s <<= 1) {
+        const rot = sc.ct();
+        const tr = performance.now();
+        evaluator.rotateVector(acc, s, galois, rot);
+        rotateMs += performance.now() - tr;
+        const nxt = sc.ct();
+        evaluator.add(acc, rot, nxt);
+        sc.drop(rot); sc.drop(acc);
+        acc = nxt;
+        rotations++;
+      }
+      // The class's bias goes in under encryption, and only the rows' output slots decrypt.
+      perClass.push(decryptOutputs(c, acc, sumWidth, rows.length, () => b[j] ?? 0));
+      multiplies++;                                    // the output mask
+      sc.drop(acc); sc.drop(ptW);
     }
-    const wPad = new Float64Array(slots);
-    for (let r = 0; r < rows.length; r++) {
-      for (let i = 0; i < n; i++) wPad[r * sumWidth + i] = W[j][i] ?? 0;   // TILED at the same stride
-    }
-    const ptW = new seal.Plaintext();
-    encoder.encode(wPad, scale, ptW);
-    let acc = new seal.Ciphertext();
-    evaluator.multiplyPlain(ctX, ptW, acc);
-    multiplies++;
-    for (let s = 1; s < sumWidth; s <<= 1) {
-      const rot = new seal.Ciphertext();
-      const tr = performance.now();
-      evaluator.rotateVector(acc, s, galois, rot);
-      rotateMs += performance.now() - tr;
-      const nxt = new seal.Ciphertext();
-      evaluator.add(acc, rot, nxt);
-      acc = nxt;
-      rotations++;
-    }
-    // The class's bias goes in under encryption, and only the rows' output slots decrypt.
-    perClass.push(decryptOutputs(c, acc, sumWidth, rows.length, () => b[j] ?? 0));
-    multiplies++;                                    // the output mask
+    return {
+      logits: rows.map((_, r) => perClass.map((cls) => cls[r])),
+      ms: performance.now() - t0, ctBytes, rotations, multiplies, rotateMs,
+    };
+  } finally {
+    sc.close();
   }
-  return {
-    logits: rows.map((_, r) => perClass.map((cls) => cls[r])),
-    ms: performance.now() - t0, ctBytes, rotations, multiplies, rotateMs,
-  };
 }
 
 /**
@@ -520,58 +554,65 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
 
   const t0 = performance.now();
   const xPad = Float64Array.from({ length: slots }, (_, i) => (i < n ? x[i] : 0));
-  const ptX = seal.PlainText ? seal.PlainText() : new seal.Plaintext();
-  encoder.encode(xPad, scale, ptX);
-  const ctX = new seal.Ciphertext();
-  encryptor.encrypt(ptX, ctX);
-  // serialized ciphertext size (node-seal v7: saveToArray(ComprModeType)) → genuine ct/pt ratio.
-  //
-  // null on failure, NOT 0. A ciphertext is always larger than its plaintext, so a ct/pt ratio of 0
-  // is not a small number - it is an impossible one, and it was reaching the benchmark as a MEASURED
-  // value: clientCompute divides ctBytes by featDim*8, so a swallowed exception here printed
-  // "ct/pt 0" in a column whose other rows are real measurements.
-  let ctBytes: number | null = null;
-  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
-
+  const sc = new SealScope(seal);
   const logits: number[] = [];
-  // `rotateMs` times ONLY the `rotateVector` calls, and it exists because the number beside it does
-  // not support the division a reader will try. `fhe_linear_ms` on the page is this function's
-  // wall-clock MULTIPLIED by `benchScale(...)`, a cost-model projection for the selected model size,
-  // while `fhe_dense_rotations` is a raw count from this loop. Dividing one by the other read
-  // 158 ms per rotation on genomics against a true figure near 3 ms. Rotation cost is the unit the
-  // CKKS literature reports, because each rotation triggers a key-switch and key-switching does
-  // dominate here - measured at 57% of a small dense layer, 70% of the student's convolution and
-  // 86% of its dense layers. It has to be measured rather than reconstructed from a scaled total
-  // downstream, and the denominator has to have the same scope as the numerator: dividing the
-  // conv block's rotation time by the whole student's wall-clock produced a bogus 10% figure in
-  // this round's first attempt.
+  let ctBytes: number | null = null;
   let rotations = 0, multiplies = 0, rotateMs = 0;
-  for (let j = 0; j < W.length; j++) {
-    // an all-zero weight row (our 2-class "class 0" convention) → logit is just the bias; skip the
-    // homomorphic eval (CKKS would yield a "transparent" ciphertext, which the safe build rejects).
-    if (W[j].every((v) => v === 0)) {
-      logits.push(b[j] ?? 0);
-      continue;
+  try {
+    const ptX = sc.pt();
+    encoder.encode(xPad, scale, ptX);
+    const ctX = sc.ct();
+    encryptor.encrypt(ptX, ctX);
+    // serialized ciphertext size (node-seal v7: saveToArray(ComprModeType)) → genuine ct/pt ratio.
+    //
+    // null on failure, NOT 0. A ciphertext is always larger than its plaintext, so a ct/pt ratio of 0
+    // is not a small number - it is an impossible one, and it was reaching the benchmark as a MEASURED
+    // value: clientCompute divides ctBytes by featDim*8, so a swallowed exception here printed
+    // "ct/pt 0" in a column whose other rows are real measurements.
+    try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
+
+    // `rotateMs` times ONLY the `rotateVector` calls, and it exists because the number beside it does
+    // not support the division a reader will try. `fhe_linear_ms` on the page is this function's
+    // wall-clock MULTIPLIED by `benchScale(...)`, a cost-model projection for the selected model size,
+    // while `fhe_dense_rotations` is a raw count from this loop. Dividing one by the other read
+    // 158 ms per rotation on genomics against a true figure near 3 ms. Rotation cost is the unit the
+    // CKKS literature reports, because each rotation triggers a key-switch and key-switching does
+    // dominate here - measured at 57% of a small dense layer, 70% of the student's convolution and
+    // 86% of its dense layers. It has to be measured rather than reconstructed from a scaled total
+    // downstream, and the denominator has to have the same scope as the numerator: dividing the
+    // conv block's rotation time by the whole student's wall-clock produced a bogus 10% figure in
+    // this round's first attempt.
+    for (let j = 0; j < W.length; j++) {
+      // an all-zero weight row (our 2-class "class 0" convention) → logit is just the bias; skip the
+      // homomorphic eval (CKKS would yield a "transparent" ciphertext, which the safe build rejects).
+      if (W[j].every((v) => v === 0)) {
+        logits.push(b[j] ?? 0);
+        continue;
+      }
+      const wPad = Float64Array.from({ length: slots }, (_, i) => (i < n ? (W[j][i] ?? 0) : 0));
+      const ptW = sc.pt();
+      encoder.encode(wPad, scale, ptW);
+      let acc = sc.ct();
+      evaluator.multiplyPlain(ctX, ptW, acc);                     // encrypted element-wise W_j ⊙ x
+      multiplies++;
+      for (let s = 1; s < sumWidth; s <<= 1) {                    // rotate-and-add → Σ slots in slot 0
+        const rot = sc.ct();
+        const tr = performance.now();
+        evaluator.rotateVector(acc, s, galois, rot);
+        rotateMs += performance.now() - tr;
+        const nxt = sc.ct();
+        evaluator.add(acc, rot, nxt);
+        sc.drop(rot); sc.drop(acc);
+        acc = nxt;
+        rotations++;
+      }
+      // b_j goes in under encryption, and only slot 0, the dot product, decrypts.
+      logits.push(decryptOutputs(c, acc, sumWidth, 1, () => b[j] ?? 0)[0]);
+      multiplies++;                                               // the output mask
+      sc.drop(acc); sc.drop(ptW);
     }
-    const wPad = Float64Array.from({ length: slots }, (_, i) => (i < n ? (W[j][i] ?? 0) : 0));
-    const ptW = new seal.Plaintext();
-    encoder.encode(wPad, scale, ptW);
-    let acc = new seal.Ciphertext();
-    evaluator.multiplyPlain(ctX, ptW, acc);                     // encrypted element-wise W_j ⊙ x
-    multiplies++;
-    for (let s = 1; s < sumWidth; s <<= 1) {                    // rotate-and-add → Σ slots in slot 0
-      const rot = new seal.Ciphertext();
-      const tr = performance.now();
-      evaluator.rotateVector(acc, s, galois, rot);
-      rotateMs += performance.now() - tr;
-      const nxt = new seal.Ciphertext();
-      evaluator.add(acc, rot, nxt);
-      acc = nxt;
-      rotations++;
-    }
-    // b_j goes in under encryption, and only slot 0, the dot product, decrypts.
-    logits.push(decryptOutputs(c, acc, sumWidth, 1, () => b[j] ?? 0)[0]);
-    multiplies++;                                               // the output mask
+  } finally {
+    sc.close();
   }
   const fheMs = performance.now() - t0;
 
@@ -606,43 +647,48 @@ export async function encryptedDense(W: number[][], b: number[], x: number[]): P
   const logits = new Array<number>(W.length).fill(0);
   let rotations = 0, multiplies = 0, rotateMs = 0;
   let ctBytes: number | null = null;
-  for (let start = 0; start < W.length; start += rowsPerCt) {
-    const rows = W.slice(start, start + rowsPerCt);
-    // A group of all-zero rows: each output is its bias, and the multiply would yield a
-    // "transparent" ciphertext, which the safe build rejects (the `encryptedLinear` convention).
-    if (rows.every((row) => row.every((v) => v === 0))) {
-      rows.forEach((_, j) => { logits[start + j] = b[start + j] ?? 0; });
-      continue;
+  const sc = new SealScope(seal);                    // its eager frees, and a throw leaks nothing
+  try {
+    for (let start = 0; start < W.length; start += rowsPerCt) {
+      const rows = W.slice(start, start + rowsPerCt);
+      // A group of all-zero rows: each output is its bias, and the multiply would yield a
+      // "transparent" ciphertext, which the safe build rejects (the `encryptedLinear` convention).
+      if (rows.every((row) => row.every((v) => v === 0))) {
+        rows.forEach((_, j) => { logits[start + j] = b[start + j] ?? 0; });
+        continue;
+      }
+      const xRep = new Float64Array(slots), wTile = new Float64Array(slots);
+      rows.forEach((row, j) => {
+        for (let i = 0; i < n; i++) { xRep[j * block + i] = x[i] ?? 0; wTile[j * block + i] = row[i] ?? 0; }
+      });
+      const ptX = sc.pt();
+      encoder.encode(xRep, scale, ptX);
+      const ctX = sc.ct();
+      encryptor.encrypt(ptX, ctX);
+      if (ctBytes == null) { try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; } }
+      const ptW = sc.pt();
+      encoder.encode(wTile, scale, ptW);
+      let acc = sc.ct();
+      evaluator.multiplyPlain(ctX, ptW, acc);
+      multiplies++;
+      for (let s = 1; s < block; s <<= 1) {          // the reduction stays inside each row's block
+        const rot = sc.ct();
+        const tr = performance.now();
+        evaluator.rotateVector(acc, s, galois, rot);
+        rotateMs += performance.now() - tr;
+        const nxt = sc.ct();
+        evaluator.add(acc, rot, nxt);
+        sc.drop(rot); sc.drop(acc);                   // spent: freed now, as in `decryptOutputs`
+        acc = nxt;
+        rotations++;
+      }
+      decryptOutputs(c, acc, block, rows.length, (j) => b[start + j] ?? 0)
+        .forEach((v, j) => { logits[start + j] = v; });
+      multiplies++;                                    // the output mask
+      sc.drop(acc); sc.drop(ptW); sc.drop(ctX); sc.drop(ptX);
     }
-    const xRep = new Float64Array(slots), wTile = new Float64Array(slots);
-    rows.forEach((row, j) => {
-      for (let i = 0; i < n; i++) { xRep[j * block + i] = x[i] ?? 0; wTile[j * block + i] = row[i] ?? 0; }
-    });
-    const ptX = new seal.Plaintext();
-    encoder.encode(xRep, scale, ptX);
-    const ctX = new seal.Ciphertext();
-    encryptor.encrypt(ptX, ctX);
-    if (ctBytes == null) { try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; } }
-    const ptW = new seal.Plaintext();
-    encoder.encode(wTile, scale, ptW);
-    let acc = new seal.Ciphertext();
-    evaluator.multiplyPlain(ctX, ptW, acc);
-    multiplies++;
-    for (let s = 1; s < block; s <<= 1) {          // the reduction stays inside each row's block
-      const rot = new seal.Ciphertext();
-      const tr = performance.now();
-      evaluator.rotateVector(acc, s, galois, rot);
-      rotateMs += performance.now() - tr;
-      const nxt = new seal.Ciphertext();
-      evaluator.add(acc, rot, nxt);
-      rot.delete(); acc.delete();                   // spent: freed now, as in `decryptOutputs`
-      acc = nxt;
-      rotations++;
-    }
-    decryptOutputs(c, acc, block, rows.length, (j) => b[start + j] ?? 0)
-      .forEach((v, j) => { logits[start + j] = v; });
-    multiplies++;                                    // the output mask
-    acc.delete(); ptW.delete(); ctX.delete(); ptX.delete();
+  } finally {
+    sc.close();
   }
   const fheMs = performance.now() - t0;
   const plain = W.map((row, j) => row.reduce((a, w, i) => a + w * (x[i] ?? 0), 0) + (b[j] ?? 0));
@@ -749,46 +795,53 @@ export async function encryptedConv2d(
       }
     }
   }
-  const ptX = new seal.Plaintext();
-  encoder.encode(packed, scale, ptX);
-  const ctX = new seal.Ciphertext();
-  encryptor.encrypt(ptX, ctX);
-  // null, not 0 - see the note on the linear path above: a ct/pt ratio of 0 is impossible, and it
-  // was being reported as measured.
+  const sc = new SealScope(seal);
   let ctBytes: number | null = null;
-  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
-
   let rotations = 0, multiplies = 0, rotateMs = 0;
   const maps: number[][] = [];
-  for (let oc = 0; oc < kernels.length; oc++) {
-    // The same kernel tiled into every patch block, so one multiply-plain covers all positions.
-    const tiled = new Float64Array(slots);
-    for (let p = 0; p < nPatches; p++) {
-      for (let ky = 0; ky < kH; ky++) {
-        for (let kx = 0; kx < kW; kx++) tiled[p * block + ky * kW + kx] = kernels[oc][ky][kx];
+  try {
+    const ptX = sc.pt();
+    encoder.encode(packed, scale, ptX);
+    const ctX = sc.ct();
+    encryptor.encrypt(ptX, ctX);
+    // null, not 0 - see the note on the linear path above: a ct/pt ratio of 0 is impossible, and it
+    // was being reported as measured.
+    try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
+
+    for (let oc = 0; oc < kernels.length; oc++) {
+      // The same kernel tiled into every patch block, so one multiply-plain covers all positions.
+      const tiled = new Float64Array(slots);
+      for (let p = 0; p < nPatches; p++) {
+        for (let ky = 0; ky < kH; ky++) {
+          for (let kx = 0; kx < kW; kx++) tiled[p * block + ky * kW + kx] = kernels[oc][ky][kx];
+        }
       }
+      const ptW = sc.pt();
+      encoder.encode(tiled, scale, ptW);
+      let acc = sc.ct();
+      evaluator.multiplyPlain(ctX, ptW, acc);
+      multiplies++;
+      // Reduce WITHIN each block. Only log2(block) rotations, independent of how many patches ride
+      // along - which is exactly what the packing buys.
+      for (let s = 1; s < block; s <<= 1) {
+        const rot = sc.ct();
+        const tr = performance.now();
+        evaluator.rotateVector(acc, s, galois, rot);
+        rotateMs += performance.now() - tr;
+        const nxt = sc.ct();
+        evaluator.add(acc, rot, nxt);
+        sc.drop(rot); sc.drop(acc);
+        acc = nxt;
+        rotations++;
+      }
+      // The channel's bias goes in under encryption, and only the nPatches output slots decrypt: the
+      // other 15 of every 16 slots held the patch's running partial sums, kernel weight by weight.
+      maps.push(decryptOutputs(c, acc, block, nPatches, () => biases[oc] ?? 0));
+      multiplies++;                                    // the output mask
+      sc.drop(acc); sc.drop(ptW);
     }
-    const ptW = new seal.Plaintext();
-    encoder.encode(tiled, scale, ptW);
-    let acc = new seal.Ciphertext();
-    evaluator.multiplyPlain(ctX, ptW, acc);
-    multiplies++;
-    // Reduce WITHIN each block. Only log2(block) rotations, independent of how many patches ride
-    // along - which is exactly what the packing buys.
-    for (let s = 1; s < block; s <<= 1) {
-      const rot = new seal.Ciphertext();
-      const tr = performance.now();
-      evaluator.rotateVector(acc, s, galois, rot);
-      rotateMs += performance.now() - tr;
-      const nxt = new seal.Ciphertext();
-      evaluator.add(acc, rot, nxt);
-      acc = nxt;
-      rotations++;
-    }
-    // The channel's bias goes in under encryption, and only the nPatches output slots decrypt: the
-    // other 15 of every 16 slots held the patch's running partial sums, kernel weight by weight.
-    maps.push(decryptOutputs(c, acc, block, nPatches, () => biases[oc] ?? 0));
-    multiplies++;                                    // the output mask
+  } finally {
+    sc.close();
   }
   const fheMs = performance.now() - t0;
 
