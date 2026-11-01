@@ -53,6 +53,18 @@ the per-rotation value itself is measured.)
 
 The genomics row is the sign test the page ran until Round 84. The page now scores PGS000072's 183
 variants in full; the row stays because a rotation's cost does not depend on which model asked for it.
+Measured on the deployed demo on 2026-11-01, in Chrome 152.0.0.0 (WASM CPU, Linux x86_64, 20 logical
+cores, `crossOriginIsolated` true), with the same ring:
+
+| use case | model | rotations | rotate ms | ms per rotation |
+|---|---|---|---|---|
+| genomics | PGS000072, the whole score over 183 dosages in one ciphertext | 8 | 24.61 | 3.08 |
+| medical | published CNN student, dense layers packed one ciphertext per layer | 12 | 36.62 | 3.05 |
+| medical | published CNN student, convolution | 16 | 49.60 | 3.10 |
+
+All three sit at the low end of the Round 38 range below, 3.05 to 3.10 ms against 3.10 to 4.39 ms. The
+genomics page also scores its 30 bundled individuals in two
+ciphertexts, 68.26 ms for the batch, with the decrypted and plaintext flags agreeing on all 30.
 
 At ring degree 16384 with the same coefficient modulus, the same finance measurement gives **6.73 ms
 per rotation** - 2.17x, for a doubled ring.
@@ -83,9 +95,11 @@ Measured with the scopes separated, medical page, one run:
 The two stages sum to the total exactly - 96.60 + 490.23 = 586.83 - so nothing is unattributed.
 
 Since Round 84 (2026-10-31) the dense layers are packed one ciphertext per layer: 12 rotations instead of 136,
-and the student 28 instead of 152. Measured in Node 22 with node-seal, base and packed code interleaved in one
-process (not Chrome; a browser re-measure is wanted): dense layers 53.9 ms against 490.0 ms row at a time, the
-whole student 126.8 ms against 554.2 ms. Each layer's bias is now added under encryption and every non-output
+and the student 28 instead of 152. Measured in Chrome on the deployed demo (2026-11-01, the environment
+above): the dense layers 53.94 ms (36.62 ms of it rotations), the convolution 70.91 ms, the whole student
+124.85 ms, against 490.23 ms and 586.83 ms row at a time in the table above. In Node 22 with node-seal, base and
+packed code interleaved in one process: dense layers 53.9 ms against 490.0 ms, the whole student 126.8 ms
+against 554.2 ms. Each layer's bias is now added under encryption and every non-output
 slot is masked and flooded before decryption, at about 2 ms per decryption. The tables above are the
 row-at-a-time measurements they were made with.
 

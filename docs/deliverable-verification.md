@@ -7780,6 +7780,34 @@ file, and all 11 repos are public: `finance_aml.gbm` 8e5cc9c, `finance_aml.stude
 `satellite_comms.opssat` 48ef9a3, `satellite_comms.opssat_student` cdbc779, `telecom_ids.qml` c8de778,
 `telecom_ids.nidd` 6da6df7.
 
+**The deploy and the walk** (2026-11-01). The branch was deployed at 1eda497 (bundle
+`index-OiaRYnoZ.js`) and, after CI's layout scan failed, at 512dcee (bundle `index-pqesj90l.js`), and
+walked in Chrome 152.
+- CI's layout scan: on the telecom page the held-out rows' five-character ticks (0.075, 0.225)
+  overlapped the rotated title of both plane charts in the runners' DejaVu Sans, while the local scan,
+  in Noto, had passed. Reproduced locally under DejaVu; the two charts' y-axes are now 72 px (512dcee),
+  the scan passes on all 13 views in both fonts, and on the live page the ticks clear the title by
+  7.8 px.
+- Finance: at the default intensity pair 5,214,327 bits on 5.33e9 pulses, and at the second pair
+  4,977,636 on 5.2467e9, with 0.399 / 0.098 in the metrics. The PSI reports RFC 9497's OPRF, 60 shared
+  accounts over 260 x 260 with 260 blind evaluations, and its log says what each bank learns. The masks
+  come from 6 X25519-agreed pair seeds (key agreement 4.4 ms). CKKS agrees on every row at 4.138 ms per
+  rotation, and the SHAP panel says its bars explain the reported class; with the trained QCNN selected
+  (4 qubits) it shows the QCNN warning instead.
+- Telecom: the distance chart's caption follows the intensity selector, and at the second pair
+  OptiQKD's default rate is the run's own (0.001559).
+- Medical: the student's dense layers take 12 rotations (36.62 ms of rotation, 53.94 ms for the
+  stage) and the whole student 28 in 124.85 ms; the three models load at their new pins, and the
+  ResNet-18 runs on the 1.31.1 runtime in 11.62 ms and predicts the true class.
+- Genomics: 183 variants, the cut at the 90th percentile (22.06), the person's decrypted score within
+  1.5e-9 of plaintext, 3 of 30 flagged both ways, 8 rotations at 3.08 ms each.
+- Satellite: the default pass 139,251 bits; Liao's pass 226,072 on one basis and 450,923 on both
+  (+49.8% against 300,939); Khmelev's session 435,095 and 868,462 against 310,400.
+- Overview, Use cases, Orchestration, Value and Validations carry no keyed-hash, PGS000004 or SMAP/MSL
+  text; the Validations checks run without a console error (BB84: QBER 0.0098, 5,214,327 bits).
+- The signed record's `fhe` and `mpc` fields are not displayed on the page; they are checked in node
+  (`tests/test_r84_signed_record_names_what_ran.py`).
+
 BUSINESS DOC RECONCILED Round 84. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 17 reads.
