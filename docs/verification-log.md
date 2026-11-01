@@ -3616,3 +3616,61 @@ visitor only through the artefact the page loads.
 default pass as 139,201, and the two figures were copied into six places, each one bit high. Both
 languages compute 226,072.49 and 139,200, and the page showed 226,072 and 139,200 throughout. The
 copies agreed with each other, which is why no copy looked wrong.
+
+### Round 84: a licence, a citation and a comparison each have to be read where they apply (2026-10-31 to 2026-11-01)
+
+**Context.** The defects drafted on 2026-10-30, a re-sweep of every page against post-August-2026
+sources, the owner's three decisions (a two-basis satellite key, the genomics score's licence, both
+fibre intensity pairs selectable) and a documents consolidation. The register's Round 84 entry lists
+each change with its evidence; this entry keeps what they taught.
+
+**A licence is read where the data sits, not where it is indexed.** The PGS Catalog lists PGS000004
+openly, and the Catalog's own terms are permissive. Its weights, though, appear only in the
+supplementary data of an article licensed CC BY-NC-ND 4.0, and that is the licence that travels with
+them. The score the page serves now is one whose source article is CC BY 4.0.
+
+**A comparison with a published figure compares the conventions first.** The satellite pass's finite
+key read 0.55 to 0.75 of Liao et al.'s, and Rounds 82 and 83 explained part of the gap with the
+statistics. The flown keys were counted on both bases; this model counted one. Under the
+satellite's default statistics, 95 percent of the drop from the asymptotic key was that convention.
+Counted the same way, the model's key is 1.50 of the published one.
+
+**A feature can carry the label through the data's own process.** Two of the finance model's eight
+columns were built from PaySim's balance fields, and the dataset's description says that
+transactions detected as fraud are cancelled, so those fields "must not be used" for fraud
+detection: their values record what happened to a fraud. The score was partly reading the answer.
+Nothing in the model's metrics showed it; the dataset's documentation did.
+
+**A citation to a moving identifier changes meaning under it.** The OPS-SAT-AD concept DOI resolved
+to version 1 when it was cited and to version 2, with different files, by this round. A citation
+names the version the files came from.
+
+**A control reaches a run only if it reaches every reader of the run.** The intensity pair is put on
+the run's channel, where the stage, the bound, the security facts, the distance chart and OptiQKD's
+baseline all read it, rather than passed to the stage alone. The test runs both languages' stages
+at both pairs, and it was seeded with a browser stage that ignored the choice to show that it fails.
+
+**A figure rounded is not the figure a run prints.** The second pair's key had been quoted as
+4,977,637; the bound gives 4,977,636.9 and the run reports whole bits, 4,977,636. The same shape as
+Round 83's copied counts: the quoted figure agreed with itself everywhere it was copied.
+
+**A fact told in seven documents has seven copies to correct.** What the browser does not protect
+was stated in seven files, so every correction had to find all seven, and some did not. Each such
+fact now has one owner holding the full statement; the other copies are a clause and a link, and a
+test checks the links resolve and the owner holds the fact.
+
+**A gate that enumerates one list checks that list.** The attribution gate read the datasets attached
+to a model. PaySim is attached to none, though its rows ship in the bundled demo sample under CC BY-SA
+4.0, so its empty credit line passed from the round that wrote the gate. The gate now reads every
+dataset the registry defines.
+
+**A deferral is a promise with a list, and the list has to be read again.** Round 83 deferred eight
+changes of behaviour to this round. The drafted defects round and the sweep did three of them and part
+of a fourth. The rest (the retired score in the full deployment, the explanation flag and the signed
+record's backends, the pairwise mask keys, the OPRF-based PSI, and the licence fields of the shipped
+samples) were found still open only by reading Round 83's list again near the end of this one.
+
+**A key both parties hold cannot keep them apart.** The PSI's HMAC key was the session key, which
+both banks hold, so it hid each list from third parties and from neither bank. The OPRF's key is
+held by Bank B alone, and the session key now does the one job a shared key can: it seals the
+transcript.
