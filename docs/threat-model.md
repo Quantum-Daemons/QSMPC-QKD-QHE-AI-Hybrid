@@ -170,6 +170,11 @@ decrypted results:
 - Ogilvie (ASIACRYPT 2025, ePrint 2025/1618) is the constructive counterpoint: in regimes where
   rescaling noise dominates, "an additional precision loss of as little as two bits is sufficient to
   restore a high level of security against passive key-recovery attacks for standard parameters".
+- Bian, Choe, Kim and Lee (ePrint 2026/2490, 2026-10) need no decrypted value at all: a malicious
+  evaluator that holds the public coefficient-to-slot (bootstrapping) keys and sees only whether the
+  client accepted a result, a 1-bit validity response, recovers a ternary secret key in a number of
+  queries of the order of the key's entropy. It does not break IND-CPA, and noise flooding does not
+  close it, because what leaks is the reaction rather than a value.
 
 **The implementations say this in their own security documentation, and node-seal IS SEAL.** The demo
 runs Microsoft SEAL compiled to WASM, so SEAL's `SECURITY.md` is not background reading, it is the
@@ -212,6 +217,17 @@ countermeasure - noise flooding, with its documented precision cost - would be r
 production claim. This project does not use DE-CKKS and does not perform CKKS-to-FHEW scheme
 switching (ePrint 2026/285 breaks PEGASUS-style switching in OpenFHE, so this is worth stating
 explicitly rather than leaving to inference).
+
+**One rule follows from the reaction attack (Round 85): the client never tells the evaluator whether a
+decryption decoded.** Not a success flag, not a failure, not an error text. OpenFHE's precision guard
+("approximation error is too high"), which `OpenFHEBackend.decrypt` lets propagate, is exactly such a
+bit once the parties are separate, and the bootstrap path holds public coefficient-to-slot keys with a
+uniform ternary secret, the attack's setting. Today every party runs in one tab or one process, so
+nothing reaches an evaluator; a deployment that separates them has to catch the failure on the client
+and answer the evaluator the same way either way. Separately, Noh, Chabounia, Hanrot and Passelegue
+(ePrint 2026/2575) argue that flooding needs a rigorous upper bound on the computational error; the
+server tier sizes its flood from the error the run measures (`src/qsh/fhe/masking.py`,
+`ClientView.err_max`), which that framework would call heuristic.
 
 **"This project does not implement noise flooding" was an understatement, and it named the wrong
 subject.** The three CKKS implementations are not in the same position, and this deployment runs the

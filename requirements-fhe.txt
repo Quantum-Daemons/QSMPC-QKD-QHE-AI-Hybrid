@@ -30,6 +30,10 @@ tenseal>=0.3.15
 #   RHEL 9 development host does not have, so its API cannot be tested here; the 1.5 series is the
 #   one every bootstrap measurement in this repository was taken on. Lift the cap with a port of the
 #   bootstrap path that is tested on 1.6.
+# WHEN IT IS LIFTED, NEVER 1.6.0 (Round 85). Its issue #1364 (closed 2026-10-06): a single-iteration
+#   UNIFORM_TERNARY bootstrap at FLEXIBLEAUTO, level budget (3, 3), 50-bit scaling and depth 25 or more
+#   returns values off by 0.2 to 0.5. That is this repository's bootstrap path (qsh/fhe/backends.py)
+#   once mult_depth reaches 5, since the bootstrap adds 20 levels. 1.6.1 (2026-10-09) fixes it.
 openfhe>=1.5.1,<1.6
 #
 # mpyc: the NON-LINEAR half of the hybrid (ReLU/argmax under secret-sharing MPC). MIT, pure-Python,

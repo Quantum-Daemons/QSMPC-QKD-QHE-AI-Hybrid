@@ -194,11 +194,13 @@ library through its published package does not require vendoring its source tree
 The two submodules, HEonGPU and hpmpc, serve the GPU MPC-FHE benchmark; their pins, licences and the
 unlicensed submodule one level below hpmpc are in [`DATA_LICENSES.md`](../DATA_LICENSES.md#6a-git-submodules).
 
-**Client-side / AI OSS (npm, all commercial-OK):** `@noble/post-quantum` **0.7.0** (MIT) for
-in-browser ML-KEM and ML-DSA. The pin matters: **0.2.1 accepted all 2,595 malformed encapsulation
-keys** in the C2SP/CCTV modulus set, because its polynomial coder took the compression path for
+**Client-side / AI OSS (npm, all commercial-OK):** `@noble/post-quantum` **0.7.1** (MIT) for
+in-browser ML-KEM and ML-DSA, with `@noble/curves`, `@noble/hashes` and `@noble/ciphers` at 2.4.0, the
+exact versions 0.7.1 depends on (Round 85: moved together, so one copy of each is bundled). The pin
+matters: **0.2.1 accepted all 2,595 malformed encapsulation keys** in the C2SP/CCTV modulus set,
+because its polynomial coder took the compression path for
 d=12 where FIPS 203 specifies plain ByteEncode12/ByteDecode12, making the section 7.2 modulus check
-a no-op. 0.6.1 and 0.7.0 reject all 2,595, and `npm run check:pqc` asserts it - now with a
+a no-op. 0.6.1, 0.7.0 and 0.7.1 reject all 2,595, and `npm run check:pqc` asserts it - now with a
 keygen/encapsulate/decapsulate round trip and the FIPS 203 Table 3 ciphertext lengths on the same
 line, because the rejection count alone reads identically for a working library and a totally broken
 one.
