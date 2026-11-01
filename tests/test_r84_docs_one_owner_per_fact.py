@@ -134,7 +134,10 @@ def test_the_threat_model_holds_one_table_of_what_each_step_protects() -> None:
                  "Secure sum (genomics)", "Private inference"):
         assert step in rows, f"the table has no row for {step!r}: {rows}"
     flat = re.sub(r"\s+", " ", section)
-    for fact in ("No QKD bit enters it", "Pinkas, Schneider and Zohner", 'sha256(f"pair-{i}-{j}")',
+    # The secure-aggregation fact is the X25519 key agreement since Round 84 (secagg); it read the
+    # public constant `sha256(f"pair-{i}-{j}")`, which no longer derives any mask.
+    for fact in ("No QKD bit enters it", "Pinkas, Schneider and Zohner",
+                 "derives its mask seed from their X25519 shared secret by HKDF-SHA256",
                  "Every CKKS slot the key holder can decode", "`masked_slots`", "OPRF-based protocol"):
         assert fact in flat, f"the owner table no longer states {fact!r}"
     for rel in ("README.md", "docs/architecture.md", "docs/findings.md", "docs/use-cases.md",

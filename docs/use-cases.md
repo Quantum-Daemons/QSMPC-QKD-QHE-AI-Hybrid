@@ -77,8 +77,9 @@ change, not a rewrite. There is **no in-band negotiation and no silent fallback*
 
 Cross-cutting: **PQC-first hybrid** (ML-KEM-768 + X25519, ML-DSA-65 - the hybrid-first
 approach the EU roadmap recommends), **crypto-agility**
-(operator-selected, modular provider replacement), **federated learning with pairwise masking** (the
-masks cancel exactly, but hide nothing from a session-key holder: [what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)) - including a **Quantum
+(operator-selected, modular provider replacement), **federated learning with pairwise masking** (each
+pair of clients agrees its mask seed by X25519, so the aggregator cannot remove a mask alone, though
+a client that drops breaks the round: [what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)) - including a **Quantum
 Federated Learning** option (a PennyLane hybrid quantum-classical VQC over this repo's own FedAvg; in the
 browser it runs on every finance and medical run rather than behind a toggle, over the page's own
 bundled sample, as a logistic regression over a closed-form feature map with no circuit behind it), **explainable AI**

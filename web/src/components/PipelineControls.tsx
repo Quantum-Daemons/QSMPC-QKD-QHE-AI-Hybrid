@@ -180,9 +180,9 @@ export default function PipelineControls({ run }: { run: Run }) {
             internal `workload` value is retained because the benchmark cost model still reads it
             for the use cases whose students genuinely ARE linear. */}
         {/* Federated learning ("Quantum Federated Learning" by name) runs a real client-side FedAvg of
-            a logistic head over a closed-form feature map - no circuit - with every pairwise mask from
-            the one session key (the full deployment's Flower + PennyLane HybridQNN trains a real
-            variational circuit; its default pair keys are a public constant). */}
+            a logistic head over a closed-form feature map - no circuit - with pairwise masks whose
+            seeds each pair of clients agrees by X25519 (the full deployment's PennyLane HybridQNN
+            trains a real variational circuit, under the same key agreement). */}
         {/* AI-QKD parameter optimization (OptiQKD, WS1): a gradient-free search of the asymptotic
             per-pulse bound, whose result is reported and not applied to the run (Round 84). */}
         <label className={`muted${optiqkdDisabled ? " is-disabled" : ""}`} htmlFor="sel-optiqkd"

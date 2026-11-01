@@ -320,13 +320,13 @@ cost - genomics and the generic demo - and labels it so):
   not a toggle. It performs a real client-side FedAvg over the page's own bundled sample, so it is
   part of what the demo does rather than something to opt into. Full deployment:
   `ai.federated.federated_train(kind="qfl")` trains a hybrid **PennyLane VQC (`HybridQNN`) + classical**
-  model with FedAvg under pairwise-mask secure aggregation, whose default pair keys are a public
-  constant (CPU, since `default.qubit` simulates the VQC).
+  model with FedAvg under pairwise-mask secure aggregation, each pair of clients agreeing its mask
+  seed by X25519 (CPU, since `default.qubit` simulates the VQC).
   Demo: `clientQFL` (`web/src/lib/clientQFL.ts`, which `clientCompute` imports) is an in-browser
   FedAvg of a 4-weight logistic regression whose features come from `qcnnExpectation`, a closed-form
   `tanh(mean(sin(x_i + 0.5 i)))` with no circuit or state vector behind it, so nothing quantum is
   computed in the browser's QFL stage; round accuracy is genuinely computed, and its pairwise masks
-  are HKDF outputs of the one PQC session key, which the aggregator also holds
+  come from seeds each pair of clients agrees by X25519, as in the full deployment
   ([what that hides](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)).
 - **Real MCP server** (`src/qsh/mcp/server.py`, full deployment only) - an **`MCPServer`** server (MCP Python
   SDK, MIT) exposing the 5 per-industry tools; `pqc/mcp_bridge.secure_agent_call` now **dispatches the

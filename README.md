@@ -96,7 +96,7 @@ flowchart TB
 | Use case | Industry | Its own stages |
 |---|---|---|
 | `finance_aml` | finance, AML | PSI over cross-bank blacklists, federated training, FHE fraud inference |
-| `medical_fl` | healthcare | federated training with pairwise masks (they do not hide updates from the aggregator), private diagnosis: the encrypted CNN reads a tabular (WDBC) row tiled to the image size in the browser, and MedMNIST images only in the full deployment |
+| `medical_fl` | healthcare | federated training with pairwise masks whose seeds each pair of hospitals agrees by X25519 (no dropout recovery, no public-key authentication), private diagnosis: the encrypted CNN reads a tabular (WDBC) row tiled to the image size in the browser, and MedMNIST images only in the full deployment |
 | `genomics` | genomics | secure summation of pooled allele counts, FHE |
 | `telecom_ids` | telecom, defence | simulated QKD with an optional eavesdropper, a QML intrusion detector |
 | `satellite_comms` | satellite | simulated free-space QKD over a model of the Micius downlink, and a QSDC feasibility check with an inline eavesdrop check |

@@ -2876,10 +2876,10 @@ export function runClientPipeline(
         // flow that declares this stage should run it; the guard added nothing but an unreachable
         // second answer to "what is federated_accuracy?".
         const qflData = await realFederatedSet(usecase);
-        // The PQC handshake's session key, which every flow reaching this stage has already run.
-        // Before this it was the ONLY consumer-less key in the pipeline outside `qsmpc_compute`:
-        // the diagram claimed pairwise masking while no stage but PSI read `_sessionKey` at all.
-        const q = clientQFL(seed, { data: qflData, sessionKey: (config as any)._sessionKey });
+        // No session key: the clients agree each pair's mask seed among themselves by X25519 at the
+        // start of the run (clientQFL.ts), and the aggregator receives only their public keys and
+        // the masked updates. The PQC session key, which the aggregator side also holds, seeds no mask.
+        const q = await clientQFL(seed, { data: qflData });
         metric(stage, "federated_accuracy", q.finalAcc);
         metric(stage, "qfl_rounds", q.rounds);
         metric(stage, "qfl_clients", q.clients);
@@ -2903,6 +2903,14 @@ export function runClientPipeline(
           + `${qflData ? `the bundled ${usecase} sample (${qflData.X.length} rows)` : "a synthetic toy"}`
           + ` - held-out accuracy ${q.baselineAcc.toFixed(2)} untrained (every row class 0), `
           + `${q.roundAcc[0].toFixed(2)} after round 1, ${q.finalAcc.toFixed(2)} after round ${q.rounds}`);
+        if (q.pairs > 0) {
+          emit("log", stage, `Secure aggregation: each of the ${q.clients} clients drew an X25519 key pair for this run `
+            + `and each of the ${q.pairs} pairs derived its mask seed from their shared secret by HKDF-SHA256 `
+            + `(Bonawitz et al., CCS 2017), in ${q.keyAgreementMs.toFixed(1)} ms; the aggregator received only the `
+            + "public keys and the masked updates, and the PQC session key seeds no mask. All clients run in this tab, "
+            + "which holds every private key; there is no dropout recovery, no malicious security and no "
+            + "authentication of the public keys.");
+        }
         break;
       }
       case "qml_ids": {

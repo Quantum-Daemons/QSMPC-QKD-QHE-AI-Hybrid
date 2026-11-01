@@ -4,11 +4,13 @@ WHY THIS EXISTS
 
 `SecureAggregator.mask_update` took `(client, update)` and derived its mask from the pair key alone.
 The FedAvg loop in `federated_train` calls it once per round with the same pair keys, so **every
-round of a run reused the same mask**. The browser twin does not: `qflPairMask` in
-`web/src/lib/clientQFL.ts` puts the round index in the HKDF info string and its docstring states the
-reason - *"Deriving per round is what stops a mask from being reused across updates of the same
-weights."* Two implementations of one scheme, one of them holding a property the other documents as
-required.
+round of a run reused the same mask**. The browser twin did not: its pairwise mask put the round index
+in its derivation and its docstring stated the reason - *"Deriving per round is what stops a mask from
+being reused across updates of the same weights."* Two implementations of one scheme, one of them
+holding a property the other documents as required. (Since Round 84 both derive each round's mask the
+same way, from the seed each pair agreed by X25519: `secaggMaskWords` in `web/src/lib/clientQFL.ts`
+and `pair_mask_words` in `src/qsh/ai/federated.py`, byte-identical per
+`tests/test_r84_pairwise_masks.py`.)
 
 WHAT REUSE ACTUALLY COSTS, stated precisely so the fix is not oversold
 
@@ -98,14 +100,18 @@ def test_every_round_index_gives_a_distinct_mask() -> None:
 
 
 def test_the_browser_twin_still_documents_the_same_requirement() -> None:
-    """If the TS side ever drops the round from its info string, this fix is half-applied again.
+    """If the TS side ever drops the round from its derivation, this fix is half-applied again.
 
     The Python and TypeScript aggregators are the same scheme in two languages, and this repository
     has twice shipped a change to one of a pair of twins. Reading the browser's derivation here is
-    cheap and fails loudly if it drifts.
+    cheap and fails loudly if it drifts. Round 84 moved it from an HKDF info string keyed by the
+    session key (`qsh/qfl-pairwise-mask/v1|u|v|r<round>`) to SHAKE-256 over the pair's X25519-agreed
+    seed with the round as a 4-byte integer, so this reads the new derivation, and every share must
+    still take the round to it; tests/test_r84_pairwise_masks.py compares the bytes across languages.
     """
     src = (REPO / "web" / "src" / "lib" / "clientQFL.ts").read_text()
-    assert "qsh/qfl-pairwise-mask/v1|${u}|${v}|r${round}" in src, (
+    assert "shake256(concat(seed, SECAGG_MASK_LABEL, u32be(round)), { dkLen: 4 * P })" in src, (
         "clientQFL.ts no longer derives its pairwise mask per round; the two implementations of "
         "this scheme have diverged again"
     )
+    assert "secaggMaskWords(seed, round, P)" in src, "a share no longer takes the round to its mask"

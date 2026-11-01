@@ -30,7 +30,7 @@ export const USECASES: UseCaseMeta[] = [
   },
   {
     id: "medical_fl", title: "Medical — federated learning + private inference", nav: "Medical — FL", industry: "healthcare",
-    blurb: "Hospitals train a shared model with FedAvg under pairwise masks that cancel exactly (no patient row leaves a hospital), then a clinician runs a CKKS-evaluated diagnosis with a signed explanation. Every mask derives from the one session key, which the aggregator also holds, so the masks hide nothing from it in this demo. The federation runs over the bundled Wisconsin breast-cancer rows; the published models are BreastMNIST image models trained centrally, and MedMNIST states that its dataset is not intended for clinical use.",
+    blurb: "Hospitals train a shared model with FedAvg under pairwise masks that cancel exactly (no patient row leaves a hospital), then a clinician runs a CKKS-evaluated diagnosis with a signed explanation. Each pair of hospitals agrees its mask seed by X25519, so the aggregator, which receives only the public keys and the masked updates, cannot remove a mask alone; there is no dropout recovery and no authentication of the public keys, and every hospital runs in this one tab. The federation runs over the bundled Wisconsin breast-cancer rows; the published models are BreastMNIST image models trained centrally, and MedMNIST states that its dataset is not intended for clinical use.",
     inference: true,
     agenticTool: "query_cohort",
     // Was "... need a quantum-safe (PQC + QKD) channel under HIPAA?". HIPAA names no PQC or QKD

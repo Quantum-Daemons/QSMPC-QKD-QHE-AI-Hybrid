@@ -771,12 +771,14 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   Added: 2026-06-27
   File: `Quantum_Delegated_and_Federated_Learning_via_Quantum_Homomorphic_Encryption.pdf`
   QOTP-encrypted delegated and federated learning; informs the `src/qsh/ai/federated.py` privacy
-  layer. **What that layer's pairwise masks do, stated 2026-10-30.** In the browser every pair's mask
-  is an HKDF output of the one PQC session key, which the aggregator also holds; in Python the
-  default pair keys are public constants, `sha256(f"pair-{i}-{j}")`. The masks cancel exactly in the sum
-  and hide nothing from a holder of the session key, so they are not secure aggregation in the sense
-  of Bonawitz et al. (Round 83 additions, below), where each pair's mask comes from a key agreement
-  between that pair alone.
+  layer. **What that layer's pairwise masks do, stated 2026-11-01.** In both tiers each client draws
+  an X25519 key pair per run and each pair of clients derives its mask seed from their shared secret
+  by HKDF-SHA256, the pairwise key agreement of Bonawitz et al. (Round 83 additions, below), so the
+  aggregator, which receives only the public keys and the masked updates, cannot remove a mask on its
+  own. Their double masking and secret-shared keys for dropouts, their malicious-security protocol and
+  any authentication of the public keys are not implemented, every client runs in one tab or one
+  process, and the Python masks are reals that hide an update only partially
+  ([what each step protects](../docs/threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)).
 
 - **Quantum Federated Learning: A Comprehensive Survey** - Nguyen, Uddin, Shaon, Rahman, Dobre and
   Niyato, arXiv:2508.15998, 21 Aug 2025 `[R]`
@@ -2334,14 +2336,22 @@ in the technical report.
   Aggregation for Federated Learning on User-Held Data"**, arXiv:1611.04482 (2016-11-14, NIPS 2016
   workshop on Private Multi-Party Machine Learning);
   full version "Practical Secure Aggregation for Privacy Preserving Machine Learning", IACR ePrint
-  2017/281 `[link]`
+  2017/281, published as "Practical Secure Aggregation for Privacy-Preserving Machine Learning",
+  ACM CCS 2017, pp. 1175-1191, DOI 10.1145/3133956.3133982 `[link]`
   URL: https://arxiv.org/abs/1611.04482
   Read in the arXiv text. Each pair of users agrees a secret by Diffie-Hellman key agreement and
   expands it with a PRG into a mask, uniform over $`[0, R)^k`$ with the sum taken mod $`R`$, so the
-  masked inputs *"appear uniformly random to the server"* up to their sum. Cited because this
-  project's pairwise masks come from one shared session key instead (the QFL section): they cancel
-  as these do and hide nothing from that key's holder. The ePrint listing was read for the full
-  version's title and authors; its PDF refused automated access.
+  masked inputs *"appear uniformly random to the server"* up to their sum; the lower-ordered user of
+  a pair adds the expansion and the higher subtracts it (Protocol 3). Protocol 1 adds the secret
+  sharing that lets the server finish a round without users who dropped, Protocol 2 a second,
+  per-user mask so that this recovery cannot expose a user who did not drop, and Protocol 4 notes
+  that a server relaying unauthenticated keys can mount a man-in-the-middle attack. This
+  project's pairwise masks follow Protocol 3's key agreement (the QFL section), with X25519 and
+  HKDF-SHA256 as its key agreement and SHAKE-256 as its PRG, and implement neither the dropout
+  recovery nor key authentication. The ePrint listing was read for the full version's title, authors and its
+  abstract, which states security proofs in the honest-but-curious and malicious settings; its PDF
+  refused automated access. The CCS venue, pages and DOI are from the DOI's Crossref record
+  (2026-11-01).
 - **Attrapadung, Hanaoka, Mitsunari, Sakai, Shimizu and Teruya, "Efficient Two-level Homomorphic
   Encryption in Prime-order Bilinear Groups and A Fast Implementation in WebAssembly"**, ACM AsiaCCS
   2018, DOI 10.1145/3196494.3196552 `[link]`

@@ -14,9 +14,10 @@ import StageBadge, { type StageKind } from "./StageBadge";
  * Badges follow the truth table checked against the code in the Round 58 survey: QRNG is a simulated
  * state-vector source whose SP 800-90B health tests are really computed; PSI, secure sum and the
  * federated masking are classical, real protocols whose parties all run in this one tab, so they are
- * badged "notional" like the garbled-circuit 2PC; the quantum one-time pad uses a seeded mask. Every
- * federated mask is derived from the one PQC session key, which the aggregator also holds, so the
- * masks cancel exactly and hide nothing from it; the PSI's HMAC key is held by both banks.
+ * badged "notional" like the garbled-circuit 2PC; the quantum one-time pad uses a seeded mask. Each
+ * pair of federated clients agrees its mask seed by X25519, so the aggregator, which receives only the
+ * public keys and the masked updates, cannot remove a mask alone, and the session key seeds no mask;
+ * the PSI's HMAC key is held by both banks.
  */
 type Box = { x: number; y: number; w: number; title: string; lines: string[]; kind: StageKind; id: string };
 
@@ -38,7 +39,7 @@ const BOXES: Box[] = [
   { id: "qsmpc", x: 10, y: ROW2, w: 170, title: "QSMPC",
     lines: ["PSI: HMAC under a key", "both sides hold; secure", "sum: additive shares"], kind: "notional" },
   { id: "fl", x: 200, y: ROW2, w: 176, title: "Federated training",
-    lines: ["finance, medical:", "FedAvg; every mask from", "the one session key"], kind: "notional" },
+    lines: ["finance, medical:", "FedAvg; pairwise masks", "seeded by X25519 per pair"], kind: "notional" },
   { id: "pi", x: 396, y: ROW2, w: 180, title: "Private inference",
     lines: ["CKKS linear (node-seal)", "+ garbled-circuit 2PC", "argmax (Polytune)"], kind: "notional" },
   { id: "qhe", x: 596, y: ROW2, w: 180, title: "QSMPC-FHE",
@@ -75,8 +76,9 @@ export default function ArchitectureDiagram() {
         <desc id="arch-desc">
           Your data feeds a real PQC handshake (ML-KEM-768 plus X25519) that produces the session key.
           A simulated QKD link sits off the key path: it yields a key length and no key bytes, and
-          nothing from it is mixed into the session key. The session key feeds QSMPC and federated
-          training on the finance and medical pages, whose parties all run in this tab; private
+          nothing from it is mixed into the session key. The session key feeds QSMPC; federated
+          training on the finance and medical pages masks with seeds each pair of clients agrees by
+          X25519, not with the session key. The parties of both run in this tab; private
           inference is real CKKS plus a garbled-circuit argmax between notional parties; the QSMPC-FHE
           comparison, an untrained QOTP plus Clifford+T circuit with a seeded pad, simulated, runs beside it; the
           result is signed with ML-DSA-65.

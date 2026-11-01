@@ -304,7 +304,8 @@ const FEDERATED_STEP: Step = {
  *  Each says what holds and what does not. It read "No trusted third party and no raw data shared"
  *  for all four, which overstated two of them: the PSI's HMAC key is held by both banks, so over a
  *  small ID space either could recover the other's list from the tags; and every federated mask is
- *  derived from the one session key, which the aggregator also holds. */
+ *  derived from the one session key, which the aggregator also holds (until Round 84, when each pair
+ *  of clients came to agree its own mask seed by X25519). */
 const overWan = (who: string, what: string) => () =>
   `${who} meet over a WAN under the session key. ${what}`;
 const PSI_HOLDS = "No third party sees either list: each side sends HMAC tags of its list, not the list, "
@@ -316,8 +317,10 @@ export const USECASE_SPECS: Record<string, Spec> = {
     a: { name: "Bank A", sub: "blacklist + fraud model · LAN" },
     b: { name: "Bank B", sub: "candidate accounts · LAN" },
     inferenceClient: "b",
-    meet: overWan("Bank A and Bank B", `${PSI_HOLDS} The federated masks also all derive from the session `
-      + "key, which Bank B, the aggregator, holds, so they hide no update from it."),
+    meet: overWan("Bank A and Bank B", `${PSI_HOLDS} Each pair of federated clients agrees its mask seed by `
+      + "X25519, so Bank B, the aggregator, receives only the public keys and the masked updates and cannot "
+      + "remove a mask alone; every client runs in this tab, and there is no dropout recovery or authentication "
+      + "of the public keys."),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -342,9 +345,11 @@ export const USECASE_SPECS: Record<string, Spec> = {
     a: { name: "Hospitals", sub: "patient data (never leaves) · LAN" },
     b: { name: "Aggregator", sub: "global model · LAN" },
     inferenceClient: "a",
-    meet: overWan("The hospitals and the aggregator", "No patient row leaves a hospital, but every "
-      + "federated mask is derived from the session key, which the aggregator also holds, so it could "
-      + "unmask each update."),
+    meet: overWan("The hospitals and the aggregator", "No patient row leaves a hospital, and each pair of "
+      + "hospitals agrees its mask seed by X25519, so the aggregator, which receives only the public keys and "
+      + "the masked updates, cannot remove a mask alone; the PQC session key seeds no mask. All hospitals run "
+      + "in this tab, so it holds every private key, though the aggregator's step reads none, and there is no "
+      + "dropout recovery, no malicious security and no authentication of the public keys."),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -542,8 +547,9 @@ const runCount = (m: M, metric: string, configured: number): number => {
 /**
  * Which component on which side runs a step, and which way its exchange goes.
  *
- * Read from what the code does, stage by stage: the session key consumers are the PSI and the
- * federated masks; the CKKS client encrypts its input and decrypts the scores while the model's
+ * Read from what the code does, stage by stage: the session key's consumer is the PSI, not the
+ * federated masks (each pair of clients agrees its seed by X25519); the CKKS client encrypts its
+ * input and decrypts the scores while the model's
  * holder evaluates the linear layer; the argmax runs as two-party MPC over additive shares between
  * notional parties in this one tab; the satellite's key and telemetry come DOWN the link.
  */

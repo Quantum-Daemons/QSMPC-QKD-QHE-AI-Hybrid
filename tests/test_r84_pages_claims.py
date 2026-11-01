@@ -208,7 +208,8 @@ def test_the_value_table_states_the_limits_the_code_has(rendered) -> None:
     assert "previously couldn't be combined" not in t
     for needle in (
         "The PSI is an HMAC under a key both banks hold, so over a small ID space either bank could recover the other's list",
-        "Every federated mask derives from one session key that the aggregator also holds, so the masks hide nothing from it",
+        "Each pair of federated clients agrees its mask seed by X25519, so the aggregator cannot remove a mask alone, "
+        "though every client runs in this tab and there is no dropout recovery or authentication of the public keys",
         "The classifier is classical: the page runs a softmax and the published random forest",
         "It does not address HNDL, which is passive recording of classical traffic",
         "this demo finds that QSDC cannot close over a LEO downlink",

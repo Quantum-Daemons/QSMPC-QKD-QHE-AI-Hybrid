@@ -1,32 +1,42 @@
-"""Federated learning with pairwise-mask aggregation (the masking structure of secure aggregation).
+"""Federated learning with pairwise-mask secure aggregation (Bonawitz et al., CCS 2017).
 
 Implements FedAvg across N virtual sites (hospitals / banks) where raw data never
 leaves a client, plus pairwise masking: each pair of clients adds and subtracts the same
-pseudo-random mask, derived from a per-pair key and the round. The masks cancel EXACTLY in the
-sum, so the aggregate is right. What they HIDE depends entirely on who holds the pair keys, and in
-this repository the answer is: nothing from a key holder.
+pseudo-random mask, derived from a seed that pair agreed by X25519 and from the round. The masks
+cancel in the sum, so the aggregate is right, and an aggregator that holds only the clients' public
+keys and their masked updates cannot remove a mask on its own.
 
-  * Python (this module): no caller supplies keys, so ``SecureAggregator`` derives every pair key
-    from a PUBLIC constant, ``sha256("pair-i-j")``. Anyone can recompute every mask and unmask any
-    client's update. The masks are also bounded reals in [-1, 1) added in float64, not uniform
-    values over a finite ring, so even secret keys would hide an update only partially, not
-    perfectly.
-  * Browser (``web/src/lib/clientQFL.ts``): every pair's mask is an HKDF output of the ONE PQC
-    session key, which the aggregator also holds, so the aggregator can unmask every update.
+The construction is byte-identical to the browser's (``web/src/lib/clientQFL.ts``;
+``tests/test_r84_pairwise_masks.py`` asserts it for the same private keys):
 
-Bonawitz et al. (CCS 2017) derive each pair's seed by a key agreement between the two clients of
-that pair, which is what makes the masks hide individual updates from the server; that is not
-implemented here. So this module does NOT defend the gradient-leakage risk noted in the QFL survey
-and Li-Deng: it demonstrates that masks cancel.
+  * each client draws a fresh X25519 key pair per run (or a caller passes fixed private keys, for a
+    test or a reproduction);
+  * the pair i < j derives ``seed_ij = HKDF-SHA256(X25519(sk_i, pk_j), salt=SECAGG_SALT,
+    info=SECAGG_PAIR_LABEL + u32be(i) + u32be(j), length=32)``, the same 32 bytes from either side;
+  * the round-r mask is ``SHAKE-256(seed_ij + SECAGG_MASK_LABEL + u32be(r))`` read as little-endian
+    uint32 words; client i adds it for every j > i and subtracts it for every j < i.
+
+What it does NOT give, stated plainly:
+
+  * the masks are added as reals in [-1, 1) in float64 (each word w becomes ``w / 2**31 - 1``), not
+    over a finite ring as the browser's are, so they cancel to rounding rather than exactly and hide
+    an update only partially, not perfectly;
+  * no dropout recovery: Bonawitz et al.'s second, per-user mask and the Shamir shares that let the
+    server finish a round without a dropped user are not implemented, so a client that drops breaks
+    the round;
+  * no malicious security, and no authentication of the public keys: an aggregator that substitutes
+    its own keys can agree a seed with each client and unmask it, and that adversary is out of scope;
+  * ``federated_train`` runs every client and the aggregator in one process, so the parties are
+    notional; the aggregation step (``SecureAggregator.aggregate``) reads the masked updates only.
+
+So this module does NOT defend the gradient-leakage risk noted in the QFL survey and Li-Deng: even a
+complete secure aggregation hides only an *individual client's* update from the aggregator. It does
+not bound what the aggregate or the trained model leaks, and FedAvg on its own is not a privacy
+guarantee - gradient inversion against a shared model is an established attack. A claim of formal
+privacy would need a stated DP-SGD budget, which this path does not provide.
 
 This is the local "full implementation" FL path, kept framework-light so it stays robust across
 Flower releases.
-
-Scope, stated plainly: even a correct secure aggregation hides only an *individual client's* update
-from the aggregator. It does not bound what the aggregate or the trained model leaks, and FedAvg on
-its own is not a privacy guarantee - gradient inversion against a shared model is an established
-attack. A claim of formal privacy would need a stated DP-SGD budget, which this path does not
-provide.
 
 An earlier version of this docstring advertised an ``as_flower_client`` adapter exposing a Flower
 ``NumPyClient``. No such function was ever implemented, so the reference is removed rather than left
@@ -36,11 +46,17 @@ as a phantom API for a reader to go looking for.
 from __future__ import annotations
 
 import hashlib
+import struct
+import time
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
 import torch
 import torch.nn as nn
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey, X25519PublicKey
+from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 from torch.utils.data import DataLoader, TensorDataset
 
 from .models import build_model, device
@@ -67,79 +83,132 @@ def partition(X: np.ndarray, y: np.ndarray, n_clients: int, *, iid: bool = True,
 
 
 # --------------------------------------------------------------------------- #
-#  Pairwise masks (from caller-supplied pair keys; by default a public constant)
+#  Pairwise key agreement and masks (Bonawitz et al., CCS 2017)
 # --------------------------------------------------------------------------- #
+#: The fixed HKDF salt of the pair-seed derivation (18 ASCII bytes), as ``SECAGG_SALT`` in
+#: ``web/src/lib/clientQFL.ts``.
+SECAGG_SALT = b"qsh/secagg/salt/v1"
+#: The HKDF info is this 18-byte label followed by the pair's indices i < j, each a 4-byte big-endian
+#: unsigned integer: 26 bytes in all.
+SECAGG_PAIR_LABEL = b"qsh/secagg/pair/v1"
+#: The per-round mask's domain label, between the seed and the round in SHAKE-256's input.
+SECAGG_MASK_LABEL = b"qsh/secagg/mask/v1"
+
+
+def pair_info(i: int, j: int) -> bytes:
+    """The HKDF info of the pair (i, j): ``SECAGG_PAIR_LABEL + u32be(i) + u32be(j)``, i < j."""
+    if not (0 <= i < j <= 0xFFFFFFFF):
+        raise ValueError(f"a pair is named by its two client indices in order, got ({i}, {j})")
+    return SECAGG_PAIR_LABEL + struct.pack(">II", i, j)
+
+
+def pair_seed(own_private_key: X25519PrivateKey, peer_public_key: bytes, i: int, j: int) -> bytes:
+    """The 32-byte seed of the pair (i, j) as ONE of its two clients computes it.
+
+    ``HKDF-SHA256(X25519(own, peer), salt=SECAGG_SALT, info=pair_info(i, j), length=32)`` (RFC 7748,
+    RFC 5869). The other client of the pair reaches the same bytes from its own private key; the
+    aggregator, which relays both public keys, cannot. ``exchange`` refuses a low-order peer key
+    whose shared secret would be all zeros (RFC 7748 section 6.1).
+    """
+    info = pair_info(i, j)
+    shared = own_private_key.exchange(X25519PublicKey.from_public_bytes(bytes(peer_public_key)))
+    return HKDF(algorithm=hashes.SHA256(), length=32, salt=SECAGG_SALT, info=info).derive(shared)
+
+
+def pair_mask_words(seed: bytes, round_index: int, n: int) -> np.ndarray:
+    """The round's mask words for one pair: ``n`` little-endian uint32 words of
+    ``SHAKE-256(seed + SECAGG_MASK_LABEL + u32be(round_index))``, as ``secaggMaskWords`` derives them.
+
+    SHAKE-256 because a parameter vector can be longer than the 255 x 32 = 8,160 bytes HKDF-SHA256 can
+    expand to (RFC 5869 section 2.3); one derivation serves both tiers byte for byte.
+    """
+    if not 0 <= int(round_index) <= 0xFFFFFFFF:
+        raise ValueError(f"round {round_index} is not a uint32")
+    raw = hashlib.shake_256(seed + SECAGG_MASK_LABEL + struct.pack(">I", int(round_index))).digest(4 * n)
+    return np.frombuffer(raw, dtype="<u4")
+
+
 def _mask(seed_key: bytes, shape: tuple[int, ...], round_index: int) -> np.ndarray:
-    """Deterministic pseudo-random mask from a shared key and ROUND (SHAKE-256 seeded).
+    """The pair's real-valued mask for ROUND, in [-1, 1): each word w of :func:`pair_mask_words`
+    becomes ``w / 2**31 - 1``, which float64 represents exactly.
 
-    The round is domain-separated into the seed, mirroring `qflPairMask` in
-    `web/src/lib/clientQFL.ts`, whose HKDF info string is `qsh/qfl-pairwise-mask/v1|u|v|r<round>`.
+    The round is domain-separated into the derivation, as in the browser. Until Round 39 this took
+    only the pair key, so `federated_train`'s loop reused ONE mask for every round of a run. The masks
+    still cancelled and the aggregate was never wrong; what reuse leaks is the per-client update DELTA,
+    because differencing two rounds of one client's masked share gives `(u1 + m) - (u2 + m) = u1 - u2`
+    with no key and no cryptanalysis. That is exactly the quantity pairwise masking exists to hide.
+    `tests/test_federated_mask_is_per_round.py` asserts the delta is unrecoverable rather than
+    asserting that a `round_index` parameter exists.
 
-    Until Round 39 this took only the pair key, so `federated_train`'s loop reused ONE mask for every
-    round of a run while the browser twin derived a fresh one and documented that requirement. The
-    masks still cancelled and the aggregate was never wrong; what reuse leaks is the per-client
-    update DELTA, because differencing two rounds of one client's masked share gives
-    `(u1 + m) - (u2 + m) = u1 - u2` with no key and no cryptanalysis. That is exactly the quantity
-    pairwise masking exists to hide. `tests/test_federated_mask_is_per_round.py` asserts the delta is
-    unrecoverable rather than asserting that a `round_index` parameter exists - a signature-only fix
-    passes the latter and changes nothing, which is how the combiner's length tag reached one of two
-    languages and stayed there for two rounds.
+    Reals, not ring elements: the update is a float64 vector and is masked as one, so the masks cancel
+    to rounding and hide an update only partially (see the module docstring).
     """
     n = int(np.prod(shape))
-    seed = seed_key + b"|qsh/qfl-pairwise-mask/v1|r" + str(int(round_index)).encode()
-    raw = hashlib.shake_256(seed).digest(8 * n)
-    vals = np.frombuffer(raw, dtype=np.uint64).astype(np.float64)
-    return ((vals / 2 ** 64) - 0.5).reshape(shape) * 2.0
+    words = pair_mask_words(seed_key, round_index, n).astype(np.float64)
+    return (words / 2.0 ** 31 - 1.0).reshape(shape)
 
 
 @dataclass
 class SecureAggregator:
-    """Sum pairwise-masked client updates; the masks cancel exactly in the sum.
+    """Pairwise-masked aggregation whose mask seeds each pair of clients agrees by X25519.
 
-    Pairwise keys ``keys[(i,j)]`` (i<j) seed antisymmetric masks: client i adds the
-    mask, client j subtracts it. Summing all masked updates cancels every mask. An individual
-    update is hidden only from someone who cannot derive the pair keys, and with the default keys
-    (a public constant, below) that is nobody.
+    Construction draws every client's X25519 key pair for this run (fresh from the OS CSPRNG, or the
+    32-byte ``private_keys`` a caller passes, for a test or a reproduction: a fixed key is a public
+    one), publishes the public keys in ``public_keys``, and gives each client its seed with every peer,
+    computed from that client's own private key. The private keys are not kept.
+
+    ``mask_update(c, ...)`` is client c's side and uses client c's seeds alone; ``aggregate`` is the
+    aggregator's side and reads the masked updates alone. Every client and the aggregator still run in
+    this one process, so the parties are notional.
     """
 
     n_clients: int
-    keys: dict[tuple[int, int], bytes] = field(default_factory=dict)
+    private_keys: Sequence[bytes] | None = field(default=None, repr=False)
+    #: The clients' X25519 public keys for this run (32 bytes each): what the aggregator relays.
+    public_keys: list[bytes] = field(init=False, default_factory=list)
+    #: Measured wall time of the key agreement (every key pair and every client's seeds), in ms.
+    key_agreement_ms: float = field(init=False, default=0.0)
+    _seeds: list[dict[int, bytes]] = field(init=False, default_factory=list, repr=False)
 
     def __post_init__(self) -> None:
-        if not self.keys:
-            # DEMO ONLY, and not a privacy guarantee: these pairwise keys are derived from a
-            # public constant, so anyone can recompute every mask and unmask an individual
-            # update. The masks are real and they cancel exactly; what is absent is the secrecy
-            # of the key material. No caller in this repository passes `keys` (federated_train
-            # below does not), so this branch is the one that runs. Hiding needs each pair's key
-            # agreed between the two clients of that pair (Bonawitz et al.); a key every party and
-            # the aggregator share, like the browser's session key, would not hide anything from
-            # the aggregator either. See docs/threat-model.md.
-            for i in range(self.n_clients):
-                for j in range(i + 1, self.n_clients):
-                    self.keys[(i, j)] = hashlib.sha256(f"pair-{i}-{j}".encode()).digest()
+        t0 = time.perf_counter()
+        n = self.n_clients
+        if self.private_keys is None:
+            own = [X25519PrivateKey.generate() for _ in range(n)]
+        else:
+            if len(self.private_keys) != n:
+                raise ValueError(f"{len(self.private_keys)} private keys for {n} clients")
+            own = [X25519PrivateKey.from_private_bytes(bytes(k)) for k in self.private_keys]
+        self.public_keys = [k.public_key().public_bytes_raw() for k in own]
+        # Client c's seeds, each from c's OWN private key and the peer's relayed public key. Both
+        # members of a pair compute the pair's seed independently, as they would on two hosts.
+        self._seeds = [{j: pair_seed(own[c], self.public_keys[j], min(c, j), max(c, j))
+                        for j in range(n) if j != c} for c in range(n)]
+        # Each client needs its private key only to derive its seeds; drop the references here.
+        self.private_keys = None
+        del own
+        self.key_agreement_ms = (time.perf_counter() - t0) * 1000.0
 
     def mask_update(self, client: int, update: np.ndarray, round_index: int = 0) -> np.ndarray:
-        """Mask one client's update for `round_index`.
+        """Mask one client's update for `round_index`, with that client's own seeds.
 
         `round_index` is keyword-defaulted so the existing three call sites keep working, but the
         FedAvg loop MUST pass the real round - a default that silently means "round 0 forever" is
         the reuse this signature was widened to remove.
         """
         out = update.copy()
-        for j in range(self.n_clients):
-            if j == client:
-                continue
-            i0, j0 = min(client, j), max(client, j)
-            # Keyed on the ORDERED pair, so both members of a pair derive the identical mask and the
-            # antisymmetric +/- below still cancels exactly. Folding the round in per-client instead
-            # of per-pair would break cancellation into a plausible-looking wrong aggregate.
-            m = _mask(self.keys[(i0, j0)], update.shape, round_index)
+        for j, seed in self._seeds[client].items():
+            # One seed per unordered pair, so both members derive the identical mask and the
+            # antisymmetric +/- below cancels. Folding the round in per-client instead of per-pair
+            # would break cancellation into a plausible-looking wrong aggregate.
+            m = _mask(seed, update.shape, round_index)
             out += m if client < j else -m
         return out
 
-    def aggregate(self, masked_updates: list[np.ndarray]) -> np.ndarray:
-        """Sum masked updates -> the masks cancel, leaving the true sum."""
+    @staticmethod
+    def aggregate(masked_updates: list[np.ndarray]) -> np.ndarray:
+        """The aggregator's whole computation: sum the masked updates; the masks cancel, leaving the
+        true sum. It is given the masked updates and nothing else."""
         return np.sum(masked_updates, axis=0)
 
 
@@ -196,9 +265,13 @@ def federated_train(
     model_kwargs: dict | None = None,
     seed: int = 0,
     return_model: bool = False,
+    secagg_private_keys: Sequence[bytes] | None = None,
 ) -> FederatedResult:
-    """Run FedAvg across ``parts`` with optional pairwise masking (public demo keys; see the module
-    docstring for what that does and does not hide).
+    """Run FedAvg across ``parts`` with optional pairwise masking, each pair's mask seed agreed by
+    X25519 (see the module docstring for what that does and does not hide).
+
+    ``secagg_private_keys`` fixes the clients' X25519 private keys (32 bytes each) for a test or a
+    reproduction; by default every run draws fresh ones.
 
     With ``return_model=True`` returns ``(FederatedResult, global_model)`` so callers (e.g. the
     medical CNN use case) can run a genuine private inference with the federated-trained weights.
@@ -216,7 +289,8 @@ def federated_train(
 
     global_model = build_model(kind, **model_kwargs).to(dev)
     global_vec = _flatten(global_model)
-    agg = SecureAggregator(n_clients) if secure_aggregation else None
+    agg = (SecureAggregator(n_clients, private_keys=secagg_private_keys)
+           if secure_aggregation else None)
     sizes = np.array([len(p[0]) for p in parts], dtype=float)
     weights = sizes / sizes.sum()
     round_acc: list[float] = []

@@ -1309,8 +1309,8 @@ export function qotpQcnnInfer(features: number[], seed = 0, nQubits = 8,
   // the benchmark row withholds a ct/pt ratio. What is absent is the secrecy of the key material,
   // and the pad is never undone, so the readout below follows the key, not the input.
   //
-  // This is the disclosure `SecureAggregator.__post_init__` in `src/qsh/ai/federated.py` already
-  // makes about its pairwise keys, for the same reason: naming a scheme's information-theoretic
+  // It is the rule `SecureAggregator` in `src/qsh/ai/federated.py` states for a caller's fixed private
+  // keys (a fixed key is a public one), for the same reason: naming a scheme's information-theoretic
   // property beside a demo key reads as a claim about the run that just happened. Until Round 40
   // this line read "QOTP perfect-hiding mask" with no qualification.
   for (let q = 0; q < nQubits; q++) { if (u() < 0.5) X(q); if (u() < 0.5) Z(q); }

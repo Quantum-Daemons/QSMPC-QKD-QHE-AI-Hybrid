@@ -146,8 +146,8 @@ step "11/18 Federated secure aggregation"
 # said "(secure aggregation)" while clientQFL summed plaintext updates, with `secureAgg: true` a
 # literal on the return line. Every gate above stayed green throughout, because none of them can see
 # a figure asserting a property of code in another file. This asserts it on the function: masks
-# applied, keyed by the session key, fresh per round, cancelling to a bit-identical weighted mean,
-# and no plaintext path to fall back into.
+# applied, keyed by each pair's X25519 secret through HKDF and untouched by the session key (Round 84),
+# fresh per round, cancelling to a bit-identical weighted mean, and no plaintext path to fall back into.
 ( cd web && npm run --silent check:qfl >/tmp/ci_qfl.log 2>&1 ) \
   && ok "federated secure aggregation" || { bad "federated secure aggregation"; tail -12 /tmp/ci_qfl.log; }
 

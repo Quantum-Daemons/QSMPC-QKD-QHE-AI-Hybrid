@@ -4,8 +4,11 @@ Several hospitals jointly train a diagnostic model without sharing patient data
 (federated learning with pairwise-mask aggregation), then a clinician runs a
 private inference that never exposes the patient's record to the server.
 
-The aggregation masks cancel exactly but hide nothing here: their pair keys are a public
-constant (see :mod:`qsh.ai.federated`). Where the CNN variant runs the masked FHE-to-MPC
+Each pair of hospitals agrees its mask seed by X25519 for the run, so an aggregator holding only the
+public keys and the masked updates cannot remove a mask; the masks are reals added in float64 and
+hide an update only partially, every hospital runs in this process, and there is no dropout
+recovery or key authentication (see :mod:`qsh.ai.federated`).
+Where the CNN variant runs the masked FHE-to-MPC
 conversion, every CKKS slot the client can decode is masked since Round 84 (independent masks in
 each real and imaginary part on TenSEAL), so the client's whole view is bounded per run by
 ``view_statistical_distance``; it is semi-honest with an honest majority, and the class index it
@@ -39,7 +42,7 @@ from ...orchestration.stages import (
 
 
 class FederatedTrainingStage(Stage):
-    """Train across virtual hospitals with pairwise-mask aggregation (public demo keys)."""
+    """Train across virtual hospitals with pairwise-mask aggregation, each pair's seed agreed by X25519."""
 
     name = "federated_training"
 
