@@ -13,7 +13,10 @@ QSMS prime below the pooled total wrapped the count while Python refused the sam
 WHAT IS ASSERTED, BY RUNNING THE PAGE'S OWN CODE
 
 `runClientPipeline("genomics")` is bundled with esbuild and run in node against the real node-seal
-CKKS and the real Polytune wasm, with `fetch` answering from web/public:
+CKKS and the real Polytune wasm where it is built, with `fetch` answering from web/public. The wasm is
+gitignored and CI's Python job does not build it, so there a plaintext argmax stands in for the
+garbled circuit, as in tests/test_r84_finance_browser_run.py; nothing below but the MPC agreement
+depends on which ran, and that check is real only with the module:
 
   - the row CKKS encrypts is the person's dosage at every variant of the payload, and the model is
     W = [0, w], b = [0, -cut] with the cut the 90th percentile of the payload's own scores, as numpy
@@ -47,7 +50,7 @@ PAYLOAD = WEB / "public" / "data" / "genomics" / "pgs000072_breast_cancer.json"
 
 HARNESS = r"""
 import { createRequire } from "node:module";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 const WEB = process.argv[2], OUT = process.argv[3];
 const { build } = createRequire(WEB + "/package.json")("esbuild");
@@ -59,11 +62,23 @@ export * as realData from ${JSON.stringify(resolve(WEB, "src/lib/realData"))};`,
            resolveDir: WEB, loader: "ts" },
   bundle: true, format: "esm", platform: "node", outfile: OUT, logLevel: "error",
   define: { "import.meta.env": '{"BASE_URL":"/"}' },
-  // The one Vite-only specifier: the SEAL wasm's `?url` import becomes its path on disk.
+  // The one Vite-only specifier: the SEAL wasm's `?url` import becomes its path on disk. Without the
+  // built Polytune module, a plaintext argmax stands in for it (CI's Python job).
   plugins: [{ name: "wasm-url", setup(b) {
     b.onResolve({ filter: /seal_throws\.wasm\?url$/ }, () => ({ path: "sealwasm", namespace: "wasmurl" }));
     b.onLoad({ filter: /.*/, namespace: "wasmurl" },
              () => ({ contents: `export default ${JSON.stringify(sealWasm)};`, loader: "js" }));
+    if (!existsSync(mpcWasm)) {
+      b.onResolve({ filter: /(^|\/)clientMPC$/ }, () => ({ path: "fakempc", namespace: "fakempc" }));
+      b.onLoad({ filter: /.*/, namespace: "fakempc" }, () => ({ loader: "js", contents: `
+        export async function warmMPC() {}
+        export async function secureArgmax(l) {
+          let b = 0; for (let i = 1; i < l.length; i++) if (l[i] > l[b]) b = i;
+          return { out: [b], compares: Math.max(0, l.length - 1), commBytes: 0, mpcMs: 0, messages: 0, clearOut: [b] };
+        }` }));
+      b.onResolve({ filter: /\.wasm\?url$|qsh_mpc\.js$/ }, (a) => ({ path: a.path, namespace: "stub" }));
+      b.onLoad({ filter: /.*/, namespace: "stub" }, () => ({ contents: "export default '';", loader: "js" }));
+    }
   } }],
 });
 globalThis.fetch = async (url) => {
@@ -85,7 +100,7 @@ const run = (config) => new Promise((done) => {
                          bench: m.assembleBenchmark("genomics", config, { metrics: r.metrics, artifacts: r.artifacts }) }),
   });
 });
-const out = { auto: await run({ seed: 0 }), small: await run({ seed: 0, prime: 11 }) };
+const out = { mpcReal: existsSync(mpcWasm), auto: await run({ seed: 0 }), small: await run({ seed: 0, prime: 11 }) };
 // The scored person changes with the seed; over a few seeds the encrypted flag must come out both ways.
 out.seeds = [];
 for (let seed = 1; seed <= 12; seed++) {
@@ -116,12 +131,11 @@ def _require_node_or_skip() -> None:
     """Skip without the toolchain, unless the environment says a skip is a failure (CI does)."""
     missing = [name for name, ok in (
         ("web/node_modules/.bin/esbuild", (WEB / "node_modules" / ".bin" / "esbuild").exists()),
-        ("web/src/wasm/qsh_mpc", (WEB / "src" / "wasm" / "qsh_mpc" / "qsh_mpc_bg.wasm").exists()),
         ("node", shutil.which("node") is not None)) if not ok]
     if not missing:
         return
     msg = (f"{' and '.join(missing)} absent, so the genomics page cannot run here. Run `npm ci` in "
-           "web/ and scripts/build_wasm.sh. This is a SKIP, not a pass.")
+           "web/. This is a SKIP, not a pass.")
     if os.environ.get("QSH_REQUIRE_BROWSER_GATES") == "1":
         pytest.fail(msg)
     pytest.skip(msg)

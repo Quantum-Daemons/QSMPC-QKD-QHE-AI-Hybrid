@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import math
 import re
 from pathlib import Path
 
@@ -98,12 +99,38 @@ def test_the_columns_left_out_are_named_with_the_reason_and_its_source() -> None
     assert all(col in body for col in BALANCE)
 
 
-def test_the_builder_reproduces_the_shipped_payload_byte_for_byte() -> None:
+def _same(a, b, path="$") -> list[str]:
+    """Where two JSON values differ: numbers to a relative 1e-9, everything else exactly."""
+    if isinstance(a, bool) or isinstance(b, bool) or not isinstance(a, (int, float)) \
+            or not isinstance(b, (int, float)):
+        if type(a) is not type(b):
+            return [f"{path}: {type(a).__name__} against {type(b).__name__}"]
+        if isinstance(a, dict):
+            if list(a) != list(b):
+                return [f"{path}: keys {list(a)} against {list(b)}"]
+            return [d for k in a for d in _same(a[k], b[k], f"{path}.{k}")]
+        if isinstance(a, list):
+            if len(a) != len(b):
+                return [f"{path}: length {len(a)} against {len(b)}"]
+            return [d for i, (x, y) in enumerate(zip(a, b, strict=True)) for d in _same(x, y, f"{path}[{i}]")]
+        return [] if a == b else [f"{path}: {a!r} against {b!r}"]
+    return [] if math.isclose(a, b, rel_tol=1e-9, abs_tol=1e-12) else [f"{path}: {a!r} against {b!r}"]
+
+
+def test_the_builder_reproduces_the_shipped_payload() -> None:
+    """The shipped payload is what the builder writes, to the last digit that is the model's.
+
+    Byte for byte until the first CI run of Round 84: the runner's BLAS put a fitted weight 2e-14 away
+    from this machine's (...908035 against ...908054, the 15th significant digit), so the text differed
+    while every number agreed to far more places than the payload's rounded rows carry. Numbers are
+    compared to a relative 1e-9; keys, order, strings, labels and integers exactly.
+    """
     pytest.importorskip("xgboost")
     build = _module("scripts/data/build_federated_samples.py", "build_federated_samples_r84")
-    assert json.dumps(build.build_finance(400, 0)) == PAYLOAD.read_text(), (
+    diffs = _same(build.build_finance(400, 0), json.loads(PAYLOAD.read_text()))
+    assert not diffs, (
         "web/public/data/finance/paysim_sample.json is not what build_federated_samples.py writes; "
-        "regenerate it with --only finance_aml")
+        "regenerate it with --only finance_aml:\n  " + "\n  ".join(diffs[:10]))
 
 
 def test_the_stated_fitting_row_figures_reproduce_from_the_shipped_rows() -> None:
