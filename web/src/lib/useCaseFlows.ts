@@ -55,7 +55,16 @@ export interface Step {
    * table disagreed about one run. Return false and the step is marked as completed-but-failed.
    */
   ok?: (m: M, c: DiagramConfig) => boolean;
+  /**
+   * The badge word when `ok` is false (Round 85). "failed" by default, and it read like an error on
+   * outcomes the model produces by design: the satellite's QSDC withheld because the link budget cannot
+   * carry it (33 of 38 combinations in a pairwise walk of that page), a QKD block with a zero finite
+   * key. The colour and the missing tick stay; the word says what happened.
+   */
+  failWord?: string;
 }
+/** The badge word of a step that ran and did not succeed: its own word, else "failed". */
+export const failWordOf = (step: Step): string => step.failWord ?? "failed";
 /** A party, as the canvas heads its column. */
 export interface Party { name: string; sub: string }
 export interface Spec {
@@ -167,6 +176,9 @@ const qkdOk = (m: M) => {
   const bits = m["secure_key_bits"];
   return typeof bits === "number" ? bits > 0 : true;   // no measurement yet -> do not claim failure
 };
+/** A QKD step whose finite key is zero distilled nothing: the block is too short, or the error too
+ *  high, for the bound to leave a key. A result of the model, worded as one. */
+const QKD_NO_KEY = "no key";
 
 // The MPC-FHE private inference, drawn as its two halves (the 2026 hybrid: linear→FHE, non-linear→MPC).
 // Both map to the backend `private_inference` stage, so they light up together when it runs and the
@@ -327,7 +339,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       + "of the public keys."),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk, failWord: QKD_NO_KEY },
       { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
       // Finance is in FEDERATED_USECASES, so `runClientPipeline` injects `federated_training` here -
       // before the first of private_inference/qml_ids/qsdc_telemetry/quantum_comparison. This spec
@@ -356,7 +368,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       + "dropout recovery, no malicious security and no authentication of the public keys."),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk, failWord: QKD_NO_KEY },
       FEDERATED_STEP,
       ...HYBRID_INFERENCE,
       publishedStep("private_inference"),
@@ -377,7 +389,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       + "shares of every cohort."),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk, failWord: QKD_NO_KEY },
       { stageId: "qsmpc_compute", kind: qsmpcKind("sum"), label: qsmpcLabel("sum") },
       ...HYBRID_INFERENCE,
       publishedStep("private_inference"),
@@ -413,7 +425,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       // inference labels follow: describe the run, never the intent.
       { stageId: "qkd_key_agreement", kind: "q-arrow",
         label: (m, c) => `${qkdName(c)}${eveTag(m)} · QBER ${f(m, "qber")}${optiTag(m, c)}`,
-        hidden: pqcOnly, ok: qkdOk },
+        hidden: pqcOnly, ok: qkdOk, failWord: QKD_NO_KEY },
       { stageId: "qml_ids", kind: "local-a", label: (m) => `IDS stage: classical softmax attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
       publishedStep("qml_ids"),
       QSMPC_COMPARE,
@@ -438,7 +450,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)}${eveTag(m)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
-        ok: qkdOk,
+        ok: qkdOk, failWord: QKD_NO_KEY,
         hidden: pqcOnly },
       // The abort has to reach the arrow. With Eve at 0.5 the log said "QSDC ABORTED: error 0.158 >
       // 0.11 - telemetry withheld" while this label read "QSDC direct telemetry · secrecy 0
@@ -474,6 +486,8 @@ export const USECASE_SPECS: Record<string, Spec> = {
         kind: (c) => (pqcOnly(c) ? "c-arrow" : "q-arrow"),
         ok: (m) => Number(m["qsdc_link_budget_limited"]) !== 1
           && Number(m["qsdc_eavesdrop_detected"]) !== 1 && Number(m["qsdc_statistics_limited"]) !== 1,
+        // All three of those withhold the telemetry, which then falls back to the PQC session key.
+        failWord: "withheld",
         label: (m, c) => pqcOnly(c)
           ? "telemetry under the PQC session key · QSDC skipped: a PQC-only profile has no quantum channel"
           : (Number(m["qsdc_eavesdrop_detected"]) === 1
@@ -512,7 +526,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     meet: overWan("Party A and Party B", PSI_HOLDS),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
-      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
+      { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk, failWord: QKD_NO_KEY },
       { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
       ...HYBRID_INFERENCE,
       publishedStep("private_inference"),

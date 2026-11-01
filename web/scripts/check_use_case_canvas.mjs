@@ -26,7 +26,11 @@
  *   7. the caption says what the run does: the MPC-FHE sentence only where a private inference
  *      runs, no WAN between a satellite and its ground station, and no simulated quantum channel
  *      under a profile that has none. One caption served all five until Round 81;
- *   8. every use case the E2E page's selector offers has a canvas, the generic demo included.
+ *   8. every use case the E2E page's selector offers has a canvas, the generic demo included;
+ *   9. a step that ran and did not succeed BY DESIGN says what happened (Round 85): the satellite's
+ *      QSDC withheld by its link budget badged "withheld", a QKD step with a zero finite key "no key",
+ *      never the "failed" a real error keeps. In a pairwise walk the satellite page badged QSDC
+ *      "failed" in 33 of 38 combinations, every one of them the model working as intended.
  *
  * HOW IT LOADS THE TS: esbuild bundles the module to a temp ESM file, as check_calibration.mjs does.
  *
@@ -45,7 +49,7 @@ const check = (name, ok, detail) => { if (!ok) failures.push(`${name}: ${detail}
 
 const dir = mkdtempSync(join(tmpdir(), "qsh-canvas-"));
 const entry = join(dir, "entry.ts");
-writeFileSync(entry, `export { USECASE_SPECS, canvasRow, visibleSteps, kindOf, drawnChannels, captionOf, consumesSessionKey } from ${JSON.stringify(MODULE)};\n`
+writeFileSync(entry, `export { USECASE_SPECS, canvasRow, visibleSteps, kindOf, drawnChannels, captionOf, consumesSessionKey, failWordOf } from ${JSON.stringify(MODULE)};\n`
   + `export { appConfig } from ${JSON.stringify(join(WEB, "src/lib/config"))};\n`
   + `export { USECASES } from ${JSON.stringify(join(WEB, "src/lib/useCases"))};\n`);
 const out = join(dir, "bundle.mjs");
@@ -158,6 +162,19 @@ check("caption", !/WAN/.test(m.captionOf("satellite_comms")) && !/WAN/.test(m.ca
 for (const id of [...m.USECASES.map((u) => u.id), "demo"])
   check("e2e", id in m.USECASE_SPECS, `the E2E selector offers ${id}, and the canvas has no spec for it`);
 
+// 9. The badge word of a designed outcome.
+for (const [uc, spec] of Object.entries(m.USECASE_SPECS)) {
+  for (const s of spec.steps) {
+    if (!s.ok) continue;
+    const word = m.failWordOf(s);
+    check("fail-word", word !== "failed", `${uc} ${s.stageId}: an outcome the model produces by design is badged "failed"`);
+    if (s.stageId === "qsdc_telemetry") check("fail-word", word === "withheld", `${uc}: QSDC withheld is badged "${word}"`);
+    if (["qkd_key_agreement", "satellite_qkd"].includes(s.stageId))
+      check("fail-word", word === "no key", `${uc} ${s.stageId}: a zero finite key is badged "${word}"`);
+  }
+}
+check("fail-word", m.failWordOf({ stageId: "x" }) === "failed", "a step with no word of its own is not badged \"failed\"");
+
 if (failures.length) {
   console.error("check:use-case-canvas FAILED");
   for (const f of failures) console.error(`  - ${f}`);
@@ -165,4 +182,5 @@ if (failures.length) {
 }
 console.log(`check:use-case-canvas OK  ${Object.keys(m.USECASE_SPECS).length} use cases: every stage placed, the downlink `
   + "drawn down, the run's parties counted, the inference client on its side, no quantum lane under PQC-only, "
-  + "a legend of the lanes drawn, a caption of what runs, a canvas for every E2E selector entry");
+  + "a legend of the lanes drawn, a caption of what runs, a canvas for every E2E selector entry, "
+  + "a designed outcome badged by what happened");
