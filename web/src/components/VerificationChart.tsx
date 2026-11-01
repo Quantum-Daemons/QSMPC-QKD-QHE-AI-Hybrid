@@ -28,6 +28,9 @@ import Details from "./Details";
 import { ChartReadout, HINT_KEYBOARD, HINT_POINTER, ReadoutTooltip } from "./ChartReadout";
 
 const AXIS = { fontSize: 10, stroke: "#8a94a6" };
+/** The y-axis width of the two plane charts: their ticks and the rotated title `yAxisTitle` draws at
+ *  a fixed offset share it, so it is sized for the wider of the fonts `system-ui` resolves to. */
+const Y_AXIS_W = 72;
 /** A y-axis title centred on the axis (Round 80). Recharts anchors a rotated `insideLeft` title at
  *  its START, at the axis middle, so the title runs upward by its whole length, and on these 230 px
  *  charts every title longer than about 100 px left the chart at the top - " (log)" was cut off
@@ -491,7 +494,10 @@ function DecisionPlane({ plot, plane }: { plot: EncryptedAgreementPlot; plane: {
             <XAxis type="number" dataKey="x" name={plane.x.label} tick={AXIS}
                    label={{ value: plane.x.label, position: "insideBottom", offset: -20,
                             fill: "#8a94a6", fontSize: 10 }} />
-            <YAxis type="number" dataKey="y" name={plane.y.label} tick={AXIS}
+            {/* 72 px, not Recharts' 60 (Round 84): in DejaVu Sans, the CI runners' and many Linux
+                visitors' system-ui, the held-out telecom rows' five-character ticks (0.075, 0.225)
+                reached the rotated title at its fixed offset; in Noto they did not, so local scans passed. */}
+            <YAxis type="number" dataKey="y" name={plane.y.label} tick={AXIS} width={Y_AXIS_W}
                    tickFormatter={logY ? compactTick : undefined}
                    scale={logY ? "log" : "auto"} domain={logY ? [0.9, "auto"] : undefined}
                    allowDataOverflow={logY}
@@ -714,7 +720,7 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
                 the baseline unless it is compressed, and whether that is warranted is a property of
                 the DATA, so the generator that measured it is the thing that should decide. */}
             {/* Compact log ticks (Round 80): "10000" ran under the rotated axis title. */}
-            <YAxis type="number" dataKey="y" name={data.y.label} tick={AXIS}
+            <YAxis type="number" dataKey="y" name={data.y.label} tick={AXIS} width={Y_AXIS_W}
                    tickFormatter={logY ? compactTick : undefined}
                    scale={logY ? "log" : "auto"}
                    domain={logY ? [0.9, "auto"] : undefined}
