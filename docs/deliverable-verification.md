@@ -7911,6 +7911,38 @@ each combination on a fresh page could have seen it.
 - GitHub still serves the PDFs removed on 2026-10-31 through the pull-request refs, which only GitHub
   Support can drop.
 
+**The deploy and the walk (2026-11-01).** The branch was deployed at fa957e9 and walked; the
+walk's one finding, below, was fixed and deployed at 9bc737e (bundle `index-jM5MgPnW.js`).
+- In a desktop Chrome 152 with a hardware GPU, the 22 finance rows that froze the base at its twelfth
+  run all finished in one tab in 159 s, each with verification PASS and no console error, the JS heap
+  at 36 MB at the end; runs took about 6 s against 10 to 13 s on the base, as the sessions are reused.
+  The page held 3,270 elements after a run, and a hover on the agreement scatter read "agrees
+  (circle): plaintext -15.685578, encrypted -15.685578" into the line under it.
+- WebGPU on the medical page: ResNet-18, ResNet-50 and the student each ran on `onnx-webgpu` with
+  verification PASS (187.29 ms for the first ResNet-18 row, 49.3 ms for the second, once its session
+  was kept). Finance's two models are tree ensembles in the `ai.onnx.ml` domain, which the WebGPU build
+  does not register, so they run on WASM when WebGPU is selected, as the loader's comment says.
+- The walk's finding: ONNX Runtime printed two node-placement warnings per WebGPU session through
+  `console.error`, red in the console, about a placement the backend selector already states.
+  Sessions are created logging errors only now (`logSeverityLevel: 3`, asserted in
+  `tests/test_r85_onnx_sessions_open_once.py`); on 9bc737e the same medical run printed none.
+- Satellite: the CKKS student reads "(no sample, by design)" and cannot be selected, and a default run
+  badges QSDC "withheld". Validations: ML-KEM, ML-DSA, the handshake, BB84 at intercept fractions 0,
+  0.3, 0.6 and 1 (QBER 0.0098 with 5,214,327 bits, then 0.0831 with no key, 0.1564 flagged, 0.2543),
+  the agent call (authenticated, the tampered message rejected), the ACVP cases (10 of 10), the
+  WireGuard handshake and the key schedule, with no console error. Overview, Introduction & Value and
+  Use Cases loaded without one; the E2E page ran all six of its use cases one after another in one tab,
+  each to `done`, and its Stage order tab opened.
+- Headless Chrome on the deployed branch: the all-pairs rows of every use case (finance 22, medical 26,
+  genomics 22, telecom 21, satellite 38) and sixteen default finance runs in one tab, all to `done`,
+  verification PASS wherever a model is published, no console error.
+- In the app's own browser (no hardware adapter, so WASM): Transformers.js ran distilGPT-2 in 12,524 ms
+  and Qwen2.5-0.5B-Instruct in 27,554 ms on onnxruntime-web 1.31.1, each with its signed MCP envelope
+  verified and the tampered copy rejected, distilGPT-2 again with the Toeplitz combiner in 1,392 ms
+  from its cache, and then a finance run on the same runtime with verification PASS.
+- The README's eleven screenshots were taken again from the deployed branch
+  (`web/scripts/capture_screenshots.mjs`).
+
 BUSINESS DOC RECONCILED Round 85. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 17 reads.
