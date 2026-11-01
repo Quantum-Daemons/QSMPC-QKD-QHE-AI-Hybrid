@@ -393,8 +393,13 @@ export async function loadModel(
 
       // Bounded. An unsupported operator can leave session creation pending rather than
       // rejecting, and an unbounded await turns that into a permanently spinning button.
+      // Errors only (Round 85). ORT logs node placement at warning level through console.error, so
+      // every WebGPU session printed two red "Some nodes were not assigned to the preferred
+      // execution providers" lines that read as failures in a visitor's console. The placement is
+      // what the backend selector's title already says (int8 nodes run on the CPU); real errors
+      // still log.
       const created = await withTimeout(
-        ort.InferenceSession.create(buf, { executionProviders: eps }),
+        ort.InferenceSession.create(buf, { executionProviders: eps, logSeverityLevel: 3 }),
         SESSION_CREATE_TIMEOUT_MS,
         `ONNX session creation exceeded ${SESSION_CREATE_TIMEOUT_MS / 1000}s — either the graph `
         + `uses operators this browser cannot execute, or it is too large for this device`,

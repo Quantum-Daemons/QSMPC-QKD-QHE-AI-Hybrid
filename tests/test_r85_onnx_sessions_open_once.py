@@ -24,6 +24,9 @@ repository ships:
   again for that backend, since verification re-scores on the run's backend and a backend is part of
   what a session is; and nothing reopens after that.
 - Every run still re-scores both models: the counted sessions are the ones verification used.
+- Every session is created logging errors only (`logSeverityLevel: 3`): at its default ONNX Runtime
+  printed two node-placement warnings per WebGPU session through `console.error`, red in a visitor's
+  console, about a placement the page already states.
 
 The stand-in's scores are constant, so verification FAILS here by design; what is under test is how
 often a session is created, not what it computes. tests/test_r84_finance_browser_run.py checks the
@@ -66,8 +69,9 @@ const sealWasm = resolve(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
 const FAKE_ORT = `
   export const env = { wasm: {} };
   export class Tensor { constructor(type, data, dims) { this.type = type; this.data = data; this.dims = dims; } }
-  export const InferenceSession = { create: async () => {
+  export const InferenceSession = { create: async (_buf, options) => {
     globalThis.__ort.created++;
+    globalThis.__ort.severity.push(options?.logSeverityLevel ?? null);
     return { inputNames: ["input"], outputNames: ["label", "probabilities"],
       run: async (feeds) => {
         globalThis.__ort.runs++;
@@ -99,7 +103,7 @@ await build({
     b.onLoad({ filter: /.*/, namespace: "stub" }, () => ({ contents: "export default '';", loader: "js" }));
   } }],
 });
-globalThis.__ort = { created: 0, released: 0, runs: 0 };
+globalThis.__ort = { created: 0, released: 0, runs: 0, severity: [] };
 const ok = (text, type) => ({ ok: true, status: 200, headers: { get: () => type },
   json: async () => JSON.parse(text), text: async () => text,
   arrayBuffer: async () => new TextEncoder().encode(text).buffer });
@@ -134,7 +138,7 @@ for (const [label, config] of [["default", {}], ["default", {}], ["default", {}]
   const r = await run(config);
   steps.push({ label, created: globalThis.__ort.created, verified: r.verified });
 }
-console.log(JSON.stringify(steps));
+console.log(JSON.stringify({ steps, severity: globalThis.__ort.severity }));
 process.exit(0);
 """
 
@@ -151,7 +155,7 @@ def _require_node_or_skip() -> None:
 
 
 @pytest.fixture(scope="module")
-def steps(tmp_path_factory) -> list:
+def traced(tmp_path_factory) -> dict:
     _require_node_or_skip()
     script = tmp_path_factory.mktemp("r85ort") / "harness.mjs"
     script.write_text(HARNESS)
@@ -159,6 +163,11 @@ def steps(tmp_path_factory) -> list:
                           capture_output=True, text=True, timeout=1500)
     assert proc.returncode == 0, f"the browser pipeline did not run:\n{proc.stderr[-3000:]}"
     return json.loads(proc.stdout.strip().splitlines()[-1])
+
+
+@pytest.fixture(scope="module")
+def steps(traced) -> list:
+    return traced["steps"]
 
 
 def test_three_runs_open_one_session_per_model(steps) -> None:
@@ -172,3 +181,8 @@ def test_a_new_backend_opens_each_model_once_more_and_nothing_reopens(steps) -> 
 def test_every_run_still_rescores_both_published_models(steps) -> None:
     for s in steps:
         assert sorted(set(s["verified"])) == ["finance_aml.gbm", "finance_aml.student"], s
+
+
+def test_every_session_logs_errors_only(traced) -> None:
+    """ORT logs node placement as warnings through console.error, red in a visitor's console."""
+    assert traced["severity"] and all(level == 3 for level in traced["severity"]), traced["severity"]
