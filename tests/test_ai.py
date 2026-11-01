@@ -5,7 +5,7 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from qsh.ai.federated import SecureAggregator, federated_train, partition
+from qsh.ai.federated import SecureAggregator, dequantise, federated_train, partition, quantise
 from qsh.ai.models import build_model
 from qsh.ai.train import train_model
 from qsh.data.synthetic import synthetic_transactions
@@ -27,7 +27,11 @@ def test_secure_aggregation_masks_cancel():
     updates = [np.random.default_rng(i).normal(size=30) for i in range(5)]
     masked = [agg.mask_update(c, u) for c, u in enumerate(updates)]
     recovered = agg.aggregate(masked)
-    assert np.allclose(recovered, np.sum(updates, axis=0), atol=1e-9)
+    # Exact in the ring (Round 85): the sum of the quantised updates, which is within half a step of
+    # 2^-20 per client of the real sum.
+    quantised = [quantise(u, 5).astype(np.uint64) for u in updates]
+    assert np.array_equal(recovered, dequantise(sum(quantised) % 2**32))
+    assert np.allclose(recovered, np.sum(updates, axis=0), rtol=0, atol=5 * 0.5 / 2**20)
     # an individual masked update must differ from the raw update (server can't see it)
     assert not np.allclose(masked[0], updates[0])
 

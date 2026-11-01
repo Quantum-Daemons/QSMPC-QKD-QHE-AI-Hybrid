@@ -41,6 +41,9 @@ jobs:
 
       - name: Install core + API + FHE + AI tiers
         run: |
+          # The libsodium pysodium loads for the OPRF PSI (qsh.qsmpc.oprf). QSH_REQUIRE_LIBSODIUM below
+          # turns its absence into a failure, so the pure-Python fallback cannot pass for it.
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libsodium23
           python -m pip install --upgrade pip
           pip install -r requirements-core.txt -r requirements-api.txt -r requirements-fhe.txt
           # The AI tier IS required. An earlier revision of this workflow skipped it on the
@@ -108,6 +111,7 @@ jobs:
           # With this set, the skip becomes a failure instead. The Node install below is what makes
           # that satisfiable.
           QSH_REQUIRE_BROWSER_GATES: "1"
+          QSH_REQUIRE_LIBSODIUM: "1"
         run: pytest -m "not slow" -q
 
       - name: OpenFHE CKKS bootstrapping (the slow test the suite above deselects)

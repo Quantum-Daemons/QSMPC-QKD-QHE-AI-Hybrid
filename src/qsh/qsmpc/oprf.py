@@ -1,10 +1,14 @@
-"""ristretto255 and the RFC 9497 OPRF (mode 0x00, suite ristretto255-SHA512), in pure Python.
+"""ristretto255 and the RFC 9497 OPRF (mode 0x00, suite ristretto255-SHA512), on libsodium or in Python.
 
 The full deployment's private set intersection (:mod:`qsh.qsmpc.psi`) needs an oblivious
-pseudorandom function, and the environment has no library for one: ``cryptography`` exposes no
-hash-to-curve and no prime-order group. This module implements exactly what the PSI uses, from the
-primary sources, and the browser runs the same functions from ``@noble/curves``
-(``ristretto255_oprf``); ``tests/test_r84_oprf_psi.py`` checks the two byte for byte.
+pseudorandom function. ``cryptography`` exposes no hash-to-curve and no prime-order group, and
+PyNaCl exposes none of libsodium's ristretto255 functions (1.6.2, read 2026-11-01). This module
+implements exactly what the PSI uses, from the primary sources, twice: in pure Python, below, and on
+libsodium's ristretto255 through ``pysodium`` (Round 85), which the PSI uses whenever the host has
+libsodium (:data:`BACKEND` says which ran, and the run reports it). The browser runs the same
+functions from ``@noble/curves`` (``ristretto255_oprf``); ``tests/test_r84_oprf_psi.py`` checks the
+tiers byte for byte, and ``tests/test_r85_oprf_on_libsodium.py`` checks the two Python backends
+against each other and the RFC vectors.
 
 - **ristretto255** (RFC 9496, section 4): the prime-order group of order
   ``2^252 + 27742317777372353535851937790883648493`` built on Curve25519 points; field arithmetic
@@ -19,19 +23,34 @@ primary sources, and the browser runs the same functions from ``@noble/curves``
   and Blind, BlindEvaluate, Finalize and Evaluate (3.3.1). The verifiable and partially oblivious
   modes are not implemented: the PSI runs mode 0x00 only.
 
-WHAT IT IS NOT. It is not constant-time: Python integers are not, and scalar multiplication here is
-a 4-bit fixed-window walk that branches on the scalar. RFC 9497 section 7.4 requires constant-time
-operations on secret data, so this code does not meet that requirement; side channels on the host
-are out of scope for this project (``docs/threat-model.md``, "Explicitly out of scope"). Its
-security rests on a discrete-logarithm assumption (the One-More Gap Computational Diffie-Hellman
-assumption, RFC 9497 section 7.2.1), which a quantum computer running Shor's algorithm would break;
-it is not post-quantum.
+CONSTANT TIME. RFC 9497 section 7.4 requires constant-time operations on secret data. The pure-Python
+code does not meet it: Python integers are not constant-time, and its scalar multiplication is a
+4-bit fixed-window walk that branches on the scalar. On libsodium every operation on a secret (the
+blind, its inverse, the key, the hashed input) is libsodium's, which is written to run in constant
+time, and the secret scalars stay byte strings: they are checked by reducing them and comparing with
+:func:`hmac.compare_digest`, never converted to Python integers. What is left in Python is SHA-512
+(``hashlib``) and length checks. Side channels on the host stay out of scope for this project
+(``docs/threat-model.md``, "Explicitly out of scope"); the pure-Python code remains the fallback where
+libsodium is absent, and the cross-check where it is present.
+
+NOT POST-QUANTUM. Its security rests on a discrete-logarithm assumption (the One-More Gap
+Computational Diffie-Hellman assumption, RFC 9497 section 7.2.1), which a quantum computer running
+Shor's algorithm would break, on either backend.
 """
 
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
+from types import SimpleNamespace
+
+try:  # libsodium's ristretto255, through pysodium (Round 85)
+    import pysodium as _sodium
+except (ImportError, OSError, ValueError):  # pysodium absent, or no libsodium on the host
+    _sodium = None
+if _sodium is not None and not _sodium.sodium_version_check(1, 0, 18):  # ristretto255 is 1.0.18+
+    _sodium = None
 
 # --------------------------------------------------------------------------- #
 #  Field and group constants (RFC 9496 sections 2, 4 and 4.1; RFC 8032 section 5.1)
@@ -328,7 +347,7 @@ def _check_input(data: bytes) -> bytes:
     return bytes(data)
 
 
-def derive_key_pair(seed: bytes, info: bytes) -> tuple[bytes, bytes]:
+def _py_derive_key_pair(seed: bytes, info: bytes) -> tuple[bytes, bytes]:
     """DeriveKeyPair, RFC 9497 section 3.2.1: (serialized skS, serialized pkS)."""
     if len(seed) != 32:
         raise ValueError("DeriveKeyPair takes a 32-byte seed")
@@ -341,13 +360,13 @@ def derive_key_pair(seed: bytes, info: bytes) -> tuple[bytes, bytes]:
     raise ValueError("DeriveKeyPairError")
 
 
-def generate_key_pair() -> tuple[bytes, bytes]:
+def _py_generate_key_pair() -> tuple[bytes, bytes]:
     """GenerateKeyPair, RFC 9497 section 3.2: a fresh random (skS, pkS)."""
     sk = random_scalar()
     return serialize_scalar(sk), serialize_element(GENERATOR * sk)
 
 
-def blind(data: bytes, blind_scalar: bytes | None = None) -> tuple[bytes, bytes]:
+def _py_blind(data: bytes, blind_scalar: bytes | None = None) -> tuple[bytes, bytes]:
     """Blind, RFC 9497 section 3.3.1: (serialized blind, serialized blindedElement).
 
     ``blind_scalar`` fixes the blind, as the RFC's test vectors do; a run leaves it None and draws a
@@ -363,7 +382,7 @@ def blind(data: bytes, blind_scalar: bytes | None = None) -> tuple[bytes, bytes]
     return serialize_scalar(r), serialize_element(point * r)
 
 
-def blind_evaluate(sk: bytes, blinded_element: bytes) -> bytes:
+def _py_blind_evaluate(sk: bytes, blinded_element: bytes) -> bytes:
     """BlindEvaluate, RFC 9497 section 3.3.1: skS * blindedElement, serialized."""
     return serialize_element(deserialize_element(blinded_element) * deserialize_scalar(sk))
 
@@ -373,7 +392,7 @@ def _finalize_hash(data: bytes, element: bytes) -> bytes:
                           + element + b"Finalize").digest()
 
 
-def finalize(data: bytes, blind_scalar: bytes, evaluated_element: bytes) -> bytes:
+def _py_finalize(data: bytes, blind_scalar: bytes, evaluated_element: bytes) -> bytes:
     """Finalize, RFC 9497 section 3.3.1: Hash of the input and ScalarInverse(blind) * evaluatedElement."""
     data = _check_input(data)
     r = deserialize_scalar(blind_scalar)
@@ -383,10 +402,127 @@ def finalize(data: bytes, blind_scalar: bytes, evaluated_element: bytes) -> byte
     return _finalize_hash(data, serialize_element(unblinded))
 
 
-def evaluate(sk: bytes, data: bytes) -> bytes:
+def _py_evaluate(sk: bytes, data: bytes) -> bytes:
     """Evaluate, RFC 9497 section 3.3.1: the PRF output computed by a holder of skS directly."""
     data = _check_input(data)
     point = hash_to_group(data)
     if point.is_identity():
         raise InvalidInputError("the input maps to the group identity")
     return _finalize_hash(data, serialize_element(point * deserialize_scalar(sk)))
+
+
+# --------------------------------------------------------------------------- #
+#  The same OPRF on libsodium (Round 85)
+# --------------------------------------------------------------------------- #
+#: The encoding of the identity element: 32 zero bytes (RFC 9496 section 4.3.2).
+_IDENTITY_BYTES = bytes(32)
+
+
+def _na_scalar(buf: bytes) -> bytes:
+    """DeserializeScalar on libsodium: 32 bytes, rejected unless below l.
+
+    A canonical scalar is the one that reducing leaves unchanged, and the comparison is
+    :func:`hmac.compare_digest`, so the check says whether the scalar was canonical and nothing else
+    about it; the pure-Python twin converts it to an integer and compares."""
+    buf = bytes(buf)
+    if len(buf) != NS:
+        raise DecodeError(f"a scalar is {NS} bytes, got {len(buf)}")
+    if not hmac.compare_digest(_sodium.crypto_core_ristretto255_scalar_reduce(buf + bytes(NS)), buf):
+        raise DecodeError("scalar not below the group order")
+    return buf
+
+
+def _na_nonzero(scalar: bytes) -> bytes:
+    if hmac.compare_digest(scalar, bytes(NS)):
+        raise InvalidInputError("the blind must be nonzero")
+    return scalar
+
+
+def _na_element(buf: bytes) -> bytes:
+    """DeserializeElement on libsodium: a canonical encoding, and not the identity (section 3.3)."""
+    buf = bytes(buf)
+    if len(buf) != NE or not _sodium.crypto_core_ristretto255_is_valid_point(buf):
+        raise DecodeError("not a canonical ristretto255 encoding")
+    if buf == _IDENTITY_BYTES:          # public data: what crossed the wire
+        raise DecodeError("the group identity is not accepted over the wire")
+    return buf
+
+
+def _na_mul(scalar: bytes, element: bytes) -> bytes:
+    """scalar * element. libsodium refuses a product that is the identity, which a nonzero scalar
+    times a non-identity element of a prime-order group never is."""
+    try:
+        return _sodium.crypto_scalarmult_ristretto255(scalar, element)
+    except ValueError as e:
+        raise InvalidInputError("the product is the group identity") from e
+
+
+def _na_hash_to_group(msg: bytes) -> bytes:
+    """HashToGroup: libsodium's element derivation (``crypto_core_ristretto255_from_hash``, RFC 9496
+    section 4.3.4) of the same 64 expanded bytes as :func:`hash_to_group`."""
+    point = _sodium.crypto_core_ristretto255_from_hash(expand_message_xmd(msg, _DST_GROUP, 64))
+    if hmac.compare_digest(point, _IDENTITY_BYTES):
+        raise InvalidInputError("the input maps to the group identity")
+    return point
+
+
+def _na_derive_key_pair(seed: bytes, info: bytes) -> tuple[bytes, bytes]:
+    if len(seed) != 32:
+        raise ValueError("DeriveKeyPair takes a 32-byte seed")
+    info = _check_input(info)
+    derive_input = seed + len(info).to_bytes(2, "big") + info
+    for counter in range(256):
+        sk = _sodium.crypto_core_ristretto255_scalar_reduce(
+            expand_message_xmd(derive_input + bytes([counter]), _DST_DERIVE, 64))
+        if not hmac.compare_digest(sk, bytes(NS)):
+            return sk, _sodium.crypto_scalarmult_ristretto255_base(sk)
+    raise ValueError("DeriveKeyPairError")
+
+
+def _na_generate_key_pair() -> tuple[bytes, bytes]:
+    sk = _sodium.crypto_core_ristretto255_scalar_random()      # uniform in [1, l)
+    return sk, _sodium.crypto_scalarmult_ristretto255_base(sk)
+
+
+def _na_blind(data: bytes, blind_scalar: bytes | None = None) -> tuple[bytes, bytes]:
+    data = _check_input(data)
+    r = (_sodium.crypto_core_ristretto255_scalar_random() if blind_scalar is None
+         else _na_nonzero(_na_scalar(blind_scalar)))
+    return r, _na_mul(r, _na_hash_to_group(data))
+
+
+def _na_blind_evaluate(sk: bytes, blinded_element: bytes) -> bytes:
+    return _na_mul(_na_scalar(sk), _na_element(blinded_element))
+
+
+def _na_finalize(data: bytes, blind_scalar: bytes, evaluated_element: bytes) -> bytes:
+    data = _check_input(data)
+    inverse = _sodium.crypto_core_ristretto255_scalar_invert(_na_nonzero(_na_scalar(blind_scalar)))
+    return _finalize_hash(data, _na_mul(inverse, _na_element(evaluated_element)))
+
+
+def _na_evaluate(sk: bytes, data: bytes) -> bytes:
+    data = _check_input(data)
+    return _finalize_hash(data, _na_mul(_na_scalar(sk), _na_hash_to_group(data)))
+
+
+# --------------------------------------------------------------------------- #
+#  Which one runs
+# --------------------------------------------------------------------------- #
+_API = ("derive_key_pair", "generate_key_pair", "blind", "blind_evaluate", "finalize", "evaluate")
+#: The pure-Python implementation: the fallback, and the cross-check of libsodium.
+PURE_PYTHON = SimpleNamespace(name="pure-python", **{f: globals()[f"_py_{f}"] for f in _API})
+#: libsodium's, or None where the host has no libsodium 1.0.18 or later.
+LIBSODIUM = (SimpleNamespace(name=f"libsodium {_sodium.sodium.sodium_version_string().decode()}",
+                             **{f: globals()[f"_na_{f}"] for f in _API})
+             if _sodium is not None else None)
+_ACTIVE = LIBSODIUM or PURE_PYTHON
+#: What runs, as the run reports it (metric ``psi_oprf_backend``): libsodium whenever the host has it.
+BACKEND = _ACTIVE.name
+
+derive_key_pair = _ACTIVE.derive_key_pair
+generate_key_pair = _ACTIVE.generate_key_pair
+blind = _ACTIVE.blind
+blind_evaluate = _ACTIVE.blind_evaluate
+finalize = _ACTIVE.finalize
+evaluate = _ACTIVE.evaluate

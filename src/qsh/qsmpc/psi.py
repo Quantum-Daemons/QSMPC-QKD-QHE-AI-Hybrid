@@ -52,8 +52,9 @@ shows the path they would take rather than protecting a wire.
 
 The key k is fresh per run: rotating the server's key is one of the mitigations RFC 9497 section
 7.2.3 names for the static Diffie-Hellman attack, under which Q BlindEvaluate queries to one key
-reduce the group's security by about log2(Q)/2 bits against the best-known attacks. The
-implementation is not constant-time (see :mod:`qsh.qsmpc.oprf`).
+reduce the group's security by about log2(Q)/2 bits against the best-known attacks. The OPRF runs on
+libsodium where the host has it, and otherwise on pure Python, which is not constant-time; the run
+reports which (``psi_oprf_backend``, :mod:`qsh.qsmpc.oprf`).
 """
 
 from __future__ import annotations
@@ -89,6 +90,9 @@ class PSIResult:
     #: BlindEvaluate calls Bank B answered: one per ID Bank A blinded, so |A|.
     blind_evaluations: int
     protocol: str = PROTOCOL
+    #: The OPRF implementation that ran (:data:`qsh.qsmpc.oprf.BACKEND`): libsodium where the host has
+    #: it, else the pure-Python code, which is not constant-time.
+    oprf_backend: str = oprf.BACKEND
     #: Sealed bytes each way, which is all a third party on the channel sees.
     transcript_bytes: dict = field(default_factory=dict)
 

@@ -8,9 +8,11 @@ FROM python:3.12-slim-trixie
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 LD_LIBRARY_PATH=/usr/local/lib
 WORKDIR /app
 
-# libgomp1 = OpenMP runtime needed by the OpenFHE wheel and torch.
+# libgomp1 = OpenMP runtime needed by the OpenFHE wheel and torch. libsodium23 = the libsodium that
+# pysodium loads for the OPRF PSI's ristretto255 (qsh.qsmpc.oprf); without it the PSI runs on pure
+# Python, which is not constant-time, and reports that it did.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential cmake ninja-build git libssl-dev ca-certificates libgomp1 \
+    build-essential cmake ninja-build git libssl-dev ca-certificates libgomp1 libsodium23 \
     nodejs npm \
  && rm -rf /var/lib/apt/lists/*
 # Node/npx are for the real filesystem-MCP interop (the official @modelcontextprotocol/server-filesystem

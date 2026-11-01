@@ -139,8 +139,16 @@ export default function PipelineControls({ run }: { run: Run }) {
               {/* Named, not blank. "" is the registry's first entry, and a bare empty option reads
                   as "none" next to a list of models. */}
               <option value="">{`auto (${publishedCandidates[0].spec.label})`}</option>
+              {/* A model that publishes no evaluation sample by design has no row of its own to run
+                  on, so selecting it could only end in "did NOT run" and a failed status (satellite's
+                  CKKS student, Round 85). Offered disabled, with the reason the Models panel gives. */}
               {publishedCandidates.map((c) => (
-                <option key={c.spec.key} value={c.spec.key}>{c.spec.label}</option>
+                <option key={c.spec.key} value={c.spec.key} disabled={!!c.spec.eval_sample_reason}
+                  title={c.spec.eval_sample_reason
+                    ? `Cannot run here: it publishes no evaluation sample, by design - ${c.spec.eval_sample_reason}.`
+                    : undefined}>
+                  {c.spec.label}{c.spec.eval_sample_reason ? " (no sample, by design)" : ""}
+                </option>
               ))}
             </select>
           </>

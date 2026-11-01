@@ -7819,3 +7819,177 @@ data. Declined as before.
 BUSINESS DOC RECONCILED Round 84. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 17 reads.
+
+## Round 85 - every selection walked in one tab, two memory leaks, and the owner's decisions (2026-11-01)
+
+**Status.** Branch `round85-pairwise-walk`, cut from `main` at 6bb8657 (the merge of #81). The
+deploy, the walk on the deployed branch and the merge are recorded at the end of this section.
+
+**The owner's request and decisions, 2026-11-01.**
+- Walk every page again with selections other than the defaults, every option and every pair of
+  options, looking at the theory, numbers, licences, figures, metrics, logs and downloads: finance's
+  inference verification had been seen failing, on the run monitor, the model card, the Validations
+  page and another selection.
+- The Python OPRF on libsodium. PyNaCl, the first choice, exposes none of libsodium's ristretto255
+  functions (1.6.2), so the owner chose pysodium with the system libsodium; the pure-Python code stays
+  as the fallback and the cross-check.
+- The Python secure aggregation on the browser's exact fixed-point ring.
+- On the use-case diagrams, a step that does not deliver by design says what happened.
+- The 8,192-point charts drawn on a canvas, every point kept.
+
+**How the walk was run.** For each use case, a greedy all-pairs set of rows over every select and the
+OptiQKD checkbox, counting a pair only where both settings act (a QKD setting under PQC-only, or a
+finite-key setting under E91, acts on nothing): finance 22 rows, medical 26, genomics 22, telecom 21,
+satellite 38. A driver in the page sets each control as a visitor's change does, presses Start, waits
+for the run to end, and records its state, every log line that names a failure, the metrics, the
+diagram's marks, the verification badge, the signature and the console. It ran on the live `main`
+and on local builds in headless Chrome 152 over the DevTools protocol, which can also pause a page
+that stops answering.
+
+**The finance page stopped responding after about a dozen runs in one tab.** In a desktop Chrome the
+walk's twelfth run froze the tab, and the tab had to be closed. Headless Chrome froze at the
+fourteenth run of the same walk, and again at the fourteenth of a walk that pressed Start with
+nothing else changed; its renderer was past 5 GB. Every run before that passed, so no walk that ran
+each combination on a fresh page could have seen it.
+- Cause one, CKKS: `clientFHE.ts` freed the SEAL objects of the dense layer and of the masked
+  decryption and of nothing else. The held-out batch (64 ciphertexts for finance's 8,192 rows), the
+  single-row linear layer and the convolution left every input, weight, product and rotation in the
+  WebAssembly heap, which the JavaScript collector does not see and which does not shrink. Measured in
+  node with the collector forced between runs, the heap grew from 431 MB after the first finance run
+  to 2,097 MB after the sixth, about 330 MB a run; telecom 70 MB a run, genomics 20, medical 5. A
+  32-bit WebAssembly heap cannot pass 4 GiB. Fixed with one scope per computation that frees each
+  spent rotation and accumulator at once and the rest in a `finally`: the heap now stays near 60 MB
+  run after run on all four (`tests/test_r85_ckks_frees_its_wasm_heap.py`, which fails on the base
+  commit with 718, 151 and 44 MB of growth between runs two and four).
+- Cause two, ONNX: `onnxInference.ts` kept one session and replaced it on every change of model
+  without `release()`, and every run re-scores each published model of its use case, so each run
+  opened them all again. With the CKKS leak gone the medical page still grew by about 130 MB a run in
+  headless Chrome (1,363 MB at its fifth run, 2,395 MB at its thirteenth). Sessions are now kept by
+  model and backend, with the ORT build that opened them, and reused: three finance runs open two
+  sessions where the base opened six (`tests/test_r85_onnx_sessions_open_once.py`, with a stand-in
+  runtime that counts them), and the medical page held 0.9 to 1.4 GB over sixteen runs. Each caller
+  now reads the session it opened rather than a shared slot another load could repoint between its
+  awaits.
+- After both fixes, the walk that froze ran to its end on a local build: finance 22 of 22 rows with
+  verification PASS, medical 26 of 26, genomics 22 of 22, telecom 21 of 21, satellite 38 of 38, and
+  no console error on any page. Sixteen default runs of finance and of medical finished as well.
+
+**What else the walk found.**
+- The satellite selector offered its CKKS student, which publishes no evaluation sample by design,
+  so selecting it always ended in "did NOT run" and a failed status (8 of 38 rows). The option is now
+  disabled, with the reason the Models panel already gave.
+- The diagram badged the satellite's QSDC "failed", in red, on 33 of 38 combinations, every one a link
+  budget the model says cannot carry it, and a QKD step with a zero finite key the same way (3 of 38,
+  all with the seconds block and Hoeffding's bound). By the owner's choice the badge now reads
+  "withheld" and "no key"; a real error keeps "failed" (`check_use_case_canvas.mjs`, check 9).
+- Three charts drew all 8,192 held-out rows as SVG: 49,300 of the finance page's 52,700 elements
+  after one run. They are drawn on one canvas each now, every point at the place recharts' scales put
+  it and in the shape recharts drew (d3-shape's symbols at its default area, compared path for path
+  in `tests/test_r85_canvas_marks.py`). In headless Chrome the page holds 3,576 elements after a run,
+  the axis ticks and legends are identical to the live page's, and the readout under each chart still
+  reads the point under the pointer, now with its series.
+- Headless Chrome offers no hardware adapter, so the page disables its WebGPU option there; WebGPU is
+  walked in a desktop Chrome on the deployed branch (below).
+
+**The Python constructions, hardened.**
+- The OPRF the full deployment's PSI uses runs on libsodium's ristretto255 through pysodium 0.7.19
+  (BSD, 2026-10-17) and the system libsodium 1.0.18. Every operation on a secret is libsodium's, and
+  secret scalars stay byte strings, checked by reducing them and comparing in constant time. Both
+  backends reproduce RFC 9497's ristretto255-SHA512 vectors and agree on random keys, blinds and
+  inputs; the run reports which ran (`psi_oprf_backend`). The API image installs `libsodium23`, and CI
+  and `scripts/ci_local.sh` set `QSH_REQUIRE_LIBSODIUM=1`, so a missing library fails the tests
+  rather than skipping them (`tests/test_r85_oprf_on_libsodium.py`).
+- Python's secure aggregation masks in the browser's ring: each weighted update quantised to 2^-20,
+  rounded as JavaScript rounds, and masked modulo 2^32. Its shares are the browser's to the bit for
+  the same keys, updates and rounds, and the aggregate is exactly the sum of the quantised updates
+  (`tests/test_r85_secagg_exact_ring.py`); until now the masks were reals in float64 that cancelled
+  only to rounding.
+
+**Open, carried.**
+- This machine's virtual environment runs liboqs 0.14.0 under liboqs-python 0.16.0.2 (a warning at
+  import); the API image builds liboqs 0.16.0, the version the binding expects.
+- GitHub still serves the PDFs removed on 2026-10-31 through the pull-request refs, which only GitHub
+  Support can drop.
+
+**The research sweep of 2026-11-01, applied in this round by the owner's choice.** A sweep of
+post-August-2026 advisories, releases, standards and papers (each finding checked at its primary
+source) found nothing that reaches the public demo, which runs in the visitor's browser, and these
+for the full deployment, all now applied:
+- `qsh.mcp.fs_interop` ran `npx -y @modelcontextprotocol/server-filesystem` with no version, so it ran
+  npm's `latest`; 2.0.0 and 2.1.0 (2026-10-19 and 2026-10-28) declare Node 24 or newer, and the API
+  image's Debian Node is 20. It is pinned to 1.0.0, which declares no engine and resolves its SDK
+  (`@modelcontextprotocol/sdk ^1.31.0`) to 1.32.2, past the SDK's October advisories; the slow interop
+  test passes against it.
+- Floors raised to the fixed releases: websockets 17.4 (GHSA-6m5v-9gmr-5665, 2026-10-30, unbounded
+  buffering of empty continuation frames, reachable on `/api/ws`), pydantic 2.14.2 (four advisories of
+  2026-10-29), the MCP Python SDK 2.2.0 (GHSA-rwrf-2pqf-9j8j and three more), python-multipart 0.0.31,
+  cryptography 50.0.2 (fixes of 2026-08-03 in code paths this repository does not call), onnx 1.23.0
+  (GHSA-xrch-8vh7-h656 and four more of 2026-10-20) and onnxruntime 1.28.3 (memory-safety fixes,
+  release notes of 2026-10-02). `tests/test_r85_dependency_floors.py` holds each floor in each file
+  that declares it.
+- This machine's virtual environment was brought up to the same releases, with certifi, pillow,
+  urllib3, PyJWT, aiohttp, fsspec, httpx2, filelock, multidict, opentelemetry-api and setuptools,
+  each of which carried an advisory as installed; fsspec stops at 2026.6.0, the fixed release, because
+  `datasets` caps it there, and the unused `flwr` that capped cryptography below 47 was removed.
+- `@noble/post-quantum` 0.7.1 with `@noble/curves`, `@noble/hashes` and `@noble/ciphers` at the 2.4.0
+  it depends on, one copy of each in the bundle (hardening releases of 2026-08-27, no advisory);
+  `check:pqc` still rejects all 2,595 malformed encapsulation keys, and `check:combiner` and
+  `check:qfl` pass.
+- OpenFHE stays below 1.6, and its pin now says never 1.6.0 when the cap lifts: issue #1364 (closed
+  2026-10-06) returns wrong values from a single-iteration uniform-ternary bootstrap at this
+  repository's settings once its depth reaches 25, and 1.6.1 (2026-10-09) fixes it.
+- The threat model gains the CKKS reaction attack (ePrint 2026/2490): a malicious evaluator that holds
+  the public coefficient-to-slot keys and sees whether the client accepted a result recovers a ternary
+  secret key, and noise flooding does not close it. The rule that follows: the client never tells the
+  evaluator whether a decryption decoded. It also notes that the server tier sizes its flood from the
+  measured error, which ePrint 2026/2575 would call heuristic.
+- Checked and needing nothing: CVE-2025-69277 never reaches libsodium 1.0.18's ristretto255 functions
+  (they decode through `ristretto255_frombytes`, which does not call the patched subgroup check);
+  pysodium 0.7.19, liboqs-python and onnxruntime-web are current; IKEv2's ML-KEM draft is still in the
+  RFC Editor's queue; no ETSI QKD deliverable and no RFC 9497 or 9496 erratum appeared in the window.
+- Not done here: this machine's system libsodium is 1.0.18-8.el9, and EPEL ships 1.0.18-9.el9 with the
+  CVE fix, which needs an administrator; the API image's Node 20 is past its upstream end of life,
+  still patched by Debian.
+
+**The deploy and the walk (2026-11-01).** The branch was deployed at fa957e9 and walked; the
+walk's one finding, below, was fixed and deployed at 9bc737e (bundle `index-jM5MgPnW.js`).
+- In a desktop Chrome 152 with a hardware GPU, the 22 finance rows that froze the base at its twelfth
+  run all finished in one tab in 159 s, each with verification PASS and no console error, the JS heap
+  at 36 MB at the end; runs took about 6 s against 10 to 13 s on the base, as the sessions are reused.
+  The page held 3,270 elements after a run, and a hover on the agreement scatter read "agrees
+  (circle): plaintext -15.685578, encrypted -15.685578" into the line under it.
+- WebGPU on the medical page: ResNet-18, ResNet-50 and the student each ran on `onnx-webgpu` with
+  verification PASS (187.29 ms for the first ResNet-18 row, 49.3 ms for the second, once its session
+  was kept). Finance's two models are tree ensembles in the `ai.onnx.ml` domain, which the WebGPU build
+  does not register, so they run on WASM when WebGPU is selected, as the loader's comment says.
+- The walk's finding: ONNX Runtime printed two node-placement warnings per WebGPU session through
+  `console.error`, red in the console, about a placement the backend selector already states.
+  Sessions are created logging errors only now (`logSeverityLevel: 3`, asserted in
+  `tests/test_r85_onnx_sessions_open_once.py`); on 9bc737e the same medical run printed none.
+- Satellite: the CKKS student reads "(no sample, by design)" and cannot be selected, and a default run
+  badges QSDC "withheld". Validations: ML-KEM, ML-DSA, the handshake, BB84 at intercept fractions 0,
+  0.3, 0.6 and 1 (QBER 0.0098 with 5,214,327 bits, then 0.0831 with no key, 0.1564 flagged, 0.2543),
+  the agent call (authenticated, the tampered message rejected), the ACVP cases (10 of 10), the
+  WireGuard handshake and the key schedule, with no console error. Overview, Introduction & Value and
+  Use Cases loaded without one; the E2E page ran all six of its use cases one after another in one tab,
+  each to `done`, and its Stage order tab opened.
+- Headless Chrome on the deployed branch: the all-pairs rows of every use case (finance 22, medical 26,
+  genomics 22, telecom 21, satellite 38) and sixteen default finance runs in one tab, all to `done`,
+  verification PASS wherever a model is published, no console error.
+- In the app's own browser (no hardware adapter, so WASM): Transformers.js ran distilGPT-2 in 12,524 ms
+  and Qwen2.5-0.5B-Instruct in 27,554 ms on onnxruntime-web 1.31.1, each with its signed MCP envelope
+  verified and the tampered copy rejected, distilGPT-2 again with the Toeplitz combiner in 1,392 ms
+  from its cache, and then a finance run on the same runtime with verification PASS.
+- The README's eleven screenshots were taken again from the deployed branch
+  (`web/scripts/capture_screenshots.mjs`).
+- After the sweep's changes the branch was deployed again at df0ed5c (bundle `index-BLagNaUw.js`,
+  noble 0.7.1 and 2.4.0). In desktop Chrome the Validations checks all passed on it (ML-KEM agreement,
+  the ACVP cases 10 of 10, the WireGuard handshake with the mismatched PSK rejected, the key schedule,
+  the agent call with the tampered message rejected) and a finance run gave the same PSI as before (60
+  shared accounts over 260 x 260, 260 blind evaluations), masks from 6 X25519 pair seeds and a verified
+  ML-DSA-65 signature, with no console error; headless, all 129 all-pairs rows finished again with
+  verification PASS wherever a model is published and no console error.
+
+BUSINESS DOC RECONCILED Round 85. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 17 reads.

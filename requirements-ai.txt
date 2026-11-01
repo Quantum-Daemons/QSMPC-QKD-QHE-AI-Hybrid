@@ -2,9 +2,10 @@
 # For Blackwell (sm_120) + CUDA 13, use a recent torch cu12x/cu13 wheel (see README).
 torch>=2.3
 torchvision>=0.18
-onnx>=1.16
+onnx>=1.23.0               # GHSA-xrch-8vh7-h656 (2026-10-20, fixed in 1.23.0) and four shape-inference advisories of the same day
 onnxscript>=0.7            # required by torch>=2.9 onnx exporter (dynamo path)
-onnxruntime>=1.18          # CPU inference + ONNX export validation (web demo uses onnxruntime-web)
+onnxruntime>=1.28.3        # CPU inference + ONNX export validation (web demo uses onnxruntime-web); 1.28.3 fixes
+                           # out-of-bounds reads and a heap buffer overflow (its release notes, 2026-10-02)
 xgboost>=2.0
 medmnist>=3.0             # lightweight medical imaging datasets (CC-BY)
 # flwr — REMOVED in Round 17. It was declared since the first commit and never imported by any
@@ -12,7 +13,7 @@ medmnist>=3.0             # lightweight medical imaging datasets (CC-BY)
 # secure aggregation, deliberately framework-light. Shipping ~50 MB of unused dependency into every
 # image while the docs advertised "the real Flower QFL" was the worst of both. If a Flower client is
 # ever actually written, add it back here at that point.
-mcp>=1.2                 # MCP Python SDK. v2.0.0 renamed FastMCP -> mcp.server.MCPServer with the
+mcp>=2.2.0               # MCP Python SDK; 2.2.0 fixes GHSA-rwrf-2pqf-9j8j and three more (2026-10). v2.0.0 renamed FastMCP -> mcp.server.MCPServer with the
                          # decorator API unchanged; qsh/mcp/server.py accepts both spellings and
                          # reports which is live via mcp_sdk_flavour(), so a skew is visible not silent.
 pandas>=2.2

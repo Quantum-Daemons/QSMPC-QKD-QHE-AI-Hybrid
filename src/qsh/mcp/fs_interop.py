@@ -15,6 +15,12 @@ from __future__ import annotations
 import asyncio
 import shutil
 
+#: The official filesystem server, pinned (Round 85). `npx -y` without a version ran whatever npm's
+#: `latest` was at call time: 2.0.0 and 2.1.0 (2026-10-19, 2026-10-28) declare `engines: node >= 24`,
+#: and the API image's Debian Node is 20. 1.0.0 declares no engine and resolves its SDK dependency
+#: (`@modelcontextprotocol/sdk ^1.31.0`) to a release past the 2026-10 advisories.
+FILESYSTEM_SERVER = "@modelcontextprotocol/server-filesystem@1.0.0"
+
 
 def node_available() -> bool:
     """True if ``npx`` is on PATH (the filesystem-MCP server is a Node package)."""
@@ -25,9 +31,7 @@ async def _filesystem_mcp_call(directory: str, tool: str, arguments: dict, timeo
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
 
-    params = StdioServerParameters(
-        command="npx", args=["-y", "@modelcontextprotocol/server-filesystem", directory],
-    )
+    params = StdioServerParameters(command="npx", args=["-y", FILESYSTEM_SERVER, directory])
 
     async def _run() -> dict:
         async with stdio_client(params) as (read, write):
@@ -39,7 +43,7 @@ async def _filesystem_mcp_call(directory: str, tool: str, arguments: dict, timeo
                 text = "\n".join(
                     getattr(c, "text", "") for c in (call.content or []) if getattr(c, "type", "") == "text"
                 )
-                return {"server": "@modelcontextprotocol/server-filesystem", "tools": tool_names,
+                return {"server": FILESYSTEM_SERVER, "tools": tool_names,
                         "tool": tool, "result_text": text[:2000], "is_error": bool(getattr(call, "isError", False))}
 
     return await asyncio.wait_for(_run(), timeout=timeout)

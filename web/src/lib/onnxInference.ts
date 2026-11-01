@@ -99,11 +99,40 @@ const status: OnnxStatus = {
   fromCache: false, threads: 1, crossOriginIsolated: false, loadMs: null, error: null,
 };
 
-let session: OrtTypes.InferenceSession | null = null;
-//: The build actually loaded, kept so Tensor construction uses the same module.
-let ortRuntime: typeof OrtTypes | null = null;
 /** Per-model, not per-page: see loadModel for the swap this prevents. */
 const inflight = new Map<string, Promise<boolean>>();
+
+/**
+ * Every session this tab has opened, by model and backend, with the status it was opened under
+ * (Round 85). Kept and reused rather than replaced.
+ *
+ * A module-level `session` was one slot, and opening a different model overwrote it without
+ * `release()`. ONNX Runtime Web frees a session's weights and arena only on `release()`, so each
+ * overwritten session stayed in the WASM heap for the life of the tab. A run re-scores every
+ * published model of its use case, so each run opened them all again: the medical page grew by about
+ * 130 MB a run in headless Chrome (1,363 MB at its fifth run, 2,395 MB at its thirteenth) once the
+ * CKKS leak was gone. Kept, the cost is bounded by the models and backends a visitor selects, and a
+ * run after the first opens nothing. Nothing here is released, because a caller can still be inside
+ * `run` on any session; the bound is the registry's browser models times two backends. Each entry
+ * keeps the ORT build that opened it: the WASM and WebGPU builds are separate modules, and a tensor
+ * for a session is made from that session's build.
+ */
+interface OpenSession { session: OrtTypes.InferenceSession; status: OnnxStatus; ort: typeof OrtTypes }
+const sessions = new Map<string, OpenSession>();
+
+const slotOf = (usecase: string, want: string | undefined, backend: OnnxBackend) =>
+  `${want ?? `__usecase__:${usecase}`}@${backend}`;
+
+/**
+ * The session `loadModel` opened for this model and backend, and the status it was opened under.
+ * Read by slot. The module-level `session` it replaces held whichever session was opened last, and
+ * another caller's load could repoint it between this caller's awaits, so `session.run` followed by
+ * `session.outputNames` could read one model's outputs by another's names.
+ */
+function openSession(usecase: string, modelKey: string | undefined,
+                     backend: OnnxBackend): OpenSession | null {
+  return sessions.get(slotOf(usecase, modelKey ?? browserModel(usecase)?.spec.key, backend)) ?? null;
+}
 
 export function onnxBackend(): string {
   return status.backend;
@@ -285,14 +314,16 @@ export async function loadModel(
   // input rank, since one takes [n,19] and the other [n,250,6].
   const want = modelKey ?? browserModel(usecase)?.spec.key;
   // And on the requested BACKEND: a session created for WASM must not answer a WebGPU request.
-  if (session && want && status.modelKey === want && status.requested === backend) return true;
+  // A session already opened for both is reused, with the status it was opened under (`sessions`).
+  const slot = slotOf(usecase, want, backend);
+  const open = sessions.get(slot);
+  if (open) { Object.assign(status, open.status); return true; }
   // Keyed by model, because `inflight` was a single global promise: a caller asking for model B
   // while model A was still loading got A's promise back, and then read the module-level `session`
   // believing it held B. The graph-name assertion in runPublishedModel/evaluatePublishedModel runs
   // BEFORE loadModel, so it cannot catch that swap. Two callers now genuinely exist at once - the
   // pipeline's inference stage and the Models panel's Run buttons - so this stopped being
   // theoretical.
-  const slot = `${want ?? `__usecase__:${usecase}`}@${backend}`;
   const pending = inflight.get(slot);
   if (pending) return pending;
   const load = (async () => {
@@ -330,7 +361,6 @@ export async function loadModel(
       // that path was the slow one (see the header). The adapter check still applies when asked.
       const gpuAvailable = backend === "webgpu" && !needsMlDomain && await hasWebGPU();
       const ort = await loadOrt(gpuAvailable);
-      ortRuntime = ort;
       ort.env.wasm.numThreads = resolveThreads();
       ort.env.wasm.proxy = false;
       status.threads = ort.env.wasm.numThreads;
@@ -363,8 +393,13 @@ export async function loadModel(
 
       // Bounded. An unsupported operator can leave session creation pending rather than
       // rejecting, and an unbounded await turns that into a permanently spinning button.
-      session = await withTimeout(
-        ort.InferenceSession.create(buf, { executionProviders: eps }),
+      // Errors only (Round 85). ORT logs node placement at warning level through console.error, so
+      // every WebGPU session printed two red "Some nodes were not assigned to the preferred
+      // execution providers" lines that read as failures in a visitor's console. The placement is
+      // what the backend selector's title already says (int8 nodes run on the CPU); real errors
+      // still log.
+      const created = await withTimeout(
+        ort.InferenceSession.create(buf, { executionProviders: eps, logSeverityLevel: 3 }),
         SESSION_CREATE_TIMEOUT_MS,
         `ONNX session creation exceeded ${SESSION_CREATE_TIMEOUT_MS / 1000}s — either the graph `
         + `uses operators this browser cannot execute, or it is too large for this device`,
@@ -406,11 +441,11 @@ export async function loadModel(
       status.url = target.url;
       status.loadMs = performance.now() - started;
       status.error = null;
+      sessions.set(slot, { session: created, status: { ...status }, ort });
       return true;
     } catch (e) {
       // Recorded, not swallowed. Callers must render this rather than quietly substituting a
       // different computation and presenting the result as if the model had run.
-      session = null;
       status.loaded = false;
       status.backend = "none";
       status.requested = backend;
@@ -430,14 +465,15 @@ export async function loadModel(
 
 /** Logits from the registered browser model, or null if it is unavailable (status.error says why). */
 export async function inferLogits(usecase: string, features: number[]): Promise<number[] | null> {
-  if (!(await loadModel(usecase))) return null;
-  if (!session) return null;
+  const opened = (await loadModel(usecase)) ? openSession(usecase, undefined, DEFAULT_ONNX_BACKEND) : null;
+  if (!opened) return null;
+  const s = opened.session;
   try {
-    const name = session.inputNames[0];
-    const t = new ortRuntime!.Tensor("float32", Float32Array.from(features), [1, features.length]);
-    const out = await session.run({ [name]: t });
+    const name = s.inputNames[0];
+    const t = new opened.ort.Tensor("float32", Float32Array.from(features), [1, features.length]);
+    const out = await s.run({ [name]: t });
     // Classifier graphs emit a hard label first and scores second; the scores are what a caller wants.
-    const outputs = session.outputNames.map((n) => out[n]);
+    const outputs = s.outputNames.map((n) => out[n]);
     const scores = outputs.find((o) => o && o.type === "float32" && (o.dims?.[1] ?? 0) > 1) ?? outputs[0];
     return Array.from(scores.data as Float32Array);
   } catch (e) {
@@ -700,7 +736,9 @@ export async function evaluatePublishedModel(
     };
   }
 
-  if (!(await loadModel(usecase, target.spec.key, backend)) || !session) {
+  const opened = (await loadModel(usecase, target.spec.key, backend))
+    ? openSession(usecase, target.spec.key, backend) : null;
+  if (!opened) {
     return {
       ...base, provenance: file.provenance,
       error: status.error
@@ -725,12 +763,12 @@ export async function evaluatePublishedModel(
         flat[i * per + j] = applyPreprocessing(row[j], file.input.preprocessing);
       }
     }
-    const t = new ortRuntime!.Tensor("float32", flat, [n, ...dims]);
-    const out = await session.run({ [session.inputNames[0]]: t });
-    const outputs = session.outputNames.map((k) => out[k]);
+    const t = new opened.ort.Tensor("float32", flat, [n, ...dims]);
+    const out = await opened.session.run({ [opened.session.inputNames[0]]: t });
+    const outputs = opened.session.outputNames.map((k) => out[k]);
     const found = outputs.findIndex((o) => o && o.type === "float32" && (o.dims?.length ?? 0) >= 2);
     const scores = outputs[found >= 0 ? found : 0];
-    const scoresName = session.outputNames[found >= 0 ? found : 0];
+    const scoresName = opened.session.outputNames[found >= 0 ? found : 0];
     const data = scores.data as Float32Array;
     const width = Math.max(1, Math.floor(data.length / n));
 
@@ -763,7 +801,7 @@ export async function evaluatePublishedModel(
         baseline: file.expected.persistence_mae ?? persistenceMae,
         beatsBaseline: mae < (file.expected.persistence_mae ?? persistenceMae),
         matchesExpected: exp == null ? false : Math.abs(mae - exp) <= Math.max(tolerance, exp * 0.1),
-        backend: status.backend, bytes: status.bytes, provenance: file.provenance, split,
+        backend: opened.status.backend, bytes: opened.status.bytes, provenance: file.provenance, split,
         decisionThreshold: thr,
         note: file.expected.note ?? null, error: null,
         plot: { kind: "forecast", series },
@@ -891,7 +929,7 @@ export async function evaluatePublishedModel(
         baseline: allPositive,
         beatsBaseline: f1 > allPositive,
         matchesExpected: Math.abs(f1 - exp) <= tolerance,
-        backend: status.backend, bytes: status.bytes, provenance: file.provenance, split,
+        backend: opened.status.backend, bytes: opened.status.bytes, provenance: file.provenance, split,
         decisionThreshold: thr,
         note: file.expected.note ?? null, error: null, plot,
       };
@@ -923,7 +961,7 @@ export async function evaluatePublishedModel(
         baseline: chance,
         beatsBaseline: macro > chance,
         matchesExpected: Math.abs(macro - exp) <= tolerance,
-        backend: status.backend, bytes: status.bytes, provenance: file.provenance, split,
+        backend: opened.status.backend, bytes: opened.status.bytes, provenance: file.provenance, split,
         decisionThreshold: thr,
         note: file.expected.note ?? null, error: null, plot,
       };
@@ -936,7 +974,7 @@ export async function evaluatePublishedModel(
       ran: true, task, metricName: "accuracy", n, score: accuracy, expected: exp, baseline: majority,
       beatsBaseline: majority == null ? true : accuracy > majority,
       matchesExpected: exp == null ? false : Math.abs(accuracy - exp) <= tolerance,
-      backend: status.backend, bytes: status.bytes, provenance: file.provenance, split,
+      backend: opened.status.backend, bytes: opened.status.bytes, provenance: file.provenance, split,
       decisionThreshold: thr,
       note: file.expected.note ?? null, error: null, plot,
     };
@@ -1062,7 +1100,9 @@ export async function runPublishedModel(
         + `${fetchedGraph}` };
   }
 
-  if (!(await loadModel(usecase, key, opts.backend ?? DEFAULT_ONNX_BACKEND)) || !session) {
+  const opened = (await loadModel(usecase, key, opts.backend ?? DEFAULT_ONNX_BACKEND))
+    ? openSession(usecase, key, opts.backend ?? DEFAULT_ONNX_BACKEND) : null;
+  if (!opened) {
     return { kind: "failed", modelKey: key, error: status.error ?? "session creation failed" };
   }
 
@@ -1080,15 +1120,15 @@ export async function runPublishedModel(
     const flat = new Float32Array(per);
     for (let j = 0; j < per; j++) flat[j] = applyPreprocessing(row[j], file.input.preprocessing);
 
-    const t = new ortRuntime!.Tensor("float32", flat, [1, ...dims]);
+    const t = new opened.ort.Tensor("float32", flat, [1, ...dims]);
     const ran = performance.now();
-    const out = await session.run({ [session.inputNames[0]]: t });
+    const out = await opened.session.run({ [opened.session.inputNames[0]]: t });
     const latencyMs = performance.now() - ran;
 
-    const outputs = session.outputNames.map((k) => out[k]);
+    const outputs = opened.session.outputNames.map((k) => out[k]);
     const found = outputs.findIndex((o) => o && o.type === "float32" && (o.dims?.length ?? 0) >= 2);
     const scores = outputs[found >= 0 ? found : 0];
-    const scoresKind = outputKind(session.outputNames[found >= 0 ? found : 0]);
+    const scoresKind = outputKind(opened.session.outputNames[found >= 0 ? found : 0]);
     const logits = Array.from(scores.data as Float32Array);
     const task = file.task ?? "classification";
 
@@ -1130,7 +1170,7 @@ export async function runPublishedModel(
         repoId: target.spec.hf_repo_id ?? "",
         revision: target.spec.hf_revision ?? "",
         graph: fetchedGraph,
-        backend: status.backend,
+        backend: opened.status.backend,
         inputShape: [1, ...dims],
         rowIndex,
         task,

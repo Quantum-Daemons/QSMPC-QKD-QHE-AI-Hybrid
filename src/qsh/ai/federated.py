@@ -14,13 +14,17 @@ The construction is byte-identical to the browser's (``web/src/lib/clientQFL.ts`
   * the pair i < j derives ``seed_ij = HKDF-SHA256(X25519(sk_i, pk_j), salt=SECAGG_SALT,
     info=SECAGG_PAIR_LABEL + u32be(i) + u32be(j), length=32)``, the same 32 bytes from either side;
   * the round-r mask is ``SHAKE-256(seed_ij + SECAGG_MASK_LABEL + u32be(r))`` read as little-endian
-    uint32 words; client i adds it for every j > i and subtracts it for every j < i.
+    uint32 words; client i adds it for every j > i and subtracts it for every j < i;
+  * all of it modulo 2^32, on the update in fixed point: a weighted coordinate x is carried as
+    ``round(x * 2**20) mod 2**32`` (JavaScript's rounding), and the aggregate is the sum of the shares
+    modulo 2^32, read back through the signed half and divided by 2^20 (Round 85). The masks cancel
+    exactly, the aggregate is the exact sum of the quantised updates, and a share on its own is the
+    quantised update plus at least one mask the aggregator cannot derive, which SHAKE-256 makes
+    indistinguishable from uniform over the ring. Until Round 85 the masks were added as reals in
+    [-1, 1) in float64, which cancelled only to rounding and hid an update only partially.
 
 What it does NOT give, stated plainly:
 
-  * the masks are added as reals in [-1, 1) in float64 (each word w becomes ``w / 2**31 - 1``), not
-    over a finite ring as the browser's are, so they cancel to rounding rather than exactly and hide
-    an update only partially, not perfectly;
   * no dropout recovery: Bonawitz et al.'s second, per-user mask and the Shamir shares that let the
     server finish a round without a dropped user are not implemented, so a client that drops breaks
     the round;
@@ -95,6 +99,45 @@ SECAGG_PAIR_LABEL = b"qsh/secagg/pair/v1"
 SECAGG_MASK_LABEL = b"qsh/secagg/mask/v1"
 
 
+#: The fixed-point ring of the masked shares, the browser's (``QFL_SCALE``, ``QFL_RING`` in
+#: clientQFL.ts): 2^-20 resolution per coordinate, carried modulo 2^32.
+SECAGG_SCALE = 1 << 20
+SECAGG_RING = 1 << 32
+
+
+def max_share(n_clients: int) -> float:
+    """The largest quantised contribution, in magnitude, whose sum over ``n_clients`` cannot overflow
+    the signed half of the ring (``qflMaxShare`` in clientQFL.ts)."""
+    return 2 ** 31 / max(1, n_clients)
+
+
+def quantise(update: np.ndarray, n_clients: int) -> np.ndarray:
+    """An update in the ring: ``round(x * 2**20)`` as uint32 two's complement, ``maskedShare``'s first step.
+
+    Rounded as JavaScript's ``Math.round`` rounds, half up, so the two tiers agree to the bit; Python's
+    and NumPy's ``round`` take halves to even. ``floor(x) + (x - floor(x) >= 0.5)`` is exact where
+    ``floor(x + 0.5)`` is not (0.49999999999999994 + 0.5 rounds to 1.0). A coordinate past
+    :func:`max_share` raises, as the browser does: the ring would wrap it into the wrong half and the
+    aggregate would be a wrong number that still looks like one.
+    """
+    x = np.asarray(update, dtype=np.float64) * SECAGG_SCALE
+    q = np.floor(x)
+    q = q + ((x - q) >= 0.5)
+    bad = ~np.isfinite(q) | (np.abs(q) > max_share(n_clients))
+    if bad.any():
+        k = int(np.flatnonzero(bad.ravel())[0])
+        raise ValueError(f"secure aggregation: coordinate {k} is out of the ring's range "
+                         f"(q={q.ravel()[k]}, limit {max_share(n_clients):.0f} for {n_clients} clients)")
+    return q.astype(np.int64).astype(np.uint32)
+
+
+def dequantise(acc: np.ndarray) -> np.ndarray:
+    """A sum of shares modulo 2^32, read through the signed half and scaled back to reals."""
+    signed = np.asarray(acc, dtype=np.uint32).astype(np.int64)
+    signed[signed >= SECAGG_RING // 2] -= SECAGG_RING
+    return signed.astype(np.float64) / SECAGG_SCALE
+
+
 def pair_info(i: int, j: int) -> bytes:
     """The HKDF info of the pair (i, j): ``SECAGG_PAIR_LABEL + u32be(i) + u32be(j)``, i < j."""
     if not (0 <= i < j <= 0xFFFFFFFF):
@@ -126,26 +169,6 @@ def pair_mask_words(seed: bytes, round_index: int, n: int) -> np.ndarray:
         raise ValueError(f"round {round_index} is not a uint32")
     raw = hashlib.shake_256(seed + SECAGG_MASK_LABEL + struct.pack(">I", int(round_index))).digest(4 * n)
     return np.frombuffer(raw, dtype="<u4")
-
-
-def _mask(seed_key: bytes, shape: tuple[int, ...], round_index: int) -> np.ndarray:
-    """The pair's real-valued mask for ROUND, in [-1, 1): each word w of :func:`pair_mask_words`
-    becomes ``w / 2**31 - 1``, which float64 represents exactly.
-
-    The round is domain-separated into the derivation, as in the browser. Until Round 39 this took
-    only the pair key, so `federated_train`'s loop reused ONE mask for every round of a run. The masks
-    still cancelled and the aggregate was never wrong; what reuse leaks is the per-client update DELTA,
-    because differencing two rounds of one client's masked share gives `(u1 + m) - (u2 + m) = u1 - u2`
-    with no key and no cryptanalysis. That is exactly the quantity pairwise masking exists to hide.
-    `tests/test_federated_mask_is_per_round.py` asserts the delta is unrecoverable rather than
-    asserting that a `round_index` parameter exists.
-
-    Reals, not ring elements: the update is a float64 vector and is masked as one, so the masks cancel
-    to rounding and hide an update only partially (see the module docstring).
-    """
-    n = int(np.prod(shape))
-    words = pair_mask_words(seed_key, round_index, n).astype(np.float64)
-    return (words / 2.0 ** 31 - 1.0).reshape(shape)
 
 
 @dataclass
@@ -195,21 +218,29 @@ class SecureAggregator:
         `round_index` is keyword-defaulted so the existing three call sites keep working, but the
         FedAvg loop MUST pass the real round - a default that silently means "round 0 forever" is
         the reuse this signature was widened to remove.
+
+        The share is uint32, in the ring (see the module docstring): the update, already weighted by
+        the caller, quantised, plus this client's pair masks, all modulo 2^32.
         """
-        out = update.copy()
+        share = quantise(update, self.n_clients).ravel()
         for j, seed in self._seeds[client].items():
             # One seed per unordered pair, so both members derive the identical mask and the
             # antisymmetric +/- below cancels. Folding the round in per-client instead of per-pair
-            # would break cancellation into a plausible-looking wrong aggregate.
-            m = _mask(seed, update.shape, round_index)
-            out += m if client < j else -m
-        return out
+            # would break cancellation into a plausible-looking wrong aggregate. uint32 arithmetic
+            # wraps, so `+` and `-` here are the ring's.
+            m = pair_mask_words(seed, round_index, share.size)
+            share = share + m if client < j else share - m
+        return share.reshape(np.shape(update))
 
     @staticmethod
     def aggregate(masked_updates: list[np.ndarray]) -> np.ndarray:
-        """The aggregator's whole computation: sum the masked updates; the masks cancel, leaving the
-        true sum. It is given the masked updates and nothing else."""
-        return np.sum(masked_updates, axis=0)
+        """The aggregator's whole computation: sum the masked shares modulo 2^32; the masks cancel
+        exactly, leaving the sum of the quantised updates, read back as reals. It is given the masked
+        shares and nothing else."""
+        acc = np.zeros(np.shape(masked_updates[0]), dtype=np.uint64)
+        for share in masked_updates:
+            acc += np.asarray(share, dtype=np.uint32)
+        return dequantise(acc % SECAGG_RING)
 
 
 # --------------------------------------------------------------------------- #

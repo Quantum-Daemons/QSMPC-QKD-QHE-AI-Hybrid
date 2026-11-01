@@ -22,7 +22,7 @@ import "@xyflow/react/dist/style.css";
 
 import {
   USECASE_SPECS, canvasRow, captionOf, consumesSessionKey, drawnChannels, kindOf, qkdName, visibleSteps,
-  type CanvasRow, type Channel, type DiagramConfig, type Flow, type Step,
+  type CanvasRow, type Channel, type DiagramConfig, failWordOf, type Flow, type Step,
 } from "../lib/useCaseFlows";
 
 // Layout, in canvas units. The canvas is drawn at this width and scaled to its frame.
@@ -53,6 +53,8 @@ const COLOR: Record<Channel, string> = {
 const FAILED = "#ff8f6b", PENDING = "#46506a", KEY = "#36d399";
 const DASH: Partial<Record<Channel, string>> = { quantum: "7 4", mpc: "3 3" };
 const MARK: Record<Status, string> = { idle: "", pending: "", running: "running", done: "done", failed: "failed" };
+/** The badge word: a failed step's own word where it has one (`failWordOf`, Round 85). */
+const markOf = (step: Step, st: Status): string => (st === "failed" ? failWordOf(step) : MARK[st]);
 const LEGEND: Record<Channel, string> = {
   classical: "classical, under the session key", quantum: "quantum, simulated", fhe: "CKKS ciphertext",
   mpc: "MPC secret shares", none: "",
@@ -66,10 +68,10 @@ const shortLabel = (full: string) => {
   return two.length <= 64 ? two : parts[0].length <= 72 ? parts[0] : `${parts[0].slice(0, 70).replace(/\s+\S*$/, "")} ...`;
 };
 
-type CompData = { text: string; status: Status; side: "a" | "b"; bus?: "src" | "dst"; fanIn?: number };
-type WideData = { text: string; status: Status; variant?: "note" | "local" };
+type CompData = { text: string; status: Status; mark: string; side: "a" | "b"; bus?: "src" | "dst"; fanIn?: number };
+type WideData = { text: string; status: Status; mark: string; variant?: "note" | "local" };
 type PartyData = { name: string; sub: string; height: number };
-type MiniData = { text: string; status: Status };
+type MiniData = { text: string; status: Status; mark: string };
 type LaneData = { channel: Channel; flow: Flow; status: Status; label?: string; labelY?: number; motion: boolean };
 type BusData = { busX: number; status: Status };
 
@@ -88,7 +90,7 @@ const Comp = memo(function Comp({ data }: NodeProps<Node<CompData>>) {
       <Handle type={data.bus === "src" ? "source" : "target"} id="bus"
         position={data.side === "a" ? Position.Left : Position.Right} isConnectable={false} />
       <span className="ucc-comp-text">{data.text}</span>
-      {MARK[data.status] && <span className={`ucc-badge ucc-badge-${data.status}`}>{MARK[data.status]}</span>}
+      {data.mark && <span className={`ucc-badge ucc-badge-${data.status}`}>{data.mark}</span>}
     </div>
   );
 });
@@ -97,7 +99,7 @@ const Wide = memo(function Wide({ data }: NodeProps<Node<WideData>>) {
   return (
     <div className={`${data.variant ? `ucc-${data.variant}` : "ucc-wide"} ucc-${data.status}`}>
       <span className="ucc-comp-text">{data.text}</span>
-      {!data.variant && MARK[data.status] && <span className={`ucc-badge ucc-badge-${data.status}`}>{MARK[data.status]}</span>}
+      {!data.variant && data.mark && <span className={`ucc-badge ucc-badge-${data.status}`}>{data.mark}</span>}
     </div>
   );
 });
@@ -191,11 +193,12 @@ function build(usecase: string, steps: Step[], status: (s: Step) => Status, metr
     const kind = kindOf(step, config);
     const row: CanvasRow = canvasRow(usecase, step, kind, metrics, config);
     const st = status(step);
+    const mark = markOf(step, st);
     const id = `r${i}`;
     const full = step.label(metrics, config);
     if (row.wide) {
       nodes.push(sized<WideData>({ id: `${id}w`, type: "wide", position: { x: WIDE_X, y },
-        data: { text: `${i + 1}. ${shortLabel(full)}`, status: st }, draggable: false, selectable: false }, WIDE_W, WIDE_H));
+        data: { text: `${i + 1}. ${shortLabel(full)}`, status: st, mark }, draggable: false, selectable: false }, WIDE_W, WIDE_H));
       y += WIDE_H + ROW_GAP;
       return;
     }
@@ -219,7 +222,7 @@ function build(usecase: string, steps: Step[], status: (s: Step) => Status, metr
       for (let k = 0; k < n; k++) {
         nodes.push(sized<MiniData>({ id: `${id}m${k}`, type: "mini",
           position: { x: COMP_X_A, y: y + (h - blockH) / 2 + k * (MINI_H + MINI_GAP) },
-          data: { text: `${row.many.noun} ${k + 1}`, status: st }, draggable: false, selectable: false }, MINI_W, MINI_H));
+          data: { text: `${row.many.noun} ${k + 1}`, status: st, mark }, draggable: false, selectable: false }, MINI_W, MINI_H));
         edges.push({ id: `${id}e${k}`, type: "lane", source: `${id}m${k}`, sourceHandle: "lane-a",
           target: `${id}b`, targetHandle: `lane-b-${k}`, animated: st === "running", style: laneStyle,
           ...ends(row.flow ?? "ab"),
@@ -228,21 +231,21 @@ function build(usecase: string, steps: Step[], status: (s: Step) => Status, metr
       }
       // As tall as the group, so each party's lane arrives level with it.
       nodes.push(sized<CompData>({ id: `${id}b`, type: "comp", position: { x: COMP_X_B, y: y + (h - blockH) / 2 },
-        data: { text: row.b ?? "", status: st, side: "b", fanIn: n }, draggable: false, selectable: false },
+        data: { text: row.b ?? "", status: st, mark, side: "b", fanIn: n }, draggable: false, selectable: false },
         COMP_W, Math.max(COMP_H, blockH)));
       // The note under the group says what each party did, once.
       nodes.push(sized<WideData>({ id: `${id}note`, type: "wide",
-        position: { x: COMP_X_A, y: y + h + 4 }, data: { text: `each ${row.many.noun}: ${row.a ?? ""}`, status: st, variant: "note" },
+        position: { x: COMP_X_A, y: y + h + 4 }, data: { text: `each ${row.many.noun}: ${row.a ?? ""}`, status: st, mark, variant: "note" },
         draggable: false, selectable: false }, COMP_W, 34));
       if (consumesSessionKey(step, row)) keyUsers.push({ a: `${id}m0`, b: `${id}b`, status: st });
       y += h + 38 + ROW_GAP;
       return;
     }
     if (row.a) nodes.push(sized<CompData>({ id: `${id}a`, type: "comp", position: { x: COMP_X_A, y },
-      data: { text: row.a, status: st, side: "a", bus: step.stageId === "pqc_handshake" ? "src" : "dst" },
+      data: { text: row.a, status: st, mark, side: "a", bus: step.stageId === "pqc_handshake" ? "src" : "dst" },
       draggable: false, selectable: false }, COMP_W, COMP_H));
     if (row.b) nodes.push(sized<CompData>({ id: `${id}b`, type: "comp", position: { x: COMP_X_B, y },
-      data: { text: row.b, status: st, side: "b", bus: step.stageId === "pqc_handshake" ? "src" : "dst" },
+      data: { text: row.b, status: st, mark, side: "b", bus: step.stageId === "pqc_handshake" ? "src" : "dst" },
       draggable: false, selectable: false }, COMP_W, COMP_H));
     if (row.a && row.b && row.flow) {
       edges.push({ id: `${id}e`, type: "lane", source: `${id}a`, sourceHandle: "lane-a", target: `${id}b`,
@@ -253,7 +256,7 @@ function build(usecase: string, steps: Step[], status: (s: Step) => Status, metr
       // A step one side runs alone: its label beside it, where a lane would be.
       nodes.push(sized<WideData>({ id: `${id}l`, type: "wide",
         position: { x: COMP_X_A + COMP_W + 12, y: y + 6 },
-        data: { text: `${i + 1}. ${shortLabel(full)}`, status: st, variant: "local" },
+        data: { text: `${i + 1}. ${shortLabel(full)}`, status: st, mark, variant: "local" },
         draggable: false, selectable: false }, RIGHT_X - 12 - (COMP_X_A + COMP_W + 12), COMP_H - 12));
     }
     // Eve, where the run put her: on the quantum lane, with the fraction the stage reports.
@@ -393,7 +396,7 @@ export default function UseCaseCanvas({
             <li key={i} className={`ucc-stage ucc-${st}`}>
               <span className="ucc-stage-n">{i + 1}</span>
               <span className="ucc-stage-text">{s.label(metrics, config)}</span>
-              {MARK[st] && <span className={`ucc-badge ucc-badge-${st}`}>{MARK[st]}</span>}
+              {markOf(s, st) && <span className={`ucc-badge ucc-badge-${st}`}>{markOf(s, st)}</span>}
             </li>
           );
         })}

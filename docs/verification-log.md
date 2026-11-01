@@ -3674,3 +3674,38 @@ samples) were found still open only by reading Round 83's list again near the en
 both banks hold, so it hid each list from third parties and from neither bank. The OPRF's key is
 held by Bank B alone, and the session key now does the one job a shared key can: it seals the
 transcript.
+
+### Round 85: a walk has to run the way a visitor runs, in one tab, for a dozen runs (2026-11-01)
+
+**Context.** The owner reported finance's inference verification failing and asked for every page to
+be walked again with selections other than the defaults, every option and every pair. The register's
+Round 85 entry lists the changes and their evidence; this entry keeps what they taught.
+
+**A check that starts from a fresh page cannot see what accumulates.** Every earlier walk ran each
+combination once, often in a new tab, and every run passed. Run one after another in one tab, as a
+visitor pressing Start does, the finance page stopped responding at about its fourteenth run, with
+nothing else changed. The defect was not in any one run: each run left over 300 MB in a WebAssembly
+heap that never shrinks.
+
+**Memory outside the JavaScript heap has no collector.** node-seal's ciphertexts and plaintexts live
+in a WebAssembly heap, and ONNX Runtime Web's sessions keep their weights there: neither is freed
+when the JavaScript object that names it is collected. A comment in the CKKS code said node-seal's
+finalizers would free its objects eventually; node, with the collector forced between runs, measured
+the heap growing by the same amount every run. The test now measures the heap, not the code.
+
+**A heap that grows in steps hides a small leak behind a large one.** Run after finance in one
+process, telecom's and genomics' leaks fitted into the room finance's had reserved, and the first
+version of the heap test passed them on the base commit. Each use case now runs in a process of its
+own.
+
+**A browser without a GPU walks a different page.** Headless Chrome offers only a software adapter,
+so the page disables its WebGPU option there, and every headless walk ran WebAssembly only. A path
+that needs hardware is walked on hardware.
+
+**An option that can only fail should not be offered as a choice.** The satellite page offered a
+model that publishes no evaluation sample by design, so selecting it could only end in "did NOT
+run". The Models panel already explained it; the selector did not.
+
+**The word on a mark is a claim too.** A step the model withholds by design was badged "failed", in
+red, on 33 of the satellite page's 38 combinations. The badge now says "withheld" or "no key"; a real
+error keeps "failed".

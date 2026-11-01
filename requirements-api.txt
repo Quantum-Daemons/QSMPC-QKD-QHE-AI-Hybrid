@@ -1,7 +1,7 @@
 # API backend (FastAPI) for the SPA: REST + WebSocket control/log stream + downloads.
 fastapi>=0.115
 uvicorn[standard]>=0.30
-websockets>=12.0
-python-multipart>=0.0.9       # file uploads
+websockets>=17.4             # GHSA-6m5v-9gmr-5665 (2026-10-30): unbounded buffering of empty continuation frames; /api/ws
+python-multipart>=0.0.31     # file uploads; GHSA-5rvq-cxj2-64vf and three more (2026-06), the last fixed in 0.0.31
 prometheus-client>=0.20       # /metrics endpoint
-pydantic>=2.7
+pydantic>=2.14.2             # GHSA-qpmf-fgh3-ff25, GHSA-3r8g-cqwr-jr29, GHSA-955g-x97g-8mcp, GHSA-gj4f-r7mf-jjxh (2026-10-29)
