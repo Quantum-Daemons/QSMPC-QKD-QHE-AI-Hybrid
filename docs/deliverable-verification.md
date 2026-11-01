@@ -7982,6 +7982,13 @@ walk's one finding, below, was fixed and deployed at 9bc737e (bundle `index-jM5M
   from its cache, and then a finance run on the same runtime with verification PASS.
 - The README's eleven screenshots were taken again from the deployed branch
   (`web/scripts/capture_screenshots.mjs`).
+- After the sweep's changes the branch was deployed again at df0ed5c (bundle `index-BLagNaUw.js`,
+  noble 0.7.1 and 2.4.0). In desktop Chrome the Validations checks all passed on it (ML-KEM agreement,
+  the ACVP cases 10 of 10, the WireGuard handshake with the mismatched PSK rejected, the key schedule,
+  the agent call with the tampered message rejected) and a finance run gave the same PSI as before (60
+  shared accounts over 260 x 260, 260 blind evaluations), masks from 6 X25519 pair seeds and a verified
+  ML-DSA-65 signature, with no console error; headless, all 129 all-pairs rows finished again with
+  verification PASS wherever a model is published and no console error.
 
 BUSINESS DOC RECONCILED Round 85. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
