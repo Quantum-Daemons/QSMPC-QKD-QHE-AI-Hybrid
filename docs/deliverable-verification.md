@@ -7911,6 +7911,46 @@ each combination on a fresh page could have seen it.
 - GitHub still serves the PDFs removed on 2026-10-31 through the pull-request refs, which only GitHub
   Support can drop.
 
+**The research sweep of 2026-11-01, applied in this round by the owner's choice.** A sweep of
+post-August-2026 advisories, releases, standards and papers (each finding checked at its primary
+source) found nothing that reaches the public demo, which runs in the visitor's browser, and these
+for the full deployment, all now applied:
+- `qsh.mcp.fs_interop` ran `npx -y @modelcontextprotocol/server-filesystem` with no version, so it ran
+  npm's `latest`; 2.0.0 and 2.1.0 (2026-10-19 and 2026-10-28) declare Node 24 or newer, and the API
+  image's Debian Node is 20. It is pinned to 1.0.0, which declares no engine and resolves its SDK
+  (`@modelcontextprotocol/sdk ^1.31.0`) to 1.32.2, past the SDK's October advisories; the slow interop
+  test passes against it.
+- Floors raised to the fixed releases: websockets 17.4 (GHSA-6m5v-9gmr-5665, 2026-10-30, unbounded
+  buffering of empty continuation frames, reachable on `/api/ws`), pydantic 2.14.2 (four advisories of
+  2026-10-29), the MCP Python SDK 2.2.0 (GHSA-rwrf-2pqf-9j8j and three more), python-multipart 0.0.31,
+  cryptography 50.0.2 (fixes of 2026-08-03 in code paths this repository does not call), onnx 1.23.0
+  (GHSA-xrch-8vh7-h656 and four more of 2026-10-20) and onnxruntime 1.28.3 (memory-safety fixes,
+  release notes of 2026-10-02). `tests/test_r85_dependency_floors.py` holds each floor in each file
+  that declares it.
+- This machine's virtual environment was brought up to the same releases, with certifi, pillow,
+  urllib3, PyJWT, aiohttp, fsspec, httpx2, filelock, multidict, opentelemetry-api and setuptools,
+  each of which carried an advisory as installed; fsspec stops at 2026.6.0, the fixed release, because
+  `datasets` caps it there, and the unused `flwr` that capped cryptography below 47 was removed.
+- `@noble/post-quantum` 0.7.1 with `@noble/curves`, `@noble/hashes` and `@noble/ciphers` at the 2.4.0
+  it depends on, one copy of each in the bundle (hardening releases of 2026-08-27, no advisory);
+  `check:pqc` still rejects all 2,595 malformed encapsulation keys, and `check:combiner` and
+  `check:qfl` pass.
+- OpenFHE stays below 1.6, and its pin now says never 1.6.0 when the cap lifts: issue #1364 (closed
+  2026-10-06) returns wrong values from a single-iteration uniform-ternary bootstrap at this
+  repository's settings once its depth reaches 25, and 1.6.1 (2026-10-09) fixes it.
+- The threat model gains the CKKS reaction attack (ePrint 2026/2490): a malicious evaluator that holds
+  the public coefficient-to-slot keys and sees whether the client accepted a result recovers a ternary
+  secret key, and noise flooding does not close it. The rule that follows: the client never tells the
+  evaluator whether a decryption decoded. It also notes that the server tier sizes its flood from the
+  measured error, which ePrint 2026/2575 would call heuristic.
+- Checked and needing nothing: CVE-2025-69277 never reaches libsodium 1.0.18's ristretto255 functions
+  (they decode through `ristretto255_frombytes`, which does not call the patched subgroup check);
+  pysodium 0.7.19, liboqs-python and onnxruntime-web are current; IKEv2's ML-KEM draft is still in the
+  RFC Editor's queue; no ETSI QKD deliverable and no RFC 9497 or 9496 erratum appeared in the window.
+- Not done here: this machine's system libsodium is 1.0.18-8.el9, and EPEL ships 1.0.18-9.el9 with the
+  CVE fix, which needs an administrator; the API image's Node 20 is past its upstream end of life,
+  still patched by Debian.
+
 **The deploy and the walk (2026-11-01).** The branch was deployed at fa957e9 and walked; the
 walk's one finding, below, was fixed and deployed at 9bc737e (bundle `index-jM5MgPnW.js`).
 - In a desktop Chrome 152 with a hardware GPU, the 22 finance rows that froze the base at its twelfth
