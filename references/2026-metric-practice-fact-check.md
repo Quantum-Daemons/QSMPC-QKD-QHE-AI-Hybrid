@@ -14,13 +14,13 @@ known theorem.
 published ECML-PKDD 2014, LNCS 8725, DOI 10.1007/978-3-662-44851-9_15.** Verbatim: *"if the
 classifier is completely uninformative, then the optimal behavior is to classify all examples as
 positive."* The paper also gives the calibrated result that the optimal threshold is half the optimal
-F1. The value my sweep selected, 0.4242, is exactly the all-positive score 2p/(1+p) at prevalence
-p=0.269 - so the run reproduced the theorem rather than hitting a bug.
+F1. The value my sweep selected, 0.4242, is exactly the all-positive score $`2p/(1+p)`$ at prevalence
+$`p = 0.269`$ - so the run reproduced the theorem rather than hitting a bug.
 
 **Label it 2014, not 2026.** It is the best citation for this and it is twelve years old.
 
 Reaffirmed since: Nikolopoulos, arXiv:2512.00916 (2025-11-30) shows F1/AUPRC/MCC/accuracy "induce
-degenerate thresholds", with the F1 coefficient (1-pi)/(2pi) diverging as prevalence falls.
+degenerate thresholds", with the F1 coefficient $`(1-\pi)/(2\pi)`$ diverging as prevalence falls.
 
 ## 2. Youden's J is defensible, but it is NOT what 2026 recommends
 

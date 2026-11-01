@@ -1,8 +1,8 @@
 {
   "id": "micius_2022_zvenigorod",
   "kind": "downlink",
-  "label": "Micius to Zvenigorod (Khmelev 2023), measured clear-sky atmosphere",
-  "source": "Khmelev et al., arXiv:2310.17476 (2023), the Micius pass over Zvenigorod of 1 March 2022",
+  "label": "Micius to Zvenigorod (Khmelev 2024), measured clear-sky atmosphere",
+  "source": "Khmelev et al., Opt. Express 32(7), 11964 (2024), arXiv:2310.17476, the Micius pass over Zvenigorod of 1 March 2022",
   "note": "A second Micius link with its own measured pass: a 600 mm station, an atmosphere fitted to the counts (0.88 dB at the zenith) and no pointing term, as the paper's model has none. Checked in tests/test_satellite_network_is_checked.py against its sifted rates at 600 and 1,100 km.",
   "values": {
     "orbit_altitude_km": {

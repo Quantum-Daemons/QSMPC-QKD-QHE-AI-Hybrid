@@ -1,10 +1,12 @@
-// REAL in-browser CKKS homomorphic encryption via node-seal (MIT — Microsoft SEAL → WebAssembly).
+// REAL in-browser CKKS homomorphic encryption via node-seal (MIT - Microsoft SEAL compiled to WebAssembly).
 // This replaces the demo's old representative FHE cost model with a GENUINE encrypted linear layer
-// computed entirely client-side: the feature vector is CKKS-encrypted, the linear layer (W·x + b) runs
-// homomorphically (encrypted multiply-plain + slot rotate-and-add for the dot product), and only the
-// decrypted logits leave encryption — so the demo's FHE-linear numbers are REAL MEASURED wall-clock,
-// with ZERO server/VPS compute. node-seal is lazy-loaded (dynamic import → async chunk; the ~few-MB
-// WASM is browser-cached). No commercial-OK WebGPU FHE exists in 2026, so CKKS runs on WASM-CPU.
+// computed entirely client-side: the feature vector is CKKS-encrypted, W.x runs homomorphically
+// (multiply-plain, then a slot rotate-and-add for each dot product), the bias b is added to the
+// ciphertext as a plaintext, and every slot that is not a layer output is zeroed by a 0/1 mask and
+// flooded before the client decrypts (`decryptOutputs`), so the decryption yields W.x + b and nothing
+// else. The demo's FHE-linear numbers are REAL MEASURED wall-clock, with ZERO server/VPS compute.
+// node-seal is lazy-loaded (dynamic import, an async chunk; the WASM of a few MB is browser-cached).
+// No commercial-OK WebGPU FHE exists in 2026, so CKKS runs on WASM-CPU.
 //
 // node-seal v7 API note: raw SEAL class names with `new`, `SEALContext`/`SecLevelType`, and in-place
 // encode/encrypt (encode(arr, scale, destPlaintext); encrypt(pt, destCt); decodeFloat64(pt)).
@@ -20,6 +22,11 @@
 // asset reference, so Vite emits + hashes it normally and returns the served URL.
 import sealWasmUrl from "/node_modules/node-seal/dist/seal_throws.wasm?url";
 import { fheCfg } from "./config";
+import { randomWords } from "./csprng";
+// Types only, erased at build: the figure's own schema, so the producer below is checked against the
+// component that draws it rather than against a copy that could drift.
+import type { EncryptedAgreementPlot } from "../components/VerificationChart";
+import type { HeldOutCorpus } from "./realData";
 
 let _ctx: Promise<SealCtx> | null = null;
 
@@ -32,6 +39,9 @@ interface SealCtx {
   galois: any;
   slots: number;
   scale: number;
+  /** The 0/1 output masks `outputMask` has encoded, by layout. A layout is fixed per layer, so
+   *  encoding it once per tab is enough; the flood beside it is drawn fresh for every decryption. */
+  masks: Map<string, any>;
 }
 
 // The CKKS parameter set, from the config the backend also reads.
@@ -46,8 +56,9 @@ const POLY_MODULUS_DEGREE = fheCfg().poly_modulus_degree;
 const COEFF_MOD_BITS = fheCfg().coeff_mod_bit_sizes;   // depth for one multiplication per dot product
 
 //: Power-of-two rotation steps 1 .. 2^(GALOIS_STEP_BITS-1) are pre-generated. 2^10 = 1024 slots is
-//: far above any feature width this demo evaluates (the widest published model takes 32), and a
-//: request beyond it throws in SEAL rather than degrading silently -- which is the intent.
+//: above any reduction width this demo evaluates (the widest is the medical student's first dense
+//: layer, 196 inputs in a 256-slot block), and a request beyond it throws in SEAL rather than
+//: degrading silently -- which is the intent.
 const GALOIS_STEP_BITS = 11;
 
 async function init(): Promise<SealCtx> {
@@ -82,6 +93,7 @@ async function init(): Promise<SealCtx> {
     galois,
     slots: POLY_MODULUS_DEGREE / 2,
     scale: Math.pow(2, fheCfg().global_scale_bits),
+    masks: new Map(),
   };
 }
 
@@ -133,9 +145,18 @@ export interface FHEBatchResult {
   rows: number;
   /** Rows the caller handed over. Larger than `rows` means the cap dropped the difference. */
   rowsOffered: number;
-  /** Rows that fit in one ciphertext at this feature width. The batch is capped at it. */
+  /** Rows that fit in one ciphertext at this feature width. The batch is capped at
+   *  `rowsPerCiphertext * maxCiphertexts`. */
   rowsPerCiphertext: number;
+  /** Ciphertexts actually filled: 1 unless the caller raised `maxCiphertexts`, 0 for no rows. */
+  ciphertexts: number;
+  /** Wall-clock of the encrypted work only, summed over the ciphertexts. The yields between
+   *  ciphertexts are outside it, so this is not inflated by the page repainting. */
   fheMs: number;
+  /** `fheMs / ciphertexts`, null with no ciphertext. The unit that stays comparable when the row
+   *  count grows: the total for 64 ciphertexts is not a slower CKKS, it is 64 of them. */
+  msPerCiphertext: number | null;
+  /** Size of ONE input ciphertext; every chunk is encrypted at the same ring and scale. */
   ctBytes: number | null;
   maxAbsError: number;
   rotations: number;
@@ -145,6 +166,158 @@ export interface FHEBatchResult {
    *  `rotations` does not give a per-rotation cost - it gave 158 ms against a true ~3 ms. This is
    *  the measured quantity, and it is the unit published CKKS primitive benchmarks report. */
   rotateMs: number;
+}
+
+/** How far a batch may go past one ciphertext. */
+export interface BatchOptions {
+  /** Ciphertexts this call may fill. 1, the default, is the original cap: every existing caller
+   *  keeps the homomorphic work of a single encryption. A caller that must score a whole held-out
+   *  split raises it, and the result reports `ciphertexts` and `msPerCiphertext` so the extra cost
+   *  is a number on the page, not a factor hidden inside one total. */
+  maxCiphertexts?: number;
+}
+
+/** Let the page repaint between ciphertexts. SEAL runs synchronously on the main thread, and 64
+ *  back-to-back ciphertexts (finance's 8,192 rows) would freeze the tab for the whole batch. */
+const yieldToPage = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/**
+ * Half-width, as a power of two, of the flood on every slot a layer does not output (Round 84).
+ *
+ * The 0/1 mask in `decryptOutputs` zeroes the rotation-sum's partial sums only up to the mask's own
+ * CKKS encoding error, about 1e-11 of each sum, and that error is public: a key holder who encodes the
+ * same mask knows it exactly and can divide it out. Measured on this tab's layouts by
+ * `tests/test_r84_medtel_ckks_decrypts_only_outputs.py`: without the flood, that division recovers the
+ * masked partial sums with a correlation of 1.0. The encoding error of a REAL vector is itself real
+ * (SEAL rounds the conjugate-symmetric coefficients symmetrically), so the residual sits in the real
+ * parts and the imaginary parts of the masked slots hold double-precision round-off only; a flood of
+ * the real parts is therefore enough, and node-seal's real-valued encoder can place one. At 2^16 over
+ * a residual below 1e-9 (the test's layouts) the statistical distance is below 1e-14 per slot, and the
+ * flood stays inside the modulus: a coefficient is at most the largest slot value times the scale,
+ * 2^16 x 2^120 = 2^136 at the masked scale, under the 2^140 of the first three primes.
+ */
+export const CKKS_FLOOD_BITS = 16;
+
+/** Uniform on [-2^bits, 2^bits), 53 random bits each, from the CSPRNG: the key holder must not
+ *  predict them. The twin of `qsh.fhe.masking.uniform_masks`, which floods the server tier's view. */
+function uniformFlood(n: number, bits: number): Float64Array {
+  const w = randomWords(2 * n);
+  const out = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    const u = (w[2 * i] * 2 ** 21 + (w[2 * i + 1] >>> 11)) / 2 ** 53;   // [0, 1) on a 2^-53 grid
+    out[i] = (2 * u - 1) * 2 ** bits;
+  }
+  return out;
+}
+
+/** 1 at slots 0, stride, 2 stride, ... (`count` of them), 0 elsewhere: a layer's output slots. */
+function outputMask(c: SealCtx, stride: number, count: number): any {
+  const key = count === 1 ? "1" : `${stride}x${count}`;
+  let pt = c.masks.get(key);
+  if (!pt) {
+    const m = new Float64Array(c.slots);
+    for (let i = 0; i < count; i++) m[i * stride] = 1;
+    pt = new c.seal.Plaintext();
+    c.encoder.encode(m, c.scale, pt);
+    c.masks.set(key, pt);
+  }
+  return pt;
+}
+
+/**
+ * Decrypt a layer's OUTPUTS and nothing else (Round 84), each with its bias added under encryption.
+ *
+ * Until this existed every path here decrypted the whole rotate-and-add result and added the bias in
+ * plaintext afterwards. Two things followed. The bias was not part of the encrypted computation at
+ * all. And the decrypted vector held the reduction's running partial sums in every other slot: slot k
+ * minus slot k + 1 is the k-th product w_k x_k, so a key holder who knows x reads the weights off one
+ * query. This is the browser twin of `qsh.fhe.masking.masked_decrypt` on the server tier, with one
+ * difference that matters: the client decrypts the outputs IN THE CLEAR here, because ReLU, pooling
+ * and the argmax run in plaintext in this tab, so the outputs are not masked by an MPC share.
+ *
+ *   1. multiply by a 0/1 mask, 1 at each output slot (`outputMask`): every other slot drops to its
+ *      encoding residual, about 1e-11 of its partial sum;
+ *   2. add ONE plaintext that carries the bias at each output slot and an independent uniform flood
+ *      of half-width 2^CKKS_FLOOD_BITS at every other slot, drawn fresh per call (see the constant);
+ *   3. decrypt, and read the output slots.
+ *
+ * What it does not hide: each output's own CKKS approximation error, of order 1e-9 to 1e-8, which
+ * this tab does not flood (flooding the outputs would cost them their precision; the server tier masks
+ * the outputs themselves). No rescale: the product sits at scale 2^120 inside the 140-bit modulus of
+ * the first three primes, which keeps the outputs' precision where it was.
+ */
+function decryptOutputs(c: SealCtx, acc: any, stride: number, count: number,
+                        bias: (i: number) => number): number[] {
+  const { seal, encoder, decryptor, evaluator, slots } = c;
+  const masked = new seal.Ciphertext();
+  evaluator.multiplyPlain(acc, outputMask(c, stride, count), masked);
+  const add = uniformFlood(slots, CKKS_FLOOD_BITS);
+  for (let i = 0; i < count; i++) add[i * stride] = bias(i);
+  const ptAdd = new seal.Plaintext();
+  encoder.encode(add, masked.scale(), ptAdd);
+  evaluator.addPlainInplace(masked, ptAdd);
+  const out = new seal.Plaintext();
+  decryptor.decrypt(masked, out);
+  const dec = encoder.decodeFloat64(out);
+  const values = Array.from({ length: count }, (_, i) => dec[i * stride]);
+  // Freed now rather than at the next GC: three full-ring objects per output, and the WASM heap is
+  // not a pressure the JS collector sees. (node-seal's finalizers would free them eventually.)
+  masked.delete(); ptAdd.delete(); out.delete();
+  return values;
+}
+
+/** One ciphertext's worth of the stride-packed linear layer. `rows.length` is at most
+ *  `slots / sumWidth`; the caller chunks. Returns per-class decrypted scores and its own counters. */
+async function batchCiphertext(
+  c: SealCtx, W: number[][], b: number[], rows: number[][], n: number, sumWidth: number,
+) {
+  const { seal, encoder, encryptor, evaluator, galois, slots, scale } = c;
+  const t0 = performance.now();
+  const xPad = new Float64Array(slots);
+  rows.forEach((row, r) => {
+    for (let i = 0; i < n; i++) xPad[r * sumWidth + i] = row[i] ?? 0;
+  });
+  const ptX = seal.PlainText ? seal.PlainText() : new seal.Plaintext();
+  encoder.encode(xPad, scale, ptX);
+  const ctX = new seal.Ciphertext();
+  encryptor.encrypt(ptX, ctX);
+  let ctBytes: number | null = null;
+  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
+
+  const perClass: number[][] = [];
+  let rotations = 0, multiplies = 0, rotateMs = 0;   // see `encryptedLinear` for why rotations are timed
+  for (let j = 0; j < W.length; j++) {
+    if (W[j].every((v) => v === 0)) {
+      perClass.push(rows.map(() => b[j] ?? 0));      // all-zero row: the logit is the bias
+      continue;
+    }
+    const wPad = new Float64Array(slots);
+    for (let r = 0; r < rows.length; r++) {
+      for (let i = 0; i < n; i++) wPad[r * sumWidth + i] = W[j][i] ?? 0;   // TILED at the same stride
+    }
+    const ptW = new seal.Plaintext();
+    encoder.encode(wPad, scale, ptW);
+    let acc = new seal.Ciphertext();
+    evaluator.multiplyPlain(ctX, ptW, acc);
+    multiplies++;
+    for (let s = 1; s < sumWidth; s <<= 1) {
+      const rot = new seal.Ciphertext();
+      const tr = performance.now();
+      evaluator.rotateVector(acc, s, galois, rot);
+      rotateMs += performance.now() - tr;
+      const nxt = new seal.Ciphertext();
+      evaluator.add(acc, rot, nxt);
+      acc = nxt;
+      rotations++;
+    }
+    // The class's bias goes in under encryption, and only the rows' output slots decrypt.
+    perClass.push(decryptOutputs(c, acc, sumWidth, rows.length, () => b[j] ?? 0));
+    multiplies++;                                    // the output mask
+  }
+  return {
+    logits: rows.map((_, r) => perClass.map((cls) => cls[r])),
+    ms: performance.now() - t0, ctBytes, rotations, multiplies, rotateMs,
+  };
 }
 
 /**
@@ -166,17 +339,22 @@ export interface FHEBatchResult {
  *
  * Verified before it was written: the stride-packed reduction recovers each row's dot product exactly,
  * checked against the plaintext value in plain JS with the same rotation semantics.
+ *
+ * MORE THAN ONE CIPHERTEXT ONLY ON REQUEST (Round 84). A held-out split can outgrow one ciphertext:
+ * finance's 8,192 test-window rows at width 32 need 64. `maxCiphertexts` lets a caller fill that
+ * many, one after another with the same keys, and the result says how many it filled and what each
+ * cost. The default stays 1, so no existing caller's homomorphic work changes.
  */
 export async function encryptedLinearBatch(
-  W: number[][], b: number[], rows: number[][],
+  W: number[][], b: number[], rows: number[][], opts: BatchOptions = {},
 ): Promise<FHEBatchResult> {
   const c = await getCtx();
-  const { seal, encoder, encryptor, decryptor, evaluator, galois, slots, scale } = c;
   const n = rows[0]?.length ?? 0;
   const sumWidth = 1 << Math.ceil(Math.log2(Math.max(n, 2)));
-  const rowsPerCiphertext = Math.max(1, Math.floor(slots / sumWidth));
-  // Capped rather than chunked. Chunking would multiply the homomorphic cost by the number of chunks
-  // and hide that behind one number.
+  const rowsPerCiphertext = Math.max(1, Math.floor(c.slots / sumWidth));
+  const maxCiphertexts = Math.max(1, Math.floor(opts.maxCiphertexts ?? 1));
+  // Capped rather than chunked silently. Filling more ciphertexts multiplies the homomorphic cost, so
+  // it happens only when the caller asks, and `ciphertexts` / `msPerCiphertext` carry the multiple.
   //
   // `rowsOffered` is returned BECAUSE the cap is silent otherwise. Written first without it, and the
   // first run scored 512 of a 600-row held-out split: 88 rows dropped, an agreement of 1.0 reported
@@ -184,60 +362,148 @@ export async function encryptedLinearBatch(
   // split. The comment here even claimed "a cap is visible, and the caller reports how many rows it
   // asked for" - it was not, and the caller could not, because this function did not tell it.
   const rowsOffered = rows.length;
-  const used = rows.slice(0, rowsPerCiphertext);
+  const used = rows.slice(0, rowsPerCiphertext * maxCiphertexts);
 
-  const t0 = performance.now();
-  const xPad = new Float64Array(slots);
-  used.forEach((row, r) => {
-    for (let i = 0; i < n; i++) xPad[r * sumWidth + i] = row[i] ?? 0;
-  });
-  const ptX = seal.PlainText ? seal.PlainText() : new seal.Plaintext();
-  encoder.encode(xPad, scale, ptX);
-  const ctX = new seal.Ciphertext();
-  encryptor.encrypt(ptX, ctX);
+  const logits: number[][] = [];
+  let fheMs = 0, rotations = 0, multiplies = 0, rotateMs = 0, ciphertexts = 0;
   let ctBytes: number | null = null;
-  try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; }
-
-  const perClass: number[][] = [];
-  let rotations = 0, multiplies = 0, rotateMs = 0;   // see `encryptedLinear` for why rotations are timed
-  for (let j = 0; j < W.length; j++) {
-    if (W[j].every((v) => v === 0)) {
-      perClass.push(used.map(() => b[j] ?? 0));      // all-zero row: the logit is the bias
-      continue;
-    }
-    const wPad = new Float64Array(slots);
-    for (let r = 0; r < used.length; r++) {
-      for (let i = 0; i < n; i++) wPad[r * sumWidth + i] = W[j][i] ?? 0;   // TILED at the same stride
-    }
-    const ptW = new seal.Plaintext();
-    encoder.encode(wPad, scale, ptW);
-    let acc = new seal.Ciphertext();
-    evaluator.multiplyPlain(ctX, ptW, acc);
-    multiplies++;
-    for (let s = 1; s < sumWidth; s <<= 1) {
-      const rot = new seal.Ciphertext();
-      const tr = performance.now();
-      evaluator.rotateVector(acc, s, galois, rot);
-      rotateMs += performance.now() - tr;
-      const nxt = new seal.Ciphertext();
-      evaluator.add(acc, rot, nxt);
-      acc = nxt;
-      rotations++;
-    }
-    const out = new seal.Plaintext();
-    decryptor.decrypt(acc, out);
-    const dec = encoder.decodeFloat64(out);
-    perClass.push(used.map((_, r) => dec[r * sumWidth] + (b[j] ?? 0)));
+  for (let start = 0; start < used.length; start += rowsPerCiphertext) {
+    if (ciphertexts > 0) await yieldToPage();          // outside the timed region, see `fheMs`
+    const part = await batchCiphertext(c, W, b, used.slice(start, start + rowsPerCiphertext), n, sumWidth);
+    for (const row of part.logits) logits.push(row);
+    fheMs += part.ms; rotations += part.rotations; multiplies += part.multiplies;
+    rotateMs += part.rotateMs;
+    ctBytes ??= part.ctBytes;
+    ciphertexts++;
   }
-  const fheMs = performance.now() - t0;
 
-  const logits = used.map((_, r) => perClass.map((cls) => cls[r]));
   const plainLogits = used.map((row) =>
     W.map((wr, j) => wr.reduce((a, w, i) => a + w * (row[i] ?? 0), 0) + (b[j] ?? 0)));
-  const maxAbsError = Math.max(
-    0, ...logits.flatMap((row, r) => row.map((v, j) => Math.abs(v - plainLogits[r][j]))));
-  return { logits, plainLogits, rows: used.length, rowsOffered, rowsPerCiphertext, fheMs, ctBytes,
+  // A loop, not `Math.max(...spread)`: 8,192 rows x 2 classes is past what an argument list holds
+  // in some engines, and a RangeError here would read as a CKKS failure.
+  let maxAbsError = 0;
+  logits.forEach((row, r) => row.forEach((v, j) => {
+    maxAbsError = Math.max(maxAbsError, Math.abs(v - plainLogits[r][j]));
+  }));
+  return { logits, plainLogits, rows: used.length, rowsOffered, rowsPerCiphertext, ciphertexts,
+           fheMs, msPerCiphertext: ciphertexts > 0 ? fheMs / ciphertexts : null, ctBytes,
            maxAbsError, rotations, multiplies, rotateMs };
+}
+
+/** Plaintext top-1 minus top-2: how far a row is from changing class. 0 is a tie. */
+function topTwoGap(row: number[]): number {
+  let a = -Infinity, b = -Infinity;
+  for (const v of row) { if (v > a) { b = a; a = v; } else if (v > b) b = v; }
+  return Number.isFinite(b) ? a - b : Infinity;
+}
+
+/** -log2(error) floored: the bits OpenFHE and HElib report. No bits exist for an error >= 1. */
+const bitsOf = (e: number | null) => (e != null && e > 0 && e < 1 ? Math.floor(-Math.log2(e)) : null);
+
+/** Everything a run publishes about one held-out encrypted evaluation, and the figure itself. */
+export interface HeldOutAgreement {
+  plot: EncryptedAgreementPlot;
+  batch: FHEBatchResult;
+  mismatches: number;
+  /** Rows the plaintext model scores identically across its top two classes. */
+  tieRows: number;
+  decidable: number;
+  flippedDecidable: number;
+  flipMarginMax: number;
+  /** Smallest non-zero plaintext top-1 margin: the closest any decided row came to a flip. */
+  smallestMargin: number | null;
+  /** Median |encrypted - plaintext| over the scores that went through CKKS (not the bias-only class). */
+  medianAbsError: number | null;
+  precisionBits: number | null;
+  medianPrecisionBits: number | null;
+  /** True only when no decided row COULD have flipped: smallest margin above the worst deviation,
+   *  times two when every class score is encrypted (two deviations can meet), once when only one is. */
+  flipImpossible: boolean;
+  /** Against the TRUE labels, over the scored rows. */
+  encryptedAccuracy: number | null;
+  plaintextAccuracy: number | null;
+}
+
+/**
+ * Score a published model on its held-out rows under CKKS, every row, and build the figure (Round 84).
+ *
+ * This is the path the finance, medical and telecom pages encrypt through. It fills as many
+ * ciphertexts as the rows need - 64 for finance's 8,192 at width 32 - because a denominator smaller
+ * than the split it names was the defect the cap disclosure exists for; the cost travels with it as
+ * `ciphertexts` and `msPerCiphertext`.
+ *
+ * WHAT IS PLOTTED. A two-class model plots its decision logit (class 1 minus class 0), encrypted
+ * against plaintext, so every row sits somewhere informative and a flip is a point in the wrong
+ * quadrant. Plotting the winning class's score instead put every row the model calls class 0 at
+ * exactly (0, 0) for the bias-only class-0 row, which is most of the finance page. A multiclass model
+ * plots the encrypted top-1 class's score, the convention the figure already used.
+ */
+export async function encryptedHeldOutAgreement(held: HeldOutCorpus): Promise<HeldOutAgreement> {
+  const c = await getCtx();
+  const n = held.rows[0]?.length ?? 0;
+  const sumWidth = 1 << Math.ceil(Math.log2(Math.max(n, 2)));
+  const perCt = Math.max(1, Math.floor(c.slots / sumWidth));
+  const { W, b } = held.model;
+  const batch = await encryptedLinearBatch(W, b, held.rows, {
+    maxCiphertexts: Math.ceil(held.rows.length / perCt),
+  });
+  const argmaxOf = (r: number[]) => r.reduce((bi, v, i, arr) => (v > arr[bi] ? i : bi), 0);
+  const encCls = batch.logits.map(argmaxOf), plainCls = batch.plainLogits.map(argmaxOf);
+  const margins = batch.plainLogits.map(topTwoGap);
+  const flipped = encCls.map((_, i) => i).filter((i) => encCls[i] !== plainCls[i]);
+  const tieRows = margins.filter((m) => m === 0).length;
+  const decidable = batch.rows - tieRows;
+  const flippedDecidable = flipped.filter((i) => margins[i] !== 0).length;
+  let flipMarginMax = 0;
+  for (const i of flipped) flipMarginMax = Math.max(flipMarginMax, margins[i]);
+  let smallestMargin: number | null = null;
+  for (const m of margins) if (m > 0 && (smallestMargin == null || m < smallestMargin)) smallestMargin = m;
+
+  // The deviations of the scores that were ENCRYPTED. A bias-only class (finance's and medical's
+  // class 0) is exact by construction, and counting its zeros would halve the median.
+  const noisy = W.map((row, j) => (row.some((v) => v !== 0) ? j : -1)).filter((j) => j >= 0);
+  const devs: number[] = [];
+  batch.logits.forEach((row, r) => noisy.forEach((j) => devs.push(Math.abs(row[j] - batch.plainLogits[r][j]))));
+  devs.sort((x, y) => x - y);
+  const medianAbsError = devs.length
+    ? (devs.length % 2 ? devs[(devs.length - 1) / 2] : (devs[devs.length / 2 - 1] + devs[devs.length / 2]) / 2)
+    : null;
+  const flipBoundFactor: 1 | 2 = noisy.length <= 1 ? 1 : 2;
+  const flipImpossible = smallestMargin != null && smallestMargin > flipBoundFactor * batch.maxAbsError;
+
+  const labels = held.labels.slice(0, batch.rows);
+  const acc = (cls: number[]) => (labels.length
+    ? cls.reduce((a, v, i) => a + (v === labels[i] ? 1 : 0), 0) / labels.length : null);
+  const binary = W.length === 2;
+  const pts = held.plane?.points;
+  const plot: EncryptedAgreementPlot = {
+    kind: "encrypted-agreement",
+    points: batch.logits.map((row, i) => ({
+      enc: binary ? row[1] - row[0] : row[encCls[i]],
+      plain: binary ? batch.plainLogits[i][1] - batch.plainLogits[i][0] : batch.plainLogits[i][encCls[i]],
+      agree: encCls[i] === plainCls[i],
+      label: labels[i], encCls: encCls[i], plainCls: plainCls[i],
+      ...(pts?.[i] ? { x: pts[i][0], y: pts[i][1] } : {}),
+    })),
+    rows: batch.rows, rowsOffered: batch.rowsOffered, classes: W.length,
+    maxAbsError: batch.maxAbsError, flipMarginMax,
+    undecidableRows: tieRows, decidableRows: decidable,
+    agreementOverDecidable: decidable > 0 ? 1 - flippedDecidable / decidable : null,
+    heldOut: true, fitNote: held.fitNote, split: held.split, corpus: held.corpus,
+    modelKey: held.modelKey, modelLabel: held.modelLabel, licence: held.licence,
+    ciphertexts: batch.ciphertexts, rowsPerCiphertext: batch.rowsPerCiphertext, fheMs: batch.fheMs,
+    msPerCiphertext: batch.msPerCiphertext, medianAbsError, noisyScores: devs.length,
+    smallestMargin, flipBoundFactor, scoreKind: binary ? "logit" : "winning-score",
+    classNames: held.classNames,
+    plane: held.plane ? { x: held.plane.x, y: held.plane.y } : null,
+    accuracy: { encrypted: acc(encCls), plaintext: acc(plainCls) },
+  };
+  return {
+    plot, batch, mismatches: flipped.length, tieRows, decidable, flippedDecidable, flipMarginMax,
+    smallestMargin, medianAbsError, precisionBits: bitsOf(batch.maxAbsError),
+    medianPrecisionBits: bitsOf(medianAbsError), flipImpossible,
+    encryptedAccuracy: acc(encCls), plaintextAccuracy: acc(plainCls),
+  };
 }
 
 /**
@@ -248,7 +514,7 @@ export async function encryptedLinearBatch(
  */
 export async function encryptedLinear(W: number[][], b: number[], x: number[]): Promise<FHEResult> {
   const c = await getCtx();
-  const { seal, encoder, encryptor, decryptor, evaluator, galois, slots, scale } = c;
+  const { seal, encoder, encryptor, evaluator, galois, slots, scale } = c;
   const n = x.length;
   const sumWidth = 1 << Math.ceil(Math.log2(Math.max(n, 2)));   // power-of-2 ≥ n for the slot reduction
 
@@ -303,13 +569,82 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
       acc = nxt;
       rotations++;
     }
-    const out = new seal.Plaintext();
-    decryptor.decrypt(acc, out);
-    logits.push(encoder.decodeFloat64(out)[0] + (b[j] ?? 0));
+    // b_j goes in under encryption, and only slot 0, the dot product, decrypts.
+    logits.push(decryptOutputs(c, acc, sumWidth, 1, () => b[j] ?? 0)[0]);
+    multiplies++;                                               // the output mask
   }
   const fheMs = performance.now() - t0;
 
   // approximation error vs the plaintext reference (CKKS is approximate)
+  const plain = W.map((row, j) => row.reduce((a, w, i) => a + w * (x[i] ?? 0), 0) + (b[j] ?? 0));
+  const maxAbsError = Math.max(...logits.map((v, j) => Math.abs(v - plain[j])), 0);
+  return { logits, fheMs, ctBytes, maxAbsError, plainLogits: plain, rotations, multiplies, rotateMs };
+}
+
+/**
+ * A dense layer with every output row in ONE ciphertext (Round 84): the dual of
+ * `encryptedLinearBatch`. There, rows of inputs share one weight row; here one input is replicated
+ * under every weight row, each copy in its own power-of-two block, so a single multiply-plain and
+ * log2(block) rotations put every row's dot product in its block's first slot, and one masked
+ * decryption reads them all. `encryptedLinear` spends one multiply, log2(block) rotations and one
+ * decryption PER ROW instead.
+ *
+ * On the medical student that is 8 rotations for its 196 -> 16 layer (blocks of 256, sixteen of them
+ * filling the 4,096 slots exactly) instead of 128, and 4 for its 16 -> 2 layer instead of 8: 12 in all
+ * where the row-at-a-time form took 136. The client encrypts the replicated copy itself; the server's
+ * plaintext is the tiled weight matrix. Rows beyond one ciphertext go into further ciphertexts.
+ */
+export async function encryptedDense(W: number[][], b: number[], x: number[]): Promise<FHEResult> {
+  const c = await getCtx();
+  const { seal, encoder, encryptor, evaluator, galois, slots, scale } = c;
+  const n = x.length;
+  const block = 1 << Math.ceil(Math.log2(Math.max(n, 2)));
+  const rowsPerCt = Math.max(1, Math.floor(slots / block));
+  if (block > slots) throw new Error(`a ${n}-input layer needs a ${block}-slot block; the ring has ${slots}`);
+
+  const t0 = performance.now();
+  const logits = new Array<number>(W.length).fill(0);
+  let rotations = 0, multiplies = 0, rotateMs = 0;
+  let ctBytes: number | null = null;
+  for (let start = 0; start < W.length; start += rowsPerCt) {
+    const rows = W.slice(start, start + rowsPerCt);
+    // A group of all-zero rows: each output is its bias, and the multiply would yield a
+    // "transparent" ciphertext, which the safe build rejects (the `encryptedLinear` convention).
+    if (rows.every((row) => row.every((v) => v === 0))) {
+      rows.forEach((_, j) => { logits[start + j] = b[start + j] ?? 0; });
+      continue;
+    }
+    const xRep = new Float64Array(slots), wTile = new Float64Array(slots);
+    rows.forEach((row, j) => {
+      for (let i = 0; i < n; i++) { xRep[j * block + i] = x[i] ?? 0; wTile[j * block + i] = row[i] ?? 0; }
+    });
+    const ptX = new seal.Plaintext();
+    encoder.encode(xRep, scale, ptX);
+    const ctX = new seal.Ciphertext();
+    encryptor.encrypt(ptX, ctX);
+    if (ctBytes == null) { try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; } }
+    const ptW = new seal.Plaintext();
+    encoder.encode(wTile, scale, ptW);
+    let acc = new seal.Ciphertext();
+    evaluator.multiplyPlain(ctX, ptW, acc);
+    multiplies++;
+    for (let s = 1; s < block; s <<= 1) {          // the reduction stays inside each row's block
+      const rot = new seal.Ciphertext();
+      const tr = performance.now();
+      evaluator.rotateVector(acc, s, galois, rot);
+      rotateMs += performance.now() - tr;
+      const nxt = new seal.Ciphertext();
+      evaluator.add(acc, rot, nxt);
+      rot.delete(); acc.delete();                   // spent: freed now, as in `decryptOutputs`
+      acc = nxt;
+      rotations++;
+    }
+    decryptOutputs(c, acc, block, rows.length, (j) => b[start + j] ?? 0)
+      .forEach((v, j) => { logits[start + j] = v; });
+    multiplies++;                                    // the output mask
+    acc.delete(); ptW.delete(); ctX.delete(); ptX.delete();
+  }
+  const fheMs = performance.now() - t0;
   const plain = W.map((row, j) => row.reduce((a, w, i) => a + w * (x[i] ?? 0), 0) + (b[j] ?? 0));
   const maxAbsError = Math.max(...logits.map((v, j) => Math.abs(v - plain[j])), 0);
   return { logits, fheMs, ctBytes, maxAbsError, plainLogits: plain, rotations, multiplies, rotateMs };
@@ -330,7 +665,8 @@ export interface ConvResult {
   /** Homomorphic rotations performed. Each one triggers a key-switch, and that is the dominant
    *  term here as elsewhere: measured at 70% of this operation's wall-clock. */
   rotations: number;
-  /** Ciphertext-plaintext multiplications performed. */
+  /** Ciphertext-plaintext multiplications performed: one per kernel and, since Round 84, one per
+   *  output mask (`decryptOutputs`), so twice the channel count. */
   multiplies: number;
   /** How many im2col patches shared one ciphertext. 1 would mean no packing at all. */
   patchesPerCiphertext: number;
@@ -377,7 +713,7 @@ export async function encryptedConv2d(
   image: number[][], kernels: number[][][], biases: number[], padding = 0,
 ): Promise<ConvResult> {
   const c = await getCtx();
-  const { seal, encoder, encryptor, decryptor, evaluator, galois, slots, scale } = c;
+  const { seal, encoder, encryptor, evaluator, galois, slots, scale } = c;
 
   // Zero-pad first, so a trained model's `padding` is honoured rather than silently ignored. The
   // student uses pad 1, which keeps 14x14 through the conv; running it as a valid convolution
@@ -449,12 +785,10 @@ export async function encryptedConv2d(
       acc = nxt;
       rotations++;
     }
-    const out = new seal.Plaintext();
-    decryptor.decrypt(acc, out);
-    const dec = encoder.decodeFloat64(out);
-    const map = new Array<number>(nPatches);
-    for (let p = 0; p < nPatches; p++) map[p] = dec[p * block] + (biases[oc] ?? 0);
-    maps.push(map);
+    // The channel's bias goes in under encryption, and only the nPatches output slots decrypt: the
+    // other 15 of every 16 slots held the patch's running partial sums, kernel weight by weight.
+    maps.push(decryptOutputs(c, acc, block, nPatches, () => biases[oc] ?? 0));
+    multiplies++;                                    // the output mask
   }
   const fheMs = performance.now() - t0;
 
@@ -515,10 +849,21 @@ export interface EncryptedStudentResult extends ConvResult {
 /**
  * Evaluate the PUBLISHED medical student LAYER BY LAYER under CKKS - not end to end.
  *
- * Each layer's linear part runs under CKKS; its output is DECRYPTED in the client, the conv's ReLU
- * and the average pool run in plaintext, and the next dense layer re-encrypts the clear activation.
- * The student's final argmax is taken in the clear (`argmax(v)` below); the garbled-circuit argmax
- * elsewhere on the page runs on the bundled WDBC logistic regression, not on this network.
+ * Each layer's linear part runs under CKKS, its bias included: the bias is added to the ciphertext,
+ * and every slot that is not one of the layer's outputs is masked and flooded before the client
+ * decrypts (`decryptOutputs`), so what the client decrypts is the layer's output and nothing else.
+ * The decryption itself stays: the conv's ReLU and the average pool run in plaintext in the client,
+ * and the next dense layer re-encrypts the clear activation. The dense layers are packed, every row
+ * of a layer in one ciphertext (`encryptedDense`). The student's final argmax is taken in the clear
+ * (`argmax(v)` below). The garbled-circuit argmax elsewhere on the page runs on the bundled WDBC
+ * logistic regression, not on this network, and it too receives logits the client has already
+ * decrypted: in this tab it exercises the protocol and hides nothing from the key holder.
+ *
+ * This is a demonstration shortcut, not the state of the art: published FHE compilers run whole
+ * networks under encryption, bootstrapping where this tab decrypts (Orion, ASPLOS 2025,
+ * arXiv:2311.03470, up to ResNet-50 on ImageNet). Safhire (TMLR, arXiv:2509.01253) keeps this tab's
+ * pattern, linear layers encrypted and the non-linearities in plaintext at the client, and adds the
+ * randomized shuffling that keeps the model confidential from that client, which this tab does not.
  *
  * Until this existed the encrypted convolution ran on the student's SHAPE with a synthetic kernel
  * pattern. It was a genuine homomorphic convolution and an honest cost model, but it was not this
@@ -576,7 +921,7 @@ export async function encryptedStudentInference(
       throw new Error(`dense layer expects ${d.in} inputs, got ${v.length} - the published weights `
         + "and this evaluation disagree about the network, which must not be silently reshaped");
     }
-    const r = await encryptedLinear(d.weight, d.bias ?? new Array(d.out).fill(0), v);
+    const r = await encryptedDense(d.weight, d.bias ?? new Array(d.out).fill(0), v);
     rotations += r.rotations; multiplies += r.multiplies; fheMs += r.fheMs;
     denseMs += r.fheMs; denseRotations += r.rotations; denseRotateMs += r.rotateMs;
     // Null-safe: the largest size actually read across layers, or null if none could be read.

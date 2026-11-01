@@ -28,9 +28,9 @@
 >
 > Nothing below is deleted, and none of it is re-measured. Do not quote 0.714286, 0.870968,
 > 0.809846, 0.622951 or any ratio in this file as a property of the shipped circuit. The current
-> published metrics are in `models/*/weights.json` and on the six model cards, which are gated
-> against them: telecom macro F1 **0.510963**, telecom at 7 wires **0.541894**, finance
-> minority-class F1 **0.735294**, medical accuracy **0.883721**. (Round 47 retrained twice: the
+> published metrics are in `models/*/weights.json` and on the four QCNN model cards, which are gated
+> against them: telecom macro F1 **0.944439**, telecom at 7 wires **0.967932**, finance
+> minority-class F1 **0.228571**, medical accuracy **0.953488**. (Round 47 retrained twice: the
 > intermediate figures 0.458324 / 0.500452 / 0.84058 / 0.860465 are superseded by a second retrain in
 > the same round, after two classes of parameter turned out to be analytically dead. Do not quote
 > those either.)

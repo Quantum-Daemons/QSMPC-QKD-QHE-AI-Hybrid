@@ -279,7 +279,8 @@ jobs:
       # plaintext updates, with `secureAgg: true` written as a literal on the return line. tsc, the
       # build and the whole Python suite stayed green throughout, because none of them can see a
       # figure asserting a property of code in another file. This asserts the property on the
-      # function: the masks are applied, keyed by the session key, fresh per round, and cancel to a
+      # function: the masks are applied, keyed by each pair's X25519 secret through HKDF and untouched
+      # by the session key (Round 84; until then they came from it), fresh per round, and cancel to a
       # bit-identical weighted mean. Five seeded defects were each caught by the assertion written
       # for them before this was wired here.
       - name: Federated secure aggregation

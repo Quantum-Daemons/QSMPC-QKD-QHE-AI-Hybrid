@@ -97,8 +97,12 @@ def default_registry() -> CryptoRegistry:
     # asks the registry for whatever "bb84-decoy" means. One place decides what the name means. The
     # two surfaces that bypass the registry are fixed separately, and both directions are guarded by
     # `tests/test_the_browser_computes_the_bound_the_page_names.py`.
+    # A caller may name its own source (Round 84: the fibre stage passes the run's intensity pair);
+    # without one the name means the configured `QKDParams()`, as before.
     reg.register("qkd", "bb84-decoy",
-                 lambda **kw: run_bb84(qkd_params=QKDParams(), **kw), default=True)
+                 lambda qkd_params=None, **kw: run_bb84(
+                     qkd_params=QKDParams() if qkd_params is None else qkd_params, **kw),
+                 default=True)
     reg.register("qkd", "pqc-only", lambda **kw: None)
 
     # FHE family: commercial-OK CKKS only -- TenSEAL CPU (default, Apache-2.0) and

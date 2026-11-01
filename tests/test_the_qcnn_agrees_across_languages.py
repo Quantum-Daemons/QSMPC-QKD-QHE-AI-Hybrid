@@ -36,6 +36,7 @@ so it is stated below and asserted.
 from __future__ import annotations
 
 import json
+import math
 import subprocess
 import sys
 import tempfile
@@ -138,9 +139,14 @@ def _standardise(x, w) -> "torch.Tensor":
     Getting this wrong does not look like a contract error, it looks like a physics disagreement:
     standardising twice gave an apparent delta of 6.3e-01 with the sign inverted, and supplying 8
     columns to a 7-feature model gave 4.7e-03. Both were mistaken for real divergences.
+
+    ROUND 84: the trainer's input is `c * tanh(standardise(u))`, with c the artifact's
+    `encoding_scale` (absent = 1), because that is what it was trained on; the browser multiplies
+    its angle by the same c.
     """
+    c = float(w.get("encoding_scale", 1.0))
     if w.get("input_space") != "raw":
-        return torch.tanh(x)
+        return c * torch.tanh(x)
     mean = torch.tensor(w["feature_mean"], dtype=torch.float32)
     std = torch.tensor(w["feature_std"], dtype=torch.float32)
     assert mean.shape == std.shape, "feature_mean and feature_std disagree in length"
@@ -148,7 +154,12 @@ def _standardise(x, w) -> "torch.Tensor":
         f"the artifact standardises {len(mean)} columns but declares n_features={w['n_features']}"
     )
     n = x.shape[1]
-    return torch.tanh((x - mean[:n]) / torch.clamp(std[:n], min=1e-9))
+    return c * torch.tanh((x - mean[:n]) / torch.clamp(std[:n], min=1e-9))
+
+
+def _arch(w: dict) -> str:
+    """The circuit the artifact's angles belong to. Absent = the tree, the only one before Round 84."""
+    return str((w.get("circuit") or {}).get("name", "tree"))
 
 
 def _browser_probs(rel_dir: str, fname: str, rows: list[list[float]]) -> list[list[float]]:
@@ -208,13 +219,14 @@ def test_the_browser_and_the_trainer_compute_the_same_circuit(rel_dir: str, fnam
         x = torch.cat([x, torch.zeros(x.shape[0], nq - x.shape[1])], dim=1)
 
     theta = torch.tensor(w["theta"], dtype=torch.float32)
-    assert len(theta) == q.param_count(nq, readout_qubits=ro, layers=layers), (
-        f"{path.relative_to(REPO)} ships {len(theta)} angles; the circuit at nq={nq}, "
+    arch = _arch(w)
+    assert len(theta) == q.param_count(nq, readout_qubits=ro, layers=layers, arch=arch), (
+        f"{path.relative_to(REPO)} ships {len(theta)} angles; the {arch} circuit at nq={nq}, "
         f"layers={layers}, readout={ro} needs "
-        f"{q.param_count(nq, readout_qubits=ro, layers=layers)}"
+        f"{q.param_count(nq, readout_qubits=ro, layers=layers, arch=arch)}"
     )
 
-    mine = q.circuit(x, theta, nq=nq, readout_qubits=ro, layers=layers).detach()
+    mine = q.circuit(x, theta, nq=nq, readout_qubits=ro, layers=layers, arch=arch).detach()
     theirs = torch.tensor(_browser_probs(rel_dir, fname, rows), dtype=torch.float32)
     if mine.dim() == 1:
         mine = mine.unsqueeze(1)
@@ -227,8 +239,8 @@ def test_the_browser_and_the_trainer_compute_the_same_circuit(rel_dir: str, fnam
         f"same weights - maximum readout difference {delta:.6f}.\n\n"
         "Both implement the same architecture on paper. When they diverge it is because one was "
         "changed and the other was not, which is this project's most-repeated defect. Compare the "
-        "parameter LAYOUT first: conv (stages, layers, 8), then pool (stages,), then fc "
-        "(survivors, 2), flat in that order."
+        "parameter LAYOUT first: conv (stages, layers, 8 or 15), then pool (stages,) or "
+        "(stages, 2), then fc (survivors, 2), flat in that order."
     )
     if ro:
         argmax_mine = mine.argmax(1)
@@ -282,7 +294,7 @@ def test_the_numpy_inference_path_computes_the_same_circuit(usecase: str) -> Non
         x = torch.cat([x, torch.zeros(x.shape[0], nq - x.shape[1])], dim=1)
     theta = torch.tensor(w["theta"], dtype=torch.float32)
 
-    mine = q.circuit(x, theta, nq=nq, readout_qubits=ro, layers=layers).detach().numpy()
+    mine = q.circuit(x, theta, nq=nq, readout_qubits=ro, layers=layers, arch=_arch(w)).detach().numpy()
     theirs = np.array([infer([float(v) for v in r], w)[0] for r in rows])
     delta = float(np.max(np.abs(mine - theirs)))
     assert delta < 1e-4, (
@@ -392,15 +404,16 @@ def test_the_comparison_would_notice_a_divergence():
         x = torch.cat([x, torch.zeros(x.shape[0], nq - x.shape[1])], dim=1)
 
     theta = torch.tensor(w["theta"], dtype=torch.float32)
-    good = q.circuit(x, theta, nq=nq, readout_qubits=ro, layers=layers).detach()
+    arch = _arch(w)
+    good = q.circuit(x, theta, nq=nq, readout_qubits=ro, layers=layers, arch=arch).detach()
 
-    shapes = q.param_shapes(nq, readout_qubits=ro, layers=layers)
+    shapes = q.param_shapes(nq, readout_qubits=ro, layers=layers, arch=arch)
     n_conv = shapes["conv"][0] * shapes["conv"][1] * shapes["conv"][2]
-    n_pool = shapes["pool"][0]
+    n_pool = math.prod(shapes["pool"])          # (stages,) for the tree, (stages, 2) for SU(4)
     bad = theta.clone()
     # Collapse the per-survivor block back to a single shared angle: the pre-Round-47 browser.
     bad[n_conv + n_pool:] = theta[n_conv + n_pool]
-    altered = q.circuit(x, bad, nq=nq, readout_qubits=ro, layers=layers).detach()
+    altered = q.circuit(x, bad, nq=nq, readout_qubits=ro, layers=layers, arch=arch).detach()
 
     delta = float((good - altered).abs().max())
     assert delta > 1e-3, (

@@ -4,10 +4,15 @@ Several hospitals jointly train a diagnostic model without sharing patient data
 (federated learning with pairwise-mask aggregation), then a clinician runs a
 private inference that never exposes the patient's record to the server.
 
-The aggregation masks cancel exactly but hide nothing here: their pair keys are a public
-constant (see :mod:`qsh.ai.federated`). And the inference keeps the record from the server, not
-the model from the client: where the CNN variant runs the masked FHE-to-MPC conversion, it
-protects CKKS slot 0 only (see :mod:`qsh.mpc.secret_inference`).
+Each pair of hospitals agrees its mask seed by X25519 for the run, so an aggregator holding only the
+public keys and the masked updates cannot remove a mask; the masks are reals added in float64 and
+hide an update only partially, every hospital runs in this process, and there is no dropout
+recovery or key authentication (see :mod:`qsh.ai.federated`).
+Where the CNN variant runs the masked FHE-to-MPC
+conversion, every CKKS slot the client can decode is masked since Round 84 (independent masks in
+each real and imaginary part on TenSEAL), so the client's whole view is bounded per run by
+``view_statistical_distance``; it is semi-honest with an honest majority, and the class index it
+receives is still an output (see :mod:`qsh.mpc.secret_inference`).
 
 Maps to: QHE/FHE (private inference) + secure-aggregation-style masking on a PQC
 transport with simulated QKD key material. Default data: Wisconsin breast-cancer (bundled, fast). Set
@@ -37,7 +42,7 @@ from ...orchestration.stages import (
 
 
 class FederatedTrainingStage(Stage):
-    """Train across virtual hospitals with pairwise-mask aggregation (public demo keys)."""
+    """Train across virtual hospitals with pairwise-mask aggregation, each pair's seed agreed by X25519."""
 
     name = "federated_training"
 
@@ -90,8 +95,12 @@ class FederatedTrainingStage(Stage):
                 f"(no raw patient data shared)", self.name)
 
 
-def _data(config: dict) -> tuple[np.ndarray, np.ndarray, object, np.ndarray]:
-    """Default: Wisconsin breast-cancer tabular (bundled, fast — keeps the default + tests light)."""
+def _data(config: dict) -> tuple[np.ndarray, np.ndarray, object, np.ndarray, int]:
+    """Default: Wisconsin breast-cancer tabular (bundled, fast - keeps the default + tests light).
+
+    Returns the patient's row index too, so the QCNN's raw row (:func:`_qcnn_features`) is the SAME
+    patient's rather than a second copy of the selection rule below.
+    """
     from sklearn.linear_model import LogisticRegression
 
     from ...data.loaders import load_breast_cancer
@@ -101,9 +110,34 @@ def _data(config: dict) -> tuple[np.ndarray, np.ndarray, object, np.ndarray]:
     clf = LogisticRegression(max_iter=1000).fit(X, y)
     w = np.vstack([np.zeros_like(clf.coef_[0]), clf.coef_[0]])
     b = np.array([0.0, float(clf.intercept_[0])])
-    patient = X[y == 0][0].astype(float)            # a malignant case to score privately
-    #                ^ MedMNIST BreastMNIST labels malignant as 0, not 1
-    return X, y.astype(np.int64), LinearModel(w.astype(float), b), patient
+    idx = int(np.flatnonzero(y == 0)[0])            # a malignant case to score privately
+    #                                ^ WDBC (scikit-learn) labels malignant as 0, not 1
+    patient = X[idx].astype(float)
+    return X, y.astype(np.int64), LinearModel(w.astype(float), b), patient, idx
+
+
+def _qcnn_features(row_index: int) -> np.ndarray:
+    """One WDBC patient's RAW values in the trained QCNN's own column order (Round 84).
+
+    The artifact names its 8 columns (`feature_names`: mean radius ... worst symmetry) and declares
+    `input_space: "raw"`, which it standardises with its own training moments. The stage used to hand
+    it `features`, the CKKS model's 30-column z-score row, whose first 8 columns are different
+    measurements (mean compactness sat where it expects worst radius) in different units. A space
+    other than raw is refused rather than guessed: this function has raw values and nothing else.
+    """
+    from sklearn.datasets import load_breast_cancer as _skbc
+
+    from ...qhe.qcnn_trained import load_weights
+
+    w = load_weights("medical_fl")
+    if not w:
+        raise ValueError("no trained medical QCNN artifact to take the columns from")
+    if w.get("input_space") != "raw":
+        raise ValueError(f"the medical QCNN declares input_space {w.get('input_space')!r}; "
+                         "this use case supplies raw WDBC values only")
+    ds = _skbc()
+    names = list(ds.feature_names)
+    return ds.data[row_index, [names.index(n) for n in w["feature_names"]]].astype(float)
 
 
 def _medmnist_data(config: dict):
@@ -191,14 +225,24 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
         config["model"] = "cnn"
         X, y, model, patient, image = _medmnist_data(config)
         feature_names = [f"px({r},{c})" for r in range(image.shape[1]) for c in range(image.shape[2])]
+        patient_index = None
     else:
-        X, y, model, patient = _data(config)
+        X, y, model, patient, patient_index = _data(config)
     ctx = Context(
         usecase="medical_fl",
         config={"inference": "ckks", "qkd": config.get("qkd", "bb84-decoy"),
                 "hospitals": 4, "rounds": 6, **config},
     )
     ctx.data.update(X=X, y=y, linear_model=model, features=patient)
+    # The trained QCNN's own row, in its declared columns and units, only where it will be read: a
+    # run that selects QCNN on the tabular data. The CNN variant has no QCNN artifact.
+    if patient_index is not None and ctx.config.get("inference") == "qcnn":
+        ctx.data["qcnn_features"] = _qcnn_features(patient_index)
+        # THE TWO PATHS COUNT MALIGNANT DIFFERENTLY. The QCNN trainer labels malignant 1
+        # (`scripts/train/qcnn_variational.py`: y = target == 0), while this use case keeps
+        # scikit-learn's WDBC convention, malignant 0, which the CKKS branch reports. Without the
+        # map, `private_diagnosis` meant opposite things depending on the backend selected.
+        ctx.data["qcnn_class_to_case"] = {0: 1, 1: 0}
     # SHAP reference point E[x], not the zero vector. Round 22 supplied this for finance,
     # genomics and satellite and MISSED medical, so the Python attribution here was measured
     # against a patient whose every feature is zero - not a patient - while the browser path

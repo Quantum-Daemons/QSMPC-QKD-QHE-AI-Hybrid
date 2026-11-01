@@ -12,9 +12,10 @@ unconditionally, so the headline is minority-class F1 with AUPRC beside it, and 
 (about 0.001) is printed so the lift is legible.
 
 Baseline to beat: GFP+XGBoost minority-class F1 63.23 +/- 0.17 (NeurIPS 2023 D&B).
-Best published:   MEGA-GenAgg 74.88 +/- 0.38 (arXiv:2412.00241v2 Table 2; v3 accepted in TMLR
-                  2026); the registry's ceiling is that table's MEGA-PNA row, 74.01. Multi-PNA+EU
-                  (AAAI-24, 68.16 +/- 2.65) is no longer the state of the art.
+Best published:   Multi-FraudGT 75.81 +/- 0.75 on AML Small HI (MEGA, TMLR 08/2026,
+                  arXiv:2412.00241v3, Table 16), the registry's ceiling; the paper's own MEGA-PNA
+                  scores 74.01 +/- 1.55 there. Multi-PNA+EU (AAAI-24, 68.16 +/- 2.65) is no longer
+                  the state of the art.
 
 The split is temporal, not random. Transactions are a time series and a random split leaks the
 future into the past through the per-account aggregates, which inflates every number.

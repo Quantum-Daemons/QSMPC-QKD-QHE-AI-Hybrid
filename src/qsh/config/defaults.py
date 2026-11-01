@@ -160,7 +160,9 @@ class QKDConfig:
     #   fibre loss             0.2 dB/km 0.2 dB/km*   0.2              0.21
     #   error correction f_EC  1.16      -            1.16             1.22**
     #
-    # * Table I's distances follow 0.2 dB/km. ** GYS states no f: 1.22 is Ma et al.'s own choice for
+    # * Table I's distances follow 0.2 dB/km plus 6 dB of receiver loss (26 dB at 100 km, 46 dB at
+    # 200 km): "the detector and the internal losses of Bob's apparatus are included in the global
+    # attenuation". This model adds only its detectors' 3 dB, so its 50 km is their 35 km. ** GYS states no f: 1.22 is Ma et al.'s own choice for
     # the GYS link ("the upper bound of f(e) in secure distance for this experiment"); 1.16 is
     # Cascade's efficiency at 1-5% error as tabulated by Lutkenhaus, PRA 61, 052304 (2000),
     # arXiv:quant-ph/9910093, and Rusca et al. state none.
@@ -171,7 +173,7 @@ class QKDConfig:
     # paper's counts and its rate was 3.1x the paper's BB84 rate. Lucamarini's set was not adopted:
     # it was measured with three intensities, and under this project's 1-decoy finite-key analysis,
     # with the error floor set to reproduce its 4.26% QBER, it needs 7e8 to 2e9 pulses for any key.
-    fiber_loss_db_per_km: float = 0.2         # Rusca 2018's Table I distances; GYS 0.21
+    fiber_loss_db_per_km: float = 0.2         # Rusca 2018's fibre (Table I adds 6 dB of receiver loss); GYS 0.21
     detector_efficiency: float = 0.5          # Rusca 2018: "an efficiency (eta_det around 50%)"
     dark_count_prob: float = 1e-8             # Rusca 2018: "DCR of 10 Hz which correspond to pDC = 1e-8"
     misalignment: float = 0.01                # Rusca 2018: "We choose a typical value pErr of 1%"
@@ -193,7 +195,7 @@ class QKDConfig:
     # their detector set comes from run about 8.2e6 (Boaron et al. 2018; Grunenfelder et al. 2020),
     # and Li et al. 2023 1e8 out to 101 km. A fixed time (Lucamarini et al.'s 20 min) and a pulse count
     # are the minority, and a pulse count mostly a theorist's convention. On this channel the 1e7
-    # block is 5.3 s at 50 km and 35 s at 100 km, and carries about 5.1 Mbit at either: the key per
+    # block is 5.3 s at 50 km and 35 s at 100 km, and carries 5,214,327 bits at 50 km and 5,156,039 at 100 km, about 5.2 Mbit at either: the key per
     # block barely moves with distance, the time to fill it does.
     finite_key_block: str = "pa_bits"
     finite_key_block_seconds: float = 1.0
@@ -271,8 +273,8 @@ class QKDConfig:
     # check counts the same way (`tests/test_the_satellite_channel_is_sourced.py`):
     #
     #   anchor   detections over the pass    sifted at 645 km      at 1200 km          645 -> 1200 km
-    #   5.5 dB   3,517,343  (-1.0%)          10,879 (-0.43 dB)     1,570 (+1.96 dB)    8.41 dB
-    #   8.0 dB   2,556,307  (-28.0%)          8,390 (-1.55 dB)       883 (-0.54 dB)    9.78 dB
+    #   5.5 dB   3,519,418  (-0.9%)          10,881 (-0.42 dB)     1,572 (+1.96 dB)    8.40 dB
+    #   8.0 dB   2,558,442  (-28.0%)          8,392 (-1.55 dB)       885 (-0.53 dB)    9.77 dB
     #   Liao     3,551,136                   ~12 kbit/s             ~1 kbit/s          10.79 dB
     #
     # The 8 dB upper value ships as its own profile, `micius_2017_upper_atmosphere`. At the 800 km
@@ -330,13 +332,16 @@ class QKDConfig:
     free_space_eps_sec: float = 1e-9
     free_space_pointing_db: float = 3.0             # Liao's upper value, "less than 3 dB"; not scaled
     # --- decoy-state / efficient-BB84 parameters the AI optimizer (qkd/optimize.py) tunes ---
-    # THE INTENSITIES ARE NOW THE FINITE-KEY OPTIMUM, NOT THE ASYMPTOTIC ONE, and the difference
+    # THE INTENSITIES ARE NOW A FINITE-KEY CHOICE, NOT THE ASYMPTOTIC OPTIMUM, and the difference
     # is the point. mu ~ 0.5 is the textbook optimum for the ASYMPTOTIC decoy rate ON THE GYS LINK
     # (Ma et al.: 0.48 at f = 1.22), and that is what these were. This channel's own asymptotic
     # optimum is elsewhere again (row four below). But the quantity that decides whether this demo
-    # distributes a key at all is the composable finite-key length, and its optimum is elsewhere: `finite_key.optimise_parameters`
-    # searches exactly the variables Rusca et al. say they optimise - the intensities, their
-    # probabilities, and the basis bias - by differential evolution, and lands here.
+    # distributes a key at all is the composable finite-key length, and its optimum is elsewhere:
+    # `finite_key.optimise_parameters` MINIMISES THE PULSES A POSITIVE KEY NEEDS (the threshold
+    # column below) over exactly the variables Rusca et al. say they optimise - the intensities, their
+    # probabilities, and the basis bias - by differential evolution, and landed here in Round 47.
+    # Which objective a pair optimises matters: the next paragraph has a pair that wins on this one
+    # and loses on the key of the block the page computes.
     #
     # Measured trade, at the shipped 50 km channel, ON THE RUSCA SET OF ROUND 76 with its dead time
     # (asymptotic: Ma et al.'s one-decoy Eq. (41) times the dead-time factor; thresholds:
@@ -349,25 +354,33 @@ class QKDConfig:
     #     mu=0.375,  nu=0.129    asymptotic 0.002968 bit/pulse   threshold 3.37e6 pulses (5.27e6)
     #     mu=0.51,   nu->0       asymptotic 0.003572 bit/pulse   threshold diverges (1.7e7 at nu = 0.01)
     #
-    # ROUND 82 MOVED THE OPTIMUM AND THE PAIR STAYED. Under the default statistics the two-parameter
-    # optimum is mu = 0.399, nu = 0.098 at 3.31e6, and the shipped pair is 9 percent above it; under
-    # Hoeffding alone it is mu = 0.336, nu = 0.119 at 5.23e6, the pair 2.3 percent above. Kept: the
-    # shipped 2e7 block clears either threshold, 5.6x and 3.7x, and moving the pair would move every
-    # asymptotic figure the pages and documents quote.
+    # ROUND 82 MOVED ONE OPTIMUM AND THE PAIR STAYED, and the two optima answer different questions.
+    # The rows' THRESHOLD - the fewest pulses that carry any positive key - is minimised under the
+    # default statistics at mu = 0.399, nu = 0.098: 3.31e6 pulses (3,312,035), where the shipped pair
+    # needs 3.60e6 (3,595,158), 9 percent more; under Hoeffding alone at mu = 0.336, nu = 0.119, 5.23e6,
+    # the pair 2.3 percent above. But the block a key is computed on is the default 1e7-bit
+    # privacy-amplification block (`finite_key_block` below), and on it the SHIPPED pair carries more:
+    # 5,214,327 bits in 5.33e9 pulses against 4,977,636 in 5.25e9 at 0.399/0.098, 9.78e-4 against
+    # 9.49e-4 bits per pulse sent, and 2.0 percent below the best of a 0.02 x 0.01 grid over the two
+    # intensities at p_signal = p_z = 0.5 (9.98e-4 at mu = 0.36, nu = 0.20). Kept, then: on that block
+    # the pair clears its own thresholds about 1,480 and 1,000 times over (default statistics,
+    # Hoeffding), and moving it would move every asymptotic figure the pages and documents quote.
     #
     # THESE RATES ARE PER SIGNAL PULSE, the convention until Round 78. The pages now count per pulse
     # SENT (the user's choice): only the p_signal share of the pulses carries key, so at the shipped
-    # p_signal = 0.5 each reads half - the shipped pair's 0.002853 is 0.001427 bit/pulse on the page,
-    # 28,534 bits in the 2e7-pulse block asymptotically. The comparison between rows does not change.
-    # Since Round 80 the page's KEY is not that product: it is the block's composable finite key
-    # (`finite_key_block` below), 11,314 bits for the same 2e7 pulses since Round 82 (9,217 under
-    # Hoeffding alone; 9,811 before (A16) was corrected).
+    # p_signal = 0.5 each reads half - the shipped pair's 0.002853 is 0.001427 bit/pulse on the page.
+    # The comparison between rows does not change. Since Round 80 the page's KEY is not a rate times
+    # pulses: it is the composable finite key of a block, the 1e7-bit block above by default. The run's
+    # own 2e7 pulses, which sample its QBER, carry 28,534 bits at the asymptotic rate and 11,314 as a
+    # finite-key block of their own (the `pulses` block kind; 9,217 under Hoeffding alone).
     #
-    # Row three is this channel's own finite-key optimum, and the shipped pair is within 3% of its
-    # threshold, so the intensities did not move with the detector set or with Round 79's two
-    # corrections to `finite_key.py` (the phase-error constant, and the decoy's errors bounding the
-    # vacuum; before them the rows read 1.04e7 / 5.88e6 / 5.85e6, row three at mu = 0.319, and the
-    # shipped pair was within 0.6%). Row four is the asymptotic optimum: a decoy that weak
+    # Row three was this channel's threshold optimum after Round 79's two corrections to
+    # `finite_key.py` (the phase-error constant, and the decoy's errors bounding the vacuum), at
+    # 4.64e6 with the shipped pair within 3%, so the intensities did not move with the detector set or
+    # with those corrections (before them the rows read 1.04e7 / 5.88e6 / 5.85e6, row three at
+    # mu = 0.319, and the shipped pair was within 0.6%). Since Round 82 the shipped pair needs 6.5
+    # percent more pulses than row three under the default statistics and 1.4 percent more under
+    # Hoeffding, and the optima are the pairs above. Row four is the asymptotic optimum: a decoy that weak
     # approximates a vacuum state, and the block the finite-key bound needs grows without limit as
     # it does - 1.6e8 pulses at nu = 0.01, past 1e11 by nu = 1e-4. Without the dead time the shipped
     # pair's asymptotic rate would read 0.004565.
@@ -385,8 +398,18 @@ class QKDConfig:
     #
     # Chosen by an optimiser, so the value is reproducible rather than tuned by hand:
     #   python -c "from qsh.qkd.finite_key import optimise_parameters; print(optimise_parameters()[0])"
-    mu_signal: float = 0.3416         # finite-key optimum (Round 47; within 3% on the Rusca set); GYS: ~0.5
+    mu_signal: float = 0.3416         # minimises the pulses a positive key needs (Round 47); GYS: ~0.5
     mu_decoy: float = 0.1417          # decoy mean photon number, optimised jointly with the signal
+    # THE OTHER PAIR, AND A CHOICE BETWEEN THE TWO (Round 84, the user's choice: make both selectable).
+    # The paragraph above has the trade on the shipped 50 km fibre: `mu_signal` / `mu_decoy` carry more
+    # key on the default 1e7-bit block (5,214,327 bits against 4,977,636), and this pair needs the
+    # fewest pulses before any key exists under the default statistics (3,312,035 against 3,595,158).
+    # A fibre run takes the pair `intensity_preset` names, or its own `qkd_intensities`:
+    # "block_key" (the two fields above) or "first_key" (these two). `qkd.bb84.fibre_source` reads
+    # them in Python and `fibreIntensities` in the browser; the satellite keeps its profile's source.
+    first_key_mu_signal: float = 0.399
+    first_key_mu_decoy: float = 0.098
+    intensity_preset: str = "block_key"
     basis_prob: float = 0.5           # P(Z basis) — biased-basis (efficient) BB84 raises the sift ratio
     #: QBER abort threshold, and it is a FIBRE-QKD post-processing figure - not a QSDC one.
     #:
@@ -437,10 +460,10 @@ class QKDConfig:
 @dataclass
 class QRNGConfig:
     """Quantum random-number generator (entropy source). Default = a local state-vector
-    quantum-measurement simulation (honest: simulated, not hardware); optional ANU QRNG API is opt-in."""
+    quantum-measurement simulation (honest: simulated, not hardware); optional ANU QRNG API is opt-in and needs an API key read from QSH_ANU_API_KEY."""
     enabled: bool = False             # off by default -> BB84 entropy unchanged unless opted in
     bits: int = 4096
-    source: str = "sim"               # "sim" (offline default) | "anu" (opt-in, online hardware)
+    source: str = "sim"               # "sim" (offline default) | "anu" (opt-in, online hardware, key in QSH_ANU_API_KEY)
     post_processing: str = "von_neumann"   # "von_neumann" | "toeplitz" | "seedless" | "none"
     anu_opt_in: bool = False          # must be True to allow the online ANU source (subject to ANU terms)
     health_alpha: float = 0.01        # SP800-22 significance level
@@ -603,8 +626,8 @@ class DataConfig:
     #: run, and cannot be compared against what the browser fetched. A value that selects a model
     #: belongs here beside the KEM and the FHE backend. Valid names are the keys of
     #: `qsh.data.loaders._PRS_FILES`; `tests/test_prs_pipeline_parity.py` pins this against the
-    #: browser payload the registry points at.
-    genomics_prs_score: str = "breast_cancer_prs313"
+    #: browser payload the registry points at. PGS000072 (Graff et al. 2021, CC BY 4.0).
+    genomics_prs_score: str = "breast_cancer_pgs000072"
 
 
 @dataclass
@@ -621,9 +644,11 @@ class BenchmarkConfig:
     mpc_threshold: int = 1                  # corrupted parties tolerated
     mpc_sec_param: int = 40                 # statistical security, as the browser's Polytune tier uses
     # The masks of the hybrid's FHE <-> MPC conversions (qsh/mpc/secret_inference.py), uniform on
-    # [-2^b, 2^b). A value of size B behind one is hidden to statistical distance B / 2^b, which each
-    # run reports. 30 is the most 64-bit fixed point holds (integer part 2^31) and costs no precision
-    # measured through a CKKS round trip: 5e-7 at 2^30 against 8e-6 at 2^36 and 2e-4 at 2^40.
+    # [-2^b, 2^b), in EVERY slot the client decodes since Round 84. A value of size B behind one is
+    # hidden to statistical distance B / 2^b, which each run reports. 30 is the most 64-bit fixed
+    # point holds (integer part 2^31), and it is also the cheapest in precision: measured through the
+    # conversion with every slot masked (400 draws, worst case), 8.8e-7 at 2^30 against 3.8e-5 at
+    # 2^36 and 6.3e-4 at 2^40. (Round 75's scalar mask, slot 0 only: 5e-7, 8e-6 and 2e-4.)
     mpc_mask_bits: int = 30
     # per-use-case architectures (web-grounded). lightweight === the trained linear model (faithful SHAP);
     # medium/large are representative hidden-layer shapes. The encrypted hybrid preserves the plaintext
@@ -633,8 +658,11 @@ class BenchmarkConfig:
                         "hidden": {"lightweight": [], "medium": [32, 16], "large": [128, 64]}},
         "medical_fl": {"label": "diagnostic net (MedMNIST-scale)",
                        "hidden": {"lightweight": [], "medium": [64, 32], "large": [256, 128]}},
-        "genomics": {"label": "genomic risk MLP",
-                     "hidden": {"lightweight": [], "medium": [64], "large": [256, 128]}},
+        # NOT AN MLP (Round 84). This was "genomic risk MLP" with a 64-unit hidden layer at medium,
+        # a model nothing trains and the registry calls "not a neural network", priced x33 over the
+        # dot product that runs. The score is one weighted sum, so every size prices that shape.
+        "genomics": {"label": "polygenic score: one weighted sum over its variants, not a neural network",
+                     "hidden": {"lightweight": [], "medium": [], "large": []}},
     })
     generic_architecture: dict = field(default_factory=lambda: {
         "lightweight": [], "medium": [16], "large": [64, 32]})    # standalone benchmark (no use case)
@@ -829,6 +857,12 @@ class WebConfig:
     # pulse SENT since Round 78 - Micius sends signals on half its pulses - that is 1.678e-5: 335
     # secure bits at 20e6, and 167 at 10e6, which would not clear the 256, so 20e6 stays.
     demo_sat_pulses: int = 20_000_000   # the satellite run's sampled pulses at its range (Round 79: not the key's block)
+    # The share of a run's secure key bits the control-plane panel allocates to the MCP agent's SAE,
+    # to show the budget drawing down: an ILLUSTRATIVE demand, not a measured one, and browser-only
+    # (the Python SdnController allocates nothing). Config since Round 84, after a bare `* 0.25` in
+    # the panel; `SAE_DEMO_ALLOCATION_FRACTION` in web/src/lib/clientSdnController.ts is its default
+    # for a served config that predates the key, and the panel prints the value it used.
+    sdn_sae_allocation_fraction: float = 0.25
 
 
 @dataclass

@@ -17,7 +17,7 @@ the corrections the checks have made are recorded in
 
 **So the claim is the composition, not either half:** PQC key establishment to a simulated QKD link
 (it yields a key length, not key bytes) to secure multiparty computation to homomorphic evaluation to
-model inference, chained end to end in one browser tab with zero server compute. The two MPC parties
+model inference, chained end to end in one browser tab with zero server compute, in the client-only build the public demo ships. The two MPC parties
 are notional and the quantum channel is simulated, because no browser API for QKD exists. What is
 and is not new, the positioning (quantum-safe, not quantum-advantage) and the four workstreams:
 [`docs/use-cases.md`](docs/use-cases.md).
@@ -30,13 +30,18 @@ and is not new, the positioning (quantum-safe, not quantum-advantage) and the fo
 |---|---|---|---|
 | Post-quantum cryptography | ML-KEM-768 + X25519 hybrid key agreement, ML-DSA-65 signatures | real, in the browser and in Python | FIPS 203 and FIPS 204; NIST's ACVP cases for ML-KEM-768 |
 | QKD on fibre | BB84 decoy-state and E91; the BB84 key is a composable finite key over a privacy-amplification block of 1e7 key-basis bits, E91's stays asymptotic | simulated channel, real bounds | Ma et al. 2005; Rusca et al. 2018 Table I (26 dB row within 2 percent); Yin et al. 2020's Chernoff-type statistics |
-| QKD from a satellite | Micius downlink; the key is the finite key of one pass; a trusted relay and a constellation | simulated | Liao et al. 2017's pass (detections within 1 percent; the key 0.75 of theirs), 23 measured Micius nights, Lim et al. 2014 |
+| QKD from a satellite | Micius downlink; the key is the finite key of one pass; a trusted relay and a constellation | simulated | Liao et al. 2017's pass (detections within 1 percent; the key 0.75 of theirs on one basis, 1.50 on both, as they keyed it), 23 measured Micius nights, Lim et al. 2014 |
 | QRNG | quantum-measurement simulation with SP 800-90B health tests and seeded or seedless extraction | simulated source, real tests | NIST SP 800-90B |
-| Private inference | CKKS linear layers (node-seal) and a garbled-circuit 2PC for the non-linear part (Polytune) | real protocols, notional parties | plaintext against CKKS on the same inputs |
-| QSMPC | a keyed-hash set intersection (it does not hide either bank's list from the other) and secure summation; quantum forms in the full deployment | computed in the browser with both parties in one tab (notional parties), simulated quantum forms | the plaintext result |
+| Private inference | CKKS linear layers (node-seal) and a garbled-circuit 2PC for the argmax (Polytune); between the medical CNN's encrypted layers, ReLU and pooling run in plaintext | real protocols, notional parties | plaintext against CKKS on the same inputs |
+| QSMPC | a semi-honest set intersection on RFC 9497's OPRF over ristretto255 (not post-quantum) and secure summation; quantum forms in the full deployment | computed in the browser with both parties in one tab (notional parties), simulated quantum forms | the plaintext result; the RFC 9496 and RFC 9497 test vectors, in Python and in the browser |
 | QHE and QML | quantum one-time pad, an untrained Clifford+T comparison circuit, trained QCNNs (not encrypted), a QML intrusion detector | simulated circuits | the QCNNs against a logistic-regression baseline on the same split |
 | Models | eleven published models, run with ONNX Runtime in the browser | real inference | per-model metrics and model cards |
 | Agentic AI | a small language model in the browser over a quantum-safe MCP channel | real | signed tool results |
+
+What each step hides, in the browser and in the full deployment:
+[`docs/threat-model.md`](docs/threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment).
+How the QKD keys are counted, and checked against Rusca et al.'s table and the flown keys:
+[`docs/models-and-benchmarks.md`](docs/models-and-benchmarks.md#the-qkd-key-blocks).
 
 ---
 
@@ -91,7 +96,7 @@ flowchart TB
 | Use case | Industry | Its own stages |
 |---|---|---|
 | `finance_aml` | finance, AML | PSI over cross-bank blacklists, federated training, FHE fraud inference |
-| `medical_fl` | healthcare | federated training with pairwise masks (they do not hide updates from the aggregator), private diagnosis: the encrypted CNN reads a tabular (WDBC) row tiled to the image size in the browser, and MedMNIST images only in the full deployment |
+| `medical_fl` | healthcare | federated training with pairwise masks whose seeds each pair of hospitals agrees by X25519 (no dropout recovery, no public-key authentication), private diagnosis: the encrypted CNN reads a tabular (WDBC) row tiled to the image size in the browser, and MedMNIST images only in the full deployment |
 | `genomics` | genomics | secure summation of pooled allele counts, FHE |
 | `telecom_ids` | telecom, defence | simulated QKD with an optional eavesdropper, a QML intrusion detector |
 | `satellite_comms` | satellite | simulated free-space QKD over a model of the Micius downlink, and a QSDC feasibility check with an inline eavesdrop check |
@@ -108,14 +113,14 @@ flowchart TB
   D["Data: PaySim simulator sample, 400 transactions, synthetic"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
-  Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
+  Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
-  P["PSI: HMAC-SHA256 keyed by the session key, over two banks' account lists"]
+  P["PSI: OPRF (RFC 9497, ristretto255-SHA512) over two banks' account lists"]
   FL["Federated training, in the browser: 4 clients, 6 rounds of FedAvg, pairwise masks"]
   I["Private inference: CKKS linear layer (node-seal), garbled-circuit argmax (Polytune)"]
+  X["Explainability: exact linear SHAP, signed"]
   M["Published model: finance_aml.gbm on ONNX Runtime Web"]
-  X["Explainability (full deployment)"]
   C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
@@ -127,13 +132,10 @@ flowchart TB
   L --> P
   P --> FL
   FL --> I
-  I --> M
-  I -.-> X
-  X -.-> C
+  I --> X
+  X --> M
   M --> C
   C --> S
-  classDef full stroke-dasharray: 5 3
-  class X full
 ```
 
 </details>
@@ -144,16 +146,16 @@ flowchart TB
 <!-- figure: uc-medical_fl -->
 ```mermaid
 flowchart TB
-  D["Data: Wisconsin breast-cancer measurements, 400 rows, real"]
+  D["Data: Wisconsin breast-cancer measurements, 569 rows, real"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
-  Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
+  Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
   FL["Federated training: 4 hospitals, 6 rounds of FedAvg, pairwise masks"]
   I["Private inference: CKKS linear layer and an encrypted 4x14x14 CNN (node-seal), garbled-circuit argmax"]
+  X["Explainability: exact linear SHAP, signed"]
   M["Published model: medical_fl.resnet18 on a BreastMNIST image, ONNX Runtime Web"]
-  X["Explainability (full deployment)"]
   C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
@@ -164,13 +166,10 @@ flowchart TB
   N --> FL
   L --> FL
   FL --> I
-  I --> M
-  I -.-> X
-  X -.-> C
+  I --> X
+  X --> M
   M --> C
   C --> S
-  classDef full stroke-dasharray: 5 3
-  class X full
 ```
 
 </details>
@@ -181,16 +180,16 @@ flowchart TB
 <!-- figure: uc-genomics -->
 ```mermaid
 flowchart TB
-  D["Data: 30 real 1000 Genomes individuals, PGS000004 weights over 313 variants"]
+  D["Data: 30 real 1000 Genomes individuals, PGS000072 weights over 183 of its 187 variants"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
-  Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
+  Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
-  P["Secure sum of 4 cohorts' allele counts at one variant: additive shares mod p in the browser, QSMS over a GHZ state in the full deployment"]
-  I["Private inference: CKKS sign test on 8 of the 313 variants (node-seal), garbled-circuit argmax"]
+  P["Secure sum of 4 cohorts' allele counts at one variant, in a field above any total they can reach: additive shares mod p in the browser, QSMS with analytically sampled outcomes in the full deployment"]
+  I["Private inference: the full 183-variant score under CKKS (node-seal), then the 90th-percentile cut by a garbled-circuit argmax"]
+  X["Explainability: exact linear SHAP, signed"]
   M["Published model: none registered for genomics"]
-  X["Explainability (full deployment)"]
   C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
@@ -201,13 +200,10 @@ flowchart TB
   N --> P
   L --> P
   P --> I
-  I --> M
-  I -.-> X
-  X -.-> C
+  I --> X
+  X --> M
   M --> C
   C --> S
-  classDef full stroke-dasharray: 5 3
-  class X full
 ```
 
 </details>
@@ -221,10 +217,11 @@ flowchart TB
   D["Data: synthetic QKD-attack telemetry, 7 attacks and normal"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, with an optional intercept-resend eavesdropper; OptiQKD tunes it when switched on"]
-  Q{"Key possible? BB84: QBER at most 0.11; E91: key rate above 0"}
+  Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["Eavesdropper or noise: no QKD key, the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
   IDS["QML-IDS: 8-class detector trained in the browser, scored by macro-F1"]
+  X["Explainability: exact linear SHAP, signed"]
   M["Published model: telecom_ids.qml on ONNX Runtime Web, and a CKKS check of the student"]
   C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
   S["Result signed with ML-DSA-65"]
@@ -235,7 +232,8 @@ flowchart TB
   Q -->|yes| L
   N --> IDS
   L --> IDS
-  IDS --> M
+  IDS --> X
+  X --> M
   M --> C
   C --> S
 ```
@@ -248,16 +246,17 @@ flowchart TB
 <!-- figure: uc-satellite_comms -->
 ```mermaid
 flowchart TB
-  D["Data: NASA SMAP and MSL telemetry windows, real"]
+  D["Data: OPS-SAT-AD telemetry segments, real"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   V{"Satellite in view, 10 degrees or more?"}
   NV["Out of view: no QKD key and no QSDC; the anomaly score still runs"]
   K["Free-space QKD, simulated: a model of the Micius downlink, BB84 with a vacuum state, or E91; OptiQKD tunes it when switched on"]
   L["Key length: BB84 finite key of one pass, Lim et al. 2014, E91 asymptotic; the full deployment mixes 256 bits or more"]
   QD{"QSDC: secrecy capacity positive?"}
-  NA["QSDC aborts: link budget too small, or an eavesdropper detected; nothing is sent over the quantum channel"]
+  NA["QSDC aborts: link budget too small, an eavesdropper detected, or, in the full deployment, too few check carriers to certify an error rate; nothing is sent over the quantum channel"]
   T["Telemetry sent directly over the simulated quantum channel"]
-  A["Anomaly score and the published model, satellite_comms.telemanom, in the browser; the full deployment also checks delivered telemetry under CKKS"]
+  A["Anomaly score and the published model, satellite_comms.telemanom, in the browser; the full deployment also scores a bundled OPS-SAT-AD segment under CKKS, whatever QSDC did"]
+  X["Explainability: exact linear SHAP, signed"]
   C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
@@ -270,7 +269,8 @@ flowchart TB
   QD -->|yes| T
   NA --> A
   T --> A
-  A --> C
+  A --> X
+  X --> C
   C --> S
 ```
 
@@ -454,21 +454,21 @@ tests/        pytest suite
 
 | Document | What it holds |
 |---|---|
-| [`docs/use-cases.md`](docs/use-cases.md) | what is and is not new, the positioning, the four workstreams, the industry use cases |
+| [`docs/use-cases.md`](docs/use-cases.md) | what is and is not new, the positioning, the four workstreams, the industry use cases, the trained QCNNs |
 | [`docs/architecture.md`](docs/architecture.md) | the pipeline contract, faithful hybrid inference, the SPA's shape, the compute topologies |
 | [`docs/development.md`](docs/development.md) | the quickstart with its notes, the dev environment, GPU, FHE, MPC, Rust/WASM, advisories, languages, submodules |
-| [`docs/models-and-benchmarks.md`](docs/models-and-benchmarks.md) | the datasets, the MPC-FHE against QSMPC-FHE benchmark, model tiers, what the pages show |
-| [`docs/findings.md`](docs/findings.md) | the WS3 and WS4 challenges, and every concern and recommendation recorded so far |
+| [`docs/models-and-benchmarks.md`](docs/models-and-benchmarks.md) | the datasets, the MPC-FHE against QSMPC-FHE benchmark and what its ct/pt measures, model tiers, what the pages show, which pages encrypt, the QKD key blocks |
+| [`docs/findings.md`](docs/findings.md) | the WS3 and WS4 challenges, the per-industry models and their caveats, and every concern and recommendation recorded so far |
 | [`docs/deployment.md`](docs/deployment.md) | the deployment runbook and tiers |
-| [`docs/threat-model.md`](docs/threat-model.md) | the threat model |
+| [`docs/threat-model.md`](docs/threat-model.md) | the threat model, and what each step protects in the browser and in the full deployment |
 | [`docs/crypto-agility.md`](docs/crypto-agility.md) | the crypto-agility registry and its rules |
-| [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md) | the PQC roadmap and future tracks |
+| [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md) | the PQC roadmap, NSA's and BSI's positions on QKD, and future tracks |
 | [`docs/ai-act-art50-gap-analysis.md`](docs/ai-act-art50-gap-analysis.md) | the EU AI Act Art. 50 gap analysis |
 | [`docs/deliverable-verification.md`](docs/deliverable-verification.md) | the verification register, round by round |
 | [`docs/verification-log.md`](docs/verification-log.md) | the verification log |
 | [`report/technical-report.pdf`](report/technical-report.pdf) | the technical report |
 | [`references/REFERENCES.md`](references/REFERENCES.md) | the annotated primary sources |
-| [`DATA_LICENSES.md`](DATA_LICENSES.md) | the datasets and their licences |
+| [`DATA_LICENSES.md`](DATA_LICENSES.md) | the datasets and their licences, and the submodules |
 
 ---
 

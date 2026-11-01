@@ -20,7 +20,13 @@
     "check:text-layout": "node scripts/check_text_overlap.mjs",
     "check:sample-fetch": "node scripts/check_sample_fetch.mjs",
     "check:readme-mermaid": "node scripts/check_readme_mermaid.mjs",
-    "check:use-case-canvas": "node scripts/check_use_case_canvas.mjs"
+    "check:use-case-canvas": "node scripts/check_use_case_canvas.mjs",
+    "check:qsms-field": "node scripts/check_qsms_field.mjs",
+    "check:control-plane": "node scripts/check_control_plane.mjs",
+    "check:relay-pass-pairs": "node scripts/check_relay_pass_pairs.mjs",
+    "check:model-cards": "node scripts/check_model_cards.mjs",
+    "check:validations-download": "node scripts/check_validations_download.mjs",
+    "check:link-contrast": "node scripts/check_link_and_label_contrast.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
@@ -34,7 +40,7 @@
     "gif.js": "^0.2.0",
     "html-to-image": "^1.11.13",
     "node-seal": "^7.0.0",
-    "onnxruntime-web": "^1.27.0",
+    "onnxruntime-web": "1.31.1",
     "papaparse": "^5.4.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -51,5 +57,11 @@
     "mermaid": "^12.2.0",
     "typescript": "^5.6.3",
     "vite": "~6.4.5"
+  },
+  "overrides": {
+    "@huggingface/transformers": {
+      "onnxruntime-web": "$onnxruntime-web",
+      "onnxruntime-common": "1.31.1"
+    }
   }
 }

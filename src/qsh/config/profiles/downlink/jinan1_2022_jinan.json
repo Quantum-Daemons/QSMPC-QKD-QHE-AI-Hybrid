@@ -2,7 +2,7 @@
   "id": "jinan1_2022_jinan",
   "kind": "downlink",
   "label": "Jinan-1 microsatellite to Jinan (Li et al. 2025), one constant calibrated",
-  "source": "Li et al., 'Microsatellite-based real-time quantum key distribution', Nature (2025), arXiv:2408.10994",
+  "source": "Li et al., 'Microsatellite-based real-time quantum key distribution', Nature 640, 47 (2025), arXiv:2408.10994. The pass figures used here (Fig. 4b, Table 1) are the preprint's, arXiv:2408.10994v1; the version of record reports up to 1.07 million bits in a single pass, where v1 said 0.59 million, and moves its per-pass results to Extended Data",
   "note": "A 23 kg microsatellite with a 200 mm telescope and a 280 mm portable station. The paper does not state its atmosphere, pointing loss, background or transmit optics, so those are assumptions from other sources, and ONE constant - the station efficiency - is calibrated to the 25 September 2022 pass's peak count rate. What that pass then checks independently is the fall with elevation: 6.9 dB predicted against 6.6 measured to 13.9 degrees.",
   "values": {
     "orbit_altitude_km": {
@@ -27,7 +27,7 @@
     },
     "atmospheric_db": {
       "value": 0.88,
-      "assumption": "Not stated. Khmelev et al. 2023's clear-sky fit for Micius over Zvenigorod (kappa = 0.22 magnitudes per air mass, 0.88 dB at the zenith) at the same 850 nm band; Jinan is an urban site, so it may read low."
+      "assumption": "Not stated. Khmelev et al. 2024's clear-sky fit for Micius over Zvenigorod (kappa = 0.22 magnitudes per air mass, 0.88 dB at the zenith) at the same 850 nm band; Jinan is an urban site, so it may read low."
     },
     "atmospheric_ref_km": {
       "value": 499.9,

@@ -92,7 +92,10 @@ export const pqcOnly = (c: DiagramConfig) => String(c.qkd ?? "") === "pqc-only";
 
 /** The OptiQKD suffix for a QKD arrow: the measured improvement once a run has produced one,
  *  otherwise just that tuning is enabled. Reads the run's metrics rather than restating the
- *  checkbox, so the arrow cannot claim an optimisation that has not happened yet. */
+ *  checkbox, so the arrow cannot claim an optimisation that has not happened yet. It names what the
+ *  percentage is (Round 84): the asymptotic per-pulse bound at the tuned parameters, the bound the
+ *  run's `skr_per_pulse` comes from, with nothing applied to the run. "surrogate SKR" dated from when
+ *  the optimiser scored its own copy of that bound. */
 /** The eavesdropper the run actually simulated, or nothing when there was none.
  *
  * Before the run there is no fraction to report, so this stays empty rather than asserting either
@@ -113,8 +116,8 @@ const optiTag = (m: M, c: DiagramConfig) => {
   const pct = m["qkd_skr_improvement_pct"];
   const evals = m["qkd_convergence_evals"];
   if (pct == null) return " · OptiQKD on";
-  return ` · OptiQKD ${Number(pct) >= 0 ? "+" : ""}${pct}% surrogate SKR`
-    + (evals == null ? "" : ` in ${evals} evals`);
+  return ` · OptiQKD ${Number(pct) >= 0 ? "+" : ""}${pct}% asymptotic SKR, not applied`
+    + (evals == null ? "" : ` (${evals} evals)`);
 };
 
 // The QSMPC step. `clientCompute:896` resolves `config.qsmpc_op || (genomics ? "sum" : "psi")`, so
@@ -130,7 +133,8 @@ const optiTag = (m: M, c: DiagramConfig) => {
 // One line wide, two pages deep.
 //
 // `mpc-bidir` is the honest style: additive secret-sharing IS secret-share traffic, and the legend
-// already names it. PSI stays classical-bidirectional - it is a WebCrypto keyed hash.
+// already names it. PSI stays classical-bidirectional - it is the OPRF exchange of oprfPsi.ts, whose
+// three messages are sealed under the session key.
 const qsmpcOpOf = (c: DiagramConfig, usecaseDefault: "psi" | "sum") =>
   (String(c.qsmpcOp ?? "") === "psi" || String(c.qsmpcOp ?? "") === "sum")
     ? (String(c.qsmpcOp) as "psi" | "sum")
@@ -143,7 +147,7 @@ const qsmpcLabel = (dflt: "psi" | "sum") => (m: M, c: DiagramConfig) =>
     // a use case with none. The label used to say neither, beside cohort headers saying allele counts.
     ? `secure sum of ${m["qsms_inputs"] === "allele_counts" ? "allele counts"
         : m["qsms_inputs"] === "stand_ins" ? "stand-in values" : "inputs"} over GF(${f(m, "qsms_prime")}) · pooled = ${f(m, "secure_sum")}`
-    : `keyed-hash PSI · shared flagged = ${f(m, "psi_intersection_size")}`;
+    : `OPRF PSI (RFC 9497) · shared flagged = ${f(m, "psi_intersection_size")}`;
 
 const f = (m: M, k: string, d = "—") => {
   const v = m[k];
@@ -175,7 +179,8 @@ const HYBRID_INFERENCE: Step[] = [
   { stageId: "private_inference", kind: "fhe-arrow",
     label: (m, c) => {
       // Total across every CKKS layer once the full student runs encrypted, not just
-      // the conv block: 152 for this student against 3 for a lone dot product.
+      // the conv block: 28 for this student since its dense layers were packed (Round 84; 152 row
+      // at a time) against 3 for a lone dot product.
       const rot = m["fhe_total_rotations"] ?? m["fhe_conv_rotations"] ?? m["fhe_dense_rotations"];
       const shape = m["fhe_conv_output_shape"];
       // The medical page evaluates the published student's conv and dense layers under CKKS,
@@ -185,7 +190,8 @@ const HYBRID_INFERENCE: Step[] = [
       // keeps the shape and the stage list below it carries the rest.
       const kindTxt = shape ? `CNN layers under CKKS ${shape} · decrypted between layers` : "CKKS dot product";
       // The ms carry their cost-model scale: `fhe_linear_ms` is the measured time times
-      // `fhe_bench_scale` (x33 on genomics, x9 on the generic demo, x1 where a student sets the size),
+      // `fhe_bench_scale` (x9 on the generic demo, x1 where a student sets the size, and x1 on genomics,
+      // which prices the weighted sum it runs),
       // while the rotation count beside it is raw.
       return `FHE-linear · ${kindTxt} · ${f(m, "fhe_linear_ms")} ms at x${f(m, "fhe_bench_scale")} cost-model scale`
         + (rot == null ? "" : ` · ${rot} rotations`);
@@ -248,7 +254,8 @@ const publishedStep = (stageId: string): Step => ({
   kind: "local-wide",
   label: (m) => {
     const status = m["published_model_status"];
-    if (status === "unavailable") return "published model · none registered for this use case";
+    if (status === "none") return "published model · none registered for this use case";
+    if (status === "withheld") return "published model · withheld until re-pinned on the Hub";
     const key = m["published_model"];
     if (status === "failed") return `published model ${key} · DID NOT RUN (no substitute shown)`;
     if (key == null) return "published model · —";
@@ -296,22 +303,28 @@ const FEDERATED_STEP: Step = {
 /** The caption's first sentence for parties that compute together over a network.
  *
  *  Each says what holds and what does not. It read "No trusted third party and no raw data shared"
- *  for all four, which overstated two of them: the PSI's HMAC key is held by both banks, so over a
- *  small ID space either could recover the other's list from the tags; and every federated mask is
- *  derived from the one session key, which the aggregator also holds. */
+ *  for all four, which overstated two of them: the PSI was then an HMAC whose key both banks held, so
+ *  over a small ID space either could recover the other's list from the tags; and every federated mask
+ *  was derived from the one session key, which the aggregator also holds. Since Round 84 the PSI is an
+ *  OPRF and each pair of clients agrees its own mask seed by X25519. */
 const overWan = (who: string, what: string) => () =>
   `${who} meet over a WAN under the session key. ${what}`;
-const PSI_HOLDS = "No third party sees either list: each side sends HMAC tags of its list, not the list, "
-  + "though over a small ID space either side could recover the other's list from the tags (a "
-  + "production PSI would use an OPRF-based protocol).";
+// Side A is the OPRF client and side B the server in both specs that use it (oprfPsi.ts), so the
+// sentence names the sides rather than the banks: the generic demo's parties use it too.
+const PSI_HOLDS = "In the PSI, side A blinds its IDs and side B evaluates them under an OPRF key only B holds "
+  + "(RFC 9497 over ristretto255), so A learns the shared IDs and the size of B's list and B only the "
+  + "size of A's; the messages are sealed under the session key, and the PSI is semi-honest and not "
+  + "post-quantum.";
 
 export const USECASE_SPECS: Record<string, Spec> = {
   finance_aml: {
     a: { name: "Bank A", sub: "blacklist + fraud model · LAN" },
     b: { name: "Bank B", sub: "candidate accounts · LAN" },
     inferenceClient: "b",
-    meet: overWan("Bank A and Bank B", `${PSI_HOLDS} The federated masks also all derive from the session `
-      + "key, which Bank B, the aggregator, holds, so they hide no update from it."),
+    meet: overWan("Bank A and Bank B", `${PSI_HOLDS} Each pair of federated clients agrees its mask seed by `
+      + "X25519, so Bank B, the aggregator, receives only the public keys and the masked updates and cannot "
+      + "remove a mask alone; every client runs in this tab, and there is no dropout recovery or authentication "
+      + "of the public keys."),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -336,9 +349,11 @@ export const USECASE_SPECS: Record<string, Spec> = {
     a: { name: "Hospitals", sub: "patient data (never leaves) · LAN" },
     b: { name: "Aggregator", sub: "global model · LAN" },
     inferenceClient: "a",
-    meet: overWan("The hospitals and the aggregator", "No patient row leaves a hospital, but every "
-      + "federated mask is derived from the session key, which the aggregator also holds, so it could "
-      + "unmask each update."),
+    meet: overWan("The hospitals and the aggregator", "No patient row leaves a hospital, and each pair of "
+      + "hospitals agrees its mask seed by X25519, so the aggregator, which receives only the public keys and "
+      + "the masked updates, cannot remove a mask alone; the PQC session key seeds no mask. All hospitals run "
+      + "in this tab, so it holds every private key, though the aggregator's step reads none, and there is no "
+      + "dropout recovery, no malicious security and no authentication of the public keys."),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk },
@@ -353,7 +368,8 @@ export const USECASE_SPECS: Record<string, Spec> = {
     // "Cohort 1" and "Cohort 2" until the canvas (Round 80), while the secure sum pooled four
     // cohorts. The canvas draws the four, and the other side is where the pooled count and the PRS
     // model are: the two-party stages run between a cohort and that site.
-    a: { name: "Cohorts", sub: "allele counts (never leave) · LAN" },
+    // Not "(never leave)" (Round 84): the caption below says one step sums both shares of every cohort.
+    a: { name: "Cohorts", sub: "allele counts, as two shares mod p · LAN" },
     b: { name: "Analysis site", sub: "pooled count, PRS model · LAN" },
     inferenceClient: "a",
     meet: overWan("The cohorts and the analysis site", "Each cohort splits its allele count into two "
@@ -381,10 +397,14 @@ export const USECASE_SPECS: Record<string, Spec> = {
     // either way: this page's subject is watching the link for intrusion, and whether anyone is on
     // it is what the run decides. The arrow says which.
     b: { name: "Remote site", sub: "QKD Rx · link monitored for intrusion" },
-    // Not "no raw data shared ... over a WAN": nothing here is computed jointly. The carrier's IDS
-    // reads its own link's telemetry, and what crosses to the remote site is the key and the record.
+    // Not "no raw data shared ... over a WAN": nothing here is computed jointly, and what crosses to
+    // the remote site is the key and the record. Nor "the IDS classifies the link's telemetry"
+    // (Round 84): `clientTrainScoreIDS(seed, n_per_class)` takes no QKD input. It trains and scores on
+    // rows `clientIDS.genData` generates from the class signatures in this tab, so neither this
+    // link's QBER nor the Eve control reaches the IDS result.
     meet: (c) => `The carrier and the remote site share a fibre link${pqcOnly(c) ? "" : " with QKD on it"}, `
-      + "which the carrier watches for intrusion: the IDS classifies the link's telemetry at the carrier.",
+      + "and the carrier runs an IDS: in this tab it trains and scores on synthetic attack telemetry it "
+      + "generates, so this link's QBER and the eavesdropper setting do not feed it.",
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       // "(w/ eavesdropper)" used to be unconditional here while `qkd_eve` defaults to 0.0, so the
@@ -394,7 +414,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "qkd_key_agreement", kind: "q-arrow",
         label: (m, c) => `${qkdName(c)}${eveTag(m)} · QBER ${f(m, "qber")}${optiTag(m, c)}`,
         hidden: pqcOnly, ok: qkdOk },
-      { stageId: "qml_ids", kind: "local-a", label: (m) => `QML-IDS stage: softmax attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
+      { stageId: "qml_ids", kind: "local-a", label: (m) => `IDS stage: classical softmax attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
       publishedStep("qml_ids"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
@@ -410,9 +430,11 @@ export const USECASE_SPECS: Record<string, Spec> = {
     // crosses: the caption said both until Round 81.
     meet: (c) => pqcOnly(c)
       ? "The LEO satellite sends its telemetry down to the ground station under the PQC session key."
+      // "the key comes down the quantum channel" until Round 84: in the browser the QKD stage yields a
+      // key LENGTH and no key bytes, and the session key is the PQC handshake's (Overview's key-source row).
       : "The LEO satellite and the ground station meet over a free-space downlink while the satellite is in view: "
-        + "the key comes down the quantum channel, and the telemetry by QSDC where the link can carry it, "
-        + "else under the PQC session key.",
+        + "a QKD key length is modelled for the downlink (in this tab the session key is the PQC handshake's), "
+        + "and the telemetry goes by QSDC where the link can carry it, else under the PQC session key.",
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)}${eveTag(m)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
@@ -444,10 +466,14 @@ export const USECASE_SPECS: Record<string, Spec> = {
       // still drew a quantum arrow there, labelled with an em-dash secrecy, which is the channel the
       // run had just said did not exist (Round 80, found drawing the canvas). The kind follows the
       // profile, as the QSMPC step's does, and the label says what happened.
+      // A FOURTH STATE in the full deployment (Round 84): its Python stage decides on a finite check
+      // subset and reports `qsdc_statistics_limited` for a block too short to certify an error rate,
+      // which this label drew as "QSDC direct telemetry", a delivery. The browser's verdict is
+      // asymptotic and never emits it.
       { stageId: "qsdc_telemetry",
         kind: (c) => (pqcOnly(c) ? "c-arrow" : "q-arrow"),
         ok: (m) => Number(m["qsdc_link_budget_limited"]) !== 1
-          && Number(m["qsdc_eavesdrop_detected"]) !== 1,
+          && Number(m["qsdc_eavesdrop_detected"]) !== 1 && Number(m["qsdc_statistics_limited"]) !== 1,
         label: (m, c) => pqcOnly(c)
           ? "telemetry under the PQC session key · QSDC skipped: a PQC-only profile has no quantum channel"
           : (Number(m["qsdc_eavesdrop_detected"]) === 1
@@ -457,12 +483,15 @@ export const USECASE_SPECS: Record<string, Spec> = {
           // the real quantity keeps the diagram and the metrics table telling one story.
           ? `QSDC ABORTED · eavesdropper · C_s ${f(m, "qsdc_secrecy_capacity")} at error `
             + `${f(m, "qsdc_error_rate")} (g=${f(m, "qsdc_eve_gain_g")}) · telemetry withheld`
+          : Number(m["qsdc_statistics_limited"]) === 1
+            ? `QSDC WITHHELD · statistics-limited: the block is too short to certify an error rate · C_s `
+              + `${f(m, "qsdc_secrecy_capacity")} bit/carrier at the certified bound · telemetry withheld, falls back to the PQC session key`
           : Number(m["qsdc_link_budget_limited"]) === 1
             // "at 24.5 dB (g=701.06)" paired the CHANNEL loss with a g that includes the detector's
             // 4.0 dB (10^(24.5/10) is 282, not 701), while the run log printed the same g at 28.5 dB.
             // Both now name the channel loss and say g carries the detector too. Round 58. Since
-            // Round 75 g also leaves out the station's optics, as Qi et al.'s did, so "34 dB" and
-            // g = 808 (29.1 dB) differ by more than the detector: the label says both.
+            // Round 75 g also leaves out the station's optics, as Qi et al.'s did, so the channel's
+            // 32.2 dB and g = 532.66 (27.26 dB) differ by more than the detector: the label says both.
             ? `QSDC NOT AVAILABLE · link-budget limited · C_s ${f(m, "qsdc_secrecy_capacity")} `
               + `bit/carrier at ${f(m, "channel_loss_db")} dB channel loss (g=${f(m, "qsdc_eve_gain_g")}: `
               + `the detector in, the station optics out) · telemetry withheld, falls back to the PQC session key`
@@ -473,7 +502,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     ],
   },
   // The E2E page's generic flow (Round 81), so that page's canvas has something to draw for every
-  // entry in its selector. Its stages are clientCompute's `demo` flow: a keyed-hash PSI over two
+  // entry in its selector. Its stages are clientCompute's `demo` flow: an OPRF PSI over two
   // generated account lists, then the MPC-FHE inference on synthetic features. No industry, so no
   // industry's names: the parties say what each holds.
   demo: {
@@ -522,8 +551,9 @@ const runCount = (m: M, metric: string, configured: number): number => {
 /**
  * Which component on which side runs a step, and which way its exchange goes.
  *
- * Read from what the code does, stage by stage: the session key consumers are the PSI and the
- * federated masks; the CKKS client encrypts its input and decrypts the scores while the model's
+ * Read from what the code does, stage by stage: the session key's consumer is the PSI, not the
+ * federated masks (each pair of clients agrees its seed by X25519); the CKKS client encrypts its
+ * input and decrypts the scores while the model's
  * holder evaluates the linear layer; the argmax runs as two-party MPC over additive shares between
  * notional parties in this one tab; the satellite's key and telemetry come DOWN the link.
  */
@@ -552,7 +582,9 @@ export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: Diag
             many: { noun: usecase === "genomics" ? "cohort" : "party",
                     count: runCount(m, "qsms_parties", usecase === "genomics" ? Number(cfg.data?.genomics_biobanks ?? 4)
                       : Number(cfg.qsmpc?.n_parties ?? 5)) } }
-        : { a: "PSI: HMAC tags of its list", b: "PSI: HMAC tags of its list", flow: "both", channel: "classical" };
+        // The OPRF PSI (oprfPsi.ts): side A blinds and intersects, side B evaluates under its own key.
+        : { a: "OPRF client: blinds its IDs, intersects", b: "OPRF server: evaluates under its own key",
+            flow: "both", channel: "classical" };
     case "federated_training":
       return { a: "trains locally, masks its update", b: "FedAvg: sums the masked updates", flow: "both", channel: "classical",
                many: { noun: usecase === "medical_fl" ? "hospital" : "client",
@@ -562,7 +594,8 @@ export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: Diag
         return { ...sides("CKKS: encrypts the input, decrypts the scores", "CKKS: evaluates the linear layers"), flow: "both", channel: "fhe" };
       return { ...sides("MPC argmax: holds shares a", "MPC argmax: holds shares b"), flow: "both", channel: "mpc" };
     case "qml_ids":
-      return { a: "QML-IDS: classifies the link telemetry", channel: "none" };
+      // Synthetic rows generated in the tab, not this link's telemetry (see the telecom `meet`).
+      return { a: "IDS: classifies synthetic attack telemetry, not this link's", channel: "none" };
     case "sign_result":
       return { a: "signs the record", b: "verifies the signature", flow: "ab", channel: "classical" };
   }
@@ -578,10 +611,12 @@ export const visibleSteps = (usecase: string, c: DiagramConfig): Step[] =>
 /** A step's drawing kind under this configuration. */
 export const kindOf = (s: Step, c: DiagramConfig): Kind => (typeof s.kind === "function" ? s.kind(c) : s.kind);
 
-/** Whether a step reads the PQC session key. The keyed-hash PSI and the federated masks' seed are
- *  the only two readers of `_sessionKey` in clientCompute, so the canvas's key bus runs to them. */
+/** Whether a step reads the PQC session key. The OPRF PSI is the only reader of `_sessionKey` in
+ *  clientCompute: it derives the two keys its three messages are sealed under (oprfPsi.ts,
+ *  `psiTranscriptKeys`), so the canvas's key bus runs to it. The federated masks take their seeds
+ *  from an X25519 agreement per pair of clients (clientQFL.ts), and the secure sum reads no key. */
 export const consumesSessionKey = (step: Step, row: CanvasRow): boolean =>
-  step.stageId === "federated_training" || (step.stageId === "qsmpc_compute" && row.channel === "classical");
+  step.stageId === "qsmpc_compute" && row.channel === "classical";
 
 /** The kinds of lane a run with this configuration draws, and whether it draws the key bus: what the
  *  canvas's legend may list. The legend listed all five on every use case until Round 81, so the
@@ -605,7 +640,7 @@ export function captionOf(usecase: string, c: DiagramConfig = {}): string {
   const infers = visibleSteps(usecase, c).some((s) => s.stageId === "private_inference");
   return [
     spec.meet(c),
-    infers ? "MPC-FHE hybrid: linear layers under CKKS, decrypted by the client, and the argmax as two-party MPC; the QSMPC-FHE bar is a simulated comparison circuit beside it, not a score." : "",
+    infers ? "MPC-FHE hybrid: linear layers under CKKS, biases included, decrypted by the client, and the argmax as two-party MPC over the scores the client has decrypted, both parties in this tab; the QSMPC-FHE bar is a simulated comparison circuit beside it, not a score." : "",
     pqcOnly(c) ? "This profile has no quantum channel, and the proof of concept runs in this tab."
       : "The quantum channel is simulated, and the proof of concept runs in this tab.",
   ].filter(Boolean).join(" ");

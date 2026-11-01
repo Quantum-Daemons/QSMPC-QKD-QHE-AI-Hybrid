@@ -7,11 +7,13 @@ import {
 import { linkProfiles, profileValues, qkdCfg, validationSet } from "../lib/config";
 import { downlinkFromProfile } from "../lib/quantumSim";
 import { randomWords } from "../lib/csprng";
-import { blockCounts, blocksForPositiveKey, DEVIATION_LABELS, finiteKeySourceOf, keyLength, type Deviation } from "../lib/finiteKey";
+import {
+  blockCounts, blocksForPositiveKey, DEVIATION_LABELS, finiteKeySourceOf, keyLength, type Deviation, type FiniteKeySource,
+} from "../lib/finiteKey";
 import { satChannel } from "../lib/satLink";
 import {
-  LIAO_2017_PASS, LIAO_2018_STATIONS, groundDistanceKm, islFromProfile, liaoPass, rangeAtElevationKm,
-  sharedViewMaxKm, siftedRateAt, simulatePass, stringOfPearls, trustedRelay, xorRelay, type IslSpec,
+  KHMELEV_2024_SESSION, LIAO_2017_PASS, LIAO_2018_STATIONS, groundDistanceKm, islFromProfile, khmelevPass, liaoPass,
+  rangeAtElevationKm, sharedViewMaxKm, siftedRateAt, simulatePass, stringOfPearls, trustedRelay, xorRelay, type IslSpec,
 } from "../lib/satNetwork";
 import { ChartReadout, HINT_KEYBOARD, ReadoutTooltip } from "./ChartReadout";
 import { SatNetwork3D } from "./Lazy3D";
@@ -29,7 +31,18 @@ const tick = { fill: "var(--muted)", fontSize: 11 };
 const fmt = (x: number, d = 0) => (Number.isFinite(x) ? x.toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: d }) : "-");
 const kbit = (bits: number) => (Number.isFinite(bits) ? `${fmt(bits / 1000, 1)} kbit` : "-");
 const pct = (model: number, ref: number) => `${model >= ref ? "+" : ""}${fmt((100 * (model - ref)) / ref, 1)}%`;
+const ratio = (model: number, ref: number) => fmt(model / ref, 2);
 const hex = (b: Uint8Array) => Array.from(b, (x) => x.toString(16).padStart(2, "0")).join("");
+/** A block's composable finite key on one key basis and on both (Round 84, the user's choice): the
+ *  bound's own protocol keys the Z basis and spends X on the phase error; both bases key each basis
+ *  with its phase error from the other's counts, each at half of eps_sec (`finiteKey.ts::keyLength`). */
+function twoKeys(segments: ReturnType<typeof simulatePass>["segments"], src: FiniteKeySource) {
+  if (!segments.length) return { one: -Infinity, both: -Infinity };
+  const [z, x] = blockCounts(segments, src);
+  return { one: keyLength(z, x, { ...src, keyBasis: "one" }).keyBits,
+           both: keyLength(z, x, { ...src, keyBasis: "both" }).keyBits };
+}
+const pos = (bits: number) => Math.max(0, bits);
 const randomBytes = (n: number) => new Uint8Array(randomWords(Math.ceil(n / 4)).buffer).slice(0, n);
 
 export default function SatNetworkPanel({ params }: { params: Record<string, any> }) {
@@ -39,6 +52,10 @@ export default function SatNetworkPanel({ params }: { params: Record<string, any
   const fs = link.freeSpace!;
   const orbitKm = Number(fs.orbitAltitudeKm), minEl = Number(fs.minElevationDeg);
   const liao = useMemo(() => liaoPass(link), [link]);
+  // The satellite's statistics for every finite key on this tab, the relay's included: it read the
+  // fibre's `fk_deviation` until Round 84, so the relay's bound named a different statistics from the
+  // pass section's on one tab.
+  const deviation = String(params.sat_fk_deviation ?? qkdCfg().free_space_finite_key_deviation) as Deviation;
 
   return (
     <div>
@@ -47,15 +64,17 @@ export default function SatNetworkPanel({ params }: { params: Record<string, any
         slant range of {fmt(rangeAtElevationKm(minEl, orbitKm, Number(fs.stationAltitudeKm)))} km and a
         footprint {fmt(sharedViewMaxKm(link))} km across. Past that, two published architectures carry a
         key further. Every figure here is the Downlink tab&apos;s own model and bound, integrated over the
-        geometry, for the profile and controls of this page&apos;s run. Every key counts the pulses sent:
-        only the signal pulses carry key - {fmt(100 * Number(link.pSignal ?? 0.5))}% of them on this profile -
-        which is how a measured key is made. Simulated: no satellite is involved.
+        geometry, for the profile and controls of this page&apos;s run. Every rate is per pulse sent: the
+        asymptotic ones count the key the signal pulses carry - {fmt(100 * Number(link.pSignal ?? 0.5))}% of
+        them on this profile - which is how a measured key is made, and the composable finite keys follow
+        their bound&apos;s protocol, whose key draws on the detections at every intensity. Simulated: no
+        satellite is involved.
       </p>
       <PassSection link={link} liao={liao} minEl={minEl}
-        epsSec={Number(params.sat_eps_sec ?? qkdCfg().free_space_eps_sec)}
-        deviation={String(params.sat_fk_deviation ?? qkdCfg().free_space_finite_key_deviation) as Deviation} />
+        epsSec={Number(params.sat_eps_sec ?? qkdCfg().free_space_eps_sec)} deviation={deviation} />
       <NightsSection link={link} />
-      <RelaySection link={link} defaultElevation={liao.maxElevationDeg} minEl={minEl} />
+      <RelaySection link={link} defaultElevation={liao.maxElevationDeg} minEl={minEl}
+        epsSec={Number(params.sat_eps_sec ?? qkdCfg().free_space_eps_sec)} deviation={deviation} />
       <ConstellationSection orbitKm={orbitKm} minEl={minEl} />
     </div>
   );
@@ -72,13 +91,27 @@ function PassSection({ link, liao, minEl, epsSec, deviation }: { link: ReturnTyp
   const fin = useMemo(() => {
     if (!pass.segments.length) return null;
     const [z, x] = blockCounts(pass.segments, fkSrc);
-    return { key: keyLength(z, x, fkSrc).keyBits, passes: blocksForPositiveKey(z, x, fkSrc) };
+    return { key: keyLength(z, x, fkSrc).keyBits, both: twoKeys(pass.segments, fkSrc).both,
+             passes: blocksForPositiveKey(z, x, fkSrc) };
   }, [pass, fkSrc]);
-  // Liao's row at Liao's own failure probability, whatever the run sets.
-  const liaoFinite = useMemo(() => {
-    const src = finiteKeySourceOf(link, 1e-9, undefined, deviation);
-    return keyLength(...blockCounts(liao.segments, src), src).keyBits;
-  }, [link, liao, deviation]);
+  // Liao's rows at Liao's own failure probability, whatever the run sets, on one key basis and on both.
+  const liaoFinite = useMemo(() => twoKeys(liao.segments, finiteKeySourceOf(link, 1e-9, undefined, deviation)),
+    [link, liao, deviation]);
+  // KHMELEV ET AL.'S SESSION (Round 84) on that link's own profile, whatever this run's: a second flown
+  // pass the model is set beside, at their failure probability and this tab's statistics.
+  const khmelev = useMemo(() => {
+    const ch = satChannel({ sat_profile: KHMELEV_2024_SESSION.profile, sat_eve: 0 });
+    const p = khmelevPass(ch);
+    return { durationS: p.durationS,
+             ...twoKeys(p.segments, finiteKeySourceOf(ch, KHMELEV_2024_SESSION.epsSec, undefined, deviation)) };
+  }, [deviation]);
+  // The step from the asymptotic row to the one-basis row, and how much of it the basis convention is.
+  // The finite key also counts the decoy and vacuum detections, which the asymptotic row leaves out, so
+  // on a link with large counts the both-bases key can reach the asymptotic row (Jinan-1's does).
+  const gap = liaoFinite.one > 0 && liaoFinite.both > liaoFinite.one && liao.keyBits > liaoFinite.one
+    ? { bothOverAsym: liaoFinite.both / liao.keyBits,
+        basisShare: Math.min(1, (liaoFinite.both - liaoFinite.one) / (liao.keyBits - liaoFinite.one)) }
+    : null;
   // The bound and its statistics (Round 82), so the key says which analysis it is.
   // Its two halves are named apart because one sentence below needs the bound as a noun: joined, they read
   // "by Lim et al. 2014; the tighter of Chernoff and Hoeffding per count's bound" (found live, Round 82 walk).
@@ -116,7 +149,8 @@ function PassSection({ link, liao, minEl, epsSec, deviation }: { link: ReturnTyp
           ? <>Above {minEl} degrees this pass lasts <b>{fmt(pass.durationS)} s</b>, from {fmt(pass.maxRangeKm)} km
             in to {fmt(pass.minRangeKm)} km at the top, and yields <b>{kbit(pass.keyBits)}</b> of asymptotic key.{" "}
             {fin && fin.key > 0
-              ? <>As one block its composable finite key is <b>{kbit(fin.key)}</b> ({bound}, eps_sec {epsSec.toExponential(0)}).</>
+              ? <>As one block its composable finite key is <b>{kbit(fin.key)}</b> ({bound}, eps_sec {epsSec.toExponential(0)}),
+                keyed on the Z basis as the run keys it; on both bases, <b>{kbit(fin.both)}</b>.</>
               : <>As one block it carries <b>no composable key</b> ({bound}, eps_sec {epsSec.toExponential(0)}):{" "}
                 {fin?.passes ? <>{fin.passes} such passes pooled would.</> : <>not even 10,000 such passes pooled would.</>}</>}</>
           : <>A pass that never rises above {minEl} degrees makes no key.</>}
@@ -151,17 +185,41 @@ function PassSection({ link, liao, minEl, epsSec, deviation }: { link: ReturnTyp
           <caption className="small muted" style={{ textAlign: "left", captionSide: "top", paddingBottom: 4 }}>
             Liao et al., Nature 549, 43 (2017): the pass of 19 December 2016, counted the way the paper counts it -
             the window from {LIAO_2017_PASS.maxRangeKm} km down to {LIAO_2017_PASS.minRangeKm} km and back, states
-            sent 50 / 25 / 25, and sifted key from signal states only.
+            sent 50 / 25 / 25, and sifted key from signal states only. The finite rows are {bound}, at 1e-9, on
+            one key basis and on both.
           </caption>
           <thead><tr><th></th><th className="num">this model</th><th className="num">Liao 2017</th><th className="num">difference</th></tr></thead>
           <tbody>
             <tr><td>Data window</td><td className="num">{fmt(liao.durationS, 1)} s</td><td className="num">{LIAO_2017_PASS.durationS} s</td><td className="num">{pct(liao.durationS, LIAO_2017_PASS.durationS)}</td></tr>
             <tr><td>Detections</td><td className="num">{fmt(liao.detections)}</td><td className="num">{fmt(LIAO_2017_PASS.detections)}</td><td className="num">{pct(liao.detections, LIAO_2017_PASS.detections)}</td></tr>
             <tr><td>Sifted key, signal states</td><td className="num">{fmt(liao.siftedBits)}</td><td className="num">{fmt(LIAO_2017_PASS.siftedBits)}</td><td className="num">{pct(liao.siftedBits, LIAO_2017_PASS.siftedBits)}</td></tr>
-            <tr><td>Secret key</td><td className="num">{fmt(liao.keyBits)} (asymptotic)</td><td className="num">{fmt(LIAO_2017_PASS.finalKeyBits)} (finite-key)</td><td className="num">{pct(liao.keyBits, LIAO_2017_PASS.finalKeyBits)}</td></tr>
-            <tr><td>Secret key, finite</td><td className="num">{fmt(Math.max(0, liaoFinite))} ({bound})</td><td className="num">{fmt(LIAO_2017_PASS.finalKeyBits)} (finite-key)</td><td className="num">{pct(Math.max(0, liaoFinite), LIAO_2017_PASS.finalKeyBits)}</td></tr>
+            <tr><td>Secret key, asymptotic (both bases)</td><td className="num">{fmt(liao.keyBits)}</td><td className="num">{fmt(LIAO_2017_PASS.finalKeyBits)} (finite-key)</td><td className="num">{pct(liao.keyBits, LIAO_2017_PASS.finalKeyBits)}</td></tr>
+            <tr><td>Secret key, finite, one basis (Z)</td><td className="num">{fmt(pos(liaoFinite.one))}</td><td className="num">{fmt(LIAO_2017_PASS.finalKeyBits)} (finite-key)</td><td className="num">{pct(pos(liaoFinite.one), LIAO_2017_PASS.finalKeyBits)}</td></tr>
+            <tr><td>Secret key, finite, both bases</td><td className="num">{fmt(pos(liaoFinite.both))}</td><td className="num">{fmt(LIAO_2017_PASS.finalKeyBits)} (finite-key)</td><td className="num">{pct(pos(liaoFinite.both), LIAO_2017_PASS.finalKeyBits)}</td></tr>
           </tbody>
         </table>
+      </div>
+      <div className="net-table">
+        <table>
+          <caption className="small muted" style={{ textAlign: "left", captionSide: "top", paddingBottom: 4 }}>
+            Khmelev et al., Opt. Express 32, 11964 (2024): Micius to Zvenigorod on 1 March 2022, the session from
+            {" "}{KHMELEV_2024_SESSION.maxRangeKm} km to {KHMELEV_2024_SESSION.minRangeKm} km and back
+            ({fmt(khmelev.durationS)} s in this model, where they received states for roughly
+            {" "}{KHMELEV_2024_SESSION.receivedS} s), on that link&apos;s own profile whatever this run&apos;s, at
+            their failure probability of 1e-9 and this tab&apos;s statistics. They keyed both bases.
+          </caption>
+          <thead><tr><th></th><th className="num">this model</th><th className="num">Khmelev 2024</th><th className="num">difference</th></tr></thead>
+          <tbody>
+            <tr><td>Secret key, finite, one basis (Z)</td><td className="num">{fmt(pos(khmelev.one))}</td><td className="num">{fmt(KHMELEV_2024_SESSION.finalKeyBits)} (final)</td><td className="num">{pct(pos(khmelev.one), KHMELEV_2024_SESSION.finalKeyBits)}</td></tr>
+            <tr><td>Secret key, finite, both bases</td><td className="num">{fmt(pos(khmelev.both))}</td><td className="num">{fmt(KHMELEV_2024_SESSION.finalKeyBits)} (final)</td><td className="num">{pct(pos(khmelev.both), KHMELEV_2024_SESSION.finalKeyBits)}</td></tr>
+          </tbody>
+        </table>
+        <p className="small muted" style={{ margin: "4px 0" }}>
+          Their {fmt(KHMELEV_2024_SESSION.finalKeyBits)} bits are the key after an analysis of the detectors&apos;
+          unequal efficiencies, which this model&apos;s detectors do not have; before it their key is
+          {" "}{fmt(KHMELEV_2024_SESSION.beforeMismatchBits)} bits. Both correct errors at f_EC {KHMELEV_2024_SESSION.fEC},
+          where this model uses {fmt(fkSrc.fEC, 2)}.
+        </p>
       </div>
       <Details summary="How the pass is computed, and what it leaves out">
         <p>
@@ -173,18 +231,32 @@ function PassSection({ link, liao, minEl, epsSec, deviation }: { link: ReturnTyp
           and began from about 15; this model uses one threshold for both ends.
         </p>
         <p>
-          The first secret-key row compares unlike things on purpose, and says so: the model&apos;s asymptotic bound, per pulse
-          sent, against Liao&apos;s finite-key result with intensity fluctuations, which must be smaller. The second
-          (Round 79) is like for like in kind: the composable finite key of the model&apos;s counts over the same window,
-          by {boundName}&apos;s bound with {statsLabel}, at Liao&apos;s failure probability of 1e-9. Liao et al. do not name their analysis; they
-          allow for intensity fluctuations and correct errors with a Hamming code, neither modelled here, so the two
-          rows differ by the analysis as well as the model. The statistics close part of it (Round 82): with
-          Hoeffding&apos;s deviation on the basis total, as Lim et al. published it, this row reads 0.55 of Liao&apos;s key, and
-          0.56 of Khmelev et al.&apos;s Micius-Zvenigorod session, a key computed with Chernoff bounds; with each count&apos;s own
-          Chernoff-type bound (Yin et al. 2020), this page&apos;s default, 0.75 and 0.69: 45 percent of the gap to Liao&apos;s key
-          and 29 percent of the gap to Khmelev&apos;s, so the statistics are not most of either. Vergoossen et al. (arXiv:1903.07845, Table 3) modelled the same pass at 521,513 secret bits
-          (asymptotic) against 3,926,729 detections; their sifted count, 1,963,364, is exactly half their detections,
-          so it counts every state where Liao counted signals.
+          The secret-key rows count the key three ways, and say which. The asymptotic row is the model&apos;s bound
+          per pulse sent, which keys every sifted signal detection, in both bases, with nothing to allow for, so a
+          finite key on the same counts must be smaller. The finite rows are the composable finite key of the model&apos;s
+          counts over the same window, by {boundName}&apos;s bound with {statsLabel}, at Liao&apos;s failure probability
+          of 1e-9. One basis keys Z and spends X on the phase-error estimate, as Lim et al.&apos;s protocol does; both
+          bases keys each basis with its phase error estimated from the other&apos;s counts, each at half of eps_sec, so
+          the pair keeps it. Both bases is how the published keys were counted: Liao et al. distilled theirs from
+          all {fmt(LIAO_2017_PASS.siftedBits)} sifted bits, and Khmelev et al. write that &quot;both bases are used for
+          key generation&quot;.{gap && (gap.bothOverAsym < 1
+            ? <> Keyed on both bases the finite key is {fmt(100 * gap.bothOverAsym, 1)}% of the asymptotic row, so
+              {" "}{fmt(100 * gap.basisShare)}% of the step from the asymptotic row to the one-basis row is the basis
+              convention, and the rest, {fmt(100 * (1 - gap.basisShare))}%, is everything else between the two bounds:
+              the statistics and the other finite-size terms, net of the decoy and vacuum detections the finite key
+              also draws on.</>
+            : <> Keyed on both bases the finite key is {fmt(100 * gap.bothOverAsym, 1)}% of the asymptotic row, at or
+              above it because it also draws on the decoy and vacuum detections the asymptotic row leaves out, so the
+              step from the asymptotic row to the one-basis row is the basis convention, all of it.</>)} Counted the
+          same way, on both bases, the model&apos;s key
+          is {ratio(pos(liaoFinite.both), LIAO_2017_PASS.finalKeyBits)} times Liao&apos;s, and on Khmelev et
+          al.&apos;s session {ratio(pos(khmelev.both), KHMELEV_2024_SESSION.finalKeyBits)} times theirs. Liao et al. do
+          not name their analysis; they allow for intensity fluctuations and correct errors with a Hamming code,
+          neither modelled here, and Khmelev et al. correct errors at f_EC {KHMELEV_2024_SESSION.fEC} and subtract the
+          detector mismatch, so the rows differ by the analysis as well as the model. Vergoossen et al. (Acta
+          Astronautica 173, 164, 2020; arXiv:1903.07845v1, Table 3) modelled the same pass at 521,513 secret bits
+          (asymptotic) against 3,926,729 detections; their sifted count, 1,963,364, is exactly half their
+          detections, so it counts every state where Liao counted signals.
         </p>
       </Details>
     </section>
@@ -251,7 +323,23 @@ function NightsSection({ link }: { link: ReturnType<typeof satChannel> }) {
   );
 }
 
-function RelaySection({ link, defaultElevation, minEl }: { link: ReturnType<typeof satChannel>; defaultElevation: number; minEl: number }) {
+/** The relay at the page's own composable finite key: each pass a block of its own, as the one-pass
+ *  figure above is, under the run's bound and eps_sec. Exported for web/scripts/check_relay_pass_pairs.mjs. */
+export function relayFiniteKey(relay: ReturnType<typeof trustedRelay>, fkSrc: ReturnType<typeof finiteKeySourceOf>) {
+  const one = (pass: typeof relay.a) => {
+    if (!pass.segments.length) return 0;
+    const bits = keyLength(...blockCounts(pass.segments, fkSrc), fkSrc).keyBits;
+    return Number.isFinite(bits) && bits > 0 ? bits : 0;
+  };
+  const a = one(relay.a), b = one(relay.b);
+  const keyBits = Math.min(a, b);
+  // Liao et al.'s "100 kB" is 800,000 bits; a pass pair adds one relayed key of the shorter length.
+  return { a, b, keyBits, passPairsFor100kB: keyBits > 0 ? Math.ceil(800_000 / keyBits) : Infinity };
+}
+
+function RelaySection({ link, defaultElevation, minEl, epsSec, deviation }: {
+  link: ReturnType<typeof satChannel>; defaultElevation: number; minEl: number; epsSec: number; deviation: Deviation;
+}) {
   const [aId, setA] = useState("xinglong");
   const [bId, setB] = useState("graz");
   const [elA, setElA] = useState(Math.round(defaultElevation));
@@ -259,6 +347,12 @@ function RelaySection({ link, defaultElevation, minEl }: { link: ReturnType<type
   const [keys, setKeys] = useState<{ a: Uint8Array; b: Uint8Array } | null>(null);
   const a = LIAO_2018_STATIONS.find((s) => s.id === aId)!, b = LIAO_2018_STATIONS.find((s) => s.id === bId)!;
   const relay = useMemo(() => trustedRelay(link, a, b, elA, elB), [link, a, b, elA, elB]);
+  // THE PAGE'S OWN KEY (Round 84). The pass pairs were counted at the ASYMPTOTIC key, 2 at the
+  // defaults, while the pass section above gives each pass's composable finite key, 241.4 kbit:
+  // 4 pairs at the figure the page itself stands behind.
+  const fkSrc = useMemo(() => finiteKeySourceOf(link, epsSec, undefined, deviation), [link, epsSec, deviation]);
+  const fin = useMemo(() => relayFiniteKey(relay, fkSrc), [relay, fkSrc]);
+  const bound = `${fkSrc.vacuum ? "Lim et al. 2014" : "Rusca et al. 2018"}; ${DEVIATION_LABELS[fkSrc.deviation]}`;
   const demo = keys ? xorRelay(keys.a, keys.b) : null;
   const station = (value: string, set: (v: string) => void, label: string) => (
     <label>{label}
@@ -273,7 +367,9 @@ function RelaySection({ link, defaultElevation, minEl }: { link: ReturnType<type
       <p className="small muted" style={{ margin: "4px 0" }}>
         Micius made a key with each station on its own pass, then &quot;performs bitwise exclusive OR operations between the
         two keys and relays the result to one of the ground stations&quot; (Liao et al., Phys. Rev. Lett. 120, 030501, 2018):
-        a key across 7,600 km. The satellite holds both keys, so it must be trusted.
+        a key across 7,600 km, Xinglong to Graz, the stations modelled here. Jinan-1 has since relayed one between China
+        and South Africa, &quot;separated by over 12,900 kilometres on Earth&quot; (Li et al., Nature 640, 47, 2025). The
+        satellite holds both keys, so it must be trusted.
       </p>
       <div className="net-controls">
         {station(aId, setA, "Station A")}
@@ -292,11 +388,11 @@ function RelaySection({ link, defaultElevation, minEl }: { link: ReturnType<type
               <td className="small muted">{aId === bId ? "the same station" : relay.sharedView
                 ? `within one satellite's ${fmt(sharedViewMaxKm(link))} km footprint: both can be in view at once`
                 : `wider than one satellite's ${fmt(sharedViewMaxKm(link))} km footprint: the key has to be carried`}</td></tr>
-            <tr><td>Key with A, one pass</td><td className="num">{kbit(relay.a.keyBits)}</td><td className="small muted">{fmt(relay.a.durationS)} s above the minimum elevation; asymptotic, at the pass elevation rounded to a whole degree, so it can differ slightly from the one-pass figure above</td></tr>
-            <tr><td>Key with B, one pass</td><td className="num">{kbit(relay.b.keyBits)}</td><td className="small muted">{fmt(relay.b.durationS)} s</td></tr>
-            <tr><td>Relayed key A to B</td><td className="num"><b>{kbit(relay.keyBits)}</b></td><td className="small muted">the shorter of the two: one key pads the other</td></tr>
+            <tr><td>Key with A, one pass</td><td className="num">{kbit(relay.a.keyBits)}</td><td className="small muted">{fmt(relay.a.durationS)} s above the minimum elevation; asymptotic, at the pass elevation rounded to a whole degree, so it can differ slightly from the one-pass figure above. As one block its composable finite key is {kbit(fin.a)}</td></tr>
+            <tr><td>Key with B, one pass</td><td className="num">{kbit(relay.b.keyBits)}</td><td className="small muted">{fmt(relay.b.durationS)} s; as one block, {kbit(fin.b)}</td></tr>
+            <tr><td>Relayed key A to B</td><td className="num"><b>{kbit(relay.keyBits)}</b></td><td className="small muted">the shorter of the two: one key pads the other. At the finite keys, {kbit(fin.keyBits)}</td></tr>
             <tr><td>Second key exists after</td><td className="num">{fmt(relay.waitH, 1)} h</td><td className="small muted">a sun-synchronous orbit passes each station at the same local time, so the longitude difference sets the wait</td></tr>
-            <tr><td>Pass pairs for Liao&apos;s 100 kB, at the asymptotic key</td><td className="num">{Number.isFinite(relay.passPairsFor100kB) ? relay.passPairsFor100kB : "-"}</td><td className="small muted">&quot;we establish a 100 kB secure key between Xinglong and Graz&quot;; the one-pass finite key is smaller, so it would need more</td></tr>
+            <tr><td>Pass pairs for Liao&apos;s 100 kB</td><td className="num"><b>{Number.isFinite(fin.passPairsFor100kB) ? fin.passPairsFor100kB : "-"}</b></td><td className="small muted">&quot;we establish a 100 kB secure key between Xinglong and Graz&quot;: 800,000 bits over the relayed finite key per pass pair, each pass a block of its own ({bound}, eps_sec {epsSec.toExponential(0)}). The asymptotic key would need {Number.isFinite(relay.passPairsFor100kB) ? relay.passPairsFor100kB : "-"}, which no finite block distils</td></tr>
           </tbody>
         </table>
       </div>
@@ -365,9 +461,10 @@ function ConstellationSection({ orbitKm, minEl }: { orbitKm: number; minEl: numb
   const chosen = profiles[profileId];
   return (
     <section className="net-section" aria-label="Constellation with inter-satellite links">
-      <h4 style={{ margin: "4px 0" }}>Constellation with inter-satellite links (Vergoossen et al. 2019)</h4>
+      <h4 style={{ margin: "4px 0" }}>Constellation with inter-satellite links (Vergoossen et al. 2020)</h4>
       <p className="small muted" style={{ margin: "4px 0" }}>
-        A &quot;string-of-pearls configuration of satellites in the same plane&quot; (Vergoossen et al., arXiv:1903.07845),
+        A &quot;string-of-pearls configuration of satellites in the same plane&quot; (Vergoossen et al., Acta Astronautica 173,
+        164, 2020; arXiv:1903.07845),
         each linked by a quantum channel to the satellites ahead and behind, keys passed from one to the next, every
         satellite a trusted node. Operated in Earth&apos;s shadow only by default - this page&apos;s assumption for the
         inter-satellite links, since Vergoossen et al. state the eclipse condition for satellite-to-ground passes. No quantum inter-satellite

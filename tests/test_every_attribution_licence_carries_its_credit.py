@@ -40,7 +40,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 
-from qsh.models.registry import _SPECS  # noqa: E402
+from qsh.models import registry  # noqa: E402
+from qsh.models.registry import _SPECS, DatasetSpec  # noqa: E402
 
 #: Licence families that require attribution. CC BY in every version and every port, plus the
 #: share-alike and non-commercial variants, which add conditions rather than removing this one.
@@ -52,9 +53,18 @@ _WAIVES = ("CC0", "PUBLIC DOMAIN", "US GOVERNMENT WORK")
 
 
 def _datasets() -> dict[str, object]:
+    """Every dataset the registry defines, not only those attached to a model (Round 84).
+
+    Reading `_SPECS` alone saw a corpus only through a model trained on it, and PaySim, whose rows
+    the repository ships in its bundled demo sample under CC BY-SA 4.0, is attached to none: its
+    empty credit line passed the gate from the round that wrote it, Round 51.
+    """
     out = {}
     for spec in _SPECS:
         out.setdefault(spec.dataset.name, spec.dataset)
+    for value in vars(registry).values():
+        if isinstance(value, DatasetSpec):
+            out.setdefault(value.name, value)
     return out
 
 

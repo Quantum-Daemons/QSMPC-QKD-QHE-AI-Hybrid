@@ -41,7 +41,8 @@ _HAVE_MCP = _MCP_SERVER_CLS is not None
 # --------------------------------------------------------------------------- #
 def score_transaction(amount: float = 0.0, old_balance: float = 0.0,
                       new_balance: float = 0.0, transfer: bool = True) -> dict:
-    """Finance/AML: a bounded fraud score for one transaction (the CKKS-linear surrogate's signal)."""
+    """Finance/AML: a fixed rule-of-thumb fraud score for one transaction (account draining and the
+    amount-to-balance ratio). It is not the page's CKKS-linear surrogate, which reads no balance field."""
     drained = old_balance > 0 and new_balance == 0 and amount > 0
     ratio = amount / (old_balance + 1.0)
     z = 2.5 * ratio + (1.5 if drained else 0.0) + (0.5 if transfer else 0.0) - 2.0
@@ -60,13 +61,28 @@ def query_cohort(phenotype: str = "", min_count: int = 5) -> dict:
 
 def pool_allele_counts(counts: list[int] | None = None) -> dict:
     """Genomics: securely pool per-cohort allele counts via QSMS (reveals only the sum, not any cohort)."""
-    from ..qsmpc.secure_summation import quantum_secure_sum
+    from ..qsmpc.secure_summation import QSMS
 
     counts = [int(c) for c in (counts or [12, 34, 21, 47, 18])]
-    total = quantum_secure_sum(counts, prime=2_147_483_647)  # 2^31-1 (Mersenne prime) >> any allele sum
-
-    return {"n_cohorts": len(counts), "pooled_allele_count": int(total),
-            "method": "QSMS (Shamir + d-qudit GHZ secure summation)"}
+    prime = 2_147_483_647                                   # 2^31-1, a Mersenne prime
+    # NO WRAP, from the range and not the answer (Round 84): each count must lie in [0, (p-1)/n], so
+    # n of them cannot reach p and the pooled count comes back unreduced. A count outside that range
+    # would have been reduced mod p and returned as if it were the total.
+    cap = (prime - 1) // max(1, len(counts))
+    if any(c < 0 or c > cap for c in counts):
+        raise ValueError(f"each allele count must lie in [0, {cap}] so {len(counts)} of them cannot "
+                         f"wrap mod {prime}; got {counts}")
+    n = max(len(counts), 3)
+    res = QSMS(n=n, t=min(3, n), prime=prime).run(counts)
+    # Named for what ran. At d = 2^31-1, d**t is far past the statevector bound, so QSMS samples the
+    # protocol's measurement outcomes analytically and no GHZ state is simulated; the method string
+    # used to name the GHZ simulation regardless.
+    method = ("QSMS over GF(2^31-1): Shamir shares, then "
+              + ("the d-qudit GHZ statevector simulated exactly" if res.honest_statevector
+                 else "an analytic sampler of the protocol's measurement outcomes (d**t is past the "
+                      "statevector bound, so no GHZ state is simulated)"))
+    return {"n_cohorts": len(counts), "pooled_allele_count": int(res.total), "method": method,
+            "ghz_statevector_simulated": bool(res.honest_statevector)}
 
 
 def inspect_qkd_telemetry(qber: float = 0.02, threshold: float = 0.11) -> dict:

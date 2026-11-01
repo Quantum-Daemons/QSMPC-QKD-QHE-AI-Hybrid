@@ -82,17 +82,24 @@ export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
  * it did not make the range honest.
  *
  * WHY THE SETS DIFFER, and it is a property of the data rather than a choice. A wire must carry a
- * feature or be padded, so the floor is the feature count: telecom has 7 features, finance and
- * medical have 8, and `qcnn_variational.py` refuses a narrower run outright ("8 features exceeds 7
- * wires"). Telecom can therefore be narrowed and the others can only be widened.
+ * feature or be padded, so the floor is the feature count: telecom has 7 features, medical 8 and
+ * finance 4, and `qcnn_variational.py` refuses a narrower run outright ("8 features exceeds 7
+ * wires"). Telecom can therefore be narrowed and the others can only be widened. Finance ships at
+ * its floor: since its Round 84 retrain it encodes the four columns the finance linear model reads,
+ * one per wire, so its one trained width is 4.
  *
  * Kept beside `QCNN_USECASES` and gated the same way - `tests/test_qcnn_usecases.py` compares this
  * against `web/public/data/<dir>/qcnn_weights*.json` in BOTH directions, so adding a width without
  * declaring it, or declaring one without shipping it, fails in CI rather than on the site.
+ *
+ * ROUND 84 REMOVED 9 FROM FINANCE AND MEDICAL. Their ninth wire carried no feature and was pooled
+ * into wire 0 without ever being convolved, so 8 and 9 wires gave identical classes on every bundled
+ * row and identical metrics at five of five seeds: a choice that changed nothing. Telecom keeps both
+ * of its widths because they are different trained circuits whose classes differ.
  */
 export const QCNN_WIDTHS: Record<string, number[]> = {
-  finance_aml: [8, 9],
-  medical_fl: [8, 9],
+  finance_aml: [4],
+  medical_fl: [8],
   telecom_ids: [7, 8],
 };
 export const qcnnWidths = (usecase: string) => QCNN_WIDTHS[usecase] ?? [];
@@ -165,6 +172,8 @@ export const makeDefaultParams = () => ({
   // is the other's.
   fk_deviation: qkdCfg().finite_key_deviation,
   sat_fk_deviation: qkdCfg().free_space_finite_key_deviation,
+  // Round 84: the fibre's intensity pair, "block_key" or "first_key" (QKDConfig.intensity_preset).
+  qkd_intensities: qkdCfg().intensity_preset,
   qkd_distance_km: qkdCfg().distance_km,
   qkd_eve: qkdCfg().eve_intercept_fraction,
   qkd_misalignment: qkdCfg().misalignment,

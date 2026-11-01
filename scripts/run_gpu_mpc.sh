@@ -26,7 +26,10 @@ if [ -n "$BIN" ] && [ -x "$BIN" ]; then
   end=$(date +%s.%N)
   wall_ms=$(awk "BEGIN{printf \"%.2f\", ($end-$start)*1000}")
   echo "----- HEonGPU benchmark output (head) -----"; head -20 "$log"
-  # Representative GPU homomorphic-multiply latency (ms) — the core linear-layer op.
+  # One HEonGPU ciphertext multiply's latency (ms), read from the upstream benchmark's output, or the
+  # whole benchmark's wall time when the output carries no multiply timing. Either way it is not an
+  # inference: the row below reports it as latency_ms and 1000 over it as throughput_ips, under the
+  # workload named on the command line.
   mult_ms="$(grep -oiE 'multiplication timing:[[:space:]]*[0-9]+(\.[0-9]+)?' "$log" | grep -oE '[0-9]+(\.[0-9]+)?' | head -1)"
   rot_ms="$(grep -oiE 'rotate[^:]*timing:[[:space:]]*[0-9]+(\.[0-9]+)?' "$log" | grep -oE '[0-9]+(\.[0-9]+)?' | head -1)"
   lat="${mult_ms:-$wall_ms}"
@@ -35,9 +38,9 @@ import json, sys
 lat = float(sys.argv[1]); workload = sys.argv[2]; rot = float(sys.argv[3]); wall = float(sys.argv[4])
 print(json.dumps([{
     "backend": "HEonGPU CKKS (GPU sm_120)",
-    "workload": workload,
-    "latency_ms": round(lat, 6),          # HE multiply latency (core linear-layer op)
-    "throughput_ips": round(1000.0/lat, 1) if lat > 0 else 0.0,
+    "workload": f"one HEonGPU multiply, not an inference ({workload})",
+    "latency_ms": round(lat, 6),          # one HE multiply, not an inference
+    "throughput_ips": None,               # not an inference rate (Round 84)
     "accuracy": None,
     "device": "gpu",
     "extra": {"he_multiply_ms": lat, "he_rotate_ms": rot, "benchmark_wall_ms": wall,
@@ -47,10 +50,10 @@ PY
 )"
   rm -f "$log"
 else
-  echo "!! HEonGPU benchmark binary not found — build it with scripts/build_gpu_mpc.sh"
+  echo "!! HEonGPU benchmark binary not found - build it with scripts/build_gpu_mpc.sh"
 fi
 
-# PIGEON/hpmpc presence (GPU secret-sharing MPC) — record availability.
+# PIGEON/hpmpc presence (GPU secret-sharing MPC) - record availability.
 HP_BIN="$(find "$ROOT/submodules/hpmpc" -maxdepth 2 -type f -name 'run-P*' 2>/dev/null | head -1)"
 [ -n "$HP_BIN" ] && echo "==> PIGEON/hpmpc binary present: $HP_BIN"
 

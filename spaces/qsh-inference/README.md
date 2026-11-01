@@ -1,6 +1,5 @@
 ---
 title: QSH Hosted Inference
-emoji: 🔐
 colorFrom: blue
 colorTo: green
 sdk: gradio

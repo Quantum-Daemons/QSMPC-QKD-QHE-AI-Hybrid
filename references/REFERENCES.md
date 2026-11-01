@@ -106,7 +106,7 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   user's choice), and no link is operated below "10 deg elevation angle", where "A single-orbit
   experiment ends".
   ROUND 77 CORRECTED THE CROSS-CHECK. Round 75 compared the "~12 kbit/s at 645 km" with half of every
-  detection at mu = 0.8, as if every pulse were a signal, and found 12.2. Liao counted signal states
+  detection at $`\mu = 0.8`$, as if every pulse were a signal, and found 12.2. Liao counted signal states
   only: 1,671,072 sifted of 3,551,136 detections is 0.47057, against 0.47059 for signal-only
   sifting at 50 / 25 / 25 and 0.5 for all states. Counted that way, the model of Round 75 was 2.9 dB
   low at 645 km and 2.5 dB high at 1200 km. The model of Round 77 integrates the whole pass of 19
@@ -123,9 +123,10 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   VERIFIED 2026-10-27 in the arXiv text. Two roles here. Its finite-key bound is what
   `src/qsh/qkd/finite_key.py` implements (Round 47), checked against its Table I. And since Round 76
   its stated simulation parameters ARE the fibre channel, value by value: "a repetition rate of
-  1 GHz"; SNSPDs "which have a dead-time tau_DT = 100 ns, dark-count rate (DCR) of 10 Hz which
-  correspond to pDC = 10^-8 and an efficiency (eta_det around 50%)"; "a typical value pErr of 1%";
-  and Appendix B's dead-time correction, Eq. (B3), c_dt = 1 / (1 + R P t_DT), modelled in
+  1 GHz"; SNSPDs "which have a dead-time $`\tau_{DT}`$ = 100 ns, dark-count rate (DCR) of 10 Hz
+  which correspond to $`p_{DC} = 10^{-8}`$ and an efficiency ($`\eta_{det}`$ around 50%)"; "a
+  typical value $`p_{Err}`$ of 1%"; and Appendix B's dead-time correction, Eq. (B3),
+  $`c_{dt} = 1 / (1 + R P t_{DT})`$, modelled in
   `qkd/channel.py::dead_time_factor` counting every click where (B3) sums the Z-basis ones. A
   simulation set rather than a measurement; the experiment that realised the protocol is the
   Boaron entry below. Table I's distances follow 0.2 dB per km.
@@ -136,7 +137,7 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   URL: https://arxiv.org/abs/1310.0240
   VERIFIED 2026-10-27 in the arXiv text. A MEASURED 50 km fibre link at 1 GHz with gated
   self-differencing InGaAs detectors: "detection efficiency of 20.5%, dark count probability per gate
-  of 2.1x10^-5 and after pulse probability 5.25%", intensities 0.425 / 0.044 / 0.001 (two decoys),
+  of $`2.1 \times 10^{-5}`$ and after pulse probability 5.25%", intensities 0.425 / 0.044 / 0.001 (two decoys),
   QBER 4.26% in Z, and secure rates of 1.09 Mbps (efficient BB84) and 0.63 Mbps (standard) at 50 km.
   Cited in `QKDConfig` for its smallest positive-key sample (1.4e5 counts). In Round 76 it was the
   yardstick that showed the old fibre set was about 3x optimistic, and it was not adopted: it ran
@@ -359,15 +360,42 @@ papers. Where the two used to overlap, that file is the owner.
   File: none in the repository since Round 45 (CC BY-NC-ND 4.0, excluded; `DATA_LICENSES.md`
   section 8)
   Decoy-state BB84 plus SHA-256 commitment QOT, giving private set intersection on bank-blacklist
-  data. `src/qsh/qsmpc/qot.py` simulates the 1-of-2 QOT primitive. **The finance use case does not
-  use it, and its set intersection does not keep the two lists private from each other.** It is an
-  HMAC-SHA256 of both lists under the one session key both banks hold (`private_set_intersection` in
-  `qot.py`, `keyedHashPSI` in the browser), so over a small identifier space either bank can hash
-  every candidate identifier and read the other's list: the naive-hashing failure Pinkas, Schneider
-  and Zohner describe (Round 83 additions, below). What holds is narrower: no third party sees
-  either list, and the channel is protected by the PQC session. A production PSI would use an
-  OPRF-based protocol. Corrected 2026-10-30: this line said the use case implemented the paper's
+  data. `src/qsh/qsmpc/qot.py` sketches the 1-of-2 QOT primitive. **The finance use case does not
+  use it.** Its set intersection is a classical, semi-honest DH-OPRF PSI on RFC 9497's OPRF over
+  ristretto255 (`src/qsh/qsmpc/psi.py`, `web/src/lib/oprfPsi.ts`; the RFC 9497 entry below), which is
+  not post-quantum. Corrected 2026-10-30: this line said the use case implemented the paper's
   construction in simulation.
+
+- **RFC 9497, "Oblivious Pseudorandom Functions (OPRFs) Using Prime-Order Groups"** - Davidson,
+  Faz-Hernandez, Sullivan and Wood, IRTF (CFRG), December 2023 `[link]`
+  URL: https://www.rfc-editor.org/rfc/rfc9497.txt (read 2026-11-01; SHA-256 of the text
+  `95160517617374655fe23af2c6cec311eae326deb7689239f97641fd5a560432`)
+  The finance PSI's OPRF, mode 0x00 with the suite ristretto255-SHA512: the context string (section
+  3.1), GenerateKeyPair and DeriveKeyPair (3.2, 3.2.1), Blind, BlindEvaluate, Finalize and Evaluate
+  (3.3.1), and the suite's HashToGroup, HashToScalar and serialization (4.1), implemented in
+  `src/qsh/qsmpc/oprf.py` and run in the browser with `@noble/curves`' `ristretto255_oprf`. Section
+  7.1 gives the server *"Unconditional input secrecy"* (it *"does not learn anything about the client
+  input x, even with unbounded computation"*); section 7.2.1 rests pseudorandomness on the One-More
+  Gap Computational Diffie-Hellman assumption, which is why the PSI is not post-quantum; section
+  7.2.3 puts the cost of Q BlindEvaluate queries to one key at about log2(Q)/2 bits and names
+  rotating keys as a mitigation (the PSI's key is fresh per run); section 7.4 requires constant-time
+  operations on secret data, which the Python implementation does not provide. Appendix A.1.1's two
+  OPRF-mode vectors are checked in both tiers by `tests/test_r84_oprf_psi.py`.
+- **RFC 9496, "The ristretto255 and decaf448 Groups"** - de Valence, Grigg, Hamburg, Lovecruft,
+  Tankersley and Valsorda, IRTF (CFRG), December 2023 `[link]`
+  URL: https://www.rfc-editor.org/rfc/rfc9496.txt (read 2026-11-01; SHA-256 of the text
+  `d875c6e703827da487eae8f0656fd25e4a278f1dcb0f06041669adad27c03ff3`)
+  The prime-order group under the OPRF. `src/qsh/qsmpc/oprf.py` implements section 4: the constants
+  (4.1), SQRT_RATIO_M1 (4.2), Decode, Encode and Equals (4.3.1 to 4.3.3) and the element derivation
+  from 64 bytes (4.3.4). Appendix A's generator multiples, invalid encodings, element-derivation
+  outputs and square-root ratios are checked by `tests/test_r84_oprf_psi.py`.
+- **RFC 9380, "Hashing to Elliptic Curves"** - Faz-Hernandez, Scott, Sullivan, Wahby and Wood, IRTF
+  (CFRG), August 2023 `[link]`
+  URL: https://www.rfc-editor.org/rfc/rfc9380.txt (read 2026-11-01; SHA-256 of the text
+  `a2e6ab02b2117d6f52ac293020857752972b2e23ae005c33f612e40436ff4b6d`)
+  Section 5.3.1, expand_message_xmd, and Appendix B, hash_to_ristretto255 (the element derivation of
+  64 expanded bytes), which RFC 9497's ristretto255-SHA512 suite uses for HashToGroup. Appendix K.3's
+  SHA-512 vectors check `expand_message_xmd` in `tests/test_r84_oprf_psi.py`.
 
 - **Quantum-secure multiparty deep learning** - Sulimany, Vadlamani, Hamerly, Iyengar and
   Englund, Physical Review X 15, 041056, published 24 Dec 2025 `[R]`
@@ -435,9 +463,8 @@ papers. Where the two used to overlap, that file is the owner.
   information-theoretic. **The paper reports no concrete ratio**: the 1.32 this repository once called
   its "literature value" is not in it. That constant and the Overview card it fed were removed on
   2026-10-23, and the quantum-advantage score built on the same comparison was retired from display
-  then; the full deployment's `/api/benchmark` still computes and returns it (`api/main.py`,
-  `src/qsh/benchmark/quantum_advantage.py`), and no page shows it. Corrected 2026-10-30: this said
-  the score was removed. Informs
+  then. The module is kept (`src/qsh/benchmark/quantum_advantage.py`), but neither tier computes it
+  for a run and no page shows it. Informs
   `src/qsh/qhe/rate1_qfhe.py` (QOTP plus a KEM-masked key; no Eval).
 - **Classical rate-1 FHE, the counterpart the comparison above omitted** `[R]`
   Gentry and Halevi, "Compressible FHE with Applications to PIR", TCC 2019, LNCS 11892, pp. 438-464,
@@ -466,7 +493,7 @@ papers. Where the two used to overlap, that file is the owner.
   two-party computation, not FHE-only, and the text contains no TFHE, no quantization and no
   polynomial-softmax method; an earlier revision of this entry attributed all three to it and dated
   it 2024. Reported end-to-end BERT-base latency: 2.1 minutes LAN, 8.9 minutes WAN3; the authors put
-  their secure pipeline at "roughly 3x10^4 slower" than the 4.5 ms plaintext baseline. Informs the
+  their secure pipeline at "roughly $`3 \times 10^4`$ slower" than the 4.5 ms plaintext baseline. Informs the
   Transformer workload in `src/qsh/benchmark/` as a cost reference, not as a performance target.
 
 ---
@@ -581,19 +608,22 @@ directly, not against another file in this repository. The architecture discussi
   permutation-invariant summary of a linear layer exactly and achieves perfect model
   distinguishability, needing `d+1` queries for a `d`-input layer - 5,712 for all linear layers of a
   ResNet-20. Breaks the shuffling-plus-noise defence that a plaintext-offload design depends on.
-  **Carried as a trip-wire, and in the full deployment's server tier the trip-wire is crossed.** This
+  **Carried as a trip-wire; in the full deployment's server tier it was crossed until Round 84.** This
   repository sends the non-linear half as secret shares, through masked conversions since Round 75,
   meant to let the key holder decrypt only masked intermediates. With the TenSEAL backend the mask
-  covers slot 0 only: `src/qsh/mpc/secret_inference.py` adds the bias plus the mask as a scalar to
+  covered slot 0 only: `src/qsh/mpc/secret_inference.py` added the bias plus the mask as a scalar to
   `ct.dot(w)`, TenSEAL broadcasts that scalar to every CKKS slot, and the dot product's rotation sum
   leaves partial sums of the products in the other slots. Decoding the whole plaintext with the
-  client's own secret key, slot differences cancel the mask and expose each product, so the client
-  recovers the unmasked output and the whole weight row in ONE query (confirmed locally 2026-10-30;
-  `tests/test_mpc.py` reads slot 0 only, which is why it passes). So the attack's precondition is
-  present there, at one query rather than d+1: until the fix the next round carries, the conversion
-  is not model-private, and nothing here shows the MPC variant secure. The public demo has no server
-  and its models are public, so it is not affected. Corrected 2026-10-30: this said the precondition
-  was absent, up to the masks' stated statistical bound. **Until Round 75 this entry said "no
+  client's own secret key, slot differences cancelled the mask and exposed each product, so the
+  client recovered the unmasked output and the whole weight row in ONE query (confirmed locally
+  2026-10-30; `tests/test_mpc.py` read slot 0 only, which is why it passed). Since Round 84 every
+  slot the client can decode is masked independently, real and imaginary parts, by a vector encrypted
+  under its key (`src/qsh/fhe/masking.py`), and `tests/test_r84_c1_slot_masking.py` decodes every
+  slot and finds no product; what the client decodes is bounded per run by
+  `view_statistical_distance`, statistically rather than perfectly, and semi-honest with an honest
+  majority. On OpenFHE the imaginary parts are not flooded, and such runs say so. The public demo
+  has no server and its models are public, so it was never affected. Corrected 2026-10-30: this
+  said the precondition was absent, up to the masks' stated statistical bound. **Until Round 75 this entry said "no
   plaintext intermediate exists to query" while the conversions decrypted every linear output in the
   clear and opened every ReLU result to all parties**, so the precondition was present then too. If
   the non-linear path is ever moved to plaintext client offload, this applies directly. Added:
@@ -611,9 +641,10 @@ directly, not against another file in this repository. The architecture discussi
   convert between homomorphic and garbled-circuit encodings at each layer boundary by masking: the
   server adds a random mask to the encrypted linear output before the client decrypts it, exactly,
   over the scheme's plaintext ring. The shape `src/qsh/mpc/secret_inference.py` follows since Round
-  75, with real-valued masks because CKKS is approximate. As implemented the mask is one scalar per
-  output and protects slot 0 only (the Kim and Lee entry above), where GAZELLE's mask is a random
-  element of the plaintext ring. Added: 2026-10-27; the slot-0 limit added 2026-10-30.
+  75, with real-valued masks because CKKS is approximate. Until Round 84 the mask was one scalar per
+  output and protected slot 0 only (the Kim and Lee entry above); since then it is independent in
+  every slot, which is closer to GAZELLE's random element of the plaintext ring, though statistical
+  rather than exact. Added: 2026-10-27; the slot-0 limit added 2026-10-30, and its fix in Round 84.
 - **Mishra, Lehmkuhl, Srinivasan, Zheng & Popa, "Delphi: A Cryptographic Inference Service for Neural
   Networks."** IACR ePrint 2020/050; USENIX Security 2020. Inference between two parties "without
   revealing either party's data", with linear layers on additive secret shares prepared under
@@ -690,18 +721,25 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   whole model is classically simulable with no quantum device, shown at n = 8 qubits on pairs of
   MNIST, Fashion-MNIST, EuroSAT and GTSRB classes, and the authors conclude that QCNN-based QML for
   classical data "appears to be an ill-motivated task" (read in the published PDF 2026-10-30). The
-  trained circuits here are moreover trees of two-qubit blocks on disjoint pairs, which a chain of
-  small density-matrix maps reproduces exactly at any width (all six shipped artefacts to 1.6e-6,
-  checked 2026-10-30), and at 7 to 9 qubits the state vector is a few hundred amplitudes anyway.
+  finance and medical circuits here are moreover trees of two-qubit blocks on disjoint pairs, which a
+  chain of small density-matrix maps reproduces exactly at any width (all six artefacts shipped
+  before Round 84 to 1.6e-6, checked 2026-10-30); telecom's circuit since Round 84 is Hur, Kim and
+  Park's SU(4) block on every neighbouring pair, which is not a tree, and at 7 or 8 qubits the state
+  vector is a few hundred amplitudes anyway.
   **The paper does not predict that logistic regression beats the circuit; that is measured here.**
-  The trained QCNN loses to logistic regression on the identical split (medical accuracy
-  **0.883721** vs **0.953488**; finance minority-class F1 **0.735294** vs **0.865672**), and Bowles
+  The trained QCNN loses to or ties logistic regression on the identical split (finance
+  minority-class F1 **0.228571** vs **0.439024** at the shipped seed since its Round 84 retrain on
+  the four columns the linear model reads, and over five seeds the circuit leads on 2 and trails on
+  3, a mean difference of +0.0426 that five seeds do not separate; medical accuracy **0.883721** vs **0.953488**
+  until Round 84, and since its retrain at c = 0.5 a tie, **0.953488** each at the shipped seed, with
+  logistic regression ahead by 0.0186 over five seeds), and Bowles
   et al. (next entry) report the same direction across 160 datasets. Corrected 2026-10-30: this said
   the paper "is the reason that is the expected result", resting on its random-initialisation result
   (Sec. III.A), which assumes independent random gates that the trained circuits do not have. The
   QCNN model cards quote it. The 8-class telecom circuit added in Round 34 lands the same way - macro F1
   **0.510963** against a multinomial logistic regression at **0.976447** on the identical split, with
-  all 8 classes predicted - which matters because it is a *different* readout (a 3-qubit basis
+  all 8 classes predicted (the Round 84 SU(4) circuit narrows that to **0.944439** at 8 wires and
+  **0.967932** at 7, still behind) - which matters because it is a *different* readout (a 3-qubit basis
   marginal rather than a single $`\langle Z_0 \rangle`$ expectation) and a different task shape, and it did not change
   the direction of the result. **The figures in this bullet were 0.7326, 0.7143 and 0.8098 until
   Round 47, and then 0.860465, 0.84058 and 0.458324 for part of Round 47 itself**: measured first on
@@ -760,12 +798,14 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   Added: 2026-06-27
   File: `Quantum_Delegated_and_Federated_Learning_via_Quantum_Homomorphic_Encryption.pdf`
   QOTP-encrypted delegated and federated learning; informs the `src/qsh/ai/federated.py` privacy
-  layer. **What that layer's pairwise masks do, stated 2026-10-30.** In the browser every pair's mask
-  is an HKDF output of the one PQC session key, which the aggregator also holds; in Python the
-  default pair keys are public constants, `sha256(f"pair-{i}-{j}")`. The masks cancel exactly in the sum
-  and hide nothing from a holder of the session key, so they are not secure aggregation in the sense
-  of Bonawitz et al. (Round 83 additions, below), where each pair's mask comes from a key agreement
-  between that pair alone.
+  layer. **What that layer's pairwise masks do, stated 2026-11-01.** In both tiers each client draws
+  an X25519 key pair per run and each pair of clients derives its mask seed from their shared secret
+  by HKDF-SHA256, the pairwise key agreement of Bonawitz et al. (Round 83 additions, below), so the
+  aggregator, which receives only the public keys and the masked updates, cannot remove a mask on its
+  own. Their double masking and secret-shared keys for dropouts, their malicious-security protocol and
+  any authentication of the public keys are not implemented, every client runs in one tab or one
+  process, and the Python masks are reals that hide an update only partially
+  ([what each step protects](../docs/threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)).
 
 - **Quantum Federated Learning: A Comprehensive Survey** - Nguyen, Uddin, Shaon, Rahman, Dobre and
   Niyato, arXiv:2508.15998, 21 Aug 2025 `[R]`
@@ -925,8 +965,11 @@ belongs in this file rather than only in a comment.
 
 - **Ruszczak, Kotowski, Evans & Nalepa, "The OPS-SAT benchmark for detecting anomalies in
   satellite telemetry", *Scientific Data* 12, 710 (2025).** DOI 10.1038/s41597-025-05035-3. Data:
-  Zenodo 10.5281/zenodo.12588358 (concept DOI), CC BY 4.0. Source of the 30 published baselines
-  `satellite_comms.opssat` is quoted against. Added: 2026-08-07.
+  Zenodo 10.5281/zenodo.12588359, version 1, CC BY 4.0: the record the dataset's README cites and
+  the file the loader fetches. The concept DOI 10.5281/zenodo.12588358 resolves to version 2 (record
+  15108715), whose files differ and which adds an MIT licence file from KP Labs (`DATA_LICENSES.md`,
+  read 2026-10-31). Source of the 30 published baselines `satellite_comms.opssat` is quoted against.
+  Added: 2026-08-07.
 - **Kotowski, Haskamp, Andrzejewski, Ruszczak, Nalepa et al., "European Space Agency Benchmark for
   Anomaly Detection in Satellite Telemetry".** arXiv:2406.17826. Data: Zenodo
   10.5281/zenodo.12528696, CC BY 3.0 IGO. Source of the 0.968 event-wise F0.5 baseline
@@ -948,8 +991,10 @@ belongs in this file rather than only in a comment.
 > then Kotowski and Haskamp as researchers, while the **paper** is Kotowski first. Citing the paper
 > for the benchmark and the Zenodo DOI for the data - as the two entries above do - is correct and is
 > not an inconsistency. Verified 2026-08-11 against Crossref, the arXiv listing and both Zenodo
-> records. Note that the CC BY 3.0 IGO term appears on the Zenodo landing page but NOT in its REST
-> metadata, which returns no licence at all - so an API-only check will wrongly read as unlicensed.
+> records. Note that Zenodo's legacy REST JSON (`/api/records/12528696`) returns no licence for
+> ESA-ADB, while its InvenioRDM JSON (the record's JSON export) carries `CC BY 3.0 IGO` with the
+> legal-code link (both read 2026-10-31), so a check of the legacy API alone reads the corpus as
+> unlicensed.
 
 - **Yang et al., "MedMNIST v2", *Scientific Data* 10:41 (2023).** DOI 10.1038/s41597-022-01721-8.
   Source of the BreastMNIST ResNet-18 AUC 0.901 / ResNet-50 AUC 0.857 baselines. Added: 2026-08-07.
@@ -1043,15 +1088,22 @@ belongs in this file rather than only in a comment.
 - **Kermany et al., "Identifying Medical Diagnoses and Treatable Diseases by Image-Based Deep
   Learning", *Cell* 172(5) (2018).** DOI 10.1016/j.cell.2018.02.010. The chest X-ray source behind
   PneumoniaMNIST. Added: 2026-08-07.
-- **Mavaddat et al., "Polygenic Risk Scores for Prediction of Breast Cancer", *AJHG* 104(1) (2019).**
-  DOI 10.1016/j.ajhg.2018.11.002. The paper behind **PGS000004 (PRS313)**, which the genomics use case
-  has scored since Round 31. Its external baseline is now **AUROC 0.633 [0.624, 0.641]** from PGS Catalog
-  **PPM001647** (Jia et al., JNCI Cancer Spectrum 2020, doi:10.1093/jncics/pkaa021, n=400,812 Europeans),
-  cited and explicitly not measured here. The retired PGS000001 baseline was PPM017270's Harrell C-index
-  0.628 - a different quantity on a different scale, which is one reason the switch was worth making.
-  Added: 2026-08-07, revised 2026-08-11.
+- **Mavaddat et al., "Polygenic Risk Scores for Prediction of Breast Cancer and Breast Cancer Subtypes",
+  *AJHG* 104(1) (2019).**
+  DOI 10.1016/j.ajhg.2018.11.002. The paper behind **PGS000004 (PRS313)**, which the genomics use case does not
+  score: the article is CC BY-NC-ND 4.0 and the weights appear only in its supplementary data.
+- **Graff et al., "Cross-cancer evaluation of polygenic risk scores for 16 cancer types in two large
+  cohorts", *Nat Commun* 12:970 (2021).** DOI 10.1038/s41467-021-21288-z, CC BY 4.0. The paper behind
+  **PGS000072**, the breast-cancer score the genomics use case scores (187 variants; the score sums
+  risk-allele counts times the log odds ratio from each source GWAS). Its external baseline is **AUROC
+  0.637** from PGS Catalog **PPM002038** (Kachuri et al., *Nat Commun* 11:6084, 2020,
+  doi:10.1038/s41467-020-19600-4; n=216,273 UK Biobank women, with covariates, 162 of the 187 SNPs, AUC
+  at 5 years), cited and explicitly not measured here. Added: 2026-10-31.
+- **Lambert, Wingfield et al., "Enhancing the Polygenic Score Catalog with tools for score calculation
+  and ancestry normalization", *Nat Genet* 56:1989-1994 (2024).** DOI 10.1038/s41588-024-01937-x. The
+  citation the PGS Catalog's REST `/rest/info` asks for. Added: 2026-10-31.
 - **Al Badawi, Alexandru, Polyakov and Vaikuntanathan, "SoK: Private LLM Inference using Approximate
-  Homomorphic Encryption", IACR ePrint 2026/935**, revised 2026-06-03. Quoted in `models/distil.py` on
+  Homomorphic Encryption", IACR ePrint 2026/935**, revised 2026-10-23 (its third revision). Quoted in `models/distil.py` on
   why distillation is the practical route to FHE-feasible inference. Added: 2026-08-07, corrected
   2026-08-12. This entry also named `models/registry.py` until Round 33: Round 31 replaced that
   citation with the primary source (Park et al., arXiv:2601.18511v2), so the SoK has not appeared in
@@ -1060,8 +1112,9 @@ belongs in this file rather than only in a comment.
   what things cost (verified at the abstract, and extended here rather than filed twice): the SoK
   proposes a **"Private LLM Card System (PLCS)"** to standardise reporting because *"Frameworks differ
   in ciphertext packing layouts, model fidelity, software and hardware stacks, and reported metrics"*;
-  it finds only **20% of surveyed implementations model-preserving**; and it puts the runtime gap at
-  roughly **four orders of magnitude**. The 20% is the figure that matters most here, because the
+  it finds only **5 of the 21 surveyed frameworks model-preserving** (the revision of 2026-10-23); and
+  it puts the runtime gap at roughly **four orders of magnitude**. That count is the figure that
+  matters most here, because the
   plaintext-versus-CKKS agreement this demo prints IS a model-fidelity claim, and this is the survey
   saying most published work does not make one.
 - **Lyu, "Did We Actually Fix It? An Independent Adversarial Stress-Test of Post-Point-Adjustment
@@ -1144,37 +1197,26 @@ boundary**, not displaying a value.
 
 - **Microsoft SEAL, `SECURITY.md`** `[link]`
   URL: https://github.com/microsoft/SEAL/blob/main/SECURITY.md
-  Verified 2026-08-12. Verbatim: *"The CKKS scheme requires particular care because it is approximate:
-  decryption returns the message plus a secret-key-dependent error term rather than the exact
-  message"*; *"Releasing such decryptions to any party other than the secret key owner can therefore
-  leak the secret key, even when only ordinary computation results are shared"*; *"Formally, the CKKS
-  implementation in Microsoft SEAL does not provide IND-CPA-D security ...; it targets only IND-CPA
-  security"*; *"Any mitigation, such as adding noise to decrypted values before they are shared (noise
-  flooding), must be implemented by the application before a decrypted CKKS value crosses a trust
-  boundary."* Bears on `web/src/lib/clientFHE.ts` and on the threat model's CPAD section. Note what the
-  last sentence implies for this deployment: **SEAL provides no noise flooding**, so there is no
-  parameter to set and the gap is upstream rather than declined.
+  Verified 2026-08-12. The upstream security statement for the cipher on the page. Four of its
+  sentences are quoted verbatim in the threat model's CPAD section
+  ([`../docs/threat-model.md`](../docs/threat-model.md#what-ckks-does-and-does-not-promise-here)): that CKKS decryption returns the message plus a
+  secret-key-dependent error, that releasing such decryptions can leak the key, that SEAL's CKKS
+  targets IND-CPA and not IND-CPA-D, and that noise flooding is the application's job before a value
+  crosses a trust boundary, so SEAL itself provides none. Bears on `web/src/lib/clientFHE.ts`.
 - **IBM HElib, `CKKS-security.md`** `[link]`
   URL: https://github.com/homenc/HElib/blob/master/CKKS-security.md
-  Verified 2026-08-12. The mechanism in one sentence: *"since the scheme itself adds some error, the
-  attacker could learn something from the decryption result even if it knows what the decrypted result
-  was supposed to be. Specifically, it learns the error, which may leak information about the secret
-  key."* The query count Li and Micciancio is usually credited with is here rather than in that paper's
-  reachable text: *"sometimes as few as a single decryption"*. And the cost of the fix: *"to withstand
-  an attack that has access to the results from decryption of D ciphertexts, the bits parameter should
-  be increased roughly by a factor of sqrt(D)"*. HElib implements noise flooding **inside decryption**
-  with a settable accuracy target, which is the contrast that makes SEAL's position specific.
+  Verified 2026-08-12. Three passages are quoted verbatim in the same section: the mechanism (a
+  decryption result leaks the error, and with it the key), the query count Li and Micciancio is
+  usually credited with, which is here rather than in that paper's reachable text, and the scaling law
+  for HElib's own noise flooding, which it implements inside decryption with a settable accuracy
+  target - the contrast that makes SEAL's position specific.
 - **OpenFHE security documentation** `[link]`
   URL: https://openfhe.org/ - the security documentation on the project site; the deep-link path is
-  deliberately not recorded, because only the text below was captured and a guessed path would be worse
-  than a search for "decryption queries" from the landing page.
-  Verified 2026-08-12. Verbatim: *"By default, OpenFHE chooses a configuration where a relatively large
-  number of decryption queries of the same or related ciphertexts can be tolerated. The lower bound for
-  the tolerated number of such decryption queries is N_d = 128 (but in practical computations, N_d is
-  at least 10,000)."* It also scopes the threat: the attack *"applies to the setting where decryption
-  results need to be shared between multiple parties, e.g., in the threshold FHE setting."* OpenFHE
-  offers `NOISE_FLOODING_DECRYPT` and `CKKS_M_FACTOR`; it is the backend `qsh/fhe/backends.py` uses on
-  the server side, so this is the one place in the project where the mitigation is configurable at all.
+  deliberately not recorded, because only the text quoted in the threat model was captured and a
+  guessed path would be worse than a search for "decryption queries" from the landing page.
+  Verified 2026-08-12. The tolerated number of decryption queries and the scope it gives the attack
+  (decryption results shared between parties, as in threshold FHE) are quoted verbatim in the same
+  section, with the two options OpenFHE offers, `NOISE_FLOODING_DECRYPT` and `CKKS_M_FACTOR`.
 - **Guo, Nabokov, Suvanto, Johansson, "Key Recovery Attacks on Approximate Homomorphic Encryption with
   Non-Worst-Case Noise Flooding Countermeasures", USENIX Security 2024** `[link]`
   URL: https://portal.research.lu.se/ - search the title; the record path is not recorded here because
@@ -1572,10 +1614,10 @@ makes**, in the direction of understating what is possible.
   Open-source HEPRS; three-party model (clinician / model developer / evaluator); tested on a
   schizophrenia model with **110,000 SNPs**; encrypted and plaintext PRSs "agree closely"; **"practical
   to use on a single CPU"**.
-  **This is the citation that scopes the registry's T1 argument.** `genomics.prs` is 313 variants, and
+  **This is the citation that scopes the registry's T1 argument.** `genomics.prs` scores 183 variants, and
   `registry.py` explains T1 smallness by homomorphic cost. For this use case that is the wrong reason:
-  HEPRS runs roughly 350x more variants on one CPU, so the score is small because **PGS000004 has 313
-  variants** - a property of Mavaddat et al. 2018, not of CKKS. The cost argument still holds for
+  HEPRS runs roughly 600x more variants on one CPU, so the score is small because **PGS000072 has 187
+  variants** - a property of Graff et al. 2021, not of CKKS. The cost argument still holds for
   finance, medical and satellite, where the model is not a bare dot product.
 - **Provatas, Galanopoulos and Georgakopoulos-Soares, "bioETH-PRS: Confidential Polygenic Risk Scoring
   without a Trusted Evaluator via Fully Homomorphic Encryption on a Programmable Blockchain."**
@@ -1976,7 +2018,8 @@ so each one names what was checked and where it stopped.
 
   **Not resolved by adding a citation to look resolved.** A single HCI paper bolted on here would let
   the round report "grounded in references/" while the rows continued to come from WCAG, which is the
-  decoration-condition failure `QC16` describes. If an HCI source is ever added it has to be because
+  decoration-condition failure, a deferral whose stated condition is not the one that binds. If an
+  HCI source is ever added it has to be because
   a row actually derives from it. Recorded so that no future round answers this bullet by asserting
   a grounding it does not have - which is what nine rounds of silence amounted to.
 
@@ -2067,8 +2110,9 @@ neither a quote nor a stated assumption.
   model reproduces the distances from the coordinates within 1 percent (7,621 and 2,524 km against
   7,600 and 2,500).
 - **Vergoossen, Loarte, Bedington, Kuiper and Ling, "Satellite constellations for trusted node QKD
-  networks"**, arXiv:1903.07845 (2019). `[link]`
-  URL: https://arxiv.org/abs/1903.07845
+  networks"**, arXiv:1903.07845 (2019); published as "Modelling of satellite constellations for
+  trusted node QKD networks", Acta Astronautica 173, 164-171 (2020), doi:10.1016/j.actaastro.2020.02.010.
+  `[link]` URL: https://arxiv.org/abs/1903.07845
   VERIFIED 2026-10-28 in the arXiv text. The constellation the Network tab models: "a
   string-of-pearls configuration of satellites in the same plane (intra-planar ISL)", "Satellites
   have one Micius-type Earth-pointing terminal, and where specified another terminal available for
@@ -2080,7 +2124,8 @@ neither a quote nor a stated assumption.
   2017's.
 - **Khmelev et al., "Eurasian-Scale Experimental Satellite-based Quantum Key Distribution with
   Detector Efficiency Mismatch Analysis"** (the Micius pass over Zvenigorod), arXiv:2310.17476
-  (2023). `[link]` URL: https://arxiv.org/abs/2310.17476
+  (2023); published in Opt. Express 32(7), 11964 (2024), doi:10.1364/OE.511772 (abstract: "a total
+  final key length of 310 kbits"). `[link]` URL: https://arxiv.org/abs/2310.17476
   VERIFIED 2026-10-28 in the arXiv text. The template `micius_2022_zvenigorod`: a 600 mm telescope
   with obstruction 0.73 at 198 m, an atmospheric extinction coefficient "kappa = 0.22 +/- 0.04, which
   corresponds to clear weather conditions" (0.88 dB at the zenith, magnitudes per air mass), channel
@@ -2109,8 +2154,9 @@ neither a quote nor a stated assumption.
   aerosols, 5 km visibility) whose elevation curve equals the zenith transmittance raised to the
   Kasten-Young air mass. Not a template: a hazy-sky atmosphere, about three times the clear-sky
   values above.
-- **Li et al., "Microsatellite-based real-time quantum key distribution"** (Jinan-1), Nature (2025),
-  arXiv:2408.10994. `[link]` URL: https://arxiv.org/abs/2408.10994
+- **Li et al., "Microsatellite-based real-time quantum key distribution"** (Jinan-1), Nature 640, 47-54 (2025),
+  arXiv:2408.10994; the Table 1 used here is arXiv v1's (the version of record reports up to 1.07
+  million bits in one pass and moves the per-pass results to Extended Data, not read). `[link]` URL: https://arxiv.org/abs/2408.10994
   READ 2026-10-28. Not a template yet: it states no dark counts, atmosphere, pointing loss or
   satellite optics efficiency, and fitting them to its own pass would make that pass a circular
   check. Its divergence is a "full angle at 1/e2 of maximum" (9 to 10 urad), a Gaussian convention 3
@@ -2137,12 +2183,13 @@ reason.
 - **Liu, Giordano, Yao, Vernin, Chadid, Wang, Yin and Wang, "Optical Turbulence Characterization at
   LAMOST Site: Observations and Models"**, arXiv:1505.05436 (MNRAS). `[link]`
   URL: https://arxiv.org/abs/1505.05436
-  VERIFIED in the arXiv text: Eq. (1) r0 = 0.185 lambda^(6/5) (integral of Cn2 dh)^(-3/5) and Eq. (2)
-  epsilon0 = 0.98 lambda / r0, at LAMOST, which is at Xinglong. Grounds the optional turbulence
-  coupling (`channel.py::turbulence_coupling_db`); the slant path's sec(zeta) is this project's step.
+  VERIFIED in the arXiv text: Eq. (1) $`r_0 = 0.185\,\lambda^{6/5} \left(\int C_n^2\,dh\right)^{-3/5}`$
+  and Eq. (2) $`\epsilon_0 = 0.98\,\lambda / r_0`$, at LAMOST, which is at Xinglong. Grounds the
+  optional turbulence coupling (`channel.py::turbulence_coupling_db`); the slant path's
+  $`\sec\zeta`$ is this project's step.
 - **Lu et al., "Micius quantum experiments in space"**, Rev. Mod. Phys. 94, 035001 (2022),
   arXiv:2208.10236, Eq. (9). VERIFIED in the arXiv text: the expected mispointing loss
-  w^2 / (w^2 + 4 sigma_p^2) for Gaussian jitter (after Toyoshima and Araki 1998). Grounds the Jinan-1
+  $`w^2 / (w^2 + 4\sigma_p^2)`$ for Gaussian jitter (after Toyoshima and Araki 1998). Grounds the Jinan-1
   template's pointing loss.
 - **Li et al., "Microsatellite-based real-time quantum key distribution"** (Jinan-1), Nature 2025,
   arXiv:2408.10994. Now a TEMPLATE (`jinan1_2022_jinan`), with its stated values quoted, its unstated
@@ -2168,21 +2215,23 @@ reason.
   key distribution"**, Phys. Rev. A 89, 022307 (2014). arXiv:1311.7129 `[link]`
   URL: https://arxiv.org/abs/1311.7129
   VERIFIED in the arXiv text and, for the constant in Eq. (5), in the rendered page: Eqs. (1) to (5)
-  with eps_sec = 21 eps, the conditions mu1 > mu2 + mu3 and mu2 > mu3 >= 0, and gamma's factor
-  "21^2 / a^2". Implemented as `finite_key.vacuum_decoy_key_length` and `finiteKey.ts`, for a source
+  with $`\epsilon_{sec} = 21\epsilon`$, the conditions $`\mu_1 > \mu_2 + \mu_3`$ and
+  $`\mu_2 > \mu_3 \ge 0`$, and $`\gamma`$'s factor $`21^2 / a^2`$. Implemented as `finite_key.vacuum_decoy_key_length` and `finiteKey.ts`, for a source
   that sends a signal, a weak decoy and the vacuum.
 - **Rusca, Boaron, Grunenfelder, Martin and Zbinden, "Finite-key analysis for the 1-decoy state
   QKD protocol"**, Appl. Phys. Lett. 112, 171104 (2018). arXiv:1801.03443 `[link]`
   URL: https://arxiv.org/abs/1801.03443
-  RE-READ for this round: Table I's 2-decoy rows (236 kHz, 2,503, 197 and 14.1 Hz at n_Z = 1e7;
-  355 kHz, 3,881, 333 and 30.7 at 1e9), the vacuum held at mu3 = 1e-6 (Fig. 4), and the vacuum share
+  RE-READ for this round: Table I's 2-decoy rows (236 kHz, 2,503, 197 and 14.1 Hz at
+  $`n_Z = 10^7`$; 355 kHz, 3,881, 333 and 30.7 at $`10^9`$), the vacuum held at
+  $`\mu_3 = 10^{-6}`$ (Fig. 4), and the vacuum share
   "always greater than 11%" at the optimum (Appendix C). Two findings about this repository's own
-  1-decoy implementation: (A21) prints 21 squared, which the code had as 2 to the 21st; and (A16)
+  1-decoy implementation: (A21) prints $`21^2`$, which the code had as $`2^{21}`$; and (A16)
   bounds the vacuum by "the errors relative to one intensity" without naming it, where the code had
   the signal's and the decoy's is tighter at every row. RE-READ in Round 82, on the rendered page at
-  300 dpi: (A16) puts tau0 on the error term only, s^u_{Z,0} = 2 (tau0 (e^k/p_k)(m_{Z,k} +
-  delta(m_Z, eps1)) + delta(n_Z, eps1)), as (A13)-(A15) derive it; the code had tau0 on delta(n_Z)
-  too, which understated the vacuum and overstated the key. With the printed form the 26 dB row reads
+  300 dpi: (A16) puts $`\tau_0`$ on the error term only,
+  $`s^u_{Z,0} = 2\left(\tau_0 \frac{e^{k}}{p_k}\left(m_{Z,k} + \delta(m_Z, \epsilon_1)\right) + \delta(n_Z, \epsilon_1)\right)`$,
+  as (A13)-(A15) derive it; the code had $`\tau_0`$ on $`\delta(n_Z, \epsilon_1)`$ too, which
+  understated the vacuum and overstated the key. With the printed form the 26 dB row reads
   1.5 percent below the table under the paper's dead-time convention, where the old form matched it
   to a few parts in a thousand: the table may have been computed the old way.
 - **Liao et al. 2017** (Nature 549, 43), arXiv:1707.00542, re-read for its key: "mu_s=0.8, mu_1=0.1,
@@ -2191,17 +2240,19 @@ reason.
   failure probability is set to be 10-9". It does not name its finite-key analysis.
 - **Khmelev et al. 2023** (arXiv:2310.17476), re-read for its key: "utilize Chernoff bounds with a
   failure probability of 10-9", "the secure final key is 629,000 bits", error correction at "an
-  inefficiency fec = 1.44", and 310,400 bits with detector-efficiency mismatch. The bound here on the
-  same session gives 0.56 of the 629,000 at f_EC 1.16 and 0.51 at their 1.44, under the published
-  Hoeffding statistics; 0.69 under this project's default since Round 82. Its Chernoff bounds cite
-  Zhang et al. 2017 (its ref. [46]), below.
+  inefficiency fec = 1.44", and 310,400 bits with detector-efficiency mismatch, the key "finally
+  shared". Their Eq. (7) is applied "to the divided data among two bases X and Z": "both bases are
+  used for key generation". How the model's key on the same session compares, on one basis and on
+  both: [`../docs/models-and-benchmarks.md`](../docs/models-and-benchmarks.md#the-qkd-key-blocks). Its
+  Chernoff bounds cite Zhang et al. 2017 (its ref. [46]), below.
 - **Yin, Zhou, Gu, Xie, Lu and Chen, "Tight security bounds for decoy-state quantum key
   distribution"**, Sci. Rep. 10, 14312 (2020). arXiv:2002.06530 `[link]`
   URL: https://arxiv.org/abs/2002.06530
   VERIFIED on the rendered pages (Round 82): for a sum of independent Bernoulli variables with
-  probabilities not necessarily equal, the expectation x* from the observed value x, with failure
-  probability eps and beta = ln(1/eps), is at most x + beta + sqrt(2 beta x + beta^2), Eq. (9), and at
-  least x - beta/2 - sqrt(2 beta x + beta^2/4), Eq. (10), floored at zero; closed forms slightly looser
+  probabilities not necessarily equal, the expectation $`x^*`$ from the observed value $`x`$, with
+  failure probability $`\epsilon`$ and $`\beta = \ln(1/\epsilon)`$, is at most
+  $`x + \beta + \sqrt{2\beta x + \beta^2}`$, Eq. (9), and at least
+  $`x - \beta/2 - \sqrt{2\beta x + \beta^2/4}`$, Eq. (10), floored at zero; closed forms slightly looser
   than the roots of their Eqs. (7)-(8). Their Appendix B calls the inverse-solution Chernoff method of
   Zhang et al. 2017 not rigorous, since it puts the observed value where the bound needs the
   expectation. Grounds `finite_key.py::_chernoff_upper` / `_chernoff_lower`, checked in
@@ -2240,7 +2291,7 @@ reason.
 Read 2026-10-28. The user chose a finite key at every fibre site and asked the published practice to
 decide its block. What each source grounds is stated.
 
-- **Rusca et al. 2018** (arXiv:1801.03443), re-read for its channel and its blocks: n_Z, the Z-basis
+- **Rusca et al. 2018** (arXiv:1801.03443), re-read for its channel and its blocks: $`n_Z`$, the Z-basis
   detections, "defines the privacy amplification (PA) block size"; Table I's 1e7 and 1e9 rows with the
   time each block takes (14 s at 26 dB, 20 min at 46 dB, for 1e7); and "the detector and the internal
   losses of Bob's apparatus are included in the global attenuation". The last is the finding of the
@@ -2253,11 +2304,11 @@ decide its block. What each source grounds is stated.
   key distribution"**, Appl. Phys. Lett. 117, 144003 (2020). arXiv:2007.15447 `[link]`
   URL: https://arxiv.org/abs/2007.15447
   VERIFIED in the arXiv text: "one privacy amplification block consists of 4192 error correction
-  blocks" of 1944 bits, 8,149,248 bits, at eps_sec 1e-9 and eps_cor 1e-15.
+  blocks" of 1944 bits, 8,149,248 bits, at $`\epsilon_{sec} = 10^{-9}`$ and $`\epsilon_{cor} = 10^{-15}`$.
 - **Li et al., "High-rate quantum key distribution exceeding 110 Mb/s"**, Nat. Photon. 17, 416 (2023).
   arXiv:2307.02364 `[link]` URL: https://arxiv.org/abs/2307.02364
   VERIFIED in the arXiv text and supplement: the 1-decoy protocol "within a realistic finite-key size
-  (nZ <= 10^8)", Rusca et al.'s bound, and a block time of 1.58 s at 50 km.
+  ($`n_Z \le 10^8`$)", Rusca et al.'s bound, and a block time of 1.58 s at 50 km.
 - **Lucamarini et al.**, Opt. Express 21, 24550 (2013), arXiv:1310.0240, and IEEE JSTQE (2015),
   arXiv:1503.07335. READ by the round's research: a fixed 20 minute acquisition, the minority choice,
   and the smallest positive samples (1.4e5 counts; 1.6e4 sifted bits).
@@ -2265,7 +2316,7 @@ decide its block. What each source grounds is stated.
   network** (npj Quantum Inf. 2019); **the Tokyo QKD Network** (arXiv:1103.3566); **SECOQC** (New J.
   Phys. 2009); **SwissQuantum** (arXiv:1203.4940). READ by the round's research: deployed systems fix
   the block as bits (1e6 to 1e8) and let the time follow; none fixes it as a pulse count.
-- **Lim et al. 2014** re-read: the "post-processing block size" is n_X, a count of key-basis
+- **Lim et al. 2014** re-read: the "post-processing block size" is $`n_X`$, a count of key-basis
   detections, evaluated at 1e4 to 1e9.
 - **ETSI GS QKD 005 (2010) and GS QKD 016 V2.1.1 (2024)**, read by the round's research: the block
   size must be specified; neither gives a value. A search-engine summary claiming ETSI recommends 1e8
@@ -2305,21 +2356,29 @@ in the technical report.
   Read in the proceedings PDF. Section 1.1: the naive solution, in which both parties hash their
   inputs and compare the hashes, *"is insecure if the input domain is not large or does not have high
   entropy"*, because one party can hash every likely item and compare. A keyed hash whose key both
-  parties hold is the same construction between those two parties, which is why the finance
-  use case's keyed-hash intersection does not keep the banks' lists private from each other (WS3,
-  the Zhang et al. entry). It grounds that correction; nothing here implements its protocol.
+  parties hold is the same construction between those two parties. It is why the finance use case's
+  intersection is an OPRF whose key only one bank holds (the RFC 9497 entry in WS3); nothing here
+  implements this paper's protocol.
 - **Bonawitz, Ivanov, Kreuter, Marcedone, McMahan, Patel, Ramage, Segal and Seth, "Practical Secure
   Aggregation for Federated Learning on User-Held Data"**, arXiv:1611.04482 (2016-11-14, NIPS 2016
   workshop on Private Multi-Party Machine Learning);
   full version "Practical Secure Aggregation for Privacy Preserving Machine Learning", IACR ePrint
-  2017/281 `[link]`
+  2017/281, published as "Practical Secure Aggregation for Privacy-Preserving Machine Learning",
+  ACM CCS 2017, pp. 1175-1191, DOI 10.1145/3133956.3133982 `[link]`
   URL: https://arxiv.org/abs/1611.04482
   Read in the arXiv text. Each pair of users agrees a secret by Diffie-Hellman key agreement and
   expands it with a PRG into a mask, uniform over $`[0, R)^k`$ with the sum taken mod $`R`$, so the
-  masked inputs *"appear uniformly random to the server"* up to their sum. Cited because this
-  project's pairwise masks come from one shared session key instead (the QFL section): they cancel
-  as these do and hide nothing from that key's holder. The ePrint listing was read for the full
-  version's title and authors; its PDF refused automated access.
+  masked inputs *"appear uniformly random to the server"* up to their sum; the lower-ordered user of
+  a pair adds the expansion and the higher subtracts it (Protocol 3). Protocol 1 adds the secret
+  sharing that lets the server finish a round without users who dropped, Protocol 2 a second,
+  per-user mask so that this recovery cannot expose a user who did not drop, and Protocol 4 notes
+  that a server relaying unauthenticated keys can mount a man-in-the-middle attack. This
+  project's pairwise masks follow Protocol 3's key agreement (the QFL section), with X25519 and
+  HKDF-SHA256 as its key agreement and SHAKE-256 as its PRG, and implement neither the dropout
+  recovery nor key authentication. The ePrint listing was read for the full version's title, authors and its
+  abstract, which states security proofs in the honest-but-curious and malicious settings; its PDF
+  refused automated access. The CCS venue, pages and DOI are from the DOI's Crossref record
+  (2026-11-01).
 - **Attrapadung, Hanaoka, Mitsunari, Sakai, Shimizu and Teruya, "Efficient Two-level Homomorphic
   Encryption in Prime-order Bilinear Groups and A Fast Implementation in WebAssembly"**, ACM AsiaCCS
   2018, DOI 10.1145/3196494.3196552 `[link]`

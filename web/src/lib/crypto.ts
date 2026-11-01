@@ -5,7 +5,7 @@
 // The X25519 half used to be a LABEL ONLY. Every page said "ML-KEM-768 + X25519" while this file
 // ran ml_kem768 alone, and the reported 1088-byte ciphertext was ML-KEM-768's on its own — a real
 // hybrid carries X25519's 32-byte ephemeral public key too. Hybrid PQC+classical is the project's
-// headline positioning and the thing BSI TR-02102-1 actually recommends, so the fix is to perform
+// headline positioning and the shape BSI TR-02102-1 recommends (section 2.2; BSI recommends the ML-KEM half, Table 2.7, and not X25519, Table B.3), so the fix is to perform
 // it rather than to soften the wording. Unlike QKD or WASM-FHE, nothing about a browser prevented
 // this; it was simply never wired up.
 import { ml_kem768 } from "@noble/post-quantum/ml-kem.js";

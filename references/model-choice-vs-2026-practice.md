@@ -36,8 +36,15 @@ search behind it - the second time this round that reading has been forced.
    qualifier is load-bearing: TabPFN (*Nature* 637:319-326, 8 Jan 2025) beats them *"on datasets with
    up to 10,000 samples and 500 features"*, while its own authors concede that *"for larger datasets
    and highly non-smooth regression datasets, approaches such as CatBoost, XGB or AutoGluon are
-   likely to outperform TabPFN"*. This project's finance corpus is far past that threshold, so the
-   GBDT choice stands - but the unqualified version of this sentence stopped being true in Jan 2025.
+   likely to outperform TabPFN"*. The regime has widened since: TabPFN-2.5 (arXiv:2511.08667, Nov
+   2025) is *"built for datasets with up to 50,000 data points and 2,000 features"*, and TabPFN-3
+   (May 2026) for *"Up to 1M rows and 200 features"*; TabPFN-3.5 (Sep 2026) raises the feature limit
+   to 20,000 (Prior Labs changelog, read 2026-10-31). This project's finance corpus, 5,078,345
+   transactions, is past even that, so the GBDT choice stands, while telecom (2,400 rows), OPS-SAT
+   (2,123 segments) and WDBC (569 rows) sit inside it. TabPFN-3's weights carry a non-commercial
+   licence, `tabpfn-3-license-v1.0`: *"The model, its derivatives, and its outputs cannot be used for
+   any commercial or production purpose."* Under this project's commercial-OK rule it could serve
+   only as an offline research comparison, never as a shipped model.
    IEEE S&P 2026 (arXiv:2605.26903) states the operative half plainly: *"High speed and
    interpretability make GBDTs popular in finance and healthcare, where neural networks may fall
    short."*
@@ -403,8 +410,8 @@ inside one ciphertext at multiplicative depth 1.
 **No numbers are quoted for it here, deliberately, because none have been measured at the time of
 writing.** Whatever it scores is what gets recorded, and given the teacher's macro F1 of 0.9866 against a
 linear student's capacity, a gap should be expected rather than treated as a defect - the medical case is
-the precedent for training the small model properly once before drawing a conclusion from its size
-(checklist row `S3`). What can be said now without measurement is the structural claim: after this round
+the precedent for training the small model properly once before drawing a conclusion from its size.
+What can be said now without measurement is the structural claim: after this round
 every use case has an encrypted tier, and the reason telecom is last is that its encrypted tier was
 missed rather than declined.
 

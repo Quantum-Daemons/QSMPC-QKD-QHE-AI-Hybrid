@@ -84,7 +84,14 @@ def test_the_flag_is_set_at_every_explanation_site() -> None:
 
 
 def test_the_counts_match_the_flows_that_lack_private_inference() -> None:
-    """One `true` per page with no encrypted stage, one `false` per page with one."""
+    """A page with no encrypted stage can reach `true`; the encrypted stage decides from its backend.
+
+    Round 84 changed the second half. The encrypted stage used to set the flag `false`
+    unconditionally, on the belief that its bars explain a different model from the one that
+    produced the class. On the default CKKS path that is wrong: CKKS evaluates the same bundled model
+    the bars explain and reports its argmax. The flag now follows the backend that surfaced the class,
+    which tests/test_r84_finance_browser_run.py checks on a run.
+    """
     flows = {k: v for k, v in _flows().items() if k not in NO_RENDERED_PAGE}
     without = sorted(k for k, stages in flows.items() if "private_inference" not in stages)
     assert without == ["satellite_comms", "telecom_ids"], (
@@ -103,10 +110,10 @@ def test_the_counts_match_the_flows_that_lack_private_inference() -> None:
         "without an encrypted stage and cannot set it will tell visitors its correct attribution "
         "is not one."
     )
-    assert any(a == "false" for a in assignments), (
-        "no site sets the flag false unconditionally. The pages WITH an encrypted stage need the "
-        "original caveat: their bars explain a different model from the one that produced the "
-        "reported class."
+    assert any("primary_inference" in a and '"ckks"' in a for a in assignments), (
+        f"no flag assignment reads the backend that surfaced the class ({assignments}). On the "
+        "encrypted pages the bars explain the class when CKKS surfaced it from the explained model, "
+        "and not when the trained QCNN did, so the flag has to be computed from that backend."
     )
     # The conditional site must not be a bare literal again: telecom's QCNN branch replaces the
     # surfaced class, and a literal there is exactly the contradiction this round fixed - the panel

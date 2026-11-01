@@ -1,17 +1,17 @@
-// Browser mirror of src/qsh/qkd/sdn_controller.py + kme.py — the ETSI GS QKD 015 V2.1.1 control
+// Browser mirror of src/qsh/qkd/sdn_controller.py + kme.py - the ETSI GS QKD 015 V2.1.1 control
 // plane and the GS QKD 014 V1.1.1 key-delivery surface.
 //
 // Why this exists: the demo talks about QKD and had no control plane, while an "Agentic AI" panel
-// sat next to it. GS QKD 015 clause 1 is explicit — "Application layer interfaces and
-// quantum-channel interfaces are out of scope" — so an MCP agent is a **SAE** (Secure Application
+// sat next to it. GS QKD 015 clause 1 is explicit - "Application layer interfaces and
+// quantum-channel interfaces are out of scope" - so an MCP agent is a **SAE** (Secure Application
 // Entity), an application-plane key consumer, never the controller. This module supplies the
 // missing middle so the page can draw three honest planes instead of implying two.
 //
-// Field names (qkdn_id, qkdl_id, qkdl_type, virt_next_hop, phys_channel_att, skr/eskr …) are taken
+// Field names (qkdn_id, qkdl_id, qkdl_type, virt_next_hop, phys_channel_att, skr/eskr, expected_consumption) are taken
 // verbatim from the published YANG at forge.etsi.org/rep/qkd/gs015-ctrl-int-sdn, revision
 // 2022-01-30, BSD-3-Clause. Nothing is renamed to read more nicely.
 //
-// The quantum layer is SIMULATED — there is no QKD hardware anywhere in this project and every
+// The quantum layer is SIMULATED - there is no QKD hardware anywhere in this project and every
 // SKR/QBER value comes from the analytic channel models in clientQKD. Standards-faithful control
 // plane over a simulated quantum layer is an established pattern, not a shortcut: arXiv:2607.06602
 // (2026-07) validated a production VPN against a simulated KME before moving to hardware.
@@ -33,6 +33,8 @@ export interface QkdLink {
   qkdl_remote_qkdn_id: string;
   /** Ordered intermediate nodes for a VIRT link. Each one handles the key in plaintext. */
   virt_next_hop: string[];
+  /** dB, ETSI's "Expected attenuation on the quantum channel": the run's own `channel_loss_db` when
+   *  given (Round 84; the downlink carried the fibre law, 160 dB at 800 km), else 0.2 dB/km. */
   phys_channel_att: number | null;
   /** ETSI GS QKD 015's secret key RATE, bit/s. Derived as (bits per pulse) x (assumed source rate).
    *
@@ -54,24 +56,35 @@ export interface QkdLink {
 }
 
 /**
- * `eskr` - effective secret key rate after the applications' consumption, bit/s.
+ * `eskr`, bit/s: ETSI GS QKD 015 V2.1.1's "Effective secret key rate (in bits per second) generation
+ * of the key association link available after internal consumption".
+ *
+ * EQUAL TO `skr` HERE (Round 84). Internal consumption is the key a node spends on itself - the
+ * spec's clause 4.6 names "keys used for authentication" and the key transport a virtual link draws
+ * from its hops - and this model spends none. Until Round 84 this subtracted the MCP agent's draw,
+ * which is an APPLICATION's demand: the spec's `expected_consumption`, `linkExpectedConsumption`.
  *
  * HAS NO STORAGE, AND THAT IS THE POINT. Round 42's defect was that `allocate()` subtracted granted
- * BITS from `eskr`, a field documented as bit/s: the rate was doubling as the budget ledger. A
- * comment asking people not to do that again is weaker than removing the thing to be written, so
- * `eskr` is computed on read and there is no field to decrement.
- *
- * The conversion is the one place a total legitimately meets a rate: bits consumed over the channel
- * time the run implies. Returns `null` - never 0 - when there is no rate or no channel time, because
- * `0 bit/s` is a claim about a link and absence is not.
+ * BITS from `eskr`, a field documented as bit/s: the rate was doubling as the budget ledger. It is
+ * computed on read, so there is no field to decrement. `null` - never 0 - when there is no rate.
  */
-export function linkEskr(link: QkdLink, topo: SdnTopology): number | null {
+export function linkEskr(link: QkdLink, _topo?: SdnTopology): number | null {
+  return link.skr;
+}
+
+/**
+ * `expected_consumption`, bit/s: ETSI GS QKD 015 V2.1.1's "Sum of all the application's bandwidth (in
+ * bits per second) on this particular key association link" (Round 84; the agent's draw sat in
+ * `eskr`). The applications' granted bits over the channel time the key was distilled in: the one
+ * place a total legitimately meets a rate. `null` - never 0 - when there is no rate or no channel
+ * time, because `0 bit/s` is a claim about a link and absence is not.
+ */
+export function linkExpectedConsumption(link: QkdLink, topo: SdnTopology): number | null {
   if (link.skr == null) return null;
   const secs = topo.channel_seconds;
   if (secs == null || !(secs > 0)) return null;
-  const consumptionRate = link.consumed_bits / secs;     // bit/s
-  const eskr = link.skr - consumptionRate;
-  return Number.isFinite(eskr) ? Math.max(0, eskr) : null;
+  const rate = link.consumed_bits / secs;
+  return Number.isFinite(rate) ? rate : null;
 }
 
 export interface QkdApplication {
@@ -88,21 +101,33 @@ export interface SdnTopology {
   links: QkdLink[];
   apps: QkdApplication[];
   notifications: string[];
-  /** Seconds of quantum channel this run implies: pulses / source rate. `null` when no clock was
-   *  supplied or no quantum channel ran. `linkEskr` needs it and refuses to guess, which is why it
-   *  lives on the topology rather than being recomputed per link by a caller that may not have it. */
+  /** Seconds of quantum channel the KEY was distilled from: the run's `channel_time_s`, which is
+   *  the key block's pulses over the source rate (Round 84). `null` when no clock was supplied or no
+   *  quantum channel ran. `linkEskr` needs it and refuses to guess, which is why it lives on the
+   *  topology rather than being recomputed per link by a caller that may not have it. */
   channel_seconds: number | null;
   /** The ASSUMED source repetition rate, Hz, carried so every consumer can state what the bit/s
-   *  figures rest on without reaching back into config. */
+   *  figures rest on without reaching back into config. `null` before a run as well as on the
+   *  PQC-only profile: a rate of 0 Hz printed as "0 MHz" on an idle page (Round 84). */
   source_rate_hz: number | null;
   simulated: true;
 }
 
+/**
+ * The share of the run's key budget the panel allocates to the MCP agent's SAE, to show the budget
+ * drawing down: an ILLUSTRATIVE demand, not a measured one. A named value since Round 84 - it was a
+ * bare `* 0.25` in the panel, and the 25% gap between the run's secure bits and the "key budget"
+ * column was explained only by a sentence that could drift from it. The value the panel uses and
+ * prints is the project config's `web.sdn_sae_allocation_fraction`; this is its default, for a
+ * served config that predates that key, and must equal it (`check_control_plane.mjs`).
+ */
+export const SAE_DEMO_ALLOCATION_FRACTION = 0.25;
+
 const trustNote = (l: QkdLink): string =>
   l.qkdl_type === "VIRT" && l.virt_next_hop.length
-    ? `relayed through ${l.virt_next_hop.length} trusted node(s) [${l.virt_next_hop.join(" → ")}] — `
+    ? `relayed through ${l.virt_next_hop.length} trusted node(s) [${l.virt_next_hop.join(", ")}] - `
       + "each sees the key in the clear"
-    : "direct quantum channel — no intermediate node handles the key";
+    : "direct quantum channel - no intermediate node handles the key";
 
 export const linkTrustNote = trustNote;
 
@@ -156,29 +181,47 @@ export function buildTopology(opts: {
    *  finite-key 110 kbps at QBER 3.28% over a 2 km free-space channel (v1: 164.8 kbps). THE CLOCK IS BORROWED AND THE EXPERIMENT IS NOT: that paper's
    *  channel is 2 km horizontal and this model's default is 50 km of fibre, so a derived bit/s here
    *  is this simulation's own number under an assumed clock, never a reproduction of that result.
+   *
+   *  `null` before a run: the rate is the run's own metric, and there is none yet (Round 84).
    */
-  sourceRateHz: number;
-  /** Channel uses this run made. With `sourceRateHz` it gives the channel time; on its own it is
-   *  the count the per-pulse models already work in. */
+  sourceRateHz: number | null;
+  /** Channel uses the key was distilled from: the key block's pulses (`qkd_block_pulses`), else
+   *  the run's. With `sourceRateHz` it gives the channel time when `channelSeconds` is absent. */
   pulses: number;
+  /** The run's own `channel_time_s`, the key block's pulses over the rate. Taken as given when
+   *  present, so the panel prints the run's figure rather than a second computation of it: the
+   *  run's metric and this panel's "channel time" were two quantities under one name until
+   *  Round 84 (0.02 s of sampled pulses against 5.3 s of key block on fibre). */
+  channelSeconds?: number | null;
   qkdEnabled: boolean;
   saeId?: string;
   /** Longest single quantum span before a trusted relay is required, km. */
   maxSpanKm?: number;
+  /** The run's own channel loss in dB (`channel_loss_db`), for `phys_channel_att`: on the downlink the
+   *  free-space budget the run computed, the station's receiver optics in it as the run's figure has
+   *  them. A relay's hops each take half, which holds because only fibre relays and its loss is linear
+   *  in length. Absent, the fibre law at 0.2 dB/km. */
+  channelLossDb?: number | null;
 }): SdnTopology {
-  const { usecase, distanceKm, keyBudgetBits, qkdEnabled, secretKeyRatePerPulse, sourceRateHz } = opts;
+  const { usecase, distanceKm, keyBudgetBits, qkdEnabled, secretKeyRatePerPulse } = opts;
+  const sourceRateHz = Number(opts.sourceRateHz ?? 0);
   // THE ONE MULTIPLICATION THIS ROUND IS ABOUT: bits/pulse x pulses/s = bit/s, which is what ETSI
-  // GS QKD 015 defines `skr` to be. `eskr` is the same rate after the applications' expected
-  // consumption; both are DERIVED and neither is ever decremented. `key_budget_bits` remains the
-  // ledger. A rate that falls as bits are spent would be Round 42's defect returning in a correct
-  // unit, which is the single most likely way this change ships its own bug.
+  // GS QKD 015 defines `skr` to be: the asymptotic rate at the run's range, which on a satellite pass
+  // block is its closest approach, where the rate peaks. `eskr` is the same rate after internal
+  // consumption, which is not modelled, and the applications' demand is `expected_consumption`; all
+  // are DERIVED and none is ever decremented. `key_budget_bits` remains the ledger. A rate that falls
+  // as bits are spent would be Round 42's defect returning in a correct unit.
   const skr = qkdEnabled && sourceRateHz > 0 ? secretKeyRatePerPulse * sourceRateHz : null;
-  // pulses / (pulses per second) = seconds. The channel time this run implies, and the denominator
-  // that turns consumed BITS into a consumption RATE inside `linkEskr`. Guarded so a zero or absent
-  // clock yields null rather than Infinity - an infinite rate would render, and would be believed.
-  const channelSeconds = qkdEnabled && sourceRateHz > 0 ? opts.pulses / sourceRateHz : null;
+  // pulses / (pulses per second) = seconds. The channel time the key implies, and the denominator
+  // that turns consumed BITS into a consumption RATE inside `linkEskr`; the run's own figure when it
+  // supplies one. Guarded so a zero or absent clock yields null rather than Infinity - an infinite
+  // rate would render, and would be believed.
+  const channelSeconds = !qkdEnabled || !(sourceRateHz > 0) ? null
+    : opts.channelSeconds != null && opts.channelSeconds > 0 ? opts.channelSeconds : opts.pulses / sourceRateHz;
   const maxSpan = opts.maxSpanKm ?? 80;
   const saeId = opts.saeId ?? "sae-mcp-agent";
+  const runLoss = opts.channelLossDb != null && Number.isFinite(opts.channelLossDb) ? opts.channelLossDb : null;
+  const attenuation = (km: number, share: number) => (runLoss != null ? runLoss * share : km * 0.2);
 
   const a: SdQkdNode = { qkdn_id: "qkdn-a", qkdn_location_id: `${usecase} · party A`,
     qkdn_status: qkdEnabled ? "OPERATING" : "OUT", key_relay_mode_enable: true };
@@ -205,10 +248,10 @@ export function buildTopology(opts: {
     const half = distanceKm / 2;
     links.push(
       { qkdl_id: "qkdl-a-r", qkdl_type: "PHYS", qkdl_local_qkdn_id: "qkdn-a",
-        qkdl_remote_qkdn_id: "qkdn-relay", virt_next_hop: [], phys_channel_att: half * 0.2,
+        qkdl_remote_qkdn_id: "qkdn-relay", virt_next_hop: [], phys_channel_att: attenuation(half, 0.5),
         skr, consumed_bits: 0, key_budget_bits: keyBudgetBits, qkdl_applications: [] },
       { qkdl_id: "qkdl-r-b", qkdl_type: "PHYS", qkdl_local_qkdn_id: "qkdn-relay",
-        qkdl_remote_qkdn_id: "qkdn-b", virt_next_hop: [], phys_channel_att: half * 0.2,
+        qkdl_remote_qkdn_id: "qkdn-b", virt_next_hop: [], phys_channel_att: attenuation(half, 0.5),
         skr, consumed_bits: 0, key_budget_bits: keyBudgetBits, qkdl_applications: [] },
       // Clause 5.4. A relayed association is never better than its weakest hop.
       { qkdl_id: "qkdl-a-b", qkdl_type: "VIRT", qkdl_local_qkdn_id: "qkdn-a",
@@ -217,12 +260,12 @@ export function buildTopology(opts: {
     );
     notifications.push(`${distanceKm} km exceeds the ${maxSpan} km single-span limit, so the `
       + "controller created a VIRT key association through a trusted relay (clause 5.4). "
-      + "That relay sees the key in the clear — end-to-end secrecy now rests on its physical security.");
+      + "That relay sees the key in the clear - end-to-end secrecy now rests on its physical security.");
   } else {
     links.push({ qkdl_id: "qkdl-a-b", qkdl_type: "PHYS", qkdl_local_qkdn_id: "qkdn-a",
-      qkdl_remote_qkdn_id: "qkdn-b", virt_next_hop: [], phys_channel_att: distanceKm * 0.2,
+      qkdl_remote_qkdn_id: "qkdn-b", virt_next_hop: [], phys_channel_att: attenuation(distanceKm, 1),
       skr, consumed_bits: 0, key_budget_bits: keyBudgetBits, qkdl_applications: [saeId] });
-    notifications.push(`PHYS link created over a single ${distanceKm} km span (clause 5.3) — `
+    notifications.push(`PHYS link created over a single ${distanceKm} km span (clause 5.3) - `
       + "no intermediate node handles the key.");
   }
 
@@ -234,13 +277,13 @@ export function buildTopology(opts: {
     + "It requests keys and issues intents; it does not control the quantum layer.");
 
   return { spec: "ETSI GS QKD 015 V2.1.1 (2022-04)", nodes, links, apps, notifications,
-    channel_seconds: channelSeconds, source_rate_hz: sourceRateHz, simulated: true };
+    channel_seconds: channelSeconds, source_rate_hz: sourceRateHz > 0 ? sourceRateHz : null, simulated: true };
 }
 
 /**
  * Charge key material to a registered SAE, bounded by the association's remaining budget.
  * Mirrors SdnController.allocate: the controller allocates, the KME delivers. Returns the bits
- * actually granted, which may be fewer than requested — that is the honest answer, not a padded one.
+ * actually granted, which may be fewer than requested - that is the honest answer, not a padded one.
  */
 export function allocate(topo: SdnTopology, appId: string, bits: number): number {
   const app = topo.apps.find((x) => x.app_id === appId);
@@ -276,7 +319,7 @@ const QKD014_KEY_SIZE_BITS = 352;
  */
 const SIM_MAX_KEY_PER_REQUEST = 8;
 
-/** GS QKD 014 V1.1.1 Status data format — the only published edition; ed2 is still a draft. */
+/** GS QKD 014 V1.1.1 Status data format - the only published edition; ed2 is still a draft. */
 export function kmeStatus(topo: SdnTopology, slaveSaeId = "sae-party-b"): Record<string, unknown> {
   const link = topo.links[topo.links.length - 1];
   return {

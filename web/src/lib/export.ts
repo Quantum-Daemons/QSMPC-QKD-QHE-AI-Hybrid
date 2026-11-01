@@ -21,8 +21,17 @@ export function downloadJSON(data: unknown, filename = "qsh-export.json"): void 
   downloadBlob(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }), filename);
 }
 
+/** The CSV's columns: every key of every row, in first-seen order. Papa.unparse takes its header from
+ *  the FIRST object alone, so a field that only later rows carry (a measured row's `max_abs_error`,
+ *  a published model's `revision`) was silently dropped from the file while the JSON export kept it. */
+export function csvColumns(rows: Record<string, unknown>[]): string[] {
+  const seen = new Set<string>();
+  for (const r of rows) for (const k of Object.keys(r)) seen.add(k);
+  return [...seen];
+}
+
 export function downloadCSV(rows: Record<string, unknown>[], filename = "qsh-export.csv"): void {
-  const csv = Papa.unparse(rows);
+  const csv = Papa.unparse(rows, { columns: csvColumns(rows) });
   downloadBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), filename);
 }
 

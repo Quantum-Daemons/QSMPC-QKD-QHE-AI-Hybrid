@@ -44,7 +44,7 @@ asserts that it does.
 | Noise Protocol Framework, revision 34, 2018-07-11 | 4.3 HKDF, 5.1-5.3 state objects, 6 prologue, 7.5 IK, 9.2 psk token and psk-mode `e`, 9.4 IKpsk2, 12.1 / 12.3 / 12.7 | https://noiseprotocol.org/noise.html | 142833 | `05d1f2305f81f49ce516530fd70884014f9bae54f8f290a4274b3392b1313d68` |
 | (same, PDF) | | https://noiseprotocol.org/noise.pdf | 389431 | `7562d34c04a661f5679918e56b139b066bd9fa6b821080dfe59eb8f80c7dccb7` |
 | WireGuard whitepaper, draft revision e2da747, 2020-06-01 | 5.4 constants, 5.4.2 initiation, 5.4.3 response, 5.4.4 mac1/mac2, 5.4.5 transport keys | https://www.wireguard.com/papers/wireguard.pdf | 550175 | `b4cf398c21d054e8774af568395b0f7cd0e2b01322809c5dbd66c4135021ca57` |
-| draft-ietf-ipsecme-ikev2-mlkem-09, 2026-07-05 | 2 shared secret used like g^ir, 2.1 KE payloads, 2.2 recipient tests, 4 IANA, Appendix A | https://www.ietf.org/archive/id/draft-ietf-ipsecme-ikev2-mlkem-09.txt | 31307 | `f93e8c536b34ffe52dd6a281212b278a16573cbf532465ac473789e7951b155e` |
+| draft-ietf-ipsecme-ikev2-mlkem-09, 2026-07-05 | 2 shared secret used like $`g^{ir}`$, 2.1 KE payloads, 2.2 recipient tests, 4 IANA, Appendix A | https://www.ietf.org/archive/id/draft-ietf-ipsecme-ikev2-mlkem-09.txt | 31307 | `f93e8c536b34ffe52dd6a281212b278a16573cbf532465ac473789e7951b155e` |
 | IANA IKEv2 parameters (Last-Modified 2026-10-21) | Transform Type 4: 19 = 256-bit random ECP, 36 = ml-kem-768; Type 2: 6 = PRF_HMAC_SHA2_384; Type 1: 20 = ENCR_AES_GCM_16 | https://www.iana.org/assignments/ikev2-parameters/ikev2-parameters.xml | 93531 | `34c2d1e89049a167b51296b82c155f3a3cbab669f9ef8b701fc8a03c4af52545` |
 
 **Status of ML-KEM in IKEv2, as of 2026-10-24.** Not an RFC. The IETF datatracker
@@ -117,8 +117,8 @@ consumed by another. snow's own `snow.txt` (SHA-256
 | ikev2.rsp inside | 715805 bytes, SHA-256 `1ba2b56dc5b94bc796aa8ebf3c3f8d1ae76e2eafb27a8f8ef9fa82fc8ba0431c`, "CAVS 12.0", generated 2012-03-16; 28 sections, 280 cases |
 | Field definitions | ASKDFVS section 6.3, https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/components/askdfvs.pdf, SHA-256 `e75a5a92f52ce27e823f98c458f6bb6fa94f9b5d99e1b74cb8887d874dc2b304` |
 
-Stored: COUNT 0 of six sections - HMAC-SHA-384 with g^ir of 1024 bits (64-bit and 2048-bit nonces), 185
-bits and 2048 bits; HMAC-SHA-256 with g^ir 2048 / nonces 2048; HMAC-SHA-512 with g^ir 2048 / nonces 64.
+Stored: COUNT 0 of six sections - HMAC-SHA-384 with $`g^{ir}`$ of 1024 bits (64-bit and 2048-bit nonces), 185
+bits and 2048 bits; HMAC-SHA-256 with $`g^{ir}`$ 2048 / nonces 2048; HMAC-SHA-512 with $`g^{ir}`$ 2048 / nonces 64.
 Every PRF `ikev2.ts` accepts has a case. Each case checks five outputs: SKEYSEED, DKM, DKM(Child SA),
 DKM(Child SA D-H), SKEYSEED(Rekey). Before the subset was cut, all 280 cases were reproduced with
 Python's own `hmac`/`hashlib`, which is what fixed the reading of each field (SK_d is the first
@@ -126,7 +126,7 @@ prf-length octets of DKM). The CSRC page says these vectors are for informal ver
 replace CAVP validation. Half the sections use 64-bit nonces, below RFC 7296 section 2.10's minimum; the
 KDF does not depend on nonce length.
 
-The same file carries RFC 5903 section 8.1's group 19 example (i, r, g^i, g^r, girx), copied from the
+The same file carries RFC 5903 section 8.1's group 19 example ($`i`$, $`r`$, $`g^i`$, $`g^r`$, `girx`), copied from the
 RFC text above.
 
 ### WireGuard initial state - `wireguard_initial_state.json` (partial, not authoritative)
@@ -134,7 +134,8 @@ RFC text above.
 boringtun (https://github.com/cloudflare/boringtun, BSD-3-Clause) at commit
 `6dcc889a95ad82400932f785d874421d70308195` (2026-06-15), file `boringtun/src/noise/handshake.rs`
 (36430 bytes, SHA-256 `6c2e3eada1e0095f6dae7829540c135c6251f71602f439d818ad6ca3c7a2a262`), hardcodes
-`INITIAL_CHAIN_KEY` = Hash(Construction) and `INITIAL_CHAIN_HASH` = Hash(Ci || Identifier). The two
+`INITIAL_CHAIN_KEY` $`= \mathrm{Hash}(\mathrm{Construction})`$ and `INITIAL_CHAIN_HASH`
+$`= \mathrm{Hash}(C_i \Vert \mathrm{Identifier})`$. The two
 32-byte constants were parsed from the source, converted to hex, and confirmed with Python's
 `hashlib.blake2s` before being stored. wireguard-go computes the same values at start-up
 (`device/noise-protocol.go`, `init()`) instead of publishing them, so no authoritative implementation
@@ -153,7 +154,7 @@ offers them as constants.
 | WireGuard transport keys | `wireguard.ts` | Split() of the vector-checked core | per spec on a validated core |
 | IKEv2 prf, prf+ | `ikev2.ts` | CAVP, three PRFs | official vector |
 | SKEYSEED, SK_* stream, Child SA KEYMAT, rekey SKEYSEED | `ikev2.ts` | CAVP SKEYSEED, DKM, DKM(Child SA), DKM(Child SA D-H), SKEYSEED(Rekey) | official vector |
-| ECP-256 KE data and g^ir = x coordinate | `ikev2.ts` | RFC 5903 section 8.1 | official example |
+| ECP-256 KE data and $`g^{ir}`$ = x coordinate | `ikev2.ts` | RFC 5903 section 8.1 | official example |
 | SK_* lengths for the demo suite (48 / 0 / 0 / 36 / 36 / 48 / 48) | `ikev2.ts` | RFC 7296 2.13-2.14, RFC 5282 7.1, RFC 4106 8.1 | per spec only |
 | RFC 9370 additional key exchange: SKEYSEED(n), SK_*(n) | `ikev2.ts` | nothing - no official vectors exist | per spec only |
 | RFC 8784 PPK mixing of SK_d, SK_pi, SK_pr | `ikev2.ts` | nothing - no official vectors exist | per spec only |

@@ -78,12 +78,14 @@ def _require_length(kem: oqs.KeyEncapsulation, field: str, value: bytes, what: s
     """FIPS 203's input "type check": a byte string of exactly the parameter set's length.
 
     Section 7.2 step 1 (encapsulation key, 384k + 32 bytes) and section 7.3 step 1 (ciphertext,
-    32(d_u k + d_v) bytes) come BEFORE the modulus check, and liboqs-python does not perform them:
-    it copies the input into a buffer of the expected size, so a short input is zero-padded and
-    used. Measured in Round 75 on liboqs-python 0.16 / liboqs 0.14: a 1183-byte key was encapsulated
-    to and a 1087-byte ciphertext decapsulated to a key, where FIPS 203 requires both to be
-    rejected. (A long input was already refused, by the buffer copy.) `check:pqc` covered only the
-    browser library, which rejects both.
+    32(d_u k + d_v) bytes) come BEFORE the modulus check, and liboqs-python did not perform them
+    before 0.16.0.2: it copied the input into a buffer of the expected size, so a short input was
+    zero-padded and used. Measured in Round 75 on liboqs-python 0.16 / liboqs 0.14: a 1183-byte key
+    was encapsulated to and a 1087-byte ciphertext decapsulated to a key, where FIPS 203 requires
+    both to be rejected. (A long input was already refused, by the buffer copy.) The wrapper's fix
+    is advisory GHSA-w696-4vrr-x6x3 (2026-10-28, liboqs-python 0.16.0.2); this check stays, so the
+    behaviour does not depend on the installed version. `check:pqc` covered only the browser
+    library, which rejects both.
     """
     expected = kem.details[field]
     if len(value) != expected:

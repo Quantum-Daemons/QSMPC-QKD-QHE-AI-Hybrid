@@ -1,227 +1,114 @@
 #!/usr/bin/env python3
-"""Cache gnomAD v4 per-ancestry allele frequencies for the PGS000004 (PRS313) variants.
+"""Cache gnomAD genome allele frequencies of the active PGS score's effect alleles, from Ensembl.
 
-WHY THIS DATA AND NOT THE TRAINING CORPUS. The genomics page scores real 1000 Genomes genotypes,
-but IGSR grants no blanket redistribution licence - it says so itself - so the training corpus
-cannot ship in a public web bundle. gnomAD is CC0, which is the strongest possible position: no
-attribution obligation, no share-alike, no field-of-use limit. It is a SUBSTITUTE reference
-population, not the training data, and everything downstream is labelled that way.
+WHERE THE FREQUENCIES COME FROM. Ensembl's REST variation endpoint,
+``https://rest.ensembl.org/variation/human/{rsid}?genotypes=1;pops=1``, lists for each variant the
+allele frequencies of the gnomAD genome groups as populations named ``gnomADg:<group>`` (``afr``,
+``amr``, ``eas``, ``nfe``, ``sas`` among them). This script reads those and nothing else: no gnomAD
+service is queried. Ensembl's response does not state which gnomAD release it carries, so the cache
+records the Ensembl release it was read from (``/info/data``) instead of a gnomAD version. gnomAD's
+data are CC0; its terms ask users not to attempt to re-identify participants and to credit gnomAD
+with a link back (gnomAD's own terms page).
 
-WHY IT IS WORTH PLOTTING AT ALL. The page already shows that one globally-set high-risk cut flags
-16.2% of AFR against 2.8% of EUR (PRS313; the retired PRS77 figures were 29.35% and 3.75% of AMR).
-That chart states the disparity; it does not explain it. This
-one does: for each of the 313 variants the score is built from, it plots the allele frequency in
-African-ancestry samples against European-ancestry samples. Points off the diagonal are variants
-whose frequency depends on ancestry, and PRS313 was developed in European cohorts - its own 28 Catalog
-AUROC records run 0.5877-0.668 for European samples against 0.55 for an African-ancestry one. A score
-whose weights were fitted where the
-allele frequencies differ is exactly how a distribution shift arises without any accuracy claim
-being wrong.
+THE SAME ALLELE AS THE DOSAGES. Each record is resolved with ``resolve`` from
+``scripts/data/fetch_g1k_dosages.py``, the function that decides which allele the 1000 Genomes dosages
+count, on the same record, so a frequency here is of exactly the allele the score is evaluated on, in
+Ensembl's spelling. A variant the dosage fetcher leaves unscored is left out here too. The cache also
+keeps that allele's frequency over the panel's 503 European individuals, so the overlay can check two
+references of one allele against each other.
 
-Cached rather than fetched at build time so the generator is reproducible offline and so a
-public-demo build never depends on a third-party API being up. gnomAD is CC0, so caching is
-unambiguously permitted.
+WHY IT IS WORTH PLOTTING. The page's ancestry-strata chart shows that one global high-risk cut flags
+very different shares of each super-population. This cache feeds the chart that says why: for each
+variant of the score, its effect allele's frequency in one gnomAD group against another.
 
-Usage:  .venv/bin/python scripts/fetch_gnomad_af.py            # the active score (PRS313)
-        .venv/bin/python scripts/fetch_gnomad_af.py --score prs77   # the retired cache
+Usage:  .venv/bin/python scripts/fetch_gnomad_af.py --cache /path/to/ensembl/records
 """
 from __future__ import annotations
 
 import argparse
-import gzip
+import importlib.util
 import json
-import time
-import urllib.error
+import sys
 import urllib.request
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-OUT = REPO / "data" / "genomics" / "gnomad_af.json"
-OUT313 = REPO / "data" / "genomics" / "gnomad_af_prs313.json"
-API = "https://gnomad.broadinstitute.org/api"
-
-#: PGS000004's GRCh38-harmonised scoring file. PGS000004 publishes NO rsIDs, so the only way to look
-#: its variants up is by coordinate - and gnomAD v4 is GRCh38-only while the score is authored on
-#: GRCh37. The Catalog publishes both harmonisations, so each join uses its own build from the same
-#: authoritative source: GRCh37 against the phase-3 VCF for dosages, GRCh38 here.
-#:
-#: Measured 2026-08-11, and this is why the build matters rather than being a technicality:
-#: **310 of the 313 positions differ between GRCh37 and GRCh38.** Querying gnomAD v4 with the
-#: author-reported GRCh37 coordinates would have missed or mis-hit almost every variant, and an
-#: allele-frequency chart drawn from the survivors would still have rendered.
-PGS4_GRCH38 = ("https://ftp.ebi.ac.uk/pub/databases/spot/pgs/scores/PGS000004/"
-               "ScoringFiles/Harmonized/PGS000004_hmPOS_GRCh38.txt.gz")
-
-QUERY_RSID = """
-{ variant(rsid: "%s", dataset: gnomad_r4) {
-    variant_id
-    genome { populations { id ac an } }
-} }
-"""
-
-#: Same field, keyed by coordinate. gnomAD's `variantId` form is `chrom-pos-ref-alt`, and the effect
-#: allele is not necessarily ALT - so both orientations are tried and whichever resolves is recorded
-#: along with which one it was, because an allele-frequency value means nothing without knowing which
-#: allele it counts.
-QUERY_VARIANT_ID = """
-{ variant(variantId: "%s", dataset: gnomad_r4) {
-    variant_id
-    genome { populations { id ac an } }
-} }
-"""
+GROUPS = ("afr", "amr", "eas", "nfe", "sas")
 
 
-def fetch(rsid: str, timeout: int = 45) -> dict | None:
-    return _query(QUERY_RSID % rsid, rsid, timeout)
+def _fetcher():
+    """`scripts/data/fetch_g1k_dosages.py` as a module: one resolver for the dosages and this cache."""
+    spec = importlib.util.spec_from_file_location("fetch_g1k_dosages",
+                                                  REPO / "scripts" / "data" / "fetch_g1k_dosages.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
 
 
-def fetch_by_position(chrom: str, pos: str, ea: str, oa: str, timeout: int = 45) -> dict | None:
-    """gnomAD record for a GRCh38 coordinate, trying both allele orientations.
+def group_frequency(record: dict, group: str, allele: str) -> float | None:
+    """The frequency Ensembl lists for ``allele`` in gnomAD genome group ``group``, else None.
 
-    Records `effect_is_alt` so a downstream frequency is never read as "frequency of the effect
-    allele" when it is the frequency of the other one. That distinction is the whole point of the
-    chart this feeds: a variant whose effect-allele frequency differs by ancestry is the finding, and
-    getting the orientation backwards would invert it.
+    None when the group lists no frequency for that allele, rather than 0: an allele Ensembl does not
+    list is unknown here, not shown to be absent.
     """
-    for ref, alt, effect_is_alt in ((oa, ea, True), (ea, oa, False)):
-        vid = f"{chrom}-{pos}-{ref}-{alt}"
-        rec = _query(QUERY_VARIANT_ID % vid, vid, timeout)
-        if rec:
-            rec["effect_is_alt"] = effect_is_alt
-            rec["queried"] = vid
-            return rec
-    return None
+    hit = [p["frequency"] for p in record.get("populations", [])
+           if p.get("population") == f"gnomADg:{group}" and p.get("allele") == allele]
+    return float(hit[0]) if hit else None
 
 
-def _query(query: str, label: str, timeout: int) -> dict | None:
-    body = json.dumps({"query": query}).encode()
-    req = urllib.request.Request(API, data=body,
-                                 headers={"Content-Type": "application/json",
-                                          "User-Agent": "qsh-research/1.0"})
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            payload = json.loads(r.read())
-    except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-        print(f"  {label}: FETCH FAILED ({type(exc).__name__})")
-        return None
-    v = (payload.get("data") or {}).get("variant")
-    if not v or not v.get("genome"):
-        return None
-    pops = {p["id"]: p for p in v["genome"]["populations"]}
-    out = {"variant_id": v.get("variant_id")}
-    for pop in ("afr", "nfe", "eas", "sas", "amr"):
-        p = pops.get(pop)
-        # an == 0 means the variant was not callable in that group; recording None keeps that
-        # distinct from "frequency is genuinely zero", which is a different statement.
-        out[pop] = (p["ac"] / p["an"]) if p and p.get("an") else None
-    return out
-
-
-def _prs313_variants() -> list[dict[str, str]]:
-    """The 313 PGS000004 variants with their GRCh38 coordinates, from the Catalog's own file."""
-    with urllib.request.urlopen(PGS4_GRCH38, timeout=120) as r:  # noqa: S310 - fixed EBI FTP URL
-        text = gzip.decompress(r.read()).decode()
-    rows = [ln for ln in text.splitlines() if ln and not ln.startswith("#")]
-    header = rows[0].split("\t")
-    col = {n: j for j, n in enumerate(header)}
-    for need in ("hm_chr", "hm_pos", "effect_allele", "other_allele", "chr_position"):
-        if need not in col:
-            raise SystemExit(f"{need} missing from the harmonised file: {header}")
-    out = []
-    for ln in rows[1:]:
-        f = ln.split("\t")
-        chrom, pos = f[col["hm_chr"]].strip(), f[col["hm_pos"]].strip()
-        if not chrom or not pos:
-            # A row with no harmonised position cannot be looked up by coordinate, and there is no
-            # rsID to fall back to. Recorded as unresolvable rather than skipped silently.
-            chrom = pos = ""
-        out.append({
-            "chrom": chrom, "pos": pos,
-            "ea": f[col["effect_allele"]].strip(), "oa": f[col["other_allele"]].strip(),
-            # The GRCh37 position is the key the dosage join and the loader use, so it is what ties a
-            # cache entry back to the rest of the pipeline. Both builds are carried deliberately.
-            "key37": f"{f[col['chr_name']].strip()}:{f[col['chr_position']].strip()}:"
-                     f"{f[col['effect_allele']].strip()}",
-        })
-    return out
-
-
-def _run_prs77() -> int:
-    # Moved out of web/public/ in Round 32. Nothing in the browser read it once realData.ts switched to
-    # the PRS313 payload, but Vite still SERVED it - 30 individuals x 77 SNPs of genotype data published
-    # for no demo benefit, carrying a provenance string the registry had already replaced. That is the
-    # same argument DATA_LICENSES section 4 makes for not shipping the full matrix, applied to a file
-    # that had quietly become gratuitous. Kept under data/ because this retired cache is provenance.
-    src = json.loads((REPO / "data" / "genomics" / "pgs000001_prs_retired.json").read_text())
-    rsids = src["rsids"]
-    cache = json.loads(OUT.read_text()) if OUT.exists() else {}
-    print(f"PGS000001: {len(rsids)} variants by rsID; {len(cache)} already cached")
-    ok = 0
-    for i, rs in enumerate(rsids, 1):
-        if rs in cache and cache[rs] is not None:
-            ok += 1
-            continue
-        rec = fetch(rs)
-        cache[rs] = rec
-        if rec:
-            ok += 1
-            print(f"  [{i:2d}/{len(rsids)}] {rs:14s} AFR={rec['afr'] if rec['afr'] is None else round(rec['afr'],4)}"
-                  f"  NFE={rec['nfe'] if rec['nfe'] is None else round(rec['nfe'],4)}")
-        else:
-            print(f"  [{i:2d}/{len(rsids)}] {rs:14s} no record")
-        time.sleep(0.6)                      # be a polite client of a free public API
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
-    print(f"wrote {OUT.relative_to(REPO)}  ({ok}/{len(rsids)} resolved, {OUT.stat().st_size/1024:.1f} KB)")
-    return ok
-
-
-def _run_prs313() -> int:
-    variants = _prs313_variants()
-    cache = json.loads(OUT313.read_text()) if OUT313.exists() else {}
-    print(f"PGS000004: {len(variants)} variants by GRCh38 coordinate; {len(cache)} already cached")
-    unresolvable = sum(1 for v in variants if not v["pos"])
-    if unresolvable:
-        print(f"  {unresolvable} carry no harmonised GRCh38 position and cannot be looked up")
-    ok = 0
-    for i, v in enumerate(variants, 1):
-        k = v["key37"]
-        if k in cache and cache[k] is not None:
-            ok += 1
-            continue
-        rec = fetch_by_position(v["chrom"], v["pos"], v["ea"], v["oa"]) if v["pos"] else None
-        cache[k] = rec
-        if rec:
-            ok += 1
-            afr = rec["afr"] if rec["afr"] is None else round(rec["afr"], 4)
-            nfe = rec["nfe"] if rec["nfe"] is None else round(rec["nfe"], 4)
-            flip = "" if rec.get("effect_is_alt") else "  (effect allele is REF)"
-            print(f"  [{i:3d}/{len(variants)}] {k:24s} AFR={afr}  NFE={nfe}{flip}")
-        else:
-            print(f"  [{i:3d}/{len(variants)}] {k:24s} no record")
-        time.sleep(0.6)
-    OUT313.parent.mkdir(parents=True, exist_ok=True)
-    OUT313.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
-    print(f"wrote {OUT313.relative_to(REPO)}  ({ok}/{len(variants)} resolved, "
-          f"{OUT313.stat().st_size/1024:.1f} KB)")
-    return ok
+def ensembl_release() -> int | None:
+    req = urllib.request.Request("https://rest.ensembl.org/info/data",
+                                 headers={"Content-Type": "application/json", "User-Agent": "qsh-provenance/1.0"})
+    with urllib.request.urlopen(req, timeout=60) as r:          # noqa: S310 - fixed Ensembl URL
+        releases = json.load(r).get("releases") or [None]
+    return releases[0]
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    # Defaults to the ACTIVE score. It defaulted to "both", so a bare run made 77 gnomAD API calls
-    # to refresh data/genomics/gnomad_af.json - a cache with a writer and, since the 2D overlay moved
-    # to the position-keyed cache, no reader at all. A written artefact nobody reads is the
-    # "metric with no reader" defect wearing a data-file costume, and it was costing a third party's
-    # rate limit to maintain.
-    ap.add_argument("--score", choices=("prs77", "prs313", "both"), default="prs313",
-                    help="prs313 (default) = PGS000004 by GRCh38 coordinate, the active score; "
-                         "prs77 = the retired PGS000001 rsID cache, kept for provenance")
-    args = ap.parse_args()
-    if args.score in ("prs77", "both"):
-        _run_prs77()
-    if args.score in ("prs313", "both"):
-        _run_prs313()
+    sys.path.insert(0, str(REPO / "src"))
+    from qsh.data.loaders import _PRS_FILES, ACTIVE_PRS  # noqa: PLC0415
+
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--score", choices=sorted(_PRS_FILES), default=ACTIVE_PRS)
+    ap.add_argument("--cache", type=Path, default=None, help="directory of raw Ensembl records to reuse")
+    ap.add_argument("--fetched", default="", help="date the records were read, YYYY-MM-DD")
+    ap.add_argument("--ensembl-release", type=int, default=None,
+                    help="the release the cached records came from (default: ask Ensembl now)")
+    a = ap.parse_args()
+
+    f = _fetcher()
+    score_file, _ = _PRS_FILES[a.score]
+    stem = Path(score_file).stem.replace("_breast_cancer", "")
+    out = REPO / "data" / "genomics" / f"gnomad_af_{stem}.json"
+    rows = f.read_score(REPO / "data" / "genomics" / score_file)
+    panel = f.read_panel(REPO / "data" / "genomics" / "g1k_panel.tsv")
+    panel = {s: panel[s] for s in sorted(panel)}
+    eur = [s for s in panel if panel[s][1] == "EUR"]
+
+    cache: dict = {"_source": {
+        "endpoint": "https://rest.ensembl.org/variation/human/{rsid}?genotypes=1;pops=1",
+        "populations": [f"gnomADg:{g}" for g in GROUPS],
+        "ensembl_release": a.ensembl_release if a.ensembl_release else ensembl_release(),
+        "fetched": a.fetched,
+        "note": ("gnomAD genome frequencies as Ensembl's variation endpoint lists them; Ensembl does not "
+                 "name the gnomAD release. CC0; gnomAD's terms ask users not to attempt to "
+                 "re-identify participants."),
+    }}
+    kept = 0
+    for row in rows:
+        record = f.get_record(row["rsID"], a.cache)
+        effect, counts, how = f.resolve(row, record, panel)
+        if effect is None:
+            cache[row["rsID"]] = None
+            print(f"  {row['rsID']}: left out, as in the dosages ({how})")
+            continue
+        rec = {"effect_allele_ensembl": effect,
+               "g1k_eur": round(sum(counts[s] for s in eur) / (2 * len(eur)), 6)}
+        rec.update({g: group_frequency(record, g, effect) for g in GROUPS})
+        cache[row["rsID"]] = rec
+        kept += 1
+    out.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
+    print(f"wrote {out.relative_to(REPO)}: {kept} of {len(rows)} variants resolved")
     return 0
 
 

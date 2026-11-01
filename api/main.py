@@ -156,22 +156,23 @@ async def ws(websocket: WebSocket, run_id: str) -> None:
 
 @app.get("/api/benchmark")
 def benchmark(workload: str = "linear", samples: int = 20, model_size: str = "medium") -> dict:
-    from qsh.benchmark.runner import compute_advantage, run_benchmark
+    from qsh.benchmark.runner import run_benchmark
 
     results = run_benchmark(workload, out_dir=RESULTS_DIR, n_samples=samples,
                             include_openfhe=True, model_size=model_size)
     # `advantage` is the RETIRED composite score (qsh.benchmark.quantum_advantage): its inputs are
-    # not comparable and no page shows it. Returning None here, as the browser does, is deferred.
+    # not comparable and no page shows it, so this returns None, as the browser does (Round 84).
     return {"workload": workload, "model_size": model_size,
-            "results": [r.to_row() for r in results], "advantage": compute_advantage(results)}
+            "results": [r.to_row() for r in results], "advantage": None}
 
 
 @app.post("/api/alice-bob")
 def alice_bob(body: RunConfig | None = None) -> dict:
-    """Two-party Alice<->Bob E2E: PQC handshake, simulated QKD, keyed-hash PSI, private inference.
+    """Two-party Alice<->Bob E2E: PQC handshake, simulated QKD, OPRF PSI, private inference.
 
-    The PSI is a classical keyed hash under a key both parties hold, not the QOT primitive, and it
-    keeps the sets from third parties, not from each other (see qsh.qsmpc.qot).
+    The PSI is the classical DH-OPRF PSI of qsh.qsmpc.psi (RFC 9497, ristretto255-SHA512), not the
+    QOT primitive: Alice learns the intersection and the size of Bob's set, Bob the size of hers.
+    It is semi-honest and not post-quantum, and its messages are sealed under the session key.
     """
     from qsh.benchmark.alice_bob_e2e import run_alice_bob_e2e
 

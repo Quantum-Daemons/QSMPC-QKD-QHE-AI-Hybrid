@@ -125,7 +125,8 @@ def test_the_field_stop_template_steepens_liaos_pass() -> None:
         -10 * math.log10(0.16) + turbulence_coupling_db(ch.free_space, 1200.0), rel=1e-12)
 
 
-# --- Jinan-1 (Li et al., Nature 2025): the 25 September 2022 pass, read from Fig. 4b -------------
+# --- Jinan-1 (Li et al., arXiv:2408.10994v1; Nature 640, 47 (2025)): the 25 September 2022 pass,
+# read from the preprint's Fig. 4b. The version of record moves the per-pass results to Extended Data.
 # Counts per second at the top (about 823 km, where Table 1's 34.1 deg puts it), where QKD ends on
 # the falling branch (1462 km) and where it starts (1630 km), over a background of about 650/s.
 JINAN_PEAK, JINAN_BACKGROUND = (823.3, 40_700.0), 650.0

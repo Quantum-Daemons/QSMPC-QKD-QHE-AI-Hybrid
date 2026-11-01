@@ -3,7 +3,7 @@
 The canonical deploy procedure for the public demo, and its single source.
 
 Three things below are not obvious, were each learned by breaking a live deploy, and are the reason
-this file exists rather than a README paragraph: `!reset` on the ports list, the shared-Caddy
+this file exists rather than a README paragraph: `!override` on the ports list, the shared-Caddy
 network, and clone-verify before touching the live tree.
 
 ## Run it, do not follow it: `scripts/deploy_demo.sh`
@@ -76,12 +76,15 @@ proxy resolves names over. Always confirm the network after starting:
 
     docker inspect -f '{{range $k,$_ := .NetworkSettings.Networks}}{{$k}} {{end}}' qsh-demo-web-1
 
-The container must appear on the front proxy's network, not only on its own compose default.
+The container must appear on the front proxy's network, not only on its own compose default. That
+network is `PROXY_NETWORK` (default `pqcqkd_mgmt-net`), declared `external` in the override, so a
+missing network fails the bring-up loudly instead of silently creating an empty one.
 
-**Why the override uses `!reset` on the ports list.** The override must publish no host ports, and a
-bare `ports: []` does not do that: Compose *appends* override ports to the base list, so 80 and 443
-stay bound and the deploy fails with "port is already allocated". The `!reset` tag (Compose v2.24+)
-replaces the base mapping instead of merging with it.
+**Why the override uses `!override` on the ports list.** The override must publish no host ports, and
+a bare `ports: []` does not do that: Compose *appends* override ports to the base list, so 80 and 443
+stay bound and the deploy fails with "port is already allocated". `ports: !override []` replaces the
+base list instead of merging with it; Compose's merge reference says the tag "allows you to fully
+replace an attribute, bypassing the standard merge rules".
 
 **Front proxy site block.** Cross-origin isolation has to survive the proxy, or threaded WASM and
 `SharedArrayBuffer` stop working in the browser:
@@ -102,15 +105,24 @@ bind-mounted Caddyfile.
 
 ## Full tier (server-side AI, MCP, metrics)
 
-    docker compose -f docker/docker-compose.yml build
-    docker compose -f docker/docker-compose.yml up -d
-    docker compose -f docker/docker-compose.yml ps
+    git clone <repo> qsh && cd qsh
+    docker compose -f docker/docker-compose.yml build    # the images: the full AI tier, OpenFHE, Node for MCP
+    docker images | grep -E 'docker-(api|web)'            # the freshly built images
+    docker compose -f docker/docker-compose.yml up -d    # API with the AI tier, SPA, Prometheus, Grafana
+    docker compose -f docker/docker-compose.yml ps       # all services healthy
 
     #  SPA :8080  -  API :8000/api/health  -  Grafana :3000  -  Prometheus :9090
 
-    # end-to-end federated run and the real MCP server live in this image:
+    # an end-to-end federated run (writes results/); the real MCP server lives in this image too:
     docker compose -f docker/docker-compose.yml exec api \
       python -m qsh.orchestration.pipeline --usecase medical_fl --out results/
+
+The full `Dockerfile.api` (Debian-trixie) **bakes in the AI tier** (CPU torch + PennyLane + MedMNIST),
+the **live OpenFHE** CKKS backend, and **Node/npx** for the real MCP server, so a federated
+`medical_fl` run and the MCP server work out of the box. It fits a **6-core / 12 GB / 100 GB** box
+(CPU; GPU passthrough via the host's `nvidia-container-toolkit` and the `deploy.resources` GPU block
+is optional and faster). The ports are env-overridable (`WEB_PORT`, `API_PORT`, `GRAFANA_PORT`,
+`PROMETHEUS_PORT`).
 
 ## Verify the deploy, in this order
 
@@ -160,27 +172,14 @@ plugin from the official script.
 Host-specific deployment - the port-collision workaround, the shared-proxy override and the
 public-demo profile - is in the sections above.
 
-A generated 14-section technical report is at
-[`report/technical-report.pdf`](../report/technical-report.pdf); build it with `make report`. Every
-table in it is generated from the repository's own artefacts rather than transcribed.
+A 14-section technical report is at
+[`report/technical-report.pdf`](../report/technical-report.pdf); build it with `make report`. Its
+tables of cryptographic parameters, models, licences and defects, and its plotted figures, are
+generated from the repository's own artefacts rather than transcribed; two short tables in its body,
+its architecture figures and the numbers in its prose are typed from the records.
 
-- **Full deployment (federated learning + inference)** - Docker image build -> server startup:
-  ```bash
-  git clone <repo> qsh && cd qsh
-  docker compose -f docker/docker-compose.yml build       # build the images (full AI tier + OpenFHE + Node/MCP)
-  docker images | grep -E 'docker-(api|web)'           # the freshly-built images
-  docker compose -f docker/docker-compose.yml up -d       # start: API (+AI tier) . SPA . Prometheus . Grafana
-  docker compose -f docker/docker-compose.yml ps         # all services healthy
-  # SPA http://localhost:8080  .  API http://localhost:8000/api/health  .  Grafana http://localhost:3000
-  # run a federated use case end-to-end (writes results/):
-  docker compose -f docker/docker-compose.yml exec api \
-    python -m qsh.orchestration.pipeline --usecase medical_fl --out results/
-  ```
-  The full `Dockerfile.api` (Debian-trixie) **bakes in the AI tier** (CPU torch + PennyLane + MedMNIST),
-  the **live OpenFHE** CKKS backend, and **Node/npx** for the real MCP server, so a federated `medical_fl` run +
-  the MCP server work out of the box. Fits a **6-core / 12 GB / 100 GB** box (CPU; GPU passthrough via host
-  `nvidia-container-toolkit` + the `deploy.resources` GPU block is optional and faster). Ports are env-overridable
-  (`WEB_PORT` / `API_PORT` / `GRAFANA_PORT`).
+- **Full deployment (federated learning + inference)** - the image build, the server start and a
+  federated run are under [Full tier](#full-tier-server-side-ai-mcp-metrics) above.
 - **Client-side build (implementation capability)**: the SPA also builds **fully client-side** - every
   computation runs in the browser (real CKKS FHE + a Polytune garbled-circuit 2PC, ONNX inference, a
   simulated BB84 channel, PSI / SHAP / QFL), with **zero `/api` compute**. In this mode the system needs **neither the backend

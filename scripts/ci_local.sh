@@ -104,8 +104,8 @@ bash scripts/build_wasm.sh >/tmp/ci_wasm.log 2>&1 \
 # wider than their box, on every page after a run. The user found labels overflowing and overlapping
 # in the run diagrams, and looking further found an axis title over its ticks, a class name cut off
 # below its chart and titles cut off above theirs; no gate measured any of it. A client-only build,
-# served on its own port, scanned in a headless Chrome in this machine's font, then torn down. The CI
-# web job runs the same scan in the runner's font, DejaVu Sans, which is wider.
+# served on its own port, scanned in a headless Chrome in this machine's font and again in DejaVu Sans,
+# the CI runner's font, which is wider (Round 84), then torn down.
 SCAN_OUT=$(mktemp -d)
 if ( cd web && VITE_CLIENT_ONLY=1 npx vite build --outDir "$SCAN_OUT" >/tmp/ci_scanbuild.log 2>&1 ); then
   ( cd web && exec npx vite preview --outDir "$SCAN_OUT" --port 4182 --strictPort >/tmp/ci_preview.log 2>&1 ) &
@@ -113,6 +113,12 @@ if ( cd web && VITE_CLIENT_ONLY=1 npx vite build --outDir "$SCAN_OUT" >/tmp/ci_s
   ( cd web && node scripts/check_text_overlap.mjs http://localhost:4182 1280 720 >/tmp/ci_textlayout.log 2>&1 ) \
     && ok "no text over text, out of its box or clipped, and no table wider than its box, on any page" \
     || { bad "text layout (web/scripts/check_text_overlap.mjs)"; grep -E "FAIL|^ +\[" /tmp/ci_textlayout.log | head -20; }
+  # Round 84: and again in DejaVu Sans, the CI runners' system-ui. The telecom plane charts' ticks met
+  # their rotated title there while this machine's Noto passed, so the push was the first run that
+  # saw it. `web/scripts/fonts-dejavu.conf` prepends DejaVu Sans to system-ui and the sans families.
+  ( cd web && FONTCONFIG_FILE="$PWD/scripts/fonts-dejavu.conf" node scripts/check_text_overlap.mjs http://localhost:4182 1280 720 >/tmp/ci_textlayout_dejavu.log 2>&1 ) \
+    && ok "the same layout scan in DejaVu Sans, the CI runners' font" \
+    || { bad "text layout in DejaVu Sans (web/scripts/check_text_overlap.mjs, FONTCONFIG_FILE=web/scripts/fonts-dejavu.conf)"; grep -E "FAIL|^ +\[|page font" /tmp/ci_textlayout_dejavu.log | head -20; }
   pkill -f "vite preview --outDir $SCAN_OUT" 2>/dev/null
 else
   bad "client-only build for the text-layout scan"; tail -8 /tmp/ci_scanbuild.log
@@ -146,8 +152,8 @@ step "11/18 Federated secure aggregation"
 # said "(secure aggregation)" while clientQFL summed plaintext updates, with `secureAgg: true` a
 # literal on the return line. Every gate above stayed green throughout, because none of them can see
 # a figure asserting a property of code in another file. This asserts it on the function: masks
-# applied, keyed by the session key, fresh per round, cancelling to a bit-identical weighted mean,
-# and no plaintext path to fall back into.
+# applied, keyed by each pair's X25519 secret through HKDF and untouched by the session key (Round 84),
+# fresh per round, cancelling to a bit-identical weighted mean, and no plaintext path to fall back into.
 ( cd web && npm run --silent check:qfl >/tmp/ci_qfl.log 2>&1 ) \
   && ok "federated secure aggregation" || { bad "federated secure aggregation"; tail -12 /tmp/ci_qfl.log; }
 

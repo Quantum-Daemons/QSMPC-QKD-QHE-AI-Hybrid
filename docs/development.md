@@ -183,14 +183,15 @@ library through its published package does not require vendoring its source tree
 
 | Dependency | How it is used | How it is obtained | License |
 |---|---|---|---|
-| `liboqs-python` | PQC ML-KEM / ML-DSA (SLH-DSA is not in this liboqs build, and no code here uses it) | pip | MIT |
-| `tenseal` | CKKS (default FHE backend) | pip | Apache-2.0 (over Microsoft SEAL, MIT) |
+| `liboqs-python` | PQC ML-KEM / ML-DSA. The Docker image's liboqs 0.16.0 also builds SLH-DSA (in liboqs since 0.15.0) and enables HQC by default; the local venv's liboqs 0.14.0 has SPHINCS+ instead and HQC off. No code here registers SLH-DSA, SPHINCS+ or HQC | pip; the C library built from the 0.16.0 tag in `docker/Dockerfile.api` | MIT |
+| `tenseal` | CKKS (default FHE backend). It bundles its own SEAL: 4.1.1 in 0.3.16, the version the venv runs, and 4.3.3 from 0.3.17 on, which the `>=0.3.15` floor admits; both predate SEAL 4.4.0 | pip | Apache-2.0 (over Microsoft SEAL, MIT) |
 | `openfhe` | CKKS + approximate bootstrapping | pip; on RHEL 9 build with [`env/build_openfhe_el9.sh`](../env/build_openfhe_el9.sh) | BSD-2-Clause |
 | `mpyc` | **non-linear MPC** - Shamir ReLU/argmax, the hybrid's non-linear half | pip | MIT |
 | `pennylane` | variational quantum layers (QFL, QML-IDS) | pip | Apache-2.0 |
 | `qiskit` / `qiskit-aer` | circuit authoring + state-vector simulation | pip | Apache-2.0 |
-| **Alisah-Ozcan/HEonGPU** | GPU CKKS for the MPC-FHE benchmark | **submodule** | Apache-2.0 |
-| **chart21/hpmpc** (PIGEON) | GPU secret-sharing MPC for the same benchmark | **submodule** | MIT |
+
+The two submodules, HEonGPU and hpmpc, serve the GPU MPC-FHE benchmark; their pins, licences and the
+unlicensed submodule one level below hpmpc are in [`DATA_LICENSES.md`](../DATA_LICENSES.md#6a-git-submodules).
 
 **Client-side / AI OSS (npm, all commercial-OK):** `@noble/post-quantum` **0.7.0** (MIT) for
 in-browser ML-KEM and ML-DSA. The pin matters: **0.2.1 accepted all 2,595 malformed encapsulation

@@ -203,11 +203,14 @@ def test_no_shipped_artifact_claims_an_architecture_it_does_not_have() -> None:
         # their label says, and no amount of relabelling makes them.
         nq, layers = int(w["n_qubits"]), int(w["layers"])
         ro = int(w.get("readout", {}).get("readout_qubits", 0) or 0)
-        want = q.param_count(nq, readout_qubits=ro, layers=layers)
+        # ROUND 84: the count of the circuit the artifact names (`circuit.name`; absent = the tree),
+        # since telecom ships the SU(4) circuit. A name this trainer does not build raises here.
+        arch = str((w.get("circuit") or {}).get("name", "tree"))
+        want = q.param_count(nq, readout_qubits=ro, layers=layers, arch=arch)
         got = len(w["theta"])
         if got != want:
             stale.append(
-                f"{d.name}: {got} angles shipped, the QCNN at nq={nq} layers={layers} "
+                f"{d.name}: {got} angles shipped, the {arch} QCNN at nq={nq} layers={layers} "
                 f"readout={ro} needs {want} (the retired ansatz would need {layers * nq})")
     assert not stale, (
         "these shipped artifacts do not record a QCNN architecture:\n  " + "\n  ".join(stale)

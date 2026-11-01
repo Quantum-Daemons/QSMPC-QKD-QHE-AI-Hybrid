@@ -23,8 +23,17 @@ The project's own code is Apache-2.0. Everything below keeps its own licence.
 
 **Re-verified 2026-10-25 (Round 70), each at its source of record, and none has changed:**
 - WDBC is CC BY 4.0 (UCI, DOI 10.24432/C5DW2B).
-- OPS-SAT-AD is CC BY 4.0 (Zenodo). The DOI cited below now resolves to record 15108715, with the same
-  files and the same 2024-06-24 date.
+- OPS-SAT-AD is CC BY 4.0 (Zenodo). Read again on 2026-10-31, its two versions are different files.
+  This project uses **version 1**, record 12588359 (doi:10.5281/zenodo.12588359, published
+  2024-06-29), the record the dataset's own README cites: the loader fetches its `dataset.csv`
+  (`qsh.models.datasets.OPSSAT_FETCH`), and the local copy matches that file's MD5,
+  `c12fb83863afa4463dec07303a20bb14` (507,568 B). The concept DOI 10.5281/zenodo.12588358 now
+  resolves to **version 2**, record 15108715 (created 2025-03-30), whose `dataset.csv` (507,550 B)
+  and `segments.csv` (18,987,091 B, against version 1's 17,970,946 B) are different files, and which
+  adds a `LICENSE` file, *"MIT License for OPS-SAT Dataset"*, "Copyright (c) 2024 KP Labs", granting
+  rights to *"this software, data and associated documentation files"*. Both records' metadata state
+  CC BY 4.0. Nothing here ships version 2's files, so its MIT notice does not bind them; a citation of
+  the concept DOI points at version 2 and is an open change (section 2c).
 - The ESA Anomaly Dataset is CC BY 3.0 IGO (Zenodo).
 - AMLworld is CDLA-Sharing-1.0 (Kaggle, version 8, updated 2025-07-08).
 - PaySim is CC BY-SA 4.0 (Kaggle).
@@ -34,9 +43,9 @@ The project's own code is Apache-2.0. Everything below keeps its own licence.
 - MedMNIST BreastMNIST stays Unresolved, for the upstream reason given below.
 
 Checked again at each source on 2026-10-30: the same licences hold. That check also found that
-CSE-CIC-IDS2018's own page grants redistribution (section 3), that the NASA SMAP/MSL sample has no
-grant at any source (section 2), and that several shipped files lack the licence link and change
-notice their licences ask for (section 2c).
+CSE-CIC-IDS2018's own page grants redistribution (section 3) and that the NASA SMAP/MSL sample has
+no grant at any source (section 2, which records its removal). Section 2c lists what each licence
+asks of a shipped file and where the file carries it.
 
 `src/qsh/models/registry.py` is the machine-readable version of this file: each model spec carries
 its dataset, licence, source URL, the date the licence text was last read, and a `publishable` flag
@@ -53,11 +62,11 @@ non-exclusive"* - a licensing mistake there cannot be undone.
 | **Finance** | [IBM AMLworld HI-Small](https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml) - 5,078,345 transactions, 5,177 laundering (1 in 981); **synthetic** | **CDLA-Sharing-1.0** | **Yes** | **AMLworld is synthetic, like PaySim.** IBM's own README: *"The data is generated using a multi-agent virtual world model... Everything is synthetic"*, and the NeurIPS 2023 D&B paper is *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is the training corpus because it is calibrated to real transaction statistics **and** its licence permits publishing derived weights - not because it is real. There is no commercial-OK corpus of real laundering transactions. CDLA-Sharing section 1.11 defines *Results* as the outputs of Computational Use, and section 3.5 states *"This Agreement imposes no obligations or restrictions on Your Use or Publication of Results."* Trained weights are Results; the ShareAlike reciprocity attaches to redistributing the **Data**, and this repository does redistribute Data: the 8,192-row evaluation samples in the two finance Hub repos and in git (section 4), and `web/public/data/finance/real_2d.json` (section 2b). Those computed-feature rows are Enhanced Data, so CDLA-Sharing-1.0 binds them: the same unmodified agreement (sections 3.1(a) and 3.3), prominent notices on the changed files (3.1(b)), preserved credit (3.1(c)), and the agreement's text, name or a link (3.3). Section 2c says what the files still lack. Test-fixture feature rows (`fixtures.npy`) are git-ignored and excluded from every upload. |
 | **Medical** | [MedMNIST v2 BreastMNIST](https://medmnist.com/) - 780 breast-ultrasound images | **CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence** | **Yes, by decision (2026-10-26)** | Attribution: MedMNIST v2, Yang et al., *Scientific Data* 10:41 (2023), and MedMNIST v1, Yang, Shi and Ni, IEEE ISBI 2021 - MedMNIST asks for both - plus the BUSI source paper below. MedMNIST also states that its data is not for clinical use. **Because the test split ships in three public Hub repos and in git, no file in this repository may say BreastMNIST cannot be redistributed**; the medical overlay's payload still does (section 2b). **Checked again 2026-10-26, at every source the BUSI authors publish.** The host page asks only for a citation in every capture from 2021 to 2026; the article's supplements hold the Baheya Hospital ethics committee's approval to publish the dataset publicly and the waiver of consent, and no licence; the authors made no repository deposit; and every Kaggle mirror carries a licence its uploader chose, none of them an author. So the data was released publicly with no terms, and the only licence anyone states is MedMNIST's own CC BY 4.0. The three Hugging Face repos stay public on that basis, by decision. Unlike CIC-IDS2017 (declined) and ImageNet (dropped), whose providers state conflicting or restrictive terms, BUSI's state none. **Checked 2026-08-10 and downgraded.** MedMNIST licenses itself CC BY 4.0, but BreastMNIST is a resize of BUSI (Al-Dhabyani et al., *Data in Brief* 28:104863, 2020), where the CC BY attaches to the ARTICLE - PMC states no separate data licence, and the dataset host asks only "If you use this dataset, please cite". A citation request is not a grant. Same ambiguity class as CIC-IDS2017 (declined) and ImageNet (dropped); unresolved rather than disproven, and recorded because three HF repos ship on it. Separately, BUSI is contaminated - see `registry.py` `DS_BREASTMNIST` for the measured train/test duplicate with contradictory labels. |
 | **Medical (second model)** | [MedMNIST v2 BreastMNIST](https://medmnist.com/) | **CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence** | **Yes, by decision (2026-10-26)** | **Corrected Round 55.** This cell read a flat "CC BY 4.0 / Yes" while saying in its own next clause that it is "the same corpus as the ResNet-18 row above" - and that row was downgraded on 2026-08-10 with the reasoning spelled out. The downgrade reached the registry and one of the four places that state this licence; the row that names itself a duplicate of the downgraded one was not among them. See the row above for the full argument: the CC BY on BUSI attaches to the ARTICLE, and a citation request is not a grant. The same corpus as the ResNet-18 row above, deliberately: `medical_fl.resnet50` exists to reproduce a published comparison, and a comparison on different data is not one. Both are scored on the identical 156-image official test split, which ships whole in each model's own HF repo. **Camelyon17-WILDS was removed in Round 20**, along with the `medical_fl.densenet` spec that named it: there was no loader, no `wilds` dependency, no training script and no artefact directory, and the card advertised a Hugging Face repo that did not exist. A planned dataset with no code path is a claim, not a plan. |
-| **Genomics** | [PGS Catalog](https://www.pgscatalog.org/downloads/) scoring files [PGS000004](https://www.pgscatalog.org/score/PGS000004/) (alias `PRS313_BC`, 313 variants, Mavaddat et al. 2018 - **the active score**) and [PGS000001](https://www.pgscatalog.org/score/PGS000001/) (alias `PRS77_BC`, 77 SNPs, Mavaddat et al. 2015 - retired, kept for the rsID-keyed code path) + [1000 Genomes phase 3](https://www.internationalgenome.org/) via Ensembl REST | **per-score / see below** | **No** | See section 4. PGS Catalog terms require citing the **original publication**, not only the Catalog, so Mavaddat et al. is named here rather than left to a link. |
+| **Genomics** | [PGS Catalog](https://www.pgscatalog.org/downloads/) scoring files [PGS000072](https://www.pgscatalog.org/score/PGS000072/) (`CC_Breast`, 187 variants, Graff et al. 2021 - **the active score**) and [PGS000001](https://www.pgscatalog.org/score/PGS000001/) (alias `PRS77_BC`, 77 SNPs, Mavaddat et al. 2015 - retired) + [1000 Genomes phase 3](https://www.internationalgenome.org/) via the Ensembl REST API | **PGS000072: CC BY 4.0** (its publication); 1000 Genomes: no licence instrument | **Weights: yes, with the credit** (no Hub repo; they ship with the page). Genotypes: no | See section 4. The score's publication is Graff RE et al., *Cross-cancer evaluation of polygenic risk scores for 16 cancer types in two large cohorts*, Nat Commun 12:970 (2021), doi:10.1038/s41467-021-21288-z, CC BY 4.0. The PGS Catalog asks to be cited as Lambert, Wingfield et al., *Enhancing the Polygenic Score Catalog with tools for score calculation and ancestry normalization*, Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x (the citation its REST `/rest/info` names, read 2026-10-31). |
 | **Medical (runtime default)** | [MedMNIST v2 **PneumoniaMNIST**](https://medmnist.com/) (derived from Kermany et al. chest X-ray) | **CC BY 4.0** | **Yes** | The *runtime* default of the full deployment's medical use-case pipeline (`src/qsh/usecases/medical_fl/`, `src/qsh/data/loaders.py`, and downloaded at image build in `docker/Dockerfile.api`) - a different subset from BreastMNIST, which is what the trained models and the benchmark's encrypted CNN (`src/qsh/config/defaults.py`) use. Cite MedMNIST v1 and v2 **and** the upstream source, Kermany et al., *Cell* 172(5):1122-1131 (2018), whose Mendeley Data record is CC BY 4.0 as well. |
 | **Medical (pretraining)** | **none** - the published weights are trained from random initialisation | n/a | **Yes** | `scripts/train/medical_breastmnist.py --from-scratch`. `models/metrics.json` records `transfer_learning: none`, so no ImageNet term attaches to the published artefact. Note the script's *default* is still `IMAGENET1K_V1`: re-running without the flag would reintroduce the unresolved redistribution question. |
 | **Satellite** | [ESA Anomaly Dataset](https://zenodo.org/records/12528696), Mission1 lightweight channels 41-46 | **CC BY 3.0 IGO** | **Yes** | Missions are anonymised `Mission1/2/3` - they are **not** named Sentinel anything. Multi-year telemetry, ~15.4M samples per channel; Mission1 spans 14 years by the benchmark paper's Table 1 (Mission2, 3.5). Cite the benchmark as its README now asks, Kotowski et al., *European Space Agency Dataset and Benchmark for Real-World Anomaly Detection in Spacecraft Time Series*, Journal of Data-centric Machine Learning Research (DMLR), 2026 (earlier version arXiv:2406.17826), and the dataset record (creators De Canio, Kotowski and Haskamp); Zenodo record 15237121 (v2, 2025-04-17) supersedes the v1 record 12528696 linked here, under the same CC BY 3.0 IGO. Only labels whose `anomaly_types.csv` Category is `Anomaly` count as positives; the annotated **rare *nominal* events** are not faults and scoring them as such would inflate the anomaly rate. |
-| **Satellite (second model)** | [OPS-SAT-AD](https://doi.org/10.5281/zenodo.12588358) | **CC BY 4.0** | **Yes - including the data itself** | Article: Ruszczak, Kotowski, Evans and Nalepa, *The OPS-SAT benchmark for detecting anomalies in satellite telemetry*, Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3. Dataset, which CC BY 4.0 asks to be credited too: Ruszczak, Kotowski, Nalepa and Evans, *OPSSAT-AD - anomaly detection dataset for satellite telemetry*, Zenodo, doi:10.5281/zenodo.12588358 (2024). Code MIT at `kplabs-pl/OPS-SAT-AD`. 2,123 annotated segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 19 precomputed per-segment features and the benchmark's own train/test split. Its feature table (`dataset.csv`) is 507 KB; the raw `segments.csv` is 18 to 19 MB. It is not the only corpus whose data ships here - slices of WDBC, PaySim, AMLworld, BreastMNIST, ESA-ADB and gnomAD ship too (sections 2, 2b and 4). The published test partition ships entire inside the model's own HF repo as `eval_sample.json`, and the browser re-scores the exported graph on it. A **different task** from ESA-ADB above: segment classification, not forecasting, so the two scores are not comparable and neither is the other's baseline. |
+| **Satellite (second model)** | [OPS-SAT-AD](https://doi.org/10.5281/zenodo.12588359), version 1 | **CC BY 4.0** | **Yes - including the data itself** | Article: Ruszczak, Kotowski, Evans and Nalepa, *The OPS-SAT benchmark for detecting anomalies in satellite telemetry*, Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3. Dataset, which CC BY 4.0 asks to be credited too: Ruszczak, Kotowski, Nalepa and Evans, *OPSSAT-AD - anomaly detection dataset for satellite telemetry*, Zenodo, doi:10.5281/zenodo.12588359 (version 1, 2024), the version this project uses; the concept DOI 10.5281/zenodo.12588358 resolves to version 2, whose files differ (the list above). Code MIT at `kplabs-pl/OPS-SAT-AD`. 2,123 annotated segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 19 precomputed per-segment features and the benchmark's own train/test split. Its feature table (`dataset.csv`) is 507 KB; the raw `segments.csv` is about 18 MB. It is not the only corpus whose data ships here - slices of WDBC, PaySim, AMLworld, BreastMNIST, ESA-ADB and gnomAD ship too (sections 2, 2b and 4). The published test partition ships entire inside the model's own HF repo as `eval_sample.json`, and the browser re-scores the exported graph on it. A **different task** from ESA-ADB above: segment classification, not forecasting, so the two scores are not comparable and neither is the other's baseline. |
 | **Telecom (declared, NOT implemented)** | [CIC-IDS2017](https://www.unb.ca/cic/datasets/ids-2017.html), [Engelen-corrected](https://intrusion-detection.distrinet-research.be/WTMC2021/) | **the provider's two pages disagree** | **No** | Re-checked 2026-08-05, and the earlier wording here was too strong. The CIC's institute-level FAQ states *"You may redistribute, republish, and mirror our datasets in any form; however, any use or redistribution of the data must include a citation"*, and places it under commercial use. The CICIDS2017 dataset page itself says only *"publicly available for researchers"* and names no licence. So terms ARE stated, they just conflict - which is an unresolved ambiguity, not a permission, and the same class of question Round 19 settled by removing the ImageNet dependency rather than guessing. The Engelen redistribution is separately hosted and states nothing. **Absent a consistent affirmative grant, neither is bundled or redistributed.** **No code path loads it:** `cicids2017_fixed_dir()` is never called; the shipped telecom model trains on synthetic telemetry. Cite Engelen, Rimmer & Joosen (WTMC 2021) *and* Sharafaldin et al. (2018). |
 | **Telecom (network-layer; adopted and IMPLEMENTED)** | [5G-NIDD](https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361) - labelled attack traffic captured on a live 5G test network. **113 columns** in `BTS1_BTS2_fields_preserved.csv`, of which 66 are dropped as leaks, identifiers, constants, duplicates or all-null, leaving **47 features**. Corrected Round 55: this cell said "NOT yet implemented", "no code path loads it yet" and "52 columns", and all three were false - `datasets.py` fetches it, `scripts/train/telecom_nidd.py` trains on all 1,215,890 flows, and `telecom_ids.nidd` ships with a full metrics record. The attribution obligation itself WAS discharged and renders in `ModelPanel`; only the prose went stale | **CC BY 4.0** | **Yes - attribution required** | **This row is a withdrawn rejection, and the withdrawal is the point.** Until Round 47 this dataset sat in section 7 as NOT commercial-OK, on the reasoning that IEEE DataPort marks it subscription-required and that neither that record nor the authors' NetsLab page carries a licence string. Both of those observations were true and the conclusion drawn from them was still wrong: IEEE DataPort is a **mirror**, and the authors' repository of record is Fairdata/Metax, DOI [10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361](https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361), which returns **CC BY 4.0** with `access_type: Open` and `restriction_grounds: []`. The error was possible because the adjudication stopped at the first host that came up and read silence there as silence everywhere - and this file's own *"SILENCE IS NOT PERMISSION"* rule (section 8) says an absent grant is not a permission; it does not say an absent grant **at a mirror** is evidence about the source. Checking a licence means checking the repository of record, which for a Finnish research dataset is Fairdata, not a US mirror that fronts a paywall. **CC BY 4.0 REQUIRES ATTRIBUTION**: publishing the data, or any model trained on it, must credit the dataset authors as named in the Metax record - the same obligation the WDBC and OPS-SAT-AD rows carry, and a permissive licence does not remove it. **A code path loads it: `datasets.py` -> `scripts/train/telecom_nidd.py`**, and adopting it is not a drop-in: the shipped telecom model classifies QKD-layer attacks from QKD physical observables, 5G-NIDD classifies network-layer attacks from flow statistics, and the measured overlap is zero in both the label space and the feature space (`docs/deliverable-verification.md`). It is therefore a **separate** network-layer model rather than a replacement for the synthetic telemetry in section 3. The published comparison point on this corpus is Wang, Fok & Thing, arXiv:2504.20436 - recorded in `references/REFERENCES.md` under WS2, because section 5 requires each published card to name the baseline it is measured against. |
 
@@ -71,10 +80,11 @@ construction rather than because someone inspected one file once.
 
 | File | Licence | Source |
 |---|---|---|
-| `data/finance/paysim_sample.tsv`, `web/public/data/finance/paysim_sample.json` | **CC BY-SA 4.0 (ShareAlike)** | Kaggle [ealaxi/paysim1](https://www.kaggle.com/datasets/ealaxi/paysim1), Lopez-Rojas et al. 2016. **PaySim is a simulator: these are synthetic transactions** generated from aggregated real mobile-money logs - the Kaggle title is *"Synthetic Financial Datasets For Fraud Detection"*. Earlier revisions of this file called them "real PaySim transactions", which was wrong. Fraud is **oversampled** for demo balance; the simulator's base rate is 0.13%. **ShareAlike applies to these bundled files**: they are Adapted Material and must be redistributed under CC BY-SA 4.0, not under the project's Apache-2.0. |
-| `data/genomics/pgs000004_breast_cancer.tsv`, `g1k_dosages_prs313_slice.tsv`, `pgs000001_breast_cancer.tsv`, `g1k_dosages.tsv`, `g1k_panel.tsv` | see section 4 | PGS Catalog PGS000004 (active) and PGS000001 (retired) + 1000 Genomes phase 3 (Ensembl / IGSR). Cell counts are tabulated in section 4. `g1k_dosages_full.tsv` was named in this row until Round 33 and is **not committed**: it is gitignored and regenerated locally by `scripts/data/fetch_g1k_dosages_bypos.py`. Section 4 was rewritten in Round 32, is labelled measured and complete, and correctly excludes it - so this row, in a section headed "committed", contradicted the authoritative table in its own file. |
-| `data/satellite/smap_msl_telemetry.tsv`, `web/public/data/satellite/telemetry.json` | **no licence granted by any provider** (checked again at source on 2026-10-30) | **Served today without a grant, which this file's own rule forbids** (section 8: *"SILENCE IS NOT PERMISSION"*): removing it, or replacing it with a slice of OPS-SAT-AD (CC BY 4.0), is an open change to the demo. The registry's label for it, "US Government work (17 U.S.C. 105)", is not supported: 17 U.S.C. 101 defines a US Government work as one prepared by a federal officer or employee, JPL is a Caltech-managed FFRDC whose staff are Caltech employees, and the upstream licence file claims Caltech copyright. NASA SMAP/MSL via [Telemanom](https://github.com/khundman/telemanom), Hundman et al. 2018 (KDD), NASA JPL. The Telemanom repository is **self-contradictory about its own code**: the README shows an Apache-2.0 badge while the only licence file, `LICENSE.txt`, is a Caltech/JPL BSD-3-style copyright assertion (*"Copyright (c) 2018, California Institute of Technology... All rights reserved"*). Either way it covers the **code**; **the telemetry carries no licence statement anywhere**, and the Kaggle mirror it links to is labelled *"Data files (c) Original Authors"*. The public-domain reading rests on NASA SPD-41a (*"should be released with a Creative Commons Zero license"* - a *should*, not a grant) plus 17 U.S.C. section 105, which removes **US** copyright only and does not clear the work outside the United States. Treated as an inference, not a licence. This is why **ESA-ADB (CC BY 3.0 IGO) is the satellite training corpus**; SMAP/MSL stays only as the bundled demo sample, and that is the open change above. |
-| `web/public/data/medical/breast_cancer_sample.json` | **CC BY 4.0** | Wisconsin Diagnostic Breast Cancer, [UCI ML dataset 17](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic), redistributed in scikit-learn. Credit as UCI asks: Wolberg, W., Mangasarian, O., Street, N., & Street, W. (1993). Breast Cancer Wisconsin (Diagnostic) [Dataset]. UCI Machine Learning Repository. doi:10.24432/C5DW2B. The bundled rows are a class-balanced subset (200 per class) of eight of the 30 columns, z-scored - changes the licence asks to be noted (section 2c). Earlier revisions of this file said "public domain"; the UCI dataset page states *"This dataset is licensed under a Creative Commons Attribution 4.0 International (CC BY 4.0) license"*, so **attribution is required** - being bundled inside scikit-learn does not remove it. Commercial use is permitted. |
+| `data/finance/paysim_sample.tsv`, `web/public/data/finance/paysim_sample.json` | **CC BY-SA 4.0 (ShareAlike)** | Kaggle [ealaxi/paysim1](https://www.kaggle.com/datasets/ealaxi/paysim1), Lopez-Rojas et al. 2016. **PaySim is a simulator: these are synthetic transactions** generated from aggregated real mobile-money logs - the Kaggle title is *"Synthetic Financial Datasets For Fraud Detection"*. Earlier revisions of this file called them "real PaySim transactions", which was wrong. Fraud is **oversampled** for demo balance; the simulator's base rate is 0.13%. **ShareAlike applies to these bundled files**: they are Adapted Material and must be redistributed under CC BY-SA 4.0, not under the project's Apache-2.0. Since Round 84 `paysim_sample.json` carries `licence`, `licence_url` (the CC BY-SA 4.0 deed), `attribution` (Lopez-Rojas, Elmir and Axelsson, EMSS 2016) and `modifications`; its rows are unchanged. The demo's linear model reads four of the eight columns (amount, cross_border, night_tx, new_payee); device_risk and geo_mismatch are computed from PaySim's balance columns, which the dataset's description says must not be used for fraud detection because fraudulent transactions are cancelled; since Round 84 no shipped model reads them, and they stay in the TSV as its generator wrote them. Its 400 rows are the fitting rows of the demo's logistic surrogate, and the private-inference figure no longer encrypts them. |
+| `data/genomics/pgs000072_breast_cancer.tsv`, `g1k_dosages_pgs000072_slice.tsv`, `pgs000001_breast_cancer.tsv`, `g1k_dosages.tsv`, `g1k_panel.tsv` | see section 4 | PGS Catalog PGS000072 (active; CC BY 4.0) and PGS000001 (retired) + 1000 Genomes phase 3 (read through the Ensembl REST API; IGSR). The scoring file is the Catalog's, unchanged, under one first line this project added that records its source, checksum, licence and citations. Cell counts are tabulated in section 4. The 2,504-individual matrices (`g1k_dosages_full.tsv` for the retired score, `g1k_dosages_pgs000072.tsv` for the active one) are **not committed**: they are gitignored, and `scripts/data/fetch_g1k_dosages.py` regenerates the active one. |
+| `data/satellite/smap_msl_telemetry.tsv` and `web/public/data/satellite/telemetry.json` (NASA SMAP/MSL) | **no licence granted by any provider** (checked again at source on 2026-10-30) | **Removed from the tree in Round 84, and nothing reads either.** OPS-SAT-AD (CC BY 4.0, next row) replaced them: the browser's satellite anomaly verdict and SHAP score its segments in plaintext, and the full deployment's CKKS telemetry stage scores the same segments with the same demo regression, read by `qsh.data.loaders.load_opssat_segments` from a byte-identical copy under `data/satellite/`. The registry keeps the record as `DS_SMAP_MSL`, "no licence granted for the data", attached to no model, loaded by nothing and not publishable. Why there is no licence, which is why neither file ships (this file's own rule, section 8: *"SILENCE IS NOT PERMISSION"*): it is not a US Government work, since 17 U.S.C. 101 defines one as prepared by a federal officer or employee, JPL is a Caltech-managed FFRDC whose staff are Caltech employees, and the upstream licence file claims Caltech copyright. NASA SMAP/MSL via [Telemanom](https://github.com/khundman/telemanom), Hundman et al. 2018 (KDD), NASA JPL. The Telemanom repository is **self-contradictory about its own code**: the README shows an Apache-2.0 badge while the only licence file, `LICENSE.txt`, is a Caltech/JPL BSD-3-style copyright assertion (*"Copyright (c) 2018, California Institute of Technology... All rights reserved"*). Either way it covers the **code**; **the telemetry carries no licence statement anywhere**, and the Kaggle mirror it links to is labelled *"Data files (c) Original Authors"*. The public-domain reading rests on NASA SPD-41a (*"should be released with a Creative Commons Zero license"* - a *should*, not a grant) plus 17 U.S.C. section 105, which removes **US** copyright only and does not clear the work outside the United States. Treated as an inference, not a licence. **ESA-ADB (CC BY 3.0 IGO) is the satellite training corpus.** |
+| `web/public/data/medical/breast_cancer_sample.json` | **CC BY 4.0** | Wisconsin Diagnostic Breast Cancer, [UCI ML dataset 17](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic), redistributed in scikit-learn. Credit as UCI asks: Wolberg, W., Mangasarian, O., Street, N., & Street, W. (1993). Breast Cancer Wisconsin (Diagnostic) [Dataset]. UCI Machine Learning Repository. doi:10.24432/C5DW2B. Since Round 84 the file holds all 569 rows in eight of the 30 columns, z-scored, split into the 398 the bundled regression and its scaler were fitted on (`samples`) and the 171 held out from both (`heldout`, with mean radius and mean texture in source units for the overlay plane), with the class recoded to 1 = malignant. It carries `licence_url` and a `modifications` note stating these changes (section 2c). Earlier revisions of this file said "public domain"; the UCI dataset page states *"This dataset is licensed under a Creative Commons Attribution 4.0 International (CC BY 4.0) license"*, so **attribution is required** - being bundled inside scikit-learn does not remove it. Commercial use is permitted. |
+| `web/public/data/satellite/opssat_segments.json` and its byte-identical copy `data/satellite/opssat_segments.json` (Round 84) | **CC BY 4.0** | OPS-SAT-AD, the satellite anomaly-demo sample in place of SMAP/MSL, scored in plaintext by the browser and under CKKS by the full deployment, whose API image ships the copy under `data/`: the 19 published per-segment features of 159 segments of the benchmark's test partition, z-scored, with their labels, and a demo logistic regression fitted on 370 other segments of that partition (stratified, seed 0). Built by `scripts/data/build_heldout_payloads.py` from `models/satellite_opssat/eval_sample.json`, which the repository already tracks; nothing was downloaded. Credit: Ruszczak, Kotowski, Evans and Nalepa, Scientific Data 12, 710 (2025), and the dataset record, Ruszczak, Kotowski, Nalepa and Evans, Zenodo, doi:10.5281/zenodo.12588359 (version 1, whose rows these are). The file carries the licence link and a change note; its credit names the concept DOI, 10.5281/zenodo.12588358, which resolves to version 2 (section 2c). The registry's `BUNDLED_DEMO_SAMPLES["satellite_comms"]` and `DEMO_SAMPLE_FILES` name the browser's copy. |
 
 > **One authority, checked by a test.** Every string in this section is generated from
 > `BUNDLED_DEMO_SAMPLES` in [`src/qsh/models/registry.py`](src/qsh/models/registry.py) and reaches the
@@ -99,30 +109,31 @@ QCNN or student weights are a model fitted on one.
 
 | File | Licence | Source and reasoning |
 |---|---|---|
-| `web/public/data/satellite/real_2d.json` | **CC BY 4.0** | OPS-SAT-AD held-out split, two of its published per-segment features. Ruszczak, Kotowski, Evans & Nalepa, *The OPS-SAT benchmark for detecting anomalies in satellite telemetry*, Scientific Data 12, 710 (2025), DOI 10.1038/s41597-025-05035-3; data Zenodo 10.5281/zenodo.12588358 (concept DOI). Redistributable, and it is the corpus the shipped model trains on. |
-| `web/public/data/medical/real_2d.json` | **CC BY 4.0** | Wisconsin Diagnostic Breast Cancer (UCI dataset 17), attribution required - same corpus and terms as `breast_cancer_sample.json` in section 2. Flagged `is_training_corpus: false` in the payload because the published medical model trains on BreastMNIST: this is a **different cohort**, and the page says so. The payload's provenance text also says BreastMNIST "cannot be redistributed here", which contradicts the decision in section 1 and the test split shipped in three public Hub repos; correcting that text is an open change to the data file. |
-| `web/public/data/finance/real_2d.json` | **CDLA-Sharing-1.0 (SHARE-ALIKE)** | IBM AMLworld HI-Small held-out rows. Unlike trained weights, this slice **is** Data under CDLA-Sharing, so the reciprocity in section 3 of that licence does attach. The payload names the licence in its own `licence` field and credits Altman et al.; it does not yet carry the agreement's text or link, or a notice of the changes (section 2c). |
-| `web/public/data/genomics/real_2d.json`, `data/genomics/gnomad_af_prs313.json`, `data/genomics/gnomad_af.json` | **CC0 1.0** | gnomAD v4 allele frequencies. `gnomad_af_prs313.json` is the **active** cache: 307 of the 313 PGS000004 variants, looked up by GRCh38 coordinate because that score publishes no rsIDs, and it is what `real_2d.json` is generated from. `gnomad_af.json` is the retired rsID-keyed cache for PGS000001's 77 variants (Broad Institute). CC0 waives attribution; the payload credits gnomAD anyway because a citation request is a norm even where it is not a condition. gnomAD's terms do carry one condition, that users not attempt to re-identify participants, and it binds whoever uses these frequencies; neither the payload nor the page states it yet. Chosen over redistributing 1000 Genomes genotypes, which section 4 does not permit. |
-| `models/qcnn_medical/weights.json`, `web/public/data/medical/qcnn_weights.json`, `models/qcnn_medical_q9/weights.json`, `web/public/data/medical/qcnn_weights_q9.json` | **CC BY 4.0** | Variational QCNN angles (8 and 9 wires) fitted on 8 of the 30 WDBC features. Attribution-only, so publishing weights raises no reciprocity question; the files name the corpus but not its creators. |
-| `models/qcnn_finance/weights.json`, `web/public/data/finance/qcnn_weights.json`, `models/qcnn_finance_q9/weights.json`, `web/public/data/finance/qcnn_weights_q9.json` | **CC BY-SA 4.0 (ShareAlike), and this is a deliberate exception** | Fitted on the PaySim demo sample (8 and 9 wires), which is CC BY-SA. See the note below. The files name PaySim and its licence in their `provenance` text but carry no licence field or link. |
-| `models/qcnn_telecom/weights.json`, `web/public/data/telecom/qcnn_weights.json`, `models/qcnn_telecom_q7/weights.json`, `web/public/data/telecom/qcnn_weights_q7.json` | **none stated** (generated here; see the note below) | Fitted on synthetic QKD-attack telemetry produced by this repository's own generator (`qsh.qml_ids.attacks`; class structure per Al-Kuwari et al., arXiv:2509.14282), at 8 and 7 wires. No third-party terms attach. |
-| `web/public/data/telecom/student_weights.json` (identical to `models/telecom_ids_student/weights.json`) | **none stated** (generated here; see the note below) | The 64-parameter telecom CKKS student (8 class scores over 7 features), distilled from `telecom_ids.qml` on the same synthetic telemetry. |
-| `web/public/data/telecom/real_2d.json` | **none stated** (generated here; see the note below) | Synthetic QKD-session telemetry from the same generator at seed 0: the whole generated corpus (3,200 rows), 70 percent of which is the QCNN's training set, so it is not a held-out split. Its `licence` field reads "Generated by this repository - no third-party terms attach", which names no grant. |
+| `web/public/data/satellite/real_2d.json` | **CC BY 4.0** | OPS-SAT-AD test partition (529 segments), two of its published per-segment features. Ruszczak, Kotowski, Evans & Nalepa, *The OPS-SAT benchmark for detecting anomalies in satellite telemetry*, Scientific Data 12, 710 (2025), DOI 10.1038/s41597-025-05035-3; data Zenodo 10.5281/zenodo.12588359 (version 1, whose rows these are), credited in the file too, where the credit names the concept DOI, 10.5281/zenodo.12588358, which resolves to version 2 (section 2c). Redistributable, and it is the corpus the published OPS-SAT models train on (their train partition; these segments are held out from them). Since Round 84 it is generated from the tracked `models/satellite_opssat/eval_sample.json` (the same rows in the same order) and carries `licence_url` and `modifications`. |
+| `web/public/data/medical/real_2d.json` | **CC BY 4.0** | Wisconsin Diagnostic Breast Cancer (UCI dataset 17), attribution required - same corpus and terms as `breast_cancer_sample.json` in section 2. Flagged `is_training_corpus: false` in the payload because the published medical models train on BreastMNIST: this is a **different cohort**, and the page says so. Since Round 84 the provenance no longer says BreastMNIST "cannot be redistributed" (it now says the 156-image test split is published on MedMNIST's CC BY 4.0, consistent with section 1), it states that these rows are the bundled regression's corpus with its 398 / 171 split, and it carries `licence_url` and `modifications` (two of 30 columns, rounded, class recoded). |
+| `web/public/data/finance/real_2d.json` | **CDLA-Sharing-1.0 (SHARE-ALIKE)** | IBM AMLworld HI-Small held-out rows. Unlike trained weights, this slice **is** Data under CDLA-Sharing, so the reciprocity in section 3 of that licence does attach. The payload names the licence, credits Altman et al. and, since Round 84, carries the agreement's link (`licence_url`, cdla.dev/sharing-1-0) and a change notice (`modifications`), both rendered under the overlay. |
+| `web/public/data/finance/student_heldout.json` (Round 84) | **CDLA-Sharing-1.0 (SHARE-ALIKE)** | The same 8,192 test-window rows as `real_2d.json`, all 32 computed graph features, rounded to 7 significant figures: what the browser encrypts `finance_aml.student` on. Copied from the tracked `models/finance_aml_gbm/eval_sample.json` by `scripts/data/build_heldout_payloads.py`; Enhanced Data under the same agreement, with its link, the credit and a change notice in the file. |
+| `web/public/data/finance/student_weights.json` (Round 84) | as `models/finance_aml_student/weights.json` (section 5) | A byte-identical copy of the published student's weights, bundled so the encrypted path runs that model without a Hub fetch. Trained weights are Results under CDLA-Sharing-1.0 (sections 1.11 and 3.5), so no share-alike attaches. |
+| `web/public/data/genomics/real_2d.json`, `data/genomics/gnomad_af_pgs000072.json`, `data/genomics/gnomad_af.json` | **CC0 1.0** | gnomAD genome allele frequencies, read through Ensembl's REST variation endpoint (release 116, populations `gnomADg:*`), not from any gnomAD service; Ensembl's response does not name the gnomAD release, so none is claimed here. `gnomad_af_pgs000072.json` is the **active** cache, written by `scripts/fetch_gnomad_af.py`: for each of the 183 PGS000072 variants the page scores, keyed by rsID, the frequencies of the allele the page's dosages count (resolved on the same Ensembl record), with that allele's frequency over 1000 Genomes' 503 Europeans beside them. `real_2d.json` plots 177 of the 183, gnomAD's East Asian against its non-Finnish European group: Ensembl lists no frequency of the effect allele in one of the two groups for the other 6, and every kept point's non-Finnish European frequency is within 0.1 of its 1000 Genomes European one. `gnomad_af.json` is the retired rsID-keyed cache for PGS000001's 77 variants, which nothing reads. CC0 waives attribution; the overlay credits gnomAD with the link back its terms ask for, states their one condition (that users not attempt to re-identify participants), and carries the CC0 link and a change note. It is a different thing from the page's own genotypes, 30 1000 Genomes individuals in the browser payload (section 4). |
+| `models/qcnn_medical/weights.json`, `web/public/data/medical/qcnn_weights.json` | **CC BY 4.0** | Variational QCNN angles (8 wires; the 9-wire artifacts were deleted in Round 84) fitted on 8 of the 30 WDBC features. Attribution-only, so publishing weights raises no reciprocity question; the files' `provenance` names the corpus, its licence with the link, and UCI's credit. |
+| `models/qcnn_finance/weights.json`, `web/public/data/finance/qcnn_weights.json` | **CC BY-SA 4.0 (ShareAlike), and this is a deliberate exception** | Fitted on the PaySim demo sample (since its Round 84 retrain, the four columns the finance linear model reads, at 4 wires; the 9-wire artifacts were deleted in Round 84), which is CC BY-SA. See the note below. The files' `provenance` names PaySim, its licence with the link, and the PaySim credit. |
+| `models/qcnn_telecom/weights.json`, `web/public/data/telecom/qcnn_weights.json`, `models/qcnn_telecom_q7/weights.json`, `web/public/data/telecom/qcnn_weights_q7.json` | **Apache-2.0** (generated here; see the note below) | Fitted on synthetic QKD-attack telemetry produced by this repository's own generator (`qsh.qml_ids.attacks`; class structure per Al-Kuwari et al., arXiv:2509.14282), at 8 and 7 wires. No third-party terms attach; the files' `provenance` states the licence. |
+| `web/public/data/telecom/student_weights.json` (identical to `models/telecom_ids_student/weights.json`) | **Apache-2.0** (generated here; see the note below) | The 64-parameter telecom CKKS student (8 class scores over 7 features), distilled from `telecom_ids.qml` on the same synthetic telemetry. Its `licence` field states it. |
+| `web/public/data/telecom/real_2d.json` | **Apache-2.0** (generated here; see the note below) | The 600 rows held out from `generate(n_per_class=300, seed=42)` by the telecom trainer's stratified split - the rows `telecom_ids.qml` and `telecom_ids.student` were scored on and never fitted on - not the 3,200-row seed-0 corpus a QCNN trains on. Its `licence` and `licence_url` fields state the licence. |
+| `web/public/data/telecom/student_heldout.json` (Round 84) | **Apache-2.0** (generated here; see the note below) | The same 600 held-out rows with all 7 features, rounded to 7 significant figures: what the browser encrypts `telecom_ids.student` on. Regenerated from the repository's own generator and checked against `models/telecom_qml_ids/eval_sample.json` by `scripts/data/build_heldout_payloads.py`. |
 
-> **Generated data and the weights fitted on it carry no stated licence yet.** The repository is
-> Apache-2.0, and the registry records the synthetic telemetry as "no licence granted; synthetic rows
-> generated by this repository's own code". No third-party terms attach to any of these files, but a
-> reader is granted nothing in so many words either, and the `qsh-telecom-qml-ids` Hub repo inherits
-> the same gap. Choosing a licence (the repository's Apache-2.0, or CC0 or CC BY 4.0 for the data) and
-> stating it in each file is an open change.
+> **Generated data and the weights fitted on it are Apache-2.0, the repository's licence.** No
+> third-party terms attach to the rows `qsh.qml_ids.attacks` writes or to the weights fitted on them,
+> and the repository grants them under its own licence: the registry records the synthetic telemetry
+> as `Apache-2.0`, each file above states it (a `licence` field with its link, or the weights'
+> `provenance`), and the `qsh-telecom-qml-ids` Hub card names it as `license: apache-2.0`.
 
 > **The finance QCNN is trained on PaySim, which section 2 says the published models are not - and
 > that is a real tension, recorded rather than smoothed over.** The rule above exists because
 > ShareAlike propagation from a training set to model weights is legally unsettled, so AMLworld,
 > whose licence answers the question in its own text, is the corpus every **published** finance model
-> uses. The QCNN cannot follow that rule without breaking a different one. Its eight inputs are the
-> demo pipeline's feature schema - `amount`, `velocity_24h`, `cross_border`, `night_tx`, `new_payee`,
-> `amount_zscore`, `device_risk`, `geo_mismatch` - which is what the browser actually feeds it.
+> uses. The QCNN cannot follow that rule without breaking a different one. Its four inputs are the
+> demo pipeline's model columns - `amount`, `cross_border`, `night_tx`, `new_payee` - which is what the browser actually feeds it. Two of the sample's other columns, device_risk and geo_mismatch, are computed from PaySim's balance columns, which the dataset's description says must not be used for fraud detection; since its Round 84 retrain this artifact reads the four columns the linear model reads, and neither of those two.
 > AMLworld reaches the browser as 32 z-scored graph features, a different space entirely. Training on
 > AMLworld and serving PaySim-shaped inputs would reintroduce precisely the feature-space mismatch
 > that made the first trained QCNN meaningless, where seven of eight features pinned to -1. Between
@@ -136,25 +147,31 @@ QCNN or student weights are a model fitted on one.
 > derivatives stay inside this repository and its demo, under the source licence, and are never
 > published as standalone model artefacts.
 
-## 2c. What the licences ask of shipped files, and what is still missing
+## 2c. What the licences ask of shipped files, and where each file carries it
 
 Read at the licence texts on 2026-10-30. Every licence here except CC0 asks for more than a name when
-its data is shared, and the shipped files carry the licence name and a credit but not the rest. The
-missing items are open changes to the data files and model cards, not to this register:
+its data is shared: a link to the licence (or its text), the credit the creator asks for, and a note
+of the changes. A shipped file travels alone, to the Hub and out of it, so each carries them itself:
 
-| Licence | Asks for, when its data is shared | Shipped files it covers | Still missing |
+| Licence | Asks for, when its data is shared | Shipped files it covers | Where the file carries it |
 |---|---|---|---|
-| CC BY 4.0 (section 3(a)) | credit as the creator asks, the licence's text or a link to it, and a note of any changes | WDBC sample and overlay; BreastMNIST (as MedMNIST asserts it), OPS-SAT-AD and 5G-NIDD evaluation samples; OPS-SAT-AD overlay; medical QCNN weights | licence link and change notice; the credits named in sections 1 and 2 (UCI's author order and year for WDBC, the OPS-SAT-AD dataset record, MedMNIST v1) |
-| CC BY-SA 4.0 (sections 3(a) and 3(b)) | as CC BY, and adaptations under CC BY-SA 4.0 or a compatible licence | PaySim sample (`paysim_sample.tsv` and `.json`), finance QCNN weights | licence link and change notice; the files name the licence in prose only |
-| CC BY 3.0 IGO (section 4) | the licence or its URI with every copy, the credit, and changes identified | ESA-ADB evaluation sample (128 windows) | licence link and change notice; the DMLR 2026 citation |
-| CDLA-Sharing-1.0 (sections 3.1 and 3.3) | the same agreement, prominent notices on changed files, preserved credit, and the agreement's text, name or link | AMLworld evaluation samples and the finance overlay | agreement link and change notice |
-| CC0 1.0 | nothing; gnomAD's terms add one condition, no attempt to re-identify participants | gnomAD frequencies and the genomics overlay | the no-re-identification condition, stated beside the data |
-| EMBL-EBI Terms of Use (PGS Catalog); IGSR's disclaimer (1000 Genomes, no licence) | cite the score's publication; cite the 1000 Genomes consortium paper | PGS000004 weights; the 1000 Genomes dosage slices | the consortium citation in the genomics payload |
+| CC BY 4.0 (section 3(a)) | credit as the creator asks, the licence's text or a link to it, and a note of any changes | WDBC sample and overlay; BreastMNIST (as MedMNIST asserts it), OPS-SAT-AD and 5G-NIDD evaluation samples; OPS-SAT-AD overlay and anomaly-demo segments; medical QCNN weights | the samples' and overlays' `licence_url`, `attribution` and `modifications` fields (UCI's order and year for WDBC, MedMNIST v2 and v1 and the BUSI article for BreastMNIST, the OPS-SAT-AD dataset record); the QCNN weights' `provenance` (link and UCI's credit) |
+| CC BY-SA 4.0 (sections 3(a) and 3(b)) | as CC BY, and adaptations under CC BY-SA 4.0 or a compatible licence | PaySim sample (`paysim_sample.tsv` and `.json`), finance QCNN weights | the JSON's fields; the TSV's header lines (licence and link, credit, changes); the weights' `provenance` |
+| CC BY 3.0 IGO (section 4) | the licence or its URI with every copy, the credit, and changes identified | ESA-ADB evaluation sample (128 windows) | the sample's `licence_url`, `attribution` (the DMLR 2026 paper and the Zenodo record) and `modifications` |
+| CDLA-Sharing-1.0 (sections 3.1 and 3.3) | the same agreement, prominent notices on changed files, preserved credit, and the agreement's text, name or link | AMLworld evaluation samples, the finance overlay and `finance/student_heldout.json` | each file's `licence`, `licence_url`, `attribution` and `modifications` |
+| CC0 1.0 | nothing; gnomAD's terms add one condition, no attempt to re-identify participants | gnomAD frequencies and the genomics overlay | the overlay, and the `_source` of both caches, the active `gnomad_af_pgs000072.json` and the retired `gnomad_af.json` |
+| CC BY 4.0 (PGS000072's publication), with the PGS Catalog's EMBL-EBI Terms of Use; IGSR's disclaimer (1000 Genomes, no licence) | credit, the licence link and a note of changes; the PGS Catalog's citation; the 1000 Genomes consortium paper | PGS000072 weights (scoring file, browser payload, `weights.json`); the 1000 Genomes dosage slices | the browser payload's `attribution`, `genotypes_attribution`, `licence_url` and `modifications`; the scoring file's first line and the dosage files' headers |
+| Apache-2.0 (section 4) | a copy of the licence, and the notices kept | the telecom data and weights generated here (section 2b) and the telecom QML evaluation sample | each file's `licence` and `licence_url`, or the weights' `provenance` |
 
-The changes a notice would record are of a few kinds: rows drawn from a held-out split or rebalanced
-by class, a subset of columns, standardised or rounded values, computed features, and a recoded
-binary label. The Hub model cards all declare `license: other` with no `license_link`, and ten of the
-eleven repos redistribute data in `eval_sample.json`, so the cards need the same links.
+The change notes record a few kinds of change: rows drawn from a held-out split or rebalanced by
+class, a subset of columns, standardised, resized or rounded values, computed features, and a recoded
+binary label. Each Hub card names its licence by the Hub's identifier where one exists
+(`cc-by-4.0`, `cdla-sharing-1.0`, `apache-2.0`), and otherwise as `license: other` with a name and a
+`license_link` (CC BY 3.0 IGO; BreastMNIST's CC BY 4.0, as MedMNIST asserts it).
+
+OPS-SAT-AD is cited as version 1 (Zenodo record 12588359), the version whose rows these files ship;
+the concept DOI 10.5281/zenodo.12588358 now resolves to version 2 (record 15108715), whose files
+differ and whose MIT notice would have to travel with them if they were ever used.
 
 ## 3. Telecom has no real dataset in the demo, and says so
 
@@ -183,18 +200,18 @@ this as synthetic; it is never presented as measured on real traffic.
   under CC BY 4.0 **as asserted by MedMNIST, the BUSI authors publishing no licence of their own** (see the
   medical rows in section 1 - this is the surface where that ambiguity actually binds, because the
   sample is REDISTRIBUTED), ESA-ADB under CC BY 3.0 IGO, OPS-SAT-AD and 5G-NIDD under CC BY 4.0, and
-  the telecom QML sample, generated here, under no stated licence (section 2b). Each file states its
-  own provenance in a `provenance` field; none carries a licence link, and every Hub card declares
-  `license: other` with no `license_link` (section 2c). The full corpora are **not** redistributed
-  and are not in this repository.
+  the telecom QML sample, generated here, under Apache-2.0 (section 2b). Each file states its
+  `provenance`, its `licence` and the licence's link (`licence_url`), the credit its licence asks for
+  (`attribution`) and how its rows differ from the source (`modifications`); each Hub card names its
+  licence by the Hub's identifier where one exists, and by name and link otherwise (section 2c). The
+  full corpora are **not** redistributed and are not in this repository.
 
 - **The encrypted-tier students are published too.** `finance_aml.student` (33 params),
   `medical_fl.student` (3226), `satellite_comms.student` (49) and `satellite_comms.opssat_student`
   (210) are the models sized for CKKS. They are distilled from the teachers on the same corpora and
-  inherit the same licences, and their small `weights.json` files are also tracked in git. In the
-  browser, CKKS evaluates the medical student (and the bundled telecom student); the finance page's
-  CKKS step runs a linear surrogate over the PaySim demo sample instead, and the satellite page runs
-  no CKKS step.
+  inherit the same licences, and their small `weights.json` files are also tracked in git. Which of
+  them CKKS evaluates in the browser is in
+  [`docs/models-and-benchmarks.md`](docs/models-and-benchmarks.md#which-pages-encrypt).
 
 - **ImageNet-derived weights: the question was removed, not answered.** An earlier revision of this
   file analysed whether ImageNet-pretrained weights could be redistributed and concluded it could not
@@ -209,41 +226,51 @@ this as synthetic; it is never presented as measured on real traffic.
   trade"; that prediction was wrong and is recorded here rather than quietly replaced. All eleven Hub
   repos, seven teachers and four encrypted students, are public.
 
-- **PGS Catalog is not blanket CC BY 4.0.** Round 46 correction: scoring files carry **no**
-  `#license` header - PGS000004 downloaded today has 14 `#` lines and none is a licence. The
-  licence is in the REST record only, as a pass-through to
-  the EMBL-EBI Terms of Use, and **individual scores can be more restrictive** - the PGS Catalog
-  documentation shows a live CC BY-NC-ND 4.0 example. `scripts/train/genomics_prs.py` re-reads that
-  header at run time (`audit_licence()`) and **records** it. Publication is gated separately, by
-  `dataset.publishable` in `src/qsh/models/registry.py`, which `scripts/publish_hf.py` enforces --
-  the recorded audit itself blocks nothing. For `genomics.prs` the registry sets `publishable=False`.
+- **PGS Catalog is not blanket CC BY 4.0: a score's terms are its publication's.** The scoring-file
+  format defines an optional `#license` line, and PGS000072's file has none. Its REST record carries
+  the Catalog's pass-through to the EMBL-EBI Terms of Use and asks users to observe *"any licensing
+  restrictions set by the authors"*. PGS000072's publication, Graff et al., Nat Commun 12:970
+  (2021), is **CC BY 4.0** (Crossref `vor` and `tdm`, Europe PMC "cc by", read 2026-10-31); the
+  article lists the score's 187 variants in its Supplementary Data 2 and weights each by the log odds
+  ratio its source GWAS reported, and the Catalog's weights are those log odds ratios. The scoring
+  file's `#citation` line names the
+  article's bioRxiv preprint (doi:10.1101/2020.01.18.911578), for which Crossref and Europe PMC record
+  no licence; Europe PMC links it as the preprint of the Nat Commun article, which is the Catalog's
+  publication record (PGP000050). The bundled file's first line, written by this project, records
+  this, and `scripts/train/genomics_prs.py` re-reads it at run time (`audit_licence()`) and
+  **records** it. Hub publication is gated separately, by `dataset.publishable` in
+  `src/qsh/models/registry.py`, which `scripts/publish_hf.py` enforces: for `genomics.prs` it is
+  `True` (CC BY 4.0, with the credit), and the model has no Hub repo, so the weights ship with the
+  page only.
 - **1000 Genomes / IGSR is not public domain.** Verbatim from the
   [IGSR disclaimer](https://www.internationalgenome.org/IGSR_disclaimer): *"restrictions on different
   pieces of data within IGSR and rights claimed on pieces of data vary"* and *"It remains the
   responsibility of users to ensure that their exploitation of the data does not infringe any of the
   rights of third parties."* IGSR asks users to cite the consortium's paper, 1000 Genomes Project
   Consortium, *A global reference for human genetic variation*, Nature 526:68-74 (2015),
-  doi:10.1038/nature15393; the genomics payload does not name it yet (section 2c).
-- **What per-sample genotype data this repository does redistribute, stated plainly.** An earlier
-  revision of this file claimed "no per-sample genotype is ever published", which was false. It then
-  became false a second way: Round 31 moved the genomics use case from PGS000001 (77 variants) to
-  PGS000004 / PRS313 (313 variants) and added two tracked files without updating this section, so the
-  register described roughly half of what was actually being shipped. Measured 2026-08-11, complete:
+  doi:10.1038/nature15393; the genomics payload, the registry's attribution and the dosage files'
+  headers carry it. The genotypes are read through the Ensembl REST API's genotype endpoint
+  (`scripts/data/fetch_g1k_dosages.py`), which fills in no genotype: 183 of PGS000072's 187 variants
+  have a 1000 Genomes phase 3 genotype for every one of the 2,504 individuals, and the other 4 (one
+  that Ensembl does not map to GRCh38, two with no 1000 Genomes genotypes there and one with them for
+  1,582 individuals) are declared `#unscored` in the dosage files and the payload and left out of
+  the score.
+- **What per-sample genotype data this repository does redistribute, stated plainly.** Measured
+  2026-10-31, complete:
 
   | tracked file | individuals | variants | genotype cells |
   |---|---|---|---|
   | `data/genomics/g1k_dosages.tsv` (PRS77, retired score) | 400 | 77 | 30,800 |
-  | `data/genomics/g1k_dosages_prs313_slice.tsv` (PRS313, **active**) | 97 | 313 | 30,361 |
+  | `data/genomics/g1k_dosages_pgs000072_slice.tsv` (PGS000072, **active**) | 97 | 183 | 17,751 |
   | `data/genomics/pgs000001_prs_retired.json` (retired, **no longer served**) | 30 | 77 | 2,310 |
-  | `web/public/data/genomics/pgs000004_prs313.json` (**active** browser payload) | 30 | 313 | 9,390 |
-  | **total tracked** | | | **72,861** |
-  | of which **served to browsers** | | | **9,390** |
+  | `web/public/data/genomics/pgs000072_breast_cancer.json` (**active** browser payload) | 30 | 183 | 5,490 |
+  | **total tracked** | | | **56,351** |
+  | of which **served to browsers** | | | **5,490** |
 
   All four are effect-allele dosages at published PRS loci for 1000 Genomes samples. Note the second row
-  of totals: the retired browser payload was moved out of `web/public/` in Round 32 because nothing in
-  the browser read it any more, so what the public demo actually serves is 9,390 cells - one payload,
-  30 individuals. Tracked-in-git and served-to-the-public are different exposures and this table used to
-  conflate them.
+  of totals: the retired browser payload is not under `web/public/`, so what the public demo actually
+  serves is 5,490 cells - one payload, 30 individuals, whose 1000 Genomes sample IDs it lists.
+  Tracked-in-git and served-to-the-public are different exposures.
 
   **The budget this section is cited for, now that it exists here.** Three source files -
   `src/qsh/data/loaders.py`, `tests/test_prs_real_genotypes.py` and
@@ -252,22 +279,21 @@ this as synthetic; it is never presented as measured on real traffic.
   cell-budget argument at all. The authority they appealed to had not been written. It is written now,
   and the reasoning is the one those files assumed: **the unit that matters for redistribution is
   genotype cells, not rows.** 400 x 77 is the slice this section originally justified, so 30,800 cells
-  is the per-file ceiling the code holds itself to - which is why the PRS313 CI slice is 97 x 313
-  (30,361) rather than 400 x 313 (123,200, four times the budget for the same argument).
+  is the per-file ceiling the code holds itself to. The PGS000072 CI slice is 97 individuals (the
+  first 48 AFR and the first 49 EUR of the panel in sample-ID order) x 183 variants, 17,751 cells.
 
   This is not a privacy escalation - 1000 Genomes participants consented to open, unrestricted data
   release and the full genotypes are downloadable from IGSR/ENA without access control, so a
   few-hundred-variant subset exposes nothing IGSR does not already publish. But it *is* redistribution,
   so the IGSR disclaimer and attribution apply, and it is recorded here rather than glossed.
   The **2,504-individual** matrices used for the ancestry-stratification analysis are deliberately
-  **not** committed (git-ignored). Regenerate with `scripts/data/fetch_g1k_dosages.py` for the
-  rsID-keyed PRS77 panel and `scripts/data/fetch_g1k_dosages_bypos.py` for PRS313 - PGS000004 publishes
-  no rsIDs, so the position-keyed fetcher is the only one that can build its panel. The published output
-  is the aggregate per-super-population statistics, and shipping a full matrix would expand the
-  redistribution twenty-four-fold for no demo benefit.
+  **not** committed (git-ignored). `scripts/data/fetch_g1k_dosages.py` regenerates the active score's
+  (and its CI slice). The published output is the aggregate per-super-population statistics, and the
+  full PGS000072 matrix, 2,504 x 183 = 458,232 cells, would be about fifteen times the per-file budget
+  for no demo benefit.
 - **Model weights carry no genotypes.** The PRS effect weights and the aggregate metrics are tracked
-  in git (section 5); nothing genomic is pushed to the Hub, because the registry sets
-  `publishable=False` for it.
+  in git (section 5); nothing genomic is pushed to the Hub: `genomics.prs` has no Hub repo, and the
+  genotypes' record (`DS_1000G`) sets `publishable=False`.
 - **Nothing openSNP-derived is published.** The archive was CC0 and existing copies remain legally
   usable, but the maintainers deleted it in April 2025 specifically over DNA-misuse concerns. That is
   a request worth honouring regardless of what the licence permits.
@@ -278,14 +304,20 @@ The published models' graphs live on the Hugging Face Hub (repo ids in `src/qsh/
 pinned by 40-character commit sha, and never in git (`.gitignore` excludes `*.onnx`, `*.safetensors`,
 `*.pt`, `*.npy`; CI fails the build if one is staged). Small JSON weight files are a different matter and are tracked in
 git: the QCNN angles and the telecom student (section 2b), the four Hub students' `weights.json`, the
-finance scorecard, and the 313 PGS000004 effect weights (`models/genomics_prs/weights.json`, and in
-the browser payload `web/public/data/genomics/pgs000004_prs313.json`). Those ship under the PGS
-Catalog's default terms - the EMBL-EBI Terms of Use: cite the score's publication and respect any
-restriction its authors set, of which none is recorded for PGS000004, though the source paper's own
-terms were not verified - while `publishable=False` keeps the score off the Hub. Each repo's model
+finance scorecard, and the PGS000072 effect weights the page scores (183 of them in
+`models/genomics_prs/weights.json` and in the browser payload
+`web/public/data/genomics/pgs000072_breast_cancer.json`; all 187 in the bundled scoring file). Those
+ship under their publication's **CC BY 4.0** (Graff et al., Nat Commun 12:970, 2021), with the
+credit, the licence link and the change note the payload carries, and with the PGS Catalog's own
+terms - the EMBL-EBI Terms of Use: cite the score's publication and use it *"in accordance with any
+licensing restrictions set by the authors"* (the PGS000072 record, read 2026-10-31). The score has no
+Hub repo. PGS000004 (PRS313) is not shipped: its source paper, Mavaddat et al., *Am. J. Hum. Genet.*
+104(1):21-34 (2019), doi:10.1016/j.ajhg.2018.11.002, is published under
+**CC BY-NC-ND 4.0** (its version of record, per Crossref, read 2026-10-31), and its weights appear
+only in that article's supplementary data. Each repo's model
 card carries the dataset, its licence, the measured metrics and the published baseline they are
-measured against - including where the model falls short - but declares `license: other` with no
-licence link (section 2c).
+measured against - including where the model falls short - and names its licence by the Hub's
+identifier, or by name and link (section 2c).
 
 ## 6. OSS libraries (commercial-OK)
 
@@ -306,7 +338,7 @@ licence link (section 2c).
   raw pre-conditioning samples). SP 800-22 is *not* used for noise-source monitoring: SP 800-90B section 4.1
   states those tests *"will almost always fail, and thus are not useful for monitoring the noise
   source."* The entropy source is a local state-vector measurement simulation. The optional
-  **ANU QRNG** API is opt-in, online-only, never used in CI, and subject to the ANU service terms.
+  **ANU QRNG** API is opt-in, online-only, needs an API key read from QSH_ANU_API_KEY (the current ANU Quantum Numbers API), never used in CI, and subject to the ANU service terms.
 
 ### 6b. Conformance test vectors
 
@@ -335,14 +367,15 @@ that build clean. CC0 is the one licence class under which vendoring needs no fu
 
 ### 6a. Git submodules
 
-Two upstream projects are vendored as submodules rather than installed from a package index, and
-neither appeared in this document until Round 22 audited them. A submodule is a dependency whose
-licence and maintenance status travel with the repository, so it belongs here with the rest.
+Two upstream projects are vendored as submodules rather than installed from a package index, both for
+the GPU MPC-FHE benchmark path, and neither appeared in this document until Round 22 audited them. A
+submodule is a dependency whose licence and maintenance status travel with the repository, so it
+belongs here with the rest. This is the one table of them; `docs/development.md` links here.
 
-| Submodule | Upstream | Licence | Pinned commit | Upstream default branch | Last push |
-|---|---|---|---|---|---|
-| `submodules/HEonGPU` | Alisah-Ozcan/HEonGPU | Apache-2.0 | `1928a14bb002` | same commit - at HEAD | 2026-05-11 |
-| `submodules/hpmpc` | chart21/hpmpc | MIT | `155c93572d74` | same commit - at HEAD | 2026-07-25 |
+| Submodule | Upstream | Used for | Licence | Commercial use | Pinned commit | Upstream default branch | Last push |
+|---|---|---|---|---|---|---|---|
+| `submodules/HEonGPU` | Alisah-Ozcan/HEonGPU | GPU CKKS for the MPC-FHE benchmark | Apache-2.0 | yes | `1928a14bb002` | at the pinned commit, unmoved since 2026-05-11 | 2026-05-11 |
+| `submodules/hpmpc` | chart21/hpmpc (PIGEON) | GPU secret-sharing MPC for the same benchmark | MIT | yes | `155c93572d74` | at the pinned commit, unmoved since 2026-03-02 | 2026-07-25 |
 
 Both are permissive and commercial-OK, neither is archived, and **both pins are the current head of
 their upstream default branch** - checked against the GitHub API rather than assumed, since a
@@ -353,6 +386,27 @@ One nuance worth recording rather than smoothing: hpmpc's default branch has not
 tags, so "actively maintained" and "the branch we track is moving" are different statements and only
 the first is true here. Re-check both on each round; the condition to act on is an archived upstream,
 a licence change, or a default branch that has not moved in a year.
+
+**The hazard is one level down, and it is an ABSENT licence rather than a restrictive one** (checked
+2026-08-10). `hpmpc` declares two submodules of its own:
+
+| Path | Upstream | Licence |
+|---|---|---|
+| `nn/PIGEON` | `chart21/flexNN` | MIT |
+| `nn/Pygeon` | `chart21/pygeon` | **none - all rights reserved by default** |
+
+A repository with no licence file grants no permissions at all, which is a stronger restriction than
+GPL, not a weaker one. `chart21/pygeon` holds PyTorch export and training scripts and is not needed
+by anything here.
+
+**Neither nested submodule is populated in this checkout**, so nothing unlicensed is present today.
+The exposure is a future `git submodule update --init --recursive`, which would fetch it silently -
+and this project's rule is commercial-OK-only. Recorded because the failure mode is a routine command
+rather than a decision, and because absent licences do not appear in any scanner: an automated
+licence check looks for a restrictive SPDX identifier and finds nothing, which reads as clean.
+
+**Do not initialise submodules recursively in this repository.** `--init` without `--recursive` is
+sufficient for both direct submodules, and neither builds anything that needs the nested pair.
 
 ## 7. Rejected as NOT commercial-OK
 
@@ -424,15 +478,18 @@ by arithmetic, because a count corrected without looking is a count that will dr
 
 The last row is a **swap, not a survival**. The arXiv preprint of that paper (arXiv:2409.19359) is
 under arXiv's default licence and grants nothing, but the journal version of record is CC BY 4.0, so
-the file was replaced rather than dropped and the reference is unchanged. Byte-identity for the two
-ePrints is recorded because those two PDFs carry no self-identification at all - `Rate-1` has no
+the file was replaced rather than dropped and the reference is unchanged; the preprint's copy was
+removed from the repository's history on 2026-10-31, with the four files below. Byte-identity for
+the two ePrints is recorded because those two PDFs carry no self-identification at all - `Rate-1` has no
 arXiv stamp, no DOI, no copyright line and no venue header anywhere in 34 pages, so matching the
 live ePrint byte for byte is the only thing that ties the file to the licence being claimed for it.
 
 ### Excluded - no grant permitting redistribution
 
-Removed from tracking in Round 45 and excluded by `.gitignore`. All four remain cited in
-`references/REFERENCES.md` with their URL; only the bundled copy is gone.
+Removed from tracking in Round 45 and excluded by `.gitignore`, and removed from the repository's
+whole history on 2026-10-31. GitHub still holds copies in its read-only pull-request refs, which a
+force-push does not rewrite; removing those is pending a request to GitHub Support. All four remain
+cited in `references/REFERENCES.md` with their URL.
 
 | File | Licence | Why excluded |
 |---|---|---|
@@ -468,40 +525,9 @@ a file excluded for a reason that does not apply to it, under a heading claiming
 problem was fixed.
 
 Scope, stated accurately: section 8's "Excluded" table adjudicates four files that were **deleted** in
-Round 45 and exist nowhere in the tree. The four PDFs actually untracked today are governed by the
-size and copyright rules above, and are not adjudicated in that table at all.
+Round 45 and exist nowhere in the tree or its history. The four PDFs actually untracked today are
+governed by the size and copyright rules above, and are not adjudicated in that table at all.
 
 Enforced by `tests/test_bundled_reference_pdfs_carry_a_grant.py`, which derives the corpus from
 `git ls-files` rather than a glob - so a newly committed PDF is in scope the moment it is tracked,
 and cannot be admitted by editing a list.
-
-## Vendored submodules, and a transitive licence that is absent rather than restrictive
-
-Checked 2026-08-10. Both direct submodules are commercially permissive and both are at their
-upstream tip:
-
-| Submodule | Licence | Upstream tip | Commercial use |
-|---|---|---|---|
-| `submodules/HEonGPU` | Apache-2.0 | 2026-05-11 | yes |
-| `submodules/hpmpc` | MIT | 2026-03-02 | yes |
-
-**The hazard is one level down, and it is an ABSENT licence rather than a restrictive one.** `hpmpc`
-declares two submodules of its own:
-
-| Path | Upstream | Licence |
-|---|---|---|
-| `nn/PIGEON` | `chart21/flexNN` | MIT |
-| `nn/Pygeon` | `chart21/pygeon` | **none - all rights reserved by default** |
-
-A repository with no licence file grants no permissions at all, which is a stronger restriction than
-GPL, not a weaker one. `chart21/pygeon` holds PyTorch export and training scripts and is not needed
-by anything here.
-
-**Neither nested submodule is populated in this checkout**, so nothing unlicensed is present today.
-The exposure is a future `git submodule update --init --recursive`, which would fetch it silently -
-and this project's rule is commercial-OK-only. Recorded because the failure mode is a routine command
-rather than a decision, and because absent licences do not appear in any scanner: an automated
-licence check looks for a restrictive SPDX identifier and finds nothing, which reads as clean.
-
-**Do not initialise submodules recursively in this repository.** `--init` without `--recursive` is
-sufficient for both direct submodules, and neither builds anything that needs the nested pair.

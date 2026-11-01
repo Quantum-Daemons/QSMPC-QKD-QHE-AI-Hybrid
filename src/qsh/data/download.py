@@ -28,11 +28,16 @@ def _bundled() -> list[tuple[str, Path]]:
     d = REPO / "data"
     return [
         ("finance / PaySim sample", d / "finance" / "paysim_sample.tsv"),
-        ("genomics / PGS000001 weights", d / "genomics" / "pgs000001_breast_cancer.tsv"),
-        ("genomics / 1000G dosages (400)", d / "genomics" / "g1k_dosages.tsv"),
-        ("genomics / 1000G dosages (full)", d / "genomics" / "g1k_dosages_full.tsv"),
+        # The committed genomics files only. The 2,504-individual dosage matrices are gitignored
+        # (DATA_LICENSES.md section 4), so listing one here made `make data` fail on every clone.
+        ("genomics / PGS000072 scoring file", d / "genomics" / "pgs000072_breast_cancer.tsv"),
+        ("genomics / 1000G dosages, PGS000072 (97)", d / "genomics" / "g1k_dosages_pgs000072_slice.tsv"),
+        ("genomics / PGS000001 weights (retired)", d / "genomics" / "pgs000001_breast_cancer.tsv"),
+        ("genomics / 1000G dosages, PGS000001 (400)", d / "genomics" / "g1k_dosages.tsv"),
         ("genomics / 1000G ancestry panel", d / "genomics" / "g1k_panel.tsv"),
-        ("satellite / SMAP-MSL sample", d / "satellite" / "smap_msl_telemetry.tsv"),
+        # OPS-SAT-AD (CC BY 4.0) since Round 84, the payload the satellite CKKS stage scores; the NASA
+        # SMAP/MSL TSV listed here before has no data licence from any provider and is gone.
+        ("satellite / OPS-SAT-AD segments", d / "satellite" / "opssat_segments.json"),
     ]
 
 

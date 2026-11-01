@@ -1,0 +1,1666 @@
+{
+ "_source": {
+  "endpoint": "https://rest.ensembl.org/variation/human/{rsid}?genotypes=1;pops=1",
+  "ensembl_release": 116,
+  "fetched": "2026-10-31",
+  "note": "gnomAD genome frequencies as Ensembl's variation endpoint lists them; Ensembl does not name the gnomAD release. CC0; gnomAD's terms ask users not to attempt to re-identify participants.",
+  "populations": [
+   "gnomADg:afr",
+   "gnomADg:amr",
+   "gnomADg:eas",
+   "gnomADg:nfe",
+   "gnomADg:sas"
+  ]
+ },
+ "rs10022462": {
+  "afr": 0.4284,
+  "amr": 0.3268,
+  "eas": 0.01643,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.429423,
+  "nfe": 0.4435,
+  "sas": 0.2557
+ },
+ "rs1011970": {
+  "afr": 0.3218,
+  "amr": 0.3213,
+  "eas": 0.08977,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.15507,
+  "nfe": 0.1679,
+  "sas": 0.2425
+ },
+ "rs10472076": {
+  "afr": 0.2693,
+  "amr": 0.3111,
+  "eas": 0.2695,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.364811,
+  "nfe": 0.3777,
+  "sas": 0.2705
+ },
+ "rs10474352": {
+  "afr": 0.6496,
+  "amr": 0.7982,
+  "eas": 0.5105,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.858847,
+  "nfe": 0.8431,
+  "sas": 0.5878
+ },
+ "rs1053338": {
+  "afr": 0.03513,
+  "amr": 0.1583,
+  "eas": 0.1455,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.147117,
+  "nfe": 0.1353,
+  "sas": 0.1244
+ },
+ "rs10623258": {
+  "afr": 0.7234,
+  "amr": 0.6192,
+  "eas": 0.6288,
+  "effect_allele_ensembl": "TT",
+  "g1k_eur": 0.446322,
+  "nfe": 0.457,
+  "sas": 0.6113
+ },
+ "rs10759243": {
+  "afr": 0.6115,
+  "amr": 0.3918,
+  "eas": 0.457,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.308151,
+  "nfe": 0.2912,
+  "sas": 0.3934
+ },
+ "rs10760444": {
+  "afr": 0.5677,
+  "amr": 0.5234,
+  "eas": 0.5614,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.44831,
+  "nfe": 0.4345,
+  "sas": 0.5193
+ },
+ "rs10816625": {
+  "afr": 0.01702,
+  "amr": 0.1312,
+  "eas": 0.406,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.093439,
+  "nfe": 0.06425,
+  "sas": 0.0793
+ },
+ "rs10822013": {
+  "afr": 0.2297,
+  "amr": 0.4915,
+  "eas": 0.489,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.503976,
+  "nfe": 0.5143,
+  "sas": 0.4921
+ },
+ "rs10941679": {
+  "afr": 0.1888,
+  "amr": 0.3407,
+  "eas": 0.4992,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.232604,
+  "nfe": 0.2517,
+  "sas": 0.3657
+ },
+ "rs10979327": {
+  "afr": 0.02205,
+  "amr": 0.0635,
+  "eas": 0.4667,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.117296,
+  "nfe": 0.09854,
+  "sas": 0.1161
+ },
+ "rs10995201": {
+  "afr": 0.8197,
+  "amr": 0.8784,
+  "eas": 0.9776,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.847913,
+  "nfe": 0.8415,
+  "sas": 0.9132
+ },
+ "rs11075995": {
+  "afr": 0.1762,
+  "amr": 0.3019,
+  "eas": 0.3128,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.2167,
+  "nfe": 0.2305,
+  "sas": 0.2357
+ },
+ "rs11076805": {
+  "afr": 0.8037,
+  "amr": 0.8329,
+  "eas": 0.8993,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.742545,
+  "nfe": 0.733,
+  "sas": 0.7559
+ },
+ "rs11117758": {
+  "afr": 0.8471,
+  "amr": 0.7369,
+  "eas": 0.9493,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.772366,
+  "nfe": 0.7893,
+  "sas": 0.7471
+ },
+ "rs11199914": {
+  "afr": 0.4694,
+  "amr": 0.5751,
+  "eas": 0.6264,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.675944,
+  "nfe": 0.6855,
+  "sas": 0.7062
+ },
+ "rs11242675": {
+  "afr": 0.5143,
+  "amr": 0.5505,
+  "eas": 0.4306,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.661034,
+  "nfe": 0.633,
+  "sas": 0.5962
+ },
+ "rs11249433": {
+  "afr": 0.1134,
+  "amr": 0.2814,
+  "eas": 0.02989,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.431412,
+  "nfe": 0.4065,
+  "sas": 0.2019
+ },
+ "rs113577745": {
+  "afr": 0.09179,
+  "amr": 0.06231,
+  "eas": null,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.10835,
+  "nfe": 0.1043,
+  "sas": 0.06284
+ },
+ "rs113701136": {
+  "afr": 0.1389,
+  "amr": 0.267,
+  "eas": 0.2363,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.281312,
+  "nfe": 0.3171,
+  "sas": 0.2302
+ },
+ "rs11374964": {
+  "afr": 0.5929,
+  "amr": 0.4717,
+  "eas": 0.5274,
+  "effect_allele_ensembl": "-",
+  "g1k_eur": 0.542744,
+  "nfe": 0.5733,
+  "sas": 0.4171
+ },
+ "rs11552449": {
+  "afr": 0.03896,
+  "amr": 0.3096,
+  "eas": 0.5827,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.190855,
+  "nfe": 0.1698,
+  "sas": 0.1542
+ },
+ "rs116095464": {
+  "afr": null,
+  "amr": null,
+  "eas": null,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.049702,
+  "nfe": null,
+  "sas": null
+ },
+ "rs11627032": {
+  "afr": 0.8766,
+  "amr": 0.7286,
+  "eas": 0.7259,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.734592,
+  "nfe": 0.7467,
+  "sas": 0.6757
+ },
+ "rs117618124": {
+  "afr": 0.9929,
+  "amr": 0.9855,
+  "eas": 0.999,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.961233,
+  "nfe": 0.9533,
+  "sas": 0.9571
+ },
+ "rs11780156": {
+  "afr": 0.03695,
+  "amr": 0.1615,
+  "eas": 0.2124,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.187873,
+  "nfe": 0.1789,
+  "sas": 0.2389
+ },
+ "rs11785598": {
+  "afr": 0.9931,
+  "amr": 0.9665,
+  "eas": 0.9998,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.964215,
+  "nfe": 0.9647,
+  "sas": 0.993
+ },
+ "rs11814448": {
+  "afr": 0.6434,
+  "amr": 0.08754,
+  "eas": 0.006383,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.017893,
+  "nfe": 0.02162,
+  "sas": 0.02884
+ },
+ "rs11820646": {
+  "afr": 0.772,
+  "amr": 0.596,
+  "eas": 0.5344,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.559642,
+  "nfe": 0.6006,
+  "sas": 0.6867
+ },
+ "rs11903787": {
+  "afr": 0.5759,
+  "amr": 0.6647,
+  "eas": 0.7608,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.744533,
+  "nfe": 0.7652,
+  "sas": 0.6915
+ },
+ "rs11977670": {
+  "afr": 0.2674,
+  "amr": 0.5089,
+  "eas": 0.4584,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.425447,
+  "nfe": 0.4295,
+  "sas": 0.5313
+ },
+ "rs12048493": {
+  "afr": 0.07901,
+  "amr": 0.2868,
+  "eas": 0.3251,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.350895,
+  "nfe": 0.4016,
+  "sas": 0.3181
+ },
+ "rs12207986": {
+  "afr": 0.1013,
+  "amr": 0.3326,
+  "eas": 0.2071,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.524851,
+  "nfe": 0.5376,
+  "sas": 0.2746
+ },
+ "rs12405132": null,
+ "rs12422552": {
+  "afr": 0.4123,
+  "amr": 0.2314,
+  "eas": 0.2834,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.290258,
+  "nfe": 0.2617,
+  "sas": 0.373
+ },
+ "rs12479355": {
+  "afr": 0.7837,
+  "amr": 0.7551,
+  "eas": 0.8684,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.776342,
+  "nfe": 0.796,
+  "sas": 0.8134
+ },
+ "rs12493607": {
+  "afr": 0.1334,
+  "amr": 0.2856,
+  "eas": 0.683,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.336978,
+  "nfe": 0.3395,
+  "sas": 0.3719
+ },
+ "rs12546444": {
+  "afr": 0.9589,
+  "amr": 0.906,
+  "eas": 0.8947,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.904573,
+  "nfe": 0.9031,
+  "sas": 0.8705
+ },
+ "rs12710696": {
+  "afr": 0.5307,
+  "amr": 0.328,
+  "eas": 0.303,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.341948,
+  "nfe": 0.3645,
+  "sas": 0.5751
+ },
+ "rs12870942": {
+  "afr": 0.05466,
+  "amr": 0.2331,
+  "eas": 0.2568,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.304175,
+  "nfe": 0.3143,
+  "sas": 0.1668
+ },
+ "rs1292011": {
+  "afr": 0.5486,
+  "amr": 0.6005,
+  "eas": 0.7537,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.586481,
+  "nfe": 0.5772,
+  "sas": 0.4375
+ },
+ "rs13066793": {
+  "afr": 0.9607,
+  "amr": 0.9257,
+  "eas": 0.9967,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.913519,
+  "nfe": 0.9095,
+  "sas": 0.9297
+ },
+ "rs13162653": {
+  "afr": 0.7882,
+  "amr": 0.6155,
+  "eas": 0.848,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.531809,
+  "nfe": 0.541,
+  "sas": 0.6656
+ },
+ "rs132390": {
+  "afr": 0.05596,
+  "amr": 0.01836,
+  "eas": 0.000386,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.024851,
+  "nfe": 0.03481,
+  "sas": 0.02421
+ },
+ "rs13267382": {
+  "afr": 0.8839,
+  "amr": 0.5903,
+  "eas": 0.5446,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.342942,
+  "nfe": 0.3581,
+  "sas": 0.6396
+ },
+ "rs13281615": {
+  "afr": 0.4405,
+  "amr": 0.5369,
+  "eas": 0.5119,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.44334,
+  "nfe": 0.4145,
+  "sas": 0.512
+ },
+ "rs13294895": {
+  "afr": 0.03374,
+  "amr": 0.1258,
+  "eas": 0.0162,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.188867,
+  "nfe": 0.1734,
+  "sas": 0.1129
+ },
+ "rs13329835": {
+  "afr": 0.6626,
+  "amr": 0.2275,
+  "eas": 0.04944,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.241551,
+  "nfe": 0.224,
+  "sas": 0.09681
+ },
+ "rs13365225": {
+  "afr": 0.5941,
+  "amr": 0.7715,
+  "eas": 0.6677,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.857853,
+  "nfe": 0.8208,
+  "sas": 0.699
+ },
+ "rs1353747": {
+  "afr": 0.9813,
+  "amr": 0.8932,
+  "eas": 0.9988,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.916501,
+  "nfe": 0.9031,
+  "sas": 0.9062
+ },
+ "rs140850326": {
+  "afr": 0.716,
+  "amr": 0.4241,
+  "eas": 0.1723,
+  "effect_allele_ensembl": "AAAGGGCAAGATCTCCTTTTTAAAGG",
+  "g1k_eur": 0.512922,
+  "nfe": 0.513,
+  "sas": 0.3921
+ },
+ "rs1429142": {
+  "afr": 0.6987,
+  "amr": 0.257,
+  "eas": 0.3436,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.159046,
+  "nfe": 0.1693,
+  "sas": 0.3515
+ },
+ "rs1432679": {
+  "afr": 0.8054,
+  "amr": 0.5816,
+  "eas": 0.6288,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.447316,
+  "nfe": 0.4388,
+  "sas": 0.3606
+ },
+ "rs1436904": {
+  "afr": 0.7509,
+  "amr": 0.5707,
+  "eas": 0.5325,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.588469,
+  "nfe": 0.6009,
+  "sas": 0.7343
+ },
+ "rs146699004": {
+  "afr": 0.7709,
+  "amr": 0.794,
+  "eas": 0.9051,
+  "effect_allele_ensembl": "GTGTG",
+  "g1k_eur": 0.713718,
+  "nfe": 0.7278,
+  "sas": 0.858
+ },
+ "rs1550623": {
+  "afr": 0.7046,
+  "amr": 0.7819,
+  "eas": 0.9906,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.846918,
+  "nfe": 0.8406,
+  "sas": 0.8824
+ },
+ "rs16857609": {
+  "afr": 0.2381,
+  "amr": 0.3284,
+  "eas": 0.5951,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.274354,
+  "nfe": 0.2567,
+  "sas": 0.55
+ },
+ "rs16991615": {
+  "afr": 0.01085,
+  "amr": 0.05644,
+  "eas": null,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.0666,
+  "nfe": 0.06136,
+  "sas": 0.02177
+ },
+ "rs17032957": {
+  "afr": 0.2424,
+  "amr": 0.3762,
+  "eas": 0.5933,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.265408,
+  "nfe": 0.2565,
+  "sas": 0.4331
+ },
+ "rs1707302": {
+  "afr": 0.6157,
+  "amr": 0.6573,
+  "eas": 0.7002,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.677932,
+  "nfe": 0.6662,
+  "sas": 0.5527
+ },
+ "rs17156577": {
+  "afr": 0.3231,
+  "amr": 0.1586,
+  "eas": 0.03974,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.10835,
+  "nfe": 0.1167,
+  "sas": 0.1723
+ },
+ "rs17268829": {
+  "afr": 0.0811,
+  "amr": 0.2793,
+  "eas": 0.2502,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.28827,
+  "nfe": 0.2867,
+  "sas": 0.3719
+ },
+ "rs17350191": {
+  "afr": 0.07369,
+  "amr": 0.3031,
+  "eas": 0.1914,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.333996,
+  "nfe": 0.34,
+  "sas": 0.4565
+ },
+ "rs17356907": {
+  "afr": 0.7991,
+  "amr": 0.6574,
+  "eas": 0.7436,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.706759,
+  "nfe": 0.7002,
+  "sas": 0.7135
+ },
+ "rs17426269": {
+  "afr": 0.0995,
+  "amr": 0.09966,
+  "eas": 0.001545,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.124254,
+  "nfe": 0.1498,
+  "sas": 0.1087
+ },
+ "rs17529111": {
+  "afr": 0.0673,
+  "amr": 0.2413,
+  "eas": 0.2,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.222664,
+  "nfe": 0.2103,
+  "sas": 0.2055
+ },
+ "rs17817449": {
+  "afr": 0.6056,
+  "amr": 0.6938,
+  "eas": 0.8482,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.585487,
+  "nfe": 0.592,
+  "sas": 0.6847
+ },
+ "rs1830298": {
+  "afr": 0.2139,
+  "amr": 0.4241,
+  "eas": 0.303,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.2833,
+  "nfe": 0.279,
+  "sas": 0.1714
+ },
+ "rs1895062": {
+  "afr": 0.8287,
+  "amr": 0.679,
+  "eas": 0.7093,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.575547,
+  "nfe": 0.5973,
+  "sas": 0.7384
+ },
+ "rs2012709": {
+  "afr": 0.1665,
+  "amr": 0.39,
+  "eas": 0.1236,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.442346,
+  "nfe": 0.481,
+  "sas": 0.3648
+ },
+ "rs2016394": {
+  "afr": 0.7291,
+  "amr": 0.5769,
+  "eas": 0.8008,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.54175,
+  "nfe": 0.5281,
+  "sas": 0.6608
+ },
+ "rs202049448": {
+  "afr": 0.8715,
+  "amr": 0.8543,
+  "eas": 0.4811,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.664016,
+  "nfe": 0.7637,
+  "sas": 0.6979
+ },
+ "rs204247": {
+  "afr": 0.3367,
+  "amr": 0.4291,
+  "eas": 0.5892,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.422465,
+  "nfe": 0.4397,
+  "sas": 0.4428
+ },
+ "rs206966": {
+  "afr": 0.1686,
+  "amr": 0.1179,
+  "eas": 0.0706,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.144135,
+  "nfe": 0.1595,
+  "sas": 0.1734
+ },
+ "rs2160749": {
+  "afr": 0.8869,
+  "amr": 0.9057,
+  "eas": 0.999,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.845924,
+  "nfe": 0.8667,
+  "sas": 0.9497
+ },
+ "rs2180341": {
+  "afr": 0.3095,
+  "amr": 0.2482,
+  "eas": 0.2209,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.280318,
+  "nfe": 0.2472,
+  "sas": 0.3803
+ },
+ "rs2181965": {
+  "afr": 0.674,
+  "amr": 0.792,
+  "eas": 0.994,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.770378,
+  "nfe": 0.7651,
+  "sas": 0.9129
+ },
+ "rs2223621": {
+  "afr": 0.1189,
+  "amr": 0.3187,
+  "eas": 0.4563,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.358847,
+  "nfe": 0.3922,
+  "sas": 0.4477
+ },
+ "rs2229882": {
+  "afr": 0.03213,
+  "amr": 0.05054,
+  "eas": 0.0613,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.048708,
+  "nfe": 0.05183,
+  "sas": 0.03045
+ },
+ "rs2236007": {
+  "afr": 0.9301,
+  "amr": 0.8668,
+  "eas": 0.7058,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.7833,
+  "nfe": 0.786,
+  "sas": 0.8326
+ },
+ "rs2242652": {
+  "afr": 0.132,
+  "amr": 0.1551,
+  "eas": 0.1744,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.21173,
+  "nfe": 0.1963,
+  "sas": 0.1815
+ },
+ "rs2284378": {
+  "afr": 0.1582,
+  "amr": 0.2904,
+  "eas": 0.1697,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.292247,
+  "nfe": 0.3274,
+  "sas": 0.1493
+ },
+ "rs2290203": {
+  "afr": 0.592,
+  "amr": 0.6907,
+  "eas": 0.5,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.785288,
+  "nfe": 0.7935,
+  "sas": 0.6552
+ },
+ "rs2432539": {
+  "afr": 0.1152,
+  "amr": 0.4026,
+  "eas": 0.4113,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.416501,
+  "nfe": 0.4072,
+  "sas": 0.2757
+ },
+ "rs2532263": {
+  "afr": 0.9604,
+  "amr": 0.8479,
+  "eas": 0.9985,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.810139,
+  "nfe": 0.8172,
+  "sas": 0.9347
+ },
+ "rs2588809": {
+  "afr": 0.2982,
+  "amr": 0.1834,
+  "eas": 0.02254,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.187873,
+  "nfe": 0.1629,
+  "sas": 0.1699
+ },
+ "rs2594714": {
+  "afr": 0.2159,
+  "amr": 0.7234,
+  "eas": 0.7493,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.756461,
+  "nfe": 0.7712,
+  "sas": 0.7661
+ },
+ "rs2747652": {
+  "afr": 0.5152,
+  "amr": 0.5065,
+  "eas": 0.5649,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.552684,
+  "nfe": 0.5185,
+  "sas": 0.5108
+ },
+ "rs2787486": {
+  "afr": 0.5761,
+  "amr": 0.7347,
+  "eas": 0.7113,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.713718,
+  "nfe": 0.6948,
+  "sas": 0.7962
+ },
+ "rs2823093": {
+  "afr": 0.5615,
+  "amr": 0.6872,
+  "eas": 0.9639,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.740557,
+  "nfe": 0.7301,
+  "sas": 0.7443
+ },
+ "rs2838891": {
+  "afr": 0.7503,
+  "amr": 0.6605,
+  "eas": 0.7621,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.545726,
+  "nfe": 0.542,
+  "sas": 0.5348
+ },
+ "rs28512361": {
+  "afr": 0.2598,
+  "amr": 0.08865,
+  "eas": 0.04576,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.121272,
+  "nfe": 0.1167,
+  "sas": 0.09658
+ },
+ "rs28539243": {
+  "afr": 0.8477,
+  "amr": 0.5895,
+  "eas": 0.5833,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.479125,
+  "nfe": 0.4854,
+  "sas": 0.6513
+ },
+ "rs2943559": {
+  "afr": 0.2206,
+  "amr": 0.08043,
+  "eas": 0.08895,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.0666,
+  "nfe": 0.07635,
+  "sas": 0.06761
+ },
+ "rs2965183": {
+  "afr": 0.6288,
+  "amr": 0.4332,
+  "eas": 0.3047,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.336978,
+  "nfe": 0.3522,
+  "sas": 0.5143
+ },
+ "rs2992756": {
+  "afr": 0.5277,
+  "amr": 0.4118,
+  "eas": 0.1492,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.511928,
+  "nfe": 0.4901,
+  "sas": 0.5507
+ },
+ "rs3112612": {
+  "afr": 0.4244,
+  "amr": 0.5402,
+  "eas": 0.7831,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.428429,
+  "nfe": 0.4225,
+  "sas": 0.4561
+ },
+ "rs3215401": {
+  "afr": 0.8744,
+  "amr": 0.7657,
+  "eas": 0.6344,
+  "effect_allele_ensembl": "GGGG",
+  "g1k_eur": 0.71173,
+  "nfe": 0.694,
+  "sas": 0.4749
+ },
+ "rs34005590": {
+  "afr": 0.886,
+  "amr": 0.9712,
+  "eas": 0.9971,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.956262,
+  "nfe": 0.9497,
+  "sas": 0.9743
+ },
+ "rs34207738": null,
+ "rs35054928": {
+  "afr": 0.6168,
+  "amr": 0.4338,
+  "eas": 0.4495,
+  "effect_allele_ensembl": "CC",
+  "g1k_eur": 0.450298,
+  "nfe": 0.407,
+  "sas": 0.3969
+ },
+ "rs35383942": {
+  "afr": 0.009742,
+  "amr": 0.03788,
+  "eas": null,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.059642,
+  "nfe": 0.05818,
+  "sas": 0.007255
+ },
+ "rs36194942": {
+  "afr": 0.5972,
+  "amr": 0.719,
+  "eas": 0.4655,
+  "effect_allele_ensembl": "TTTTTT",
+  "g1k_eur": 0.691849,
+  "nfe": 0.7132,
+  "sas": 0.5807
+ },
+ "rs3757322": {
+  "afr": 0.4882,
+  "amr": 0.2794,
+  "eas": 0.3217,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.298211,
+  "nfe": 0.3231,
+  "sas": 0.3292
+ },
+ "rs3760982": {
+  "afr": 0.475,
+  "amr": 0.3425,
+  "eas": 0.1584,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.457256,
+  "nfe": 0.4657,
+  "sas": 0.5658
+ },
+ "rs3817198": {
+  "afr": 0.1615,
+  "amr": 0.2291,
+  "eas": 0.1116,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.314115,
+  "nfe": 0.3173,
+  "sas": 0.3708
+ },
+ "rs3819405": {
+  "afr": 0.5319,
+  "amr": 0.5692,
+  "eas": 0.6571,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.66004,
+  "nfe": 0.6705,
+  "sas": 0.5147
+ },
+ "rs3903072": {
+  "afr": 0.8357,
+  "amr": 0.6639,
+  "eas": 0.7936,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.539761,
+  "nfe": 0.527,
+  "sas": 0.4554
+ },
+ "rs420519": {
+  "afr": 0.4642,
+  "amr": 0.6992,
+  "eas": 0.8957,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.599404,
+  "nfe": 0.5959,
+  "sas": 0.6633
+ },
+ "rs4233486": {
+  "afr": 0.7528,
+  "amr": 0.7269,
+  "eas": 0.6511,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.628231,
+  "nfe": 0.6487,
+  "sas": 0.6402
+ },
+ "rs4245739": {
+  "afr": 0.2342,
+  "amr": 0.2716,
+  "eas": 0.04059,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.260437,
+  "nfe": 0.2667,
+  "sas": 0.249
+ },
+ "rs4342822": {
+  "afr": 0.1795,
+  "amr": 0.37,
+  "eas": 0.2357,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.511928,
+  "nfe": 0.4882,
+  "sas": 0.3572
+ },
+ "rs4442975": {
+  "afr": 0.6559,
+  "amr": 0.4007,
+  "eas": 0.1053,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.508946,
+  "nfe": 0.4989,
+  "sas": 0.5122
+ },
+ "rs4496150": {
+  "afr": 0.9122,
+  "amr": 0.6784,
+  "eas": 0.5498,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.739563,
+  "nfe": 0.7532,
+  "sas": 0.7815
+ },
+ "rs4562056": {
+  "afr": 0.3321,
+  "amr": 0.4218,
+  "eas": 0.4633,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.340954,
+  "nfe": 0.3415,
+  "sas": 0.4552
+ },
+ "rs45631563": {
+  "afr": 0.9906,
+  "amr": 0.9605,
+  "eas": 0.9992,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.94334,
+  "nfe": 0.9521,
+  "sas": 0.924
+ },
+ "rs4577244": {
+  "afr": 0.7975,
+  "amr": 0.5951,
+  "eas": 0.2264,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.77336,
+  "nfe": 0.7743,
+  "sas": 0.6943
+ },
+ "rs4593472": {
+  "afr": 0.7223,
+  "amr": 0.7698,
+  "eas": 0.8333,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.667992,
+  "nfe": 0.6438,
+  "sas": 0.6293
+ },
+ "rs4784227": {
+  "afr": 0.06522,
+  "amr": 0.2927,
+  "eas": 0.2461,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.254473,
+  "nfe": 0.2417,
+  "sas": 0.2089
+ },
+ "rs4808801": {
+  "afr": 0.3115,
+  "amr": 0.6323,
+  "eas": 0.7532,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.65507,
+  "nfe": 0.6563,
+  "sas": 0.579
+ },
+ "rs4849887": {
+  "afr": 0.6975,
+  "amr": 0.8685,
+  "eas": 0.7792,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.897614,
+  "nfe": 0.898,
+  "sas": 0.7915
+ },
+ "rs493786": {
+  "afr": 0.4591,
+  "amr": 0.3963,
+  "eas": 0.2584,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.308151,
+  "nfe": 0.3354,
+  "sas": 0.3844
+ },
+ "rs4971059": {
+  "afr": 0.2078,
+  "amr": 0.4695,
+  "eas": 0.7705,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.352883,
+  "nfe": 0.3566,
+  "sas": 0.4439
+ },
+ "rs4973768": {
+  "afr": 0.3577,
+  "amr": 0.5368,
+  "eas": 0.192,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.481113,
+  "nfe": 0.4765,
+  "sas": 0.441
+ },
+ "rs514192": {
+  "afr": 0.5143,
+  "amr": 0.4031,
+  "eas": 0.5974,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.33002,
+  "nfe": 0.3253,
+  "sas": 0.4254
+ },
+ "rs527616": {
+  "afr": 0.8654,
+  "amr": 0.7741,
+  "eas": 0.7219,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.604374,
+  "nfe": 0.6262,
+  "sas": 0.716
+ },
+ "rs56069439": {
+  "afr": 0.2369,
+  "amr": 0.1793,
+  "eas": 0.003089,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.260437,
+  "nfe": 0.2954,
+  "sas": 0.1376
+ },
+ "rs58058861": {
+  "afr": 0.1453,
+  "amr": 0.1993,
+  "eas": 0.3281,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.178926,
+  "nfe": 0.2171,
+  "sas": 0.2373
+ },
+ "rs58847541": {
+  "afr": 0.2925,
+  "amr": 0.08886,
+  "eas": 0.1782,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.153082,
+  "nfe": 0.1499,
+  "sas": 0.2481
+ },
+ "rs6001930": {
+  "afr": 0.1348,
+  "amr": 0.1098,
+  "eas": 0.2451,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.102386,
+  "nfe": 0.101,
+  "sas": 0.1236
+ },
+ "rs6039942": {
+  "afr": 0.07094,
+  "amr": 0.1281,
+  "eas": 0.154,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.093439,
+  "nfe": 0.1046,
+  "sas": 0.07024
+ },
+ "rs6122906": {
+  "afr": 0.3076,
+  "amr": 0.3331,
+  "eas": 0.3311,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.200795,
+  "nfe": 0.1842,
+  "sas": 0.2493
+ },
+ "rs616488": {
+  "afr": 0.8761,
+  "amr": 0.6275,
+  "eas": 0.674,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.673956,
+  "nfe": 0.6693,
+  "sas": 0.7587
+ },
+ "rs62355902": {
+  "afr": 0.09135,
+  "amr": 0.2136,
+  "eas": 0.3882,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.149105,
+  "nfe": 0.1604,
+  "sas": 0.3265
+ },
+ "rs6472903": {
+  "afr": 0.9005,
+  "amr": 0.8965,
+  "eas": 0.9637,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.835984,
+  "nfe": 0.8294,
+  "sas": 0.8981
+ },
+ "rs6507583": {
+  "afr": 0.6779,
+  "amr": 0.8831,
+  "eas": 0.8722,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.931412,
+  "nfe": 0.9308,
+  "sas": 0.9095
+ },
+ "rs6569648": {
+  "afr": 0.9626,
+  "amr": 0.8708,
+  "eas": 0.9396,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.776342,
+  "nfe": 0.7655,
+  "sas": 0.8796
+ },
+ "rs6596100": {
+  "afr": 0.71,
+  "amr": 0.8567,
+  "eas": 0.8879,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.76839,
+  "nfe": 0.7641,
+  "sas": 0.7399
+ },
+ "rs6597981": {
+  "afr": 0.1675,
+  "amr": 0.5455,
+  "eas": 0.2788,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.498012,
+  "nfe": 0.5178,
+  "sas": 0.2216
+ },
+ "rs6678914": {
+  "afr": 0.6723,
+  "amr": 0.6888,
+  "eas": 0.772,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.568588,
+  "nfe": 0.5921,
+  "sas": 0.7061
+ },
+ "rs66823261": {
+  "afr": 0.2954,
+  "amr": 0.2227,
+  "eas": 0.1998,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.203777,
+  "nfe": 0.215,
+  "sas": 0.2414
+ },
+ "rs6725517": {
+  "afr": 0.2493,
+  "amr": 0.6489,
+  "eas": 0.5815,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.606362,
+  "nfe": 0.5818,
+  "sas": 0.5881
+ },
+ "rs676256": {
+  "afr": 0.7529,
+  "amr": 0.6684,
+  "eas": 0.9566,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.630219,
+  "nfe": 0.6251,
+  "sas": 0.8552
+ },
+ "rs6762644": {
+  "afr": 0.4663,
+  "amr": 0.2998,
+  "eas": 0.08173,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.353877,
+  "nfe": 0.385,
+  "sas": 0.1137
+ },
+ "rs67958007": {
+  "afr": 0.1236,
+  "amr": 0.1533,
+  "eas": 0.04355,
+  "effect_allele_ensembl": "-",
+  "g1k_eur": 0.109344,
+  "nfe": 0.1161,
+  "sas": 0.04363
+ },
+ "rs6796502": {
+  "afr": 0.8202,
+  "amr": 0.8212,
+  "eas": 0.8611,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.909543,
+  "nfe": 0.8993,
+  "sas": 0.7813
+ },
+ "rs6805189": {
+  "afr": 0.6007,
+  "amr": 0.6719,
+  "eas": 0.9938,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.501988,
+  "nfe": 0.5226,
+  "sas": 0.7058
+ },
+ "rs680618": {
+  "afr": 0.4463,
+  "amr": 0.1715,
+  "eas": 0.2017,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.210736,
+  "nfe": 0.2292,
+  "sas": 0.1722
+ },
+ "rs6815814": {
+  "afr": 0.7954,
+  "amr": 0.4138,
+  "eas": 0.5841,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.290258,
+  "nfe": 0.2421,
+  "sas": 0.4821
+ },
+ "rs6828523": {
+  "afr": 0.6249,
+  "amr": 0.8278,
+  "eas": 0.7488,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.89165,
+  "nfe": 0.8802,
+  "sas": 0.809
+ },
+ "rs6882649": {
+  "afr": 0.4422,
+  "amr": 0.4974,
+  "eas": 0.1432,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.647117,
+  "nfe": 0.6679,
+  "sas": 0.3477
+ },
+ "rs6964587": {
+  "afr": 0.5102,
+  "amr": 0.3611,
+  "eas": 0.1737,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.38668,
+  "nfe": 0.3869,
+  "sas": 0.3871
+ },
+ "rs704010": {
+  "afr": 0.08735,
+  "amr": 0.3847,
+  "eas": 0.33,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.412525,
+  "nfe": 0.3843,
+  "sas": 0.2901
+ },
+ "rs7072776": {
+  "afr": 0.5082,
+  "amr": 0.3551,
+  "eas": 0.04936,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.286282,
+  "nfe": 0.2868,
+  "sas": 0.2085
+ },
+ "rs71338792": {
+  "afr": 0.1256,
+  "amr": 0.1351,
+  "eas": 0.2078,
+  "effect_allele_ensembl": "TTTTTTTTTTTTTT",
+  "g1k_eur": 0.217694,
+  "nfe": 0.2102,
+  "sas": 0.1537
+ },
+ "rs71557345": {
+  "afr": null,
+  "amr": 1.0,
+  "eas": null,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.939364,
+  "nfe": null,
+  "sas": null
+ },
+ "rs71559437": {
+  "afr": 0.9522,
+  "amr": 0.9315,
+  "eas": 0.9431,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.889662,
+  "nfe": 0.8802,
+  "sas": 0.9323
+ },
+ "rs71801447": {
+  "afr": 0.2062,
+  "amr": 0.1012,
+  "eas": 0.1234,
+  "effect_allele_ensembl": "TTATGT",
+  "g1k_eur": 0.070577,
+  "nfe": 0.06196,
+  "sas": 0.07374
+ },
+ "rs720475": {
+  "afr": 0.8889,
+  "amr": 0.8143,
+  "eas": 0.9602,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.71173,
+  "nfe": 0.7477,
+  "sas": 0.8111
+ },
+ "rs72749841": {
+  "afr": 0.9686,
+  "amr": 0.858,
+  "eas": 0.9986,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.831014,
+  "nfe": 0.8259,
+  "sas": 0.9513
+ },
+ "rs72755295": {
+  "afr": 0.005074,
+  "amr": 0.01679,
+  "eas": null,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.037773,
+  "nfe": 0.0314,
+  "sas": 0.01656
+ },
+ "rs7297051": null,
+ "rs73161324": {
+  "afr": 0.009434,
+  "amr": 0.01609,
+  "eas": 0.0001928,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.047714,
+  "nfe": 0.0589,
+  "sas": 0.02281
+ },
+ "rs738321": {
+  "afr": 0.5694,
+  "amr": 0.5679,
+  "eas": 0.7398,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.628231,
+  "nfe": 0.6206,
+  "sas": 0.5074
+ },
+ "rs745570": {
+  "afr": 0.2159,
+  "amr": 0.3819,
+  "eas": 0.5975,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.50497,
+  "nfe": 0.4992,
+  "sas": 0.4071
+ },
+ "rs74911261": {
+  "afr": 0.9957,
+  "amr": 0.9819,
+  "eas": 0.9998,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.971173,
+  "nfe": 0.9744,
+  "sas": 0.9963
+ },
+ "rs7529522": {
+  "afr": 0.3092,
+  "amr": 0.3536,
+  "eas": 0.3842,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.248509,
+  "nfe": 0.2301,
+  "sas": 0.2581
+ },
+ "rs75915166": {
+  "afr": 0.009822,
+  "amr": 0.03522,
+  "eas": 0.002122,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.059642,
+  "nfe": 0.05958,
+  "sas": 0.09287
+ },
+ "rs7707921": {
+  "afr": 0.8791,
+  "amr": 0.8331,
+  "eas": 0.9902,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.76839,
+  "nfe": 0.7538,
+  "sas": 0.8385
+ },
+ "rs77528541": {
+  "afr": 0.8832,
+  "amr": 0.9368,
+  "eas": 0.9978,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.889662,
+  "nfe": 0.8705,
+  "sas": 0.8882
+ },
+ "rs78269692": {
+  "afr": 0.009024,
+  "amr": 0.01693,
+  "eas": 0.0001933,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.040755,
+  "nfe": 0.05296,
+  "sas": 0.005383
+ },
+ "rs7904519": {
+  "afr": 0.8063,
+  "amr": 0.407,
+  "eas": 0.03344,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.49503,
+  "nfe": 0.4731,
+  "sas": 0.401
+ },
+ "rs7971": {
+  "afr": 0.8762,
+  "amr": 0.7064,
+  "eas": 0.8228,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.643141,
+  "nfe": 0.6395,
+  "sas": 0.7232
+ },
+ "rs79724016": {
+  "afr": 0.9852,
+  "amr": 0.9774,
+  "eas": 0.9996,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.968191,
+  "nfe": 0.968,
+  "sas": 0.9882
+ },
+ "rs8045513": {
+  "afr": 0.89,
+  "amr": 0.8113,
+  "eas": 0.9986,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.814115,
+  "nfe": 0.7878,
+  "sas": 0.9158
+ },
+ "rs8176636": null,
+ "rs832540": {
+  "afr": 0.7674,
+  "amr": 0.5812,
+  "eas": 0.8878,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.367793,
+  "nfe": 0.3542,
+  "sas": 0.5744
+ },
+ "rs9257408": {
+  "afr": 0.8312,
+  "amr": 0.5412,
+  "eas": 0.6449,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.423459,
+  "nfe": 0.3956,
+  "sas": 0.6057
+ },
+ "rs9348512": {
+  "afr": 0.6651,
+  "amr": 0.6074,
+  "eas": 0.8172,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.676938,
+  "nfe": 0.6648,
+  "sas": 0.46
+ },
+ "rs9397437": {
+  "afr": 0.04779,
+  "amr": 0.0617,
+  "eas": 0.3021,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.071571,
+  "nfe": 0.0696,
+  "sas": 0.08278
+ },
+ "rs941764": {
+  "afr": 0.7241,
+  "amr": 0.466,
+  "eas": 0.1336,
+  "effect_allele_ensembl": "G",
+  "g1k_eur": 0.352883,
+  "nfe": 0.3423,
+  "sas": 0.2781
+ },
+ "rs963950": {
+  "afr": 0.9705,
+  "amr": 0.8954,
+  "eas": 0.8988,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.908549,
+  "nfe": 0.8864,
+  "sas": 0.8959
+ },
+ "rs9693444": {
+  "afr": 0.3777,
+  "amr": 0.3061,
+  "eas": 0.3067,
+  "effect_allele_ensembl": "A",
+  "g1k_eur": 0.345924,
+  "nfe": 0.3239,
+  "sas": 0.2183
+ },
+ "rs9790517": {
+  "afr": 0.06781,
+  "amr": 0.272,
+  "eas": 0.617,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.21173,
+  "nfe": 0.2266,
+  "sas": 0.298
+ },
+ "rs9833888": {
+  "afr": 0.08704,
+  "amr": 0.2275,
+  "eas": 0.1566,
+  "effect_allele_ensembl": "T",
+  "g1k_eur": 0.202783,
+  "nfe": 0.221,
+  "sas": 0.2519
+ },
+ "rs999737": {
+  "afr": 0.9558,
+  "amr": 0.8343,
+  "eas": 0.9971,
+  "effect_allele_ensembl": "C",
+  "g1k_eur": 0.790258,
+  "nfe": 0.7636,
+  "sas": 0.8718
+ }
+}

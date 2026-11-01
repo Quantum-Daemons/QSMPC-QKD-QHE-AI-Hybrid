@@ -19,6 +19,12 @@
 // Hoeffding deviation on the basis total, at eps/2 each, the tighter kept ("tighter", a union bound);
 // or either alone. And Rusca's (A16) with tau0 on the error term only, as the paper prints it. The
 // reasons are in `finite_key.py`'s docstring.
+//
+// THE KEY BASIS (Round 84, the user's choice): from the Z basis only, X spent on the phase-error
+// estimate, as both papers write their protocols (the default), or from both bases, each basis's key
+// with its phase error estimated from the other basis's counts, each at half of eps_sec and eps_cor
+// so the pair keeps the run's budget, summed: how the flown passes counted theirs. The numbers are in
+// `finite_key.py`'s docstring, THE KEY BASIS.
 
 import { qkdCfg } from "./config";
 import { deadTimeFactor, eDetForBound, sourceOf, transmittance, type ChannelParams } from "./quantumSim";
@@ -35,7 +41,20 @@ export interface FiniteKeySource {
   vacuum: boolean;
   /** The statistics: "tighter" of the two, "chernoff" (Yin et al. 2020) or "hoeffding" (published). */
   deviation: Deviation;
+  /** Which bases the key comes from (Round 84): "one" (absent: the default) or "both". */
+  keyBasis?: KeyBasis;
 }
+
+/** "one": the Z basis, X for the phase error, as Lim et al. and Rusca et al. write the protocol.
+ *  "both": a key from each basis, its phase error from the other basis's counts, each at half the
+ *  budget, summed, as Liao et al. 2017 and Khmelev et al. 2024 counted theirs. `finite_key.py::KEY_BASES`. */
+export type KeyBasis = "one" | "both";
+export const KEY_BASES: KeyBasis[] = ["one", "both"];
+/** How each is named where a key is reported: `finite_key.py::KEY_BASIS_LABELS`. */
+export const KEY_BASIS_LABELS: Record<KeyBasis, string> = {
+  one: "the Z basis only, X for the phase error",
+  both: "both bases, each one's phase error from the other's counts",
+};
 
 export type Deviation = "tighter" | "chernoff" | "hoeffding";
 export const DEVIATIONS: Deviation[] = ["tighter", "chernoff", "hoeffding"];
@@ -53,6 +72,9 @@ export interface FiniteKeyResult {
   /** The key length in bits. Non-positive: no key. -Infinity: no single-photon bound at all. */
   keyBits: number;
   nZ: number; nX: number; sZ0: number; sZ1: number; phiZ: number; lambdaEC: number; qber: number;
+  /** Both bases (Round 84): the Z and X keys, each at half the budget; `lambdaEC` is then both
+   *  bases' error correction, and the other fields the Z basis's. Absent for one basis. */
+  basisKeys?: [number, number];
 }
 
 export const FINITE_KEY_BOUNDS = {
@@ -118,10 +140,12 @@ function gainAndError(eta: number, mu: number, eDet: number, y0: number): [numbe
  *  both parties choosing a basis at even odds as Micius's passive beam splitter did. */
 export function finiteKeySourceOf(ch: ChannelParams, epsSec = 1e-9,
                                   fEC = qkdCfg().error_correction_eff,
-                                  deviation: Deviation = qkdCfg().finite_key_deviation as Deviation): FiniteKeySource {
+                                  deviation: Deviation = qkdCfg().finite_key_deviation as Deviation,
+                                  keyBasis: KeyBasis = "one"): FiniteKeySource {
   const s = sourceOf(ch);
   if (!DEVIATIONS.includes(deviation)) throw new Error(`deviation ${deviation}: one of ${DEVIATIONS.join(", ")}`);
-  const common = { pZ: 0.5, epsSec, epsCor: 1e-15, fEC, deviation };
+  if (!KEY_BASES.includes(keyBasis)) throw new Error(`key basis ${keyBasis}: one of ${KEY_BASES.join(", ")}`);
+  const common = { pZ: 0.5, epsSec, epsCor: 1e-15, fEC, deviation, keyBasis };
   return s.vacuum
     ? { ...common, vacuum: true, intensities: [[s.mu, s.pSignal], [s.nu, s.pDecoy], [0, 1 - s.pSignal - s.pDecoy]] }
     : { ...common, vacuum: false, intensities: [[s.mu, s.pSignal], [s.nu, 1 - s.pSignal]] };
@@ -161,6 +185,7 @@ export const scaleCounts = (a: DecoyCounts, k: number): DecoyCounts =>
 
 /** Rusca et al. 2018's 1-decoy bound, `finite_key.py::one_decoy_key_length`. */
 export function oneDecoyKeyLength(z: DecoyCounts, x: DecoyCounts, src: FiniteKeySource): FiniteKeyResult {
+  if (src.keyBasis === "both") return keyLength(z, x, src);
   const eps1 = src.epsSec / 20, eps2 = src.epsSec / 20;
   const [[mu1, p1], [mu2]] = src.intensities;
   const p2 = 1 - p1;
@@ -195,6 +220,7 @@ export function oneDecoyKeyLength(z: DecoyCounts, x: DecoyCounts, src: FiniteKey
 
 /** Lim et al. 2014's vacuum + weak bound, `finite_key.py::vacuum_decoy_key_length`. */
 export function vacuumDecoyKeyLength(z: DecoyCounts, x: DecoyCounts, src: FiniteKeySource): FiniteKeyResult {
+  if (src.keyBasis === "both") return keyLength(z, x, src);
   const eps = src.epsSec / 21;
   const [[mu1], [mu2, p2], [mu3, p3]] = src.intensities;
   const t0 = tau(0, src), t1 = tau(1, src);
@@ -221,8 +247,19 @@ export function vacuumDecoyKeyLength(z: DecoyCounts, x: DecoyCounts, src: Finite
   return { keyBits, nZ, nX, sZ0, sZ1, phiZ: phi, lambdaEC, qber };
 }
 
+/** The source's bound on its key basis: `finite_key.py::key_length`. On both bases (Round 84) each
+ *  basis's key takes its phase error from the other's counts and half of eps_sec and eps_cor, so the
+ *  pair's failure probabilities sum to the run's (a union bound); a basis with no key adds none. */
 export function keyLength(z: DecoyCounts, x: DecoyCounts, src: FiniteKeySource): FiniteKeyResult {
-  return src.vacuum ? vacuumDecoyKeyLength(z, x, src) : oneDecoyKeyLength(z, x, src);
+  const bound = src.vacuum ? vacuumDecoyKeyLength : oneDecoyKeyLength;
+  const basis = src.keyBasis ?? "one";
+  if (basis === "one") return bound(z, x, src);
+  if (basis !== "both") throw new Error(`key basis ${basis}: one of ${KEY_BASES.join(", ")}`);
+  const half: FiniteKeySource = { ...src, epsSec: src.epsSec / 2, epsCor: src.epsCor / 2, keyBasis: "one" };
+  const rz = bound(z, x, half), rx = bound(x, z, half);
+  const kz = rz.keyBits, kx = rx.keyBits;
+  const keyBits = kz > 0 || kx > 0 ? Math.max(0, kz) + Math.max(0, kx) : Math.max(kz, kx);
+  return { ...rz, keyBits, lambdaEC: rz.lambdaEC + rx.lambdaEC, basisKeys: [kz, kx] };
 }
 
 /** The summed counts of (pulses, channel) segments: a pass, or part of one. */

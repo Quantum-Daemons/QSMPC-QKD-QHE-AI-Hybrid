@@ -131,7 +131,7 @@ class QKDKeyAgreementStage(Stage):
         # THE KEY'S BLOCK (Round 80, the user's choice): the run's own controls, else the configured
         # fibre block (`QKDConfig.finite_key_block*`), resolved once here and handed to the model so
         # the key and the metrics below describe the same block.
-        from ..qkd.bb84 import QKDParams
+        from ..qkd.bb84 import fibre_source
         from ..qkd.finite_key import (
             block_counts,
             blocks_for_positive_key,
@@ -147,8 +147,14 @@ class QKDKeyAgreementStage(Stage):
         eps_sec = float(_cfg("qkd_eps_sec", cfg.finite_key_eps_sec))
         # The statistics (Round 82), one control for the fibre and the satellite alike.
         deviation = str(_cfg("fk_deviation", cfg.finite_key_deviation))
+        # THE INTENSITY PAIR (Round 84, the user's choice): the run's, else the configured one. The
+        # same source reaches the block, the model, the bound below and OptiQKD's baseline, so the key
+        # and every figure beside it describe one pair. Twin of the browser's `fibreIntensities`.
+        intensities = str(_cfg("qkd_intensities", cfg.intensity_preset))
+        source = fibre_source(intensities)
+        ctx.data["fibre_qkd_params"] = source
         block_pulses = fibre_block_pulses(
-            params, params_for_source(QKDParams(), eps_sec=eps_sec, deviation=deviation), kind=block_kind,
+            params, params_for_source(source, eps_sec=eps_sec, deviation=deviation), kind=block_kind,
             run_pulses=n_pulses,
             seconds=float(_cfg("qkd_block_seconds", cfg.finite_key_block_seconds)),
             pa_bits=float(_cfg("qkd_block_pa_bits", cfg.finite_key_block_pa_bits)))
@@ -163,7 +169,8 @@ class QKDKeyAgreementStage(Stage):
             result = run_e91(n_pulses, params, visibility=cfg.e91_visibility, seed=ctx.config.get("seed", 0))
         else:
             result = provider(n_pulses=n_pulses, params=params, seed=ctx.config.get("seed", 0),
-                              block_pulses=block_pulses, eps_sec=eps_sec, deviation=deviation, **extra)
+                              block_pulses=block_pulses, eps_sec=eps_sec, deviation=deviation,
+                              qkd_params=source, **extra)
         # Five decimals here and four in `api/inference_service.py:79`, for the same metric name on
         # the same panel. Left AT five deliberately rather than narrowed: a displayed QBER of
         # 0.01578 against 0.0158 is a presentation difference on a quantity whose own sampling noise
@@ -205,7 +212,10 @@ class QKDKeyAgreementStage(Stage):
             bus.metric("qkd_finite_key_bound", "Rusca et al. 2018 (one decoy)", self.name)
             bus.metric("qkd_eps_sec", eps_sec, self.name)
             bus.metric("qkd_fk_deviation", deviation, self.name)
-            fk = params_for_source(QKDParams(), eps_sec=eps_sec, deviation=deviation)
+            bus.metric("qkd_intensities", intensities, self.name)
+            bus.metric("qkd_mu_signal", source.mu_signal, self.name)
+            bus.metric("qkd_mu_decoy", source.mu_decoy, self.name)
+            fk = params_for_source(source, eps_sec=eps_sec, deviation=deviation)
             bus.metric("qkd_block_units_for_key",
                        blocks_for_positive_key(*block_counts([(result.block_pulses, params)], fk), fk), self.name)
         bus.metric("secure_key_bits", result.secure_key_bits, self.name)
@@ -287,8 +297,9 @@ class OptiQKDStage(Stage):
                            n_pulses=int(ctx.config.get("qkd_opt_pulses", cfg.optimize_n_pulses)),
                            protocol=ctx.config.get("qkd_protocol", cfg.protocol),
                            seed=ctx.config.get("seed", 0),
-                           # the satellite's own source (Micius's 0.8 / 0.1, vacuum), when it ran
-                           baseline=ctx.data.get("sat_qkd_params"))
+                           # the link's own source: the satellite's (Micius's 0.8 / 0.1, vacuum) when
+                           # it ran, else the fibre run's intensity pair (Round 84)
+                           baseline=ctx.data.get("sat_qkd_params") or ctx.data.get("fibre_qkd_params"))
         bus.metric("qkd_skr_improvement_pct", round(res.improvement_pct, 1), self.name)
         bus.metric("qkd_optimized_skr", round(res.best_skr, 6), self.name)
         bus.metric("qkd_baseline_skr", round(res.baseline_skr, 6), self.name)
@@ -305,42 +316,50 @@ class OptiQKDStage(Stage):
 
 
 class QSMPCComputeStage(Stage):
-    """Multiparty computation: keyed-hash PSI or secure summation.
+    """Multiparty computation: the OPRF private set intersection or secure summation.
 
-    The PSI is classical (HMAC under the session key both parties hold): it keeps the sets from
-    third parties on the channel, not from each other (see :mod:`qsh.qsmpc.qot`).
+    The PSI is a semi-honest DH-OPRF PSI on RFC 9497's OPRF over ristretto255
+    (:mod:`qsh.qsmpc.psi`): Bank A learns the intersection and |B|, Bank B learns |A|. It is not
+    post-quantum and has no malicious security; its messages are sealed under the PQC session key.
     """
 
     name = "qsmpc_compute"
 
     def run(self, ctx, bus, reg):
         op = ctx.config.get("qsmpc_op", "psi")
-        # No all-zero default. `ctx.data.get("session_key", b"\x00" * 32)` would have run the
-        # keyed-hash PSI under a key of 32 zero bytes - public knowledge - while the log line below
-        # still read "PSI complete", which is a security property the run did not provide reported as
-        # if it had. `PQCHandshakeStage` always precedes this stage and a failed stage aborts the run,
-        # so this raise is unreachable today; that is why making it a raise costs nothing, and this
-        # round moved key material between stages, which is exactly the change that would reach it.
-        # The browser twin at `web/src/lib/clientCompute.ts` refuses identically.
-        key = ctx.data.get("session_key")
-        if not key:
-            raise RuntimeError(
-                "qsmpc_compute needs the PQC session key: keyed-hash PSI has no unkeyed mode"
-            )
         if op == "psi":
-            from ..qsmpc.qot import multiparty_psi, private_set_intersection
+            from ..qsmpc.psi import learned_summary, oprf_psi
 
-            sets = ctx.data.get("sets")
-            if sets and len(sets) > 2:
-                res = multiparty_psi(sets, key)
-            else:
-                a, b = (sets or (ctx.data.get("set_a", []), ctx.data.get("set_b", [])))[:2] \
-                    if sets else (ctx.data.get("set_a", []), ctx.data.get("set_b", []))
-                res = private_set_intersection(a, b, key)
+            # THE SESSION KEY, AND WHAT IT DOES HERE. The PSI's privacy between the banks comes from
+            # Bank B's OPRF key, which only Bank B holds; the PQC session key seals the three
+            # messages (`qsmpc/psi.py`), which keeps the transcript from a third party, including one
+            # that records it now and attacks ristretto255 later, and hides nothing between the
+            # banks. There is no unsealed mode, so no key means no run: a default of 32 zero bytes,
+            # public knowledge, once stood here while the log still read "PSI complete".
+            # `PQCHandshakeStage` always precedes this stage and a failed stage aborts the run, so
+            # this raise is unreachable today. The browser twin in `web/src/lib/clientCompute.ts`
+            # refuses identically. The secure sum below reads no key and needs none.
+            key = ctx.data.get("session_key")
+            if not key:
+                raise RuntimeError(
+                    "qsmpc_compute needs the PQC session key: the OPRF PSI's messages are sealed "
+                    "under it, and there is no unsealed mode"
+                )
+            res = oprf_psi(ctx.data.get("set_a", []), ctx.data.get("set_b", []), key)
+            # The parties by the names the canvas gives them: the banks on finance, Party A and Party B
+            # wherever else the PSI runs (the generic demo, or another use case set to PSI).
+            a, b = ("Bank A", "Bank B") if ctx.usecase == "finance_aml" else ("Party A", "Party B")
             ctx.artifacts["psi_intersection"] = list(res.intersection)
             bus.metric("psi_intersection_size", res.intersection_size, self.name)
-            bus.log(f"PSI complete: |A∩B|={res.intersection_size} "
-                    f"(sizes {res.size_a},{res.size_b})", self.name)
+            bus.metric("psi_set_size_a", res.size_a, self.name)
+            bus.metric("psi_set_size_b", res.size_b, self.name)
+            bus.metric("psi_blind_evaluations", res.blind_evaluations, self.name)
+            bus.metric("psi_protocol", res.protocol, self.name)
+            bus.log(f"PSI complete: {res.intersection_size} shared accounts over "
+                    f"{res.size_a}x{res.size_b} by the {res.protocol}. {learned_summary(res, a, b)}. "
+                    f"Its messages are sealed under the PQC session key; {a} and {b} run in this "
+                    "process (notional parties), and the OPRF rests on a discrete-log assumption, so it "
+                    "is not post-quantum", self.name)
         elif op == "sum":
 
             from ..config import get_config
@@ -364,11 +383,17 @@ class QSMPCComputeStage(Stage):
             # it is a property of this run, not of the code.
             ctx.artifacts["qsms_prime"] = res.modulus
             ctx.artifacts["qsms_honest_statevector"] = res.honest_statevector
+            # Whether the field sits inside the paper's n <= d <= 2n (Round 84): the field now comes
+            # from the largest total the inputs can reach, which usually puts it outside, and the
+            # run then takes the analytic sampler. A property of this run, recorded beside the prime.
+            ctx.artifacts["qsms_field_within_paper_bound"] = res.field_within_paper_bound
             bus.metric("secure_sum", total, self.name)
             bus.metric("qsms_prime", res.modulus, self.name)
             bus.metric("qsms_honest_statevector", int(res.honest_statevector), self.name)
+            # `t` as configured and capped two lines up; this printed the retired literal `min(3, n)`
+            # after Round 75 made the threshold a config read, so a changed config misreported itself.
             bus.log(f"QSMS secure summation = {total} over GF({res.modulus}) with {len(secrets)} "
-                    f"parties, t={min(3, n)}"
+                    f"parties, t={t}"
                     + (" (exact d-qudit GHZ statevector)" if res.honest_statevector
                        else " (analytic sampler: d**t exceeds the statevector bound)"), self.name)
 
@@ -472,6 +497,12 @@ class PrivateInferenceStage(Stage):
 
             qubits = int(ctx.config.get("qubits", get_config().qhe.n_qubits))
             x = ctx.data.get("features", np.zeros(qubits))
+            # THE ARTIFACT'S COLUMNS IN ITS OWN UNITS where the use case supplies them (Round 84).
+            # `features` is the CKKS model's row: for medical the 30-column z-score row, whose first 8
+            # columns are not the 8 the QCNN was trained on (mean compactness where it expects worst
+            # radius) and are not in the raw units the artifact declares. `medical_fl.build` stores
+            # the patient's raw values in the artifact's `feature_names` order as `qcnn_features`.
+            x_qcnn = ctx.data.get("qcnn_features", x)
 
             # TRAINED circuit where weights exist. The untrained QCNN is not a classifier: measured
             # over 200 random UNIFORM[0,1) inputs at 4 and 8 qubits `predict_proba` peaks at 0.239
@@ -492,17 +523,22 @@ class PrivateInferenceStage(Stage):
                 # `web/scripts/check_qcnn_metrics_at_every_site.mjs` - written to stop exactly that -
                 # read only the TypeScript file. That gate now reads this one too.
                 _t0 = time.perf_counter()
-                expectation, cls, _logit = qcnn_infer(x, weights)
+                expectation, cls, _logit = qcnn_infer(x_qcnn, weights)
                 _qcnn_ms = (time.perf_counter() - _t0) * 1000.0
                 bus.metric("qcnn_inference_ms", round(_qcnn_ms, 2), self.name)
                 bus.metric("qcnn_qubits", int(weights.get("n_qubits", 0)), self.name)
+                # The artifact's own class index, and the same class in the use case's convention: a
+                # use case whose labels count the other way declares the map (medical, Round 84), so
+                # `private_prediction` means the same thing whichever backend produced it.
+                to_case = ctx.data.get("qcnn_class_to_case") or {}
+                case_cls = int(to_case.get(int(cls), cls))
                 ctx.artifacts["qhe_prediction"] = cls
                 ctx.artifacts["qhe_backend"] = "qcnn-trained"
                 # Canonical key. medical_fl read only `fhe_prediction`, which the CKKS branch
                 # sets, so selecting QCNN computed a class and the page surfaced None for its
                 # headline diagnosis. Both branches now write `private_prediction` and name the
                 # backend beside it, so a summary cannot read one path and miss the other.
-                ctx.artifacts["private_prediction"] = cls
+                ctx.artifacts["private_prediction"] = case_cls
                 ctx.artifacts["private_prediction_backend"] = "qcnn-trained"
                 bus.metric("qhe_expectation_z0", round(expectation, 4), self.name)
                 # Three regimes, mirroring `headline_metric` in the artifact and the browser path
@@ -542,17 +578,23 @@ class PrivateInferenceStage(Stage):
                         f"reported for this run.", self.name)
                 else:
                     bus.metric("qhe_headline_metric", round(float(mine), 4), self.name)
+                    # COMPUTED, three-way, as the browser's twin is (Round 84). It was a literal
+                    # "the classical model is ahead", true of every artifact until medical's
+                    # retrain TIED logistic regression at the shipped seed (0.953488 each).
+                    if theirs > mine:
+                        verdict = "the classical model is ahead"
+                    elif theirs == mine:
+                        verdict = "the circuit and logistic regression are level on this split"
+                    else:
+                        verdict = "the circuit is ahead here"
                     # The width/rounds pair, NOT a parameter count: `layers x n_qubits` (24 for
-                    # finance) is not how many angles the artifact trains (77 for finance). The
-                    # verdict sentence is literal and true of every artifact this path loads today
-                    # (finance and medical); making it computed is deferred.
+                    # finance) is not how many angles the artifact trains (77 for finance).
                     bus.log(
                         f"QCNN inference (trained, NOT encrypted): class={cls} "
                         f"(<Z0>={expectation:.4f}; {weights['n_qubits']} wires, {weights['layers']} "
                         f"conv rounds per stage). Held-out {label} {mine:.4f} against a baseline of "
-                        f"{base:.4f} and logistic regression at {theirs:.4f} on the same split - the "
-                        f"classical model is ahead, and this reports it rather than implying "
-                        f"advantage.",
+                        f"{base:.4f} and logistic regression at {theirs:.4f} on the same split - "
+                        f"{verdict}, and this reports it rather than implying advantage.",
                         self.name)
             else:
                 # No trained circuit here: report the QOTP hiding demonstration, which this module
@@ -662,13 +704,14 @@ class ExplainabilityStage(Stage):
 
 class QuantumComparisonStage(Stage):
     """Assemble the live-run benchmark: the measured MPC-FHE row (from PrivateInferenceStage) +
-    a QSMPC-FHE comparison row + the retired quantum-advantage score (kept in the artifact, shown
-    nowhere; see :mod:`qsh.benchmark.quantum_advantage`) -> ``ctx.artifacts['benchmark_result']``.
+    a QSMPC-FHE comparison row -> ``ctx.artifacts['benchmark_result']``. Its ``advantage`` is None:
+    the retired quantum-advantage score (:mod:`qsh.benchmark.quantum_advantage`) is not computed for
+    a run any more (Round 84), as the browser's is not.
 
     This is the Round-7 unification: a single Run animates the live E2E pipeline AND produces the
     benchmark for that very run (the live config's MPC-FHE row uses the run's real measured
     FHE-linear/MPC-non-linear latency). Use cases without a private-inference stage (telecom/
-    satellite) still get the QSMPC-FHE security row (advantage stays None -> the panel shows compact).
+    satellite) still get the QSMPC-FHE security row.
     """
 
     name = "quantum_comparison"
@@ -676,7 +719,6 @@ class QuantumComparisonStage(Stage):
     def run(self, ctx, bus, reg):
         import numpy as np
 
-        from ..benchmark.quantum_advantage import quantum_advantage
         from ..benchmark.quantum_qsmpc_fhe import run_quantum
 
         model_size = ctx.config.get("model_size", "medium")
@@ -703,20 +745,18 @@ class QuantumComparisonStage(Stage):
         q.model_size = model_size
         q_row = q.to_row()
 
-        c_bench = ctx.data.get("_mpc_fhe_bench")         # live measured MPC-FHE BenchResult (or None)
         c_row = ctx.artifacts.get("mpc_fhe_row")
         results = [r for r in (c_row, q_row) if r]
-        adv = quantum_advantage(c_bench, q) if c_bench is not None else None
 
-        # `advantage` stays in the artifact for backwards compatibility - the Python module is kept,
-        # as the retired 0-100 composite was - but it is no longer EMITTED: no metric, no log line.
-        # The UI renders it nowhere (BenchmarkPanel, the agent prompt and the diagram label were all
-        # cut on 2026-10-23), so a log line here would be the one place a visitor still read
-        # "quantum advantage 10/10 (dominant)" in a full deployment. Its inputs divided a CKKS byte
-        # ratio by a QOTP qubit ratio and a real encrypted inference by a simulated untrained circuit.
+        # `advantage` is None, as in the browser (Round 84, the defects round Round 83 left it to).
+        # Until then the retired 0-100 composite was still computed here and carried in the artifact,
+        # which reaches the ML-DSA-signed summary, though no page showed it. Its inputs divided a CKKS
+        # byte ratio by a QOTP qubit ratio and a real encrypted inference by a simulated untrained
+        # circuit. The key stays, so a reader sees the score withheld rather than missing; the module
+        # `qsh.benchmark.quantum_advantage` is kept for its own tests.
         ctx.artifacts["benchmark_result"] = {
             "workload": workload, "model_size": model_size,
-            "results": results, "advantage": adv, "live": True,
+            "results": results, "advantage": None, "live": True,
         }
         bus.log(f"benchmark assembled from the live run: "
                 f"{'MPC-FHE (measured) + ' if c_row else ''}QSMPC-FHE comparison", self.name)

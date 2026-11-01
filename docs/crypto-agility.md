@@ -47,7 +47,7 @@ constructions wherever feasible**, which is what the `kem` family does by defaul
 
 `fhe` and `mpc` are the two halves of the **hybrid private-inference** path: linear layers run under
 FHE/CKKS (`fhe`), non-linear layers (ReLU/argmax) under secret-sharing MPC (`mpc`). `mpyc-shamir`
-(MIT, a normal PyPI dependency - nothing in this repository is vendored) is live; `mp-spdz` / `hpmpc-gpu` are heavyweight production references.
+(MIT, a normal PyPI dependency - nothing in this repository is vendored) is live; `mp-spdz` / `hpmpc-gpu` are heavyweight production references, registered by name only. No stage reads the `mpc` selection, so choosing either changes nothing a run computes: the non-linear half runs on MPyC whatever is selected.
 
 ## Config sub-strategies (not registry providers, but runtime-selectable + security-relevant)
 Three knobs in `config/defaults.py` are also runtime-selectable and shift the observed security, so they belong
@@ -94,25 +94,17 @@ a new FHE backend) is **one `register(...)` call** - no stage code changes.
   HNDL hedge. The construction is `src/qsh/pqc/hybrid_kem.py` and
   `web/src/lib/hybridCombiner.ts`, which `npm run check:combiner` holds byte-identical;
   described there rather than restated here, so this file cannot drift from it again. The PQC +
-  classical hybrid follows **BSI TR-02102-1 v2026-01 section 2.2 "Key Derivation and Hybridisation"**
-  (p.29), which recommends *"a hybrid key agreement mechanism that combines a quantum-safe and a
-  classical mechanism"* that *"should remain secure as long as one of the methods used is secure"*.
-  Simulated QKD key material can additionally be mixed in (`PQC + QKD`) in the full deployment, and
-  that is this project's own choice: section 2.2 does not mention QKD, and section 2.1 ("Use of
-  Quantum-Safe Mechanisms") states QKD *"is currently not ready for use from a security point of
-  view"* and that BSI does not recommend QKD protocols. **NSA publishes no PQC+QKD hybrid
-  recommendation either**, and its published position is against QKD for National Security Systems.
-  QKD is never used standalone.
+  classical hybrid has the shape BSI recommends; mixing simulated QKD key material in as well
+  (`PQC + QKD`, full deployment only, never standalone) is this project's own choice, which neither
+  BSI nor NSA recommends ([their positions, in the roadmap](pqc-roadmap.md#standards-alignment-done--in-progress)).
 - **Transport** (`pqc/transport.py`) wraps the agreed key in AES-256-GCM; the **MCP agent
   bridge** (`pqc/mcp_bridge.py`) adds ML-DSA message signatures.
 
 ## Agility you can measure: the posture facts move with the selection
 
-Round 22 retired the 0-100 security score this section used to document. It was not a defensible
-measure: of 17 fields in its config exactly one was traceable to a citation, its maxima summed to
-exactly 100, and it awarded a perfect score to a run whose quantum channel produced ZERO secure key
-bits. Five candidate published replacements were read in full and all five declined; see
-`../references/security-scoring-fact-check.md`.
+This section used to document a 0-100 security score, which was not a defensible measure and is
+retired: `src/qsh/benchmark/security.py` still computes it and the full deployment's `/api/benchmark`
+returns it in each row, but no page renders it ([why it was retired](../references/security-scoring-fact-check.md#why-the-existing-score-had-to-go)).
 
 What replaced it is stronger for this purpose, because agility is now demonstrated against a
 published standard rather than against a weighted sum this project invented. Each row is either
@@ -146,7 +138,7 @@ distance, the detector set (Rusca et al. 2018: efficiency 0.5, 1e-8 dark counts 
 error floor) and the intensities ($`\mu = 0.3416`$ / $`\nu = 0.1417`$), so no single threshold is quoted
 here; on this detector set the asymptotic bound reaches zero at 301.8 km. Two quantities must not
 share a name: `e_det` is the error on DETECTED SIGNAL photons and is what the bound takes as input,
-while the QBER a panel renders adds the dark-count background back as `e0 * y0`, and
+while the QBER a panel renders adds the dark-count background back as $`e_0 Y_0`$, and
 `e_det_for_bound` exists to keep them apart. In the browser, eavesdropper 0 gives QBER 0.01 and a
 positive key, and eavesdropper 0.35 gives QBER about 0.1, which passes the textbook test, and 0
 secure bits; the posture table reports the failure.
@@ -160,18 +152,21 @@ changes measured latency; the PQC+QKD combiner (`hkdf` vs `its_toeplitz`) change
 its fingerprint. These are shown as measurements, and nothing sums them into a single number.
 
 The same facts are produced client-side (`web/src/lib/clientCompute.ts`) so the public demo shows
-them with no backend. `src/qsh/benchmark/security.py` still computes the old composite, and the full
-deployment's `/api/benchmark` returns it in each row, but no page renders it; the benchmark panel
-carries only a note on why it was retired.
+them with no backend.
 
 NIST's own crypto-agility reference is CSWP 39upd1, *Considerations for Achieving Crypto Agility*
 (final, 2026-06-29); this document keeps the EU definition above, which rules out in-band
 negotiation in so many words.
 
 ## Reference: hybrid TLS
-For protocol-level agility beyond this PoC, `oqs-provider` (OpenSSL 3 PQC provider, Apache-2.0)
-enables hybrid TLS 1.3 (e.g. `X25519MLKEM768`) and composite PQC
-certificates (IETF LAMPS), the production counterpart to this registry.
+For protocol-level agility beyond this PoC, OpenSSL's own default provider is the reference from
+OpenSSL 3.5 on: it implements ML-KEM, ML-DSA and SLH-DSA, and the hybrid TLS 1.3 groups
+`X25519MLKEM768`, `SecP256r1MLKEM768` and `SecP384r1MLKEM1024`, which RFC 10024 (August 2026)
+standardises. `oqs-provider` (Apache-2.0) is not a production counterpart: on OpenSSL 3.5 and later
+it disables every algorithm the default provider already implements, and its README calls it
+*"primarily meant as a vehicle to enable testing of experimental PQ crypto"* (0.12.0). It removed
+composite signatures in 0.10.0; composite ML-DSA for X.509 is an IETF LAMPS draft in the RFC Editor
+queue (draft-ietf-lamps-pq-composite-sigs).
 
 ## Migration drill
 1. New algorithm lands -> `register("kem", "ml-kem-1024+x25519",...)`.

@@ -30,7 +30,7 @@ import json
 from pathlib import Path
 
 from qsh.config import get_config
-from qsh.data.loaders import _PRS_FILES, ACTIVE_PRS, load_prs
+from qsh.data.loaders import _PRS_FILES, ACTIVE_PRS, load_genomic_prs, load_prs
 from qsh.models.registry import DEMO_SAMPLE_FILES
 
 REPO = Path(__file__).resolve().parents[1]
@@ -86,15 +86,20 @@ def test_the_pipeline_RUN_matches_the_browser_payload() -> None:
 def test_the_configured_score_and_the_browser_agree_on_the_key_space() -> None:
     """The two surfaces must agree on the KEY SPACE, not only the count.
 
-    Count alone is not enough. PGS000001 and PGS000004 differ in both count and keying, so a partial
-    migration could in principle land on the right count with rsID keys and still be scoring a
-    different model. Both are compared.
+    Count alone is not enough: two scores can share a count and differ in their variants, so a
+    partial migration could land on the right count and still be scoring a different model. Both
+    are compared, over the variants each side SCORES: the published ones minus those the dosage files
+    declare #unscored, which the payload lists with their reasons.
     """
     configured = get_config().data.genomics_prs_score
-    keys, _eff, weights = load_prs(configured)
+    published, _eff, _w = load_prs(configured)
+    _x, weights, keys, _e, _f = load_genomic_prs(n_individuals=50, seed=0, name=configured)
     payload = _browser_payload()
     browser_keys = payload.get("keys") or payload.get("rsids")
     assert browser_keys is not None, "the browser payload carries neither `keys` nor `rsids`"
+    assert payload["variants_published"] == len(published), "the payload names another score's size"
+    assert [u["key"] for u in payload["variants_unscored"]] == [k for k in published if k not in keys], (
+        "the payload's unscored variants are not the ones the pipeline leaves out")
 
     assert len(keys) == len(browser_keys), (
         f"the pipeline scores {len(keys)} variants from {configured!r} and the browser payload "

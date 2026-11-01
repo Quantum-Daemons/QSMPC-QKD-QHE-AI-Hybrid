@@ -16,26 +16,49 @@ DESILO's ``desilofhe`` was removed: its license is **non-commercial**
 Backends expose: ``encrypt(vector) -> ct``, ``decrypt(ct) -> vector``, ``add``, ``add_plain``
 (ciphertext + a plaintext scalar or vector), ``mul_plain``, ``dot_plain`` (encrypted-vector ·
 plaintext-vector). That is enough to evaluate the linear layers of a small CNN/Transformer under
-encryption, and ``add_plain`` is what lets the server add its bias and its mask inside the ciphertext
-before the key holder decrypts (the hybrid's masked conversions, ``qsh.mpc.secret_inference``).
+encryption. For the hybrid's masked conversions (``qsh.mpc.secret_inference``) they also expose
+``slot_count``, ``add_plain_slots`` (a vector over EVERY slot, encrypted under the public key before
+it is added) and ``complex_slots`` (whether that vector may have imaginary parts): the server masks
+every slot the key holder can decode, not only the one it reads (Round 84).
 """
 
 from __future__ import annotations
 
 from typing import Protocol
 
+import numpy as np
+
 
 class CKKSBackend(Protocol):
     """Minimal CKKS interface used across the project."""
 
     name: str
+    #: Slots in one ciphertext: everything a key holder can decode from it.
+    slot_count: int
+    #: True when ``add_plain_slots`` accepts imaginary parts, so a mask can cover them.
+    complex_slots: bool
 
     def encrypt(self, vector): ...
     def decrypt(self, ct) -> list[float]: ...
     def add(self, ct_a, ct_b): ...
     def add_plain(self, ct, plain): ...
+    def add_plain_slots(self, ct, values): ...
     def mul_plain(self, ct, plain): ...
     def dot_plain(self, ct, plain_vec) -> object: ...
+
+
+class SlotView(list):
+    """A decode of EVERY slot: the list holds the real parts, ``imag`` the imaginary parts.
+
+    A list of floats so that a caller reading slot 0 (``view[0]``) is unchanged; the imaginary parts
+    ride along because the key holder can always decode them, so whoever accounts for what it sees
+    must see them too.
+    """
+
+    def __init__(self, values) -> None:
+        v = np.asarray(values, dtype=complex)
+        super().__init__(v.real.tolist())
+        self.imag = v.imag.tolist()
 
 
 class TenSEALBackend:
@@ -76,12 +99,51 @@ class TenSEALBackend:
         ctx.global_scale = global_scale
         ctx.generate_galois_keys()
         self.context = ctx
+        self.slot_count = int(poly_modulus_degree) // 2
+        self._seal = None
+
+    #: SEAL's encoder takes complex vectors, so a mask can cover the imaginary parts as well.
+    complex_slots = True
+
+    def _sealapi(self):
+        """SEAL's own encoder, evaluator, encryptor and decryptor over this context, built once.
+
+        TenSEAL's vector API cannot reach every slot: after ``dot`` a vector has logical size 1, so
+        a scalar is broadcast to all 4096 slots and a list must have length 1. SEAL's API can.
+        """
+        if self._seal is None:
+            import tenseal.sealapi as sa
+
+            sc = self.context.seal_context().data
+            self._seal = (sa, sa.CKKSEncoder(sc), sa.Evaluator(sc),
+                          sa.Encryptor(sc, self.context.public_key().data),
+                          sa.Decryptor(sc, self.context.secret_key().data))
+        return self._seal
+
+    @staticmethod
+    def _raw(ct):
+        # A CKKSVector hands out a COPY of its SEAL ciphertext; a raw one is used as it is.
+        return ct.ciphertext()[0] if hasattr(ct, "ciphertext") else ct
 
     def encrypt(self, vector):
         return self._ts.ckks_vector(self.context, list(vector))
 
     def decrypt(self, ct) -> list[float]:
-        return ct.decrypt()
+        """A vector's logical slots; for a ciphertext from ``add_plain_slots``, EVERY slot.
+
+        The second is the key holder's whole decode (a :class:`SlotView`, real parts first), which is
+        what it can always compute from a ciphertext it holds the key of.
+        """
+        if hasattr(ct, "decrypt"):
+            return ct.decrypt()
+        return SlotView(self.decrypt_slots(ct))
+
+    def decrypt_slots(self, ct) -> list[complex]:
+        """Every slot of ``ct`` as a complex number, whatever logical size the vector claims."""
+        sa, enc, _, _, dec = self._sealapi()
+        pt = sa.Plaintext()
+        dec.decrypt(self._raw(ct), pt)
+        return enc.decode_complex(pt)
 
     def add(self, ct_a, ct_b):
         return ct_a + ct_b
@@ -89,6 +151,21 @@ class TenSEALBackend:
     def add_plain(self, ct, plain):
         """``ct`` plus a plaintext scalar (every slot) or a vector of ``ct``'s length."""
         return ct + (float(plain) if isinstance(plain, (int, float)) else [float(v) for v in plain])
+
+    def add_plain_slots(self, ct, values):
+        """``ct`` plus a vector over EVERY slot (complex allowed), encrypted first; a SEAL ciphertext.
+
+        Encrypted under the public key, not added as a plaintext, because a plaintext addition
+        changes only a ciphertext's first component: the second would reach the key holder exactly
+        as the server's arithmetic on the weights left it. A fresh encryption re-randomises it.
+        """
+        sa, enc, ev, encryptor, _ = self._sealapi()
+        raw = self._raw(ct)
+        pt, mask, out = sa.Plaintext(), sa.Ciphertext(), sa.Ciphertext()
+        enc.encode(np.asarray(values, dtype=complex).tolist(), raw.parms_id(), raw.scale, pt)
+        encryptor.encrypt(pt, mask)
+        ev.add(raw, mask, out)
+        return out
 
     def mul_plain(self, ct, plain):
         return ct * plain
@@ -180,6 +257,8 @@ class OpenFHEBackend:
         self._cc = cc
         self._keys = keys
         self._batch = batch_size
+        #: The batch is what this context packs and decodes; ``add_plain_slots`` masks all of it.
+        self.slot_count = int(batch_size)
         #: levels the caller asked to be able to compute with (after a bootstrap, if enabled).
         self.mult_depth = mult_depth
         #: levels actually in the modulus chain -- larger than mult_depth when bootstrapping is
@@ -227,6 +306,21 @@ class OpenFHEBackend:
         if isinstance(plain, (int, float)):
             return self._cc.EvalAdd(ct, float(plain))
         return self._cc.EvalAdd(ct, self._pack(plain))
+
+    #: The context is REAL-typed (OpenFHE's default): its decoder reads the imaginary parts as the
+    #: approximation error and floods the real parts to match, so a mask there would wreck the
+    #: decryption. The hybrid reports that the imaginary parts went unflooded on this backend.
+    complex_slots = False
+
+    def add_plain_slots(self, ct, values):
+        """``ct`` plus a real vector over every batch slot, encrypted under the public key first.
+
+        Encrypted rather than added as a plaintext so the result is re-randomised, as on TenSEAL.
+        """
+        v = np.asarray(values, dtype=complex)
+        if np.any(v.imag != 0):
+            raise ValueError("this OpenFHE context is REAL-typed: a slot vector cannot carry imaginary parts")
+        return self._cc.EvalAdd(ct, self._cc.Encrypt(self._keys.publicKey, self._pack(v.real)))
 
     def mul_plain(self, ct, plain):
         return self._cc.EvalMult(ct, self._pack(plain))

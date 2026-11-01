@@ -136,12 +136,11 @@ class QkdLink:
 
     @property
     def eskr(self) -> float:
-        """bit/s. Effective secret key rate after the applications' consumption.
-
-        Also derived, also unsettable. `allocate()` cannot decrement it because there is nothing to
-        decrement - which is the shape that prevents Round 42's defect returning in a correct unit.
-        """
-        return max(0.0, self.skr - self.expected_consumption)
+        """bit/s. ETSI GS QKD 015's rate "available after internal consumption". Equal to `skr`: no
+        internal consumption (authentication keys, a virtual link's key transport; clause 4.6) is
+        modelled, and an application's demand is `expected_consumption` (Round 84; it read skr less
+        that demand, which ETSI reports in its own field). Derived, unsettable."""
+        return self.skr
 
     @property
     def traverses_trusted_nodes(self) -> bool:

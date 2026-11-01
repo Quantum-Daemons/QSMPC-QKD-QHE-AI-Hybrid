@@ -8,10 +8,11 @@
 //   - A TRUSTED SATELLITE RELAY (Liao et al., Phys. Rev. Lett. 120, 030501 (2018), arXiv:1801.04418):
 //     the satellite makes a key with each station on its own pass, "performs bitwise exclusive OR
 //     operations between the two keys and relays the result to one of the ground stations" - 7,600 km,
-//     Xinglong to Graz.
-//   - A CONSTELLATION WITH INTER-SATELLITE LINKS (Vergoossen et al., arXiv:1903.07845 (2019)): a
-//     "string-of-pearls configuration of satellites in the same plane", keys re-distributed across
-//     it by quantum links between neighbours, every satellite a trusted node.
+//     Xinglong to Graz. The longest since is Jinan-1's, China to South Africa, "separated by over
+//     12,900 kilometres on Earth" (Li et al., Nature 640, 47 (2025)); the stations modelled are Liao's.
+//   - A CONSTELLATION WITH INTER-SATELLITE LINKS (Vergoossen et al., Acta Astronautica 173, 164 (2020),
+//     arXiv:1903.07845): a "string-of-pearls configuration of satellites in the same plane", keys
+//     re-distributed across it by quantum links between neighbours, every satellite a trusted node.
 //
 // And under both, the PASS: one satellite crossing one station's sky, checked against Liao et al.
 // 2017's own pass of 19 December 2016 (tests/test_satellite_network_is_checked.py).
@@ -164,6 +165,29 @@ export function liaoPass(link: ChannelParams): PassResult {
   const top = elevationDeg(LIAO_2017_PASS.minRangeKm, g.orbitKm, g.stationKm)!;
   const edge = elevationDeg(LIAO_2017_PASS.maxRangeKm, g.orbitKm, g.stationKm)!;
   return simulatePass(link, top, { windowElevationDeg: edge, stepS: 0.25 });
+}
+
+/** Khmelev et al., Opt. Express 32(7), 11964 (2024), arXiv:2310.17476: Micius to Zvenigorod on 1 March
+ *  2022. "We received quantum states from the Micius satellite for roughly 220 seconds", and "the
+ *  resulting sifted key rate changes from around 20.7 kbit/s at 600 km to 2.9 kbit/s at 1,100 km".
+ *  Quoted from arXiv v1, whose figures the journal's abstract ("a total final key length of 310 kbits")
+ *  matches: with Chernoff bounds at a failure probability of 1e-9 and error correction at "an
+ *  inefficiency fec = 1.44", "the secure final key is 629,000 bits"; then, "taking into account the
+ *  detection efficiency mismatch", "310,400 bits of the secret key were finally shared" - the paper's
+ *  key. They key both bases: "both bases are used for key generation". Round 84. */
+export const KHMELEV_2024_SESSION = {
+  profile: "micius_2022_zvenigorod", minRangeKm: 600, maxRangeKm: 1100, receivedS: 220,
+  finalKeyBits: 310_400, beforeMismatchBits: 629_000, fEC: 1.44, epsSec: 1e-9,
+};
+
+/** That session through this model, on whatever link is given (the Network tab passes the session's
+ *  own profile): culminating where 600 km puts it, counted while the range is under 1,100 km, at the
+ *  1 s step `tests/test_the_satellite_block_is_a_pass.py` integrates it at. */
+export function khmelevPass(link: ChannelParams): PassResult {
+  const g = geometry(link);
+  const top = elevationDeg(KHMELEV_2024_SESSION.minRangeKm, g.orbitKm, g.stationKm)!;
+  const edge = elevationDeg(KHMELEV_2024_SESSION.maxRangeKm, g.orbitKm, g.stationKm)!;
+  return simulatePass(link, top, { windowElevationDeg: edge });
 }
 
 // --------------------------------------------------------------------------------------------- //

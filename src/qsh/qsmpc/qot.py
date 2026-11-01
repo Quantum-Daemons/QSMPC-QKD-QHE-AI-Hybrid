@@ -1,4 +1,4 @@
-"""Quantum Oblivious Transfer (BB84 + bit commitment) and quantum-safe PSI.
+"""Quantum Oblivious Transfer (BB84 + bit commitment), as a sketch.
 
 Follows Zhang et al., *Experimental SMPC from Quantum Oblivious Transfer with Bit
 Commitment*, npj Quantum Information 2026 (``references/Experimental_secure_
@@ -7,22 +7,16 @@ a 1-out-of-2 OT is built from decoy-state BB84 plus a hash-based bit commitment,
 and OT yields Private Set Intersection (PSI). PSI on bank blacklists is the paper's
 headline application and our Finance/AML use case.
 
-Two layers are provided, and they are NOT connected: the PSI below is not built from the QOT.
-  * :func:`quantum_oblivious_transfer` -- a sketch of the 1-of-2 QOT information structure
-    (BB84 basis mismatch). It is not a secure OT: the SHA-256 commitment is computed and
-    never opened or checked, and the unchosen message is never transmitted at all.
-  * :func:`private_set_intersection` -- a classical keyed-hash PSI: both sets are HMAC-SHA256'd
-    under one session key that BOTH parties hold. What holds: the hashes travel inside the
-    PQC-protected session, so no third party on the channel sees either list. What does NOT
-    hold: privacy from the other party. Over a small ID space either party can hash every
-    candidate ID and recover the other's list. A production PSI would use an OPRF-based
-    protocol. Used by the finance demo.
+:func:`quantum_oblivious_transfer` is a sketch of the 1-of-2 QOT information structure (BB84 basis
+mismatch). It is not a secure OT: the SHA-256 commitment is computed and never opened or checked,
+and the unchosen message is never transmitted at all. Nothing is built on it: the finance use
+case's PSI is the classical OPRF PSI of :mod:`qsh.qsmpc.psi` (RFC 9497 over ristretto255), not a
+PSI from this QOT.
 """
 
 from __future__ import annotations
 
 import hashlib
-import hmac
 from dataclasses import dataclass
 
 import numpy as np
@@ -104,74 +98,4 @@ def quantum_oblivious_transfer(
     return QOTTranscript(
         choice=choice, received=recovered, test_passed=test_passed,
         n_raw=n, n_good=int(good.size),
-    )
-
-
-# --------------------------------------------------------------------------- #
-#  Keyed-hash Private Set Intersection (classical; run over the PQC session)
-# --------------------------------------------------------------------------- #
-@dataclass
-class PSIResult:
-    """Result of a private set intersection."""
-
-    intersection: list
-    size_a: int
-    size_b: int
-    intersection_size: int
-
-
-def _keyed_hash(key: bytes, element) -> bytes:
-    return hmac.new(key, str(element).encode(), hashlib.sha256).digest()
-
-
-def private_set_intersection(set_a, set_b, shared_key: bytes) -> PSIResult:
-    """Compute |A ∩ B| and the common elements using a keyed-hash PSI.
-
-    Both parties derive ``shared_key`` from the session (PQC, with simulated QKD bits folded in by
-    HKDF when the full deployment has them), so the keyed hashes travel confidentially: no third
-    party on the channel sees either set or its hashes.
-
-    WHAT THIS DOES NOT PROTECT: the non-matching elements from the OTHER party. Whoever receives
-    the other side's hashes holds the same key, so over an enumerable identifier space it can
-    hash every candidate offline and read the other's set, without deviating from the protocol.
-    The Python demo IDs are a short prefix plus a 7-digit number (about 9e6 candidates per
-    prefix). This is the naive-hashing failure Pinkas, Schneider and Zohner describe
-    (USENIX Security 2014). A production PSI would use an OPRF-based protocol.
-
-    For the finance demo this finds accounts flagged by both banks; it does not keep either bank's
-    other flagged accounts from the other bank.
-    """
-    set_a = list(set_a)
-    set_b = list(set_b)
-    hb = {_keyed_hash(shared_key, e): e for e in set_b}
-    inter = []
-    for e in set_a:
-        h = _keyed_hash(shared_key, e)
-        if h in hb:
-            inter.append(e)
-    return PSIResult(
-        intersection=inter,
-        size_a=len(set_a),
-        size_b=len(set_b),
-        intersection_size=len(inter),
-    )
-
-
-def multiparty_psi(sets: list, shared_key: bytes) -> PSIResult:
-    """PSI across >=2 parties: elements present in *every* party's set.
-
-    The same keyed hash as :func:`private_set_intersection`, with the same limit: every party holds
-    the key, so none of the sets is private from the others over a small ID space.
-    """
-    if len(sets) < 2:
-        raise ValueError("need at least two sets")
-    hashed = [set(_keyed_hash(shared_key, e) for e in s) for s in sets]
-    common_hashes = set.intersection(*hashed)
-    # map back via the first set
-    inter = [e for e in sets[0] if _keyed_hash(shared_key, e) in common_hashes]
-    return PSIResult(
-        intersection=inter,
-        size_a=len(sets[0]),
-        size_b=min(len(s) for s in sets[1:]),
-        intersection_size=len(inter),
     )

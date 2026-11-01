@@ -6,7 +6,9 @@ below are the recommended future tracks (PoC milestones M3/M4).
 ## Standards alignment (done / in progress)
 - **NIST FIPS 203 (ML-KEM)** - implemented in the hybrid KEM. yes
 - **NIST FIPS 204 (ML-DSA)** - implemented for message authentication. yes
-- **NIST FIPS 205 (SLH-DSA)** - add as a hash-based signature option (not in this liboqs build). []
+- **NIST FIPS 205 (SLH-DSA)** - add as a hash-based signature option. liboqs carries SLH-DSA since
+  0.15.0, and the Docker image's liboqs 0.16.0 builds it by default; the local development
+  environment's liboqs 0.14.0 has SPHINCS+ instead. No code here registers either. []
 - **NSA CNSA 2.0** - national security systems (NSS) only: NSA *"does not mandate requirements on any
   other entity outside of NSS"* (CNSA 2.0 and Quantum Computing FAQ, Ver. 2.2, October 2026). CNSSP 15
   requires CNSA 2.0 algorithms in all new NSS acquisitions from **2027-01-01**; equipment that cannot
@@ -14,16 +16,25 @@ below are the recommended future tracks (PoC milestones M3/M4).
   **2035** is the NSM-10 goal. A 2033 date appears only in the 2022 advisory's per-technology table,
   not in CNSSP 15 or the FAQ. The required parameter sets are ML-KEM-1024, ML-DSA-87, AES-256 and
   SHA-384/512; this repository's defaults (ML-KEM-768 + X25519, ML-DSA-65, HKDF-SHA256) are none of
-  them, so nothing here is CNSA 2.0 by default (ML-KEM-1024 and ML-DSA-87 are selectable). NSA's QKD
-  position is not "non-recommended standalone": the FAQ answers **"No"** to protecting an NSS with QKD,
-  in any configuration. Verified 2026-10-23 against FAQ Ver. 2.2 and CNSSP 15; nsa.gov still returns
-  HTTP 403 to scripts, so the FAQ was read from an archived copy of the PDF the NSA resource hub links.
-  On QKD, **BSI TR-02102-1 v2026-01 section 2.1 "Use of Quantum-Safe Mechanisms"** (pp.28-29; the QKD
-  paragraph is on p.29) says QKD *"is currently not ready for use from a security point of view... the
-  BSI does not recommend QKD protocols at this time"*. What BSI does recommend is a hybrid of a
-  quantum-safe and a classical key agreement (section 2.2), which is the ML-KEM + X25519 layer. Keeping
-  QKD as an optional, simulated add-on to that hybrid, never standalone, is **this project's** choice;
-  neither BSI nor NSA recommends it. yes
+  them, so nothing here is CNSA 2.0 by default (ML-KEM-1024 and ML-DSA-87 are selectable). **NSA does
+  not endorse QKD in any form for national security systems**, and its position is not
+  "non-recommended standalone": the FAQ answers *"Can I use a QKD system to protect my national
+  security system from a quantum computer?"* with **"No"**, in any configuration; its page on Quantum
+  Key Distribution and Quantum Cryptography says NSA *"does not support the usage of QKD or QC to
+  protect communications in National Security Systems"*; and it publishes no PQC+QKD hybrid
+  recommendation. Verified 2026-10-23 against FAQ Ver. 2.2 and CNSSP 15; nsa.gov still returns HTTP
+  403 to scripts, so the FAQ was read from an archived copy of the PDF the NSA resource hub links.
+- **BSI TR-02102-1 v2026-01** - on QKD, section 2.1 "Use of Quantum-Safe Mechanisms" (pp.28-29; the
+  QKD paragraph is on p.29) says QKD *"is currently not ready for use from a security point of view...
+  the BSI does not recommend QKD protocols at this time"*. What BSI does recommend, in section 2.2
+  "Key Derivation and Hybridisation" (p.29), is *"a hybrid key agreement mechanism that combines a
+  quantum-safe and a classical mechanism"*, which *"should remain secure as long as one of the methods
+  used is secure"*; section 2.2 does not mention QKD. The ML-KEM + X25519 layer has that shape, but
+  only its ML-KEM half is BSI-recommended (Table 2.7): X25519 is neither among BSI's recommended curves
+  (Table B.3 lists only the Brainpool curves) nor among its TLS 1.3 groups (TR-02102-2 v2026-01,
+  Table 10), and for TLS BSI intends to recommend SecP256r1MLKEM768 and SecP384r1MLKEM1024 once their
+  RFC is adopted (TR-02102-2 section 3.4.2). Keeping QKD as an optional, simulated add-on to that
+  hybrid, never standalone, is **this project's** choice; neither BSI nor NSA recommends it.
 
 ## Crypto-agility (done)
 Algorithms resolve through `CryptoRegistry` at runtime - ML-KEM-768 <-> -1024, QKD <->
@@ -90,6 +101,9 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
    for batched CNN/Transformer private inference; compare HEonGPU (GPU) vs OpenFHE (CPU) CKKS.
 6. **Continuous PQC inventory** - scan dependencies/protocols for quantum-vulnerable
    crypto (a "crypto bill of materials") to drive migration priority.
+7. **Finance AML graph features** - per-transaction subgraph patterns, the architectural difference
+   behind the finance model's gap to its published baseline:
+   [`findings.md`](findings.md#finance-the-gap-to-the-published-baseline-is-architectural).
 
 ## Timeline anchors
 
@@ -192,11 +206,13 @@ document on 2026-08-15; `references/REFERENCES.md` records the two ways an earli
   crypto-agility registry: a second KEM family resting on a different hardness assumption is exactly
   what that registry exists to make swappable. It is **not implemented**, and that is a deliberate gap
   rather than an oversight, because a backup KEM is only worth wiring once its parameter sets are
-  final. Re-checked 2026-10-27: NIST has published no HQC draft standard (CSRC lists none), and liboqs
-  **disables HQC by default since 0.13.0** after a "theoretical design flaw" advisory
-  (GHSA-3rxw-4v8q-9gq5, CVSS 3.7), pending an updated specification. The venv's liboqs 0.14.0 lists
-  HQC-128/192/256 and enables none of them. This line said "liboqs carries HQC" until Round 75, which
-  is true of the source tree and not of any default build.
+  final. Re-checked 2026-10-27: NIST has published no HQC draft standard (CSRC lists none). liboqs
+  disabled HQC by default from 0.13.0 after a "theoretical design flaw" advisory
+  (GHSA-3rxw-4v8q-9gq5, CVSS 3.7), pending an updated specification, and 0.16.0 (2026-07-09), the
+  version the Docker image pins, updated it to the 2025-08-22 specification and enables
+  `KEM_hqc_1/3/5` by default again. The local development environment's liboqs 0.14.0 lists
+  HQC-128/192/256 and enables none of them. Either way no code here registers HQC: it is built into
+  the image's library and unused.
 
 ## Standards status re-checked 2026-10-27
 
@@ -207,7 +223,7 @@ Read at NIST's PQC news page and the pqc-forum on 2026-10-27. IR 8547's final ap
 |---|---|---|
 | **NIST SP 800-227** - Recommendations for KEMs | **Final, 2025-09-18** | The combiner reference. This repository's HKDF combiner is a section 4.6.2 two-step KDF (equations 13-14) over the transcript section 4.6.3 binds; it is not that section's KeyCombineCCA_H. |
 | **FIPS 206** (FN-DSA) | **No draft.** 2026-09-28: NIST's FIPS 206 team posted a new plan to the pqc-forum - a single fixed-point signing procedure, validatable by known-answer tests | Nothing to wire yet; the signature registry stays ML-DSA. |
-| **HQC** (FIPS 207) | **No draft** as of 2026-10-27; liboqs disables it by default (see above) | The backup KEM stays unregistered. |
+| **HQC** (FIPS 207) | **No draft** as of 2026-10-27; liboqs 0.16.0, the image's pin, enables it by default (see above) | The backup KEM stays unregistered. |
 | **NIST SP 800-230** (initial public draft) - additional SLH-DSA parameter sets for limited signature use | Released 2026-04-13, comments closed 2026-06-12 | Not used here; tracked because SLH-DSA is the hash-based fallback. |
 | **NIST SP 800-133 Rev. 3** (initial public draft) - key generation | Released 2026-04-17, comments closed 2026-06-16 | Governs how the demo's keys would have to be generated in an approved product. |
 | **NIST IR 8610** - additional signatures, round 2 status | 2026-05-14, nine candidates advanced to round 3 | The on-ramp; no algorithm to adopt yet. |
@@ -224,7 +240,7 @@ Read at NIST's PQC news page and the pqc-forum on 2026-10-27. IR 8547's final ap
 | **ETSI GS QKD 015 V2.1.1** - SDN control interface | Published 2022-04 | **Implemented in Round 18** (`qkd/sdn_controller.py`, mirrored in `web/src/lib/clientSdnController.ts`). Supplies the control plane the demo previously lacked, and its clause 1 scope statement is what settles that an MCP agent is an SAE rather than a controller. |
 | **ETSI GS QKD 014 V1.1.1** - key delivery API | Published 2019-02, **still the only published edition** | **Implemented in Round 18** (`qkd/kme.py`). An ed2 stable draft (v1.3.1) existed as of 2025-06 but is not published, so "QKD 014 compliant" in this repository means the 2019 document. The mandated mutual TLS is **not** implemented - see `threat-model.md`. |
 | **BSI TR-02102-1 v2026-01** | 2026-01-23 | The quotable basis for the hybrid PQC + classical key-agreement recommendation (section 2.2) and for BSI not recommending QKD (section 2.1). It does not recommend QKD as an add-on either: "QKD never standalone" is this project's rule, not BSI's. |
-| **IACR ePrint 2026/935** - SoK: Private LLM Inference using Approximate HE | rev. 2026-06-03 | The citable ceiling: ~20 CKKS frameworks surveyed, largest demonstrated end-to-end model **8B parameters**, ~4 orders of magnitude slower than plaintext. Confirms nothing larger exists. |
+| **IACR ePrint 2026/935** - SoK: Private LLM Inference using Approximate HE | rev. 2026-10-23 (third revision) | The citable ceiling: 21 CKKS frameworks surveyed, only 5 of them model-preserving, accuracy maintained up to **Llama-3-8B**, about 4 orders of magnitude slower than plaintext. Confirms nothing larger exists. |
 | **IACR ePrint 2026/1231** - Hybrid AKE for QKD networks without signatures | 2026-06-10 | The closest published construction to `hybrid_combiner_mode="its_toeplitz"`: KEM-only hybrid AKE with a conditional information-theoretic guarantee when the QKD leg is uncompromised. This repository's combiner has no such guarantee: its seed is derived from its inputs, and its QKD leg is simulated. |
 | **arXiv:2601.18511v2** - Scaling up FHE-based PPML | v2 2026-06-17 | Best published absolute: **Llama-3-8B under CKKS at 20 s prefill / 18 s per output token on 8x RTX PRO 6000**. Quote this rather than hand-waving FHE cost - and quote the PAPER, not the SoK that summarises it: `references/REFERENCES.md` now carries the primary entry with the abstract verbatim. Note the eight GPUs; this project has one and its FHE default is CPU. |
 
@@ -266,7 +282,7 @@ verdict, because nothing consults it.
 **This does not describe this project, and saying so precisely matters more than citing it.** The
 finding is about *separable* hybrid credentials, where a verifier can reach a decision from the
 classical half alone. This repository issues no X.509 at all: the hybrid is a **KEM combiner** -
-ML-KEM-768/1024 and X25519 fed together through HKDF-SHA256 with the transcript bound in - c1 || c2 || ek1 || ek2, the ML-KEM ciphertext and the X25519 ephemeral public followed by both encapsulation keys, per NIST SP 800-227 section 4.6.3. The browser's call sites share one module, and
+ML-KEM-768/1024 and X25519 fed together through HKDF-SHA256 with the transcript bound in - $`c_1 \Vert c_2 \Vert ek_1 \Vert ek_2`$, the ML-KEM ciphertext and the X25519 ephemeral public followed by both encapsulation keys, per NIST SP 800-227 section 4.6.3. The browser's call sites share one module, and
 `npm run check:combiner` enumerates what it covers, so the count is derivable from a check rather
 than restated in prose. `web/src/lib/clientMcp.ts` is deliberately NOT one of
 them - it is a different composite scheme with its own separator, and the gate asserts they stay
@@ -318,15 +334,3 @@ vendor-specific third.
 Recorded as a gap rather than a task. Implementing 004 would be a real piece of work and this project
 has no application that needs a key stream today - but "we implement the ETSI key-delivery interface"
 is a claim that should say **which one**, and a buyer's technical due diligence will ask.
-
-## The finance AML feature architecture, if that gap is ever closed
-
-Round 24 measured why `finance_aml.gbm` sat at 0.0808 against a published 0.6323 - it has since
-risen to 0.1519 by making the per-account aggregates causal - and ruled out the
-threshold, unseen accounts, and the 4-hop reachability limit - see
-`../references/finance-gap-investigation.md`. The residual is architectural: IBM's Graph Feature
-Preprocessor differs from this pipeline in feature ARCHITECTURE, not in licence - the mechanism is
-derived in `../references/finance-gap-investigation.md` and is not restated here. That difference is
-implementable without `snapml` and is a bounded, well-specified workstream. A measured intermediate
-step already exists: causal prior-at-time aggregation beat the shipped approach by 1.45x AUPRC at
-matched feature count, with no leakage.

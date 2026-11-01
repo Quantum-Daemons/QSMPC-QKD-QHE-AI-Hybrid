@@ -150,10 +150,16 @@ export default function PipelineControls({ run }: { run: Run }) {
             <label className="muted" htmlFor="sel-onnx-backend">Model backend</label>
             <select id="sel-onnx-backend" name="onnx_backend" aria-label="Model backend"
               value={onnxBackend} disabled={inFlight}
-              title={"Where the published models run. WASM is the default: on the machine measured, one "
-                + "ResNet-18 inference took 18216 ms on WebGPU with a hardware adapter, against tens of "
-                + "milliseconds on WASM. Other GPUs and browsers were not measured, so WebGPU stays "
-                + "selectable to try on this one."}
+              // Not "WebGPU is slow" (Round 84). The page loads a model's int8 graph where one ships,
+              // and ONNX Runtime Web's WebGPU provider registers no ConvInteger, DynamicQuantizeLinear
+              // or MatMulInteger kernel (its webgpu_execution_provider.cc at v1.27.0, v1.31.0 and v1.31.1), so
+              // those nodes ran on the CPU: the 18216 ms was that mixed run, not a GPU's.
+              title={"Where the published models run. WASM is the default. The page loads a model's int8 "
+                + "graph where one ships, and ONNX Runtime Web's WebGPU provider has no kernel for its "
+                + "ConvInteger and DynamicQuantizeLinear nodes, so with WebGPU selected those nodes run "
+                + "on the CPU: on the machine measured, the medical ResNet-18 took 18216 ms that way, "
+                + "against tens of milliseconds on WASM. No fp32 graph was timed on WebGPU, so WebGPU "
+                + "stays selectable to try."}
               onChange={(e) => setOnnxBackend(e.target.value === "webgpu" ? "webgpu" : "")}>
               <option value="">WASM (default)</option>
               <option value="webgpu" disabled={!gpuUsable}>
@@ -174,18 +180,24 @@ export default function PipelineControls({ run }: { run: Run }) {
             internal `workload` value is retained because the benchmark cost model still reads it
             for the use cases whose students genuinely ARE linear. */}
         {/* Federated learning ("Quantum Federated Learning" by name) runs a real client-side FedAvg of
-            a logistic head over a closed-form feature map - no circuit - with every pairwise mask from
-            the one session key (the full deployment's Flower + PennyLane HybridQNN trains a real
-            variational circuit; its default pair keys are a public constant). */}
-        {/* AI-QKD parameter optimization (OptiQKD, WS1) — measured gradient-free SKR maximization. */}
+            a logistic head over a closed-form feature map - no circuit - with pairwise masks whose
+            seeds each pair of clients agrees by X25519 (the full deployment's PennyLane HybridQNN
+            trains a real variational circuit, under the same key agreement). */}
+        {/* AI-QKD parameter optimization (OptiQKD, WS1): a gradient-free search of the asymptotic
+            per-pulse bound, whose result is reported and not applied to the run (Round 84). */}
         <label className={`muted${optiqkdDisabled ? " is-disabled" : ""}`} htmlFor="sel-optiqkd"
           title={optiqkdDisabled
             ? "Unavailable with the PQC-only profile: there is no quantum channel to optimise. Select a QKD protocol to enable it."
-            : "Run AI-QKD parameter optimization (OptiQKD, WS1) — a measured gradient-free search that tunes decoy/basis params to raise the secret-key rate on the simulated channel."}>
+            : "Runs OptiQKD (WS1): a gradient-free coordinate ascent over the decoy intensities, the basis "
+              + "probability and the abort threshold, scored on the same asymptotic decoy-state bound this "
+              + "run reports as its per-pulse rate. It is a search: nothing it finds is applied to the run. "
+              + "The run's composable key takes the bases at even odds, so the basis bias the search favours "
+              + "has no counterpart in it, and at the tuned intensities that key can be lower; the log "
+              + "reports both figures."}>
           <input id="sel-optiqkd" name="sel-optiqkd" type="checkbox" checked={optiqkd && !optiqkdDisabled}
             disabled={optiqkdDisabled}
             onChange={(e) => setOptiqkd(e.target.checked)} style={{ marginRight: 4 }} />
-          Optimize QKD (OptiQKD){optiqkdDisabled ? " — needs a QKD protocol" : ""}
+          Optimize QKD (OptiQKD){optiqkdDisabled ? " - needs a QKD protocol" : ""}
         </label>
         <span style={{ flex: 1 }} />
         {/* A disclosure control, so it has to announce itself as one. The caret alone is visual:

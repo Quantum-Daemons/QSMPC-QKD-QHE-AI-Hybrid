@@ -57,8 +57,8 @@ restoring the shipped artifact afterwards:
 
 ## Three differences that have to travel with the numbers
 
-Reporting `0.9070` beside `0.96155` without them would be the `B2` violation this checklist already
-names - *"the cited row scores the SAME TARGET the project scores"*.
+Reporting `0.9070` beside `0.96155` without them would break a rule this project already applies to
+baselines - *"the cited row scores the SAME TARGET the project scores"*.
 
 1. **Feature count: 8 against 30.** Not a shortcut. The circuit is 8 qubits with one feature per
    wire, and the qubit count is bounded by what a state-vector simulation in a browser tab can carry.

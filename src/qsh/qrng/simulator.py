@@ -7,7 +7,7 @@ bias is removed with a **von Neumann** debiaser or a **Toeplitz-hash** extractor
 output is checked by :mod:`~qsh.qrng.health` (SP 800-22 subset).
 
 Honest label: this is a **simulated** quantum measurement (state-vector), not quantum
-hardware. The optional real-hardware source is :mod:`~qsh.qrng.anu` (opt-in, online).
+hardware. The optional real-hardware source is :mod:`~qsh.qrng.anu` (opt-in, online, key in QSH_ANU_API_KEY).
 """
 
 from __future__ import annotations
@@ -124,15 +124,16 @@ def generate_quantum_bits(n_bits: int = 4096, *, source: str = "sim",
     """Generate ``n_bits`` post-processed quantum-random bits + a health report + measured throughput.
 
     ``source="sim"`` (default, offline) uses the state-vector measurement above; ``source="anu"``
-    fetches real hardware entropy from the ANU QRNG API but **requires ``anu_opt_in=True``** (no silent
-    network fallback — honours the no-easy-fallback policy).
+    fetches real hardware entropy from the ANU Quantum Numbers API, and requires ``anu_opt_in=True`` and
+    an AQN key in ``QSH_ANU_API_KEY``; without the key it raises ``AnuUnavailable`` before any request
+    (no silent network fallback).
     """
     t0 = time.perf_counter()
     need = _raw_needed(n_bits, post_processing)
     if source == "anu":
         if not anu_opt_in:
             raise ValueError(
-                "ANU QRNG (source='anu') requires anu_opt_in=True — it is an online hardware source "
+                "ANU QRNG (source='anu') requires anu_opt_in=True - it is an online hardware source "
                 "subject to ANU Quantum Numbers API terms; the offline 'sim' source is the default.")
         from .anu import fetch_anu_bits
 

@@ -1,10 +1,11 @@
-"""Tests for the QSMPC layer: Shamir SS, QSMS secure summation, QOT, PSI."""
+"""Tests for the QSMPC layer: Shamir SS, QSMS secure summation, QOT, PSI (the OPRF PSI in depth:
+tests/test_r84_oprf_psi.py)."""
 
 import random
 
 import pytest
 
-from qsh.qsmpc.qot import multiparty_psi, private_set_intersection, quantum_oblivious_transfer
+from qsh.qsmpc.qot import quantum_oblivious_transfer
 from qsh.qsmpc.secure_summation import QSMS, quantum_secure_sum
 from qsh.qsmpc.shamir import next_prime, reconstruct, split
 
@@ -46,14 +47,13 @@ def test_qsms_analytic_path_for_large_state():
 
 
 def test_psi_intersection():
-    res = private_set_intersection({"a", "b", "c", "x"}, {"c", "x", "z"}, b"k" * 32)
+    # The OPRF PSI (Round 84) in place of the keyed hash it replaced; the same sets, the same answer.
+    from qsh.qsmpc.psi import oprf_psi
+
+    res = oprf_psi({"a", "b", "c", "x"}, {"c", "x", "z"}, b"k" * 32)
     assert set(res.intersection) == {"c", "x"}
     assert res.intersection_size == 2
-
-
-def test_multiparty_psi():
-    res = multiparty_psi([{1, 2, 3, 9}, {2, 3, 9}, {3, 9, 100}], b"k" * 32)
-    assert set(res.intersection) == {3, 9}
+    assert (res.size_a, res.size_b, res.blind_evaluations) == (4, 3, 4)
 
 
 def test_qot_receiver_gets_choice():

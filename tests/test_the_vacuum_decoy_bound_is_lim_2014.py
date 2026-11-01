@@ -20,8 +20,9 @@ WHAT IS ASSERTED
   by a ratio within 15% of the paper's at all four cells. And the optimiser keeps more than 11% of
   the pulses on the vacuum at n_Z = 1e7, which Rusca et al. report of their own optimum.
 - On Liao's pass, from the model's own counts (within 1% of Liao's detections and sifted bits;
-  `test_satellite_network_is_checked.py`): a key, below the paper's 300,939 bits and within a factor
-  of about two of it, with nothing fitted; and above what the 1-decoy bound makes of the same pulses
+  `test_satellite_network_is_checked.py`): a key on the Z basis, below the paper's 300,939 bits and
+  within a factor of about two of it, with nothing fitted (keyed on both bases, as the paper keyed it,
+  it is above it: `test_the_satellite_block_is_a_pass.py`, Round 84); and above what the 1-decoy bound makes of the same pulses
   with the vacuum's quarter unused, which is what the vacuum is for. (Before this round's two
   corrections to the 1-decoy bound it found no key there at all.)
 - The algebra: a block split into segments on one channel is the same block; the phase-error

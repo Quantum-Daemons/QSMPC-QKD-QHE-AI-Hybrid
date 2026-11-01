@@ -22,10 +22,10 @@ Every use case has up to three model tiers, and the *relationship between them* 
                    AND IT DOES NOT HOLD FOR EVERY USE CASE. Round 32 found the citation that falsifies
                    it for genomics specifically: Knight et al., Cell Reports Methods 6(1):101271
                    (2026-01-26), run polygenic risk scoring under HE over **110,000 SNPs** and describe
-                   it as "practical to use on a single CPU" - roughly 350x this project's 313 variants.
-                   So `genomics.prs` is not small because homomorphic evaluation is expensive. It is
-                   small because PGS000004 HAS 313 variants, which is a property of Mavaddat et al. 2018
-                   and not of CKKS.
+                   it as "practical to use on a single CPU" - roughly 600x the 183 variants this
+                   project scores. So `genomics.prs` is not small because homomorphic evaluation is
+                   expensive. It is small because PGS000072 HAS 187 variants, which is a property of
+                   Graff et al. 2021 and not of CKKS.
 
                    The cost argument survives where the model is not a bare dot product - finance,
                    medical and satellite all evaluate something with depth. Applying it to a linear
@@ -244,8 +244,66 @@ DS_PAYSIM = DatasetSpec(
     notes=(
         "Retained for the bundled browser demo sample only. Whether ShareAlike propagates from a "
         "training set to model weights is legally unsettled, so PaySim-derived weights are NOT "
-        "published; AMLworld (CDLA) is the publishable finance model."
+        "published; AMLworld (CDLA) is the publishable finance model. The dataset's description "
+        "says its four balance columns must not be used for fraud detection, because fraudulent "
+        "transactions are cancelled, so the demo's linear model reads no feature built from them "
+        "(PAYSIM_EXCLUDED_FEATURES below)."
     ),
+    # CC BY-SA 4.0 asks for the credit wherever the data is shared, and the repository shares it in
+    # data/finance/paysim_sample.tsv and the browser's paysim_sample.json (Round 84: the field was
+    # empty, and the attribution gate, which read only the datasets attached to a model, missed it).
+    attribution=(
+        "E. A. Lopez-Rojas, A. Elmir and S. Axelsson, 'PaySim: A financial mobile money simulator "
+        "for fraud detection', 28th European Modeling and Simulation Symposium (EMSS), Larnaca, "
+        "Cyprus, 2016. Data: Kaggle ealaxi/paysim1."
+    ),
+)
+
+#: The eight columns of the bundled PaySim sample, `data/finance/paysim_sample.tsv`, in file order.
+#: Since Round 84 no shipped model reads all eight; the finance QCNN artifact (`models/qcnn_finance`)
+#: was the last, until its retrain on PAYSIM_MODEL_FEATURES. The names are this project's AML-style
+#: labels for quantities computed from PaySim fields by `scripts/prep_real_kaggle_data.py`
+#: (`_paysim_features`); PaySim records no geography and no device.
+PAYSIM_SAMPLE_COLUMNS: tuple[str, ...] = (
+    "amount", "velocity_24h", "cross_border", "night_tx",
+    "new_payee", "amount_zscore", "device_risk", "geo_mismatch",
+)
+
+#: The four columns the demo's linear model reads (the bundled PaySim surrogate that the finance page
+#: encrypts for its one-row step and explains with exact linear SHAP, and the full deployment's
+#: `usecases/finance_aml` model), each with what it is in PaySim's terms. The finance QCNN artifact
+#: (`models/qcnn_finance`) reads the same four since Round 84, one per wire in this order (its
+#: `feature_names`).
+PAYSIM_MODEL_FEATURES: dict[str, str] = {
+    "amount": "log(1 + amount), the transaction amount in local currency",
+    "cross_border": ("1 if the PaySim transaction type is TRANSFER or CASH_OUT, else 0; PaySim records "
+                     "no geography, and its fraudulent agents transfer funds to another account and "
+                     "then cash out"),
+    "night_tx": "1 if the PaySim step (one simulated hour) falls in hours 0 to 5 of its day, else 0",
+    "new_payee": ("1 if the transaction is the first row of the PaySim file to name its destination "
+                  "account, else 0"),
+}
+
+#: The four it does not read, and why. Fitted with the first two, the model's largest weight was
+#: `device_risk` (-3.06 on the standardised column), so its explanation credited the label leak.
+PAYSIM_EXCLUDED_FEATURES: dict[str, str] = {
+    "device_risk": ("1 if newbalanceOrig differs from oldbalanceOrg - amount by more than 0.01; built "
+                    "from PaySim's origin balance columns, which the dataset's description says must "
+                    "not be used for fraud detection because fraudulent transactions are cancelled"),
+    "geo_mismatch": ("|amount - (newbalanceDest - oldbalanceDest)| / (amount + 1), clipped to [0, 1]; "
+                     "built from PaySim's destination balance columns, which the dataset's "
+                     "description says must not be used for fraud detection for the same reason"),
+    "amount_zscore": "a z-score of log(1 + amount), so an affine copy of `amount`",
+    "velocity_24h": ("prior transactions by the same origin account within 24 steps; non-zero in 2 "
+                     "of the 4,000 rows of the bundled sample, and in none of the 400 the browser ships"),
+}
+
+#: The statement the first two exclusions rest on: the note in the Kaggle description of
+#: ealaxi/paysim1, quoted with its whitespace normalised (read 2026-10-31 from the dataset's
+#: Croissant metadata, https://www.kaggle.com/datasets/ealaxi/paysim1/croissant/download).
+PAYSIM_BALANCE_WARNING = (
+    "Transactions which are detected as fraud are cancelled, so for fraud detection these columns "
+    "(oldbalanceOrg, newbalanceOrig, oldbalanceDest, newbalanceDest) must not be used."
 )
 DS_BREASTMNIST = DatasetSpec(
     name="MedMNIST v2 BreastMNIST",
@@ -271,8 +329,11 @@ DS_BREASTMNIST = DatasetSpec(
         "basis, by decision (2026-10-26). That differs from CIC-IDS2017, declined, and ImageNet, "
         "dropped: their providers state conflicting or restrictive terms, and BUSI's state none. "
         "CONTAMINATION: Pawlowska, Karwat & Zolek (Letter to the Editor, Data in Brief 48:109247, "
-        "2023-05-19) found 235 duplicates (~19% of 780), >=8 images in BOTH benign and malignant, "
-        "70 axilla images that are not breast tissue, and warn of train/test leakage. MEASURED HERE "
+        "2023-05-19; PMC10293973, read 2026-10-31) report that 155 images are copies of other images "
+        "in the collection, 19% of its 780 (the duplicated cases their Appendix B lists come to 235 "
+        "items), that eight lesion images appear in both the benign and the malignant sets, and that "
+        "70 images, more than 8%, 'show other structures than the breast' (their Table B3 lists them "
+        "as suspected axilla images); they warn of train/test leakage. MEASURED HERE "
         "on the actual npz rather than assumed: at 28x28 exactly ONE pair survives as a pixel-exact "
         "duplicate - train[115] label=0 (MALIGNANT) and test[76] label=1 (BENIGN). The same image, "
         "trained as malignant and scored as benign. That is 1 of 156 test images, 0.64%, which the "
@@ -298,21 +359,43 @@ DS_BREASTMNIST = DatasetSpec(
     ),
 )
 DS_PGS_CATALOG = DatasetSpec(
-    name="PGS Catalog scoring files",
-    licence="per-score; EMBL-EBI Terms of Use by default",
-    url="https://www.pgscatalog.org/downloads/",
-    licence_checked="2026-08-03",
-    publishable=False,
+    name="PGS Catalog score PGS000072",
+    licence=("CC-BY-4.0 (the score's source publication, Graff et al. 2021); the PGS Catalog record "
+             "adds the EMBL-EBI Terms of Use"),
+    url="https://www.pgscatalog.org/score/PGS000072/",
+    licence_checked="2026-10-31",
+    # The weights are cleared for publication with credit: CC BY 4.0 on the version of record (Crossref
+    # `vor` and `tdm`, Europe PMC "cc by", read 2026-10-31). `genomics.prs` still has no Hub repo; the
+    # weights ship with the page instead.
+    publishable=True,
     notes=(
-        "NOT blanket CC-BY-4.0. Round 46 corrected this note: scoring files carry NO '#license' "
-        "header at all - a raw download of PGS000004 today has 14 '#' lines and none of them is a "
-        "licence. The licence lives only in the REST record, as an EMBL-EBI Terms-of-Use "
-        "pass-through, and individual scores can be CC BY-NC-ND. `scripts/train/genomics_prs.py` "
-        "has said this correctly since it was written; this note and DATA_LICENSES.md contradicted "
-        "the working code. PGS000001 itself carries the Catalog default terms, not CC-BY. An earlier "
-        "revision of this note claimed the header was re-read by qsh.models.licences.audit_pgs_score() "
-        "before publishing; no such module exists and no such check runs. publishable=False is what "
-        "actually prevents publication, and it is enforced by scripts/publish_hf.py."
+        "The score's licence is its publication's: PGS000072 (CC_Breast) is the breast-cancer score "
+        "of Graff et al., Nat Commun 12:970 (2021), whose article is CC BY 4.0; the article lists the "
+        "187 variants in its Supplementary Data 2 and weights each by the log odds ratio its source "
+        "GWAS reported, and the Catalog's weights are those log odds ratios. The PGS Catalog REST record (read 2026-10-31) asks users to cite "
+        "the score and observe 'any licensing restrictions set by the authors', with the EMBL-EBI "
+        "Terms of Use for the rest. The scoring file itself carries no '#license' line, and its "
+        "'#citation' line names the bioRxiv preprint (doi:10.1101/2020.01.18.911578), for which "
+        "Crossref and Europe PMC record no licence; Europe PMC links it as the preprint of the "
+        "Nat Commun article, and the Catalog's publication record PGP000050 is that article. The "
+        "bundled file's first line, written by this project, records all of this; "
+        "`scripts/train/genomics_prs.py` re-reads it at run time (`audit_licence()`). PGS000004 "
+        "(PRS313) is not used: its weights appear only in the supplementary data of an article "
+        "licensed CC BY-NC-ND 4.0, and none of them is in the repository."
+    ),
+    # CC BY 4.0 s.3(a)(1): credit, a link to the licence, and an indication of changes. The Catalog's
+    # own citation is the one `/rest/info` names; IGSR asks for the 1000 Genomes consortium paper.
+    attribution=(
+        "Score: Graff RE, Cavazos TB, Thai KK et al., 'Cross-cancer evaluation of polygenic risk "
+        "scores for 16 cancer types in two large cohorts', Nat Commun 12:970 (2021), "
+        "doi:10.1038/s41467-021-21288-z, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/); "
+        "its weights as the PGS Catalog distributes them (PGS000072). PGS Catalog: Lambert, "
+        "Wingfield et al., 'Enhancing the Polygenic Score Catalog with tools for score calculation "
+        "and ancestry normalization', Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x. "
+        "Genotypes: The 1000 Genomes Project Consortium, 'A global reference for human genetic "
+        "variation', Nature 526:68-74 (2015), doi:10.1038/nature15393. Changes: 183 of the 187 "
+        "variants are scored, with their weights unchanged; the 4 that Ensembl's 1000 Genomes "
+        "phase 3 records do not resolve are left out (DATA_LICENSES.md section 4)."
     ),
 )
 #: Referenced by no ModelSpec and that is correct rather than dead: the genomics bundled sample
@@ -323,18 +406,30 @@ DS_1000G = DatasetSpec(
     name="1000 Genomes phase 3 (IGSR)",
     licence="open access, but not public domain",
     url="https://www.internationalgenome.org/IGSR_disclaimer",
-    licence_checked="2026-08-03",
+    licence_checked="2026-10-31",
     publishable=False,
     notes=(
         "IGSR: 'restrictions on different pieces of data within IGSR and rights claimed on pieces of "
-        "data vary'. Allele dosages are used locally; no per-sample genotype is ever published."
+        "data vary'; no licence instrument attaches to the genotypes, which the participants consented "
+        "to release openly. Per-sample genotypes ARE redistributed, as effect-allele dosages at the "
+        "score's variants, read through the Ensembl REST API's genotype endpoint: the browser payload "
+        "serves 30 of the 2,504 individuals, and three more tracked files hold slices for CI and the "
+        "retired score; DATA_LICENSES.md section 4 lists each file and its genotype-cell count. The "
+        "2,504-individual matrices stay local and are not committed."
+    ),
+    attribution=(
+        "The 1000 Genomes Project Consortium, 'A global reference for human genetic variation', "
+        "Nature 526:68-74 (2015), doi:10.1038/nature15393."
     ),
 )
 DS_OPSSAT_AD = DatasetSpec(
     name="OPS-SAT-AD",
     licence="CC-BY-4.0",
-    url="https://doi.org/10.5281/zenodo.12588358",
-    licence_checked="2026-08-05",
+    # The VERSION DOI of record 12588359 (v1), the files `datasets.OPSSAT_FETCH` downloads. The concept
+    # DOI 10.5281/zenodo.12588358 now resolves to v2 (record 15108715), whose files differ and which
+    # adds notebooks and a LICENSE file, so citing it named data this project does not use (Round 84).
+    url="https://doi.org/10.5281/zenodo.12588359",
+    licence_checked="2026-10-31",
     publishable=True,
     notes=(
         "2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% "
@@ -344,7 +439,9 @@ DS_OPSSAT_AD = DatasetSpec(
         "permits redistributing the data with credit; the per-segment feature table is about "
         "507 KB, the raw segment file much larger. A different task "
         "from ESA-ADB: segment classification, not forecasting, so its score is not comparable "
-        "with the Telemanom model's and neither is the other's baseline."
+        "with the Telemanom model's and neither is the other's baseline. Pinned to version 1 "
+        "(Zenodo record 12588359), the files this project downloads; version 2 (record 15108715) "
+        "changes the files and adds a LICENSE file."
     ),
     # Its DATA is redistributed here -- the whole published test partition ships inside two HF repos
     # as eval_sample.json -- so the CC BY credit is a condition on this project's own distribution,
@@ -395,23 +492,28 @@ DS_ESA_ADB = DatasetSpec(
         "at all - an API-only check reads this corpus as unlicensed."
     ),
 )
+#: THE RECORD OF WHY THIS CORPUS IS NOT SHIPPED, and nothing more: no model spec carries it, no loader
+#: reads it, and since Round 84 no file of it is in the tree. The browser's anomaly demo and the full
+#: deployment's CKKS stage score OPS-SAT-AD segments instead (`DS_OPSSAT_AD`,
+#: `qsh.data.loaders.load_opssat_segments`).
 DS_SMAP_MSL = DatasetSpec(
     name="NASA SMAP/MSL spacecraft telemetry (Telemanom)",
     licence="no licence granted for the data",
     url="https://github.com/khundman/telemanom",
     licence_checked="2026-10-30",
-    # `publishable` gates derived weights, and no published model trains on this corpus. Whether a
-    # sample whose data carries no licence should stay bundled at all is an open decision.
-    publishable=True,
+    # Nothing derived from data that carries no licence may be published, and nothing here is: no
+    # published model trains on this corpus, and its bundled sample is gone.
+    publishable=False,
     notes=(
         "NO SOURCE GRANTS A LICENCE FOR THIS DATA. The Telemanom repository's LICENSE.txt reads "
         "'Copyright (c) 2018, California Institute of Technology' and grants BSD-style terms for "
         "its software; it says nothing about the data. Nor is the data shown to be a US "
         "Government work: 17 U.S.C. 105 covers works prepared by federal officers or employees, "
         "and JPL is a NASA centre operated by Caltech. "
-        "Retained as the bundled browser sample. Kept for continuity, but ESA-ADB is the model "
-        "dataset: SMAP/MSL is evaluated almost universally with point-adjusted F1, which TSB-AD "
-        "(NeurIPS 2024) shows a uniform random score can beat."
+        "Not shipped and not loaded: the bundled sample (data/satellite/smap_msl_telemetry.tsv) and "
+        "its browser copy were removed in Round 84, and the satellite demo scores OPS-SAT-AD (CC BY "
+        "4.0) instead. ESA-ADB is the model dataset: SMAP/MSL is evaluated almost universally with "
+        "point-adjusted F1, which TSB-AD (NeurIPS 2024) shows a uniform random score can beat."
     ),
 )
 DS_CICIDS2017_FIXED = DatasetSpec(
@@ -537,19 +639,25 @@ BUNDLED_DEMO_SAMPLES: dict[str, tuple[str, DatasetSpec]] = {
         DS_WDBC,
     ),
     "genomics": (
-        "real 1000 Genomes phase-3 genotypes + published PGS000004 (PRS313) weights (PGS Catalog: "
-        "per-score licence, EMBL-EBI terms by default; IGSR grants no blanket licence). 30 of 2,504 "
-        "individuals ship in the browser payload - DATA_LICENSES section 4 justifies a slice of that "
-        "size, not the full matrix. Variants keyed by chr:pos:effect_allele because PGS000004 "
-        "publishes no rsIDs.",
+        "real 1000 Genomes phase-3 genotypes (no licence instrument: open-consent data, per IGSR's "
+        "disclaimer; The 1000 Genomes Project Consortium, Nature 526:68-74, 2015) + the published "
+        "PGS000072 effect weights (PGS Catalog; Graff et al., Nat Commun 12:970, 2021, CC BY 4.0). 183 "
+        "of its 187 variants are scored: the 4 that Ensembl's 1000 Genomes records do not resolve are "
+        "left out, not filled in. 30 of 2,504 individuals ship in the browser payload - DATA_LICENSES "
+        "section 4 justifies a slice of that size, not the full matrix.",
         DS_PGS_CATALOG,
     ),
+    # OPS-SAT-AD since Round 84. The SMAP/MSL windows the page scored before have no data licence
+    # from any provider (DS_SMAP_MSL), so the browser stopped serving them, and the TSV the Python
+    # deployment read is gone too: its CKKS stage scores the same payload, from a byte-identical copy
+    # under data/satellite/. The string is
+    # `SATELLITE_PROVENANCE` in scripts/data/build_heldout_payloads.py, which writes the file.
     "satellite_comms": (
-        "real NASA SMAP/MSL spacecraft telemetry (Telemanom / NASA JPL). No source grants a "
-        "licence for the data: the Telemanom LICENSE is a Caltech copyright covering its "
-        "software, and JPL is operated by Caltech, so the data is not shown to be a US Government "
-        "work under 17 U.S.C. 105 either - see DATA_LICENSES.md.",
-        DS_SMAP_MSL,
+        "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588359, version 1, "
+        "CC-BY-4.0): 19 precomputed per-segment features of the benchmark's test partition. The demo's "
+        "anomaly regression is fitted here on 370 of those 529 segments and the verdict is drawn from "
+        "the other 159; it is not the published satellite_comms.opssat model.",
+        DS_OPSSAT_AD,
     ),
 }
 
@@ -557,25 +665,28 @@ BUNDLED_DEMO_SAMPLES: dict[str, tuple[str, DatasetSpec]] = {
 DEMO_SAMPLE_FILES: dict[str, str] = {
     "finance_aml": "web/public/data/finance/paysim_sample.json",
     "medical_fl": "web/public/data/medical/breast_cancer_sample.json",
-    "genomics": "web/public/data/genomics/pgs000004_prs313.json",
-    "satellite_comms": "web/public/data/satellite/telemetry.json",
+    "genomics": "web/public/data/genomics/pgs000072_breast_cancer.json",
+    "satellite_comms": "web/public/data/satellite/opssat_segments.json",
 }
 
-#: `licence` says what is true today: NO licence is granted. "Generated by this repository" says
-#: where the rows come from, not what anyone may do with them, and that phrase used to stand in
-#: this field - and so in the public Hub card's licence name - as if it were a grant.
+#: The repository's own licence, Apache-2.0, granted for the rows its generator writes and for the
+#: weights fitted on them (Round 84, the owner's choice). Until then this field said "no licence
+#: granted", which was true: "generated by this repository" says where rows come from, not what
+#: anyone may do with them, and that phrase had once stood here as if it were a grant. The bare
+#: identifier lets the Hub card name it as `license: apache-2.0`.
 DS_QKD_ATTACK_SYNTH = DatasetSpec(
     name="QKD attack telemetry (synthetic, methodology-grounded)",
-    licence="no licence granted; synthetic rows generated by this repository's own code",
+    licence="Apache-2.0",
     url="https://arxiv.org/abs/2509.14282",
-    licence_checked="2026-10-30",
+    licence_checked="2026-11-01",
     publishable=True,
     notes=(
         "8 classes = 7 attack types + normal, per Al-Kuwari et al. (IET Quantum Communication 7(1), "
         "e70028, 2026). The class list follows the paper; the 7 features and their signature "
         "values are this project's own design. No commercial-OK real QKD-attack capture exists; "
-        "this is labelled synthetic everywhere it is reported. No licence is granted for these "
-        "rows or for the weights trained on them."
+        "this is labelled synthetic everywhere it is reported. The rows are written by this "
+        "repository's generator (qsh.qml_ids.attacks), and they and the weights trained on them are "
+        "released under the repository's licence, Apache-2.0."
     ),
 )
 
@@ -595,15 +706,20 @@ M_AML = MetricSpec(
         "IBM's Graph Feature Preprocessor updated over the test window; this project tests on the "
         "last 30 percent of transactions (fit 56, validation 14) with its own graph features, "
         "whose structural block is fitted on the training window."),
-    # 0.7401 is MEGA-PNA's row and NOT the table's best: the same Table 2 prints MEGA-GenAgg at
-    # 74.88 and MEGA(PNA)-GIN at 74.69. The text below says so; moving the number is a data change.
-    ceiling=0.7401,
+    # The best row of the published version's table, which is what `ceiling` means ("best credible
+    # published number"). MEGA v3 (arXiv:2412.00241v3, 2026-08-31, "Published in Transactions on
+    # Machine Learning Research (08/2026)") replaced v2's Table 2 with Table 16: MEGA-PNA is unchanged
+    # at 74.01 +/- 1.55, MEGA-GenAgg moved to 74.48 +/- 0.84, Multi-PNA to 67.35 +/- 2.89, the
+    # MEGA(PNA)-GIN row is gone, and Multi-FraudGT leads Small HI at 75.81 +/- 0.75. The ceiling was
+    # MEGA-PNA's 0.7401 under v2, where it was not the best row either.
+    ceiling=0.7581,
     ceiling_source=(
-        "MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge "
-        "classification task', AML Small HI (74.01 +/- 1.55); the paper's v3 is accepted for "
-        "publication in TMLR (2026). It is not the table's highest row: the same table prints "
-        "MEGA-GenAgg at 74.88 +/- 0.38 and MEGA(PNA)-GIN at 74.69 +/- 0.50, and Multi-PNA (68.16 "
-        "+/- 2.65) below all three."),
+        "Multi-FraudGT, the best AML Small HI row of Table 16 ('Minority class F1 scores (%) for six "
+        "AML datasets') in Bilgi and Atasu, 'MEGA: Message Passing Neural Networks for Multigraphs "
+        "with EdGe Attributes', TMLR (08/2026), arXiv:2412.00241v3: 75.81 +/- 0.75. In the same "
+        "column the paper's own MEGA-PNA scores 74.01 +/- 1.55 and MEGA-GenAgg 74.48 +/- 0.84, and "
+        "Multi-PNA 67.35 +/- 2.89; Small HI is the one AML dataset of the six where Multi-FraudGT is "
+        "ahead of MEGA-PNA."),
     companion="auprc",
 )
 M_BREASTMNIST_R50 = MetricSpec(
@@ -611,11 +727,10 @@ M_BREASTMNIST_R50 = MetricSpec(
     display="AUC",
     baseline=0.857,
     baseline_source=("ResNet-50 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) "
-                     "(AUC 0.857 / ACC 0.812). Note this is BELOW the ResNet-18 baseline of 0.901 "
-                     "on the same corpus and the same 100-epoch Adam regime: on 780 images the "
-                     "deeper network loses. That is the published finding, and it is why this model "
-                     "exists here - to test it rather than to win, under a training regime that "
-                     "differs from the paper's (see the model's notes)."),
+                     "(AUC 0.857 / ACC 0.812). The benchmark table lists it BELOW ResNet-18 @28px "
+                     "(0.901) on the same corpus: one figure per model, with no conclusion drawn "
+                     "about depth. This model checks that ordering under a training regime that "
+                     "differs from the table's (see the model's notes)."),
     ceiling=0.919,
     ceiling_source="Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
     companion="accuracy",
@@ -632,38 +747,31 @@ M_BREASTMNIST = MetricSpec(
 M_PRS = MetricSpec(
     name="auroc_eur",
     display="AUROC (European ancestry)",
-    baseline=0.633,
+    baseline=0.637,
+    # Read at the PGS Catalog REST API on 2026-10-31 (/rest/performance/search?pgs_id=PGS000072: three
+    # records; Catalog release 2026-10-23).
     baseline_source=(
-        "PGS Catalog PPM001647 for PGS000004 (PRS313): AUROC 0.633 (95% CI 0.624-0.641), n=400,812 "
-        "Europeans - 4,340 cases and 396,472 controls - from Jia et al., JNCI Cancer Spectrum 2020 "
-        "(doi:10.1093/jncics/pkaa021). Verified at the Catalog REST record 2026-08-11. "
-        "TWO CAVEATS THAT MAKE THIS A CITATION AND NOT A TARGET, both from the record itself: the "
-        "model is fitted WITH COVARIATES - 'family history of cancer (in first-degree relatives), "
-        "genotyping array' - which a bare weighted dot product does not have; and the cohort was "
-        "'missing 25 variants (8%) based on availability of variants in the cohort', so the published "
-        "figure is for 288 of the 313 variants, not all of them. "
-        "This replaced PGS000001's C-index 0.628 (PPM017270) when the score changed. That figure was a "
-        "Harrell's C-index over censored follow-up, not an AUROC, and the two are not directly "
-        "comparable - a C-index is computed over time-to-event pairs and an AUROC over a fixed "
-        "case/control split. PGS000004 publishes a genuine AUROC, so the switch also removes that "
-        "comparability problem rather than only changing the number."
+        "PGS Catalog PPM002038 for PGS000072: AUROC 0.637 (no confidence interval recorded), incident "
+        "breast cancer in n=216,273 European-ancestry women in UK Biobank - 4,760 cases and 211,513 "
+        "controls - from Kachuri et al., Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. "
+        "A CITATION AND NOT A TARGET, for three reasons the record itself gives: the model is fitted WITH "
+        "COVARIATES (age at assessment, family history of breast cancer, genotyping array, PCs 1-15, "
+        "parity, age at menarche, body mass index, menopausal status, hormone replacement therapy, oral "
+        "contraceptive use, alcohol intake, and body mass index by menopausal status), which a bare "
+        "weighted dot product does not have; it used 'only 162 of the original 187 SNPs'; and it is an "
+        "AUC at 5 years. It is the only AUROC among the score's three Catalog performance records; the "
+        "other two report an odds ratio per standard deviation of 1.26 (95% CI 1.24-1.28; PPM000192, "
+        "GERA and UK Biobank, n=237,549, Graff et al. 2021) and a hazard ratio of 1.26 (1.20-1.32; "
+        "PPM017165, post-menopausal breast cancer, UK Biobank, n=1,990; Byrne et al., Int J Epidemiol "
+        "52:817-826, 2023)."
     ),
-    ceiling=0.668,
+    ceiling=0.637,
     ceiling_source=(
-        "Highest AUROC among PGS000004's OWN Catalog performance records: 0.668 (PPM012913, n=302,425, "
-        "European). NOT THE BARE SCORE: that record evaluates PGS000004 combined with the iCARE-Lit "
-        "classical risk factors (age at menarche, parity, BMI, family history and others) for "
-        "5-year absolute risk (Hurson et al., Int J Epidemiol 2022), so a weighted dot product "
-        "alone is not expected to reach it. "
-        "Measured across all 28 AUROC records for this score on 2026-08-11, not taken from a "
-        "range quoted elsewhere - a first attempt at this line read the first page of results only and "
-        "put the ceiling at 0.6573, which is a real record but not the maximum. European records span "
-        "0.5877-0.668 over 22 entries; the largest cohort is PPM012918 at n=5,328,392 with 0.665. "
-        "The previous ceiling of 0.69 was chosen against a C-index scale, so it was never a bound on an "
-        "AUROC for this score even though it happens to sit close to one. "
-        "WORTH READING BESIDE THIS USE CASE'S FINDING: the lowest of the 28 is 0.55 (PPM005171, "
-        "n=3,801, 'African unspecified'), against 0.5877-0.668 for European samples. The published "
-        "record set shows the same ancestry gap this page demonstrates by a different route."
+        "The highest AUROC among PGS000072's own three Catalog performance records, and the only one: "
+        "PPM002038, 0.637, with the covariates the baseline source lists (read 2026-10-31). All three "
+        "are in European-ancestry samples, so the Catalog holds no figure for this "
+        "score in any other ancestry: the ancestry gap this page shows is measured from genotypes, not "
+        "read from a published AUROC."
     ),
     companion="",
     # Any germline-SNP PRS claiming much above ~0.70 discrimination is measuring something else.
@@ -872,8 +980,10 @@ _SPECS: tuple[ModelSpec, ...] = (
             "feature row per transaction. That is a choice for this operating point, not an "
             "impossibility: Bilgi et al. (arXiv:2610.18054, preprint) run a 2-layer GNN under CKKS "
             "on AMLworld HI-Small at 5.31 s per inference on one GPU, with the graph structure "
-            "visible to the server. Kept as a spec for the architecture it names. It is no longer "
-            "the best published figure on this split: the MEGA rows above it are (see the ceiling)."
+            "visible to the server. Kept as a spec for the architecture it names. It is not the best "
+            "published figure on this split: the published version of MEGA (TMLR, see the ceiling) "
+            "re-runs Multi-PNA at 67.35 +/- 2.89 on Small HI, below FraudGT, Multi-FraudGT and every "
+            "MEGA variant in its table."
         ),
     ),
     ModelSpec(
@@ -896,7 +1006,10 @@ _SPECS: tuple[ModelSpec, ...] = (
         notes=("The browser-tier finance model: it scores one feature row per transaction with no "
                "message passing at scoring time. That row is not stateless - its per-account and "
                "structural features are computed from the account's earlier transactions - so a "
-               "deployment needs that history to score a new transaction."),
+               "deployment needs that history to score a new transaction. It is not evaluated under "
+               "encryption: the public page encrypts finance_aml.student, distilled from this model, "
+               "on the 8,192 test-window rows of this model's sample, and a four-feature PaySim "
+               "surrogate for its one-row CKKS step."),
     ),
     ModelSpec(
         usecase="finance_aml",
@@ -914,12 +1027,16 @@ _SPECS: tuple[ModelSpec, ...] = (
             "the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, "
             "the last 30 percent of the transactions in time order, enriched to 2 percent "
             "laundering"),
-        # `runs_encrypted=True` describes what this student was built for, not what any code path
-        # runs today; see the notes.
-        notes=("Built to run under CKKS, but no code path here encrypts THIS model. The public "
-               "page's CKKS step evaluates the 8-feature linear model bundled with the PaySim "
-               "sample and re-scores this 33-parameter AMLworld student in plaintext ONNX; the "
-               "full deployment's finance pipeline encrypts its own PaySim-trained surrogate. Its "
+        # `runs_encrypted=True` is true of the public page since Round 84, when its private-inference
+        # figure moved to this student on held-out rows (`emitHeldOutAgreement` in clientCompute.ts).
+        notes=("Encrypted on the public page since Round 84: its private-inference figure scores "
+               "this 33-parameter AMLworld student under CKKS on the 8,192 test-window rows of "
+               "finance_aml.gbm's sample (64 ciphertexts), against the same model in plaintext. The "
+               "page's one-row CKKS step, its MPC argmax, the reported class and the SHAP bars still "
+               "use the four-feature linear model bundled with the PaySim sample (log amount, a "
+               "TRANSFER or CASH_OUT flag, a night-hour flag and a first-seen-payee flag; no feature "
+               "built from PaySim's balance columns), and the full deployment's finance pipeline "
+               "encrypts its own PaySim-trained surrogate over the same four. Its "
                "agreement with the teacher (`agreement`) is measured offline, at training time, in "
                "plaintext; each browser run measures `encrypted_agreement`, CKKS against plaintext "
                "for the model it encrypts."),
@@ -941,7 +1058,9 @@ _SPECS: tuple[ModelSpec, ...] = (
                "Its training regime is not the baseline's: torchvision's 7x7 stride-2 stem with "
                "max-pool, early-stopped at 39 of at most 60 epochs at lr 3e-4 (manifest.json), "
                "where MedMNIST v2's 28-px ResNets use a 3x3 stride-1 stem without max-pool and 100 "
-               "epochs at lr 1e-3. Close, not like for like."),
+               "epochs at lr 1e-3. Close, not like for like. It is the teacher medical_fl.student "
+               "is distilled from. MedMNIST states that its dataset is NOT intended for clinical use, "
+               "and neither is this model."),
     ),
     ModelSpec(
         usecase="medical_fl",
@@ -956,17 +1075,20 @@ _SPECS: tuple[ModelSpec, ...] = (
         hf_repo="qsh-medical-breastmnist-resnet50",
         eval_split="the official BreastMNIST test split, whole, the same rows as medical_fl.resnet18",
         notes=(
-            "Trained to test a published claim rather than to win one. MedMNIST v2 reports ResNet-50 "
-            "at AUC 0.857 against ResNet-18's 0.901 on this corpus, so the expected outcome is that "
-            "the larger model scores LOWER, and it is reported either way. The regime here is not "
-            "the published one: torchvision's 7x7 stride-2 stem with max-pool, early-stopped at 27 "
+            "Trained to check an ordering in MedMNIST v2's benchmark table rather than to win: the "
+            "table lists ResNet-50 at AUC 0.857 against ResNet-18's 0.901 on this corpus, and this "
+            "model's result is reported whichever way it falls. The regime here is not the "
+            "table's: torchvision's 7x7 stride-2 stem with max-pool, early-stopped at 27 "
             "of at most 60 epochs at lr 3e-4, against MedMNIST v2's 3x3 stride-1 stem without "
             "max-pool and 100 epochs at lr 1e-3. It replaces a DenseNet-121 "
             "entry that named a dataset with no loader, no fetch command and no artefact directory, "
             "and linked a Hugging Face repo that did not exist. Architectures benchmarked only "
             "ImageNet-pretrained (AlexNet, VGG16, DenseNet-121, EfficientNet-B4 in MedMNIST+) are "
             "deliberately absent: this project dropped ImageNet weights over redistribution terms, "
-            "so their published numbers are not comparable to a from-scratch run."
+            "so their published numbers are not comparable to a from-scratch run. No student is "
+            "distilled from this model: the page's encrypted tier runs medical_fl.student, distilled "
+            "from medical_fl.resnet18. MedMNIST states that its dataset is NOT intended for clinical "
+            "use, and neither is this model."
         ),
     ),
     ModelSpec(
@@ -985,10 +1107,16 @@ _SPECS: tuple[ModelSpec, ...] = (
         notes=("Genuine encrypted convolution (im2col + CKKS dot_plain), but not end to end under "
                "CKKS. In the browser each layer's output is decrypted, ReLU and average pooling run "
                "in plaintext in the client, and the class is the argmax of decrypted logits; the "
-               "page's MPC argmax runs on the WDBC logistic regression, not on this CNN. The full "
+               "page's MPC argmax runs on the WDBC logistic regression, not on this CNN, and on "
+               "logits the client has already decrypted. The full "
                "deployment's hybrid path, which runs a federated CNN of this shape rather than these "
                "weights, keeps ReLU on secret shares (MPyC) and pools each share locally; its masked "
-               "conversion protects only CKKS slot 0 (see qsh.mpc.secret_inference)."),
+               "conversion masks every CKKS slot the client can decode, and each run bounds the "
+               "client's whole view (see qsh.mpc.secret_inference). In the browser each layer's bias "
+               "is added under encryption and every slot but its outputs is masked and flooded "
+               "before the client decrypts, so the client decrypts the layer outputs and nothing "
+               "else. MedMNIST states that its dataset is NOT intended for clinical use, and neither "
+               "is this model."),
     ),
     # ---------------- genomics ----------------
     ModelSpec(
@@ -996,37 +1124,42 @@ _SPECS: tuple[ModelSpec, ...] = (
         tier="t2_industry",
         key="genomics.prs",
         label="Polygenic risk score (published effect weights)",
-        # PGS000004's development method per the PGS Catalog REST record (method_name and
-        # method_params), read 2026-10-30. Genome-wide significance (P<5e-8) is PGS000001's.
-        architecture=("per-variant effect-weight vector over 313 variants (PGS000004: "
-                      "hard-thresholding stepwise forward regression, p < 1e-5)"),
+        # PGS000072's development method per the PGS Catalog REST record (method_name and
+        # method_params), read 2026-10-31.
+        architecture=("per-variant effect-weight vector over 183 of PGS000072's 187 variants "
+                      "(genome-wide significant variants: P < 5e-8, MAF > 1%, LD-thinned at r2 > 0.3; "
+                      "weights are log odds ratios)"),
         params=None,
         dataset=DS_PGS_CATALOG,
         metric=M_PRS,
         artifacts=(ArtifactSpec("weights.json", "json", "none", "both"),),
-        hf_repo=None,          # publication blocked pending the per-score licence audit
+        hf_repo=None,          # no Hub repo: the weights are PGS000072's published ones, served with the page
         runs_encrypted=True,   # a dot product: the rare case that is both clinical standard and FHE-native
         notes=(
-            "WHAT RUNS UNDER CKKS DIFFERS BY TIER. The browser's CKKS step is a sign test on the 8 "
-            "largest-effect of the 313 variants (W = [-w/2, +w/2], b = 0), not the 313-variant "
-            "score; the full deployment evaluates all 313 against a 75th-percentile cut. "
+            "WHAT RUNS UNDER CKKS: the full score, in both tiers. One person's effect-allele dosages "
+            "at every variant are encrypted together in one CKKS ciphertext; the effect weights stay "
+            "in plaintext and are applied by one multiply-plain; rotate-and-add sums the products "
+            "into one slot, and the decrypted score is compared with a cut, the 90th percentile of "
+            "the plaintext score over the bundled panel (the browser's 30 individuals, or the "
+            "individuals the Python loader reads), by linear interpolation between order statistics. "
+            "A demo cut, not a clinical threshold. Both tiers also score every panel individual "
+            "encrypted and report the largest score deviation and how often the high-risk flag "
+            "agrees with the plaintext one. "
             "Not a neural network, and presenting a genomic foundation model as a PRS method would be "
             "the most obvious credibility hole available. Evaluation must be stratified by genetic "
-            "ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: an "
-            "earlier revision of this note called it an AUROC drop, but 1000 Genomes is a reference "
-            "panel carrying no breast-cancer case/control status, so no AUROC is computable from it "
-            "and genomics_prs.py records auroc=null rather than inventing one. PGS000004 (PRS313) is Mavaddat "
-            "et al. (AJHG 2018), 313 variants - not PRS-CS or LDpred2, which are Bayesian-shrinkage "
-            "methods this score does not use. An earlier architecture string named that family and "
-            "contradicted this project's own training script. Until Round 31 this page ran PGS000001, the "
-            "77-variant Mavaddat 2015 score selected by genome-wide significance (P<5e-8); the switch is "
-            "recorded because the variant count and the baseline both changed with it. The finding is the "
-            "by_super_population.*.frac_above_global_cut rows listed above: one globally-set "
-            "high-risk cut flags a far larger share of AFR than of EUR, a gap driven by "
-            "allele-frequency differences rather than by risk. Read those rows, not this sentence - "
-            "they are recomputed on every training run, so no figure quoted in prose here can drift "
-            "away from them. The published European AUROC baseline comes from a phenotyped cohort "
-            "that is access-controlled, which is why it cannot be reproduced on this page."
+            "ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: 1000 "
+            "Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is "
+            "computable from it and genomics_prs.py records auroc=null rather than inventing one. "
+            "PGS000072 is the breast-cancer score of Graff et al. (Nat Commun 12:970, 2021; CC BY 4.0): "
+            "187 genome-wide significant variants weighted by their log odds ratios. 183 of them have "
+            "a 1000 Genomes phase 3 genotype for every one of the 2,504 individuals and are scored; the "
+            "other 4 are left out, never filled in, and the dosage files and the payload name each with "
+            "its reason. The finding is the by_super_population.*.frac_above_global_cut rows listed "
+            "above: one globally-set high-risk cut flags a far larger share of one ancestry group than "
+            "of another, a gap driven by allele-frequency differences rather than by risk. Read those "
+            "rows, not this sentence - they are recomputed on every training run, so no figure quoted "
+            "in prose here can drift away from them. The published European AUROC comes from a "
+            "phenotyped UK Biobank cohort, which is why it cannot be reproduced on this page."
         ),
     ),
     # ---------------- satellite ----------------
@@ -1098,7 +1231,7 @@ _SPECS: tuple[ModelSpec, ...] = (
             "student both score 0.0 event-wise F0.5 on this split, so their agreement is agreement "
             "about finding nothing, and there is no fidelity claim to make. No code path here "
             "evaluates this student under CKKS today: the satellite page has no private-inference "
-            "stage, and the full deployment's telemetry stage encrypts its own SMAP/MSL model."),
+            "stage, and the full deployment's telemetry stage encrypts the OPS-SAT-AD demo regression the browser scores in plaintext."),
     ),
     ModelSpec(
         usecase="satellite_comms",
@@ -1250,7 +1383,9 @@ _SPECS: tuple[ModelSpec, ...] = (
             "same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. That shows "
             "what a row counter is worth on this corpus. It does not show what the published "
             "figures used, and 0.9829 is reachable here with no identifiers at all; whether those "
-            "figures lean on identifiers stays open -- see M_NIDD's baseline_source."
+            "figures lean on identifiers stays open -- see M_NIDD's baseline_source. "
+            "NO STUDENT IS DISTILLED FROM THIS MODEL: the page's encrypted tier runs "
+            "telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml)."
         ),
     ),
     #: Telecom's T1 tier, added in Round 33. Until then `runs_encrypted=True` held on five specs and

@@ -389,6 +389,8 @@ def distil_linear_student(teacher, Xtr, ytr, Xte, yte, out: Path, *, seed: int) 
         "b": [float(v) for v in student.intercept_],
         "n_parameters": int(student.coef_.size + student.intercept_.size),
         "classes": list(ATTACKS),
+        # Fitted on this repository's own synthetic telemetry; released under its licence (Round 84).
+        "licence": "Apache-2.0",
     }, indent=2) + "\n"
     (out / "weights.json").write_text(payload)
 

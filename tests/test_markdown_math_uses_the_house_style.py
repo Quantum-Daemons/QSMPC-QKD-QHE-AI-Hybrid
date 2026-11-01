@@ -36,8 +36,6 @@ HF_RENDERED = ("models/", "spaces/")
 
 #: (file, character) -> why it stays.
 ALLOWED_NON_ASCII = {
-    ("spaces/qsh-inference/README.md", "\U0001F510"):
-        "the Space's `emoji:` field in its YAML header, which Hugging Face renders as the Space icon",
     ("docs/verification-log.md", "\u2014"):
         "quotes the page's own text, which uses an em dash",
 }
@@ -47,9 +45,18 @@ _CODE_SPAN = re.compile(r"(`+)(.+?)\1")
 _PLAIN_INLINE = re.compile(r"(?<![\$\\])\$(?!\$)([^\$\n]+?)(?<!\\)\$(?!\$)")
 
 
+def _ls(*flags: str) -> list[str]:
+    return subprocess.run(["git", "ls-files", *flags, "*.md"], cwd=REPO, check=True,
+                          capture_output=True, text=True).stdout.split()
+
+
 def _markdown() -> list[str]:
-    out = subprocess.run(["git", "ls-files", "*.md"], cwd=REPO, check=True, capture_output=True,
-                         text=True).stdout.split()
+    # Tracked files the working tree still has. A file deleted but not yet committed stays in the
+    # index, and reading it raised FileNotFoundError: Round 84 deleted the two 9-wire QCNN model
+    # cards, and both tests below failed on a file that can carry no symbol at all. The floor is
+    # unchanged, so an empty listing still fails.
+    gone = set(_ls("--deleted"))
+    out = [f for f in _ls() if f not in gone]
     assert len(out) > 40, f"only {len(out)} tracked Markdown files; the listing is looking at nothing"
     return out
 

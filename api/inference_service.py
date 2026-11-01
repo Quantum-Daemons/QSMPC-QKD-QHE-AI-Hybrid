@@ -20,16 +20,30 @@ def _fraud_model():
 
     from qsh.data.loaders import load_finance_fraud
 
+    from qsh.models.registry import PAYSIM_MODEL_FEATURES, PAYSIM_SAMPLE_COLUMNS
+
     X, y = load_finance_fraud(n=3000, seed=0)
+    # The four columns the page's model reads (Round 84): device_risk and geo_mismatch are built from
+    # PaySim's balance columns, which the dataset's description says must not be used for fraud detection.
+    X = X[:, [PAYSIM_SAMPLE_COLUMNS.index(n) for n in PAYSIM_MODEL_FEATURES]]
     return LogisticRegression(max_iter=500).fit(X, y)
 
 
 def predict_fraud(features: list[float]) -> dict:
-    """Score a transaction feature vector with the trained fraud model."""
+    """Score a transaction with the trained fraud model.
+
+    Takes the model's four columns, or all eight sample columns (the four are then selected by name).
+    Any other width is refused: padding or truncating, as this did before Round 84, would silently read
+    the wrong columns now that the model takes four of the eight."""
+    from qsh.models.registry import PAYSIM_MODEL_FEATURES, PAYSIM_SAMPLE_COLUMNS
+
     clf = _fraud_model()
-    x = np.asarray(features, dtype=float).reshape(1, -1)[:, : clf.coef_.shape[1]]
-    if x.shape[1] < clf.coef_.shape[1]:
-        x = np.pad(x, ((0, 0), (0, clf.coef_.shape[1] - x.shape[1])))
+    x = np.asarray(features, dtype=float).reshape(1, -1)
+    if x.shape[1] == len(PAYSIM_SAMPLE_COLUMNS):
+        x = x[:, [PAYSIM_SAMPLE_COLUMNS.index(n) for n in PAYSIM_MODEL_FEATURES]]
+    elif x.shape[1] != len(PAYSIM_MODEL_FEATURES):
+        raise ValueError(f"expected {len(PAYSIM_MODEL_FEATURES)} features ({', '.join(PAYSIM_MODEL_FEATURES)}) "
+                         f"or all {len(PAYSIM_SAMPLE_COLUMNS)} sample columns, got {x.shape[1]}")
     proba = float(clf.predict_proba(x)[0, 1])
     return {"fraud_probability": round(proba, 4), "prediction": int(proba >= 0.5)}
 
@@ -81,8 +95,11 @@ def qkd_demo(distance_km: float = 50.0, eve: float = 0.0) -> dict:
         "skr_per_pulse": round(r.secret_key_rate, 9),
         "secure_key_bits": r.secure_key_bits,
         # The block that count is the composable finite key of (Round 80), so the page can say so;
-        # six significant figures, as the browser's twin emits it.
-        "block_pulses": float(f"{r.block_pulses:.6g}"),
+        # six significant figures, as the browser's twin emits it. 0 when the run computed no
+        # finite key - an abort above `pp_threshold`, or nothing sifted - where `run_bb84` returns
+        # `block_pulses=None`, as `api.ts` maps the browser's absent block (`?? 0`). Formatting the
+        # None raised TypeError, an HTTP 500 for every intercept fraction from 0.45 up at 50 km.
+        "block_pulses": float(f"{r.block_pulses:.6g}") if r.block_pulses is not None else 0.0,
         # Config, not a literal. This was 0.08 while the browser used
         # security_scoring.qber_secure_threshold (0.11), so full mode and demo mode returned
         # OPPOSITE eavesdropper verdicts for any QBER in the 0.08-0.11 band.

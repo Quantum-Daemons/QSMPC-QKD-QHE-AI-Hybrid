@@ -1,6 +1,5 @@
 ---
-license: other
-license_name: cc-by-4.0
+license: cc-by-4.0
 library_name: onnx
 pipeline_tag: tabular-classification
 tags:
@@ -15,10 +14,11 @@ tags:
 
 gradient-boosted trees over 47 flow-statistic features
 
-Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
+Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid),
 a quantum-safe orchestration demo.
-This is the **plaintext** model for the `telecom_ids` use case; the encrypted
-path runs a distilled student, not this model.
+This is the **plaintext** model for the `telecom_ids` use case. No code path
+evaluates this model under encryption; what each use case encrypts, if anything,
+is stated in the notes below.
 
 ## Measured performance
 
@@ -58,7 +58,7 @@ There is no baseline number to have a gap to, and that is a deliberate registry 
 
 ## Notes and limitations
 
-NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from the QKD-layer attack classifier on this same page, with zero overlap in label space or feature space, so neither score is the other's baseline. REFITTED IN ROUND 50 ON A WIDER EXPORT OF THE SAME CORPUS, which is the fact that explains every number here. It trained on `Combined.csv` (52 columns) and scored accuracy 0.7608; it now trains on `BTS1_BTS2_fields_preserved.csv` (113 columns) and scores about 0.9829. The rows are identical and the method is unchanged. One column does all of it: `IdleTime`, a flow statistic the narrow export omits. Removing it alone from the wide fit returns the model to 0.7616, and that ablation is re-measured on every run as `idle_time_ablation`. It is not an identifier - 17 distinct integer values over 1.2 million rows - and it separates SlowrateDoS, an attack defined by idling, at one-vs-rest AUC 0.9574. READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT - STILL. Every other model here reports an aggregate that flatters and a per-class figure that does not. On this corpus macro F1 is the OPTIMISTIC number and aggregate accuracy the pessimistic one, and the refit shrank that inversion without removing it: the gap was 0.1655 (0.9263 macro F1 against 0.7608 accuracy) and is about 0.0121 (0.9950 against 0.9829). The mechanism is the same one as before, not a new one - Benign and UDPFlood are 39.3% and 37.6% of the rows and remain the only pair that confuses, so accuracy is dominated by them while the macro average is carried by seven classes at 0.9999 or better. The residual error is 1.71% of the test split against 23.92% before, and it is one direction: UDPFlood predicted as Benign. THE LEAK COUNTERFACTUAL IS STILL RECORDED EVERY RUN and its claim is now narrower. Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, the same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. That shows what a row counter is worth on this corpus. It does not show what the published figures used, and 0.9829 is reachable here with no identifiers at all; whether those figures lean on identifiers stays open -- see M_NIDD's baseline_source.
+NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from the QKD-layer attack classifier on this same page, with zero overlap in label space or feature space, so neither score is the other's baseline. REFITTED IN ROUND 50 ON A WIDER EXPORT OF THE SAME CORPUS, which is the fact that explains every number here. It trained on `Combined.csv` (52 columns) and scored accuracy 0.7608; it now trains on `BTS1_BTS2_fields_preserved.csv` (113 columns) and scores about 0.9829. The rows are identical and the method is unchanged. One column does all of it: `IdleTime`, a flow statistic the narrow export omits. Removing it alone from the wide fit returns the model to 0.7616, and that ablation is re-measured on every run as `idle_time_ablation`. It is not an identifier - 17 distinct integer values over 1.2 million rows - and it separates SlowrateDoS, an attack defined by idling, at one-vs-rest AUC 0.9574. READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT - STILL. Every other model here reports an aggregate that flatters and a per-class figure that does not. On this corpus macro F1 is the OPTIMISTIC number and aggregate accuracy the pessimistic one, and the refit shrank that inversion without removing it: the gap was 0.1655 (0.9263 macro F1 against 0.7608 accuracy) and is about 0.0121 (0.9950 against 0.9829). The mechanism is the same one as before, not a new one - Benign and UDPFlood are 39.3% and 37.6% of the rows and remain the only pair that confuses, so accuracy is dominated by them while the macro average is carried by seven classes at 0.9999 or better. The residual error is 1.71% of the test split against 23.92% before, and it is one direction: UDPFlood predicted as Benign. THE LEAK COUNTERFACTUAL IS STILL RECORDED EVERY RUN and its claim is now narrower. Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, the same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. That shows what a row counter is worth on this corpus. It does not show what the published figures used, and 0.9829 is reachable here with no identifiers at all; whether those figures lean on identifiers stays open -- see M_NIDD's baseline_source. NO STUDENT IS DISTILLED FROM THIS MODEL: the page's encrypted tier runs telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml).
 
 ## Honest scope
 

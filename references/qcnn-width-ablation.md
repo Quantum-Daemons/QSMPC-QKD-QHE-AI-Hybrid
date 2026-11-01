@@ -1,5 +1,47 @@
 # Does the unencoded wire do anything? Telecom QCNN at 7 wires against 8
 
+> **ROUND 84: TELECOM CHANGED CIRCUIT, SO THE WIDTH QUESTION WAS RE-RUN ON THE NEW ONE AT FIVE SEEDS,
+> AND THE 9-WIRE OPTION FOR FINANCE AND MEDICAL WAS REMOVED.**
+>
+> **Telecom now ships `hur-su4` at both widths**: Hur, Kim and Park's 15-angle SU(4) block on every
+> nearest-neighbour bond, their pooling, and the encoding $`R_Y(c \pi \tanh z)`$ at $`c = 0.5`$ (both
+> chosen by pre-registered experiments of 2026-10-30; see `models/qcnn_telecom/README.md`). Every
+> width figure below this banner belongs to the retired disjoint-pair tree. On the new circuit, macro
+> F1 by seed, from the pre-registered half-angle experiment (seed 0 at each width IS the shipped
+> artifact, theta equal to max |diff| 0):
+>
+> | seed | 8 wires | 7 wires | delta (7 minus 8) |
+> |---|---|---|---|
+> | 0 | 0.9444 | 0.9679 | +0.0235 |
+> | 1 | 0.9444 | 0.9715 | +0.0272 |
+> | 2 | 0.9613 | 0.9652 | +0.0039 |
+> | 3 | 0.9503 | 0.9771 | +0.0269 |
+> | 4 | 0.9684 | 0.9705 | +0.0021 |
+> | **mean** | **0.9537** | **0.9705** | **+0.0167** |
+> | sd | 0.0107 | 0.0044 | 0.0126 |
+>
+> Seven wires wins **five of five** seeds, paired t(4) p = 0.041; the exact Wilcoxon signed-rank p is
+> 0.0625, the smallest five pairs can give. That is the first width comparison in this file that a
+> page may quote as a five-seed result, with that wording: on this circuit 7 wires led 8 on every
+> seed, by 0.0167 macro F1 on average. Two things travel with it. The direction is the one the tree's
+> last five seeds pointed (+0.0463, 4 of 5, p = 0.059): the pad wire buys nothing, and on this
+> circuit it measurably costs something. And both widths still lose to multinomial logistic regression on every seed, by 0.0242 (8 wires,
+> two-level 95% interval [-0.0352, -0.0136]) and 0.0075 (7 wires, [-0.0129, -0.0026]) on average:
+> the width gap is smaller than the 8-wire circuit's distance to the classical baseline.
+>
+>     python scripts/train/qcnn_variational.py --usecase telecom --layers 6 --epochs 400 --seed {0..4} --threads 1 --qubits {8,7} --arch hur-su4 --encoding-scale 0.5
+>
+> **Finance and medical ship one width now.** The pad-wire result below - 8 and 9 wires identical on
+> every recorded metric at five of five seeds, on both corpora - was exact, and an exact null is a
+> reason to stop offering the choice: a ninth wire that carries no feature and is pooled into wire 0
+> without being convolved gave the same class on every bundled row, so the 9-wire control changed
+> nothing a visitor could see. `models/qcnn_finance_q9`, `models/qcnn_medical_q9` and their served
+> copies are deleted and the width control on those two pages names the one trained width instead of
+> offering a choice. The measurements below stay as the record of why.
+>
+> **Medical moved too**, on the same tree: $`c = 0.5`$ (+0.042 accuracy over five seeds, better on 5 of 5)
+> and raw input standardised with the artifact's own moments. Its 8-wire figures below are $`c = 1`$.
+
 > **DEADLINE EXECUTED Round 49. RE-RUN AT FIVE SEEDS ON THE CURRENT CIRCUIT. THE PAD-WIRE FINDING
 > IS CONFIRMED AND STRENGTHENED; THE TELECOM FINDING IS NOT - ITS DIRECTION HOLDS AND ITS
 > SEPARATION DOES NOT.**
@@ -237,7 +279,6 @@ Both. `web/public/data/telecom/qcnn_weights.json` stays the 8-wire circuit and r
 `qcnn_weights_q7.json` is loaded when the visitor selects 7. A requested width nobody trained falls
 back to the shipped circuit, and `qcnn_qubits` then reports the width that **actually ran** rather
 than the width that was asked for - so the page is honest about a request it could not honour.
-Checklist row `PF10`.
 
 *Reopens if* a third width is trained, which would make the "peak at 8" question answerable rather
 than merely open; or if the seed sensitivity of the two reversed per-class deltas is measured, which
@@ -275,8 +316,8 @@ puts the new width's ordinary draw against the old width's unluckiest one. For f
 holds - seed 0 is the **best** of five at 9 wires (0.8136 against a median of 0.6800).
 
 Neither is evidence of a bias in the circuit. Both are evidence that a five-seed spread of width
-[0.32, 0.80] cannot be read at one point, which is what `QC20` and the `**Seed position:**` marker
-exist to force.
+[0.32, 0.80] cannot be read at one point, which is what the rule that every shipped QCNN card states
+its seed's position in a spread, and the cards' `**Seed position:**` marker, exist to force.
 
 ## What this does NOT show
 
@@ -313,8 +354,8 @@ individual draw on the losing side is not a separation; it is a reason to keep s
 
 What this changes in the record: the pad-wire result may now be quoted as a five-seed median rather
 than as one draw, which is what the obligation asked for. What it does not change is the conclusion -
-`QC22` still applies, and the honest claim remains that a difference in either direction needs more
-than five seeds.
+the rule that a width comparison is read at the median of five seeds, never at one, still applies,
+and the honest claim remains that a difference in either direction needs more than five seeds.
 
 ## What ships
 

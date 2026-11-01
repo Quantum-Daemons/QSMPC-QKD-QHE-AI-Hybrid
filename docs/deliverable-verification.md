@@ -5835,7 +5835,8 @@ sourced Micius set, and make the MPC tier multi-party now, and then mask its con
 - **The masks hide statistically, and each run says how well.** CKKS is approximate, so the masks
   are reals, uniform on plus or minus 2^30 from the OS CSPRNG. 30 bits is the most 64-bit fixed
   point holds, and costs no precision measured through a CKKS round trip: 5e-7 at 2^30, against 8e-6
-  at 2^36 and 2e-4 at 2^40. A run reports the number of masked values, its largest, and the bound
+  at 2^36 and 2e-4 at 2^40 (Round 84, with every slot masked, 400 draws, worst case: 8.8e-7 at 2^30,
+  3.8e-5 at 2^36 and 6.3e-4 at 2^40, so 2^30 is the cheapest rather than free). A run reports the number of masked values, its largest, and the bound
   n x B / 2^30 on what the key holder's view gives away: 9e-8 or less on the benchmark rows, about 2e-7
   on the test CNNs. Every decision tested matches plaintext, on TenSEAL and OpenFHE. Semi-honest, and
   a client and helper who pool their shares recover the server's masks; the architecture document
@@ -7321,6 +7322,8 @@ fixed in the repository two rounds ago and never republished).
     slot, so slot differences expose each product and the client recovers the weight row in one
     query. Confirmed locally on 2026-10-30; `tests/test_mpc.py` reads slot 0 only. Until the fix,
     the text says the masking protects slot 0 only and the conversion is not model-private.
+    Fixed in Round 84: every slot is masked independently (`src/qsh/fhe/masking.py`), and
+    `tests/test_r84_c1_slot_masking.py` decodes all slots with the client's key.
   - Genomics: the CKKS step is a sign test on 8 of the 313 PGS000004 variants (weights split into
     minus and plus half, bias 0). PGS000004's method is hard-thresholding stepwise forward
     regression at p below 1e-5, not genome-wide significance.
@@ -7528,5 +7531,291 @@ afterwards):
   pipeline"; 6 of 6 stages, 139,251 bits.
 
 BUSINESS DOC RECONCILED Round 83. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 17 reads.
+
+## Round 84 - the defects round, the 2026-10-31 sweep, and the owner's decisions (2026-10-31 to 2026-11-01)
+
+**Status.** Branch `round84-defects`, cut from `main` at b5511df (the history rewritten on 2026-10-31,
+below). The defects round drafted on 2026-10-30 rebased onto it without a conflict; eight research
+agents then re-swept every page against post-August-2026 sources (reports kept outside the
+repository), and twelve implementation agents, each in its own worktree, and the integrator fixed
+what they found. The deploy, the walk and the merge are recorded at the end of this section.
+
+**The user's decisions, 2026-10-31 and 2026-11-01.**
+- Scope: every group the sweep found (security and licences, bugs, model and data fixes, wording and
+  documents) goes into this round.
+- Satellite: add a two-basis mode and compare like for like with the flown keys.
+- Genomics: switch from PGS000004 to PGS000072 (CC BY 4.0) with real, cited 1000 Genomes genotypes,
+  after a fact-check of what the page served and the alternatives.
+- The ANU QRNG is ported to the current API with a key read from the environment only.
+- Downloads: the official Apache-2.0 text, liboqs-python 0.16.0.2, onnxruntime-web 1.31.1, and the
+  PGS Catalog and Ensembl data the genomics switch needs.
+- Fibre: make both intensity pairs selectable, the shipped pair staying the default.
+- Documents: fold the consolidation into this round.
+- Privacy: build both constructions Round 83 deferred in this round, an OPRF-based PSI and a key
+  agreed per pair of clients for the federated masks (2026-11-01).
+- Data and weights the repository generates: the repository's own Apache-2.0 (2026-11-01).
+- Hugging Face: republish all 11 repos with the final list, public (2026-11-01).
+
+**The history was rewritten again on 2026-10-31.** Four reference PDFs with no redistribution grant
+(two arXiv papers under arXiv's non-exclusive licence, a CC BY-NC-ND paper and a web page), removed
+from the tree long ago, and a superseded arXiv copy stored under a journal version's path, were
+removed from every branch with `git filter-branch`, verified in a scratch mirror (main's tree byte
+for byte unchanged, 647 commits, authors, dates and messages identical; the only tree differences on
+any branch were those five deletions). Main was force-pushed (9edf4cb became b5511df), the 69 merged
+round branches were deleted on GitHub, and a backup bundle and the old-to-new commit map are kept
+outside the repository. GitHub still serves the objects through the 80 pull-request refs, which only
+GitHub Support can drop; the owner holds a drafted request. Commit ids cited in this register before
+2026-10-31 no longer resolve on `main`; each maps through that commit map.
+
+**Security and licences** (48383d9).
+- ML-DSA verification rejects a public key of the wrong length, and an oversized signature, before
+  liboqs sees them: advisory GHSA-w696-4vrr-x6x3 (2026-10-28) shows liboqs-python up to 0.16.0.1
+  zero-padding a short key, and an ML-DSA key of 32 bytes or less accepting forged signatures. The
+  floor is liboqs-python 0.16.0.2 (`pyproject.toml`, `requirements-core.txt`).
+- LICENSE is the official Apache License 2.0 text again (SHA-256 cfc7749b...); the file was a
+  shortened copy that GitHub could not identify. A test pins it.
+- `make check-secrets` fails when reachable history holds a PDF the tree has dropped.
+- Hub cards name licences by the Hub's identifiers where they exist and carry a license_link
+  otherwise; a plaintext card no longer claims a distilled student runs encrypted.
+- OPS-SAT-AD is pinned to version 1 (record 12588359); 5G-NIDD's sample states how its rows differ.
+
+**The drafted defects round** (de1111c), rebased onto the rewritten `main` without a conflict.
+- The server tier's CKKS-to-sharing conversion masks every slot and reports the view's statistical
+  distance and the flooding margin; the secure-summation field is chosen from the inputs' range in
+  both languages; the control plane's channel time is the key block's; the relay counts pass pairs at
+  the page's own finite key; model cards carry measured baselines; the Validations download waits for
+  a result; the sidebar's contrast and underlined links.
+- The medical QCNN reads its artefact's raw columns in its units at c = 0.5; the telecom circuit is
+  Hur et al.'s SU(4) block over overlapping bonds; the two 9-wire artefacts are deleted.
+- Held-out encrypted figures: finance 8,192 rows, medical 171, telecom 600. The overlays carry a
+  licence link and a change note.
+- From the Round 83 walk: the benchmark CSV's header is the union of every row's fields; the agent
+  download says why it is disabled; the 3D view releases its WebGL contexts;
+  `published_model_status` distinguishes "none" from "withheld"; the medical diagnosis means one class
+  whichever backend produced it; every node check script is run by the suite.
+
+**The sweep of 2026-10-31, by area** (8307eac, aa293ab). Eight research agents re-checked every page
+against post-August-2026 primary sources; six implementation agents fixed what they found.
+- **Satellite.** A finite key can be counted on both bases, each at half the failure probability (a
+  union bound), as the flown keys were: Liao et al. distil theirs from all matching-basis signal
+  detections, and Khmelev et al. divide their data between X and Z. Liao's pass carries 450,923 bits
+  on both bases under Chernoff (1.50 of the published 300,939) and 325,556 under Hoeffding (1.08); on
+  one basis 226,072 and 164,183. 95 percent of the drop from the pass's asymptotic key (462,290 bits)
+  to the one-basis finite key is the basis convention. Khmelev et al.'s final key is 310,400 bits
+  (629,000 before their detector-mismatch analysis, at an error-correction efficiency of 1.44): the
+  model gives 1.40 of it on one basis and 2.80 (868,462 bits) on both. One basis stays the default.
+  ETSI GS QKD 015's `eskr` is the rate after the KME's own consumption, which this model does not
+  have, so it equals `skr`; the application's draw is `expected_consumption`. The Python QSDC stage
+  says when a run is withheld because too few check carriers certify an error rate. The ANU QRNG is
+  ported to the current AQN API, with the key read only from `QSH_ANU_API_KEY`. Vergoossen et al.,
+  Khmelev et al. and Jinan-1 are cited to their journal versions.
+- **Genomics.** The whole polygenic score runs under CKKS in both languages, compared with the 90th
+  percentile of the score over the bundled individuals, a demo cut and not a clinical threshold. The
+  browser's secure-summation step refuses a field too small for the pooled total. (The score itself
+  changed afterwards; below.)
+- **Finance.** The model reads four columns (amount, cross_border, night_tx, new_payee). The two it
+  dropped, `device_risk` and `geo_mismatch`, are built from PaySim's balance columns, which the
+  dataset's description says must not be used for fraud detection, because a fraud is cancelled;
+  with them the score was partly reading the label.
+  The API accepts the four, or the eight it accepted before, and refuses anything else. The published
+  ceiling is MEGA v3's Multi-FraudGT, 0.7581 (Table 16, TMLR 08/2026), not v2's 0.7401. Trees are
+  described as running under TFHE, not as infeasible.
+- **Medical and telecom.** Every CKKS decryption masks the slots it does not return and floods them
+  before decrypting (`decryptOutputs`), and each layer's bias is added under encryption. Dense layers
+  are packed one ciphertext per layer: the student's dense layers take 12 rotations instead of 136,
+  and the whole student 28 instead of 152 (126.8 ms against 554.2 ms in node; a browser figure is
+  below). Without the published weights the page refuses instead of inventing a kernel. The
+  telecom page says its IDS scores synthetic telemetry generated in the tab. OptiQKD's log names the
+  bound it searches and states that nothing it finds is applied: at its tuned intensities the
+  default block carries 6.4 percent less composable key.
+- **Pages.** A BB84 Validations run that aborts (an eavesdropper fraction of 0.45 or more at 50 km)
+  no longer raises an HTTP 500 in the API; the regulatory clock's federal rows, the Overview's
+  OptiQKD wording and BSI's position are stated from their sources; the satellite card puts its
+  F0.5 in context.
+- **Documents and report.** The fibre flowcharts gate on secure key bits above zero, not on a QBER
+  of 0.11; the Explainability node is solid on all five pages, because the browser computes exact
+  linear SHAP on each; the report's crypto table splits the MPC row (the argmax in the browser,
+  ReLU and argmax in the full deployment); `telecom_ids.qml` prints its measured macro F1; the SoK
+  figure is 5 of 21 frameworks (ePrint 2026/935, revised 2026-10-23); RFC 10024 is cited as
+  verified.
+
+**The finance QCNN at four wires** (dfa93b1). Retrained on the four columns the linear model reads,
+under the protocol pre-registered on 2026-10-30, kept unchanged (c = 1, tree, 3 layers, 120 epochs,
+validation-F1 checkpoint). Held-out minority-class F1 0.2286 against the logistic regression's
+0.4390; they disagree on 6 test rows, exact McNemar p = 0.21875. Over five seeds the QCNN's mean F1 is
+0.4218 and it leads on two; no winner.
+
+**Genomics scores PGS000072, and the satellite page drops SMAP/MSL** (f5c3055).
+- PGS000004 (PRS313) is not used: its effect weights appear only in the supplementary data of an
+  article licensed CC BY-NC-ND 4.0 (Mavaddat et al., AJHG 104(1), 2019; checked at Europe PMC,
+  PMC6323553). The page scores PGS000072 instead (Graff et al., Nat Commun 12:970, 2021, CC BY 4.0):
+  183 of its 187 variants, with the four that have no 1000 Genomes genotype declared unscored rather
+  than filled in. The genotypes are the 1000 Genomes Project's, fetched through Ensembl release 116
+  and credited to Nature 526:68-74 (2015). At the 49 positions PGS000072 shares with PGS000004 they
+  equal the genotypes read from the 1000 Genomes VCFs for all 2,504 individuals. The external
+  baseline is PPM002038's AUROC 0.637, cited and not measured. A new finding,
+  from real genotypes: above a cut at the panel's 90th percentile, 39.1 percent of East Asian
+  individuals against 4.0 percent of European ones, driven largely by rs10979327 (odds ratio 3.85).
+  The overlay's axes are gnomAD's eas and nfe groups. `DS_PGS_CATALOG` is marked publishable, which
+  matches its licence and publishes nothing, because no Hub repository is registered for genomics.
+- The NASA SMAP/MSL telemetry file, for which no source grants a data licence, and the script branch
+  that wrote it are removed. The full deployment's CKKS anomaly check scores a bundled OPS-SAT-AD
+  segment, a byte-identical copy of the browser's payload, whatever QSDC did.
+
+**Both intensity pairs are selectable, and one runtime for ONNX** (a517782).
+- The user's choice. The fibre source's pair is one of two, chosen on the Parameters panel or by a
+  run's `qkd_intensities`: the default 0.3416 / 0.1417 carries more key on the default 1e7-bit block
+  (5,214,327 bits against 4,977,636 at 50 km), and 0.399 / 0.098 needs the fewest pulses before any
+  key exists (3,312,035 against 3,595,158, under the default statistics). The pair reaches the block,
+  the model, the bound, the security facts, the distance chart and OptiQKD's baseline in both
+  languages. The test runs both stages at both pairs, and it failed when seeded with a browser stage
+  that ignored the choice. Writing it found the second pair's key quoted as 4,977,637: the run
+  reports whole bits, 4,977,636 (the bound gives 4,977,636.9).
+- onnxruntime-web 1.31.1 for the app and Transformers.js, through an npm override: the bundle carries
+  one wasm set where it carried two versions.
+- The satellite overlay and the registry's satellite sample text name OPS-SAT-AD version 1 (record
+  12588359), which the concept DOI no longer resolves to. The Telemanom evaluation sample says the
+  page's anomaly step runs in plaintext in the browser and under CKKS in the full deployment.
+
+**One owner per documented fact, and three behaviours Round 83 deferred** (f5f1fce).
+- Documentation consolidation (audit 83 section 4): twelve facts that three or more documents
+  restated now have one owner each, which holds the complete statement, and every other copy is a
+  clause and a link: what each step protects in the browser and in the full deployment (one table in
+  `docs/threat-model.md`), which pages encrypt, the QKD key blocks and what ct/pt measures
+  (`docs/models-and-benchmarks.md`), the trained QCNNs (`docs/use-cases.md`), the per-industry models,
+  the telecom forest and the finance gap (`docs/findings.md`), NSA and BSI on QKD
+  (`docs/pqc-roadmap.md`, whose finance section is gone), the retired composite
+  (`references/security-scoring-fact-check.md`), the provenance badge, the WebGPU figures, the
+  full-tier commands and the submodule table, once each. Corrected on the way: the report gave the
+  trained QCNNs 7 or 8 qubits (finance runs at 4); `deployment.md` named `!reset` where the override
+  file uses `!override`; `findings.md` introduced four caveats as three; `models-and-benchmarks.md` said
+  the relay's keys are asymptotic; the scoring note said the badge has five states. Formulas in seven
+  reference notes moved to MathJax. Gate: `tests/test_r84_docs_one_owner_per_fact.py`.
+- The full deployment no longer computes the retired quantum-advantage score for a run: the
+  comparison stage's artifact, which reaches the ML-DSA-signed summary, and `/api/benchmark` return
+  `advantage` as null, as the browser has since 2026-10-23.
+- On the CKKS path the SHAP panel now says its bars explain the reported class. The flag was false on
+  every run, so the panel called a class "a different computation" when CKKS had evaluated the very
+  model the bars explain and reported its argmax. It follows the backend that surfaced the class.
+- The signed record's `fhe` and `mpc` fields name what the run executed, from its own measurements:
+  satellite records neither, telecom CKKS only. Both were named on every use case.
+- Each of the three has a test that fails on the previous code.
+
+**Licences, and data the repository generates** (8c8dea3).
+- The owner's choice: the rows the repository's generator writes and the weights fitted on them are
+  released under its Apache-2.0. The registry, each telecom file and the `qsh-telecom-qml-ids` card
+  (`license: apache-2.0`) say so.
+- The ten evaluation samples the Hub repos redistribute now carry `licence`, `licence_url`,
+  `attribution` and `modifications`, which CC BY 4.0, CC BY 3.0 IGO and CDLA-Sharing-1.0 each ask for
+  when their data is shared. The generator's single writer adds them from the registry; the committed
+  samples were stamped through the same function, and two samples rebuilt from source match the
+  stamp byte for byte. DATA_LICENSES.md section 2c now says where each file carries what its licence
+  asks, instead of listing it as missing.
+- PaySim's credit line was empty although its rows ship under CC BY-SA 4.0. The attribution gate read
+  only the datasets attached to a model, and PaySim is attached to none; it now reads every dataset in
+  the registry, and it failed on PaySim before the credit was added. The PaySim TSV header and the
+  medical and finance QCNN weights carry their licence's link and their corpus's credit.
+- ISO/IEC 28033-3 (the CKKS part) is at its FDIS ballot, stage 50.20, read at iso.org on 2026-11-01;
+  the documents said 50.00, read on 2026-08-10.
+
+**Federated masks from a key agreed per pair of clients** (3730277), the owner's decision, in both
+tiers. Each client draws an X25519 key pair per run; the pair i < j derives
+`seed_ij = HKDF-SHA256(X25519 secret, salt "qsh/secagg/salt/v1", info "qsh/secagg/pair/v1" ||
+u32be(i) || u32be(j))`, 32 bytes, and the round-r mask is SHAKE-256 over the seed, the label
+`qsh/secagg/mask/v1` and u32be(r), read as little-endian 32-bit words; client i adds it for j > i
+and subtracts it for j < i (Bonawitz et al., ACM CCS 2017, doi:10.1145/3133956.3133982; Protocol 3
+of arXiv:1611.04482). SHAKE-256 expands the seed per round because HKDF-SHA256 stops at 8,160 bytes
+(RFC 5869 section 2.3), short of the Python models' parameter vectors. The aggregator receives only
+the public keys and the masked updates; the PQC session key seeds no mask. Until then the browser
+derived every mask from the session key, which the aggregator holds, and Python's default pair keys
+were `sha256("pair-i-j")`, a public constant.
+- Not implemented, and stated wherever the masks are described: double masking and Shamir-shared
+  secrets for dropouts (a dropped client breaks the round), malicious security, and authentication
+  of the public keys (an aggregator that substitutes keys is out of scope). The browser's clients
+  are notional parties in one tab, Python's in one process, and Python adds the masks as float64
+  reals in [-1, 1), which hide an update only partially; a fixed-point ring there would change the
+  full deployment's federated numbers and is not made.
+- Byte-identical across the languages for fixed keys (`tests/test_r84_pairwise_masks.py`, 27 tests,
+  all failing on the base). `check:qfl` recomputes every seed and mask with node's own OpenSSL, shows
+  that two session keys leave the shares unchanged and that replacing one client's key pair moves
+  exactly the seeds of its pairs, and fails on each of six seeded defects. The browser's federated
+  figures are unchanged, as exact ring cancellation requires.
+- Key agreement per run, 4 clients: node warm median 11.2 ms (first call about 32 ms), Python warm
+  median 0.39 ms (first 4.3 ms); measured on the development machine, not in a browser.
+
+**The PSI is an OPRF PSI in both tiers** (d3e9d2b), the owner's decision. It was HMAC-SHA256 of both
+banks' lists under the one session key both banks held, so over the demo's ID space either bank
+could hash every candidate and read the other's list. It is now a semi-honest DH-OPRF PSI on RFC
+9497's OPRF, mode 0x00, suite ristretto255-SHA512: Bank B draws a fresh key per run, Bank A blinds
+its IDs, Bank B blind-evaluates them and sends its own PRF outputs shuffled, and Bank A intersects.
+Bank A learns the intersection and |B|; Bank B learns |A|.
+- The browser runs `@noble/curves`' `ristretto255_oprf` (`web/src/lib/oprfPsi.ts`). Python, which had
+  no library for it and may not install one, runs `src/qsh/qsmpc/oprf.py` (RFC 9496's ristretto255,
+  RFC 9380's expand_message_xmd and hash_to_ristretto255, RFC 9497's OPRF) and `src/qsh/qsmpc/psi.py`.
+  Both reproduce RFC 9497 Appendix A.1.1; Python reproduces RFC 9496 Appendix A and RFC 9380 Appendix
+  K.3; the tiers give byte-identical blinded elements, evaluations and outputs for the same key,
+  blinds and inputs (`tests/test_r84_oprf_psi.py`, 34 tests, each failing at f5f1fce).
+- The three messages are sealed with AES-256-GCM under two HKDF-SHA256 keys of the PQC session key:
+  the session key keeps the transcript from third parties, including one who records it and attacks
+  ristretto255 later with a quantum computer, and hides nothing between the banks. So the PSI is the
+  one reader of the session key, and the canvas's key bus runs to it alone.
+- Not malicious-secure, not verifiable (mode 0x00), not post-quantum (RFC 9497 section 7.2.1); the
+  Python group arithmetic is not constant-time (section 7.4). Both banks are notional parties in one
+  tab or one process.
+- Metrics: `psi_intersection_size` (unchanged), `psi_set_size_a`, `psi_set_size_b`,
+  `psi_blind_evaluations` and `psi_protocol`; `psi_set_size` is retired. Cost: about 1.0 s for the
+  browser's finance stage (260 x 260, measured in node; the keyed hash took 18 ms), 9.6 s at the
+  2000-per-party cap, and 1.3 s in Python for the finance use case's sets (312 x 292).
+  `private_set_intersection`, `multiparty_psi` and `keyedHashPSI` are removed.
+
+**All 11 Hub repos republished and re-pinned** (069498c), with the owner's approval and public as
+before. Each commit changes the card and, for the ten repos that ship one, the evaluation sample;
+weights are unchanged. After the push the files each commit changed were listed from the Hub's tree
+at the old and new revisions and are exactly those, every pinned card and sample hashes to the local
+file, and all 11 repos are public: `finance_aml.gbm` 8e5cc9c, `finance_aml.student` ee29b5e,
+`medical_fl.resnet18` 5bb4e4f, `medical_fl.resnet50` fba434b, `medical_fl.student` e8cea12,
+`satellite_comms.telemanom` 6121a99, `satellite_comms.student` d09836d (card only),
+`satellite_comms.opssat` 48ef9a3, `satellite_comms.opssat_student` cdbc779, `telecom_ids.qml` c8de778,
+`telecom_ids.nidd` 6da6df7.
+
+**The deploy and the walk** (2026-11-01). The branch was deployed at 1eda497 (bundle
+`index-OiaRYnoZ.js`) and, after CI's layout scan failed, at 512dcee (bundle `index-pqesj90l.js`), and
+walked in Chrome 152.
+- CI's layout scan: on the telecom page the held-out rows' five-character ticks (0.075, 0.225)
+  overlapped the rotated title of both plane charts in the runners' DejaVu Sans, while the local scan,
+  in Noto, had passed. Reproduced locally under DejaVu; the two charts' y-axes are now 72 px (512dcee),
+  the scan passes on all 13 views in both fonts, and on the live page the ticks clear the title by
+  7.8 px.
+- Finance: at the default intensity pair 5,214,327 bits on 5.33e9 pulses, and at the second pair
+  4,977,636 on 5.2467e9, with 0.399 / 0.098 in the metrics. The PSI reports RFC 9497's OPRF, 60 shared
+  accounts over 260 x 260 with 260 blind evaluations, and its log says what each bank learns. The masks
+  come from 6 X25519-agreed pair seeds (key agreement 4.4 ms). CKKS agrees on every row at 4.138 ms per
+  rotation, and the SHAP panel says its bars explain the reported class; with the trained QCNN selected
+  (4 qubits) it shows the QCNN warning instead.
+- Telecom: the distance chart's caption follows the intensity selector, and at the second pair
+  OptiQKD's default rate is the run's own (0.001559).
+- Medical: the student's dense layers take 12 rotations (36.62 ms of rotation, 53.94 ms for the
+  stage) and the whole student 28 in 124.85 ms; the three models load at their new pins, and the
+  ResNet-18 runs on the 1.31.1 runtime in 11.62 ms and predicts the true class.
+- Genomics: 183 variants, the cut at the 90th percentile (22.06), the person's decrypted score within
+  1.5e-9 of plaintext, 3 of 30 flagged both ways, 8 rotations at 3.08 ms each.
+- Satellite: the default pass 139,251 bits; Liao's pass 226,072 on one basis and 450,923 on both
+  (+49.8% against 300,939); Khmelev's session 435,095 and 868,462 against 310,400.
+- Overview, Use cases, Orchestration, Value and Validations carry no keyed-hash, PGS000004 or SMAP/MSL
+  text; the Validations checks run without a console error (BB84: QBER 0.0098, 5,214,327 bits).
+- The signed record's `fhe` and `mpc` fields are not displayed on the page; they are checked in node
+  (`tests/test_r84_signed_record_names_what_ran.py`).
+
+**JupyterLite, marimo and pyvista-wasm, re-checked** (2026-11-01, the Round 55 decision's four
+reopening conditions). The first still fails: Pyodide 314.0.7 (2026-09-14) ships 357 packages and
+none of `tenseal`, `openfhe`, `seal`, `concrete-ml`, `onnxruntime` or `onnx` (its `pyodide-lock.json`),
+and on PyPI none of TenSEAL 0.3.18, OpenFHE 1.6.1, concrete-ml 1.9.0 or onnxruntime 1.31.1 has ever
+published an emscripten or Pyodide wheel. marimo's offline issue #575 is still open (last updated
+2026-09-30); pyvista-wasm is at 0.16.0 (2026-10-24), and this project still has no three-dimensional
+data. Declined as before.
+
+BUSINESS DOC RECONCILED Round 84. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 17 reads.

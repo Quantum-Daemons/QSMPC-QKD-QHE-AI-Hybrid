@@ -23,9 +23,9 @@ evaluates the same circuit. The implementation is deliberately the plain-numpy o
 the INDEPENDENT reimplementation when the trainer was verified: on the circuit of that time it
 agreed with the torch training circuit to 2.4e-07, after a crossed-CNOT bug in the trainer was found
 by exactly that comparison. On the current shared-filter circuit the cross-language test measures
-about 1.1e-06 (finance) and 4.7e-07 (medical) over 24 rows. Two implementations that were checked
-against each other are worth more than one that was not. It serves the two binary artifacts only;
-the 8-class telecom circuit is implemented by the trainer and the browser.
+about 7.6e-07 (finance, four wires) and 1.3e-06 (medical) over 24 rows. Two implementations that
+were checked against each other are worth more than one that was not. It serves the two binary
+artifacts only; the 8-class telecom circuit is implemented by the trainer and the browser.
 
 WHAT IT DOES NOT DO. No QOTP mask on this path. Undoing a Pauli frame through Clifford+T is not
 implemented anywhere in this repository - ``T X T-dagger`` is not Pauli - so hiding and prediction
@@ -57,10 +57,75 @@ def load_weights(usecase: str) -> dict | None:
     return json.loads(path.read_text())
 
 
+def _finite(v, n: int) -> bool:
+    try:
+        a = np.asarray(v, dtype=float).ravel()
+    except (TypeError, ValueError):
+        return False
+    return a.size >= n and bool(np.all(np.isfinite(a[:n])))
+
+
+def validate(weights: dict) -> dict:
+    """Refuse a truncated or malformed artifact BEFORE simulating it; return the layout it needs.
+
+    Round 84. A short ``theta`` used to surface as whatever numpy raised first - a reshape error, an
+    IndexError, or the fully-connected check below - and the browser twin of this function went
+    further and returned class 0 with ``<Z0>`` = NaN. Both now refuse with one message naming what is
+    wrong, checked before anything runs, on the same rules as ``validateQcnnWeights`` in
+    ``web/src/lib/quantumSim.ts``.
+    """
+    def bad(what: str):
+        raise ValueError(f"QCNN artifact is malformed: {what}. Refusing rather than reporting a class "
+                         "from NaN or from a circuit the angles were not trained for.")
+
+    if not isinstance(weights, dict):
+        bad("no weights object")
+    nq, layers = weights.get("n_qubits"), weights.get("layers")
+    if not isinstance(nq, int) or not 2 <= nq <= 16:
+        bad(f"n_qubits is {nq!r}, not an integer in 2..16")
+    if not isinstance(layers, int) or layers < 1:
+        bad(f"layers is {layers!r}, not a positive integer")
+    nf = weights.get("n_features", nq)
+    if not isinstance(nf, int) or not 1 <= nf <= nq:
+        bad(f"n_features is {nf!r} for {nq} wires")
+    circuit = (weights.get("circuit") or {}).get("name", "tree")
+    # THIS MODULE IMPLEMENTS THE TREE ONLY. The SU(4) telecom circuit is the trainer's and the
+    # browser's; running its 15-angle blocks through this file's 8-angle filter would be a different
+    # circuit on the same numbers, which is the defect a name check exists to stop.
+    if circuit != "tree":
+        bad(f"circuit {circuit!r} is not implemented here (this module runs the tree only)")
+    readout_q = int((weights.get("readout") or {}).get("readout_qubits", 0) or 0)
+    if readout_q:
+        bad(f"a {readout_q}-qubit multiclass readout; this module computes <Z0> only")
+    probe, stages = nq, 0
+    while probe // 2 >= 1 and probe > 1:
+        stages += 1
+        probe //= 2
+    want = stages * layers * 8 + stages + 2 * probe
+    theta = weights.get("theta")
+    if not isinstance(theta, list) or len(theta) != want or not _finite(theta, want):
+        n = len(theta) if isinstance(theta, list) else 0
+        bad(f"theta carries {n} angles{' (some not finite numbers)' if n == want else ''}; the tree "
+            f"circuit at {nq} wires needs {want} (conv {stages * layers * 8} + pool {stages} + fc 2x{probe})")
+    for key in ("scale", "bias"):
+        v = weights.get(key)
+        if isinstance(v, bool) or not isinstance(v, (int, float)) or not np.isfinite(v):
+            bad(f"the binary <Z0> head needs a finite scalar {key}, got {v!r}")
+    c = weights.get("encoding_scale", 1.0)
+    if isinstance(c, bool) or not isinstance(c, (int, float)) or not 0.0 < float(c) <= 1.0:
+        bad(f"encoding_scale is {c!r}, not in (0, 1]")
+    moments = _finite(weights.get("feature_mean"), nf) and _finite(weights.get("feature_std"), nf)
+    if weights.get("input_space") == "raw" and not moments:
+        bad(f"raw input needs {nf} finite feature_mean and feature_std")
+    return {"nq": nq, "layers": layers, "nf": nf, "stages": stages, "survivors": probe,
+            "c": float(c)}
+
+
 def infer(features, weights: dict) -> tuple[float, int, float]:
     """Return ``(expectation, cls, logit)`` for one feature vector.
 
-    Mirrors ``scripts/train/qcnn_variational.py`` gate for gate: RY(tanh(z)*pi) data encoding; then
+    Mirrors ``scripts/train/qcnn_variational.py`` gate for gate: RY(c*tanh(z)*pi) data encoding,
+    with c the artifact's ``encoding_scale`` (1 when absent); then
     per stage ``layers`` rounds of one shared 8-angle two-qubit filter (RY, RZ on each wire, CNOT,
     RZ, RY on each wire) on the disjoint pairs, and a CRY pool per pair with one shared angle per
     stage, halving the register; then a per-survivor RZ, RY block (and a CNOT ring only when more
@@ -68,13 +133,18 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
     disjoint pairs and a pooled wire is never touched again, this is a tree of two-qubit blocks:
     classically simulable in linear time at any width. No QOTP mask is applied.
 
-    The tanh encoding is not cosmetic. The features arriving here are z-scores, and the first
-    version of the trained model min-max scaled them against RAW units instead - which pinned seven
-    of eight features to -1 and produced a degenerate state, making the TRAINED path exactly as
-    meaningless as the untrained one it replaced. tanh bounds an unbounded z-score without
-    reordering it.
+    The tanh encoding is not cosmetic. The features are standardised to z-scores first, and the
+    first version of the trained model min-max scaled z-scores against RAW units instead - which
+    pinned seven of eight features to -1 and produced a degenerate state, making the TRAINED path
+    exactly as meaningless as the untrained one it replaced. tanh bounds an unbounded z-score
+    without reordering it.
+
+    ``features`` are in the artifact's ``input_space``: raw units for every artifact shipped since
+    Round 84 (finance and medical), standardised here with the artifact's own moments. A malformed
+    artifact raises ``ValueError`` from ``validate`` before anything is simulated.
     """
-    nq = int(weights["n_qubits"])
+    layout = validate(weights)
+    nq = layout["nq"]
     theta = np.asarray(weights["theta"], dtype=float).ravel()
     n = 1 << nq
     re = np.zeros(n)
@@ -102,17 +172,27 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
         im[src], im[dst] = im[dst].copy(), im[src].copy()
 
     x = np.asarray(features, dtype=float).ravel()
-    # The caller's units differ per use case, and assuming one of them is how the first trained model
-    # became as meaningless as the untrained one. medical arrives already StandardScaler-ed; finance
-    # arrives RAW and mixed-scale (log amount, a z-score, five binary flags), so it must be
-    # standardised here with the moments fitted at training time.
+    # The caller's units are the artifact's to name, and assuming them is how the first trained model
+    # became as meaningless as the untrained one. finance arrives RAW and mixed-scale (a log amount
+    # and three binary flags since its Round 84 retrain), so it must be standardised here with the
+    # moments fitted at training time; medical, since Round 84, likewise.
+    #
+    # ROUND 84: medical declares `raw` too. It was `zscore`, fed z-scores made with the caller's own
+    # StandardScaler rather than the trainer's training-split moments, and that moved 2 of 86
+    # held-out classes in the browser. Raw units standardised here with the artifact's constants
+    # cannot drift from the trainer, whoever scales their copy of the data.
+    nf = layout["nf"]
     if weights.get("input_space") == "raw":
-        mu = np.asarray(weights["feature_mean"], dtype=float)
-        sd = np.asarray(weights["feature_std"], dtype=float)
+        mu = np.asarray(weights["feature_mean"], dtype=float)[:nf]
+        sd = np.asarray(weights["feature_std"], dtype=float)[:nf]
         sd = np.where(sd == 0, 1.0, sd)
-        x = (x[:mu.size] - mu) / sd
+        x = x[:nf]
+        x = (x - mu[:x.size]) / sd[:x.size]
+    # Wires past n_features stay in |0>, as the trainer's zero pad leaves them. The angle carries the
+    # artifact's encoding scale: c = 1 folds a feature's two tails onto one state, and medical ships 0.5.
+    c = layout["c"]
     for q in range(nq):
-        ry(q, float(np.tanh(x[q] if q < x.size else 0.0)) * np.pi)
+        ry(q, c * float(np.tanh(x[q] if q < min(x.size, nf) else 0.0)) * np.pi)
     # QCNN, mirroring scripts/train/qcnn_variational.py and web/src/lib/quantumSim.ts.
     #
     # ROUND 46: THIS WAS THE THIRD COPY OF THE CIRCUIT. The trainer, the browser and this inference

@@ -5,7 +5,7 @@
 import {
   hasTrainedQcnn, qcnnWidths, readsInferenceBackend, runsFibreQkd, runsQsmpc, type usePipelineRun,
 } from "../lib/usePipelineRun";
-import { atmosphericLossDb, channelLossDb, FREE_SPACE, freeSpaceLink, qsdcLink } from "../lib/quantumSim";
+import { atmosphericLossDb, channelLossDb, fibreIntensities, FREE_SPACE, freeSpaceLink, qsdcLink } from "../lib/quantumSim";
 import { linkProfiles, profileValues, qkdCfg } from "../lib/config";
 import { rangeAtElevationKm } from "../lib/satNetwork";
 
@@ -190,8 +190,9 @@ export default function ParameterPanel({ run }: { run: Run }) {
        + "detects her at that fraction at any range", 1],
       ["Pulses", "sat_pulses", 500000, 1, "channel uses for the free-space downlink"],
       // The two fixed dB that decided every abort this page has ever shown. `channelLossDb` caps the
-      // diffraction term inside the near field, so these floor total loss at 8 dB at ANY range, and
-      // with the receiver optics (8.0 dB) and the detector (3.0 dB) g >= 79: at the default budget
+      // diffraction term inside the near field. At the defaults the floor is 4.9 dB at the zenith (1.87
+      // dB of air and 3 dB of pointing), and with the detector g = 6.14 at zero range (Round 84; this
+      // read "8 dB at ANY range ... g >= 79", from an older budget): at the default budget
       // C_s is negative at every range (Round 75's Micius budget; it read g >= 15.8 with a 4.0 dB
       // detector and no optics term, and before 2026-10-24 g >= 6.31 and a pooled tolerance). So
       // `qsdc_eavesdrop_detected` (= abort AND NOT link-limited) was 0
@@ -356,18 +357,27 @@ export default function ParameterPanel({ run }: { run: Run }) {
                 then reported `qcnn_qubits` as the width that RAN, so the control and the metric
                 disagreed and nothing on the page said which was which.
                 The floor is the feature count - a wire carries a feature or is padded - so telecom
-                (7 features) offers 7 and 8 while finance and medical (8 features) offer 8 and 9.
+                (7 features) offers 7 and 8. Finance and medical offered 8 and 9 until Round 84, and
+                their ninth wire carried no feature and was never convolved, so 9 gave the same class
+                as 8 on every row: a second option that changes nothing is the inert-control defect,
+                so a use case with ONE trained width names it rather than offering a choice.
                 `qcnnWidths` is gated against the files on disk in both directions. */}
-            {hasTrainedQcnn(usecase) && qcnnWidths(usecase).length > 0 && (
+            {hasTrainedQcnn(usecase) && qcnnWidths(usecase).length > 1 && (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-qubits" style={{ fontSize: 12 }}
-                title="Wires in the trained QCNN, which runs unencrypted and, built from two-qubit blocks on disjoint pairs, is classically simulable. Only widths with a shipped circuit are offered: a width with no artifact would silently load a different one. Telecom's 7 and 8 are different trained circuits; on finance and medical the ninth wire carries no feature and is never convolved, so 9 wires gives the same classes as 8.">QCNN qubits</label>
+                title="Wires in the trained QCNN, which runs unencrypted and is simulated exactly on 2^n amplitudes, so it is classically simulable at this size. Only widths with a shipped circuit are offered: a width with no artifact would silently load a different one. Telecom's 7 and 8 are different trained circuits, each with Hur, Kim and Park's two-qubit block on every neighbouring pair of wires.">QCNN qubits</label>
               <select id="pp-qubits" name="qubits" value={String(p.qubits)} style={{ width: "100%" }}
                 onChange={(e) => setParams({ ...params, qubits: Number(e.target.value) })}>
                 {qcnnWidths(usecase).map((w) => (
                   <option key={w} value={w}>{w} wires</option>
                 ))}
               </select>
+            </div>)}
+            {hasTrainedQcnn(usecase) && qcnnWidths(usecase).length === 1 && (
+            <div style={{ minWidth: 120, flex: "1 1 120px" }}>
+              <span className="muted" style={{ fontSize: 12 }}
+                title="One trained width ships for this use case: one wire per feature the circuit encodes, so a wider register would only add wires that carry no feature. The circuit runs unencrypted and is simulated exactly on 2^n amplitudes, so it is classically simulable at this size.">QCNN qubits</span>
+              <div style={{ fontSize: 13, padding: "3px 0" }}>{qcnnWidths(usecase)[0]} wires (the one trained width)</div>
             </div>)}
             {/* Only the secure-sum path reads it, and only genomics/finance run that path. The old
                 label promised a prime and accepted any integer: additive sharing over Z_100 is not
@@ -454,7 +464,24 @@ export default function ParameterPanel({ run }: { run: Run }) {
             </div>
             <StatisticsSelect id="pp-qkdstat" name="fk_deviation" value={String(p.fk_deviation)} dim={e91} why={why}
               dflt={qkdCfg().finite_key_deviation}
-              onChange={(v) => setParams({ ...params, fk_deviation: v })} /></>);
+              onChange={(v) => setParams({ ...params, fk_deviation: v })} />
+            {/* THE INTENSITY PAIR (Round 84, the user's choice: make both selectable). Two pairs that
+                optimise different things on this fibre; QKDConfig.first_key_mu_signal has the trade. */}
+            {(() => {
+              const blockKey = fibreIntensities("block_key"), firstKey = fibreIntensities("first_key");
+              const noDecoy = e91 ? "No effect on E91: an entangled source sends no signal or decoy pulses. " : "";
+              return (
+            <div style={{ minWidth: 220, flex: "2 1 220px" }}>
+              <label className="muted" htmlFor="pp-qkdmu" style={{ fontSize: 12, opacity: e91 ? 0.45 : 1 }}
+                title={noDecoy + `The mean photon numbers of the signal and the decoy the source sends. The two pairs answer different questions on this fibre, both found by the finite-key optimiser: ${blockKey.muSignal} / ${blockKey.muDecoy} carries more composable key on the default block, and ${firstKey.muSignal} / ${firstKey.muDecoy} needs the fewest pulses before any key exists. The default is the first.`}>Intensities (signal / decoy)</label>
+              <select id="pp-qkdmu" name="qkd_intensities" value={String(p.qkd_intensities)} style={{ width: "100%", opacity: e91 ? 0.45 : 1 }}
+                aria-disabled={e91 ? true : undefined}
+                onChange={(e) => setParams({ ...params, qkd_intensities: e.target.value })}>
+                <option value="block_key">{`${blockKey.muSignal} / ${blockKey.muDecoy}: more key per block`}</option>
+                <option value="first_key">{`${firstKey.muSignal} / ${firstKey.muDecoy}: fewest pulses to a first key`}</option>
+              </select>
+            </div>);
+            })()}</>);
             })()}
             {/* THE KEY BLOCK (Round 79). The key is the finite-key length of a block of link time;
                 which block is the choice the published practice settles (QKDConfig.free_space_block). */}

@@ -1,4 +1,7 @@
 {
+ "_source": {
+  "note": "Retired with the PGS000001 score: no code reads or writes this file. CC0 1.0, https://creativecommons.org/publicdomain/zero/1.0/; gnomAD's terms ask users not to attempt to re-identify participants."
+ },
  "rs10069690": {
   "afr": 0.5900164060992087,
   "amr": 0.23335513407455855,

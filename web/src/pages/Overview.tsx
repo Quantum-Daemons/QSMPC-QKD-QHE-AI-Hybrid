@@ -63,11 +63,21 @@ export default function Overview() {
         <div className="card"><div className="kpi c">2029</div><p>Cloudflare target for full PQC including authentication; Google has set 2029 as its PQC migration timeline. For national security systems, CNSA 2.0 algorithms are required in new acquisitions from 2027</p></div>
         {/* The novelty, stated where a first-time visitor reads it. Everything else on this page is
             context that other projects share; this is the part that is unusual, and it was legible
-            only from the banner - which did not render here. */}
-        <div className="card"><div className="kpi c">0</div><p><b>server-side compute</b> in this
-        demo: CKKS, garbled-circuit MPC and the model inference all run in your tab - the two MPC
-        parties are notional, both in this one tab. See{" "}
-        <Link to="/value">what is and is not new</Link>.</p></div>
+            only from the banner - which did not render here.
+            BUILD-DEPENDENT, like the banner above: "0 server-side compute in this demo" is a fact of
+            the client-only build the public demo ships. A full deployment sends every run to its
+            server (POST /api/run in `api.ts`), and this card said 0 there too. */}
+        {isClientDemo()
+          ? <div className="card"><div className="kpi c">0</div><p><b>server-side compute</b> in this
+            demo: CKKS, garbled-circuit MPC and the model inference all run in your tab - the two MPC
+            parties are notional, both in this one tab. See{" "}
+            <Link to="/value">what is and is not new</Link>.</p></div>
+          : <div className="card"><div className="kpi c">0</div><p><b>server-side compute</b> in the
+            client-only build the public demo ships, where CKKS, garbled-circuit MPC and the model
+            inference run in the visitor&apos;s tab. This full deployment is not that build: its runs go
+            to its server, where TenSEAL or OpenFHE (CKKS) and MPyC (secret sharing) compute. Add{" "}
+            <code>?demo=client</code> to the address to run the browser path here. See{" "}
+            <Link to="/value">what is and is not new</Link>.</p></div>}
       </div>
 
       {/* Moved up from the bottom of the page in Round 58: the limits of what a visitor is about to read
@@ -76,14 +86,26 @@ export default function Overview() {
         {/* This note used to say QKD was an add-on "per BSI" and that "the hybrid framing here is
             BSI's". BSI's hybrid (TR-02102-1 v2026-01 section 2.2) is PQC + CLASSICAL key agreement and
             does not mention QKD; section 2.1 does not recommend QKD at all. So the QKD add-on is this
-            project's choice alone, and only the ML-KEM + X25519 layer follows BSI. */}
+            project's choice alone.
+            Nor does the layer "implement what BSI recommends", which this note said until Round 84.
+            Read at bsi.bund.de on 2026-10-31: TR-02102-1 v2026-01 (2026-01-23) recommends ML-KEM-768
+            and ML-KEM-1024 (Table 2.7) and, for elliptic curves, the four Brainpool curves (Table B.3);
+            "25519" appears nowhere in it. TR-02102-2 v2026-01 (TLS, 2026-01-27) leaves x25519 out of
+            its TLS 1.3 groups (Table 10: secp256r1/384r1/521r1, brainpool*tls13, ffdhe3072/4096) and
+            says BSI intends to recommend SecP256r1MLKEM768 and SecP384r1MLKEM1024 once their RFC is
+            adopted (section 3.4.2). So the hybrid has BSI's shape and its ML-KEM half is
+            BSI-recommended; its X25519 half is not. */}
         <b>Research PoC.</b> Quantum-channel results (QKD distance and QBER, QSDC) are <b>simulated</b>,
         not hardware-validated; photonic inference and full qOLE are not implemented here. QKD appears only as an optional add-on
         to the PQC hybrid, never standalone, and that is this project's choice, not a recommendation:{" "}
         <b>BSI TR-02102-1 v2026-01</b> states that QKD "is currently not ready for use from a security
         point of view" and does not recommend it (section 2.1). What BSI recommends is hybrid key
-        agreement combining a quantum-safe and a classical mechanism (section 2.2), which the ML-KEM +
-        X25519 layer implements. NSA answers "No" to using QKD to protect a national security system.
+        agreement combining a quantum-safe and a classical mechanism (section 2.2). The ML-KEM + X25519
+        layer has that shape, and only its ML-KEM half is a BSI-recommended mechanism (Table 2.7):
+        X25519 is neither among BSI&apos;s recommended curves (the Brainpool curves, Table B.3) nor
+        among its recommended TLS 1.3 groups (TR-02102-2 v2026-01, Table 10), and the TLS hybrids BSI
+        intends to recommend are SecP256r1MLKEM768 and SecP384r1MLKEM1024 (section 3.4.2). NSA
+        answers "No" to using QKD to protect a national security system.
       </div>
 
       <h2 style={{ marginTop: 32 }}>Architecture at a glance</h2>
@@ -104,11 +126,16 @@ export default function Overview() {
               <td>Seven QKD attack types plus normal traffic - eight classes; classical RF baseline against a PennyLane variational quantum classifier</td>
               <td>Synthetic telemetry. The page runs a softmax and the random forest published as telecom_ids.qml; the quantum-kernel SVC and the QNN are offline figures, not run here, and the SVC&apos;s fidelity kernel equals a classical product kernel</td></tr>
             <tr><td>WS3 · QSMPC × QKD</td>
-              <td>Shamir + d-level QFT secure summation, quantum oblivious transfer, quantum-safe private set intersection</td>
-              <td><StageBadge kind="notional" /> classical PSI and additive-share secure sum, all parties in this tab. The PSI is an HMAC under a session key both banks hold, so over a small ID space either bank could recover the other&apos;s list; a production PSI would use an OPRF-based protocol. The QFT and QOT forms run in the full deployment, simulated</td></tr>
+              <td>Shamir + d-level QFT secure summation, quantum oblivious transfer, private set intersection over the PQC channel</td>
+              <td><StageBadge kind="notional" /> classical PSI and additive-share secure sum, all parties in this tab. The PSI runs RFC 9497&apos;s OPRF over ristretto255: Bank A learns the shared accounts and the size of Bank B&apos;s list, Bank B only the size of Bank A&apos;s. It is semi-honest and not post-quantum, and its messages are sealed under the PQC session key. The QFT and QOT forms run in the full deployment, simulated</td></tr>
+            {/* "Rate-1 QFHE transport" named a scheme the code does not run: Rate-1 QFHE
+                (Chardouvelis, Doettling, Malavolta, TCC 2021) is homomorphic, and
+                `qhe/rate1_qfhe.py` has no Eval - it pads a state and sends the pad under the hybrid
+                KEM. The comparison stage goes by ONE name, the one the benchmark row, the run log,
+                the use-case page and the orchestration graph use: the QSMPC-FHE comparison. */}
             <tr><td>WS4 · QHE × AI</td>
-              <td>Quantum one-time pad, a QCNN classifier, Rate-1 QFHE transport; classical CKKS for comparison</td>
-              <td><StageBadge kind="real" /> node-seal CKKS; an untrained QOTP + Clifford+T comparison circuit <StageBadge kind="seeded" /> that predicts nothing; on finance, medical and telecom an optional trained QCNN that runs unencrypted. Neither circuit is a private inference. TenSEAL / OpenFHE in the full deployment; HEonGPU is a build-gated adapter with no measured run</td></tr>
+              <td>Quantum one-time pad, a QCNN classifier, a QOTP sent with its pad under a KEM (transport only, not a homomorphic scheme); classical CKKS for comparison</td>
+              <td><StageBadge kind="real" /> node-seal CKKS; the QSMPC-FHE comparison, an untrained QOTP + Clifford+T circuit <StageBadge kind="seeded" /> that predicts nothing and, with one party and a pad that is never updated or removed, is neither MPC nor a homomorphic evaluation; on finance, medical and telecom an optional trained QCNN that runs unencrypted. Neither circuit is a private inference. TenSEAL / OpenFHE in the full deployment; HEonGPU is a build-gated adapter with no measured run</td></tr>
           </tbody>
         </table>
         <Details summary="The four workstreams in full">
@@ -118,7 +145,7 @@ export default function Overview() {
             {/* arXiv:2603.04192 v1 (OptiQKD) reported a median SKR gain of +20-30%; v2 (AML-QKD,
                 2026-06) revised that down to +14-25%. Quoting ">20%" targets a figure the authors
                 themselves superseded. Both versions are simulation-only. */}
-            <p>BB84 <b>two-intensity decoy-state</b> (+ a selectable <b>E91/CHSH</b> protocol) with QBER/SKR telemetry; <b>OptiQKD</b> (gradient-free coordinate ascent, over the analytic decoy-state model in this browser and over a scikit-learn surrogate in the full deployment) tunes decoy/basis params to raise the secret-key rate, with a convergence metric. The reference framework reports a median gain of +14–25% over static operation in simulation (arXiv:2603.04192v2), and a 2026 survey reports +15–20% for deep-RL controllers (arXiv:2608.08280). A run here reports its gain over this demo's default parameters, which is not comparable with either. A <b>QRNG</b> entropy source (state-vector measurement + SP 800-90B min-entropy and section 4.4 health tests + Leftover-Hash-Lemma extractor) is <b>measured and reported alongside</b> the key material. Eavesdropper detection via QBER inflation.</p>
+            <p>BB84 <b>two-intensity decoy-state</b> (+ a selectable <b>E91/CHSH</b> protocol) with QBER/SKR telemetry; <b>OptiQKD</b> (gradient-free coordinate ascent, over the analytic decoy-state model in this browser and over a scikit-learn surrogate in the full deployment) searches the decoy and basis parameters for a higher asymptotic secret-key rate, with a convergence metric; in this browser what it finds is reported and not applied to the run&apos;s key, which takes the bases at even odds. The reference framework reports a median gain of +14–25% over static operation in simulation (arXiv:2603.04192v2), and a 2026 survey reports +15–20% for deep-RL controllers (arXiv:2608.08280). A run here reports its gain over this demo's default parameters, which is not comparable with either. A <b>QRNG</b> entropy source (state-vector measurement + SP 800-90B min-entropy and section 4.4 health tests + Leftover-Hash-Lemma extractor) is <b>measured and reported alongside</b> the key material. Eavesdropper detection via QBER inflation.</p>
           </div>
           <div className="card">
             <h3>WS2 · QML-IDS — intrusion detection</h3>
@@ -128,11 +155,11 @@ export default function Overview() {
           </div>
           <div className="card">
             <h3>WS3 · QSMPC × QKD</h3>
-            <p>Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, and quantum-safe private set intersection.</p>
+            <p>Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, and a private set intersection on RFC 9497&apos;s OPRF whose messages are sealed under the PQC session key. The OPRF itself rests on a discrete-log assumption, so the PSI is not post-quantum.</p>
           </div>
           <div className="card">
             <h3>WS4 · QHE × AI</h3>
-            <p>Quantum one-time pad (perfectly hiding as a scheme; the demo applies the mask with a seeded key, so its structure and cost are measured and its secrecy is not). Two separate circuits, and neither is a private inference: an untrained QOTP + Clifford+T comparison circuit whose pad is never undone, so its output follows the key rather than the input; and, on finance, medical and telecom, a trained QCNN classifier that runs unencrypted. The trained circuit is built from two-qubit blocks on disjoint pairs (a tree, for the binary heads) on 7 to 9 qubits, so it is classically simulable (Bermejo et al., PRX Quantum 7, 020304, 2026), and logistic regression beats it on every use case. Rate-1 QFHE is implemented as transport only: a QOTP under a KEM, with no homomorphic evaluation. Classical CKKS (TenSEAL CPU / OpenFHE CPU) for comparison; HEonGPU is a build-gated adapter with no measured run here.</p>
+            <p>Quantum one-time pad (perfectly hiding as a scheme; the demo applies the mask with a seeded key, so its structure and cost are measured and its secrecy is not). Two separate circuits, and neither is a private inference: the QSMPC-FHE comparison, an untrained QOTP + Clifford+T circuit whose pad is never undone, so its output follows the key rather than the input; and, on finance, medical and telecom, a trained QCNN classifier that runs unencrypted. The trained circuit is a tree of two-qubit blocks on disjoint pairs for finance and medical, and Hur, Kim and Park's two-qubit block on every neighbouring pair for telecom, on 7 or 8 qubits; it is simulated exactly, so classically simulable at this size (Bermejo et al., PRX Quantum 7, 020304, 2026), and logistic regression beats or ties it on every use case (it ties medical at the shipped seed and leads over five seeds). The Python package also sends a QOTP-padded state with its pad under the hybrid KEM; that is transport only, with no homomorphic evaluation, so it is not the Rate-1 QFHE scheme (Chardouvelis, Doettling and Malavolta, TCC 2021) its module is named after. Classical CKKS (TenSEAL CPU / OpenFHE CPU) for comparison; HEonGPU is a build-gated adapter with no measured run here.</p>
           </div>
         </div>
         </Details>

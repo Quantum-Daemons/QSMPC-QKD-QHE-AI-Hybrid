@@ -267,8 +267,9 @@ function build(usecase: string, steps: Step[], status: (s: Step) => Status, metr
     y += COMP_H + ROW_GAP;
   });
 
-  // The session key, from the handshake to the stages that consume it (the PSI's HMAC key and the
-  // federated masks' seed). Lit while its consumer runs.
+  // The session key, from the handshake to the stage that consumes it: the PSI, which seals its OPRF
+  // messages under keys derived from it. The federated masks' seeds are agreed per pair of clients by
+  // X25519 and take no session key. Lit while its consumer runs.
   for (const u of keyUsers) {
     const style = { stroke: KEY, strokeWidth: u.status === "running" ? 2.4 : 1.4,
                     strokeDasharray: "2 4", opacity: u.status === "pending" || u.status === "idle" ? 0.45 : 0.95 };

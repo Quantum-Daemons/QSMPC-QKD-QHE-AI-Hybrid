@@ -67,15 +67,16 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
   // Finance is in FEDERATED_USECASES, so a `federated_training` stage is injected into its run. It
   // had no key here, so it fell to `default` - which has no such node either - and the stage lit
   // nothing. Node labels are static here (this graph has no metrics), so this one names the
-  // algorithm rather than a security property: `clientQFL` masks the updates, but every mask is
-  // derived from the one PQC session key, which the aggregator also holds, so "(secure aggregation)"
-  // would claim a guarantee the code does not provide. The use-case canvas (useCaseFlows) carries the
+  // algorithm rather than a security property: `clientQFL` masks the updates with seeds each pair of
+  // clients agrees by X25519, but with no dropout recovery, no malicious security, no authentication of
+  // the public keys and every client in one tab, so "(secure aggregation)" would claim more than the
+  // code provides. The use-case canvas (useCaseFlows) carries the
   // measured `qfl_aggregation` string for the run-specific version.
   finance_aml: [
     { id: "data", label: "Banks' Data" },
     { id: "pqc_handshake", label: "PQC Handshake\n(ML-KEM + X25519)" },
     { id: "qkd_key_agreement", label: "QKD Key" },
-    { id: "qsmpc_compute", label: "QSMPC\n(keyed-hash PSI)" },
+    { id: "qsmpc_compute", label: "QSMPC\n(OPRF PSI)" },
     { id: "federated_training", label: "Federated Training\n(size-weighted FedAvg, demo)" },
     { id: "private_inference", label: "Private Inference\n(CKKS + 2PC argmax)" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(untrained QOTP +\nClifford+T circuit)" },
@@ -99,7 +100,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     // are static - it has no metrics - so the honest form is to name the stage and let
     // use-case canvas, which does read metrics, carry the run-specific eavesdropper tag.
     { id: "qkd_key_agreement", label: "QKD Key" },
-    { id: "qml_ids", label: "QML-IDS\n(attack detection)" },
+    { id: "qml_ids", label: "IDS (attack detection;\nclassical by default)" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(untrained QOTP +\nClifford+T circuit)" },
     { id: "result", label: "Result" },
     { id: "sign_result", label: "Sign Result\n(ML-DSA)" },

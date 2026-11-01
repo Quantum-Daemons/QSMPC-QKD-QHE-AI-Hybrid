@@ -2,8 +2,10 @@
 // each |+> qubit's Z outcome is a Bernoulli(0.5) draw from `u` (the run-seeded mulberry32 stream in a
 // pipeline run, Math.random otherwise), so it is a pseudorandom stand-in for measurement, with no state
 // vector evolved and no hardware. The SP 800-90B 4.4 health tests and a 3-test SP 800-22 subset run on
-// it for real, with MEASURED throughput. No key or downstream stage uses its bits. The optional ANU
-// hardware source is opt-in + online (never the default), matching the backend.
+// it for real, with MEASURED throughput. No key or downstream stage uses its bits. There is no
+// hardware source here: the ANU Quantum Numbers API needs an API key, which a public page cannot
+// hold, so "anu" is refused; the Python package's opt-in source reads one from QSH_ANU_API_KEY
+// (`src/qsh/qrng/anu.py`, Round 84).
 import { rng } from "./quantumSim";
 import { qrngCfg } from "./config";
 import { randomWords } from "./csprng";
@@ -63,7 +65,7 @@ export interface QRNGResult {
    *  output reported health PASS with min-entropy 0: a check that passed because there was nothing
    *  left to test. `healthPassed` now requires this to be true, and the run says which it was. */
   healthConclusive: boolean;
-  /** SP 800-90B section 4.4 continuous health tests — these gate `healthPassed`. */
+  /** SP 800-90B section 4.4 continuous health tests - these gate `healthPassed`. */
   repetitionCountPassed: boolean;
   repetitionCountCutoff: number;
   repetitionCountLongest: number;
@@ -237,13 +239,13 @@ const HEALTH_ALPHA = Math.pow(2, -20);
 const ADAPTIVE_PROPORTION_W = 1024;
 
 /** section 4.4.1: C = 1 + ceil(-log2(alpha) / H). The standard's worked example, H = 2.0 at
- *  alpha = 2^-20, gives C = 11 — asserted in tests/test_qrng.py against this same formula. */
+ *  alpha = 2^-20, gives C = 11 - asserted in tests/test_qrng.py against this same formula. */
 export function repetitionCountCutoff(h: number, alpha = HEALTH_ALPHA): number {
   const hh = h > 0 ? h : 1e-9;
   return 1 + Math.ceil(-Math.log2(alpha) / hh);
 }
 
-/** Fail if any value repeats C or more times consecutively — a stuck noise source. */
+/** Fail if any value repeats C or more times consecutively - a stuck noise source. */
 function repetitionCountTest(bits: Uint8Array, h: number) {
   const cutoff = repetitionCountCutoff(h);
   if (bits.length === 0) return { passed: true, cutoff, longest: 0 };
@@ -291,7 +293,7 @@ export function adaptiveProportionCutoff(h: number, w = ADAPTIVE_PROPORTION_W, a
   return Math.min(w, c);
 }
 
-/** Fail if one value dominates any non-overlapping window of W samples — a collapsed source. */
+/** Fail if one value dominates any non-overlapping window of W samples - a collapsed source. */
 function adaptiveProportionTest(bits: Uint8Array, h: number, w = ADAPTIVE_PROPORTION_W) {
   const cutoff = adaptiveProportionCutoff(h, w);
   if (bits.length < w) return { passed: true, cutoff, worst: 0 };
@@ -308,7 +310,11 @@ function adaptiveProportionTest(bits: Uint8Array, h: number, w = ADAPTIVE_PROPOR
 export function generateQuantumBits(nBits: number, opts: { source?: string; postProcessing?: string;
   seed?: number; alpha?: number; epsilonLog2?: number; minEntropyPerRawBit?: number; blockSize?: number } = {}): QRNGResult {
   const source = opts.source ?? "sim";
-  if (source === "anu") throw new Error("ANU QRNG is opt-in + online; the offline 'sim' source is the demo default");
+  if (source === "anu") {
+    throw new Error("The ANU QRNG needs an AQN API key, which a public page cannot hold, so the browser has no "
+      + "hardware source: the offline 'sim' source is the only one here. The Python package reads a key from "
+      + "QSH_ANU_API_KEY.");
+  }
   const q = qrngCfg();
   const post = opts.postProcessing ?? q.post_processing ?? "von_neumann";
   const alpha = opts.alpha ?? q.health_alpha ?? 0.01;

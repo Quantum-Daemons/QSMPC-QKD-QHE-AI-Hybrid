@@ -4,7 +4,11 @@
 // hardware adapter exists; WebNN is probed and not requested (see the note at the provider list).
 // Until Round 60 the order was WebGPU -> WebNN -> WASM whenever an adapter existed. On the machine
 // measured, one ResNet-18 session.run took 18216 ms on onnx-webgpu with a hardware adapter, against
-// tens of milliseconds on WASM (register, Round 59), so the faster path became the default. Vite
+// tens of milliseconds on WASM (register, Round 59), so the faster path became the default. That run
+// was the INT8 graph (`browserModels` prefers int8), and ONNX Runtime Web's WebGPU provider has no
+// kernel for its ConvInteger and DynamicQuantizeLinear nodes (see the note at `status.backend`), so
+// those ran on the CPU: it measured a mixed GPU/CPU graph, not WebGPU itself. No fp32 graph has been
+// timed on WebGPU. Vite
 // bundles the ORT wasm as a same-origin hashed asset (so it satisfies the COOP/COEP
 // cross-origin-isolation headers); we let ORT resolve it via import.meta.url rather than overriding
 // wasmPaths.
@@ -383,9 +387,13 @@ export async function loadModel(
       // Verified on the shipped artefacts: the int8 build is PREFERRED (see the artifact selection
       // above), and `medical_breastmnist_resnet18`'s int8 graph is 20x ConvInteger + 18x
       // DynamicQuantizeLinear, `satellite_telemanom`'s is Slice/Concat/Transpose/Shape arithmetic.
-      // Whether ORT 1.27.0's WebGPU EP registers those was NOT established here - the op registry is
-      // not enumerable from the shipped bundle - so this comment states the mechanism and stops
-      // short of a per-model verdict rather than asserting one it cannot support.
+      // The first two have NO WebGPU kernel (Round 84): the WebGPU provider's kernel registry,
+      // onnxruntime/core/providers/webgpu/webgpu_execution_provider.cc, registers Conv and
+      // DequantizeLinear but no ConvInteger, DynamicQuantizeLinear or MatMulInteger at v1.27.0,
+      // v1.31.0 or v1.31.1 (read 2026-10-31), and its contrib kernels add none. So on that
+      // model every quantised node falls back to the WASM floor, which is how Round 59's 18216 ms
+      // ResNet-18 came about. Whether the Telemanom graph's ops all place on WebGPU is not settled
+      // here.
       //
       // Closing it properly needs `startProfiling()`/`endProfiling()` or ORT's "kernel not found in
       // registries" log at `logSeverityLevel: 1`, and a third state, because two cannot express a
@@ -987,8 +995,10 @@ export interface PublishedModelRun {
 export type PublishedRunOutcome =
   /** The published model ran. */
   | { kind: "ran"; run: PublishedModelRun }
-  /** No published, pinned, browser-tier model exists for this use case. A legitimate state. */
-  | { kind: "unavailable"; reason: string }
+  /** No published, pinned, browser-tier model exists for this use case. A legitimate state. `withheld`
+   *  names the registered models held back because their pin is stale (a retrain invalidated it and no
+   *  republish has re-pinned it yet), so "none registered" is never said of a use case that has one. */
+  | { kind: "unavailable"; reason: string; withheld: string[] }
   /** One exists and did not run. Never silently substituted -- the caller must surface this. */
   | { kind: "failed"; modelKey: string; error: string };
 
@@ -1012,7 +1022,10 @@ export async function runPublishedModel(
     ? browserModels(usecase).find((m) => m.spec.key === opts.modelKey) ?? null
     : browserModel(usecase);
   if (!target) {
-    return { kind: "unavailable", reason: status.error
+    const withheld = modelsFor(usecase)
+      .filter((m) => m.hf_repo_id && !m.hf_revision && m.hf_revision_stale)
+      .map((m) => m.key);
+    return { kind: "unavailable", withheld, reason: status.error
       ?? `no published, pinned, browser-tier ONNX model is registered for "${usecase}"` };
   }
 

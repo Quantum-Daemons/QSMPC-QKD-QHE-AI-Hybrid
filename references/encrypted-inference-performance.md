@@ -9,8 +9,8 @@ rule here is that a comparator has to be resolved to the artefact that published
 
 This project's encrypted tier evaluates between 20 and 3,226 parameters on WASM CPU inside a browser
 tab. The 2026 encrypted-inference figures it would sit beside are ResNets and transformers on
-datacentre GPUs. Putting 700 ms for a 64-parameter student next to a few hundred milliseconds for a
-CNN on an A100 tells a reader nothing about either system, and this repository's own rule against
+datacentre GPUs. Putting the tab's latency for a 64-parameter student next to a few hundred
+milliseconds for a CNN on an A100 tells a reader nothing about either system, and this repository's own rule against
 incomparable numbers forbids it.
 
 Cost per homomorphic rotation is the axis that survives the comparison. A rotation triggers a
@@ -43,13 +43,28 @@ degree 8192, coefficient modulus `[60, 40, 40, 60]` (200 bits), one multiplicati
 | medical | published CNN student, convolution | 16 | 67.81 | 4.24 |
 | medical | published CNN student, dense layers | 136 | 421.40 | 3.10 |
 | telecom | 8-class softmax student, batched over 512 rows | 24 | 76.0 (derived) | 3.17 |
-| genomics | PGS000004 effect weights as `[-w/2, +w/2]` | 6 | 19.07 | 3.18 |
+| genomics | PGS000004 sign test, effect weights as `[-w/2, +w/2]` (retired in Round 84) | 6 | 19.07 | 3.18 |
 
 Five independent models, four use cases, dense and convolutional paths, single-row and 512-row
 batches: **3.10 to 4.39 ms per rotation**. That is the behaviour a rotation at a fixed
 ring degree should show, and it is why this is the portable figure. (The telecom rotate-ms cell is
 its reported per-rotation figure times its rotation count rather than a separately displayed total;
 the per-rotation value itself is measured.)
+
+The genomics row is the sign test the page ran until Round 84. The page now scores PGS000072's 183
+variants in full; the row stays because a rotation's cost does not depend on which model asked for it.
+Measured on the deployed demo on 2026-11-01, in Chrome 152.0.0.0 (WASM CPU, Linux x86_64, 20 logical
+cores, `crossOriginIsolated` true), with the same ring:
+
+| use case | model | rotations | rotate ms | ms per rotation |
+|---|---|---|---|---|
+| genomics | PGS000072, the whole score over 183 dosages in one ciphertext | 8 | 24.61 | 3.08 |
+| medical | published CNN student, dense layers packed one ciphertext per layer | 12 | 36.62 | 3.05 |
+| medical | published CNN student, convolution | 16 | 49.60 | 3.10 |
+
+All three sit at the low end of the Round 38 range below, 3.05 to 3.10 ms against 3.10 to 4.39 ms. The
+genomics page also scores its 30 bundled individuals in two
+ciphertexts, 68.26 ms for the batch, with the decrypted and plaintext flags agreeing on all 30.
 
 At ring degree 16384 with the same coefficient modulus, the same finance measurement gives **6.73 ms
 per rotation** - 2.17x, for a doubled ring.
@@ -78,6 +93,15 @@ Measured with the scopes separated, medical page, one run:
 | published student, total | 152 | 489.21 | 586.83 | 83% |
 
 The two stages sum to the total exactly - 96.60 + 490.23 = 586.83 - so nothing is unattributed.
+
+Since Round 84 (2026-10-31) the dense layers are packed one ciphertext per layer: 12 rotations instead of 136,
+and the student 28 instead of 152. Measured in Chrome on the deployed demo (2026-11-01, the environment
+above): the dense layers 53.94 ms (36.62 ms of it rotations), the convolution 70.91 ms, the whole student
+124.85 ms, against 490.23 ms and 586.83 ms row at a time in the table above. In Node 22 with node-seal, base and
+packed code interleaved in one process: dense layers 53.9 ms against 490.0 ms, the whole student 126.8 ms
+against 554.2 ms. Each layer's bias is now added under encryption and every non-output
+slot is masked and flooded before decryption, at about 2 ms per decryption. The tables above are the
+row-at-a-time measurements they were made with.
 
 So key-switching dominates everywhere, at 57% to 86% depending on how much non-rotation work the
 stage carries, and the per-rotation cost is 3.10-4.39 ms across every stage measured. The page now reports
@@ -121,7 +145,7 @@ slightly smaller modulus both point the same way, and neither is quantified here
 reading is "the same order, this host faster", not a speedup claim.
 
 **n=16384 is NOT comparable, and quoting it as one would be the error this document exists to
-avoid.** The published row is at log(q)=438; this project runs 200 bits at that ring. Key-switching
+avoid.** The published row is at $`\log q = 438`$; this project runs 200 bits at that ring. Key-switching
 cost grows with the number of RNS limbs, so most of the gap between the published 41.2 ms and the
 6.73 ms measured here is the modulus, not the platform. The two numbers are recorded together only
 so the difference in parameters is visible.
@@ -174,15 +198,21 @@ convolution", which is the same scope error the section above withdraws: `real.f
 convolution's. The per-stage split is in `docs/verification-log.md` under "with the scopes
 separated".
 
-| use case | measured encrypted inference | at most 10 s (the code's test) |
-|---|---|---|
-| finance | 700 ms | yes, and below the window's assumed lower end |
-| medical | 1,269 ms (convolution 84.35 ms, the student's dense layers 506.69 ms) | yes |
+Each figure is dated with the MPC engine that produced it. Round 38 measured the first two with
+emp-wasm as the in-tab MPC engine. Round 65 replaced it with Polytune, which took the medical
+secret-shared stage from 690 to 730 ms to 139.17 ms (`docs/deliverable-verification.md`, Round 65),
+and the last two are that build's. None has been re-measured in a browser since:
 
-Both pass the 10 s test with room. A run under 1 s, as finance's is, sits below the assumed window
-rather than inside it, which is not a failure; the column read "inside a 1-10 s window" with "yes" for
-both until 2026-10-30. The page reports the verdict rather than leaving two numbers for a reader to
-compare, and a page whose run exceeds 10 s will say so.
+| use case | measured encrypted inference | MPC engine, when measured | at most 10 s (the code's test) |
+|---|---|---|---|
+| finance | 700 ms | emp-wasm, Round 38 | yes |
+| medical | 1,269 ms (convolution 84.35 ms, the student's dense layers 506.69 ms) | emp-wasm, Round 38 | yes |
+| finance | about 0.13 s (the secret-shared stage 116.59 ms) | Polytune, Round 65; the 0.13 s recorded 2026-10-30 | yes, and below the window's assumed lower end |
+| medical | 742.66 ms (the secret-shared stage 139.17 ms) | Polytune, Round 65 | yes |
+
+All four pass the 10 s test with room. A run under 1 s, as both are on Polytune, sits below the
+assumed window rather than inside it, which is not a failure. The page reports the verdict rather
+than leaving two numbers for a reader to compare, and a page whose run exceeds 10 s will say so.
 
 ## One-time cost a visitor feels
 

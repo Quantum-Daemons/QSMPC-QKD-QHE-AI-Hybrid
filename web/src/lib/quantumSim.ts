@@ -144,6 +144,23 @@ export function sourceOf(p: ChannelParams): { mu: number; nu: number; pSignal: n
   };
 }
 
+/** The fibre's two intensity pairs (Round 84, the user's choice: make both selectable). "block_key" is
+ *  config `mu_signal` / `mu_decoy`, more key on the default block; "first_key" is config
+ *  `first_key_mu_*`, the fewest pulses before any key exists. `QKDConfig` has the measured trade. Twin
+ *  of `qkd.bb84.INTENSITY_PRESETS`. */
+export type IntensityPreset = "block_key" | "first_key";
+export const INTENSITY_PRESETS: IntensityPreset[] = ["block_key", "first_key"];
+
+/** The intensities a fibre run sends at the pair `preset` names (unset: config `intensity_preset`),
+ *  as the `ChannelParams` fields `sourceOf` reads. Twin of `qkd.bb84.fibre_source`. */
+export function fibreIntensities(preset?: unknown): { muSignal: number; muDecoy: number } {
+  const cfg = qkdCfg();
+  const name = preset == null ? String(cfg.intensity_preset) : String(preset);
+  if (name === "block_key") return { muSignal: Number(cfg.mu_signal), muDecoy: Number(cfg.mu_decoy) };
+  if (name === "first_key") return { muSignal: Number(cfg.first_key_mu_signal), muDecoy: Number(cfg.first_key_mu_decoy) };
+  throw new Error(`intensities ${name}: one of ${INTENSITY_PRESETS.join(", ")}`);
+}
+
 /** Bob's detection probability per pulse averaged over what Alice sends - signal, decoy and the
  *  vacuum's remaining share - which is what the dead time sees. Twin of `bb84.py::click_mix`. */
 export function clickMix(src: { pSignal: number; pDecoy: number }, qMu: number, qNu: number,
@@ -827,20 +844,29 @@ export interface QcnnResult {
 // Workings: references/qcnn-inference-investigation.md.
 //
 // This is the predictor: weights fitted offline by scripts/train/qcnn_variational.py and shipped as
-// JSON. The circuit is a TREE of two-qubit blocks - one shared RY,RZ-CNOT-RZ,RY filter on DISJOINT pairs,
-// a CRY pool per pair, then per-survivor RZ and RY, with a CNOT ring over the survivors where more than
-// one survives (telecom's multiclass head) - so after every pooling stage the survivors are a
-// product of one-qubit mixed states and the whole circuit is classically simulable in linear time at any width
-// (Grant et al. 2018's tree tensor network; Bermejo et al., PRX Quantum 7, 020304, 2026). It runs
-// UNENCRYPTED on the plaintext features. Two deliberate differences from `qotpQcnnInfer`:
+// JSON. TWO circuits since Round 84, named by the artifact's `circuit.name` (absent = the tree):
+//
+//   tree     one shared RY,RZ-CNOT-RZ,RY filter on DISJOINT pairs, a CRY pool per pair, then
+//            per-survivor RZ and RY. After every pooling stage the survivors are a product of
+//            one-qubit mixed states, so the circuit is classically simulable in linear time at any
+//            width (Grant et al. 2018's tree tensor network). Finance and medical.
+//   hur-su4  Hur, Kim and Park's 15-angle SU(4) block on EVERY nearest-neighbour bond (boundary,
+//            even, odd), their pooling (RZ on the kept wire when the discarded one is 1, RX when it
+//            is 0), then the same per-survivor block and a CNOT ring over the survivors. Not a tree:
+//            neighbouring pairs are coupled before pooling. Telecom, at 7 and 8 wires.
+//
+// Both run UNENCRYPTED on the plaintext features, simulated exactly on 2^n amplitudes (n = 7 or 8),
+// so both are classically simulable at this size (Bermejo et al., PRX Quantum 7, 020304, 2026,
+// Sec. IV.B, for classical data in a product angle encoding). Two deliberate differences from
+// `qotpQcnnInfer`:
 //
 //   * No QOTP mask on this path. Undoing a Pauli frame through Clifford+T is not implemented here -
-//     `T X T†` is not Pauli, which is the difficulty Ortega & Martin-Delgado's scheme addresses - so
-//     hiding and prediction are kept separate rather than claiming a correction that does not exist.
-//     `qotpQcnnInfer` remains the pad-structure + T-count demonstration and still reports both honestly.
-//   * Features are standardised with the TRAINING split's mean and std shipped in the weights (or arrive
-//     as z-scores) and encoded as RY(tanh(z) * pi), a bounded angle: an unscaled WDBC "mean area" of 2500
-//     would wrap the Bloch sphere many times.
+//     `T X T-dagger` is not Pauli, which is the difficulty Ortega & Martin-Delgado's scheme addresses
+//     - so hiding and prediction are kept separate rather than claiming a correction that does not
+//     exist. `qotpQcnnInfer` remains the pad-structure + T-count demonstration.
+//   * Features are standardised with the TRAINING split's mean and std shipped in the weights and
+//     encoded as RY(c * tanh(z) * pi), a bounded angle: an unscaled WDBC "mean area" of 2500 would
+//     wrap the Bloch sphere many times. c is the artifact's `encoding_scale`.
 /** A trained QCNN's weights.
  *
  * `scale` and `bias` are SCALARS for the binary head and ARRAYS for the multiclass one. They were
@@ -849,6 +875,8 @@ export interface QcnnResult {
  */
 export interface QcnnWeights {
   n_qubits: number; layers: number;
+  /** Wires that carry a feature; the rest are left in |0>, as the trainer's zero pad leaves them. */
+  n_features?: number;
   /** FLAT since Round 46. Was `number[][]` of shape (layers, n_qubits) - one angle per wire,
    *  which is the per-position weighting a convolution replaces with one shared filter. */
   theta: number[];
@@ -866,7 +894,13 @@ export interface QcnnWeights {
   n_classes_predicted?: number | null;
   macro_f1_floors?: { uniform_random: number; majority_class: number; note?: string } | null;
   input_space: string; encoding: string;
+  /** c in RY(c * pi * tanh(z)). Absent on artifacts trained before Round 84, all of them at 1. */
+  encoding_scale?: number;
   feature_mean?: number[]; feature_std?: number[];
+  /** Which circuit `theta` belongs to (see the header above). Absent = the tree. The descriptive
+   *  strings are the artifact's own words for what it is, for any page that names the circuit. */
+  circuit?: { name: string; bonds?: string; block?: string; pooling?: string;
+              simulability?: string } | null;
   test_minority_f1?: number; classical_lr_minority_f1?: number;
   // Null in the regime they do not apply to, so `?? 0` on the wrong one shows nothing rather than
   // a plausible zero. Binary artifacts carry the minority pair, multiclass the macro pair.
@@ -875,11 +909,91 @@ export interface QcnnWeights {
   test_accuracy: number; classical_lr_accuracy: number; majority_baseline: number;
 }
 
+/** The circuits `qcnnInferTrained` implements: angles per conv round and per pool stage. */
+const QCNN_CIRCUITS: Record<string, { perRound: number; perPool: number }> = {
+  tree: { perRound: 8, perPool: 1 },
+  "hur-su4": { perRound: 15, perPool: 2 },
+};
+
+/** The parameter layout a circuit needs at a width, derived the way the trainer's `layer_plan()` and
+ *  `surviving_wires()` derive it: halve while a further halving still leaves the readout its wires. */
+export function qcnnLayout(nq: number, layers: number, readoutQubits: number, circuit: string) {
+  const c = QCNN_CIRCUITS[circuit];
+  if (!c) throw new Error(`QCNN artifact names circuit "${circuit}", which this simulator does not `
+    + `implement (it runs ${Object.keys(QCNN_CIRCUITS).join(", ")}). Refusing rather than running `
+    + `another circuit on its angles.`);
+  const keep = Math.max(1, readoutQubits);
+  let probe = nq, stages = 0;
+  while (Math.floor(probe / 2) >= keep && probe > 1) { stages++; probe = Math.floor(probe / 2); }
+  const conv = stages * layers * c.perRound, pool = stages * c.perPool, fc = 2 * probe;
+  return { stages, survivors: probe, conv, pool, fc, total: conv + pool + fc, ...c };
+}
+
+const finiteList = (v: unknown, n: number) =>
+  Array.isArray(v) && v.length >= n && v.slice(0, n).every((x) => typeof x === "number" && Number.isFinite(x));
+
+/** Every way an artifact can be truncated or malformed that would otherwise reach the readout as NaN
+ *  or as a silently different circuit, checked BEFORE anything is simulated. Throws; returns what the
+ *  circuit needs.
+ *
+ *  ROUND 84: the length check lived inside the multiclass branch only. A binary artifact with a short
+ *  `theta` indexed past its end, `undefined` became NaN through cos/sin, `NaN > 0` is false, and the
+ *  page reported class 0 with `<Z0>` = NaN - measured on the deploy bundle with 75 of finance's 77
+ *  angles. For finance class 0 is "not fraud" and for medical "benign", so a stale file labelled
+ *  every row the reassuring answer without a word. Every check here is one that NaN or a wrong layout
+ *  would otherwise hide. */
+export function validateQcnnWeights(w: QcnnWeights) {
+  const bad = (what: string): never => {
+    throw new Error(`QCNN artifact is malformed: ${what}. Refusing rather than reporting a class `
+      + `from NaN or from a circuit the angles were not trained for.`);
+  };
+  if (!w || typeof w !== "object") bad("no weights object");
+  const nq = w.n_qubits, layers = w.layers;
+  if (!Number.isInteger(nq) || nq < 2 || nq > 16) bad(`n_qubits is ${nq}, not an integer in 2..16`);
+  if (!Number.isInteger(layers) || layers < 1) bad(`layers is ${layers}, not a positive integer`);
+  const nf = w.n_features ?? nq;
+  if (!Number.isInteger(nf) || nf < 1 || nf > nq) bad(`n_features is ${w.n_features} for ${nq} wires`);
+  const m = w.readout?.readout_qubits ?? 0;
+  if (!Number.isInteger(m) || m < 0 || m > nq) bad(`readout_qubits is ${m}`);
+  const circuit = w.circuit?.name ?? "tree";
+  const lay = qcnnLayout(nq, layers, m, circuit);
+  if (!Array.isArray(w.theta) || w.theta.length !== lay.total || !finiteList(w.theta, lay.total)) {
+    bad(`theta carries ${Array.isArray(w.theta) ? w.theta.length : 0} angles${
+      Array.isArray(w.theta) && w.theta.length === lay.total ? " (some not finite numbers)" : ""}; the `
+      + `${circuit} circuit at ${nq} wires needs ${lay.total} (conv ${lay.conv} + pool ${lay.pool} `
+      + `+ fc 2x${lay.survivors})`);
+  }
+  if (m > 0) {
+    // A multiclass artifact with scalar scale/bias used to fall through to the BINARY readout and
+    // report a two-class answer for an eight-class model. It is one or the other, never a guess.
+    if (!finiteList(w.scale, 1 << m) || !finiteList(w.bias, 1 << m)
+        || (w.scale as number[]).length !== 1 << m || (w.bias as number[]).length !== 1 << m) {
+      bad(`a ${m}-qubit readout needs ${1 << m} finite scales and biases`);
+    }
+    if (m > lay.survivors) bad(`a ${m}-qubit readout needs ${m} survivors; pooling leaves ${lay.survivors}`);
+  } else if (typeof w.scale !== "number" || !Number.isFinite(w.scale)
+             || typeof w.bias !== "number" || !Number.isFinite(w.bias)) {
+    bad("the binary <Z0> head needs a finite scalar scale and bias");
+  }
+  const c = w.encoding_scale ?? 1;
+  if (typeof c !== "number" || !(c > 0 && c <= 1)) bad(`encoding_scale is ${w.encoding_scale}, not in (0, 1]`);
+  // Raw input without its moments used to skip standardisation in silence and encode log-amounts
+  // and areas straight into tanh, which saturates them - the defect that made the first trained
+  // model meaningless. Now it is refused.
+  if (w.input_space === "raw" && !(finiteList(w.feature_mean, nf) && finiteList(w.feature_std, nf))) {
+    bad(`raw input needs ${nf} finite feature_mean and feature_std`);
+  }
+  return { nq, layers, nf, m, circuit, c, ...lay };
+}
+
 export function qcnnInferTrained(features: number[], w: QcnnWeights):
     { expectation: number; cls: number; logit: number; qubits: number; latencyMs: number;
       probs?: number[]; className?: string } {
   const t0 = performance.now();
-  const nq = w.n_qubits, N = 1 << nq;
+  // FIRST, before a single amplitude is touched: a malformed artifact throws here, on the binary
+  // path as on the multiclass one.
+  const L = validateQcnnWeights(w);
+  const nq = L.nq, N = 1 << nq;
   const re = new Float64Array(N), im = new Float64Array(N);
   re[0] = 1;
   const g1 = (q: number, a: number, b: number, c: number, d: number) => {
@@ -906,21 +1020,26 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
       }
     }
   };
-  // The values arriving here are ALREADY z-scores - the bundled sample is StandardScaler over the
-  // full corpus - so no rescaling is applied, only the bounded encoding the model was trained with.
-  // A first version min-max scaled them against raw-unit ranges, which pinned seven of eight
-  // features to -1 and produced <Z0> = 0.0098: a degenerate state that made the trained path exactly
-  // as meaningless as the untrained one. tanh bounds an unbounded z-score without reordering it.
-  // Units differ per use case: medical arrives already StandardScaler-ed, finance arrives RAW and
-  // mixed-scale, so `input_space` decides whether to standardise with the shipped moments first.
+  // THE SPACE THE ARTIFACT DECLARES. `raw` - every shipped artifact since Round 84 - is
+  // standardised here with the artifact's OWN training moments; `zscore` is passed through. A first
+  // version min-max scaled z-scores against raw-unit ranges, which pinned seven of eight features to
+  // -1 and produced <Z0> = 0.0098: a degenerate state that made the trained path exactly as
+  // meaningless as the untrained one. tanh bounds an unbounded z-score without reordering it.
+  //
+  // ROUND 84: medical was `zscore`, fed the bundle's z-scores as they came - and those are NOT the
+  // trainer's: the bundle standardised with its own StandardScaler, the trainer with its shuffled
+  // training split, so 2 of 86 held-out classes differed from the trainer's. Medical now declares
+  // `raw`, like finance, so this line applies the artifact's constants and no others.
+  //
+  // Wires past `n_features` stay in |0>, as the trainer's zero pad leaves them, whatever the caller
+  // passed there. THE ANGLE is c * tanh(z) * pi with c = `encoding_scale`: at c = 1 a feature's two
+  // tails fold onto one state (RY(pi)|0> and RY(-pi)|0> are the same ray); medical and telecom ship
+  // c = 0.5.
   const raw = w.input_space === "raw";
   for (let q = 0; q < nq; q++) {
-    let v = features[q] ?? 0;
-    if (raw && w.feature_mean && w.feature_std) {
-      const sd = w.feature_std[q] || 1;
-      v = (v - (w.feature_mean[q] ?? 0)) / sd;
-    }
-    RY(q, Math.tanh(v) * Math.PI);
+    let v = q < L.nf ? (features[q] ?? 0) : 0;
+    if (raw && q < L.nf) v = (v - w.feature_mean![q]) / (w.feature_std![q] || 1);
+    RY(q, L.c * Math.tanh(v) * Math.PI);
   }
   // ---- QCNN, mirroring scripts/train/qcnn_variational.py exactly ----
   //
@@ -949,15 +1068,37 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
       re[j] = s * r0 + c * r1; im[j] = s * i0 + c * i1;
     }
   };
-  const readoutQ = Math.max(1, w.readout?.readout_qubits ?? 0);
-  // Stage count, derived the same way `layer_plan()` derives it.
-  let probe = nq, stages = 0;
-  while (Math.floor(probe / 2) >= readoutQ && probe > 1) { stages++; probe = Math.floor(probe / 2); }
-  const nConv = stages * w.layers * 8;
-  const convAt = (st: number, r: number, k: number) => w.theta[(st * w.layers + r) * 8 + k];
-  const poolAt = (st: number) => w.theta[nConv + st];
+  // The SU(4) circuit's extra gates: a controlled RZ, a controlled RX and an X, all on the pool.
+  const CRZ = (ctl: number, tgt: number, th: number) => {
+    const c = Math.cos(th / 2), s = Math.sin(th / 2), cb = 1 << ctl, tb = 1 << tgt;
+    for (let i = 0; i < N; i++) {
+      if (!(i & cb)) continue;
+      const r = re[i], m = im[i];
+      if (i & tb) { re[i] = c * r - s * m; im[i] = c * m + s * r; }
+      else { re[i] = c * r + s * m; im[i] = c * m - s * r; }
+    }
+  };
+  const CRX = (ctl: number, tgt: number, th: number) => {
+    // [[cos, -i sin], [-i sin, cos]] of th/2 on the target where the control is 1.
+    const c = Math.cos(th / 2), s = Math.sin(th / 2), cb = 1 << ctl, tb = 1 << tgt;
+    for (let i = 0; i < N; i++) {
+      if (!(i & cb) || (i & tb)) continue;
+      const j = i | tb;
+      const r0 = re[i], i0 = im[i], r1 = re[j], i1 = im[j];
+      re[i] = c * r0 + s * i1; im[i] = c * i0 - s * r1;
+      re[j] = s * i0 + c * r1; im[j] = -s * r0 + c * i1;
+    }
+  };
+  const X = (q: number) => g1(q, 0, 1, 1, 0);
+  // PennyLane's U3(t, p, l) up to a global phase: RZ(l), then RY(t), then RZ(p).
+  const U3 = (q: number, t: number, p: number, l: number) => { RZ(q, l); RY(q, t); RZ(q, p); };
+
+  const su4 = L.circuit === "hur-su4";
+  const per = L.perRound, layers = L.layers, stages = L.stages, nConv = L.conv, nPool = L.pool;
+  const convAt = (st: number, r: number, k: number) => w.theta[(st * layers + r) * per + k];
+  const poolAt = (st: number, k = 0) => w.theta[nConv + st * L.perPool + k];
   // The fully-connected block is a UNITARY ON THE REDUCED REGISTER, so each survivor carries its
-  // own (RY, RZ) pair: theta[nConv + stages + 2*j] and [... + 1]. It was a single shared scalar
+  // own (RY, RZ) pair: theta[nConv + nPool + 2*j] and [... + 1]. It was a single shared scalar
   // until Round 47, which is not what Cong, Choi & Lukin specify - translational invariance belongs
   // to the convolution layers, and F is a general unitary on what survives pooling.
   //
@@ -980,13 +1121,32 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
   // `for (const q of active) RY(q, w.theta[nConv + stages]);`) and running
   // `tests/test_the_qcnn_agrees_across_languages.py` fails FOUR gates, at maximum readout
   // differences 0.399170 (telecom-q7), 0.331032 (telecom), 0.016233 (medical) and 0.008699
-  // (finance), on the harness's own rows. That gate now asserts the identity numerically, so the
-  // next divergence cannot be silent.
-  const fcAt = (j: number, k: 0 | 1) => w.theta[nConv + stages + 2 * j + k];
+  // (finance), on the harness's own rows - figures of the Round 47 artifacts. That gate now asserts
+  // the identity numerically, so the next divergence cannot be silent.
+  const fcAt = (j: number, k: 0 | 1) => w.theta[nConv + nPool + 2 * j + k];
 
   let active = Array.from({ length: nq }, (_, i) => i);
   for (let st = 0; st < stages; st++) {
-    for (let r = 0; r < w.layers; r++) {                       // conv: ONE filter, every position
+    for (let r = 0; r < layers; r++) {                         // conv: ONE filter, every position
+      if (su4) {
+        // EVERY nearest-neighbour bond, in Hur et al.'s order: the boundary bond, the even bonds,
+        // the odd bonds (the trainer's `su4_bonds`). Two wires have one bond.
+        const n = active.length, bonds: [number, number][] = [];
+        if (n === 2) bonds.push([active[0], active[1]]);
+        else if (n > 2) {
+          bonds.push([active[0], active[n - 1]]);
+          for (let i = 0; i + 1 < n; i += 2) bonds.push([active[i], active[i + 1]]);
+          for (let i = 1; i + 1 < n; i += 2) bonds.push([active[i], active[i + 1]]);
+        }
+        const k = (j: number) => convAt(st, r, j);
+        for (const [a, b] of bonds) {                          // circuit 9: 15 angles, 3 CNOTs
+          U3(a, k(0), k(1), k(2)); U3(b, k(3), k(4), k(5));
+          CNOT(a, b); RY(a, k(6)); RZ(b, k(7));
+          CNOT(b, a); RY(a, k(8));
+          CNOT(a, b); U3(a, k(9), k(10), k(11)); U3(b, k(12), k(13), k(14));
+        }
+        continue;
+      }
       for (let i = 0; i + 1 < active.length; i += 2) {
         const a = active[i], b = active[i + 1];
         RY(a, convAt(st, r, 0)); RZ(a, convAt(st, r, 1));
@@ -998,15 +1158,21 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
         RZ(b, convAt(st, r, 7)); RY(b, convAt(st, r, 6));
       }
     }
-    const survivors: number[] = [];                            // pool: condition survivor on partner
+    // pool: condition each survivor on its discarded partner, then never touch the partner again.
+    // Tree: CRY. SU(4): RZ where the partner is 1, X on the partner, RX where it is now 1.
+    const pool = (ctl: number, tgt: number) => {
+      if (su4) { CRZ(ctl, tgt, poolAt(st, 0)); X(ctl); CRX(ctl, tgt, poolAt(st, 1)); }
+      else CRY(ctl, tgt, poolAt(st));
+    };
+    const survivors: number[] = [];
     for (let i = 0; i + 1 < active.length; i += 2) {
-      CRY(active[i + 1], active[i], poolAt(st));
+      pool(active[i + 1], active[i]);
       survivors.push(active[i]);
     }
     // An odd register has an orphan; it is pooled into the first survivor rather than passed
     // through untouched. Leaving it active made the widths disagree with the trainer's plan and
     // collapsed two artifacts outright - see the note in qcnn_variational.py.
-    if (active.length % 2 === 1) CRY(active[active.length - 1], active[0], poolAt(st));
+    if (active.length % 2 === 1) pool(active[active.length - 1], active[0]);
     active = survivors;
   }
   // RZ BEFORE RY - a diagonal gate applied last cannot be observed, because the only operations
@@ -1034,28 +1200,13 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
   // Reading it backwards permutes the classes by [0,4,2,6,1,5,3,7], of which FOUR are fixed points,
   // so a spot check on the obvious classes would pass. That is why the convention ships in the
   // weights rather than living only here.
-  const m = w.readout?.readout_qubits ?? 0;
-  if (m > 0 && Array.isArray(w.scale) && Array.isArray(w.bias)) {
+  const m = L.m;
+  if (m > 0) {
     const k = 1 << m, probs = new Float64Array(k);
     const rw = active.slice(0, m);                             // survivors, from the run just made
     // The artifact declares the same list. Checked rather than trusted: if the trainer pooled to a
     // different set than this circuit did, the class labels are permuted and every aggregate metric
     // stays numerically identical, which is the failure mode this whole file exists to catch.
-    // THE PARAMETER VECTOR MUST BE LONG ENOUGH FOR THE LAYOUT THIS RUN COMPUTED. Indexing past the
-    // end of `w.theta` gives `undefined`, which becomes NaN through cos/sin; `NaN > 0` is false, so
-    // the argmax loop never advances and the readout returns class 0 with an all-NaN probability
-    // vector. For telecom class 0 is `normal`, so a short artifact would not throw, would not warn,
-    // and would label every row on the page as benign traffic.
-    //
-    // The wires mismatch below already throws. This one did not, and it is the likelier of the two:
-    // a retrain that changes the parameter count without changing the survivor set produces exactly
-    // it. Latent today - telecom ships 57 angles and the layout wants 57 - and one artifact away.
-    const wantTheta = nConv + stages + 2 * active.length;
-    if (!Array.isArray(w.theta) || w.theta.length < wantTheta) {
-      throw new Error(`QCNN artifact carries ${w.theta?.length ?? 0} angles; this circuit at `
-        + `${nq} wires needs ${wantTheta} (conv ${nConv} + pool ${stages} + fc 2x${active.length}). `
-        + `Refusing rather than reporting class 0 from NaN probabilities.`);
-    }
     const declared = w.readout?.wires;
     if (Array.isArray(declared) && (declared.length !== rw.length
         || declared.some((d: number, j: number) => d !== rw[j]))) {
@@ -1158,8 +1309,8 @@ export function qotpQcnnInfer(features: number[], seed = 0, nQubits = 8,
   // the benchmark row withholds a ct/pt ratio. What is absent is the secrecy of the key material,
   // and the pad is never undone, so the readout below follows the key, not the input.
   //
-  // This is the disclosure `SecureAggregator.__post_init__` in `src/qsh/ai/federated.py` already
-  // makes about its pairwise keys, for the same reason: naming a scheme's information-theoretic
+  // It is the rule `SecureAggregator` in `src/qsh/ai/federated.py` states for a caller's fixed private
+  // keys (a fixed key is a public one), for the same reason: naming a scheme's information-theoretic
   // property beside a demo key reads as a claim about the run that just happened. Until Round 40
   // this line read "QOTP perfect-hiding mask" with no qualification.
   for (let q = 0; q < nQubits; q++) { if (u() < 0.5) X(q); if (u() < 0.5) Z(q); }

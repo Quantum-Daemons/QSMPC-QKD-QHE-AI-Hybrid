@@ -87,9 +87,13 @@ def test_shipped_weights_are_loadable_and_carry_a_headline_metric(usecase: str) 
     from qcnn_variational import param_count as _pc
 
     _ro = (w.get("readout") or {}).get("readout_qubits", 0) or 0
-    assert len(w["theta"]) == _pc(w["n_qubits"], _ro, w["layers"]), (
-        f'theta has {len(w["theta"])} parameters; the QCNN at {w["n_qubits"]} qubits, '
-        f'{w["layers"]} conv rounds and readout {_ro} requires {_pc(w["n_qubits"], _ro, w["layers"])}'
+    # ROUND 84: for the circuit the artifact names - telecom ships the SU(4) circuit, whose filter
+    # carries 15 angles and whose pool carries 2 - and the tree when it names none.
+    _arch = (w.get("circuit") or {}).get("name", "tree")
+    assert len(w["theta"]) == _pc(w["n_qubits"], _ro, w["layers"], _arch), (
+        f'theta has {len(w["theta"])} parameters; the {_arch} QCNN at {w["n_qubits"]} qubits, '
+        f'{w["layers"]} conv rounds and readout {_ro} requires '
+        f'{_pc(w["n_qubits"], _ro, w["layers"], _arch)}'
     )
     # Removed in Round 46 with the line above: "one angle per qubit" was the DEFINING property of
     # the per-wire ansatz the QCNN replaced. A convolution shares one filter across positions,

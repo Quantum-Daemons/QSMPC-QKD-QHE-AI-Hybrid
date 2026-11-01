@@ -63,7 +63,17 @@ def test_trained_qcnn_is_not_a_constant_predictor():
     if w is None:                     # weights are a build artefact; skip rather than fail CI
         pytest.skip("no trained QCNN weights for medical_fl")
     rng = np.random.default_rng(0)
-    cls = {infer(rng.normal(0, 1, w["n_qubits"]), w)[1] for _ in range(64)}
+
+    # In the units the artifact declares. Medical was `zscore` until Round 84 and is `raw` since, so
+    # the same standard-normal z-scores are handed over as raw values through its own moments - the
+    # circuit then sees exactly the z-scores it saw before.
+    def draw():
+        z = rng.normal(0, 1, w["n_qubits"])
+        if w.get("input_space") == "raw":
+            return np.asarray(w["feature_mean"]) + np.asarray(w["feature_std"]) * z
+        return z
+
+    cls = {infer(draw(), w)[1] for _ in range(64)}
     assert cls == {0, 1}, f"trained QCNN returned only {cls} - constant predictor"
 
 

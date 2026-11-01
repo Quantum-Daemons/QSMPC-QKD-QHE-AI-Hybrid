@@ -1,4 +1,4 @@
-r"""QSMS — Quantum Secure Multiparty Summation (Shamir + d-level QFT).
+r"""QSMS - Quantum Secure Multiparty Summation (Shamir + d-level QFT).
 
 Faithful simulation of the (t, n)-threshold protocol of
 Sutradhar, *Efficient Simulation of Quantum Secure Multiparty Computation*,
@@ -55,6 +55,22 @@ def shift_matrix(d: int, m: int) -> np.ndarray:
     return x
 
 
+def field_for_total(max_total: int, n: int) -> int:
+    """The smallest prime field that holds every total the inputs CAN reach, for ``n`` parties.
+
+    From the inputs' public range, never from their sum: a field chosen from the answer leaks the
+    answer's size (the prime pins the total to the gap below it) and makes "the sum did not wrap"
+    true by construction. A total can reach ``max_total``, so the field must exceed it, and it must
+    exceed ``n`` as the construction requires.
+
+    THIS USUALLY LEAVES THE PAPER'S FIELD. Sutradhar's d sits in ``n <= d <= 2n``; any count larger
+    than ``2n`` forces a larger d, and d**t then passes the statevector bound, so such runs use the
+    analytic sampler (:class:`QSMSResult.field_within_paper_bound` records which way a run went).
+    A sum that wraps mod d would be the wrong answer, so correctness wins.
+    """
+    return next_prime(max(int(max_total), int(n)) + 1)
+
+
 def _apply_single(state: np.ndarray, u: np.ndarray, axis: int) -> np.ndarray:
     """Apply single-qudit gate ``u`` to ``axis`` of a (d,)*t tensor state."""
     moved = np.moveaxis(state, axis, 0)
@@ -100,7 +116,10 @@ class QSMS:
         if self.prime is None:
             # Bertrand's postulate guarantees a prime in (n, 2n) for n > 1, so this always lands
             # inside the paper's admissible field. For n=7 it gives d=11, which is the value the
-            # paper's own worked example uses.
+            # paper's own worked example uses. It holds only totals below d: a caller whose secrets
+            # can sum past it must pass ``field_for_total`` (genomics' allele counts do, Round 84;
+            # GF(5) for four cohorts turns the full panel's pooled 528 into 3, and the committed
+            # slice's 153 into 3).
             self.prime = next_prime(self.n + 1)
         if not is_probable_prime(self.prime):
             raise ValueError("prime must be prime")

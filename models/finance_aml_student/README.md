@@ -1,6 +1,5 @@
 ---
-license: other
-license_name: cdla-sharing-1.0
+license: cdla-sharing-1.0
 library_name: onnx
 pipeline_tag: tabular-classification
 tags:
@@ -15,7 +14,7 @@ tags:
 
 logistic regression distilled from the gradient-boosting teacher
 
-Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid),
+Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid),
 a quantum-safe orchestration demo.
 This is the **encrypted-tier** model for the `finance_aml` use case: a
 distilled student small enough to evaluate under CKKS. Whether the public demo
@@ -42,7 +41,7 @@ teacher was measured offline, in plaintext.
 
 - **Target metric**: minority-class F1 (laundering)
 - **Baseline to beat**: 0.6323 - GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17). Same metric and corpus, different protocol: that figure uses a 60/20/20 split by transaction order and IBM's Graph Feature Preprocessor updated over the test window; this project tests on the last 30 percent of transactions (fit 56, validation 14) with its own graph features, whose structural block is fitted on the training window.
-- **Published ceiling**: 0.7401 - MEGA-PNA, arXiv:2412.00241v2 Table 2 'Minority-class F1 scores (%) on AML edge classification task', AML Small HI (74.01 +/- 1.55); the paper's v3 is accepted for publication in TMLR (2026). It is not the table's highest row: the same table prints MEGA-GenAgg at 74.88 +/- 0.38 and MEGA(PNA)-GIN at 74.69 +/- 0.50, and Multi-PNA (68.16 +/- 2.65) below all three.
+- **Published ceiling**: 0.7581 - Multi-FraudGT, the best AML Small HI row of Table 16 ('Minority class F1 scores (%) for six AML datasets') in Bilgi and Atasu, 'MEGA: Message Passing Neural Networks for Multigraphs with EdGe Attributes', TMLR (08/2026), arXiv:2412.00241v3: 75.81 +/- 0.75. In the same column the paper's own MEGA-PNA scores 74.01 +/- 1.55 and MEGA-GenAgg 74.48 +/- 0.84, and Multi-PNA 67.35 +/- 2.89; Small HI is the one AML dataset of the six where Multi-FraudGT is ahead of MEGA-PNA.
 - **Companion metric shown alongside**: `auprc` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
 ## Training data
@@ -56,7 +55,7 @@ teacher was measured offline, in plaintext.
 
 ## Notes and limitations
 
-Built to run under CKKS, but no code path here encrypts THIS model. The public page's CKKS step evaluates the 8-feature linear model bundled with the PaySim sample and re-scores this 33-parameter AMLworld student in plaintext ONNX; the full deployment's finance pipeline encrypts its own PaySim-trained surrogate. Its agreement with the teacher (`agreement`) is measured offline, at training time, in plaintext; each browser run measures `encrypted_agreement`, CKKS against plaintext for the model it encrypts.
+Encrypted on the public page since Round 84: its private-inference figure scores this 33-parameter AMLworld student under CKKS on the 8,192 test-window rows of finance_aml.gbm's sample (64 ciphertexts), against the same model in plaintext. The page's one-row CKKS step, its MPC argmax, the reported class and the SHAP bars still use the four-feature linear model bundled with the PaySim sample (log amount, a TRANSFER or CASH_OUT flag, a night-hour flag and a first-seen-payee flag; no feature built from PaySim's balance columns), and the full deployment's finance pipeline encrypts its own PaySim-trained surrogate over the same four. Its agreement with the teacher (`agreement`) is measured offline, at training time, in plaintext; each browser run measures `encrypted_agreement`, CKKS against plaintext for the model it encrypts.
 
 ## Honest scope
 

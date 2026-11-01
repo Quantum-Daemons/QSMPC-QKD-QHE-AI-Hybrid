@@ -83,8 +83,11 @@ def test_pqc_only_runs_no_quantum_stage_on_satellite() -> None:
     r = _satellite({"qkd": "pqc-only"})
     m = r["metrics"]
     for name in ("qber", "secure_key_bits", "skr_per_pulse", "qkd_mixed", "qsdc_secrecy_capacity",
-                 "qsdc_link_budget_limited", "qsdc_eavesdrop_detected", "telemetry_anomaly_detected"):
+                 "qsdc_link_budget_limited", "qsdc_statistics_limited", "qsdc_eavesdrop_detected"):
         assert name not in m, f"{name} was reported under the PQC-only profile"
+    # Not a quantum stage (Round 84): the CKKS check scores a bundled OPS-SAT-AD segment, not the QSDC
+    # payload, so it runs on every profile, as the browser's plaintext twin does under PQC-only.
+    assert m["telemetry_anomaly_detected"] in (0, 1)
     logs = " ".join(e.get("message", "") for e in r.get("events", []) if e.get("type") == "log")
     if logs:   # the demo returns its events; when it does, the skip says why
         assert "PQC-only" in logs
