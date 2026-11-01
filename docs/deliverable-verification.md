@@ -7808,6 +7808,14 @@ walked in Chrome 152.
 - The signed record's `fhe` and `mpc` fields are not displayed on the page; they are checked in node
   (`tests/test_r84_signed_record_names_what_ran.py`).
 
+**JupyterLite, marimo and pyvista-wasm, re-checked** (2026-11-01, the Round 55 decision's four
+reopening conditions). The first still fails: Pyodide 314.0.7 (2026-09-14) ships 357 packages and
+none of `tenseal`, `openfhe`, `seal`, `concrete-ml`, `onnxruntime` or `onnx` (its `pyodide-lock.json`),
+and on PyPI none of TenSEAL 0.3.18, OpenFHE 1.6.1, concrete-ml 1.9.0 or onnxruntime 1.31.1 has ever
+published an emscripten or Pyodide wheel. marimo's offline issue #575 is still open (last updated
+2026-09-30); pyvista-wasm is at 0.16.0 (2026-10-24), and this project still has no three-dimensional
+data. Declined as before.
+
 BUSINESS DOC RECONCILED Round 84. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 17 reads.
