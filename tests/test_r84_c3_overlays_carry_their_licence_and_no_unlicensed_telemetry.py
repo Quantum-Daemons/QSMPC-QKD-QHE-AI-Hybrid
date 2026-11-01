@@ -38,7 +38,8 @@ USECASES = ["finance", "genomics", "medical", "satellite", "telecom"]
 #: Licence families whose text asks for a link and a change note when the data is shared.
 NEEDS_LINK = {"CC-BY-4.0": "creativecommons.org/licenses/by/4.0",
               "CDLA-Sharing-1.0": "cdla.dev/sharing-1-0",
-              "CC0-1.0": "creativecommons.org/publicdomain/zero/1.0"}
+              "CC0-1.0": "creativecommons.org/publicdomain/zero/1.0",
+              "Apache-2.0": "apache.org/licenses/LICENSE-2.0"}
 
 
 def _overlay(uc: str) -> dict:
@@ -53,9 +54,9 @@ def test_each_overlay_carries_licence_link_and_change_note(uc: str) -> None:
         assert NEEDS_LINK[d["licence"]] in (d.get("licence_url") or ""), (
             f"{uc}/real_2d.json names {d['licence']} with no link to it: {d.get('licence_url')!r}")
     else:
-        assert d["licence"].startswith("no licence granted") and d.get("licence_url") is None, (
-            f"{uc}: a licence string that is neither a linked licence nor the registry's 'no licence "
-            f"granted': {d['licence']!r}")
+        # Every overlay names a linked licence since Round 84, when the telecom rows the repository
+        # generates were released under its Apache-2.0 (until then: "no licence granted", no link).
+        raise AssertionError(f"{uc}: a licence string with no link recorded here: {d['licence']!r}")
 
 
 @pytest.mark.parametrize("uc", USECASES)

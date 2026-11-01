@@ -104,6 +104,7 @@ SEPARABILITY_ESTIMATOR = "5-fold cross-validated two-feature random forest over 
 CC_BY_4 = "https://creativecommons.org/licenses/by/4.0/"
 CC0_1 = "https://creativecommons.org/publicdomain/zero/1.0/"
 CDLA_SHARING_1 = "https://cdla.dev/sharing-1-0/"
+APACHE_2 = "https://www.apache.org/licenses/LICENSE-2.0"
 
 
 def _registry():
@@ -576,7 +577,7 @@ def telecom() -> dict:
                       "card encrypts the student on exactly these rows. The QCNNs on this page train "
                       "on a different draw (seed 0).",
         "licence": reg.DS_QKD_ATTACK_SYNTH.licence,
-        "licence_url": None,
+        "licence_url": APACHE_2,
         "attribution": "Class structure per Al-Kuwari et al., arXiv:2509.14282. The rows "
                        "themselves are produced by this repository's own generator.",
         "modifications": "Two of the 7 features, rounded to 4 significant figures; the 8 classes "

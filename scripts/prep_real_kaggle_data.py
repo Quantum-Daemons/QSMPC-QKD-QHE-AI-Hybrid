@@ -29,7 +29,6 @@ Then:  python scripts/prep_real_kaggle_data.py --src /tmp/kaggle_dl
 from __future__ import annotations
 
 import argparse
-import ast
 import sys
 from pathlib import Path
 
@@ -58,6 +57,10 @@ FIN_TSV_HEADER = (
     "# PaySim simulator output (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; Lopez-Rojas et al. 2016). PaySim is a",
     "# SIMULATOR - these are synthetic transactions from aggregated real mobile-money logs, not real",
     "# transactions. Columns = 8 AML features (PaySim-derived) + isFraud.",
+    "# Licence: CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/. Credit: E. A. Lopez-Rojas,",
+    "# A. Elmir and S. Axelsson, 'PaySim: A financial mobile money simulator for fraud detection', EMSS 2016.",
+    "# Changes: 4,000 rows drawn at random from the Kaggle file (200 frauds, seed 0), each one the eight",
+    "# quantities _paysim_features computes from PaySim's fields, written to 5 decimals.",
     "# device_risk and geo_mismatch are computed from PaySim's balance columns (oldbalanceOrg,",
     "# newbalanceOrig, oldbalanceDest, newbalanceDest), which the dataset's description says must not be",
     "# used for fraud detection because fraudulent transactions are cancelled. The demo's linear model",

@@ -107,7 +107,7 @@
    ]
   }
  },
- "provenance": "PaySim simulator output (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; Lopez-Rojas et al. 2016) - SYNTHETIC transactions from aggregated real mobile-money logs; the four columns the finance linear model reads (amount, cross_border, night_tx, new_payee), none built from PaySim's balance columns",
+ "provenance": "PaySim simulator output (Kaggle ealaxi/paysim1, CC-BY-SA-4.0; Lopez-Rojas et al. 2016) - SYNTHETIC transactions from aggregated real mobile-money logs; the four columns the finance linear model reads (amount, cross_border, night_tx, new_payee), none built from PaySim's balance columns. Licence: CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/. Credit: E. A. Lopez-Rojas, A. Elmir and S. Axelsson, 'PaySim: A financial mobile money simulator for fraud detection', EMSS 2016.",
  "training": {
   "architecture": "qcnn-tree",
   "layers": 3,

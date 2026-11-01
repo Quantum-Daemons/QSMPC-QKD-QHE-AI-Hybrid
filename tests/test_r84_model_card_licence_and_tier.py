@@ -35,6 +35,9 @@ def test_every_card_names_its_licence_as_the_hub_reads_it() -> None:
             assert "license: cc-by-4.0" in front, spec.key
         elif spec.dataset.licence == "CDLA-Sharing-1.0":
             assert "license: cdla-sharing-1.0" in front, spec.key
+        elif spec.dataset.licence == "Apache-2.0":
+            # The repository's own licence for the data it generates (Round 84, the owner's choice).
+            assert "license: apache-2.0" in front, spec.key
         else:
             assert "license: other" in front and "license_link: https://" in front, (
                 f"{spec.key}: `license: other` without a license_link")

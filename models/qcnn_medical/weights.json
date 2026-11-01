@@ -144,7 +144,7 @@
    ]
   }
  },
- "provenance": "Wisconsin Diagnostic Breast Cancer (UCI, CC-BY-4.0), 8 of 30 features",
+ "provenance": "Wisconsin Diagnostic Breast Cancer (UCI, CC-BY-4.0, https://creativecommons.org/licenses/by/4.0/), 8 of 30 features. Credit: Wolberg, Mangasarian, Street & Street, 'Breast Cancer Wisconsin (Diagnostic)', UCI Machine Learning Repository (1993), doi:10.24432/C5DW2B.",
  "training": {
   "architecture": "qcnn-tree",
   "layers": 3,

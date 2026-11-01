@@ -168,7 +168,8 @@ REPO_URL = "https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid"
 
 #: Licences the Hub lists by identifier: a card naming one of these uses it directly, so the Hub
 #: indexes the repo under that licence instead of "other" (Round 84; Hub model-card specification).
-_HUB_LICENCE_IDS = {"CDLA-Sharing-1.0": "cdla-sharing-1.0", "CC-BY-4.0": "cc-by-4.0"}
+_HUB_LICENCE_IDS = {"CDLA-Sharing-1.0": "cdla-sharing-1.0", "CC-BY-4.0": "cc-by-4.0",
+                    "Apache-2.0": "apache-2.0"}
 
 #: For the rest, `license: other` takes a name and a link (the Hub's documented practice).
 _LICENCE_LINKS = {

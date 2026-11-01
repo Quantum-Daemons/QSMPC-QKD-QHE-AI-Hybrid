@@ -51,6 +51,7 @@ WEB = REPO / "web" / "public" / "data"
 
 CC_BY_4 = "https://creativecommons.org/licenses/by/4.0/"
 CDLA_SHARING_1 = "https://cdla.dev/sharing-1-0/"
+APACHE_2 = "https://www.apache.org/licenses/LICENSE-2.0"
 
 #: The OPS-SAT-AD dataset record's own credit, beside the article the registry credits. CC BY 4.0
 #: asks for the creator "in the manner requested", and the Zenodo record names its four creators in
@@ -200,7 +201,7 @@ def telecom() -> None:
         "fit_note": ("telecom_ids.qml was fitted, and telecom_ids.student distilled, on the other "
                      "1,800 rows of the same draw; neither saw these 600."),
         "licence": DS_QKD_ATTACK_SYNTH.licence,
-        "licence_url": None,
+        "licence_url": APACHE_2,
         "attribution": ("Class structure per Al-Kuwari et al., arXiv:2509.14282. The rows are "
                         "produced by this repository's own generator."),
         "modifications": "Rounded to 7 significant figures.",

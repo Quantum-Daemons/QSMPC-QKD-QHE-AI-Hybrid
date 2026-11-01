@@ -1,6 +1,10 @@
 {
  "task": "classification",
  "provenance": "OPS-SAT-AD (Ruszczak et al., Scientific Data 12, 2025; Zenodo 10.5281/zenodo.12588359, CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat. The benchmark's own test partition entire and unsampled, the published ONNX graph applies the quadratic expansion and the z-scoring itself, so these are raw feature values and the caller applies nothing.",
+ "licence": "CC-BY-4.0",
+ "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+ "attribution": "Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, CC BY 4.0.",
+ "modifications": "The 19 published per-segment features of the benchmark's test partition, all 529 segments, rounded to 6 decimals, with the published labels.",
  "input": {
   "shape": [
    1,
