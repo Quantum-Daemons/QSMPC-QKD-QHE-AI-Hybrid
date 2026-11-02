@@ -113,8 +113,11 @@ def _run(export: str, module: str, script: str) -> dict:
 
 
 def _q(logit: float) -> int:
-    """clientMPC.ts's quantisation: clamp(round((logit + 8) * 64), 0, 1024), with JS rounding."""
-    return min(1024, max(0, math.floor((logit + 8) * 64 + 0.5)))
+    """clientMPC.ts's quantisation: clamp(round((logit + 512) * 2^20), 0, 2^30), with JS rounding.
+
+    Steps of 2^-20 over +-512 since Round 86 (review PI-4); 1/64 over +-8 before it.
+    """
+    return min(2**30, max(0, math.floor((logit + 512) * 2**20 + 0.5)))
 
 
 def test_the_argmax_shares_are_uniform_mod_2_32_and_fresh() -> None:

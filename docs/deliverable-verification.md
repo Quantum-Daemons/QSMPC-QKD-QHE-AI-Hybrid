@@ -8102,6 +8102,76 @@ has a name; links in running text are underlined.
   run on every use-case page; `/value` carries 26 outbound links. The README's eleven screenshots were
   taken again from it, and five changed.
 
+**The private-inference review (2026-11-02), by the owner's order.** A read-only review of both tiers,
+run from a scratchpad against 85e12a7: a Python twin of `clientFHE.ts` on TenSEAL's SEAL, a node harness
+on the repository's own `clientFHE.ts` and node-seal 7.0.0, and slot dumps on the server. The owner chose
+to fix every confirmed finding, to record SEAL's gap and upgrade on release, and to plan a CKKS-friendly
+student rather than retrain. Branch `round86-private-inference`, from `main` at 6ea7807.
+- **PI-1, the full deployment's reported class came from an unmasked decryption.** The linear model's
+  logits were read from the whole decrypted rotate-and-sum, bias added in the clear, so slots 1 onward
+  held its partial sums, and slot k minus slot k + 1 is x_k * w_k: a key holder who knows x reads the
+  weight row off one query. Round 84 masked the same leak in the hybrid's dense layer and convolution;
+  `encrypted_linear_inference`, which the private-inference stage, the satellite telemetry check, the
+  two-party demo and `run_classical` call, was the twin it did not reach, while the threat model said
+  every slot the key holder decodes is masked. Each logit now goes through `masked_decrypt`: the bias
+  enters slot 0 under encryption and every other slot an independent 2^30 mask. The logit's error
+  barely moves: over 200 queries a median of 6.3e-7 masked against 5.4e-7 unmasked, at most 1.2e-6
+  against 1.1e-6, since the dot product's rescale dominates it. Decoding every slot with the key holder's own key, no linear combination of the
+  other slots predicts any product over 240 queries, and the same detector recovers the products
+  exactly from the unmasked reference path. It runs on OpenFHE too. An AST scan names every server CKKS
+  decryption: the masked one and three exceptions, each with its reason (the two documented
+  plaintext fallbacks, and genomics' panel check, whose other slots hold products of the published
+  PGS weights).
+- **PI-3, non-finite values.** A NaN feature encoded to a silently wrong logit that no precision check
+  flagged (each compared with `>= 1`, which NaN fails), and +-Infinity trapped node-seal's WASM and left
+  the instance unusable. Every encode in `clientFHE.ts` now refuses a non-finite value or scale by name,
+  and the checks read `!(err < 1)`. Measured in node, seeded: without the check a NaN feature decrypted
+  to the bias, and Infinity raised "memory access out of bounds".
+- **PI-4, the garbled-circuit argmax's step.** Logits were quantised in steps of 1/64 over +-8, so a
+  closer pair tied and went to the lower index, and the self-test `mpc_matches_clear` shared the
+  quantisation. The step is 2^-20 over +-512 now (at most 2^30, so the u32 comparison is unchanged),
+  and `mpc_matches_float_argmax` compares with the float argmax. No shipped row flipped at the old
+  step, by luck rather than design: the closest pair, a PaySim row's logits 0.0071 apart, tied there
+  and went to the lower index, which was its class.
+- **PI-5, the browser's flood.** It was added as a plaintext, so the decrypted ciphertext carried no
+  fresh encryption randomness. It is encrypted under the public key and added, as the server's masks
+  are.
+- **PI-6, PI-10, PI-11, PI-12, what a page says.** The genomics log said the other slots hold readable
+  partial sums, which has been false since Round 84's output mask. The medical CNN's metric and log
+  say its encrypted input is the page's tabular row tiled to fill the image, so its class is not a
+  diagnosis. The two-party demo's phase is "Placeholder linear score (plaintext)" in the browser and
+  "CKKS timing on a random model (single party)" on the server; both read "Private inference". The
+  agreement rates print to four places (at two, up to 40 disagreeing rows of 8,192 printed 1.00), and
+  the held-out accuracy carries its majority baseline (finance's 0.9695 sat beside a 0.98 majority).
+- **PI-7, PI-8, PI-9, the documents.** The server's flood is a fixed 2^30 whose margin over the
+  measured error is reported, not a flood sized from that error. The two tiers' ct/pt count different
+  bytes: TenSEAL's `serialize()` compresses (about 334,000 bytes), and the browser counts node-seal's
+  uncompressed 393,329. The reaction attack of ePrint 2026/2490 is scoped to any evaluator holding a
+  full rotation key set, which TenSEAL's default `generate_galois_keys()` gives, and "flooding does not
+  close it" is marked as this project's reading: the abstract does not discuss flooding.
+- **PI-15, four FHE config fields nothing read**, `backend`, `max_level` (12, where the chain allows two
+  rescales), `use_gpu` and `use_bootstrap`, are removed. The review named two; the other two were the
+  same defect beside them.
+- **PI-17.** A rejected CKKS init was cached, so one transient wasm-load failure disabled CKKS for the
+  life of the tab. It is retried now; in node, a loader that fails once is followed by a run that
+  succeeds.
+- **PI-2, SEAL, recorded and watched.** The browser runs node-seal 7.0.0 (SEAL 4.1.2) and this
+  environment TenSEAL 0.3.16 (SEAL 4.1.1); TenSEAL 0.3.17 and 0.3.18 bundle SEAL 4.3.3, and none bundles
+  4.4.0 or later. node-seal's main branch moved to SEAL 4.7.2 on 2026-10-31 (PR #168, 7.1.0 in its
+  changelog), and npm still served 7.0.0 on 2026-11-02. Neither tier deserializes a SEAL object it did
+  not create. `scripts/audit_deps.sh seal`, a new daily job in the audit workflow, fails once npm's
+  newest node-seal is not the locked one.
+- `tests/test_r86_private_inference_review.py` holds each of these, and
+  `tests/test_secret_sharing_masks_come_from_the_csprng.py` reconstructs the new quantisation.
+
+**Open, carried (the review's).**
+- Not fixed in this round, and informational: PI-13 (the browser flood's per-slot bound of 1e-14
+  holds on the test layouts, not on genomics' data, 1.25e-14 a slot), PI-14 (the imaginary parts are
+  shown to carry nothing on TenSEAL's SEAL only; when node-seal is upgraded, check that the encoded
+  mask's coefficients are antisymmetric) and PI-16 (the students' records carry no clean commit).
+- The node-seal and TenSEAL upgrades, on release (above).
+- A CKKS-friendly student, planned and not started (`docs/findings.md`, "Concerns & recommendations").
+
 BUSINESS DOC RECONCILED Round 86. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 17 reads.

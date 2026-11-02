@@ -46,16 +46,15 @@ qhe:
   sk_eps: 1.0e-3
 
 fhe:
-  backend: tenseal          # tenseal | openfhe   (commercial-OK; HEonGPU GPU via benchmark glue)
   # THIS file is what runs: load_config() overlays it onto the dataclass defaults, so editing
   # src/qsh/config/defaults.py alone changes nothing. Round 38 raised this to 16384, measured
   # the result and put it back - see FHEConfig for the numbers.
   poly_modulus_degree: 8192
   coeff_mod_bit_sizes: [60, 40, 40, 60]
   global_scale_bits: 40
-  max_level: 12
-  use_gpu: true
-  use_bootstrap: false      # OpenFHE CKKS EvalBootstrap (deeper circuits)
+  # Round 86 (review PI-15): backend, max_level, use_gpu and use_bootstrap stood here, and nothing
+  # read them. The backend is the run's `fhe` choice (tenseal-cpu | openfhe-cpu); bootstrapping is
+  # OpenFHEBackend(use_bootstrap=True); this chain allows two rescales, not twelve.
 
 federated:
   rounds: 8

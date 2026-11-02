@@ -98,7 +98,25 @@ async function init(): Promise<SealCtx> {
 }
 
 function getCtx(): Promise<SealCtx> {
-  return (_ctx ??= init());
+  // A rejected init is not kept (Round 86, review PI-17): the promise was cached whether it resolved or
+  // not, so one transient WASM-load failure disabled CKKS for the rest of the tab's life and every
+  // later run reported `failed: "fhe"`. The next call retries.
+  return (_ctx ??= init().catch((e) => { _ctx = null; throw e; }));
+}
+
+/**
+ * Every value and the scale, finite, before they reach the encoder (Round 86, review PI-3). NaN encoded
+ * to a silently wrong result that no precision check flagged (every such check compared with `>=`,
+ * which NaN fails), and +-Infinity trapped node-seal's WASM. A non-finite input is refused here, by name.
+ */
+function encodeFinite(encoder: any, values: ArrayLike<number>, scale: number, pt: any, what: string): void {
+  if (!Number.isFinite(scale)) throw new Error(`CKKS ${what}: scale ${scale} is not a finite number`);
+  for (let i = 0; i < values.length; i++) {
+    if (!Number.isFinite(values[i])) {
+      throw new Error(`CKKS ${what}: value ${i} is ${values[i]}, not a finite number; CKKS cannot encode it`);
+    }
+  }
+  encoder.encode(values, scale, pt);
 }
 
 /** Warm the CKKS context (keygen) so the first inference doesn't pay it. */
@@ -218,7 +236,7 @@ function outputMask(c: SealCtx, stride: number, count: number): any {
     const m = new Float64Array(c.slots);
     for (let i = 0; i < count; i++) m[i * stride] = 1;
     pt = new c.seal.Plaintext();
-    c.encoder.encode(m, c.scale, pt);
+    encodeFinite(c.encoder, m, c.scale, pt, "m");
     c.masks.set(key, pt);
   }
   return pt;
@@ -260,8 +278,9 @@ class SealScope {
  *
  *   1. multiply by a 0/1 mask, 1 at each output slot (`outputMask`): every other slot drops to its
  *      encoding residual, about 1e-11 of its partial sum;
- *   2. add ONE plaintext that carries the bias at each output slot and an independent uniform flood
- *      of half-width 2^CKKS_FLOOD_BITS at every other slot, drawn fresh per call (see the constant);
+ *   2. add ONE ciphertext, the public-key encryption of a plaintext that carries the bias at each
+ *      output slot and an independent uniform flood of half-width 2^CKKS_FLOOD_BITS at every other
+ *      slot, drawn fresh per call (see the constant); encrypted, so the result is re-randomised;
  *   3. decrypt, and read the output slots.
  *
  * What it does not hide: each output's own CKKS approximation error, of order 1e-9 to 1e-8, which
@@ -271,7 +290,7 @@ class SealScope {
  */
 function decryptOutputs(c: SealCtx, acc: any, stride: number, count: number,
                         bias: (i: number) => number): number[] {
-  const { seal, encoder, decryptor, evaluator, slots } = c;
+  const { seal, encoder, encryptor, decryptor, evaluator, slots } = c;
   // Freed when this returns: three full-ring objects per output, and the WASM heap is not a pressure
   // the JS collector sees. "node-seal's finalizers would free them eventually" stood here until
   // Round 85; nothing frees them but `delete` (see `SealScope`).
@@ -282,10 +301,17 @@ function decryptOutputs(c: SealCtx, acc: any, stride: number, count: number,
     const add = uniformFlood(slots, CKKS_FLOOD_BITS);
     for (let i = 0; i < count; i++) add[i * stride] = bias(i);
     const ptAdd = sc.pt();
-    encoder.encode(add, masked.scale(), ptAdd);
-    evaluator.addPlainInplace(masked, ptAdd);
+    encodeFinite(encoder, add, masked.scale(), ptAdd, "add");
+    // Added ENCRYPTED, under the public key (Round 86, review PI-5): added as a plaintext, it left the
+    // decrypted ciphertext with no fresh encryption randomness, so its noise was a deterministic
+    // function of the computation. The server's `add_plain_slots` encrypts its masks for the same
+    // reason. Same level and scale: nothing has been rescaled yet.
+    const ctAdd = sc.ct();
+    encryptor.encrypt(ptAdd, ctAdd);
+    const flooded = sc.ct();
+    evaluator.add(masked, ctAdd, flooded);
     const out = sc.pt();
-    decryptor.decrypt(masked, out);
+    decryptor.decrypt(flooded, out);
     const dec = encoder.decodeFloat64(out);
     return Array.from({ length: count }, (_, i) => dec[i * stride]);
   } finally {
@@ -307,7 +333,7 @@ async function batchCiphertext(
   const sc = new SealScope(seal);                    // finance fills 64 of these a run (`SealScope`)
   try {
     const ptX = sc.pt();
-    encoder.encode(xPad, scale, ptX);
+    encodeFinite(encoder, xPad, scale, ptX, "xPad");
     const ctX = sc.ct();
     encryptor.encrypt(ptX, ctX);
     let ctBytes: number | null = null;
@@ -325,7 +351,7 @@ async function batchCiphertext(
         for (let i = 0; i < n; i++) wPad[r * sumWidth + i] = W[j][i] ?? 0;   // TILED at the same stride
       }
       const ptW = sc.pt();
-      encoder.encode(wPad, scale, ptW);
+      encodeFinite(encoder, wPad, scale, ptW, "wPad");
       let acc = sc.ct();
       evaluator.multiplyPlain(ctX, ptW, acc);
       multiplies++;
@@ -456,6 +482,9 @@ export interface HeldOutAgreement {
   /** Against the TRUE labels, over the scored rows. */
   encryptedAccuracy: number | null;
   plaintextAccuracy: number | null;
+  /** The share of the most common true label over the same rows: what always calling it would score,
+   *  printed beside the accuracy (Round 86, review PI-12; finance's 0.9695 sat beside a 0.98 majority). */
+  majorityBaseline: number | null;
 }
 
 /**
@@ -508,6 +537,9 @@ export async function encryptedHeldOutAgreement(held: HeldOutCorpus): Promise<He
   const labels = held.labels.slice(0, batch.rows);
   const acc = (cls: number[]) => (labels.length
     ? cls.reduce((a, v, i) => a + (v === labels[i] ? 1 : 0), 0) / labels.length : null);
+  const counts = new Map<number, number>();
+  for (const l of labels) counts.set(l, (counts.get(l) ?? 0) + 1);
+  const majorityBaseline = labels.length ? Math.max(...counts.values()) / labels.length : null;
   const binary = W.length === 2;
   const pts = held.plane?.points;
   const plot: EncryptedAgreementPlot = {
@@ -530,13 +562,13 @@ export async function encryptedHeldOutAgreement(held: HeldOutCorpus): Promise<He
     smallestMargin, flipBoundFactor, scoreKind: binary ? "logit" : "winning-score",
     classNames: held.classNames,
     plane: held.plane ? { x: held.plane.x, y: held.plane.y } : null,
-    accuracy: { encrypted: acc(encCls), plaintext: acc(plainCls) },
+    accuracy: { encrypted: acc(encCls), plaintext: acc(plainCls), majority: majorityBaseline },
   };
   return {
     plot, batch, mismatches: flipped.length, tieRows, decidable, flippedDecidable, flipMarginMax,
     smallestMargin, medianAbsError, precisionBits: bitsOf(batch.maxAbsError),
     medianPrecisionBits: bitsOf(medianAbsError), flipImpossible,
-    encryptedAccuracy: acc(encCls), plaintextAccuracy: acc(plainCls),
+    encryptedAccuracy: acc(encCls), plaintextAccuracy: acc(plainCls), majorityBaseline,
   };
 }
 
@@ -560,7 +592,7 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
   let rotations = 0, multiplies = 0, rotateMs = 0;
   try {
     const ptX = sc.pt();
-    encoder.encode(xPad, scale, ptX);
+    encodeFinite(encoder, xPad, scale, ptX, "xPad");
     const ctX = sc.ct();
     encryptor.encrypt(ptX, ctX);
     // serialized ciphertext size (node-seal v7: saveToArray(ComprModeType)) → genuine ct/pt ratio.
@@ -591,7 +623,7 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
       }
       const wPad = Float64Array.from({ length: slots }, (_, i) => (i < n ? (W[j][i] ?? 0) : 0));
       const ptW = sc.pt();
-      encoder.encode(wPad, scale, ptW);
+      encodeFinite(encoder, wPad, scale, ptW, "wPad");
       let acc = sc.ct();
       evaluator.multiplyPlain(ctX, ptW, acc);                     // encrypted element-wise W_j ⊙ x
       multiplies++;
@@ -662,12 +694,12 @@ export async function encryptedDense(W: number[][], b: number[], x: number[]): P
         for (let i = 0; i < n; i++) { xRep[j * block + i] = x[i] ?? 0; wTile[j * block + i] = row[i] ?? 0; }
       });
       const ptX = sc.pt();
-      encoder.encode(xRep, scale, ptX);
+      encodeFinite(encoder, xRep, scale, ptX, "xRep");
       const ctX = sc.ct();
       encryptor.encrypt(ptX, ctX);
       if (ctBytes == null) { try { ctBytes = ctX.saveToArray(seal.ComprModeType.none).length; } catch { ctBytes = null; } }
       const ptW = sc.pt();
-      encoder.encode(wTile, scale, ptW);
+      encodeFinite(encoder, wTile, scale, ptW, "wTile");
       let acc = sc.ct();
       evaluator.multiplyPlain(ctX, ptW, acc);
       multiplies++;
@@ -801,7 +833,7 @@ export async function encryptedConv2d(
   const maps: number[][] = [];
   try {
     const ptX = sc.pt();
-    encoder.encode(packed, scale, ptX);
+    encodeFinite(encoder, packed, scale, ptX, "packed");
     const ctX = sc.ct();
     encryptor.encrypt(ptX, ctX);
     // null, not 0 - see the note on the linear path above: a ct/pt ratio of 0 is impossible, and it
@@ -817,7 +849,7 @@ export async function encryptedConv2d(
         }
       }
       const ptW = sc.pt();
-      encoder.encode(tiled, scale, ptW);
+      encodeFinite(encoder, tiled, scale, ptW, "tiled");
       let acc = sc.ct();
       evaluator.multiplyPlain(ctX, ptW, acc);
       multiplies++;

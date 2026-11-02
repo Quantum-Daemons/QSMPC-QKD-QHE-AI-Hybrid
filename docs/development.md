@@ -220,7 +220,13 @@ is self-audited and carries no side-channel protection, so this is conformance e
 production assurance. Also `node-seal` 7.0.0, which bundles **Microsoft
 SEAL 4.1.2**. Verified 2026-10-30: node-seal 7.0.0 (2025-11-08) is still the newest node-seal on npm,
 so this is not a stale pin here - but the gap to upstream SEAL is wide and widening: Microsoft SEAL
-is at **4.7.2 (2026-10-28)**. `CHANGES.md`
+is at **4.7.2 (2026-10-28)**. node-seal's main branch merged SEAL 4.7.2 on 2026-10-31 (PR #168; its
+`CHANGES.md` names the release 7.1.0, which also rejects NaN and infinities at CKKS encode and
+renames `jsArrayFromVecModulus` and `correctionFactor`, neither of which `clientFHE.ts` calls); npm
+still served 7.0.0 on 2026-11-02. `bash scripts/audit_deps.sh seal`, which the audit workflow runs
+daily, fails once npm's newest node-seal is not the one locked, and the upgrade is owed then: move
+`web/`, then rerun `tests/test_r84_medtel_ckks_decrypts_only_outputs.py` and
+`tests/test_r86_private_inference_review.py` (Round 86). `CHANGES.md`
 calls **4.4.0 a "Critical security update: all users should upgrade ... as soon as possible"**, which
 hardened untrusted deserialization and fixed native memory-safety and concurrency defects across
 ciphertext evaluation; 4.4.3 fixes null-output-pointer dereferences and C++ exceptions leaking across

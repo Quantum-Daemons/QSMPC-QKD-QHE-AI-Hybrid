@@ -11,7 +11,8 @@ wires the real primitives end to end with per-party timing:
     Bob   : derives the same PQC+QKD session
     Alice+Bob : OPRF PSI of her blacklist against Bob's suspicious set: Alice blinds her IDs,
                 Bob evaluates them under a key fresh to the run and sends his own outputs
-    Bob   : private (CKKS) inference on a flagged record
+    Bob   : CKKS timing on a random model and input, Bob holding every key: it times the encrypted
+            arithmetic and is not a private inference between the two (Round 86, review PI-11)
 
 Reuses :mod:`~qsh.pqc.hybrid_kem`, :mod:`~qsh.pqc.transport`, :mod:`~qsh.qkd.bb84`,
 :mod:`~qsh.qkd.channel`, :mod:`~qsh.qsmpc.psi`, :mod:`~qsh.fhe.ckks_inference`, and scores
@@ -90,9 +91,12 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
     psi = oprf_psi(alice_blacklist, bob_suspicious, session_key)
     timing["psi_ms"] = _ms(t)
 
-    # --- Phase 5: Bob runs private (CKKS) inference on a flagged record ---
+    # --- Phase 5: CKKS timing. A random model on a random input, Bob holding every key (Round 86,
+    # review PI-11: this said "private inference on a flagged record"; there is no record and no
+    # second party here, so it times the encrypted arithmetic and protects nothing) ---
     t = time.perf_counter()
-    w = rng.normal(size=(2, 8)); b = rng.normal(size=2)
+    w = rng.normal(size=(2, 8))
+    b = rng.normal(size=2)
     out = encrypted_linear_inference(LinearModel(w, b), rng.normal(size=8))
     timing["private_inference_ms"] = _ms(t)
 
@@ -114,7 +118,9 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
             {"name": "PQC handshake (respond)", "party": "Bob",
              "ms": timing["bob_pqc_handshake_ms"]},
             {"name": "Private set intersection (OPRF)", "party": "Alice+Bob", "ms": timing["psi_ms"]},
-            {"name": "Private inference (CKKS)", "party": "Bob",
+            # CKKS on a random model, one party holding every key (Round 86, review PI-11): a timing,
+            # not a private inference between Alice and Bob.
+            {"name": "CKKS timing on a random model (single party)", "party": "Bob",
              "ms": timing["private_inference_ms"]},
         ],
         "timing_ms": timing,

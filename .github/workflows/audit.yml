@@ -50,6 +50,21 @@ jobs:
       - name: Fail on any advisory against web/package-lock.json
         run: bash scripts/audit_deps.sh npm
 
+  seal:
+    # Round 86. No advisory names Microsoft SEAL, so the job above passes while the browser's node-seal
+    # 7.0.0 bundles SEAL 4.1.2, behind SEAL 4.4.0's critical security update. node-seal's move to SEAL
+    # 4.7.2 is merged upstream and not yet on npm: this fails on the first day it is, so the upgrade the
+    # threat model's residual risk waits for cannot slip by.
+    name: node-seal is npm's newest (SEAL residual risk)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Fail once npm's newest node-seal is not the locked one
+        run: bash scripts/audit_deps.sh seal
+
   rust:
     name: cargo-deny (advisories, sources)
     runs-on: ubuntu-24.04

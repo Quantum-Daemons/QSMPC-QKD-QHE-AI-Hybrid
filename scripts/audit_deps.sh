@@ -3,11 +3,12 @@
 # runs locally and in .github/workflows/audit.yml (daily, and whenever a manifest, a lockfile or the
 # policy changes), so the two cannot drift apart.
 #
-#   bash scripts/audit_deps.sh          both checks
+#   bash scripts/audit_deps.sh          every check
 #   bash scripts/audit_deps.sh npm      web/: npm audit, development tooling included
 #   bash scripts/audit_deps.sh rust     wasm/qsh-mpc: cargo-deny, advisories and sources
+#   bash scripts/audit_deps.sh seal     web/: the locked node-seal is still npm's newest
 #
-# npm audit needs Node and network access. The Rust check needs Docker and network access, and
+# npm audit and the node-seal check need Node and network access. The Rust check needs Docker and network access, and
 # installs nothing on the host: it runs in the same digest-pinned Rust image as the web image's wasm
 # stage, as the calling user, with cargo-deny and its advisory database cached in
 # wasm/qsh-mpc/.cargo-home (gitignored, kept out of the Docker context).
@@ -23,6 +24,31 @@ audit_npm() {
   # No --omit=dev: the dev server and the build tooling run on developer machines and in CI, and
   # Round 59 counted them on purpose. info is the lowest level, so any advisory fails.
   (cd "${AUDIT_WEB_DIR:-web}" && npm audit --audit-level=info)
+}
+
+audit_seal() {
+  # Round 86 (review PI-2). The browser's CKKS is node-seal 7.0.0, Microsoft SEAL 4.1.2, while SEAL
+  # 4.4.0 is a "Critical security update" and SEAL is at 4.7.2. No advisory names SEAL, so npm audit
+  # passes; and node-seal's move to 4.7.2 (merged upstream 2026-10-31, released as 7.1.0 per its
+  # CHANGES.md) is not on npm yet. This fails once npm's newest node-seal is not the locked one, so the
+  # release cannot pass unseen: upgrade web/, rerun the CKKS tests, and update the residual risk in
+  # docs/threat-model.md. AUDIT_WEB_DIR and NPM_VIEW (the command that prints npm's newest version)
+  # are how its failure path is checked.
+  dir="${AUDIT_WEB_DIR:-web}"
+  locked=$(node -e "const l=require(require('path').resolve(process.argv[1], 'package-lock.json'));
+    process.stdout.write((l.packages['node_modules/node-seal']||{}).version||'')" "$dir")
+  newest=$(${NPM_VIEW:-npm view node-seal version})
+  if [ -z "$locked" ] || [ -z "$newest" ]; then
+    echo "node-seal: could not read the locked version ($locked) or npm's newest ($newest)" >&2
+    return 1
+  fi
+  if [ "$locked" != "$newest" ]; then
+    echo "node-seal $newest is published and $locked is locked: upgrade web/, rerun" \
+      "tests/test_r84_medtel_ckks_decrypts_only_outputs.py and tests/test_r86_private_inference_review.py," \
+      "and update the SEAL residual risk in docs/threat-model.md" >&2
+    return 1
+  fi
+  echo "node-seal: $locked is locked and is npm's newest"
 }
 
 audit_rust() {
@@ -41,6 +67,7 @@ audit_rust() {
 case "${1:-all}" in
   npm) audit_npm ;;
   rust) audit_rust ;;
-  all) audit_npm && audit_rust ;;
-  *) echo "usage: $0 [npm|rust]" >&2; exit 2 ;;
+  seal) audit_seal ;;
+  all) audit_npm && audit_seal && audit_rust ;;
+  *) echo "usage: $0 [npm|rust|seal]" >&2; exit 2 ;;
 esac
