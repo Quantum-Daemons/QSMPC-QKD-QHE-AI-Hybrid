@@ -8096,6 +8096,11 @@ has a name; links in running text are underlined.
   load's layout shift on every page after a run, in CI and in both local fonts: 281 findings on the
   deployed base, none on this branch's local build. `tests/test_r86_page_audit_fixes.py` holds each cause
   at its source, including the tables that appear only after an agent run.
+- On the deployed branch (57ed9e6, bundle `index-6BFyYwDR.js`): the page scan passes in this machine's
+  font and in DejaVu Sans; the audit reads a layout shift of 0 on every route at both sizes, no contrast
+  failure, no table without a header cell, no unnamed element and no console error, before and after a
+  run on every use-case page; `/value` carries 26 outbound links. The README's eleven screenshots were
+  taken again from it, and five changed.
 
 BUSINESS DOC RECONCILED Round 86. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
