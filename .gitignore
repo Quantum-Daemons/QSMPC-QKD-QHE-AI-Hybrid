@@ -62,8 +62,7 @@ MONETIZATION*.md
 #
 # Two honest limits on what this achieves. It was tracked across 69 commits, so the history still
 # contains it; removing that would need a rewrite and a force-push, which this project does not do.
-# And `report/build_data.py` measures its row count — that now falls back to the committed value in
-# `report/generated/macros.tex`, so a fresh clone still builds the report.
+# (The technical report, which counted its rows, is kept outside this repository since Round 86.)
 docs/browser-verification-checklist.md
 # HAZARD, learned the hard way in Round 29: an ignored file is NOT protected from git. Switching to a
 # branch or commit where this file was still TRACKED restores the tracked copy over the working one,
@@ -195,10 +194,12 @@ data/genomics/g1k_dosages_pgs000072.tsv
 # a diagnostic run points it somewhere temporary. They describe models nothing references.
 models/probe*/
 
-# latexmk build byproducts. The PDF is committed deliberately (it is a deliverable); its
-# dependency database and file list are per-machine build state and change on every run.
-report/*.fdb_latexmk
-report/*.fls
+# The technical report and the verification summary are kept in a separate private repository since
+# Round 86, checked out BESIDE this one, never inside it: git treats an ignored file as expendable and
+# would overwrite or delete a nested checkout whenever a commit that still tracks report/ is checked
+# out (the HAZARD above). Ignored here so that a stray build cannot be added by accident;
+# `make check-secrets` fails if it ever is.
+/report/
 
 # Prototypes build outside the web image (prototypes/*/build.sh); their outputs are never tracked.
 prototypes/*/target/

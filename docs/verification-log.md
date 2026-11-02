@@ -3709,3 +3709,35 @@ run". The Models panel already explained it; the selector did not.
 **The word on a mark is a claim too.** A step the model withholds by design was badged "failed", in
 red, on 33 of the satellite page's 38 combinations. The badge now says "withheld" or "no key"; a real
 error keeps "failed".
+
+### Round 86: a release is a claim about every copy of its version, and a tag publishes its whole tree (2026-11-02)
+
+**Context.** The owner chose to release 0.85.0 as a tag with release notes only, and to keep the
+technical report private, with a new summary of the verification gates beside it. The register's
+Round 86 entry lists the changes and their evidence; this entry keeps what they taught.
+
+**A version written in five places is five versions.** `pyproject.toml`, `qsh.__version__`, two
+literals in `api/main.py` and `web/package.json` each said 0.1.0, and none read another. A bump would
+have shipped whichever copies it reached. There is one literal now, and the copies npm has to carry
+are compared with it.
+
+**"No assets" does not mean "no report".** GitHub builds a tag's source archive from the tagged tree,
+so a report still tracked at the tagged commit would be published inside the archive. The order is
+fixed by that: the report leaves the tree, then the tag is cut.
+
+**An ignored directory is no home for another checkout.** git overwrites or deletes an ignored file
+when it checks out a commit that tracks it, and `.gitignore` already records a round of the
+checklist lost that way. The private checkout went beside this repository instead of into `report/`.
+
+**A rule written for one reason fires on a change made for another.** The dropped-PDF rule exists for
+third-party PDFs without a redistribution grant; moving the project's own report tripped it. The
+exception names four paths rather than a pattern, so it cannot widen into the case the rule is for.
+
+**A check that spans two repositories should read the owner's list, not copy it.** The report's tests
+load the public tests' retired wording and flowchart nodes from the public files; a copy would have
+been a third version of each list, waiting to drift.
+
+**A layout rule is a gate only where it reads the output.** The summary's size rule is checked on the
+font sizes the PDF's own content streams set. That reading caught microtype's font expansion scaling
+glyphs through the text matrix, which changes no size but made the reading impure, and it is why the
+rule could be seeded at all: a seven-page PDF in small type without page numbers fails it three ways.

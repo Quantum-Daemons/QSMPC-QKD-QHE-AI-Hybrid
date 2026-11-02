@@ -9,7 +9,8 @@ Two files were unreachable from anywhere a cloner could start, and one of them m
   section that inlines Docker commands and never linked it, so somebody hitting the collision had no
   way to find the answer that already existed in the repository.
 - **`report/technical-report.pdf`**, the 14-section generated deliverable, had no link from
-  `README.md` and no `make` target. It was discoverable only by browsing the directory tree.
+  `README.md` and no `make` target. It was discoverable only by browsing the directory tree. (Round
+  86 moved the report out of this repository, so the scope below is `docs/` now.)
 
 This is the same class as `test_model_artifact_inventory.py`'s orphan check, which asks the question
 of `references/*.md`, and it was found by asking the same question one directory over. The existing
@@ -24,9 +25,9 @@ formatted a particular way.
 
 SCOPE, AND WHY IT IS NOT EVERY TRACKED FILE
 
-`docs/` and `report/` only. Source files are reached by reading source; model cards are covered by
-`test_model_artifact_inventory.py`; and the gitignored checklist is excluded automatically because it
-is untracked, which is the correct reason rather than a special case.
+`docs/` only (and `report/` until Round 86). Source files are reached by reading source; model
+cards are covered by `test_model_artifact_inventory.py`; and the gitignored checklist is excluded
+automatically because it is untracked, which is the correct reason rather than a special case.
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 
-#: Where a reader can plausibly start. `Makefile` counts: `make report` is a way to arrive at the PDF.
+#: Where a reader can plausibly start. `Makefile` counts: a make recipe is a way to arrive at a file.
 LINKERS = ("README.md", "Makefile", "DATA_LICENSES.md")
 
 
@@ -49,7 +50,7 @@ def _tracked(*globs: str) -> list[str]:
 
 def _corpus() -> str:
     """Every tracked document a reference could live in, concatenated."""
-    files = set(_tracked("*.md", "docs", "references", "report")) | set(LINKERS)
+    files = set(_tracked("*.md", "docs", "references")) | set(LINKERS)
     parts = []
     for f in sorted(files):
         p = REPO / f
@@ -73,15 +74,15 @@ def _inbound(rel: str, corpus: str) -> bool:
 
 def test_there_are_documents_to_check() -> None:
     """A parse that finds nothing passes the real check for the wrong reason."""
-    docs = _tracked("docs", "report")
-    assert len(docs) >= 8, f"only {len(docs)} tracked files under docs/ and report/ - has the tree moved?"
+    docs = _tracked("docs")
+    assert len(docs) >= 8, f"only {len(docs)} tracked files under docs/ - has the tree moved?"
 
 
 def test_every_tracked_document_has_an_inbound_reference() -> None:
-    """docs/ and report/: one inbound mention, from somewhere a reader can start."""
+    """docs/: one inbound mention, from somewhere a reader can start."""
     corpus = _corpus()
     watched = [
-        f for f in _tracked("docs", "report")
+        f for f in _tracked("docs")
         if Path(f).suffix in {".md", ".pdf", ".tex"} and "/generated/" not in f
     ]
     orphans = sorted(f for f in watched if not _inbound(f, corpus))

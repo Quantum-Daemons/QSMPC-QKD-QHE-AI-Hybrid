@@ -24,6 +24,11 @@ else ok "no CJK-named file tracked"; fi
 if git ls-files | grep -q 'browser-verification-checklist'; then
   bad "the browser verification checklist is tracked - it must never be published"
 else ok "verification checklist untracked"; fi
+# Round 86: the technical report and the verification summary are kept in a separate private
+# repository, by the owner's choice, and return here under no path.
+if git ls-files | grep -qE '^report/|(^|/)(technical-report|verification-summary)\.(pdf|tex)$'; then
+  bad "the technical report or the verification summary is tracked - both left this repository in Round 86"
+else ok "technical report and summary untracked"; fi
 
 # A PDF that ever entered the history and is no longer tracked was removed for a reason - on 2026-10-31
 # four reference PDFs with no redistribution grant were rewritten out of the whole history. Reachable
@@ -32,8 +37,16 @@ else ok "verification checklist untracked"; fi
 if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
   ok "shallow clone; the history check runs where the full history is (scripts/ci_local.sh)"
 else
+  # The one exception, named path by path: the technical report and its three figures left the tree
+  # in Round 86 for a private repository, and the owner chose to keep the history rather than rewrite
+  # it. They are this project's own work, not a third-party file without a grant. Named one by one so
+  # that a new PDF under report/ is not exempt.
+  kept='report/technical-report.pdf
+report/generated/fig_baselines.pdf
+report/generated/fig_decision_curve.pdf
+report/generated/fig_permutation_null.pdf'
   gone=$(comm -23 <(git log --all --format= --name-only --diff-filter=A -- '*.pdf' | sort -u) \
-                  <(git ls-files '*.pdf' | sort -u))
+                  <(git ls-files '*.pdf' | sort -u) | grep -vxF "$kept")
   if [ -n "$gone" ]; then bad "a PDF removed from the tree is still in the history: $(echo "$gone" | head -3 | tr '\n' ' ')"
   else ok "no PDF in the history that the tree has dropped"; fi
 fi

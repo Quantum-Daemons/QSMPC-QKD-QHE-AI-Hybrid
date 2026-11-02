@@ -284,8 +284,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   its weights - except the satellite student's, which publishes none by design, because its metric
   is defined over a timeline and cannot be re-scored from independent rows.
 
-  `report/generated/macros.tex` derives the repo count (`\npublished`) from the registry, so this
-  sentence is the second copy, and a test holds its count and its one exception to the registry.
+  A test holds this sentence's count and its one exception to the registry.
 
 - **Retracted: the satellite forecaster is not worse than persistence.** Round 18 reported it as
   roughly 19-22x worse on next-step MAE. That was our measurement error: the probe resampled the

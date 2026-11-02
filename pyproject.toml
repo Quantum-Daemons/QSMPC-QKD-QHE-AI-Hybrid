@@ -4,7 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "qsh"
-version = "0.1.0"
+# Read from `qsh.__version__`, the one place the release version is written ([tool.setuptools.dynamic]).
+dynamic = ["version"]
 description = "Quantum-Safe Hybrid: E2E orchestration security layer combining QKD, QSMPC, QHE/FHE and privacy-preserving AI on a PQC-first hybrid foundation."
 readme = "README.md"
 requires-python = ">=3.12"
@@ -43,6 +44,9 @@ qsh = "qsh.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "qsh.__version__" }
 
 [tool.setuptools.package-data]
 # The link profiles (Round 77) are data files, which packages.find alone leaves out of a wheel.

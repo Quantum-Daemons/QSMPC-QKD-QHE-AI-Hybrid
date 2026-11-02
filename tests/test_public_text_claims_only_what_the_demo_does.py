@@ -38,6 +38,10 @@ WHY A SOURCE-LEVEL GATE
 Each of these sat in more than one file, and this project's most-repeated defect is a fix reaching one
 copy of several. Comments are stripped from TypeScript before matching, because the comments recording
 each correction quote the wording they replaced.
+
+ROUND 86: the technical report left this repository for a private one, and the checks on its
+copy went with it, unchanged; what stays here checks the copies that are published. The
+lists below stay the owners: the report's tests read them from this file.
 """
 
 from __future__ import annotations
@@ -56,8 +60,7 @@ def _strip_ts(src: str) -> str:
 
 def _public_text(include_logs: bool) -> dict[str, str]:
     files = {"README.md": (REPO / "README.md").read_text()}
-    for rel in ("report/technical-report.tex", "references/REFERENCES.md"):
-        files[rel] = (REPO / rel).read_text()
+    files["references/REFERENCES.md"] = (REPO / "references" / "REFERENCES.md").read_text()
     for path in sorted((REPO / "docs").glob("*.md")):
         # The two verification records quote superseded wording on purpose; they are history.
         if not include_logs and path.name in ("verification-log.md", "deliverable-verification.md"):
@@ -99,7 +102,6 @@ def test_no_use_case_carries_a_market_line_again() -> None:
 _NOVELTY = {
     "README.md": REPO / "README.md",
     "web/src/pages/Value.tsx": WEB / "pages" / "Value.tsx",
-    "report/technical-report.tex": REPO / "report" / "technical-report.tex",
 }
 _LINK = "a simulated QKD link (it yields a key length, not key bytes)"
 

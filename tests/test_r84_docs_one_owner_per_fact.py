@@ -31,11 +31,13 @@ WHAT IS ASSERTED
   rule, and there are links to check.
 - Each owner holds the facts the other copies used to carry, each non-owner links to the owner, and
   a phrase that only a restatement carried is gone from the non-owners.
+
+ROUND 86: the technical report left this repository for a private one, and the checks on its
+copy went with it, unchanged; what stays here checks the copies that are published.
 """
 
 from __future__ import annotations
 
-import json
 import re
 import subprocess
 from pathlib import Path
@@ -151,10 +153,6 @@ def test_the_threat_model_holds_one_table_of_what_each_step_protects() -> None:
     for rel in ("docs/findings.md", "docs/use-cases.md", "docs/models-and-benchmarks.md", "docs/architecture.md"):
         assert "hash every candidate ID and recover the other's list" not in _flat(rel), (
             f"{rel} restates the PSI's exposure; one clause and a link to the threat model")
-    report = _read("report/technical-report.tex")
-    for part in ("Finance: anti-money-laundering", "Healthcare: federated training"):
-        start = report.index(part)
-        assert "docs/threat-model.md" in report[start:start + 2500], f"the report's {part!r} has no pointer"
 
 
 def test_which_pages_encrypt_has_one_owner() -> None:
@@ -166,17 +164,12 @@ def test_which_pages_encrypt_has_one_owner() -> None:
     assert "the satellite page runs no CKKS step" not in _flat("DATA_LICENSES.md")
 
 
-def test_the_trained_qcnns_have_one_owner_and_the_report_counts_their_qubits() -> None:
+def test_the_trained_qcnns_have_one_owner() -> None:
     owner = _flat("docs/use-cases.md")
     assert "## What the trained QCNNs are" in _read("docs/use-cases.md")
     for fact in ("finance at 4 wires", "0.9705 against 0.9537", "Section IV.B"):
         assert fact in owner, fact
     assert _links_to("docs/findings.md", QCNN)
-    widths = sorted({json.loads(p.read_text())["n_qubits"] for p in (REPO / "models").glob("qcnn_*/weights.json")})
-    report = re.sub(r"\s+", " ", _read("report/technical-report.tex"))
-    assert f"run on {widths[0]} to {widths[-1]} qubits" in report, (
-        f"the shipped QCNNs run on {widths} qubits; the report's range must say so")
-    assert "7 or 8 qubits" not in report
 
 
 def test_the_telecom_forest_and_the_finance_gap_have_one_owner() -> None:
@@ -265,8 +258,3 @@ def test_the_key_blocks_and_the_ckks_quotes_have_one_owner() -> None:
     for quote in ("N_d = 128", "sqrt(D)", "since the scheme itself adds some error"):
         assert quote not in refs, f"REFERENCES.md quotes {quote!r}; the quote lives in the threat model"
         assert quote in _read("docs/threat-model.md"), quote
-    report = _read("report/technical-report.tex")
-    appendix = report[report.index("\\appendix"):]
-    assert "\\ref{sec:satellite}" in appendix and "\\label{sec:satellite}" in report
-    for figure in ("310,400", "0.55 (Hoeffding)", "1.08 and 1.50"):
-        assert figure not in appendix, f"the appendix restates {figure!r}; it points to Section 5.5"
