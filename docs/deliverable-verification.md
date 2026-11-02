@@ -8164,6 +8164,15 @@ student rather than retrain. Branch `round86-private-inference`, from `main` at 
 - `tests/test_r86_private_inference_review.py` holds each of these, and
   `tests/test_secret_sharing_masks_come_from_the_csprng.py` reconstructs the new quantisation.
 
+- **On the deployed branch** (ffa236b, bundle `index-DvhB42OF.js`), a default run on each CKKS page in
+  headless Chrome at 1350 x 940, no console error on any. Finance: accuracy 0.9695 beside its majority
+  baseline 0.98, over 8,192 rows. Medical: `fhe_student_input` and "not a diagnosis" beside the CNN's
+  class. Genomics: the log reads "zeroed by the output mask and flooded". Telecom: the chart's caption
+  ends "always calling the most common class would score 12.5%". `mpc_matches_float_argmax` read 1 on
+  every page that runs the argmax. Two fixes cannot be seen on a page: PI-1 is in the full deployment,
+  which the public demo does not run, and both tiers' two-party demos are served only at
+  `/api/alice-bob` (the browser twin has no caller but its test). Their tests hold them.
+
 **Open, carried (the review's).**
 - Not fixed in this round, and informational: PI-13 (the browser flood's per-slot bound of 1e-14
   holds on the test layouts, not on genomics' data, 1.25e-14 a slot), PI-14 (the imaginary parts are
