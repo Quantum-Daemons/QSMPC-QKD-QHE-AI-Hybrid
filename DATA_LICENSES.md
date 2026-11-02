@@ -487,9 +487,11 @@ live ePrint byte for byte is the only thing that ties the file to the licence be
 ### Excluded - no grant permitting redistribution
 
 Removed from tracking in Round 45 and excluded by `.gitignore`, and removed from the repository's
-whole history on 2026-10-31. GitHub still holds copies in its read-only pull-request refs, which a
-force-push does not rewrite; removing those is pending a request to GitHub Support. All four remain
-cited in `references/REFERENCES.md` with their URL.
+whole history on 2026-10-31. GitHub held copies in the repository's read-only pull-request refs, which
+a force-push does not rewrite. On 2026-11-02 this repository was created again from a rewritten history
+with no pull-request refs, and the repository that holds those refs is private
+([`docs/deliverable-verification.md`](docs/deliverable-verification.md), Round 86). All four remain cited
+in `references/REFERENCES.md` with their URL.
 
 | File | Licence | Why excluded |
 |---|---|---|

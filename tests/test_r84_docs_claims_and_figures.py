@@ -124,6 +124,7 @@ _CORRECTED = [
     ("references/REFERENCES.md", r"returns no licence at all"),
     ("references/encrypted-inference-performance.md", r"\| finance \| 700 ms \| yes"),
     ("references/model-choice-vs-2026-practice.md", r"stopped being true in Jan 2025"),
+    ("DATA_LICENSES.md", r"pending a\s+request to GitHub Support"),   # Round 86: no PR refs remain
 ]
 
 
@@ -142,7 +143,10 @@ def test_the_corrected_facts_are_stated() -> None:
         ("DATA_LICENSES.md", r"12588359"),
         ("DATA_LICENSES.md", r"\*\*version 2\*\*, record 15108715"),
         ("DATA_LICENSES.md", r"\*\*CC BY-NC-ND 4\.0\*\* \(its version of record"),
-        ("DATA_LICENSES.md", r"pending a\s+request to GitHub Support"),
+        # Round 86: the pull-request refs that held the excluded PDFs are gone from the public
+        # repository, which was created again from a rewritten history; "pending a request to GitHub
+        # Support" stopped being true, and is in _CORRECTED now.
+        ("DATA_LICENSES.md", r"created again from a rewritten history\s+with no pull-request refs"),
         ("docs/architecture.md", r"rotation \(Galois\) keys"),
         ("src/qsh/fhe/conv.py", r"rotation \(Galois\) keys"),
         ("references/model-choice-vs-2026-practice.md", r"TabPFN-3"),

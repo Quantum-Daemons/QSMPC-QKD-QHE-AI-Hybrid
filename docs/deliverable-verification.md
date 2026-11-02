@@ -7909,7 +7909,8 @@ each combination on a fresh page could have seen it.
 - This machine's virtual environment runs liboqs 0.14.0 under liboqs-python 0.16.0.2 (a warning at
   import); the API image builds liboqs 0.16.0, the version the binding expects.
 - GitHub still serves the PDFs removed on 2026-10-31 through the pull-request refs, which only GitHub
-  Support can drop.
+  Support can drop. **Resolved on 2026-11-02**: this repository was created again without them (Round 86,
+  "The history, rewritten"), and the repository that holds those refs is private.
 
 **The research sweep of 2026-11-01, applied in this round by the owner's choice.** A sweep of
 post-August-2026 advisories, releases, standards and papers (each finding checked at its primary
@@ -8014,7 +8015,7 @@ bundle of the branch's last deploy, and the walk of the deployed `main` passed.
   container images are not published. A small pull request first, then the tag on its merge commit,
   and no tags backfilled for earlier rounds.
 - The technical report leaves the tree from now on, and its history in this repository stays: no
-  rewrite. It is kept in a private GitHub repository.
+  rewrite. It is kept in a private GitHub repository. Reversed the same day: see "The history, rewritten" below.
 - A summary of the verification gates, kept privately beside the report: an English PDF from LaTeX,
   at most six pages, body text 10.5 pt or larger, page numbers, no table or heading broken across a
   page, tight margins, and a local gate that fails above six pages.
@@ -8180,6 +8181,32 @@ student rather than retrain. Branch `round86-private-inference`, from `main` at 
   mask's coefficients are antisymmetric) and PI-16 (the students' records carry no clean commit).
 - The node-seal and TenSEAL upgrades, on release (above).
 - A CKKS-friendly student, planned and not started (`docs/findings.md`, "Concerns & recommendations").
+
+**The history, rewritten (2026-11-02), by the owner's decision.** The report's earlier versions were still
+retrievable from this repository's public history, by an old commit's raw URL, although the tree no
+longer held them. The owner reversed "its history stays" and chose a fresh repository over a rewrite in
+place, which would have depended on GitHub Support to drop the pull-request refs.
+- PR #85 merged first, as f578dc3. The repository was then made private, and the report's raw URLs at
+  old commits returned 404 unauthenticated. A mirror of every ref (6 branches, 85 pull-request heads, the
+  tag) and a bundle of it are kept outside every repository, with the old-to-new commit map.
+- That repository was renamed and stays private, as the archive of the full history: PRs #1 to #85,
+  their CI logs and the report's history. Its Actions are disabled, since a private repository's runs
+  draw on the organisation's included minutes.
+- This repository was created again under the same name, from a fresh clone rewritten with
+  git-filter-repo 2.47.0 (`--invert-paths --path report/`). It has 676 commits where there were 691,
+  because the 15 that touched only `report/` became empty. No commit or object under `report/` remains,
+  and main's tree and v0.85.0's tree are byte for byte the trees before (63837cf, 3ae3b3d). The annotated
+  tag points at the rewritten commit 9a48d19. The release v0.85.0 was re-created with the same notes and
+  no assets, and its source archive lists the same 747 entries, none under `report/`. Only `main` and the
+  tag were pushed, and there are no pull-request refs.
+- Checked from outside, unauthenticated: the report at six old commits (from both lineages and the old
+  tag) returns 404 under the organisation's URL and under the repository's former personal URL.
+- **Commit ids and PR numbers this register and the log cite before this entry refer to the old
+  history**, which is private now; each commit maps through the kept commit map. PR #85's merge,
+  f578dc3 there, is 6debfe9 here.
+- Five files still linked the repository's former personal URL: the four QCNN notes (not published)
+  and the Space's README (not published). They link the organisation's URL now, as the 11 published
+  model cards on Hugging Face already did, so no card needed republishing.
 
 BUSINESS DOC RECONCILED Round 86. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is

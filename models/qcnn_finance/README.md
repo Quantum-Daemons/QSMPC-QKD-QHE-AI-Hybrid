@@ -11,7 +11,7 @@
 
 NOT PUBLISHED TO HUGGING FACE, AND NOT IN THE MODEL REGISTRY. This is a browser-side demonstration
 circuit for the `finance_aml` page of
-[QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid). It is not
+[QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid). It is not
 one of the tiered published models, so it carries no `hf_repo` and no pinned revision. This file
 exists because Round 28 found that these weights drive the class surfaced on a use-case page while
 appearing in no model card and no registry entry - an artefact with real influence and no
