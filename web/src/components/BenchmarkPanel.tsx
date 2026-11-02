@@ -301,7 +301,7 @@ export default function BenchmarkPanel(
                 <tbody>
                   {facts.map((f) => (
                     <tr key={f.label} className={f.warn ? undefined : "metric-companion"}>
-                      <td>{f.label}</td>
+                      <th scope="row">{f.label}</th>
                       <td className="num">{f.value}</td>
                       <td className="muted small">
                         {f.kind === "standard" ? "standard · " : f.kind === "simulated" ? "simulated · " : "measured · "}{f.source}

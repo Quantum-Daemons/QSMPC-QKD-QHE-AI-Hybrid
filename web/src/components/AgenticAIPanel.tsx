@@ -255,10 +255,10 @@ export default function AgenticAIPanel({
             {run && (
               <table style={{ marginTop: 8 }}>
                 <tbody>
-                  <tr><td>engine</td><td>{run.engine}</td></tr>
-                  <tr><td>model</td><td className="mono">{run.model}</td></tr>
-                  <tr><td>backend</td><td>{run.backend}{run.webgpu ? " (WebGPU)" : ""}</td></tr>
-                  <tr><td>elapsed</td><td>{run.elapsedMs} ms</td></tr>
+                  <tr><th scope="row">engine</th><td>{run.engine}</td></tr>
+                  <tr><th scope="row">model</th><td className="mono">{run.model}</td></tr>
+                  <tr><th scope="row">backend</th><td>{run.backend}{run.webgpu ? " (WebGPU)" : ""}</td></tr>
+                  <tr><th scope="row">elapsed</th><td>{run.elapsedMs} ms</td></tr>
                 </tbody>
               </table>
             )}
@@ -272,15 +272,15 @@ export default function AgenticAIPanel({
             {mcp && (
               <table style={{ marginTop: 8 }}>
                 <tbody>
-                  <tr><td>session</td><td className="mono">{mcp.session}</td></tr>
-                  <tr><td>tool</td><td className="mono">{mcpToolName}</td></tr>
-                  <tr><td>KEM / QKD-domain constant mixed</td><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
-                  <tr><td>PQC+QKD combiner</td><td className="mono">{mcp.combiner}</td></tr>
-                  <tr><td>derived key fingerprint</td><td className="mono">{mcp.session_key_fp}</td></tr>
-                  <tr><td>method</td><td className="mono">{mcp.method}</td></tr>
-                  <tr><td>authenticated ({mcp.signature_alg})</td>
+                  <tr><th scope="row">session</th><td className="mono">{mcp.session}</td></tr>
+                  <tr><th scope="row">tool</th><td className="mono">{mcpToolName}</td></tr>
+                  <tr><th scope="row">KEM / QKD-domain constant mixed</th><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
+                  <tr><th scope="row">PQC+QKD combiner</th><td className="mono">{mcp.combiner}</td></tr>
+                  <tr><th scope="row">derived key fingerprint</th><td className="mono">{mcp.session_key_fp}</td></tr>
+                  <tr><th scope="row">method</th><td className="mono">{mcp.method}</td></tr>
+                  <tr><th scope="row">authenticated ({mcp.signature_alg})</th>
                     <td style={{ color: mcp.authenticated ? "var(--accent-2)" : "var(--danger)" }}>{String(mcp.authenticated)}</td></tr>
-                  <tr><td>tampered message rejected</td>
+                  <tr><th scope="row">tampered message rejected</th>
                     <td style={{ color: mcp.tamper_rejected ? "var(--accent-2)" : "var(--danger)" }}>{String(mcp.tamper_rejected)}</td></tr>
                 </tbody>
               </table>

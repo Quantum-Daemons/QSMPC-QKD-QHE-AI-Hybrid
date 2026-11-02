@@ -189,8 +189,11 @@ select, input {
 
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 th, td { text-align: left; padding: 9px var(--cell-pad-x, 10px); border-bottom: 1px solid var(--border); }
-th { color: var(--muted); font-weight: 600; }
-tr:hover td { background: var(--bg-2); }
+/* A column header is muted and set in 600. A ROW header (scope="row", the key column of a key-value table)
+   keeps the look of the cell it replaced: Round 86 turned the first cell of every key-value table into
+   one (SC 1.3.1), and the semantics changed while the tables did not. */
+th:not([scope="row"]) { color: var(--muted); font-weight: 600; }
+tr:hover td, tr:hover th[scope="row"] { background: var(--bg-2); }
 
 .log {
   background: #06090f; border: 1px solid var(--border); border-radius: 8px;
@@ -239,8 +242,10 @@ tr:hover td { background: var(--bg-2); }
 .prov-measured-js .prov-chip { background: var(--accent-2); color: #03070f; opacity: 0.68; }
 .prov-remote .prov-chip { background: var(--accent); color: #03070f; }
 .prov-simulated .prov-chip { background: var(--warn); color: #03070f; }
-.prov-detail { font-weight: 500; opacity: 0.85; }
-.prov-caret { margin-left: 6px; opacity: 0.7; }
+/* No opacity on the detail or the caret (Round 86): at 0.85 and 0.7 they measured 4.0:1 and 3.0:1 on the
+   chip, under SC 1.4.3's 4.5:1 for 11 px text. The weight still sets the detail apart from the label. */
+.prov-detail { font-weight: 500; }
+.prov-caret { margin-left: 6px; }
 .prov-evidence {
   display: flex; flex-direction: column; gap: 2px;
   font-size: 11px; color: var(--muted);
@@ -367,7 +372,12 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 /* A wide table may narrow its cells with --cell-pad-x (Round 80: the QCNN table's nine columns, the
    benchmark's eleven). */
 .facts-table th, .facts-table td { padding: 7px var(--cell-pad-x, 8px); vertical-align: top; }
-.facts-table td:first-child { white-space: nowrap; font-weight: 600; }
+.facts-table td:first-child, .facts-table th[scope="row"] { white-space: nowrap; font-weight: 600; }
+/* The private-inference strip: label and value pairs in a row, as the facts table set them (Round 86). */
+.facts-strip { display: flex; flex-wrap: wrap; margin: 0 0 6px; border-bottom: 1px solid var(--border); }
+.facts-strip > div { display: flex; }
+.facts-strip dt, .facts-strip dd { margin: 0; padding: 7px var(--cell-pad-x, 8px); vertical-align: top; }
+.facts-strip dt { white-space: nowrap; font-weight: 600; }
 .lead { font-size: 15px; line-height: 1.6; color: var(--text); max-width: 860px; }
 .figure-note { font-size: 11.5px; color: var(--muted); margin-top: 6px; }
 
@@ -466,3 +476,11 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
   .ucc .react-flow__edge.animated path { animation: none; }
   .ucc-comp.ucc-running, .ucc-wide.ucc-running, .ucc-mini.ucc-running { animation: none; }
 }
+
+/* The regulatory clock's source links, under each instrument (UX42, Round 86). */
+.clock-sources { display: block; margin-top: 2px; }
+/* Legend text in the body's text colour (Round 86). recharts paints each legend label in its series
+   colour inline, and a series colour is chosen to read as a mark (3:1, SC 1.4.11), not as 10 px text
+   (4.5:1, SC 1.4.3): "true class 0 (solid)" was #717d92 on the card, 4.09:1. The swatch beside each
+   label keeps the series colour and shape, so nothing is lost by the text. */
+.recharts-legend-item-text { color: var(--text) !important; }

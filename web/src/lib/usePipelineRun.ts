@@ -241,14 +241,19 @@ export type PipelineParams = ReturnType<typeof makeDefaultParams>;
 // the Orchestration page (its architecture canvas or its stage-order graph), the canvas on a
 // use-case page. Read at each capture, since the E2E page swaps the figure under it.
 export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement | null>) {
+  // Seeded with the options the page would be given anyway (Round 86). They started empty and arrived
+  // in an effect AFTER the first paint, so the page painted its selects at 42 px, then re-wrapped the
+  // whole controls card when they filled: a layout shift of 0.18 to 0.23 on every use-case page and
+  // the Orchestration page, measured on the deployed site at 1350 px. In the public demo these ARE the
+  // options; in the full deployment the server's answer, below, replaces them.
   const [opts, setOpts] = useState<{ families: Record<string, string[]>; defaults: Record<string, string> }>(
-    { families: { kem: [], qkd: [], fhe: [], mpc: [], sig: [] }, defaults: {} },
+    DEMO_CRYPTO,
   );
-  const [kem, setKem] = useState("");
-  const [qkd, setQkd] = useState("");
-  const [fhe, setFhe] = useState("");
-  const [mpc, setMpc] = useState("");
-  const [sig, setSig] = useState("");
+  const [kem, setKem] = useState(DEMO_CRYPTO.defaults.kem);
+  const [qkd, setQkd] = useState(DEMO_CRYPTO.defaults.qkd);
+  const [fhe, setFhe] = useState(DEMO_CRYPTO.defaults.fhe);
+  const [mpc, setMpc] = useState(DEMO_CRYPTO.defaults.mpc);
+  const [sig, setSig] = useState(DEMO_CRYPTO.defaults.sig);
   const [workload, setWorkload] = useState("linear");
   // On by default where it is real. It runs a client-side FedAvg over the page's own bundled sample,
   // which is worth showing without making a visitor find a checkbox - but only two use cases HAVE such

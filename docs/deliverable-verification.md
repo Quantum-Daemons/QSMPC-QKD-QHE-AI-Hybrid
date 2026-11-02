@@ -8059,6 +8059,44 @@ font expansion scales glyphs through the text matrix, which left the size readin
 expansion is off; and `[H]` tables left most of two pages blank, so the tables float to the tops of
 pages instead, which still never splits one.
 
+**The release, done (2026-11-02).** PR #83 merged at 4780191 after CI concluded success on its head
+(ac7702b, three runs) and on the merge commit (two runs). The annotated tag `v0.85.0` points at the
+merge commit, and the GitHub release carries the approved notes and no assets. The tag's source archive,
+read in the scratchpad with `gh api`, holds 747 entries, no `report/`, no report or summary source or
+PDF and version 0.85.0; its seven PDFs are the reference papers `DATA_LICENSES.md` records as CC0 1.0
+or CC BY 4.0. The demo host was returned to `main` at 4780191 and serves `index-BLagNaUw.js`, the bundle
+Round 85 walked, since the version and the comments this change edited do not reach the build.
+`scripts/wait_for_ci.sh` waited out its deadline on #83 when given a short sha, which matches no run's
+full `headSha`; it expands the sha now (`tests/test_r86_wait_for_ci_expands_a_short_sha.py`).
+
+**The audit of the deployed pages (2026-11-02), by the owner's order.** Every route of the deployed main,
+in headless Chrome at Lighthouse's desktop (1350 x 940) and mobile (412 x 823) sizes, before and after a
+default run on every use-case page. No console error on any route; every image, button, link and control
+has a name; links in running text are underlined.
+- Seven of the ten open accessibility rows (`UX36` to `UX45`) had passed for rounds while the checklist
+  still said they failed: the sidebar label is 6.95:1, inline links are underlined, the model cards'
+  tables have header cells, no chart mark floods the accessibility tree, the CSV keeps every column, the
+  disabled download says why, and a run opens no WebGL context.
+- Chart tick text failed contrast on every verification chart, up to 84 labels a page: the shared tick
+  style set `stroke`, which outlines each glyph and leaves recharts' default #666 fill inside it, 2.96:1
+  on the panel. Filled #8a94a6 it is 5.6:1. Legend labels inherited their series colour ("true class 0
+  (solid)", 4.09:1), and the provenance badge's caret and separator were dimmed to 3.0:1 and 4.0:1.
+- Fifteen key-value tables had no header cell, among them the Metrics panel, Validations' five and the
+  posture table; one row of alternating labels and values had none that could fit. Each key column is
+  a row header now, the strip is a description list, the multi-class confusion table has column headers,
+  and the empty Metrics panel is a sentence.
+- The layout shifted 0.19 to 0.32 while loading at desktop width, and 0 at mobile: the crypto selects
+  painted empty and filled in an effect after the first paint, re-wrapping the controls card, and the
+  loading placeholder's top margin collapsed into the body, which jumped when the app replaced it (0.099
+  on most pages). The selects are filled on the first render, and the placeholder uses padding.
+- The Value page cited NIST, EO 14412, CNSA 2.0 and the AI Act as text only (`UX42`). Each regulatory-
+  clock row now links its primary sources, each URL fetched and resolved on 2026-11-02; NSA's media
+  server refuses scripts, so the CNSA 2.0 FAQ link is the one NSA's own resources page gives.
+- The page scan (`web/scripts/check_text_overlap.mjs`) now measures text contrast, header cells and the
+  load's layout shift on every page after a run, in CI and in both local fonts: 281 findings on the
+  deployed base, none on this branch's local build. `tests/test_r86_page_audit_fixes.py` holds each cause
+  at its source, including the tables that appear only after an agent run.
+
 BUSINESS DOC RECONCILED Round 86. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 17 reads.

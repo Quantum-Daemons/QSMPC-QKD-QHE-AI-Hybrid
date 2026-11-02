@@ -40,21 +40,22 @@ export default function RunMonitor({
       </div>
       <div className="card">
         <h3>Metrics</h3>
-        <table>
-          <tbody>
-            {Object.entries(metrics).map(([k, v]) => (
-              <tr key={k}><td className="muted">{breakable(k)}</td>
-                <td className="mono" style={{ overflowWrap: "anywhere" }}>{String(v)}</td></tr>
-            ))}
-            {/* `colSpan={2}`. Every other row in this table has two cells; this one had one, so a
-                screen reader announced a row with a missing second column - it reads as data that
-                failed to load rather than as an empty table. SC 1.3.1: the row's structure has to
-                match the structure it is announced within. */}
-            {Object.keys(metrics).length === 0 && (
-              <tr><td className="muted" colSpan={2}>no metrics yet</td></tr>
-            )}
-          </tbody>
-        </table>
+        {/* A key-value table whose keys are row headers (SC 1.3.1, Round 86): the audit of the deployed
+            pages found this table, the largest on a use-case page, with no header cell at all. Before a
+            run there is nothing to tabulate, so the empty state is a sentence rather than a one-cell
+            table, which a screen reader announced as a table with a missing column. */}
+        {Object.keys(metrics).length === 0 ? (
+          <p className="muted">no metrics yet</p>
+        ) : (
+          <table>
+            <tbody>
+              {Object.entries(metrics).map(([k, v]) => (
+                <tr key={k}><th scope="row" className="muted">{breakable(k)}</th>
+                  <td className="mono" style={{ overflowWrap: "anywhere" }}>{String(v)}</td></tr>
+              ))}
+            </tbody>
+          </table>
+        )}
         {signature && (
           <div className="note" style={{ marginTop: 10 }}>
             🔏 Run summary signed with <b>{signature.algorithm}</b> — verified:{" "}

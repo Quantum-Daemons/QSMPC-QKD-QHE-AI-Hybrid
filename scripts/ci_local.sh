@@ -104,7 +104,9 @@ bash scripts/build_wasm.sh >/tmp/ci_wasm.log 2>&1 \
 # Round 80: text drawn over text, out of the box it labels, or clipped by its chart, and HTML tables
 # wider than their box, on every page after a run. The user found labels overflowing and overlapping
 # in the run diagrams, and looking further found an axis title over its ticks, a class name cut off
-# below its chart and titles cut off above theirs; no gate measured any of it. A client-only build,
+# below its chart and titles cut off above theirs; no gate measured any of it. Since Round 86 it also
+# measures text contrast (SC 1.4.3), header cells (SC 1.3.1) and the load's layout shift, all three of
+# which the audit of the deployed pages found failing (281 findings there, none on the fix). A client-only build,
 # served on its own port, scanned in a headless Chrome in this machine's font and again in DejaVu Sans,
 # the CI runner's font, which is wider (Round 84), then torn down.
 SCAN_OUT=$(mktemp -d)
@@ -112,7 +114,7 @@ if ( cd web && VITE_CLIENT_ONLY=1 npx vite build --outDir "$SCAN_OUT" >/tmp/ci_s
   ( cd web && exec npx vite preview --outDir "$SCAN_OUT" --port 4182 --strictPort >/tmp/ci_preview.log 2>&1 ) &
   for _ in $(seq 1 30); do curl -sf -o /dev/null http://localhost:4182/ && break; sleep 1; done
   ( cd web && node scripts/check_text_overlap.mjs http://localhost:4182 1280 720 >/tmp/ci_textlayout.log 2>&1 ) \
-    && ok "no text over text, out of its box or clipped, and no table wider than its box, on any page" \
+    && ok "no text over text, out of its box or clipped, no table wider than its box, no text under WCAG contrast, no table without a header cell, no layout shift of 0.1 while loading, on any page" \
     || { bad "text layout (web/scripts/check_text_overlap.mjs)"; grep -E "FAIL|^ +\[" /tmp/ci_textlayout.log | head -20; }
   # Round 84: and again in DejaVu Sans, the CI runners' system-ui. The telecom plane charts' ticks met
   # their rotated title there while this machine's Noto passed, so the push was the first run that

@@ -12,6 +12,13 @@
 //     drawn in that box;
 //   - any pipeline-graph node whose content overflows it;
 //   - any HTML text or table wider than a box that does not scroll, and a page that scrolls sideways.
+// And since Round 86, from the audit of the deployed pages, which found all three live:
+//   - text below WCAG 2.2 SC 1.4.3's contrast (4.5:1, or 3:1 from 24 px or 18.66 px bold), HTML and
+//     SVG text alike, against the background its ancestors paint; an inactive control is exempt, as
+//     the criterion says, and text over a background image is skipped rather than guessed;
+//   - a table with no header cell (SC 1.3.1);
+//   - a layout shift of 0.1 or more while the page loads, before any input: Lighthouse's threshold,
+//     read from a PerformanceObserver installed before the page's own scripts run.
 //
 //   cd web && VITE_CLIENT_ONLY=1 npx vite build --outDir /tmp/qsh-check && npx vite preview --outDir /tmp/qsh-check --port 4181 &
 //   node scripts/check_text_overlap.mjs http://localhost:4181 [width height]
@@ -261,6 +268,43 @@ const MEASURE = `(() => {
   return [...new Set(out)];
 })()`;
 
+/** Runs in the page (Round 86): text contrast under SC 1.4.3 and tables without a header cell. */
+const A11Y = `(() => {
+  const out = [];
+  const parse = (c) => { const m = String(c).match(/rgba?\\(([^)]+)\\)/); if (!m) return null;
+    const p = m[1].split(/[ ,/]+/).filter(Boolean).map(Number); return { r: p[0], g: p[1], b: p[2], a: p.length > 3 ? p[3] : 1 }; };
+  const over = (t, b) => ({ r: t.r * t.a + b.r * (1 - t.a), g: t.g * t.a + b.g * (1 - t.a), b: t.b * t.a + b.b * (1 - t.a), a: 1 });
+  const lum = (c) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b); };
+  const ratio = (a, b) => { const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
+  const background = (el) => { const layers = [];
+    for (let e = el; e; e = e.parentElement) { const cs = getComputedStyle(e);
+      if (cs.backgroundImage && cs.backgroundImage !== "none") return null;
+      const c = parse(cs.backgroundColor); if (c && c.a > 0) { layers.push(c); if (c.a >= 1) break; } }
+    let base = { r: 255, g: 255, b: 255, a: 1 }; for (let i = layers.length - 1; i >= 0; i--) base = over(layers[i], base); return base; };
+  const visible = (el) => { if (el.closest('[aria-hidden="true"]')) return false; const cs = getComputedStyle(el);
+    if (cs.display === "none" || cs.visibility === "hidden") return false; const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+  const opacity = (el) => { let o = 1; for (let e = el; e; e = e.parentElement) o *= parseFloat(getComputedStyle(e).opacity); return o; };
+  const seen = new Set();
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  while (w.nextNode()) {
+    const text = w.currentNode.textContent.trim(); const el = w.currentNode.parentElement;
+    if (!text || !el || seen.has(el) || ["SCRIPT", "STYLE", "NOSCRIPT", "TITLE"].includes(el.tagName)) continue;
+    seen.add(el);
+    if (!visible(el) || el.closest('button:disabled, [aria-disabled="true"], select:disabled, input:disabled')) continue;
+    const cs = getComputedStyle(el); const svg = el instanceof SVGElement;
+    const fg0 = parse(svg ? cs.fill : cs.color); if (!fg0) continue;
+    const bg = background(svg ? (el.closest("svg")?.parentElement || el) : el); if (!bg) continue;
+    const fg = over({ ...fg0, a: fg0.a * opacity(el) }, bg);
+    const size = parseFloat(cs.fontSize), bold = parseInt(cs.fontWeight, 10) >= 700;
+    const need = size >= 24 || (bold && size >= 18.66) ? 3 : 4.5, got = ratio(fg, bg);
+    if (got < need - 0.005) out.push(\`[contrast] "\${text.slice(0, 30)}" \${got.toFixed(2)}:1 at \${size}px, needs \${need}:1\`);
+  }
+  for (const t of document.querySelectorAll("table"))
+    if (visible(t) && !t.querySelector("th")) out.push(\`[table] no header cell: "\${(t.rows[0]?.textContent || "").trim().slice(0, 40)}"\`);
+  return [...new Set(out)];
+})()`;
+
 /** Runs in the page: the family whose width matches `system-ui` on three strings, or the width. */
 const FONT_PROBE = `(() => {
   const c = document.createElement("canvas").getContext("2d");
@@ -280,6 +324,10 @@ const FONT_PROBE = `(() => {
 async function check(s, page) {
   await s.send("Page.navigate", { url: `${BASE}${page.path}` });
   await sleep(3500);
+  // The load's layout shift, before any input (Round 86): 0.18 to 0.32 on the deployed pages at
+  // desktop width, from selects that filled after the first paint and a placeholder's collapsed margin.
+  const cls = await ev(s, "window.__cls ?? 0");
+  const shifted = cls >= 0.1 ? [`[page] layout shift ${cls.toFixed(3)} while loading, 0.1 or more`] : [];
   if (page.tab) {
     await ev(s, `[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === ${JSON.stringify(page.tab)})?.click()`);
     await sleep(2500);
@@ -300,7 +348,7 @@ async function check(s, page) {
   const height = await ev(s, "document.documentElement.scrollHeight");
   for (let y = 0; y < height; y += HEIGHT * 0.8) { await ev(s, `window.scrollTo(0, ${y})`); await sleep(350); }
   await sleep(1200);
-  return (await ev(s, MEASURE)) ?? [];
+  return [...shifted, ...((await ev(s, MEASURE)) ?? []), ...((await ev(s, A11Y)) ?? [])];
 }
 
 const profile = mkdtempSync(join(tmpdir(), "qsh-overlap-"));
@@ -319,6 +367,9 @@ try {
   const s = await cdp();
   await s.send("Page.enable"); await s.send("Runtime.enable");
   await s.send("Emulation.setDeviceMetricsOverride", { width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false });
+  await s.send("Page.addScriptToEvaluateOnNewDocument", { source: `window.__cls = 0;
+    new PerformanceObserver((l) => { for (const e of l.getEntries()) if (!e.hadRecentInput) window.__cls += e.value; })
+      .observe({ type: "layout-shift", buffered: true });` });
   console.log(`checking text layout on ${PAGES.length} views of ${BASE} at ${WIDTH} x ${HEIGHT}`
     + (process.env.SCAN_OFFLINE ? ", offline (localhost only)" : ""));
   // Which font the pages are measured in. The page asks for `system-ui`, and what that resolves to is
@@ -338,4 +389,5 @@ try {
   rmSync(profile, { recursive: true, force: true });
 }
 if (failures) { console.log(`\n${failures} text-layout finding(s)`); process.exit(1); }
-console.log("PASS  no text over text, out of its box, or clipped, and no table wider than its box, on any page");
+console.log("PASS  no text over text, out of its box, or clipped, no table wider than its box, no text under "
+  + "WCAG contrast, no table without a header cell, and no layout shift of 0.1 while loading, on any page");

@@ -77,12 +77,12 @@ export default function NetKeyCards() {
         {kat && (
           <table className="facts-table small" style={{ marginTop: 10 }}>
             <tbody>
-              <tr><td>result</td><td>{ok(kat.allPassed)} - {kat.passed}/{kat.total} cases</td></tr>
+              <tr><th scope="row">result</th><td>{ok(kat.allPassed)} - {kat.passed}/{kat.total} cases</td></tr>
               {Object.entries(kat.byFunction as Record<string, { passed: number; total: number }>).map(([fn, r]) => (
-                <tr key={fn}><td>{fn}</td><td>{r.passed}/{r.total}</td></tr>
+                <tr key={fn}><th scope="row">{fn}</th><td>{r.passed}/{r.total}</td></tr>
               ))}
-              <tr><td>implementation</td><td className="mono">{kat.implementation}</td></tr>
-              <tr><td>vectors</td><td>usnistgov/ACVP-Server at <span className="mono">{String(kat.source.commit).slice(0, 7)}</span>, copied verbatim with SHA-256</td></tr>
+              <tr><th scope="row">implementation</th><td className="mono">{kat.implementation}</td></tr>
+              <tr><th scope="row">vectors</th><td>usnistgov/ACVP-Server at <span className="mono">{String(kat.source.commit).slice(0, 7)}</span>, copied verbatim with SHA-256</td></tr>
             </tbody>
           </table>
         )}
@@ -102,14 +102,14 @@ export default function NetKeyCards() {
         {wg && (
           <table className="facts-table small" style={{ marginTop: 10 }}>
             <tbody>
-              <tr><td>Noise core vector</td><td>{ok(wg.noiseCore.passed)} ({wg.noiseCore.protocolName})</td></tr>
-              <tr><td>message sizes</td><td>{wg.messageSizes.initiation} B + {wg.messageSizes.response} B - whitepaper {wg.whitepaperSizes.initiation} + {wg.whitepaperSizes.response}: {ok(wg.sizesMatchWhitepaper)}</td></tr>
-              <tr><td>mac1 valid (both messages)</td><td>{ok(wg.mac1Valid.initiation && wg.mac1Valid.response)}</td></tr>
-              <tr><td>transport keys agree</td><td>{ok(wg.transportKeysAgree)} - handshake hashes agree {ok(wg.handshakeHashesAgree)}</td></tr>
-              <tr><td>PSK changed by one bit</td><td>sizes unchanged {ok(wg.pskChange.sizesUnchanged)}; initiation unchanged {ok(wg.pskChange.initiationUnchanged)} (psk2 mixes it into message 2); transport keys changed {ok(wg.pskChange.transportKeysChanged)}</td></tr>
-              <tr><td>mismatched PSK</td><td>rejected {ok(wg.pskMismatch?.rejected)}</td></tr>
-              <tr><td>initial-state cross-check</td><td>{ok(wg.initialStateCrossCheck?.bothPeers)} against boringtun&apos;s constants (non-authoritative)</td></tr>
-              <tr><td>validated against</td><td>{wg.validatedAgainst}</td></tr>
+              <tr><th scope="row">Noise core vector</th><td>{ok(wg.noiseCore.passed)} ({wg.noiseCore.protocolName})</td></tr>
+              <tr><th scope="row">message sizes</th><td>{wg.messageSizes.initiation} B + {wg.messageSizes.response} B - whitepaper {wg.whitepaperSizes.initiation} + {wg.whitepaperSizes.response}: {ok(wg.sizesMatchWhitepaper)}</td></tr>
+              <tr><th scope="row">mac1 valid (both messages)</th><td>{ok(wg.mac1Valid.initiation && wg.mac1Valid.response)}</td></tr>
+              <tr><th scope="row">transport keys agree</th><td>{ok(wg.transportKeysAgree)} - handshake hashes agree {ok(wg.handshakeHashesAgree)}</td></tr>
+              <tr><th scope="row">PSK changed by one bit</th><td>sizes unchanged {ok(wg.pskChange.sizesUnchanged)}; initiation unchanged {ok(wg.pskChange.initiationUnchanged)} (psk2 mixes it into message 2); transport keys changed {ok(wg.pskChange.transportKeysChanged)}</td></tr>
+              <tr><th scope="row">mismatched PSK</th><td>rejected {ok(wg.pskMismatch?.rejected)}</td></tr>
+              <tr><th scope="row">initial-state cross-check</th><td>{ok(wg.initialStateCrossCheck?.bothPeers)} against boringtun&apos;s constants (non-authoritative)</td></tr>
+              <tr><th scope="row">validated against</th><td>{wg.validatedAgainst}</td></tr>
             </tbody>
           </table>
         )}
@@ -146,11 +146,11 @@ export default function NetKeyCards() {
             </table>
             <table className="facts-table small">
               <tbody>
-                <tr><td>CAVP SP 800-135 cases</td><td>{ok(ike.cavp.allPassed)} - {ike.cavp.passed}/{ike.cavp.total}</td></tr>
-                <tr><td>ECP-256 shared secret, RFC 5903 section 8.1</td><td>{ok(ike.sched.validation.rfc5903Passed)}</td></tr>
-                <tr><td>g^ir and the ML-KEM secret agree between peers</td><td>{ok(ike.sched.exchange.girAgrees && ike.sched.exchange.mlkemSecretAgrees)}</td></tr>
-                <tr><td>the PPK changes only SK_d, SK_pi and SK_pr</td><td>{ok(ike.sched.properties.ppkChangesOnlyDPiPr)}</td></tr>
-                <tr><td>the ML-KEM exchange changes every non-empty key (SK_ai and SK_ar are empty under AES-GCM)</td><td>{ok(ike.sched.properties.additionalKeyExchangeChangesAll)}</td></tr>
+                <tr><th scope="row">CAVP SP 800-135 cases</th><td>{ok(ike.cavp.allPassed)} - {ike.cavp.passed}/{ike.cavp.total}</td></tr>
+                <tr><th scope="row">ECP-256 shared secret, RFC 5903 section 8.1</th><td>{ok(ike.sched.validation.rfc5903Passed)}</td></tr>
+                <tr><th scope="row">g^ir and the ML-KEM secret agree between peers</th><td>{ok(ike.sched.exchange.girAgrees && ike.sched.exchange.mlkemSecretAgrees)}</td></tr>
+                <tr><th scope="row">the PPK changes only SK_d, SK_pi and SK_pr</th><td>{ok(ike.sched.properties.ppkChangesOnlyDPiPr)}</td></tr>
+                <tr><th scope="row">the ML-KEM exchange changes every non-empty key (SK_ai and SK_ar are empty under AES-GCM)</th><td>{ok(ike.sched.properties.additionalKeyExchangeChangesAll)}</td></tr>
               </tbody>
             </table>
             <Details summary="What is not validated here, and why">

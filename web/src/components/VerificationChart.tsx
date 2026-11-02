@@ -28,7 +28,10 @@ import Details from "./Details";
 import { CanvasMarks, corners, type MarkSeries, NO_MARK } from "./CanvasMarks";
 import { ChartReadout, HINT_KEYBOARD, HINT_POINTER, ReadoutTooltip } from "./ChartReadout";
 
-const AXIS = { fontSize: 10, stroke: "#8a94a6" };
+// The tick text's FILL (Round 86). This set `stroke`, which outlines each glyph and leaves recharts'
+// default fill, #666, inside the outline: 2.96:1 on the chart panel, measured on every verification
+// chart of the deployed pages (WCAG 2.2 SC 1.4.3 asks 4.5:1 at this size). #8a94a6 is 5.6:1 there.
+const AXIS = { fontSize: 10, fill: "#8a94a6" };
 /** The y-axis width of the two plane charts: their ticks and the rotated title `yAxisTitle` draws at
  *  a fixed offset share it, so it is sized for the wider of the fonts `system-ui` resolves to. */
 const Y_AXIS_W = 72;
@@ -250,18 +253,18 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
     <figure className="chart-figure">
       {/* A strip of the numbers the caption below qualifies, for a reader scanning the page. The
           caption keeps every denominator and caveat beside the figure (checklist UX6); only the
-          meaning of a flipped row's margin is folded. Round 58. */}
-      <table className="facts-table small" style={{ marginBottom: 6 }}>
-        <tbody><tr>
-          <td>rows scored</td><td>{plot.rows}{plot.rowsOffered != null && plot.rowsOffered > plot.rows ? ` of ${plot.rowsOffered}` : ""}</td>
-          {plot.ciphertexts != null ? <><td>ciphertexts</td><td>{plot.ciphertexts}</td></> : null}
-          <td>top-1 mismatches</td><td>{mismatches}</td>
-          <td>plaintext ties</td><td>{plot.undecidableRows ?? "not reported"}</td>
-          <td>worst deviation</td><td>{exp2(plot.maxAbsError ?? worst)}</td>
-          {plot.medianAbsError != null ? <><td>median deviation</td><td>{exp2(plot.medianAbsError)}</td></> : null}
-          {plot.smallestMargin != null ? <><td>smallest margin</td><td>{exp2(plot.smallestMargin)}</td></> : null}
-        </tr></tbody>
-      </table>
+          meaning of a flipped row's margin is folded. Round 58. A description list since Round 86:
+          it was one table row of alternating label and value cells, which no header cell can
+          describe (a row header heads its whole row), and the audit counted it as a table with none. */}
+      <dl className="facts-strip small">
+        <div><dt>rows scored</dt><dd>{plot.rows}{plot.rowsOffered != null && plot.rowsOffered > plot.rows ? ` of ${plot.rowsOffered}` : ""}</dd></div>
+        {plot.ciphertexts != null ? <div><dt>ciphertexts</dt><dd>{plot.ciphertexts}</dd></div> : null}
+        <div><dt>top-1 mismatches</dt><dd>{mismatches}</dd></div>
+        <div><dt>plaintext ties</dt><dd>{plot.undecidableRows ?? "not reported"}</dd></div>
+        <div><dt>worst deviation</dt><dd>{exp2(plot.maxAbsError ?? worst)}</dd></div>
+        {plot.medianAbsError != null ? <div><dt>median deviation</dt><dd>{exp2(plot.medianAbsError)}</dd></div> : null}
+        {plot.smallestMargin != null ? <div><dt>smallest margin</dt><dd>{exp2(plot.smallestMargin)}</dd></div> : null}
+      </dl>
       <figcaption id={captionId} className="muted small">
         <strong>Private inference against the plaintext reference.</strong>{" "}
         {plot.heldOut === true ? (
@@ -521,11 +524,14 @@ function DecisionPlane({ plot, plane }: { plot: EncryptedAgreementPlot; plane: {
             ))}
           </tbody>
         ) : (
-          <tbody><tr>
-            <td>class right</td><td>{count((p) => p.label === p.encCls)}</td>
-            <td>class wrong</td><td>{count((p) => p.label !== p.encCls)}</td>
-            <td>encryption changed the class</td><td>{flips.length}</td>
-          </tr></tbody>
+          // Column headers over one row of counts (Round 86). It was one row of alternating label and
+          // value cells, which no header cell can describe, and the audit found it with none.
+          <tbody>
+            <tr><th scope="col">class right</th><th scope="col">class wrong</th>
+                <th scope="col">encryption changed the class</th></tr>
+            <tr><td>{count((p) => p.label === p.encCls)}</td><td>{count((p) => p.label !== p.encCls)}</td>
+                <td>{flips.length}</td></tr>
+          </tbody>
         )}
       </table>
       <ChartReadout hint={HINT_POINTER}>
