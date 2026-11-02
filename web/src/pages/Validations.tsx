@@ -99,12 +99,12 @@ export default function Validations() {
           {kem && (
             <table style={{ marginTop: 12 }}>
               <tbody>
-                <tr><td>algorithm</td><td>{kem.algorithm}</td></tr>
-                <tr><td>public key</td><td>{kem.publicKeyBytes} B</td></tr>
-                <tr><td>ciphertext</td><td>{kem.cipherTextBytes} B</td></tr>
-                <tr><td>shared secret</td><td className="mono">{kem.sharedSecretPrefix}…</td></tr>
-                <tr><td>agreement</td><td style={{ color: kem.agreement ? "var(--accent-2)" : "var(--danger)" }}>{String(kem.agreement)}</td></tr>
-                <tr><td>elapsed</td><td>{kem.elapsedMs} ms</td></tr>
+                <tr><th scope="row">algorithm</th><td>{kem.algorithm}</td></tr>
+                <tr><th scope="row">public key</th><td>{kem.publicKeyBytes} B</td></tr>
+                <tr><th scope="row">ciphertext</th><td>{kem.cipherTextBytes} B</td></tr>
+                <tr><th scope="row">shared secret</th><td className="mono">{kem.sharedSecretPrefix}…</td></tr>
+                <tr><th scope="row">agreement</th><td style={{ color: kem.agreement ? "var(--accent-2)" : "var(--danger)" }}>{String(kem.agreement)}</td></tr>
+                <tr><th scope="row">elapsed</th><td>{kem.elapsedMs} ms</td></tr>
               </tbody>
             </table>
           )}
@@ -116,11 +116,11 @@ export default function Validations() {
           {sig && (
             <table style={{ marginTop: 12 }}>
               <tbody>
-                <tr><td>algorithm</td><td>{sig.algorithm}</td></tr>
-                <tr><td>public key</td><td>{sig.publicKeyBytes} B</td></tr>
-                <tr><td>signature</td><td>{sig.signatureBytes} B</td></tr>
-                <tr><td>valid signature</td><td style={{ color: sig.validSignature ? "var(--accent-2)" : "var(--danger)" }}>{String(sig.validSignature)}</td></tr>
-                <tr><td>rejects tampered</td><td style={{ color: sig.rejectsTampered ? "var(--accent-2)" : "var(--danger)" }}>{String(sig.rejectsTampered)}</td></tr>
+                <tr><th scope="row">algorithm</th><td>{sig.algorithm}</td></tr>
+                <tr><th scope="row">public key</th><td>{sig.publicKeyBytes} B</td></tr>
+                <tr><th scope="row">signature</th><td>{sig.signatureBytes} B</td></tr>
+                <tr><th scope="row">valid signature</th><td style={{ color: sig.validSignature ? "var(--accent-2)" : "var(--danger)" }}>{String(sig.validSignature)}</td></tr>
+                <tr><th scope="row">rejects tampered</th><td style={{ color: sig.rejectsTampered ? "var(--accent-2)" : "var(--danger)" }}>{String(sig.rejectsTampered)}</td></tr>
               </tbody>
             </table>
           )}
@@ -133,13 +133,13 @@ export default function Validations() {
           {pqc && (
             <table style={{ marginTop: 12 }}>
               <tbody>
-                <tr><td>KEM</td><td>{pqc.kem} + {pqc.classical}</td></tr>
-                <tr><td>combiner</td><td className="mono" style={{ fontSize: 11 }}>{pqc.combiner}</td></tr>
+                <tr><th scope="row">KEM</th><td>{pqc.kem} + {pqc.classical}</td></tr>
+                <tr><th scope="row">combiner</th><td className="mono" style={{ fontSize: 11 }}>{pqc.combiner}</td></tr>
                 {/* Split out so the total is checkable against its parts rather than taken on trust:
                     an ML-KEM-768-only run would show 1088 B here with no classical contribution. */}
-                <tr><td>ciphertext</td><td>{pqc.ciphertext_bytes} B ({pqc.pqc_ciphertext_bytes} B ML-KEM + {pqc.classical_public_key_bytes} B X25519)</td></tr>
-                <tr><td>shared secret</td><td className="mono">{pqc.shared_secret_prefix}…</td></tr>
-                <tr><td>agreement</td><td style={{ color: pqc.agreement ? "var(--accent-2)" : "var(--danger)" }}>{String(pqc.agreement)}</td></tr>
+                <tr><th scope="row">ciphertext</th><td>{pqc.ciphertext_bytes} B ({pqc.pqc_ciphertext_bytes} B ML-KEM + {pqc.classical_public_key_bytes} B X25519)</td></tr>
+                <tr><th scope="row">shared secret</th><td className="mono">{pqc.shared_secret_prefix}…</td></tr>
+                <tr><th scope="row">agreement</th><td style={{ color: pqc.agreement ? "var(--accent-2)" : "var(--danger)" }}>{String(pqc.agreement)}</td></tr>
               </tbody>
             </table>
           )}
@@ -164,7 +164,7 @@ export default function Validations() {
           {qkd && (
             <table style={{ marginTop: 12 }}>
               <tbody>
-                <tr><td>QBER</td><td style={{ color: qkd.eavesdropper_likely ? "var(--danger)" : "var(--accent-2)" }}>{qkd.qber}</td></tr>
+                <tr><th scope="row">QBER</th><td style={{ color: qkd.eavesdropper_likely ? "var(--danger)" : "var(--accent-2)" }}>{qkd.qber}</td></tr>
                 {/* PER PULSE, and the label says so. It read "secret key rate" with no unit beside a
                     dimensionless per-pulse fraction, while ETSI GS QKD 015 defines a field of that
                     name as bit/s - the same one-name-two-dimensions problem Round 44 removed from
@@ -178,12 +178,12 @@ export default function Validations() {
                     `api.ts` emitting `skr`. The demo builds CLIENT_ONLY, so that branch is the only
                     one the public site executes and this cell rendered blank there. The sentence
                     remained true only of the branch nobody had looked at. */}
-                <tr><td>secret key rate (per pulse, asymptotic)</td><td>{typeof qkd.skr_per_pulse === "number" ? Number(qkd.skr_per_pulse.toPrecision(4)) : qkd.skr_per_pulse}</td></tr>
+                <tr><th scope="row">secret key rate (per pulse, asymptotic)</th><td>{typeof qkd.skr_per_pulse === "number" ? Number(qkd.skr_per_pulse.toPrecision(4)) : qkd.skr_per_pulse}</td></tr>
                 {/* A composable finite key since Round 80, of the block named beside it - not the rate
                     times the pulses, which no finite block distils. */}
-                <tr><td>secure key bits (composable finite key)</td><td>{typeof qkd.secure_key_bits === "number" ? qkd.secure_key_bits.toLocaleString("en-US") : qkd.secure_key_bits}{typeof qkd.block_pulses === "number" && qkd.block_pulses > 0
+                <tr><th scope="row">secure key bits (composable finite key)</th><td>{typeof qkd.secure_key_bits === "number" ? qkd.secure_key_bits.toLocaleString("en-US") : qkd.secure_key_bits}{typeof qkd.block_pulses === "number" && qkd.block_pulses > 0
                   ? <span className="muted small"> over a block of {qkd.block_pulses.toExponential(2)} pulses</span> : null}</td></tr>
-                <tr><td>eavesdropper?</td><td style={{ color: qkd.eavesdropper_likely ? "var(--danger)" : "var(--accent-2)" }}>{String(qkd.eavesdropper_likely)}</td></tr>
+                <tr><th scope="row">eavesdropper?</th><td style={{ color: qkd.eavesdropper_likely ? "var(--danger)" : "var(--accent-2)" }}>{String(qkd.eavesdropper_likely)}</td></tr>
               </tbody>
             </table>
           )}
@@ -216,12 +216,12 @@ export default function Validations() {
         {mcp && (
           <table style={{ marginTop: 12 }}>
             <tbody>
-              <tr><td>session</td><td className="mono">{mcp.session}</td></tr>
-              <tr><td>KEM / QKD-domain constant mixed</td><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
-              <tr><td>method</td><td className="mono">{mcp.method}</td></tr>
-              <tr><td>authenticated ({mcp.signature_alg})</td>
+              <tr><th scope="row">session</th><td className="mono">{mcp.session}</td></tr>
+              <tr><th scope="row">KEM / QKD-domain constant mixed</th><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
+              <tr><th scope="row">method</th><td className="mono">{mcp.method}</td></tr>
+              <tr><th scope="row">authenticated ({mcp.signature_alg})</th>
                 <td style={{ color: mcp.authenticated ? "var(--accent-2)" : "var(--danger)" }}>{String(mcp.authenticated)}</td></tr>
-              <tr><td>tampered message rejected</td>
+              <tr><th scope="row">tampered message rejected</th>
                 <td style={{ color: mcp.tamper_rejected ? "var(--accent-2)" : "var(--danger)" }}>{String(mcp.tamper_rejected)}</td></tr>
             </tbody>
           </table>

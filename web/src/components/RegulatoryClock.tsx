@@ -84,7 +84,14 @@ export default function RegulatoryClock() {
           {CLOCK.map((r, i) => (
             <tr key={i}>
               <td className="mono">{r.when}</td>
-              <td>{r.instrument}</td>
+              <td>{r.instrument}
+                {/* The primary sources, linked (UX42, Round 86): the clock cited every instrument as text. */}
+                <span className="clock-sources">
+                  {r.sources.map((src, k) => (
+                    <span key={src.url}>{k > 0 ? " · " : ""}<a href={src.url} target="_blank" rel="noopener noreferrer">{src.label}</a></span>
+                  ))}
+                </span>
+              </td>
               <td>{r.binds}</td>
               <td>{r.what}</td>
               <td style={{ color: COLOR[r.firmness], whiteSpace: "nowrap" }}>{r.firmness}</td>

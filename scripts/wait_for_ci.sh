@@ -17,7 +17,13 @@
 #   usage: bash scripts/wait_for_ci.sh <branch> [expected-sha] [min-runs]
 set -euo pipefail
 branch="${1:?usage: wait_for_ci.sh <branch> [sha] [min-runs]}"
-want="${2:-$(git rev-parse HEAD)}"
+want="${2:-HEAD}"
+# A SHORT sha never equals a run's 40-character headSha, so this waited out its whole deadline for a
+# commit whose runs had all passed (Round 86, PR #83). Expand it here. A full sha is taken as given,
+# because it may name a commit this clone has not fetched.
+if ! [[ "$want" =~ ^[0-9a-f]{40}$ ]]; then
+  want=$(git rev-parse --verify "${want}^{commit}")
+fi
 min="${3:-2}"
 
 # A BOUNDED wait. An unbounded one hangs forever when no run ever appears for the sha - which is a

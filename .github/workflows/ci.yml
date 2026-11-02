@@ -329,7 +329,7 @@ jobs:
       # runs here as well as in scripts/ci_local.sh, which scans in the local font. Google Chrome is
       # on the runner. Offline, as this workflow is: the page may reach localhost only, so the
       # published models' stage fails and the scan measures every page without their results.
-      - name: Text layout on every page, in the runner's font
+      - name: Text layout, contrast, header cells and load shift on every page, in the runner's font
         working-directory: web
         run: |
           VITE_CLIENT_ONLY=1 npx vite build --outDir /tmp/qsh-scan >/tmp/qsh-scan-build.log 2>&1 \

@@ -384,15 +384,15 @@ function RelaySection({ link, defaultElevation, minEl, epsSec, deviation }: {
       <div className="net-table">
         <table>
           <tbody>
-            <tr><td>Ground distance A to B</td><td className="num">{fmt(relay.groundKm)} km</td>
+            <tr><th scope="row">Ground distance A to B</th><td className="num">{fmt(relay.groundKm)} km</td>
               <td className="small muted">{aId === bId ? "the same station" : relay.sharedView
                 ? `within one satellite's ${fmt(sharedViewMaxKm(link))} km footprint: both can be in view at once`
                 : `wider than one satellite's ${fmt(sharedViewMaxKm(link))} km footprint: the key has to be carried`}</td></tr>
-            <tr><td>Key with A, one pass</td><td className="num">{kbit(relay.a.keyBits)}</td><td className="small muted">{fmt(relay.a.durationS)} s above the minimum elevation; asymptotic, at the pass elevation rounded to a whole degree, so it can differ slightly from the one-pass figure above. As one block its composable finite key is {kbit(fin.a)}</td></tr>
-            <tr><td>Key with B, one pass</td><td className="num">{kbit(relay.b.keyBits)}</td><td className="small muted">{fmt(relay.b.durationS)} s; as one block, {kbit(fin.b)}</td></tr>
-            <tr><td>Relayed key A to B</td><td className="num"><b>{kbit(relay.keyBits)}</b></td><td className="small muted">the shorter of the two: one key pads the other. At the finite keys, {kbit(fin.keyBits)}</td></tr>
-            <tr><td>Second key exists after</td><td className="num">{fmt(relay.waitH, 1)} h</td><td className="small muted">a sun-synchronous orbit passes each station at the same local time, so the longitude difference sets the wait</td></tr>
-            <tr><td>Pass pairs for Liao&apos;s 100 kB</td><td className="num"><b>{Number.isFinite(fin.passPairsFor100kB) ? fin.passPairsFor100kB : "-"}</b></td><td className="small muted">&quot;we establish a 100 kB secure key between Xinglong and Graz&quot;: 800,000 bits over the relayed finite key per pass pair, each pass a block of its own ({bound}, eps_sec {epsSec.toExponential(0)}). The asymptotic key would need {Number.isFinite(relay.passPairsFor100kB) ? relay.passPairsFor100kB : "-"}, which no finite block distils</td></tr>
+            <tr><th scope="row">Key with A, one pass</th><td className="num">{kbit(relay.a.keyBits)}</td><td className="small muted">{fmt(relay.a.durationS)} s above the minimum elevation; asymptotic, at the pass elevation rounded to a whole degree, so it can differ slightly from the one-pass figure above. As one block its composable finite key is {kbit(fin.a)}</td></tr>
+            <tr><th scope="row">Key with B, one pass</th><td className="num">{kbit(relay.b.keyBits)}</td><td className="small muted">{fmt(relay.b.durationS)} s; as one block, {kbit(fin.b)}</td></tr>
+            <tr><th scope="row">Relayed key A to B</th><td className="num"><b>{kbit(relay.keyBits)}</b></td><td className="small muted">the shorter of the two: one key pads the other. At the finite keys, {kbit(fin.keyBits)}</td></tr>
+            <tr><th scope="row">Second key exists after</th><td className="num">{fmt(relay.waitH, 1)} h</td><td className="small muted">a sun-synchronous orbit passes each station at the same local time, so the longitude difference sets the wait</td></tr>
+            <tr><th scope="row">Pass pairs for Liao&apos;s 100 kB</th><td className="num"><b>{Number.isFinite(fin.passPairsFor100kB) ? fin.passPairsFor100kB : "-"}</b></td><td className="small muted">&quot;we establish a 100 kB secure key between Xinglong and Graz&quot;: 800,000 bits over the relayed finite key per pass pair, each pass a block of its own ({bound}, eps_sec {epsSec.toExponential(0)}). The asymptotic key would need {Number.isFinite(relay.passPairsFor100kB) ? relay.passPairsFor100kB : "-"}, which no finite block distils</td></tr>
           </tbody>
         </table>
       </div>
@@ -495,14 +495,14 @@ function ConstellationSection({ orbitKm, minEl }: { orbitKm: number; minEl: numb
       <div className="net-table">
         <table>
           <tbody>
-            <tr><td>Distance between neighbours</td><td className="num">{fmt(c.neighbourKm)} km</td><td className="small muted">2 (R + h) sin(pi / N)</td></tr>
-            <tr><td>Line of sight passes above the ground at</td><td className="num">{fmt(c.chordMinAltitudeKm)} km</td>
+            <tr><th scope="row">Distance between neighbours</th><td className="num">{fmt(c.neighbourKm)} km</td><td className="small muted">2 (R + h) sin(pi / N)</td></tr>
+            <tr><th scope="row">Line of sight passes above the ground at</th><td className="num">{fmt(c.chordMinAltitudeKm)} km</td>
               <td className="small muted">{c.losOk ? `clear of the ${fmt(spec.clearanceKm)} km the profile requires` : `below the ${fmt(spec.clearanceKm)} km the profile requires: no link. The plane needs at least ${c.minSatellites} satellites`}</td></tr>
-            <tr><td>Link loss</td><td className="num">{Number.isFinite(c.islLossDb) ? `${fmt(c.islLossDb, 1)} dB` : "-"}</td><td className="small muted">diffraction, pointing and receiver optics; no atmosphere above the clearance height</td></tr>
-            <tr><td>Key rate per link</td><td className="num">{fmt(c.islBitPerS, 1)} bit/s</td><td className="small muted">the Downlink tab&apos;s bound over this channel, per pulse sent</td></tr>
-            <tr><td>Time per orbit a link runs</td><td className="num">{fmt(c.islSecondsPerOrbit / 60, 1)} min</td><td className="small muted">{eclipseOnly ? `both neighbours in shadow; one satellite is in shadow ${fmt(100 * c.eclipseFraction, 1)}% of its ${fmt(c.periodS / 60, 1)} min orbit` : "always: the shadow condition is off"}</td></tr>
-            <tr><td>Key per link per day</td><td className="num"><b>{kbit(c.islKeyPerDayBits)}</b></td><td className="small muted">{fmt(c.islKeyPerOrbitBits / 1000, 1)} kbit per orbit</td></tr>
-            <tr><td>Trusted nodes across the ring</td><td className="num">{c.hopsAcross + 1}</td><td className="small muted">a key carried to the opposite satellite crosses {c.hopsAcross} links, and every satellite on the way holds it</td></tr>
+            <tr><th scope="row">Link loss</th><td className="num">{Number.isFinite(c.islLossDb) ? `${fmt(c.islLossDb, 1)} dB` : "-"}</td><td className="small muted">diffraction, pointing and receiver optics; no atmosphere above the clearance height</td></tr>
+            <tr><th scope="row">Key rate per link</th><td className="num">{fmt(c.islBitPerS, 1)} bit/s</td><td className="small muted">the Downlink tab&apos;s bound over this channel, per pulse sent</td></tr>
+            <tr><th scope="row">Time per orbit a link runs</th><td className="num">{fmt(c.islSecondsPerOrbit / 60, 1)} min</td><td className="small muted">{eclipseOnly ? `both neighbours in shadow; one satellite is in shadow ${fmt(100 * c.eclipseFraction, 1)}% of its ${fmt(c.periodS / 60, 1)} min orbit` : "always: the shadow condition is off"}</td></tr>
+            <tr><th scope="row">Key per link per day</th><td className="num"><b>{kbit(c.islKeyPerDayBits)}</b></td><td className="small muted">{fmt(c.islKeyPerOrbitBits / 1000, 1)} kbit per orbit</td></tr>
+            <tr><th scope="row">Trusted nodes across the ring</th><td className="num">{c.hopsAcross + 1}</td><td className="small muted">a key carried to the opposite satellite crosses {c.hopsAcross} links, and every satellite on the way holds it</td></tr>
           </tbody>
         </table>
       </div>

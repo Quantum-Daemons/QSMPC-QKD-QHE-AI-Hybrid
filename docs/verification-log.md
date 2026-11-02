@@ -3741,3 +3741,19 @@ been a third version of each list, waiting to drift.
 font sizes the PDF's own content streams set. That reading caught microtype's font expansion scaling
 glyphs through the text matrix, which changes no size but made the reading impure, and it is why the
 rule could be seeded at all: a seven-page PDF in small type without page numbers fails it three ways.
+
+**A status in a checklist is a claim with a date.** Seven rows read "FAILS LIVE" for rounds after the
+defects round fixed them, so a reader of the checklist would have planned work already done. The audit
+re-measured each on the deployed site, and the rows now carry what was measured and when.
+
+**An outline is not a colour.** The tick style set `stroke`, and to the eye the labels looked light; the
+text's fill was recharts' #666, which is what contrast is computed on and what a magnifier or a
+high-contrast mode sees. The fix sets the fill and drops the outline.
+
+**A measurement has to be taken where the defect lives, from the start.** The layout shift existed only at
+desktop width: zero at mobile, where overlay scrollbars and a narrower card wrap differently. The app's own
+small browser pane read 0.095 from its 317-pixel viewport, and an observer registered after the load read
+zero; only an observer installed before the page's scripts, at a full desktop size, read the real 0.28.
+And the audit's first pass capped its samples at eight a page, which the dominant tick failure filled:
+the legend and badge failures surfaced only once the ticks were fixed and the scan reported everything.
+
