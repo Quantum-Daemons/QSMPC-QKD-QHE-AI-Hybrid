@@ -16,7 +16,7 @@ models:
 # QSH hosted inference (T3 tier)
 
 Serves the **plaintext** per-industry models at full precision for
-[QSMPC-QKD-QHE-AI-Hybrid](https://github.com/thedaemon-wizard/QSMPC-QKD-QHE-AI-Hybrid).
+[QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid).
 
 The demo has three model tiers. The encrypted tier runs under real CKKS and is small because
 homomorphic evaluation is cost-bounded - the largest model ever demonstrated end-to-end under CKKS is
