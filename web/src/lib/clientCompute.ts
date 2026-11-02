@@ -14,7 +14,7 @@ import {
   demoSample, federatedCfg, fheCfg, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel,
   tierArchitectures, webCfg, workloadMultipliers,
 } from "./config";
-import { encryptedConv2d, encryptedHeldOutAgreement, encryptedLinear, encryptedLinearBatch,
+import { CKKS_FLOOD_BITS, encryptedConv2d, encryptedHeldOutAgreement, encryptedLinear, encryptedLinearBatch,
   encryptedStudentInference, warmFHE, type CnnStudentWeights } from "./clientFHE";
 import { clientTrainScoreIDS } from "./clientIDS";
 import { clientQFL } from "./clientQFL";
@@ -43,6 +43,9 @@ import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
+// Rates of agreement, to four places (Round 86, review PI-12): at two, anything from 1 - 40/8192 up
+// printed as 1.00, which reads as perfect agreement where up to 40 rows disagreed.
+const r4 = (x: number) => Math.round(x * 10000) / 10000;
 /**
  * The operator's source repetition rate for one channel, in Hz, or the shipped default.
  *
@@ -888,6 +891,9 @@ export interface RealHybridRun extends MeasuredHybrid {
   /** The index the same argmax gives in the clear on the same quantised logits (`clearOut` in
    *  clientMPC.ts): the self-test the caller reports as `mpc_matches_clear`. */
   mpcClearIndex: number;
+  /** The argmax of the float logits the circuit was given (Round 86, review PI-4): `mpcClearIndex`
+   *  shares the circuit's quantisation, so only this can show a near-tie that the quantisation decided. */
+  mpcFloatIndex: number;
   maxAbsError: number;
   /** The decrypted logits and the plaintext reference the CKKS path was measured against.
    *  Carried so every use case can report the same encrypted-verification figures telecom got in
@@ -1160,7 +1166,7 @@ export async function realClientHybrid(features: number[],
       };
     }
     return {
-      prediction: mpc.out[0], mpcClearIndex: mpc.clearOut[0],
+      prediction: mpc.out[0], mpcClearIndex: mpc.clearOut[0], mpcFloatIndex: argmax(fhe.logits),
       fheMs: fhe.fheMs + (conv?.convMs ?? 0), mpcMs: mpc.mpcMs,
       commBytes: mpc.commBytes, ctBytes: fhe.ctBytes, featDim: n,
       maxAbsError: fhe.maxAbsError, plainLogits: fhe.plainLogits, logits: fhe.logits, conv,
@@ -1499,7 +1505,9 @@ export async function clientAliceBob(seed = 0, nShared = 8) {
       { name: "PQC handshake (initiate)", party: "Alice", ms: timing.alice_pqc_handshake_ms },
       { name: "PQC handshake (respond)", party: "Bob", ms: timing.bob_pqc_handshake_ms },
       { name: "Private set intersection (OPRF)", party: "Alice+Bob", ms: timing.psi_ms },
-      { name: "Private inference (ONNX)", party: "Bob", ms: timing.private_inference_ms },
+      // A plaintext placeholder score on random features (Round 86, review PI-11): the demo calls
+      // `privateInference("demo", ...)`, which takes the placeholder branch, so it is not private.
+      { name: "Placeholder linear score (plaintext)", party: "Bob", ms: timing.private_inference_ms },
     ],
     timing_ms: timing, total_ms: totalMs,
     session_key_agreement: agree && xAgree, kem: "ML-KEM-768+X25519",
@@ -1720,14 +1728,16 @@ export function runClientPipeline(
     metric(stage, "encrypted_top1_mismatches_batch", ho.mismatches);
     metric(stage, "encrypted_scores_compared_batch", bt.rows * held.model.W.length);
     // The rate and its three companions, together and unconditionally (see the parity test).
-    metric(stage, "encrypted_agreement", r2(1 - ho.mismatches / Math.max(1, bt.rows)));
+    metric(stage, "encrypted_agreement", r4(1 - ho.mismatches / Math.max(1, bt.rows)));
     metric(stage, "encrypted_agreement_rows", bt.rows);
     metric(stage, "encrypted_undecidable_rows", ho.tieRows);
     metric(stage, "encrypted_decidable_rows", ho.decidable);
     metric(stage, "encrypted_agreement_over_decidable",
-      ho.decidable > 0 ? r2(1 - ho.flippedDecidable / ho.decidable) : null);
+      ho.decidable > 0 ? r4(1 - ho.flippedDecidable / ho.decidable) : null);
     if (ho.mismatches > 0) metric(stage, "encrypted_flip_margin_max", ho.flipMarginMax);
     if (ho.encryptedAccuracy != null) metric(stage, "encrypted_accuracy_vs_labels", ho.encryptedAccuracy);
+    // Its baseline, beside it: what always calling the most common label scores on the same rows.
+    if (ho.majorityBaseline != null) metric(stage, "encrypted_accuracy_majority_baseline", r4(ho.majorityBaseline));
     artifacts.encrypted_agreement_plot = ho.plot;
     emit("log", stage, `encrypted tier over ${bt.rows} HELD-OUT rows of ${held.corpus}, none used to `
       + `fit ${held.modelKey ?? held.modelLabel}: ${bt.ciphertexts} ciphertext(s) of up to `
@@ -1804,7 +1814,9 @@ export function runClientPipeline(
       // metric that exists to detect it. An error at or above 1 has no bits of precision to report,
       // so it reports as a failure instead of as a plausible positive.
       const bits = maxAbs > 0 && maxAbs < 1 ? Math.floor(-Math.log2(maxAbs)) : null;
-      const precisionFailed = maxAbs >= 1;
+      // `!(x < 1)`, not `x >= 1` (Round 86, review PI-3): NaN fails every comparison, so `>= 1` let it
+      // through as a pass.
+      const precisionFailed = !(maxAbs < 1);
 
       metric(stage, "encrypted_student_params", Number(w.n_parameters) || null);
       metric(stage, "encrypted_student_class", w.classes?.[encCls] ?? encCls);
@@ -3174,7 +3186,7 @@ export function runClientPipeline(
             metric(stage, "encrypted_batch_max_abs_error", bt.maxAbsError);
             metric(stage, "encrypted_batch_precision_bits", bits);
             metric(stage, "encrypted_smallest_plaintext_margin", bt.smallestMargin);
-            metric(stage, "encrypted_agreement", r2(1 - bt.mismatches / Math.max(1, bt.rows)));
+            metric(stage, "encrypted_agreement", r4(1 - bt.mismatches / Math.max(1, bt.rows)));
             metric(stage, "encrypted_agreement_rows", bt.rows);   // the denominator, never implicit
             // The part of that denominator that carries no signal, and the rate over the rest.
             // Emitted on EVERY run, including the ones where no tie happened to flip - see the
@@ -3182,7 +3194,7 @@ export function runClientPipeline(
             metric(stage, "encrypted_undecidable_rows", bt.tieRows);
             metric(stage, "encrypted_decidable_rows", bt.decidable);
             metric(stage, "encrypted_agreement_over_decidable",
-              bt.decidable > 0 ? r2(1 - bt.flippedDecidable / bt.decidable) : null);
+              bt.decidable > 0 ? r4(1 - bt.flippedDecidable / bt.decidable) : null);
             metric(stage, "encrypted_top1_mismatches_batch", bt.mismatches);
             if (bt.mismatches > 0) {
               metric(stage, "encrypted_flip_margin_max", bt.flipMarginMax);
@@ -3260,9 +3272,8 @@ export function runClientPipeline(
               + `${rot > 0 ? ` (1 to ${2 ** (rot - 1)})` : ""} `
               + `then sum the products into slot 0. Decrypted: the result ciphertext, read at slot 0, `
               + `which holds the score ${encScore.toFixed(6)} (in the clear ${plainScore.toFixed(6)}, `
-              + `|difference| ${scoreErr.toExponential(3)}); its other slots hold partial sums of the same `
-              + `products, from which the key holder could read each weighted product - the weights are `
-              + `the published ones. The cut ${(-bCut).toFixed(4)} is the `
+              + `|difference| ${scoreErr.toExponential(3)}); every other slot is zeroed by the output mask and `
+              + `flooded (+/-2^${CKKS_FLOOD_BITS}) before decryption, so it shows none of the partial sums. The cut ${(-bCut).toFixed(4)} is the `
               + `${realIn.metrics?.prs_high_risk_percentile}th percentile of the plaintext score over the `
               + `${realIn.metrics?.prs_cut_population} bundled 1000 Genomes individuals, this one included `
               + `(linear interpolation between order statistics). Score minus cut, beside a class-0 logit `
@@ -3329,7 +3340,7 @@ export function runClientPipeline(
               + `es over ${real.logits.length} class scores. Max abs error `
               + `${real.maxAbsError.toExponential(3)}`
               + (bits !== null ? ` (about ${bits} bits of precision, MAX not mean)` : "")
-              + (real.maxAbsError >= 1
+              + (!(real.maxAbsError < 1)
                 ? " -- PRECISION FAILURE: the error is at or above 1, so the decrypted result is not"
                   + " a usable approximation of the plaintext one."
                 : "") + ".");
@@ -3461,6 +3472,11 @@ export function runClientPipeline(
             metric(stage, "fhe_total_rotations", real.conv.totalRotations);
             if (real.conv.studentParams != null) metric(stage, "fhe_student_params", real.conv.studentParams);
             if (real.conv.studentPrediction != null) metric(stage, "fhe_student_class", real.conv.studentPrediction);
+            // What the CNN was given, beside its class (Round 86, review PI-10): this page's tabular row
+            // tiled to fill the image, with the student's pixel preprocessing not applied.
+            if (real.conv.studentPrediction != null) {
+              metric(stage, "fhe_student_input", "this page's tabular row tiled to fill the image; not an image");
+            }
             emit("log", stage, `private inference (REAL in-browser FHE, the PUBLISHED student's own `
               + `weights fetched from its pinned HF revision, ${real.conv.studentParams} params): `
               // WHICH class: `real.prediction` is the garbled-circuit argmax over the page's bundled
@@ -3473,7 +3489,9 @@ export function runClientPipeline(
               + `layers with its bias added under encryption and every slot but the layer's outputs `
               + `masked and flooded, so the client decrypts each layer's outputs and nothing else; it `
               + `decrypts after every layer, applies ReLU and average pooling in plaintext, and takes `
-              + `the CNN's own argmax in the clear. ${real.conv.channels}x3x3 kernels over a `
+              + `the CNN's own argmax in the clear. Its input is this page's tabular row tiled to fill `
+              + `the image, not an image, so the CNN's class is not a diagnosis. `
+              + `${real.conv.channels}x3x3 kernels over a `
               + `${real.conv.outH}x${real.conv.outW} output, ${real.conv.patchesPerCiphertext} im2col `
               + `patches packed into one ciphertext, ${real.conv.rotations} rotations and `
               + `${real.conv.multiplies} multiply-plain (kernels and output masks) in `
@@ -3515,6 +3533,13 @@ export function runClientPipeline(
           // A disagreement is a broken integration, and it is reported as one.
           const mpcAgrees = real.prediction === real.mpcClearIndex;
           metric(stage, "mpc_matches_clear", mpcAgrees ? 1 : 0);
+          // Against the FLOAT argmax too (Round 86, review PI-4): the self-test above shares the
+          // circuit's quantisation, so a near-tie the 2^-20 step decided would pass it unseen.
+          const floatAgrees = real.prediction === real.mpcFloatIndex;
+          metric(stage, "mpc_matches_float_argmax", floatAgrees ? 1 : 0);
+          if (!floatAgrees) emit("log", stage, `The circuit's class ${real.prediction} differs from the float argmax `
+            + `${real.mpcFloatIndex}: two logits within the quantisation step tied, and the tie went to the `
+            + `lower index.`);
           emit("log", stage, mpcAgrees
             ? `garbled-circuit argmax checked in the clear: index ${real.prediction} both ways`
             : `garbled-circuit argmax DISAGREES with the same argmax in the clear: ${real.prediction} `

@@ -43,12 +43,15 @@ export interface MPCResult {
   clearOut: number[];
 }
 
-// Fixed-point parameters, unchanged from the emp-wasm version so results stay comparable. Logits
-// from the small demo model are O(1); OFFSET makes the quantised value non-negative, and the clamp
-// keeps it at most QMAX, so the reconstructed values compare correctly as unsigned 32-bit integers.
-const SCALE = 64;            // fixed-point scale for the float logits
-const OFFSET = 8;            // logits assumed within [-OFFSET, OFFSET] -> quantised value is positive
-const QMAX = 2 * OFFSET * SCALE; // 1024, the max quantised value (logits clamped to it)
+// Fixed-point parameters. OFFSET makes the quantised value non-negative, and the clamp keeps it at most
+// QMAX, so the reconstructed values compare correctly as unsigned 32-bit integers. Round 86 (review
+// PI-4): these were 64 and 8, the emp-wasm version's, so a logit gap under 1/64 tied and went to the
+// lower index, and logits beyond +-8 clamped together; 22 of medical's 171 held-out rows exceed 8. The
+// shares have been modulo 2^32 since Round 66, so the range is free: 2^-20 steps over +-512, at most
+// 2^30, and the circuit, which reconstructs in u64 and casts back to u32, is unchanged.
+const SCALE = 2 ** 20;       // fixed-point scale for the float logits
+const OFFSET = 512;          // logits assumed within [-OFFSET, OFFSET] -> quantised value is positive
+const QMAX = 2 * OFFSET * SCALE; // 2^30, the max quantised value (logits clamped to it)
 
 type QshMpc = typeof import("../wasm/qsh_mpc/qsh_mpc.js");
 

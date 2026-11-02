@@ -93,7 +93,7 @@ involved anywhere in this project.
 | PSI (finance) | A semi-honest DH-OPRF PSI on RFC 9497's OPRF, mode 0x00, suite ristretto255-SHA512 (the group is RFC 9496's ristretto255), run with `@noble/curves`' `ristretto255_oprf` (`web/src/lib/oprfPsi.ts`), both banks in one tab. Bank B, the OPRF server, draws a fresh key $`k`$ for the run; Bank A blinds each of its IDs; Bank B evaluates each blinded element and sends $`F_k(y)`$ for each of its own IDs $`y`$ in an order shuffled with the CSPRNG; Bank A finalizes $`F_k(x)`$ for its own IDs and intersects. **Bank A learns the intersection and $`\lvert B\rvert`$; Bank B learns $`\lvert A\rvert`$** and nothing else about Bank A's IDs, since a blinded element is uniform whatever the ID (RFC 9497 section 7.1, "Unconditional input secrecy"). Bank B does not learn the intersection. Bank A cannot compute $`F_k`$ without Bank B, so it can test an ID against Bank B's list only by having Bank B answer a query for it. **No malicious security**: a bank that deviates (blinding IDs it does not hold, answering under another key, sending made-up outputs) is not detected, and mode 0x00 carries no proof. **Not post-quantum**: the pseudorandomness of $`F_k`$, which keeps Bank B's list from Bank A, rests on the One-More Gap Computational Diffie-Hellman assumption (RFC 9497 section 7.2.1), so Bank A, with a quantum computer, could solve for $`k`$ from a blinded element and its evaluation and test every candidate against Bank B's outputs; Bank B's view of Bank A's IDs stays hidden even then. The three messages are sealed with AES-256-GCM under two keys HKDF-SHA256 derives from the session key above, one per direction: that keeps the transcript from third parties, including one who records it now and attacks ristretto255 later, for as long as the hybrid holds, and hides nothing between the banks. | The same protocol in pure Python: `qsmpc/oprf.py` implements ristretto255 and the OPRF from RFC 9496 and RFC 9497, checked against both RFCs' test vectors and byte for byte against the browser, and `qsmpc/psi.py` runs it between the two banks in one process, sealed with the transport's `SecureChannel` under keys derived as in the browser. The OPRF runs on libsodium's ristretto255 (through `pysodium`, Round 85), which is written to run in constant time as RFC 9497 section 7.4 requires, with the pure-Python code as the fallback where the host has no libsodium and as the cross-check; the run reports which (`psi_oprf_backend`). Side channels on the host stay out of scope here. A malicious-secure PSI and a post-quantum OPRF are future work. |
 | Secure aggregation (finance, medical) | Each client draws an X25519 key pair per run; each pair of clients derives its mask seed from their X25519 shared secret by HKDF-SHA256, and each round's mask from the seed by SHAKE-256 (`web/src/lib/clientQFL.ts`), the pairwise key agreement of Bonawitz et al. (CCS 2017). Client $`i`$ adds the mask for every $`j > i`$ and subtracts it for every $`j < i`$, modulo $`2^{32}`$, so the masks cancel exactly. The aggregator receives only the public keys and the masked updates, so it cannot remove a mask on its own, and the PQC session key seeds no mask. All clients run in one tab, which holds every private key; the aggregator's step reads none. Not implemented: the double masking and the secret-shared keys that recover from a dropout (a client that drops breaks the round), security against a malicious aggregator, and authentication of the public keys (an aggregator that substitutes its own keys can unmask; that adversary is out of scope). | Medical only. The same key agreement, seeds and mask words (`SecureAggregator`, `federated.py`, byte-identical to the browser's for the same private keys), with fresh keys every run unless a caller passes fixed ones; every client and the aggregator run in one process. Since Round 85 the shares are the browser's to the bit: each weighted update is quantised to $`2^{-20}`$ and masked modulo $`2^{32}`$, so the masks cancel exactly and the aggregate is the exact sum of the quantised updates (until then the masks were added as reals in float64 and cancelled only to rounding). The same three omissions apply. |
 | Secure sum (genomics) | Additive shares modulo a prime above any total the four cohorts can reach, each mask uniform from `crypto.getRandomValues` by rejection; the cohorts are notional parties in one tab. | QSMS (Shamir and a d-level QFT), with its measurement outcomes sampled analytically rather than measured on a device. |
-| Private inference | The tab generates the CKKS keys, evaluates and decrypts, so the key holder, the decryptor and the viewer are one party. Each encrypted layer decrypts its outputs only, its bias added under encryption and every other slot flooded; the medical CNN's ReLU and pooling run in plaintext between its encrypted layers, and the garbled-circuit argmax (Polytune) runs on logits the tab has already decrypted, its two parties in one tab. | Three MPyC parties ([Trust assumptions](#trust-assumptions)). Every CKKS slot the key holder can decode carries an independent mask from the OS CSPRNG, real and imaginary parts, added as a vector encrypted under the client's key, which also re-randomises the ciphertext (`src/qsh/fhe/masking.py`, used by the dense layer and the convolution alike); the MPC opens re-masked values and, at the end, the class index to the client alone. The client's whole view is hidden statistically rather than perfectly, with its bound (`view_statistical_distance`) reported per run; on OpenFHE the context is real-typed, so the imaginary parts are not flooded, and the run says so in `masked_slots` and reports no flood margin. A client and helper who pool their Shamir shares recover the server's masks, and with them every intermediate. |
+| Private inference | The tab generates the CKKS keys, evaluates and decrypts, so the key holder, the decryptor and the viewer are one party. Each encrypted layer decrypts its outputs only, its bias added under encryption and every other slot flooded; the medical CNN's ReLU and pooling run in plaintext between its encrypted layers, and the garbled-circuit argmax (Polytune) runs on logits the tab has already decrypted, its two parties in one tab. | Three MPyC parties ([Trust assumptions](#trust-assumptions)). Every CKKS slot the key holder can decode carries an independent mask from the OS CSPRNG, real and imaginary parts, added as a vector encrypted under the client's key, which also re-randomises the ciphertext (`src/qsh/fhe/masking.py`, used by the dense layer, the convolution and, since Round 86, the linear model whose class the stage reports, `src/qsh/fhe/ckks_inference.py`, which until then decrypted the rotate-and-sum whole, partial sums included, review PI-1; there the client decrypts the logits themselves and takes the class in the clear, so it learns the logits, not only the class). One decryption is deliberately not masked: genomics' panel check (`encrypted_scores`) reads each person's score from a block whose other slots hold partial sums of the published PGS weights' products, which the page prints anyway. The MPC opens re-masked values and, at the end, the class index to the client alone. The client's whole view is hidden statistically rather than perfectly, with its bound (`view_statistical_distance`) reported per run; on OpenFHE the context is real-typed, so the imaginary parts are not flooded, and the run says so in `masked_slots` and reports no flood margin. A client and helper who pool their Shamir shares recover the server's masks, and with them every intermediate. |
 
 Each key's lifetime and source is in the next section; what would close each gap is under the
 residual risks below. The masks' statistical bounds, and what they do not cover, are derived in
@@ -173,8 +173,9 @@ decrypted results:
 - Bian, Choe, Kim and Lee (ePrint 2026/2490, 2026-10) need no decrypted value at all: a malicious
   evaluator that holds the public coefficient-to-slot (bootstrapping) keys and sees only whether the
   client accepted a result, a 1-bit validity response, recovers a ternary secret key in a number of
-  queries of the order of the key's entropy. It does not break IND-CPA, and noise flooding does not
-  close it, because what leaks is the reaction rather than a value.
+  queries of the order of the key's entropy. It does not break IND-CPA. The abstract does not discuss
+  noise flooding; this project's reading, not the paper's, is that flooding does not close it, because
+  what leaks is the reaction rather than a value.
 
 **The implementations say this in their own security documentation, and node-seal IS SEAL.** The demo
 runs Microsoft SEAL compiled to WASM, so SEAL's `SECURITY.md` is not background reading, it is the
@@ -222,12 +223,23 @@ explicitly rather than leaving to inference).
 decryption decoded.** Not a success flag, not a failure, not an error text. OpenFHE's precision guard
 ("approximation error is too high"), which `OpenFHEBackend.decrypt` lets propagate, is exactly such a
 bit once the parties are separate, and the bootstrap path holds public coefficient-to-slot keys with a
-uniform ternary secret, the attack's setting. Today every party runs in one tab or one process, so
-nothing reaches an evaluator; a deployment that separates them has to catch the failure on the client
-and answer the evaluator the same way either way. Separately, Noh, Chabounia, Hanrot and Passelegue
-(ePrint 2026/2575) argue that flooding needs a rigorous upper bound on the computational error; the
-server tier sizes its flood from the error the run measures (`src/qsh/fhe/masking.py`,
-`ClientView.err_max`), which that framework would call heuristic.
+uniform ternary secret, the attack's setting. The setting is not OpenFHE's bootstrap keys alone
+(Round 86, review PI-9). The abstract names the ingredient as *"public homomorphic linear
+transformations"*, and TenSEAL, the default backend, calls `generate_galois_keys()` with no step list
+(`src/qsh/fhe/backends.py`). That asks SEAL for its default set, which SEAL's `keygenerator.h` says
+*"is sufficient to apply any Galois automorphism"*: here, left and right rotations by every power of
+two from 1 to 2048 and the conjugation (read off the context on 2026-11-02). With plaintext
+multiplications, those compose any linear map of the slots, so an evaluator holding that set holds
+the attack's linear layer. That is this project's inference; no attack on TenSEAL is demonstrated.
+The browser generates only the rotation steps its sums use. Today every party runs in one tab or one
+process, so nothing reaches an evaluator; a deployment that separates them has to catch the failure
+on the client and answer the evaluator the same way either way. Separately, Noh, Chabounia, Hanrot
+and Passelegue (ePrint 2026/2575) argue that flooding needs a rigorous upper bound on the
+computational error. The server tier's flood is a fixed $`2^{30}`$ (`benchmark.mpc_mask_bits`); each
+run reports its margin over the largest error it measured (`flood_margin_bits`, from
+`ClientView.err_max` in `src/qsh/fhe/masking.py`), and nothing fails a run whose margin is small.
+That framework would call the margin heuristic. Until Round 86 (review PI-7) this said the flood was
+sized from the measured error.
 
 **"This project does not implement noise flooding" was an understatement, and it named the wrong
 subject.** The three CKKS implementations are not in the same position, and this deployment runs the
@@ -333,7 +345,18 @@ statement of known limitations, not a conformance gap against any published requ
   here is being withdrawn; it means the tier carried an unmaintained-upstream risk. The CKKS tier
   carries a related one: `node-seal` 7.0.0, still its newest release, is aligned with Microsoft SEAL
   4.1.2 (2024), and upstream SEAL is at 4.7.2 (2026-10-28), past 4.4.0's critical security update
-  (`docs/development.md`). Note the shape: the previous bullet was corrected by naming the maintained
+  (`docs/development.md`). **The residual risk, with versions (Round 86, review PI-2).** The browser
+  runs node-seal 7.0.0 (SEAL 4.1.2) and this repository's environment runs TenSEAL 0.3.16 (SEAL 4.1.1);
+  TenSEAL 0.3.17 and 0.3.18, which a fresh image can resolve, bundle SEAL 4.3.3, and no TenSEAL
+  release bundles 4.4.0 or later. node-seal's main branch moved to SEAL 4.7.2 on 2026-10-31 (PR #168;
+  its `CHANGES.md` calls the release 7.1.0, and that release also rejects NaN and infinities at CKKS
+  encode), and npm's newest node-seal was still 7.0.0 on 2026-11-02. What bounds the exposure until
+  then: neither tier deserializes a SEAL object it did not create (each serializes only to measure a
+  ciphertext's size), so 4.4.0's hardened deserialization guards an input this project never takes,
+  while 4.4.0's fixes to ciphertext evaluation and 4.7.2's sampler fix are missing from every build either tier can run.
+  The upgrade waits for the release, and a check makes the release hard to miss:
+  `scripts/audit_deps.sh seal`, run daily by the audit workflow, fails once npm's newest node-seal is
+  not the locked one. Note the shape: the previous bullet was corrected by naming the maintained
   replacements for two sunset dependencies, and the replacements have since been sunset in turn - a
   correction can go stale in the same way the claim it fixed did. The project's archived-upstream
   query covered submodules and not npm dependencies, which is why this went a year unnoticed. **Replacements were researched in Round 60, and one was adopted in Round 65 (below).** The closest fit

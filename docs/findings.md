@@ -171,6 +171,24 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
 
 ## Concerns & recommendations
 
+- **Planned, not started: CKKS-friendly students (the owner's decision, 2026-11-02).** The Round 86
+  review found the encrypted tier evaluating students that are weak or fed out of domain, and the
+  owner chose to plan a replacement as research rather than retrain now. The facts the plan starts from:
+  - `finance_aml.student` (33 parameters) scores minority-class F1 0.0614 against its teacher's 0.1519
+    over the same test window. A quadratic feature map costs no multiplicative depth, only slots, and
+    it pays on OPS-SAT, whose 210-parameter student tracks its teacher (AUC-PR 0.968055 against
+    0.968107); on finance it was measured and rejected, raising fidelity and lowering F1 (the
+    trainer's `--student-degree` help records 0.0185 to 0.0115, on an earlier student). It also costs
+    the browser: 560 features take a 1,024-slot block, 4 rows a ciphertext where 32 features fit 128.
+  - `medical_fl.student` decrypts after every layer for its ReLU and pooling, and its encrypted input is
+    a tabular row tiled to fill the image (review PI-10, now stated on the page). A student that runs
+    whole under CKKS needs a polynomial activation, and more rescales than the 60+40+40+60 chain's two;
+    a longer chain needs $`N = 16384`$, which Round 38 measured at about twice the cost of every FHE
+    figure, so the plan must show what the depth buys before it pays for it.
+  - The plan's rule: each candidate is measured against the shipped student on the same rows, with the
+    decision fixed before the run, and is published only if it wins; a published one needs a
+    republish, a new pin and a regenerated held-out sample. Until then the shipped students stay.
+
 - **The orchestration now runs the published models; before Round 21 it never had.** The pipeline
   truncated its features to 8 and called `inferLogits`, which builds a `[1,8]` tensor. No published
   model takes `[1,8]` - they take `[1,32]`, `[1,1,28,28]`, `[1,250,6]`, `[1,19]`, `[1,7]` - so the

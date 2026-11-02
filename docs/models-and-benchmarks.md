@@ -174,8 +174,17 @@ In both, the QKD figures come from the simulated channel model.
 
 **The CKKS ratio is a property of a configuration, not of CKKS.** The benchmark's ct/pt is the
 ciphertext's bytes over the plaintext's, `ciphertext_bytes / (n_in * 8)`, so it moves with the
-feature count and measures slot utilisation: about 1393x at 30 features in 4,096 slots, about 5222x
-at 8, and about 12x at full packing (Cheon, Kim, Kim and Song, ASIACRYPT 2017). The 1483x the client
+feature count and measures slot utilisation. **The two tiers also count different bytes for the same
+ciphertext**, because they serialise it differently (Round 86, review PI-8; this paragraph quoted
+both kinds in one sentence):
+
+- the full deployment counts TenSEAL's `serialize()`, which compresses: about 334,000 bytes at
+  $`N = 8192`$, so about 1393x at 30 features in 4,096 slots and about 5222x at 8;
+- the browser counts node-seal's `saveToArray(ComprModeType.none)`, uncompressed: 393,329 bytes, so
+  about 6146x at 8 features, 12,292x at the 4 of finance's PaySim row and 269x at genomics' 183.
+
+At full packing the uncompressed ratio is 12x (Cheon, Kim, Kim and Song, ASIACRYPT 2017), and about
+10x compressed. Measured on 2026-11-02 with TenSEAL 0.3.16 and node-seal 7.0.0. The 1483x the client
 demo shows when it has measured no ciphertext is a representative constant
 (`cost_per_op.demo_ct_pt_ratio`), not a measurement.
 

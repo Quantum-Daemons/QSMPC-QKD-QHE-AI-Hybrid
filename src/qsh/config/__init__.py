@@ -122,10 +122,10 @@ def frontend_config() -> dict:
         # them. They agreed only because no one had changed one. A ring change would have left the
         # published PDF asserting a parameter set the code no longer used.
         #
-        # Only the parameters that genuinely govern BOTH sides are exported. `backend`, `use_gpu`,
-        # `max_level` and the OpenFHE knobs describe the server's context and would be false of the
-        # browser, which runs node-seal on WASM CPU with no GPU path - exporting them would replace
-        # a duplicated number with a wrong one.
+        # Only the parameters that genuinely govern BOTH sides are exported. The OpenFHE knobs
+        # describe the server's context and would be false of the browser, which runs node-seal on
+        # WASM CPU - exporting them would replace a duplicated number with a wrong one. (`backend`,
+        # `use_gpu` and `max_level` were named here too; nothing read them, and Round 86 removed them.)
         "fhe": {
             "poly_modulus_degree": c.fhe.poly_modulus_degree,
             "coeff_mod_bit_sizes": list(c.fhe.coeff_mod_bit_sizes),

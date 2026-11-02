@@ -500,7 +500,6 @@ class QHEConfig:
 
 @dataclass
 class FHEConfig:
-    backend: str = "tenseal"
     # The CKKS ring degree, and the ONE place it is written. The browser (`web/src/lib/clientFHE.ts`),
     # the TenSEAL backend and the report's crypto table all read it through the config now, so
     # changing it is a line rather than a sweep. Note that `config.yaml` overlays this file, so the
@@ -536,9 +535,11 @@ class FHEConfig:
     poly_modulus_degree: int = 8192
     coeff_mod_bit_sizes: tuple[int, ...] = (60, 40, 40, 60)
     global_scale_bits: int = 40
-    max_level: int = 12
-    use_gpu: bool = True
-    use_bootstrap: bool = False
+    # REMOVED IN ROUND 86 (review PI-15): `backend`, `max_level` (12, where this chain allows two
+    # rescales), `use_gpu` and `use_bootstrap`, four fields nothing read - the pattern Round 38 fixed
+    # for `poly_modulus_degree`, which governed nothing while its value was copied by hand. The FHE
+    # backend is the run's `fhe` choice in the crypto registry (`orchestration/crypto_agility.py`),
+    # and bootstrapping is `OpenFHEBackend(use_bootstrap=True)`.
     # OpenFHE CKKS context params (batch_size is the slot width, was a hard-coded literal)
     openfhe_mult_depth: int = 4
     openfhe_scale_bits: int = 50

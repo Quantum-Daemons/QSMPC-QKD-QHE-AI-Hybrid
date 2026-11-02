@@ -632,8 +632,10 @@ class PrivateInferenceStage(Stage):
             ctx.data["linear_model"] = model
             ctx.data["features"] = np.asarray(x)
             bus.metric("fhe_max_abs_error", out["max_abs_error"], self.name)
-            bus.log(f"CKKS private inference: class={out['prediction']} "
-                    f"(backend={out['backend']}, err={out['max_abs_error']:.2e})", self.name)
+            bus.log(f"CKKS private inference: class={out['prediction']} (backend={out['backend']}, "
+                    f"err={out['max_abs_error']:.2e}); each logit decrypted with its bias added under "
+                    f"encryption and every other slot masked, so the key holder reads the logits and "
+                    f"nothing else", self.name)
             # --- Unified benchmark (Round 7): run the REAL hybrid (linear->FHE + non-linear->MPC)
             # at the selected model size so the live run IS the MPC-FHE benchmark row. lightweight ===
             # the trained linear model (SHAP above explains the same decision); medium/large add

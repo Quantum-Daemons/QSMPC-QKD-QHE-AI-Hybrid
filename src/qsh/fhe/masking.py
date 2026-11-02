@@ -13,9 +13,12 @@ What the server adds to the ciphertext holding ``z`` in slot 0, before the key h
 
 The second line is also the noise flood. Besides the partial sums, the slots hold the CKKS error,
 which depends on the computation, and the imaginary parts hold nothing else; a uniform mask of
-half-width ``2^b`` over each of them hides an error ``e`` up to a statistical distance ``|e| / 2^b``,
-so the flood is sized against the error the run measures (``ClientView.err_max``). The vector goes
-in ENCRYPTED under the public key, which also re-randomises the ciphertext (see the backends).
+half-width ``2^b`` over each of them hides an error ``e`` up to a statistical distance ``|e| / 2^b``.
+The flood is a FIXED ``2^b`` (``benchmark.mpc_mask_bits``, 30), not sized from the error: the run
+reports its margin over the largest error it measured (``ClientView.err_max``, as
+``flood_margin_bits``), and nothing fails a run whose margin is small (Round 86, review PI-7; this
+said the flood was sized against the measured error). The vector goes in ENCRYPTED under the public
+key, which also re-randomises the ciphertext (see the backends).
 """
 
 from __future__ import annotations

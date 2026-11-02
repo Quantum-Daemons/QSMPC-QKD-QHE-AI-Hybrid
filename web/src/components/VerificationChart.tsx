@@ -143,8 +143,9 @@ export interface EncryptedAgreementPlot {
   classNames?: string[];
   /** The corpus overlay's plane, where the points carry `x`/`y` on it. */
   plane?: { x: PlaneAxis; y: PlaneAxis } | null;
-  /** Against the TRUE labels, over the scored rows. */
-  accuracy?: { encrypted: number | null; plaintext: number | null } | null;
+  /** Against the TRUE labels, over the scored rows. `majority` is what always calling the most common
+      label scores on the same rows, the baseline an accuracy needs beside it (Round 86, review PI-12). */
+  accuracy?: { encrypted: number | null; plaintext: number | null; majority?: number | null } | null;
 }
 
 /**
@@ -509,7 +510,8 @@ function DecisionPlane({ plot, plane }: { plot: EncryptedAgreementPlot; plane: {
         {!binary && plot.accuracy?.encrypted != null ? (
           <> Encrypted top-1 matches the true class on {(plot.accuracy.encrypted * 100).toFixed(1)}% of
             the rows{plot.accuracy.plaintext != null
-              ? <>, plaintext on {(plot.accuracy.plaintext * 100).toFixed(1)}%</> : null}.</>
+              ? <>, plaintext on {(plot.accuracy.plaintext * 100).toFixed(1)}%</> : null}{plot.accuracy.majority != null
+              ? <>; always calling the most common class would score {(plot.accuracy.majority * 100).toFixed(1)}%</> : null}.</>
         ) : null}
       </figcaption>
       <table id={tableId} className="facts-table small" style={{ marginBottom: 6 }}>

@@ -3757,3 +3757,34 @@ zero; only an observer installed before the page's scripts, at a full desktop si
 And the audit's first pass capped its samples at eight a page, which the dominant tick failure filled:
 the legend and badge failures surfaced only once the ticks were fixed and the scan reported everything.
 
+
+**A fix that reaches one twin leaves the leak where the claim is made.** Round 84 masked every slot of
+the hybrid's dense layer and convolution, and the threat model then said every slot the key holder
+decodes is masked. The linear inference that produces the full deployment's reported class decrypted
+its rotate-and-sum whole, as both twins had: it was the copy nobody had read for that defect, because
+its output looked like a different thing, a class rather than a layer. The fix went into the function
+the four callers share, and the test names every server decryption, so the next twin is an AST failure
+rather than a review.
+
+**A leak detector needs a seeded positive beside its negative.** The masking test asks whether any
+linear combination of the other slots predicts a weighted product; a detector that never fires passes
+that too. The same detector is run on the unmasked reference path and required to recover the products
+exactly, so a broken detector fails.
+
+**A comparison is a check only if NaN fails it.** Each precision check read `err >= 1`, which NaN makes
+false, so a NaN feature decrypted to the bias and reported nothing. A check written `!(err < 1)`, with
+the value refused before it is encoded, cannot pass what it never measured.
+
+**A self-test that shares the computation's quantisation cannot see the quantisation.** The argmax's
+self-test ran the same argmax in the clear on the same 1/64 steps, so a tie the steps decided agreed
+with itself. The float argmax is the reference that can disagree.
+
+**A recommendation is checked against the code's own record before it becomes a plan.** The review
+proposed a quadratic finance student on the strength of an OPS-SAT gain; the finance trainer records
+that variant as measured and rejected, and the OPS-SAT "before" figure is recorded nowhere, as the
+trainer's withdrawn-claim note says. The plan carries the trainer's measurement, not the proposal.
+
+**An expected effect is a measurement not yet taken.** The masked logit's error was written down as
+about 2e-6 against 1e-7 unmasked, the masks' noise added on top; measured over 200 queries it is 6.3e-7
+against 5.4e-7, because the dot product's rescale dominates both. The sentence was corrected before it
+was committed.
