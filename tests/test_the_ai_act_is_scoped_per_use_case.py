@@ -115,22 +115,29 @@ def test_the_panel_takes_its_sentence_from_the_module() -> None:
     assert re.search(r"<ShapPanel[^>]*usecase=\{usecase\}", page, re.S), "the page no longer tells the panel its use case"
 
 
+def ai_act_violations(where: str, text: str) -> list[str]:
+    """AML listed as high-risk, or Art. 13 dated without the annex the date belongs to, line by line.
+    A function so the technical report's own tests (outside this repository since Round 86) apply
+    the same rule to its copy."""
+    bad = []
+    for n, line in enumerate(text.splitlines(), 1):
+        if re.search(r'(?<!")credit/AML(?!")', line):
+            bad.append(f"{where}:{n}: lists AML as high-risk")
+        if re.search(r"Art(icle|\.) 13", line):
+            if re.search(r"2 Dec(ember)? 2027|2027-12-02", line) and "Annex III" not in line:
+                bad.append(f"{where}:{n}: dates Art. 13 to 2 Dec 2027 without saying it is the Annex III date")
+            if re.search(r"2 Aug(ust)? 2028|2028-08-02", line) and not re.search(r"Annex I\b", line):
+                bad.append(f"{where}:{n}: dates Art. 13 to 2 Aug 2028 without saying it is the Annex I date")
+    return bad
+
+
 def test_no_tracked_text_calls_aml_high_risk_or_dates_art_13_without_its_annex() -> None:
     """The family, not the one copy: the blanket claim had four more copies outside the panel."""
     files = subprocess.run(["git", "ls-files", "README.md", "docs/*.md", "src/**/*.py", "web/src/**/*.ts",
-                            "web/src/**/*.tsx", "report/*.tex"], cwd=REPO, check=True, capture_output=True,
+                            "web/src/**/*.tsx"], cwd=REPO, check=True, capture_output=True,
                            text=True).stdout.split()
     # The register and the log record what was wrong, in its own words.
     files = [f for f in files if f not in ("docs/deliverable-verification.md", "docs/verification-log.md")]
     assert len(files) > 50, f"only {len(files)} files scanned; the listing is looking at nothing"
-    bad = []
-    for f in files:
-        for n, line in enumerate((REPO / f).read_text(errors="replace").splitlines(), 1):
-            if re.search(r'(?<!")credit/AML(?!")', line):
-                bad.append(f"{f}:{n}: lists AML as high-risk")
-            if re.search(r"Art(icle|\.) 13", line):
-                if re.search(r"2 Dec(ember)? 2027|2027-12-02", line) and "Annex III" not in line:
-                    bad.append(f"{f}:{n}: dates Art. 13 to 2 Dec 2027 without saying it is the Annex III date")
-                if re.search(r"2 Aug(ust)? 2028|2028-08-02", line) and not re.search(r"Annex I\b", line):
-                    bad.append(f"{f}:{n}: dates Art. 13 to 2 Aug 2028 without saying it is the Annex I date")
+    bad = [v for f in files for v in ai_act_violations(f, (REPO / f).read_text(errors="replace"))]
     assert not bad, "\n".join(bad)

@@ -9,11 +9,8 @@ PY     := $(VENV)/bin/python
 .DEFAULT_GOAL := help
 .PHONY: help venv setup setup-ai setup-fhe setup-api submodules data test lint \
         run-finance run-medical benchmark api web docker-up docker-demo clean check-secrets \
-        ci-local report
-# `report` MUST be phony: a directory named report/ exists, so make considered the target up to date
-# and printed "is up to date" without running a single recipe line. A build step that silently does
-# nothing is worse than one that fails, and this one would have left the PDF stale in the round whose
-# subject is a stale PDF.
+        ci-local
+# No `report` target since Round 86: the technical report is built in its own repository.
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
@@ -99,25 +96,6 @@ docker-demo: ## Lightweight public-demo stack (VPS profile)
 # was lost in Round 29. A path that must never be published is worth one line here.
 check-secrets: ## Assert confidential notes, the checklist and deploy details are NOT published (names and contents)
 	@bash scripts/check_secrets.sh
-
-report: ## Regenerate the report's tables and figures and rebuild the PDF
-	# Two pdflatex passes: the first resolves \input and writes the .aux, the second the ToC and
-	# cross-references. Run this LAST in a round - anything that edits the checklist moves
-	# \nchecklistrows and \nchecklistlines, and a PDF built before that edit is stale on arrival.
-	# The figures are drawn here too (Round 80): nothing ran build_figures.py but a hand, and the
-	# baselines figure had shown numbers from August for two months. It refuses to write a figure
-	# with overlapping text.
-	$(PY) report/build_data.py
-	$(PY) report/build_figures.py
-	cd report && pdflatex -interaction=nonstopmode technical-report.tex >/dev/null
-	cd report && pdflatex -interaction=nonstopmode technical-report.tex >/dev/null
-	@# A line set wider than its box is printed past a margin or over the next column. Nine were in
-	@# the log - a table printed off the page among them - and a warning nobody reads gates nothing.
-	@if grep -qF 'Overfull \hbox' report/technical-report.log; then \
-		grep -F -A1 'Overfull \hbox' report/technical-report.log; \
-		echo "FAIL: the report sets text wider than its box (above); fix each before shipping the PDF"; \
-		exit 1; fi
-	@echo "  report/technical-report.pdf rebuilt"
 
 clean: ## Remove caches and build artifacts
 	rm -rf build dist *.egg-info src/*.egg-info .pytest_cache .ruff_cache .mypy_cache

@@ -18,5 +18,8 @@ Subpackages:
     monitoring     metrics export
 """
 
-__version__ = "0.1.0"
+#: The release version, written here once. pyproject.toml reads it (a dynamic version), the API reports
+#: it, and tests/test_r86_the_version_has_one_source.py holds web/package.json and its lockfile to it.
+#: The minor is the verification round the release closes: 0.85.0 is the first release, of Round 85.
+__version__ = "0.85.0"
 __all__ = ["__version__"]

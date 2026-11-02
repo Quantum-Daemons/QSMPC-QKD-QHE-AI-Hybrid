@@ -405,7 +405,6 @@ flowchart TB
     direction LR
     PY["Python 3.12 venv: pytest suite, cross-language tests"] --> CL["scripts/ci_local.sh: 18 gates"]
     WEB["Web checks: tsc, vite build, node checks, text layout"] --> CL
-    CL --> REP["make report: the technical report, layout checked"]
     SHOT["Headless Chrome: README screenshots"]
   end
   subgraph GH["GitHub"]
@@ -417,7 +416,7 @@ flowchart TB
     direction LR
     DOCK["Docker image built from git: scripts/deploy_demo.sh"] --> PROXY["Behind a shared reverse proxy"]
   end
-  LIVE["Live check in a browser: bundle, pages, console"] --> REC["Records: register, log, technical report"]
+  LIVE["Live check in a browser: bundle, pages, console"] --> REC["Records: register and log"]
   LOC --> GH --> DEMO --> LIVE
 ```
 
@@ -425,9 +424,7 @@ flowchart TB
 
 Every round is recorded in [`docs/deliverable-verification.md`](docs/deliverable-verification.md)
 (what was checked and found) and [`docs/verification-log.md`](docs/verification-log.md) (what it
-taught); `make report` rebuilds the technical report,
-[`report/technical-report.pdf`](report/technical-report.pdf), and fails on a figure with overlapping
-text or a line set wider than its box.
+taught). The technical report is not part of this repository.
 
 ---
 
@@ -444,7 +441,6 @@ references/   primary-source notes and REFERENCES.md
 scripts/      bootstrap, benchmark, export_config.py, publish_hf.py, deploy_demo.sh, ci_local.sh,
               train/ (per-vertical training), data/ (dataset provenance)
 docs/         the documents below, and images/
-report/       the technical report (LaTeX) and its generated tables
 tests/        pytest suite
 ```
 
@@ -466,7 +462,6 @@ tests/        pytest suite
 | [`docs/ai-act-art50-gap-analysis.md`](docs/ai-act-art50-gap-analysis.md) | the EU AI Act Art. 50 gap analysis |
 | [`docs/deliverable-verification.md`](docs/deliverable-verification.md) | the verification register, round by round |
 | [`docs/verification-log.md`](docs/verification-log.md) | the verification log |
-| [`report/technical-report.pdf`](report/technical-report.pdf) | the technical report |
 | [`references/REFERENCES.md`](references/REFERENCES.md) | the annotated primary sources |
 | [`DATA_LICENSES.md`](DATA_LICENSES.md) | the datasets and their licences, and the submodules |
 

@@ -86,16 +86,21 @@ def test_the_page_says_the_weights_are_served_not_withheld() -> None:
     assert "PGS000004" not in cards
 
 
+#: The genomics flowchart's nodes, and what they said before. Module level so the technical report's
+#: own tests (outside this repository since Round 86) hold its copy of the flowchart to the same.
+GENOMICS_NODES = ("Data: 30 real 1000 Genomes individuals, PGS000072 weights over 183 of its 187 variants",
+                  "Private inference: the full 183-variant score under CKKS (node-seal), then the "
+                  "90th-percentile cut by a garbled-circuit argmax",
+                  "in a field above any total they can reach")
+STALE_GENOMICS_NODES = ("PGS000004 weights over 313", "sign test on 8 of the 313", "QSMS over a GHZ state")
+
+
 def test_the_flowchart_nodes_name_the_score_that_runs() -> None:
-    for rel in ("README.md", "report/technical-report.tex"):
-        text = (REPO / rel).read_text()
-        for node in ("Data: 30 real 1000 Genomes individuals, PGS000072 weights over 183 of its 187 variants",
-                     "Private inference: the full 183-variant score under CKKS (node-seal), then the "
-                     "90th-percentile cut by a garbled-circuit argmax",
-                     "in a field above any total they can reach"):
-            assert node in text, f"{rel}: {node!r}"
-        for stale in ("PGS000004 weights over 313", "sign test on 8 of the 313", "QSMS over a GHZ state"):
-            assert stale not in text, f"{rel}: {stale!r}"
+    text = (REPO / "README.md").read_text()
+    for node in GENOMICS_NODES:
+        assert node in text, f"README.md: {node!r}"
+    for stale in STALE_GENOMICS_NODES:
+        assert stale not in text, f"README.md: {stale!r}"
 
 
 def test_make_data_lists_only_committed_genomics_files() -> None:

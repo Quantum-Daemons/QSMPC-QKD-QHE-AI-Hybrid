@@ -31,18 +31,18 @@ WHAT WAS WRONG, AND THE SOURCE FOR EACH
 
 Each test below fails on the base commit of Round 84 (de1111c) and passes after, checked by running
 this file against an export of that commit's tree.
+
+ROUND 86: the technical report left this repository for a private one, and the checks on its
+copy went with it, unchanged; what stays here checks the copies that are published.
 """
 
 from __future__ import annotations
 
-import json
 import re
-import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 README = REPO / "README.md"
-REPORT = REPO / "report" / "technical-report.tex"
 
 EXPLAIN = "Explainability: exact linear SHAP, signed"
 UC_KEYS = ("uc-finance_aml", "uc-medical_fl", "uc-genomics", "uc-telecom_ids", "uc-satellite_comms")
@@ -58,12 +58,6 @@ def _readme_figures() -> dict[str, str]:
             re.finditer(r"<!-- figure: ([\w-]+) -->\s*```mermaid\n(.*?)```", text, flags=re.S)}
 
 
-def _report_figures() -> dict[str, str]:
-    text = REPORT.read_text()
-    return {m.group(1): m.group(2) for m in
-            re.finditer(r"% figure: ([\w-]+)\n\\begin\{tikzpicture\}(.*?)\\end\{tikzpicture\}", text, flags=re.S)}
-
-
 def _ts_function(path: Path, name: str) -> str:
     src = path.read_text()
     start = src.index(f"const {name} = ")
@@ -74,12 +68,11 @@ def test_the_flowcharts_gate_bb84_on_the_key_bits_the_code_reads() -> None:
     gate = _ts_function(REPO / "web" / "src" / "lib" / "useCaseFlows.ts", "qkdOk")
     assert re.search(r"secure_key_bits", gate) and re.search(r"bits\s*>\s*0", gate), (
         "qkdOk no longer decides on secure_key_bits > 0; re-derive the flowcharts' gate from the code")
-    readme, report = _readme_figures(), _report_figures()
+    readme = _readme_figures()
     for key in ("uc-finance_aml", "uc-medical_fl", "uc-genomics", "uc-telecom_ids"):
-        for where, body in (("README", readme[key]), ("report", report[key])):
-            assert "QBER at most" not in body, f"{where} {key} still gates BB84 on a QBER threshold"
-            assert "BB84 and E91: secure key bits above 0" in body, (
-                f"{where} {key} does not state the gate the code applies")
+        assert "QBER at most" not in readme[key], f"README {key} still gates BB84 on a QBER threshold"
+        assert "BB84 and E91: secure key bits above 0" in readme[key], (
+            f"README {key} does not state the gate the code applies")
 
 
 def test_every_use_case_figure_draws_the_explanation_the_browser_signs() -> None:
@@ -87,48 +80,11 @@ def test_every_use_case_figure_draws_the_explanation_the_browser_signs() -> None
     assert cc.count("artifacts.explanation = linearShap(") >= 3, (
         "the browser no longer computes linear SHAP at the telecom, satellite and private-inference sites")
     assert re.search(r'signed_fields:\s*\[[^\]]*"explanation"', cc), "the explanation is no longer signed"
-    readme, report = _readme_figures(), _report_figures()
+    readme = _readme_figures()
     for key in UC_KEYS:
         assert EXPLAIN in readme[key], f"README {key} does not draw the browser's explanation"
-        assert EXPLAIN in report[key], f"report {key} does not draw the browser's explanation"
         assert "-.->" not in readme[key] and "classDef full" not in readme[key], (
             f"README {key} still draws a full-deployment-only (dashed) stage")
-        assert "dashed" not in report[key] and "fullonly" not in report[key], (
-            f"report {key} still draws a full-deployment-only (dashed) stage")
-    assert "Dashed boxes run only in the full deployment" not in REPORT.read_text()
-
-
-def _build_data():
-    sys.path.insert(0, str(REPO / "report"))
-    try:
-        import build_data  # noqa: PLC0415
-    finally:
-        sys.path.pop(0)
-    return build_data
-
-
-def test_the_crypto_table_says_what_each_mpc_tier_evaluates() -> None:
-    rows = [r for r in _build_data().crypto_table().splitlines() if r.startswith("MPC")]
-    polytune = [r for r in rows if "Polytune" in r]
-    assert polytune, rows
-    assert all("ReLU" not in r and "argmax" in r for r in polytune), (
-        f"the browser's Polytune tier computes the argmax only: {polytune}")
-    assert any("MPyC" in r and "ReLU" in r for r in rows), f"the full deployment's MPyC tier is missing: {rows}"
-
-
-def test_every_published_model_prints_a_measured_value() -> None:
-    from qsh.models import registry  # noqa: PLC0415
-
-    bd = _build_data()
-    metrics = json.loads((REPO / "models" / "metrics.json").read_text())
-    published = [s for s in registry._SPECS if s.hf_repo and (metrics.get(s.key) or {}).get("hf_revision")]
-    assert any(s.key == "telecom_ids.qml" for s in published)
-    for spec in published:
-        row = bd.model_table([spec])
-        measured = row.split(" & ")[3]
-        assert measured != "--", f"{spec.key} is published and pinned, and the models table prints a dash"
-    qml = next(s for s in published if s.key == "telecom_ids.qml")
-    assert f"{metrics['telecom_ids.qml']['classical_rf_macro_f1']:.4f}" in bd.model_table([qml])
 
 
 #: (file, pattern) - wording each correction replaced. Patterns allow a line break wherever the
@@ -163,13 +119,6 @@ _CORRECTED = [
     ("DATA_LICENSES.md", r"only the bundled copy is gone"),
     ("DATA_LICENSES.md", r"The registry's label for it"),
     ("DATA_LICENSES.md", r"source paper's own\s+terms were not verified"),
-    ("report/technical-report.tex", r"about 20\\%\s+of\s+surveyed"),
-    ("report/technical-report.tex", r"the encrypted tier matches"),
-    ("report/technical-report.tex", r"every\s+table\s+is\s+generated\s+from"),
-    ("report/technical-report.tex", r"All tables and figures are generated"),
-    ("report/technical-report.tex", r"4\.4\.1 and 4\.4\.3 in the first"),
-    ("report/technical-report.tex", r"citing WASM threading"),
-    ("report/technical-report.tex", r"garbled-circuit\s+non-linearities"),
     ("references/REFERENCES.md", r"20% of surveyed implementations"),
     ("references/REFERENCES.md", r"2026/935\*\*, revised 2026-06-03"),
     ("references/REFERENCES.md", r"returns no licence at all"),
@@ -185,8 +134,6 @@ def test_corrected_claims_stay_corrected() -> None:
 
 def test_the_corrected_facts_are_stated() -> None:
     expect = [
-        ("report/technical-report.tex", r"5 of the 21"),
-        ("report/technical-report.tex", r"4\.7\.2"),
         ("references/REFERENCES.md", r"5 of the 21 surveyed frameworks"),
         ("docs/pqc-roadmap.md", r"only 5 of them model-preserving"),
         ("docs/pqc-roadmap.md", r"enables\s+`KEM_hqc_1/3/5` by default"),

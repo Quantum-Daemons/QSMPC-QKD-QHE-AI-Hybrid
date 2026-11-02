@@ -172,12 +172,6 @@ plugin from the official script.
 Host-specific deployment - the port-collision workaround, the shared-proxy override and the
 public-demo profile - is in the sections above.
 
-A 14-section technical report is at
-[`report/technical-report.pdf`](../report/technical-report.pdf); build it with `make report`. Its
-tables of cryptographic parameters, models, licences and defects, and its plotted figures, are
-generated from the repository's own artefacts rather than transcribed; two short tables in its body,
-its architecture figures and the numbers in its prose are typed from the records.
-
 - **Full deployment (federated learning + inference)** - the image build, the server start and a
   federated run are under [Full tier](#full-tier-server-side-ai-mcp-metrics) above.
 - **Client-side build (implementation capability)**: the SPA also builds **fully client-side** - every

@@ -6,9 +6,9 @@ import { isClientDemo } from "../lib/demoMode";
 // LAYOUT, Round 58: the novelty sentence first, the evidence for it second, the context after.
 //
 // The sentence sat about 1,300 px down at 1280x800, below a 191-word regulation paragraph, although
-// this page exists to say it. It now follows the page heading, VERBATIM (README.md and
-// report/technical-report.tex carry the same QKD wording, and a gate holds the three together), and it
-// is set as body text rather than in the small muted style it had. The regulation paragraph became the
+// this page exists to say it. It now follows the page heading, VERBATIM (README.md carries the same
+// QKD wording and a gate holds the two together; so does the technical report, kept outside this
+// repository since Round 86, whose own tests hold its copy), and it is set as body text rather than in the small muted style it had. The regulation paragraph became the
 // "regulatory clock" table below, where every date keeps its scope and firmness.
 export default function Value() {
   return (
@@ -30,7 +30,8 @@ export default function Value() {
       <p className="lead">
         {/* "then QKD-derived key material" until 2026-10-24: the browser's bb84() returns a count and
             never key bytes, so no QKD key material exists in the chain this sentence describes. The
-            same words are in README.md and report/technical-report.tex - change all three together.
+            same words are in README.md and in the technical report (kept outside this repository
+            since Round 86) - change all three together.
             "with no server-side compute" is a fact of the client-only build the public demo ships,
             so the sentence names that build: a full deployment sends every run to its server
             (POST /api/run in `api.ts`), and this page renders there too. */}

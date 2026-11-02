@@ -822,16 +822,20 @@ def test_the_visitor_facing_texts_state_the_oprf_psi() -> None:
     assert '"PSI: RFC 9497 OPRF,"' in texts["ArchitectureDiagram.tsx"]
 
 
+#: The finance flowchart's PSI node, and the wording of the keyed-hash PSI it replaced. Module level so
+#: the technical report's own tests (outside this repository since Round 86) hold its copy to the same.
+PSI_NODE = "PSI: OPRF (RFC 9497, ristretto255-SHA512) over two banks' account lists"
+RETIRED_PSI_WORDING = ("keyed-hash", "HMAC-SHA256 keyed by the session key", "OPRF-based protocol",
+                       "HMAC of both lists", "keyedHashPSI", "private_set_intersection")
+
+
 def test_the_documents_state_the_oprf_psi() -> None:
     readme = (REPO / "README.md").read_text()
-    report = (REPO / "report" / "technical-report.tex").read_text()
-    node = "PSI: OPRF (RFC 9497, ristretto255-SHA512) over two banks' account lists"
-    assert node in readme and node in report, "the finance flowchart's PSI node, in both copies"
+    assert PSI_NODE in readme, "the finance flowchart's PSI node"
     for rel in ("README.md", "docs/threat-model.md", "docs/use-cases.md", "docs/findings.md",
-                "references/REFERENCES.md", "report/technical-report.tex"):
+                "references/REFERENCES.md"):
         flat = re.sub(r"\s+", " ", (REPO / rel).read_text())
-        for retired in ("keyed-hash", "HMAC-SHA256 keyed by the session key", "OPRF-based protocol",
-                        "HMAC of both lists", "keyedHashPSI", "private_set_intersection"):
+        for retired in RETIRED_PSI_WORDING:
             assert retired not in flat, (rel, retired)
     tm = (REPO / "docs" / "threat-model.md").read_text()
     row = next(line for line in tm.splitlines() if line.startswith("| PSI (finance) |"))

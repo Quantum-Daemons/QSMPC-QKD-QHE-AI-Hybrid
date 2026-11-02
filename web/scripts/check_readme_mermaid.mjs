@@ -2,8 +2,8 @@
 //
 // The user found text over lines in the report's Figure 1 and a label at the edge of its box in
 // Figure 2, and asked for every figure in the documents to be checked for the same. The report's
-// figures are checked by `report/build_figures.py` and `make report`, the pages by
-// check_text_overlap.mjs; this covers the README, whose diagrams GitHub draws with Mermaid. Each
+// figures are checked where the report is now kept (outside this repository since Round 86), the
+// pages by check_text_overlap.mjs; this covers the README, whose diagrams GitHub draws with Mermaid. Each
 // block is rendered with Mermaid in a headless Chrome and measured:
 //   - a node's text outside its node (a decision by its diamond, not the diamond's bounding box);
 //   - any label over another label, node or edge;

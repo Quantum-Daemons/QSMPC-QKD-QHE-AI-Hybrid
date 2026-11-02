@@ -7993,3 +7993,72 @@ walk's one finding, below, was fixed and deployed at 9bc737e (bundle `index-jM5M
 BUSINESS DOC RECONCILED Round 85. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 17 reads.
+
+## Round 86 - release 0.85.0, the technical report made private, and a summary of the gates (2026-11-02)
+
+**Status.** Branch `round86-release-0.85.0`, cut from `main` at 7d48df6 (the merge of #82). This is
+the round's first change; the full page audit, the private-inference review, the documents and the
+carried items follow in later pull requests of the same round.
+
+**Round 85, closed.** PR #82 was merged on 2026-11-01 at 7d48df6, after CI concluded success on its
+head (1aa1e10, both workflows) and `scripts/ci_local.sh` passed all 18 gates; CI passed on the merge
+commit as well. The demo host was returned to `main` and rebuilt, and served `index-BLagNaUw.js`, the
+bundle of the branch's last deploy, and the walk of the deployed `main` passed.
+
+**The owner's decisions, 2026-11-02.**
+- The order of work: the version and release tag first, then the full page audit, the
+  private-inference review, the documents and MathJax, and the carried items. The repository stays
+  public.
+- The release: version 0.85.0, the round number, published as a tag with release notes only and no
+  assets, so the notes and the source archives GitHub generates. The technical report and the
+  container images are not published. A small pull request first, then the tag on its merge commit,
+  and no tags backfilled for earlier rounds.
+- The technical report leaves the tree from now on, and its history in this repository stays: no
+  rewrite. It is kept in a private GitHub repository.
+- A summary of the verification gates, kept privately beside the report: an English PDF from LaTeX,
+  at most six pages, body text 10.5 pt or larger, page numbers, no table or heading broken across a
+  page, tight margins, and a local gate that fails above six pages.
+- The Dockerfiles stay public, and no image is published.
+- Later in this round: the API image moves to Node.js 24 LTS with the MCP filesystem server's 2.x
+  line and its interop test run inside the image; the published models are reviewed before any
+  retraining is proposed.
+
+**The report, out of the tree.** The 14 files under `report/` are no longer tracked. Their history,
+113 commits, went to the private repository with them: split on a scratch clone with
+`git filter-branch --subdirectory-filter report`, checked to give the same tree (0414d25) as `report/`
+on `main`, and checked to carry one author and no trailer before it was pushed. The private checkout
+sits beside this repository and never inside it: git treats an ignored file as expendable, so a
+checkout nested in `report/` would be overwritten or deleted whenever a commit that still tracks
+`report/` is checked out or pulled, the hazard `.gitignore` already records for the checklist.
+- The report has to leave the tree before the tag. GitHub's source archive of a tag is the tagged
+  tree, so a report still tracked at the tagged commit would be published inside the archive.
+- `make check-secrets` now fails on any tracked report or summary file. Its dropped-PDF rule,
+  written for the third-party PDFs removed from the history on 2026-10-31, failed on this move, since
+  the report's four PDFs are in the history and no longer in the tree. They are exempt by name, one
+  path at a time, so the exception covers no other PDF (`tests/test_r86_the_report_stays_out.py`,
+  seeded both ways in a throwaway repository with history).
+- The tests that read the report moved with it: four files whole, and the report's half of eight
+  more. Each public half stays here. Where a public test owns a list that the report's copy must also
+  satisfy (the retired PSI wording, the genomics flowchart's nodes, the AI Act rule), the list is now
+  module-level and the report's tests load it from the public file rather than copy it.
+- README, `docs/deployment.md` and `docs/findings.md` no longer point into `report/`. The README's
+  verification-environment diagram drops its `make report` node and names "register and log" as the
+  records; the report's own copy of the figure changed with it. The Makefile has no `report` target.
+
+**The version, written once.** It was 0.1.0 in five places that nothing held together. It is now
+0.85.0 in `qsh.__version__` alone: `pyproject.toml` reads it as a dynamic version, `api/main.py`
+reports it in the OpenAPI document and at `/api/health`, and `web/package.json` and both version
+fields of its lockfile are compared with it (`tests/test_r86_the_version_has_one_source.py`). The Rust
+crates keep their own versions, being internal and unpublished.
+
+**The summary of the gates.** Written in the private repository beside the report: four pages, its
+gate tables generated from `scripts/ci_local.sh` and `.github/workflows/`, and a layout gate that
+reads the built PDF. The gate's findings while the document was written: `\input` of table rows inside
+a `tabular` fails, as the report's README records, so the generator writes whole tables; microtype's
+font expansion scales glyphs through the text matrix, which left the size reading impure, so
+expansion is off; and `[H]` tables left most of two pages blank, so the tables float to the tops of
+pages instead, which still never splits one.
+
+BUSINESS DOC RECONCILED Round 86. The out-of-repo document is brought level with this round. Its content
+is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
+what gate 17 reads.

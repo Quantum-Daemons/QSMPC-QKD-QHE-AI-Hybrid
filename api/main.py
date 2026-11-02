@@ -21,10 +21,12 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from qsh import __version__
+
 from .inference_service import pqc_handshake_demo, predict_fraud, qkd_demo
 from .run_manager import RESULTS_DIR, RunManager
 
-app = FastAPI(title="QSMPC-QKD-QHE-AI-Hybrid API", version="0.1.0")
+app = FastAPI(title="QSMPC-QKD-QHE-AI-Hybrid API", version=__version__)
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
 )
@@ -48,7 +50,7 @@ class RunConfig(BaseModel):
 
 @app.get("/api/health")
 def health() -> dict:
-    return {"status": "ok", "service": "qsh", "version": "0.1.0"}
+    return {"status": "ok", "service": "qsh", "version": __version__}
 
 
 @app.get("/metrics")

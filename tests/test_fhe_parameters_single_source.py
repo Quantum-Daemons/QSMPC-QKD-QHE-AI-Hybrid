@@ -27,6 +27,9 @@ runs. Raising the ring in ``defaults.py`` alone changed precisely nothing - the 
 the report and the browser all kept emitting the old value, silently, with a zero exit status. The
 last test here keeps the documented default and the running value in step, so that edit cannot be a
 no-op again.
+
+ROUND 86: the technical report left this repository for a private one, and the checks on its
+copy went with it, unchanged; what stays here checks the copies that are published.
 """
 
 from __future__ import annotations
@@ -54,26 +57,6 @@ def test_browser_reads_the_ring_from_config() -> None:
             "then runs a parameter set nothing else can see, which is how the ring degree came to "
             "exist in four independent copies."
         )
-
-
-def test_report_derives_the_crypto_table() -> None:
-    """The generator must not hardcode the parameter set it is describing."""
-    src = (REPO / "report" / "build_data.py").read_text()
-    m = re.search(r"def crypto_table\(\).*?\n(?=\ndef )", src, re.S)
-    assert m, "crypto_table() not found in report/build_data.py"
-    body = m.group(0)
-    # Strip comments: this function's own comment explains the defect using the old literals.
-    code = "\n".join(ln for ln in body.splitlines() if not ln.lstrip().startswith("#"))
-    assert "poly_modulus_degree" in code, (
-        "crypto_table() does not mention poly_modulus_degree, so its FHE row is not derived from "
-        "the config. A generator that hardcodes the ring publishes the old one the moment the code "
-        "changes - and the PDF is the artefact a reader trusts most."
-    )
-    stale = re.findall(r'"[^"]*\b(?:8192|16384|4096)\b[^"]*"', code)
-    assert not stale, (
-        f"crypto_table() still carries the parameter set as a literal: {stale}. Interpolate it from "
-        "the config instead."
-    )
 
 
 def test_tenseal_backend_reads_the_config() -> None:

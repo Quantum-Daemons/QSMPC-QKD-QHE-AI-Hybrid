@@ -1,7 +1,7 @@
 {
   "name": "qsh-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.85.0",
   "type": "module",
   "description": "SPA for the QSMPC-QKD-QHE-AI-Hybrid quantum-safe orchestration layer",
   "scripts": {
