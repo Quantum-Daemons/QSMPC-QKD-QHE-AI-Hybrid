@@ -8239,6 +8239,25 @@ sample holds the detector live, and a formula seeded into `docs/architecture.md`
   RFC, and Polytune's `main` equal to the pin. `@huggingface/transformers` (4.3.1 locked, 4.3.2 out) and
   `@mlc-ai/web-llm` (0.2.84, 0.2.87 out) have newer patch releases and no advisory; they are not moved.
 
+**Node 24 in the API image, and the filesystem server at 2.1.0 (2026-11-03), the round's carried item.**
+The API image took Node from Debian trixie's `nodejs` package, which is Node 20, past its upstream end
+of life on 2026-04-30 (Round 85 recorded it as not done). The official
+`@modelcontextprotocol/server-filesystem` has declared `engines: node >= 24` since 2.0.0, which is
+why Round 85 pinned 1.0.0.
+- The image copies Node 24.22.2 LTS (2026-10-27) out of the official `node:24.22.2-trixie-slim` image,
+  pinned by digest. The binary, npm with npx, and Node's licence are copied, nothing else, onto the
+  same Debian release as the Python base. Debian's `nodejs` and `npm` are no longer installed.
+- `qsh.mcp.fs_interop` pins 2.1.0, npm's newest. Its tools keep their names, and allowed directories
+  are still given on the command line. `read_file` is deprecated in favour of `read_text_file`, which
+  the interop test now asserts.
+- Checked inside the built image: Node v24.22.2, npm and npx 11.19.1, no Debian `nodejs`, the pin at
+  2.1.0 and liboqs 0.16.0. The real server, started by `npx`, listed 14 tools and returned the
+  directory's file, and the result rode the quantum-safe envelope (authenticated, a tampered copy
+  rejected, 7,206 bytes sealed). The repository's slow interop test passes in the image.
+- `tests/test_r86_api_image_runs_node_24.py` holds the pinned Node stage on the Python base's Debian
+  release, the absence of Debian's Node, and the server's engine floor against the image's Node. It
+  fails on the previous Dockerfile.
+
 BUSINESS DOC RECONCILED Round 86. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 17 reads.

@@ -16,10 +16,12 @@ import asyncio
 import shutil
 
 #: The official filesystem server, pinned (Round 85). `npx -y` without a version ran whatever npm's
-#: `latest` was at call time: 2.0.0 and 2.1.0 (2026-10-19, 2026-10-28) declare `engines: node >= 24`,
-#: and the API image's Debian Node is 20. 1.0.0 declares no engine and resolves its SDK dependency
-#: (`@modelcontextprotocol/sdk ^1.31.0`) to a release past the 2026-10 advisories.
-FILESYSTEM_SERVER = "@modelcontextprotocol/server-filesystem@1.0.0"
+#: `latest` was at call time. 2.0.0 and 2.1.0 (2026-10-19, 2026-10-28) declare `engines: node >= 24`,
+#: which the API image's Debian Node 20 did not meet, so Round 85 pinned 1.0.0. Round 86 gave the image
+#: Node 24.22.2 LTS from the official image (`docker/Dockerfile.api`) and moved to 2.1.0, npm's newest,
+#: which depends on `@modelcontextprotocol/server` ^2.3.1. Its tools keep their names; `read_file` is
+#: deprecated in favour of `read_text_file`, and allowed directories are still given on the command line.
+FILESYSTEM_SERVER = "@modelcontextprotocol/server-filesystem@2.1.0"
 
 
 def node_available() -> bool:

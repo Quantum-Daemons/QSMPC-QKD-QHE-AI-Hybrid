@@ -3,6 +3,12 @@
 # Ubuntu-24.04 deploy target, so the OpenFHE CKKS backend is LIVE in the container.
 # For GPU (Blackwell/CUDA13) run with the NVIDIA container runtime:
 #   docker run --gpus all ...   (and install nvidia-container-toolkit on the host)
+# Node.js 24 LTS for the filesystem-MCP interop, from the official image, pinned by digest (Round 86).
+# Debian trixie's nodejs package is Node 20, past its upstream end of life on 2026-04-30, and the official
+# @modelcontextprotocol/server-filesystem has declared `engines: node >= 24` since 2.0.0. Only the node
+# binary and npm (with npx) are copied below; both images are Debian trixie, so they share one glibc.
+FROM node:24.22.2-trixie-slim@sha256:54f84b4cf8432b21aaffd5d3ce8d41e12cea0d10d33c09d2f3c9879d49d6b446 AS node
+
 FROM python:3.12-slim-trixie
 
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 LD_LIBRARY_PATH=/usr/local/lib
@@ -13,11 +19,15 @@ WORKDIR /app
 # Python, which is not constant-time, and reports that it did.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential cmake ninja-build git libssl-dev ca-certificates libgomp1 libsodium23 \
-    nodejs npm \
  && rm -rf /var/lib/apt/lists/*
 # Node/npx are for the real filesystem-MCP interop (the official @modelcontextprotocol/server-filesystem
 # is a Node package launched over stdio by qsh.mcp.fs_interop). Full deployment only; the slim demo image
 # omits this (the demo never calls the server-side MCP — it uses the client-side mirror).
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+ && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
+ && node --version && npm --version
 
 # Build the liboqs C shared library at BUILD time (liboqs-python otherwise tries to
 # build it on first import at RUNTIME, which needs network + libssl-dev). Baking it in
@@ -66,6 +76,10 @@ RUN python -c "import oqs; print('liboqs', oqs.oqs_version())"
 # Non-fatal: report whether the live OpenFHE + torch backends are available in the image.
 RUN python -c "import openfhe; print('OpenFHE CKKS backend: LIVE')" || echo "OpenFHE: unavailable (TenSEAL fallback)"
 RUN python -c "import torch; print('torch', torch.__version__, 'CUDA', torch.cuda.is_available())"
+
+# Node.js's own licence, which covers the components bundled into the binary, beside the binary the
+# Node stage copied in (npm's travels inside its node_modules). Last, so a rebuild keeps the layers above.
+COPY --from=node /usr/local/LICENSE /usr/local/share/doc/node/LICENSE
 
 EXPOSE 8000
 CMD ["uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
