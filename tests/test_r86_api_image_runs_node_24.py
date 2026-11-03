@@ -66,3 +66,22 @@ def test_the_filesystem_server_runs_on_the_images_node() -> None:
     if int(m.group(1)) >= 2:
         assert node >= SERVER_2X_NODE_FLOOR, f"server {m.group(0)} needs Node {SERVER_2X_NODE_FLOOR}+, image has {node}"
     assert int(m.group(1)) >= 2, "the server is back on the 1.x line, which the image no longer needs"
+    # 2.0.1 fixes four advisories of 2026-10-25 that hit every release from 1.0.0 below it.
+    assert tuple(map(int, m.groups())) >= (2, 0, 1), f"{m.group(0)} is below 2.0.1, which the advisories need"
+
+
+def test_a_tool_error_is_read_from_the_sdk_2_field() -> None:
+    """The SDK 2.x result says `is_error`; reading `isError` alone turned every error into a success."""
+    from mcp.types import CallToolResult, TextContent
+
+    from qsh.mcp.fs_interop import _call_outcome
+
+    failed = CallToolResult(content=[TextContent(type="text", text="Access denied")], is_error=True)
+    assert _call_outcome(failed) == ("Access denied", True)
+    ok = CallToolResult(content=[TextContent(type="text", text="[FILE] a.txt")], is_error=False)
+    assert _call_outcome(ok) == ("[FILE] a.txt", False)
+
+    class Legacy:                                    # a 1.x result, by attribute name
+        content, isError = [], True
+
+    assert _call_outcome(Legacy()) == ("", True)
