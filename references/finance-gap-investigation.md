@@ -29,7 +29,7 @@ per-account aggregates. (This paragraph called the multi-hop gain "four percent 
 
 | Hypothesis | Test | Verdict |
 |---|---|---|
-| The decision threshold (0.928426) is badly chosen | F1 = 0.6323 needs precision ~0.63 held to recall ~0.63, i.e. AUPRC >= ~0.40. Measured AUPRC is **0.0732** | **Ruled out.** Unreachable at ANY threshold - it is a ranking gap, not a tuning gap |
+| The decision threshold (0.928426) is badly chosen | F1 = 0.6323 needs precision ~0.63 held to recall ~0.63, i.e. $`\mathrm{AUPRC} \gtrsim 0.40`$. Measured AUPRC is **0.0732** | **Ruled out.** Unreachable at ANY threshold - it is a ranking gap, not a tuning gap |
 | Accounts unseen in training get zeroed graph features | Measured over the real temporal split: source unseen **0.24%**, destination unseen **0.17%**, either side **0.39%** | **Ruled out.** Too rare to matter |
 | 10-hop cycles truncated to 4 hops | GFP paper's Table 5: multi-hop patterns add 1.3 to 5.8 F1 points on HI-Small (1.7 for XGBoost at batch 128) | **Ruled out as a main cause** |
 

@@ -503,3 +503,20 @@ def test_the_dead_fhe_config_fields_are_gone() -> None:
     readers = "\n".join(p.read_text() for p in SRC.rglob("*.py") if "config" not in p.parts)
     for name in names:
         assert re.search(rf"\.{name}\b", readers), f"FHEConfig.{name} is read by nothing"
+
+
+def test_the_models_doc_states_what_their_records_say_about_provenance() -> None:
+    """PI-16: the doc's three claims about the records hold, so a retrain that fixes one fails here."""
+    metrics = json.loads((REPO / "models" / "metrics.json").read_text())
+    shas = {k: v["git_sha"] for k, v in metrics.items() if isinstance(v, dict) and v.get("git_sha")}
+    assert shas and all(s.endswith("-dirty") for s in shas.values()), (
+        f"a record carries a clean git_sha now ({shas}): update docs/models-and-benchmarks.md's provenance list")
+    students = [k for k in metrics if "student" in k]
+    assert students and not [k for k in students if metrics[k].get("git_sha")], "a student records a git_sha now"
+    digests = sorted(k for k, v in metrics.items() if isinstance(v, dict) and v.get("data_digest"))
+    assert digests == ["finance_aml.gbm"], f"data digests changed ({digests}): update the provenance list"
+    doc = _flat(_read(DOCS / "models-and-benchmarks.md"))
+    for needle in ("every recorded `git_sha` ends in `-dirty`", "no student records a `git_sha`",
+                   "only `finance_aml.gbm` records a digest of its training data",
+                   "name commits of the history before it was rewritten"):
+        assert needle in doc, f"the provenance list lost {needle!r}"

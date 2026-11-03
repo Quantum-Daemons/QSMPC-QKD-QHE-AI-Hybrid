@@ -377,7 +377,7 @@ papers. Where the two used to overlap, that file is the owner.
   7.1 gives the server *"Unconditional input secrecy"* (it *"does not learn anything about the client
   input x, even with unbounded computation"*); section 7.2.1 rests pseudorandomness on the One-More
   Gap Computational Diffie-Hellman assumption, which is why the PSI is not post-quantum; section
-  7.2.3 puts the cost of Q BlindEvaluate queries to one key at about log2(Q)/2 bits and names
+  7.2.3 puts the cost of Q BlindEvaluate queries to one key at about $`\log_2(Q)/2`$ bits and names
   rotating keys as a mitigation (the PSI's key is fresh per run); section 7.4 requires constant-time
   operations on secret data, which the Python implementation does not provide. Appendix A.1.1's two
   OPRF-mode vectors are checked in both tiers by `tests/test_r84_oprf_psi.py`.
@@ -804,7 +804,7 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   aggregator, which receives only the public keys and the masked updates, cannot remove a mask on its
   own. Their double masking and secret-shared keys for dropouts, their malicious-security protocol and
   any authentication of the public keys are not implemented, and every client runs in one tab or one
-  process; since Round 85 both tiers mask modulo 2^32, so the masks cancel exactly
+  process; since Round 85 both tiers mask modulo $`2^{32}`$, so the masks cancel exactly
   ([what each step protects](../docs/threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)).
 
 - **Quantum Federated Learning: A Comprehensive Survey** - Nguyen, Uddin, Shaon, Rahman, Dobre and
@@ -1304,7 +1304,7 @@ exactly once, about QKD.
 
 Primary sources: Qi, Sun, Lin, Yin, Long, Light Sci. Appl. 8, 22 (2019), doi:10.1038/s41377-019-0132-3
 - the $`C_s > 0`$ abort rule and the measured $`g = 2.57`$. Pan, Lin, Wu, Sun, Ruan, Yin, Long,
-arXiv:2005.05102 - free-space QSDC, 500 bps over 10 m, QBER 0.49% +/- 0.27%, and the DBER/QBER
+arXiv:2005.05102 - free-space QSDC, 500 bps over 10 m, QBER $`0.49\% \pm 0.27\%`$, and the DBER/QBER
 distinction. Long and Liu (2002), Deng, Long and Liu (2003), Deng and Long (2004) - the protocols.
 
 ## Round 31 additions, verified at primary source 2026-08-11
@@ -1651,7 +1651,7 @@ makes**, in the direction of understating what is possible.
 ### Standards: nothing newer, and one uncited instrument
 
 - **No PQC migration instrument newer than OMB M-26-15** (2026-06-24). The Federal Register API, term
-  "post-quantum cryptography", publication date >= 2026-06-25, returns three documents; the only one
+  "post-quantum cryptography", publication date on or after 2026-06-25, returns three documents; the only one
   after M-26-15 is **FCC 2026-15600**, 91 FR 48320, published 2026-07-31, whose full text mentions
   post-quantum cryptography **once**, as a question for comment: "should we account for that risk
   through post-quantum cryptography?" No date, no timeline - not a migration instrument.
@@ -2129,7 +2129,7 @@ neither a quote nor a stated assumption.
   VERIFIED 2026-10-28 in the arXiv text. The template `micius_2022_zvenigorod`: a 600 mm telescope
   with obstruction 0.73 at 198 m, an atmospheric extinction coefficient "kappa = 0.22 +/- 0.04, which
   corresponds to clear weather conditions" (0.88 dB at the zenith, magnitudes per air mass), channel
-  efficiencies of 21, 35, 37 and 19 percent, detectors of about 60 percent, 290 +/- 60 background
+  efficiencies of 21, 35, 37 and 19 percent, detectors of about 60 percent, $`290 \pm 60`$ background
   clicks per second, operating elevations "from 20 deg to 90 deg". Its measured sifted rate, on
   signal states, "changes from around 20.7 kbit/s at 600 km to 2.9 kbit/s at 1,100 km": this model
   gives -0.3 dB at 600 km and +1.75 dB at 1,100 km. The paper attributes its own model's misfit to

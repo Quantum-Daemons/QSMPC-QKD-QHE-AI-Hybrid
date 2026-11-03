@@ -209,10 +209,15 @@ const yieldToPage = () => new Promise<void>((resolve) => setTimeout(resolve, 0))
  * masked partial sums with a correlation of 1.0. The encoding error of a REAL vector is itself real
  * (SEAL rounds the conjugate-symmetric coefficients symmetrically), so the residual sits in the real
  * parts and the imaginary parts of the masked slots hold double-precision round-off only; a flood of
- * the real parts is therefore enough, and node-seal's real-valued encoder can place one. At 2^16 over
- * a residual below 1e-9 (the test's layouts) the statistical distance is below 1e-14 per slot, and the
- * flood stays inside the modulus: a coefficient is at most the largest slot value times the scale,
- * 2^16 x 2^120 = 2^136 at the masked scale, under the 2^140 of the first three primes.
+ * the real parts is therefore enough, and node-seal's real-valued encoder can place one. A uniform
+ * flood of half-width 2^16 over a residual e is at statistical distance |e| / 2^17 from one with none:
+ * below 1e-14 per slot on the test's layouts (residuals below 1e-9), and up to 1.25e-14 on the pages'
+ * own data, whose largest residuals are 5.1e-10 (finance), 9.6e-10 (telecom), 1.28e-9 (medical) and
+ * 1.64e-9 (genomics), measured by Round 86's review with a twin of this code on TenSEAL's SEAL, whose
+ * encoder node-seal shares (PI-13; this said "below 1e-14" for all of them). The flood is not widened
+ * to restore that figure, because it also has to stay inside the modulus: a coefficient is at most the
+ * largest slot value times the scale, 2^16 x 2^120 = 2^136 at the masked scale, under the 2^140 of the
+ * first three primes.
  */
 export const CKKS_FLOOD_BITS = 16;
 
