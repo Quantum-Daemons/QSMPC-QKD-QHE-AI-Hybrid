@@ -90,6 +90,78 @@ def test_github_markdown_has_no_plain_inline_math() -> None:
         "$`...`$:\n  " + "\n  ".join(bad[:30]))
 
 
+#: A formula typed as prose (Round 86): a power, a one-letter subscript, a root or a logarithm written as
+#: a call, an inequality, a plus-minus or an absolute value, outside every math span. The test above
+#: catches math in the wrong delimiters; these are formulas with none, which Round 86 found 88 of in the
+#: tracked documents, most in the register. A quotation keeps its source's own typing, so text in double
+#: quotes and blockquote lines are not read, nor are code, math spans and display blocks.
+_PROSE_FORMULA = {
+    "power": re.compile(r"(?<![\w/.-])(?:\d+|[A-Za-z]|\))\^[-+]?(?:\d+|[A-Za-z]\w*|\{[^}]*\}|\([^)]*\))"),
+    "subscript": re.compile(r"(?<![\w/.`-])[A-Za-z]_(?:[a-z0-9]|\{[^}]*\})(?![\w/])"),
+    "root or logarithm": re.compile(r"\b(?:sqrt|log2|log10|ln)\("),
+    "inequality": re.compile(r"(?<=\s)(?:<=|>=|!=)(?=\s)"),
+    "plus-minus": re.compile(r"(?<!\w)\+/?-\s?\d"),
+    "absolute value": re.compile(r"(?<![|\w])\|[a-zA-Z][\w ]{0,12}\|(?![|\w])"),
+}
+_QUOTED = re.compile(r'"[^"]*"')
+
+
+def _prose_paragraphs(text: str):
+    """(first line, paragraph) of prose: code, math spans, display blocks and quotations removed."""
+    fence = display = False
+    buf: list[str] = []
+    start = 0
+
+    def flush():
+        para = "\n".join(buf)
+        para = _MATH_SPAN.sub(" MATH ", para)
+        para = re.sub(r"(`+)(.+?)\1", " CODE ", para, flags=re.S)
+        return start, _QUOTED.sub(" QUOTE ", para)
+
+    for n, line in enumerate(text.splitlines(), 1):
+        bare = line.strip()
+        if bare.startswith(("```", "~~~")):
+            fence = not fence
+        elif bare == "$$":
+            display = not display
+        elif not (fence or display or line.startswith(("    ", "\t")) or bare.startswith((">", "|---"))
+                  or (bare.startswith("$$") and bare.endswith("$$"))) and bare:
+            if not buf:
+                start = n
+            buf.append(line)
+            continue
+        if buf:
+            yield flush()
+            buf = []
+    if buf:
+        yield flush()
+
+
+def _prose_formulas(text: str) -> list[str]:
+    return [f"{n}: {name} {m.group(0)!r}" for n, para in _prose_paragraphs(text)
+            for name, pat in _PROSE_FORMULA.items() for m in pat.finditer(para)]
+
+
+def test_the_prose_formula_detector_sees_one_and_skips_quotes_and_code() -> None:
+    """Without this, a detector that matches nothing would pass the test below."""
+    sample = ("A mask of 2^30 hides x_k, and S = 2 sqrt(2) holds when p <= 1, within +/- 0.4 of |B|.\n\n"
+              'Quoted: "rises with n >= 15". Code: `2^30` and $`2^{30}`$.\n\n> A quote: 2^30.\n\n'
+              "$$\nC_s = 10^{-5}\n$$\n")
+    names = sorted({hit.split()[1] for hit in _prose_formulas(sample)})
+    assert names == ["absolute", "inequality", "plus-minus", "power", "root", "subscript"], names
+    assert all(hit.startswith("1:") for hit in _prose_formulas(sample)), _prose_formulas(sample)
+
+
+def test_github_markdown_types_no_formula_as_prose() -> None:
+    bad = []
+    for f in _markdown():
+        if f.startswith(HF_RENDERED):
+            continue
+        bad += [f"{f}:{hit}" for hit in _prose_formulas((REPO / f).read_text(errors="replace"))]
+    assert not bad, ("formulas typed as prose; write them in the house form $`...`$ (or quote the source "
+                     "they come from):\n  " + "\n  ".join(bad[:30]))
+
+
 def test_hugging_face_cards_carry_no_github_math() -> None:
     bad = [f for f in _markdown() if f.startswith(HF_RENDERED)
            and "$`" in (REPO / f).read_text(errors="replace")]

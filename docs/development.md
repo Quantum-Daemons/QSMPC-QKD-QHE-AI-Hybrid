@@ -226,7 +226,12 @@ renames `jsArrayFromVecModulus` and `correctionFactor`, neither of which `client
 still served 7.0.0 on 2026-11-02. `bash scripts/audit_deps.sh seal`, which the audit workflow runs
 daily, fails once npm's newest node-seal is not the one locked, and the upgrade is owed then: move
 `web/`, then rerun `tests/test_r84_medtel_ckks_decrypts_only_outputs.py` and
-`tests/test_r86_private_inference_review.py` (Round 86). `CHANGES.md`
+`tests/test_r86_private_inference_review.py` (Round 86). One check belongs to the upgrade itself
+(review PI-14): that the masked slots' imaginary parts carry double-precision round-off only, which
+is what lets `clientFHE.ts` flood the real parts alone. It has been shown on TenSEAL's SEAL, whose
+encoder node-seal shares, and not on node-seal's build, whose node harness decodes real parts only.
+A real slot vector encodes to coefficients with $`m_i = -m_{N-i}`$, so the check can be made on the
+encoded flood without trusting the decoder. `CHANGES.md`
 calls **4.4.0 a "Critical security update: all users should upgrade ... as soon as possible"**, which
 hardened untrusted deserialization and fixed native memory-safety and concurrency defects across
 ciphertext evaluation; 4.4.3 fixes null-output-pointer dereferences and C++ exceptions leaking across

@@ -488,7 +488,7 @@ the date go stale.
 
 | trigger | current state |
 |---|---|
-| A bootstrapped CKKS CNN cheap enough for WASM at N about 8192 | cheapest bootstrapped ImageNet CNN is N = 2^15 |
+| A bootstrapped CKKS CNN cheap enough for WASM at N about 8192 | cheapest bootstrapped ImageNet CNN is $`N = 2^{15}`$ |
 | A real, labelled, commercial-OK QKD attack corpus | closest is QF-LOG: synthetic, four classes, subscription-gated |
 | A fidelity quantum kernel beating a random forest at 8 qubits or fewer | **NO LONGER BLOCKED - Round 55.** The blocker read "concentration bound says >= 15 qubits"; arXiv:2605.31449 says 15 is where the fidelity kernel FAILS and that concentration worsens with qubit count, so 8 qubits is the favourable regime. This falsifier is live and unblocked |
 | An encrypted transformer or tabular foundation model on any finance tabular benchmark | none published |
@@ -2447,7 +2447,7 @@ than the fibre one.
 
 It read "roughly 1,900 sifted bits" - a figure matching no computed quantity anywhere; it is 1,244.
 And it called the result "a modelled upper bound, ~2.4x a real deployed link". Refuted: Li et al.,
-*Nat. Photon.* **17**, 416-421 (2023), arXiv:2307.02364, measured **22.2 +/- 0.8 Mb/s at 50 km** on a
+*Nat. Photon.* **17**, 416-421 (2023), arXiv:2307.02364, measured **$`22.2 \pm 0.8`$ Mb/s at 50 km** on a
 2.5 GHz clock = **8.88e-3 bit/pulse** with full composable finite-key security - **3.8x HIGHER per
 pulse than this project's figure**. It is not an upper bound on real hardware; it is the N->infinity
 limit of a lower bound, and real hardware beats it.
@@ -2495,7 +2495,7 @@ after both retrains: 0.953488, 0.865672 and 0.976447 respectively.
 The claim that 8 and 9 qubits agree exactly SURVIVES both retrains and is now measured on three
 successive circuits - the two widths are **identical on every recorded metric** on both binary
 corpora. That phrasing is deliberate and replaces "byte-identical", which was wrong of the
-ARTIFACTS: the recorded metrics match exactly, but `theta` does not (max |difference| 1.1e-05 on
+ARTIFACTS: the recorded metrics match exactly, but `theta` does not (max absolute difference 1.1e-05 on
 finance, 4.2e-06 on medical), `bias` differs on both and `scale` differs on finance. See the
 continuation section below, which states the same pair of facts. And the
 claim that telecom fell survives too, further than Round 46 knew: part of 0.614583 was the discarded
@@ -4096,7 +4096,7 @@ session. Nothing was changed on the strength of a secondary write-up.
 | item | was | is | source |
 |---|---|---|---|
 | E91 security facts | the QBER row said "two-intensity decoy-state bound ... aborts above 0.11" on an E91 run, because the protocol test was declared inside a branch the row could not see | Werner-model error rate; device-dependent rate reaches zero at 0.0981 (f = 1.16); a device-independent analysis would need S > 2.424, i.e. Q < 0.0715 | Acin et al., Phys. Rev. Lett. 98, 230501 (2007); Ma, Fung and Lo, Phys. Rev. A 76, 012307 (2007) |
-| E91 model error rate | not exposed, so the relation S = 2 sqrt(2) (1 - 2 e0) could only be checked against the 2-dp SAMPLED QBER, from which two of three reported rows do not reproduce | `e91_model_qber` at both E91 sites (fibre and satellite) | the simulator's own model |
+| E91 model error rate | not exposed, so the relation $`S = 2\sqrt{2}\,(1 - 2e_0)`$ could only be checked against the 2-dp SAMPLED QBER, from which two of three reported rows do not reproduce | `e91_model_qber` at both E91 sites (fibre and satellite) | the simulator's own model |
 | QKD rows of the security-posture table | "measured", under "what this run measured", with "The bits are real" | kind "simulated"; the browser's `bb84()` returns a count, never key bytes (checklist SC2) | code |
 | Demo banner | silent about QKD; the simulated label sat at the bottom of two pages and in hover text | every page says the quantum channel (QKD, QSDC) is simulated | code |
 | "information-theoretic" | unqualified | "as a scheme" (quantum one-time pad, given a uniform pad); the demo seeds the pad, so no run here is information-theoretically secure | Ambainis, Mosca, Tapp and de Wolf, FOCS 2000 |
@@ -4125,9 +4125,9 @@ this same PR:
 
 | item | adopted as |
 |---|---|
-| Eve's error was added linearly to the channel error | composed as independent errors, a + b - 2ab, at all four sites (`intrinsic_qber` / `e_det_for_bound` and their browser mirrors) through one helper per language. Eve-free figures unchanged; E91 at 50 km with a full attack moves from S 1.29 / e0 0.2722 to S 1.33 / e0 0.2649 (displayed QBER 0.27 either way). The relation S = 2 sqrt(2)(1 - 2Q) still holds exactly |
+| Eve's error was added linearly to the channel error | composed as independent errors, $`a + b - 2ab`$, at all four sites (`intrinsic_qber` / `e_det_for_bound` and their browser mirrors) through one helper per language. Eve-free figures unchanged; E91 at 50 km with a full attack moves from S 1.29 / e0 0.2722 to S 1.33 / e0 0.2649 (displayed QBER 0.27 either way). The relation $`S = 2\sqrt{2}\,(1 - 2Q)`$ still holds exactly |
 | The S > 2 gate never binds | stated in the caption and the code; the device-independent threshold is now computed from the configured f: S > 2.456, Q < 0.0658 at f = 1.16 (the caption had compared an f = 1 threshold, S > 2.424, with an f = 1.16 zero-key point) |
-| "Werner state" for Eve > 0 | the caption names the state a mixture of Werner and intercept-resend pairs, separable once V'(3 - 2f) <= 1 |
+| "Werner state" for Eve > 0 | the caption names the state a mixture of Werner and intercept-resend pairs, separable once $`V'(3 - 2f) \le 1`$ |
 | `/orchestration` log lines | "simulated" in the QKD and QSDC log lines, on the graph's quantum nodes and in the diagram legend |
 
 Still open:
@@ -4729,7 +4729,7 @@ BUSINESS DOC RECONCILED Round 65. The out-of-repo document is brought level with
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 16 reads.
 
-## Round 66: secret-sharing masks from the CSPRNG, and the argmax shared modulo 2^32
+## Round 66: secret-sharing masks from the CSPRNG, and the argmax shared modulo $`2^{32}`$
 
 **Round 65 closed first.** PR #61 merged as 421eb7a, and the demo was redeployed from main. It serves
 the bundle the branch walk saw (`index-Cpq7ooVo.js`): nothing under `web/` changed after that walk, so
@@ -4739,12 +4739,12 @@ took 143.21 ms over 995.02 KB, all three published models verified PASS, and the
 **What was wrong.** Both of the demo's secret-sharing masks came from the run's seeded generator:
 mulberry32, 32 bits of state, keyed on the seed the page shows.
 - The secure argmax in `clientMPC.ts`: `a_k = floor(u() * 2^16)` and `b_k = q_k - a_k + 2^16`. Anyone
-  with the seed could recompute every mask. A mask bounded to 2^16 also hides a value only
+  with the seed could recompute every mask. A mask bounded to $`2^{16}`$ also hides a value only
   statistically: `b_k` for two logits up to 1024 apart differ in distribution by up to
-  1024 / 2^16 = 1/64.
+  $`1024 / 2^{16} = 1/64`$.
 - The secure sum in `clientCompute.ts`: `mask = floor(u() * p)`. It could be recomputed in the same
   way, and it was biased, because scaling a 32-bit output to `[0, p)` is uniform only when p divides
-  2^32, which no odd prime does.
+  $`2^{32}`$, which no odd prime does.
 
 Nothing on a page claimed perfect hiding for either, and in one tab both parties are notional. The
 source comment did claim more than held: "neither party's circuit input reveals a logit". It is the
@@ -4754,12 +4754,12 @@ same defect as the Round 40 finding about the QOTP mask, in a line that never co
 **What changed.**
 - `web/src/lib/csprng.ts` (new) draws from `crypto.getRandomValues`. `randomWords(n)` gives uniform
   32-bit words. `randomBelow(p)` gives a uniform value below p by rejection, with no modulo bias.
-- The argmax shares each quantised logit modulo 2^32: `a_k` is a uniform 32-bit word and
+- The argmax shares each quantised logit modulo $`2^{32}`$: `a_k` is a uniform 32-bit word and
   `b_k = q_k - a_k mod 2^32`, so each share alone is uniform whatever the logit. `secureArgmax` no
   longer takes a generator.
 - Garble panics on integer overflow rather than wrapping (`push_panic_if(overflow, Overflow)` in its
   compiler), so the circuit adds in 64 bits, where two 32-bit values cannot overflow, and casts back to
-  32. Its compiler keeps the low bits on a narrowing cast, which is the reduction mod 2^32. Dropping the
+  32. Its compiler keeps the low bits on a narrowing cast, which is the reduction mod $`2^{32}`$. Dropping the
   offset also shrank the circuit. At 2 classes it went from 400 AND gates and 1,018,898 bytes to 367
   and 944,619 bytes. At 10 classes it went from 2,997 and 7,184,705 to 2,852 and 6,857,722. The message
   counts (69 and 195) are unchanged. The crate's `#[ignore]` test `report_circuit_size` prints these.
@@ -4793,7 +4793,7 @@ in `secure_summation.py` are a simulator's measurement outcomes, not classical s
 
 **The gate.** `tests/test_secret_sharing_masks_come_from_the_csprng.py` checks the change two ways.
 - Through the real modules bundled by esbuild:
-  - the argmax's shares reach the module as Uint32Array and reconstruct mod 2^32;
+  - the argmax's shares reach the module as Uint32Array and reconstruct mod $`2^{32}`$;
   - they are fresh on every call and span the 32-bit range;
   - a generator passed anyway does not reach them;
   - `randomBelow` stays in range, is uniform for p = 3, and refuses moduli outside `[1, 2^32]`.
@@ -4804,7 +4804,7 @@ in `secure_summation.py` are a simulator's measurement outcomes, not classical s
     waivers, each tied to its disclosure.
 
 It was seeded eight ways, and each seed fires:
-- Math.random masks bounded to 2^16;
+- Math.random masks bounded to $`2^{16}`$;
 - the secure sum back on `u()`;
 - the stream advance removed;
 - the circuit offset restored;
@@ -5392,18 +5392,18 @@ differ by a whole event.
 
 **Walked on the public demo with this branch deployed** (8920c56, serving `index-Dafzn7-a.js`):
 - **Finance.**
-  - Both models PASS on the rebuilt sample with |delta| 0. The teacher's line says it was classified
+  - Both models PASS on the rebuilt sample with `|delta| 0`. The teacher's line says it was classified
     at its decision threshold, 0.3869.
   - The verification card, the precision-recall caption and the overlay caption name the split; the
     overlay reads AUC-PR 0.1269.
   - The teacher's note says the order of the two models on this sample is not a ranking.
   - The garbled-circuit argmax matched the clear one, and the run summary was signed.
 - **Satellite.**
-  - Telemanom PASSes on its test-window sample (MAE 0.02, |delta| 4.86e-17).
+  - Telemanom PASSes on its test-window sample (MAE 0.02, `|delta| 4.86e-17`).
   - The student's log line and its model panel both say it publishes no sample by design.
   - The page made six Hub requests, none to the student's repository. The console shows no 404 and
     no onnxruntime shape warning.
-- **Medical.** All three models PASS with |delta| 0, and the provenance carries the downgraded
+- **Medical.** All three models PASS with `|delta| 0`, and the provenance carries the downgraded
   licence wording.
 - **Telecom.** Both models PASS. Each line names the registry's split for the two samples this round
   did not rebuild.
@@ -5745,7 +5745,7 @@ sourced Micius set, and make the MPC tier multi-party now, and then mask its con
 **PQC.**
 - **FIPS 203's input type checks were missing on the Python path.** Section 7.2 step 1 and section
   7.3 step 1 require an encapsulation key of exactly 384k + 32 bytes and a ciphertext of exactly
-  32(d_u k + d_v) bytes, before the modulus check. liboqs-python copies an input into a buffer of the
+  $`32(d_u k + d_v)`$ bytes, before the modulus check. liboqs-python copies an input into a buffer of the
   expected size, so a short one is zero-padded and used: measured on liboqs-python 0.16 / liboqs
   0.14, a 1183-byte key was encapsulated to and a 1087-byte ciphertext decapsulated. Both are now
   refused before the call, and tests try each length one short and one long. `check:pqc` had covered
@@ -5756,7 +5756,7 @@ sourced Micius set, and make the MPC tier multi-party now, and then mask its con
   KeyCombineCCA_H, a single SHA-3 hash over all seven inputs, which the docstrings in Python and the
   browser had named.
 - **A nonce range that was disjoint by convention only.** Two channels that share a key are kept
-  apart by counter ranges, the responder starting at 2^40, and nothing stopped the caller from
+  apart by counter ranges, the responder starting at $`2^{40}`$, and nothing stopped the caller from
   reaching it; with GCM a repeated key and nonce leaks the authentication key (SP 800-38D section
   8.2.1). Each channel now enforces its limit, and the caller's ends where the responder's begins.
 - "Matching the NSA hybrid recommendation" is gone from the transport: NSA publishes none, and CNSA
@@ -5771,8 +5771,8 @@ sourced Micius set, and make the MPC tier multi-party now, and then mask its con
   about 0.15 bit, the adaptive-proportion cutoff rose to 969 of 1024, and the source passed. The
   cutoffs now come from the configured assessment, 0.9 bit, and the estimate is reported beside it,
   with a flag when it falls below.
-- The adaptive-proportion cutoff now follows the standard's own formula, 1 + CRITBINOM(W, 2^-H,
-  1 - alpha). The old form landed one below it at three of Table 2's five entropies; all ten values
+- The adaptive-proportion cutoff now follows the standard's own formula,
+  $`1 + \mathrm{CRITBINOM}(W, 2^{-H}, 1 - \alpha)`$. The old form landed one below it at three of Table 2's five entropies; all ten values
   of the table now reproduce.
 - The seedless extractor's reported ceiling used Eq. 5, the bound for a uniform seed. Its seed is
   itself a simulated weak source, so Giestinhas and Spiller's Eq. 7 applies: 5,898 bits where Eq. 5
@@ -5833,11 +5833,11 @@ sourced Micius set, and make the MPC tier multi-party now, and then mask its con
   re-masks its result and opens it to the client alone, and the decision opens only the class index.
   The helper inputs nothing.
 - **The masks hide statistically, and each run says how well.** CKKS is approximate, so the masks
-  are reals, uniform on plus or minus 2^30 from the OS CSPRNG. 30 bits is the most 64-bit fixed
-  point holds, and costs no precision measured through a CKKS round trip: 5e-7 at 2^30, against 8e-6
-  at 2^36 and 2e-4 at 2^40 (Round 84, with every slot masked, 400 draws, worst case: 8.8e-7 at 2^30,
-  3.8e-5 at 2^36 and 6.3e-4 at 2^40, so 2^30 is the cheapest rather than free). A run reports the number of masked values, its largest, and the bound
-  n x B / 2^30 on what the key holder's view gives away: 9e-8 or less on the benchmark rows, about 2e-7
+  are reals, uniform on $`\pm 2^{30}`$ from the OS CSPRNG. 30 bits is the most 64-bit fixed
+  point holds, and costs no precision measured through a CKKS round trip: 5e-7 at $`2^{30}`$, against 8e-6
+  at $`2^{36}`$ and 2e-4 at $`2^{40}`$ (Round 84, with every slot masked, 400 draws, worst case: 8.8e-7 at $`2^{30}`$,
+  3.8e-5 at $`2^{36}`$ and 6.3e-4 at $`2^{40}`$, so $`2^{30}`$ is the cheapest rather than free). A run reports the number of masked values, its largest, and the bound
+  $`n \times B / 2^{30}`$ on what the key holder's view gives away: 9e-8 or less on the benchmark rows, about 2e-7
   on the test CNNs. Every decision tested matches plaintext, on TenSEAL and OpenFHE. Semi-honest, and
   a client and helper who pool their shares recover the server's masks; the architecture document
   says so, and `docs/threat-model.md` now lists the tier among its trust assumptions, which it did
@@ -5855,7 +5855,7 @@ The QSMPC stage's threshold was a literal, min(3, n), beside an unread config ke
 
 **Gates.**
 - `tests/test_mpc.py`: each party's job file holds only its own inputs; the key holder decrypts only
-  masked values (median above 2^20, against intermediates below 2); the parties' shares sum to the
+  masked values (median above $`2^{20}`$, against intermediates below 2); the parties' shares sum to the
   true intermediate; each run reports the masks' bound; a mask too wide for the fixed point is
   refused; ports come from below the ephemeral range; a party that cannot bind ends the run at once;
   a lost port costs one more attempt; protocol time excludes start-up.
@@ -5884,17 +5884,17 @@ in 2b70f2d and were re-walked.
 - **Found on the page: the QSDC verdict named one loss and a g from another.** It read "at 34 dB channel
   loss (g=807.63, detector included)", and 807.63 is 29.1 dB: since this round g leaves out the
   station optics, as Qi et al.'s did. The label now says "the detector in, the station optics out", and
-  the log names the 29.1 dB for what it is. Two comments still quoted the old budget's g = 15.8, C_s
-  = -3.70 and 0.65 dB; recomputed, they are 12.6, -1.01 and about 4.8 dB.
+  the log names the 29.1 dB for what it is. Two comments still quoted the old budget's $`g = 15.8`$,
+  $`C_s = -3.70`$ and 0.65 dB; recomputed, they are 12.6, -1.01 and about 4.8 dB.
 - Telecom (fibre, 50 km): "secure fraction per pulse 1.952e-3 bit/pulse, this run's one-decoy bound",
   citing section 3.5, Eq. (41); the run's QBER 0.0160 and 39,033 secure bits; the local Python bound
   gives 1.9517e-3 at E_mu 0.0161. `/validations` "Run BB84" reads 0.016, 0.001952 and 39,033.
 - Satellite (800 km): 1.723e-5 bit/pulse, 1723 bit/s, 344 secure bits, a sampled QBER of 0.0102
-  against the model's 0.0117; QSDC NOT AVAILABLE with C_s -123.39 and no eavesdropper, the link budget
+  against the model's 0.0117; QSDC NOT AVAILABLE with $`C_s = -123.39`$ and no eavesdropper, the link budget
   named as the limit.
 - QRNG: "cutoffs at the assessed 0.9 bit/sample; this stream's estimate 0.97", repetition count 16 of
   24 and adaptive proportion 545 of 625, the two cutoffs SP 800-90B gives at H = 0.9.
-- E91 on `/orchestration`: S = 2.66 at a model QBER of 0.0297, which is 2 sqrt(2) (1 - 2Q); 145,722
+- E91 on `/orchestration`: S = 2.66 at a model QBER of 0.0297, which is $`2\sqrt{2}\,(1 - 2Q)`$; 145,722
   secure bits.
 - Finance and medical: the measured branch ran (node-seal CKKS with Polytune), 922.48 KB at two
   classes as before, and the medical student's encrypted convolution ran on its published weights;
@@ -5985,7 +5985,7 @@ round.**
 - The clock is part of the model now, and the page shows it: Source rate 100 MHz gives 4.307e-3
   bit/pulse, 430,676 bit/s and 86,135 secure bits, the factor going from 0.625 to 0.943 as predicted.
 - Satellite: unchanged at 1.723e-5 bit/pulse, 1,723 bit/s and 344 bits, its clock credited to Liao.
-- E91 on `/orchestration`: S = 2.69 at a model QBER of 0.0247, 2 sqrt(2) (1 - 2Q); 91,303 secure bits.
+- E91 on `/orchestration`: S = 2.69 at a model QBER of 0.0247, $`2\sqrt{2}\,(1 - 2Q)`$; 91,303 secure bits.
 - Cross-origin isolated; console: no errors, only "Failed to create WebGPU Context Provider".
 
 **A CI fragility removed.** `npm ci` failed twice on one commit in Round 75, a Python job and a web
@@ -7084,7 +7084,7 @@ user chose to test that.
   Chernoff bounds.
 - **Yin, Zhou, Gu, Xie, Lu and Chen, Sci. Rep. 10, 14312 (2020)**, give closed forms for the
   expectation of a sum of independent Bernoulli variables from its observed value, with
-  beta = ln(1/eps):
+  $`\beta = \ln(1/\varepsilon)`$:
   - Eq. (9): `x + beta + sqrt(2 beta x + beta^2)`;
   - Eq. (10): `x - beta/2 - sqrt(2 beta x + beta^2/4)`.
 - **Yin et al. on Zhang et al.** They call Zhang et al.'s inverse solution not rigorous, because it
@@ -7092,8 +7092,8 @@ user chose to test that.
   under 0.3 percent of the key.
 
 **What was measured, and what it found.**
-- **Neither statistics is tighter everywhere.** Chernoff's deviation, about sqrt(2 beta x), beats
-  Hoeffding's sqrt(n beta / 2) on the basis total only for a count under a quarter of its basis.
+- **Neither statistics is tighter everywhere.** Chernoff's deviation, about $`\sqrt{2\beta x}`$, beats
+  Hoeffding's $`\sqrt{n\beta/2}`$ on the basis total only for a count under a quarter of its basis.
   - The satellite's weak decoy (6 percent of detections) and vacuum gain.
   - The fibre's 1-decoy signal and decoy, about 70 and 30 percent, lose. Chernoff alone moved the
     fibre's threshold from 5.35e6 pulses to 5.71e6.
@@ -7750,7 +7750,7 @@ banks' lists under the one session key both banks held, so over the demo's ID sp
 could hash every candidate and read the other's list. It is now a semi-honest DH-OPRF PSI on RFC
 9497's OPRF, mode 0x00, suite ristretto255-SHA512: Bank B draws a fresh key per run, Bank A blinds
 its IDs, Bank B blind-evaluates them and sends its own PRF outputs shuffled, and Bank A intersects.
-Bank A learns the intersection and |B|; Bank B learns |A|.
+Bank A learns the intersection and $`\lvert B \rvert`$; Bank B learns $`\lvert A \rvert`$.
 - The browser runs `@noble/curves`' `ristretto255_oprf` (`web/src/lib/oprfPsi.ts`). Python, which had
   no library for it and may not install one, runs `src/qsh/qsmpc/oprf.py` (RFC 9496's ristretto255,
   RFC 9380's expand_message_xmd and hash_to_ristretto255, RFC 9497's OPRF) and `src/qsh/qsmpc/psi.py`.
@@ -7899,8 +7899,8 @@ each combination on a fresh page could have seen it.
   inputs; the run reports which ran (`psi_oprf_backend`). The API image installs `libsodium23`, and CI
   and `scripts/ci_local.sh` set `QSH_REQUIRE_LIBSODIUM=1`, so a missing library fails the tests
   rather than skipping them (`tests/test_r85_oprf_on_libsodium.py`).
-- Python's secure aggregation masks in the browser's ring: each weighted update quantised to 2^-20,
-  rounded as JavaScript rounds, and masked modulo 2^32. Its shares are the browser's to the bit for
+- Python's secure aggregation masks in the browser's ring: each weighted update quantised to $`2^{-20}`$,
+  rounded as JavaScript rounds, and masked modulo $`2^{32}`$. Its shares are the browser's to the bit for
   the same keys, updates and rounds, and the aggregate is exactly the sum of the quantised updates
   (`tests/test_r85_secagg_exact_ring.py`); until now the masks were reals in float64 that cancelled
   only to rounding.
@@ -8110,12 +8110,12 @@ to fix every confirmed finding, to record SEAL's gap and upgrade on release, and
 student rather than retrain. Branch `round86-private-inference`, from `main` at 6ea7807.
 - **PI-1, the full deployment's reported class came from an unmasked decryption.** The linear model's
   logits were read from the whole decrypted rotate-and-sum, bias added in the clear, so slots 1 onward
-  held its partial sums, and slot k minus slot k + 1 is x_k * w_k: a key holder who knows x reads the
+  held its partial sums, and slot $`k`$ minus slot $`k + 1`$ is $`x_k w_k`$: a key holder who knows x reads the
   weight row off one query. Round 84 masked the same leak in the hybrid's dense layer and convolution;
   `encrypted_linear_inference`, which the private-inference stage, the satellite telemetry check, the
   two-party demo and `run_classical` call, was the twin it did not reach, while the threat model said
   every slot the key holder decodes is masked. Each logit now goes through `masked_decrypt`: the bias
-  enters slot 0 under encryption and every other slot an independent 2^30 mask. The logit's error
+  enters slot 0 under encryption and every other slot an independent $`2^{30}`$ mask. The logit's error
   barely moves: over 200 queries a median of 6.3e-7 masked against 5.4e-7 unmasked, at most 1.2e-6
   against 1.1e-6, since the dot product's rescale dominates it. Decoding every slot with the key holder's own key, no linear combination of the
   other slots predicts any product over 240 queries, and the same detector recovers the products
@@ -8124,13 +8124,13 @@ student rather than retrain. Branch `round86-private-inference`, from `main` at 
   plaintext fallbacks, and genomics' panel check, whose other slots hold products of the published
   PGS weights).
 - **PI-3, non-finite values.** A NaN feature encoded to a silently wrong logit that no precision check
-  flagged (each compared with `>= 1`, which NaN fails), and +-Infinity trapped node-seal's WASM and left
+  flagged (each compared with `>= 1`, which NaN fails), and $`\pm\infty`$ trapped node-seal's WASM and left
   the instance unusable. Every encode in `clientFHE.ts` now refuses a non-finite value or scale by name,
   and the checks read `!(err < 1)`. Measured in node, seeded: without the check a NaN feature decrypted
   to the bias, and Infinity raised "memory access out of bounds".
-- **PI-4, the garbled-circuit argmax's step.** Logits were quantised in steps of 1/64 over +-8, so a
+- **PI-4, the garbled-circuit argmax's step.** Logits were quantised in steps of $`1/64`$ over $`\pm 8`$, so a
   closer pair tied and went to the lower index, and the self-test `mpc_matches_clear` shared the
-  quantisation. The step is 2^-20 over +-512 now (at most 2^30, so the u32 comparison is unchanged),
+  quantisation. The step is $`2^{-20}`$ over $`\pm 512`$ now (at most $`2^{30}`$, so the u32 comparison is unchanged),
   and `mpc_matches_float_argmax` compares with the float argmax. No shipped row flipped at the old
   step, by luck rather than design: the closest pair, a PaySim row's logits 0.0071 apart, tied there
   and went to the lower index, which was its class.
@@ -8144,7 +8144,7 @@ student rather than retrain. Branch `round86-private-inference`, from `main` at 
   "CKKS timing on a random model (single party)" on the server; both read "Private inference". The
   agreement rates print to four places (at two, up to 40 disagreeing rows of 8,192 printed 1.00), and
   the held-out accuracy carries its majority baseline (finance's 0.9695 sat beside a 0.98 majority).
-- **PI-7, PI-8, PI-9, the documents.** The server's flood is a fixed 2^30 whose margin over the
+- **PI-7, PI-8, PI-9, the documents.** The server's flood is a fixed $`2^{30}`$ whose margin over the
   measured error is reported, not a flood sized from that error. The two tiers' ct/pt count different
   bytes: TenSEAL's `serialize()` compresses (about 334,000 bytes), and the browser counts node-seal's
   uncompressed 393,329. The reaction attack of ePrint 2026/2490 is scoped to any evaluator holding a
@@ -8175,10 +8175,9 @@ student rather than retrain. Branch `round86-private-inference`, from `main` at 
   `/api/alice-bob` (the browser twin has no caller but its test). Their tests hold them.
 
 **Open, carried (the review's).**
-- Not fixed in this round, and informational: PI-13 (the browser flood's per-slot bound of 1e-14
-  holds on the test layouts, not on genomics' data, 1.25e-14 a slot), PI-14 (the imaginary parts are
-  shown to carry nothing on TenSEAL's SEAL only; when node-seal is upgraded, check that the encoded
-  mask's coefficients are antisymmetric) and PI-16 (the students' records carry no clean commit).
+- Informational, and closed in the documents change below by the owner's choice: PI-13 (the browser
+  flood's per-slot bound), PI-14 (the imaginary parts shown on TenSEAL's SEAL only) and PI-16 (the
+  models' records carry no clean commit).
 - The node-seal and TenSEAL upgrades, on release (above).
 - A CKKS-friendly student, planned and not started (`docs/findings.md`, "Concerns & recommendations").
 
@@ -8207,6 +8206,38 @@ place, which would have depended on GitHub Support to drop the pull-request refs
 - Five files still linked the repository's former personal URL: the four QCNN notes (not published)
   and the Space's README (not published). They link the organisation's URL now, as the 11 published
   model cards on Hugging Face already did, so no card needed republishing.
+
+**After the rewrite (2026-11-03), by the owner's choices.** The demo host was put on the new repository's
+`main` (035eb7e, bundle `index-DvhB42OF.js`), and its copies of the old history were replaced or removed
+after their contents were checked against the private backup. On the deployed `main`, all 12 routes at desktop size show no layout shift, no contrast
+failure, no table without a header cell, no unnamed element and no console error, before and after a
+run, and the CKKS pages show the private-inference fixes. This machine's clone holds only the new
+history: twelve scratch worktrees from Round 84, with uncommitted diffs, were saved to the private
+backup and removed.
+
+**The documents and MathJax (2026-11-03), by the owner's order.** The house form for mathematics (Round
+55: inline in $`...`$, display in `$$...$$`) was enforced only against the wrong delimiters, so a formula
+typed as plain prose passed. 88 sites in the tracked documents looked like formulas: 58 were formulas in
+running text, now in the house form, most of them in this register (the $`2^{16}`$ masks, the CHSH relation,
+the Chernoff and Hoeffding deviations); the other 30 are kept, being quotations in their source's own
+typing, blockquoted output, display blocks or code that a line-based scan misread.
+`tests/test_markdown_math_uses_the_house_style.py` now fails on a formula typed as prose (a power, a
+one-letter subscript, a root or a logarithm written as a call, an inequality, a plus-minus or an
+absolute value), reading paragraphs with code, math, display blocks and quotations removed; a seeded
+sample holds the detector live, and a formula seeded into `docs/architecture.md` fails it.
+- PI-13: the browser flood's bound is stated for the pages' own data, up to $`1.25 \times 10^{-14}`$ a
+  slot (genomics), not "below $`10^{-14}`$" for all; the flood is not widened, because its coefficients
+  have to stay under the modulus.
+- PI-14: the imaginary-part check is a step of the node-seal upgrade (`docs/development.md`).
+- PI-16: `docs/models-and-benchmarks.md` says what the models' records do and do not establish: files
+  fixed by their Hugging Face revision, every recorded commit `-dirty`, no student with a commit, one
+  data digest, and the ids before 2026-11-02 naming the old history. A test reads the records, so a
+  retrain that changes one fails it until the text follows.
+- Re-checked at the primary sources on 2026-11-03, against what the documents state: Microsoft SEAL
+  4.7.2, OpenFHE 1.6.1, liboqs 0.16.0, node-seal 7.0.0 (npm's newest), TenSEAL 0.3.18, the MCP Python SDK
+  2.3.0 (its advisories all fixed by 2.2.0, the floor), draft-ietf-ipsecme-ikev2-mlkem-09 not yet an
+  RFC, and Polytune's `main` equal to the pin. `@huggingface/transformers` (4.3.1 locked, 4.3.2 out) and
+  `@mlc-ai/web-llm` (0.2.84, 0.2.87 out) have newer patch releases and no advisory; they are not moved.
 
 BUSINESS DOC RECONCILED Round 86. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is

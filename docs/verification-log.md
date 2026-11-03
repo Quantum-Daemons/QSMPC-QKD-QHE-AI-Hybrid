@@ -441,7 +441,7 @@ existing at all.
   had moved to PGS000004. A stale overlay renders perfectly. Now 307 of 313, by GRCh38 coordinate.
 
 Also verified live that round: telecom's RandomForest attribution renders with `dark_count_rate` drawn as
-no measured effect (+0.0001 +/- 0.0010); the XAI paragraph says "no encrypted inference stage" on telecom
+no measured effect ($`+0.0001 \pm 0.0010`$); the XAI paragraph says "no encrypted inference stage" on telecom
 and satellite and keeps the original caveat on medical; `crossOriginIsolated === true`; zero `/api`
 requests against a 404 `text/plain` control.
 
@@ -2105,7 +2105,7 @@ by a gate that also reproduces the paper's own number, because two implementatio
 other and both be wrong, which is exactly what had been happening.
 
 **What the bound costs, stated rather than tuned around.** A 2 km fibre link at misalignment 0.001 needs
-a **32 KB** block before a certificate is possible - 8 KB gives C_s -0.485. The satellite downlink is
+a **32 KB** block before a certificate is possible - 8 KB gives $`C_s = -0.485`$. The satellite downlink is
 reachable only at zero atmospheric AND zero pointing loss with a **4 MB** block. The demo sends **74
 bytes**. Qi et al.'s own experiment runs blocks of 1,312 x 830 = 1,088,960 pulses, so the requirement is
 not an artefact of strictness - it is the regime the published experiments already occupy.
@@ -2697,7 +2697,7 @@ evidence only became meaningful earlier this same round - before the round trip 
 passed a library whose `encapsulate` threw unconditionally.
 
 **And a caution recorded against my own future self.** 0.7.0's changelog line about a `MultiplyNTTs`
-intermediate reaching 2^35 reads exactly like a security fix. It is not: 0.7.0's own comment says the
+intermediate reaching $`2^{35}`$ reads exactly like a security fix. It is not: 0.7.0's own comment says the
 wide intermediate forces "slow float fmod", and 0.6.1 reduces before truncating, so 0.6.1 is not
 numerically wrong. Written down because the shape of that line is what gets transcribed as "upgraded
 for a security fix" by someone reading only the changelog.
@@ -2761,7 +2761,7 @@ on 2026-10-23. The full findings table, with a primary source per row, is the Ro
 
 **The E91 relation reproduces exactly - from a number the page did not show.** On `/orchestration` with
 E91 selected the three scenarios read QBER 0.03 / S 2.66 / positive key (misalignment 0.015, 50 km),
-0.27 / 1.29 / zero key (Eve = 1) and 0.02 / 2.74 (no misalignment, 1 km). S = 2 sqrt(2) (1 - 2Q) holds
+0.27 / 1.29 / zero key (Eve = 1) and 0.02 / 2.74 (no misalignment, 1 km). $`S = 2\sqrt{2}\,(1 - 2Q)`$ holds
 for all three only with the MODEL error rate e0; from the displayed QBER, which is a sampled draw
 rounded to two places, two of the three give 1.30 and 2.72. It is a self-consistency check of a
 Werner-state model, not an independent validation. The model rate is now emitted as
@@ -2806,7 +2806,7 @@ enumerate the copies rather than naming them.
 intercept-resend's 0.25 f composes with the channel error as a + b - 2ab; the code added them. It took
 four sites in two languages at once - the abort reads one and the decoy bound the other, and a
 cross-language test compares the two rates at every Eve fraction - and it moved nothing that has no
-eavesdropper. E91 at 50 km under a full attack now reads S 1.33, not 1.29, and S = 2 sqrt(2)(1 - 2Q)
+eavesdropper. E91 at 50 km under a full attack now reads S 1.33, not 1.29, and $`S = 2\sqrt{2}\,(1 - 2Q)`$
 still holds exactly, because the state is a Werner/intercept-resend mixture whose CHSH value in the
 measured plane equals a Werner state's at the same error rate. The caption had called that mixture a
 Werner state; it is separable at a full attack.
@@ -3020,7 +3020,7 @@ figures (the sum, the PRS, the class, the top driver) agree exactly. What differ
 the tied rows, and it differs as much between two runs of one build.
 
 **A language that panics where a CPU wraps.** The obvious form, `a + b` in 32 bits, would have
-compiled and then panicked on most shares, because a uniform mask makes most sums cross 2^32. The
+compiled and then panicked on most shares, because a uniform mask makes most sums cross $`2^{32}`$. The
 compiler source settled it, and the crate's test now uses masks near `u32::MAX` so that the wrap is
 what it exercises.
 
@@ -3788,3 +3788,16 @@ trainer's withdrawn-claim note says. The plan carries the trainer's measurement,
 about 2e-6 against 1e-7 unmasked, the masks' noise added on top; measured over 200 queries it is 6.3e-7
 against 5.4e-7, because the dot product's rescale dominates both. The sentence was corrected before it
 was committed.
+
+**A history rewrite is finished only when every copy of the old history is accounted for.** The new
+repository was clean within the hour, and the old history then turned up in other clones: this
+machine's (its branches, and twelve scratch worktrees whose detached heads kept it alive) and the demo
+host's, one of them holding uncommitted work that no other copy had. A push from any of them would have
+restored the report to the public history. Each was checked against the backup before it was removed,
+and the one thing found nowhere else was saved first.
+
+**A style enforced against the wrong delimiters still lets a formula through with none.** The house
+form was tested for single-dollar math, so "2^30" in plain prose passed for 30 rounds. The new check
+reads paragraphs, not lines, because code spans, inline math and display blocks cross line breaks, and
+it leaves quotations alone, because a source's own typing is part of the quotation; its first catch was
+in the entry that introduced it.

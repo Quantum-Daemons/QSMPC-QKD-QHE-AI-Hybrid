@@ -205,6 +205,22 @@ CKKS ciphertext at under 1% slot use; classical FHE reaches rate 1 as well (Gent
 2019; Brakerski, Doettling, Garg and Malavolta, TCC 2019); and Rate-1 QFHE rests on quantum LWE, so
 its security is computational.
 
+### Where each published model came from
+
+A published model's files are fixed by its Hugging Face revision (`hf_revision` in
+`models/metrics.json`), and the browser fetches that revision and no other. The record of the code and
+data that trained a model is weaker (Round 86, review PI-16):
+
+- every recorded `git_sha` ends in `-dirty`: each model was trained from a working tree with uncommitted
+  changes, so its commit alone does not reproduce it;
+- no student records a `git_sha`, and only `finance_aml.gbm` records a digest of its training data
+  (`data_digest`);
+- the ids recorded before 2026-11-02 name commits of the history before it was rewritten, which is kept
+  privately with a map from each old commit to its new one.
+
+Nothing was retrained to close this. A retrain can record a clean commit and a data digest;
+`qsh.models.train.git_sha()` marks a dirty tree and does not refuse one.
+
 ### What the pages show
 
 Every page leads with its key points; method and history are folded, never a caveat that qualifies a
