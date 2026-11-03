@@ -7,8 +7,9 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.api
     # Override API_PORT if 8000 is taken on the host (the SPA reaches the API via the
-    # internal docker network regardless of this host mapping).
-    ports: ["${API_PORT:-8000}:8000"]
+    # internal docker network regardless of this host mapping). Loopback only (Round 86): published on
+    # every interface, the API was reachable from the whole network, unauthenticated.
+    ports: ["127.0.0.1:${API_PORT:-8000}:8000"]
     volumes:
       - ../results:/app/results
     # GPU (Blackwell/CUDA13):

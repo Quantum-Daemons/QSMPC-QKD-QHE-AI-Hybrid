@@ -8272,6 +8272,34 @@ why Round 85 pinned 1.0.0.
   the protocol revision the handshake agreed, 2025-11-25, since a low-level `initialize()` performs
   the pre-2026 handshake.
 
+**The fact-check sweep of 2026-11-03, by the owner's choice: four parallel read-only sweeps** (PQC,
+protocols and regulation; QKD, QRNG and SDN; FHE, MPC and the models; agentic AI, MCP and the browser
+runtime). They raised about 70 findings, each against a dated primary source, one of them high. Each is
+re-checked at its source before it is acted on. The fixes land by area, in this order.
+
+**The full deployment's filesystem-MCP endpoint, contained (the sweep's high finding).**
+`/api/mcp/filesystem` passed the caller's `directory`, `tool` and `arguments` straight to the official
+filesystem server, unauthenticated. The server has write tools, CORS allowed every origin, and the
+compose file published the port on every interface. So any client on the network, or any page a user
+of the full deployment opened, could read and write wherever the API process could. The threat model
+said the server was "sandboxed to a use-case data dir". The public demo serves no `/api` and was never
+exposed. All four of the owner's measures are applied:
+- the folder is fixed server side, at the bundled public sample data (`MCP_FS_ROOT`), and a request
+  naming one is refused;
+- only read-only tools are accepted, at the endpoint and in the interop itself;
+- CORS is off unless the operator names origins (`QSH_CORS_ORIGINS`), since the full stack's Caddy and
+  the dev server both proxy `/api` from the page's own origin;
+- the compose file binds the API to loopback.
+
+Checked inside the rebuilt image, against the real server:
+- a read lists the data folder;
+- a write tool returns 400 and a request naming a folder returns 422;
+- a path outside the folder comes back as the server's own "Access denied";
+- a foreign origin gets no CORS header.
+
+`tests/test_r86_api_filesystem_endpoint_is_contained.py` holds each of these, and all five of its tests
+fail on the previous code.
+
 BUSINESS DOC RECONCILED Round 86. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 17 reads.
