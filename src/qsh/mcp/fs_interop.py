@@ -16,10 +16,30 @@ import asyncio
 import shutil
 
 #: The official filesystem server, pinned (Round 85). `npx -y` without a version ran whatever npm's
-#: `latest` was at call time: 2.0.0 and 2.1.0 (2026-10-19, 2026-10-28) declare `engines: node >= 24`,
-#: and the API image's Debian Node is 20. 1.0.0 declares no engine and resolves its SDK dependency
-#: (`@modelcontextprotocol/sdk ^1.31.0`) to a release past the 2026-10 advisories.
-FILESYSTEM_SERVER = "@modelcontextprotocol/server-filesystem@1.0.0"
+#: `latest` was at call time. 2.0.0 and 2.1.0 (2026-10-19, 2026-10-28) declare `engines: node >= 24`,
+#: which the API image's Debian Node 20 did not meet, so Round 85 pinned 1.0.0. Round 86 gave the image
+#: Node 24.22.2 LTS from the official image (`docker/Dockerfile.api`) and moved to 2.1.0, npm's newest,
+#: which depends on `@modelcontextprotocol/server` ^2.3.1. Its tools keep their names; `read_file` is
+#: deprecated in favour of `read_text_file`, and allowed directories are still given on the command line.
+#: It is also a security fix, which Round 85's pin was not: four advisories of 2026-10-25 hit every
+#: release from 1.0.0 below 2.0.1 (GHSA-4gxg-m5jx-9j57, a case-variant path creating files outside the
+#: allowed directories; GHSA-7rgq-gccq-qphx, path traversal through a trailing quote or whitespace;
+#: GHSA-53mr-w429-c597 and GHSA-hhwq-wxfx-cj7g). They are listed in the servers repository's own
+#: advisories and not in GitHub's global database, so a dependency audit did not see them.
+FILESYSTEM_SERVER = "@modelcontextprotocol/server-filesystem@2.1.0"
+
+
+def _call_outcome(call) -> tuple[str, bool]:
+    """The text a tool result carries, and whether the server flagged it an error.
+
+    The flag is `is_error` in the MCP Python SDK 2.x and was `isError` in 1.x (Round 86): reading only
+    `isError` on 2.x reported every error the official server returned as a success.
+    """
+    text = "\n".join(getattr(c, "text", "") for c in (call.content or []) if getattr(c, "type", "") == "text")
+    flag = getattr(call, "is_error", None)
+    if flag is None:
+        flag = getattr(call, "isError", False)
+    return text, bool(flag)
 
 
 def node_available() -> bool:
@@ -40,11 +60,12 @@ async def _filesystem_mcp_call(directory: str, tool: str, arguments: dict, timeo
                 listed = await session.list_tools()
                 tool_names = [t.name for t in listed.tools]
                 call = await session.call_tool(tool, arguments)
-                text = "\n".join(
-                    getattr(c, "text", "") for c in (call.content or []) if getattr(c, "type", "") == "text"
-                )
-                return {"server": FILESYSTEM_SERVER, "tools": tool_names,
-                        "tool": tool, "result_text": text[:2000], "is_error": bool(getattr(call, "isError", False))}
+                text, is_error = _call_outcome(call)
+                # The revision the handshake agreed: a low-level `initialize()` performs the pre-2026
+                # handshake, so this says which era the interop exercised (Round 86).
+                return {"server": FILESYSTEM_SERVER, "tools": tool_names, "tool": tool,
+                        "result_text": text[:2000], "is_error": is_error,
+                        "protocol_version": session.protocol_version}
 
     return await asyncio.wait_for(_run(), timeout=timeout)
 

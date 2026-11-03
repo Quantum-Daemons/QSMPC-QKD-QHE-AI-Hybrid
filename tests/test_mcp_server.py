@@ -64,7 +64,9 @@ def test_filesystem_mcp_interop_over_quantum_safe_channel(tmp_path):
     (tmp_path / "hello.txt").write_text("hi")
     r = secure_filesystem_interop(str(tmp_path), tool="list_directory",
                                   arguments={"path": str(tmp_path)}, timeout=90)
-    assert "read_file" in r["external"]["tools"]       # the official server's real tool catalogue
+    # The official server's real tool catalogue; `read_text_file` replaced the deprecated `read_file` in
+    # the 2.x line (Round 86).
+    assert {"read_text_file", "list_directory"} <= set(r["external"]["tools"]), r["external"]["tools"]
     assert "hello.txt" in r["external"]["result_text"]
     assert r["quantum_safe"]["authenticated"] is True
     assert r["quantum_safe"]["tamper_rejected"] is True
