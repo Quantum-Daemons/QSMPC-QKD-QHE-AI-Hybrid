@@ -8380,3 +8380,30 @@ origin trial, which was disabled on 2026-03-27 before it ran. WebGPU's Linux def
 Qualcomm adapters, not "essentially all". WebKit's seven days are of Safari use without interaction, and it does not say
 `persist()` avoids them. "Bank A and Bank B meet over a WAN" described no run. One CI job failed because Chrome took more
 than ten seconds to start, so the scans wait a minute.
+
+### The satellite page checks its published student under CKKS
+
+The owner chose to build this. The page ran no homomorphic evaluation, and the registry's `satellite_comms.opssat_student` was
+labelled CKKS-evaluable with no code path that did so in a browser. It now evaluates that student on all 529 segments of
+the benchmark's test partition, the same check telecom runs, and draws the same agreement figure on the plane
+`real_2d.json` already uses.
+
+**What had to be exported.** A pipeline student publishes `mean` and `scale` as null, because its ONNX graph applies them, while
+a CKKS client must apply them before encrypting. They come from the graph's `Scaler` node. With them, the expansion and the weights
+outside the graph reproduce the graph's label on all 529 rows, and its probabilities to 6.5e-7. Plaintext figures from those
+rows: accuracy 0.958412, minority-class F1 0.904348, AUC-PR 0.968084, which is the model card's F1 and its teacher-tracking
+AUC-PR, on the rows the card names.
+
+**What it establishes.** Agreement between encrypted and plaintext scores, and nothing about this run's telemetry. The page's
+verdict is still the separate demo regression, in plaintext. The expansion and the z-scoring are computed on the client's
+plaintext before encryption, and each score is decrypted and its sign read in the clear, as on telecom. The check runs in the
+TypeScript of `realData.ts` and in scikit-learn in the builder, and one wrong term in the expansion would flip rows, so
+`tests/test_r84_c3_encrypted_heldout_in_node.py` holds the browser's flagged count to the builder's.
+
+**Measured in a real browser.** 529 rows in 34 ciphertexts of up to 16 rows, 1245 ms of encrypted work (36.6 ms per ciphertext, 3.07 ms per rotation), 0
+mismatches, worst deviation 2.72e-8 and median 5.75e-9, smallest plaintext margin 3.00e-2, so no decided row could have flipped. Accuracy against the labels is
+0.958412 against a majority baseline of 0.7864. Machine and browser as in `docs/development.md`.
+
+**One more defect from sampling.** distilGPT-2 is a completion model, and on the panel's prompt 2 of about 10 runs came back as nothing but newlines, with others
+repeating "PSI-based". `no_repeat_ngram_size` 3 gave text on 24 of 24 sampled runs and no such repeat. The reply is still nonsense, which the panel says it may be.
+

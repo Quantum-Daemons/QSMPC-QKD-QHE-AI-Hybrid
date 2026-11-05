@@ -4,7 +4,7 @@ WHY THIS EXISTS (Round 84, deferred from Round 83)
 
 The browser signs a record of each run with ML-DSA, and its `config.fhe` and `config.mpc` fields
 named "node-seal-ckks" and "polytune-garbled-circuit-2pc-wasm" on every use case of the client-only
-demo: on satellite, whose flow runs neither, and on telecom, which runs a CKKS check of its student
+demo: on telecom and, since Round 86, satellite, which run a CKKS check of a student and no MPC
 and no MPC. A tamper-evident record of a computation that did not happen invites exactly the trust
 it should not get. The fields now come from the run's own measurements: CKKS when a CKKS evaluation
 reported (`fhe_model`, `encrypted_rows_scored`), the garbled-circuit argmax when it was checked
@@ -12,7 +12,7 @@ against the clear one (`mpc_matches_clear`), else null.
 
 WHAT IS ASSERTED, on runs of the browser pipeline in node built as the client-only demo:
 
-- satellite: both null; telecom: CKKS and no MPC; finance: both.
+- satellite and telecom: CKKS and no MPC; finance: both. (Satellite's was both null until Round 86 gave it the check.)
 - Each named backend is backed by the measurement that names it, in the same run.
 
 The garbled-circuit argmax is a gitignored wasm build, so a plaintext argmax stands in for it here,
@@ -122,7 +122,7 @@ def runs(tmp_path_factory) -> dict:
 
 
 @pytest.mark.parametrize("usecase,fhe,mpc", [
-    ("satellite_comms", None, None),
+    ("satellite_comms", "node-seal-ckks", None),
     ("telecom_ids", "node-seal-ckks", None),
     ("finance_aml", "node-seal-ckks", "polytune-garbled-circuit-2pc-wasm"),
 ])

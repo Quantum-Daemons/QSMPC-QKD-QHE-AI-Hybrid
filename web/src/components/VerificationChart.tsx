@@ -947,18 +947,15 @@ const res_n = (d: Array<{ n: number }>) => d.reduce((a, b) => a + b.n, 0);
  *  chart on one page and a reason on the other. An absence that is explained in one place and silent
  *  in another is worse than either, because the silent page reads as an oversight.
  */
-export function NoEncryptedComparison({ usecase }: { usecase?: string }) {
+export function NoEncryptedComparison() {
   return (
     <div className="card">
       <h3 style={{ margin: "0 0 4px" }}>Private inference against plaintext, this run</h3>
       <p className="muted" style={{ fontSize: 12, margin: 0 }}>
         This flow produced no encrypted-vs-plaintext comparison. The chart is drawn from
         <code> encrypted_agreement_plot</code>, which only a stage that scores rows under CKKS emits
-        {usecase === "satellite_comms"
-          ? <> - <code>satellite_comms</code> runs telemetry analysis and has no such stage</>
-          : <> - this use case either has no such stage, or, like the generic demo, has no bundled
-              corpus for it to score</>}
-        , and a stopped or failed run has not reached one. Nothing is missing; there is nothing to
+        {" "}- this use case either has no such stage, or, like the generic demo, has no bundled
+        corpus for it to score - and a stopped or failed run has not reached one. Nothing is missing; there is nothing to
         plot.
       </p>
     </div>

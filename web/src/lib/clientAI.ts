@@ -129,7 +129,7 @@ async function runTransformersJs(
   try {
     onProgress?.(`generating on ${device}`);
     const out: any = await gen(prompt, { max_new_tokens: webCfg().tfjs_max_new_tokens, temperature: 0.7, do_sample: true,
-      return_full_text: false, stopping_criteria: stop });
+      no_repeat_ngram_size: webCfg().tfjs_no_repeat_ngram_size, return_full_text: false, stopping_criteria: stop });
     const raw = Array.isArray(out) ? out[0]?.generated_text : out;
     const text = (typeof raw === "string" ? raw : JSON.stringify(raw ?? "")).trim();
     const notes = [

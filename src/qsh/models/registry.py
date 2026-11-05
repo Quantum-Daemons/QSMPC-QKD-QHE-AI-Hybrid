@@ -1281,9 +1281,10 @@ _SPECS: tuple[ModelSpec, ...] = (
                "than this feature map needs, so the cipher was never the binding constraint "
                "here - the feature map was. Measured: "
                "minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681 (0.968055 against the "
-               "teacher's 0.968107, equal at four decimals). No code path here evaluates this "
-               "student under CKKS today: the satellite page has no private-inference stage, and "
-               "the browser re-scores the published ONNX graph in plaintext."),
+               "teacher's 0.968107, equal at four decimals). The satellite page evaluates this student "
+               "under CKKS in the browser on all 529 test segments, as a check of agreement with "
+               "plaintext. It does not decide the page's verdict, and the client computes the "
+               "expansion and the z-scoring before encrypting."),
     ),
     # ---------------- telecom / defence ----------------
     ModelSpec(

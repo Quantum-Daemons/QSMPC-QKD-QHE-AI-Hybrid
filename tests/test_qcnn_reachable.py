@@ -96,7 +96,7 @@ def test_the_check_can_fail() -> None:
     """Anti-tautology: a use case with no QCNN stage must come out unreachable.
 
     Without this, the test above passing tells you only that the parsers returned something.
-    `satellite_comms` runs neither `private_inference` nor `qml_ids`, and ships no weights, so it is
+    `satellite_comms` runs neither a `private_inference` nor a `qml_ids` stage, and ships no QCNN weights, so it is
     the honest negative control. If it ever gains a QCNN the assertion below should be moved, not
     deleted - the suite needs some use case that demonstrates the check discriminates.
     """

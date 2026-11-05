@@ -255,7 +255,7 @@ flowchart TB
   QD{"QSDC: secrecy capacity positive?"}
   NA["QSDC aborts: link budget too small, an eavesdropper detected, or, in the full deployment, too few check carriers to certify an error rate; nothing is sent over the quantum channel"]
   T["Telemetry sent directly over the simulated quantum channel"]
-  A["Anomaly score and the published model, satellite_comms.telemanom, in the browser; the full deployment also scores a bundled OPS-SAT-AD segment under CKKS, whatever QSDC did"]
+  A["Anomaly score, the published model satellite_comms.telemanom, and a CKKS check of the OPS-SAT student, in the browser; the full deployment also scores a bundled OPS-SAT-AD segment under CKKS, whatever QSDC did"]
   X["Explainability: exact linear SHAP, signed"]
   C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
   S["Result signed with ML-DSA-65"]

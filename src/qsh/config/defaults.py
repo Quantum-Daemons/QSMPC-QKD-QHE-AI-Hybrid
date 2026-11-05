@@ -820,6 +820,9 @@ class WebConfig:
     # and until Round 60 a total limit cut off downloads that were still arriving.
     agent_timeout_ms: int = 120_000
     tfjs_max_new_tokens: int = 96
+    # distilGPT-2 is a completion model, and on this prompt it can fall into repeating a token: 2 of about 10 runs came
+    # back as nothing but newlines, and others as "PSI-based PSI-based ...". Forbidding a repeated 3-gram stops both.
+    tfjs_no_repeat_ngram_size: int = 3
     webllm_max_tokens: int = 160
     # Raised with `QKDConfig.pulses` for the same reason - see the note there. At 40_000 the decoy
     # bound gives **79** secure bits, below the 256 a session key needs, so `/validations` reported a
