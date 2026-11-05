@@ -18,6 +18,7 @@ is live, so a version skew is visible in ``/api/mcp/tools`` rather than silently
 
 from __future__ import annotations
 
+import hashlib
 import math
 
 _MCP_SERVER_CLS = None
@@ -52,8 +53,10 @@ def score_transaction(amount: float = 0.0, old_balance: float = 0.0,
 
 
 def query_cohort(phenotype: str = "", min_count: int = 5) -> dict:
-    """Medical: a privacy-preserving cohort count for a phenotype, with a k-anonymity floor."""
-    count = abs(hash(phenotype)) % 480 + 20          # deterministic stand-in cohort size
+    """Medical: a stand-in cohort count for a phenotype (no cohort data exists), with a k-anonymity floor."""
+    # From a hash of the name, in [20, 499]. It used builtin `hash`, which Python salts per process, so
+    # "deterministic" held only until a restart (Round 86).
+    count = int.from_bytes(hashlib.sha256(phenotype.encode()).digest()[:4], "big") % 480 + 20
     released = count >= min_count
     return {"phenotype": phenotype, "cohort_count": int(count) if released else 0,
             "k_anonymity_floor": min_count, "released": released}

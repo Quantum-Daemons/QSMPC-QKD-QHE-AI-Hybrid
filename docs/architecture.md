@@ -334,8 +334,17 @@ cost - genomics and the generic demo - and labels it so):
   session, optionally mixed with a fixed 32-byte QKD-domain constant (no QKD key reaches this channel;
   disjoint nonce ranges per direction). `src/qsh/mcp/fs_interop.py` connects (stdio) to the **official
   `@modelcontextprotocol/server-filesystem`** and carries its real result under the same quantum-safe
-  seal - real external-MCP interop. `/api/mcp/{tools,call,filesystem}`. The demo keeps the client-side
-  `clientMcp.ts` mirror, so the VPS takes **zero per-user MCP load**.
+  seal: real external-MCP interop, over the SDK's low-level session and so its pre-2026 handshake (the
+  result's `protocol_version` says which). `/api/mcp/{tools,call,filesystem}`. The demo keeps the
+  client-side `clientMcp.ts` mirror, so the VPS takes **zero per-user MCP load**.
+- **The channel's messages** are MCP revision 2026-07-28 (Round 86): a `tools/call` request with an id
+  and the required `_meta` fields, and a JSON-RPC response with `resultType: "complete"`, checked against
+  the SDK's own types and the browser's text against Python's (`web/scripts/vectors/mcp_envelope_vectors.json`).
+  In that revision's terms it is a custom transport, in one process, which it asks to document three
+  things. Establishment: one ML-KEM-768 + X25519 session per request. Framing: one AES-256-GCM record per
+  message, associated data `mcp`, holding `{body, sig, alg}`, where `body` is the exact JSON-RPC text the
+  ML-DSA-65 signature covers. Cancellation: none, since a session carries one request and its response.
+  It serves `tools/call` only, so it is not a complete MCP implementation.
 - **Per-industry real data/models** - finance: an XGBoost teacher on AMLworld, distilled to a
   33-parameter CKKS-linear student (the browser's CKKS step runs a linear surrogate over four columns
   of the PaySim demo sample); medical: a MedMNIST CNN; **genomics: the PGS-Catalog polygenic risk score**

@@ -12,6 +12,7 @@
     "check:qkd": "node scripts/check_qkd.mjs",
     "check:qfl": "node scripts/check_qfl.mjs",
     "check:combiner": "node scripts/check_hybrid_combiner.mjs",
+    "check:mcp-envelope": "node scripts/check_mcp_envelope.mjs",
     "check:qcnn-metrics": "node scripts/check_qcnn_metrics_at_every_site.mjs",
     "check:netkeys": "node scripts/check_net_key_schedules.mjs",
     "check:jsx-spaces": "node scripts/check_jsx_text_spaces.mjs",

@@ -282,10 +282,20 @@ this as synthetic; it is never presented as measured on real traffic.
   is the per-file ceiling the code holds itself to. The PGS000072 CI slice is 97 individuals (the
   first 48 AFR and the first 49 EUR of the panel in sample-ID order) x 183 variants, 17,751 cells.
 
-  This is not a privacy escalation - 1000 Genomes participants consented to open, unrestricted data
-  release and the full genotypes are downloadable from IGSR/ENA without access control, so a
-  few-hundred-variant subset exposes nothing IGSR does not already publish. But it *is* redistribution,
-  so the IGSR disclaimer and attribution apply, and it is recorded here rather than glossed.
+  This is not a privacy escalation: IGSR describes the samples as "openly consented", its consent items
+  include public release of "extensive individual data from the study of the samples (but no individual
+  identifiers or medical information)", and the full genotypes are downloadable from IGSR/ENA without
+  access control, so a few-hundred-variant subset exposes nothing IGSR does not already publish. The
+  sample IDs the payload lists (`HG00103`) are the panel's own public codes, which IGSR publishes beside
+  the genotypes, not the individual identifiers that consent item rules out; they make each row
+  reproducible from the source (owner's decision 2026-11-05, after reading those pages, and keeping them
+  supersedes an early plan's "never publish per-sample genotypes" for this corpus). IGSR names no licence
+  instrument: it says the data is "made available according to the Fort Lauderdale Agreement" and is
+  "available without embargo", and that users must not infringe third-party rights. It *is*
+  redistribution, so the IGSR disclaimer and attribution apply, and it is recorded here rather than
+  glossed. Read 2026-11-05: <https://www.internationalgenome.org/sample_collection_principles>,
+  <https://www.internationalgenome.org/IGSR_disclaimer/>,
+  <https://www.internationalgenome.org/faq/do-i-need-permission-to-use-igsr-data-in-my-own-scientific-research/>.
   The **2,504-individual** matrices used for the ancestry-stratification analysis are deliberately
   **not** committed (git-ignored). `scripts/data/fetch_g1k_dosages.py` regenerates the active score's
   (and its CI slice). The published output is the aggregate per-super-population statistics, and the
@@ -328,7 +338,10 @@ identifier, or by name and link (section 2c).
   demo. `mpc-framework` + `emp-wasm-engine` + `summon-ts` filled this role until Round 65.
 - **onnxruntime-web** (MIT) - runs the published industry models in the browser.
 - **MCP Python SDK** (`mcp`, MIT) - the quantum-safe MCP server; the official
-  **@modelcontextprotocol/server-filesystem** (MIT) for external-MCP interop.
+  **@modelcontextprotocol/server-filesystem** for external-MCP interop, MIT and Apache-2.0 while its
+  project moves from one to the other (its repository's LICENSE explains which contributions are under
+  which; npm 2.1.0 declares "SEE LICENSE IN LICENSE" and its tarball has no such file). Started with `npx`,
+  not bundled.
 - **PennyLane** (Apache-2.0) - variational quantum layers. The FedAvg and secure-aggregation code is
   this repository's own; **Flower is cited as prior art, not used as a dependency** (the unused `flwr`
   requirement was removed in Round 17).

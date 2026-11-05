@@ -1,15 +1,19 @@
 // Client-side quantum-safe MCP channel - a zero-server mirror of src/qsh/pqc/mcp_bridge.py (+
 // transport.py). Two endpoints, both in this tab and each with its own keys, establish an ML-KEM-768
 // + X25519 session (optionally mixed with a FIXED 32-byte QKD-domain constant, never a QKD key: none
-// exists in the browser), then exchange an ML-DSA-65-signed, AES-256-GCM-sealed MCP-style JSON-RPC
-// message: confidentiality + post-quantum authenticity + tamper rejection. The message is a fixed
-// request or the in-browser model's text in a JSON-RPC envelope; no tool is executed. Reuses
-// @noble/post-quantum (same as crypto.ts) + WebCrypto; used by the Agentic-AI page and the demo-mode
-// Validations mirror so the public demo runs the MCP demo with zero server compute.
+// exists in the browser), then exchange an ML-DSA-65-signed, AES-256-GCM-sealed MCP `tools/call`
+// request of revision 2026-07-28: confidentiality + post-quantum authenticity + tamper rejection. The
+// arguments are a fixed query or the in-browser model's text. No tool is executed, so unlike the
+// Python channel this one sends no response. Reuses @noble/post-quantum (same as crypto.ts) +
+// WebCrypto; used by the Agentic-AI page and the demo-mode Validations mirror so the public demo runs
+// the MCP demo with zero server compute.
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { sha256 as nobleSha256 } from "@noble/hashes/sha2.js";
 import { shake256 } from "@noble/hashes/sha3.js";
 import { ml_dsa65 } from "@noble/post-quantum/ml-dsa.js";
 import { ml_kem768 } from "@noble/post-quantum/ml-kem.js";
 import { x25519 } from "@noble/curves/ed25519.js";
+import { version as appVersion } from "../../package.json";
 
 const enc = new TextEncoder();
 const dec = new TextDecoder();
@@ -75,9 +79,9 @@ export async function itsCombine(pqc: Uint8Array, qkd: Uint8Array): Promise<Uint
   return packBits(out);                                      // 32 bytes
 }
 
-// canonical JSON with sorted keys — mirrors Python `json.dumps(msg, sort_keys=True)` so the signed
-// body is deterministic (the signature covers the exact same bytes the server would).
-function stableStringify(v: any): string {
+// Canonical JSON: sorted keys, no spaces. The same text as Python's `message_body` for messages of
+// strings, integers, booleans and nested objects; `check_mcp_envelope.mjs` compares the two.
+export function stableStringify(v: any): string {
   if (v === null || typeof v !== "object") return JSON.stringify(v);
   if (Array.isArray(v)) return "[" + v.map(stableStringify).join(",") + "]";
   return "{" + Object.keys(v).sort().map((k) => JSON.stringify(k) + ":" + stableStringify(v[k])).join(",") + "}";
@@ -94,8 +98,28 @@ export interface McpResult {
   session: string; kem: string; qkd_mixed: boolean;
   combiner: string;           // PQC+QKD key combiner used ("hkdf" | "its_toeplitz" | "none" when unmixed)
   session_key_fp: string;     // 4-byte SHA-256 fingerprint of the derived AEAD key (changes with combiner/QKD-mix)
+  protocol_version: string | null;   // the MCP revision the signed request says it follows
+  request_id: string | number | null;
   method: string | null; authenticated: boolean;
   signature_alg: string; tamper_rejected: boolean;
+}
+
+/** The MCP revision these messages follow, as in `mcp_bridge.py`. */
+export const MCP_PROTOCOL_VERSION = "2026-07-28";
+const META_PROTOCOL = "io.modelcontextprotocol/protocolVersion";
+
+// mirror mcp_request: a JSON-RPC request carrying the per-request `_meta` fields of MCP 2026-07-28.
+// A session carries one request, so one id does. An empty capabilities object means no optional
+// client capability.
+export function mcpRequest(clientName: string, method: string, params: object, version: string = appVersion): object {
+  return {
+    jsonrpc: "2.0", id: 1, method,
+    params: { ...params, _meta: {
+      [META_PROTOCOL]: MCP_PROTOCOL_VERSION,
+      "io.modelcontextprotocol/clientCapabilities": {},
+      "io.modelcontextprotocol/clientInfo": { name: clientName, version },
+    } },
+  };
 }
 
 // mirror Agent.create: a hybrid-KEM endpoint (ML-KEM-768 + X25519) + a PQC signing key (ML-DSA-65).
@@ -155,10 +179,9 @@ async function hybridSecret(
   const label = enc.encode("qsh/mcp-agent-kem/v1 ML-KEM-768+X25519-static|");
   const info = new Uint8Array(label.length + transcript.length);
   info.set(label, 0); info.set(transcript, label.length);
-  const base = await crypto.subtle.importKey("raw", ab(ikm), "HKDF", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "HKDF", hash: "SHA-256", salt: new ArrayBuffer(0), info: ab(info) }, base, 256);
-  return new Uint8Array(bits);
+  // @noble/hashes rather than WebCrypto: this info is 2,382 bytes, and Node's WebCrypto refuses more than
+  // 1,024 (OpenSSL's limit, not RFC 5869's), so the module could not run in the gate that checks it.
+  return hkdf(nobleSha256, ikm, new Uint8Array(0), info, 32);
 }
 
 /** c1 || ek1 || the two static X25519 publics, in a fixed order both agents can reproduce. */
@@ -202,9 +225,9 @@ export async function deriveAeadKey(
   return { key, bytes: keyBytes };
 }
 
-// mirror _wrap: JSON-RPC tool-call message, ML-DSA-signed, wrapped {body, sig, alg}
+// mirror _sign: one JSON-RPC message, ML-DSA-signed, wrapped {body, sig, alg}
 function wrapAndSign(agent: ClientAgent, method: string, params: object): Uint8Array {
-  const body = stableStringify({ jsonrpc: "2.0", method, params });
+  const body = stableStringify(mcpRequest(agent.name, method, params));
   // noble 0.6.x: sign(message, secretKey).
   const sig = ml_dsa65.sign(enc.encode(body), agent.sigSecretKey);
   return enc.encode(stableStringify({ body, sig: toHex(sig), alg: "ML-DSA-65" }));
@@ -235,7 +258,7 @@ async function openRecord(key: CryptoKey, record: Uint8Array): Promise<Uint8Arra
     { name: "AES-GCM", iv: ab(nonce), additionalData: ab(enc.encode("mcp")) }, key, ab(ct)));
 }
 
-// mirror secure_agent_call: PQC(+QKD) session -> sign+seal -> open+verify -> tamper test
+// mirror the request half of secure_agent_call: PQC(+QKD) session -> sign+seal -> open+verify -> tamper test
 export async function clientSecureAgentCall(
   caller: ClientAgent, callee: ClientAgent, method: string, params: object,
   qkdKey?: Uint8Array, combiner = "hkdf",
@@ -269,6 +292,8 @@ export async function clientSecureAgentCall(
     qkd_mixed: mixed,
     combiner: mixed ? combiner : "none",               // the combiner only applies when a QKD key is mixed in
     session_key_fp: fp,
+    protocol_version: message?.params?._meta?.[META_PROTOCOL] ?? null,
+    request_id: message?.id ?? null,
     method: message?.method ?? null, authenticated,
     signature_alg: "ML-DSA-65", tamper_rejected: tamperRejected, message,
   };
@@ -291,7 +316,7 @@ export async function clientMcpDemo(qkdMixed = false, combiner = "hkdf"): Promis
 
 // Wrap an arbitrary payload (e.g. the in-browser AI {prompt, answer}) through the quantum-safe MCP
 // channel, so the Agentic-AI panel shows the AI exchange signed + sealed + tamper-evident. The
-// ``toolName`` only NAMES the JSON-RPC envelope after the industry's MCP tool (finance:
+// ``toolName`` only NAMES the `tools/call` request after the industry's MCP tool (finance:
 // score_transaction, medical: query_cohort, and so on); no tool is executed, the arguments are the
 // model's prompt and text.
 export async function clientSecureWrap(

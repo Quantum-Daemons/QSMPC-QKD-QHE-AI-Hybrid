@@ -147,6 +147,9 @@ jobs:
           python scripts/export_combiner_vectors.py
           git diff --exit-code -- web/scripts/vectors/hybrid_combiner_vectors.json \
             || { echo "::error::hybrid_combiner_vectors.json is stale - run: python scripts/export_combiner_vectors.py"; exit 1; }
+          python scripts/export_mcp_vectors.py
+          git diff --exit-code -- web/scripts/vectors/mcp_envelope_vectors.json \
+            || { echo "::error::mcp_envelope_vectors.json is stale - run: python scripts/export_mcp_vectors.py"; exit 1; }
 
       - name: Generated artifacts match their generator and their history
         # The step above compares the two DERIVED artifacts to each other, so it is blind by
@@ -299,6 +302,12 @@ jobs:
       - name: Hybrid-KEM combiner parity
         working-directory: web
         run: npm run check:combiner
+
+      # The MCP request text against Python's committed vectors, and the AI-generated record: signed by
+      # the production module, read back, each edit refused. The Python job reads the same sample file.
+      - name: MCP request parity and the AI-generated record
+        working-directory: web
+        run: npm run check:mcp-envelope
 
       # Structural check on a RELATION between two branches, which no type checker can see. The QCNN
       # latency metrics were added to the private_inference call site and not to the qml_ids one, so

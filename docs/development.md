@@ -247,7 +247,7 @@ exists for SEAL**, so the version is recorded as a fact and no vulnerability is 
 `polytune` with `garble_lang` (sine-fdn, garbled-circuit 2PC, MIT; built from `wasm/qsh-mpc`, its
 third-party notices served at `/licenses/qsh-mpc.txt`) for the demo's real in-browser FHE/MPC; `onnxruntime-web` (MIT) for the published industry models; `@huggingface/transformers` +
 `@mlc-ai/web-llm` (Apache-2.0) for in-browser AI; `mcp` Python SDK (MIT) + the official
-`@modelcontextprotocol/server-filesystem` (MIT) for the real MCP server (full deployment). Full table
+`@modelcontextprotocol/server-filesystem` (MIT and Apache-2.0, moving from one to the other) for the real MCP server (full deployment). Full table
 + dataset licenses in [`DATA_LICENSES.md`](../DATA_LICENSES.md).
 
 **Originality note:** the GPU MPC-FHE benchmark is our own integration over the *upstream*

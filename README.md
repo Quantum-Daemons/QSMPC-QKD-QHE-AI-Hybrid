@@ -36,7 +36,7 @@ and is not new, the positioning (quantum-safe, not quantum-advantage) and the fo
 | QSMPC | a semi-honest set intersection on RFC 9497's OPRF over ristretto255 (not post-quantum) and secure summation; quantum forms in the full deployment | computed in the browser with both parties in one tab (notional parties), simulated quantum forms | the plaintext result; the RFC 9496 and RFC 9497 test vectors, in Python and in the browser |
 | QHE and QML | quantum one-time pad, an untrained Clifford+T comparison circuit, trained QCNNs (not encrypted), a QML intrusion detector | simulated circuits | the QCNNs against a logistic-regression baseline on the same split |
 | Models | eleven published models, run with ONNX Runtime in the browser | real inference | per-model metrics and model cards |
-| Agentic AI | a small language model in the browser over a quantum-safe MCP channel | real | signed tool results |
+| Agentic AI | a small language model in the browser over a quantum-safe MCP channel | real | a signed, sealed `tools/call` request in the browser (no tool runs); signed tool results in the full deployment |
 
 What each step hides, in the browser and in the full deployment:
 [`docs/threat-model.md`](docs/threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment).

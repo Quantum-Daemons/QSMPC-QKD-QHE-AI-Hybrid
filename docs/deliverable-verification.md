@@ -8300,6 +8300,65 @@ Checked inside the rebuilt image, against the real server:
 `tests/test_r86_api_filesystem_endpoint_is_contained.py` holds each of these, and all five of its tests
 fail on the previous code.
 
+### The channel's messages follow MCP 2026-07-28, and the panel's download carries a signed record
+
+Both are the owner's choices on the fact-check sweep of 2026-11-03.
+
+**The messages.** The channel called itself MCP while it signed `{"jsonrpc", "method", "params"}`, with no
+id and no `_meta`, and replied with a request-shaped `tools/result`. REFERENCES.md said it "depends on
+none of" revision 2026-07-28, which requires a string or integer id on every request, the protocol version
+and client capabilities in `_meta` on every request, and `resultType` on every result, and requires a
+custom transport to keep the JSON-RPC format and the per-request metadata model. It now sends a
+`tools/call` request and, in Python, a JSON-RPC response. `serve_tool_call` refuses what the revision names:
+-32600 for no usable id, -32602 for a missing `_meta` field or an unknown tool, -32022 with the supported
+list for another revision, -32601 for another method; a tool that runs and raises is a result with
+`isError`. Checked three ways:
+
+- against the upstream JSON Schema for 2026-07-28, once, by hand: `CallToolRequest`,
+  `CallToolResultResponse`, `JSONRPCErrorResponse` and `UnsupportedProtocolVersionError` all validate;
+- against the MCP SDK's own types, in `tests/test_r86_mcp_messages_and_ai_provenance.py`;
+- the browser's request text against Python's, byte for byte (`check_mcp_envelope.mjs` against
+  `web/scripts/vectors/mcp_envelope_vectors.json`).
+
+That comparison needed Python to stop writing spaces, since the browser's comment claimed "the exact same
+bytes" while the two differed by a space after every separator. It also serves one method, so it is not a
+complete MCP implementation, and `docs/architecture.md` says so and documents the three things the revision
+asks of a custom transport. The browser sends no response, because no tool runs there.
+
+**The record.** The gap analysis said only a future "download as PDF" button would change the Article 50(2)
+answer, while the panel already offered a JSON download, and the file's own note said free-form text "cannot
+carry metadata". The Code of Practice's Sub-measure 1.1.1 applies to content "exported in a data format that
+supports attaching metadata", and its very-short-text exception is written into Sub-measure 1.1.2 only. So
+the file owes signed, time-stamped metadata and no watermark, and it now carries it: `ai_provenance`,
+ML-DSA-65 over a body holding the SHA-256 of `run.text`. Marking without detection "will not suffice" (point
+70), so it ships with a check: a control on the panel, read in the tab and not uploaded, and
+`scripts/verify_ai_provenance.py`. `tests/fixtures/ai_provenance_sample.json`, signed by the production
+browser module, is read by both in CI, so neither side's format can move alone, and each edit is refused.
+
+What it does not do is the gap analysis's table, and the file says so too. The key is made in the tab for one
+file, so the signature shows the record and the text are unchanged since signing, not who signed them; anyone
+can edit a copy and sign it again, or delete the record. The time is the visitor's clock. The glossary's
+digital signature "enables secure verification of authenticity of the provider", and this one does not, which
+the Sub-measure's exception for a "local deployment scenario" reaches for the key's handling and not for that
+definition. These readings of the Code are this project's own.
+
+**Also corrected, same sweep:**
+
+- `mcp>=1.2`, in four documents, floored below releases with high-severity advisories. Requirements say
+  `mcp>=2.2.0`, and now name all six advisories on 2.x; two are in the SDK repository's own list and not the
+  global database, so pip-audit does not see them.
+- C2PA 2.5 and c2pa-rs 0.91.0 replace "no released library implements" text bindings.
+- server-filesystem is MIT and Apache-2.0, in transition, not "MIT".
+- README's "signed tool results" was on the browser row, where no tool runs.
+- The stand-in cohort used builtin `hash`, salted per process, under the word "deterministic"; it now uses
+  SHA-256, and its docstring no longer says "privacy-preserving" of a number with no cohort behind it.
+- Art. 6(1b) joins 6(1a) in the satellite reading, read at the Regulation's text.
+- IGSR's consent wording replaces "open, unrestricted". The served payload keeps the panel's sample codes, by
+  the owner's decision after reading those pages.
+- The panel's agent key derivation uses @noble/hashes' HKDF, because Node's WebCrypto refuses an `info` over
+  1,024 bytes, so the module could not run in the gate that checks it. The bytes are RFC 5869's (compared
+  against the formula by hand at 2,382 bytes of `info`).
+
 BUSINESS DOC RECONCILED Round 86. The out-of-repo document is brought level with this round. Its content
 is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
 what gate 17 reads.

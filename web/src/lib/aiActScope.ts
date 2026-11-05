@@ -32,8 +32,9 @@
  * telemetry detector qualifies only if the satellite service is itself digital infrastructure, such
  * as a public electronic communications network, and only if the detector serves as a safety
  * component: Regulation (EU) 2026/1744 added Art. 6(1a), under which a system used solely for
- * performance or other non-safety purposes is not one. Art. 2(3) names military purposes too, which
- * the earlier sentences left out.
+ * performance or other non-safety purposes is not one, and Art. 6(1b), under which one whose failure
+ * "would endanger health and safety" is one notwithstanding. Art. 2(3) names military purposes too,
+ * which the earlier sentences left out.
  */
 import { CLOCK } from "./regulatoryClock";
 
@@ -110,13 +111,14 @@ export const AI_ACT_SCOPE: Record<string, AiActScope> = {
     highRisk: "depends",
     basis: "no Annex I or Annex III category names telemetry anomaly detection; Annex III 2 only if the "
       + "satellite service is critical digital infrastructure (recital 55: CER Directive annex point 8; "
-      + "space is point 10) and the detector a safety component (Art. 3(14); Art. 6(1a) as amended by "
+      + "space is point 10) and the detector a safety component (Art. 3(14); Art. 6(1a) and (1b) as amended by "
       + "Regulation (EU) 2026/1744); Art. 2(3)",
     from: ANNEX_III_DATE,
     text: "Not a category the Act lists. It would be high-risk (Annex III 2) only if the satellite service "
       + "is itself critical digital infrastructure, such as a public electronic communications network - "
       + "space is a separate sector under the CER and NIS2 directives - and the detector serves as a safety "
-      + "component, not solely for cybersecurity or performance. That depends on how it is deployed, and "
+      + "component, not solely for cybersecurity or performance, which it does if its failure would endanger "
+      + "health and safety. That depends on how it is deployed, and "
       + `Art. 13 would then apply from ${longDate(ANNEX_III_DATE)}. Used exclusively for military, defence `
       + "or national security purposes, it is outside the Act (Art. 2(3)).",
   },

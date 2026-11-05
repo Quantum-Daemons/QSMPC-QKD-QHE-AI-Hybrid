@@ -98,8 +98,8 @@ panel (its own MCP tool - `score_transaction` / `query_cohort` / `pool_allele_co
 `inspect_qkd_telemetry` / `relay_mission_telemetry` - fed by that run's live metrics), so MCP is the
 per-use-case **cross-cutting integration layer** (no standalone page - it lives inside each industry use
 case). The **full
-deployment** additionally runs a **real MCP server** (MCP Python SDK, `mcp>=1.2`: `MCPServer` on 2.x,
-`FastMCP` on 1.x) exposing those 5 tools, bound to the
+deployment** additionally runs a **real MCP server** (MCP Python SDK, `mcp>=2.2.0`; the class is `MCPServer`,
+and `server.py` still resolves the 1.x `FastMCP`) exposing those 5 tools, bound to the
 quantum-safe transport so a `tools/call` returns a **signed real result** (plus interop with the
 official filesystem MCP server); the public demo keeps the zero-server client mirror.
 
