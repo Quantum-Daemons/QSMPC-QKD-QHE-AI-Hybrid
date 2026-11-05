@@ -53,7 +53,7 @@ def test_federated_matches_centralized_ballpark():
 
 def test_quantum_federated_learning_trains():
     """QFL: a hybrid quantum-classical (PennyLane VQC + classical) model federated via FedAvg with
-    quantum-safe secure aggregation learns a separable task (the report's QSMPC-QKD-QHE-QFL path)."""
+    quantum-safe secure aggregation learns a separable task (the QSMPC-QKD-QHE-QFL path)."""
     pytest.importorskip("pennylane")
     rng = np.random.default_rng(0)
     n = 240

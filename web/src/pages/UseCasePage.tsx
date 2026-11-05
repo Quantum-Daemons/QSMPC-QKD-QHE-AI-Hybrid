@@ -347,7 +347,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
 
       <h2 className="sr-only">Agentic AI and the QKD control plane</h2>
       {/* Agentic AI · quantum-safe MCP — per-industry panel, fed by THIS run's live metrics (Round 10).
-          The report frames MCP as a per-use-case cross-cutting layer; the same panel is kept standalone.
+          MCP is a per-use-case cross-cutting layer here.
           It is an application-plane SAE: see the control-plane panel directly below, which is the
           element that actually manages key associations (ETSI GS QKD 015 puts application interfaces
           out of scope of the control interface). */}

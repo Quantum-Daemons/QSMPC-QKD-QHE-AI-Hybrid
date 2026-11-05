@@ -124,8 +124,8 @@ export default function App() {
           <Route path="/" element={<Overview />} />
           <Route path="/value" element={<Value />} />
           <Route path="/validations" element={<Validations />} />
-          {/* Agentic AI · MCP is now integrated INTO each use-case page (the report frames MCP as a
-              per-use-case cross-cutting layer); redirect the old standalone route to the use-case index. */}
+          {/* Agentic AI · MCP is now integrated INTO each use-case page (MCP is a per-use-case
+              cross-cutting layer here); redirect the old standalone route to the use-case index. */}
           <Route path="/agentic-ai" element={<Navigate to="/usecases" replace />} />
           <Route path="/orchestration" element={<Orchestration />} />
           <Route path="/usecases" element={<UseCases />} />

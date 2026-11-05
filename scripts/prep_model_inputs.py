@@ -345,7 +345,7 @@ def _write(usecase: str, payload: dict) -> Path:
 
     The evaluation sample belongs in the model's own HF repo at the same pinned commit: the sample
     and the weights it evaluates then travel together and cannot drift apart, the demo image stops
-    carrying 1.6 MB it does not need, and HF's CDN serves the bytes instead of a 12 GB VPS. That
+    carrying 1.6 MB it does not need, and HF's CDN serves the bytes instead of the demo's host. That
     last point is what makes a larger sample affordable -- 8192 AMLworld rows narrow the 95%
     interval on accuracy from about +/-2.6pp to +/-0.6pp, and none of it touches this repository.
     """

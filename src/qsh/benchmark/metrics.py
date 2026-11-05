@@ -1,7 +1,7 @@
 """Benchmark metric types + helpers.
 
-Captures, for each private-inference path, the dimensions the report's benchmark
-chapter compares: latency, throughput, accuracy preservation, communication
+Captures, for each private-inference path, the dimensions this project's benchmark
+compares: latency, throughput, accuracy preservation, communication
 (ciphertext/plaintext ratio), quantum resource (T-gates, qubits), and the security
 model (computational vs information-theoretic).
 """

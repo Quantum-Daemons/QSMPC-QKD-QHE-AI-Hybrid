@@ -1,6 +1,6 @@
 """Quantum Secure Direct Communication (QSDC) - block-transmission simulation.
 
-QSDC (the report, section 6: QSDC / QT-QSS) transmits a *message* over the quantum channel
+QSDC transmits a *message* over the quantum channel
 directly, without first distributing a key. Security comes from a two-step / DL04-style
 block transmission with an interspersed **eavesdrop check**: a random subset of carriers
 is sampled and their error rate estimated *before* the sensitive block is released. If the

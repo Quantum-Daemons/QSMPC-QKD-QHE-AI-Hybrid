@@ -1,5 +1,5 @@
 # Prometheus scrape config (local full deployment).
-# The VPS demo does NOT run Prometheus on-box (12 GB is tight) -- prefer remote_write
+# The public demo does NOT run Prometheus on its host -- prefer remote_write
 # to Grafana Cloud's free tier, or rely on structured JSON logs.
 global:
   scrape_interval: 15s

@@ -181,15 +181,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: No confidential files tracked
-        # The research reports and monetization notes are git-ignored by design; a `git add -f`
-        # would defeat that silently.
+      - name: No local-only files tracked
+        # Local-only files are git-ignored by design; a `git add -f` would defeat that silently.
         run: make check-secrets
 
       - name: No Japanese in public files
         # Public-facing source and docs are English-only. Scope is the git INDEX rather than a
-        # directory list, so "public" means "tracked". Three things follow: the git-ignored .ja
-        # monetization workflow is excluded by construction rather than by an exception, the repo ROOT
+        # directory list, so "public" means "tracked". Three things follow: a git-ignored file
+        # is excluded by construction rather than by an exception, the repo ROOT
         # is covered, and a new directory or file type is covered without editing this step. The scope
         # was a six-extension list until Round 34, which left 122 of 356 tracked files unscanned -
         # including 59 .json, 7 .txt and 5 .tex - while the comment claimed it meant "exactly tracked".

@@ -12,7 +12,7 @@ _CH = ChannelParams(distance_km=50, eve_intercept_fraction=0.0)
 def test_optimizer_improves_skr_over_baseline_coordinate():
     res = optimize_qkd(_CH, method="coordinate", n_samples=24, seed=0, n_pulses=20_000)
     assert res.best_skr >= res.baseline_skr
-    assert res.improvement_pct > 20.0                 # report WS1 target
+    assert res.improvement_pct > 20.0                 # this project's WS1 threshold
 
 
 def test_optimizer_improves_skr_over_baseline_surrogate():

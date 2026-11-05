@@ -915,8 +915,7 @@ Added in Round 18 and previously recorded only in source docstrings.
   URL: https://arxiv.org/abs/2505.15917
 - **The Business of Quantum Technologies** - copyrighted book, `[R-local]`, deliberately not
   redistributed (`.gitignore` rule `references/The Business of Quantum Technologies.pdf`). Background
-  for the private business notes only; no technical claim in this
-  repository rests on it.
+  reading only; no technical claim in this repository rests on it.
 
 ---
 

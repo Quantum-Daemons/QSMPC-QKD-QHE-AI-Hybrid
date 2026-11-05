@@ -7,7 +7,7 @@ SP 800-56C two-step KDF with both shared secrets extracted and the transcript in
 (equations 13 and 14), over the inputs section 4.6.3's IND-CCA-preserving combiner binds. It is
 not section 4.6.3's KeyCombineCCA_H itself, which is one SHA-3-family hash over all seven inputs,
 so that section's random-oracle proof applies by analogy rather than verbatim. This said section
-4.6.3 "specifies a combiner for" the construction until Round 75. This is the report's "PQC-first hybrid" (FIPS 203 for the ML-KEM half). It is NOT
+4.6.3 "specifies a combiner for" the construction until Round 75. This is the PQC-first hybrid (FIPS 203 for the ML-KEM half). It is NOT
 a CNSA 2.0 requirement, as this docstring used to say: NSA "will not require NSS
 developers to use hybrid certified products" (CNSA 2.0 FAQ Ver. 2.2), and the ML-KEM-768
 default is not a CNSA 2.0 parameter set (ML-KEM-1024 is selectable). It defends against

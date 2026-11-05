@@ -9,7 +9,7 @@
 // the pipeline died at `stage_error private_inference No module named 'tenseal'` and the run ended
 // in State: error — while the page still displayed DEMO_BANNER's "No computation is sent to a
 // server", which by then was false. It also let any anonymous visitor drive compute and write
-// result files inside the container on a small shared VPS.
+// result files inside the container.
 //
 // So the escape hatch is gone from client-only bundles. `?demo=client` remains useful in a FULL
 // build, where it lets a developer exercise the browser path without rebuilding.

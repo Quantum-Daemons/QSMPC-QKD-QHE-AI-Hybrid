@@ -4,11 +4,11 @@
 # WHY THE CONTENT CHECKS (2026-10-29). The name checks passed for months while three things leaked
 # through file contents: the demo's host name in a compose comment and in the verification log, a
 # local home path (whose user name is the deploy login) inside two tracked LaTeX build files, and
-# the private notes named in three prose documents. All three were removed from the whole git
+# local-only notes named in three prose documents. All three were removed from the whole git
 # history that day; these checks keep them from coming back.
 #
-# The deploy values are read from .env.demo when it exists (it is git-ignored and per machine), so
-# the values themselves never appear here. CI has no .env.demo and runs the other checks. A finding
+# The deploy values and the local-only names are read from .env.demo when it exists (it is git-ignored
+# and per machine), so the values themselves never appear here. CI has no .env.demo and runs the other checks. A finding
 # names the file, never the value. Run: make check-secrets   (or: bash scripts/check_secrets.sh)
 set -u
 fail=0
@@ -16,10 +16,13 @@ ok() { printf 'OK: %s\n' "$1"; }
 bad() { printf 'FAIL: %s\n' "$1"; fail=1; }
 
 # --- names --------------------------------------------------------------------------------------
-if git ls-files | grep -qi 'MONETIZATION'; then bad "a private-notes file is tracked"; else ok "private notes untracked"; fi
+# Only these Markdown files belong at the root (.gitignore says the same): a note kept locally there is
+# refused by default, whatever it is called, so nothing here needs to name it.
+extra=$(git ls-files -- '*.md' | grep -v / | grep -vxE 'README\.md|DATA_LICENSES\.md|SECURITY\.md|CONTRIBUTING\.md|CHANGELOG\.md')
+if [ -n "$extra" ]; then bad "an unexpected Markdown file is tracked at the root: $(echo $extra)"; else ok "no unexpected Markdown file at the root"; fi
 if git ls-files | grep -q '\.docx$'; then bad "a .docx is tracked"; else ok "report .docx untracked"; fi
 if git ls-files -z | tr '\0' '\n' | grep -qP '[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FFF}]'; then
-  bad "a file with a Japanese name is tracked - the confidential strategy notes are named this way"
+  bad "a file with a Japanese name is tracked - this repository's tracked files are English-named"
 else ok "no CJK-named file tracked"; fi
 if git ls-files | grep -q 'browser-verification-checklist'; then
   bad "the browser verification checklist is tracked - it must never be published"
@@ -37,16 +40,8 @@ else ok "technical report and summary untracked"; fi
 if [ "$(git rev-parse --is-shallow-repository 2>/dev/null)" = "true" ]; then
   ok "shallow clone; the history check runs where the full history is (scripts/ci_local.sh)"
 else
-  # The one exception, named path by path: the technical report and its three figures left the tree
-  # in Round 86 for a private repository, and the owner chose to keep the history rather than rewrite
-  # it. They are this project's own work, not a third-party file without a grant. Named one by one so
-  # that a new PDF under report/ is not exempt.
-  kept='report/technical-report.pdf
-report/generated/fig_baselines.pdf
-report/generated/fig_decision_curve.pdf
-report/generated/fig_permutation_null.pdf'
   gone=$(comm -23 <(git log --all --format= --name-only --diff-filter=A -- '*.pdf' | sort -u) \
-                  <(git ls-files '*.pdf' | sort -u) | grep -vxF "$kept")
+                  <(git ls-files '*.pdf' | sort -u))
   if [ -n "$gone" ]; then bad "a PDF removed from the tree is still in the history: $(echo "$gone" | head -3 | tr '\n' ' ')"
   else ok "no PDF in the history that the tree has dropped"; fi
 fi
@@ -58,28 +53,41 @@ fi
 homes=$(git grep -nIE '/(home|Users)/[A-Za-z0-9._-]+/' -- . | grep -P '/(home|Users)/(?!user/)[A-Za-z0-9._-]+/' | cut -d: -f1 | sort -u)
 if [ -n "$homes" ]; then bad "an absolute home path is tracked in: $(echo $homes)"; else ok "no absolute home paths"; fi
 
-# The private notes may be named by the files that keep them out of the repository, and nowhere else.
-named=$(git grep -Il 'MONETIZATION' -- . ':!.gitignore' ':!.dockerignore' ':!.github/workflows/ci.yml' \
-          ':!Makefile' ':!scripts/ci_local.sh' ':!scripts/check_secrets.sh' ':!tests' 2>/dev/null)
-if [ -n "$named" ]; then bad "the private notes are named in: $(echo $named)"; else ok "private notes named only by the guards"; fi
-
-# The deploy target, from the per-machine env file. QSH_DEMO_PROVIDER is optional.
-# Also the host's REGISTERED DOMAIN (2026-10-30): a sibling site under the same domain was linked from a
-# page, and it resolved to the demo's own address, so naming the domain anywhere names the box. Two labels,
-# or three under a generic second level (co.jp, ac.uk, com.au ...), so the check never widens to a TLD.
+# The deploy target and any local-only names, from the per-machine env file. QSH_DEMO_PROVIDER and
+# QSH_PRIVATE_NAMES (one per line) are optional. Also the host's REGISTERED DOMAIN (2026-10-30): a sibling
+# site under the same domain was linked from a page, and it resolved to the demo's own address, so naming
+# the domain anywhere names the box. Two labels, or three under a generic second level (co.jp, ac.uk,
+# com.au ...), so the check never widens to a TLD. QSH_PUBLIC_HOSTS (space-separated, exact host names)
+# lists hosts under that domain that do NOT name the box and may be linked (owner's choice, 2026-11-05):
+# an occurrence of one is removed before the domain is looked for, and nothing else is excused.
 if [ -f .env.demo ]; then
   vals=$( (set -a; . ./.env.demo >/dev/null 2>&1; set +a
-           url=${QSH_DEMO_URL:-}; h=${url#*://}; h=${h%%/*}; h=${h%%:*}
-           IFS=. read -r -a lab <<< "$h"; n=${#lab[@]}; d=""
+           url=${QSH_DEMO_URL:-}; h=${url#*://}; h=${h%%/*}; h=${h%%:*}; ssh_user=${QSH_DEMO_SSH:-}; ssh_user=${ssh_user%%@*}
+           lab=(); [ -n "$h" ] && IFS=. read -r -a lab <<< "$h"; n=${#lab[@]}; d=""
            if [ "$n" -ge 3 ] && [[ ${lab[n-2]} =~ ^(co|ac|go|or|ne|com|net|org|gov|edu)$ ]]; then
              d="${lab[n-3]}.${lab[n-2]}.${lab[n-1]}"
            elif [ "$n" -ge 2 ]; then d="${lab[n-2]}.${lab[n-1]}"; fi
-           printf '%s\n%s\n%s\n%s\n' "$h" "${QSH_DEMO_SSH%%@*}" "${QSH_DEMO_PROVIDER:-}" "$d") )
+           printf '%s\n%s\n%s\n%s\n%s\n' "$h" "$ssh_user" "${QSH_DEMO_PROVIDER:-}" "${PROXY_NETWORK:-}" "${QSH_PRIVATE_NAMES:-}"
+           printf 'DOMAIN=%s\n' "$d") )
+  public=$( (set -a; . ./.env.demo >/dev/null 2>&1; set +a; printf '%s' "${QSH_PUBLIC_HOSTS:-}") )
   leaked=""
   while IFS= read -r v; do
-    [ ${#v} -ge 4 ] || continue
-    f=$(git grep -IlF -- "$v" 2>/dev/null)
-    [ -n "$f" ] && leaked="$leaked $(echo $f)"
+    case "$v" in
+      DOMAIN=*)
+        v=${v#DOMAIN=}
+        [ ${#v} -ge 4 ] || continue
+        for f in $(git grep -IlF -- "$v" 2>/dev/null); do
+          left=$(git show ":$f" 2>/dev/null)
+          for p in $public; do left=${left//"$p"/}; done
+          case "$left" in *"$v"*) leaked="$leaked $f";; esac
+        done
+        ;;
+      *)
+        [ ${#v} -ge 4 ] || continue
+        f=$(git grep -IlF -- "$v" 2>/dev/null)
+        [ -n "$f" ] && leaked="$leaked $(echo $f)"
+        ;;
+    esac
   done <<< "$vals"
   if [ -n "$leaked" ]; then bad "a value from .env.demo appears in tracked files:$leaked"; else ok "no deploy values from .env.demo tracked"; fi
 else

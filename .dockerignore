@@ -16,7 +16,9 @@ data/*
 logs/
 references/*.pdf
 *.docx
-MONETIZATION*.md
+/*.md
+!README.md
+!DATA_LICENSES.md
 **/__pycache__/
 *.pyc
 .pytest_cache/

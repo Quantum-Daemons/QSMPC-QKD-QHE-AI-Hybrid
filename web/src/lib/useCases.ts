@@ -10,9 +10,9 @@ export interface UseCaseMeta {
   // market-size figures. Two of the five also attributed a bank AML and a telecom PQC migration to
   // CNSA 2.0, which binds national security systems only.
   inference: boolean;   // has a classical-vs-quantum private-inference path (full benchmark + SHAP)
-  // Agentic AI · MCP (Round 10): the report frames MCP as a per-use-case cross-cutting layer, so each
+  // Agentic AI · MCP (Round 10): MCP is a per-use-case cross-cutting layer, so each
   // use-case page embeds an AgenticAIPanel with an industry-specific prompt + MCP tool name.
-  agenticTool: string;     // the MCP tool this industry's agent "calls" (delegate-and-verify)
+  agenticTool: string;     // the MCP tool this industry's request is named after; the browser calls nothing
   agenticPrompt: string;   // the default in-browser-agent prompt for this industry
 }
 

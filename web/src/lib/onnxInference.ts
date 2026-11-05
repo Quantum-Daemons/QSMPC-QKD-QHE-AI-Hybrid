@@ -700,7 +700,7 @@ export async function evaluatePublishedModel(
   };
   // The evaluation sample lives in the MODEL's own HF repo at the same pinned commit, not in this
   // bundle. Two reasons, both practical: the sample and the weights it evaluates cannot drift apart
-  // when they share a revision, and HF's CDN serves the bytes instead of a 12 GB VPS -- which is
+  // when they share a revision, and HF's CDN serves the bytes instead of the demo's host -- which is
   // what makes 8192 AMLworld rows affordable (95% interval ~+/-0.6pp against ~+/-2.6pp at 512)
   // without putting a megabyte into the demo image.
   // A named model when the caller offers a choice, else the use case's first.

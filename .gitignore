@@ -1,28 +1,8 @@
 # ============================================================================
 #  HARD EXCLUSIONS — these must NEVER be committed (per project requirements)
 # ============================================================================
-# The source research report and the private business-strategy reports (confidential, never publish).
-#
-# By extension, not by name. Those documents live one directory ABOVE this repository and have never
-# been inside it, so the five Japanese-named patterns that used to sit here were guarding a path that
-# does not exist - while being the only Japanese left in any tracked text file. A bare `*.docx` catches
-# every future report whatever it is called or whether it is transliterated, and no `.docx` is tracked,
-# so nothing legitimate is shadowed.
-#
-# CORRECTION, measured 2026-08-12. This comment used to say `*.docx` was "strictly stronger: it catches
-# every one of them". It does not. Three of those confidential notes are `.md`, not `.docx`, so copying
-# one into this repository produced a file that was not ignored here, was staged by `git add`, and
-# passed both `make check-secrets` and the no-Japanese content gate - which scanned a directory list
-# that excluded root-level `.md` other than README.
-#
-# It is not fixable here: gitignore patterns are byte globs with no character classes, so "any file
-# whose NAME contains CJK" cannot be written in ASCII, and writing the names out reintroduces the only
-# Japanese in a tracked file. So the check moved to where it can be expressed - `make check-secrets`
-# greps `git ls-files` for CJK codepoints in filenames, and the content gate now derives its scope from
-# `git ls-files` so the repository root is covered.
-#
-# Case-folded by hand: gitignore matching is case-SENSITIVE on Linux, so a plain `*.docx` lets
-# `Report.DOCX` straight through - verified with `git check-ignore`. Word will happily write either.
+# No Word document is ever tracked, whatever it is called. Case-folded by hand: gitignore matching is
+# case-SENSITIVE on Linux, so a plain `*.docx` lets `Report.DOCX` straight through. Word writes either.
 *.[dD][oO][cC][xX]
 # Copyrighted reference book (do not redistribute)
 references/The Business of Quantum Technologies.pdf
@@ -52,8 +32,14 @@ references/Experimental_secure_multiparty_computation_from_quantum_oblivious_tra
 # "all rights reserved", which is nowhere in the source and would be an inference; an absent grant is
 # simply an absent grant, and this project's own rule is that silence is not permission.
 references/Quantum-Safe_Multi-Party_Computation_for_Distributed_AI_Datasets*.pdf
-# Commercial / monetization notes (kept local only — both the EN plan and JA workflow)
-MONETIZATION*.md
+# Only these Markdown files belong at the root. Anything else there stays local, by default and without
+# naming it; `make check-secrets` fails on one added with `git add -f`.
+/*.md
+!/README.md
+!/DATA_LICENSES.md
+!/SECURITY.md
+!/CONTRIBUTING.md
+!/CHANGELOG.md
 # The browser verification checklist: still maintained, no longer published (Round 28).
 #
 # It is the round-by-round verification run sheet, and it accumulated the deploy procedure, the

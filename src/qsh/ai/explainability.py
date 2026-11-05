@@ -1,6 +1,6 @@
 """Explainable AI (XAI) — exact, faithful feature attributions for the private-inference models.
 
-The report flags XAI. **EU AI Act Article 13 transparency** is the instrument usually cited for it, but
+Explainability is in this project's scope. **EU AI Act Article 13 transparency** is the instrument usually cited for it, but
 it is NOT yet in application: the AI Omnibus (Regulation (EU) 2026/1744, in force 2026-07-27) deferred
 Chapter III Sections 1-3 to 2027-12-02 (Annex III) and 2028-08-02 (Annex I). So treat this module as
 preparation for a 2027/2028 obligation, not compliance with a current one.
@@ -29,7 +29,7 @@ owner explains on the plaintext weights, or the client explains on its own featu
 background expectation ``E[x]`` can be produced by **secure aggregation** rather than shared raw
 data (cf. *Federated SHAP*, Machine Learning 2026; additive-HE + Shapley FL) — see
 :mod:`~qsh.ai.federated`. Combined with the ML-DSA :class:`SignatureStage`, the explanation
-becomes a **tamper-evident, signed** audit record (the report's XAI / audit-trail requirement).
+becomes a **tamper-evident, signed** audit record (this project's XAI and audit-trail requirement).
 
 A ``gradient_x_input`` fallback is provided for small non-linear (MLP) models.
 """

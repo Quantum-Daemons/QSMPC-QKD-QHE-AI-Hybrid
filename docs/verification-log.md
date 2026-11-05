@@ -534,8 +534,8 @@ Three instances on its first run:
 | `finance_aml.scorecard` | `finance_scorecard.py` emitted the key and `metrics.json` had no such record, while `references/he-scheme-selection.md` published its numbers **by hand**. Trainer run on CPU, 272.3 s: **net_benefit 0.00030763** on 1,523,504 test rows, 12 non-zero coefficients, `exact_under_bfv` true - confirming the hand-written +0.000308 from a machine record for the first time, and giving the decision curve real inputs via `net_benefit_threshold` and `net_benefit_treat_all` |
 | `satellite_comms.telemanom` | the trainer emitted a `baseline_gap_note` no artifact carried, so a careful explanation of why `n_events_scored` is 3 rather than 320 reached no reader. Copied via AST, so the two are byte-identical by construction rather than by transcription - which is exactly how the medical note diverged |
 
-**3. A Japanese-named confidential note in the repo root passed every confidentiality gate - measured, not
-hypothesised.** Copied in and walked through all three: not matched by the private-notes or `*.docx` patterns, so
+**3. A Japanese-named local file in the repo root passed every confidentiality gate - measured, not
+hypothesised.** Copied in and walked through all three: not matched by any ignore pattern, so
 not ignored, staged by `git add` without complaint, `check-secrets` printed OK, and the no-Japanese
 content gate scanned a **directory list that excluded root-level `.md` other than README**. Fixed:
 `check-secrets` gains a CJK-filename check and the checklist path, and the content gate now derives its

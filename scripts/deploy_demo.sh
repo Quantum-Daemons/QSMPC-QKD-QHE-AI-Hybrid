@@ -21,6 +21,7 @@
 #     QSH_DEMO_KEY   path to the ssh key            (optional; ssh config may supply it)
 #     QSH_DEMO_DIR   deploy tree on the host        (default ~/dev/QSMPC-QKD-QHE-AI-Hybrid)
 #     QSH_DEMO_URL   public URL to verify against
+#     PROXY_NETWORK  the network the host's reverse proxy owns
 #
 # Put them in a gitignored file and source it. `make check-secrets` will not see this script because
 # it carries nothing to see.
@@ -37,12 +38,13 @@ ok()  { printf '  PASS  %s\n' "$1"; }
 
 : "${QSH_DEMO_SSH:?set QSH_DEMO_SSH (ssh destination); it is deliberately not in this file}"
 : "${QSH_DEMO_URL:?set QSH_DEMO_URL (public demo URL); it is deliberately not in this file}"
+: "${PROXY_NETWORK:?set PROXY_NETWORK (the reverse proxy network on the host); it is deliberately not in this file}"
 DIR="${QSH_DEMO_DIR:-\$HOME/dev/QSMPC-QKD-QHE-AI-Hybrid}"
 SSH=(ssh -o ConnectTimeout=20)
 [ -n "${QSH_DEMO_KEY:-}" ] && SSH+=(-i "$QSH_DEMO_KEY")
 SSH+=("$QSH_DEMO_SSH")
 
-COMPOSE="docker compose -p qsh-demo -f docker/docker-compose.demo.yml -f docker/docker-compose.demo.behind-proxy.yml"
+COMPOSE="PROXY_NETWORK=$PROXY_NETWORK docker compose -p qsh-demo -f docker/docker-compose.demo.yml -f docker/docker-compose.demo.behind-proxy.yml"
 # `-p qsh-demo` AND the behind-proxy override, both. Without them the container lands on no shared
 # network and the site 502s while `docker ps` cheerfully reports Up.
 

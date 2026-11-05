@@ -470,7 +470,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   `@modelcontextprotocol/server-filesystem`** under the same quantum-safe seal (`mcp/fs_interop.py`,
   `/api/mcp/filesystem`). The public demo keeps the zero-server `clientMcp.ts` mirror (**zero per-user VPS
   load**). In the WebUI the in-browser agent is **integrated into each use-case page** (its own per-industry
-  MCP tool, fed by the live run) - the standalone Agentic-AI page was **removed**, since the report frames MCP
+  MCP tool, fed by the live run) - the standalone Agentic-AI page was **removed**, since this project treats MCP
   as a per-use-case cross-cutting layer, not a separate feature.
 - **Deploying behind an existing reverse proxy** needs the committed override and the project name
   `-p qsh-demo`, or the container comes up on no network and every request 502s while `docker ps`

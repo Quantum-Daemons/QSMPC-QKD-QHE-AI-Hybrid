@@ -1,8 +1,8 @@
 """Quantum-safe transport: hybrid-KEM session + AES-256-GCM AEAD.
 
 A minimal authenticated-encryption channel built on the hybrid KEM
-(:mod:`~qsh.pqc.hybrid_kem`). This is the report's "ML-KEM hybrid layer over MCP"
-(Gopher 2026) — the secure pipe over which orchestration stages and AI agents
+(:mod:`~qsh.pqc.hybrid_kem`). This is the ML-KEM hybrid layer under MCP:
+the secure pipe over which orchestration stages and AI agents
 exchange data. A QKD-derived key can be mixed in for a defence-in-depth
 (PQC + QKD) session. NSA publishes no recommendation for this; CNSA 2.0 does not require hybrid
 products at all (see :mod:`~qsh.pqc.hybrid_kem`). This line said "matching the NSA hybrid

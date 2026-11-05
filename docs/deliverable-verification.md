@@ -85,10 +85,7 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
 8. **Final greps** - no new literals, no Japanese in public files, CI green on the head commit.
 
    As of Round 21 there is **no** Japanese in any tracked text file - the rule holds with no
-   exceptions. The private business notes are Japanese by design and untracked; several live one
-   directory above the repository and have never been inside it. They are deliberately not named
-   here - a public file that lists the filenames of confidential ones has leaked something, even
-   when the files themselves are absent.
+   exceptions.
 
    `.gitignore` used to be the exception, carrying five Japanese-named `.docx` patterns. They were
    guarding a path that does not exist, so they are gone and `*.[dD][oO][cC][xX]` replaced them:
@@ -118,7 +115,7 @@ The claim is "this model scores X on Y". Verified when:
   be compared with a from-scratch run;
 
   **SqueezeNet is declined too, and for a stronger reason - recorded 2026-08-13, having been the one
-  item left open across 29 ORDER files.** The request was conditional: add SqueezeNet, DenseNet-121
+  item left open across 29 of the owner's orders.** The request was conditional: add SqueezeNet, DenseNet-121
   or AlexNet *only if they are recommended as benchmarks*. It slipped because the four-architecture
   sentence above enumerates MedMNIST+'s benchmark set, and SqueezeNet is not in it - so the item
   never matched a search for a decision that had been made about the others.
@@ -251,7 +248,7 @@ ledger and found three that had been carried without either, plus one that silen
 Reclassifying is not a way of avoiding work - it is the honest label when the answer is "no", and
 these four had answers.
 
-**WebGL: declined, and it will not be implemented.** Six ORDER files asked for the demo to compute
+**WebGL: declined, and it will not be implemented.** Six of the owner's orders asked for the demo to compute
 client-side "using JavaScript, WebAssembly, WebGL/WebGPU", and Round 21 explicitly scheduled this
 written decline and then did not write it - so it survived six requests and one plan that named it.
 The reason it was never built is that it cannot be: **ONNX Runtime Web ships WASM and WebGPU
@@ -432,7 +429,7 @@ construction, which this repository does not. WS4(c) is met for Clifford circuit
 separately, so (f) no longer rides along with it. See also "What this project cannot verify".
 
 **Rust and tfhe-rs in the client: DECLINED, and it should have been recorded three rounds ago.** Asked
-for explicitly in one ORDER file ("if tfhe-rs is implementable on WebGPU, introduce it; Rust is
+for explicitly in one of the owner's orders ("if tfhe-rs is implementable on WebGPU, introduce it; Rust is
 acceptable as well as JavaScript for client-side processing") and then listed among the required
 client-side technologies in two more. It was never done and never declined - the repository has no
 `Cargo.toml`, `tfhe-rs` appears only in licence tables, and the private checklist contained the
@@ -1132,7 +1129,7 @@ applied the linear law the browser had rejected. Both sides had been reporting "
 ## Decisions, part two: the four standing asks
 
 Same format as the register above - the decision, why, and what would reopen it. These four arrive in
-every ORDER file and had no entry here, which is why they arrive in every ORDER file.
+every one of the owner's orders and had no entry here, which is why they arrive in every order.
 
 **Published models versus current MPC-FHE research: ANSWERED, and the answer is stable.**
 `references/model-choice-vs-2026-practice.md` checks all five verticals against 2025-2026 encrypted
@@ -1476,8 +1473,8 @@ inert before the comparison was trusted, by reproducing the shipped model's `the
 
 *Reopens if* a third width is trained, which would make "is 8 the peak" answerable rather than open.
 
-**DESILO FHE: DECLINED, and the answer was available for thirty-nine rounds.** ORDER 1, 2 and 4 asked
-for it - ORDER 4 explicitly saying to check commercial usability at the vendor's licence page and
+**DESILO FHE: DECLINED, and the answer was available for thirty-nine rounds.** The owner's first orders asked
+for it, one explicitly saying to check commercial usability at the vendor's licence page and
 adopt an alternative if it failed. It appears nowhere in this repository, and neither did the verdict.
 Fetched 2026-08-14: the DESILO FHE Library Binary Software License Agreement grants a
 *"non-exclusive, non-transferable, royalty-free license to use the Software solely for Non-commercial
@@ -1490,13 +1487,13 @@ require a per-user negotiation.
 this project keeps what it declined, and an ask that stops appearing is indistinguishable from one
 that was answered:
 
-- **SHARK and RHOMBUS** (ORDER 1, as the GPU performance path alongside HEonGPU and PIGEON/hpmpc).
+- **SHARK and RHOMBUS** (the owner's first order, as the GPU performance path alongside HEonGPU and PIGEON/hpmpc).
   Absent, undocumented. *Reopens if* either publishes a browser-reachable or CPU-reachable build,
   since neither helps a demo whose whole compute budget is a visitor's tab.
-- **The `submodules/` populate mandate** (ORDER 1-7). Reversed in practice when MPyC became a pip
+- **The `submodules/` populate mandate** (the owner's first seven orders). Reversed in practice when MPyC became a pip
   dependency in Round 17. *Reopens if* a dependency needs a source-level patch, which is the only
   thing a submodule buys over a pinned package.
-- **Pause / Resume / Step to spec** (ORDER 2-7, six consecutive files, then never again). The buttons
+- **Pause / Resume / Step to spec** (six consecutive orders, then never again). The buttons
   exist in `PipelineControls.tsx` and **no checklist row covers them** - the longest-standing
   coverage gap found this round, and the one most likely to hide a live defect, because a control
   that half-works looks like one that works.
@@ -1940,15 +1937,6 @@ recorded - medical's seed 0 is the worst of five at 8 wires.
 `if (true)`, and the bundle carries upstream's own *"WebNN EP requires either JSEP or WebGPU EP to be
 enabled."* On the no-adapter path - exactly where WebNN would help - it cannot be requested at all.
 
-**BUSINESS DOC RECONCILED Round 44.** The confidential business-recommendations document - its
-filename is Japanese and is therefore not written here, which is why this paragraph describes it
-instead - lives at the parent directory, **outside this repository**, and 21 consecutive ORDER files
-(18-38) name it in the documentation-merge bullet. Its own title says it covers rounds 17-20. Every document sweep for
-twenty-three rounds walked past it, because the sweeps walk the repo and it is not in the repo -
-the same scope defect this project keeps finding, applied to the one file it was told about by name.
-It is confidential-class like the private business notes, so it stays out of the repository and **its content is
-not recorded here or anywhere tracked**. `scripts/ci_local.sh` gate 16 now fails when this stamp is
-older than the register's latest round. Local-only by construction, as gate 15 is.
 
 **`docs/deployment.md` had zero inbound links** while being the only document carrying the demo's
 port-collision workaround, and the technical report had no `make` target. Both fixed, and the orphan
@@ -1972,10 +1960,6 @@ the added item is a sector CSF profile, so the conclusion holds and the word "on
   to build - the duplicate-ID guard a previous round added, catching this round's row on the first
   rebuild after it was written. Renamed `PM6`. **The guard was worth more than the care that skipped
   it**, which is the argument for having it.
-
-And gate 6 caught gate 16: the first version put the business document's Japanese filename into both
-`ci_local.sh` and this file, and the no-Japanese-in-public-files rule failed on the check written to
-enforce a different rule. The register now describes that file rather than naming it.
 
 ## Round 44: the fix changed one language, and the field it emptied is still being read
 
@@ -2052,7 +2036,6 @@ restored from a permanent 0. No NaN, no Infinity.
 Round 44 gave the secret-key rate a genuine bit/s and put ~958 kbit/s on the public demo. It did not
 ask whether the per-pulse fraction underneath was the quantity the page said it was. It was not.
 
-**BUSINESS DOC RECONCILED Round 45.**
 
 ### The rate was not the bound the page named, and the gap was 4.07x
 
@@ -2353,7 +2336,6 @@ edition.
 
 ## Round 46: the fix changed one language again, and the gate was built so it could not see it
 
-**BUSINESS DOC RECONCILED Round 46.**
 
 ### The spine
 
@@ -2594,7 +2576,6 @@ model is judged on macro F1, so putting them there would render an accuracy besi
 
 ## Round 47: the fix changed one language a fifth time, and the fifth one is this round's
 
-**BUSINESS DOC RECONCILED Round 47.**
 
 Round 44's title was "the fix changed one language". Round 45 repeated it, Round 46 repeated it
 again, and this round opened by finding the FOURTH instance inside Round 46's own commit - then
@@ -3414,7 +3395,6 @@ it can only be permanent, which is the property this register exists to deny.
 
 ## Round 48: the finance page ran a model with its best feature switched off - written in Round 49
 
-**BUSINESS DOC RECONCILED Round 48.**
 
 **This section is late, and the lateness is the first thing in it.** Round 48 shipped three commits
 (`2d83b62`, `5aa444b`, `75b4cbf`), merged as `e192214`, and deployed - and wrote no register section,
@@ -3514,7 +3494,6 @@ inside bounded inputs. The conclusion survives; the recipe is now recorded besid
 
 ## Round 49: the round that left no record, and the machinery that could not notice
 
-**BUSINESS DOC RECONCILED Round 49.**
 
 Round 48 shipped and wrote nothing here. That is an omission; what makes it a defect is that **every
 gate able to notice reads the round number out of this file.**
@@ -3651,7 +3630,6 @@ correction never reached. That is Round 48's "landed in one of three copies" def
 the paragraph that documented it.
 ## Round 50: one column explained the gap, and the round's own claims needed correcting three times
 
-**BUSINESS DOC RECONCILED Round 50.**
 
 Round 49 shipped a model and a claim about it. The model was invisible - it had never been deployed -
 and the claim was wrong about someone else's work. Both are fixed, and the corrections came from
@@ -3741,7 +3719,6 @@ with the file's own regex: **449 rows, 53 prefixes, zero duplicate IDs** - and R
 
 ## Round 51: the caption swapped one wrong claim for another, and the plot could not be drawn honestly
 
-**BUSINESS DOC RECONCILED Round 51.**
 
 ### The second walk, performed
 
@@ -3868,7 +3845,6 @@ is about, one layer up.
 
 ## Round 52: the credit reached the artifact, and two gates were wider than the drifts they watched
 
-**BUSINESS DOC RECONCILED Round 52.**
 
 Round 51 put the missing attribution in the registry and the browser. That did not discharge either
 licence, because Hub model cards are GENERATED - the credit reaches the published artifact only on a
@@ -3928,7 +3904,6 @@ uncredited, and it is the same shape as reading a mirror's silence as the source
 
 ## Rounds 53-54: the four pipelines, and a fix that reached the one language that does not ship
 
-**BUSINESS DOC RECONCILED Round 54.**
 
 Round 52 recorded that only finance had been driven to completion. All five pipelines have now been
 run end to end on the deployed site with every published model re-scored in-tab and passing. Four
@@ -3987,7 +3962,6 @@ Annotated rather than rewritten, because the pre-closure count is the finding.
 
 ## Round 55: the reference line could never draw, and the gate checked the mechanism not the outcome
 
-**BUSINESS DOC RECONCILED Round 55.**
 
 Round 54 drew `MetricSpec.baseline` as a reference line on the per-class-F1 chart and gated it: the
 value must come from `spec.metric.baseline`, never from `res.baseline` (the trivial predictor). Both
@@ -4072,9 +4046,6 @@ copies. The gates added this round enumerate rather than list - note fields from
 from the file, combiner branches from the exporter - because a hand-written list is maintained by the
 same person who forgot the second copy.
 
-BUSINESS DOC RECONCILED Round 56. The out-of-repo document was at R16-R18 and is now brought level
-with what has been measured since. Its content is not quoted here, in the checklist, or in any commit
-- only the fact of the reconciliation, which is what gate 16 reads.
 
 ## Round 58: two comparisons that measured different things, and public text that claimed more than the demo does
 
@@ -4202,9 +4173,6 @@ overflow. One defect was found and fixed in this PR: the diagram's QSDC label pa
 channel loss with a g that includes the detector's 4 dB (g = 701 is 28.5 dB), while the log printed the
 same g at 28.5 dB; both now say which loss they name.
 
-BUSINESS DOC RECONCILED Round 58. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 57: a docstring that beat a baseline it did not, and a gate that tells a withdrawal from a claim
 
@@ -4325,9 +4293,6 @@ by this change: the published medical ResNet-18's `session.run` alone took 18216
 software adapter; this adapter is hardware), and the inference tier's ONNX Runtime (1.27.0, not moved
 here) logs at error level that some nodes were not assigned to the WebGPU provider.
 
-BUSINESS DOC RECONCILED Round 59. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 60: the small models run on WASM unless the visitor selects WebGPU
 
@@ -4415,9 +4380,6 @@ One ONNX Runtime warning, logged at error level, was seen on the satellite page:
 declares an output of {1,6} and the whole-sample evaluation produces {128,6}. The scores verified, and
 whether the warning predates this change was not checked.
 
-BUSINESS DOC RECONCILED Round 60. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 61: react-router 7, which clears the two router advisories Round 59 could only assess
 
@@ -4461,9 +4423,6 @@ an unknown id, the `?usecase=` selection and its fallback all behaved, with zero
 the medical pipeline verified all three published models and signed its summary; and the console
 carried no router warning.
 
-BUSINESS DOC RECONCILED Round 61. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 62: vite 6, which clears the dev-server advisories
 
@@ -4500,9 +4459,6 @@ onnx-wasm in 36.72 ms, the published models verified PASS and the summary signed
 fetched at 200. The agent answered on WASM in 2.5 s with the envelope authenticated and the tampered
 copy rejected, and the console showed no error.
 
-BUSINESS DOC RECONCILED Round 62. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 63: the archived garbled-circuit tier, rebuilt on Polytune and measured, not adopted
 
@@ -4558,9 +4514,6 @@ the tab - but adopting it would still be its own decision, on the network number
 take. UNVERIFIED - needs confirmation: the timings over a real link; a security review of the
 integration and of Polytune's alpha API; the effect of `wasm-opt`, which was not run.
 
-BUSINESS DOC RECONCILED Round 63. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 64: the two garbled-circuit engines, measured over a real, shaped network
 
@@ -4637,9 +4590,6 @@ file name the local build produced). The network card renders on `/validations` 
 with both charts (six bars each), the twenty-row table and the key points, and no horizontal page
 overflow; the other nine pages render their headings with no error boundary and no overflow.
 
-BUSINESS DOC RECONCILED Round 64. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 65: Polytune replaces the archived garbled-circuit tier
 
@@ -4725,9 +4675,6 @@ text/plain with 69 entries, Polytune's MIT text among them. On `/validations` at
 "emp-wasm (replaced)" and "Polytune (now shipped, hatched)" in both charts and links the notices in a
 new tab, and nothing in it overflows. The console showed no error.
 
-BUSINESS DOC RECONCILED Round 65. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 66: secret-sharing masks from the CSPRNG, and the argmax shared modulo $`2^{32}`$
 
@@ -4836,9 +4783,6 @@ All ten pages render with zero horizontal overflow at 1280 and at 390 px. No pag
 The module (`qsh_mpc_bg-BLEWuLKJ.wasm`) and its loader were fetched with 200, and the notices are still
 69 entries. The Validations card shows the new circuit beside the measured one.
 
-BUSINESS DOC RECONCILED Round 66. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 67: every locked dependency checked against the advisories, daily
 
@@ -4931,9 +4875,6 @@ its context. All ten pages render with zero horizontal overflow at 1280 and at 3
 pipeline took 135.73 ms over 922.48 KB, all three published models verified PASS, and the summary
 signed.
 
-BUSINESS DOC RECONCILED Round 67. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 68: the Polytune integration reviewed
 
@@ -5027,9 +4968,6 @@ All ten pages render with zero horizontal overflow at 1280 and at 390 px, and th
 error. The failure paths were not exercised on the public demo, because that would mean breaking the
 deployed build. They were exercised locally, above.
 
-BUSINESS DOC RECONCILED Round 68. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 69: the open items researched, and the AI Act stated per use case
 
@@ -5137,9 +5075,6 @@ ways, each seed firing. Redeployed (6b76af4, `index-CXjkbFrg.js`) and walked: af
 use-case pages print the revised sentence with its caveat. The medical index is still checked in the
 clear, and all ten pages render with zero overflow at 1280 and 390 px.
 
-BUSINESS DOC RECONCILED Round 69. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 70: the areas verified longest ago, re-checked first
 
@@ -5222,9 +5157,6 @@ by a live observation.
 - The console carried only the two satellite messages that Round 69 recorded as proposals, once per
   satellite run.
 
-BUSINESS DOC RECONCILED Round 70. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 71: the evaluation samples drawn from their held-out windows, and the satellite forecaster retrained
 
@@ -5416,9 +5348,6 @@ UNVERIFIED - needs confirmation: the first scheduled run of the dependency-advis
 main and its trigger block is valid. GitHub documents that scheduled runs can be delayed or dropped
 under load, so this is recorded as not yet observed rather than as broken.
 
-BUSINESS DOC RECONCILED Round 71. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 72: the items carried as UNVERIFIED, read at their sources
 
@@ -5509,9 +5438,6 @@ demo serves this branch while it is checked.
 - **All ten pages, at 1280 and 390 px.** No overflow, and no NaN, undefined or `[object Object]`.
   The console showed no error.
 
-BUSINESS DOC RECONCILED Round 72. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 73: mathematics in the house form, special symbols out of the documents, and a duplicate entry
 
@@ -5574,9 +5500,6 @@ restructures the file most readers see first, so it is left for the user's decis
 - no non-ASCII character outside the two allowed cases, and the allow-list fails when an allowed case
   disappears.
 
-BUSINESS DOC RECONCILED Round 73. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 74: accessibility re-measured, a readout in place of the tooltip, and the calibration chart corrected
 
@@ -5728,9 +5651,6 @@ round.**
 - Console: no errors; four "Failed to create WebGPU Context Provider" warnings, expected in a browser
   without WebGPU. No horizontal overflow at the pane's 309 px or at 1280 px.
 
-BUSINESS DOC RECONCILED Round 74. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 75: the parameters read against their sources, and the MPC tier made real
 
@@ -5902,9 +5822,6 @@ in 2b70f2d and were re-walked.
 - Cross-origin isolated; no horizontal overflow; console: no errors, only "Failed to create WebGPU
   Context Provider" warnings, expected in a browser without WebGPU.
 
-BUSINESS DOC RECONCILED Round 75. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 76: the fibre detector set, sourced, and the dead time that comes with a 1 GHz clock
 
@@ -5994,9 +5911,6 @@ by `@huggingface/transformers`, nothing here imports it, and the download is onl
 its CPU ones are bundled. CI and the web image now set `ONNXRUNTIME_NODE_INSTALL=skip`, the switch the
 package documents.
 
-BUSINESS DOC RECONCILED Round 76. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 77: the satellite atmosphere, the pass, and the network beyond the horizon
 
@@ -6134,9 +6048,6 @@ started because recent account payments have failed or your spending limit needs
 That is the account owner's to clear, and the jobs never reached a step. Until it is, the record of CI
 for this round is `scripts/ci_local.sh`: all 18 blocking gates pass on 6a0250d.
 
-BUSINESS DOC RECONCILED Round 77. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 78: rates per pulse sent, the model against every Micius night, and two options verified first
 
@@ -6228,9 +6139,6 @@ key", a decoy clause on a protocol with none, and its source cell cited the deco
 Qi, Zhao & Lo 2005) for it. It now says every pair counts and cites Ma, Fung & Lo, Phys. Rev. A 76,
 012307 (2007), as the facts row already did; each bound carries its own paper.
 
-BUSINESS DOC RECONCILED Round 78. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 79: the satellite's key as a finite key over a pass, and two errors in the one-decoy bound
 
@@ -6334,9 +6242,6 @@ and a budget of 68,606 bits. The security parameter at 1e-10: 87,815 bits. Two p
 profile's vacuum option disabled. Telecom unchanged: 28,534 bits, 1.427e-3 per pulse sent, 20 ms,
 eskr 1,070,011. No "Infinity" or "NaN", console clean.
 
-BUSINESS DOC RECONCILED Round 79. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 80: every fibre key a finite key, and the factor of two that was the test's
 
@@ -6407,9 +6312,6 @@ one". Validations: "secure key bits (composable finite key) 5,184,652 over a blo
 pulses", the telecom run's count. The satellite unchanged: 91,475 bits over 408.5 s. No "Infinity" or
 "NaN", console clean.
 
-BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 80, continued: the README made a summary, and three defects its screenshots showed
 
@@ -6514,9 +6416,6 @@ three defects were measured before the fix:
 On GitHub the branch's README draws all five diagrams at full size in an 846 px column and loads
 all eleven screenshots.
 
-BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's
-continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
-the reconciliation, which is what gate 16 reads.
 
 ## Round 80, continued: the diagrams during a run, the report's figures, and two pipelines brought into step
 
@@ -6615,9 +6514,6 @@ check and the web node checks; the new figure and protocol tests.
 On GitHub the branch's README opens each collapsed section to its diagram: the five use cases and the
 verification environment, each rendered at the column's width.
 
-BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's second
-continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
-the reconciliation, which is what gate 16 reads.
 
 ## Round 80, continued: the report's figures and tables laid out, and a scan of every page's text
 
@@ -6797,9 +6693,6 @@ component nobody renders. It is now an anonymous render function, with the same 
 - **Overall.** No page scrolled sideways, and the console showed no errors. The tab was closed, and
   no sidebar preference was stored.
 
-BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's third
-continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
-the reconciliation, which is what gate 16 reads.
 
 ## Round 80, continued: the use-case pages drawn as their architecture, animated by the run
 
@@ -6899,9 +6792,6 @@ same bundle the local build produced).**
 - **The scan against the deploy:** no findings in the local font at 1280 and 390 px, nor in DejaVu
   Sans at 1280 px.
 
-BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's fourth
-continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
-the reconciliation, which is what gate 16 reads.
 
 ## Round 80, continued: the README's screenshots taken again, and what looking at them found
 
@@ -6960,9 +6850,6 @@ produced) and walked in the user's Chrome.**
 further fault.** The overview and use-cases images came out byte-identical to the last capture,
 their pages unchanged.
 
-BUSINESS DOC RECONCILED Round 80. The out-of-repo document is brought level with this round's fifth
-continuation. Its content is not quoted here, in the checklist, or in any commit - only the fact of
-the reconciliation, which is what gate 16 reads.
 
 ## Round 81: the E2E page drawn as its architecture, and a canvas that said more than it drew
 
@@ -7059,9 +6946,6 @@ client-only build produced) and walked in the user's Chrome.**
   - finance, medical and validations, which differ only in measured timings;
   - four pages that came out byte-identical.
 
-BUSINESS DOC RECONCILED Round 81. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 82: the finite key's statistics, and a third error in the one-decoy bound
 
@@ -7224,9 +7108,6 @@ faults in this round's own changes, and the owner chose the fix:
   disabled reason only on hover; the Validations download enabled before any run; and the 3D view rebuilt
   on every render during a run (20 to 26 WebGL contexts per Start). All five are rows for the defects round.
 
-BUSINESS DOC RECONCILED Round 82. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 16 reads.
 
 ## Round 83 - overclaims, licences and IR 8547 final (2026-10-30 to 2026-10-31)
 
@@ -7530,9 +7411,6 @@ afterwards):
   bundle; the satellite run log and SHAP section print the corrected sentence and no "FHE/MPC
   pipeline"; 6 of 6 stages, 139,251 bits.
 
-BUSINESS DOC RECONCILED Round 83. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 17 reads.
 
 ## Round 84 - the defects round, the 2026-10-31 sweep, and the owner's decisions (2026-10-31 to 2026-11-01)
 
@@ -7816,9 +7694,6 @@ published an emscripten or Pyodide wheel. marimo's offline issue #575 is still o
 2026-09-30); pyvista-wasm is at 0.16.0 (2026-10-24), and this project still has no three-dimensional
 data. Declined as before.
 
-BUSINESS DOC RECONCILED Round 84. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 17 reads.
 
 ## Round 85 - every selection walked in one tab, two memory leaks, and the owner's decisions (2026-11-01)
 
@@ -7991,9 +7866,6 @@ walk's one finding, below, was fixed and deployed at 9bc737e (bundle `index-jM5M
   ML-DSA-65 signature, with no console error; headless, all 129 all-pairs rows finished again with
   verification PASS wherever a model is published and no console error.
 
-BUSINESS DOC RECONCILED Round 85. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 17 reads.
 
 ## Round 86 - release 0.85.0, the technical report made private, and a summary of the gates (2026-11-02)
 
@@ -8359,6 +8231,35 @@ definition. These readings of the Code are this project's own.
   1,024 bytes, so the module could not run in the gate that checks it. The bytes are RFC 5869's (compared
   against the formula by hand at 2,382 bytes of `info`).
 
-BUSINESS DOC RECONCILED Round 86. The out-of-repo document is brought level with this round. Its content
-is not quoted here, in the checklist, or in any commit - only the fact of the reconciliation, which is
-what gate 17 reads.
+### Local-only names, the demo host's details, and a source no reader can open
+
+All three are the owner's choices, on a pass that read every plan and order against the tree.
+
+**Local-only names.** The tree named local files: `scripts/ci_local.sh` held one filename as `\u` escapes,
+which decode, and `Makefile`, `.gitignore`, `.dockerignore`, `ci.yml`, `check_secrets.sh` and a test named others
+and said where they live. This register carried a stamp per round about one of them. Now nothing names
+them. `.gitignore` and `.dockerignore` keep every root Markdown file local unless it is on a short list, which is
+stronger than the names it replaces, since it also covers a file nobody thought to list. `check_secrets.sh` fails on
+any other root Markdown file tracked, and reads any names it should look for from the git-ignored `.env.demo`.
+Gate 17 of `ci_local.sh` runs whatever local gates this machine declares there; a clone has none. The old text
+stays readable in the history until the rewrite this round ends with.
+
+**The demo host.** The docs said another project's proxy held the demo's ports, listed how the host was hardened,
+and gave its size in six files; the compose override and a test carried the other project's network name. They now
+give a generic recipe for running behind a reverse proxy. `PROXY_NETWORK` has no default, so a run without it fails
+loudly, and the value lives in `.env.demo`. "It fits a 6-core / 12 GB / 100 GB box" had no measurement behind it, so
+it goes too.
+
+**The source.** About 30 tracked lines cited a confidential document as "the report", some publishing a target or a
+quoted sentence. They now state the requirement as this project's own. The numbers tests hold, such as an attack F1
+of 0.93, stay as this project's thresholds.
+`tests/test_r86_nothing_cites_a_source_readers_cannot_see.py` keeps those phrases out.
+
+**One hole closed.** `check_secrets.sh` still exempted the technical report's four PDFs from "no PDF the tree has
+dropped", with a comment saying the history would be kept. It was rewritten on 2026-11-02, so the exemption protected
+nothing and would have let an old branch carrying them pass. It is gone.
+
+**One host allowed.** The business page sits under the demo's registered domain, on GitHub Pages, so it does not name
+the box. By the owner's choice `QSH_PUBLIC_HOSTS` in `.env.demo` lists it, and an occurrence of a listed host is removed
+before the domain is looked for; nothing else is excused, and a test holds that. No tracked file links it yet.
+
