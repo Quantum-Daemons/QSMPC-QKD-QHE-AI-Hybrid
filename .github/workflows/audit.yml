@@ -16,6 +16,8 @@ on:
     paths:
       - "web/package.json"
       - "web/package-lock.json"
+      - "docker/mcp-fs/package-lock.json"
+      - "requirements.lock"
       - "wasm/qsh-mpc/Cargo.toml"
       - "wasm/qsh-mpc/Cargo.lock"
       - "wasm/qsh-mpc/deny.toml"
@@ -25,6 +27,8 @@ on:
     paths:
       - "web/package.json"
       - "web/package-lock.json"
+      - "docker/mcp-fs/package-lock.json"
+      - "requirements.lock"
       - "wasm/qsh-mpc/Cargo.toml"
       - "wasm/qsh-mpc/Cargo.lock"
       - "wasm/qsh-mpc/deny.toml"
@@ -49,6 +53,16 @@ jobs:
           node-version: "22"
       - name: Fail on any advisory against web/package-lock.json
         run: bash scripts/audit_deps.sh npm
+
+  python:
+    # Round 86. Nothing audited the Python tier: CI and the image installed whatever the floors resolved to that day.
+    name: pip-audit (requirements.lock)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Fail on any advisory against requirements.lock
+        run: bash scripts/audit_deps.sh python
 
   seal:
     # Round 86. No advisory names Microsoft SEAL, so the job above passes while the browser's node-seal

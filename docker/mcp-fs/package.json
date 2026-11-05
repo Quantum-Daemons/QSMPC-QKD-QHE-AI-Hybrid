@@ -1,0 +1,8 @@
+{
+  "name": "qsh-mcp-filesystem-server",
+  "private": true,
+  "description": "The filesystem MCP server the API image starts, locked with its dependencies (Round 86). npx would resolve the dependencies afresh on each install.",
+  "dependencies": {
+    "@modelcontextprotocol/server-filesystem": "2.2.0"
+  }
+}

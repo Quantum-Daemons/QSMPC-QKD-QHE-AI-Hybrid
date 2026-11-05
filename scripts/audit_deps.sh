@@ -7,6 +7,7 @@
 #   bash scripts/audit_deps.sh npm      web/: npm audit, development tooling included
 #   bash scripts/audit_deps.sh rust     wasm/qsh-mpc: cargo-deny, advisories and sources
 #   bash scripts/audit_deps.sh seal     web/: the locked node-seal is still npm's newest
+#   bash scripts/audit_deps.sh python   requirements.lock: pip-audit against the versions and hashes it names
 #
 # npm audit and the node-seal check need Node and network access. The Rust check needs Docker and network access, and
 # installs nothing on the host: it runs in the same digest-pinned Rust image as the web image's wasm
@@ -24,6 +25,7 @@ audit_npm() {
   # No --omit=dev: the dev server and the build tooling run on developer machines and in CI, and
   # Round 59 counted them on purpose. info is the lowest level, so any advisory fails.
   (cd "${AUDIT_WEB_DIR:-web}" && npm audit --audit-level=info)
+  (cd docker/mcp-fs && npm audit --audit-level=info)
 }
 
 audit_seal() {
@@ -64,10 +66,22 @@ audit_rust() {
       /work/.cargo-home/bin/cargo-deny --color never check advisories sources"
 }
 
+audit_python() {
+  # What the image and CI install, not what the floors would resolve to today. --disable-pip: the lock is complete.
+  uvx --quiet --from "pip-audit>=2.9" pip-audit --disable-pip --require-hashes -r requirements.lock
+  # torch and torchvision carry a +cpu local version, which PyPI's advisory lookup skips with only a note, so they are
+  # asked about again under the public version they are built from.
+  plain=$(mktemp)
+  grep -E '^(torch|torchvision)==' requirements.lock | sed -E 's/\+cpu.*//' > "$plain"
+  uvx --quiet --from "pip-audit>=2.9" pip-audit --disable-pip --no-deps -r "$plain"
+  rm -f "$plain"
+}
+
 case "${1:-all}" in
   npm) audit_npm ;;
+  python) audit_python ;;
   rust) audit_rust ;;
   seal) audit_seal ;;
-  all) audit_npm && audit_seal && audit_rust ;;
-  *) echo "usage: $0 [npm|rust|seal]" >&2; exit 2 ;;
+  all) audit_npm && audit_seal && audit_python && audit_rust ;;
+  *) echo "usage: $0 [npm|rust|seal|python]" >&2; exit 2 ;;
 esac

@@ -8407,3 +8407,26 @@ mismatches, worst deviation 2.72e-8 and median 5.75e-9, smallest plaintext margi
 **One more defect from sampling.** distilGPT-2 is a completion model, and on the panel's prompt 2 of about 10 runs came back as nothing but newlines, with others
 repeating "PSI-based". `no_repeat_ngram_size` 3 gave text on 24 of 24 sampled runs and no such repeat. The reply is still nonsense, which the panel says it may be.
 
+
+### What CI and the image install is what a lock names
+
+By the owner's choice the floors stay in `requirements-*.txt`, and `requirements.lock` records what they resolved to, 121 packages with hashes,
+for the CPU tier the image and CI both use. Until now each installed whatever the floors resolved to that day, so two builds of one
+commit could differ, and CI could pass on versions the image never saw. `tests/test_requirements_lock_is_current.py` fails if an input changes
+and the lock was not regenerated (the digest is seeded with a moved floor), and if a floor is not met by what is locked.
+
+**The filesystem MCP server had the same gap.** `npx -y ...@2.1.0` pinned one package and resolved the rest afresh on each install. The API image now
+installs it from `docker/mcp-fs/package-lock.json`, and the result says which way it was started. Locking it is what showed the next thing: `npm audit` reports
+two moderate advisories against 2.1.0's dependencies (GHSA-3g3m-2fjr-6pw4 in `glob`, GHSA-g3hv-75wg-m249 in `minimatch`), and 2.2.0, published on 2026-11-04,
+clears them. It is pinned now.
+
+**The audit reads the locks.** `scripts/audit_deps.sh python` runs pip-audit on what the image installs, and nothing audited the Python tier before. It found nothing on
+2026-11-06. PyPI's lookup skips `torch` and `torchvision` because of their `+cpu` local version, with only a note, so they are asked about again under their public versions.
+
+**Base images too.** `caddy:2-alpine`, `node:22-alpine`, `python:3.12-slim-trixie` and three `:latest` monitoring images were whatever the registry held that day, including the image the
+demo serves from, so each is pinned by version and digest. The web image uses `npm ci` rather than `npm install`, which may rewrite the lock it was given.
+
+**The full deployment, walked.** The plans asked for it in a browser in both modes, and only its image had been probed. Built from these locks and brought up with compose: all five use cases
+ran by `POST /api/run/<id>` and a WebSocket in 4 to 12 s, Start, Start stepwise, Step, Resume, Pause, Restart and Stop each changed the state as labelled, the route audit passed with no console error and layout shift
+at most 0.031, and the filesystem endpoint answered from the locked server. The standalone Let's Encrypt path of `docs/deployment.md` is not walked: it needs a public domain and ports of its own.
+
