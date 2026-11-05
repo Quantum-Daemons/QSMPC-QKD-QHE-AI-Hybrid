@@ -281,7 +281,7 @@ export function deadTimeFactor(p: ChannelParams, clickProb: number): number {
  * Liao et al., Nature 549, 43 (2017) / arXiv:1707.00542.
  *
  * A measured anchor at the short end, for the atmospheric term this model carries as a constant:
- * arXiv:2607.24118 (2026-07-27, PREPRINT - no journal_ref, no DOI as of 2026-08-13) runs
+ * arXiv:2607.24118 (2026-07-27, PREPRINT - no journal reference or journal DOI as of 2026-11-03) runs
  * free-space decoy-state BB84 over a 2 km outdoor channel at 100 MHz and reports (v2, 2026-10-16)
  * an average finite-key 110 kbps at QBER 3.28% (v1: 164.8 kbps at ~3.3%), with active beam-wander correction by fast-steering mirrors. It does not calibrate
  * this model - a 2 km horizontal path and a ground-to-LEO slant range are different channels -

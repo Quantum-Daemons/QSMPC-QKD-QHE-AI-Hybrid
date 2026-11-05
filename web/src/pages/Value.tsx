@@ -85,7 +85,7 @@ export default function Value() {
         </Details>
       </div>
 
-      <h2 style={{ marginTop: 28 }}>The driver: Q-Day is being pulled forward</h2>
+      <h2 style={{ marginTop: 28 }}>The driver: resource estimates are falling and migration targets carry dates</h2>
       <div className="grid cols-3">
         {/* A RISK, which is what the primary sources call it; "HNDL is active" asserted an observed
             campaign that no primary source documents. EO 14412 sec. 1 (signed 2026-06-22, read at
@@ -93,7 +93,7 @@ export default function Value() {
             collecting United States information now, and decrypting it later once large-scale
             quantum computers are operational". */}
         <div className="card"><h3>HNDL is a present risk</h3><p>"Harvest Now, Decrypt Later": data with 30-year secrecy needs is already at risk. A PQC hybrid key exchange (ML-KEM + X25519) addresses it today; QKD is a simulated add-on in this demo.</p></div>
-        <div className="card"><h3>Resource estimates collapsing</h3><p>RSA-2048 break estimated under 1M noisy qubits (Gidney, arXiv:2505.15917, 2025) &mdash; about 1/20 the qubits of the 2019 estimate, though the runtime rises roughly 20&times; in exchange.</p></div>
+        <div className="card"><h3>Resource estimates falling</h3><p>RSA-2048 break estimated under 1M noisy qubits (Gidney, arXiv:2505.15917, 2025) &mdash; about 1/20 the qubits of the 2019 estimate, though the runtime rises roughly 20&times; in exchange.</p></div>
         <div className="card"><h3>Regulation sets the clock</h3>
           <KeyPoints items={[
             "NIST FIPS 203/204/205 are final (August 2024).",

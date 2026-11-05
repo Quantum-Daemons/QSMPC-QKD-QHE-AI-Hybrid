@@ -19,20 +19,15 @@ Serves the **plaintext** per-industry models at full precision for
 [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid).
 
 The demo has three model tiers. The encrypted tier runs under real CKKS and is small because
-homomorphic evaluation is cost-bounded - the largest model ever demonstrated end-to-end under CKKS is
-8B parameters at roughly a 10^4x runtime gap (IACR ePrint 2026/935). The browser tier runs int8 ONNX
+homomorphic evaluation is costly at this operating point; REFERENCES.md carries the published larger runs. The browser
+tier runs int8 ONNX
 where a quantised graph exists (medical ResNet-18, 11.3 MB); the two tree-ensemble models serve **fp32**,
 because dynamic int8 quantisation has nothing to quantise when the parameters live in node attributes
 rather than weight tensors. This Space is the third tier: models too large for either.
 
 > **Not currently wired up.** Nothing in `web/src` calls this Space - searching the frontend for
-> `qsh-inference`, `.hf.space` or `zerogpu` returns no hits, and although `ProvenanceBadge.tsx` declares a
-> `remote` tier, no code path ever sets it. The Space is complete and works standalone, but the **REMOTE**
-> label described below is unreachable in the deployed demo. Treat this as a staged component awaiting a
-> caller, not as a live tier.
-
-When a caller exists, results are labelled **REMOTE** in the demo. The latency reported there includes
-network and queue time and is not comparable with the in-browser measurements.
+> `qsh-inference`, `.hf.space` or `zerogpu` returns no hits, and the decision not to wire it is recorded in
+> `docs/findings.md`. Treat this as a component with no caller, not as a tier of the demo.
 
 ## Honest scope
 

@@ -22,8 +22,10 @@ small model properly once and see what it can do.*
 
 No pretrained model exists at 20-3,226 parameters for these tasks; the smallest useful published
 models are five to six orders of magnitude larger. A downloaded model would have to be distilled
-down anyway, which is what already happens, and the teachers here already sit at or above their
-published baselines (resnet18 0.9147 vs 0.901; opssat 0.9681 vs 0.979; resnet50 0.7988 vs 0.857).
+down anyway, which is what already happens. Downloading would not close the gaps to published baselines either,
+since those gaps come from protocols and data as much as from size: of the teachers, only resnet18 clears its
+baseline (0.9147 vs 0.901), while opssat (0.9681 vs 0.979), resnet50 (0.7988 vs 0.857), the finance gradient-boosting
+model (0.1519 vs 0.6323) and telemanom (0.0 vs 0.968) sit below theirs, each for the reasons its card states.
 
 ## Option 2: reinforcement learning - NO, and it is a category error at this scale
 

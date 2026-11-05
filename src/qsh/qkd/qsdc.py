@@ -72,7 +72,7 @@ def serfling_upper(observed: float, n_check: int, n_message: int, eps: float = E
 
     Sampling is WITHOUT REPLACEMENT - the check carriers are drawn from the same finite block as the
     message carriers and then discarded - so the right tool is Serfling's inequality, not Hoeffding's.
-    Curras-Lorenzo, Navarrete, Pereira & Curty, arXiv:2410.04095, Eq. (15), after Lemma 6 of
+    Mannalath, Zapatero & Curty, PRL 135, 020803 (2025), arXiv:2410.04095, Eq. (15), after Lemma 6 of
     Tomamichel, Lim, Gisin & Renner, Nat. Commun. 3, 634 (2012), after Serfling, Ann. Statist. 2, 39
     (1974). Guarantees ``Pr[e_message >= e_up] <= eps``.
 

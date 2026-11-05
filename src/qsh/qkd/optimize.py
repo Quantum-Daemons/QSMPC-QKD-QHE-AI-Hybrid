@@ -1,4 +1,4 @@
-"""AI-driven QKD parameter optimization (OptiQKD, WS1).
+"""QKD parameter optimization (OptiQKD, WS1).
 
 A compact, honest, **measured** optimizer that tunes decoy-state + efficient-BB84 parameters
 (``mu_signal``, ``basis_prob``, ``pp_threshold``) to maximise the secret-key rate (SKR) over the

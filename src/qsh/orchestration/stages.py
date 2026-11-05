@@ -262,7 +262,7 @@ class QKDKeyAgreementStage(Stage):
 
 
 class OptiQKDStage(Stage):
-    """AI-driven QKD parameter optimization (OptiQKD, WS1): a measured, gradient-free + surrogate
+    """QKD parameter optimization (OptiQKD, WS1): a measured, gradient-free + surrogate
     search tunes decoy/basis params to raise SKR vs the default baseline on the same simulated channel.
 
     Gated by ``qkd_optimize`` (default off); opt-in via the WebUI toggle. Simulation, not hardware.
@@ -664,7 +664,7 @@ class ExplainabilityStage(Stage):
     (high-risk systems only: 2027-12-02 for Annex III, 2028-08-02 for Annex I products such as
     diagnostic software, after the AI Omnibus deferral, not Aug 2026). Faithful (exact for the linear model) and
     cheap; the attributions are written to ``ctx.artifacts["explanation"]`` so the downstream
-    :class:`SignatureStage` ML-DSA-signs them -> a tamper-evident, regulator-facing explanation.
+    :class:`SignatureStage` ML-DSA-signs them with a per-run key.
     Skips cleanly when the use case has no linear model to explain (e.g. secure-sum, IDS, QSDC).
     """
 
@@ -770,8 +770,8 @@ class SignatureStage(Stage):
     """Sign the run summary with the selected post-quantum signature (crypto-agility).
 
     Demonstrates the registry's `sig` family at runtime: the chosen ML-DSA provider
-    signs the canonical summary and the signature is verified, producing a tamper-evident,
-    quantum-safe audit record of the run (this project's XAI and audit-trail requirement).
+    signs the canonical summary and that same key verifies it. The key is freed here and only a prefix of the
+    signature is kept, so the record cannot be verified by a third party (`docs/threat-model.md`).
     """
 
     name = "sign_result"

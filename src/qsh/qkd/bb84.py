@@ -47,7 +47,7 @@ that did not survive checking. ``QKDConfig.pulses`` carries the current block si
 and the margin it is sized for; what THIS module reports either way is the
 asymptotic decoy bound, a different quantity, labelled as one.
 
-This is the physical substrate for WS1 (AI-QKD): the AI optimizer
+This is the physical substrate for WS1 (AI-QKD): the optimizer
 (:mod:`~qsh.qkd.ai_optimizer`) tunes parameters here to maximise SKR / minimise QBER.
 A small Qiskit circuit demo is provided in :func:`bb84_circuit_demo` to show the
 quantum mechanics explicitly; the Monte-Carlo path scales to long keys.
@@ -188,7 +188,7 @@ def _qkd_cfg():
 
 @dataclass
 class QKDParams:
-    """Tunable protocol parameters the AI optimizer (:mod:`~qsh.qkd.optimize`) searches over.
+    """Tunable protocol parameters the optimizer (:mod:`~qsh.qkd.optimize`) searches over.
 
     ``basis_prob`` = P(Z basis): biased-basis (efficient) BB84 raises the sift ratio ``p^2+(1-p)^2``
     above 0.5 (Lo-Chau-Ardehali 2005). ``mu_signal`` = decoy-state signal mean photon number: higher mu
@@ -260,7 +260,7 @@ def run_bb84(
 ) -> QKDResult:
     """Simulate a decoy-state BB84 session over ``n_pulses`` channel uses.
 
-    ``qkd_params`` (a :class:`QKDParams`) turns on the decoy-state + efficient-BB84 model the AI optimizer
+    ``qkd_params`` (a :class:`QKDParams`) turns on the decoy-state + efficient-BB84 model the optimizer
     tunes; ``None`` keeps the original uniform-basis behaviour byte-for-byte. ``entropy="qrng"`` derives the
     RNG seed from the (simulated) quantum RNG so the basis/bit choices have a genuine quantum entropy root.
 
@@ -286,7 +286,7 @@ def run_bb84(
         qber_phys = intrinsic_qber(params)
         pp_threshold = 1.0
     else:
-        # --- decoy-state + efficient (biased-basis) BB84: the AI-optimizable model ---
+        # --- decoy-state + efficient (biased-basis) BB84: the optimizable model ---
         p = float(np.clip(qkd_params.basis_prob, 0.01, 0.99))
         alice_bits = rng.integers(0, 2, n_pulses)
         alice_bases = (rng.random(n_pulses) >= p).astype(int)   # P(basis 0) = p
@@ -463,8 +463,7 @@ def derive_block_key(result: QKDResult, key_bits: int, n_bytes: int = 32) -> byt
 def bb84_circuit_demo(n: int = 8, *, seed: int | None = None) -> dict:
     """Tiny Qiskit BB84 demo (no channel noise) showing sift + key agreement.
 
-    Returns a dict with Alice/Bob bits, bases, and the sifted key. Used by the SPA
-    'Validations' page to render the quantum mechanics explicitly.
+    Returns a dict with Alice/Bob bits, bases, and the sifted key. Only `tests/test_qkd.py` calls it.
     """
     from qiskit import QuantumCircuit
     from qiskit_aer import AerSimulator

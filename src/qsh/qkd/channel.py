@@ -3,7 +3,7 @@
 Captures the real-world impairments WS1 (AI-QKD parameter
 optimization) must track: fibre loss, polarization/phase drift, detector dark
 counts, and an optional intercept-resend eavesdropper. Outputs feed the QBER /
-SKR telemetry consumed by the AI optimizer.
+SKR telemetry consumed by the optimizer.
 """
 
 from __future__ import annotations

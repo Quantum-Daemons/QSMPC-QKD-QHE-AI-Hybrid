@@ -1,8 +1,8 @@
 """Alice <-> Bob two-party end-to-end orchestration benchmark.
 
-The canonical two-party setting (Zhang et al., *Experimental SMPC from
-Quantum Oblivious Transfer with Bit Commitment*, npj Quantum Information 2026): two
-organisations compute over each other's private data without a trusted third party. This
+Two organisations compute over each other's private data without a trusted third party, the setting
+of Zhang et al., *Experimental SMPC from Quantum Oblivious Transfer with Bit Commitment*, npj Quantum
+Information 2026, whose quantum oblivious transfer is not what runs here. This
 wires the real primitives end to end with per-party timing:
 
     Bob   : publishes a hybrid-KEM public key (responder keypair)

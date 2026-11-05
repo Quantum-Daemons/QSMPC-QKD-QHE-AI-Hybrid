@@ -30,7 +30,7 @@ from scipy.special import erfc, gammaincc
 #: continuous tests. 2^-20 is the standard's own worked-example value.
 HEALTH_ALPHA = 2.0 ** -20
 
-#: Adaptive Proportion window. Section 4.4.2: "W shall be 1024 for binary sources".
+#: Adaptive Proportion window. Section 4.4.2: "W ... shall be assigned to 1024 if the noise source is binary".
 ADAPTIVE_PROPORTION_W = 1024
 
 #: Section 4.3 requires start-up testing over at least this many consecutive samples.
@@ -163,7 +163,7 @@ def _block_frequency(bits: np.ndarray, block_size: int) -> float:
     return float(gammaincc(n_blocks / 2.0, chi_sq / 2.0))
 
 
-# 99% one-sided confidence Z for the SP 800-90B most-common-value bound (intentionally fixed spec constant).
+# Z(1 - 0.005), a 99% two-sided confidence: SP 800-90B 6.3.1 writes it as 2.576 (intentionally fixed spec constant).
 _MCV_Z = 2.5758293035489004
 
 
@@ -179,7 +179,7 @@ def _min_entropy_mcv(bits: np.ndarray) -> float:
         return 0.0
     ones = int(np.count_nonzero(bits))
     p_hat = max(ones, n - ones) / n
-    p_upper = min(1.0, p_hat + _MCV_Z * float(np.sqrt(p_hat * (1.0 - p_hat) / n)))
+    p_upper = min(1.0, p_hat + _MCV_Z * float(np.sqrt(p_hat * (1.0 - p_hat) / max(n - 1, 1))))
     return float(-np.log2(p_upper)) if p_upper > 0 else 0.0
 
 

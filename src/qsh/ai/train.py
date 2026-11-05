@@ -1,7 +1,7 @@
 """Training utilities for the small models (centralized baseline).
 
 A minimal, GPU-aware training loop used both to produce the trained models the
-public demo serves (inference only) and as the local "full implementation"
+public demo serves and as the local "full implementation"
 counterpart to the federated path.
 """
 

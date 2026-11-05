@@ -45,12 +45,10 @@ test: ## Run the test suite (pytest prints the count; -m "not slow" deselects th
 	# third. A count that has to be hand-maintained in a comment will drift; pytest reports it
 	# on every run, which is the version that cannot go stale.
 	#
-	# -m "not slow" deselects the Node- and OpenFHE-gated tests. Without it the OpenFHE
-	# bootstrap test SIGSEGVs inside EvalBootstrapSetup on AlmaLinux 9.7 -- the import guard
-	# in fhe/backends.py catches an ImportError, not a segfault, so the process just dies.
+	# -m "not slow" deselects the Node- and OpenFHE-gated tests, which take far longer.
 	$(PY) -m pytest -m "not slow"
 
-test-all: ## Run every test including slow ones (may segfault on OpenFHE, see above)
+test-all: ## Run every test including slow ones
 	$(PY) -m pytest
 
 check-pqc: ## FIPS 203 s7.2 negative vectors + FIPS 204 sizes, vs the vendored CC0 snapshot

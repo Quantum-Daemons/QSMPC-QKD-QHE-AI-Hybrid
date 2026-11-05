@@ -1143,7 +1143,7 @@ different architecture class.
 **An additional ML model: DECLINED per option, with measurements.**
 `references/model-strategy-decision.md`. The encrypted tier evaluates 20-3,226 parameters because
 CKKS at `poly_modulus_degree` 8192 gives one multiplicative level; no pretrained model exists at that
-size, and the teachers already sit at or above their published baselines. *Reopens if* bootstrapping
+size, and a downloaded model would be distilled the same way (this round read "the teachers already sit at or above their published baselines", which holds for resnet18 alone; see `references/model-strategy-decision.md`). *Reopens if* bootstrapping
 lands in the browser tier, which would change the parameter budget rather than the preference.
 
 **Metric choice against 2026 practice: ANSWERED, and two of the five choices are
@@ -8263,3 +8263,73 @@ nothing and would have let an old branch carrying them pass. It is gone.
 the box. By the owner's choice `QSH_PUBLIC_HOSTS` in `.env.demo` lists it, and an occurrence of a listed host is removed
 before the domain is looked for; nothing else is excused, and a test holds that. No tracked file links it yet.
 
+
+### Corrections from the fact-check sweep, read at the sources (2026-11-03 to 2026-11-05)
+
+Four sweeps and nine readers of the tree, each finding checked at its primary source before it changed anything, in a
+browser where a script is refused. Held by `tests/test_r86_facts_from_the_sweep.py` where a test can hold it.
+
+**A position that moved.** BSI's TR-02102 page, updated 2026-10-02 after RFC 10024, says SecP256r1MLKEM768 and
+SecP384r1MLKEM1024 will be recommended in the next TR-02102-2 and can already be used TR-compliant in TLS 1.3, and that
+X25519MLKEM768 can also be used. The Overview page and the roadmap still gave the January position, which the PDF they
+cited keeps. NSA's QKD page, which scripts cannot read, was read in a browser and is quoted. cnss.gov could not be reached,
+so CNSSP 15's dates are now marked as read through the FAQ. Japan's 2035 is a target for government agencies' systems, from
+the National Cybersecurity Office's interim report, and its page listed no roadmap on 2026-11-03. EO 14413 has its number,
+IR 8547's replaced PDF has its hash, and the Federal Register held no FAR rule on 2026-11-05.
+
+**The clock's scope column.** Art. 50 binds more than chatbots and synthetic media, FIPS 140-2's historical date binds
+federal agencies in two countries rather than "procurement", NIST's dates are an announced schedule since SP 800-131A
+Rev. 3 is still a draft, and OMB M-26-15 reaches further than EO 14412's two categories.
+
+**What a published module or standard could prove wrong.**
+
+| Where | Was | Now |
+|---|---|---|
+| `qkd/sdn_controller.py` | status `OPERATING`, two roles | `etsi-qkdn-types`: `ENABLED`, `ACTIVE`, and `TRANSCEIVER` |
+| `qrng/health.py`, `clientQRNG.ts` | the bound divided by $`L`$, its $`Z`$ called one-sided, section 4.4.2 misquoted | SP 800-90B section 6.3.1: $`L-1`$, and 2.576 is the two-sided 99% value; the quote matches |
+| `qkd/decoy_reference.py` | arXiv v2's numbering | v5's, the one with the one-decoy section; transmittance is Eq. (5) |
+| `qkd/qsdc.py` | a wrong author list | Mannalath, Zapatero and Curty, PRL 135, 020803 (2025) |
+| `qkd/kme.py` | "clause 5" | GS QKD 014 clause 6.1, Table 9; 352 is the example value |
+| `references/net-key-schedules.md` | no errata | RFC errata 8775, 9022, 9036 and the IANA values |
+| `metrics.py` | Web XSS F1 "0.11" | 0.18 to 0.79; 0.11 is its recall (Engelen et al., Table II, read in the PDF) |
+
+**Papers read past the abstract.** Safhire v2 says up to 7.6x against Orion and 7.4x against Concrete-ML, where v1 said 1.5x
+to 10.5x. ePrint 2026/1627 was retitled. Sidhu et al. has a v2 with new authors, so the entry pins v1 and says what moved.
+Bilgi et al. v2 is an edge-centric GNN on HEonGPU, 5.31 s per queried transaction on one RTX 5090 with the graph held
+in plaintext. Trimming's v2 carries its author's doubt about its own idea, so the registry stops calling it a direction
+that would qualify anything. New entries for ePrint 2026/2490, 2575, 2546, 1671, 2524 and 2675, none of which changes a
+number here: 2026/2546 belongs to `references/he-scheme-selection.md`, because an exact scheme is no way out of the
+decryption-results problem.
+
+**Claims about what runs here.**
+
+- A malicious MPC participant has no mitigation: the threat model named identifiable abort and QOT test rounds, and neither
+  exists. The QOT sketch is in no flow, so the Overview page, the architecture document and the findings stop putting it in
+  one, and the use-case page stops crediting Zhang et al. for what it runs.
+- "The diagram illustrates the WAN two-party deployment" described a deployment that has never existed.
+- "GPU MPC" for non-linear layers: hpmpc's GPU code covers matrix multiplication and convolution, so the submodule table
+  says so.
+- "2026-standard", "the 2026 QML-IDS standard" and "de-facto standard" were this repository's own labels. EncFormer is a
+  preprint, and the linear-to-FHE split is a line of work, named as one. Clifford against T is an analogy, not a fact about
+  the gates, every one of which is linear. `ReLU([x]) = [x] * [x>0]` had lost its operator.
+- The optimiser is a regression surrogate with coordinate ascent in the full deployment, and coordinate ascent on the page,
+  so it stops being "an AI optimizer" in the text.
+- The signed explanation is under a per-run key. It shows the record is unchanged since signing and not who signed it, and
+  anyone can edit a copy and sign again, so "tamper-evident, regulator-facing" goes, and the panel says so.
+- `explainability.py` said supervisors "already expect" SHAP and that the background mean is securely aggregated. Neither SR
+  11-7 nor GDPR Art. 22 names SHAP, the mean is the dataset's, and there are no counterfactuals. "(c) MET" in the findings now
+  says what holds: input privacy by the QOTP theorem, correctness tested at four depths, nothing checking a deviating server.
+- "The teachers already sit at or above their published baselines" holds for one of five, so the model-strategy note gives
+  all five. Two references and a log note still called 0.883721 the shipped medical accuracy, two rounds after the
+  retrain at c = 0.5 moved it to 0.953488, level with logistic regression at seed 0 and behind it over five seeds.
+- The Value page's headings said Q-Day "is being pulled forward" and resource estimates are "collapsing" over cards that say
+  estimates are falling. They say that now.
+- The Space's README described a capability probe and a REMOTE label that do not exist; the Rhombus repository's name
+  went from the scripts since nothing depends on it; `Makefile`'s OpenFHE segfault no longer reproduces.
+
+**Licence text.** `submodules/HEonGPU` moved to enCRYPTON-labs and is 156 commits past the pin, and hpmpc one. tfhe-rs is BSD
+3-Clause Clear with the patent grant withheld, not "research only". The maintenance rule is one number in one place, 12
+months, by the owner's choice, and an advisory with no fix fails a dependency at any age.
+
+**The box, read again.** AlmaLinux 9.8, kernel 5.14.0-687.65.1, driver 620.70.06, nvcc 13.5.37. A GPU figure dated before then
+ran on 9.7, nvcc 13.0.88 and driver 580.105.08, and `docs/development.md` says so.

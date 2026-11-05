@@ -12,7 +12,7 @@ hypotheticals; each has a citation:
 
   telecom    Engelen, Rimmer & Joosen (WTMC 2021 @ IEEE S&P Workshops) corrected CIC-IDS2017 and
              found aggregate random-forest accuracy sits at 0.99 both before and after, while Bot
-             F1 moves 0.60 -> 0.99 and Web XSS 0.11 -> 0.79. The aggregate is blind to the fix.
+             F1 moves 0.60 -> 0.99 and Web Attack XSS 0.18 -> 0.79 (Table II). The aggregate is blind to the fix.
 
   satellite  Kim et al. (AAAI-22, arXiv:2109.05257) show point-adjustment "has a great possibility
              of overestimating the detection performance", and that under it "even a random anomaly

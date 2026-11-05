@@ -417,16 +417,14 @@ function UseCaseView({ usecase }: { usecase: string }) {
 
       <div className="note" style={{ marginTop: 16, fontSize: 12 }}>
         {/* "the benchmark below fills in" sat BELOW the benchmark (fixed in Round 58). */}
-        State: <b>{state}</b>. The diagram at the top is a live two-party simulator — each protocol step lights up as
+        State: <b>{state}</b>. The diagram at the top is a live simulator of this use case&apos;s parties — each protocol step lights up as
         the pipeline runs, and every panel on this page fills in from that same run (one Run, one result). Demo mode
-        computes entirely in the browser (no server compute); the full deployment adds the server-side backends and
-        the real MCP server. PoC runs LAN/local; the diagram illustrates the WAN two-party deployment.
+        computes entirely in the browser, with every party in this tab (no server compute); the full deployment adds
+        the server-side backends and the real MCP server.
         <div className="muted" style={{ marginTop: 6, fontSize: 11 }}>
-          Hybrid split, on the pages that run one (finance, medical, genomics), grounded in{" "}
-          <i>EncFormer</i> (linear layers to FHE, non-linear to MPC; in this tab only the argmax runs as
-          MPC) - system-level cost per
-          <i> "Beyond Latency: MPC &amp; FHE for PPML"</i> (arXiv 2604.00169, 2026) · two-party QOT per
-          <i> Zhang et al.</i> (npj Quantum Information 2026). See <code>references/</code>.
+          Hybrid split, on the pages that run one (finance, medical, genomics): linear layers to FHE and
+          non-linear ones to MPC, the line of work from Gazelle to BLB and the preprint <i>EncFormer</i>; in this
+          tab only the argmax runs as MPC. See <code>references/</code>.
         </div>
       </div>
 

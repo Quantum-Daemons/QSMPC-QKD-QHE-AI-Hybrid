@@ -72,7 +72,7 @@ def default_registry() -> CryptoRegistry:
     """Registry pre-populated with the project's providers."""
     reg = CryptoRegistry()
 
-    # KEM family: post-quantum hybrid (default) and a classical-only baseline
+    # KEM family: post-quantum hybrids
     from ..pqc.hybrid_kem import HybridKEMRecipient
 
     reg.register("kem", "ml-kem-768+x25519",
@@ -116,8 +116,8 @@ def default_registry() -> CryptoRegistry:
     reg.register("fhe", "openfhe-cpu", lambda **kw: get_backend("openfhe", **kw))
 
     # MPC family: the *non-linear* half of the hybrid (ReLU/argmax under secret sharing).
-    # MPyC (MIT, pure-Python Shamir + secure comparison) is the live engine; MP-SPDZ and
-    # hpmpc/PIGEON (vendored) are heavyweight production references.
+    # MPyC (MIT, pure-Python Shamir + secure comparison) is the live engine. The other two names are
+    # references that nothing runs: MP-SPDZ was removed in Round 17, and hpmpc is a submodule.
     reg.register("mpc", "mpyc-shamir", lambda **kw: "mpyc-shamir", default=True)
     reg.register("mpc", "mp-spdz", lambda **kw: "mp-spdz")
     reg.register("mpc", "hpmpc-gpu", lambda **kw: "hpmpc-gpu")

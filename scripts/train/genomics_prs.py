@@ -4,7 +4,7 @@
 There is nothing to train here, and that is the point. A PRS is a published per-variant effect-weight
 vector - PGS000072 is the 187-variant breast-cancer score of Graff et al. (Nat Commun 12:970, 2021;
 CC BY 4.0), genome-wide significant variants weighted by their log odds ratios - applied as a dot
-product. It is the rare model that is simultaneously the clinical standard and FHE-native, because a
+product. It is a published polygenic score and FHE-native, because a
 dot product is exactly what CKKS evaluates well. Presenting a genomic foundation model as a PRS method
 would be the most obvious credibility hole available, so this script does not.
 

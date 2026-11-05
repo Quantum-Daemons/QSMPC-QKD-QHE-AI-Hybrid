@@ -59,7 +59,7 @@ QkdnStatus = Literal["NEW", "OPERATING", "DOWN", "FAILURE", "OUT"]
 #: association relayed through trusted nodes (clause 5.4).
 QkdLinkType = Literal["PHYS", "VIRT"]
 #: identity ``QKD-ROLE-TYPES``.
-QkdRole = Literal["TRANSMITTER", "RECEIVER"]
+QkdRole = Literal["TRANSMITTER", "RECEIVER", "TRANSCEIVER"]
 
 
 @dataclass(frozen=True)
@@ -68,7 +68,7 @@ class QkdInterface:
 
     qkdi_id: str
     qkdi_type: str = "DV-QKD"          #: identity QKD-TECHNOLOGY-TYPES: CV-QKD, DV-QKD, DV-QKD-COW, ...
-    qkdi_status: str = "OPERATING"
+    qkdi_status: str = "ENABLED"       #: iface-status-types: ENABLED, DISABLED, FAILED
     qkdi_model: str = "simulated"
     #: ``qkdi_att_point`` -- where the module attaches to the classical network.
     device: str = "sim0"
@@ -91,7 +91,7 @@ class QkdLink:
     qkdl_remote_qkdn_id: str
     qkdl_type: QkdLinkType = "PHYS"
     qkdl_enable: bool = True
-    qkdl_status: str = "OPERATING"
+    qkdl_status: str = "ACTIVE"        #: link-status-types: ACTIVE, PASSIVE, PENDING, OFF
     #: Applications (SAEs) currently bound to this association -- ``qkdl_applications``.
     qkdl_applications: list[str] = field(default_factory=list)
 

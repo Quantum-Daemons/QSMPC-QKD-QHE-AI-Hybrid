@@ -39,11 +39,11 @@ PennyLane `lightning.gpu`, **not** `qiskit-aer-gpu`.
 
 ## Dev environment
 
-Target box: **AlmaLinux 9.7, i5-13600K, 128 GB DDR5, NVIDIA RTX PRO 6000 Blackwell 96 GB,
-CUDA 13.0**. Verified: Python 3.12.11, gcc 11.5, cmake 3.31, Node 22, Docker 29,
-`torch 2.13.0+cu130` with `cuda.is_available() == True`, nvcc V13.0.88, driver 580.105.08
-(CUDA 13 wheels require 580.65.06 or newer on Linux). Re-measured 2026-08-14; the line read
-`torch 2.12+cu130` until then. CUDA 13.0 became a **stable** PyTorch build target in 2.11, so this
+Target box: **AlmaLinux 9.8, i5-13600K, 128 GB DDR5, NVIDIA RTX PRO 6000 Blackwell 96 GB**. Read
+2026-11-05: kernel 5.14.0-687.65.1, Python 3.12.15, gcc 11.5, cmake 3.31, Node 22.23, Docker 29.9,
+`torch 2.13.0+cu130` with `cuda.is_available() == True`, nvcc 13.5.37, driver 620.70.06
+(CUDA 13 wheels require 580.65.06 or newer on Linux). A GPU figure elsewhere in this repository dated before
+then ran on AlmaLinux 9.7, nvcc 13.0.88 and driver 580.105.08. CUDA 13.0 became a **stable** PyTorch build target in 2.11, so this
 box is no longer on a leading edge - the capability is verified by launching a real kernel and
 checking that `get_arch_list()` contains the device's `sm_120`, rather than by trusting a version
 string here.
@@ -74,8 +74,8 @@ string here.
 
 ### Non-linear MPC backend (the hybrid's other half)
 - **MPyC** (MIT, pure-Python, v0.11 2026, a pip dependency - the submodule was dropped in Round 17) - Shamir secret-sharing with secure
-  comparison drives the **non-linear** layers (ReLU/argmax) on shares, the canonical CrypTen `ReLU([x]) =
-  [x], [x>0]` pattern. Wired in `src/qsh/mpc/secret_inference.py` and run as three parties, each its own
+  comparison drives the **non-linear** layers (ReLU/argmax) on shares, the `ReLU([x]) =
+  [x] * [x>0]` pattern. Wired in `src/qsh/mpc/secret_inference.py` and run as three parties, each its own
   process over loopback TCP (`src/qsh/mpc/parties.py`, t = 1, k = 40); selectable as the `mpc` crypto-agility family
   (`mpyc-shamir` default; MP-SPDZ / hpmpc-gpu as heavyweight references). The linear layers stay under FHE - see
   the hybrid benchmark in [`docs/models-and-benchmarks.md`](models-and-benchmarks.md).
@@ -166,6 +166,10 @@ supported platform, or `ExportWebAssembly.jl` out of WIP.
 
 ## OSS / submodules
 
+**The maintenance rule, in one place** (owner's choice, 2026-11-05): a dependency's project must have moved within the last
+**12 months**, and an advisory with no fix fails a dependency at any age. The window is wide so that a stable cryptographic
+library with few releases is not refused for being finished. Commercial use must be allowed.
+
 Only the two submodules that code actually builds against are vendored:
 
 ```bash
@@ -251,5 +255,4 @@ third-party notices served at `/licenses/qsh-mpc.txt`) for the demo's real in-br
 + dataset licenses in [`DATA_LICENSES.md`](../DATA_LICENSES.md).
 
 **Originality note:** the GPU MPC-FHE benchmark is our own integration over the *upstream*
-projects (`src/qsh/benchmark/gpu_mpc_adapter.py` + `scripts/build_gpu_mpc.sh`). We do **not**
-clone or vendor any mixed-authorship aggregate repo.
+projects (`src/qsh/benchmark/gpu_mpc_adapter.py` + `scripts/build_gpu_mpc.sh`).

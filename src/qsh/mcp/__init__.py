@@ -1,6 +1,6 @@
 """Real MCP (Model Context Protocol) server for QSH — full deployment only.
 
-A FastMCP server exposes the 5 per-industry tools, bound to the project's quantum-safe
+An SDK server (`MCPServer`) exposes the 5 per-industry tools, bound to the project's quantum-safe
 (PQC + ML-DSA + AEAD) transport via :mod:`qsh.pqc.mcp_bridge`; the API's "QKD" option mixes in a
 fixed 32-byte constant, not a QKD key. The public demo keeps the
 client-side ``clientMcp.ts`` mirror instead, so the demo VPS takes zero per-user MCP load.

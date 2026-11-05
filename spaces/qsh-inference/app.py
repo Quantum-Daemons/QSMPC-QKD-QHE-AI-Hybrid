@@ -19,9 +19,7 @@ WHY GRADIO AND WHY ZEROGPU
 
 ELIGIBILITY
     Hosting a ZeroGPU Space needs an account "in good standing": verified email AND older than 30
-    days. Daemons-Q was created 2026-08-02, so this Space becomes hostable around 2026-09-01. Until
-    then the demo's capability probe simply reports the tier as unavailable and falls back — which is
-    why the probe exists rather than the demo assuming the Space is there.
+    days. Nothing in the demo calls this Space (`docs/findings.md`).
 
 DEPLOY
     hf repo create Daemons-Q/qsh-inference --repo-type space --space_sdk gradio

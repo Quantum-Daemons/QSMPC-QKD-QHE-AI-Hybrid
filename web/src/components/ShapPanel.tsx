@@ -105,7 +105,7 @@ export default function ShapPanel({ explanation, provenance, baseline, published
         </div>
       ))}
       <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>
-        red = pushes toward the flagged class · blue = away · exact linear SHAP, ML-DSA-signed
+        red = pushes toward the flagged class · blue = away · exact linear SHAP for independent features, signed with ML-DSA under a key made for this run: it shows the record is unchanged, not who signed it
       </p>
       {aiAct ? (
         <p className="muted" style={{ fontSize: 11, marginTop: 2 }}>

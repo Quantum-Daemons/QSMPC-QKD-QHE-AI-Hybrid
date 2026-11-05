@@ -27,7 +27,7 @@ const r2 = (x: number) => Math.round(x * 100) / 100;
 // A GENUINELY-computed, in-browser FedAvg of a classical model: a fixed feature map
 // (`qcnnExpectation`, a closed-form function despite its name, not a simulated circuit) feeds a
 // logistic head that is federated across K simulated clients with size-weighted FedAvg. The full
-// deployment's Flower + PennyLane HybridQNN trains a real variational circuit; this does not.
+// deployment's PennyLane HybridQNN trains a real variational circuit; this does not.
 // Round accuracy is REALLY computed on a held-out split (not a canned constant).
 //
 // This comment used to end "under quantum-safe secure aggregation", and the diagram said "pairwise

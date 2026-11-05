@@ -12,7 +12,7 @@ and CHSH value in the measured plane equal a Werner state's at ``V_eff``, so ``S
 holds (her disturbance is composed independently with the channel error, see ``channel.py``).
 
 Honest label: a simulation, not quantum hardware. Reuses :class:`~qsh.qkd.bb84.QKDResult` + ``_h2`` and
-:mod:`~qsh.qkd.channel` so the AI optimizer (:mod:`~qsh.qkd.optimize`) can treat BB84 and E91 uniformly.
+:mod:`~qsh.qkd.channel` so the optimizer (:mod:`~qsh.qkd.optimize`) can treat BB84 and E91 uniformly.
 """
 
 from __future__ import annotations

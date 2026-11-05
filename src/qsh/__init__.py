@@ -6,13 +6,13 @@ QKD -> QSMPC -> QHE/FHE -> privacy-preserving AI on a PQC-first hybrid foundatio
 Subpackages:
     orchestration  E2E pipeline engine (DAG of crypto stages, crypto-agility, events)
     pqc            post-quantum crypto (ML-KEM/ML-DSA hybrid transport)
-    qkd            quantum key distribution (BB84/decoy-state sim) + AI optimizer (WS1)
+    qkd            quantum key distribution (BB84/decoy-state sim) + parameter optimizer (WS1)
     qml_ids        quantum-ML intrusion detection (WS2)
-    qsmpc          quantum secure multi-party computation (Shamir+QFT, QOT, qMPSI) (WS3)
+    qsmpc          quantum secure multi-party computation (Shamir+QFT secure sum; a QOT sketch; OPRF PSI) (WS3)
     qhe            quantum homomorphic encryption + AI (QOTP, QCNN, Rate-1 QFHE) (WS4)
     fhe            classical/GPU homomorphic encryption backends
     ai             models + federated learning
-    usecases       finance / medical / genomics / telecom-defense demos
+    usecases       finance / medical / genomics / telecom-defense / satellite demos
     benchmark      classical MPC-FHE vs quantum QSMPC-FHE
     data           dataset loaders + synthetic generation
     monitoring     metrics export

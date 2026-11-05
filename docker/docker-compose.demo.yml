@@ -2,7 +2,7 @@
 #   docker compose -f docker/docker-compose.demo.yml up --build -d
 #
 # Philosophy: the SPA does the heavy compute in the browser (WASM PQC, ONNX inference);
-# the server only serves static assets + lightweight crypto-demo endpoints. No GPU,
+# the server only serves static assets. No GPU,
 # no torch, no Prometheus on the box (ship metrics to Grafana Cloud if desired).
 #
 # There is deliberately NO api service. One used to be here so that `?demo=full` could reach a slim
@@ -17,7 +17,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.web
       args:
-        CLIENT_ONLY: "1"        # public demo: all compute client-side (inference-only)
+        CLIENT_ONLY: "1"        # public demo: all compute client-side
     # SITE_ADDRESS configures Caddy's site address (Caddyfile {$SITE_ADDRESS::80}): unset → ":80" (local
     # HTTP); a domain → auto-HTTPS via Let's Encrypt. WEB_HTTP_PORT/WEB_HTTPS_PORT remap the host ports.
     environment:

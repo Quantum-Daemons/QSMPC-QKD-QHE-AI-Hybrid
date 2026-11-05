@@ -69,11 +69,11 @@ def test_qber_floor_sits_just_above_the_misalignment():
 
 
 def test_tagged_fraction_exceeds_one_at_zero_distance_for_mu_0_1():
-    """The sharpest published claim, and the one most often gotten wrong.
+    """A consequence of the published model, and the one most often gotten wrong; the figure is ours.
 
     Lo, Ma and Chen note that experimentalists "liberally pick 0.1 as a convenient number for
-    average photon number without any security justification". With the GYS parameter set, a
-    NON-decoy link at mu = 0.1 has a tagged fraction above 1 at ZERO distance: no detection can be
+    average photon number without any security justification". They give no tagged fraction for it.
+    In this model, with the GYS parameter set, a NON-decoy link at mu = 0.1 has one above 1 at ZERO distance: no detection can be
     certified as single-photon, so the key rate is zero even back to back.
     """
     eta0 = transmittance(0.0, GYS)
@@ -90,7 +90,7 @@ def test_decoy_reaches_past_140_km():
 
 
 def test_nondecoy_dies_around_40_km():
-    """Without decoy states the same hardware reaches only tens of kilometres."""
+    """Lo, Ma and Chen: "only about 30 km" with prior art. This model gives about 42 km; the bound is ours."""
     d = max_distance_km(key_rate_nondecoy, PAPER)
     assert 30.0 < d < 50.0, f"non-decoy max distance {d} km, expected ~42"
     assert d < max_distance_km(key_rate_decoy, PAPER) / 3.0

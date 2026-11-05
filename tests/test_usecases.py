@@ -34,8 +34,8 @@ def test_genomics_secure_sum_exact():
 
 def test_genomics_real_prs_under_ckks():
     """The genomics use case runs a REAL published Polygenic Risk Score (PGS Catalog PGS000072, the
-    187-variant breast-cancer score, 183 of them with a 1000 Genomes genotype) under CKKS - a genuine
-    industry-standard model that is FHE-native (linear)."""
+    187-variant breast-cancer score, 183 of them with a 1000 Genomes genotype) under CKKS - a published
+    model that is FHE-native (linear)."""
     import numpy as np
 
     # The score comes from the config field, not from a literal here: a test whose docstring names one
@@ -87,8 +87,9 @@ def test_telecom_ids_classical_meets_target():
 
 @pytest.mark.slow
 def test_telecom_quantum_svc_meets_target():
-    """The 2026 QML-IDS standard — a quantum-kernel SVM (QSVC) — detects QKD attacks at F1>=0.93.
-    Slow (O(n^2) quantum-kernel evaluations), so kept out of the default suite."""
+    """A quantum-kernel SVM (QSVC) detects QKD attacks at binary F1>=0.90 on 40 rows per class, a smaller
+    bar than the 0.93 the other detectors are held to, because O(n^2) kernel evaluations keep it small.
+    Slow, so kept out of the default suite."""
     from qsh.qml_ids.detector import evaluate_quantum_svc
 
     r = evaluate_quantum_svc(n_per_class=40, seed=0)

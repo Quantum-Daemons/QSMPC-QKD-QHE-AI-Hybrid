@@ -21,8 +21,7 @@ next linear layer - EncFormer's "stage-compatible patterns").
 
 Cost is honest and bounded: a tiny 14x14 / 1-block / 4-channel CNN is ``14*14`` patches x
 ``4`` out-channels = 196 encrypts + 784 ``dot_plain`` calls, each with its rotate-and-sum, which is
-seconds on TenSEAL CPU (cf. FFConv ~0.37 s/MNIST image, HTCNN 163 images in 10.4 s on one CPU
-thread). If a larger tier is slow the lever is *optimization* (batch/SIMD slot packing) - never a
+seconds on TenSEAL CPU. If a larger tier is slow the lever is *optimization* (batch/SIMD slot packing) - never a
 silent fallback.
 """
 

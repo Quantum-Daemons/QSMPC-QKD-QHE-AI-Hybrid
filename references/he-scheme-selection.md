@@ -128,3 +128,9 @@ positive at one true positive, an exchange rate no model can win and one this sc
 fitted for. The same matched-threshold discipline had already been established earlier in the
 session, for the medical decision curve, and it did not transfer. Evaluating a model at a threshold
 its objective never saw is the metric equivalent of comparing against the wrong table.
+
+## An exact scheme is no way out of the decryption-results problem
+
+ePrint 2026/2546 (CCS 2026; read 2026-11-03) gives IND-CPA-D attacks on BFV and BGV, including bootstrapping-failure
+attacks, with OpenFHE BFV key recovery in minutes to hours. So the BFV scorecard's exactness is a property of its answers,
+and says nothing about what a party who sees decryptions can learn: read it beside `docs/threat-model.md`.

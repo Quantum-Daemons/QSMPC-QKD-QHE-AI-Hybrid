@@ -17,8 +17,8 @@ pipeline stage uses. Asked for explicitly with no key, the online source raises 
 substituting simulated bits, which is the no-silent-fallback rule ``generate_quantum_bits`` applies
 to an unreachable host.
 
-THE FREE PLAN'S LIMITS, from the AQN pricing page: "100 requests per month" and "1 request per
-second". Requests leave this process at least a second apart, and a call that would need more
+THE FREE PLAN'S LIMITS, from the AQN pricing page, where it is called Trial ($0 per request; read in a
+browser 2026-11-05): "100 requests per month" and "1 request per second". Requests leave this process at least a second apart, and a call that would need more
 requests than the monthly allowance is refused before it sends one; the paid plan (AWS Marketplace)
 raises both, which ``max_requests`` lets its holder say. The month's count is the service's to keep:
 this module cannot see requests made elsewhere with the same key.

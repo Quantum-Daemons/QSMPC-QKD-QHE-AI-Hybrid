@@ -1,6 +1,6 @@
 """Inference + ONNX export (for the in-browser onnxruntime-web demo).
 
-The public demo runs *trained-model inference only* on the client. We export the
+The public demo runs these models on the client. We export the
 PyTorch models to ONNX so the SPA can run them with onnxruntime-web (WASM/WebGPU)
 with zero server compute.
 """

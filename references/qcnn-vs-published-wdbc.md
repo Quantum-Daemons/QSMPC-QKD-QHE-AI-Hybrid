@@ -6,11 +6,14 @@
 > The five-seed sweep below was run on the hardware-efficient ansatz that Round 46 replaced with a
 > real QCNN, and the shipped artifact was retrained TWICE in Round 47 - once when the fully-connected
 > block became a per-survivor unitary, and again when two classes of parameter turned out to be
-> analytically dead. The shipped medical accuracy is now **0.883721** (minority-class F1 **0.84375**)
-> against the same logistic regression's **0.953488**, from
-> `models/qcnn_medical/weights.json`, which the model card is gated against. **The seeds 0-4 sweep has
-> NOT been re-run**, so no median and no range exists for the current circuit - `0.7326`, `0.9070` and
-> the `[0.7326, 0.9535]` range below belong to a circuit this repository deleted.
+> analytically dead. That gave accuracy 0.883721 (minority-class F1 0.84375) until Round 84 retrained it
+> with the encoding at c = 0.5. The shipped figure is now accuracy **0.953488** (minority-class F1
+> **0.939394**), level at seed 0 with the same logistic regression on the identical split. Over five
+> seeds the circuit's mean is 0.9349 (sd 0.0280) and logistic regression is ahead by 0.0186, interval
+> [-0.0395, -0.0023] for circuit minus LR. `models/qcnn_medical/README.md` holds these, and
+> `models/qcnn_medical/weights.json` is authoritative. `0.7326`, `0.9070` and the `[0.7326, 0.9535]`
+> range below belong to a circuit this repository deleted. Corrected 2026-11-05: this banner still gave
+> the Round 47 figure as current and said no five-seed sweep existed for the current circuit.
 >
 > **The comparator side is unaffected**, and so is everything this file exists to say: the Sci Rep
 > 2024 figure is still 0.96155 on 30 features with no test set, the three differences that have to

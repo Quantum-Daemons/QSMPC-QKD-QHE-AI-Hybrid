@@ -16,8 +16,8 @@
   clients agreeing its mask seed by X25519, though here every client runs in one tab or one process
   and a client that drops breaks the round. What each of these hides, in the browser and in the full
   deployment: [the table below](#what-each-step-protects-in-the-browser-and-in-the-full-deployment).
-- **Malicious MPC participant**: injects bad inputs / aborts. Mitigation: identifiable-abort
-  pattern (scaffold) and QOT test rounds. The OPRF PSI is secure against semi-honest banks only: a
+- **Malicious MPC participant**: injects bad inputs / aborts. No mitigation here: the protocols assume
+  semi-honest parties, and neither identifiable abort nor QOT test rounds exist in this repository. The OPRF PSI is secure against semi-honest banks only: a
   bank that deviates from it is **not** detected
   ([the table below](#what-each-step-protects-in-the-browser-and-in-the-full-deployment)).
 - **QKD link attacker**: intercept-resend, PNS, Trojan-horse, detector-blinding, RNG
@@ -67,7 +67,9 @@
   (OpenFHE is also capped below 1.6) with no lockfile, so a fresh image can resolve newer releases
   than the ones measured here: TenSEAL
   0.3.16, which this repository's environment runs, bundles Microsoft SEAL 4.1.1, and TenSEAL 0.3.17
-  and later, which its floor admits, bundle SEAL 4.3.3.
+  and later, which its floor admits, bundle SEAL 4.3.3. That release itself introduced process termination on
+  truncated compressed input, fixed in SEAL 4.5.1 (2026-10-09); the same "never deserializes foreign objects" bound
+  covers it.
 - **Server-tier MPC** (full deployment, `src/qsh/mpc/parties.py`): three MPyC parties, the client
   who holds the CKKS key, the server who holds the model, and a helper; Shamir with t = 1, so
   **semi-honest with an honest majority**. What the masked conversions hide is in
@@ -175,7 +177,7 @@ decrypted results:
 - Ogilvie (ASIACRYPT 2025, ePrint 2025/1618) is the constructive counterpoint: in regimes where
   rescaling noise dominates, "an additional precision loss of as little as two bits is sufficient to
   restore a high level of security against passive key-recovery attacks for standard parameters".
-- Bian, Choe, Kim and Lee (ePrint 2026/2490, 2026-10) need no decrypted value at all: a malicious
+- Bian, Choe, Kim and Lee (ePrint 2026/2490, 2026-10, to appear at IEEE S&P 2027, implemented on Lattigo v6.2.0) need no decrypted value at all: a malicious
   evaluator that holds the public coefficient-to-slot (bootstrapping) keys and sees only whether the
   client accepted a result, a 1-bit validity response, recovers a ternary secret key in a number of
   queries of the order of the key's entropy. It does not break IND-CPA. The abstract does not discuss
@@ -272,9 +274,10 @@ one with nothing:
 under attack: Guo, Nabokov, Suvanto and Johansson, *"Key Recovery Attacks on Approximate Homomorphic
 Encryption with Non-Worst-Case Noise Flooding Countermeasures"*, USENIX Security 2024, targets exactly
 the mitigation named above when the flooding is parameterised on average-case rather than worst-case
-noise. Title, authors and venue are verified via the Lund University research portal; the **body could
-not be loaded (HTTP 403), so no parameter, bound or number from it is quoted here** - it is recorded as
-a named limit on the fix, not as a result. Second, the game is weaker than "malicious": Cheon, Choe,
+noise. Its [abstract](https://www.usenix.org/conference/usenixsecurity24/presentation/guo-qian) (read 2026-11-03)
+attacks OpenFHE's noise flooding on average-case estimates, recovers the key from a single shared decryption, and
+finds that PRG-derived noise adds no protection; the body could not be loaded, so no parameter or bound from it is
+quoted here. It bears on the server tier's flood, a fixed $`2^{30}`$ sized against no worst case. Second, the game is weaker than "malicious": Cheon, Choe,
 Passelegue, Stehle and Suvanto (ePrint 2024/127, CCS 2024) give the adversary *"access to a decryption
 oracle for ciphertexts for which it should know the underlying plaintexts. This includes ciphertexts
 that it (honestly) encrypted and those obtained from the latter by evaluating circuits that it
@@ -283,16 +286,31 @@ only semi-honest" is not a defence against it - which is worth stating because t
 elsewhere in this document as a real mitigation for other adversaries.
 
 **The threshold setting OpenFHE points at now has a citation here.** This section had none, while the
-quote above scopes the attack to exactly that case: Zhang, Zhou, Han, Liu and Huang, "Adaptively Secure
-Threshold Decryption from LWE with Polynomial Modulus" (IACR ePrint 2026/1627, received 2026-08-06),
-treats adaptive corruption and leakage from **decryption queries** using *"a refined polynomial noise
-flooding technique based on a detailed min-entropy analysis"*. It matters here rather than in general
-because `submodules/HEonGPU` ships N-out-of-N collective bootstrapping, so the threshold case is one
-dependency away rather than hypothetical. Nothing here builds or calls it today: `HeongpuBackend` is a
-build-gated reference adapter, and HEonGPU exposes no Python API.
+quote above scopes the attack to exactly that case: Zhang, Zhou, Han, Liu and Huang, "Adaptively CCA-Secure
+Threshold Decryption from Lattices with Polynomial Modulus" (IACR ePrint 2026/1627, received 2026-08-06, its
+fourth revision 2026-09-19, retitled), treats adaptive corruption and leakage from **decryption queries** in
+the random-oracle model with bounded queries, using polynomial noise flooding and a coupled refined leftover
+hash lemma. It matters here rather than in general
+because HEonGPU ships N-out-of-N collective bootstrapping, so the threshold case is one dependency away
+rather than hypothetical. Its collective path is correct only from v2.1.1 (2026-11-02), which fixes the round-2
+relinearization-key share reading error polynomials from uninitialized memory. Nothing here calls it.
+
+**What SEAL itself says it does not give.** The same SEAL commit as the IND-CPA-D note above (16cb511, 2026-07-25)
+added two more sections to its `SECURITY.md`. *Ciphertext Authenticity*: ciphertexts are not authenticated, and crafted
+ones can pass validation. *Evaluator Operand Privacy*: SEAL gives no circuit privacy, and `multiply_plain`'s timing
+depends on the plaintext operand. Both bear on the full deployment, which multiplies by the model's weights as
+plaintexts and claims the weights stay with the server. The masks and the flood address what the key holder decodes; they
+do not address timing, which stays out of scope here.
+
+**Newer than this section's attacks, none of them changing it** (read 2026-11-03):
+
+- ePrint 2026/2546 (CCS 2026): IND-CPA-D attacks on BFV and BGV, including bootstrapping-failure attacks, with OpenFHE BFV
+  key recovery in minutes to hours. So an exact scheme is no way out of this section (`references/he-scheme-selection.md`).
+- ePrint 2026/1671: a machine-checked flooding bound with a square-root-of-queries loss, beside HElib's $`\sqrt{D}`$ rule.
+- ePrint 2026/2524 (GCKKS) and 2026/2675 (noise cleaning, threshold CKKS): keeping precision after flooding.
 
 **No standard requires testing for this.** The HomomorphicEncryption.org standard contains no
-testing or conformance clause and states that CKKS "is not described in this standard"; ISO/IEC 28033 is not published, and the part that matters here is **Part 3** - mechanisms for arithmetic on approximate numbers, i.e. CKKS - which is at its FDIS ballot, **stage 50.20** (read at iso.org on 2026-11-01; FDIS 50.00 since 2026-06-11). The other parts, as read on 2026-08-10: Part 1 general DIS 40.60 (2025-12-11), Part 4 FDIS 50.00, Part 5 WD 20.60. Part 1 scopes correctness out. Naming "Parts 1-4 at DIS" was imprecise in both directions: Part 3 is further along than DIS and is the CKKS part, so this claim has a shelf life of months and carries a date for that reason. Checked 2026-08-10. So this section is a
+testing or conformance clause and names CKKS with others as schemes that "are not described in this standard"; ISO/IEC 28033 is not published, and the part that matters here is **Part 3** - mechanisms for arithmetic on approximate numbers, i.e. CKKS - which is at its FDIS ballot, **stage 50.20** since 2026-09-23, closing around 2026-11-18, so it may publish soon (read at iso.org on 2026-11-03). The other parts, same reading: Part 1 general DIS 40.60 (2025-12-11), Part 2 DIS 40.60 (2026-04-25), Part 4 FDIS 50.20 (2026-09-08), Part 5 WD 20.60 (2025-08-16). Part 1 scopes correctness out. Naming "Parts 1-4 at DIS" was imprecise in both directions: Part 3 is further along than DIS and is the CKKS part, so this claim has a shelf life of months and carries a date for that reason. Checked 2026-08-10. So this section is a
 statement of known limitations, not a conformance gap against any published requirement.
 
 ## Explicitly out of scope (PoC)

@@ -91,9 +91,9 @@ export default function Overview() {
             Read at bsi.bund.de on 2026-10-31: TR-02102-1 v2026-01 (2026-01-23) recommends ML-KEM-768
             and ML-KEM-1024 (Table 2.7) and, for elliptic curves, the four Brainpool curves (Table B.3);
             "25519" appears nowhere in it. TR-02102-2 v2026-01 (TLS, 2026-01-27) leaves x25519 out of
-            its TLS 1.3 groups (Table 10: secp256r1/384r1/521r1, brainpool*tls13, ffdhe3072/4096) and
-            says BSI intends to recommend SecP256r1MLKEM768 and SecP384r1MLKEM1024 once their RFC is
-            adopted (section 3.4.2). So the hybrid has BSI's shape and its ML-KEM half is
+            its TLS 1.3 groups (Table 10: secp256r1/384r1/521r1, brainpool*tls13, ffdhe3072/4096). Its
+            section 3.4.2 waited on the RFC for the TLS hybrids, which came as RFC 10024 in August 2026;
+            BSI's TR-02102 page, updated 2026-10-02, now gives the position used below. So the hybrid has BSI's shape and its ML-KEM half is
             BSI-recommended; its X25519 half is not. */}
         <b>Research PoC.</b> Quantum-channel results (QKD distance and QBER, QSDC) are <b>simulated</b>,
         not hardware-validated; photonic inference and full qOLE are not implemented here. QKD appears only as an optional add-on
@@ -103,8 +103,10 @@ export default function Overview() {
         agreement combining a quantum-safe and a classical mechanism (section 2.2). The ML-KEM + X25519
         layer has that shape, and only its ML-KEM half is a BSI-recommended mechanism (Table 2.7):
         X25519 is neither among BSI&apos;s recommended curves (the Brainpool curves, Table B.3) nor
-        among its recommended TLS 1.3 groups (TR-02102-2 v2026-01, Table 10), and the TLS hybrids BSI
-        intends to recommend are SecP256r1MLKEM768 and SecP384r1MLKEM1024 (section 3.4.2). NSA
+        among its recommended TLS 1.3 groups (TR-02102-2 v2026-01, Table 10). For TLS, BSI&apos;s
+        TR-02102 page (updated 2026-10-02) says SecP256r1MLKEM768 and SecP384r1MLKEM1024 will be
+        recommended in the next TR-02102-2 and can already be used TR-compliant in TLS 1.3, and that
+        X25519MLKEM768 can also be used. NSA
         answers "No" to using QKD to protect a national security system.
       </div>
 
@@ -126,8 +128,8 @@ export default function Overview() {
               <td>Seven QKD attack types plus normal traffic - eight classes; classical RF baseline against a PennyLane variational quantum classifier</td>
               <td>Synthetic telemetry. The page runs a softmax and the random forest published as telecom_ids.qml; the quantum-kernel SVC and the QNN are offline figures, not run here, and the SVC&apos;s fidelity kernel equals a classical product kernel</td></tr>
             <tr><td>WS3 · QSMPC × QKD</td>
-              <td>Shamir + d-level QFT secure summation, quantum oblivious transfer, private set intersection over the PQC channel</td>
-              <td><StageBadge kind="notional" /> classical PSI and additive-share secure sum, all parties in this tab. The PSI runs RFC 9497&apos;s OPRF over ristretto255: Bank A learns the shared accounts and the size of Bank B&apos;s list, Bank B only the size of Bank A&apos;s. It is semi-honest and not post-quantum, and its messages are sealed under the PQC session key. The QFT and QOT forms run in the full deployment, simulated</td></tr>
+              <td>Shamir + d-level QFT secure summation and private set intersection over the PQC channel; a quantum oblivious transfer sketch is in the repository and in no flow</td>
+              <td><StageBadge kind="notional" /> classical PSI and additive-share secure sum, all parties in this tab. The PSI runs RFC 9497&apos;s OPRF over ristretto255: Bank A learns the shared accounts and the size of Bank B&apos;s list, Bank B only the size of Bank A&apos;s. It is semi-honest and not post-quantum, and its messages are sealed under the PQC session key. The QFT form runs in the full deployment, simulated</td></tr>
             {/* "Rate-1 QFHE transport" named a scheme the code does not run: Rate-1 QFHE
                 (Chardouvelis, Doettling, Malavolta, TCC 2021) is homomorphic, and
                 `qhe/rate1_qfhe.py` has no Eval - it pads a state and sends the pad under the hybrid

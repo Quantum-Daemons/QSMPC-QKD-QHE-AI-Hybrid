@@ -1,7 +1,7 @@
 """Quantum random-number generation (entropy source).
 
 Default = a local state-vector quantum-measurement simulation (honest: simulated, not hardware),
-with SP 800-22-style health checks + von Neumann / Toeplitz post-processing. Optional real-hardware
+with SP 800-90B health checks + von Neumann / Toeplitz post-processing. Optional real-hardware
 source = the ANU QRNG API (opt-in, online, an API key read from QSH_ANU_API_KEY). Feeds the BB84 entropy via :func:`quantum_seed`.
 """
 
