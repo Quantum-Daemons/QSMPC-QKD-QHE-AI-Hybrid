@@ -13,13 +13,14 @@ serves the static SPA and uses these endpoints sparingly (client does the rest).
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from qsh import __version__
 
@@ -27,9 +28,14 @@ from .inference_service import pqc_handshake_demo, predict_fraud, qkd_demo
 from .run_manager import RESULTS_DIR, RunManager
 
 app = FastAPI(title="QSMPC-QKD-QHE-AI-Hybrid API", version=__version__)
-app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
-)
+# Cross-origin access only for the origins the operator names (Round 86). This allowed every origin, so
+# any web page a user of the full deployment opened could drive the API from their browser. The SPA
+# needs none: the full stack's Caddy proxies /api to this service, and the dev server proxies it too,
+# so both reach it from the page's own origin. QSH_CORS_ORIGINS is a comma-separated list.
+CORS_ORIGINS = [o.strip() for o in os.environ.get("QSH_CORS_ORIGINS", "").split(",") if o.strip()]
+if CORS_ORIGINS:
+    app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["GET", "POST"],
+                       allow_headers=["content-type"])
 
 
 @app.middleware("http")
@@ -222,10 +228,17 @@ class McpCallReq(BaseModel):
 
 
 class McpFsReq(BaseModel):
-    directory: str = "."
+    # No `directory` (Round 86): the folder the filesystem server may touch is fixed here, server side
+    # (MCP_FS_ROOT). A request naming one is refused rather than silently ignored.
+    model_config = ConfigDict(extra="forbid")
     tool: str = "list_directory"
     arguments: dict | None = None
     qkd: bool = False
+
+
+#: The only folder the official filesystem server is given: the use cases' bundled public sample data,
+#: which the image copies to /app/data. QSH_MCP_FS_ROOT points it elsewhere.
+MCP_FS_ROOT = Path(os.environ.get("QSH_MCP_FS_ROOT") or Path(__file__).resolve().parents[1] / "data").resolve()
 
 
 @app.get("/api/mcp/tools")
@@ -256,14 +269,25 @@ def mcp_call(req: McpCallReq) -> dict:
 @app.post("/api/mcp/filesystem")
 def mcp_filesystem(req: McpFsReq) -> dict:
     """Interop: call the OFFICIAL filesystem MCP server (Node) + carry its result over the quantum-safe
-    layer (PQC session; ``qkd=true`` mixes in the fixed constant ``b"q" * 32``, not a QKD key)."""
-    from qsh.mcp.fs_interop import node_available, secure_filesystem_interop
+    layer (PQC session; ``qkd=true`` mixes in the fixed constant ``b"q" * 32``, not a QKD key).
 
+    CONTAINED (Round 86). The caller chose the folder, the tool and its arguments, unauthenticated, and
+    the server has write tools: any client of the API could write anywhere the API process can. The
+    folder is now ``MCP_FS_ROOT``, fixed here; only the server's read-only tools are accepted
+    (``fs_interop.READ_ONLY_TOOLS``); and the server itself refuses a path outside that folder.
+    """
+    from qsh.mcp.fs_interop import READ_ONLY_TOOLS, node_available, secure_filesystem_interop
+
+    if req.tool not in READ_ONLY_TOOLS:
+        return JSONResponse({"error": f"tool {req.tool!r} is not one of the read-only tools this endpoint "
+                                      f"accepts: {sorted(READ_ONLY_TOOLS)}"}, 400)
+    if not MCP_FS_ROOT.is_dir():
+        return JSONResponse({"error": "the filesystem-MCP folder (QSH_MCP_FS_ROOT) does not exist"}, 503)
     if not node_available():
         return JSONResponse({"error": "Node/npx not available — filesystem-MCP interop needs Node"}, 503)
     qkd_key = (b"q" * 32) if req.qkd else None
     try:
-        return secure_filesystem_interop(req.directory, req.tool, req.arguments, qkd_key=qkd_key)
+        return secure_filesystem_interop(str(MCP_FS_ROOT), req.tool, req.arguments, qkd_key=qkd_key)
     except Exception as exc:                             # surface the cause (no silent fallback)
         return JSONResponse({"error": str(exc)}, 500)
 

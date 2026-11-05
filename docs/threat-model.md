@@ -76,7 +76,12 @@
   three hosts under three operators.
 - **MCP tool dispatch** (full deployment): the quantum-safe channel authenticates + seals the
   `tools/call` and its result (ML-DSA + AES-GCM), but the tool *logic* runs server-side and is trusted;
-  the official filesystem MCP server is sandboxed to a use-case data dir. The public demo runs no
+  the official filesystem MCP server is given one folder, fixed on the server (`MCP_FS_ROOT`, the bundled
+  public sample data), and `/api/mcp/filesystem` accepts only its read-only tools, so a client can read
+  that folder and nothing else. Until Round 86 the caller chose the folder, the tool (write tools
+  included) and the arguments, unauthenticated, with CORS open to every origin and the port published
+  on every interface; this sentence said the server was sandboxed. CORS is now off unless the operator
+  names origins, and the compose file binds the API to loopback. The public demo runs no
   server-side MCP (client mirror only), so it adds no server trust surface.
 
 ## What each step protects, in the browser and in the full deployment

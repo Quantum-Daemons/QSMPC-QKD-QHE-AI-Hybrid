@@ -29,6 +29,15 @@ import shutil
 FILESYSTEM_SERVER = "@modelcontextprotocol/server-filesystem@2.1.0"
 
 
+#: The server's tools that read and never write (Round 86). The interop calls only these: the server's
+#: write tools (`write_file`, `edit_file`, `create_directory`, `move_file`) change files, and the API
+#: hands this function requests from its clients. `read_file`, deprecated, is left out.
+READ_ONLY_TOOLS = frozenset({
+    "list_directory", "list_directory_with_sizes", "directory_tree", "read_text_file", "read_media_file",
+    "read_multiple_files", "get_file_info", "search_files", "list_allowed_directories",
+})
+
+
 def _call_outcome(call) -> tuple[str, bool]:
     """The text a tool result carries, and whether the server flagged it an error.
 
@@ -79,6 +88,8 @@ def secure_filesystem_interop(directory: str = ".", tool: str = "list_directory"
     (authenticated / tamper_rejected / sealed_bytes) showing the result rode the PQC + ML-DSA layer
     (with ``qkd_key`` mixed in when one is given).
     """
+    if tool not in READ_ONLY_TOOLS:
+        raise ValueError(f"{tool!r} is not a read-only tool of the filesystem server; refused")
     if not node_available():
         raise RuntimeError("npx (Node) not available — the filesystem-MCP interop needs Node")
 
