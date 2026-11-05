@@ -199,3 +199,6 @@ web/src/wasm/
 web/public/licenses/qsh-mpc.txt
 wasm/qsh-mpc/target/
 wasm/qsh-mpc/.cargo-home/
+
+# Round 86: scripts/build_webllm_libs.sh works here (sources, a compiler build and a venv, about 15 GB).
+.cache/

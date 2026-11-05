@@ -130,7 +130,7 @@ const chrome = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${PORT}
 let result = { out: [], sizes: [] }, failed = [];
 try {
   let target;
-  for (let i = 0; i < 50 && !target; i++) {
+  for (let i = 0; i < 300 && !target; i++) {   // a minute: see check_text_overlap.mjs
     try { target = await (await fetch(`http://127.0.0.1:${PORT}/json/new?about:blank`, { method: "PUT" })).json(); }
     catch { await sleep(200); }
   }

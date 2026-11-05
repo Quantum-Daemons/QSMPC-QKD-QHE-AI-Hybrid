@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   type AgentRun, DEFAULT_DEVICE, type Device, type Engine, hasWebGPU, runAgent, tfjsModelLabel,
-  TFJS_MODELS, WEBLLM_MODELS,
+  TFJS_MODELS, WEBLLM_MODELS, webLlmModelLabel,
 } from "../lib/clientAI";
 import { checkProvenance, type ProvenanceCheck, signProvenance } from "../lib/aiProvenance";
 import { clientSecureWrap, type McpResult } from "../lib/clientMcp";
@@ -66,6 +66,7 @@ export default function AgenticAIPanel({
   const [device, setDevice] = useState<Device>(DEFAULT_DEVICE);
   const [prompt, setPrompt] = useState(defaultPrompt || FALLBACK_PROMPT);
   const [busy, setBusy] = useState(false);
+  const cancelRun = useRef<AbortController | null>(null);
   const [progress, setProgress] = useState("");
   const [run, setRun] = useState<AgentRun | null>(null);
   const [mcp, setMcp] = useState<(McpResult & { echoedPayload: any }) | null>(null);
@@ -102,7 +103,6 @@ export default function AgenticAIPanel({
       setGpuKind(!info ? "absent" : isSoftwareAdapter(info) ? "software" : "usable");
     });
   }, []);
-  const models = engine === "webllm" ? WEBLLM_MODELS : TFJS_MODELS;
 
   const onEngine = (e: Engine) => {
     setEngine(e);
@@ -113,7 +113,10 @@ export default function AgenticAIPanel({
     setBusy(true); setProgress(""); setRun(null); setMcp(null);
     const ctxLine = runContextLine(usecase, runContext);
     const effectivePrompt = ctxLine ? `${ctxLine}\n\n${prompt}` : prompt;
-    const r = await runAgent(engine, effectivePrompt, { model, device, onProgress: setProgress });
+    const ctl = new AbortController();
+    cancelRun.current = ctl;
+    const r = await runAgent(engine, effectivePrompt, { model, device, onProgress: setProgress, signal: ctl.signal });
+    cancelRun.current = null;
     setRun(r); setGeneratedAt(new Date().toISOString());
     // wrap {prompt, answer, run-context} through the client quantum-safe MCP channel, tagged with the
     // per-industry tool name (signed + sealed + tamper-tested)
@@ -254,7 +257,7 @@ export default function AgenticAIPanel({
                 the library loads. */}
             {engine === "transformers"
               ? TFJS_MODELS.map((m) => <option key={m.id} value={m.id}>{tfjsModelLabel(m, device)}</option>)
-              : models.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+              : WEBLLM_MODELS.map((m) => <option key={m.id} value={m.id}>{webLlmModelLabel(m)}</option>)}
           </select>
           {/* Labelled for what it mixes. The analytic BB84/E91 models return bit COUNTS - a secret
               key RATE and a secure-bit total - not key material, so there is no run-derived key to
@@ -281,8 +284,17 @@ export default function AgenticAIPanel({
           style={{ width: "100%", marginTop: 10 }} aria-label="Prompt" />
         <div className="btn-row" style={{ marginTop: 10 }}>
           <button className="btn" onClick={go} disabled={busy}>{busy ? "Running…" : "▶ Run in-browser agent"}</button>
+          {busy && <button className="btn" onClick={() => cancelRun.current?.abort()}>Cancel</button>}
           {busy && progress && (
             <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}>{progress}</span>
+          )}
+          {!busy && (
+            <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}>
+              A model's first run downloads the size shown from Hugging Face; later runs read the browser's cache.{" "}
+              {engine === "webllm" && (
+                <a href="/licenses/webllm-libs.txt" target="_blank" rel="noopener noreferrer">Notices for the WebLLM libraries</a>
+              )}
+            </span>
           )}
         </div>
       </div>

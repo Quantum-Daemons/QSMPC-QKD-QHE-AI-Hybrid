@@ -1,0 +1,37 @@
+{
+  "runtime": "@mlc-ai/web-llm@0.2.87",
+  "built_with": {
+    "mlc-llm": "44fd06d04f22c87820e205b0f2b2e5e6a1f6ca85",
+    "tvm (mlc-ai/relax)": "629cc65820b8699db4d777f5749bb9d3b7444be0",
+    "emscripten": "4.0.23",
+    "tvm's llvm": "21.1.8"
+  },
+  "prefill_chunk_size": 1024,
+  "build_script": "scripts/build_webllm_libs.sh",
+  "libs": {
+    "SmolLM2-360M-Instruct-q4f16_1_cs1k-webgpu.wasm": {
+      "model_id": "SmolLM2-360M-Instruct-q4f16_1-MLC",
+      "weights_revision": "3a622fd89e0216e8bb10c410c007c786baa8a033",
+      "bytes": 6752303,
+      "sha256": "38b9382d2dad1672c9608a360ec57081c7244283725801b8a477c65241638aeb"
+    },
+    "SmolLM2-360M-Instruct-q4f32_1_cs1k-webgpu.wasm": {
+      "model_id": "SmolLM2-360M-Instruct-q4f32_1-MLC",
+      "weights_revision": "1e6b2ca3684e2bc8a6d39eb36e8d6cd51eb12bda",
+      "bytes": 6721203,
+      "sha256": "c924da31b424d1016859d30acba58b08307e7f1290160e325814802f710077a6"
+    },
+    "Qwen2.5-0.5B-Instruct-q4f16_1_cs1k-webgpu.wasm": {
+      "model_id": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
+      "weights_revision": "32ff081fe7e4dfe4ffb167b94c66fdf11e02b8ad",
+      "bytes": 5882813,
+      "sha256": "2649fc4c35098b0cf5c04175edf62b6a4e5085e28792dd05e486b9a499c88fc3"
+    },
+    "Phi-3-mini-4k-instruct-q4f16_1_cs1k-webgpu.wasm": {
+      "model_id": "Phi-3-mini-4k-instruct-q4f16_1-MLC",
+      "weights_revision": "7ecdc19b399efd7e967025c02496353e0dc50500",
+      "bytes": 6418070,
+      "sha256": "05c0c0ec6ec6e1acfdc78e371d7fa3e78d5f40ae112b4ced68232a361f224d0b"
+    }
+  }
+}

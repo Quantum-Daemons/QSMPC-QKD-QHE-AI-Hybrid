@@ -1512,7 +1512,7 @@ that was answered:
 measurement - probed by building and executing a 2x2 matmul, three cheaper checks having lied, then
 left unused because ORT's WebNN provider cannot complete a session for the medical ResNet - and `CS8`
 checks it. What it lacked was a reopening condition, exactly as WebGL did before Round 39. The
-context moved this round: Chrome 146 promoted WebNN to an **origin trial** and the W3C specification
+context moved this round (corrected 2026-11-05: the trial was planned and then disabled on 2026-03-27, so WebNN stays behind a flag, per blink-dev and chromestatus): Chrome 146 promoted WebNN to an **origin trial** and the W3C specification
 reached **Candidate Recommendation in January 2026**, while it remains unavailable cross-browser.
 Neither fact touches the reason for declining. *Reopens if* ONNX Runtime Web's WebNN execution
 provider completes a session for the medical ResNet - a fact about the dependency, checked by running
@@ -8333,3 +8333,50 @@ months, by the owner's choice, and an advisory with no fix fails a dependency at
 
 **The box, read again.** AlmaLinux 9.8, kernel 5.14.0-687.65.1, driver 620.70.06, nvcc 13.5.37. A GPU figure dated before then
 ran on 9.7, nvcc 13.0.88 and driver 580.105.08, and `docs/development.md` says so.
+
+### The panel's runtime files come from this site, and a run releases what it loaded
+
+**What the wire showed.** The real agent run of 2026-11-05 fetched ONNX Runtime's wasm from `cdn.jsdelivr.net`, which `CS12`
+said could not happen: Transformers.js points ONNX Runtime there when it loads, unless `wasmPaths` is already set
+(`backends/onnx.js`). `clientAI.ts` keeps the library's choice of build and changes the host. The wasm files were already in
+the bundle for the inference stage, so this adds two `.mjs` files, 78 KB.
+
+**WebLLM's libraries.** Its default fetches them from `raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs`, a repository with
+no licence file, while MLC-LLM and TVM are Apache-2.0. By the owner's choice `scripts/build_webllm_libs.sh` builds them from
+source, at the commits upstream's own commit message names (MLC-LLM `44fd06d`, TVM `e345029` by way of `mlc-ai/relax@629cc658`),
+and `web/public/webllm/0.2.87/` serves them with a manifest, `/licenses/webllm-libs.txt` with the notices. Two things the
+documentation does not say: its Emscripten 3.1.56 cannot read what an LLVM 21 TVM writes, so the script uses 4.0.23, the
+version TVM's own CI installs; and the Linux wheel `mlc-ai-nightly-cpu` is 0.26 against the source's 0.28, so TVM is built too.
+Each library is 2-3% larger than upstream's, with the same imports bar `proc_exit`.
+
+**A leak caught before it shipped.** The first build carried the build directory in 221 strings, the local user name with it:
+clang writes source paths into assertion messages and function names. Upstream's libraries carry their builder's home the same
+way. The script maps the directory away, and refuses to finish if it appears in a library.
+
+**The weights are pinned now.** WebLLM read `resolve/main`, under a page that says a visitor must not silently get a different
+model. Its record now comes whole from the config, with each repository's revision and the library's SRI hash. Transformers.js
+did honour its pin; it also asks `resolve/main` for five files' sizes first (`pipelines.js`, `get_file_metadata(model, file)`
+with no options), for its progress total, and takes the bytes from the pinned revision. That is upstream's call, noted here.
+
+**The model list.** Llama-3.2-1B goes, by the owner's choice: its licence asks for "Built with Llama", a copy of the agreement,
+a notice and its use policy, and the panel carried none of them. No model on the panel had a licence row; `DATA_LICENSES.md`
+section 5b has them all. The f32 SmolLM2 was labelled 376 MB and is 206 MB, the same download as f16, and Qwen2.5 had no
+size at all. Labels are now computed from bytes summed at the pinned revision.
+
+**Cancel and resume.** plan18 asked for a cancel on large downloads, and there was none. It now reaches a download through
+Transformers.js's fetch hook or WebLLM's `unload`, and an answer through a stopping criterion or `interruptGenerate`. A
+lost request no longer ends a WebLLM load: 3 of 6 downloads on this machine stopped at the first failed shard with the rest
+cached, and the one whose cause was captured was Chrome's `ERR_NETWORK_CHANGED`. Up to `web.webllm_load_attempts` loads now run,
+fetching only what is missing.
+
+**Two leaks in the run itself.** Each Transformers.js run opened an ONNX session and released none. Each WebLLM run built an
+engine and unloaded none, so a second run held two models on the GPU. Sessions are disposed; WebLLM keeps one engine and
+reuses it for the same model.
+
+**Smaller corrections, read at the source.** A message said ONNX Runtime Web implements only `ai.onnx`: its WebGPU and JSPI wasm
+builds leave `ai.onnx.ml` out and its plain build runs it. `MLDeviceType` left the WebNN draft of 2026-10-21, so the probe asks by
+`powerPreference`. WebGPU's `isFallbackAdapter` now comes before the name check. Two records and this register had WebNN in an
+origin trial, which was disabled on 2026-03-27 before it ran. WebGPU's Linux default is dated. `shader-f16` is absent on some
+Qualcomm adapters, not "essentially all". WebKit's seven days are of Safari use without interaction, and it does not say
+`persist()` avoids them. "Bank A and Bank B meet over a WAN" described no run. One CI job failed because Chrome took more
+than ten seconds to start, so the scans wait a minute.

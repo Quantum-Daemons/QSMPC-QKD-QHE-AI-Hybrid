@@ -1753,7 +1753,8 @@ page. Genomics renders its orphaned baseline as an explanation rather than a bar
 on `onnx-wasm`, 1x39, 6.3 ms, predicted class 7 against true 7, with the full IEEE Data Descriptions
 citation and CC BY 4.0 attribution rendered. Backend is wasm rather than WebGPU because the graph is
 `ai.onnx.ml` and the WebGPU build does not register `TreeEnsembleClassifier` - correct, not a
-regression. Independently corroborated this round: WebNN is still Chrome Origin Trial M147-M149 with
+regression. Independently corroborated this round (corrected 2026-11-05: the trial was planned for M147-M149 and
+disabled on 2026-03-27, and WebNN is behind a flag in Chrome 156, per blink-dev and chromestatus): WebNN is still Chrome Origin Trial M147-M149 with
 no Safari or Firefox implementation, so the code's decision to probe it and never offer it to ORT is
 right for 2026.
 
@@ -1857,7 +1858,7 @@ and is now `DC9`.
 
 **Client-side-only inference, re-confirmed against the rows that assert it.** 14 `CS` rows cover the
 six technologies the standing request names. WebNN is probed and never offered to ORT, which external
-evidence supports: it remains a Chrome Origin Trial (M147-M149) at W3C Candidate Recommendation with
+evidence supports (corrected 2026-11-05: that trial was disabled on 2026-03-27 before it ran, and WebNN stays behind a flag): it remains a Chrome Origin Trial (M147-M149) at W3C Candidate Recommendation with
 no Safari or Firefox implementation. `ai.onnx.ml` forces the wasm build because the WebGPU build does
 not register `TreeEnsembleClassifier`, so both telecom models report `onnx-wasm` by design.
 
@@ -3823,3 +3824,13 @@ saying "now" has no owner. The same shape produced "the teachers already sit at 
 
 **Reading the PDF settled what a note could not.** The registry already said 0.11 was the recall; `metrics.py` two directories away still
 quoted it as the F1. Table II of Engelen et al. shows both on one row.
+
+**A dependency's default is a decision someone else made.** Transformers.js chose a CDN and WebLLM chose a repository with no licence file, and both
+were visible only on the wire or in the library's source. "Every request goes to the demo or the Hub" had been measured before either engine was
+run in a capture, on a page that fetched no model.
+
+**A build can publish its builder.** The libraries were tested, hashed and ready before a look at their strings showed the local home directory
+221 times. Nothing in a functional test sees that. The script now refuses its own output if the directory appears.
+
+**Testing the fix found the next two defects.** Running every model for real, rather than one, found the wrong size on a label, and that a lost request
+ended a 2 GB download. Cancel was only testable with a library present: without one, the local preview answers a missing `.wasm` with `index.html` and a 200.

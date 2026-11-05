@@ -42,7 +42,7 @@ const SHOTS = [
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function cdpSession() {
-  for (let i = 0; i < 50; i++) {
+  for (let i = 0; i < 300; i++) {   // a minute: see check_text_overlap.mjs
     try {
       const t = await (await fetch(`http://127.0.0.1:${PORT}/json/new?about:blank`, { method: "PUT" })).json();
       const ws = new WebSocket(t.webSocketDebuggerUrl);

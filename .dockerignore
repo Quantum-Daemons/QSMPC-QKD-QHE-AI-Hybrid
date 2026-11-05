@@ -23,6 +23,7 @@ references/*.pdf
 *.pyc
 .pytest_cache/
 .ruff_cache/
+.cache/
 .mypy_cache/
 # Round 65: the image builds the MPC wasm itself (docker/Dockerfile.web, stage `wasm`), so neither its
 # Rust build outputs nor a locally generated copy of the package may reach the context; and nothing

@@ -319,7 +319,7 @@ const FEDERATED_STEP: Step = {
  *  was derived from the one session key, which the aggregator also holds. Since Round 84 the PSI is an
  *  OPRF and each pair of clients agrees its own mask seed by X25519. */
 const overWan = (who: string, what: string) => () =>
-  `${who} meet over a WAN under the session key. ${what}`;
+  `${who} would meet over a network under the session key; here they are parts of this tab. ${what}`;
 // Side A is the OPRF client and side B the server in both specs that use it (oprfPsi.ts), so the
 // sentence names the sides rather than the banks: the generic demo's parties use it too.
 const PSI_HOLDS = "In the PSI, side A blinds its IDs and side B evaluates them under an OPRF key only B holds "

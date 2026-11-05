@@ -154,6 +154,9 @@ const SOFTWARE_ADAPTERS = ["swiftshader", "lavapipe", "llvmpipe", "software", "w
 /** Whether this adapter is a CPU rasteriser pretending to be a GPU. */
 export function isSoftwareAdapter(info: Record<string, unknown> | null | undefined): boolean {
   if (!info) return false;
+  // The spec's own answer (WebGPU Candidate Recommendation Draft, 15 Sep 2026), then the names, for a browser
+  // that does not report it yet.
+  if (info.isFallbackAdapter === true) return true;
   const hay = `${info.architecture ?? ""} ${info.vendor ?? ""} ${info.description ?? ""}`
     .toLowerCase();
   return SOFTWARE_ADAPTERS.some((s) => hay.includes(s));
@@ -210,8 +213,9 @@ export async function webgpuInfo(): Promise<Record<string, unknown>> {
  * Three attempts to answer "is WebNN available" got this wrong in Round 18, each one weaker than
  * it looked:
  *   1. `!!navigator.ml` — Chrome 149 exposes it with no backend at all.
- *   2. `await navigator.ml.createContext({deviceType:"gpu"})` — this RESOLVES with a context on a
- *      machine with no GPU adapter, so it proves nothing either.
+ *   2. `await navigator.ml.createContext({deviceType:"gpu"})` — this RESOLVED with a context on a
+ *      machine with no GPU adapter, so it proved nothing either. `deviceType` has since left the spec
+ *      (Candidate Recommendation Draft, 21 Oct 2026, "Remove MLDeviceType"), so the option does nothing.
  *   3. Checking for `ctx.compute` — that method was removed from the spec in favour of
  *      `dispatch()` + MLTensor, so its absence says nothing about whether WebNN works.
  *
@@ -227,7 +231,7 @@ export async function hasWebNN(): Promise<boolean> {
   const ml = (navigator as any)?.ml;
   if (!ml?.createContext || typeof (globalThis as any).MLGraphBuilder !== "function") return false;
   try {
-    const ctx: any = await ml.createContext({ deviceType: "gpu" });
+    const ctx: any = await ml.createContext({ powerPreference: "high-performance" });
     if (!ctx?.dispatch || !ctx?.createTensor || !ctx?.readTensor) return false;
     const builder = new (globalThis as any).MLGraphBuilder(ctx);
     const a = builder.input("a", { dataType: "float32", shape: [2, 2] });
@@ -279,10 +283,6 @@ export function browserModels(usecase: string): { spec: ModelSpec; url: string }
   const out: { spec: ModelSpec; url: string }[] = [];
   for (const spec of modelsFor(usecase)) {
     if (!spec.hf_repo_id || !spec.hf_revision) continue;   // unpublished or unpinned => not fetchable
-    // ORT Web implements ai.onnx; it does not implement ai.onnx.ml (TreeEnsembleClassifier,
-    // LinearClassifier, ...). A tree ensemble is therefore unrunnable here at any size, and finding
-    // that out by downloading 4.6 MB and hanging in session creation is how this was discovered.
-    // The registry records the graph's domains, so decline before spending the bandwidth.
     // NOTE: an earlier revision skipped models here on a `browser_runnable` flag derived from their
     // operator sets. That flag was built on a misdiagnosis -- the hang was the WebNN execution
     // provider, not the graphs -- and every model in this registry loads in ORT Web's wasm backend
@@ -337,10 +337,11 @@ export async function loadModel(
         (m) => m.hf_repo_id && m.hf_revision
           && (m as { browser_runnable?: boolean }).browser_runnable === false);
       const domains = (blocked as { onnx_domains?: string[] } | undefined)?.onnx_domains ?? [];
+      // ONNX Runtime Web's WebGPU and JSPI wasm builds leave out ai.onnx.ml; its plain wasm build runs it.
       status.error = blocked
-        ? `${blocked.key} is published but cannot run in a browser: its graph uses `
-          + `${domains.join(", ") || "unsupported"} operators, and ONNX Runtime Web implements only `
-          + `ai.onnx. Tree ensembles (TreeEnsembleClassifier) are server-tier only.`
+        ? `${blocked.key} is published with no browser-tier ONNX file: its graph uses `
+          + `${domains.join(", ") || "unsupported"} operators, and ONNX Runtime Web's WebGPU build leaves `
+          + `ai.onnx.ml out (its wasm build runs it).`
         : `no published, pinned, browser-tier ONNX model registered for "${usecase}"`;
       status.backend = "none";
       return false;
