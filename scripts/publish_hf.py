@@ -78,8 +78,8 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
         "a quantum-safe orchestration demo."]
     if spec.runs_encrypted:
         # "and the demo runs it that way" was true of some students only: the public page encrypts
-        # the medical CNN student and the bundled telecom student, but encrypts a bundled PaySim
-        # model instead of the finance student and has no private-inference stage on satellite.
+        # the medical CNN student and the bundled telecom and OPS-SAT students, but encrypts a bundled PaySim
+        # model instead of the finance student, and the Telemanom student under CKKS nowhere.
         # The registry notes say what runs, per model, and the card points at them.
         body += [f"This is the **encrypted-tier** model for the `{spec.usecase}` use case: a",
                  "distilled student small enough to evaluate under CKKS. Whether the public demo",

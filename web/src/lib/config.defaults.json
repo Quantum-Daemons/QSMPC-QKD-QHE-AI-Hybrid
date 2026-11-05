@@ -1788,7 +1788,7 @@
           "display": "AUC PR",
           "name": "auc_pr"
         },
-        "notes": "19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. The ring carries orders of magnitude more slots than this feature map needs, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681 (0.968055 against the teacher's 0.968107, equal at four decimals). No code path here evaluates this student under CKKS today: the satellite page has no private-inference stage, and the browser re-scores the published ONNX graph in plaintext.",
+        "notes": "19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. The ring carries orders of magnitude more slots than this feature map needs, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681 (0.968055 against the teacher's 0.968107, equal at four decimals). The satellite page evaluates this student under CKKS in the browser on all 529 test segments, as a check of agreement with plaintext. It does not decide the page's verdict, and the client computes the expansion and the z-scoring before encrypting.",
         "onnx_domains": [
           "ai.onnx",
           "ai.onnx.ml"
@@ -2739,6 +2739,7 @@
         "revision": "22942cb7d7ba4cc81bb4673549ca4d4614469b5e"
       }
     ],
+    "tfjs_no_repeat_ngram_size": 3,
     "webllm_lib_dir": "webllm/0.2.87",
     "webllm_load_attempts": 5,
     "webllm_max_tokens": 160,

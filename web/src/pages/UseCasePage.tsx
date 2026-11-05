@@ -237,7 +237,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
             plot={artifacts.encrypted_agreement_plot as EncryptedAgreementPlot} />
         </div>
       ) : hasRun ? (
-        <NoEncryptedComparison usecase={usecase} />
+        <NoEncryptedComparison />
       ) : null}
 
       {artifacts?.verification?.plot ? (

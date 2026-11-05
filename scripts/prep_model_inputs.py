@@ -716,8 +716,7 @@ def build_satellite(rng: np.random.Generator) -> dict:
             f"30 percent of the {len(df):,}-step timeline, drawn at random and kept in time order; "
             "the model trained on none of them. The page's telemetry-anomaly step scores OPS-SAT-AD "
             "segments, not these windows, with a demo linear model: in plaintext in the browser, "
-            "where no FHE or MPC stage runs on the satellite page, and on one bundled segment under "
-            "CKKS in the full deployment."
+            "and on one bundled segment under CKKS in the full deployment."
         ),
         "input": {"shape": [1, SEQ_LEN, len(chans)], "dtype": "float32", "preprocessing": [],
                   "layout": f"samples[i] is {SEQ_LEN} timesteps x {len(chans)} channels at {resample} "

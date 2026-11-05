@@ -106,7 +106,7 @@ official filesystem MCP server); the public demo keeps the zero-server client mi
 The **public demo computes real encrypted inference in the browser** on the finance, medical and
 genomics pages - node-seal **CKKS** (a genuine homomorphic linear layer) + a real **Polytune
 garbled-circuit 2PC** for the non-linear argmax, so those FHE/MPC figures are **measured client-side,
-zero VPS compute** (telecom runs a CKKS check of its student and the satellite page runs neither:
+zero VPS compute** (telecom and satellite run a CKKS check of a published student and no 2PC:
 [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt)). The model and the data are
 public, the PSI's two banks are notional parties in one tab, and the secure-aggregation step keeps
 nothing private between the parties ([what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)), so this demonstrates the

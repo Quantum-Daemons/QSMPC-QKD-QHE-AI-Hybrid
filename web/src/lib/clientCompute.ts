@@ -1761,6 +1761,27 @@ export function runClientPipeline(
     return ho;
   }
 
+  /** A published student over its whole held-out split under real CKKS, on a page with no private-inference stage. */
+  async function scoreHeldOutStudent(stage: string, usecase: string, payload: string) {
+    if (!_fheWarmed) {
+      const tk = performance.now();
+      await warmFHE();
+      _fheKeygenMs = performance.now() - tk;
+      _fheWarmed = true;
+    }
+    const held = await heldOutCorpus(usecase);
+    if (!held) {
+      emit("log", stage, `encrypted tier: the student's held-out rows (${payload}) could not be read, so no agreement figure is drawn`);
+      return;
+    }
+    const bt = (await emitHeldOutAgreement(stage, held)).batch;
+    // The per-rotation cost under the key every encrypted page reports (PF1): these pages' only timed rotations
+    // are the batch's.
+    if (bt.rotations > 0) {
+      metric(stage, "fhe_ms_per_rotation", Math.round((bt.rotateMs / bt.rotations) * 1000) / 1000);
+    }
+  }
+
   /** Evaluate the published telecom student's 8 class scores under REAL CKKS, in this tab.
    *
    * This is the verification figure for telecom's encrypted tier, and the numbers it reports are the
@@ -1834,6 +1855,7 @@ export function runClientPipeline(
           : "") + ".");
 
       // THE SAME STUDENT OVER THE WHOLE HELD-OUT SPLIT, not the one row above.
+      // (`scoreHeldOutStudent`, below, which the satellite page shares.)
       //
       // `encrypted_top1_mismatches` and `encrypted_scores_compared` used to be emitted here from the
       // single row: the mismatch count could only be 0 or 1, and "scores compared" counted CLASSES.
@@ -1844,18 +1866,7 @@ export function runClientPipeline(
       // generator drew: the 600 of generate(n_per_class=300, seed=42) the trainer held out, which the
       // student was evaluated on and never fitted on. Every row is scored (two ciphertexts at width
       // 8), so the 88-row cap disclosure no longer applies here.
-      const held = await heldOutCorpus("telecom_ids");
-      if (held) {
-        const bt = (await emitHeldOutAgreement(stage, held)).batch;
-        // The per-rotation cost under the key every encrypted page reports (PF1): this page's only
-        // timed rotations are the batch's.
-        if (bt.rotations > 0) {
-          metric(stage, "fhe_ms_per_rotation", Math.round((bt.rotateMs / bt.rotations) * 1000) / 1000);
-        }
-      } else {
-        emit("log", stage, "encrypted tier: the student's held-out rows "
-          + "(data/telecom/student_heldout.json) could not be read, so no agreement figure is drawn");
-      }
+      await scoreHeldOutStudent(stage, "telecom_ids", "data/telecom/student_heldout.json");
       emit("log", stage, `the ARGMAX is NOT encrypted: all ${w.W.length} class scores are decrypted `
         + `and the maximum taken in the clear, because CKKS has no native comparison. That is the `
         + `standard construction and it reveals nothing here, since in one tab the client is the user.`);
@@ -2518,7 +2529,7 @@ export function runClientPipeline(
         metric(stage, "inference_provenance", "simulated");
         // The badge this feeds names the QSDC channel model. The page's telemetry anomaly verdict
         // further down comes from a plaintext linear model over bundled OPS-SAT-AD segments, not from
-        // this model and not under FHE or MPC: no FHE or MPC stage runs on the satellite page.
+        // this model and not under FHE or MPC.
         metric(stage, "inference_backend", "analytic free-space channel model (quantumSim); the anomaly verdict is a plaintext linear model");
         {
           // Out of view: there is no quantum channel to carry the telemetry (Round 77).
@@ -2654,8 +2665,9 @@ export function runClientPipeline(
         }   // end qsdc: everything below scores the BUNDLED corpus and runs on both profiles
         {
           // REAL OPS-SAT-AD telemetry segments (CC BY 4.0) + a demo linear anomaly regression, scored
-          // in-browser IN PLAINTEXT - a JS dot product, with no FHE or MPC (the CKKS version runs only
-          // in the Python deployment). The satellite flow has no private_inference stage, so this is
+          // in-browser IN PLAINTEXT - a JS dot product, with no FHE or MPC (the CKKS version of this
+          // regression runs only in the Python deployment; the page's CKKS check scores the published
+          // student, below). The satellite flow has no private_inference stage, so this is
           // where the anomaly verdict is surfaced. The SMAP/MSL windows this read until Round 84 had
           // no data licence from any provider and are no longer served.
           //
@@ -2709,6 +2721,16 @@ export function runClientPipeline(
         // the eavesdrop behaviour, and left the diagram reading "published model · —" with a done
         // tick and no reason.
         await runPublishedForStage(stage);
+        // The published student under CKKS (Round 86), verification rather than a decision, as on telecom: the page's
+        // anomaly verdict above is a different, plaintext regression. Outside the delivery branch for the same
+        // reason: it scores the benchmark's test partition, not the telemetry this run delivered.
+        try {
+          await scoreHeldOutStudent(stage, "satellite_comms", "data/satellite/student_heldout.json");
+          emit("log", stage, "the DECISION is not encrypted: each segment's score is decrypted and its sign read in "
+            + "the clear, because CKKS has no native comparison.");
+        } catch (e) {
+          emit("log", stage, `encrypted tier skipped: ${e instanceof Error ? e.message : String(e)}`);
+        }
         break;
       }
       case "qsmpc_compute": {
@@ -3812,8 +3834,8 @@ export function runClientPipeline(
           // config carries: CKKS when a CKKS evaluation reported (`fhe_model` from the encrypted
           // hybrid, `encrypted_rows_scored` from a batch), the garbled-circuit argmax when it was
           // checked against the clear one (`mpc_matches_clear`), else null. Until Round 84 both were
-          // named on every use case, including satellite, whose flow runs neither, and telecom, which
-          // runs a CKKS check of its student and no MPC. In the client-only demo the
+          // named on every use case, including telecom and satellite, which run a CKKS check of a student
+          // and no MPC. In the client-only demo the
           // selects are replaced by a badge reading "node-seal CKKS + garbled-circuit 2PC", while the
           // state still held the server-side defaults `tenseal-cpu` and
           // `mpyc-shamir` - nobody chose them and neither executed. `config.fhe` and `config.mpc`

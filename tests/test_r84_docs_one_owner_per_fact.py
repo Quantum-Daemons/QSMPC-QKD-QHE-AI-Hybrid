@@ -158,7 +158,7 @@ def test_the_threat_model_holds_one_table_of_what_each_step_protects() -> None:
 def test_which_pages_encrypt_has_one_owner() -> None:
     owner = _flat("docs/models-and-benchmarks.md")
     assert "#### Which pages encrypt" in _read("docs/models-and-benchmarks.md")
-    assert "the satellite page runs neither" in owner and "under CKKS (TenSEAL)" in owner
+    assert "telecom and satellite pages run a CKKS check" in owner and "under CKKS (TenSEAL)" in owner
     for rel in ("docs/architecture.md", "docs/findings.md", "docs/use-cases.md", "DATA_LICENSES.md"):
         assert _links_to(rel, PAGES), f"{rel} says which pages encrypt without the owner's link"
     assert "the satellite page runs no CKKS step" not in _flat("DATA_LICENSES.md")

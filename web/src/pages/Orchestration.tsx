@@ -164,7 +164,7 @@ export default function Orchestration() {
         //
         // ONE COPY, shared with the use-case page. This text lived here and the use-case page
         // rendered null, so the same absence was explained on one surface and silent on the other.
-        <NoEncryptedComparison usecase={usecase} />
+        <NoEncryptedComparison />
       ) : null}
 
       {/* The real-data overlay the use-case pages carry. `RealDataScatter` needs only the use case -

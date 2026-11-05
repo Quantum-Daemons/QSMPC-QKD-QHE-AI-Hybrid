@@ -273,9 +273,10 @@ visible number.
 #### Which pages encrypt
 
 In the browser, the finance, medical and genomics pages run node-seal CKKS and a Polytune
-garbled-circuit 2PC between notional parties in one tab; the telecom page runs a CKKS check of its
-student and no 2PC; and the satellite page runs neither: its anomaly verdict and its SHAP explanation
-are computed in plaintext, on a bundled OPS-SAT-AD segment. The full deployment scores one of those
+garbled-circuit 2PC between notional parties in one tab; the telecom and satellite pages run a CKKS check of a
+published student and no 2PC. The satellite page's anomaly verdict and SHAP explanation are a separate demo regression,
+computed in plaintext on a bundled OPS-SAT-AD segment; its check scores `satellite_comms.opssat_student` on the benchmark's
+529 test-partition segments, through the quadratic expansion and the scaler its ONNX graph applies. The full deployment scores one of those
 segments, with the same demo regression, under CKKS (TenSEAL), and reports how far the decrypted
 logits are from the plaintext ones. What CKKS evaluates in the browser: on the medical page the
 Wisconsin logistic regression, whose logits the 2PC argmax then compares, and the published medical

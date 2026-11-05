@@ -49,7 +49,7 @@ export default function UseCases() {
             <tr key={u.id}>
               <td>{u.nav}</td>
               <td><code>{u.agenticTool}</code></td>
-              <td>{u.inference ? "CKKS + garbled-circuit 2PC" : u.id === "telecom_ids" ? "CKKS check of the student" : "-"}</td>
+              <td>{u.inference ? "CKKS + garbled-circuit 2PC" : u.id === "telecom_ids" || u.id === "satellite_comms" ? "CKKS check of the student" : "-"}</td>
               {/* The attack classifier is not a quantum channel, and by default it is not quantum
                   either (an in-tab softmax and the published random forest), so "+ QML-IDS" left
                   this column. Telecom's page names its classifier itself. */}

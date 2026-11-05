@@ -61,7 +61,7 @@ globalThis.fetch = async (url) => {
 };
 const m = await import(`file://${OUT}`);
 const out = {};
-for (const uc of ["finance_aml", "medical_fl", "telecom_ids"]) {
+for (const uc of ["finance_aml", "medical_fl", "telecom_ids", "satellite_comms"]) {
   const held = await m.heldOutCorpus(uc);
   if (!held) { out[uc] = null; continue; }
   const r = await m.encryptedHeldOutAgreement(held);
@@ -118,7 +118,7 @@ def _payload(rel: str) -> dict:
 
 
 @pytest.mark.parametrize("usecase, rows, ciphertexts", [
-    ("finance_aml", 8192, 64), ("medical_fl", 171, 1), ("telecom_ids", 600, 2)])
+    ("finance_aml", 8192, 64), ("medical_fl", 171, 1), ("telecom_ids", 600, 2), ("satellite_comms", 529, 34)])
 def test_every_held_out_row_is_scored(run: dict, usecase: str, rows: int, ciphertexts: int) -> None:
     r = run[usecase]
     assert r is not None, f"{usecase}: heldOutCorpus returned nothing"
@@ -132,7 +132,7 @@ def test_every_held_out_row_is_scored(run: dict, usecase: str, rows: int, cipher
     assert r["msPerCiphertext"] and r["msPerCiphertext"] > 0, "the per-ciphertext cost is not reported"
 
 
-@pytest.mark.parametrize("usecase", ["finance_aml", "medical_fl", "telecom_ids"])
+@pytest.mark.parametrize("usecase", ["finance_aml", "medical_fl", "telecom_ids", "satellite_comms"])
 def test_the_figure_says_held_out_and_names_its_licence(run: dict, usecase: str) -> None:
     r = run[usecase]
     assert r["heldOut"] is True and r["fitNote"], f"{usecase}: the plot does not say what the model was fitted on"
@@ -145,7 +145,7 @@ def test_the_figure_says_held_out_and_names_its_licence(run: dict, usecase: str)
     assert r["labelsAligned"], f"{usecase}: the plotted true labels are not the corpus labels in order"
 
 
-@pytest.mark.parametrize("usecase", ["finance_aml", "medical_fl", "telecom_ids"])
+@pytest.mark.parametrize("usecase", ["finance_aml", "medical_fl", "telecom_ids", "satellite_comms"])
 def test_encryption_moves_no_decision_and_says_why(run: dict, usecase: str) -> None:
     r = run[usecase]
     assert r["mismatches"] == 0, f"{usecase}: {r['mismatches']} encrypted decisions differ from plaintext"
@@ -163,6 +163,16 @@ def test_finance_scores_the_published_student_and_reproduces_its_decisions(run: 
     # The plaintext student in the browser flags exactly the rows the Python builder's student does,
     # and the encrypted one agrees with it.
     assert r["plainFlagged"] == r["encFlagged"] == exp["plaintext_flagged"], (r, exp)
+
+
+def test_satellite_scores_the_published_student_and_reproduces_its_decisions(run: dict) -> None:
+    """The expansion and the scaler run in TypeScript here and in scikit-learn in the builder; one wrong term flips rows."""
+    r = run["satellite_comms"]
+    exp = _payload("satellite/student_heldout.json")["expected"]
+    assert r["modelKey"] == "satellite_comms.opssat_student"
+    assert r["scoreKind"] == "logit"
+    assert r["plainFlagged"] == r["encFlagged"] == exp["plaintext_flagged"], (r, exp)
+    assert abs(r["plaintextAccuracy"] - exp["plaintext_accuracy"]) < 1e-6
 
 
 def test_medical_and_telecom_reproduce_the_builders_plaintext_accuracy(run: dict) -> None:

@@ -221,6 +221,75 @@ def telecom() -> None:
     })
 
 
+def _scaler_of_published_graph(model: Path) -> tuple[np.ndarray, np.ndarray]:
+    """The mean and scale inside a pipeline student's ONNX graph, from its `Scaler` node: (x - offset) * scale.
+
+    A pipeline student's weights.json publishes `mean` and `scale` as null, because its graph applies them. A CKKS
+    client has to apply them itself, before encrypting, so they are read from the graph those weights ship with.
+    """
+    import onnx
+
+    node = next(n for n in onnx.load(model).graph.node if n.op_type == "Scaler")
+    attrs = {a.name: np.asarray(a.floats, dtype=np.float64) for a in node.attribute}
+    return attrs["offset"], 1.0 / attrs["scale"]
+
+
+def satellite_student() -> None:
+    """The published OPS-SAT student and the benchmark's test partition, for the page's CKKS check (Round 86)."""
+    from sklearn.metrics import average_precision_score, f1_score
+    from sklearn.preprocessing import PolynomialFeatures
+
+    src = REPO / "models" / "satellite_opssat_student"
+    w = json.loads((src / "weights.json").read_text())
+    d = json.loads((src / "eval_sample.json").read_text())
+    mean, scale = _scaler_of_published_graph(src / "onnx" / "model.onnx")
+    X = np.asarray(d["samples"], dtype=np.float64)
+    y = np.asarray(d["labels"], dtype=int)
+    logit = ((PolynomialFeatures(2, include_bias=False).fit_transform(X) - mean) / scale) @ np.asarray(w["W"][0]) + w["b"][0]
+    pred = (logit > 0).astype(int)
+
+    weights = {**w, "input": {
+        "preprocessing": ["quadratic expansion", "subtract mean", "divide by scale"],
+        "expansion": w["input"]["expansion"],
+        "mean": [float(v) for v in mean],
+        "scale": [float(v) for v in scale],
+        "scaler_source": "the Scaler node of the published ONNX graph, which applies these itself",
+    }, "licence": d["licence"], "licence_url": d["licence_url"], "attribution": d["attribution"]}
+    _write(WEB / "satellite" / "student_weights.json", weights)
+    _write(WEB / "satellite" / "student_heldout.json", {
+        "usecase": "satellite_comms",
+        "model_key": w["student_key"],
+        "teacher_key": w["teacher_key"],
+        "weights": "data/satellite/student_weights.json",
+        "corpus": "OPS-SAT-AD, real telemetry from ESA's OPS-SAT CubeSat",
+        "provenance": d["provenance"],
+        "split": get_spec(w["student_key"]).eval_split,
+        "fit_note": (f"{w['teacher_key']} was fitted, and {w['student_key']} distilled, on the benchmark's train "
+                     "partition; neither saw these 529 segments."),
+        "licence": d["licence"],
+        "licence_url": d["licence_url"],
+        "attribution": d["attribution"],
+        "modifications": d["modifications"],
+        "feature_names": d["feature_names"],
+        "input_space": "raw",
+        "class_names": ["nominal", "anomalous"],
+        "plane": {"x": {"key": "n_peaks", "label": "peaks in segment"},
+                  "y": {"key": "diff2_peaks", "label": "peaks in 2nd difference"}},
+        "samples": d["samples"],
+        "labels": d["labels"],
+        "expected": {
+            "rows": int(len(y)), "positives": int(y.sum()),
+            "plaintext_flagged": int(pred.sum()),
+            "plaintext_accuracy": round(float((pred == y).mean()), 6),
+            "plaintext_minority_class_f1": round(float(f1_score(y, pred)), 6),
+            "plaintext_auc_pr": round(float(average_precision_score(y, logit)), 6),
+            "smallest_abs_logit": float(np.abs(logit).min()),
+            "note": ("The published student in plaintext on these rows, computed by this script with the shipped "
+                     "weights and the scaler its ONNX graph applies; the browser's plaintext reference must reproduce it."),
+        },
+    })
+
+
 def satellite() -> None:
     """OPS-SAT-AD segments for the plaintext anomaly verdict, replacing the unlicensed SMAP/MSL file."""
     from sklearn.linear_model import LogisticRegression
@@ -281,6 +350,7 @@ def satellite() -> None:
     copy = REPO / "data" / "satellite" / "opssat_segments.json"
     copy.write_bytes((WEB / "satellite" / "opssat_segments.json").read_bytes())
     print(f"  wrote {copy.relative_to(REPO)} (copy of web/public/data/satellite/opssat_segments.json)")
+    satellite_student()
 
 
 def main() -> int:

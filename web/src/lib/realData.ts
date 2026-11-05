@@ -468,10 +468,22 @@ export interface HeldOutCorpus {
 }
 
 /** Apply the preprocessing a weights file declares, step by step, refusing an unknown step. */
+/** scikit-learn's PolynomialFeatures(degree=2, include_bias=False): [x_i], then x_i * x_j for i <= j. */
+export function quadraticExpansion(row: number[]): number[] {
+  const out = row.slice();
+  for (let i = 0; i < row.length; i++) {
+    for (let j = i; j < row.length; j++) out.push(row[i] * row[j]);
+  }
+  return out;
+}
+
 function preprocess(row: number[], steps: string[], mean: number[], scale: number[]): number[] {
-  return row.map((v, i) => {
+  // Computed on the plaintext row, before encryption, so the encrypted step is still one dot product.
+  const input = steps[0] === "quadratic expansion" ? quadraticExpansion(row) : row;
+  const perValue = steps[0] === "quadratic expansion" ? steps.slice(1) : steps;
+  return input.map((v, i) => {
     let x = v;
-    for (const step of steps) {
+    for (const step of perValue) {
       if (step === "subtract mean") x -= mean[i] ?? 0;
       else if (step === "divide by scale") x /= scale[i] || 1;
       // The same refusal `onnxInference.applyPreprocessing` makes: a guessed transform turns a
@@ -531,14 +543,18 @@ async function publishedStudentHeldOut(usecase: string, path: string): Promise<H
  *   medical_fl   the page's bundled WDBC regression on the 171 rows held out from its fit.
  *   telecom_ids  the published 64-parameter student (`telecom_ids.student`) on the 600 rows of its
  *                own held-out quarter.
+ *   satellite_comms  the published 210-parameter student (`satellite_comms.opssat_student`) on the
+ *                529 segments of the benchmark's test partition, through its quadratic expansion and
+ *                the scaler its ONNX graph applies.
  *
  * `null` for every other use case: genomics' 30 reference-panel individuals are external rather than
- * a held-out split and keep their own path; satellite has no encrypted student it can evaluate here.
+ * a held-out split and keep their own path.
  */
 export async function heldOutCorpus(usecase: string): Promise<HeldOutCorpus | null> {
   try {
     if (usecase === "finance_aml") return await publishedStudentHeldOut(usecase, "/data/finance/student_heldout.json");
     if (usecase === "telecom_ids") return await publishedStudentHeldOut(usecase, "/data/telecom/student_heldout.json");
+    if (usecase === "satellite_comms") return await publishedStudentHeldOut(usecase, "/data/satellite/student_heldout.json");
     if (usecase === "medical_fl") {
       const ds = await fetchJSON("/data/medical/breast_cancer_sample.json");
       const h = ds.heldout;
