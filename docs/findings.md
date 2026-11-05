@@ -358,7 +358,10 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
 
   Verified on the live deploy, all three pages, in a Chrome launched with
   `--enable-unsafe-webgpu --enable-features=Vulkan,WebMachineLearningNeuralNetwork` (on Linux these
-  cannot be set permanently through `chrome://flags`; the browser must be launched with them):
+  could not be set permanently through `chrome://flags` at Round 18; since then WebGPU is on by default for
+  Intel Gen12+ from Chrome 144 and NVIDIA on Wayland from Chrome 147, per the
+  [Implementation Status](https://github.com/gpuweb/gpuweb/wiki/Implementation-Status) page of 2026-10-02, and other
+  GPUs and WebNN still need flags):
 
   | page | in-browser | expected | sample | provider |
   |---|---|---|---|---|
@@ -457,8 +460,11 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   preference order and falls back per node, so a graph can run partly on WebGPU and partly on the
   WASM floor while the badge shows a single state. Which nodes fell back is **not measured here** -
   closing that needs `startProfiling()`/`endProfiling()` or ORT's "kernel not found in registries"
-  log, and the badge's two states cannot express a partial answer. Model weights stream from the HF/MLC **CDN** on first run
-  (browser-cached after) - zero VPS bandwidth/compute. WebLLM needs WebGPU; without it WebLLM is
+  log, and the badge's two states cannot express a partial answer. Model weights come from Hugging Face at a pinned
+  revision on first run and are browser-cached after, so they cost the demo host nothing. The engines' runtime files do
+  come from the demo host: ONNX Runtime's wasm, and the WebLLM model libraries, built from the Apache-2.0 MLC-LLM source
+  (`web/public/webllm/`, `scripts/build_webllm_libs.sh`). A run contacts the demo and Hugging Face, and no third
+  host (checklist `CS12`). WebLLM needs WebGPU; without it WebLLM is
   disabled, Transformers.js runs on WASM as it does by default, and the quantum-safe MCP envelope still
   runs. The in-browser models
   illustrate the agentic-AI + MCP flow; they are not the production inference path.

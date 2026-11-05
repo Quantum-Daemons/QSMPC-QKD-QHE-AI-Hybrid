@@ -390,8 +390,8 @@ and the three `/api/demo/*` endpoints. The dense+conv hybrid dispatch is unified
   `VITE_CLIENT_ONLY=1` makes `?demo=` non-overridable - a client-only build is client-only.
   The **demo** topology therefore offers inference plus the in-browser federated stage, which runs on
   every finance and medical run; the **full**
-  topology additionally runs server-side federated learning + FHE inference + the MCP server. AI model weights stream from the
-  HF/MLC CDN (browser-cached).
+  topology additionally runs server-side federated learning + FHE inference + the MCP server. AI model weights come from
+  Hugging Face at a pinned revision (browser-cached), and the engines' runtime files from the demo host.
 
 ## Why CUDA-Q / cuQuantum (not qiskit-aer-gpu)
 `qiskit-aer-gpu` cu11/cu12 wheels do not target Blackwell `sm_120`. On this hardware

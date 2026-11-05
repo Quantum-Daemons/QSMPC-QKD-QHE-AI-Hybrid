@@ -786,22 +786,35 @@ class WebConfig:
     # selection away rather than being removed.
     tfjs_default_device: str = "wasm"
     onnx_default_backend: str = "wasm"
-    # Download sizes are the MEASURED totals from the MLC model repos' blob listings, not estimates.
-    # Ordered smallest-first so the cheapest option is the default: a drive-by visitor should not be
-    # handed a 2 GB download to see the page work. SmolLM2-360M is the smallest MLC build that still
-    # produces usable text. Every q4f16_1 build needs the WebGPU `shader-f16` feature, which is absent
-    # on essentially all Qualcomm GPUs, so a q4f32_1 build is listed as the fallback.
+    # The WebLLM list. `bytes` is what a first run fetches from Hugging Face at `revision`: the weight shards, their
+    # cache manifest, the tokenizer and the chat config, summed from the repository's tree at that revision. Ordered
+    # smallest-first so the cheapest option is the default: a drive-by visitor should not be handed a 2 GB download to
+    # see the page work. Every q4f16_1 build needs the WebGPU `shader-f16` feature, absent on some Qualcomm adapters,
+    # so a q4f32_1 build is listed for those. It is the same download: the two differ in compute, not in storage.
+    # `lib` is served from `webllm_lib_dir`, built from source by scripts/build_webllm_libs.sh, and `lib_sri` is its
+    # hash. `context_window_size` is the value the WebLLM library's own record sets for each model.
+    # Each model's licence is in DATA_LICENSES.md, section 5b. Llama-3.2-1B was removed by the owner's choice (Round 86).
+    webllm_lib_dir: str = "webllm/0.2.87"
+    # How many times a WebLLM load runs before a lost request is reported. Finished shards stay cached, so each
+    # attempt fetches only what is missing (clientAI.ts, `loadWebLlmResuming`).
+    webllm_load_attempts: int = 5
     webllm_models: list = field(default_factory=lambda: [
-        {"id": "SmolLM2-360M-Instruct-q4f16_1-MLC", "label": "SmolLM2-360M (204 MB, needs shader-f16)",
-         "bytes": 204_289_520, "requires": "shader-f16"},
-        {"id": "SmolLM2-360M-Instruct-q4f32_1-MLC", "label": "SmolLM2-360M f32 (376 MB, no shader-f16)",
-         "bytes": 376_000_000, "requires": ""},
-        {"id": "Llama-3.2-1B-Instruct-q4f16_1-MLC", "label": "Llama-3.2-1B (695 MB, needs shader-f16)",
-         "bytes": 695_242_752, "requires": "shader-f16"},
-        {"id": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", "label": "Qwen2.5-0.5B (needs shader-f16)",
-         "bytes": 0, "requires": "shader-f16"},
-        {"id": "Phi-3-mini-4k-instruct-q4f16_1-MLC", "label": "Phi-3-mini-4k (~2 GB, needs shader-f16)",
-         "bytes": 2_000_000_000, "requires": "shader-f16"}])
+        {"id": "SmolLM2-360M-Instruct-q4f16_1-MLC", "label": "SmolLM2-360M",
+         "revision": "3a622fd89e0216e8bb10c410c007c786baa8a033", "bytes": 205_844_887, "requires": "shader-f16",
+         "lib": "SmolLM2-360M-Instruct-q4f16_1_cs1k-webgpu.wasm",
+         "lib_sri": "sha256-OLk4LS2tFnLJYIo2DsVwgcckQoNyWAG4pHfGUkFjius=", "context_window_size": 4096},
+        {"id": "SmolLM2-360M-Instruct-q4f32_1-MLC", "label": "SmolLM2-360M f32",
+         "revision": "1e6b2ca3684e2bc8a6d39eb36e8d6cd51eb12bda", "bytes": 205_844_887, "requires": "",
+         "lib": "SmolLM2-360M-Instruct-q4f32_1_cs1k-webgpu.wasm",
+         "lib_sri": "sha256-ySTaMbQk0QFoWdMKy6WLCDB+fxKQFg4yWBSAL3EAd6Y=", "context_window_size": 4096},
+        {"id": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", "label": "Qwen2.5-0.5B",
+         "revision": "32ff081fe7e4dfe4ffb167b94c66fdf11e02b8ad", "bytes": 285_132_405, "requires": "shader-f16",
+         "lib": "Qwen2.5-0.5B-Instruct-q4f16_1_cs1k-webgpu.wasm",
+         "lib_sri": "sha256-Jkn8TDUJiwz1wEF17fYrak5QheKHkt0F5Ia5pJnIj8M=", "context_window_size": 4096},
+        {"id": "Phi-3-mini-4k-instruct-q4f16_1-MLC", "label": "Phi-3-mini-4k",
+         "revision": "7ecdc19b399efd7e967025c02496353e0dc50500", "bytes": 2_151_632_945, "requires": "shader-f16",
+         "lib": "Phi-3-mini-4k-instruct-q4f16_1_cs1k-webgpu.wasm",
+         "lib_sri": "sha256-BcDA7G7G4az9x443HX+j541fQK4RK0ztaCMqNh8iTQs=", "context_window_size": 4096}])
     # The agent is abandoned after this long WITHOUT PROGRESS - no download event and no answer - not
     # after this long in total. A first run downloads its weights (236.7 MB for distilGPT-2 on WASM),
     # and until Round 60 a total limit cut off downloads that were still arriving.

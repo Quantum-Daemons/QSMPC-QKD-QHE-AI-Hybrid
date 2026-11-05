@@ -2739,37 +2739,49 @@
         "revision": "22942cb7d7ba4cc81bb4673549ca4d4614469b5e"
       }
     ],
+    "webllm_lib_dir": "webllm/0.2.87",
+    "webllm_load_attempts": 5,
     "webllm_max_tokens": 160,
     "webllm_models": [
       {
-        "bytes": 204289520,
+        "bytes": 205844887,
+        "context_window_size": 4096,
         "id": "SmolLM2-360M-Instruct-q4f16_1-MLC",
-        "label": "SmolLM2-360M (204 MB, needs shader-f16)",
-        "requires": "shader-f16"
+        "label": "SmolLM2-360M",
+        "lib": "SmolLM2-360M-Instruct-q4f16_1_cs1k-webgpu.wasm",
+        "lib_sri": "sha256-OLk4LS2tFnLJYIo2DsVwgcckQoNyWAG4pHfGUkFjius=",
+        "requires": "shader-f16",
+        "revision": "3a622fd89e0216e8bb10c410c007c786baa8a033"
       },
       {
-        "bytes": 376000000,
+        "bytes": 205844887,
+        "context_window_size": 4096,
         "id": "SmolLM2-360M-Instruct-q4f32_1-MLC",
-        "label": "SmolLM2-360M f32 (376 MB, no shader-f16)",
-        "requires": ""
+        "label": "SmolLM2-360M f32",
+        "lib": "SmolLM2-360M-Instruct-q4f32_1_cs1k-webgpu.wasm",
+        "lib_sri": "sha256-ySTaMbQk0QFoWdMKy6WLCDB+fxKQFg4yWBSAL3EAd6Y=",
+        "requires": "",
+        "revision": "1e6b2ca3684e2bc8a6d39eb36e8d6cd51eb12bda"
       },
       {
-        "bytes": 695242752,
-        "id": "Llama-3.2-1B-Instruct-q4f16_1-MLC",
-        "label": "Llama-3.2-1B (695 MB, needs shader-f16)",
-        "requires": "shader-f16"
-      },
-      {
-        "bytes": 0,
+        "bytes": 285132405,
+        "context_window_size": 4096,
         "id": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
-        "label": "Qwen2.5-0.5B (needs shader-f16)",
-        "requires": "shader-f16"
+        "label": "Qwen2.5-0.5B",
+        "lib": "Qwen2.5-0.5B-Instruct-q4f16_1_cs1k-webgpu.wasm",
+        "lib_sri": "sha256-Jkn8TDUJiwz1wEF17fYrak5QheKHkt0F5Ia5pJnIj8M=",
+        "requires": "shader-f16",
+        "revision": "32ff081fe7e4dfe4ffb167b94c66fdf11e02b8ad"
       },
       {
-        "bytes": 2000000000,
+        "bytes": 2151632945,
+        "context_window_size": 4096,
         "id": "Phi-3-mini-4k-instruct-q4f16_1-MLC",
-        "label": "Phi-3-mini-4k (~2 GB, needs shader-f16)",
-        "requires": "shader-f16"
+        "label": "Phi-3-mini-4k",
+        "lib": "Phi-3-mini-4k-instruct-q4f16_1_cs1k-webgpu.wasm",
+        "lib_sri": "sha256-BcDA7G7G4az9x443HX+j541fQK4RK0ztaCMqNh8iTQs=",
+        "requires": "shader-f16",
+        "revision": "7ecdc19b399efd7e967025c02496353e0dc50500"
       }
     ]
   }

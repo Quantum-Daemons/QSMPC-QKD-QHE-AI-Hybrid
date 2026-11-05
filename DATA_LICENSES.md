@@ -329,6 +329,33 @@ card carries the dataset, its licence, the measured metrics and the published ba
 measured against - including where the model falls short - and names its licence by the Hub's
 identifier, or by name and link (section 2c).
 
+## 5b. What the Agentic AI panel downloads
+
+The panel's models are not this project's. The visitor's browser fetches their weights from Hugging Face at the pinned
+revision in `web.tfjs_models` and `web.webllm_models`, and this project does not redistribute them. The conversions
+carry no licence field of their own, so the upstream model's licence is the one given here, read from each upstream
+model's card on 2026-11-05.
+
+| Engine | Model on the panel | Weights fetched from | Upstream | Licence |
+|---|---|---|---|---|
+| Transformers.js | distilGPT-2 | `Xenova/distilgpt2` | `distilbert/distilgpt2` | Apache-2.0 |
+| Transformers.js | Qwen2.5-0.5B-Instruct | `onnx-community/Qwen2.5-0.5B-Instruct` | `Qwen/Qwen2.5-0.5B-Instruct` | Apache-2.0 |
+| WebLLM | SmolLM2-360M, q4f16_1 and q4f32_1 | `mlc-ai/SmolLM2-360M-Instruct-*-MLC` | `HuggingFaceTB/SmolLM2-360M-Instruct` | Apache-2.0 |
+| WebLLM | Qwen2.5-0.5B, q4f16_1 | `mlc-ai/Qwen2.5-0.5B-Instruct-q4f16_1-MLC` | `Qwen/Qwen2.5-0.5B-Instruct` | Apache-2.0 |
+| WebLLM | Phi-3-mini-4k, q4f16_1 | `mlc-ai/Phi-3-mini-4k-instruct-q4f16_1-MLC` | `microsoft/Phi-3-mini-4k-instruct` | MIT |
+
+**Removed: Llama-3.2-1B** (2026-11-05, the owner's choice). The panel offered it with none of what its licence asks. The
+[Llama 3.2 Community License](https://www.llama.com/llama3_2/license/) allows commercial use below 700 million monthly
+active users, and section 1.b asks anyone making the materials available to supply the agreement, show "Built with Llama",
+keep an attribution notice and follow the Acceptable Use Policy. The other four models cover the same sizes without
+terms of their own.
+
+**The WebLLM model libraries** (`web/public/webllm/`) are the one part this project does distribute. WebLLM's default
+fetches prebuilt ones from `raw.githubusercontent.com/mlc-ai/binary-mlc-llm-libs`, a repository with no licence file, so
+`scripts/build_webllm_libs.sh` builds them from MLC-LLM and TVM, both Apache-2.0, at the commits the upstream libraries
+name. `MANIFEST.json` beside them records what each was built from, and `/licenses/webllm-libs.txt` ships the licences
+and notices of what they link.
+
 ## 6. OSS libraries (commercial-OK)
 
 - **node-seal** (MIT) - Microsoft SEAL -> WASM, real in-browser CKKS. **Polytune** + **Garble**
@@ -337,6 +364,8 @@ identifier, or by name and link (section 2c).
   their own licence files are collected at build time into `/licenses/qsh-mpc.txt`, which ships with the
   demo. `mpc-framework` + `emp-wasm-engine` + `summon-ts` filled this role until Round 65.
 - **onnxruntime-web** (MIT) - runs the published industry models in the browser.
+- **@huggingface/transformers** and **@mlc-ai/web-llm** (both Apache-2.0) - the Agentic AI panel's two engines. Their
+  models and the libraries this project builds for one of them: section 5b.
 - **MCP Python SDK** (`mcp`, MIT) - the quantum-safe MCP server; the official
   **@modelcontextprotocol/server-filesystem** for external-MCP interop, MIT and Apache-2.0 while its
   project moves from one to the other (its repository's LICENSE explains which contributions are under

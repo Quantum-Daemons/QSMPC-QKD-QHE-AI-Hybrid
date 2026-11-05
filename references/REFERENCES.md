@@ -955,6 +955,7 @@ in Round 17 are marked below.
 | **`polytune`, `garble_lang`** (sine-fdn) | `web/src/lib/clientMPC.ts` via `wasm/qsh-mpc` - real in-browser garbled-circuit 2PC (replaced `mpc-framework` + `emp-wasm-engine` + `summon-ts` in Round 65); dependency notices in `/licenses/qsh-mpc.txt` | MIT |
 | **`mcp`** (MCP Python SDK; the class is `MCPServer`, named `FastMCP` before v2.0.0) and the official `@modelcontextprotocol/server-filesystem` | `qsh/mcp/*` - real quantum-safe MCP server and interop | MIT |
 | **`onnxruntime-web`** | `web/src/lib/onnxInference.ts` - browser inference. The `webgpu` and `wasm` builds are separate bundles; the demo uses WASM unless the visitor selects WebGPU and a real adapter exists | MIT |
+| **`@huggingface/transformers`, `@mlc-ai/web-llm`** | `web/src/lib/clientAI.ts` - the Agentic AI panel's engines, dynamically imported. Transformers.js's ONNX Runtime wasm comes from this site. WebLLM's model libraries are built here from MLC-LLM and TVM at the commits upstream's own libraries name (`scripts/build_webllm_libs.sh`; `web/public/webllm/*/MANIFEST.json`), and the models' licences are in `DATA_LICENSES.md` section 5b | Apache-2.0 |
 | `PennyLane` | `qsh/ai/federated.py` - quantum federated learning (`kind="qfl"`), and `qsh/qml_ids/detector.py`. The FedAvg and secure-aggregation code is this repository's own; Flower is cited as prior art, not used as a dependency | Apache-2.0 |
 
 ## Baselines and corpora cited in code but previously absent here

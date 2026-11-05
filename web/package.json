@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@huggingface/transformers": "^4.2.0",
-    "@mlc-ai/web-llm": "^0.2.84",
+    "@mlc-ai/web-llm": "0.2.87",
     "@noble/ciphers": "~2.4.0",
     "@noble/curves": "^2.4.0",
     "@noble/hashes": "^2.4.0",

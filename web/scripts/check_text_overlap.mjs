@@ -54,7 +54,9 @@ const PAGES = [
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function cdp() {
-  for (let i = 0; i < 50; i++) {
+  // Up to a minute. Ten seconds failed one CI run in Round 86, on a runner slow to start Chrome, while the same
+  // commit's other run passed: the scan had said nothing about the page.
+  for (let i = 0; i < 300; i++) {
     try {
       const t = await (await fetch(`http://127.0.0.1:${PORT}/json/new?about:blank`, { method: "PUT" })).json();
       const ws = new WebSocket(t.webSocketDebuggerUrl);
