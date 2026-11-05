@@ -159,9 +159,9 @@
 > The Round 46 banner below quotes ACCURACIES of 0.976667 (finance) and 0.918605 (medical). Over the
 > first Round 47 retrain finance accuracy went UP, to **0.981667**, while finance minority-class F1 -
 > this artifact's headline metric - went 0.794118 to **0.84058**, also up; medical accuracy went
-> **0.860465** and medical minority-class F1 0.888889 to **0.8125**. The current
-> identical-across-widths figures are finance minority-class F1 **0.735294** with accuracy **0.97**,
-> and medical accuracy **0.883721** with minority-class F1 **0.84375**. An earlier revision of this
+> **0.860465** and medical minority-class F1 0.888889 to **0.8125**. The identical-across-widths figures
+> after Round 47 were finance minority-class F1 **0.735294** with accuracy **0.97**, and medical accuracy
+> **0.883721** with minority-class F1 **0.84375**; Round 84 retrained both, see the top of this file. An earlier revision of this
 > paragraph juxtaposed 0.976667 with 0.84058 as though one became the other; that is an accuracy
 > against a minority-class F1, a -0.136 fall that happened on no metric, and on both metrics finance
 > in fact rose over that step. Identical at both widths on every recorded metric, on both corpora,

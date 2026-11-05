@@ -10,9 +10,8 @@ diagnostic and in-vitro diagnostic software would be high-risk through Annex I (
 Rule 3), while AML monitoring by a bank is not (Annex III 5(b) covers creditworthiness; profiling by
 law enforcement would be, under 6(e)) and an intrusion detector used solely for cybersecurity is not
 either on recital 55's reading; `web/src/lib/aiActScope.ts` states each, with its conditions. An earlier revision of this paragraph listed "credit/AML" as high-risk. Finance and healthcare
-supervisors already expect **SHAP-style feature attributions** (+ counterfactuals)
-under instruments that are in force today: US SR 11-7 model risk management and GDPR Art. 22
-right-to-explanation. Those are the reasons to build it now.
+instruments in force today ask for explanations of model decisions: US SR 11-7 model risk management and GDPR
+Art. 22. Neither names SHAP, and this module gives attributions and no counterfactuals.
 
 (An earlier revision of this docstring said Article 13 was "in force August 2026". The correction was
 applied everywhere else - `ShapPanel.tsx`, `README.md`, `clientCompute.ts` - and left a sentence
@@ -24,12 +23,10 @@ For **linear / logistic** models the Shapley value has an exact closed form,
 
     phi_i = w_i * (x_i - E[x_i]),     base = w . E[x] + b,     sum_i phi_i + base = model(x)
 
-so attributions are *exact* and cheap — no sampling, and no need to decrypt under FHE: the model
-owner explains on the plaintext weights, or the client explains on its own features. The
-background expectation ``E[x]`` can be produced by **secure aggregation** rather than shared raw
-data (cf. *Federated SHAP*, Machine Learning 2026; additive-HE + Shapley FL) — see
-:mod:`~qsh.ai.federated`. Combined with the ML-DSA :class:`SignatureStage`, the explanation
-becomes a **tamper-evident, signed** audit record (this project's XAI and audit-trail requirement).
+so attributions are *exact* for independent features (the interventional reading) and cheap: no sampling, and no
+need to decrypt under FHE, because the model owner explains on the plaintext weights or the client explains on its own
+features. The background expectation ``E[x]`` here is the dataset mean. :class:`SignatureStage` signs the explanation with
+a per-run key, which detects accidental change and not an adversary who re-signs.
 
 A ``gradient_x_input`` fallback is provided for small non-linear (MLP) models.
 """

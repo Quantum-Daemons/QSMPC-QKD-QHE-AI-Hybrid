@@ -8,8 +8,7 @@
 // read from the run, the quantum channel dropped under a PQC-only profile), and the canvas shows
 // every one of them, in its stage list and on its channels. What is new is where each step happens:
 // `canvasRow` below says which component on which side runs it, and which way its exchange goes.
-// Grounded in references/ (Zhang QOT npj 2026, Li and Deng QHE-FL, Sutradhar QSMS, the EncFormer
-// linear-FHE / non-linear-MPC split).
+// Grounded in references/ (Li and Deng QHE-FL, Sutradhar QSMS, the linear-FHE / non-linear-MPC split).
 
 import { appConfig } from "./config";
 

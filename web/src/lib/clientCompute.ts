@@ -1220,7 +1220,7 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     ctpt = measured.ctBytes == null || measured.featDim <= 0
       ? null
       : r2(measured.ctBytes / (measured.featDim * 8));
-    device = "cpu";                                   // node-seal CKKS is WASM-CPU (no commercial-OK WebGPU FHE in 2026)
+    device = "cpu";                                   // node-seal CKKS is WASM-CPU (no commercial-OK WebGPU FHE found, searched 2026-11-03)
   } else {
     // The COST-MODEL branch: nothing here was measured. It used to name whatever execution provider
     // `onnxBackend()` happened to report, which was never this row's - and is now flatly wrong,
@@ -2866,7 +2866,7 @@ export function runClientPipeline(
         // REAL client-side federated learning ("Quantum Federated Learning" by name): FedAvg of a
         // logistic head over the closed-form `qcnnExpectation` features - no circuit is simulated -
         // across simulated clients, round accuracy genuinely computed in-browser. The full
-        // deployment's Flower+PennyLane HybridQNN trains a real variational circuit; this does not.
+        // deployment's PennyLane HybridQNN trains a real variational circuit; this does not.
         // Federate over this page's REAL bundled sample where one exists, so the accuracy
         // describes the data the page is actually showing rather than an internal toy.
         //
@@ -3794,7 +3794,7 @@ export function runClientPipeline(
         // Sign the RUN, not just its name. This used to be JSON.stringify({ usecase }) -- a
         // signature over the string {"usecase":"finance_aml"} and nothing else, so every metric,
         // every algorithm selection and the explanation could be altered without invalidating the
-        // "tamper-evident audit record" the UI advertises. Canonicalised with sorted keys so the
+        // record the UI advertises. Canonicalised with sorted keys so the
         // same run produces the same payload.
         const canon = (v: unknown): unknown =>
           Array.isArray(v) ? v.map(canon)
@@ -3841,8 +3841,8 @@ export function runClientPipeline(
           algorithm: dsa.name, signature_bytes: sig.length,
           signature_hex_prefix: [...sig.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join(""),
           // Without the public key and the exact payload, nobody but this tab can re-check the
-          // signature -- the keypair is generated per run and discarded. Both are recorded now so
-          // "tamper-evident" is a claim a reader can actually test.
+          // signature -- the keypair is generated per run and discarded. Both are recorded now so a
+          // reader can re-check it. A per-run key shows the payload is unchanged since signing, not who signed it.
           public_key_hex: [...sk.publicKey].map((b) => b.toString(16).padStart(2, "0")).join(""),
           signed_payload: signedPayload,
           signed_fields: ["usecase", "config", "metrics", "explanation"],

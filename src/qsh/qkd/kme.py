@@ -34,7 +34,7 @@ import secrets
 import uuid
 from dataclasses import dataclass, field
 
-#: GS QKD 014 clause 5: the default key size a KME returns when the SAE does not ask for one.
+#: GS QKD 014 clause 6.1, Table 9: `key_size`, the default a KME delivers. 352 is the spec's example value.
 DEFAULT_KEY_SIZE_BITS = 352
 #: An arbitrary but finite store, so "the KME ran out" is reachable in a demo rather than theoretical.
 DEFAULT_STORED_KEY_COUNT = 64
@@ -67,7 +67,7 @@ class KeyManagementEntity:
         """The spec's Status data format."""
         return {
             "source_KME_ID": self.KME_ID,
-            "target_KME_ID": self.KME_ID,
+            "target_KME_ID": self.KME_ID,      # one in-process KME stands in for both ends
             "master_SAE_ID": master_SAE_ID,
             "slave_SAE_ID": slave_SAE_ID,
             "key_size": self.key_size_bits,

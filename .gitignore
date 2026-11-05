@@ -46,9 +46,7 @@ references/Quantum-Safe_Multi-Party_Computation_for_Distributed_AI_Datasets*.pdf
 # internal failure history and the reasoning behind every check. That is the right shape for a working
 # document and the wrong shape for a public one, so it stays on disk and out of the repository.
 #
-# Two honest limits on what this achieves. It was tracked across 69 commits, so the history still
-# contains it; removing that would need a rewrite and a force-push, which this project does not do.
-# (The technical report, which counted its rows, is kept outside this repository since Round 86.)
+# It was tracked once; it left the history in the rewrite of 2026-10-29.
 docs/browser-verification-checklist.md
 # HAZARD, learned the hard way in Round 29: an ignored file is NOT protected from git. Switching to a
 # branch or commit where this file was still TRACKED restores the tracked copy over the working one,

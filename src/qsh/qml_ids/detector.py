@@ -126,8 +126,7 @@ class QuantumIDS:
 
 
 class QuantumKernelIDS:
-    """Quantum-kernel SVM (QSVC) for attack detection — the 2026 QML-IDS standard (QSVC/QRF survey;
-    "QSVM best" for QKD-attack telemetry). A PennyLane fidelity feature map defines a quantum kernel
+    """Quantum-kernel SVM (QSVC) for attack detection. A PennyLane fidelity feature map defines a quantum kernel
     ``k(x1,x2) = |<phi(x1)|phi(x2)>|^2``; an sklearn SVC trains on the precomputed kernel.
 
     CLASSICAL IN CLOSED FORM. The feature map is AngleEmbedding alone (one rotation per wire, no

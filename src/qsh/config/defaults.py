@@ -331,7 +331,7 @@ class QKDConfig:
     free_space_block_seconds: float = 10.0
     free_space_eps_sec: float = 1e-9
     free_space_pointing_db: float = 3.0             # Liao's upper value, "less than 3 dB"; not scaled
-    # --- decoy-state / efficient-BB84 parameters the AI optimizer (qkd/optimize.py) tunes ---
+    # --- decoy-state / efficient-BB84 parameters the optimizer (qkd/optimize.py) tunes ---
     # THE INTENSITIES ARE NOW A FINITE-KEY CHOICE, NOT THE ASYMPTOTIC OPTIMUM, and the difference
     # is the point. mu ~ 0.5 is the textbook optimum for the ASYMPTOTIC decoy rate ON THE GYS LINK
     # (Ma et al.: 0.48 at f = 1.22), and that is what these were. This channel's own asymptotic
@@ -434,7 +434,7 @@ class QKDConfig:
     #: Quantum Eng. 1, e26, 2019); and no standards body has ever specified one, because ETSI,
     #: ITU-T, ISO/IEC and IEEE quantum series are all key DISTRIBUTION.
     pp_threshold: float = 0.11        # post-processing QBER abort threshold
-    # --- AI optimizer (OptiQKD, WS1) knobs ---
+    # --- optimizer (OptiQKD, WS1) knobs ---
     optimize_enabled: bool = False
     optimize_method: str = "surrogate"        # surrogate | coordinate | gp
     optimize_n_samples: int = 48

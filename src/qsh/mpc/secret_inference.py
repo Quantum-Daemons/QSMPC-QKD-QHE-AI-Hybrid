@@ -1,7 +1,7 @@
 """Hybrid private inference: linear layers under FHE (CKKS), non-linear under MPC (MPyC).
 
-The 2026-standard secure-inference split (EncFormer, npj/IACR 2026; the Gazelle→Delphi→BOLT→
-Bumblebee→BLB lineage; the RhombusEnd2End/HEonGPU reference): **linear** ops (matmul/conv) run
+A common secure-inference split (the Gazelle→Delphi→BOLT→Bumblebee→BLB lineage, and EncFormer,
+arXiv:2604.09975, a preprint): **linear** ops (matmul/conv) run
 homomorphically under CKKS, while **non-linear** ops (ReLU, argmax,
 comparison) run under **secret-sharing MPC** — they are cheap homomorphically only as low-degree
 polynomials, so a real hybrid delegates them to MPC. Here the CKKS half runs on the configured CPU

@@ -129,13 +129,14 @@ selection, which is the defect this repository refuses elsewhere; the trainer al
 best EPOCH on a validation split precisely to avoid that. What is defensible is reporting the
 spread. A single seeded number with a [0.6230, 0.9333] range behind it should carry that range.
 
-**The medical card no longer publishes 0.6230**, and no five-seed spread exists for what it does
-publish. After the Round 46 circuit replacement and Round 47's two corrections - the
-fully-connected-block rewrite and then the dead-parameter reordering - the shipped medical artifact
-reports accuracy **0.883721** with minority-class F1 **0.84375** at seed 0,
-against the same logistic regression's 0.953488 / 0.939394. Whether seed 0 is still an unlucky draw
-is UNKNOWN on the current circuit: the seed sweep in this file was never re-run, so the argument
-above stands as a method and its numbers do not stand as a measurement.
+**The medical card no longer publishes 0.6230.** After the Round 46 circuit replacement, Round 47's two
+corrections - the fully-connected-block rewrite and then the dead-parameter reordering - and Round 84's
+retrain at c = 0.5, the shipped medical artifact reports accuracy **0.953488** with minority-class F1
+**0.939394** at seed 0, level with the same logistic regression's 0.953488 / 0.939394. On that circuit seed
+0 is a favourable draw, second highest of five (mean 0.9349, sd 0.0280), and over five seeds logistic
+regression is ahead: `models/qcnn_medical/README.md`. The seed sweep in this file was not re-run on these
+circuits, so the argument above stands as a method and its numbers do not stand as a measurement.
+Corrected 2026-11-05: this paragraph still gave the Round 47 figure as current.
 
 ## Reproducing this
 

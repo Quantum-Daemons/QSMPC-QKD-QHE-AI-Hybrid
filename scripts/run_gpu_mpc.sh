@@ -3,8 +3,7 @@
 # results/gpu_mpc_result.json, which qsh/benchmark/gpu_mpc_adapter.py folds into the
 # MPC-FHE vs QSMPC-FHE benchmark. Best-effort: prints what it measured; safe to re-run.
 #
-# This is OUR glue over the upstream HEonGPU (GPU CKKS) + PIGEON/hpmpc (GPU MPC); we do
-# not vendor RhombusEnd2End_HEonGPU.
+# This is OUR glue over the upstream HEonGPU (GPU CKKS) + PIGEON/hpmpc (GPU MPC).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"

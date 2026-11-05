@@ -315,7 +315,7 @@ export async function clientMcpDemo(qkdMixed = false, combiner = "hkdf"): Promis
 }
 
 // Wrap an arbitrary payload (e.g. the in-browser AI {prompt, answer}) through the quantum-safe MCP
-// channel, so the Agentic-AI panel shows the AI exchange signed + sealed + tamper-evident. The
+// channel, so the Agentic-AI panel shows the AI exchange signed + sealed, with tamper rejection tested. The
 // ``toolName`` only NAMES the `tools/call` request after the industry's MCP tool (finance:
 // score_transaction, medical: query_cohort, and so on); no tool is executed, the arguments are the
 // model's prompt and text.

@@ -72,9 +72,11 @@ et al` and no `Ruszczak`; the new one is the reverse.
 0.732558 is what the deploy served on 2026-08-11 and the record of a deploy is not editable
 afterwards. The circuit has been replaced once (Round 46, a hardware-efficient ansatz relabelled as
 a real QCNN) and corrected TWICE in Round 47 - once for the fully-connected block and the multiclass
-readout, and once for two classes of analytically dead parameter. The shipped figure is now accuracy
+readout, and once for two classes of analytically dead parameter. That gave accuracy
 **0.883721** with minority-class F1 **0.84375** against the same logistic regression's **0.953488** /
-**0.939394** - so the direction of the comparison is unchanged and only its size moved. The
+**0.939394**, so the direction of the comparison held and only its size moved. Round 84's retrain at
+c = 0.5 then brought seed 0 level, 0.953488 each, with logistic regression ahead over five seeds
+(`models/qcnn_medical/README.md`). The
 intermediate figures from the first Round 47 retrain, accuracy 0.860465 with minority-class F1
 0.8125, are themselves SUPERSEDED and are recorded here only so the sequence is followable.
 `models/qcnn_medical/weights.json` is authoritative; anything quoting 0.732558, or 0.860465, as
@@ -2686,7 +2688,7 @@ looking.
 **ITU-T, re-fetched per recommendation rather than taken on report.** Y.3835 reads "In force" alone
 at 9,796 B; Y.3836, Y.3837 and Y.3838 read "In force" AND **"prepublished"** at 9,647 / 9,590 /
 9,515 B - so `REFERENCES.md` naming only Y.3836 as prepublished was wrong about the other two. The
-ceiling holds: **Y.3839 and Y.3840 return 200 with a zero-length body.** Worth recording the method
+ceiling holds: **Y.3839 and Y.3840 return 200 with a zero-length body** (Y.3839 followed, approved 2026-10-19; this is the entry as measured). Worth recording the method
 trap: a browser User-Agent - the thing that defeats ETSI's bot block - collapses *every* one of these
 ITU pages to a 245 B stub, destroying the very signal that discriminates them.
 
@@ -3815,3 +3817,9 @@ is exactly why nothing ever caught it.
 covered marking in general; it is written into the watermark sub-measure alone. The file then repeated the
 reasoning about itself, in a note saying a file cannot carry metadata.
 
+**A superseded figure needs its date on every copy.** The model card moved to 0.953488 in Round 84 and was gated, so it stayed right.
+Two references and a log note kept "the shipped figure is now 0.883721" for two rounds, because a gate holds the card and a sentence
+saying "now" has no owner. The same shape produced "the teachers already sit at or above their published baselines", true of one of five.
+
+**Reading the PDF settled what a note could not.** The registry already said 0.11 was the recall; `metrics.py` two directories away still
+quoted it as the F1. Table II of Engelen et al. shows both on one row.

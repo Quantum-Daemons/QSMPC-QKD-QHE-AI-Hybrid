@@ -32,10 +32,10 @@ from ...orchestration.stages import Context
 
 def _fraud_model(seed: int = 0, n_tx: int | None = None
                  ) -> tuple[LinearModel, np.ndarray, dict, np.ndarray, np.ndarray]:
-    """Train the REAL 2026-industry fraud model (XGBoost) and **distil it to a CKKS-friendly linear
+    """Train the XGBoost fraud model and **distil it to a CKKS-friendly linear
     surrogate** for the encrypted inference.
 
-    XGBoost/GBM is the de-facto AML/fraud-detection standard, but a tree ensemble is not CKKS-native:
+    A tree ensemble is widely used for AML and fraud scoring, but it is not CKKS-native:
     every split is a comparison, which CKKS evaluates only through polynomial approximation. Under
     TFHE trees do run - Effendi and Chattopadhyay ran a quantized XGBoost with graph features on
     downsized AMLworld HI-Small samples under TFHE (Concrete ML), with encrypted inference 15,038 to

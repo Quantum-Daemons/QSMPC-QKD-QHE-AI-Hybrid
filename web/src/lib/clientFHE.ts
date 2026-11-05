@@ -6,7 +6,7 @@
 // flooded before the client decrypts (`decryptOutputs`), so the decryption yields W.x + b and nothing
 // else. The demo's FHE-linear numbers are REAL MEASURED wall-clock, with ZERO server/VPS compute.
 // node-seal is lazy-loaded (dynamic import, an async chunk; the WASM of a few MB is browser-cached).
-// No commercial-OK WebGPU FHE exists in 2026, so CKKS runs on WASM-CPU.
+// No commercial-OK WebGPU FHE was found (searched 2026-11-03: only CUDA libraries), so CKKS runs on WASM-CPU.
 //
 // node-seal v7 API note: raw SEAL class names with `new`, `SEALContext`/`SecLevelType`, and in-place
 // encode/encrypt (encode(arr, scale, destPlaintext); encrypt(pt, destCt); decodeFloat64(pt)).
@@ -612,8 +612,8 @@ export async function encryptedLinear(W: number[][], b: number[], x: number[]): 
     // not support the division a reader will try. `fhe_linear_ms` on the page is this function's
     // wall-clock MULTIPLIED by `benchScale(...)`, a cost-model projection for the selected model size,
     // while `fhe_dense_rotations` is a raw count from this loop. Dividing one by the other read
-    // 158 ms per rotation on genomics against a true figure near 3 ms. Rotation cost is the unit the
-    // CKKS literature reports, because each rotation triggers a key-switch and key-switching does
+    // 158 ms per rotation on genomics against a true figure near 3 ms. Rotation cost is a unit many
+    // CKKS papers report, because each rotation triggers a key-switch and key-switching does
     // dominate here - measured at 57% of a small dense layer, 70% of the student's convolution and
     // 86% of its dense layers. It has to be measured rather than reconstructed from a scaled total
     // downstream, and the denominator has to have the same scope as the numerator: dividing the

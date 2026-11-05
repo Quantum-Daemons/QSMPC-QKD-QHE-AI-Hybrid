@@ -39,7 +39,7 @@ openfhe>=1.5.1,<1.6
 # mpyc: the NON-LINEAR half of the hybrid (ReLU/argmax under secret-sharing MPC). MIT, pure-Python,
 #   actively maintained (v0.11, released 2026-02-09). Installed from PyPI; the code is identical to
 #   upstream lschoe/mpyc, which is why the submodule was dropped in Round 17.
-#   The 2026-standard split is linear→FHE (above) + non-linear→MPC (here); see qsh/mpc/secret_inference.py.
+#   The split is linear→FHE (above) + non-linear→MPC (here); see qsh/mpc/secret_inference.py.
 mpyc>=0.11
 #
 # GPU FHE = HEonGPU (Apache-2.0), built from the git submodule (submodules/HEonGPU) and

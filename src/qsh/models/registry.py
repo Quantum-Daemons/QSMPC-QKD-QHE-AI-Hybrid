@@ -5,7 +5,7 @@ Every use case has up to three model tiers, and the *relationship between them* 
   T1 ``crypto``    the FHE/MPC-feasible student. Small because homomorphic evaluation is
                    cost-bounded **at the operating point this demo targets**: a single device, in a
                    browser tab, evaluating CKKS through node-seal - SEAL compiled to WASM,
-                   single-threaded, under the 2 GB WASM memory ceiling.
+                   single-threaded, under WASM32's 4 GiB address space (`clientFHE.ts`).
 
                    The scoping matters and an earlier revision of this line lacked it, claiming
                    homomorphic evaluation "is, and will remain, cost-bounded". That does not survive
@@ -44,8 +44,9 @@ Every use case has up to three model tiers, and the *relationship between them* 
                    auxiliary chain and rational levels. No number from it is quoted anywhere in this
                    project and none should be: it presents no experiments, closing with the statement
                    that the framework "will be further validated through concrete implementation and
-                   experimental evaluation". It is recorded as a named direction that would qualify
-                   this paragraph if it were demonstrated, not as a result that already does.
+                   experimental evaluation". Its v2 (2026-09-09) adds the author's own comment that
+                   the idea may not be feasible, because of possible implementation bugs or errors. It is
+                   recorded as a direction its author now doubts, not as a result.
   T2 ``industry``  the real literature model for that industry, trained locally and published to
                    the Hugging Face Hub as safetensors + ONNX (fp32 server / int8 browser).
   T3 ``large``     models too big to run under encryption at all — served remotely or in-browser
@@ -732,7 +733,7 @@ M_BREASTMNIST_R50 = MetricSpec(
                      "about depth. This model checks that ordering under a training regime that "
                      "differs from the table's (see the model's notes)."),
     ceiling=0.919,
-    ceiling_source="Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
+    ceiling_source="Google AutoML Vision, best in MedMNIST v2 at 28 px (AUC 0.919)",
     companion="accuracy",
 )
 M_BREASTMNIST = MetricSpec(
@@ -800,7 +801,7 @@ M_ESA = MetricSpec(
         "cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 "
         "scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal "
         "events, so it was the wrong comparator and the lenient one. Verified against the paper "
-        "(arXiv:2406.17826 v2) in Round 24. FOUR protocol differences remain and none of them are "
+        "(arXiv:2406.17826 v2, whose table numbers these are; the DMLR version of record sits behind a bot check) in Round 24. FOUR protocol differences remain and none of them are "
         "closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the "
         "TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this "
         "project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected "
@@ -978,9 +979,9 @@ _SPECS: tuple[ModelSpec, ...] = (
             "each account's graph neighbourhood at scoring time, which this demo's browser tier does "
             "not hold, so every tier ships the gradient-boosting model, which scores one precomputed "
             "feature row per transaction. That is a choice for this operating point, not an "
-            "impossibility: Bilgi et al. (arXiv:2610.18054, preprint) run a 2-layer GNN under CKKS "
-            "on AMLworld HI-Small at 5.31 s per inference on one GPU, with the graph structure "
-            "visible to the server. Kept as a spec for the architecture it names. It is not the best "
+            "impossibility: Bilgi et al. (arXiv:2610.18054v2, preprint) run an edge-centric GNN under CKKS "
+            "on the IBM AML benchmark at 5.31 s per queried transaction (1.65 s amortized) with HEonGPU on one "
+            "RTX 5090, with the graph held in plaintext by the server. Kept as a spec for the architecture it names. It is not the best "
             "published figure on this split: the published version of MEGA (TMLR, see the ceiling) "
             "re-runs Multi-PNA at 67.35 +/- 2.89 on Small HI, below FraudGT, Multi-FraudGT and every "
             "MEGA variant in its table."

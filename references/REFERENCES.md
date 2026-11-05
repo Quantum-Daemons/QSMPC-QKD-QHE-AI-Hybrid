@@ -38,7 +38,7 @@ section at their cover pages and re-derives every internal figure exact, and it 
 claims - the SP 800-90B health tests being run on conditioned rather than raw samples, the
 `FiniteKeyParams` defaults still carrying the retired intensities, "two-intensity decoy-state bound"
 naming a protocol the cited equations are not, two attributions in `decoy_reference.py`, permissive
-terms in the E91 and QSDC models, and the ITU-T series now running to Y.3838 rather than Y.3835.
+terms in the E91 and QSDC models, and the ITU-T series running past Y.3835 (to Y.3839, prepublished, as of 2026-11-03).
 Each carries whether it was reproduced locally or is recorded as reported-and-unreproduced.
 
 - **AML-QKD: Adaptive Machine Learning Framework for Real-time Parameter Tuning in QKD** - Mohamed,
@@ -598,9 +598,9 @@ directly, not against another file in this repository. The architecture discussi
 
 - **Biswas, Chartier, Dhasade, Jurien, Kerriou, Kermarec, Lemou, Tranie, de Vos & Vujasinovic,
   "Practical and Private Hybrid ML Inference with Fully Homomorphic Encryption" (Safhire).**
-  arXiv:2509.01253, submitted 1 Sep 2025. Linear layers encrypted server-side, non-linearities
+  TMLR; arXiv:2509.01253v2, revised 2026-10-16. Linear layers encrypted server-side, non-linearities
   offloaded to the client **in plaintext**, which removes bootstrapping and allows exact activations;
-  1.5x-10.5x lower latency than Orion. Model confidentiality is protected by **randomised shuffling**
+  up to 7.6x lower latency than Orion and 7.4x lower than Concrete-ML (v1 said 1.5x-10.5x). Model confidentiality is protected by **randomised shuffling**
   of the intermediates the client sees. This is the closest published architecture to this
   repository's, and the difference is precisely where the non-linear half runs. Added: 2026-08-11.
 - **Kim & Lee, "Shuffling is Not Enough: Breaking Permutation-Based Model Confidentiality in Hybrid
@@ -826,8 +826,9 @@ Added in Round 18 and previously recorded only in source docstrings.
   `[link]`
   URL: https://www.etsi.org/deliver/etsi_gs/QKD/001_099/015/02.01.01_60/gs_QKD015v020101p.pdf
   YANG source: https://forge.etsi.org/rep/qkd/gs015-ctrl-int-sdn (revision 2022-01-30,
-  BSD-3-Clause). The host serves an incomplete certificate chain, so some clients reject it; the
-  spec PDF above carries the same module.
+  BSD-3-Clause), the `v2.1.1` tag, which the spec's Annex A names. The spec PDF gives the URLs and not the
+  module text. Forge served an incomplete certificate chain until at least August 2026; on 2026-11-03 it
+  verified.
   Added: no PDF bundled; spec and YANG re-verified 2026-08-04
   Implemented by `src/qsh/qkd/sdn_controller.py` and mirrored in the browser by
   `web/src/lib/clientSdnController.ts`. Field names (`qkdn_id`, `qkdl_id`, `qkdl_type`,
@@ -953,7 +954,7 @@ in Round 17 are marked below.
 | **`s0l0ist/node-seal`** (SEAL compiled to WASM, CKKS) | `web/src/lib/clientFHE.ts` - real in-browser FHE | MIT |
 | **`polytune`, `garble_lang`** (sine-fdn) | `web/src/lib/clientMPC.ts` via `wasm/qsh-mpc` - real in-browser garbled-circuit 2PC (replaced `mpc-framework` + `emp-wasm-engine` + `summon-ts` in Round 65); dependency notices in `/licenses/qsh-mpc.txt` | MIT |
 | **`mcp`** (MCP Python SDK; the class is `MCPServer`, named `FastMCP` before v2.0.0) and the official `@modelcontextprotocol/server-filesystem` | `qsh/mcp/*` - real quantum-safe MCP server and interop | MIT |
-| **`onnxruntime-web`** | `web/src/lib/onnxInference.ts` - browser inference. The `webgpu` and `wasm` builds are separate bundles and the demo picks one by probing for a real adapter | MIT |
+| **`onnxruntime-web`** | `web/src/lib/onnxInference.ts` - browser inference. The `webgpu` and `wasm` builds are separate bundles; the demo uses WASM unless the visitor selects WebGPU and a real adapter exists | MIT |
 | `PennyLane` | `qsh/ai/federated.py` - quantum federated learning (`kind="qfl"`), and `qsh/qml_ids/detector.py`. The FedAvg and secure-aggregation code is this repository's own; Flower is cited as prior art, not used as a dependency | Apache-2.0 |
 
 ## Baselines and corpora cited in code but previously absent here
@@ -1279,7 +1280,7 @@ Three further facts that stop any single number being quoted safely:
 **No standards body has specified QSDC**, and this was checked exhaustively rather than assumed.
 All ETSI QKD deliverables then reachable were searched full-text (**"14 published" is one too many, corrected Round 55**: the portal shows **13 published**, plus GS QKD 003 V1.1.1 which is WITHDRAWN, and GS QKD 001 and 006 Stopped - 14 only if the withdrawn one is counted) (2.0 M characters): zero hits for
 QSDC or "secure direct communication", against a control of 7 documents matching "BB84". ITU-T's
-complete X.1700-X.1749 and Y.3800-**Y.3838** sets are QKD or QRNG throughout (this said Y.3835 until Round 51; Y.3836, Y.3837 and Y.3838 were approved 2026-08-13 and **all three are flagged prepublished**, not just Y.3836 - corrected Round 56, re-fetched per recommendation: Y.3835 reads "In force" alone at 9,796 B while Y.3836/3837/3838 read "In force" AND "prepublished" at 9,647/9,590/9,515 B. The ceiling holds: Y.3839 and Y.3840 return **200 with a zero-length body**, which is this project's established discriminator for a recommendation that does not exist - and note that a browser User-Agent collapses ALL of these to a 245 B stub, so the UA that defeats ETSI's bot block destroys the signal here), and the work programme
+complete X.1700-X.1749 and Y.3800-**Y.3839** sets are QKD or QRNG throughout (Y.3839 (10/26), *QKD networks - Framework of cryptographic application registration*, approved 2026-10-19 and prepublished, read 2026-11-03; this said Y.3835 until Round 51; Y.3836, Y.3837 and Y.3838 were approved 2026-08-13 and **all three are flagged prepublished**, not just Y.3836 - corrected Round 56, re-fetched per recommendation: Y.3835 reads "In force" alone at 9,796 B while Y.3836/3837/3838 read "In force" AND "prepublished" at 9,647/9,590/9,515 B. The ceiling then held: Y.3839 and Y.3840 returned **200 with a zero-length body**, as Y.3840 and Y.3841 still do on 2026-11-05, which is this project's established discriminator for a recommendation that does not exist - and note that a browser User-Agent collapses ALL of these to a 245 B stub, so the UA that defeats ETSI's bot block destroys the signal here), and the work programme
 across every study period 2001-2028 and every status returns zero QSDC items against a control of
 186 quantum-titled items. ISO/IEC JTC 1/SC 27's entire catalogue contains exactly two
 quantum-titled standards, both parts of 23837, both QKD. IEEE has no QSDC standard - and no QKD one
@@ -1317,7 +1318,7 @@ established is worth keeping, because otherwise it gets re-litigated every round
 ### PQC migration, now binding rather than advisory
 
 - **OMB Memorandum M-26-15, "Execution of the Migration to Post-Quantum Cryptography."** Russell T.
-  Vought, Director, Office of Management and Budget, 2026-06-24. Full 10-page PDF read from
+  Vought, Director, Office of Management and Budget, 2026-06-24. Full 11-page PDF read from
   whitehouse.gov. The operational instrument behind EO 14412, and the most consequential item in this
   batch for [`docs/pqc-roadmap.md`](../docs/pqc-roadmap.md):
   - Action One: mitigate as much quantum risk as feasible **by 2030-12-31**.
@@ -1410,7 +1411,7 @@ established is worth keeping, because otherwise it gets re-litigated every round
   survives is the scoped claim, that it is cost-bounded at a single device in a browser tab.
 
 - **node-seal, `BENCHMARK.md`** (library benchmark page, last updated 2025-03-27).
-  https://github.com/s0l0ist/node-seal/blob/main/BENCHMARK.md - fetched and read 2026-08-14.
+  https://github.com/s0l0ist/node-seal/blob/7.0.0/BENCHMARK.md (deleted from `main` on 2026-10-31) - fetched and read 2026-08-14.
   Microsoft SEAL v4.1.2 / node-seal v5.1.5 on an Apple M1 Pro; Chrome 134, Firefox 136, Safari 18.3.
   CKKS `EvaluateRotate` at `n=8192/log(q)=218` reads **6830 us in Chrome**; at `n=16384/log(q)=438`,
   **41200 us**. Ten iterations per benchmark, no error bars, timers quantised to 10 us (Chrome) and
@@ -1914,11 +1915,26 @@ what a reviewer would expect a demo to say about the satellite page's timeline d
   evaluation"*. It contests the depth-dominance premise of **ATLAS** (arXiv:2607.23478, above) as a
   **named direction only**, which is exactly how it should be cited: a stated alternative to a
   measured claim is not a counter-measurement.
-- **Zhang, Zhou, Han, Liu and Huang, "Adaptively Secure Threshold Decryption from LWE with Polynomial
-  Modulus."** IACR ePrint 2026/1627, received 2026-08-06 `[link]`
+- **Bian, Choe, Kim and Lee**, IACR ePrint 2026/2490 (2026-10), to appear at IEEE S&P 2027 `[link]`
+  URL: https://eprint.iacr.org/2026/2490
+  Theory: a malicious evaluator holding the public coefficient-to-slot keys reacts to a client's 1-bit accept or reject.
+  Verification: implemented end to end on Lattigo v6.2.0, the current release, with each query re-randomised by a fresh
+  encryption of zero, so simple detection does not see it. Result: recovery of a ternary secret key. Conclusion for this
+  project: answer the same either way rather than rely on detection or rate limits (`docs/threat-model.md`).
+- **IACR ePrint 2026/2575** `[link]`
+  URL: https://eprint.iacr.org/2026/2575
+  Cited in `docs/threat-model.md` beside 2026/2490 for the same section. Read 2026-11-03.
+- **IACR ePrint 2026/2546** (CCS 2026), **2026/1671**, **2026/2524** (GCKKS), **2026/2675** `[link]`
+  URLs: https://eprint.iacr.org/2026/2546 , /2026/1671 , /2026/2524 , /2026/2675
+  In order: IND-CPA-D attacks on BFV and BGV with OpenFHE BFV key recovery in minutes to hours; a machine-checked flooding
+  bound with a square-root-of-queries loss; two ways of keeping precision after flooding, the second for threshold CKKS.
+  Abstracts read 2026-11-03; no number from them is used here.
+- **Zhang, Zhou, Han, Liu and Huang, "Adaptively CCA-Secure Threshold Decryption from Lattices with
+  Polynomial Modulus."** IACR ePrint 2026/1627, received 2026-08-06, fourth revision 2026-09-19 (it was first
+  titled "Adaptively Secure Threshold Decryption from LWE with Polynomial Modulus") `[link]`
   URL: https://eprint.iacr.org/2026/1627
-  Adaptive corruption and leakage from **decryption queries**, via *"a refined polynomial noise flooding
-  technique based on a detailed min-entropy analysis"*. That is the same threat surface as the CPAD
+  Adaptive corruption and leakage from **decryption queries**, in the random-oracle model with bounded
+  queries, via polynomial noise flooding and a coupled refined leftover hash lemma. That is the same threat surface as the CPAD
   section above, which had **no threshold-setting citation** even though OpenFHE scopes the CPAD attack
   to precisely the threshold case and `submodules/HEonGPU` ships N-out-of-N collective bootstrapping.
 - **Al-Mohammed and Al-Ali, "Machine Learning for Specialized QKD Aspects: A Survey of Adaptive
@@ -2145,9 +2161,11 @@ neither a quote nor a stated assumption.
   transmission factor of 0.7", and a divergence of "6.1 urad at the 1/e2 intensity values ... half of
   the full beam angular dimension" for a link of "satellite separations up to around 400 km". Its own
   link is entanglement-based; the template runs Micius's decoy source, and says so.
-- **Sidhu, McCarthy, Paterson and Oi**, arXiv:2602.11833 (2026). `[link]`
-  URL: https://arxiv.org/abs/2602.11833
-  VERIFIED 2026-10-28 in the arXiv text: a "minimum elevation of theta_min = 10 deg for both links to
+- **Sidhu, McCarthy, Paterson and Oi**, arXiv:2602.11833v1 (2026). `[link]`
+  URL: https://arxiv.org/abs/2602.11833v1
+  v2 (2026-10-29) is retitled *Operational performance of finite-key entanglement-based satellite quantum
+  key distribution*, adds Walk and Eisert as authors and rewords the sentence below; the 10 degrees and the
+  0.73 dB zenith atmosphere are unchanged. VERIFIED 2026-10-28 in the v1 text: a "minimum elevation of theta_min = 10 deg for both links to
   account for local restrictions", the same cut as Liao 2017's and the default here. Its MODTRAN
   atmosphere at 785 nm is 0.73 dB at the zenith.
 - **Bourgoin et al., "A comprehensive design and performance analysis of LEO satellite quantum

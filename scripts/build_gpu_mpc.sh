@@ -5,7 +5,7 @@
 #
 # Targets NVIDIA Blackwell (sm_120) + CUDA 13. OPTIONAL: the benchmark runs on
 # TenSEAL without these. We integrate the UPSTREAM projects with our own glue
-# (qsh/benchmark/gpu_mpc_adapter.py); we do not vendor RhombusEnd2End_HEonGPU.
+# (qsh/benchmark/gpu_mpc_adapter.py).
 set -uo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$(pwd)"

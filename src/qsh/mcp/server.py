@@ -89,7 +89,7 @@ def pool_allele_counts(counts: list[int] | None = None) -> dict:
 
 
 def inspect_qkd_telemetry(qber: float = 0.02, threshold: float = 0.11) -> dict:
-    """Telecom/defense: classify QKD-link telemetry — an eavesdropper raises QBER above the secure threshold."""
+    """Telecom/defense: classify QKD-link telemetry against a QBER threshold, by default the 11% Shor-Preskill bound; the pages use the f_EC-dependent threshold instead."""
     eavesdrop = qber > threshold
     return {"qber": round(float(qber), 4), "threshold": float(threshold),
             "eavesdropper_detected": bool(eavesdrop),

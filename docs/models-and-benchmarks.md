@@ -36,7 +36,7 @@ via the benchmark panel on each use-case simulator page).
 
 ### Faithful hybrid: linear -> FHE, non-linear -> MPC
 
-The classical path is a **genuine 2026-style MPC-FHE hybrid**, not CKKS-only. **Linear layers**
+The classical path is an **MPC-FHE hybrid**, not CKKS-only. **Linear layers**
 (matmul / conv) run **under CKKS/FHE** (TenSEAL or OpenFHE on CPU; HEonGPU is a build-gated reference
 adapter with no Python API and no measured run here),
 while **non-linear layers** (ReLU, argmax) run **under secret-sharing MPC** - Shamir secure
@@ -49,11 +49,13 @@ that hides is in [the threat model's table](threat-model.md#what-each-step-prote
 This mirrors the Gazelle ->
 Delphi -> BOLT -> Bumblebee -> **BLB** line and EncFormer, so the benchmark reports the **FHE-linear
 vs MPC-non-linear latency split + MPC communication**, not a single CKKS number. The **QSMPC-FHE**
-quantum analogue is **Clifford gates (linear, cheap) vs T-gates (non-linear, expensive)**: the Python
+row draws an analogy, not a fact about the gates, every one of which is a linear map: in QHE, Clifford gates are
+cheap the way linear layers are, and T gates expensive the way non-linear ones are. The Python
 QOTP demo evaluates Clifford gates on the encrypted state with Pauli key updates, the browser's
 comparison circuit also applies T gates to the padded state but never corrects or decrypts it, so it
 measures cost only, and the Rate-1 module is a transport with no `Eval`. There is **no FHE <-> MPC
-boundary** on that side; the secure-comparison role is played by the QSMS/QOT quantum-MPC path.
+boundary** on that side, and nothing there does a secure comparison: QSMS is a secure sum, and no flow runs the
+QOT sketch.
 
 ### Per-use-case architectures
 

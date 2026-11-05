@@ -85,7 +85,7 @@ a new FHE backend) is **one `register(...)` call** - no stage code changes.
     FHE-linear + MPC-non-linear hybrid is exercised by the benchmark
     (`qsh.mpc.secret_inference` + `qsh.benchmark.classical_mpc_fhe`), so the chosen MPC backend
     is named in the signed run summary.
-  - `SignatureStage` -> `sig` (ML-DSA signs + verifies the run summary -> tamper-evident,
+  - `SignatureStage` -> `sig` (ML-DSA signs + verifies the run summary with a per-run key, which detects accidental change and not an adversary who re-signs,
     quantum-safe audit record; emits `signature_verified`).
 
 ## Hybrid + defence-in-depth

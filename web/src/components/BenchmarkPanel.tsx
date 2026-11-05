@@ -111,7 +111,7 @@ export default function BenchmarkPanel(
             <table className="facts-table small">
               <thead><tr><th>Row</th><th>What ran</th><th>Measured</th><th>Not comparable</th></tr></thead>
               <tbody>
-                <tr><td>MPC-FHE</td><td>on finance, medical and genomics: real CKKS (node-seal) + a garbled-circuit 2PC argmax between notional parties. Telecom and satellite run neither, so the row is absent there</td><td>latency, communication, ct/pt</td><td>ct/pt measures CKKS slot use</td></tr>
+                <tr><td>MPC-FHE</td><td>on finance, medical and genomics: real CKKS (node-seal) + a garbled-circuit 2PC argmax between notional parties. Telecom runs a CKKS check of its student and no 2PC, and satellite runs neither, so the row is absent there</td><td>latency, communication, ct/pt</td><td>ct/pt measures CKKS slot use</td></tr>
                 <tr><td style={{ color: "#b072ff" }}>QSMPC-FHE</td><td>state-vector simulation of an untrained QOTP + Clifford+T circuit on random input - RY encoding, an X/Z pad, then rounds of H, a CNOT ring and T (<code>quantum_comparison</code> stage). The pad is never undone and nothing is trained, so it predicts nothing; it is not a QCNN</td>
                   {/* "counted from the circuit" is true of the BROWSER row and false of the Python one.
                       `qsh/qhe/qcnn.py` builds no T gates; its `t_count()` is a Solovay-Kitaev budget,

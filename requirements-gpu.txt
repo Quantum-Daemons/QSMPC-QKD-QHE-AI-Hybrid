@@ -27,7 +27,7 @@
 #   version is what does not. This is the only item in this tier with no cu13 path today.
 #
 # These are intentionally left commented: install interactively after confirming the
-# exact CUDA-tagged wheels available for your driver (580) / CUDA 13 toolkit.
+# exact CUDA-tagged wheels available for your driver and CUDA 13 toolkit.
 #
 # NOT ADOPTED, recorded with dates so the survey is not repeated (checked 2026-08-11):
 #   Phantom / phantom-fhe   GPL-3.0 (copyleft, fails the commercial-OK rule), zero releases ever,
@@ -39,7 +39,7 @@
 #   qiskit-aer-gpu          No release since 2024-09-13. That is a stronger reason to avoid it than
 #                           the sm_120 gap noted in requirements-core.txt, and it is the one to give.
 #   Zama concrete-python    2.11.0 (2025-07-03) and concrete-ml 1.9.0 (2025-04-05) both fail the
-#     / concrete-ml         nine-month activity test, and the GPU wheel is CUDA 11.8 from a private
+#     / concrete-ml         one-year activity test (docs/development.md), and the GPU wheel is CUDA 11.8 from a private
 #                           index with no CUDA 13 statement. Nothing here pins Zama, correctly.
 #   FIDESlib                MIT, server-side CKKS on GPU, README states "NVIDIA CUDA version 12 or
 #                           13". NOT ADOPTED, and the reason is stronger than the one first written

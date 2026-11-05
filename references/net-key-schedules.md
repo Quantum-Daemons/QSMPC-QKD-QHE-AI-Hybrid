@@ -33,8 +33,8 @@ asserts that it does.
 |---|---|---|---|---|
 | FIPS 203 (ML-KEM), August 2024 | 6.1-6.3 Algorithms 16-18 (KeyGen_internal(d, z), Encaps_internal(ek, m), Decaps_internal(dk, c) with implicit rejection), 8 Table 3 sizes | https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.203.pdf | 1252341 | `fe1f12f32a7e44ec9fdebbf400cda843a40b506dee676725234dc6f7923b6cac` |
 | RFC 7296 (IKEv2) | 2.10 nonces, 2.13 prf+, 2.14 SKEYSEED and SK_*, 2.17 Child SA KEYMAT, 2.18 rekey | https://www.rfc-editor.org/rfc/rfc7296.txt | 354358 | `b6c1bf3921e85dd3674f427ffcaded0209e1f9718e8d601e2f918371f46329a1` |
-| RFC 9370 (multiple key exchanges) | 2.2.2 IKE_INTERMEDIATE keying, Appendix A (flows only, no values) | https://www.rfc-editor.org/rfc/rfc9370.txt | 81487 | `16160fa320dc06b75a759cc06a21d138bf126ec4c129b2193a8f413c190b1904` |
-| RFC 8784 (PPK) | 3 key derivation, 6 PPK entropy | https://www.rfc-editor.org/rfc/rfc8784.txt | 42663 | `e12eae449f9a96743d8edb38a944d438815b01592314a46731a8fa380f676538` |
+| RFC 9370 (multiple key exchanges; Errata 9022 on Appendix A.1 and 9036 on 2.2.4, Held for Document Update 2026-10-12: `ikev2.ts` computes neither IntAuth nor IKE_FOLLOWUP_KE, so nothing here changes) | 2.2.2 IKE_INTERMEDIATE keying, Appendix A (flows only, no values) | https://www.rfc-editor.org/rfc/rfc9370.txt | 81487 | `16160fa320dc06b75a759cc06a21d138bf126ec4c129b2193a8f413c190b1904` |
+| RFC 8784 (PPK; Erratum 8775 on section 6, Held for Document Update 2026-05-07: the Grover reasoning needs revisiting and good 128-bit-secure algorithms suffice) | 3 key derivation, 6 PPK entropy | https://www.rfc-editor.org/rfc/rfc8784.txt | 42663 | `e12eae449f9a96743d8edb38a944d438815b01592314a46731a8fa380f676538` |
 | RFC 5903 (ECP groups) | 7 KE data and shared secret format, 8.1 group 19 example | https://www.rfc-editor.org/rfc/rfc5903.txt | 29175 | `939fab548a6e6bb49a5b3c4dd24a3c5df54a46645447b2d6f4df4fd88ff2d69f` |
 | RFC 9242 (IKE_INTERMEDIATE) | the exchange RFC 9370 runs in | https://www.rfc-editor.org/rfc/rfc9242.txt | 35365 | `712d0899c26a1be55a295834b1a72331a97e04d6828002fd58fef759558bc1dd` |
 | RFC 9867 (PPK in IKE_INTERMEDIATE) | 3.1 negotiation and Table 1, 3.1.1 ordering after RFC 9370 | https://www.rfc-editor.org/rfc/rfc9867.txt | 29918 | `10af5b184e1f2849e5bb14f0636b9f9049a7914640c8e117ced5d3043a5b1d92` |
@@ -45,7 +45,7 @@ asserts that it does.
 | (same, PDF) | | https://noiseprotocol.org/noise.pdf | 389431 | `7562d34c04a661f5679918e56b139b066bd9fa6b821080dfe59eb8f80c7dccb7` |
 | WireGuard whitepaper, draft revision e2da747, 2020-06-01 | 5.4 constants, 5.4.2 initiation, 5.4.3 response, 5.4.4 mac1/mac2, 5.4.5 transport keys | https://www.wireguard.com/papers/wireguard.pdf | 550175 | `b4cf398c21d054e8774af568395b0f7cd0e2b01322809c5dbd66c4135021ca57` |
 | draft-ietf-ipsecme-ikev2-mlkem-09, 2026-07-05 | 2 shared secret used like $`g^{ir}`$, 2.1 KE payloads, 2.2 recipient tests, 4 IANA, Appendix A | https://www.ietf.org/archive/id/draft-ietf-ipsecme-ikev2-mlkem-09.txt | 31307 | `f93e8c536b34ffe52dd6a281212b278a16573cbf532465ac473789e7951b155e` |
-| IANA IKEv2 parameters (Last-Modified 2026-10-21) | Transform Type 4: 19 = 256-bit random ECP, 36 = ml-kem-768; Type 2: 6 = PRF_HMAC_SHA2_384; Type 1: 20 = ENCR_AES_GCM_16 | https://www.iana.org/assignments/ikev2-parameters/ikev2-parameters.xml | 93531 | `34c2d1e89049a167b51296b82c155f3a3cbab669f9ef8b701fc8a03c4af52545` |
+| IANA IKEv2 parameters (Last-Modified 2026-10-28, 93,735 bytes, SHA-256 `0ca6b516ad31cb27201303f140b6f7b0bd0201affc4f6d95b516aec55b818603`; read 2026-11-03, the only change since the copy below is Notify 16448 CHILD_SA_PFS_INFO_SUPPORTED) | Transform Type 4: 19 = 256-bit random ECP, 36 = ml-kem-768; Type 2: 6 = PRF_HMAC_SHA2_384; Type 1: 20 = ENCR_AES_GCM_16 | https://www.iana.org/assignments/ikev2-parameters/ikev2-parameters.xml | 93531 | `34c2d1e89049a167b51296b82c155f3a3cbab669f9ef8b701fc8a03c4af52545` |
 
 **Status of ML-KEM in IKEv2, as of 2026-10-24.** Not an RFC. The IETF datatracker
 (https://datatracker.ietf.org/doc/draft-ietf-ipsecme-ikev2-mlkem/) shows draft-ietf-ipsecme-ikev2-mlkem-09,
@@ -77,8 +77,9 @@ bytes are the repository's.
 Stored, all ML-KEM-768: keyGen tgId 2 tcIds 26, 27, 28; encapsulation tgId 2 tcIds 26, 27, 28;
 decapsulation tgId 5 tcIds 86 and 87 ("valid decapsulation") and 88 and 91 ("modified ciphertext", whose
 answer is the implicit-rejection key). Before the subset was cut, all 25 + 25 + 10 ML-KEM-768 cases in
-these files were run through `@noble/post-quantum` 0.7.0 and all passed; the subset is a selection, not
-the survivors of one. Licence: the repository README's "License" section states that software developed
+these files were run through `@noble/post-quantum` 0.7.0 and all passed (the lockfile now pins 0.7.1, whose
+release notes change no ML-KEM arithmetic, and the gate runs the subset on the pinned version); the subset is
+a selection, not the survivors of one. Licence: the repository README's "License" section states that software developed
 by NIST employees is not subject to copyright protection within the United States.
 
 The 64-byte seed noble accepts is `d || z`. FIPS 203 passes d and z as an ordered pair, so the packing is
@@ -211,7 +212,8 @@ and bringing up a kernel interface was out of scope.
 **Demo inputs are derived, not random.** Both demos derive every key, nonce, SPI, index and the default
 PPK from a seed so a page is reproducible. Real IKEv2 and WireGuard draw them at random. A PPK derived
 from a typed seed has only the seed's entropy; RFC 8784 section 6 calls at least 256 bits the strongest
-practice.
+practice, though Erratum 8775 (Technical, Held for Document Update) says the Grover reasoning behind that
+needs revisiting and that good 128-bit-secure algorithms suffice.
 
 ## Re-checking the upstream files
 

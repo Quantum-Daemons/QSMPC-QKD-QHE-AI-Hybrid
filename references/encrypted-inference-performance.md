@@ -120,8 +120,8 @@ people's numbers, and it had not been asked of its own.
 The plan for this round expected to find none and to record the absence as the finding. That was
 wrong: one primary source publishes browser-WASM CKKS per-primitive timings at both ring degrees.
 
-**node-seal `BENCHMARK.md`**, https://github.com/s0l0ist/node-seal/blob/main/BENCHMARK.md, last
-updated 2025-03-27. Fetched and read directly rather than via a summary. Its header states: MacBook
+**node-seal `BENCHMARK.md`**, https://github.com/s0l0ist/node-seal/blob/7.0.0/BENCHMARK.md (deleted from `main` on
+2026-10-31; the tag holds it), last updated 2025-03-27. Fetched and read directly rather than via a summary. Its header states: MacBook
 Pro 14-inch 2021, Apple M1 Pro (8P+2E), 32 GB, macOS Sequoia 15.3.2, arm64; Microsoft SEAL v4.1.2,
 node-seal v5.1.5, Chrome 134.0.6998.166, Firefox 136.0.3, Safari 18.3.1. All figures in
 microseconds, 10 iterations per benchmark.

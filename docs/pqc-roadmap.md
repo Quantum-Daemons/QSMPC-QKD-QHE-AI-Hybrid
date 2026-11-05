@@ -22,8 +22,12 @@ below are the recommended future tracks (PoC milestones M3/M4).
   security system from a quantum computer?"* with **"No"**, in any configuration; its page on Quantum
   Key Distribution and Quantum Cryptography says NSA *"does not support the usage of QKD or QC to
   protect communications in National Security Systems"*; and it publishes no PQC+QKD hybrid
-  recommendation. Verified 2026-10-23 against FAQ Ver. 2.2 and CNSSP 15; nsa.gov still returns HTTP
-  403 to scripts, so the FAQ was read from an archived copy of the PDF the NSA resource hub links.
+  recommendation. Verified 2026-10-23 against FAQ Ver. 2.2, which is where the CNSSP 15 dates above were read: cnss.gov could
+  not be reached by script or browser (2026-11-05), so CNSSP 15 itself has not been read. nsa.gov returns HTTP
+  403 to scripts, so the FAQ was read from an archived copy of the PDF the NSA resource hub links; the QKD page
+  was read directly in a browser on 2026-11-05 and still says NSA *"does not recommend the usage of quantum key
+  distribution and quantum cryptography for securing the transmission of data in National Security Systems
+  (NSS) unless the limitations below are overcome"*.
 - **BSI TR-02102-1 v2026-01** - on QKD, section 2.1 "Use of Quantum-Safe Mechanisms" (pp.28-29; the
   QKD paragraph is on p.29) says QKD *"is currently not ready for use from a security point of view...
   the BSI does not recommend QKD protocols at this time"*. What BSI does recommend, in section 2.2
@@ -32,8 +36,10 @@ below are the recommended future tracks (PoC milestones M3/M4).
   used is secure"*; section 2.2 does not mention QKD. The ML-KEM + X25519 layer has that shape, but
   only its ML-KEM half is BSI-recommended (Table 2.7): X25519 is neither among BSI's recommended curves
   (Table B.3 lists only the Brainpool curves) nor among its TLS 1.3 groups (TR-02102-2 v2026-01,
-  Table 10), and for TLS BSI intends to recommend SecP256r1MLKEM768 and SecP384r1MLKEM1024 once their
-  RFC is adopted (TR-02102-2 section 3.4.2). Keeping QKD as an optional, simulated add-on to that
+  Table 10). For TLS, BSI's [TR-02102 page](https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/Technische-Richtlinien/TR-nach-Thema-sortiert/tr02102/tr02102_node.html),
+  updated 2026-10-02 after RFC 10024, says SecP256r1MLKEM768 and SecP384r1MLKEM1024 will be recommended in
+  the next TR-02102-2 and can already be used TR-compliant in TLS 1.3, and that X25519MLKEM768 can also be
+  used; the TR-02102-2 v2026-01 PDF itself is unchanged. Keeping QKD as an optional, simulated add-on to that
   hybrid, never standalone, is **this project's** choice; neither BSI nor NSA recommends it.
 
 ## Crypto-agility (done)
@@ -75,8 +81,8 @@ not a code rewrite. Add remote re-key + in-flight algorithm substitution next. [
   constant. yes
 
 ## Reference implementations (2026, commercial-OK)
-Grounded, actively-maintained OSS to deepen each workstream (all MIT / Apache-2.0 / BSD; adopt as the
-scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are adoptable next steps:
+Open-source projects that could deepen each workstream. None is a dependency here: QRNG and OptiQKD above import
+none of them. Licences are as listed, and their activity has not been re-read for this list:
 
 | WS | Reference implementations |
 |----|---------------------------|
@@ -151,7 +157,9 @@ document on 2026-08-15; `references/REFERENCES.md` records the two ways an earli
   commitment, and neither post ranks itself against the other -> supply-chain expectations.
 - **after 2030 / after 2035** - **NIST IR 8547**, *Transition to Post-Quantum Cryptography
   Standards* (final, October 2026, published 2026-10-27, doi:10.6028/NIST.IR.8547; Moody, Perlner,
-  Regenscheid, Robinson and Cooper; it supersedes the 2024-11-12 initial public draft): every
+  Regenscheid, Robinson and Cooper; it supersedes the 2024-11-12 initial public draft; the PDF was replaced on
+  2026-10-28 and the copy read has SHA-256 `cf1c5b3eeb3bdd8bf1c30e16bb6f1a77b46f75eb619619e14d05f0821f4272c4`, differing from the
+  first only in Table 7's "Ascon-AEAD128" and one period): every
   quantum-vulnerable public-key algorithm is deprecated after 2030 and disallowed under NIST
   standards and guidelines after 2035 - in Table 2, ECDSA and RSA signatures at 112 bits of security
   or more and EdDSA at 128 or more; in Table 4, key establishment by finite-field and elliptic-curve
@@ -165,7 +173,7 @@ document on 2026-08-15; `references/REFERENCES.md` records the two ways an earli
   2030-12-31 and digital signatures by 2031-12-31 (section 4(b)). For contractors, section 6(c) directs
   the FAR Council to publish a *proposed* rule within 180 days (about 2026-12-19) amending the FAR to
   require covered contractors to comply by 2030-12-31 with NIST's FIPS, including all applicable FIPS
-  incorporating PQC algorithms; none had appeared in the Federal Register as of 2026-10-30. **National Security Systems are excluded** and stay on CNSA 2.0. This is the binding US
+  incorporating PQC algorithms; none had appeared in the Federal Register as of 2026-11-05. **National Security Systems are excluded** and stay on CNSA 2.0. This is the binding US
   instrument for federal agencies; separately, EO 14306 and M-26-15 set TLS 1.3 by 2030-01-02.
 
   Note on the EO number, because secondary sources get it wrong: several write-ups call this **14409**.
@@ -173,7 +181,7 @@ document on 2026-08-15; `references/REFERENCES.md` records the two ways an earli
   correct.
 
   **There were TWO quantum executive orders published that day, and this roadmap cited one.** The other
-  is *"Ushering in the Next Frontier of Quantum Innovation"*, Federal Register document **2026-12910**,
+  is *"Ushering in the Next Frontier of Quantum Innovation"*, Executive Order **14413** (signed 2026-06-22), Federal Register document **2026-12910**,
   **91 FR 38487**, published **2026-06-25** (EO 14412 is document 2026-12909 at 91 FR 38483). Recorded
   because a migration roadmap that cites one of two same-day quantum EOs looks like it missed one. Only
   its **title, document number, FR citation and date are verified** (Federal Register API, Round 32,
@@ -196,8 +204,10 @@ document on 2026-08-15; `references/REFERENCES.md` records the two ways an earli
     document"**. IR 8547 stayed an initial public draft until NIST published the final on
     2026-10-27 (doi:10.6028/NIST.IR.8547), so the memorandum now points at a final document, and the
     2030 and 2035 dates above cite it.
-- **2035** - Japan's Cabinet Secretariat interim report (Nov 2025) sets PQC migration at **2035**, with the
-  detailed roadmap to be drafted during FY2026.
+- **2035** - Japan's National Cybersecurity Office [interim report](https://www.cas.go.jp/jp/seisaku/pqc/pdf/report_202511.pdf)
+  (2025-11-20) presents **2035** as the target for migrating government agencies' systems, with a roadmap to be
+  drawn up in FY2026. The [Cabinet Secretariat page](https://www.cas.go.jp/jp/seisaku/pqc/index.html) listed no
+  roadmap as of 2026-11-03.
 
 ## Algorithm backups worth tracking
 
@@ -240,7 +250,7 @@ Read at NIST's PQC news page and the pqc-forum on 2026-10-27. IR 8547's final ap
 | **ETSI GS QKD 015 V2.1.1** - SDN control interface | Published 2022-04 | **Implemented in Round 18** (`qkd/sdn_controller.py`, mirrored in `web/src/lib/clientSdnController.ts`). Supplies the control plane the demo previously lacked, and its clause 1 scope statement is what settles that an MCP agent is an SAE rather than a controller. |
 | **ETSI GS QKD 014 V1.1.1** - key delivery API | Published 2019-02, **still the only published edition** | **Implemented in Round 18** (`qkd/kme.py`). An ed2 stable draft (v1.3.1) existed as of 2025-06 but is not published, so "QKD 014 compliant" in this repository means the 2019 document. The mandated mutual TLS is **not** implemented - see `threat-model.md`. |
 | **BSI TR-02102-1 v2026-01** | 2026-01-23 | The quotable basis for the hybrid PQC + classical key-agreement recommendation (section 2.2) and for BSI not recommending QKD (section 2.1). It does not recommend QKD as an add-on either: "QKD never standalone" is this project's rule, not BSI's. |
-| **IACR ePrint 2026/935** - SoK: Private LLM Inference using Approximate HE | rev. 2026-10-23 (third revision) | The citable ceiling: 21 CKKS frameworks surveyed, only 5 of them model-preserving, accuracy maintained up to **Llama-3-8B**, about 4 orders of magnitude slower than plaintext. Confirms nothing larger exists. |
+| **IACR ePrint 2026/935** - SoK: Private LLM Inference using Approximate HE | rev. 2026-10-23 (third revision) | 21 CKKS frameworks surveyed, only 5 of them model-preserving, accuracy maintained up to **Llama-3-8B**, about 4 orders of magnitude slower than plaintext. The largest it reports, which a survey cannot show to be the largest there is. |
 | **IACR ePrint 2026/1231** - Hybrid AKE for QKD networks without signatures | 2026-06-10 | The closest published construction to `hybrid_combiner_mode="its_toeplitz"`: KEM-only hybrid AKE with a conditional information-theoretic guarantee when the QKD leg is uncompromised. This repository's combiner has no such guarantee: its seed is derived from its inputs, and its QKD leg is simulated. |
 | **arXiv:2601.18511v2** - Scaling up FHE-based PPML | v2 2026-06-17 | Best published absolute: **Llama-3-8B under CKKS at 20 s prefill / 18 s per output token on 8x RTX PRO 6000**. Quote this rather than hand-waving FHE cost - and quote the PAPER, not the SoK that summarises it: `references/REFERENCES.md` now carries the primary entry with the abstract verbatim. Note the eight GPUs; this project has one and its FHE default is CPU. |
 

@@ -4,8 +4,6 @@
 # All repos below are commercially-usable (MIT / Apache-2.0 / BSD) and were verified
 # actively maintained (<= ~6 months) as of June 2026.
 #
-# IMPORTANT (originality/attribution): we do NOT clone or vendor the user's
-# `RhombusEnd2End_HEonGPU` repo (mixed authorship; upstream may be RAPID.git).
 # The GPU MPC-FHE benchmark is our OWN integration over the upstream OSS pulled here.
 #
 # Usage:

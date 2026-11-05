@@ -161,7 +161,7 @@ function lgamma(x: number): number {
   return -tmp + Math.log((2.5066282746310005 * ser) / x);
 }
 
-// 99% one-sided confidence Z for the SP 800-90B most-common-value bound (intentionally fixed spec constant).
+// Z(1 - 0.005), a 99% two-sided confidence: SP 800-90B 6.3.1 writes it as 2.576 (intentionally fixed spec constant).
 const MCV_Z = 2.5758293035489004;
 
 // SP 800-90B (6.3.1) most-common-value min-entropy estimate: bits of min-entropy per bit.
@@ -175,7 +175,7 @@ export function minEntropyMcv(bits: Uint8Array): number {
   let ones = 0;
   for (const x of bits) ones += x;
   const pHat = Math.max(ones, n - ones) / n;
-  const pUpper = Math.min(1, pHat + MCV_Z * Math.sqrt((pHat * (1 - pHat)) / n));
+  const pUpper = Math.min(1, pHat + MCV_Z * Math.sqrt((pHat * (1 - pHat)) / Math.max(n - 1, 1)));
   return pUpper > 0 ? -Math.log2(pUpper) : 0;
 }
 

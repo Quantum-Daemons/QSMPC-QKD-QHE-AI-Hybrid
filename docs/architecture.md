@@ -18,7 +18,7 @@
    +-------------------------------------------------------------------+
    | orchestration/  Pipeline . Stage . EventBus . CryptoRegistry        |
    |   pqc/      ML-KEM+X25519 hybrid KEM . ML-DSA sig . AEAD transport   |
-   |   qkd/      BB84/decoy sim . channel/QBER . AI optimizer (WS1)       |
+   |   qkd/      BB84/decoy sim . channel/QBER . optimizer (WS1)          |
    |   qml_ids/  7 attack types + normal . RF + variational QNN (WS2)     |
    |   qsmpc/    Shamir+QFT secure sum . QOT . PSI (WS3)                  |
    |   qhe/      QOTP+Clifford homomorphic . QCNN . Rate-1 transport (WS4)|
@@ -102,8 +102,8 @@ purpose.
 Private Hybrid ML Inference with Fully Homomorphic Encryption*, arXiv:2509.01253, 1 Sep 2025) runs
 linear layers encrypted on the server and sends intermediate values to the client, which evaluates
 the activations in the clear. It is the closest published architecture to this one, and the payoff is
-large: no bootstrapping, exact rather than polynomial-approximated activations, and 1.5x to 10.5x
-lower latency than Orion. The cost is that the client now sees per-layer intermediates, so model
+large: no bootstrapping, exact rather than polynomial-approximated activations, and up to 7.6x
+lower latency than Orion and 7.4x lower than Concrete-ML (TMLR, arXiv:2509.01253v2; v1 said 1.5x to 10.5x). The cost is that the client now sees per-layer intermediates, so model
 confidentiality has to be recovered by obfuscation - Safhire uses randomised shuffling of
 those values.
 
@@ -233,12 +233,12 @@ class scores and has the CLIENT decrypt**, which is the mainstream construction 
 inference and is what this demo already does - with the client and the key holder being the same tab.
 
 ### The split itself
-The 2026-standard private-inference split (Gazelle -> Delphi -> BOLT -> Bumblebee -> BLB; EncFormer)
-is **linear layers under FHE** (matmul/conv as CKKS; GPU libraries such as HEonGPU accelerate it, though
+A common private-inference split (the line of work from Gazelle through Delphi, BOLT and Bumblebee to BLB, and the
+preprint EncFormer) is **linear layers under homomorphic encryption** (matmul/conv, as CKKS here; GPU libraries such as HEonGPU accelerate it, though
 none runs here) and **non-linear
 layers under MPC** (ReLU/argmax via secret-sharing secure comparison). `qsh.mpc.secret_inference`
-implements it with TenSEAL/OpenFHE for the linear half and **MPyC** (Shamir shares, the CrypTen
-`ReLU([x]) = [x], [x>0]` pattern) for the non-linear half, converting CKKS <-> shares at each boundary;
+implements it with TenSEAL/OpenFHE for the linear half and **MPyC** (Shamir shares, the
+`ReLU([x]) = [x] * [x>0]` pattern) for the non-linear half, converting CKKS <-> shares at each boundary;
 the benchmark reports the FHE-linear vs MPC-non-linear latency split + MPC communication. The linear
 half includes a **genuine FHE convolution** (`fhe/conv.py`): im2col turns the encrypted image into
 receptive-field patches and each output `(channel, position)` is one `dot_plain(patch_ct, kernel)` +
@@ -253,7 +253,8 @@ so the **medical** use case runs a real MedMNIST-scale CNN under FHE-linear conv
 with its average pool on each party's share locally (`secure_maxpool` serves max-pool layers; the
 dense MLP path is byte-identical via `normalize_layers`), with every slot masked as above.
 FHE-feasible by design at this demo's operating point - MedMNIST-scale, not ResNet. The
-**QSMPC-FHE** quantum analogue is Clifford gates (linear) vs T-gates (non-linear), with no FHE <-> MPC
+**QSMPC-FHE** row draws an analogy, not a fact about the gates, every one of which is a linear map: Clifford gates
+are cheap the way linear layers are and T gates expensive the way non-linear ones are, with no FHE <-> MPC
 boundary: the Python QOTP demo evaluates Clifford gates on the encrypted state with Pauli key updates,
 the browser's comparison circuit applies its T gates to the padded state without correcting or
 decrypting it, so it measures cost only, and the Rate-1 module is a transport with no `Eval`, so it

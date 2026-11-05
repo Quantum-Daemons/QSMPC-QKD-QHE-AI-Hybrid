@@ -5,8 +5,9 @@ private-inference-vs-research.md), and the primary source each correction rests 
 
 1. Overview said the ML-KEM + X25519 layer "implements" what BSI recommends. BSI TR-02102-1 v2026-01
    recommends ML-KEM-768/1024 (Table 2.7) and the Brainpool curves (Table B.3) and never mentions
-   25519; TR-02102-2 v2026-01 leaves x25519 out of its TLS 1.3 groups (Table 10) and names
-   SecP256r1MLKEM768 and SecP384r1MLKEM1024 as the hybrids it intends to recommend (sec. 3.4.2).
+   25519; TR-02102-2 v2026-01 leaves x25519 out of its TLS 1.3 groups (Table 10). BSI's TR-02102 page,
+   updated 2026-10-02 after RFC 10024, says SecP256r1MLKEM768 and SecP384r1MLKEM1024 will be recommended
+   in the next TR-02102-2 and may already be used, and that X25519MLKEM768 may also be used.
 2. "0 server-side compute" (Overview KPI, Value's novelty sentence) was unconditional; a full
    deployment sends every run to its server.
 3. Value: "HNDL is active" (EO 14412 sec. 1 calls it a risk); the value table omitted the PSI key
@@ -162,7 +163,8 @@ def test_overview_credits_bsi_with_the_ml_kem_half_only(rendered) -> None:
         assert "only its ML-KEM half is a BSI-recommended mechanism (Table 2.7)" in t
         assert "X25519 is neither among BSI's recommended curves (the Brainpool curves, Table B.3)" in t
         assert "TLS 1.3 groups (TR-02102-2 v2026-01, Table 10)" in t
-        assert "SecP256r1MLKEM768 and SecP384r1MLKEM1024 (section 3.4.2)" in t
+        assert "SecP256r1MLKEM768 and SecP384r1MLKEM1024 will be recommended in the next TR-02102-2" in t
+        assert "X25519MLKEM768 can also be used" in t
         # What BSI does say, unchanged: QKD not recommended, hybrid recommended.
         assert '"is currently not ready for use from a security point of view"' in t
         assert "hybrid key agreement combining a quantum-safe and a classical mechanism (section 2.2)" in t

@@ -6,8 +6,7 @@ layers, MIT) -- through a thin integration we wrote. It is intentionally decoupl
 if the submodules are not present/built it returns ``[]`` and the benchmark falls
 back to TenSEAL/OpenFHE (CPU).
 
-We do NOT clone or vendor the mixed-authorship ``RhombusEnd2End_HEonGPU`` repo; this
-is our own arrangement over the upstream projects. Build the submodules with
+This is our own arrangement over the upstream projects. Build the submodules with
 ``scripts/build_gpu_mpc.sh`` (sets ``CMAKE_CUDA_ARCHITECTURES=120`` for Blackwell).
 """
 

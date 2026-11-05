@@ -6,7 +6,8 @@ verify the implementation against the source rather than against this project's 
 
 Primary source for the simulator equations:
     X. Ma, B. Qi, Y. Zhao, H.-K. Lo, "Practical decoy state for quantum key distribution",
-    Phys. Rev. A 72, 012326 (2005). arXiv:quant-ph/0503005v2.
+    Phys. Rev. A 72, 012326 (2005). arXiv:quant-ph/0503005v5, the version whose numbering this file uses:
+    v2 has no one-decoy section, so its Eq. (34) is not the one cited here.
 
 ROUND 46 RE-CHECKED EVERY EQUATION NUMBER IN THIS FILE AGAINST THAT PDF, and four of them were
 wrong: the key rate is Eq. (1) and was cited as (33), Y_i is Eq. (7) and was cited as (6), e_i is
@@ -105,7 +106,7 @@ def h2(x: float) -> float:
 
 
 def transmittance(distance_km: float, ch: ChannelSpec) -> float:
-    """Overall transmittance eta = eta_Bob * 10^(-alpha L / 10). Ma et al. Eq. (2)."""
+    """Overall transmittance eta = t_AB * eta_Bob, t_AB = 10^(-alpha L / 10). Ma et al. Eq. (5)."""
     return ch.detector_eff * 10.0 ** (-ch.alpha_db_per_km * distance_km / 10.0)
 
 
@@ -125,7 +126,7 @@ def qber(mu: float, eta: float, ch: ChannelSpec) -> float:
 def single_photon_yield(eta: float, ch: ChannelSpec) -> float:
     """Y_1 = Y_0 + eta - Y_0 eta. Ma et al. Eq. (7) at i = 1.
 
-    (Was cited as Eq. (6) until Round 46; checked against arXiv:quant-ph/0503005v2.)"""
+    (Was cited as Eq. (6) until Round 46; the number is the same in arXiv:quant-ph/0503005v2 and v5.)"""
     return ch.dark_count + eta - ch.dark_count * eta
 
 
