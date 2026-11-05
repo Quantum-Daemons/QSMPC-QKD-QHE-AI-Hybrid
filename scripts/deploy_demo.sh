@@ -38,7 +38,7 @@ ok()  { printf '  PASS  %s\n' "$1"; }
 
 : "${QSH_DEMO_SSH:?set QSH_DEMO_SSH (ssh destination); it is deliberately not in this file}"
 : "${QSH_DEMO_URL:?set QSH_DEMO_URL (public demo URL); it is deliberately not in this file}"
-: "${PROXY_NETWORK:?set PROXY_NETWORK (the host proxy's network); it is deliberately not in this file}"
+: "${PROXY_NETWORK:?set PROXY_NETWORK (the reverse proxy network on the host); it is deliberately not in this file}"
 DIR="${QSH_DEMO_DIR:-\$HOME/dev/QSMPC-QKD-QHE-AI-Hybrid}"
 SSH=(ssh -o ConnectTimeout=20)
 [ -n "${QSH_DEMO_KEY:-}" ] && SSH+=(-i "$QSH_DEMO_KEY")
