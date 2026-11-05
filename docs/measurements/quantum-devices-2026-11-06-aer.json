@@ -1,0 +1,132 @@
+{
+ "machine": {
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 620.70.06",
+  "kernel": "5.14.0-687.65.1.el9_8.x86_64",
+  "python": "3.12.15",
+  "date": "2026-11-06"
+ },
+ "versions": {
+  "custatevec-cu12": "1.6.0.post1",
+  "qiskit": "2.6.2",
+  "qiskit-aer-gpu": "0.18.2"
+ },
+ "rows": [
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 4,
+   "first_ms": 131.293,
+   "median_ms": 0.685,
+   "min_ms": 0.645,
+   "max_ms": 0.97,
+   "value": 0.12427946548452727
+  },
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 8,
+   "first_ms": 1.426,
+   "median_ms": 1.072,
+   "min_ms": 1.037,
+   "max_ms": 1.315,
+   "value": 0.52660485967096
+  },
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 10,
+   "first_ms": 1.587,
+   "median_ms": 1.241,
+   "min_ms": 1.162,
+   "max_ms": 1.28,
+   "value": 0.20105077542020444
+  },
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 12,
+   "first_ms": 1.867,
+   "median_ms": 1.587,
+   "min_ms": 1.52,
+   "max_ms": 1.644,
+   "value": 0.6044098959861057
+  },
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 14,
+   "first_ms": 2.067,
+   "median_ms": 1.728,
+   "min_ms": 1.697,
+   "max_ms": 1.999,
+   "value": -0.6963327717415324
+  },
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 16,
+   "first_ms": 2.982,
+   "median_ms": 2.536,
+   "min_ms": 2.449,
+   "max_ms": 2.624,
+   "value": 0.28617840968661756
+  },
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 18,
+   "first_ms": 3.497,
+   "median_ms": 3.173,
+   "min_ms": 3.07,
+   "max_ms": 3.303,
+   "value": 0.4632901018431318
+  },
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 20,
+   "first_ms": 5.449,
+   "median_ms": 5.157,
+   "min_ms": 4.973,
+   "max_ms": 5.371,
+   "value": 0.5555247612746645
+  },
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 22,
+   "first_ms": 12.952,
+   "median_ms": 12.835,
+   "min_ms": 12.765,
+   "max_ms": 12.944,
+   "value": 0.3689546539692859
+  },
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 24,
+   "first_ms": 47.44,
+   "median_ms": 47.255,
+   "min_ms": 47.116,
+   "max_ms": 47.355,
+   "value": 0.18158580805637686
+  },
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 26,
+   "first_ms": 193.238,
+   "median_ms": 193.252,
+   "min_ms": 193.171,
+   "max_ms": 193.473,
+   "value": -0.12825470368155817
+  },
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 28,
+   "first_ms": 822.686,
+   "median_ms": 824.806,
+   "min_ms": 824.668,
+   "max_ms": 824.988,
+   "value": -0.8323897092152818
+  },
+  {
+   "backend": "Qiskit Aer GPU",
+   "qubits": 30,
+   "first_ms": 3527.12,
+   "median_ms": 3535.657,
+   "min_ms": 3534.869,
+   "max_ms": 3535.841,
+   "value": -0.24662514676048888
+  }
+ ]
+}

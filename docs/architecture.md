@@ -393,7 +393,8 @@ and the three `/api/demo/*` endpoints. The dense+conv hybrid dispatch is unified
   topology additionally runs server-side federated learning + FHE inference + the MCP server. AI model weights come from
   Hugging Face at a pinned revision (browser-cached), and the engines' runtime files from the demo host.
 
-## Why CUDA-Q / cuQuantum (not qiskit-aer-gpu)
-`qiskit-aer-gpu` cu11/cu12 wheels do not target Blackwell `sm_120`. On this hardware
-the GPU quantum-simulation path is CUDA-Q + cuQuantum (PennyLane `lightning.gpu`,
-SM 7.0+). Qiskit (CPU/Aer-CPU) is still used for circuit authoring and small sims.
+## GPU state-vector simulation
+CUDA-Q, PennyLane `lightning.gpu` and Qiskit Aer GPU 0.18.2 all run on this Blackwell `sm_120` GPU (measured 2026-11-06,
+[models-and-benchmarks.md](models-and-benchmarks.md#state-vector-simulators-measured)); earlier text here said Aer's wheels did not.
+The Python tiers choose by `quantum_sim.device`, `default.qubit` by default: at the 4 to 9 wires the shipped circuits use, every
+backend answers in milliseconds, and the GPU pays from about 18 qubits. Qiskit (CPU/Aer-CPU) is still used for circuit authoring.

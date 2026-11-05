@@ -1,0 +1,248 @@
+{
+ "machine": {
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 620.70.06",
+  "kernel": "5.14.0-687.65.1.el9_8.x86_64",
+  "python": "3.12.15",
+  "date": "2026-11-06"
+ },
+ "versions": {
+  "cuda-quantum-cu13": "0.16.0.post1",
+  "custatevec-cu13": "1.14.0"
+ },
+ "rows": [
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 4,
+   "first_ms": 42.105,
+   "median_ms": 0.224,
+   "min_ms": 0.201,
+   "max_ms": 0.451,
+   "value": 0.12427949183620512
+  },
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 8,
+   "first_ms": 3.119,
+   "median_ms": 0.565,
+   "min_ms": 0.552,
+   "max_ms": 0.634,
+   "value": 0.5266048523056677
+  },
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 10,
+   "first_ms": 2.876,
+   "median_ms": 0.707,
+   "min_ms": 0.701,
+   "max_ms": 0.759,
+   "value": 0.2010507516742516
+  },
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 12,
+   "first_ms": 6.0,
+   "median_ms": 0.879,
+   "min_ms": 0.833,
+   "max_ms": 1.045,
+   "value": 0.6044100304610762
+  },
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 14,
+   "first_ms": 1.729,
+   "median_ms": 0.993,
+   "min_ms": 0.988,
+   "max_ms": 1.033,
+   "value": -0.6963328726524624
+  },
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 16,
+   "first_ms": 2.668,
+   "median_ms": 1.332,
+   "min_ms": 1.256,
+   "max_ms": 2.252,
+   "value": 0.2861784745575564
+  },
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 18,
+   "first_ms": 2.263,
+   "median_ms": 1.386,
+   "min_ms": 1.352,
+   "max_ms": 1.426,
+   "value": 0.4632901487155079
+  },
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 20,
+   "first_ms": 2.655,
+   "median_ms": 1.539,
+   "min_ms": 1.529,
+   "max_ms": 1.892,
+   "value": 0.5555251175521339
+  },
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 22,
+   "first_ms": 2.468,
+   "median_ms": 1.816,
+   "min_ms": 1.787,
+   "max_ms": 1.988,
+   "value": 0.368954876921835
+  },
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 24,
+   "first_ms": 2.736,
+   "median_ms": 2.032,
+   "min_ms": 2.022,
+   "max_ms": 2.049,
+   "value": 0.1815856946628542
+  },
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 26,
+   "first_ms": 13.493,
+   "median_ms": 12.674,
+   "min_ms": 12.58,
+   "max_ms": 12.83,
+   "value": -0.12825463533858678
+  },
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 28,
+   "first_ms": 58.978,
+   "median_ms": 57.671,
+   "min_ms": 57.584,
+   "max_ms": 57.802,
+   "value": -0.8323891577611089
+  },
+  {
+   "backend": "CUDA-Q nvidia",
+   "qubits": 30,
+   "first_ms": 239.263,
+   "median_ms": 234.902,
+   "min_ms": 234.182,
+   "max_ms": 235.215,
+   "value": -0.2466251423150986
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 4,
+   "first_ms": 3.256,
+   "median_ms": 0.313,
+   "min_ms": 0.236,
+   "max_ms": 0.608,
+   "value": 0.12427946548452712
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 8,
+   "first_ms": 1.073,
+   "median_ms": 0.46,
+   "min_ms": 0.438,
+   "max_ms": 0.507,
+   "value": 0.52660485967096
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 10,
+   "first_ms": 1.044,
+   "median_ms": 0.536,
+   "min_ms": 0.527,
+   "max_ms": 0.579,
+   "value": 0.20105077542020422
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 12,
+   "first_ms": 1.112,
+   "median_ms": 0.668,
+   "min_ms": 0.656,
+   "max_ms": 0.705,
+   "value": 0.6044098959861057
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 14,
+   "first_ms": 1.259,
+   "median_ms": 0.833,
+   "min_ms": 0.824,
+   "max_ms": 0.859,
+   "value": -0.6963327717415324
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 16,
+   "first_ms": 1.435,
+   "median_ms": 0.998,
+   "min_ms": 0.983,
+   "max_ms": 1.031,
+   "value": 0.2861784096866177
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 18,
+   "first_ms": 1.669,
+   "median_ms": 1.204,
+   "min_ms": 1.193,
+   "max_ms": 1.299,
+   "value": 0.46329010184313196
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 20,
+   "first_ms": 2.236,
+   "median_ms": 1.643,
+   "min_ms": 1.637,
+   "max_ms": 1.664,
+   "value": 0.5555247612746647
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 22,
+   "first_ms": 6.111,
+   "median_ms": 5.619,
+   "min_ms": 5.586,
+   "max_ms": 5.654,
+   "value": 0.3689546539692856
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 24,
+   "first_ms": 30.268,
+   "median_ms": 29.769,
+   "min_ms": 29.639,
+   "max_ms": 29.88,
+   "value": 0.18158580805637675
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 26,
+   "first_ms": 132.008,
+   "median_ms": 131.068,
+   "min_ms": 130.917,
+   "max_ms": 131.156,
+   "value": -0.12825470368155845
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 28,
+   "first_ms": 567.359,
+   "median_ms": 564.742,
+   "min_ms": 564.498,
+   "max_ms": 564.882,
+   "value": -0.8323897092152821
+  },
+  {
+   "backend": "CUDA-Q nvidia-fp64",
+   "qubits": 30,
+   "first_ms": 2431.767,
+   "median_ms": 2423.206,
+   "min_ms": 2422.926,
+   "max_ms": 2424.028,
+   "value": -0.24662514676048863
+  }
+ ]
+}
