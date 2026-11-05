@@ -69,8 +69,9 @@ def test_the_workflow_reads_only_and_runs_the_script() -> None:
     runs = {name: [s.get("run", "") for s in job["steps"]] for name, job in wf["jobs"].items()}
     assert any("scripts/audit_deps.sh npm" in r for r in runs.get("npm", [])), "the npm job no longer runs the script"
     assert any("scripts/audit_deps.sh rust" in r for r in runs.get("rust", [])), "the rust job no longer runs the script"
+    assert any("scripts/audit_deps.sh python" in r for r in runs.get("python", [])), "the python job no longer runs the script"
     uses = {s["uses"].split("@")[0] for job in wf["jobs"].values() for s in job["steps"] if "uses" in s}
-    assert uses <= {"actions/checkout", "actions/setup-node", "actions/cache"}, (
+    assert uses <= {"actions/checkout", "actions/setup-node", "actions/setup-python", "actions/cache"}, (
         f"the audit runs through the script, not a third-party action: {sorted(uses)}")
 
 

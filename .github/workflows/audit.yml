@@ -60,7 +60,9 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - name: Fail on any advisory against requirements.lock
         run: bash scripts/audit_deps.sh python
 

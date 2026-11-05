@@ -38,7 +38,7 @@ def test_node_comes_from_the_official_image_pinned_by_digest() -> None:
     assert m, "the API image has no Node stage from the official image at an exact version and digest"
     major, release = int(m.group(1)), m.group(4)
     assert major >= SERVER_2X_NODE_FLOOR, f"Node {major} is below the filesystem server's floor"
-    base = re.search(r"^FROM python:[\d.]+-slim-(\w+)$", _text(), flags=re.M)
+    base = re.search(r"^FROM python:[\d.]+-slim-(\w+)@sha256:[0-9a-f]{64}$", _text(), flags=re.M)
     assert base and base.group(1) == release, (
         f"the Node stage is {release} and the Python base {base and base.group(1)}: the copied binary "
         "needs the glibc of the release it was built on")

@@ -20,6 +20,7 @@ cd "$(dirname "$0")/.."
 
 RUST_IMAGE=rust:1.99.1-bookworm@sha256:48b7f435b8fc6378ce43b44f15e3a47fd8919b2825f835c39bd4bd3da50af5b8
 CARGO_DENY=0.20.2
+PIP_AUDIT=2.10.1
 
 audit_npm() {
   # No --omit=dev: the dev server and the build tooling run on developer machines and in CI, and
@@ -68,13 +69,16 @@ audit_rust() {
 
 audit_python() {
   # What the image and CI install, not what the floors would resolve to today. --disable-pip: the lock is complete.
-  uvx --quiet --from "pip-audit>=2.9" pip-audit --disable-pip --require-hashes -r requirements.lock
+  venv=$(mktemp -d)
+  # pip-audit needs a newer Python than some systems' python3 (AlmaLinux 9's is 3.9).
+  "$(command -v python3.12 || command -v python3)" -m venv "$venv"
+  "$venv/bin/pip" install --quiet "pip-audit==$PIP_AUDIT"
+  "$venv/bin/pip-audit" --disable-pip --require-hashes -r requirements.lock
   # torch and torchvision carry a +cpu local version, which PyPI's advisory lookup skips with only a note, so they are
   # asked about again under the public version they are built from.
-  plain=$(mktemp)
-  grep -E '^(torch|torchvision)==' requirements.lock | sed -E 's/\+cpu.*//' > "$plain"
-  uvx --quiet --from "pip-audit>=2.9" pip-audit --disable-pip --no-deps -r "$plain"
-  rm -f "$plain"
+  grep -E '^(torch|torchvision)==' requirements.lock | sed -E 's/\+cpu.*//' > "$venv/plain.txt"
+  "$venv/bin/pip-audit" --disable-pip --no-deps -r "$venv/plain.txt"
+  rm -rf "$venv"
 }
 
 case "${1:-all}" in

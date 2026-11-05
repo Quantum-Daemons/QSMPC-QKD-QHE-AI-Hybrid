@@ -8429,4 +8429,6 @@ demo serves from, so each is pinned by version and digest. The web image uses `n
 **The full deployment, walked.** The plans asked for it in a browser in both modes, and only its image had been probed. Built from these locks and brought up with compose: all five use cases
 ran by `POST /api/run/<id>` and a WebSocket in 4 to 12 s, Start, Start stepwise, Step, Resume, Pause, Restart and Stop each changed the state as labelled, the route audit passed with no console error and layout shift
 at most 0.031, and the filesystem endpoint answered from the locked server. The standalone Let's Encrypt path of `docs/deployment.md` is not walked: it needs a public domain and ports of its own.
+A cost of walking it here: the API container writes run records into the bind-mounted `results/` as root, and the next local test run that reuses a run id fails
+with a `PermissionError`. `docker run --rm -v "$PWD/results:/r" --entrypoint chown qsh-api -R "$(id -u):$(id -g)" /r` hands them back; `docs/deployment.md` says so.
 
