@@ -193,15 +193,16 @@ export default function Validations() {
 
       <h2 style={{ marginTop: 28 }}>Quantum-safe agent comms (Agentic AI / MCP)</h2>
       <div className="card">
-        <h3>MCP-style agent-to-agent tool call</h3>
+        <h3>MCP agent-to-agent tool call</h3>
         <p>
           {/* "optionally QKD-mixed" described a FIXED 32-byte constant (0x71 x 32, the backend's
               b"q"*32) as QKD key material. The QKD models here return counts, never key bytes. */}
           Two endpoints in this tab, each holding its own keys, establish a PQC (ML-KEM-768 + X25519)
           session - optionally mixed with a fixed QKD-domain constant, not a QKD key - and exchange an{" "}
-          <b>ML-DSA-signed</b>, AES-256-GCM-sealed MCP-style call: a fixed <code>query_cohort</code>{" "}
-          request, which the other endpoint opens and verifies. No model and no tool runs; what is shown
-          is the sealed, signed channel.
+          <b>ML-DSA-signed</b>, AES-256-GCM-sealed MCP <code>tools/call</code> request of revision
+          2026-07-28: a fixed <code>query_cohort</code> call, which the other endpoint opens and verifies.
+          No model and no tool runs, so no MCP response follows; what is shown is the sealed, signed
+          channel.
         </p>
         <div className="btn-row">
           <label className="muted">
@@ -218,7 +219,7 @@ export default function Validations() {
             <tbody>
               <tr><th scope="row">session</th><td className="mono">{mcp.session}</td></tr>
               <tr><th scope="row">KEM / QKD-domain constant mixed</th><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
-              <tr><th scope="row">method</th><td className="mono">{mcp.method}</td></tr>
+              <tr><th scope="row">method / MCP revision</th><td className="mono">{mcp.method} / {mcp.protocol_version}</td></tr>
               <tr><th scope="row">authenticated ({mcp.signature_alg})</th>
                 <td style={{ color: mcp.authenticated ? "var(--accent-2)" : "var(--danger)" }}>{String(mcp.authenticated)}</td></tr>
               <tr><th scope="row">tampered message rejected</th>

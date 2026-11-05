@@ -2080,10 +2080,14 @@ so each one names what was checked and where it stopped.
   group report and changes no interface this project models.
 - **Model Context Protocol.** The current specification revision is **2026-07-28**
   (`schema/2026-07-28/schema.ts`). It describes stateless, self-contained requests with per-request
-  capability negotiation, and opt-in extensions (Tasks, Skills over MCP, MCP Apps). The demo's client
-  mirror carries `tools/call` inside its quantum-safe envelope and depends on none of that. The Python
+  capability negotiation, and opt-in extensions (Tasks, Skills over MCP, MCP Apps). The channel's
+  messages follow it since Round 86: requests "**MUST** include a string or integer ID", required `_meta`
+  fields, `resultType` on every result, and a custom transport "**MUST** preserve the JSON-RPC message
+  format, the message patterns, and the per-request metadata model". Before that this entry said the
+  channel depended on none of it, which was true only because its messages were not MCP. The Python
   SDK's latest release is 2.3.0 (2026-10-02). `qsh/mcp/server.py` accepts both the 2.x `MCPServer` and
-  the 1.x `FastMCP` spelling, so `mcp>=1.2` remains correct.
+  the 1.x `FastMCP` spelling; the floor is `mcp>=2.2.0` (`requirements-ai.txt`), since `mcp>=1.2` admits
+  releases with high-severity advisories.
 - **AML-QKD.** arXiv:2603.04192 is still at v2 (2026-06-01). The entry above holds.
 
 ## Round 77 additions: the satellite pass, the network beyond the horizon, and the link templates

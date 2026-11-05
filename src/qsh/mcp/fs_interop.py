@@ -97,10 +97,12 @@ def secure_filesystem_interop(directory: str = ".", tool: str = "list_directory"
 
     arguments = arguments if arguments is not None else {"path": directory}
     external = asyncio.run(_filesystem_mcp_call(directory, tool, arguments, timeout))
-    envelope = secure_carry(external, qkd_key=qkd_key, callee_name="filesystem-mcp")
+    envelope = secure_carry(external, tool=tool, arguments=arguments, qkd_key=qkd_key,
+                            callee_name="filesystem-mcp")
     return {
         "external": external,
         "quantum_safe": {k: envelope[k] for k in
-                         ("kem", "qkd_mixed", "authenticated", "signature_alg", "tamper_rejected", "sealed_bytes")},
+                         ("kem", "qkd_mixed", "protocol_version", "authenticated", "signature_alg",
+                          "tamper_rejected", "sealed_bytes")},
         "verified_result": envelope["payload"],     # the external result, after open+verify
     }

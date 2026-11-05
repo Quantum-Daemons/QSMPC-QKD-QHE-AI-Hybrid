@@ -3,6 +3,7 @@ import {
   type AgentRun, DEFAULT_DEVICE, type Device, type Engine, hasWebGPU, runAgent, tfjsModelLabel,
   TFJS_MODELS, WEBLLM_MODELS,
 } from "../lib/clientAI";
+import { checkProvenance, type ProvenanceCheck, signProvenance } from "../lib/aiProvenance";
 import { clientSecureWrap, type McpResult } from "../lib/clientMcp";
 import { isSoftwareAdapter, webgpuInfo } from "../lib/onnxInference";
 import { cryptoCfg } from "../lib/config";
@@ -75,6 +76,8 @@ export default function AgenticAIPanel({
   // and downloadable -- MCP envelope describing a superseded run, sitting under the new run's
   // numbers with nothing to indicate it. Kept so the two can be compared on every render.
   const [ranWithCtx, setRanWithCtx] = useState<string | null>(null);
+  const [generatedAt, setGeneratedAt] = useState<string | null>(null);   // when the model finished
+  const [saved, setSaved] = useState<{ name: string; check: ProvenanceCheck } | null>(null);
   const [combiner, setCombiner] = useState<string>(cryptoCfg().hybrid_combiner_mode ?? "hkdf");   // PQC+QKD key combiner
   const [gpu, setGpu] = useState(false);                 // genuine WebGPU (adapter obtainable), resolved async
   // "absent" and "software" are different facts and the note below used to call both of them
@@ -110,11 +113,9 @@ export default function AgenticAIPanel({
   const go = async () => {
     setBusy(true); setProgress(""); setRun(null); setMcp(null);
     const ctxLine = runContextLine(usecase, runContext);
-  // A result is stale once the pipeline has produced different numbers than it was generated from.
-  const stale = run !== null && ranWithCtx !== null && ranWithCtx !== ctxLine;
     const effectivePrompt = ctxLine ? `${ctxLine}\n\n${prompt}` : prompt;
     const r = await runAgent(engine, effectivePrompt, { model, device, onProgress: setProgress });
-    setRun(r);
+    setRun(r); setGeneratedAt(new Date().toISOString());
     // wrap {prompt, answer, run-context} through the client quantum-safe MCP channel, tagged with the
     // per-industry tool name (signed + sealed + tamper-tested)
     const m = await clientSecureWrap(
@@ -128,15 +129,63 @@ export default function AgenticAIPanel({
   // A result is stale once the pipeline has produced different numbers than it was generated from.
   const stale = run !== null && ranWithCtx !== null && ranWithCtx !== ctxLine;
 
+  // The JSON download. A file is a data format that can carry metadata, so it carries the signed record
+  // the Code of Practice's Sub-measure 1.1.1 asks of exported content (Round 86). Its Sub-measure 1.1.2
+  // watermark is still excepted: both engines stop under 200 tokens, "very short text" in the Code's
+  // glossary. A run that produced no text marks nothing. Gap analysis: docs/ai-act-art50-gap-analysis.md
+  //
+  // The obligation that binds on the page itself is Art. 50(1), shown above with no grace period.
+  const download = async () => {
+    const aiProvenance = run?.text
+      ? await signProvenance({ text: run.text, engine: run.engine, model: run.model,
+                               generatedAt: generatedAt ?? new Date().toISOString() })
+      : null;
+    downloadJSON({
+      usecase, tool: mcpToolName, run, mcp,
+      // The download outlives the page, so it has to carry its own provenance: which run's
+      // numbers produced it, and whether the page had moved on by the time it was saved.
+      run_context: ranWithCtx,
+      stale_at_download: stale,
+      ai_provenance: aiProvenance,
+      ai_provenance_note: {
+        covers: "the signature covers `body`, whose content_sha256 is the SHA-256 of run.text",
+        key: "generated in the browser tab for this file and discarded: the signature shows the record "
+          + "and the text are unchanged since signing, not who signed them; anyone can edit a copy and "
+          + "sign it again under a new key, or delete the record",
+        time: "generated_at and signed_at come from the visitor's clock, with no time authority",
+        watermark: "none: the text is under 200 tokens, 'very short text' under the Commission Code of "
+          + "Practice (Sub-measure 1.1.2 and glossary)",
+        check: "the 'Check a saved file' control on this panel, or scripts/verify_ai_provenance.py in the "
+          + "source repository; the format is in docs/ai-act-art50-gap-analysis.md",
+      },
+      art_50_1_disclosure: "shown unconditionally on this panel",
+    }, `qsh-agentic-${usecase ?? "ai"}.json`);
+  };
+
+  // Read in this tab, never uploaded. Any file may arrive here, so nothing in it is trusted.
+  const onCheckFile = async (file: File | undefined) => {
+    if (!file) return;
+    let doc: unknown = null;
+    try {
+      doc = JSON.parse(await file.text());
+    } catch {
+      setSaved({ name: file.name, check: { found: false, signature_valid: false, text_matches: false,
+        copy_matches: null, ai_generated: null, record: null, problem: "This file is not JSON." } });
+      return;
+    }
+    setSaved({ name: file.name, check: await checkProvenance(doc) });
+  };
+
   return (
     <div className={inline ? "card" : undefined} style={inline ? { marginTop: 16 } : undefined}>
       {inline && (
         <>
           <h3 style={{ marginTop: 0 }}>Agentic AI · quantum-safe MCP</h3>
           <p className="muted" style={{ fontSize: 12, marginTop: -4 }}>
-            A small LLM runs <b>in your browser</b>; its request and response are sealed and signed over a
-            client-side quantum-safe MCP channel, in a JSON-RPC envelope named after this {usecase} use
-            case&apos;s <code>{mcpToolName}</code> tool. No tool is executed.
+            A small LLM runs <b>in your browser</b>; the prompt and the reply are sealed and signed over a
+            client-side quantum-safe MCP channel, as the arguments of a <code>tools/call</code> request named
+            after this {usecase} use case&apos;s <code>{mcpToolName}</code> tool. No tool is executed, so no
+            MCP response follows.
             {ctxLine ? " The live run's metrics are folded into the prompt." : " Run the simulator above to feed it live metrics."}
           </p>
         </>
@@ -266,8 +315,9 @@ export default function AgenticAIPanel({
           <div className="card">
             <h3>Quantum-safe MCP envelope</h3>
             <p className="muted" style={{ fontSize: 12 }}>
-              The AI request and response wrapped as a signed, sealed MCP-style message in a JSON-RPC
-              envelope named after the tool; both endpoints run in this tab and no tool is executed.
+              The prompt and the reply, as the arguments of a signed, sealed MCP <code>tools/call</code>{" "}
+              request named after the tool. Both endpoints run in this tab; no tool is executed, so no MCP
+              response follows.
             </p>
             {mcp && (
               <table style={{ marginTop: 8 }}>
@@ -277,7 +327,7 @@ export default function AgenticAIPanel({
                   <tr><th scope="row">KEM / QKD-domain constant mixed</th><td>{mcp.kem} / {String(mcp.qkd_mixed)}</td></tr>
                   <tr><th scope="row">PQC+QKD combiner</th><td className="mono">{mcp.combiner}</td></tr>
                   <tr><th scope="row">derived key fingerprint</th><td className="mono">{mcp.session_key_fp}</td></tr>
-                  <tr><th scope="row">method</th><td className="mono">{mcp.method}</td></tr>
+                  <tr><th scope="row">method / MCP revision</th><td className="mono">{mcp.method} / {mcp.protocol_version}</td></tr>
                   <tr><th scope="row">authenticated ({mcp.signature_alg})</th>
                     <td style={{ color: mcp.authenticated ? "var(--accent-2)" : "var(--danger)" }}>{String(mcp.authenticated)}</td></tr>
                   <tr><th scope="row">tampered message rejected</th>
@@ -294,44 +344,7 @@ export default function AgenticAIPanel({
             exports above already do this. Without it the button just reads as broken. */}
         <button className="btn ghost" disabled={!run}
           title={!run ? "Run the in-browser agent first - there is no result to download yet" : undefined}
-          onClick={() => downloadJSON({
-            usecase, tool: mcpToolName, run, mcp,
-            // The download outlives the page, so it has to carry its own provenance: which run's
-            // numbers produced it, and whether the page had moved on by the time it was saved.
-            run_context: ranWithCtx,
-            stale_at_download: stale,
-            // Provenance metadata on the downloaded artifact. Deliberately NOT labelled as an
-            // Article 50(2) marking layer, because researching the actual instruments showed this
-            // system does not need one - and because a marking layer without a detector is worse
-            // than none.
-            //
-            // The Commission's Code of Practice on Transparency of AI-generated Content (final
-            // 2026-06-10, assessed adequate 8-9 July 2026) is the recognised route to 50(2). Its
-            // chain for this exact case: FREE-FORM TEXT - "the text that is shown on a website or
-            // within a chat" - cannot transport metadata, so watermarking is the only layer; and
-            // Sub-measure 1.1.2 excepts "very short text", which the glossary defines as text
-            // SHORTER THAN 200 TOKENS. This panel generates 96 tokens (Transformers.js) or 160
-            // (WebLLM), both under that threshold.
-            //
-            // And the Guidelines (point 70) are explicit that marking without the means to detect
-            // it "will not suffice". Shipping a marking layer we could not detect would create an
-            // obligation rather than discharge one. So this block is voluntary provenance, useful
-            // for anyone auditing a saved artifact, and it says so.
-            //
-            // The obligation that DOES bite is Art. 50(1), which has shipped since Round 21 and has
-            // no grace period. Gap analysis: docs/ai-act-art50-gap-analysis.md
-            provenance_note: {
-              ai_generated: true,
-              generator: { engine: run?.engine ?? null, model: run?.model ?? null,
-                           runtime: "in-browser" },
-              basis: "voluntary provenance metadata, not an Article 50(2) marking layer",
-              why_no_marking_layer:
-                "free-form text under 200 tokens is 'very short text' under the Commission Code of "
-                + "Practice (Sub-measure 1.1.2 and glossary), which excepts it from watermarking; "
-                + "free-form text cannot carry metadata, so no marking layer applies",
-              art_50_1_disclosure: "shown unconditionally on this panel",
-            },
-          }, `qsh-agentic-${usecase ?? "ai"}.json`)}>
+          onClick={download}>
           ⬇ Download results (JSON)
         </button>
       </div>
@@ -341,6 +354,45 @@ export default function AgenticAIPanel({
         <p className="muted small" style={{ marginTop: 6, marginBottom: 0 }}>
           Run the in-browser agent first - there is no result to download yet.
         </p>
+      )}
+      <p className="muted small" style={{ marginTop: 8, marginBottom: 0 }}>
+        The download carries a signed record that its text is AI-generated (ML-DSA-65, under a key made in
+        this tab for that file). The record shows the text is unchanged since signing, not who signed it.
+      </p>
+      <div className="btn-row" style={{ marginTop: 8 }}>
+        <label className="muted" htmlFor={`ai-check-${usecase ?? "std"}`}>Check a saved file (read in this tab, not uploaded)</label>
+        <input id={`ai-check-${usecase ?? "std"}`} type="file" accept="application/json,.json"
+          onChange={(e) => onCheckFile(e.target.files?.[0])} />
+      </div>
+      {saved && (
+        <table style={{ marginTop: 8 }}>
+          <tbody>
+            <tr><th scope="row">file</th><td className="mono">{saved.name}</td></tr>
+            <tr><th scope="row">AI-generated record</th>
+              <td>{saved.check.found ? "found (checked by its signed metadata; no watermark or forensic detection is involved)"
+                : "none, which shows nothing either way: the check does not read the text itself"}</td></tr>
+            {saved.check.found && (
+              <>
+                <tr><th scope="row">signature verifies</th>
+                  <td style={{ color: saved.check.signature_valid ? "var(--accent-2)" : "var(--danger)" }}>{String(saved.check.signature_valid)}</td></tr>
+                <tr><th scope="row">text unchanged since signing</th>
+                  <td style={{ color: saved.check.text_matches ? "var(--accent-2)" : "var(--danger)" }}>{String(saved.check.text_matches)}</td></tr>
+              </>
+            )}
+            {saved.check.copy_matches === false && (
+              <tr><th scope="row">MCP envelope&apos;s copy of the text</th>
+                <td style={{ color: "var(--danger)" }}>differs from the checked text</td></tr>
+            )}
+            {saved.check.record && (
+              <>
+                <tr><th scope="row">marked AI-generated</th><td>{String(saved.check.ai_generated)}</td></tr>
+                <tr><th scope="row">model</th><td className="mono">{String(saved.check.record.generator?.model)}</td></tr>
+                <tr><th scope="row">generated at (the signer&apos;s clock)</th><td className="mono">{String(saved.check.record.generated_at)}</td></tr>
+              </>
+            )}
+            {saved.check.problem && <tr><th scope="row">result</th><td>{saved.check.problem}</td></tr>}
+          </tbody>
+        </table>
       )}
     </div>
   );

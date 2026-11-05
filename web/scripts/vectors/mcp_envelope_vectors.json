@@ -1,0 +1,39 @@
+{
+  "generated_by": "scripts/export_mcp_vectors.py",
+  "protocol_version": "2026-07-28",
+  "version": "0.0.0-vector",
+  "vectors": [
+    {
+      "client": "analyst-agent",
+      "method": "tools/call",
+      "params": {
+        "name": "query_cohort",
+        "arguments": {
+          "phenotype": "rare-disease-X"
+        }
+      },
+      "body": "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"_meta\":{\"io.modelcontextprotocol/clientCapabilities\":{},\"io.modelcontextprotocol/clientInfo\":{\"name\":\"analyst-agent\",\"version\":\"0.0.0-vector\"},\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\"},\"arguments\":{\"phenotype\":\"rare-disease-X\"},\"name\":\"query_cohort\"}}"
+    },
+    {
+      "client": "browser-agent",
+      "method": "tools/call",
+      "params": {
+        "name": "score_transaction",
+        "arguments": {
+          "prompt": "Why? \"quoted\"\nnext line",
+          "answer": "Ωmega é ✓",
+          "usecase": null,
+          "nested": {
+            "b": 2,
+            "a": [
+              1,
+              true,
+              false
+            ]
+          }
+        }
+      },
+      "body": "{\"id\":1,\"jsonrpc\":\"2.0\",\"method\":\"tools/call\",\"params\":{\"_meta\":{\"io.modelcontextprotocol/clientCapabilities\":{},\"io.modelcontextprotocol/clientInfo\":{\"name\":\"browser-agent\",\"version\":\"0.0.0-vector\"},\"io.modelcontextprotocol/protocolVersion\":\"2026-07-28\"},\"arguments\":{\"answer\":\"Ωmega é ✓\",\"nested\":{\"a\":[1,true,false],\"b\":2},\"prompt\":\"Why? \\\"quoted\\\"\\nnext line\",\"usecase\":null},\"name\":\"score_transaction\"}}"
+    }
+  ]
+}

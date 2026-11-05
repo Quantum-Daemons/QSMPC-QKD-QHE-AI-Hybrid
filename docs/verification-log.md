@@ -3801,3 +3801,17 @@ form was tested for single-dollar math, so "2^30" in plain prose passed for 30 r
 reads paragraphs, not lines, because code spans, inline math and display blocks cross line breaks, and
 it leaves quotations alone, because a source's own typing is part of the quotation; its first catch was
 in the entry that introduced it.
+
+**A label is a claim about a format.** "MCP-style" and "JSON-RPC envelope" hid that the messages were
+notifications by shape: no id, so nothing could answer them. Validating against the upstream schema took
+minutes and would have shown it at any point. Saying "depends on none of that" in the references was true
+only because the messages were not what they were called.
+
+**A comment saying two implementations agree is not a check, again.** "The exact same bytes" sat beside two
+serialisers that differ by a space. It had no consequence, because `body` travels as the signed string, which
+is exactly why nothing ever caught it.
+
+**The exception in a rule is part of the rule.** The gap analysis quoted the very-short-text exception as if it
+covered marking in general; it is written into the watermark sub-measure alone. The file then repeated the
+reasoning about itself, in a note saying a file cannot carry metadata.
+

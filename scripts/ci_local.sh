@@ -161,8 +161,8 @@ step "11/18 Federated secure aggregation"
   && ok "federated secure aggregation" || { bad "federated secure aggregation"; tail -12 /tmp/ci_qfl.log; }
 
 step "12/18 Hybrid-KEM combiner parity (Python vectors vs the browser module)"
-(cd web && npm run --silent check:combiner) \
-  && ok "combiner parity" \
+(cd web && npm run --silent check:combiner && npm run --silent check:mcp-envelope) \
+  && ok "combiner parity, MCP request parity and the AI-generated record" \
   || bad "backend and browser derive different session keys"
 
 step "13/18 combiner vectors regenerated from the Python side"
@@ -184,7 +184,7 @@ step "13/18 combiner vectors regenerated from the Python side"
 # shipped a uniform +1 at every entropy with nothing able to see it - the only assertion in the
 # repo was a single correct spot check on the SIBLING function.
 vec_fail=0
-for gen in scripts/export_combiner_vectors.py scripts/export_qrng_cutoffs.py; do
+for gen in scripts/export_combiner_vectors.py scripts/export_qrng_cutoffs.py scripts/export_mcp_vectors.py; do
   if ! "$PY" "$gen" >/tmp/ci_export_vectors.log 2>&1; then
     bad "$gen FAILED - its artefact was not regenerated, so the diff below proves nothing"
     tail -15 /tmp/ci_export_vectors.log
@@ -192,8 +192,8 @@ for gen in scripts/export_combiner_vectors.py scripts/export_qrng_cutoffs.py; do
   fi
 done
 if [ "$vec_fail" = "0" ]; then
-  if git diff --quiet -- web/scripts/vectors/hybrid_combiner_vectors.json web/scripts/vectors/qrng_cutoffs.json; then
-    ok "vectors in sync with the Python combiners and the SP 800-90B cutoffs"
+  if git diff --quiet -- web/scripts/vectors/hybrid_combiner_vectors.json web/scripts/vectors/qrng_cutoffs.json web/scripts/vectors/mcp_envelope_vectors.json; then
+    ok "vectors in sync with the Python combiners, the SP 800-90B cutoffs and the MCP messages"
   else
     bad "a generated vector file is stale - commit the regenerated file(s)"
     git diff --stat -- web/scripts/vectors/

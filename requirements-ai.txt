@@ -13,7 +13,11 @@ medmnist>=3.0             # lightweight medical imaging datasets (CC-BY)
 # secure aggregation, deliberately framework-light. Shipping ~50 MB of unused dependency into every
 # image while the docs advertised "the real Flower QFL" was the worst of both. If a Flower client is
 # ever actually written, add it back here at that point.
-mcp>=2.2.0               # MCP Python SDK; 2.2.0 fixes GHSA-rwrf-2pqf-9j8j and three more (2026-10). v2.0.0 renamed FastMCP -> mcp.server.MCPServer with the
+# 2.2.0 covers all six advisories that affect 2.x, published 2026-09-28 to 2026-10-05: GHSA-rwrf-2pqf-9j8j,
+# -84m7-p3x7-pcfv, -w4fh-qvv9-3v23, -5h93-6whr-6q8j, -qx49-fqc8-xw99, -fmmv-w9g8-j3gc. The sweep of 2026-11-03
+# found the last two in the SDK repository's own list and not in the global database, so check that list:
+# pip-audit and Dependabot read only the global one.
+mcp>=2.2.0               # MCP Python SDK. v2.0.0 renamed FastMCP -> mcp.server.MCPServer with the
                          # decorator API unchanged; qsh/mcp/server.py accepts both spellings and
                          # reports which is live via mcp_sdk_flavour(), so a skew is visible not silent.
 pandas>=2.2

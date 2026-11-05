@@ -264,9 +264,10 @@ pointer and the dates.
 - Chapter VII (governance) has applied since 2 August 2025.
 - Penalty exposure for Art. 50 non-compliance is up to EUR 15 million or 3 percent of worldwide annual
   turnover, whichever is higher.
-- What would reopen Art. 50(2): the panel exceeding 200 tokens, generated text shipped inside a file
-  container, or a usable C2PA text binding (Specification 2.4, 2026-04-01, defines text bindings; no
-  released library implements them).
+- The JSON download owes signed metadata under the Code's Sub-measure 1.1.1 and has carried it since
+  Round 86. What would reopen Art. 50(2): the panel exceeding 200 tokens, a second file format, or a
+  usable C2PA binding for the panel's output (Specification 2.5, October 2026; c2pa-rs 0.91.0 handles
+  plain text; no conforming product validates it).
 
 ## Hybrid acceptance: the failure mode this design avoids, and where it would bite (added 2026-08-13)
 
