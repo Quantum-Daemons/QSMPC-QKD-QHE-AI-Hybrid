@@ -48,7 +48,7 @@ not a code rewrite. Add remote re-key + in-flight algorithm substitution next. [
   moves the SKR) to **raise the measured secret-key rate** vs the default baseline on the same
   simulated channel, and reports a **convergence metric** (evaluations-to-95 %). An **E91 / CHSH**
   entanglement protocol (`src/qsh/qkd/e91.py`) is selectable via `protocol="e91"`.
-  (`src/qsh/qkd/optimize.py`; grounds the report's WS1 "OptiQKD" theme - OptiQKD arXiv:2603.04192v1 +
+  (`src/qsh/qkd/optimize.py`; grounds the WS1 "OptiQKD" theme - OptiQKD arXiv:2603.04192v1 +
   AML-QKD arXiv:2603.04192v2, Mohamed et al. 2026, one paper in two versions: v1 reported +20-30 % and v2 revised that down to +14-25 % SKR via TCN+RL, in simulation. Benchmarking against v1 would be quoting a figure the authors superseded.)
   Opt-in per run; a simulation, not deployed QKD. yes
 - **QRNG** - a local **state-vector quantum-measurement** entropy source with the **SP 800-90B section
@@ -90,9 +90,9 @@ scaffold hardens). QRNG + OptiQKD above are built from this set; the rest are ad
 1. **NIST-aligned IDS against HNDL / Q-Day** - extend WS2 (QML-IDS) into a full network
    IDS plane: combine the QKD-attack classifier with classical NIDS (e.g. CICIDS-style
    flows), map detections to MITRE ATT&CK, and alert on harvesting patterns. Wire to
-   SIEM/SOAR. (Report Phase-4 of WS2.)
+   SIEM/SOAR.
 2. **Hardware QKD field test** - replace the BB84 simulator with a real QKD testbed (or
-   ETSI GS QKD 014 KME API) to validate the simulated QBER/SKR. (Milestone M4.)
+   ETSI GS QKD 014 KME API) to validate the simulated QBER/SKR.
 3. **Malicious-secure MPC** - upgrade PSI to a post-quantum OPRF and add identifiable
    abort with ML-DSA-signed transcripts.
 4. **Fault-tolerant QHE costing** - turn the measured T-counts into resource estimates

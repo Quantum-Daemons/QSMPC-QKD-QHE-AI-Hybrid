@@ -1,6 +1,6 @@
 # Full local backend image (crypto + quantum + AI + FHE + API) — federated learning + inference.
-# Base = Debian 13 (trixie): its libstdc++ (GLIBCXX_3.4.32+) matches the OpenFHE wheel and the
-# Ubuntu-24.04 deploy target, so the OpenFHE CKKS backend is LIVE in the container.
+# Base = Debian 13 (trixie): its libstdc++ (GLIBCXX_3.4.32+) matches the OpenFHE wheel,
+# so the OpenFHE CKKS backend is LIVE in the container.
 # For GPU (Blackwell/CUDA13) run with the NVIDIA container runtime:
 #   docker run --gpus all ...   (and install nvidia-container-toolkit on the host)
 # Node.js 24 LTS for the filesystem-MCP interop, from the official image, pinned by digest (Round 86).
@@ -50,8 +50,8 @@ COPY requirements-core.txt requirements-ai.txt requirements-fhe.txt requirements
 RUN pip install --upgrade pip wheel setuptools \
  && pip install -r requirements-core.txt -r requirements-api.txt -r requirements-fhe.txt
 
-# AI tier (federated learning + private inference): CPU torch keeps the image portable and fits
-# a 6-core/12 GB no-GPU VPS. On a GPU host, swap the index for a CUDA build.
+# AI tier (federated learning + private inference): CPU torch keeps the image portable.
+# On a GPU host, swap the index for a CUDA build.
 RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu \
  && pip install -r requirements-ai.txt
 

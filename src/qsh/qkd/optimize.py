@@ -4,7 +4,7 @@ A compact, honest, **measured** optimizer that tunes decoy-state + efficient-BB8
 (``mu_signal``, ``basis_prob``, ``pp_threshold``) to maximise the secret-key rate (SKR) over the
 analytic BB84 channel model in :mod:`~qsh.qkd.bb84`. It reports the SKR improvement measured against
 the **default-parameter baseline on the same simulated channel** — a simulation, not deployed QKD, and
-not a hardware claim. This is the concrete stand-in for the report's WS1 "OptiQKD" theme
+not a hardware claim. This is the concrete stand-in for the WS1 "OptiQKD" theme
 (arXiv:2603.04192) built from commercial-OK OSS (scikit-learn) only — no RL / torch.
 
 Methods (config-selectable via ``qkd.optimize_method``):

@@ -1,7 +1,7 @@
-"""A SKETCH of the report's QHE private-inference deliverable (WS4); no private inference runs here.
+"""A SKETCH of a QHE private-inference deliverable (WS4); no private inference runs here.
 
 Places the untrained QCNN-style circuit (:mod:`~qsh.qhe.qcnn`) beside the QOTP encryption layer to
-sketch the report's WS4 deliverable, in which a data owner obtains a prediction from a server-held
+sketch the WS4 deliverable, in which a data owner obtains a prediction from a server-held
 model without revealing its input. The circuit is evaluated in plaintext, and neither the input nor
 the model is kept from anyone by this code.
 

@@ -3,7 +3,7 @@
 Each tool is a bounded, genuine computation backed by the project's primitives (not a full pipeline
 re-run). The same functions are exposed three ways:
   * as a real **MCP** server (``build_server`` -> serve over stdio / Streamable-HTTP for any MCP
-    client) — the "real MCP server" the report asks for;
+    client) — the real MCP server;
   * via :func:`list_tools` / :func:`dispatch_tool` for the **quantum-safe** in-process binding, where
     :func:`qsh.pqc.mcp_bridge.secure_agent_call` runs a ``tools/call`` end-to-end under PQC + ML-DSA + AEAD
     (optionally mixed with a caller-supplied key; the API's is a fixed constant, not a QKD key)

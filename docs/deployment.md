@@ -59,8 +59,6 @@ the challenge even though the site ends up on 443.
 
 ## Demo tier, behind a reverse proxy that already owns 80 and 443
 
-This is how the public demo runs: another project's Caddy already holds the public ports.
-
     docker compose -p qsh-demo \
       -f docker/docker-compose.demo.yml \
       -f docker/docker-compose.demo.behind-proxy.yml \
@@ -77,7 +75,7 @@ proxy resolves names over. Always confirm the network after starting:
     docker inspect -f '{{range $k,$_ := .NetworkSettings.Networks}}{{$k}} {{end}}' qsh-demo-web-1
 
 The container must appear on the front proxy's network, not only on its own compose default. That
-network is `PROXY_NETWORK` (default `pqcqkd_mgmt-net`), declared `external` in the override, so a
+network is `PROXY_NETWORK`, which you must set to your proxy's network name, declared `external` in the override, so a
 missing network fails the bring-up loudly instead of silently creating an empty one.
 
 **Why the override uses `!override` on the ports list.** The override must publish no host ports, and
@@ -119,9 +117,8 @@ bind-mounted Caddyfile.
 
 The full `Dockerfile.api` (Debian-trixie) **bakes in the AI tier** (CPU torch + PennyLane + MedMNIST),
 the **live OpenFHE** CKKS backend, and **Node/npx** for the real MCP server, so a federated
-`medical_fl` run and the MCP server work out of the box. It fits a **6-core / 12 GB / 100 GB** box
-(CPU; GPU passthrough via the host's `nvidia-container-toolkit` and the `deploy.resources` GPU block
-is optional and faster). The ports are env-overridable (`WEB_PORT`, `API_PORT`, `GRAFANA_PORT`,
+`medical_fl` run and the MCP server work out of the box. GPU passthrough via the host's
+`nvidia-container-toolkit` and the `deploy.resources` GPU block is optional. The ports are env-overridable (`WEB_PORT`, `API_PORT`, `GRAFANA_PORT`,
 `PROMETHEUS_PORT`).
 
 ## Verify the deploy, in this order
@@ -158,12 +155,6 @@ Full browser acceptance criteria live in the project's browser verification chec
 
 Note the middle line: `-s` suppresses exactly the error you are looking for.
 
-## Host hardening
-
-Applied once, at provisioning: a non-root sudo user inheriting the root `authorized_keys`; SSH
-key-only with root login disabled; `ufw` denying inbound except SSH, HTTP and HTTPS (HTTP is required
-for the ACME challenge); `fail2ban`; unattended security upgrades; Docker Engine with the compose
-plugin from the official script.
 
 ---
 

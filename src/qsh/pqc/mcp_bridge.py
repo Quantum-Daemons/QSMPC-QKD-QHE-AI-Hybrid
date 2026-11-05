@@ -1,8 +1,8 @@
 """Quantum-safe channel carrying MCP messages between two agents.
 
-Addresses the report's gap: "Agentic AI / Model Context Protocol (MCP) agents accessing
-multiple data silos lack a protocol that gives quantum-resistance + privacy
-simultaneously" (Security Boulevard 2026.02).
+The problem: an agent that reaches several data silos over the Model Context Protocol (MCP) needs that
+traffic confidential and authenticated against an adversary who records it now and has a quantum
+computer later.
 
 Two agents establish a **PQC (+optional QKD) hybrid session** (:mod:`~qsh.pqc.transport`)
 and exchange MCP messages, each **ML-DSA-signed** and **AES-256-GCM-sealed**.

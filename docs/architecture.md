@@ -271,7 +271,7 @@ the use-case pages' architecture canvas, for any use case or the generic demo, a
 stage-order graph, the one figure that also places the stages only the full deployment runs.
 
 **Agentic AI, MCP** is a **cross-cutting per-use-case layer** (`web/src/components/AgenticAIPanel.tsx`) - a
-reusable panel **embedded in every use-case page**, not a standalone page (the report frames MCP as the AI
+reusable panel **embedded in every use-case page**, not a standalone page (MCP is treated here as the AI
 integration layer under the quantum-safe channel, applied per use case; the standalone `/agentic-ai` page was
 removed in Round 12 and now redirects to the Use Cases index). It runs a small language model **in the
 browser** - Transformers.js (`@huggingface/transformers`, onnxruntime-web, WASM by default and WebGPU on

@@ -229,7 +229,7 @@ def test_the_badge_the_webgpu_figures_and_the_runbook_are_stated_once() -> None:
     assert _read("docs/findings.md").count("12842") == 1, "the WebGPU figures are stated more than once"
     deployment = _read("docs/deployment.md")
     assert deployment.count("docker compose -f docker/docker-compose.yml exec api") == 1
-    assert "pqcqkd_mgmt-net" in deployment and "pqcqkd_mgmt-net" not in _read("docs/findings.md")
+    assert "PROXY_NETWORK" in deployment and "PROXY_NETWORK" not in _read("docs/findings.md")
     assert _links_to("docs/findings.md", PROXY)
     override = _read("docker/docker-compose.demo.behind-proxy.yml")
     tag = re.search(r"ports:\s*(!\w+)", override).group(1)

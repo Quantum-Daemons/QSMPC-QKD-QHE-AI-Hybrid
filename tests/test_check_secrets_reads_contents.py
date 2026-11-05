@@ -42,6 +42,12 @@ def _repo(tmp_path: Path, files: dict[str, str], env_demo: str | None = None) ->
     return subprocess.run(["bash", "scripts/check_secrets.sh"], cwd=tmp_path, capture_output=True, text=True)
 
 
+def _fresh(tmp_path: Path, name: str) -> Path:
+    path = tmp_path / name
+    path.mkdir()
+    return path
+
+
 def test_a_clean_repository_passes(tmp_path: Path) -> None:
     r = _repo(tmp_path, {"docs/a.md": "see " + HOME + "user/project for the layout\n"})
     assert r.returncode == 0, r.stdout
@@ -52,9 +58,27 @@ def test_an_absolute_home_path_fails(tmp_path: Path) -> None:
     assert r.returncode == 1 and "absolute home path" in r.stdout and "report/out/x.fls" in r.stdout, r.stdout
 
 
-def test_naming_the_private_notes_fails(tmp_path: Path) -> None:
-    r = _repo(tmp_path, {"docs/b.md": "Background for `MONETIZATION.md` only.\n"})
-    assert r.returncode == 1 and "private notes are named in: docs/b.md" in r.stdout, r.stdout
+def test_naming_a_local_only_file_fails_and_is_not_printed(tmp_path: Path) -> None:
+    """The names come from the git-ignored env file, so this repository needs to carry none of them."""
+    r = _repo(tmp_path, {"docs/b.md": "Background for `LOCAL-ONLY-NOTE.md` only.\n"},
+              env_demo="QSH_PRIVATE_NAMES=LOCAL-ONLY-NOTE\n")
+    assert r.returncode == 1 and "value from .env.demo appears in tracked files: docs/b.md" in r.stdout, r.stdout
+    assert "LOCAL-ONLY-NOTE" not in r.stdout, r.stdout
+
+
+def test_an_unexpected_markdown_file_at_the_root_fails(tmp_path: Path) -> None:
+    r = _repo(_fresh(tmp_path, "a"), {"PLAN.md": "kept locally\n", "docs/fine.md": "a document\n"})
+    assert r.returncode == 1 and "unexpected Markdown file is tracked at the root: PLAN.md" in r.stdout, r.stdout
+    r = _repo(_fresh(tmp_path, "b"), {"SECURITY.md": "report here\n", "CONTRIBUTING.md": "how\n", "DATA_LICENSES.md": "x\n"})
+    assert r.returncode == 0, r.stdout
+
+
+def test_the_gitignore_keeps_other_root_markdown_local_without_naming_it() -> None:
+    repo = Path(__file__).resolve().parents[1]
+    run = lambda *paths: subprocess.run(["git", "check-ignore", "--no-index", "-q", *paths], cwd=repo).returncode  # noqa: E731
+    assert run("SOME-LOCAL-NOTE.md") == 0, "a Markdown file at the root is not ignored by default"
+    for kept in ("README.md", "DATA_LICENSES.md", "SECURITY.md", "CONTRIBUTING.md", "CHANGELOG.md", "docs/x.md"):
+        assert run(kept) == 1, f"{kept} would be ignored"
 
 
 def test_a_deploy_value_from_the_env_file_fails_and_is_not_printed(tmp_path: Path) -> None:
@@ -72,6 +96,21 @@ def test_a_sibling_host_on_the_demo_domain_fails_and_is_not_printed(tmp_path: Pa
               env_demo="QSH_DEMO_URL=https://demo-box.example.test\nQSH_DEMO_SSH=deployer@demo-box.example.test\n")
     assert r.returncode == 1 and "value from .env.demo appears in tracked files: web/src/x.tsx" in r.stdout, r.stdout
     assert "example.test" not in r.stdout and "sibling" not in r.stdout, r.stdout
+
+
+def test_one_named_public_host_may_be_linked_and_nothing_else_is_excused(tmp_path: Path) -> None:
+    """The business page sits under the demo's registered domain and does not resolve to the demo's box;
+    the owner chose to allow exactly that host (2026-11-05). The host list stays in the env file."""
+    box, page, env = "demo.example.test", "page.example.test", ""
+    env = f"QSH_DEMO_URL=https://{box}\nQSH_DEMO_SSH=deployer@{box}\nQSH_PUBLIC_HOSTS={page}\n"
+    ok = _repo(_fresh(tmp_path, "ok"), {"docs/c.md": f"Business page: https://{page}/\n"}, env_demo=env)
+    assert ok.returncode == 0, ok.stdout
+    for i, leak in enumerate((f"https://{box}/", "https://other.example.test/",
+                              f"https://{page}/ and https://other.example.test/")):
+        r = _repo(_fresh(tmp_path, str(i)), {"docs/c.md": f"See {leak}\n"}, env_demo=env)
+        assert r.returncode == 1 and "docs/c.md" in r.stdout, (leak, r.stdout)
+        assert "example.test" not in r.stdout, r.stdout
+
 
 
 def test_a_generic_second_level_does_not_widen_the_domain(tmp_path: Path) -> None:

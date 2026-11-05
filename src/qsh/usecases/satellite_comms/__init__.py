@@ -45,7 +45,7 @@ at every link setting, as link-limited or as statistics-limited, and they travel
 session key. A CKKS anomaly check scores a bundled OPS-SAT-AD telemetry segment (CC BY 4.0) with the
 browser's demo regression either way.
 
-Maps to: WS1 (AI-QKD, here over a free-space channel) + the report's QSDC / QT-QSS section.
+Maps to: WS1 (AI-QKD, here over a free-space channel) + QSDC / QT-QSS.
 Free-space channel and the QSDC threshold are config-driven (WebUI-adjustable via ``config``).
 
 Run:  ``python -m qsh.orchestration.pipeline --usecase satellite_comms``

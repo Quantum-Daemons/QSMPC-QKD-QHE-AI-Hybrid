@@ -13,7 +13,7 @@ multi-photon rate). These features train the intrusion detector. Only the CLASS 
 comes from Al-Kuwari et al.; the 7 features and every signature value below are this
 project's own design, and the paper uses a different feature set.
 
-The report carefully separates two noise sources: (a) QKD *channel* environment
+Two noise sources are kept apart here: (a) QKD *channel* environment
 noise and (b) the NISQ hardware noise of the *QML inference engine*. This module
 models (a); the detector exposes a hook for (b).
 """

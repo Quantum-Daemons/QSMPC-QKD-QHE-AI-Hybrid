@@ -414,7 +414,7 @@ flowchart TB
   end
   subgraph DEMO["Demo host"]
     direction LR
-    DOCK["Docker image built from git: scripts/deploy_demo.sh"] --> PROXY["Behind a shared reverse proxy"]
+    DOCK["Docker image built from git: scripts/deploy_demo.sh"] --> PROXY["Behind a reverse proxy"]
   end
   LIVE["Live check in a browser: bundle, pages, console"] --> REC["Records: register and log"]
   LOC --> GH --> DEMO --> LIVE
@@ -474,4 +474,3 @@ tests/        pytest suite
 - Code license: **Apache-2.0** ([`LICENSE`](LICENSE)). Upstream OSS retains its own licenses
   ([`docs/development.md`](docs/development.md), OSS / submodules).
 
-> Private business notes are kept outside this repository by design and are not published here.

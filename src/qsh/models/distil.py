@@ -22,9 +22,9 @@ distillation; what CKKS noise costs is measured separately, per run, in the brow
 
 This generalises what ``qsh.usecases.finance_aml._fraud_model`` already did for one vertical
 (XGBoost teacher -> logistic student) to all of them, and turns an incidental number into a
-first-class run metric. It is also the direct, measured answer to the source report's PoC success
-criterion of "private-inference accuracy degradation <= 1pp" — which is a claim until someone
-measures it per model, on real data, and publishes the number even when it is bad.
+first-class run metric. A target for how far private inference may degrade accuracy is a claim until
+someone measures the degradation per model, on real data, and publishes the number even when it is
+bad; this does that.
 """
 
 from __future__ import annotations

@@ -6,7 +6,7 @@ blinding, ...). The pipeline establishes the secure session, runs BB84 under a
 configurable eavesdropper, then the QML-IDS scores the session telemetry.
 
 Maps to: AI-QKD (WS1) + QML-IDS (WS2) on a PQC-first hybrid. The classical IDS path is
-the report's Phase-1 baseline (runs fast); set ``config['ids']='quantum'`` for the
+the baseline (runs fast); set ``config['ids']='quantum'`` for the
 PennyLane variational classifier (the WS2 research target).
 
 Run:  ``python -m qsh.orchestration.pipeline --usecase telecom_ids``
@@ -57,7 +57,7 @@ class QMLIDSStage(Stage):
         bus.metric("ids_params", rep.n_params, self.name)
         bus.log(f"QML-IDS ({rep.detector}): acc={rep.accuracy:.3f} "
                 f"macroF1={rep.macro_f1:.3f} attack-F1={rep.binary_f1:.3f} "
-                f"(target>=0.93)", self.name)
+                f"(this project's threshold: 0.93)", self.name)
 
 
 def build(config: dict | None = None) -> tuple[Pipeline, Context]:

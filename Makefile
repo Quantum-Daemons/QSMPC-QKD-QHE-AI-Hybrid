@@ -82,19 +82,10 @@ docker-up: ## Local full-stack via docker compose
 docker-demo: ## Lightweight public-demo stack (VPS profile)
 	docker compose -f docker/docker-compose.demo.yml up --build
 
-# The MONETIZATION and .docx patterns are load-bearing: MONETIZATION.md and MONETIZATION_WORKFLOW.ja.md
-# do live in the repo root, ignored at .gitignore:22, so the first grep catches a `git add -f`.
-#
-# The other three confidential strategy notes are named in Japanese and live OUTSIDE the repo. Measured
-# 2026-08-12: copying one into the repo root passed EVERY gate. It is not matched by MONETIZATION*.md so
-# .gitignore does not ignore it, it is not a .docx, and the "no Japanese in public files" gate scans
-# `src api web/src tests scripts docs README.md` - which excludes root-level .md other than README. So
-# `git add` staged it and `make check-secrets` printed two OKs. Hence the CJK-filename check below.
-#
-# The browser verification checklist had no gate at all, only .gitignore:33 - and .gitignore's own HAZARD
-# note records that an ignored file is not protected from a branch switch, which is how a round of edits
-# was lost in Round 29. A path that must never be published is worth one line here.
-check-secrets: ## Assert confidential notes, the checklist and deploy details are NOT published (names and contents)
+# The browser verification checklist had no gate at all, only an ignore rule, and an ignored file is not
+# protected from a branch switch, which is how a round of edits was lost in Round 29. A path that must
+# never be published is worth one line in the script.
+check-secrets: ## Assert local-only files and deploy details are NOT published (names and contents)
 	@bash scripts/check_secrets.sh
 
 clean: ## Remove caches and build artifacts

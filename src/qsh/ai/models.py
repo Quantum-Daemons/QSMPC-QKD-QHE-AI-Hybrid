@@ -103,7 +103,7 @@ class TabularMLP(nn.Module):
 
 class HybridQNN(nn.Module):
     """Hybrid quantum-classical classifier — the per-client model for **Quantum Federated Learning**
-    (the report's QSMPC-QKD-QHE-QFL). A classical encoder feeds a PennyLane **variational quantum
+    (the QFL part of this project's QSMPC-QKD-QHE-QFL stack). A classical encoder feeds a PennyLane **variational quantum
     circuit** (VQC) head, then a classical read-out:
 
         Linear -> tanh -> Linear -> tanh  ->  VQC(AngleEmbedding + StronglyEntanglingLayers, <Z> per wire)  ->  Linear

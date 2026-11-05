@@ -12,9 +12,8 @@ import { downloadJSON } from "../lib/export";
 // Reusable in-browser agentic-AI + quantum-safe MCP panel. A small LLM runs entirely client-side
 // (Transformers.js on WASM by default or WebGPU on request; WebLLM on WebGPU) and its
 // request+response are sealed+signed over the client
-// quantum-safe MCP channel (clientMcp) — zero server. Used standalone on the Agentic-AI page AND
-// embedded in each use-case page (per-industry prompt + MCP tool, fed by the live run's metrics) so
-// the report's MCP "delegate-and-verify" layer is demonstrated contextually per target industry.
+// quantum-safe MCP channel (clientMcp) — zero server. Embedded in each use-case page (per-industry
+// prompt + MCP tool name, fed by the live run's metrics).
 
 export interface RunContext { metrics?: Record<string, any> | null; benchmark?: any | null; }
 

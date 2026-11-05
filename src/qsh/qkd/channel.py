@@ -1,6 +1,6 @@
 """Quantum channel model for QKD simulation.
 
-Captures the real-world impairments the report's WS1 (AI-QKD parameter
+Captures the real-world impairments WS1 (AI-QKD parameter
 optimization) must track: fibre loss, polarization/phase drift, detector dark
 counts, and an optional intercept-resend eavesdropper. Outputs feed the QBER /
 SKR telemetry consumed by the AI optimizer.

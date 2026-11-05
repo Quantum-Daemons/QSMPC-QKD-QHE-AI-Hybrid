@@ -63,7 +63,7 @@ step "6/18 no Japanese in public files"
 # (*.py *.ts *.tsx *.md *.yml *.sh) until Round 34, and the comment above it claimed the Round 33 fix
 # had made "public mean exactly tracked". It had not: public meant tracked AND one of six extensions,
 # leaving 122 of 356 tracked files unscanned - 59 .json, 7 .txt, 7 .tsv, 5 .tex, 3 .yaml. A
-# Japanese-language confidential note saved as notes.txt or strategy.json passed both this gate and
+# Japanese-language note saved as notes.txt or strategy.json passed both this gate and
 # check-secrets. Claiming a scope the code does not have is the "gate blind to its own scope" defect
 # this project keeps finding, and it was in the comment I wrote when fixing the previous instance.
 #
@@ -261,45 +261,16 @@ else
   bad "docs/browser-verification-checklist.md is missing; four invariants now enforce nothing, here or in CI"
 fi
 
-step "17/18 the out-of-repo business document has been reconciled with this round"
-# THE FILE EVERY DOCUMENT SWEEP MISSED, and for a structural reason rather than a lazy one:
-# the confidential business-recommendations document lives at the PARENT directory, outside this
-# repository (its filename is Japanese, so it is described here rather than written), so
-# every sweep that walks the repo walks past it. Twenty-one consecutive ORDER files (18 through 38)
-# name it in the documentation-merge bullet. Its own title said it covered rounds 17 to 20 until the
-# owner retitled it without a round range in Round 83, while the project was many rounds past that -
-# the GAP was the point, and its exact size is derived below from the register rather than asserted
-# here. This sentence used to end "the project is at round 43": a
-# hand-maintained round number sitting three lines above the code that computes the same number
-# correctly, and stale by two within a fortnight.
-#
-# It is confidential-class like MONETIZATION*, so it cannot be moved in here and its CONTENT must
-# never be quoted - not in the checklist, not in a commit, not in this script. What this reads is its
-# presence and the reconciliation stamp in the register: facts about staleness that say nothing about
-# what it contains.
-#
-# LOCAL-ONLY by construction, exactly as gate 15 is - the file is not in the repository, so CI cannot
-# see it and neither can a clone. Said here rather than left to be discovered.
-# The pattern is built from \u escapes rather than written literally. `make check-secrets` and gate 6
-# forbid Japanese characters in every tracked public file, and this script is tracked - the first
-# version of this gate put the filename in directly and gate 6 failed on gate 16, which is the rule
-# catching the check written to enforce a different rule.
-# Override with QSH_BIZ_DOC_GLOB if the file is named differently on another machine.
-# The ORDER names this document specifically; a wider glob would also match the separate strategy
-# document beside it, which carries no reconciliation obligation - matching that would invent one and
-# then report it unmet.
-BIZ_GLOB="${QSH_BIZ_DOC_GLOB:-$(printf '../\u91cf\u5b50\u6280\u8853\u8005_\u4e8b\u696d\u63a8\u5968\u4e8b\u9805_\u61f8\u5ff5\u4e8b\u9805_*.md')}"
-BIZ_DOC=$(ls -1 $BIZ_GLOB 2>/dev/null | head -1)
-RECONCILED=$(grep -oE 'BUSINESS DOC RECONCILED Round [0-9]+' docs/deliverable-verification.md | tail -1 | grep -oE '[0-9]+$')
-CURRENT=$(grep -oE '^## Rounds? [0-9]+' docs/deliverable-verification.md | grep -oE '[0-9]+$' | sort -n | tail -1)
-if [ -z "$BIZ_DOC" ]; then
-  ok "no out-of-repo business document on this machine; nothing to reconcile here"
-elif [ -z "$RECONCILED" ]; then
-  bad "the register carries no 'BUSINESS DOC RECONCILED Round <N>' stamp; 21 ORDER files ask for this file to be kept current"
-elif [ "${RECONCILED:-0}" -lt "${CURRENT:-0}" ]; then
-  bad "business document last reconciled in Round $RECONCILED, register is at Round $CURRENT"
+step "17/18 this machine's own local gates, if it has any"
+# QSH_LOCAL_GATES (in the git-ignored .env.demo) names an executable that checks what only this machine
+# can see. A clone has none, and CI cannot run it. Its exit status counts like any other gate's.
+LOCAL_GATES=$( (set -a; [ -f .env.demo ] && . ./.env.demo >/dev/null 2>&1; set +a; printf '%s' "${QSH_LOCAL_GATES:-}") )
+if [ -z "$LOCAL_GATES" ]; then
+  ok "no local gates on this machine"
+elif "$LOCAL_GATES" >/tmp/ci_local_gates.log 2>&1; then
+  ok "local gates passed"
 else
-  ok "business document reconciled in Round $RECONCILED (register at $CURRENT)"
+  bad "local gates failed"; tail -5 /tmp/ci_local_gates.log
 fi
 
 

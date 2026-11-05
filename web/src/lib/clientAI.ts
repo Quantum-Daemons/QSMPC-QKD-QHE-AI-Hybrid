@@ -1,8 +1,7 @@
 // Dual in-browser AI engines for the public demo (zero server). BOTH are loaded ONLY via dynamic
 // import() so neither heavy library lands in the initial bundle — they become async chunks fetched
 // on first use. The AI agent's output is then wrapped in the client quantum-safe MCP channel
-// (clientMcp.ts), realising the report's "MCP + agentic AI with a quantum-safe layer" vision
-// entirely client-side.
+// (clientMcp.ts): agentic AI with a quantum-safe MCP layer, entirely client-side.
 //   - Transformers.js (@huggingface/transformers, Apache-2.0): runs ONNX models via onnxruntime-web,
 //     on WASM by default and on WebGPU when the visitor selects it - the same default the private
 //     inference stage uses. Until Round 60 it took WebGPU whenever an adapter existed; on the machine

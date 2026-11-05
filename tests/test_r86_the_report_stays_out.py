@@ -3,22 +3,22 @@
 WHY THIS EXISTS (Round 86, by the owner's decision)
 
 The owner chose to keep the technical report private from Round 86, with a new summary of the
-verification gates beside it, in a separate private repository. The report's history moved there
-with it. In this repository the history is kept rather than rewritten, also by the owner's choice,
-so the report's four PDFs are still in old commits. Two things follow:
+verification gates beside it, in a separate private repository. On 2026-11-02 the owner chose to take
+it out of this repository's history too, so no commit here touches `report/`. Two things follow:
 
 - Nothing may track the report or the summary again, under any path. `make check-secrets` fails on
   that now, beside its other name checks.
 - `make check-secrets` also fails on any PDF the history holds and the tree has dropped, a rule
   written after four third-party PDFs without a redistribution grant were removed from the whole
-  history on 2026-10-31. The report's own PDFs are an exception, named path by path, so that the
-  exception cannot cover a new PDF under `report/` or anywhere else.
+  history on 2026-10-31. Until the rewrite of 2026-11-02 the report's own four PDFs were an exception to
+  it. That exception is gone: a branch from the old history carrying them now fails the check, which
+  is the hazard the rewrite left behind.
 
 WHAT IS ASSERTED
 
 - No tracked path is under `report/`, and no tracked file is a technical report or a summary.
-- In a throwaway repository: a tracked report file fails the check; the four named PDFs dropped
-  from the tree pass it; any other dropped PDF, under `report/` or not, still fails it.
+- In a throwaway repository: a tracked report file fails the check, and any PDF dropped from the tree,
+  the report's own four included, fails it.
 - No tracked document links into `report/`, and the Makefile has no `report` target: the report is
   built in its own repository.
 """
@@ -34,7 +34,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / "scripts" / "check_secrets.sh"
-KEPT = ("report/technical-report.pdf", "report/generated/fig_baselines.pdf",
+OLD_REPORT_PDFS = ("report/technical-report.pdf", "report/generated/fig_baselines.pdf",
         "report/generated/fig_decision_curve.pdf", "report/generated/fig_permutation_null.pdf")
 
 
@@ -76,16 +76,20 @@ def test_a_tracked_report_file_fails_the_check(tmp_path: Path) -> None:
     assert r.returncode == 1 and "both left this repository in Round 86" in r.stdout, r.stdout
 
 
-def test_only_the_named_report_pdfs_may_stay_in_the_history(tmp_path: Path) -> None:
-    (tmp_path / "a").mkdir()
-    (tmp_path / "b").mkdir()
-    clean = _history_repo(tmp_path / "a", dict.fromkeys(KEPT, "%PDF-1.5\n"), list(KEPT))
-    assert clean.returncode == 0 and "no PDF in the history that the tree has dropped" in clean.stdout, clean.stdout
-    others = ["report/generated/fig_new.pdf", "docs/paper.pdf"]
-    seeded = _history_repo(tmp_path / "b", dict.fromkeys([*KEPT, *others], "%PDF-1.5\n"), [*KEPT, *others])
+def test_no_pdf_dropped_from_the_tree_may_stay_in_the_history(tmp_path: Path) -> None:
+    others = [*OLD_REPORT_PDFS, "report/generated/fig_new.pdf", "docs/paper.pdf"]
+    seeded = _history_repo(tmp_path, dict.fromkeys(others, "%PDF-1.5\n"), others)
     line = next((ln for ln in seeded.stdout.splitlines() if "removed from the tree" in ln), "")
-    assert seeded.returncode == 1 and all(o in line for o in others), seeded.stdout
-    assert not any(k in line for k in KEPT), f"a named report PDF was reported, so the exception is not applied: {line}"
+    assert seeded.returncode == 1 and any(o in line for o in others), seeded.stdout
+
+
+def test_the_history_here_holds_none_of_the_reports_pdfs() -> None:
+    if subprocess.run(["git", "rev-parse", "--is-shallow-repository"], cwd=REPO, capture_output=True,
+                      text=True).stdout.strip() == "true":
+        pytest.skip("a shallow clone cannot see the history")
+    added = subprocess.run(["git", "log", "--all", "--format=", "--name-only", "--diff-filter=A", "--", "report/"],
+                           cwd=REPO, capture_output=True, text=True, check=True).stdout.split()
+    assert not added, f"the history touches report/: {added[:3]}"
 
 
 def test_no_document_links_into_report_and_make_has_no_report_target() -> None:

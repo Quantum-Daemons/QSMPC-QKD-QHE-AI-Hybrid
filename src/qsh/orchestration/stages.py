@@ -660,7 +660,7 @@ class PrivateInferenceStage(Stage):
 class ExplainabilityStage(Stage):
     """Explainable AI: exact linear-SHAP feature attributions for the private-inference result.
 
-    Satisfies the report's XAI / audit-trail requirement and prepares for EU AI Act Art. 13 transparency
+    Serves this project's XAI and audit-trail requirement and prepares for EU AI Act Art. 13 transparency
     (high-risk systems only: 2027-12-02 for Annex III, 2028-08-02 for Annex I products such as
     diagnostic software, after the AI Omnibus deferral, not Aug 2026). Faithful (exact for the linear model) and
     cheap; the attributions are written to ``ctx.artifacts["explanation"]`` so the downstream
@@ -771,7 +771,7 @@ class SignatureStage(Stage):
 
     Demonstrates the registry's `sig` family at runtime: the chosen ML-DSA provider
     signs the canonical summary and the signature is verified, producing a tamper-evident,
-    quantum-safe audit record of the run (the report's XAI / audit-trail requirement).
+    quantum-safe audit record of the run (this project's XAI and audit-trail requirement).
     """
 
     name = "sign_result"
