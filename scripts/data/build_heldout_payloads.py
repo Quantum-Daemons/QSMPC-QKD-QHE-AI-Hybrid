@@ -248,6 +248,19 @@ def satellite_student() -> None:
     logit = ((PolynomialFeatures(2, include_bias=False).fit_transform(X) - mean) / scale) @ np.asarray(w["W"][0]) + w["b"][0]
     pred = (logit > 0).astype(int)
 
+    # The published weights.json gains the scaler a CKKS client needs (Round 86, the owner's choice), from the same graph:
+    # derived here because the fitted pipeline it came from is not kept, and `input` is left as an ONNX caller needs it.
+    from qsh.models.distil import CKKS_CLIENT_NOTE
+
+    published = {**w, "ckks_client": {
+        "note": CKKS_CLIENT_NOTE,
+        "preprocessing": ["quadratic expansion", "subtract mean", "divide by scale"],
+        "mean": [float(v) for v in mean],
+        "scale": [float(v) for v in scale],
+        "source": "the Scaler node of the published ONNX graph",
+    }}
+    (src / "weights.json").write_text(json.dumps(published, indent=2) + "\n")
+    w = {k: v for k, v in w.items() if k != "ckks_client"}
     weights = {**w, "input": {
         "preprocessing": ["quadratic expansion", "subtract mean", "divide by scale"],
         "expansion": w["input"]["expansion"],

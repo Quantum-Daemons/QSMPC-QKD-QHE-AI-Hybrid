@@ -8407,3 +8407,15 @@ mismatches, worst deviation 2.72e-8 and median 5.75e-9, smallest plaintext margi
 **One more defect from sampling.** distilGPT-2 is a completion model, and on the panel's prompt 2 of about 10 runs came back as nothing but newlines, with others
 repeating "PSI-based". `no_repeat_ngram_size` 3 gave text on 24 of 24 sampled runs and no such repeat. The reply is still nonsense, which the panel says it may be.
 
+
+### The OPS-SAT student's Hub card and weights say what the page now runs
+
+By the owner's choice, after the satellite page began checking `satellite_comms.opssat_student` under CKKS. Its card still said no code path did, and its
+`weights.json` published `mean` and `scale` as null because the ONNX graph applies them, so an encrypted client had to read them out of the graph. The
+card is regenerated from the registry, and `weights.json` gains a `ckks_client` block: the expansion and the scaler a CKKS client applies before
+encrypting, read from the graph's `Scaler` node by `scripts/data/build_heldout_payloads.py`. `input` is unchanged, so the ONNX path reads exactly what
+it did. `distil.save_student` writes the same block for any pipeline student it trains from now on.
+
+Not retrained: the rules forbid retraining a shipped model for a better seed, the student already tracks its teacher (AUC-PR 0.968055 against 0.968107),
+and the same run would reproduce it. Published as revision `b1c32f6`, re-pinned; the ONNX graph is byte-identical to the previous revision's
+(SHA-256 `008ce438...`), and the card and weights on the Hub match the files here.
