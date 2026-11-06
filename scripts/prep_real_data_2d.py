@@ -153,9 +153,7 @@ def satellite() -> dict:
                       "fitted on 370 of these segments; its payload says so.)",
         "licence": "CC-BY-4.0",
         "licence_url": CC_BY_4,
-        "attribution": f"{reg.DS_OPSSAT_AD.attribution} Data: Ruszczak, B., Kotowski, K., Nalepa, J. "
-                       "& Evans, D., 'OPSSAT-AD - anomaly detection dataset for satellite telemetry', "
-                       "Zenodo (2024), doi:10.5281/zenodo.12588359 (version 1). ESA OPS-SAT mission data.",
+        "attribution": f"{reg.DS_OPSSAT_AD.attribution} ESA OPS-SAT mission data.",
         "modifications": f"Two of the 19 published per-segment features (n_peaks, diff2_peaks) of the "
                          f"{len(pts)} test-partition segments, rounded to 4 significant figures.",
         "x": {"key": "n_peaks", "label": "peaks in segment"},

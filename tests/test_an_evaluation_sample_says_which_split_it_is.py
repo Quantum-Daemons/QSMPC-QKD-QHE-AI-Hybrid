@@ -66,8 +66,9 @@ PREP = ast.unparse(PREP_TREE)
 #: Samples built before Round 71 and not rebuilt since. Their files carry no `split` key; the page
 #: prints the registry's declaration for them, which is what the second test pins. Round 83 rebuilt
 #: satellite_comms.opssat and telecom_ids.qml for their wording, and Round 84 telecom_ids.nidd for its
-#: change notice, so they carry it now.
-BUILT_BEFORE_ROUND_71 = {"satellite_comms.opssat_student"}
+#: change notice, so they carry it now. Round 86 rebuilt satellite_comms.opssat_student for its dataset credit and
+#: its split's wording, which left none: the set stays as the test's mechanism for the next file built before 71.
+BUILT_BEFORE_ROUND_71: set[str] = set()
 
 
 def _published():

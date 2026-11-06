@@ -53,12 +53,8 @@ CC_BY_4 = "https://creativecommons.org/licenses/by/4.0/"
 CDLA_SHARING_1 = "https://cdla.dev/sharing-1-0/"
 APACHE_2 = "https://www.apache.org/licenses/LICENSE-2.0"
 
-#: The OPS-SAT-AD dataset record's own credit, beside the article the registry credits. CC BY 4.0
-#: asks for the creator "in the manner requested", and the Zenodo record names its four creators in
-#: this order (read at source 2026-10-30, recorded in the plots-2d audit).
-OPSSAT_RECORD = ("Data: Ruszczak, B., Kotowski, K., Nalepa, J. & Evans, D., 'OPSSAT-AD - anomaly "
-                 "detection dataset for satellite telemetry', Zenodo (2024), "
-                 "doi:10.5281/zenodo.12588359 (version 1).")
+#: The OPS-SAT-AD dataset record's credit is in the registry's `DS_OPSSAT_AD.attribution` since Round 86. It was
+#: appended here and in prep_real_data_2d.py, so the cards and evaluation samples, which read the registry, lacked it.
 
 #: The satellite demo sample's provenance, and the registry's `BUNDLED_DEMO_SAMPLES["satellite_comms"]`
 #: word for word (Round 84); `tests/test_demo_provenance.py` holds the shipped file to the registry's
@@ -328,7 +324,7 @@ def satellite() -> None:
         "provenance": SATELLITE_PROVENANCE,
         "licence": "CC-BY-4.0",
         "licence_url": CC_BY_4,
-        "attribution": f"{DS_OPSSAT_AD.attribution} {OPSSAT_RECORD}",
+        "attribution": DS_OPSSAT_AD.attribution,
         "modifications": ("The 19 published per-segment features of the 529 test-partition "
                           "segments, standardised with constants fitted on 370 of them; only the "
                           "other 159 ship here, rounded to 5 decimals, with their labels."),

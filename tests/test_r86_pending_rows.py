@@ -155,3 +155,39 @@ def test_the_shap_bars_say_what_each_feature_is() -> None:
 ])
 def test_a_corrected_sentence_does_not_come_back(path: str, old: str) -> None:
     assert old not in _read(path), f"{path} says {old!r} again"
+
+
+# ---- the three republished Hub files (the owner's choice, 2026-11-06) ------------------------------------------------
+
+def test_the_opssat_credit_has_one_owner_and_reaches_every_file() -> None:
+    """RD18: the dataset record was appended by two payload builders and missing from the registry, so the cards and
+    the evaluation samples credited the article alone."""
+    from qsh.models import registry
+
+    record = "doi:10.5281/zenodo.12588359 (version 1)"
+    assert record in registry.DS_OPSSAT_AD.attribution
+    for builder in ("scripts/data/build_heldout_payloads.py", "scripts/prep_real_data_2d.py"):
+        assert "OPSSAT-AD - anomaly detection dataset" not in _read(builder), f"{builder} writes the credit again"
+    for shipped in ("models/satellite_opssat/README.md", "models/satellite_opssat_student/README.md",
+                    "models/satellite_opssat/eval_sample.json", "models/satellite_opssat_student/eval_sample.json",
+                    "web/public/data/satellite/student_heldout.json", "web/public/data/satellite/opssat_segments.json",
+                    "web/public/data/satellite/real_2d.json"):
+        assert record in _read(shipped), f"{shipped} credits the article without the dataset record"
+
+
+def test_the_opssat_split_says_how_it_was_drawn() -> None:
+    """NS29: the verification line printed "the benchmark's own test partition, whole" for a stratified random split."""
+    from qsh.models import registry
+
+    for key in ("satellite_comms.opssat", "satellite_comms.opssat_student"):
+        split = registry.get(key).eval_split
+        assert "stratified random" in split, key
+        sample = json.loads(_read(registry.ARTIFACT_DIRS[key] + "/eval_sample.json"))
+        assert sample["split"] == split, key
+
+
+def test_the_telemanom_sample_does_not_deny_the_satellite_ckks_check() -> None:
+    """HF8: the published sample said no FHE stage runs on the satellite page, which its CKKS check made false."""
+    text = _read("models/satellite_telemanom/eval_sample.json") + _read("scripts/prep_model_inputs.py")
+    assert "no FHE or MPC stage runs on the satellite page" not in text
+

@@ -1,9 +1,9 @@
 {
  "provenance": "OPS-SAT-AD (Ruszczak et al., 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 2025; Zenodo 10.5281/zenodo.12588359, CC BY 4.0). Real telemetry from ESA's OPS-SAT CubeSat, which reentered in May 2024. These are the 19 precomputed per-segment features of the benchmark's own TEST partition, entire and unsampled, so the figure below is the one the dataset's 30 published baselines are quoted against. Not comparable with the Telemanom model on this same page: that one forecasts continuous ESA-ADB series, this one classifies pre-segmented fragments.",
- "split": "the benchmark's own test partition, whole",
+ "split": "the benchmark's own test partition, whole: a stratified random split, not a temporal one",
  "licence": "CC-BY-4.0",
  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
- "attribution": "Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, CC BY 4.0.",
+ "attribution": "Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, CC BY 4.0. Data: Ruszczak, B., Kotowski, K., Nalepa, J. & Evans, D., 'OPSSAT-AD - anomaly detection dataset for satellite telemetry', Zenodo (2024), doi:10.5281/zenodo.12588359 (version 1).",
  "modifications": "The 19 published per-segment features of the benchmark's test partition, all 529 segments, rounded to 6 decimals, with the published labels.",
  "input": {
   "shape": [

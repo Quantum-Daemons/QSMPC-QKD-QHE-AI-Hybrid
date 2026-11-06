@@ -452,10 +452,15 @@ DS_OPSSAT_AD = DatasetSpec(
     # as eval_sample.json -- so the CC BY credit is a condition on this project's own distribution,
     # not only a courtesy to a reader. It is not the only such corpus: WDBC, PaySim, AMLworld,
     # ESA-ADB, 5G-NIDD, BreastMNIST and gnomAD rows ship too.
+    # The article AND the dataset record (RD18, Round 86). CC BY 4.0 asks for the creators "in the manner requested",
+    # and the Zenodo record names its four in this order (read at source 2026-10-30). The record was appended by two
+    # payload builders and missing here, so the cards and evaluation samples credited the article alone.
     attribution=(
         "Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in "
         "satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, "
-        "CC BY 4.0."
+        "CC BY 4.0. Data: Ruszczak, B., Kotowski, K., Nalepa, J. & Evans, D., 'OPSSAT-AD - anomaly "
+        "detection dataset for satellite telemetry', Zenodo (2024), doi:10.5281/zenodo.12588359 "
+        "(version 1)."
     ),
 )
 DS_ESA_ADB = DatasetSpec(
@@ -1265,7 +1270,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         metric=M_OPSSAT,
         artifacts=_ONNX_PAIR,
         hf_repo="qsh-satellite-opssat-ad",
-        eval_split="the benchmark's own test partition, whole",
+        eval_split="the benchmark's own test partition, whole: a stratified random split, not a temporal one",
         notes=(
             "Segment CLASSIFICATION on real OPS-SAT telemetry, which is a different task from the "
             "Telemanom forecaster above: this one is scored against the 30 algorithms published "
@@ -1291,7 +1296,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-satellite-opssat-ckks-student",
         runs_encrypted=True,
-        eval_split="the benchmark's own test partition, whole",
+        eval_split="the benchmark's own test partition, whole: a stratified random split, not a temporal one",
         notes=("19 columns is small enough to evaluate under CKKS as a single packed dot product, "
                "so the encrypted tier here runs on the published feature set rather than on a "
                "reduction of it - and it had room to spare. The student now fits over the QUADRATIC "
