@@ -3909,3 +3909,10 @@ check, its numbers against the record included, and on the Hub its inline formul
 backslashes, because the Hub reads `\\(...\\)` and not single dollars, and its display formula ran past a column that
 does not scroll. Both were found by reading the published card and measuring it, and both are now tests of the
 generator; the measurement that closes each is on the Hub, not in the tree.
+
+**A computation with no test gets one before it is timed.** hpmpc checks its matrix multiplication and not its
+convolution, and a benchmark checks no result, so a GPU convolution figure could have timed anything that finished. The
+script now runs fixed integers through the layer on every path against a plain convolution and NumPy, requires the GPU
+paths to fail it with the GPU hidden, and removes the check before timing. A build flag chosen to get past an upstream
+defect, `PRINT_TIMINGS=0`, is recorded with the defect, and the claim that it was needed was checked by building without
+it.

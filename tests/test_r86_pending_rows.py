@@ -210,3 +210,29 @@ def test_the_hpmpc_benchmark_checks_what_it_reports() -> None:
     cpu = {r["n"]: r for r in rec["results"] if r["device"] == "cpu"}
     for n in set(gpu) & set(cpu):  # the same protocol: the same volume sent at the same N
         assert {x["p0_sent"] for x in gpu[n]["runs"]} == {x["p0_sent"] for x in cpu[n]["runs"]}, n
+
+
+def test_the_hpmpc_convolution_is_checked_before_it_is_timed() -> None:
+    """G3, the convolution: hpmpc has no correctness test for it, so the script inserts one into function 33, runs it on
+    every path against a plain convolution and NumPy, requires both GPU paths to fail it with the GPU hidden, and takes
+    it out again before any run is timed. The record must show all of that, and the same volume sent on every path."""
+    script = _read("scripts/bench_hpmpc_gpu.sh")
+    assert "QSH CONV CHECK" in script and "conv_reference.txt" in script, "the convolution check is gone"
+    assert 'run "$W/convcheck_${g}_hidden.log" "CUDA_VISIBLE_DEVICES="' in script
+    taken_out = script.index('git -C hpmpc checkout -q -- "${BENCH#hpmpc/}"')
+    assert script.index("QSH CONV CHECK") < taken_out < script.index("measure_conv() {"), (
+        "the check must be taken out of the clone before the convolution is timed")
+    assert "Testing|QSH_CONV_CHECK" in script, "a timed run must refuse the check's output"
+    rec = json.loads(_read("docs/measurements/hpmpc-gpu-conv-2026-11-06.json"))
+    chk = rec["checks"]
+    assert chk["reference"]["outputs"] == 576 and chk["reference"]["sum"] == 1036170
+    for path in ("cpu", "gpu_gemm", "gpu_conv"):
+        assert chk[path]["parties_reproducing"] == 3, f"{path} did not reproduce the convolution on every party"
+    for path in ("gpu_gemm_hidden", "gpu_conv_hidden"):
+        assert chk[path]["parties_reproducing"] == 0, f"{path}: the GPU path reproduced it with the GPU hidden"
+    assert chk["sent_volume_unequal_at"] == []
+    cells = {(r["function"], r["n"]) for r in rec["results"]}
+    for f, n in cells:
+        paths = {r["path"] for r in rec["results"] if (r["function"], r["n"]) == (f, n)}
+        assert paths == {"cpu", "gpu_gemm", "gpu_conv"}, (f, n, paths)
+    assert {f for f, _ in cells} == {33, 34, 35}

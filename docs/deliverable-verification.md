@@ -8710,3 +8710,28 @@ from the logits it decrypts on the 8,192 rows. A risk needs a map, and the stude
 pass section's own 48.9, and both rows are one simulation: 493,163.2 bits each, executed in
 `tests/test_r86_relay_at_the_pass_elevation.py`, which also fails when the panel's start is rounded again. Its note
 says which simulation it is instead of saying the two may differ.
+
+### hpmpc's convolution on the GPU, checked before it is timed
+
+**The owner's choice ("Measure it too").** The matrix-multiplication measurement above built only the GEMM object.
+`scripts/bench_hpmpc_gpu.sh` now also measures one flexNN convolution layer, hpmpc's functions 33 to 35 (labelled
+CryptGPU's figure 1 a to c in its source), on three paths: the CPU, `im2col` on the CPU with the GEMM on the GPU, and the
+whole convolution on the GPU (`docs/measurements/hpmpc-gpu-conv-2026-11-06.json`; the table is in
+`docs/models-and-benchmarks.md`). The deep layer, 512 channels under a $`3 \times 3`$ kernel, is 53.5 times faster with
+the whole convolution on the GPU at $`n = 64`$ and ahead from $`n = 8`$; the batched one is slower on the GPU at every batch
+from 8 to 512, because the layer calls the GPU once per image. Every path sends the same volume at the same size.
+
+- **A convolution with no test got one before it was timed.** hpmpc tests its matrix multiplication (function 57) and
+  not its convolution. The script inserts a check into function 33 for its own builds: small fixed integers through the
+  secret-shared layer, revealed, against a plain convolution in the program and, as a sum, an independent NumPy one. All
+  three paths reproduce its 576 outputs exactly; with the GPU hidden, neither GPU path does. It is taken out before any
+  run is timed, and a timed run that prints it is refused. The test fails if the check is left in or if a hidden run
+  reproduced the layer.
+- **Three things upstream, worked around in the clone and recorded:** CUTLASS 4.8.1's convolution header misses two
+  includes (compiled with `-include`); hpmpc's 16-bit convolution fails a CUTLASS static assertion (commented out, as
+  upstream does the 8-bit one); and functions 33 and 34 do not compile with hpmpc's default `PRINT_TIMINGS 1`, because
+  `print.hpp` declares the layer-statistics functions only for function 35 and above while flexNN calls one with no
+  dependent argument (built with `PRINT_TIMINGS=0`; verified, function 35 builds with the default and 34 does not). The
+  last is added to the issue draft the owner posts.
+- **The refactor reproduces the record it extends.** Regenerated in report-only mode from the GEMM run's work directory,
+  the matrix-multiplication record comes out byte-identical.

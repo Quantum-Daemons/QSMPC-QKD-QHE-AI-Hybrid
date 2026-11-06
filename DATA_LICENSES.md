@@ -418,7 +418,7 @@ the one table of them; `docs/development.md` links here.
 | Submodule | Upstream | Used for | Licence | Commercial use | Pinned commit | Upstream default branch | Last push |
 |---|---|---|---|---|---|---|---|
 | `submodules/HEonGPU` | enCRYPTON-labs/HEonGPU (moved from Alisah-Ozcan/HEonGPU) | the GPU CKKS backend, through `native/heongpu_py` | Apache-2.0 | yes | `837ffc87aa26` (v2.1.1) | `837ffc8`, the pin (read 2026-11-06) | 2026-11-02 |
-| `submodules/hpmpc` | chart21/hpmpc (PIGEON) | a recorded measurement of its secret-shared matrix multiplication on the CPU and the GPU (`scripts/bench_hpmpc_gpu.sh`), built in a clone outside the submodule; no stage or page runs it | MIT | yes | `155c93572d74` | `a6a4a6a`, 2026-10-23, one commit past the pin | 2026-10-23 |
+| `submodules/hpmpc` | chart21/hpmpc (PIGEON) | recorded measurements of its secret-shared matrix multiplication and convolution on the CPU and the GPU (`scripts/bench_hpmpc_gpu.sh`), built in a clone outside the submodule; no stage or page runs it | MIT | yes | `155c93572d74` | `a6a4a6a`, 2026-10-23, one commit past the pin | 2026-10-23 |
 
 Both are permissive and commercial-OK and neither is archived, read from the GitHub API rather than
 assumed, since a submodule silently falling years behind is the failure mode this table exists to
@@ -462,7 +462,7 @@ licence check looks for a restrictive SPDX identifier and finds nothing, which r
 MIT; hpmpc pins `09ee6ba` of 2025-04-18, behind its `hpmpc` branch's `7a1ca4c` of 2025-09-02, and the repository was
 last pushed 2026-10-06, read 2026-11-06), whose headers its benchmark includes: it initialises that one path by name,
 in its own clone outside the submodule, and stops if `nn/Pygeon` is populated. It also fetches CUTLASS at a pinned tag
-(v4.8.1, BSD-3-Clause, headers only) to compile hpmpc's GEMM. Nothing it builds is distributed.
+(v4.8.1, BSD-3-Clause, headers only) to compile hpmpc's GEMM and convolution objects. Nothing it builds is distributed.
 HEonGPU is the exception, because it does not build without its own submodules:
 `scripts/build_heongpu.sh` runs `--init --recursive` inside `submodules/HEonGPU` only, where every
 nested repository is Apache-2.0, and never at the root, where it would also fetch `nn/Pygeon`.
