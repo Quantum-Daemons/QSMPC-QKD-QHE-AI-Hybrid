@@ -8684,7 +8684,8 @@ from the logits it decrypts on the 8,192 rows. A risk needs a map, and the stude
   its backslashes; and the map and its definitions on one line set 736 px in a 589 px column that does not scroll, so
   the clip constant ran off the card. The generator now converts inline spans and sets one equation per display block,
   the card test fails on either, and the published card was measured again: 11 typeset spans, no error, each display
-  589 px wide. The teacher's card would gain the same section on its next publication, which is the owner's decision.
+  589 px wide. The teacher's card followed on the owner's choice (pin `ca36492`, `README.md` its only changed file,
+  the same rendering checks on the Hub).
 
 **The sources, re-read on 2026-11-06.**
 
