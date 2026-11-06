@@ -309,7 +309,7 @@ point, 0.3869 on the raw score, is a calibrated risk of 0.129, above the range.
 
 The private-inference figure draws the same curve for the CKKS student, `finance_aml.student`, from the logits it
 decrypts on the same 8,192 rows, over the same thresholds at the same rate. Its Platt map is fitted, as the teacher's
-is, on the model's own probability, here $`q = \sigma(W \cdot z + b)`$, over the validation window
+is, on the model's own probability, here $`q = \sigma(w^\top z + c)`$, over the validation window
 (`student_calibration` in `scripts/train/finance_aml.py`, which a retrain runs; `scripts/finance_student_calibration.py`
 applied it to the published weights without retraining). The student classifies at $`q = 0.5`$, where the trainer
 folded its tuned threshold into the bias, a calibrated risk of 0.013. Measured the same way, per 10,000 transactions

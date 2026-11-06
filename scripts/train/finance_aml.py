@@ -807,9 +807,11 @@ def student_calibration(logit_val, y_val, logit_te, y_te, *, fitted_by: str) -> 
     distinct, zeros = int(np.unique(p_iso).size), int((p_iso == 0).sum())
     return {
         **record,
-        "argument": (r"the student's P(laundering), $q = \sigma(W \cdot z + b)$, where $W \cdot z + b$ is the "
-                     "decision logit the encrypted path decrypts. The tuned threshold is folded into $b$, so the "
-                     "operating point is $q = 0.5$, a logit of 0"),
+        # The student's intercept is c here, not the weights file's `b`: the card prints this beside Platt's own b.
+        "argument": (r"the student's P(laundering), $q = \sigma(w^\top z + c)$, where $w^\top z + c$ is the "
+                     "decision logit the encrypted path decrypts, $z$ the z-scored features and $c$ the student's "
+                     "intercept (`b` in its weights file). The tuned threshold is folded into $c$, so the operating "
+                     "point is $q = 0.5$, a logit of 0"),
         "test_rows_clipped_by_logit": clipped,
         "fitted_on": "validation split; scored on the held-out test split",
         "fitted_by": fitted_by,
