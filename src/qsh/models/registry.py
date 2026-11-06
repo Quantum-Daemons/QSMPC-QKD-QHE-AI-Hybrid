@@ -144,6 +144,10 @@ class MetricSpec:
     ceiling: float | None = None      # best credible published number (not necessarily reachable)
     ceiling_source: str = ""
     companion: str = ""               # the aggregate metric to show alongside, to expose the gap
+    #: What the companion is, when it is not an aggregate of this model's own predictions. The card's
+    #: generic sentence says the aggregate can look healthy while the class that matters is not, which is
+    #: false of a published figure shown for comparison (Round 86).
+    companion_note: str = ""
     higher_is_better: bool = True
     #: Set when the measured figure and ``baseline`` share a metric NAME but are not the same
     #: measurement, so a bar chart placing them side by side is comparing protocols rather than
@@ -815,7 +819,11 @@ M_ESA = MetricSpec(
     ),
     ceiling=None,
     ceiling_source="",
-    companion="event_wise_f0_5_full_channels",
+    # The record's key, `published_full_channel_f0_5`. This named `event_wise_f0_5_full_channels`, which no record
+    # carries, so the card announced a companion its own table did not contain (Round 86, a reader).
+    companion="published_full_channel_f0_5",
+    companion_note=("the same method's published score on the full Mission1 channel set (ESA-ADB Table 2, 0.061), "
+                    "a figure from the paper and not measured here, beside its matched lightweight figure 0.786"),
     # The companion is the whole point: the same method scores 0.061 on the full Mission1 channel set -
     # but that is a TABLE 2 figure, whose matched lightweight partner is Table 2's 0.786, not the 0.968
     # three lines above (Supp. Table 9, anomalies alone, whose own full-channel number is 0.039). The
@@ -877,6 +885,10 @@ M_QML_IDS = MetricSpec(
     ),
     companion="classical_rf_macro_f1",
 )
+#: The published `telecom_ids.qml` artefact IS the random forest, so its headline is the forest's macro F1, which the
+#: record keeps as `classical_rf_macro_f1`. Under `M_QML_IDS` it declared `macro_f1`, which that record does not carry,
+#: so neither its card nor the use-case card showed a headline (Round 86, a reader). Its students keep `M_QML_IDS`.
+M_QML_IDS_PUBLISHED_RF = replace(M_QML_IDS, name="classical_rf_macro_f1", companion="aggregate_accuracy")
 M_NIDD = MetricSpec(
     name="macro_f1",
     display="macro F1 across 9 network-attack classes",
@@ -1326,7 +1338,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         # 25 is the QNN's parameter count, not the forest's.
         params=25,
         dataset=DS_QKD_ATTACK_SYNTH,
-        metric=M_QML_IDS,
+        metric=M_QML_IDS_PUBLISHED_RF,
         # The published repo carries onnx/model.onnx (an ai.onnx.ml graph, so int8 is skipped:
         # a tree/kernel model keeps its parameters in node attributes). Declaring only
         # weights.json meant browserModels() found nothing runnable and the page reported

@@ -152,3 +152,37 @@ def test_the_medical_cnn_path_reads_the_configured_corpus_and_names_its_class(mo
     assert 'if (!DEMO && usecase === "medical_fl") c.dataset = "medmnist";' in hook
     image = (REPO / "docker" / "Dockerfile.api").read_text(encoding="utf-8")
     assert "BreastMNIST(split='train', download=True)" in image and "PneumoniaMNIST" not in image.split("RUN python -c")[1]
+
+
+def test_every_published_card_names_only_metrics_its_record_carries() -> None:
+    """A card's headline and companion are keys of the record it prints (Round 86, a reader).
+
+    Five cards announced a companion their own metrics table did not contain, and `telecom_ids.qml` declared a headline
+    its record does not carry, so the use-case card showed none. A student's record measures its teacher's metric as
+    `student_metric`, naming it in `metric_name`; that counts as carrying it.
+    """
+    import importlib.util
+
+    from qsh.models import registry
+
+    spec_ = importlib.util.spec_from_file_location("publish_hf", REPO / "scripts" / "publish_hf.py")
+    publish_hf = importlib.util.module_from_spec(spec_)
+    spec_.loader.exec_module(publish_hf)
+    checked, wrong = 0, []
+    for s in registry.specs():
+        if not s.hf_repo:
+            continue
+        achieved = registry.achieved(s.key) or {}
+        if not achieved:
+            continue
+        checked += 1
+        card = publish_hf.model_card(s, achieved)
+        for named in re.findall(r"Companion metric shown alongside\*\*: `([^`]+)`", card):
+            if named not in achieved:
+                wrong.append(f"{s.key}: the card's companion `{named}` is not in its record")
+        name = s.metric.name
+        carried = name in achieved or (achieved.get("metric_name") == name and "student_metric" in achieved)
+        if not carried:
+            wrong.append(f"{s.key}: the declared metric `{name}` is not in its record")
+    assert checked >= 10, f"only {checked} published records were read; the check is not reaching the cards"
+    assert not wrong, "\n".join(wrong)
