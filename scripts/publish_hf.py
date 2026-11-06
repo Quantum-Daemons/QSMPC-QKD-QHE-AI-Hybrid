@@ -205,10 +205,12 @@ def _calibration_section(cal: dict | None) -> list[str]:
         "threshold probability, as its decision curve does. Fitted on the "
         f"{cal['fitted_on'].replace('; ', ' and ')}.",
         "",
-        rf"$$p = \frac{{1}}{{1 + \exp\!\big({arg}\big)}}" + (
-            rf",\qquad \operatorname{{logit}}(q) = \log\frac{{q}}{{1-q}},\qquad \varepsilon = 10^{{{eps_exp}}}$$"
-            if cal["on_logit"] else "$$"),
+        # The map and its definitions in two blocks: on one line they set 736 px in the Hub's 589 px column, and the
+        # display does not scroll, so the clip constant ran off the card (Round 86, measured on the published card).
+        rf"$$p = \frac{{1}}{{1 + \exp\!\big({arg}\big)}}$$",
         "",
+        *([rf"$$\operatorname{{logit}}(q) = \log\frac{{q}}{{1-q}},\qquad \varepsilon = 10^{{{eps_exp}}}$$", ""]
+          if cal["on_logit"] else []),
     ]
     if cal.get("argument"):
         lines += [f"Here $q$ is {cal['argument']}.", ""]

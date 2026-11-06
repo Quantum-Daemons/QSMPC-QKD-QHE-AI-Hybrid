@@ -354,3 +354,6 @@ def test_a_card_prints_the_map_the_page_applies():
         section = section[:section.index("\n## ")] if "\n## " in section else section
         assert "$" not in re.sub(r"\$\$.*?\$\$", "", section, flags=re.S), f"{key}: inline math in single dollars"
         assert r"\\(q\\)" in section, f"{key}: the card's inline math is not in the Hub's delimiters"
+        # One equation per display block: the map and its definitions on one line set 736 px in the Hub's 589 px column.
+        blocks = re.findall(r"\$\$(.*?)\$\$", section, flags=re.S)
+        assert not any("p =" in b and r"\operatorname{logit}(q) =" in b for b in blocks), f"{key}: one display line"
