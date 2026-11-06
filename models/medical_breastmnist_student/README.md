@@ -47,7 +47,6 @@ teacher was measured offline, in plaintext.
 - **Target metric**: AUC
 - **Baseline to beat**: 0.901 - ResNet-18 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.901 / ACC 0.863)
 - **Published ceiling**: 0.919 - Google AutoML Vision, MedMNIST v2 (AUC 0.919)
-- **Companion metric shown alongside**: `accuracy` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
 ### Gap to the published baseline
 

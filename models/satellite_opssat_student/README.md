@@ -43,7 +43,6 @@ teacher was measured offline, in plaintext.
 - **Target metric**: AUC PR
 - **Baseline to beat**: 0.979 - FCNN, best of the 30 algorithms benchmarked in Ruszczak et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.
 - **Published ceiling**: 0.979 - FCNN, the best of the 30 published baselines - there is no higher number to cite.
-- **Companion metric shown alongside**: `f1` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
 ## Training data
 
