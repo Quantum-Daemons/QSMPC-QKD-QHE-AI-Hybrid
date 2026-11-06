@@ -1,18 +1,20 @@
 """Interop with a real EXTERNAL MCP server under the quantum-safe layer (full deployment).
 
-Connects to the OFFICIAL ``@modelcontextprotocol/server-filesystem`` (Node, via ``npx``) using the MCP
+Connects to the OFFICIAL ``@modelcontextprotocol/server-filesystem`` (Node) using the MCP
 Python SDK's stdio client, invokes a real tool (e.g. ``list_directory``), and then carries the genuine
 result through the project's quantum-safe channel (PQC + ML-DSA + AEAD, optionally mixed with a
 caller-supplied key; the API passes a fixed 32-byte constant, not a QKD key) via
 :func:`qsh.pqc.mcp_bridge.secure_carry`. This proves interop with a real third-party MCP server while
 keeping the transport quantum-safe — no trusted third party, no plaintext on the wire.
 
-Requires Node/``npx`` (present in the full Docker image). Callers should guard with :func:`node_available`.
+The full Docker image starts its locked copy (``docker/mcp-fs``, ``QSH_MCP_FS_BIN``); elsewhere it goes through ``npx``,
+which pins this package and not what it depends on. Callers should guard with :func:`node_available`.
 """
 
 from __future__ import annotations
 
 import asyncio
+import os
 import shutil
 
 #: The official filesystem server, pinned (Round 85). `npx -y` without a version ran whatever npm's
@@ -26,7 +28,9 @@ import shutil
 #: allowed directories; GHSA-7rgq-gccq-qphx, path traversal through a trailing quote or whitespace;
 #: GHSA-53mr-w429-c597 and GHSA-hhwq-wxfx-cj7g). They are listed in the servers repository's own
 #: advisories and not in GitHub's global database, so a dependency audit did not see them.
-FILESYSTEM_SERVER = "@modelcontextprotocol/server-filesystem@2.1.0"
+#: 2.2.0 (2026-11-04) drops `glob` and moves `minimatch` to ^11, which clears the two moderate advisories `npm audit` reported
+#: against 2.1.0's locked dependencies (GHSA-3g3m-2fjr-6pw4, GHSA-g3hv-75wg-m249).
+FILESYSTEM_SERVER = "@modelcontextprotocol/server-filesystem@2.2.0"
 
 
 #: The server's tools that read and never write (Round 86). The interop calls only these: the server's
@@ -52,15 +56,17 @@ def _call_outcome(call) -> tuple[str, bool]:
 
 
 def node_available() -> bool:
-    """True if ``npx`` is on PATH (the filesystem-MCP server is a Node package)."""
-    return shutil.which("npx") is not None
+    """True if the locked server or ``npx`` is there (the filesystem-MCP server is a Node package)."""
+    return bool(os.environ.get("QSH_MCP_FS_BIN")) or shutil.which("npx") is not None
 
 
 async def _filesystem_mcp_call(directory: str, tool: str, arguments: dict, timeout: float) -> dict:
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
 
-    params = StdioServerParameters(command="npx", args=["-y", FILESYSTEM_SERVER, directory])
+    locked = os.environ.get("QSH_MCP_FS_BIN")
+    params = (StdioServerParameters(command=locked, args=[directory]) if locked
+              else StdioServerParameters(command="npx", args=["-y", FILESYSTEM_SERVER, directory]))
 
     async def _run() -> dict:
         async with stdio_client(params) as (read, write):
@@ -72,7 +78,8 @@ async def _filesystem_mcp_call(directory: str, tool: str, arguments: dict, timeo
                 text, is_error = _call_outcome(call)
                 # The revision the handshake agreed: a low-level `initialize()` performs the pre-2026
                 # handshake, so this says which era the interop exercised (Round 86).
-                return {"server": FILESYSTEM_SERVER, "tools": tool_names, "tool": tool,
+                return {"server": FILESYSTEM_SERVER, "installed_by": "lockfile" if locked else "npx",
+                        "tools": tool_names, "tool": tool,
                         "result_text": text[:2000], "is_error": is_error,
                         "protocol_version": session.protocol_version}
 

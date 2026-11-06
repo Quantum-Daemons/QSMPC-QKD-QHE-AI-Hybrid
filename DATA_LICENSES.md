@@ -369,8 +369,8 @@ and notices of what they link.
 - **MCP Python SDK** (`mcp`, MIT) - the quantum-safe MCP server; the official
   **@modelcontextprotocol/server-filesystem** for external-MCP interop, MIT and Apache-2.0 while its
   project moves from one to the other (its repository's LICENSE explains which contributions are under
-  which; npm 2.1.0 declares "SEE LICENSE IN LICENSE" and its tarball has no such file). Started with `npx`,
-  not bundled.
+  which; npm 2.1.0 declares "SEE LICENSE IN LICENSE" and its tarball has no such file). Installed from a lockfile in the
+  full deployment's image (`docker/mcp-fs/`), and started with `npx` elsewhere; not in the demo.
 - **PennyLane** (Apache-2.0) - variational quantum layers. The FedAvg and secure-aggregation code is
   this repository's own; **Flower is cited as prior art, not used as a dependency** (the unused `flwr`
   requirement was removed in Round 17).

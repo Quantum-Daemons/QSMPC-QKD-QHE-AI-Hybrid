@@ -9,7 +9,7 @@
 # binary and npm (with npx) are copied below; both images are Debian trixie, so they share one glibc.
 FROM node:24.22.2-trixie-slim@sha256:54f84b4cf8432b21aaffd5d3ce8d41e12cea0d10d33c09d2f3c9879d49d6b446 AS node
 
-FROM python:3.12-slim-trixie
+FROM python:3.12.16-slim-trixie@sha256:e695ab189fa2d082b1c61c69a6b888a5adeca61ceeccad107b1ed2a125721a9e
 
 ENV PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 LD_LIBRARY_PATH=/usr/local/lib
 WORKDIR /app
@@ -28,6 +28,11 @@ COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 RUN ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
  && ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx \
  && node --version && npm --version
+# The server and its dependencies from a lockfile (Round 86). `npx -y` pins only the top package, and the rest resolve
+# afresh on each install. qsh.mcp.fs_interop starts this copy when QSH_MCP_FS_BIN names it.
+COPY docker/mcp-fs/ /opt/mcp-fs/
+RUN npm ci --omit=dev --prefix /opt/mcp-fs
+ENV QSH_MCP_FS_BIN=/opt/mcp-fs/node_modules/.bin/mcp-server-filesystem
 
 # Build the liboqs C shared library at BUILD time (liboqs-python otherwise tries to
 # build it on first import at RUNTIME, which needs network + libssl-dev). Baking it in
@@ -46,14 +51,11 @@ RUN git clone --depth 1 --branch ${LIBOQS_TAG} https://github.com/open-quantum-s
  && cmake --build /tmp/liboqs/build --parallel \
  && cmake --install /tmp/liboqs/build && ldconfig && rm -rf /tmp/liboqs
 
-COPY requirements-core.txt requirements-ai.txt requirements-fhe.txt requirements-api.txt pyproject.toml ./
+# The lock, with its hashes (scripts/lock_requirements.sh, Round 86): two builds of one commit install the same bytes. It
+# holds core, API, FHE and AI, with CPU torch, which keeps the image portable. A GPU host adds a CUDA build on top, by hand.
+COPY requirements.lock pyproject.toml ./
 RUN pip install --upgrade pip wheel setuptools \
- && pip install -r requirements-core.txt -r requirements-api.txt -r requirements-fhe.txt
-
-# AI tier (federated learning + private inference): CPU torch keeps the image portable.
-# On a GPU host, swap the index for a CUDA build.
-RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu \
- && pip install -r requirements-ai.txt
+ && pip install --require-hashes --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.lock
 
 # Bake the REAL MedMNIST dataset (PneumoniaMNIST, ~4 MB, CC-BY) into the image at BUILD time so the
 # genuine medical CNN runs on real images at RUNTIME with no network. Per the no-easy-fallback policy
@@ -63,7 +65,7 @@ RUN python -c "from medmnist import PneumoniaMNIST; PneumoniaMNIST(split='train'
 
 COPY src ./src
 COPY api ./api
-RUN pip install -e .
+RUN pip install --no-deps -e .
 
 # Bake the small committed real sample datasets (CC-BY/CC-BY-SA/CC0 — see DATA_LICENSES.md) so the
 # genuine industry models run offline at RUNTIME with no network: the genomics PGS-Catalog Polygenic

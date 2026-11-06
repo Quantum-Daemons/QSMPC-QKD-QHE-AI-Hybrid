@@ -456,13 +456,13 @@ def test_the_masking_claim_names_the_linear_stage_and_the_one_exception() -> Non
 
 def test_the_seal_residual_risk_carries_versions_and_its_check() -> None:
     tm = _flat(_read(DOCS / "threat-model.md"))
-    for needle in ("node-seal 7.0.0 (SEAL 4.1.2)", "TenSEAL 0.3.16 (SEAL 4.1.1)", "bundle SEAL 4.3.3",
+    for needle in ("node-seal 7.0.0 (SEAL 4.1.2)", "TenSEAL 0.3.18", "bundles SEAL 4.3.3", "TenSEAL 0.3.16 (SEAL 4.1.1)",
                    "PR #168", "7.1.0", "neither tier deserializes a SEAL object it did not create",
                    "`scripts/audit_deps.sh seal`"):
         assert needle in tm, f"the SEAL residual risk lost {needle!r}"
     script = _read(REPO / "scripts" / "audit_deps.sh")
     assert "audit_seal()" in script and "seal) audit_seal ;;" in script
-    assert "all) audit_npm && audit_seal && audit_rust ;;" in script
+    assert "all) audit_npm && audit_seal && audit_python && audit_rust ;;" in script
     workflow = _read(REPO / ".github" / "workflows" / "audit.yml")
     assert "bash scripts/audit_deps.sh seal" in workflow
 
