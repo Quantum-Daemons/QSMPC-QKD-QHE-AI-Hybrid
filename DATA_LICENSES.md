@@ -475,6 +475,17 @@ nested repository is Apache-2.0, and never at the root, where it would also fetc
 - **Zama tfhe-rs / Concrete** - BSD 3-Clause Clear, whose patent grant is expressly withheld (read at the primary source 2026-08-11, `references/REFERENCES.md`).
 - **QKDNetSim** - **GPL-2.0** (strong copyleft), so it is not listed as a commercial-OK reference
   implementation.
+- **CERBSim `webgpu`** (PyPI `webgpu` 1.8.0, 2026-10-21; github.com/CERBSim/webgpu) - **LGPL-2.1-or-later**, the
+  licence its `pyproject.toml` declares, with the LGPL 2.1 text as its `LICENSE` (read 2026-11-06). Declined by the
+  owner on its licence (Round 40), by the reasoning QKDNetSim takes one step weaker: the demo conveys its bundle to
+  every visitor, section 6 is the permissive set, and an LGPL library inside that bundle would carry its
+  conditions, LGPL-2.1 section 6's among them (a user must be able to relink the work with a modified library), to
+  every page load. The licence is what declines it, not the design: its documentation says scenes "serialize to
+  standalone HTML files with a built-in JavaScript WebGPU engine. No Python runtime needed in the browser", which is
+  the property this project's client-side rule asks for. Nor does anything need it: the pages' 3-D views draw with
+  three.js (0.186.1, MIT), loaded only where drawn. *Reopens if* it is relicensed under a permissive licence, or a page
+  needs what three.js cannot draw and the register records how the bundle would meet LGPL-2.1 section 6 (loading the
+  library as its own file, which section 6(b) allows, is one way).
 
 ### Removed from this list: 5G-NIDD, whose rejection is withdrawn
 
