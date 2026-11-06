@@ -1,0 +1,362 @@
+{
+ "machine": {
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 620.70.06",
+  "arch": "sm_120",
+  "nvcc": "Build cuda_13.5.r13.5/compiler.39125733_0",
+  "cpu": "13th Gen Intel(R) Core(TM) i5-13600K",
+  "hardware_threads": 20,
+  "kernel": "5.14.0-687.65.1.el9_8.x86_64",
+  "date": "2026-11-06"
+ },
+ "versions": {
+  "hpmpc": "155c93572d747b527a6452c9ad8f24eb3b776667",
+  "flexNN (nn/PIGEON)": "09ee6ba9a6c4c450930e4179a847a819d02561ed",
+  "cutlass": "v4.8.1 2c85f497547eb441f0fe80bfb0fb2e6f9add1719"
+ },
+ "setup": {
+  "function": 36,
+  "what": "N x N secret-shared matrix multiplication, 20 times per run",
+  "protocol": "Trio (PROTOCOL=5), three parties on loopback, one GPU shared by the three",
+  "bitlength": 32,
+  "local_change": "-        T::GEMM(A, B, C, mul_m, mul_n, mul_k, true);\n+        S::GEMM(A, B, C, mul_m, mul_n, mul_k, true);",
+  "gemm_object_only": "USE_CUDA_GEMM=1 links the GEMM object alone; the convolution objects were not built",
+  "each_run_waited_for_load1_below": 4.0
+ },
+ "checks": {
+  "test57_gpu": "3 of 3 parties passed 3 of 3 tests",
+  "test57_gpu_hidden": "matrix multiplication failed",
+  "sent_volume": "each GPU run's P0 sent volume recorded beside the CPU run's at the same N"
+ },
+ "results": [
+  {
+   "device": "cpu",
+   "n": 128,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 0.022501,
+     "cpu_s": 0.017116,
+     "p0_sent": "1.311MB",
+     "load1_before": 3.71
+    },
+    {
+     "run": 2,
+     "wall_s": 0.012392,
+     "cpu_s": 0.012136,
+     "p0_sent": "1.311MB",
+     "load1_before": 3.71
+    },
+    {
+     "run": 3,
+     "wall_s": 0.02444,
+     "cpu_s": 0.015621,
+     "p0_sent": "1.311MB",
+     "load1_before": 3.71
+    }
+   ],
+   "median_wall_s": 0.022501
+  },
+  {
+   "device": "cpu",
+   "n": 256,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 0.082571,
+     "cpu_s": 0.081985,
+     "p0_sent": "5.243MB",
+     "load1_before": 3.73
+    },
+    {
+     "run": 2,
+     "wall_s": 0.084105,
+     "cpu_s": 0.082106,
+     "p0_sent": "5.243MB",
+     "load1_before": 3.73
+    },
+    {
+     "run": 3,
+     "wall_s": 0.105878,
+     "cpu_s": 0.101848,
+     "p0_sent": "5.243MB",
+     "load1_before": 3.73
+    }
+   ],
+   "median_wall_s": 0.084105
+  },
+  {
+   "device": "cpu",
+   "n": 512,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 0.616382,
+     "cpu_s": 0.612094,
+     "p0_sent": "20.97MB",
+     "load1_before": 3.75
+    },
+    {
+     "run": 2,
+     "wall_s": 0.608727,
+     "cpu_s": 0.610646,
+     "p0_sent": "20.97MB",
+     "load1_before": 3.75
+    },
+    {
+     "run": 3,
+     "wall_s": 0.617853,
+     "cpu_s": 0.617039,
+     "p0_sent": "20.97MB",
+     "load1_before": 3.75
+    }
+   ],
+   "median_wall_s": 0.616382
+  },
+  {
+   "device": "cpu",
+   "n": 1024,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 4.750564,
+     "cpu_s": 4.776519,
+     "p0_sent": "83.89MB",
+     "load1_before": 3.53
+    },
+    {
+     "run": 2,
+     "wall_s": 4.736257,
+     "cpu_s": 4.765718,
+     "p0_sent": "83.89MB",
+     "load1_before": 3.57
+    },
+    {
+     "run": 3,
+     "wall_s": 4.756383,
+     "cpu_s": 4.806155,
+     "p0_sent": "83.89MB",
+     "load1_before": 3.6
+    }
+   ],
+   "median_wall_s": 4.750564
+  },
+  {
+   "device": "cpu",
+   "n": 2048,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 37.776032,
+     "cpu_s": 38.013137,
+     "p0_sent": "335.5MB",
+     "load1_before": 3.67
+    },
+    {
+     "run": 2,
+     "wall_s": 38.570663,
+     "cpu_s": 38.806464,
+     "p0_sent": "335.5MB",
+     "load1_before": 3.53
+    },
+    {
+     "run": 3,
+     "wall_s": 38.635346,
+     "cpu_s": 38.845127,
+     "p0_sent": "335.5MB",
+     "load1_before": 3.27
+    }
+   ],
+   "median_wall_s": 38.570663
+  },
+  {
+   "device": "cpu",
+   "n": 4096,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 315.570206,
+     "cpu_s": 316.393806,
+     "p0_sent": "1342MB",
+     "load1_before": 3.28
+    }
+   ],
+   "median_wall_s": 315.570206
+  },
+  {
+   "device": "gpu",
+   "n": 128,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 0.380926,
+     "cpu_s": 0.174333,
+     "p0_sent": "1.311MB",
+     "load1_before": 3.97
+    },
+    {
+     "run": 2,
+     "wall_s": 0.318648,
+     "cpu_s": 0.28103,
+     "p0_sent": "1.311MB",
+     "load1_before": 3.97
+    },
+    {
+     "run": 3,
+     "wall_s": 0.250011,
+     "cpu_s": 0.160575,
+     "p0_sent": "1.311MB",
+     "load1_before": 3.97
+    }
+   ],
+   "median_wall_s": 0.318648
+  },
+  {
+   "device": "gpu",
+   "n": 256,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 0.361479,
+     "cpu_s": 0.23154,
+     "p0_sent": "5.243MB",
+     "load1_before": 3.97
+    },
+    {
+     "run": 2,
+     "wall_s": 0.244798,
+     "cpu_s": 0.210214,
+     "p0_sent": "5.243MB",
+     "load1_before": 3.97
+    },
+    {
+     "run": 3,
+     "wall_s": 0.317501,
+     "cpu_s": 0.228488,
+     "p0_sent": "5.243MB",
+     "load1_before": 3.97
+    }
+   ],
+   "median_wall_s": 0.317501
+  },
+  {
+   "device": "gpu",
+   "n": 512,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 0.812347,
+     "cpu_s": 0.25404,
+     "p0_sent": "20.97MB",
+     "load1_before": 3.39
+    },
+    {
+     "run": 2,
+     "wall_s": 0.775461,
+     "cpu_s": 0.276741,
+     "p0_sent": "20.97MB",
+     "load1_before": 3.39
+    },
+    {
+     "run": 3,
+     "wall_s": 0.557584,
+     "cpu_s": 0.239331,
+     "p0_sent": "20.97MB",
+     "load1_before": 3.39
+    }
+   ],
+   "median_wall_s": 0.775461
+  },
+  {
+   "device": "gpu",
+   "n": 1024,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 0.973093,
+     "cpu_s": 0.533581,
+     "p0_sent": "83.89MB",
+     "load1_before": 3.28
+    },
+    {
+     "run": 2,
+     "wall_s": 0.650594,
+     "cpu_s": 0.537878,
+     "p0_sent": "83.89MB",
+     "load1_before": 3.28
+    },
+    {
+     "run": 3,
+     "wall_s": 0.685428,
+     "cpu_s": 0.500107,
+     "p0_sent": "83.89MB",
+     "load1_before": 3.57
+    }
+   ],
+   "median_wall_s": 0.685428
+  },
+  {
+   "device": "gpu",
+   "n": 2048,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 1.901783,
+     "cpu_s": 1.350012,
+     "p0_sent": "335.5MB",
+     "load1_before": 3.61
+    },
+    {
+     "run": 2,
+     "wall_s": 1.980939,
+     "cpu_s": 1.349369,
+     "p0_sent": "335.5MB",
+     "load1_before": 3.61
+    },
+    {
+     "run": 3,
+     "wall_s": 2.033194,
+     "cpu_s": 1.494996,
+     "p0_sent": "335.5MB",
+     "load1_before": 3.48
+    }
+   ],
+   "median_wall_s": 1.980939
+  },
+  {
+   "device": "gpu",
+   "n": 4096,
+   "runs": [
+    {
+     "run": 1,
+     "wall_s": 5.84957,
+     "cpu_s": 5.474226,
+     "p0_sent": "1342MB",
+     "load1_before": 3.52
+    },
+    {
+     "run": 2,
+     "wall_s": 5.728618,
+     "cpu_s": 5.44658,
+     "p0_sent": "1342MB",
+     "load1_before": 3.92
+    },
+    {
+     "run": 3,
+     "wall_s": 5.746678,
+     "cpu_s": 5.602536,
+     "p0_sent": "1342MB",
+     "load1_before": 3.92
+    }
+   ],
+   "median_wall_s": 5.746678
+  }
+ ],
+ "cpu_over_gpu_median": {
+  "128": 0.07,
+  "256": 0.26,
+  "512": 0.79,
+  "1024": 6.93,
+  "2048": 19.47,
+  "4096": 54.91
+ }
+}

@@ -452,10 +452,15 @@ DS_OPSSAT_AD = DatasetSpec(
     # as eval_sample.json -- so the CC BY credit is a condition on this project's own distribution,
     # not only a courtesy to a reader. It is not the only such corpus: WDBC, PaySim, AMLworld,
     # ESA-ADB, 5G-NIDD, BreastMNIST and gnomAD rows ship too.
+    # The article AND the dataset record (RD18, Round 86). CC BY 4.0 asks for the creators "in the manner requested",
+    # and the Zenodo record names its four in this order (read at source 2026-10-30). The record was appended by two
+    # payload builders and missing here, so the cards and evaluation samples credited the article alone.
     attribution=(
         "Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in "
         "satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, "
-        "CC BY 4.0."
+        "CC BY 4.0. Data: Ruszczak, B., Kotowski, K., Nalepa, J. & Evans, D., 'OPSSAT-AD - anomaly "
+        "detection dataset for satellite telemetry', Zenodo (2024), doi:10.5281/zenodo.12588359 "
+        "(version 1)."
     ),
 )
 DS_ESA_ADB = DatasetSpec(
@@ -749,6 +754,14 @@ M_BREASTMNIST = MetricSpec(
     ceiling_source="Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
     companion="accuracy",
 )
+#: The CKKS student against the same baseline (Round 86). The bars share the metric and the test split, not the input:
+#: the chart said "Both bars are the same metric on the same axis" over a 14 x 14 single-convolution student and a
+#: 28 x 28 ResNet-18. The card does not print this field, so the student's card is unchanged.
+M_BREASTMNIST_STUDENT = replace(M_BREASTMNIST, comparison_caveat=(
+    "Both bars are AUC on the official BreastMNIST test split, and that is where the agreement stops: this student "
+    "reads 14 x 14 images, downsampled from the 28 x 28 the baseline's ResNet-18 reads, and it is a single-convolution "
+    "CNN distilled for CKKS, not a ResNet. The gap is what the encrypted tier's size costs, not two methods compared "
+    "on one input."))
 M_PRS = MetricSpec(
     name="auroc_eur",
     display="AUROC (European ancestry)",
@@ -1112,7 +1125,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         architecture="1 conv block (1->4ch, 3x3), avg-pool, dense head, 14x14 input",
         params=None,
         dataset=DS_BREASTMNIST,
-        metric=M_BREASTMNIST,
+        metric=M_BREASTMNIST_STUDENT,
         runs_encrypted=True,
         artifacts=_STUDENT_ARTIFACTS_TORCH,
         hf_repo="qsh-medical-breastmnist-ckks-student",
@@ -1257,7 +1270,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         metric=M_OPSSAT,
         artifacts=_ONNX_PAIR,
         hf_repo="qsh-satellite-opssat-ad",
-        eval_split="the benchmark's own test partition, whole",
+        eval_split="the benchmark's own test partition, whole: a stratified random split, not a temporal one",
         notes=(
             "Segment CLASSIFICATION on real OPS-SAT telemetry, which is a different task from the "
             "Telemanom forecaster above: this one is scored against the 30 algorithms published "
@@ -1283,7 +1296,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-satellite-opssat-ckks-student",
         runs_encrypted=True,
-        eval_split="the benchmark's own test partition, whole",
+        eval_split="the benchmark's own test partition, whole: a stratified random split, not a temporal one",
         notes=("19 columns is small enough to evaluate under CKKS as a single packed dot product, "
                "so the encrypted tier here runs on the published feature set rather than on a "
                "reduction of it - and it had room to spare. The student now fits over the QUADRATIC "

@@ -73,6 +73,9 @@ export interface RealInput {
    *  transaction of log-amount zero" rather than against a typical one, inflating it relative to
    *  every other feature. The completeness self-check cannot catch this: it holds for ANY baseline. */
   baseline?: number[];
+  /** What each feature IS, in the payload's words, when it says (PP14, Round 86): finance's four are AML-style names
+   *  for PaySim quantities (`cross_border` is the TRANSFER/CASH_OUT type; PaySim records no geography). */
+  definitions?: Record<string, string>;
 }
 
 /** Column means over the sample rows - the reference point SHAP attributions are measured from. */
@@ -176,7 +179,7 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       // reaches the QCNN branch whole and is refused there instead of being cut to its first columns.
       return { values: row.slice(0, width), bySpace: rowBySpace(ds, idx, Number.MAX_SAFE_INTEGER),
                names: ds.names, provenance: ds.provenance, model: ds.model,
-               baseline: columnMeans(rows, width) };
+               baseline: columnMeans(rows, width), definitions: ds.feature_definitions ?? undefined };
     }
   } catch (e) {
     console.warn("[realData] real dataset unavailable → synthetic fallback:", e);

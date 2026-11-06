@@ -280,18 +280,23 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   ARE linear, which is why the selector only ever appeared on the medical page.
 - **Every model in the Models panel carries a Run button, or a specific reason it has none.** Six can
   be verified in place; the rest are in three genuinely different states that are never collapsed
-  into one message - never trained (the finance GNN, the telecom Transformer), deliberately
-  unpublished on licence grounds (the PRS), or published without a held-out sample.
-- **`finance_aml.gnn` is a decision, not a backlog item, and the reason is the encrypted path, not
+  into one message - never trained (the finance GNN, the telecom Transformer), served with the page
+  rather than from the Hub (the PRS, whose weights are PGS000072's own, CC BY 4.0), or published
+  without a held-out sample.
+- **`finance_aml.gnn` is a decision, not a backlog item, and the reason is where the graph lives, not
   model strength.** On AMLworld HI-Small the published GNNs are the stronger models: the registry
   records GFP + XGBoost at minority-class F1 63.23 (Altman et al., NeurIPS 2023 D&B) against
   Multi-PNA+EU at 68.16 (AAAI 2024) and, in MEGA's published table (TMLR 08/2026, arXiv:2412.00241v3, Table 16), MEGA-PNA at 74.01 and Multi-FraudGT at 75.81, and the
-  XGBoost shipped here, without IBM's preprocessor, scores 15.19. The decision rests on the FHE
-  path: arXiv:2411.02926v2 ran this comparison under FHE and the **GNN pipeline never compiled** -
-  it failed on ONNX operator support in Concrete ML - while the XGBoost pipeline completed at an
-  overhead of roughly 15,000x to 166,000x over its two datasets. That is a **2024** result, and
-  DESIGN (arXiv:2507.05649) and TGHE (arXiv:2606.26664) have since run GNNs under FHE - so it is a
-  dated result rather than a standing impossibility.
+  XGBoost shipped here, without IBM's preprocessor, scores 15.19. The decision rests on the operating
+  point, as the registry states it: message passing needs each account's graph neighbourhood at
+  scoring time, which this demo's browser tier does not hold, so every tier ships the model that
+  scores one precomputed feature row per transaction. It is not an impossibility under FHE: Bilgi et
+  al. (arXiv:2610.18054v2, preprint) run an edge-centric GNN under CKKS on the IBM AML benchmark at
+  as little as 5.31 s per queried transaction with HEonGPU on one RTX 5090, the graph held in plaintext by
+  the server, and DESIGN (arXiv:2507.05649) and TGHE (arXiv:2606.26664) run GNNs under FHE too. The
+  2024 comparison of
+  arXiv:2411.02926v2, where the GNN pipeline never compiled in Concrete ML while XGBoost ran at an
+  overhead of roughly 15,000x to 166,000x, is dated and no longer the reason.
 
 - **The models sized for encryption are published too.** Each use case has a teacher and a
   distilled student sized for CKKS: 33 parameters for finance against a 141,154-parameter teacher,

@@ -323,6 +323,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           isOfReportedClass={artifacts?.explanation_is_of_reported_class ?? null}
           hasTreeAttribution={hasTreeAttribution(usecase)}
           usecase={usecase}
+          definitions={artifacts?.explanation_feature_definitions ?? null}
         />
       ) : null}
 

@@ -8594,3 +8594,61 @@ dropped $`1 - \mu`$, the scorecard's literal restored and a standard error witho
   exported to 48 MB, Pyodide, its lockfile and packages included, and run in headless Chrome with every host but the
   loopback address unresolvable, ran its cell in 4 s and asked no other host for anything. The notebook stays
   declined: no CKKS or TFHE wheel exists for Pyodide, which is the first condition.
+
+### The checklist's pending rows, re-read: what was still live, three stale Hub files, and hpmpc on the GPU
+
+A Round 82 walk (2026-10-30) left thirty-nine findings in the private checklist as pending. Re-read against main on
+2026-11-06: twenty-six were fixed and the rows now say where; eleven were fixed in part and two not at all. What was
+open is fixed here, except as listed at the end. `tests/test_r86_pending_rows.py` holds each part, and each group was
+seen to fail with its old code put back.
+
+- **The medical precision-recall curve named neither class.** It scores class 1, which BreastMNIST calls "normal,
+  benign", while the Wisconsin charts on the same page call 1 malignant. The caption and the histogram legend take both
+  names from the sample.
+- **The medical student was drawn against ResNet-18 as like for like.** It reads 14 x 14 images and is a single
+  convolution; the baseline reads 28 x 28. It has its own comparison caveat, which the published card does not print,
+  so the card did not change.
+- **`build_resnet()` defaulted to ImageNet weights** while the command line did not, and DATA_LICENSES named a
+  `--from-scratch` flag that never existed.
+- **The run log printed most lines as a bare "metric <stage>"**; a metric line gives the metric and its value. The QRNG
+  line names its three SP 800-22 tests and its generator, and the SHAP bars say what each finance feature is, from the
+  definitions the payload already shipped.
+- **Four documents contradicted the code or themselves**: the roadmap called Art. 50(2) not applicable while its own
+  later paragraph and the gap analysis said the download owes signed metadata; findings rested the GNN's exclusion on a
+  2024 FHE result where the registry gives where the graph lives, and called the PRS unpublished on licence grounds;
+  a datasets line still named PneumoniaMNIST as the full deployment's medical default.
+
+**Three files on the Hub were stale, and were republished by the owner's choice (2026-11-06)**, data and card text only:
+`satellite_comms.telemanom`'s sample said no FHE stage runs on the satellite page, which the page's CKKS check made false
+(`32fa04c`); both OPS-SAT samples now say the split is stratified random, and both OPS-SAT cards and samples carry the
+Zenodo dataset record beside the article (`e617798`, `8299705`). The record lived in two payload builders and not in
+the registry, which every card and sample is built from; it lives in the registry now. Before upload every file was
+compared with the pinned revision by the Hub's own digests, and only the intended files differed; after, each new
+revision is head, its diff against the old one is those files, and its sample serves.
+
+**hpmpc on the GPU (G3, the owner's choice: build and measure now).** `scripts/bench_hpmpc_gpu.sh` builds hpmpc (MIT) in a clone outside
+the submodule, initialising only `nn/PIGEON` (flexNN, MIT) and never the unlicensed `nn/Pygeon`, compiles its CUTLASS
+GEMM (v4.8.1, BSD-3-Clause) for `sm_120`, and times function 36, a secret-shared N x N matrix multiplication repeated
+twenty times under the Trio protocol on loopback. The GPU is ahead from N = 1024: 6.9 times there, 19.5 at 2048 and 54.9
+at 4096, 316 s against 5.75 s; below it a fixed cost of about 0.3 s decides (`docs/models-and-benchmarks.md`,
+`docs/measurements/hpmpc-gpu-2026-11-06.json`). What measuring found:
+
+- The benchmark's GPU branch calls `T::GEMM` with no `T` declared, at the pinned commit and at upstream's head, so it
+  does not compile. The clone changes that one line to the benchmark's share type, `S`, and the script prints it.
+- hpmpc's Makefile goes on after a compiler error and keeps the previous executable. The first GPU figures timed the
+  matrix-multiplication test built before them, flat at about 0.2 s from N = 128 to 4096 with almost nothing sent, and
+  were discarded; the script now checks every build for a compiler error and a fresh executable, and every run for the
+  test's output.
+- With the GPU hidden the benchmark still finishes, because it checks no result. The control is the correctness test,
+  which passes with the GPU and whose matrix multiplication fails without it.
+- A six-worker job of another project started mid-measurement and took the CPU figure at N = 1024 from 4.8 s to 8-10 s.
+  Those runs were discarded, and the script waits for the 1-minute load to fall under 4 before each run and records it.
+- CUTLASS 4.8.1's convolution header calls a function from problem-size headers it does not include, and the 16-bit
+  convolution fails a static assertion. The convolution objects are not built; the measured path links the GEMM alone.
+
+`scripts/build_gpu_mpc.sh`, which built hpmpc's CPU default inside the submodule, discarded its errors and reported a
+GPU build, is removed.
+
+**Left open:** the satellite relay still rounds the elevation to a whole degree, so its key can differ slightly from
+the pass figure, which the panel says (QK49); MEGA's Table 16 re-read at the source (B1); and the private report's copy
+of two documents (SW6 D10-D11, DC15).

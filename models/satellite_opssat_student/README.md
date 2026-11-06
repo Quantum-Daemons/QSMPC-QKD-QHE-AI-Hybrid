@@ -49,7 +49,7 @@ teacher was measured offline, in plaintext.
 - **Dataset**: OPS-SAT-AD
 - **Licence**: CC-BY-4.0
 - **Source**: https://doi.org/10.5281/zenodo.12588359 (licence read 2026-10-31)
-- **Attribution (CC-BY-4.0)**: Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, CC BY 4.0.
+- **Attribution (CC-BY-4.0)**: Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, CC BY 4.0. Data: Ruszczak, B., Kotowski, K., Nalepa, J. & Evans, D., 'OPSSAT-AD - anomaly detection dataset for satellite telemetry', Zenodo (2024), doi:10.5281/zenodo.12588359 (version 1).
 
 2,123 annotated telemetry segments across 9 channels from ESA's OPS-SAT CubeSat, 20.4% anomalous, with 18 published per-segment features plus a `sampling` metadata column, and the benchmark's own train/test split. That split is stratified random, not temporal, so scores on it do not measure generalisation over time. Ruszczak et al., Scientific Data 12 (2025). CC BY 4.0, which permits redistributing the data with credit; the per-segment feature table is about 507 KB, the raw segment file much larger. A different task from ESA-ADB: segment classification, not forecasting, so its score is not comparable with the Telemanom model's and neither is the other's baseline. Pinned to version 1 (Zenodo record 12588359), the files this project downloads; version 2 (record 15108715) changes the files and adds a LICENSE file.
 

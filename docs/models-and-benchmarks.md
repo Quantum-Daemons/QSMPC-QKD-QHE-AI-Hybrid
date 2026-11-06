@@ -9,7 +9,7 @@ has no licence instrument at all (IGSR's disclaimer; it ships under the cell bud
 Nat Commun 12:970, 2021). The synthetic
 generators are an offline-CI fallback only (logged as such, never a silent substitute):
 - **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) -> eight AML-named columns, of which the demo's linear model reads four (amount, cross_border, night_tx, new_payee) and none built from PaySim's balance columns, which the dataset's description says must not be used for fraud detection. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 transactions at 1 laundering in 981. **AMLworld is synthetic too** - IBM generates it with a multi-agent virtual-world model and states "Everything is synthetic"; the NeurIPS 2023 D&B paper is titled *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is used because it is calibrated to real transaction statistics and its CDLA-Sharing terms permit publishing derived weights - **not** because it is real data. No commercial-OK corpus of real laundering transactions exists.
-- **Medical**: MedMNIST v2 BreastMNIST for the trained models (CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence - see [DATA_LICENSES.md](../DATA_LICENSES.md)), MedMNIST v2 PneumoniaMNIST as the full deployment's use-case default (CC BY 4.0), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 - attribution required). MedMNIST states that its data "is NOT intended for clinical use", and nothing here is either.
+- **Medical**: MedMNIST v2 BreastMNIST for the trained models (CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence - see [DATA_LICENSES.md](../DATA_LICENSES.md)), BreastMNIST also for the full deployment's CNN path (`benchmark.medical_cnn`; PneumoniaMNIST until Round 86), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 - attribution required). MedMNIST states that its data "is NOT intended for clinical use", and nothing here is either.
 - **Genomics**: **real 1000 Genomes** phase-3 genotypes, read through the Ensembl REST API (open *access*, but IGSR attaches **no licence instrument**: "rights claimed on pieces of data vary"; cite The 1000 Genomes Project Consortium, Nature 526:68-74, 2015) + the **real PGS-Catalog** PGS000072 weights (Graff et al., Nat Commun 12:970, 2021, **CC BY 4.0**; 183 of the 187 variants have a 1000 Genomes genotype and are scored, the other 4 are left out). The weights are cleared for redistribution with credit; the genotypes are shipped as a slice under the cell budget, not under a licence. See [DATA_LICENSES.md](../DATA_LICENSES.md).
 - **Satellite**: the browser demo scores **real OPS-SAT-AD** telemetry segments (ESA OPS-SAT; Ruszczak et al., Scientific Data 2025; CC BY 4.0) since Round 84, with a demo anomaly regression fitted on 370 test-partition segments and verdicts drawn from the other 159. The **real NASA SMAP/MSL** spacecraft telemetry it served before (Telemanom; Hundman et al. 2018; NASA JPL) has **no licence granted by any provider** (checked at each source on 2026-10-30), so it is neither served nor kept in the repository; the full deployment's CKKS telemetry stage scores one of the same OPS-SAT-AD segments per run, with the same demo regression as the browser ([which pages encrypt](#which-pages-encrypt)). Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only, covers works of federal employees (JPL staff are Caltech employees), and is not a grant. Bundled demo sample only - the satellite **training** corpus is ESA-ADB (CC BY 3.0 IGO). See [DATA_LICENSES.md](../DATA_LICENSES.md).
 - **Telecom/defense**: literature-grounded synthetic QKD-attack telemetry (no commercial-OK real corpus of **QKD-layer** attacks exists - producing one needs a physical QKD testbed under attack).
@@ -458,3 +458,30 @@ one a timer reads the launch.
     parallel loop waits for its slowest thread. At 6 threads it held at 41 to 54 ms, and the table is at 6.
 - **A GPU is not where this project's inference runs.** The demo's pages encrypt in the visitor's browser (node-seal), and the
   full deployment's image has no GPU code. This is the full deployment's hybrid on a machine that has one.
+
+## Secret-shared matrix multiplication on the GPU, measured
+
+hpmpc (MIT), the MPC framework under PIGEON, multiplies two secret-shared $`N \times N`$ matrices twenty times under its
+Trio protocol, three parties on loopback sharing this machine's GPU, either with its tiled CPU loop or with a CUTLASS
+GEMM on the GPU (`scripts/bench_hpmpc_gpu.sh`,
+[`measurements/hpmpc-gpu-2026-11-06.json`](measurements/hpmpc-gpu-2026-11-06.json)). No stage or page runs it. Wall
+time of party 0, the median of three runs (one for the CPU at 4096), each started with the 1-minute load under 4:
+
+| $`N`$ | CPU | GPU | CPU / GPU | sent by party 0 |
+|---|---|---|---|---|
+| 128 | 0.023 s | 0.319 s | 0.07 | 1.3 MB |
+| 256 | 0.084 s | 0.318 s | 0.26 | 5.2 MB |
+| 512 | 0.616 s | 0.776 s | 0.79 | 21 MB |
+| 1024 | 4.75 s | 0.685 s | 6.9 | 84 MB |
+| 2048 | 38.6 s | 1.98 s | 19.5 | 336 MB |
+| 4096 | 316 s | 5.75 s | 54.9 | 1,342 MB |
+
+The GPU pays from $`N = 1024`$; below it a fixed cost of about 0.3 s, there at every size of the GPU's runs, decides.
+The parties send the same volume either way, because the GPU replaces only the local products. The GPU path is checked
+before it is timed: hpmpc's matrix-multiplication test passes with the GPU and fails with it hidden.
+
+Built at hpmpc `155c935` with one line changed in the script's clone: the benchmark's GPU branch calls `T::GEMM` where
+no `T` is declared, at that commit and at upstream's head, so it does not compile; the clone calls the share type's
+`S::GEMM`. CUTLASS v4.8.1, headers only, for `sm_120`. Only the GEMM object is built: CUTLASS 4.8.1's convolution
+header uses a function from problem-size headers it does not include, and hpmpc's 16-bit convolution fails a static
+assertion there, and the measured path links the GEMM alone.

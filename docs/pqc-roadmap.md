@@ -263,12 +263,15 @@ pointer and the dates.
 - **Art. 50(1)**, telling a person they are interacting with an AI, applies from 2 August 2026, and the
   Agentic AI panel meets it with a disclosure shown unconditionally. Regulation (EU) 2026/1744 (the AI
   Act omnibus) gives it no transition.
-- **Art. 50(2)**, machine-readable marking of generated content, is **not applicable**: the panel
-  generates 96 tokens (Transformers.js) or 160 (WebLLM), under the 200-token "very short text"
-  exception of the Code of Practice on Transparency of AI-generated Content (final 10 June 2026,
-  assessed adequate on 8-9 July 2026; the Commission's Article 50 guidelines, C(2026) 5054, followed
-  on 20 July 2026). The downloaded artifact's `provenance_note` block is voluntary provenance
-  metadata, not an Article 50(2) marking layer, and it carries no compliance-status field.
+- **Art. 50(2)**, machine-readable marking of generated content, **applies to the download and not to
+  the panel's text**: the panel generates 96 tokens (Transformers.js) or 160 (WebLLM), under the
+  200-token "very short text" exception of the Code of Practice on Transparency of AI-generated Content
+  (final 10 June 2026, assessed adequate on 8-9 July 2026; the Commission's Article 50 guidelines,
+  C(2026) 5054, followed on 20 July 2026). That exception is written into the Code's watermarking
+  sub-measure (1.1.2) and not into its metadata one (1.1.1), so the JSON download, a format that
+  carries metadata, owes signed metadata: the `ai_provenance` record, explained in `ai_provenance_note`
+  ([`ai-act-art50-gap-analysis.md`](ai-act-art50-gap-analysis.md)). This bullet called Art. 50(2) not
+  applicable and named a `provenance_note` block until Round 86.
 - Systems placed on the market before 2 August 2026 have until 2 December 2026 for Art. 50(2) (new
   Art. 111(4)). Whether this demo was placed on the market before that date is not recorded in this
   repository; it does not change the conclusion above.

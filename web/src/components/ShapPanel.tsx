@@ -16,7 +16,7 @@
 import { AI_ACT_CAVEAT, AI_ACT_SCOPE } from "../lib/aiActScope";
 
 export default function ShapPanel({ explanation, provenance, baseline, publishedModel, surfacedBackend,
-  isOfReportedClass, hasTreeAttribution, usecase }: {
+  isOfReportedClass, hasTreeAttribution, usecase, definitions }: {
   explanation: any; provenance?: string | null; baseline?: string | null;
   publishedModel?: string | null; surfacedBackend?: string | null;
   isOfReportedClass?: boolean | null;
@@ -24,6 +24,8 @@ export default function ShapPanel({ explanation, provenance, baseline, published
   hasTreeAttribution?: boolean | null;
   /** The use case, for what the EU AI Act would ask of its model. */
   usecase?: string;
+  /** What each feature is, from the input's payload, when it says (PP14, Round 86). */
+  definitions?: Record<string, string> | null;
 }) {
   const aiAct = usecase ? AI_ACT_SCOPE[usecase] : undefined;
   const tops = explanation?.top_features as any[] | undefined;
@@ -104,6 +106,19 @@ export default function ShapPanel({ explanation, provenance, baseline, published
           <span className="mono" style={{ width: 66, fontSize: 11, textAlign: "right" }}>{t.contribution >= 0 ? "+" : ""}{Number(t.contribution).toFixed(3)}</span>
         </div>
       ))}
+      {/* WHAT EACH BAR IS (PP14). Finance's names are AML-style labels for PaySim quantities, and `cross_border` in
+          particular is a transaction type, because PaySim records no geography. The payload defines them; the bars
+          printed the bare names. */}
+      {definitions && tops.some((t) => definitions[t.feature]) ? (
+        <dl className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
+          {tops.filter((t) => definitions[t.feature]).map((t) => (
+            <div key={t.feature} style={{ display: "flex", gap: 6 }}>
+              <dt className="mono" style={{ minWidth: 90 }}>{t.feature}</dt>
+              <dd style={{ margin: 0 }}>{definitions[t.feature]}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
       <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>
         red = pushes toward the flagged class · blue = away · exact linear SHAP for independent features, signed with ML-DSA under a key made for this run: it shows the record is unchanged, not who signed it
       </p>
