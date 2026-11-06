@@ -208,7 +208,7 @@ def test_with_its_weights_the_student_runs_and_the_log_says_what_the_client_decr
     assert m.get("fhe_weights") == "published student (HF, pinned revision)"
     assert (m["fhe_conv_rotations"], m["fhe_student_dense_rotations"], m["fhe_total_rotations"]) == (16, 12, 28)
     assert m["fhe_student_logit_max_abs_error"] < 1e-6
-    line = next(x for x in logs if x.startswith("private inference (REAL in-browser FHE, the PUBLISHED"))
+    line = next(x for x in logs if x.startswith("private inference (real in-browser CKKS, leveled with no bootstrapping, the PUBLISHED"))
     assert "already decrypted" in line, "the log does not say the argmax receives decrypted logits"
     assert "bias added under encryption" in line and "outputs and nothing else" in line, line
     assert "decrypts after every layer" in line and "ReLU and average pooling in plaintext" in line, line

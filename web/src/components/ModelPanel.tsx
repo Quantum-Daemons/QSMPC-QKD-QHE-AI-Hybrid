@@ -308,7 +308,14 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
                 ? `above ${spec.metric.name} here`
                 : `below ${spec.metric.name} here`;
           const hasNote = typeof spec.achieved?.metric_note === "string";
-          const caption = `companion — ${relation}${hasNote && known ? "; see how to read these, below" : ""}`;
+          // The constant predictor beside an accuracy, where the record carries the scored split's base
+          // rate (Round 86). Finance's teacher reads accuracy 0.9983 while predicting "legitimate" for
+          // every row scores 0.9985, and "above minority_class_f1 here" alone said nothing about that.
+          const p = Number(spec.achieved?.auprc_baseline);
+          const majority = /accuracy$/.test(k) && Number.isFinite(p) && p > 0 && p < 1 ? Math.max(p, 1 - p) : null;
+          const caption = `companion — ${relation}`
+            + (majority != null ? `; predicting the majority class for every row scores ${fmt(majority)}` : "")
+            + (hasNote && known ? "; see how to read these, below" : "");
           return (
             <tr key={k} className="metric-companion">
               <th scope="row"><code>{k}</code></th>
@@ -416,13 +423,17 @@ function CalibrationRows({ achieved }: { achieved: Record<string, unknown> }) {
           argument produces the same signature, and on finance that is what it turned out to be.
         </p>
       )}
+      {/* The isotonic comparison is the RECORD's, not this panel's. Until Round 86 this paragraph
+          was written out with the teacher's figures - "within noise", 9.09% of AUC-PR, 1.39M
+          scores to 138 - and printed on every card with a calibration, so the CKKS student's card
+          said the opposite of its own record, where isotonic scores better on both proper scoring
+          rules. Each trainer writes `why_not_isotonic` from its own measurement. */}
       <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
-        Platt is <i>strictly</i> monotone, so AUC and AUC-PR are unchanged by construction —
-        calibration fixes what a probability <i>means</i>, never how the rows are ordered. Platt
-        rather than isotonic is a measured tie-break, not a size argument: this calibration set is
-        far past the range the published comparison discusses, and on this split the two score
-        within noise on Brier and log-loss. Isotonic is only <i>weakly</i> monotone, and it cost
-        9.09% of AUC-PR here by collapsing 1.39M distinct scores to 138.
+        Platt is <i>strictly</i> monotone, so it reorders no rows: calibration fixes what a
+        probability <i>means</i>, not how the rows are ordered.
+        {typeof c.why_not_isotonic === "string" && c.why_not_isotonic
+          ? <> Why Platt and not isotonic, from this model&apos;s own measurement: {c.why_not_isotonic}</>
+          : null}
       </p>
     </div>
   );
@@ -497,9 +508,17 @@ function AttributionRows({ achieved }: { achieved: Record<string, unknown> }) {
 function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
 
   const fetchable = browserModels(usecase).some((m) => m.spec.key === spec.key);
+  // Shipped with the page rather than from the Hub (PGS000072's weights, telecom's student), and
+  // scored under CKKS by the page's own pipeline run. Until Round 86 these fell into "Cannot be run
+  // here: not published on Hugging Face ... telecom's student instead ships bundled", which named
+  // telecom on every page and told the genomics page that the score it runs could not be run.
+  if (spec.achieved && !spec.hf_repo_id && spec.runs_encrypted) {
+    return <p className="muted small"><em>Not run from this panel: it ships with the page rather than
+      from Hugging Face, and the page&apos;s pipeline run scores it under CKKS.</em></p>;
+  }
   const blocked =
     !spec.achieved ? "never trained in this build, so there is nothing to run - the baseline above is the target, not a result"
-    : !spec.hf_repo_id ? "not published on Hugging Face, so this panel has no pinned artefact to fetch. For some models the reason is the source data's licence; telecom's student instead ships bundled with the page, and the pipeline run uses it"
+    : !spec.hf_repo_id ? "not published on Hugging Face, so this panel has no pinned artefact to fetch"
     : spec.hf_revision_stale ? "retrained since it was last published, so the pinned artefact no longer matches the metrics above and the pin was retired rather than pointed at stale weights"
     : !spec.hf_revision ? "published but not pinned to a commit, and the browser will not fetch an unpinned model"
     : !fetchable ? "published, but it ships no browser-runnable ONNX graph at that revision"
@@ -562,9 +581,16 @@ export function ModelPanel({ usecase }: { usecase: string }) {
   return (
     <section className="card">
       <h3>Models</h3>
+      {/* Scoped as `registry.py`'s opening note scopes it. The unscoped "what homomorphic
+          evaluation can actually carry" is false in 2026: an edge-centric GNN (Bilgi et al.,
+          arXiv:2610.18054, CKKS on one GPU), gradient-boosted forests (SilentWood, arXiv:2411.15494)
+          and an 8B language model (Park et al., arXiv:2601.18511, CKKS on eight GPUs) run encrypted. */}
       <p className="muted small">
-        The industry model runs in plaintext; the encrypted model is what homomorphic evaluation can
-        actually carry. The gap between them is measured, not asserted.
+        The industry model runs in plaintext; the encrypted model is what this page&apos;s CKKS tier
+        (node-seal, SEAL compiled to WebAssembly, one thread in your tab) can evaluate. That is a
+        limit of this operating point, not of homomorphic evaluation, which runs far larger models
+        on servers and GPUs. Where a page has both models trained, the gap between them is measured
+        here, not asserted.
       </p>
 
       {specs.map((spec) => (
@@ -572,9 +598,10 @@ export function ModelPanel({ usecase }: { usecase: string }) {
           <div className="model-head">
             <strong>{spec.label}</strong>
             <span className="tag">{TIER_LABEL[spec.tier] ?? spec.tier}</span>
-            {/* "CKKS-evaluable", not "runs under CKKS": the satellite students run under CKKS only in
-                the Python deployment (no FHE stage runs on that page), and finance's CKKS run scores
-                the page's bundled PaySim model rather than this student. */}
+            {/* "CKKS-evaluable", not "runs under CKKS": a page's CKKS check scores ONE student
+                (`heldOutCorpus` in realData.ts names it - on satellite the OPS-SAT student, not the
+                ESA-ADB one), so a tag saying every evaluable model runs under CKKS here would be
+                false for the others. */}
             {spec.runs_encrypted ? <span className="tag">CKKS-evaluable</span> : null}
           </div>
           <p className="muted small">{spec.architecture}</p>

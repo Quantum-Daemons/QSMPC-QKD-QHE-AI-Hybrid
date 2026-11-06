@@ -136,8 +136,9 @@ export default function BenchmarkPanel(
               <p>
                 The <b>quantum-advantage</b> score divided quantities that are not the same on the two sides -
                 a ciphertext byte ratio by a qubit ratio, and a real encrypted inference by a simulation of an
-                untrained circuit - and classical FHE also reaches rate 1 (Gentry and Halevi, TCC 2019), so
-                the gap it reported was not a quantum advantage. A quantum ciphertext has no size in bytes:
+                untrained circuit - and classical FHE also reaches a rate arbitrarily close to 1 (Gentry and
+                Halevi, TCC 2019: 1 - &epsilon; for any &epsilon; &gt; 0; Brakerski, Doettling, Garg and Malavolta,
+                TCC 2019: 1 - o(1)), so the gap it reported was not a quantum advantage. A quantum ciphertext has no size in bytes:
                 the one-time pad maps n qubits to n qubits plus a 2n-bit classical key.
               </p>
               <p>

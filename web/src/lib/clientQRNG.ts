@@ -47,6 +47,13 @@ export interface QRNGResult {
   /** The stream's own estimate fell below the assessment. Reported, not gating. */
   estimateBelowAssessment: boolean;
   extractionRate: number;     // output bits / raw bits consumed
+  /** Raw draws the health tests and the min-entropy estimate ran on (Round 86: the log named only the
+   *  delivered bits, about a fifth as many, beside verdicts computed on these). */
+  rawBits: number;
+  /** The extractor's own yield, its output over its raw input, before the output is cut to the request.
+   *  `extractionRate` divides the DELIVERED bits by the draw, which von Neumann over-supplies 5x, so it reads
+   *  about 0.2 where this reads about 0.25. */
+  extractorYield: number;
   /** Bits the leftover hash lemma permits at this eps and this much raw min-entropy, or null for
    *  the von Neumann extractor, which does not consume eps at all.
    *
@@ -403,6 +410,7 @@ export function generateQuantumBits(nBits: number, opts: { source?: string; post
     monobitP: mp, runsP: rp, blockFreqP: bp,
     throughputBitsPerSec: (bits.length / dt) * 1000, simulated: true,
     minEntropyPerBit: hMin, extractionRate: bits.length / Math.max(1, rawConsumed),
+    rawBits: raw.length, extractorYield: proc.length / Math.max(1, raw.length),
     assessedMinEntropyPerBit: minH, estimateBelowAssessment: hMin < minH,
     lhlMaxBits, requestedBits: nBits,
   };

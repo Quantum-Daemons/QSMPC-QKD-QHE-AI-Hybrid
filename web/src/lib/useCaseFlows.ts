@@ -308,7 +308,7 @@ const FEDERATED_STEP: Step = {
   // the all-class-0 rate, not the majority rate, and the label says which.
   label: (m) => `federated train · ${f(m, "qfl_aggregation")} · acc `
     + `${f(m, "federated_baseline_accuracy")} untrained (every row class 0) -> ${f(m, "federated_accuracy")} `
-    + `on ${f(m, "federated_eval_rows")} held-out rows`,
+    + `on ${f(m, "federated_eval_rows")} held-out rows${m?.federated_rows_class_balanced ? " of a 50/50 draw" : ""}`,
 };
 
 /** The caption's first sentence for parties that compute together over a network.
@@ -318,14 +318,19 @@ const FEDERATED_STEP: Step = {
  *  over a small ID space either could recover the other's list from the tags; and every federated mask
  *  was derived from the one session key, which the aggregator also holds. Since Round 84 the PSI is an
  *  OPRF and each pair of clients agrees its own mask seed by X25519. */
+// "over a network under the session key" until Round 86, which read as if every lane were sealed. Only
+// the PSI's messages are (PSI_HOLDS says so); the handshake, the federated updates and the signature are not.
 const overWan = (who: string, what: string) => () =>
-  `${who} would meet over a network under the session key; here they are parts of this tab. ${what}`;
+  `${who} would meet over a network; here they are parts of this tab. ${what}`;
 // Side A is the OPRF client and side B the server in both specs that use it (oprfPsi.ts), so the
 // sentence names the sides rather than the banks: the generic demo's parties use it too.
 const PSI_HOLDS = "In the PSI, side A blinds its IDs and side B evaluates them under an OPRF key only B holds "
   + "(RFC 9497 over ristretto255), so A learns the shared IDs and the size of B's list and B only the "
   + "size of A's; the messages are sealed under the session key, and the PSI is semi-honest and not "
   + "post-quantum.";
+/** The federated masks' caveat, said once for both pages that run secure aggregation (Round 86: the PSI
+ *  carried "not post-quantum" and the masks, whose seeds are X25519 alone, did not). */
+const FL_NOT_PQ = "The mask seeds are not post-quantum: they come from X25519 alone and the masked updates are not sealed, so the aggregator, or anyone who records the public keys and the updates, could recompute every seed with a quantum computer and unmask each update.";
 
 export const USECASE_SPECS: Record<string, Spec> = {
   finance_aml: {
@@ -335,7 +340,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
     meet: overWan("Bank A and Bank B", `${PSI_HOLDS} Each pair of federated clients agrees its mask seed by `
       + "X25519, so Bank B, the aggregator, receives only the public keys and the masked updates and cannot "
       + "remove a mask alone; every client runs in this tab, and there is no dropout recovery or authentication "
-      + "of the public keys."),
+      + "of the public keys. " + FL_NOT_PQ),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk, failWord: QKD_NO_KEY },
@@ -364,7 +369,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       + "hospitals agrees its mask seed by X25519, so the aggregator, which receives only the public keys and "
       + "the masked updates, cannot remove a mask alone; the PQC session key seeds no mask. All hospitals run "
       + "in this tab, so it holds every private key, though the aggregator's step reads none, and there is no "
-      + "dropout recovery, no malicious security and no authentication of the public keys."),
+      + "dropout recovery, no malicious security and no authentication of the public keys. " + FL_NOT_PQ),
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk, failWord: QKD_NO_KEY },
@@ -610,7 +615,9 @@ export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: Diag
       // Synthetic rows generated in the tab, not this link's telemetry (see the telecom `meet`).
       return { a: "IDS: classifies synthetic attack telemetry, not this link's", channel: "none" };
     case "sign_result":
-      return { a: "signs the record", b: "verifies the signature", flow: "ab", channel: "classical" };
+      // "verifies the signature" until Round 86: B checks a signature under a key made for this run, which
+      // shows the record is unchanged, not who signed it.
+      return { a: "signs the record (key made for this run)", b: "checks it is unchanged", flow: "ab", channel: "classical" };
   }
   return kind === "local-a" ? { a: "runs locally", channel: "none" }
     : kind === "local-b" ? { b: "runs locally", channel: "none" }
@@ -653,7 +660,7 @@ export function captionOf(usecase: string, c: DiagramConfig = {}): string {
   const infers = visibleSteps(usecase, c).some((s) => s.stageId === "private_inference");
   return [
     spec.meet(c),
-    infers ? "MPC-FHE hybrid: linear layers under CKKS, biases included, decrypted by the client, and the argmax as two-party MPC over the scores the client has decrypted, both parties in this tab; the QSMPC-FHE bar is a simulated comparison circuit beside it, not a score." : "",
+    infers ? "MPC-FHE hybrid: linear layers under CKKS, biases included, decrypted by the client, and the argmax as two-party MPC over the scores the client has decrypted, both parties in this tab, so the MPC measures the protocol's cost and hides nothing; the QSMPC-FHE bar is a simulated comparison circuit beside it, not a score." : "",
     pqcOnly(c) ? "This profile has no quantum channel, and the proof of concept runs in this tab."
       : "The quantum channel is simulated, and the proof of concept runs in this tab.",
   ].filter(Boolean).join(" ");

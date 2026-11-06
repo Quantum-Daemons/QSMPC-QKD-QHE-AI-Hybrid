@@ -237,7 +237,17 @@ DS_AMLWORLD = DatasetSpec(
         "SYNTHETIC: IBM generates it with a multi-agent virtual-world model and states 'Everything is "
         "synthetic'; the paper is titled 'Realistic Synthetic Financial Transactions for AML Models'. "
         "Chosen for its calibration to real transaction statistics and its CDLA-Sharing terms, not "
-        "because it is real data - no commercial-OK corpus of real laundering transactions exists."
+        "because it is real data - no commercial-OK corpus of real laundering transactions exists. "
+        # Round 86, measured by scripts/measure_finance_test_window_tail.py; the numbers are held to that
+        # measurement by tests/test_r86_finance_tail.py.
+        "THE TEST WINDOW RUNS PAST THE DATA: HI-Small holds ten days, September 1-10, 2022 (IBM's dataset "
+        "card), and the last 30 percent of its transactions in time order run to September 18. The 1,108 "
+        "rows dated September 11-18 are there, the dataset's creator explains, so that laundering patterns "
+        "begun earlier can complete; 655 of them are laundering, 28.2% of the test window's 2,321 positives. "
+        "Without them the window's rate is 0.109 percent rather than 0.152, the teacher's minority-class F1 "
+        "0.1387 rather than 0.1519 and its AUPRC 0.1030 rather than 0.1233, and the CKKS student's F1 "
+        "0.0473 rather than 0.0614. The published 60/20/20 split's test set carries the same 1,108 rows "
+        "(docs/measurements/finance-test-window-tail-2026-11-06.json)."
     ),
 )
 DS_PAYSIM = DatasetSpec(
@@ -929,8 +939,10 @@ M_NIDD = MetricSpec(
         "`Offset`, Wang, Fok & Thing's inputs include `Offset`, both columns are dropped here as "
         "identifiers, and no published ablation settles it. (5) This model's "
         "figures come from a stratified random split, which flatters: when Wang, Fok & Thing train "
-        "on one base station and test on the other, their accuracies fall from above 98% to about "
-        "78-82%. These figures are an anchor and not a target that has been beaten or missed."
+        "on one base station and test on the other, their accuracies fall from above 98% to 78.2-78.9% "
+        "trained on base station 1 and 57.2-81.6% trained on base station 2 (their Tables V and VI), "
+        "where the classical CNN, at 74.28%, beats four of the five hybrids. These figures are an "
+        "anchor and not a target that has been beaten or missed."
     ),
     companion="aggregate_accuracy",
 )
@@ -990,7 +1002,14 @@ _SPECS: tuple[ModelSpec, ...] = (
         architecture="PNA with reverse message passing, multigraph port numbering, ego IDs, edge updates",
         params=None,          # filled from the trained checkpoint; AAAI-24 reports no count
         dataset=DS_AMLWORLD,
-        metric=M_AML,
+        # Its own published figure is its target (Round 86). Under M_AML this never-trained card read "the
+        # baseline above is the target" beside GFP+XGBoost's 63.23, the gradient booster's baseline, where
+        # the architecture it names publishes 68.16 on the same split. The ceiling stays M_AML's.
+        metric=replace(M_AML, baseline=0.6816, baseline_source=(
+            "Multi-PNA+EU itself on AML Small HI: 68.16 +/- 2.65 minority-class F1, five runs (Egressy et al., "
+            "'Provably Powerful Graph Neural Networks for Directed Multigraphs', AAAI 2024, arXiv:2306.11586, "
+            "Table 2). GFP+XGBoost's 63.23 is the baseline of the gradient-boosting model this demo ships, "
+            "not of this architecture.")),
         artifacts=(),
         # NOT published, and this field says so - `hf_repo=None` is this file's own documented
         # convention for that (see the field comment on ModelSpec). It previously read
@@ -1005,8 +1024,11 @@ _SPECS: tuple[ModelSpec, ...] = (
             "not hold, so every tier ships the gradient-boosting model, which scores one precomputed "
             "feature row per transaction. That is a choice for this operating point, not an "
             "impossibility: Bilgi et al. (arXiv:2610.18054v2, preprint) run an edge-centric GNN under CKKS "
-            "on the IBM AML benchmark at 5.31 s per queried transaction (1.65 s amortized) with HEonGPU on one "
-            "RTX 5090, with the graph held in plaintext by the server. Kept as a spec for the architecture it names. It is not the best "
+            "on the IBM AML benchmark at 5.31 s per queried transaction (1.65 s amortized over a batch of 16) "
+            "with HEonGPU on one RTX 5090, with the graph held in plaintext by the server - server-side "
+            "evaluation only, since those figures exclude the client's encryption and decryption, key "
+            "generation and network communication - and its encrypted and plaintext predictions agree on "
+            "99.25% of transactions. Kept as a spec for the architecture it names. It is not the best "
             "published figure on this split: the published version of MEGA (TMLR, see the ceiling) "
             "re-runs Multi-PNA at 67.35 +/- 2.89 on Small HI, below FraudGT, Multi-FraudGT and every "
             "MEGA variant in its table."
@@ -1121,6 +1143,10 @@ _SPECS: tuple[ModelSpec, ...] = (
         usecase="medical_fl",
         tier="t1_crypto",
         key="medical_fl.student",
+        # PENDING THE OWNER'S REPUBLISH (Round 86): MedMNIST states its data is not for clinical use and the
+        # page says nothing on it is a diagnosis, so this should read "CKKS-evaluable BreastMNIST CNN student".
+        # It is the Hub card's title, and `test_the_caveat_leaves_the_published_card_unchanged` holds the card
+        # to the published README, so it changes with a republish and not before.
         label="FHE-feasible diagnostic CNN",
         architecture="1 conv block (1->4ch, 3x3), avg-pool, dense head, 14x14 input",
         params=None,
@@ -1182,7 +1208,9 @@ _SPECS: tuple[ModelSpec, ...] = (
             "other 4 are left out, never filled in, and the dosage files and the payload name each with "
             "its reason. The finding is the by_super_population.*.frac_above_global_cut rows listed "
             "above: one globally-set high-risk cut flags a far larger share of one ancestry group than "
-            "of another, a gap driven by allele-frequency differences rather than by risk. Read those "
+            "of another, a gap that allele-frequency and linkage-disequilibrium differences between the "
+            "groups can produce on their own (Martin et al., Nat Genet 51:584, 2019), and which this "
+            "panel, carrying no case/control status, cannot split into frequency and risk. Read those "
             "rows, not this sentence - they are recomputed on every training run, so no figure quoted "
             "in prose here can drift away from them. The published European AUROC comes from a "
             "phenotyped UK Biobank cohort, which is why it cannot be reproduced on this page."

@@ -361,9 +361,15 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
             deviations; `maxAbsError` is the maximum over `rows * classes`, a strictly larger set.
             On finance those two once read 1.80e-8 and 2.47e-8: both correct, 37% apart. */}
         {" "}Worst deviation among the {plot.rows} plotted scores: {exp2(worst)}
+        {/* Counted from the scores CKKS evaluated (`noisyScores`), not rows x classes. Until Round 86 this
+            read "across all 16384 class scores" on finance, whose one-logit student gets a zero class-0
+            row that is returned as its bias and never encrypted (`realData.ts`, `clientFHE.ts`); so it
+            doubled the count and promised unplotted scores that do not exist. */}
         {typeof plot.maxAbsError === "number" ? (
-          <>; across all {plot.rows * plot.classes} class scores, including the ones this figure
-          does not plot: {exp2(plot.maxAbsError)}</>
+          (plot.noisyScores ?? plot.rows * plot.classes) > plot.rows
+            ? <>; across all {plot.noisyScores ?? plot.rows * plot.classes} encrypted class scores, including the
+                ones this figure does not plot: {exp2(plot.maxAbsError)}</>
+            : <>; that is every score CKKS evaluated here</>
         ) : null}
         {worstBits != null ? <> (about {worstBits} bits)</> : null}.
         {plot.medianAbsError != null ? (
@@ -400,11 +406,15 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
             inputs on which the encrypted model's top class equals the plaintext model's. Every figure
             here encrypts one linear layer (one plaintext multiply and its rotations), so the two are
             not like for like and the sentence says which way the difference should point. */}
+        {/* The peer-reviewed version since Round 86: IEEE Access 10 (2022) reports 98.43% and 92.43% +/- 2.65%
+            accuracy, where the 2021 preprint said 98.67%. And "one multiplicative level" counted one of the
+            two plaintext multiplications a layer makes here (the weights, then the 0/1 output mask). */}
         {" "}For scale only: a 20-layer ResNet under RNS-CKKS, with bootstrapping and approximated ReLU,
-        reported &quot;98.67% identical results&quot; to its plaintext model on CIFAR-10 (Lee et al.,
-        arXiv:2106.07229, 2021). This model is one linear layer at one multiplicative level, with no
-        bootstrapping and no approximated activation, so it does far less homomorphic arithmetic and
-        should agree more often. Neither figure ranks the other.
+        reported 98.43% identical results to its plaintext model on CIFAR-10 (Lee et al., IEEE Access 10,
+        30039-30054, 2022; the 2021 preprint, arXiv:2106.07229, reported 98.67%). This model is one linear
+        layer, two plaintext multiplications (the weights, then a 0/1 output mask) with no rescale, no
+        bootstrapping and no approximated activation, so it does far less homomorphic arithmetic and should
+        agree more often. Neither figure ranks the other.
         {plot.licence ? <> Rows: <LicenceLine licence={plot.licence} /></> : null}
       </figcaption>
       {mismatches > 0 && typeof plot.flipMarginMax === "number" && plot.flipMarginMax > 0 ? (
@@ -739,7 +749,9 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
       <figcaption id={captionId} className="muted small">
         {data.is_training_corpus ? (
           <>
-            <strong>The corpus {models ?? "this page's published models"}{" "}
+            {/* "The corpus X trains on: N points" read as if these rows were the training rows; they are
+                drawn from that corpus and, where `split_note` says so, from rows no model was fitted on. */}
+            <strong>From the corpus {models ?? "this page's published models"}{" "}
             {data.models && data.models.length > 1 ? "train" : "trains"} on</strong>:{" "}
             {data.points.length} {kind} points, coloured by TRUE class - no model&apos;s decision is
             drawn here{data.corpus_is_synthetic
@@ -868,8 +880,13 @@ export function AncestryStrataChart({ achieved }: { achieved: Record<string, unk
         group over-flagged relative to the threshold's own intent.{" "}
         {ratio ? <><strong>{hi.label}</strong> is flagged at {(hi.frac * 100).toFixed(1)}% against{" "}
           <strong>{lo.label}</strong> at {(lo.frac * 100).toFixed(1)}%, a {ratio.toFixed(1)}x gap</> : null}
-        {" "}driven by allele-frequency differences rather than by risk. This is a distribution shift,
-        not an accuracy drop - the panel carries no case/control status, so no AUROC is computable.
+        {/* "driven by allele-frequency differences rather than by risk" until Round 86: plausible, and
+            measured nowhere here. Frequency and LD differences can produce such a gap on their own
+            (Martin et al., Nat Genet 51:584, 2019); with no case/control status the panel cannot split it. */}
+        {ratio ? ". " : " "}Differences in allele frequency and linkage disequilibrium between groups can
+        produce such a gap on their own (Martin et al., Nat Genet 2019); with no case/control status on this
+        panel, this page cannot say how much of it is risk. This is a distribution shift, not an accuracy
+        drop, and no AUROC is computable here for the same reason.
       </figcaption>
       <ChartReadout hint={HINT_KEYBOARD}>
         <ResponsiveContainer width="100%" height={190}>
@@ -1060,8 +1077,11 @@ function DecisionCurveChart({ curve, modelKey, n, scored = "graph" }: {
           : <>; this page classifies at {op.raw.toFixed(4)} on the graph&apos;s own output, a calibrated risk
               of {op.risk.toFixed(3)}{op.risk > tMax ? ", above this range" : ""}</>)
           : null}. A perfect model would score {ceiling.toFixed(2)}, the window&apos;s rate.
-        {scored === "decrypted" ? <> The teacher&apos;s curve, in the model panel, is drawn over the same thresholds at
-          the same rate, so the two differ by the model and its map, not by the decision context.</> : null}
+        {/* "in the model panel" until Round 86, which /orchestration does not have: this figure renders on
+            both surfaces, and the teacher's curve is drawn on the finance use-case page only. */}
+        {scored === "decrypted" ? <> The teacher&apos;s curve, in the model panel of the finance use-case page, is
+          drawn over the same thresholds at the same rate, so the two differ by the model and its map, not by
+          the decision context.</> : null}
       </p>
     </figure>
   );

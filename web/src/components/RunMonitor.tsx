@@ -73,7 +73,12 @@ export default function RunMonitor({
             🔏 Run summary signed with <b>{signature.algorithm}</b> — verified:{" "}
             <b style={{ color: signature.verified ? "var(--accent-2)" : "var(--danger)" }}>
               {String(signature.verified)}
-            </b> ({signature.signature_bytes} B)
+            </b> ({signature.signature_bytes} B).{" "}
+            {/* Round 86: "verified: true" read as authentication. The key pair is made for this run and the
+                tab checks its own signature, so it shows the record is unchanged since signing, not who
+                signed it (clientCompute.ts says the same where it signs). */}
+            <span className="muted">Signed under a key pair made for this run, so it shows the record is
+              unchanged since signing, not who signed it.</span>
           </div>
         )}
       </div>

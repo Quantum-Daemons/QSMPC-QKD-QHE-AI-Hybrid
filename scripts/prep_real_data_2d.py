@@ -262,6 +262,33 @@ def _separability_at_rate(points, w_pos: float, w_neg: float) -> float:
     return float(average_precision_score(y, scores, sample_weight=np.where(y == 1, w_pos, w_neg)))
 
 
+def _finance_tail() -> dict:
+    """The latest finance test-window tail measurement (scripts/measure_finance_test_window_tail.py).
+
+    Read from the measurement rather than restated, so the caption cannot drift from it (Round 86).
+    """
+    found = sorted((REPO / "docs" / "measurements").glob("finance-test-window-tail-*.json"))
+    if not found:
+        raise SystemExit("no finance-test-window-tail measurement: run scripts/measure_finance_test_window_tail.py")
+    return json.loads(found[-1].read_text())
+
+
+def finance_tail_sentence(t: dict) -> str:
+    """One sentence on the rows after HI-Small's ten days, with the scores they move. Shared with the test."""
+    fw, wt, tl = t["full_window"], t["without_tail"], t["tail_only"]
+    return (f"That window runs to {t['test_window']['last'][:10]}, past HI-Small's ten days of data, "
+            "September 1-10 (IBM's dataset card): "
+            f"{tl['rows']:,} of its rows fall on September 11-18, which the dataset's creator says are there so "
+            "that laundering patterns begun earlier can complete, and "
+            f"{tl['positives']:,} of them, {t['tail_share_of_window_positives']:.1%} of the window's "
+            f"{fw['positives']:,} laundering rows, are laundering. Without them the window's rate is "
+            f"{100 * wt['base_rate']:.3f} percent rather than {100 * fw['base_rate']:.3f}, the teacher's "
+            f"minority-class F1 {wt['teacher']['minority_class_f1']:.4f} rather than "
+            f"{fw['teacher']['minority_class_f1']:.4f} and the student's "
+            f"{wt['student']['minority_class_f1']:.4f} rather than {fw['student']['minority_class_f1']:.4f}; "
+            "the published 60/20/20 split's test set carries the same tail.")
+
+
 def finance() -> dict:
     """AMLworld in the feature space the model actually consumes, not the raw transaction fields.
 
@@ -347,7 +374,7 @@ def finance() -> dict:
                       f"against {100 * win_rate:.2f} percent in that window ({win_pos:,} of "
                       f"{win_n:,}), so the AUC-PR, base rate and lift below are measured on the "
                       "enriched rows. The private-inference card encrypts the student on exactly "
-                      "these rows.",
+                      "these rows. " + finance_tail_sentence(_finance_tail()),
         # The two prevalences behind that sentence, as numbers, with where the window's comes from.
         "enrichment": {
             "sample_positives": s_pos, "sample_rows": s_n, "sample_rate": _round(s_pos / s_n),
@@ -450,7 +477,7 @@ def genomics() -> dict:
     release = af.get("_source", {}).get("ensembl_release")
     w = {k: abs(float(x)) for k, x in zip(prs["keys"], prs["weights"], strict=True)}
     med = float(np.median(list(w.values())))
-    pts, diverged_big, missing, mismatched = [], 0, 0, 0
+    pts, diverged_big, diverged_small, missing, mismatched = [], 0, 0, 0, 0
     for key in prs["keys"]:
         rec = af.get(key)
         if not rec or rec.get(GNOMAD_X) is None or rec.get(GNOMAD_Y) is None:
@@ -462,8 +489,11 @@ def genomics() -> dict:
             continue
         big = 1 if w[key] >= med else 0
         pts.append([_round(x), _round(y), big])
-        if big and abs(x - y) >= 0.20:
-            diverged_big += 1
+        if abs(x - y) >= 0.20:
+            if big:
+                diverged_big += 1
+            else:
+                diverged_small += 1
     if not pts:
         return {}
     n_big = sum(p[2] for p in pts)
@@ -503,21 +533,29 @@ def genomics() -> dict:
                           f"variants, in gnomAD's {gx} and {gy} groups, keyed by rsID and rounded to 4 "
                           f"significant figures"
                           + (f"; left out: {'; '.join(left_out)}" if left_out else "")
-                          + "; each variant classed by effect weight against the median."),
+                          + "; each variant classed by its absolute effect weight, at or above the median "
+                            "or below it."),
         # Axis titles as short as the old ones: the y title is rotated in a 230 px chart. The groups
         # are named in full in `modifications` and `note`, which the caption prints.
         "x": {"key": f"af_{GNOMAD_X}", "label": f"effect-allele frequency, gnomAD {GNOMAD_X}"},
         "y": {"key": f"af_{GNOMAD_Y}", "label": f"effect-allele frequency, gnomAD {GNOMAD_Y}"},
-        "class_names": ["smaller effect weight", "larger effect weight"],
+        "class_names": ["weight below the median", "weight at or above the median"],
         "base_rate": _round(n_big / len(pts)),
         "note": (f"{len(pts)} of the {n_score} variants this page scores, each placed by its effect "
                  f"allele's frequency in gnomAD's {gx} against its {gy} genomes. The diagonal is "
                  f"ancestry-invariant; distance from it is the portability problem in its raw form. "
-                 f"{diverged_big} of the {n_big} larger-effect variants differ by at least 0.20 between "
-                 f"the two groups - and 98.1% of the GWAS samples behind PGS000072's weights are of "
-                 f"European ancestry (the PGS Catalog's ancestry distribution for the score), so those "
-                 f"are the weights that move a score across ancestries. This is the mechanism behind "
-                 f"the ancestry-strata chart above, not a second finding."),
+                 # Round 86: this said the larger-effect variants "are the weights that move a score across
+                 # ancestries", while the smaller-effect ones diverge MORE often (26 of 69 against 31 of 108),
+                 # and "larger" was half the score in name only: the weights are rounded, so ties at the
+                 # median put 108 of 177 at or above it. Both rates are printed now, and neither is ranked.
+                 f"The variants are split by absolute effect weight at the median, |log OR| {med:.4f} (an odds "
+                 f"ratio of {float(np.exp(med)):.2f}); the published weights are rounded, so ties put {n_big} of "
+                 f"the {len(pts)} at or above it. {diverged_big} of those {n_big} differ by at least 0.20 in "
+                 f"frequency between the two groups, and {diverged_small} of the other {len(pts) - n_big}; a "
+                 f"variant's pull on a score across groups is its weight times that gap. 98.1% of the GWAS "
+                 f"samples behind PGS000072's weights are of European ancestry (the PGS Catalog's ancestry "
+                 f"distribution for the score). This is the mechanism behind the ancestry-strata chart above, "
+                 f"not a second finding."),
         "points": pts,
     }
 
@@ -586,13 +624,17 @@ def telecom() -> dict:
         "separability_auc_pr": auc_pr,
         "separability_method": SEPARABILITY_ESTIMATOR,
         "base_rate": _round(base),
-        "note": f"AUC-PR {auc_pr} against a {_round(base)} base rate is only a "
-                f"{auc_pr / max(base, 1e-12):.2f}x lift. The high absolute number is an artefact of "
-                "a corpus that is BALANCED ACROSS 8 CLASSES, seven of which are attacks - so 87.5% "
-                "of rows are positive before any model looks at them. It is shown with its base "
-                "rate for that reason. Note also that this plane collapses 8 classes to "
-                "normal-versus-attack because the chart takes a binary label; the models on this "
-                "page are scored on 8 classes instead, and the two numbers are not comparable.",
+        # Round 86: this read "is only a 1.13x lift", but a base rate p caps the lift at 1/p (1.143x at
+        # 0.875), so 1.13x is near the ceiling, not small. The share of the way from chance to perfect,
+        # (AUC-PR - p) / (1 - p), is the reading that does not depend on p.
+        "note": f"AUC-PR {auc_pr} against a {_round(base)} base rate: that base rate caps the lift at "
+                f"{1 / max(base, 1e-12):.3f}x, and {auc_pr} sits {(auc_pr - base) / max(1 - base, 1e-12):.1%} "
+                "of the way from chance to perfect. Its base rate is shown because the corpus is "
+                "BALANCED ACROSS 8 CLASSES, seven of which are attacks, so 87.5% of rows are positive "
+                "before any model looks at them, and the attacks are separable by construction. Note "
+                "also that this plane collapses 8 classes to normal-versus-attack because the chart "
+                "takes a binary label; the forest and the CKKS student on this page are scored on 8 "
+                "classes instead, and the two numbers are not comparable.",
         "points": pts,
     }
 

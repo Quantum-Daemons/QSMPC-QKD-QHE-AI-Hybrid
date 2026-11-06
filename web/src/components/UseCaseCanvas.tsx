@@ -55,8 +55,11 @@ const DASH: Partial<Record<Channel, string>> = { quantum: "7 4", mpc: "3 3" };
 const MARK: Record<Status, string> = { idle: "", pending: "", running: "running", done: "done", failed: "failed" };
 /** The badge word: a failed step's own word where it has one (`failWordOf`, Round 85). */
 const markOf = (step: Step, st: Status): string => (st === "failed" ? failWordOf(step) : MARK[st]);
+// "classical, under the session key" until Round 86: it labelled every classical lane - the handshake,
+// the federated updates, the signature - as sealed, and only the PSI's three messages are (the caption
+// under the canvas says which). Pages with no PSI draw no sealed lane at all.
 const LEGEND: Record<Channel, string> = {
-  classical: "classical, under the session key", quantum: "quantum, simulated", fhe: "CKKS ciphertext",
+  classical: "classical (sealed under the session key only where the caption says so)", quantum: "quantum, simulated", fhe: "CKKS ciphertext",
   mpc: "MPC secret shares", none: "",
 };
 

@@ -40,7 +40,7 @@ export default function UseCases() {
         <>Each use case has its own page with a live <b>architecture simulator</b>: each party's components, a lane per stage between them, animated as the run goes. Start / Pause / Step / Stop / Restart drive it.</>,
         <>Each page shows that industry's benchmark (latency · communication · security posture) and, where applicable, a signed XAI explanation.</>,
         <>Every card's model, corpus and licence is read from the registry, not written here.</>,
-        <><b>Agentic AI - quantum-safe MCP</b> runs on every page: an in-browser agent&apos;s request and response are sealed and signed (ML-KEM-768 + X25519, ML-DSA-65, AES-256-GCM) in a JSON-RPC envelope named after that industry&apos;s MCP tool, fed by the run&apos;s live metrics. No tool is executed.</>,
+        <><b>Agentic AI - quantum-safe MCP</b> runs on every page: an in-browser agent&apos;s prompt and reply travel as the arguments of one MCP <code>tools/call</code> request, sealed and signed (ML-KEM-768 + X25519, ML-DSA-65, AES-256-GCM) and named after that industry&apos;s MCP tool, fed by the run&apos;s live metrics. No tool is executed, so no MCP response follows.</>,
       ]} />
       <table className="facts-table small" style={{ margin: "10px 0 16px", maxWidth: 860 }}>
         <thead><tr><th>Use case</th><th>Agent's MCP tool</th><th>Private inference</th><th>Quantum channel</th></tr></thead>
