@@ -12,7 +12,7 @@ tags:
   - onnxruntime-web
 ---
 
-# FHE-feasible diagnostic CNN
+# CKKS-evaluable BreastMNIST CNN student
 
 1 conv block (1->4ch, 3x3), avg-pool, dense head, 14x14 input
 

@@ -56,7 +56,7 @@
       "opset": null
     },
     "git_sha": "67138f8-dirty",
-    "hf_revision": "ca364923cc110f00fbd343c13cb4f2b23243aaff",
+    "hf_revision": "536fbda25bbd550956050438bda473a7878519b6",
     "minority_class_f1": 0.15194805194805194,
     "n_test": 1523504,
     "n_train": 3554841,
@@ -139,7 +139,7 @@
       "why_not_isotonic": "Measured on this student's windows, not carried from the teacher. Isotonic's Brier 0.00149696 is below Platt's 0.00154002 and its log-loss 0.00837343 is below 0.00864886; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly monotone, so the curve ranks rows as the student does (AUPRC 0.02410110 against the raw 0.02410110, with 168 test rows tied at the logit clip; isotonic's 0.02459877 comes from the test window's scores tied at 109 values, 207,340 of them exactly zero), and it is the teacher's method, so the page's two decision curves differ by the model and not by the map. scripts/measure_decision_curve.py records the student's window curve under both maps."
     },
     "disagreement_on_positives": 0.361913,
-    "hf_revision": "7ae5ada87666cf8c9c8100bc122df326500ceec6",
+    "hf_revision": "ac6dd51b11d2034e90f34bb2aba78b4349718344",
     "metric_delta": 0.090554,
     "metric_delta_pp": 9.0554,
     "metric_name": "minority_class_f1",
@@ -252,7 +252,7 @@
       "opset": 18
     },
     "git_sha": "85209a9-dirty",
-    "hf_revision": "fba434b695473752fe4099e2a112422328779442",
+    "hf_revision": "cb700cfa0c26a61a57f7824e071f22c37684ae55",
     "macro_f1": 0.6492063492063492,
     "n_parameters": 23505858,
     "resolution": 28,
@@ -265,7 +265,7 @@
     "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline. The reason is representational rather than cryptographic: 3,226 parameters over a 14x14 input is a REPRESENTATION choice, not a feasibility limit - and this note said 'a CKKS-feasibility budget' until Round 32, which overstated how forced it was. Kim et al. (arXiv:2506.15258) do HE chest-X-ray inference on a VQGAN latent at downsampling factor 8 rather than on pixels, so the alternative to downsampling 28->14 is re-representing the input. The browser already runs onnxruntime-web, so such an encoder would run locally in plaintext with no privacy loss. Recorded as the sixth falsifiable trigger in the additional-model decision in docs/deliverable-verification.md, not acted on - and note that f=8 on a 28x28 input gives 3.5x3.5, so the transfer is the open measurement rather than a citation. This sentence claimed the trigger existed for two rounds while the table held five rows and none of them was this one; the trigger was written, and the decision moved to a tracked file so the claim can be checked. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
     "both_scored_zero": false,
     "disagreement_on_positives": 0.149123,
-    "hf_revision": "3544be31bb84f5af0847af3663038c39f0339ed3",
+    "hf_revision": "273ddb84b7b5274f9d98d70cd39bc1f5464aca9c",
     "majority_class_rate": 0.730769,
     "metric_delta": 0.096154,
     "metric_delta_pp": 9.6154,
@@ -467,7 +467,7 @@
     },
     "framing": "Real 5G network traffic, 9 attack classes, 47 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. IT IS FITTED ON THE FIELDS-PRESERVED EXPORT (113 columns) AND WAS FITTED ON Combined.csv (52) UNTIL ROUND 50, which is the single most important thing to know about the numbers here: the same rows and the same classes, but the narrow export omits `IdleTime` and that one column is worth 22 points of accuracy. `idle_time_ablation` re-measures this every run by refitting without it, and the result reproduces what this model used to score. Two controls are recorded beside the headline and both are worth more than the headline. `idle_time_ablation` says the old weakness was a choice of export, not a property of the corpus. `leak_counterfactual_accuracy` says that restoring four integer row counters takes accuracy to about 0.9997, which is not a better model but a leak.",
     "git_sha": "c89ff94-dirty",
-    "hf_revision": "6da6df76d0423fa6e12d67a407960caff5dcb511",
+    "hf_revision": "73b1320754f4cc911dd73ea1adb8738de0407909",
     "idle_time_ablation": {
       "what_this_means": "Removing `IdleTime` ALONE costs essentially the same accuracy as removing all six columns Combined.csv omits, and both land on the score this model published while it was fitted on Combined.csv. The other five - `Dir`, `Flgs`, `TcpOpt`, `sVlan`, `dVlan` - are worth 0.0006 accuracy between them. So the model's former weakness was one absent flow statistic, not the corpus and not the method. THAT IS REDUNDANCY AND NOT EMPTINESS, stated because the shorter version would be false. Two of those five are individually strong - `Dir` scores one-vs-rest AUC 0.9811 on ICMPFlood and `TcpOpt` 0.9433 on SlowrateDoS, both above the 0.90 threshold `single_feature_leak_check` uses, and both appear in its flagged list. What the ablation shows is that the other 41 columns already carry what they carry. `IdleTime` IS NOT AN IDENTIFIER and the distinction is the same one `leak_counterfactual_*` exists to draw: it takes 17 distinct integer values over 1,215,890 rows, so it cannot encode a row position, and it separates `SlowrateDoS` - an attack defined by holding a connection idle - at one-vs-rest AUC 0.9574. A row counter that scores that well describes where a row sits in a file. This describes what the traffic did.",
       "without_all_six_columns_combined_lacks": {
@@ -712,7 +712,7 @@
     },
     "framing": "Architecture comparison, not a performance claim. The published model is the random forest; the quantum-kernel SVC and the variational QNN are recorded beside it and not published. The data is synthetic because no commercial-OK real QKD-attack corpus exists. Published QML-IDS results are mixed rather than uniformly below a random forest: Al-Kuwari et al. (arXiv:2509.14282) report a hybrid QLSTM at 94.7% against their own random forest, while arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
     "git_sha": "67dcd50-dirty",
-    "hf_revision": "4765882e6a5110425721e129068eeab3f3c35e71",
+    "hf_revision": "233d49c6eefcb86e0b8d92ee6653317f183df09c",
     "n_classes": 8,
     "n_samples": 2400,
     "quantum_beats_classical": false,

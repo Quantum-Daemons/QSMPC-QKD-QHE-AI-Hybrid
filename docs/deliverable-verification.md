@@ -8922,3 +8922,35 @@ Still open:
 - Whether the SHAP bars explain the class the page reports above them. The page has to be read after a run to settle
   it.
 - The card now needs the owner's republish: `telecom_ids.qml` prints its notes and record.
+
+### Six Hub cards republished with their corrected text (2026-11-07)
+
+The owner chose to republish every card whose text the registry had moved: "All six". The six cards are the two
+finance cards, `telecom_ids.qml`, `telecom_ids.nidd`, `medical_fl.resnet50` and `medical_fl.student`. The first four
+changed on this branch: the test-window tail, the like-for-like comparison and the 5G-NIDD range.
+`medical_fl.resnet50`'s ceiling wording had lagged since an earlier round. `medical_fl.student`'s title, "FHE-feasible
+diagnostic CNN", is now "CKKS-evaluable BreastMNIST CNN student", since MedMNIST states its data is not for clinical
+use.
+
+`scripts/publish_hf.py --public` pushed each one and recorded its revision:
+
+| model | old pin | new pin |
+|---|---|---|
+| `finance_aml.gbm` | `ca36492` | `536fbda` |
+| `finance_aml.student` | `7ae5ada` | `ac6dd51` |
+| `telecom_ids.qml` | `4765882` | `233d49c` |
+| `telecom_ids.nidd` | `6da6df7` | `73b1320` |
+| `medical_fl.resnet50` | `fba434b` | `cb700cf` |
+| `medical_fl.student` | `3544be3` | `273ddb8` |
+
+Checked on the Hub afterwards:
+
+- Between each old revision and its new one, only `README.md` differs. Every other file's LFS digest or blob id is
+  unchanged, so no weights moved.
+- The card each new revision serves equals the repository's README byte for byte.
+
+The two finance decision-curve records name the revision they measured, and `scripts/measure_decision_curve.py`
+regenerated them for the new pins. They reproduced exactly: only the pin, the run date and a timing changed.
+
+Still open: the medical student's `weights.json` note still says its ReLU and argmax run under MPC. That note is part
+of the weights file, which this republish left byte-identical.

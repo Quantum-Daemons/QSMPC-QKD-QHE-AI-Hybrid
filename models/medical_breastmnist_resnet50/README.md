@@ -38,7 +38,7 @@ is stated in the notes below.
 
 - **Target metric**: AUC
 - **Baseline to beat**: 0.857 - ResNet-50 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.857 / ACC 0.812). The benchmark table lists it BELOW ResNet-18 @28px (0.901) on the same corpus: one figure per model, with no conclusion drawn about depth. This model checks that ordering under a training regime that differs from the table's (see the model's notes).
-- **Published ceiling**: 0.919 - Google AutoML Vision, MedMNIST v2 (AUC 0.919)
+- **Published ceiling**: 0.919 - Google AutoML Vision, best in MedMNIST v2 at 28 px (AUC 0.919)
 - **Companion metric shown alongside**: `accuracy` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
 ## Training data

@@ -53,7 +53,7 @@ is stated in the notes below.
 
 ## Notes and limitations
 
-The published model and its headline accuracy are the random forest's. The quantum-kernel SVC (macro F1 0.832) and the variational QNN (0.467) are an architecture comparison recorded at training time on identical data; neither runs on the page. The SVC's kernel uses no entangling gate, so it is computable classically in closed form.
+The published model and its headline accuracy are the random forest's. The quantum-kernel SVC and the variational QNN, recorded at training time and not run on the page, are BINARY attack-against-normal classifiers, each trained on its own smaller draw (60 and 120 rows per class), so their macro F1, 0.832 and 0.467, averages two classes; the QNN predicts attack for every row, and 0.467 is that constant predictor's score. On each one's own split and labels a forest trained the same way scores 1.0 and 0.990 (docs/measurements/telecom-quantum-like-for-like-2026-11-07.json). The SVC's kernel uses no entangling gate, so it is computable classically in closed form.
 
 ## Honest scope
 
