@@ -107,13 +107,15 @@ def default_registry() -> CryptoRegistry:
 
     # FHE family: commercial-OK CKKS only -- TenSEAL CPU (default, Apache-2.0) and
     # OpenFHE CPU (BSD-2-Clause, bootstrapping). DESILO (desilofhe) was removed: its
-    # license is non-commercial (https://fhe.desilo.dev/latest/license/). HEonGPU
-    # (Apache-2.0) is the GPU FHE backend exercised live by the benchmark glue
-    # (gpu_mpc_adapter); it has no Python binding so it is not a per-run selectable backend.
-    from ..fhe.backends import get_backend
+    # license is non-commercial (https://fhe.desilo.dev/latest/license/). HEonGPU (Apache-2.0)
+    # runs through this project's binding since Round 86, and is offered only where it is built and loads:
+    # an option that fails on selection would be a control that changes nothing but the error.
+    from ..fhe.backends import get_backend, heongpu_available
 
     reg.register("fhe", "tenseal-cpu", lambda **kw: get_backend("tenseal", **kw), default=True)
     reg.register("fhe", "openfhe-cpu", lambda **kw: get_backend("openfhe", **kw))
+    if heongpu_available():
+        reg.register("fhe", "heongpu-gpu", lambda **kw: get_backend("heongpu", **kw))
 
     # MPC family: the *non-linear* half of the hybrid (ReLU/argmax under secret sharing). MPyC (MIT,
     # pure-Python Shamir + secure comparison) is the one engine that runs. MP-SPDZ and hpmpc were

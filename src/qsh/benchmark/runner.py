@@ -225,15 +225,14 @@ def run_benchmark(workload: str = "linear", *, out_dir: str | Path = "results",
             except Exception as e:  # pragma: no cover
                 print(f"[bench] OpenFHE backend unavailable: {e}")
 
-    # optional high-performance GPU MPC (HEonGPU + hpmpc) via our glue
-    try:
-        from .gpu_mpc_adapter import run_gpu_mpc
+        # The same hybrid with its linear half on the GPU, through this project's HEonGPU binding (Round 86), where
+        # it is built. Until then this slot ran `gpu_mpc_adapter`, which timed an upstream example multiply and
+        # none of this project's arithmetic.
+        from ..fhe.backends import heongpu_available
 
-        gpu = run_gpu_mpc(workload=workload)
-        if gpu:
-            results.extend(gpu)
-    except Exception as e:  # pragma: no cover
-        print(f"[bench] GPU-MPC adapter skipped: {e}")
+        if heongpu_available():
+            results.append(run_hybrid(layers, X, y, backend_name="heongpu", workload=workload,
+                                      model_size=model_size, n_samples=n_hybrid))
 
     # quantum QSMPC-FHE path
     q = run_quantum(X, y, n_qubits=bcfg.quantum_qubits,

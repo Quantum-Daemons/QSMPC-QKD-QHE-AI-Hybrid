@@ -103,8 +103,9 @@ none of them. Licences are as listed, and their activity has not been re-read fo
    abort with ML-DSA-signed transcripts.
 4. **Fault-tolerant QHE costing** - turn the measured T-counts into resource estimates
    under a chosen QEC code; track against Gidney's **<1 million noisy qubits** for RSA-2048 (arXiv:2505.15917) - note that is a *qubit* count; the "~1.1M T-gate" figure previously quoted here appears in none of the cited papers.
-5. **GPU FHE at scale** - build the HEonGPU + PIGEON/hpmpc path (`scripts/build_gpu_mpc.sh`)
-   for batched CNN/Transformer private inference; compare HEonGPU (GPU) vs OpenFHE (CPU) CKKS.
+5. **GPU FHE at scale** - HEonGPU runs the linear half on the GPU since Round 86 (`scripts/build_heongpu.sh`),
+   and the MPC half is still MPyC on the CPU. What remains: batched CNN/Transformer private inference,
+   bootstrapping on the GPU, and the non-linear half on PIGEON/hpmpc.
 6. **Continuous PQC inventory** - scan dependencies/protocols for quantum-vulnerable
    crypto (a "crypto bill of materials") to drive migration priority.
 7. **Finance AML graph features** - per-transaction subgraph patterns, the architectural difference

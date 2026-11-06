@@ -49,8 +49,8 @@ PY = REPO / "src" / "qsh" / "benchmark" / "quantum_advantage.py"
 _PY_PRODUCERS = [
     REPO / "src" / "qsh" / "benchmark" / "quantum_qsmpc_fhe.py",
     REPO / "src" / "qsh" / "benchmark" / "classical_mpc_fhe.py",
-    REPO / "src" / "qsh" / "benchmark" / "gpu_mpc_adapter.py",
     REPO / "src" / "qsh" / "benchmark" / "alice_bob_e2e.py",
+    # `gpu_mpc_adapter.py` left this list in Round 86: it no longer produces a row, so it names no security model.
 ]
 #: Every place either language TESTS the string to pick a number. `quantum_advantage.py` is the
 #: fourth and was unpinned: it is the Python twin of `clientCompute.ts:342`.

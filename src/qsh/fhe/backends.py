@@ -7,8 +7,8 @@ inference, the MPC-FHE benchmark) is backend-agnostic:
   * :class:`OpenFHEBackend`  -- CPU CKKS via OpenFHE (BSD-2-Clause; commercial-OK; supports
     bootstrapping). Live where a compatible libstdc++ is present (Ubuntu 24.04 / the Docker
     image); import-guarded elsewhere.
-  * :class:`HeongpuBackend`  -- GPU CKKS via HEonGPU (Apache-2.0). No Python binding, so this is a
-    build-gated reference: the GPU FHE numbers come from the benchmark glue (gpu_mpc_adapter).
+  * :class:`HeongpuBackend`  -- GPU CKKS via HEonGPU (Apache-2.0), through this project's binding
+    (`native/heongpu_py`, built by `scripts/build_heongpu.sh`). Live where that module is built and an NVIDIA GPU is present.
 
 DESILO's ``desilofhe`` was removed: its license is **non-commercial**
 (https://fhe.desilo.dev/latest/license/), incompatible with this project's commercial intent.
@@ -24,6 +24,7 @@ every slot the key holder can decode, not only the one it reads (Round 84).
 
 from __future__ import annotations
 
+import functools
 from typing import Protocol
 
 import numpy as np
@@ -330,25 +331,110 @@ class OpenFHEBackend:
         return self._cc.EvalSum(prod, self._batch)     # slot-sum -> dot product in slot 0
 
 
-class HeongpuBackend:
-    """Reference adapter for the HEonGPU C++/CUDA CKKS library (crypto-agility slot).
+class _GpuCiphertext:
+    """A HEonGPU ciphertext with the logical length a decrypt returns, which the GPU object does not carry."""
 
-    HEonGPU has no Python API, so this is a build-gated reference: it points at the
-    submodule + build script. Wiring a live backend means a pybind11 glue layer over the
-    built ``submodules/HEonGPU`` (the GPU MPC-FHE benchmark uses HEonGPU via its own glue).
+    __slots__ = ("raw", "n")
+
+    def __init__(self, raw, n: int) -> None:
+        self.raw, self.n = raw, n
+
+
+class HeongpuBackend:
+    """GPU CKKS backend: HEonGPU through this project's binding (`native/heongpu_py`, Round 86).
+
+    HEonGPU has no Python API of its own. `scripts/build_heongpu.sh` builds the pinned submodule and a pybind11 module over the
+    seven operations the protocol above needs; the module is found in `native/heongpu_py/build` or in `QSH_HEONGPU_BUILD`. The
+    ring and moduli come from `FHEConfig`, as TenSEAL's do, at 128-bit security (`sec_level_type::sec128`; HEonGPU's own
+    benchmarks run with `none`). GPU work is asynchronous, so a timing needs :meth:`synchronize` before the clock is read.
     """
 
     name = "heongpu-ckks-gpu"
+    #: The encoder takes complex vectors, so a mask can cover the imaginary parts as well.
+    complex_slots = True
+    #: Read by the benchmark, which reports a GPU row as such.
+    on_gpu = True
 
-    def __init__(self, **_kwargs) -> None:
+    def __init__(self, poly_modulus_degree: int | None = None, coeff_mod_bit_sizes: tuple[int, ...] | None = None,
+                 global_scale_bits: int | None = None) -> None:
+        import os
+        import sys
         from pathlib import Path
 
-        built = Path(__file__).resolve().parents[3] / "submodules" / "HEonGPU" / "build"
-        raise NotImplementedError(
-            "HeongpuBackend is a reference adapter: HEonGPU exposes no Python API. "
-            f"Build it first (`bash scripts/build_gpu_mpc.sh`, expects {built}) and add a "
-            "pybind11 glue layer. Use 'tenseal' or 'openfhe' for a live FHE backend."
-        )
+        from ..config import get_config
+
+        build = Path(os.environ.get("QSH_HEONGPU_BUILD", Path(__file__).resolve().parents[3] / "native" / "heongpu_py" / "build"))
+        if str(build) not in sys.path:
+            sys.path.insert(0, str(build))
+        try:
+            import qsh_heongpu
+        except ImportError as e:
+            raise RuntimeError(
+                f"the HEonGPU module is not built ({e}); run `bash scripts/build_heongpu.sh`, which needs CUDA 12.8 or later, "
+                "CMake 4 and an NVIDIA GPU. Use 'tenseal' or 'openfhe' without one.") from e
+        fhe = get_config().fhe
+        bits = tuple(coeff_mod_bit_sizes or fhe.coeff_mod_bit_sizes)
+        # The last modulus is the special prime key switching uses, as in SEAL's (60, 40, 40, 60).
+        self._b = qsh_heongpu.Backend(int(poly_modulus_degree or fhe.poly_modulus_degree), list(bits[:-1]), [bits[-1]],
+                                      int(global_scale_bits or fhe.global_scale_bits))
+        self.slot_count = int(self._b.slot_count)
+
+    def synchronize(self) -> None:
+        self._b.synchronize()
+
+    @property
+    def rotations(self) -> int:
+        return int(self._b.rotations)
+
+    @staticmethod
+    def _reals(plain, n: int) -> np.ndarray:
+        """A plaintext operand as the module takes it: a scalar fills the ciphertext's logical slots."""
+        return np.full(n, float(plain)) if np.ndim(plain) == 0 else np.asarray(plain, dtype=float).ravel()
+
+    def encrypt(self, vector):
+        v = np.asarray(vector, dtype=float).ravel()
+        return _GpuCiphertext(self._b.encrypt(v), v.size)
+
+    def decrypt(self, ct) -> list[float]:
+        """The logical slots; for a ciphertext from ``add_plain_slots``, EVERY slot, as TenSEALBackend does."""
+        slots = self._b.decrypt_slots(ct.raw)
+        if ct.n == self.slot_count:
+            return SlotView(slots)
+        return slots[:ct.n].real.tolist()
+
+    def decrypt_slots(self, ct) -> list[complex]:
+        return self._b.decrypt_slots(ct.raw).tolist()
+
+    def add(self, ct_a, ct_b):
+        return _GpuCiphertext(self._b.add(ct_a.raw, ct_b.raw), max(ct_a.n, ct_b.n))
+
+    def add_plain(self, ct, plain):
+        return _GpuCiphertext(self._b.add_plain(ct.raw, self._reals(plain, ct.n)), ct.n)
+
+    def add_plain_slots(self, ct, values):
+        """``ct`` plus a vector over EVERY slot, encrypted under the public key first (see TenSEALBackend)."""
+        masked = self._b.add_plain_slots(ct.raw, np.asarray(values, dtype=complex).ravel())
+        return _GpuCiphertext(masked, self.slot_count)
+
+    def mul_plain(self, ct, plain):
+        return _GpuCiphertext(self._b.mul_plain(ct.raw, self._reals(plain, ct.n)), ct.n)
+
+    def dot_plain(self, ct, plain_vec):
+        """The dot product in slot 0: a plaintext multiply, a rescale and log2 rotations (rounded up)."""
+        return _GpuCiphertext(self._b.dot_plain(ct.raw, np.asarray(plain_vec, dtype=float).ravel()), 1)
+
+@functools.lru_cache(maxsize=1)
+def heongpu_available() -> bool:
+    """True where the HEonGPU module is built and loads, so a selector offers only what can run here.
+
+    The probe builds a backend at the configured ring, keys included, so it is made once per process: every pipeline
+    builds a registry, and each registry asks.
+    """
+    try:
+        HeongpuBackend()
+    except Exception:
+        return False
+    return True
 
 
 def get_backend(name: str = "tenseal", **kwargs) -> CKKSBackend:

@@ -6,9 +6,8 @@ ciphertext/plaintext ratio. This is the "classical" baseline the quantum QSMPC-F
 path is compared against. All backends are commercial-OK (TenSEAL Apache-2.0,
 OpenFHE BSD-2-Clause, HEonGPU Apache-2.0); DESILO was removed (non-commercial license).
 
-The optional high-performance GPU path (upstream HEonGPU + PIGEON/hpmpc, driven by
-our own glue in :mod:`~qsh.benchmark.gpu_mpc_adapter`) is included when those
-submodules are built; otherwise the CPU backends (TenSEAL / OpenFHE) are used.
+The same hybrid runs with its linear half on the GPU through ``HeongpuBackend`` (HEonGPU, Round 86)
+where that module is built; the runner adds the row then, and the CPU backends always.
 """
 
 from __future__ import annotations

@@ -234,8 +234,8 @@ inference and is what this demo already does - with the client and the key holde
 
 ### The split itself
 A common private-inference split (the line of work from Gazelle through Delphi, BOLT and Bumblebee to BLB, and the
-preprint EncFormer) is **linear layers under homomorphic encryption** (matmul/conv, as CKKS here; GPU libraries such as HEonGPU accelerate it, though
-none runs here) and **non-linear
+preprint EncFormer) is **linear layers under homomorphic encryption** (matmul/conv, as CKKS here; GPU libraries such as HEonGPU accelerate it, and HEonGPU runs here where
+it is built) and **non-linear
 layers under MPC** (ReLU/argmax via secret-sharing secure comparison). `qsh.mpc.secret_inference`
 implements it with TenSEAL/OpenFHE for the linear half and **MPyC** (Shamir shares, the
 `ReLU([x]) = [x] * [x>0]` pattern) for the non-linear half, converting CKKS <-> shares at each boundary;
@@ -375,8 +375,7 @@ full-mode SPA uses the run controls (`/api/run`, `/api/stop`, `/api/pause`, `/ap
 
 ## Two compute topologies
 - **Full** (GPU box): everything runs server-side - federated training (own FedAvg + PennyLane QFL), CPU
-  FHE (TenSEAL / OpenFHE; HEonGPU is a build-gated reference adapter with no Python API and no measured
-  run here), GPU quantum sim (CUDA-Q / lightning.gpu), the real MCP server, Prometheus + Grafana.
+  FHE (TenSEAL / OpenFHE) and GPU FHE (HEonGPU, where `scripts/build_heongpu.sh` has built it), GPU quantum sim (CUDA-Q / lightning.gpu), the real MCP server, Prometheus + Grafana.
 - **Client-side build** (no GPU, no server-side ML): the static SPA runs **all** heavy compute in the
   browser (PQC via @noble in plain JavaScript, **real CKKS FHE + garbled-circuit MPC**, ONNX inference, in-browser
   AI, JS BB84/PSI/SHAP/QFL, the client MCP mirror) - it makes **zero `/api` compute calls** (Validations'
@@ -394,7 +393,8 @@ full-mode SPA uses the run controls (`/api/run`, `/api/stop`, `/api/pause`, `/ap
   topology additionally runs server-side federated learning + FHE inference + the MCP server. AI model weights come from
   Hugging Face at a pinned revision (browser-cached), and the engines' runtime files from the demo host.
 
-## Why CUDA-Q / cuQuantum (not qiskit-aer-gpu)
-`qiskit-aer-gpu` cu11/cu12 wheels do not target Blackwell `sm_120`. On this hardware
-the GPU quantum-simulation path is CUDA-Q + cuQuantum (PennyLane `lightning.gpu`,
-SM 7.0+). Qiskit (CPU/Aer-CPU) is still used for circuit authoring and small sims.
+## GPU state-vector simulation
+CUDA-Q, PennyLane `lightning.gpu` and Qiskit Aer GPU 0.18.2 all run on this Blackwell `sm_120` GPU (measured 2026-11-06,
+[models-and-benchmarks.md](models-and-benchmarks.md#state-vector-simulators-measured)); earlier text here said Aer's wheels did not.
+The Python tiers choose by `quantum_sim.device`, `default.qubit` by default: at the 4 to 9 wires the shipped circuits use, every
+backend answers in milliseconds, and the GPU pays from about 18 qubits. Qiskit (CPU/Aer-CPU) is still used for circuit authoring.

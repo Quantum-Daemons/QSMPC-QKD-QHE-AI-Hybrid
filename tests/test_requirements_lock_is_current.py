@@ -22,7 +22,9 @@ LOCK = (REPO / "requirements.lock").read_text(encoding="utf-8")
 
 
 def _digest(root: Path) -> str:
-    return hashlib.sha256(b"".join((root / name).read_bytes() for name in INPUTS)).hexdigest()
+    """Of the requirement lines alone, as scripts/lock_requirements.sh computes it: a comment is not a dependency change."""
+    lines = [ln.split("#")[0].strip() for name in INPUTS for ln in (root / name).read_text(encoding="utf-8").splitlines()]
+    return hashlib.sha256("".join(f"{ln}\n" for ln in lines if ln).encode()).hexdigest()
 
 
 def _locked() -> dict[str, str]:
@@ -33,10 +35,12 @@ def test_the_lock_was_generated_from_these_inputs() -> None:
     assert f"# inputs sha256: {_digest(REPO)}" in LOCK, "an input changed: run scripts/lock_requirements.sh"
 
 
-def test_the_digest_would_notice_a_changed_input(tmp_path: Path) -> None:
-    """The seeded negative: one floor moved, and the recorded digest no longer matches."""
+def test_the_digest_would_notice_a_changed_input_and_not_a_comment(tmp_path: Path) -> None:
+    """The seeded negative: one floor moved, and the recorded digest no longer matches; a new comment leaves it alone."""
     for name in INPUTS:
         (tmp_path / name).write_bytes((REPO / name).read_bytes())
+    (tmp_path / INPUTS[0]).write_text((tmp_path / INPUTS[0]).read_text(encoding="utf-8") + "\n# a remark\n", encoding="utf-8")
+    assert f"# inputs sha256: {_digest(tmp_path)}" in LOCK
     (tmp_path / INPUTS[0]).write_text((tmp_path / INPUTS[0]).read_text(encoding="utf-8") + "\nnumpy>=99\n", encoding="utf-8")
     assert f"# inputs sha256: {_digest(tmp_path)}" not in LOCK
 

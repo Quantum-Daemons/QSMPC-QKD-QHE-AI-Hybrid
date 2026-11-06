@@ -36,3 +36,6 @@ wasm/qsh-mpc/deny.toml
 web/src/wasm/
 web/public/licenses/qsh-mpc.txt
 prototypes/
+# Round 86: the HEonGPU module and its build tree (scripts/build_heongpu.sh) stay where they are built. No image copies
+# native/, and this keeps the 235 MB tree out of the context as well.
+native/heongpu_py/build/

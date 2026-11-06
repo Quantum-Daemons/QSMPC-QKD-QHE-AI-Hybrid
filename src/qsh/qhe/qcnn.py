@@ -30,6 +30,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ..quantum_device import make_device
 from .qotp import decrypt, encrypt, encrypted_density_matrix, pauli_key
 
 
@@ -46,7 +47,7 @@ class QCNN:
 
         self.qml = qml
         self.n_qubits = n_qubits
-        self.dev = qml.device("default.qubit", wires=n_qubits)
+        self.dev = make_device(n_qubits)
         self._build()
         rng = np.random.default_rng(seed)
         self.n_params = self._param_count()

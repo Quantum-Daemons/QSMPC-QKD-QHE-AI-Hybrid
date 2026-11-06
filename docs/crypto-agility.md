@@ -41,7 +41,7 @@ constructions wherever feasible**, which is what the `kem` family does by defaul
 |--------|-----------------------|---------|
 | `kem` | `ml-kem-768+x25519`, `ml-kem-1024+x25519` | ml-kem-768+x25519 |
 | `qkd` | `bb84-decoy`, `pqc-only` | bb84-decoy |
-| `fhe` | `tenseal-cpu`, `openfhe-cpu` | tenseal-cpu |
+| `fhe` | `tenseal-cpu`, `openfhe-cpu`, and `heongpu-gpu` where it is built and a GPU is present | tenseal-cpu |
 | `mpc` | `mpyc-shamir` | mpyc-shamir |
 | `sig` | `ml-dsa-65`, `ml-dsa-87` | ml-dsa-65 |
 
@@ -80,8 +80,8 @@ a new FHE backend) is **one `register(...)` call** - no stage code changes.
 - **Stages consume the choice**:
   - `PQCHandshakeStage` -> `kem` (hybrid ML-KEM + X25519 session).
   - `QKDKeyAgreementStage` -> `qkd` (BB84 with QBER, or `pqc-only` to drop QKD).
-  - `PrivateInferenceStage` -> `fhe` for the linear layers (TenSEAL CPU <-> OpenFHE CPU; both
-    commercial-OK) and records the `mpc` provider for the non-linear layers - the full
+  - `PrivateInferenceStage` -> `fhe` for the linear layers (TenSEAL CPU <-> OpenFHE CPU <-> HEonGPU
+    GPU; all commercial-OK), the encrypted inference and the run's benchmark row alike and records the `mpc` provider for the non-linear layers - the full
     FHE-linear + MPC-non-linear hybrid is exercised by the benchmark
     (`qsh.mpc.secret_inference` + `qsh.benchmark.classical_mpc_fhe`), and the signed run summary names
     the MPC backend that ran.

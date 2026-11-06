@@ -868,6 +868,18 @@ class WebConfig:
 
 
 @dataclass
+class QuantumSimConfig:
+    """The state-vector simulator the Python tiers' PennyLane circuits run on (Round 86, `qsh.quantum_device`).
+
+    `default.qubit` runs everywhere and trains the hybrid network by backpropagation. `lightning.qubit` (CPU) and
+    `lightning.gpu` (NVIDIA, requirements-gpu.txt) are the alternatives; docs/models-and-benchmarks.md has the measured
+    crossover. The browser never reads this.
+    """
+
+    device: str = "default.qubit"
+
+
+@dataclass
 class QSHConfig:
     """Top-level config aggregating every subsystem."""
 
@@ -885,6 +897,7 @@ class QSHConfig:
     crypto: CryptoConfig = field(default_factory=CryptoConfig)
     orchestration: OrchestrationConfig = field(default_factory=OrchestrationConfig)
     web: WebConfig = field(default_factory=WebConfig)
+    quantum_sim: QuantumSimConfig = field(default_factory=QuantumSimConfig)
 
     def to_dict(self) -> dict:
         return asdict(self)

@@ -1,0 +1,304 @@
+{
+ "machine": {
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 620.70.06",
+  "kernel": "5.14.0-687.65.1.el9_8.x86_64",
+  "python": "3.12.15",
+  "date": "2026-11-06"
+ },
+ "versions": {
+  "pennylane": "0.45.1",
+  "pennylane-lightning": "0.45.0",
+  "pennylane-lightning-gpu": "0.45.0",
+  "custatevec-cu12": "1.15.0"
+ },
+ "rows": [
+  {
+   "backend": "PennyLane default.qubit",
+   "qubits": 4,
+   "first_ms": 2.091,
+   "median_ms": 1.345,
+   "min_ms": 1.318,
+   "max_ms": 1.499,
+   "value": 0.12427946548452751
+  },
+  {
+   "backend": "PennyLane default.qubit",
+   "qubits": 8,
+   "first_ms": 2.726,
+   "median_ms": 2.547,
+   "min_ms": 2.524,
+   "max_ms": 2.871,
+   "value": 0.5266048596709598
+  },
+  {
+   "backend": "PennyLane default.qubit",
+   "qubits": 10,
+   "first_ms": 3.426,
+   "median_ms": 3.318,
+   "min_ms": 3.278,
+   "max_ms": 3.52,
+   "value": 0.20105077542020422
+  },
+  {
+   "backend": "PennyLane default.qubit",
+   "qubits": 12,
+   "first_ms": 4.454,
+   "median_ms": 4.616,
+   "min_ms": 4.424,
+   "max_ms": 4.727,
+   "value": 0.6044098959861058
+  },
+  {
+   "backend": "PennyLane default.qubit",
+   "qubits": 14,
+   "first_ms": 7.249,
+   "median_ms": 6.895,
+   "min_ms": 6.761,
+   "max_ms": 7.18,
+   "value": -0.6963327717415322
+  },
+  {
+   "backend": "PennyLane default.qubit",
+   "qubits": 16,
+   "first_ms": 21.382,
+   "median_ms": 19.581,
+   "min_ms": 19.312,
+   "max_ms": 19.761,
+   "value": 0.2861784096866176
+  },
+  {
+   "backend": "PennyLane default.qubit",
+   "qubits": 18,
+   "first_ms": 78.714,
+   "median_ms": 77.243,
+   "min_ms": 74.574,
+   "max_ms": 117.839,
+   "value": 0.46329010184313174
+  },
+  {
+   "backend": "PennyLane default.qubit",
+   "qubits": 20,
+   "first_ms": 1280.882,
+   "median_ms": 979.042,
+   "min_ms": 826.117,
+   "max_ms": 1193.413,
+   "value": 0.5555247612746648
+  },
+  {
+   "backend": "PennyLane lightning.qubit",
+   "qubits": 4,
+   "first_ms": 10.92,
+   "median_ms": 7.054,
+   "min_ms": 6.17,
+   "max_ms": 9.648,
+   "value": 0.12427946548452737
+  },
+  {
+   "backend": "PennyLane lightning.qubit",
+   "qubits": 8,
+   "first_ms": 8.97,
+   "median_ms": 9.618,
+   "min_ms": 8.603,
+   "max_ms": 9.638,
+   "value": 0.5266048596709599
+  },
+  {
+   "backend": "PennyLane lightning.qubit",
+   "qubits": 10,
+   "first_ms": 9.373,
+   "median_ms": 9.623,
+   "min_ms": 6.411,
+   "max_ms": 12.904,
+   "value": 0.20105077542020452
+  },
+  {
+   "backend": "PennyLane lightning.qubit",
+   "qubits": 12,
+   "first_ms": 6.449,
+   "median_ms": 9.626,
+   "min_ms": 9.095,
+   "max_ms": 9.825,
+   "value": 0.6044098959861058
+  },
+  {
+   "backend": "PennyLane lightning.qubit",
+   "qubits": 14,
+   "first_ms": 9.324,
+   "median_ms": 9.638,
+   "min_ms": 7.995,
+   "max_ms": 10.689,
+   "value": -0.696332771741532
+  },
+  {
+   "backend": "PennyLane lightning.qubit",
+   "qubits": 16,
+   "first_ms": 30.425,
+   "median_ms": 7.657,
+   "min_ms": 4.543,
+   "max_ms": 9.86,
+   "value": 0.2861784096866176
+  },
+  {
+   "backend": "PennyLane lightning.qubit",
+   "qubits": 18,
+   "first_ms": 23.331,
+   "median_ms": 23.955,
+   "min_ms": 21.583,
+   "max_ms": 26.075,
+   "value": 0.4632901018431325
+  },
+  {
+   "backend": "PennyLane lightning.qubit",
+   "qubits": 20,
+   "first_ms": 64.945,
+   "median_ms": 71.731,
+   "min_ms": 67.627,
+   "max_ms": 74.939,
+   "value": 0.5555247612746653
+  },
+  {
+   "backend": "PennyLane lightning.qubit",
+   "qubits": 22,
+   "first_ms": 590.845,
+   "median_ms": 589.926,
+   "min_ms": 577.391,
+   "max_ms": 602.011,
+   "value": 0.36895465396928284
+  },
+  {
+   "backend": "PennyLane lightning.qubit",
+   "qubits": 24,
+   "first_ms": 2571.357,
+   "median_ms": 2551.574,
+   "min_ms": 2540.413,
+   "max_ms": 2607.536,
+   "value": 0.18158580805638053
+  },
+  {
+   "backend": "PennyLane lightning.qubit",
+   "qubits": 26,
+   "first_ms": 10933.953,
+   "median_ms": 10894.217,
+   "min_ms": 10422.366,
+   "max_ms": 11095.847,
+   "value": -0.12825470368154998
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 4,
+   "first_ms": 112.229,
+   "median_ms": 0.988,
+   "min_ms": 0.938,
+   "max_ms": 1.277,
+   "value": 0.12427946548452723
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 8,
+   "first_ms": 3.093,
+   "median_ms": 1.666,
+   "min_ms": 1.618,
+   "max_ms": 1.866,
+   "value": 0.5266048596709598
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 10,
+   "first_ms": 5.212,
+   "median_ms": 1.978,
+   "min_ms": 1.922,
+   "max_ms": 2.324,
+   "value": 0.20105077542020433
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 12,
+   "first_ms": 5.103,
+   "median_ms": 2.376,
+   "min_ms": 2.315,
+   "max_ms": 2.647,
+   "value": 0.6044098959861058
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 14,
+   "first_ms": 3.938,
+   "median_ms": 2.698,
+   "min_ms": 2.631,
+   "max_ms": 3.004,
+   "value": -0.6963327717415323
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 16,
+   "first_ms": 4.59,
+   "median_ms": 3.1,
+   "min_ms": 3.038,
+   "max_ms": 3.658,
+   "value": 0.2861784096866176
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 18,
+   "first_ms": 7.108,
+   "median_ms": 3.568,
+   "min_ms": 3.519,
+   "max_ms": 4.139,
+   "value": 0.46329010184313174
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 20,
+   "first_ms": 6.862,
+   "median_ms": 4.887,
+   "min_ms": 4.816,
+   "max_ms": 4.96,
+   "value": 0.5555247612746648
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 22,
+   "first_ms": 12.404,
+   "median_ms": 9.091,
+   "min_ms": 9.074,
+   "max_ms": 9.235,
+   "value": 0.3689546539692856
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 24,
+   "first_ms": 57.53,
+   "median_ms": 53.767,
+   "min_ms": 53.595,
+   "max_ms": 53.965,
+   "value": 0.1815858080563769
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 26,
+   "first_ms": 232.685,
+   "median_ms": 232.049,
+   "min_ms": 231.778,
+   "max_ms": 232.728,
+   "value": -0.12825470368155834
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 28,
+   "first_ms": 989.668,
+   "median_ms": 985.811,
+   "min_ms": 984.75,
+   "max_ms": 1008.514,
+   "value": -0.832389709215282
+  },
+  {
+   "backend": "PennyLane lightning.gpu",
+   "qubits": 30,
+   "first_ms": 4219.118,
+   "median_ms": 4212.173,
+   "min_ms": 4211.006,
+   "max_ms": 4220.428,
+   "value": -0.24662514676048874
+  }
+ ]
+}

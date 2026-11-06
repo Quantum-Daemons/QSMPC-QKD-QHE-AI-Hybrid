@@ -1,6 +1,6 @@
 [submodule "submodules/HEonGPU"]
 	path = submodules/HEonGPU
-	url = https://github.com/Alisah-Ozcan/HEonGPU.git
+	url = https://github.com/enCRYPTON-labs/HEonGPU.git
 [submodule "submodules/hpmpc"]
 	path = submodules/hpmpc
 	url = https://github.com/chart21/hpmpc.git

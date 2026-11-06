@@ -8443,3 +8443,52 @@ it did. `distil.save_student` writes the same block for any pipeline student it 
 Not retrained: the rules forbid retraining a shipped model for a better seed, the student already tracks its teacher (AUC-PR 0.968055 against 0.968107),
 and the same run would reproduce it. Published as revision `b1c32f6`, re-pinned; the ONNX graph is byte-identical to the previous revision's
 (SHA-256 `008ce438...`), and the card and weights on the Hub match the files here.
+
+### The Python tiers' circuits run on one configured simulator, and the GPU ones were measured
+
+By the owner's choice of the whole GPU path. Four modules wrote `qml.device("default.qubit", ...)`, so the GPU simulators the full deployment can install had no way in.
+`quantum_sim.device` now chooses, through `qsh.quantum_device`, and stays `default.qubit`: at the 4 to 9 wires the shipped circuits use, every backend answers in a few
+milliseconds (`docs/models-and-benchmarks.md`). A simulator PennyLane cannot load is an error naming the setting, not a quiet return to the default.
+`tests/test_r86_quantum_device.py` holds the QCNN and the hybrid network to the same outputs on `lightning.qubit` and, where it is installed, `lightning.gpu`, which
+it is on this machine now.
+
+**What the measurement corrected.** Qiskit Aer GPU was recorded as unable to target Blackwell `sm_120` and unreleased since 2024. Version 0.18.2, released
+2026-10-26, ran a 28-qubit state vector on this GPU in 825 ms, so four files stop saying so. CUDA-Q 0.16.0.post1 and `cuquantum-python-cu13` 26.9.0 want different
+`custatevec-cu13` releases, so they cannot share an environment, which `requirements-gpu.txt` now says.
+
+**And one silent fallback.** A `config.yaml` that did not parse was replaced by the defaults without a word, so a run reported the defaults' results under a file that
+said something else. It is an error now.
+
+### The GPU runs the hybrid's linear half, and measuring it found four defects
+
+By the owner's choice of the whole GPU path. `HeongpuBackend` raised, because HEonGPU has no Python API, and the benchmark's "GPU" row was
+one multiply timed in HEonGPU's own example benchmark: none of this project's arithmetic. A pybind11 module over HEonGPU v2.1.1
+(`native/heongpu_py`, built by `scripts/build_heongpu.sh`) now runs the seven operations the backend protocol needs, and the backend is
+offered as `heongpu-gpu` only where it loads. Measured 2026-11-06: the linear half is 19.5 times faster than TenSEAL at both sizes, the
+medium inference 5.7 times (297 to 52 ms), and the MPC half, still MPyC on the CPU, is now three quarters of a GPU row
+(`docs/models-and-benchmarks.md`). The example-benchmark row, its run script and the adapter function that read it are removed, and the
+submodule moved from `1928a14`, 156 commits behind, to v2.1.1.
+
+**What measuring found.**
+- *The module carried no code for this GPU.* The binding's `project()` set nvcc's default architecture, 75 under CUDA 13, before
+  HEonGPU's CMake ran, so HEonGPU took it as given and skipped its own detection, and the driver recompiled Turing PTX for `sm_120` at
+  load. The checklist's row G1 asks for exactly this check, and it had not been run on this project's own module. The build now passes
+  the GPU's architecture and fails when `cuobjdump` finds no code for it; the check was run against the first module and failed. The
+  times did not move, 0.2195 ms for the 33-value dot product either way.
+- *The binding passed vectors as Python lists,* and building a list of 4,096 complex numbers cost more than the GPU's mask. NumPy
+  arrays took the mask from 0.383 to 0.115 ms and the medium linear half from 24.9 to 13.2 ms.
+- *A run that selected `heongpu-gpu` encrypted its inference on the GPU and timed its benchmark row on TenSEAL.* `_hybrid_bench_row`
+  mapped every other name to TenSEAL, a fallback written while HEonGPU had no binding. It takes HEonGPU now and raises on a name it
+  has no backend for. `tests/test_r86_heongpu_backend.py` runs the dense and the CNN pipeline with HEonGPU selected, and fails with
+  the old mapping put back.
+- *OpenFHE's time was put down to the wrong cause.* Its 33-value dot product read 594 ms, first taken for the effect of other load; an
+  idle machine read 577. The thread count moved it: 81 to 577 ms at OpenMP's default of 20, 41 to 54 at 6. The benchmark script now
+  records the count, and the table is at 6.
+
+**Also.** The availability probe built a GPU context and its keys for every registry, and every pipeline builds one; it runs once per
+process now. Every file that called HEonGPU a "build-gated reference adapter", the Overview page among them, says what runs.
+`DATA_LICENSES.md` names what the module links (NTL statically, LGPL-2.1-or-later; GMP dynamically) and that nothing distributes it,
+and corrects two of its own statements: that both submodule pins were their upstream heads (hpmpc's is one commit behind, a deleted log
+file), and that `.dockerignore` excluded the module's build tree, which it did not until now. Its rule against recursive submodule
+initialisation keeps its reason and gains the exception HEonGPU's build needs, inside its own directory only. The hybrid table's CPU
+rows, measured on 2026-10-27 before every slot was masked, were measured again with the GPU rows on one day.

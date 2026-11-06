@@ -37,8 +37,8 @@ via the benchmark panel on each use-case simulator page).
 ### Faithful hybrid: linear -> FHE, non-linear -> MPC
 
 The classical path is an **MPC-FHE hybrid**, not CKKS-only. **Linear layers**
-(matmul / conv) run **under CKKS/FHE** (TenSEAL or OpenFHE on CPU; HEonGPU is a build-gated reference
-adapter with no Python API and no measured run here),
+(matmul / conv) run **under CKKS/FHE** (TenSEAL or OpenFHE on the CPU, or HEonGPU on the GPU where
+`scripts/build_heongpu.sh` has built it),
 while **non-linear layers** (ReLU, argmax) run **under secret-sharing MPC** - Shamir secure
 comparison via **MPyC** among three parties, each its own process over loopback TCP
 (`src/qsh/mpc/parties.py`), with a **masked** CKKS <-> shares conversion at each boundary: the server
@@ -98,23 +98,33 @@ architectures - a "tabular fraud MLP" at 18/850/9,538 parameters against a real 
 path runs end to end for real**
 (CKKS-FHE linear + MPyC-MPC non-linear); **large is clearly labelled *projected*** - extrapolated from the
 measured medium per-op cost (MAC / comparison counts) so the page stays responsive. Results on the
-Blackwell box (TenSEAL CPU + MPyC, `linear` workload), measured 2026-10-27 with the MPyC tier as three
-parties and masked conversions:
+development machine (`linear` workload, 6 samples), measured 2026-11-06 with the MPyC tier as three
+parties and every slot masked, by `OMP_NUM_THREADS=6 python -m qsh.benchmark.runner --model-size <size>
+--no-openfhe`. The rows are in `docs/measurements/hybrid-2026-11-06-*.json` and the machine is in
+`fhe-backends-2026-11-06.json` beside them; the QSMPC-FHE row is the browser's, as its label says:
 
 | Path | Backend | Size | Latency/inf | FHE-linear | MPC-non-linear | MPC comm | Acc | ct/pt | Security model |
 |------|---------|------|-------------|-----------|----------------|----------|-----|-------|----------------|
-| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | lightweight | ~41 ms | ~38 ms | ~3 ms | ~15 KB | 1.0 | ~1393x | computational (RLWE) |
-| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~267 ms | ~223 ms | ~43 ms | ~252 KB | 1.0 | ~1393x | computational (RLWE) |
-| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~2006 ms | ~1759 ms | ~247 ms | ~1438 KB | 1.0 | - | computational (RLWE) |
-| MPC-FHE | HEonGPU CKKS (GPU sm_120) + MPyC | medium | not run | - | - | - | - | - | computational (RLWE) |
+| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | lightweight | ~49 ms | ~44 ms | ~4 ms | ~15 KB | 1.0 | ~1393x | computational (RLWE) |
+| MPC-FHE | HEonGPU CKKS (GPU) + MPyC (CPU) | lightweight | ~6.5 ms | ~2.3 ms | ~4 ms | ~15 KB | 1.0 | - | computational (RLWE) |
+| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | medium | ~297 ms | ~258 ms | ~39 ms | ~252 KB | 1.0 | ~1393x | computational (RLWE) |
+| MPC-FHE | HEonGPU CKKS (GPU) + MPyC (CPU) | medium | ~52 ms | ~13 ms | ~39 ms | ~252 KB | 1.0 | - | computational (RLWE) |
+| MPC-FHE | TenSEAL CKKS + MPyC (CPU) | large \* | ~2263 ms | ~2036 ms | ~226 ms | ~1438 KB | 1.0 | - | computational (RLWE) |
 | QSMPC-FHE | QOTP + an untrained Clifford+T circuit (the browser's comparison circuit, not a trained QCNN) | - | ~3 ms | Clifford | T-gates x56 at 8 qubits | n/a | n/a | - (see note) | information-theoretic as a scheme (QOTP); not this run (seeded pad) |
 
-**What the MPC columns measure.** The HEonGPU row is not run: `HeongpuBackend` is a build-gated
-reference adapter that raises, because HEonGPU exposes no Python API. The non-linear layers run under MPyC as three
+**The GPU rows** run the same hybrid with its linear half in HEonGPU v2.1.1 on the GPU, through this
+project's binding: 19.5 times faster than TenSEAL at both sizes (258 to 13.2 ms at medium), and the
+whole inference 5.7 times at medium and 7.6 at lightweight. The MPC half is the same MPyC on the CPU,
+so it is now three quarters of a GPU row's latency, 39 of 52 ms at medium. A GPU row's ct/pt is not
+read: the binding returns no serialised ciphertext, and a size in GPU memory would match neither
+kind of bytes [the ct/pt section](#what-ctpt-measures) counts. The operations themselves are timed
+under [CKKS on each backend, measured](#ckks-on-each-backend-measured).
+
+**What the MPC columns measure.** The non-linear layers run under MPyC as three
 parties, each its own process, over loopback TCP: Shamir threshold t = 1, statistical security 40,
 64-bit fixed point. "MPC comm" is the bytes the three parties sent, about 15,120 per secure comparison
 and the same on every run. "MPC-non-linear" is the protocol's time on the parties' own clocks, about
-2.2 ms per comparison here. Each MPC session also spends about 0.25 s starting its processes, which
+2.3 ms per comparison here. Each MPC session also spends 0.16 to 0.20 s starting its processes, which
 parties standing between requests would not, so that time is left out of the latency and reported as
 `mpc_session_overhead_ms`. Loopback has no network delay, so a LAN or WAN adds a round trip per
 communication round. Each row's `view_statistical_distance_max` bounds what the key holder's whole
@@ -128,8 +138,8 @@ latency recorded before Round 84 is lower than a run gives now.
 The ct/pt column, and the dash in its QSMPC-FHE cell, are explained under
 [What ct/pt measures](#what-ctpt-measures) below.
 
-\* **projected** from measured medium per-op cost, not run end-to-end. No GPU FHE figure is measured in
-this repository. What the hybrid shows is *where* the classical cost goes
+\* **projected** from measured medium per-op cost, not run end-to-end, and for the CPU row only. What
+the hybrid shows is *where* the classical cost goes
 (FHE dominates the linear layers; MPC adds the non-linear secure comparisons + a few KB of
 communication).
 
@@ -352,3 +362,72 @@ satellite, ground station or quantum channel is involved.
   whole-pass key is within a factor of 2.5 of the published key under Hoeffding, and 1.35 to 2.62
   times it under the default; Jinan-1 computes its keys on 500-kbit blocks inside a pass, which a
   whole-pass key is not held to.
+
+## State-vector simulators, measured
+
+Where a GPU simulator overtakes the CPU for the circuits the Python tiers run: four layers of $`R_Y`$ on every wire and a CNOT chain, with
+$`\langle Z_0\rangle`$ read out, which forces the simulation to finish before the clock stops. Median of 7 runs after a first one, in
+milliseconds, measured 2026-11-06 on this project's machine (RTX PRO 6000 Blackwell, driver 620.70.06, kernel 5.14.0-687.65.1,
+Python 3.12.15) by `scripts/bench_quantum_devices.py`. The raw results and package versions are in `docs/measurements/`. A local measurement,
+not something the demo does: the browser simulates its circuits in TypeScript.
+
+| qubits | `default.qubit` | `lightning.qubit` | `lightning.gpu` | Qiskit Aer GPU | CUDA-Q `nvidia` (fp32) | CUDA-Q `nvidia-fp64` |
+|---|---|---|---|---|---|---|
+| 8 | 2.55 | 9.62 | 1.67 | 1.07 | 0.56 | 0.46 |
+| 16 | 19.58 | 7.66 | 3.10 | 2.54 | 1.33 | 1.00 |
+| 20 | 979.04 | 71.73 | 4.89 | 5.16 | 1.54 | 1.64 |
+| 24 | - | 2,551.57 | 53.77 | 47.26 | 2.03 | 29.77 |
+| 28 | - | - | 985.81 | 824.81 | 57.67 | 564.74 |
+| 30 | - | - | 4,212.17 | 3,535.66 | 234.90 | 2,423.21 |
+
+Every backend gives the same $`\langle Z_0\rangle`$ to $`5.5\times10^{-7}`$, the widest being single precision. What it shows:
+
+- **At the sizes the shipped circuits use, 4 to 9 wires, the choice does not matter.** Every backend answers in a few milliseconds, so
+  `quantum_sim.device` stays `default.qubit`, which runs everywhere and trains the hybrid network by backpropagation.
+- **The GPU pays from about 18 qubits**, where `default.qubit` takes 77 ms against 3.6 ms on `lightning.gpu`, and at 20 qubits it is 200
+  times faster. `qsh.quantum_device` lets a larger experiment use it without editing a module.
+- **CUDA-Q in single precision is about 10 times faster than in double from 22 qubits up**, more than halving the memory traffic alone
+  explains. The cause is not established here.
+- **Qiskit Aer GPU 0.18.2 runs on this Blackwell GPU.** The earlier records said its wheels did not target `sm_120` and that it had no
+  release since 2024; 0.18.2 was released on 2026-10-26, built on the CUDA 12 runtime, and ran these circuits.
+
+CUDA-Q's `qpp-cpu` target is left out. On this hybrid CPU it took anywhere from 1 ms to 1 s for the same small register, depending on
+OpenMP's thread count and wait policy and on other load, and nothing here uses it.
+
+
+## CKKS on each backend, measured
+
+The operations the hybrid's linear half is made of, on each backend, with the same inputs and a check that each answer matches
+plaintext before its time is kept. Median of 20 runs after a first one, in milliseconds, measured 2026-11-06 on this project's
+machine (RTX PRO 6000 Blackwell, driver 620.70.06, CUDA 13.5; Core i5-13600K) by
+`OMP_NUM_THREADS=6 python scripts/bench_fhe_backends.py`, whose record is `docs/measurements/fhe-backends-2026-11-06.json`.
+TenSEAL 0.3.16 and HEonGPU v2.1.1 run the configured parameters ($`N = 8192`$, moduli (60, 40, 40, 60), scale $`2^{40}`$,
+128-bit security). OpenFHE 1.5.1 runs its own (depth 4, scale $`2^{50}`$, ring dimension 16384, 128 slots), so its column is
+not the same computation. A GPU time includes a synchronisation before the clock stops: GPU work is asynchronous, and without
+one a timer reads the launch.
+
+| operation | TenSEAL (CPU) | OpenFHE (CPU, own parameters) | HEonGPU (GPU) | HEonGPU against TenSEAL |
+|---|---|---|---|---|
+| dot product, 33 values | 5.79 | 41.63 | 0.216 | 27x |
+| dot product, 256 values | 7.45 | not run: 128 slots | 0.272 | 27x |
+| encrypt 33 values | 2.53 | 5.30 | 0.105 | 24x |
+| plaintext multiply | 0.84 | 1.56 | 0.040 | 21x |
+| ciphertext add | 0.032 | 0.156 | 0.0073 | 4.4x |
+| decrypt | 0.43 | 2.85 | 0.049 | 8.8x |
+| mask every slot (a fresh encryption, added) | 2.13 | 6.37 | 0.115 | 19x |
+
+- **The GPU is 19 to 27 times faster on the operations with arithmetic in them**, and 19.5 times on the hybrid's whole linear
+  half (above). An addition is too small to gain much.
+- **These became the GPU's figures after three fixes**, each found by measuring:
+  - *The module carried no code for this GPU.* Built inside the binding's CMake project, HEonGPU took nvcc's default architecture,
+    Turing's `sm_75`, and the driver recompiled its PTX for `sm_120` at load. `scripts/build_heongpu.sh` now builds for the GPU's
+    own architecture and fails if the module carries no code for it. The times hardly moved, 0.2195 ms for the 33-value dot
+    product either way, because at $`N = 8192`$ each operation is a few short kernels.
+  - *The binding passed vectors as Python lists,* and building a list of 4,096 complex numbers took longer than the GPU took to
+    mask them. With NumPy arrays, decrypt went from 0.169 to 0.049 ms, the mask from 0.383 to 0.115, and the hybrid's medium
+    linear half from 24.9 to 13.2 ms.
+  - *OpenFHE's column depends on OpenMP's thread count.* At OpenMP's default here, one thread per hardware thread (20 on this
+    6 P-core, 8 E-core CPU), the 33-value dot product ranged from 81 to 577 ms as other processes came and went, because a
+    parallel loop waits for its slowest thread. At 6 threads it held at 41 to 54 ms, and the table is at 6.
+- **A GPU is not where this project's inference runs.** The demo's pages encrypt in the visitor's browser (node-seal), and the
+  full deployment's image has no GPU code. This is the full deployment's hybrid on a machine that has one.

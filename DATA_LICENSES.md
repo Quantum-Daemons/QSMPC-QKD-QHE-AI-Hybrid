@@ -409,25 +409,35 @@ that build clean. CC0 is the one licence class under which vendoring needs no fu
 
 ### 6a. Git submodules
 
-Two upstream projects are vendored as submodules rather than installed from a package index, both for
-the GPU MPC-FHE benchmark path, and neither appeared in this document until Round 22 audited them. A
-submodule is a dependency whose licence and maintenance status travel with the repository, so it
-belongs here with the rest. This is the one table of them; `docs/development.md` links here.
+Two upstream projects are vendored as submodules rather than installed from a package index, and
+neither appeared in this document until Round 22 audited them. HEonGPU builds the GPU CKKS backend
+(Round 86); hpmpc is vendored for a GPU MPC run not yet made. A submodule is a dependency whose
+licence and maintenance status travel with the repository, so it belongs here with the rest. This is
+the one table of them; `docs/development.md` links here.
 
 | Submodule | Upstream | Used for | Licence | Commercial use | Pinned commit | Upstream default branch | Last push |
 |---|---|---|---|---|---|---|---|
-| `submodules/HEonGPU` | enCRYPTON-labs/HEonGPU (moved from Alisah-Ozcan/HEonGPU) | GPU CKKS for the MPC-FHE benchmark | Apache-2.0 | yes | `1928a14bb002` | v2.1.1, `837ffc8`, 156 commits past the pin (read 2026-11-03) | 2026-11-02 |
-| `submodules/hpmpc` | chart21/hpmpc (PIGEON) | secret-sharing MPC for the same benchmark; its GPU acceleration covers matrix multiplication and convolution | MIT | yes | `155c93572d74` | `a6a4a6a`, 2026-10-23 | 2026-10-23 |
+| `submodules/HEonGPU` | enCRYPTON-labs/HEonGPU (moved from Alisah-Ozcan/HEonGPU) | the GPU CKKS backend, through `native/heongpu_py` | Apache-2.0 | yes | `837ffc87aa26` (v2.1.1) | `837ffc8`, the pin (read 2026-11-06) | 2026-11-02 |
+| `submodules/hpmpc` | chart21/hpmpc (PIGEON) | secret-sharing MPC on the GPU, not run yet; its GPU acceleration covers matrix multiplication and convolution | MIT | yes | `155c93572d74` | `a6a4a6a`, 2026-10-23, one commit past the pin | 2026-10-23 |
 
-Both are permissive and commercial-OK, neither is archived, and **both pins are the current head of
-their upstream default branch** - checked against the GitHub API rather than assumed, since a
-submodule silently falling years behind is the failure mode this table exists to catch.
+Both are permissive and commercial-OK and neither is archived, read from the GitHub API rather than
+assumed, since a submodule silently falling years behind is the failure mode this table exists to
+catch. **HEonGPU's pin is its upstream head**; Round 86 moved it from `1928a14bb002`, 156 commits
+behind, to v2.1.1, the release its CMake and the binding are written against. **hpmpc's is one commit
+behind**: `a6a4a6a` removes a 47,035-line `log.txt` that carried local build paths and changes no
+code. Until Round 86 this paragraph said both pins were their upstream heads, which had stopped
+being true of both. Re-check both on each round; the condition to act on is an archived upstream, a
+licence change, or a default branch that has not moved in a year.
 
-One nuance worth recording rather than smoothing: hpmpc's default branch has not moved since
-2026-03-02, while the repository's last push is 2026-07-25. The activity is on other branches or
-tags, so "actively maintained" and "the branch we track is moving" are different statements and only
-the first is true here. Re-check both on each round; the condition to act on is an archived upstream,
-a licence change, or a default branch that has not moved in a year.
+**What the HEonGPU build links, and what is distributed.** `scripts/build_heongpu.sh` builds a
+Python module from the submodule, its own three submodules (`thirdparty/GPU-FFT`, `GPU-NTT` and
+`RNGonGPU`, and `GPU-NTT` again inside `RNGonGPU`, all `Alisah-Ozcan` repositories under
+Apache-2.0), RAPIDS RMM v26.08.00 and the CCCL and NVTX it pins (fetched by HEonGPU's CMake,
+Apache-2.0), NTL 11.5.1 (LGPL-2.1-or-later, downloaded by the script and checked against a SHA-256,
+then linked statically), and the system GMP (LGPL-3.0-or-later or GPL-2.0-or-later, linked
+dynamically). The LGPL's conditions attach to conveying the module, and this repository conveys
+only the binding's source and the build script: the module stays in `native/heongpu_py/build/`,
+which `.gitignore` and `.dockerignore` exclude, and no image or release carries it.
 
 **The hazard is one level down, and it is an ABSENT licence rather than a restrictive one** (checked
 2026-08-10). `hpmpc` declares two submodules of its own:
@@ -447,8 +457,11 @@ and this project's rule is commercial-OK-only. Recorded because the failure mode
 rather than a decision, and because absent licences do not appear in any scanner: an automated
 licence check looks for a restrictive SPDX identifier and finds nothing, which reads as clean.
 
-**Do not initialise submodules recursively in this repository.** `--init` without `--recursive` is
-sufficient for both direct submodules, and neither builds anything that needs the nested pair.
+**Do not initialise submodules recursively from this repository's root.** `--init` without
+`--recursive` is sufficient for hpmpc, and nothing here builds anything that needs its nested pair.
+HEonGPU is the exception, because it does not build without its own submodules:
+`scripts/build_heongpu.sh` runs `--init --recursive` inside `submodules/HEonGPU` only, where every
+nested repository is Apache-2.0, and never at the root, where it would also fetch `nn/Pygeon`.
 
 ## 7. Rejected as NOT commercial-OK
 
