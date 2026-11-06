@@ -8443,3 +8443,18 @@ it did. `distil.save_student` writes the same block for any pipeline student it 
 Not retrained: the rules forbid retraining a shipped model for a better seed, the student already tracks its teacher (AUC-PR 0.968055 against 0.968107),
 and the same run would reproduce it. Published as revision `b1c32f6`, re-pinned; the ONNX graph is byte-identical to the previous revision's
 (SHA-256 `008ce438...`), and the card and weights on the Hub match the files here.
+
+### The Python tiers' circuits run on one configured simulator, and the GPU ones were measured
+
+By the owner's choice of the whole GPU path. Four modules wrote `qml.device("default.qubit", ...)`, so the GPU simulators the full deployment can install had no way in.
+`quantum_sim.device` now chooses, through `qsh.quantum_device`, and stays `default.qubit`: at the 4 to 9 wires the shipped circuits use, every backend answers in a few
+milliseconds (`docs/models-and-benchmarks.md`). A simulator PennyLane cannot load is an error naming the setting, not a quiet return to the default.
+`tests/test_r86_quantum_device.py` holds the QCNN and the hybrid network to the same outputs on `lightning.qubit` and, where it is installed, `lightning.gpu`, which
+it is on this machine now.
+
+**What the measurement corrected.** Qiskit Aer GPU was recorded as unable to target Blackwell `sm_120` and unreleased since 2024. Version 0.18.2, released
+2026-10-26, ran a 28-qubit state vector on this GPU in 825 ms, so four files stop saying so. CUDA-Q 0.16.0.post1 and `cuquantum-python-cu13` 26.9.0 want different
+`custatevec-cu13` releases, so they cannot share an environment, which `requirements-gpu.txt` now says.
+
+**And one silent fallback.** A `config.yaml` that did not parse was replaced by the defaults without a word, so a run reported the defaults' results under a file that
+said something else. It is an error now.

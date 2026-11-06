@@ -26,6 +26,7 @@ import numpy as np
 from sklearn.metrics import f1_score
 from sklearn.model_selection import train_test_split
 
+from ..quantum_device import make_device
 from .attacks import binary_labels, generate
 
 
@@ -79,7 +80,7 @@ class QuantumIDS:
         self.n_qubits = n_qubits
         self.pca = PCA(n_components=n_qubits, random_state=seed)
         self.scaler = MinMaxScaler((0, np.pi))
-        self.dev = qml.device("default.qubit", wires=n_qubits)
+        self.dev = make_device(n_qubits)
         shape = qml.StronglyEntanglingLayers.shape(n_layers, n_qubits)
         rng = np.random.default_rng(seed)
         self.weights = rng.normal(0, 0.2, shape)
@@ -147,7 +148,7 @@ class QuantumKernelIDS:
         self.n_qubits = n_qubits
         self.pca = PCA(n_components=n_qubits, random_state=seed)
         self.scaler = MinMaxScaler((0, np.pi))
-        self.dev = qml.device("default.qubit", wires=n_qubits)
+        self.dev = make_device(n_qubits)
 
         @qml.qnode(self.dev)
         def kernel_circuit(x1, x2):                        # fidelity kernel: embed x1, un-embed x2

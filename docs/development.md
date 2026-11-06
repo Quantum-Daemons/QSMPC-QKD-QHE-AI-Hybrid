@@ -32,8 +32,8 @@ uvicorn api.main:app --port 8000      # backend
 cd web && npm install && npm run dev    # SPA at http://localhost:5173
 ```
 
-GPU quantum simulation (Blackwell): see **Dev environment** below - use CUDA-Q /
-PennyLane `lightning.gpu`, **not** `qiskit-aer-gpu`.
+GPU quantum simulation (Blackwell): see **Dev environment** below. CUDA-Q, PennyLane `lightning.gpu` and
+Qiskit Aer GPU 0.18.2 all run on it; `quantum_sim.device` chooses the Python tiers' simulator.
 
 ---
 
@@ -49,10 +49,14 @@ checking that `get_arch_list()` contains the device's `sm_120`, rather than by t
 string here.
 
 ### NOTE GPU quantum simulation on Blackwell
-`qiskit-aer-gpu` (cu11/cu12 wheels) **does not support Blackwell `sm_120`**. Use:
-- **CUDA-Q** (`cudaq`) and/or **PennyLane `lightning.gpu`** (wraps cuQuantum cuStateVec, SM 7.0+).
-- **Qiskit / Qiskit-Aer (CPU)** for circuit authoring and small simulations (used here).
-- See [`requirements-gpu.txt`](../requirements-gpu.txt).
+Measured on this machine on 2026-11-06 ([State-vector simulators, measured](models-and-benchmarks.md#state-vector-simulators-measured)):
+- **CUDA-Q** (`cuda-quantum-cu13` 0.16.0.post1) and **PennyLane `lightning.gpu`** 0.45.0 (cuQuantum cuStateVec, on its bundled CUDA 12
+  runtime) both run on `sm_120`, and so does **Qiskit Aer GPU** 0.18.2 (2026-10-26, CUDA 12 runtime). Earlier records said Aer's wheels did
+  not target `sm_120` and that it had not been released since 2024; both were true of what was available then.
+- `quantum_sim.device` (`qsh.quantum_device`) chooses the Python tiers' simulator: `default.qubit` by default, `lightning.gpu` for a large
+  experiment. `tests/test_r86_quantum_device.py` holds every simulator to the same outputs.
+- CUDA-Q 0.16.0.post1 needs `custatevec-cu13` 1.14 and `cuquantum-python-cu13` 26.9.0 needs 1.15 or later, so the two cannot share one
+  environment. See [`requirements-gpu.txt`](../requirements-gpu.txt).
 
 ### FHE backends (commercial-OK only)
 - **TenSEAL** (Apache-2.0, CPU CKKS via Microsoft SEAL) - the always-available default (`TenSEALBackend`).

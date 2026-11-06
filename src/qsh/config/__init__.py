@@ -57,14 +57,16 @@ def load_config(path: str | Path | None = None) -> QSHConfig:
         default_path = Path(__file__).resolve().parents[3] / "config.yaml"
         candidate = default_path if default_path.exists() else None
     if candidate and Path(candidate).exists():
-        try:
-            import yaml
+        import yaml
 
-            with open(candidate) as f:
+        # A config file that does not parse is an error (Round 86). It fell back to the defaults in silence, so a run
+        # reported the defaults' results under a file that said something else.
+        with open(candidate) as f:
+            try:
                 data = yaml.safe_load(f) or {}
-            _overlay(cfg, data)
-        except Exception:
-            pass  # malformed config => fall back to defaults
+            except yaml.YAMLError as e:
+                raise ValueError(f"{candidate} is not valid YAML: {e}") from e
+        _overlay(cfg, data)
     return cfg
 
 

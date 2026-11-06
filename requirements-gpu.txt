@@ -1,4 +1,5 @@
-# GPU quantum simulation for NVIDIA RTX PRO 6000 Blackwell (sm_120) + CUDA 13.0.
+# GPU quantum simulation for NVIDIA RTX PRO 6000 Blackwell (sm_120), driver 620.70.06. Versions re-read 2026-11-06,
+# when CUDA-Q, lightning.gpu and Qiskit Aer GPU each ran here (docs/models-and-benchmarks.md, "State-vector simulators, measured").
 #
 # Re-surveyed 2026-08-11 against PyPI and each project's own repository. Two entries below used to
 # say "when available"; both are now available and the versions are written down. One is still not,
@@ -12,14 +13,15 @@
 # accelerator, and nothing in the published demo depends on it.
 #
 # CUDA-Q (NVIDIA) — Apache-2.0. cu13 wheel exists as of 2026-08-03:
-# cuda-quantum-cu13>=0.15.1     # requires custatevec-cu13~=1.13.1, nvidia-cublas~=13.0
+# cuda-quantum-cu13==0.16.0.post1 # measured here 2026-11-06; requires custatevec-cu13~=1.14.0, cutensornet-cu13~=2.13.0
 #
 # cuQuantum runtime — NVIDIA Proprietary (see warning above). cu13 build shipped 2026-06-29:
-# custatevec-cu13>=1.14.0
-# cuquantum-python-cu13>=26.6.0 # BSD-3-Clause bindings; requires cupy-cuda13x, cuda-bindings>=13.0.3
+# custatevec-cu13~=1.14.0       # what CUDA-Q 0.16.0.post1 accepts. 1.15.0 exists (2026-09-11) but CUDA-Q rejects it
+# cuquantum-python-cu13          # BSD-3-Clause bindings. 26.9.0 requires custatevec-cu13>=1.15.0, so it cannot share an
+#                                 environment with CUDA-Q 0.16.0.post1: install it in its own if it is needed
 #
 # PennyLane Lightning GPU (wraps cuQuantum cuStateVec) — Apache-2.0:
-# pennylane-lightning-gpu>=0.45.0
+# pennylane-lightning-gpu==0.45.0  # set quantum_sim.device to "lightning.gpu" to use it (qsh.quantum_device)
 #   NOT a CUDA 13 stack. 0.45.0 (2026-05-12) still declares custatevec-cu12,
 #   nvidia-cuda-runtime-cu12, nvidia-cublas-cu12, nvidia-cusparse-cu12, nvidia-nvjitlink-cu12.
 #   It runs on a CUDA 13 DRIVER via its bundled cu12 runtime, which is a different claim. The
@@ -36,8 +38,8 @@
 #                           from 2022-12-08. Has no CUDA path of its own; it inherits PyTorch's.
 #   TensorFHE               No OSS repository exists. A GitHub name search returns zero results;
 #                           it is a paper, so there is nothing to pin.
-#   qiskit-aer-gpu          No release since 2024-09-13. That is a stronger reason to avoid it than
-#                           the sm_120 gap noted in requirements-core.txt, and it is the one to give.
+#   qiskit-aer-gpu          Withdrawn from this list on 2026-11-06: 0.18.2 (2026-10-26, CUDA 12 runtime) ran a
+#                           28-qubit state vector on this sm_120 GPU (docs/models-and-benchmarks.md).
 #   Zama concrete-python    2.11.0 (2025-07-03) and concrete-ml 1.9.0 (2025-04-05) both fail the
 #     / concrete-ml         one-year activity test (docs/development.md), and the GPU wheel is CUDA 11.8 from a private
 #                           index with no CUDA 13 statement. Nothing here pins Zama, correctly.

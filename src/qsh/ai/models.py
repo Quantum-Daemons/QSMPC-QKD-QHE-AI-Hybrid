@@ -11,6 +11,8 @@ from __future__ import annotations
 import torch
 import torch.nn as nn
 
+from ..quantum_device import gradient_method, make_device
+
 
 class SquareActivation(nn.Module):
     """x -> x^2  (degree-2 polynomial; cheap under CKKS)."""
@@ -123,9 +125,9 @@ class HybridQNN(nn.Module):
         import pennylane as qml
 
         self.n_qubits = n_qubits
-        dev = qml.device("default.qubit", wires=n_qubits)
+        dev = make_device(n_qubits)
 
-        @qml.qnode(dev, interface="torch", diff_method="backprop")
+        @qml.qnode(dev, interface="torch", diff_method=gradient_method())
         def circuit(inputs, weights):
             qml.AngleEmbedding(inputs, wires=range(n_qubits))
             qml.StronglyEntanglingLayers(weights, wires=range(n_qubits))

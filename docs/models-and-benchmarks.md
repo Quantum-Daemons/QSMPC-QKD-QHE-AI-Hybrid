@@ -352,3 +352,35 @@ satellite, ground station or quantum channel is involved.
   whole-pass key is within a factor of 2.5 of the published key under Hoeffding, and 1.35 to 2.62
   times it under the default; Jinan-1 computes its keys on 500-kbit blocks inside a pass, which a
   whole-pass key is not held to.
+
+## State-vector simulators, measured
+
+Where a GPU simulator overtakes the CPU for the circuits the Python tiers run: four layers of $`R_Y`$ on every wire and a CNOT chain, with
+$`\langle Z_0\rangle`$ read out, which forces the simulation to finish before the clock stops. Median of 7 runs after a first one, in
+milliseconds, measured 2026-11-06 on this project's machine (RTX PRO 6000 Blackwell, driver 620.70.06, kernel 5.14.0-687.65.1,
+Python 3.12.15) by `scripts/bench_quantum_devices.py`. The raw results and package versions are in `docs/measurements/`. A local measurement,
+not something the demo does: the browser simulates its circuits in TypeScript.
+
+| qubits | `default.qubit` | `lightning.qubit` | `lightning.gpu` | Qiskit Aer GPU | CUDA-Q `nvidia` (fp32) | CUDA-Q `nvidia-fp64` |
+|---|---|---|---|---|---|---|
+| 8 | 2.55 | 9.62 | 1.67 | 1.07 | 0.56 | 0.46 |
+| 16 | 19.58 | 7.66 | 3.10 | 2.54 | 1.33 | 1.00 |
+| 20 | 979.04 | 71.73 | 4.89 | 5.16 | 1.54 | 1.64 |
+| 24 | - | 2,551.57 | 53.77 | 47.26 | 2.03 | 29.77 |
+| 28 | - | - | 985.81 | 824.81 | 57.67 | 564.74 |
+| 30 | - | - | 4,212.17 | 3,535.66 | 234.90 | 2,423.21 |
+
+Every backend gives the same $`\langle Z_0\rangle`$ to $`5.5\times10^{-7}`$, the widest being single precision. What it shows:
+
+- **At the sizes the shipped circuits use, 4 to 9 wires, the choice does not matter.** Every backend answers in a few milliseconds, so
+  `quantum_sim.device` stays `default.qubit`, which runs everywhere and trains the hybrid network by backpropagation.
+- **The GPU pays from about 18 qubits**, where `default.qubit` takes 77 ms against 3.6 ms on `lightning.gpu`, and at 20 qubits it is 200
+  times faster. `qsh.quantum_device` lets a larger experiment use it without editing a module.
+- **CUDA-Q in single precision is about 10 times faster than in double from 22 qubits up**, more than halving the memory traffic alone
+  explains. The cause is not established here.
+- **Qiskit Aer GPU 0.18.2 runs on this Blackwell GPU.** The earlier records said its wheels did not target `sm_120` and that it had no
+  release since 2024; 0.18.2 was released on 2026-10-26, built on the CUDA 12 runtime, and ran these circuits.
+
+CUDA-Q's `qpp-cpu` target is left out. On this hybrid CPU it took anywhere from 1 ms to 1 s for the same small register, depending on
+OpenMP's thread count and wait policy and on other load, and nothing here uses it.
+
