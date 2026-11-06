@@ -167,32 +167,32 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   // framing is "architecture comparison, not a performance claim" published every input to the
   // comparison and not its result.
   //
-  // DERIVED from the macro F1 values in this table rather than read from the flag, so a reader can
-  // check the verdict against the two numbers it rests on. That is the whole value of the row.
+  // DERIVED from the numbers the row prints rather than read from the flag, so a reader can check the
+  // verdict against what it rests on. That is the whole value of the row.
   //
-  // It is NOT an independent cross-check of the stored flag, and an earlier version of this comment
-  // said it was. `scripts/train/telecom_ids.py` writes the flag as
-  // `max(qnn.macro_f1, qsvc.macro_f1) > rf_metrics["macro_f1"]` and writes those same three values
-  // into the same record in the same call - byte-for-byte the computation below. So agreement
-  // between them is true by construction and is evidence of nothing. The disagreement branch is
-  // kept because a hand-edited or externally-produced `metrics.json` can still reach it, but it is
-  // not a guard against the staleness the old comment claimed, and calling it one made a decoration
-  // read as a check.
+  // It is NOT an independent cross-check of the stored flag. `scripts/train/telecom_ids.py` writes the
+  // flag from the same like-for-like numbers it records (and the measurement script writes both
+  // together), so agreement is true by construction. The disagreement branch is kept because a
+  // hand-edited or externally-produced `metrics.json` can still reach it.
   //
-  // Macro F1 specifically, because that is this use case's declared headline; comparing on accuracy
-  // or binary F1 would compare on exactly the aggregates the panel marks as companions.
-  const num = (k: string) => (typeof rec[k] === "number" ? (rec[k] as number) : null);
-  const classicalF1 = num("classical_rf_macro_f1");
-  const quantumF1s = Object.entries(rec)
-    .filter(([k, v]) => /^quantum_.*_macro_f1$/.test(k) && typeof v === "number")
-    .map(([, v]) => v as number);
+  // LIKE WITH LIKE since Round 86. The verdict compared the quantum models' macro F1 with the forest's
+  // `classical_rf_macro_f1`, and those are not one quantity: both quantum models are binary, so their macro
+  // F1 averages attack and normal, while the forest's averages eight classes, on a different draw. The
+  // record now carries `quantum_comparison_like_for_like` - the forest trained and scored on each quantum
+  // model's own split and labels - and the verdict is derived from that, split by split.
+  type Split = { quantum_macro_f1: number; forest_macro_f1: number; constant_attack_macro_f1?: number; test_rows?: number };
+  const lfl = rec.quantum_comparison_like_for_like as { qnn?: Split; qsvc?: Split } | undefined;
+  const splits = lfl
+    ? ([["the QNN", lfl.qnn], ["the kernel SVC", lfl.qsvc]] as [string, Split | undefined][])
+        .filter((x): x is [string, Split] => !!x[1] && typeof x[1].quantum_macro_f1 === "number"
+          && typeof x[1].forest_macro_f1 === "number")
+    : [];
   const recordedVerdict = typeof rec.quantum_beats_classical === "boolean"
     ? (rec.quantum_beats_classical as boolean) : null;
-  const verdict = classicalF1 != null && quantumF1s.length
+  const verdict = splits.length
     ? (() => {
-        const best = Math.max(...quantumF1s);
-        const derived = best > classicalF1;
-        return { best, classical: classicalF1, derived, recorded: recordedVerdict,
+        const derived = splits.some(([, sp]) => sp.quantum_macro_f1 > sp.forest_macro_f1);
+        return { splits, derived, recorded: recordedVerdict,
                  agrees: recordedVerdict == null || recordedVerdict === derived };
       })()
     : null;
@@ -329,11 +329,16 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
             <th scope="row"><code>quantum_beats_classical</code></th>
             <td className="num">{String(verdict.derived)}</td>
             <td className="muted small">
-              {verdict.derived
-                ? <>the best quantum macro F1 here ({fmt(verdict.best)}) is <strong>above</strong> the
-                  classical baseline ({fmt(verdict.classical)})</>
-                : <>the classical baseline ({fmt(verdict.classical)}) is <strong>ahead</strong> of the
-                  best quantum macro F1 here ({fmt(verdict.best)})</>}
+              On each quantum model&apos;s own split and binary labels, a forest trained the same way scores{" "}
+              {verdict.splits.map(([name, sp], i) => (
+                <span key={name}>{i ? "; and " : ""}<strong>{fmt(sp.forest_macro_f1)}</strong> against {name}&apos;s{" "}
+                  {fmt(sp.quantum_macro_f1)}{sp.test_rows ? ` on ${sp.test_rows} test rows` : ""}
+                  {typeof sp.constant_attack_macro_f1 === "number"
+                    && Math.abs(sp.constant_attack_macro_f1 - sp.quantum_macro_f1) < 5e-7
+                    ? <> - the score of predicting &quot;attack&quot; for every row</> : null}</span>
+              ))}. Binary macro F1 averages the attack and normal classes; the{" "}
+              <code>classical_rf_macro_f1</code> above averages all eight, on a different draw, and is
+              not the comparator.
               {verdict.recorded != null && !verdict.agrees ? (
                 <> — <strong>and this contradicts the stored</strong>{" "}
                 <code>quantum_beats_classical: {String(verdict.recorded)}</code>, which can only

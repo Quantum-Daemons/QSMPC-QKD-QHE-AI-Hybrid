@@ -74,9 +74,14 @@ def _block(mask: np.ndarray, y: np.ndarray, teacher: tuple, student: tuple) -> d
 
 def main() -> int:
     import onnxruntime as ort
+    from train.finance_aml import (
+        causal_account_features,
+        graph_features,
+        load_sorted,
+        temporal_windows,
+    )
 
     from qsh.models import metrics, registry
-    from train.finance_aml import causal_account_features, graph_features, load_sorted, temporal_windows
 
     onnx_path = REPO / registry.ARTIFACT_DIRS["finance_aml.gbm"] / "onnx" / "model.onnx"
     weights_path = REPO / registry.ARTIFACT_DIRS["finance_aml.student"] / "weights.json"
@@ -94,7 +99,7 @@ def main() -> int:
 
     sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
     out = dict(zip([o.name for o in sess.get_outputs()],
-                   sess.run(None, {sess.get_inputs()[0].name: x_te.astype(np.float32)})))
+                   sess.run(None, {sess.get_inputs()[0].name: x_te.astype(np.float32)}), strict=True))
     prob = np.asarray(out["probabilities"], dtype=np.float64)[:, 1]
     t_dec = (prob >= rec_t["decision_threshold"]).astype(int)
     f1_t = metrics.minority_class_f1(y, t_dec)

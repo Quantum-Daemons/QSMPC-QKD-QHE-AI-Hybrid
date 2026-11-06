@@ -1,0 +1,66 @@
+{
+ "measured": "2026-11-07",
+ "script": "scripts/measure_telecom_quantum_like_for_like.py",
+ "basis": "binary attack-against-normal macro F1, each quantum model against a forest trained and scored on that model's own split and labels",
+ "why": "the record compared the quantum models' binary macro F1 with the forest's 8-class macro F1, on different draws (`telecom_ids.py` called that 'the same 8-class problem')",
+ "test_fraction": 0.25,
+ "seed": 42,
+ "qnn_split": {
+  "n_per_class": 120,
+  "train_rows": 720,
+  "test_rows": 240,
+  "test_attack_rows": 210,
+  "test_normal_rows": 30,
+  "forest_trained_binary": {
+   "accuracy": 0.995833,
+   "macro_f1": 0.990338,
+   "attack_f1": 0.997625
+  },
+  "forest_trained_8_class_read_binary": {
+   "accuracy": 0.995833,
+   "macro_f1": 0.99061,
+   "attack_f1": 0.997613
+  },
+  "constant_attack": {
+   "accuracy": 0.875,
+   "macro_f1": 0.466667,
+   "attack_f1": 0.933333
+  },
+  "quantum": {
+   "model": "variational QNN",
+   "accuracy": 0.875,
+   "macro_f1": 0.466667,
+   "attack_f1": 0.933333,
+   "is_the_constant_attack_predictor": true
+  }
+ },
+ "qsvc_split": {
+  "n_per_class": 60,
+  "train_rows": 360,
+  "test_rows": 120,
+  "test_attack_rows": 105,
+  "test_normal_rows": 15,
+  "forest_trained_binary": {
+   "accuracy": 1.0,
+   "macro_f1": 1.0,
+   "attack_f1": 1.0
+  },
+  "forest_trained_8_class_read_binary": {
+   "accuracy": 1.0,
+   "macro_f1": 1.0,
+   "attack_f1": 1.0
+  },
+  "constant_attack": {
+   "accuracy": 0.875,
+   "macro_f1": 0.466667,
+   "attack_f1": 0.933333
+  },
+  "quantum": {
+   "model": "quantum-kernel SVC",
+   "accuracy": 0.908333,
+   "macro_f1": 0.831611,
+   "attack_f1": 0.945274
+  }
+ },
+ "quantum_beats_classical": false
+}

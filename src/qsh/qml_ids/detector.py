@@ -9,13 +9,14 @@ Both report accuracy, macro-F1, and the binary (attack vs normal) F1.
 
 WHICH NUMBER IS THE HEADLINE, because the choice flatters one detector. This docstring used to name
 a binary F1 of 0.93 as the criterion these detectors are tracked against, and call the quantum one
-their selling point. Measured on the shipped corpus, ``QuantumIDS`` scores
-binary F1 0.9333 - clearing that bar by 0.003 - while its MACRO F1 is 0.4667 against a RandomForest
-at 0.9866. An eight-class detector that collapses attack types into "something happened" can pass a
-binary threshold while being close to useless per class, and this project treats an aggregate that
-hides a broken class as a defect rather than a result. ``models/metrics.json`` records
-``quantum_beats_classical: false``; read macro-F1 as the headline and the binary figure as a
-threshold it happens to clear, not as evidence of a working multi-class detector.
+their selling point. Both quantum detectors are BINARY (attack against normal), so their macro F1
+averages two classes, and ``QuantumIDS`` predicts "attack" for every row: its accuracy 0.875, attack
+F1 0.9333 and macro F1 0.4667 are exactly the constant predictor's on its split (7/8, 14/15, 7/15).
+Until Round 86 this compared that macro F1 with the RandomForest's 0.9866, an 8-class macro F1 on a
+different draw. :func:`classical_on_quantum_split` gives the like-for-like number: the forest trained
+and scored on the quantum model's own split and labels, 0.9903 on the QNN's and 1.0 on the kernel
+SVC's (``docs/measurements/telecom-quantum-like-for-like-2026-11-07.json``). ``models/metrics.json``
+records ``quantum_beats_classical: false`` on that basis.
 """
 
 from __future__ import annotations
@@ -195,6 +196,42 @@ def evaluate_quantum_svc(n_per_class: int = 60, seed: int = 0,
     yb = binary_labels(yte)
     return IDSReport(ids.name, float((pred == yb).mean()),
                      float(f1_score(yb, pred, average="macro")), float(f1_score(yb, pred)), ids.n_params)
+
+
+def _binary_scores(y_true: np.ndarray, pred: np.ndarray) -> dict:
+    return {"accuracy": round(float((pred == y_true).mean()), 6),
+            "macro_f1": round(float(f1_score(y_true, pred, average="macro")), 6),
+            "attack_f1": round(float(f1_score(y_true, pred)), 6)}
+
+
+def classical_on_quantum_split(n_per_class: int, seed: int = 0,
+                               test_fraction: float | None = None) -> dict:
+    """What a quantum model's binary macro F1 is comparable with (Round 86).
+
+    Rebuilds the split :func:`evaluate_quantum` and :func:`evaluate_quantum_svc` build for ``n_per_class``
+    and ``seed``, and scores on its test rows, against the same binary labels: a RandomForest (200 trees,
+    ``seed``) trained on the binary labels, the same forest trained on the eight classes and read as
+    attack against normal, and the constant "attack" predictor. The recorded comparison used the
+    forest's 8-class macro F1 on a different draw, which is not the quantity the quantum models report.
+    """
+    from sklearn.ensemble import RandomForestClassifier
+
+    if test_fraction is None:
+        from ..config import get_config
+
+        test_fraction = get_config().ids.test_fraction
+    X, y, _ = generate(n_per_class, seed)
+    Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=test_fraction, random_state=seed, stratify=y)
+    ybtr, ybte = binary_labels(ytr), binary_labels(yte)
+    rf_bin = RandomForestClassifier(n_estimators=200, random_state=seed).fit(Xtr, ybtr)
+    rf_8 = RandomForestClassifier(n_estimators=200, random_state=seed).fit(Xtr, ytr)
+    return {
+        "n_per_class": n_per_class, "train_rows": int(len(ytr)), "test_rows": int(len(yte)),
+        "test_attack_rows": int(ybte.sum()), "test_normal_rows": int((ybte == 0).sum()),
+        "forest_trained_binary": _binary_scores(ybte, rf_bin.predict(Xte)),
+        "forest_trained_8_class_read_binary": _binary_scores(ybte, binary_labels(rf_8.predict(Xte))),
+        "constant_attack": _binary_scores(ybte, np.ones_like(ybte)),
+    }
 
 
 def evaluate_classical(n_per_class: int = 300, seed: int = 0,

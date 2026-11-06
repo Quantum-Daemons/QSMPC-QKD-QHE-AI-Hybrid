@@ -2787,7 +2787,10 @@ export function runClientPipeline(
         metric(stage, "ids_params", ids.nParams);
         // clientIDS clamps this to >=20 and falls back on a non-finite input, so the requested value
         // is not always the value used. Report what the run actually trained on.
-        metric(stage, "ids_train_per_class", ids.nPerClassUsed);
+        // `ids_generated_per_class` since Round 86 (was `ids_train_per_class`): the rows drawn per class, of
+        // which the held-out fraction is scored, not trained on; the rows trained on are reported beside it.
+        metric(stage, "ids_generated_per_class", ids.nPerClassUsed);
+        metric(stage, "ids_train_rows", ids.nPerClassUsed * ids.classesDefined - ids.nTest);
         // Telecom had NO attribution anywhere - browser or Python - despite being the one use case
         // whose whole point is classifying an attack. The classifier trained above is linear
         // (softmax over b[c] + W[c].z), so exact linear SHAP applies to it directly. clientIDS
@@ -2798,15 +2801,19 @@ export function runClientPipeline(
         if (ids.explain) {
           artifacts.explanation = linearShap(
             ids.explain.W, ids.explain.b, ids.explain.x, ids.explain.featureNames, 5);
+          // Not one-vs-rest (Round 86): `explainSample` sets the predicted class's weights against the MEAN of
+          // the other seven classes' weights, so the bars attribute that contrast, and the class is named.
           artifacts.explanation_provenance =
-            `in-browser IDS classifier, one-vs-rest for ${ids.explain.className}`;
+            `in-browser softmax IDS, its predicted class ${ids.explain.className} against the mean of the other `
+            + `${ids.classesDefined - 1} classes`;
           artifacts.explanation_baseline = "zero vector (features are z-scored, so E[x] = 0)";
           // Set ONCE, at the end of this case, from what actually surfaced - see the assignment
           // after the QCNN branch. Written here first as an unconditional `true`, which was correct
           // for the softmax and for the encrypted tier and wrong the moment the QCNN branch below
           // replaced the surfaced class without touching it.
         }
-        emit("log", stage, `QML-IDS (client, softmax logistic regression on this project's synthetic `
+        // "QML-IDS (client, softmax ..." until Round 86 named a classical model after the workstream.
+        emit("log", stage, `IDS (client, classical softmax logistic regression, the QML-IDS workstream's baseline, on this project's synthetic `
           + `signatures for the 8 classes of Al-Kuwari et al. 2026): `
           + `macro-F1=${r2(ids.macroF1)} over the ${ids.classesScored} classes present in the `
           + `held-out split`

@@ -350,8 +350,11 @@ artefact rather than a physical constant - "1024 measurement shots are insuffici
 estimate the overlaps ... with more than n = 15 qubits".
 
 **What survives is the measurement, and it now has no published explanation.** Quantum-kernel SVC
-macro F1 **0.8316** and variational QNN **0.4667** against RandomForest **0.9866**, with
-`quantum_beats_classical: false`. That is still an honest recorded negative. What it is NOT is
+macro F1 **0.8316** and variational QNN **0.4667**, both BINARY, against a forest trained and scored on
+each one's own split and labels at **1.0** and **0.9903** (Round 86; the RandomForest's **0.9866** is an
+8-class figure on a different draw, which the record compared until then), with
+`quantum_beats_classical: false`. The QNN's 0.4667 is the constant "attack" predictor's score. That is
+still an honest recorded negative. What it is NOT is
 "underperforming for a published, quantified reason" - removing the inverted citation leaves *quantum
 lost, cause unknown*, and saying so is the correct state of the record. Claiming a better finding than
 "quantum lost" on the strength of a paper that says the reverse is worse than reporting the loss.
