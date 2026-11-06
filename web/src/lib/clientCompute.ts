@@ -11,7 +11,7 @@ import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
-  demoSample, federatedCfg, fheCfg, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, studentParamCount,
+  demoSample, federatedCfg, fheCfg, qsmpcCfg, quantumAdvantageCfg, studentModel, studentParamCount,
   tierArchitectures, webCfg, workloadMultipliers,
 } from "./config";
 import { CKKS_FLOOD_BITS, encryptedConv2d, encryptedHeldOutAgreement, encryptedLinear, encryptedLinearBatch,
@@ -159,7 +159,7 @@ export function kemCategory(kem?: string | null): number {
 }
 
 // Crypto-agility selectors threaded from the run config (KEM / signature) — so picking ml-kem-1024
-// (NIST cat-5) vs ml-kem-768 (cat-3) genuinely runs the larger KEM AND moves the security score, and
+// (NIST cat-5) vs ml-kem-768 (cat-3) genuinely runs the larger KEM AND moves the posture facts' category, and
 // ml-dsa-87 vs ml-dsa-65 genuinely signs with the chosen level. Defaults track the config default kem/sig
 // (never a magic string): unknown/undefined → the cat-3 / level-65 default, matching DEMO_CRYPTO.defaults.
 export function kemName(config: any): string {
@@ -218,15 +218,6 @@ const qubitsOf = (config: any) => {
   return clampQubits(n);
 };
 
-export interface SecOpts {
-  securityModel: string;
-  pqcHybrid?: boolean;
-  kem?: string;
-  qkdKeyBits?: number | null;
-  qber?: number | null;
-  leakageBitsPerWeight?: number | null;
-}
-
 /** One reported security fact: a label, what the run measured, and where the claim comes from. */
 export interface SecurityFact {
   label: string;
@@ -265,7 +256,7 @@ export interface SecurityFact {
  * that does not transfer.
  */
 export function securityFacts(config: any, metrics: Record<string, any>): SecurityFact[] {
-  const s = securityScoringCfg();
+  const abortAt = qkdCfg().pp_threshold;   // the QKD stage's own abort threshold
   const kem = kemName(config);
   const cat = kemCategory(kem);
   const sig = String(config?.sig ?? "ml-dsa-65");
@@ -481,7 +472,7 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     // What is reportable is the mechanism: the rate this run computed, and the post-processing
     // threshold the protocol actually aborts on. The fallback, for a run that reported no rate, is
     // now that same configured threshold rather than a retired model's constant.
-    const dead = skr != null ? skr <= 0 : qber >= s.qber_secure_threshold;
+    const dead = skr != null ? skr <= 0 : qber >= abortAt;
     facts.push({
       label: "QBER",
       value: `${qber}${dead ? " - no secure key at this error rate" : ""}`,
@@ -506,8 +497,8 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
           + "model reports key a device-independent analysis would not certify. The S > 2 test never "
           + `decides the key here: the rate is already zero below S = ${sDd}`
         : skr != null
-        ? `sampled from this run's pulses (the key rate uses the ${boundName}); post-processing aborts above ${s.qber_secure_threshold}`
-        : `no rate reported by this run; post-processing threshold ${s.qber_secure_threshold}`,
+        ? `sampled from this run's pulses (the key rate uses the ${boundName}); post-processing aborts above ${abortAt}`
+        : `no rate reported by this run; post-processing threshold ${abortAt}`,
       warn: dead
         ? (isE91 ? "the device-dependent E91 rate yields no secure key at this error rate"
                  : "the decoy-state bound yields no secure key on this channel")
@@ -515,49 +506,6 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
     });
   }
   return facts;
-}
-
-export function securityScore(o: SecOpts) {
-  const s = securityScoringCfg();        // weights/thresholds from the central config (single source)
-  const c: Record<string, number> = {};
-  // Mirror of security.py: PQC-only hybrid scores the cap minus the bonus, QKD-mixed reaches the
-  // cap. The previous min(cap, cap + bonus) made the QKD selector inert -- see the note there.
-  c.hndl_pqc_hybrid =
-    o.pqcHybrid === false ? 0
-    : (o.qkdKeyBits && o.qkdKeyBits >= 256) ? s.hndl_pqc_hybrid
-    : Math.max(0, s.hndl_pqc_hybrid - s.qkd_bonus);
-  const it = (o.securityModel || "").toLowerCase().includes("information-theoretic");
-  c.security_model = it ? s.info_theoretic : s.computational;
-  const cat = kemCategory(o.kem);
-  c.key_strength = (s.key_strength_by_category as Record<string, number>)[String(cat)] ?? 16;
-  // Mirrors `benchmark/security.py`: 0.11 is the Shor-Preskill BB84 bound, and a channel can be
-  // dead below it - which is why the guard is on the KEY rather than on the QBER. The figure that
-  // used to appear here, "this project's GLLP model yields zero secure key from 0.098106", belonged
-  // to the non-decoy model that Rounds 45-46 removed from both languages; the decoy bound's
-  // zero-key point is channel-dependent and there is no constant to put in its place. Stated in
-  // the past tense because the reasoning is what survives, not the number.
-  // `qkdKeyBits` is the field that carries this: `secFromConfig` fills it from the run's measured
-  // `secure_key_bits`, so zero here means the protocol emitted no key, not merely that QKD was off.
-  const deadKey = o.qkdKeyBits != null && o.qkdKeyBits <= 0;
-  if (o.qber == null) c.eavesdropper_detection = 0;
-  else if (deadKey) c.eavesdropper_detection = s.eavesdrop_warn_pts;
-  else if (o.qber < s.qber_secure_threshold) c.eavesdropper_detection = s.eavesdrop_secure_pts;
-  else if (o.qber < s.qber_danger_threshold) c.eavesdropper_detection = s.eavesdrop_warn_pts;
-  else c.eavesdropper_detection = 0;
-  const lk = o.leakageBitsPerWeight;
-  if (lk == null) c.leakage_bound = it ? s.leakage_pts_default_it : s.leakage_pts_default_comp;
-  else if (lk <= s.leakage_low) c.leakage_bound = s.leakage_pts_low;
-  else if (lk <= s.leakage_mid) c.leakage_bound = s.leakage_pts_mid;
-  else c.leakage_bound = s.leakage_pts_high;
-  const total = r1(Math.min(100, Object.values(c).reduce((a, b) => a + b, 0)));
-  return {
-    total,
-    components: Object.fromEntries(Object.entries(c).map(([k, v]) => [k, r1(v)])),
-    kem_category: cat,
-    summary:
-      `${it ? "information-theoretic" : "computational"} security, NIST cat-${cat} KEM, ` +
-      `HNDL-resistant hybrid${o.qkdKeyBits && o.qkdKeyBits >= 256 ? ", QKD-mixed" : ""}`,
-  };
 }
 
 // --------------------------------------------------------------------------- //
@@ -1220,11 +1168,6 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     // authenticated-garbling 2PC whose INPUTS are additively shared - between notional parties in
     // one tab (clientMPC.ts). The benchmark table showed the Python mechanism on the browser row.
     security_model: "computational (RLWE) + garbled-circuit 2PC",
-    security_score: securityScore({
-      securityModel: "computational (RLWE / FIPS-203 family)", kem: sec?.kem,
-      qkdKeyBits: sec?.qkdBits,
-      qber: typeof sec?.qber === "number" ? sec.qber : null,
-    }).total,
     device,
   };
 }
@@ -1285,27 +1228,10 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
     accuracy: null, max_abs_error: null,
     ciphertext_plaintext_ratio: null,                 // withheld: not comparable in bytes, see the header
     t_gate_count: last.tGates, qubits: last.qubits,   // counted from the actual gate list
-    // ONE constant, read twice. The row label and the scorer input were two literals, and the scorer
-    // parses the label for "information-theoretic" - so rewording one copy would have moved a score
-    // with every gate green (`tests/test_security_model_prose_is_not_a_silent_score_input.py`).
+    // ONE constant. The row label and the retired security score's input were two literals, and the scorer
+    // parsed the label for "information-theoretic", so rewording one copy moved a score with every gate green;
+    // the score itself was removed in Round 86, and the advantage function still parses the label.
     security_model: QSMPC_SECURITY_MODEL,
-    security_score: securityScore({
-      securityModel: QSMPC_SECURITY_MODEL, kem: sec?.kem,
-      // qber was the literal 0.0128 here while the panel described the score as reflecting "QBER
-      // eavesdrop margin" for this run — so moving the Eve slider changed the QKD panel and left this
-      // number untouched. Use the run's measured QBER when the pipeline produced one.
-      qkdKeyBits: sec?.qkdBits === undefined ? 256 : sec.qkdBits,
-      // null, not a config constant. `qkdCfg().misalignment` is the channel's baseline optical
-      // error, not this run's QBER, and substituting it made an unmeasured term look measured -
-      // scoring the full eavesdropper-detection points on every run including ones with no key.
-      // compute_security_score already treats null as "not measured" and awards zero.
-      qber: typeof sec?.qber === "number" ? sec.qber : null,
-      // Was a hardcoded 0.1 - the PRX leakage bound - which is a LITERATURE figure, not a property
-      // of this run. Nothing in the browser measures leakage, so asserting it bought this row the
-      // most generous bucket (10 pts) over its counterpart's default (4). That was +6 of the gap.
-      // null scores as unmeasured, which is what it is.
-      leakageBitsPerWeight: null,
-    }).total,
     device: "cpu-sim", simulated: true,
   };
 }
@@ -1346,9 +1272,6 @@ function publishedModelRow(m: any) {
     fhe_linear_ms: null, mpc_nonlinear_ms: null, mpc_comm_kb: null,
     t_gate_count: null, qubits: null,
     security_model: "none (plaintext reference)",
-    // No security score: this row carries no cryptography, and scoring it would put a number in a
-    // column that invites comparison with rows where the number means something.
-    security_score: null,
     input_shape: m.published_input_shape ?? null,
     revision: m.published_model_revision ?? null,
   };

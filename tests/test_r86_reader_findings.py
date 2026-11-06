@@ -83,3 +83,31 @@ def test_the_qubit_range_and_the_calibration_count_come_from_config() -> None:
     assert not re.search(r"qsmpcFheRow\([^)]*,\s*6\s*,", compute), "a literal sample count is back in a quantum row"
     runner = (REPO / "src" / "qsh" / "benchmark" / "runner.py").read_text(encoding="utf-8")
     assert "min(n_hybrid, 4)" not in runner and "large_calibration_samples" in runner
+
+
+def test_the_retired_security_score_stays_retired(tmp_path) -> None:
+    """No row, signed summary, export or config carries the 0-100 security score or its points (Round 86, owner's choice).
+
+    It was retired from the pages in Round 22 and still computed in both tiers, signed into every run summary and written
+    into the benchmark downloads. A number described as indefensible was shipping inside the records meant to be checked.
+    """
+    import json
+
+    from qsh.benchmark.runner import run_benchmark
+    from qsh.config import frontend_config
+    from qsh.orchestration.pipeline import build_pipeline
+
+    assert not (REPO / "src" / "qsh" / "benchmark" / "security.py").exists()
+    assert "security_scoring" not in frontend_config()
+    for row in run_benchmark("linear", out_dir=tmp_path, n_samples=4,
+                             include_openfhe=False, model_size="lightweight"):
+        assert not hasattr(row, "security_score"), row
+        assert "security_components" not in (row.extra or {}), row.backend
+    pipe, ctx = build_pipeline("finance_aml", {"model_size": "lightweight", "seed": 0})
+    pipe.run(ctx)
+    signed = json.dumps(ctx.artifacts["summary"], default=str)
+    for word in ("security_score", "security_components", "security_summary"):
+        assert word not in signed, f"the signed run summary carries {word}"
+    code = re.sub(r"//[^\n]*", "", (REPO / "web" / "src" / "lib" / "clientCompute.ts").read_text(encoding="utf-8"))
+    assert "security_score" not in code and "function securityScore" not in code
+    assert "securityScoringCfg" not in (REPO / "web" / "src" / "lib" / "config.ts").read_text(encoding="utf-8")

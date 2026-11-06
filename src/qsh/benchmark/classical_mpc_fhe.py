@@ -44,9 +44,6 @@ def run_classical(
     backend_name: str = "tenseal",
     workload: str = "linear",
     n_samples: int = 30,
-    #: Bits of QKD key mixed into the session. Defaults to the same 256 quantum_qsmpc_fhe.py assumes,
-    #: so the two rows of one benchmark are scored under the same transport. Pass 0 for a PQC-only run.
-    qkd_key_bits: int = 256,
 ) -> BenchResult:
     """Benchmark encrypted linear inference over ``n_samples`` of (X, y)."""
     backend = get_backend(backend_name)
@@ -62,17 +59,6 @@ def run_classical(
     dt = time.perf_counter() - t0
 
     device = "gpu" if getattr(backend, "on_gpu", False) else "cpu"
-    from .security import compute_security_score
-
-    # Both benchmark rows run under ONE transport configuration, so both must be scored under it.
-    # This call omitted qkd_key_bits while quantum_qsmpc_fhe.py passes 256. That was harmless only
-    # while the QKD bonus was inert (min(w, w+bonus) == w); once the bonus became real the omission
-    # would have handed the quantum row +5 that the classical row was never offered, widening the
-    # headline "96 vs 68" gap by exactly the amount of an unfair comparison.
-    sec = compute_security_score(
-        security_model="computational (RLWE / FIPS-203 family)",
-        pqc_hybrid=True, kem="ml-kem-768+x25519", qkd_key_bits=qkd_key_bits, qber=None,
-    )
     return BenchResult(
         path="MPC-FHE",
         backend=backend.name,
@@ -83,9 +69,8 @@ def run_classical(
         max_abs_error=float(np.max(errs)),
         ciphertext_plaintext_ratio=_ciphertext_ratio(backend, model.n_in),
         security_model="computational (RLWE / FIPS-203 family)",
-        security_score=sec["total"],
         device=device,
-        extra={"samples": n, "security_components": sec["components"]},
+        extra={"samples": n},
     )
 
 
@@ -102,8 +87,7 @@ def _first_feature_count(specs) -> int:
 
 
 def run_hybrid(layers, X, y, *, backend_name: str = "tenseal", workload: str = "linear",
-               model_size: str = "medium", n_samples: int = 8,
-               qkd_key_bits: int = 256) -> BenchResult:
+               model_size: str = "medium", n_samples: int = 8) -> BenchResult:
     """The faithful MPC-FHE hybrid: linear layers under CKKS (FHE), non-linear (ReLU/argmax/maxpool)
     under MPyC secret-sharing (MPC). Reports the per-stage split + the MPC communication the parties measured.
 
@@ -111,7 +95,6 @@ def run_hybrid(layers, X, y, *, backend_name: str = "tenseal", workload: str = "
     (:mod:`qsh.mpc.layers`) for a genuine CNN; reuses :func:`qsh.mpc.hybrid_private_inference`.
     """
     from ..mpc import hybrid_private_inference, normalize_layers
-    from .security import compute_security_score
 
     specs = normalize_layers(layers)
     backend = get_backend(backend_name)
@@ -132,14 +115,6 @@ def run_hybrid(layers, X, y, *, backend_name: str = "tenseal", workload: str = "
     # Party start-up is the harness's cost, not the protocol's: it leaves the latency, and is reported.
     dt = (time.perf_counter() - t0) * 1000 - overhead
     device = "gpu" if getattr(backend, "on_gpu", False) else "cpu"
-    # Both benchmark rows run under ONE transport configuration, so both must be scored under it.
-    # This call omitted qkd_key_bits while quantum_qsmpc_fhe.py passes 256. That was harmless only
-    # while the QKD bonus was inert (min(w, w+bonus) == w); once the bonus became real the omission
-    # would have handed the quantum row +5 that the classical row was never offered, widening the
-    # headline "96 vs 68" gap by exactly the amount of an unfair comparison.
-    sec = compute_security_score(
-        security_model="computational (RLWE) + secret-sharing MPC",
-        pqc_hybrid=True, kem="ml-kem-768+x25519", qkd_key_bits=qkd_key_bits, qber=None)
     return BenchResult(
         path="MPC-FHE",
         backend=f"{backend.name} + mpyc-shamir",
@@ -148,7 +123,6 @@ def run_hybrid(layers, X, y, *, backend_name: str = "tenseal", workload: str = "
         accuracy=round(correct / n, 4),                       # decision vs plaintext (correctness)
         ciphertext_plaintext_ratio=_ciphertext_ratio(backend, _first_feature_count(specs)),
         security_model="computational (RLWE) + secret-sharing MPC",
-        security_score=sec["total"],
         fhe_linear_ms=round(fhe / n, 3), mpc_nonlinear_ms=round(mpc / n, 3),
         mpc_comm_kb=round(comm / n, 3), device=device,
         extra={"samples": n, "avg_comparisons": round(cmp_total / n, 1),
@@ -167,6 +141,5 @@ def run_hybrid(layers, X, y, *, backend_name: str = "tenseal", workload: str = "
                "flood_margin_bits": r.get("flood_margin_bits"),
                "client_learns": r.get("client_learns"),
                "arch_class": arch_class,
-               "linear_under": "FHE/CKKS", "nonlinear_under": "MPC/mpyc-shamir",
-               "security_components": sec["components"]},
+               "linear_under": "FHE/CKKS", "nonlinear_under": "MPC/mpyc-shamir"},
     )

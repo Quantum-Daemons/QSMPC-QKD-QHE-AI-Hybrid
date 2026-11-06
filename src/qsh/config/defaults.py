@@ -703,28 +703,6 @@ class BenchmarkConfig:
 
 
 @dataclass
-class SecurityScoringConfig:
-    """Component weights + thresholds for the 0-100 security score (benchmark/security.py)."""
-    hndl_pqc_hybrid: float = 30.0
-    qkd_bonus: float = 5.0
-    info_theoretic: float = 30.0
-    computational: float = 18.0
-    # NIST ML-KEM category -> key-strength points
-    key_strength_by_category: dict = field(default_factory=lambda: {5: 20.0, 4: 18.0, 3: 16.0, 2: 13.0, 1: 10.0})
-    qber_secure_threshold: float = 0.11       # BB84 secure QBER threshold
-    qber_danger_threshold: float = 0.20
-    eavesdrop_secure_pts: float = 10.0
-    eavesdrop_warn_pts: float = 5.0
-    leakage_low: float = 0.1                   # PRX ~0.1 bit/weight is strong
-    leakage_mid: float = 0.5
-    leakage_pts_low: float = 10.0
-    leakage_pts_mid: float = 7.0
-    leakage_pts_high: float = 3.0
-    leakage_pts_default_it: float = 6.0
-    leakage_pts_default_comp: float = 4.0
-
-
-@dataclass
 class QuantumAdvantageConfig:
     """Weights + tier boundaries for the 0-10 quantum-advantage score (benchmark/quantum_advantage.py)."""
     w_comm: float = 0.6
@@ -903,7 +881,6 @@ class QSHConfig:
     ids: IDSConfig = field(default_factory=IDSConfig)
     data: DataConfig = field(default_factory=DataConfig)
     benchmark: BenchmarkConfig = field(default_factory=BenchmarkConfig)
-    security_scoring: SecurityScoringConfig = field(default_factory=SecurityScoringConfig)
     quantum_advantage: QuantumAdvantageConfig = field(default_factory=QuantumAdvantageConfig)
     crypto: CryptoConfig = field(default_factory=CryptoConfig)
     orchestration: OrchestrationConfig = field(default_factory=OrchestrationConfig)

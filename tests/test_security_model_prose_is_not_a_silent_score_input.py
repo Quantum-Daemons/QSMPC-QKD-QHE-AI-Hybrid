@@ -1,5 +1,9 @@
 """Display prose decides a score here, so it must not be editable by accident.
 
+ROUND 86: the 0-100 security score is retired, in both languages, with `security.py` and its config. The parse sites
+left are the two twins of the retired quantum-advantage function, which still key on the token below, so the closed set
+and its classes stay pinned for them. The account that follows is the history.
+
 WHY THIS EXISTS
 
 `security_model` is a human-readable string rendered in the benchmark table's last column. It is
@@ -35,7 +39,8 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 TS = REPO / "web" / "src" / "lib" / "clientCompute.ts"
-PY = REPO / "src" / "qsh" / "benchmark" / "security.py"
+#: The Python twin of the browser's remaining parse site (the advantage function). `security.py` was the other until Round 86.
+PY = REPO / "src" / "qsh" / "benchmark" / "quantum_advantage.py"
 
 #: The Python files that PRODUCE a security-model string. Round 40 read only `clientCompute.ts`, so
 #: rewording any of these moved the Python security score and the quantum-advantage multiplier with
@@ -50,9 +55,8 @@ _PY_PRODUCERS = [
 #: Every place either language TESTS the string to pick a number. `quantum_advantage.py` is the
 #: fourth and was unpinned: it is the Python twin of `clientCompute.ts:342`.
 _PARSE_SITES = [
-    (TS, 'includes("information-theoretic")', 2),
-    (PY, '"information-theoretic" in (security_model or "").lower()', 1),
-    (REPO / "src" / "qsh" / "benchmark" / "quantum_advantage.py", '"information-theoretic" in (', 1),
+    (TS, 'includes("information-theoretic")', 1),
+    (PY, '"information-theoretic" in (', 1),
 ]
 
 #: Every security-model string the code may produce, and the class each must score as.
@@ -71,7 +75,6 @@ EXPECTED: dict[str, str] = {
     # the Python row (MPyC Shamir) keeps the secret-sharing label above.
     "computational (RLWE) + garbled-circuit 2PC": "comp",
     "computational (RLWE / FIPS-203 family)": "comp",
-    "computational + QKD (two-party, TTP-free)": "comp",
     "none (plaintext reference)": "none",
 }
 
@@ -128,7 +131,8 @@ def test_every_constant_a_producer_references_is_seen() -> None:
 def test_the_producer_parse_finds_something() -> None:
     """A regex that matched nothing would make every assertion below vacuous."""
     found = _produced()
-    assert len(found) >= 4, f"only {len(found)} security-model strings parsed from {TS.name}: {found}"
+    # Three since Round 86: the fourth was the retired score's input string, which went with it.
+    assert len(found) >= 3, f"only {len(found)} security-model strings parsed from {TS.name}: {found}"
 
 
 def test_the_set_of_security_model_strings_is_closed() -> None:
@@ -177,8 +181,8 @@ def test_the_python_producers_are_in_the_same_closed_set() -> None:
     unexpected = sorted(found - EXPECTED.keys())
     assert not unexpected, (
         f"Python produces security-model strings not declared here: {unexpected}\n"
-        "They are parsed for `information-theoretic` at security.py:48 and quantum_advantage.py:51, "
-        "so each silently selects a score branch. Declare it with the class you intend."
+        "They are parsed for `information-theoretic` in quantum_advantage.py, so each silently selects "
+        "a branch of the advantage function. Declare it with the class you intend."
     )
 
 
@@ -204,13 +208,13 @@ def test_every_parse_site_is_pinned() -> None:
 def test_both_languages_still_key_on_the_same_token() -> None:
     """If one side's token changes, the two implementations score the same row differently."""
     ts, py = TS.read_text(), PY.read_text()
-    assert ts.count(f'includes("{_TOKEN}")') == 2, (
-        "clientCompute.ts no longer has exactly two `information-theoretic` score tests; if the "
-        "scorers were refactored onto an explicit class field, retire this test and assert the "
-        "refactor moved no score instead"
+    assert ts.count(f'includes("{_TOKEN}")') == 1, (
+        "clientCompute.ts no longer has exactly one `information-theoretic` test (the advantage function's); "
+        "if it was refactored onto an explicit class field, retire this test and assert the refactor moved "
+        "no number instead"
     )
-    assert f'"{_TOKEN}" in (security_model or "").lower()' in py, (
-        "src/qsh/benchmark/security.py no longer keys on the same token as the browser; the two "
+    assert f'"{_TOKEN}" in (' in py, (
+        "src/qsh/benchmark/quantum_advantage.py no longer keys on the same token as the browser; the two "
         "implementations of one score have diverged - the defect class this repository has shipped "
         "five times across language twins"
     )

@@ -182,7 +182,7 @@ def _project_large(med: BenchResult, med_layers, large_layers, workload: str) ->
         path="MPC-FHE", backend=f"{med.backend} (projected)", workload=workload, model_size="large",
         latency_ms=round(fhe + mpc, 3), throughput_ips=round(1000 / max(fhe + mpc, 1e-3), 2),
         accuracy=med.accuracy, ciphertext_plaintext_ratio=med.ciphertext_plaintext_ratio,
-        security_model=med.security_model, security_score=med.security_score,
+        security_model=med.security_model,
         fhe_linear_ms=round(fhe, 3), mpc_nonlinear_ms=round(mpc, 3), mpc_comm_kb=round(comm, 3),
         projected=True, device=med.device,
         extra={"projected_from": "medium", "fhe_scale": round(fr, 2), "mpc_scale": round(cr, 2),

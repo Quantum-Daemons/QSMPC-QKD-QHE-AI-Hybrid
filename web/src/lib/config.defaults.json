@@ -2480,30 +2480,6 @@
     "w_latency": 0.2,
     "w_security": 0.2
   },
-  "security_scoring": {
-    "computational": 18.0,
-    "eavesdrop_secure_pts": 10.0,
-    "eavesdrop_warn_pts": 5.0,
-    "hndl_pqc_hybrid": 30.0,
-    "info_theoretic": 30.0,
-    "key_strength_by_category": {
-      "1": 10.0,
-      "2": 13.0,
-      "3": 16.0,
-      "4": 18.0,
-      "5": 20.0
-    },
-    "leakage_low": 0.1,
-    "leakage_mid": 0.5,
-    "leakage_pts_default_comp": 4.0,
-    "leakage_pts_default_it": 6.0,
-    "leakage_pts_high": 3.0,
-    "leakage_pts_low": 10.0,
-    "leakage_pts_mid": 7.0,
-    "qber_danger_threshold": 0.2,
-    "qber_secure_threshold": 0.11,
-    "qkd_bonus": 5.0
-  },
   "validation": {
     "liao_2017_xinglong_passes": {
       "columns": [

@@ -42,7 +42,6 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
     from ..qkd.bb84 import QKDParams, derive_shared_key, run_bb84
     from ..qkd.channel import ChannelParams
     from ..qsmpc.psi import learned_summary, oprf_psi
-    from .security import compute_security_score
 
     rng = np.random.default_rng(seed)
     timing: dict[str, float] = {}
@@ -100,11 +99,6 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
     out = encrypted_linear_inference(LinearModel(w, b), rng.normal(size=8))
     timing["private_inference_ms"] = _ms(t)
 
-    sec = compute_security_score(
-        security_model="computational + QKD (two-party, TTP-free)",
-        pqc_hybrid=True, kem=bob.public_key.kem_name.lower(),
-        qkd_key_bits=qkd.secure_key_bits, qber=qkd.qber,
-    )
     bob.free()
 
     total_ms = round(sum(timing.values()), 3)
@@ -140,9 +134,6 @@ def run_alice_bob_e2e(*, seed: int = 0, n_shared: int = 8) -> dict:
         "psi_learned": learned_summary(psi, "Alice", "Bob"),
         "private_inference_class": out["prediction"],
         "private_inference_error": out["max_abs_error"],
-        "security_score": sec["total"],
-        "security_components": sec["components"],
-        "security_summary": sec["summary"],
         "ttp_free": True,
         "raw_data_shared": False,
     }

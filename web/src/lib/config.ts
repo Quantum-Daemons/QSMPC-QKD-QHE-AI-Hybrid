@@ -34,7 +34,6 @@ export const genericArchitecture = () => CONFIG.benchmark.generic_architecture a
 export const workloadMultipliers = () => CONFIG.benchmark.workload_multipliers as unknown as Record<string, [number, string]>;
 export const medicalCnn = () => CONFIG.benchmark.medical_cnn;
 export const demoFeatureDim = () => CONFIG.benchmark.demo_feature_dim;
-export const securityScoringCfg = () => CONFIG.security_scoring;
 export const quantumAdvantageCfg = () => CONFIG.quantum_advantage;
 export const dataCfg = () => CONFIG.data;
 export const qkdCfg = () => CONFIG.qkd;

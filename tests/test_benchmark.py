@@ -10,7 +10,6 @@ from qsh.benchmark.gpu_mpc_adapter import available
 from qsh.benchmark.quantum_advantage import quantum_advantage
 from qsh.benchmark.quantum_qsmpc_fhe import run_quantum
 from qsh.benchmark.runner import _linear_model_and_data, compute_advantage, run_benchmark
-from qsh.benchmark.security import compute_security_score, kem_category
 
 
 def test_classical_path_preserves_accuracy():
@@ -48,53 +47,6 @@ def test_gpu_adapter_reports_state_without_crashing():
     assert "heongpu_present" in state and "hpmpc_present" in state
 
 
-def test_security_score_orders_quantum_above_classical():
-    classical = compute_security_score(
-        security_model="computational (RLWE / FIPS-203 family)",
-        pqc_hybrid=True, kem="ml-kem-768+x25519", qber=None)
-    quantum = compute_security_score(
-        security_model="information-theoretic (QOTP perfect hiding)",
-        pqc_hybrid=True, kem="ml-kem-1024+x25519",
-        qkd_key_bits=256, qber=0.0128, leakage_bits_per_weight=0.1)
-    assert 0 <= classical["total"] <= 100
-    assert quantum["total"] > classical["total"]      # info-theoretic + QKD + cat5 wins
-    assert quantum["kem_category"] == 5
-    assert kem_category("ml-kem-768") == 3 and kem_category(None) == 3
-
-
-def test_a_dead_quantum_channel_cannot_score_full_eavesdropper_marks():
-    """QBER below 0.11 but above this project's own zero-key point must not score full marks.
-
-    0.11 is the Shor-Preskill one-way BB84 bound. This repository's GLLP model stops yielding secure
-    key at 0.098106, so the band [0.098106, 0.11) used to award the maximum eavesdropper-detection
-    score on a channel producing nothing - the score rewarding a link the same codebase reports as
-    dead. The browser's fact display was guarded against exactly this and the score was not.
-    """
-    from qsh.config import get_config
-
-    s = get_config().security_scoring
-    full, warn = s.eavesdrop_secure_pts, s.eavesdrop_warn_pts
-    assert warn < full, "the warn tier must be worth less than the secure tier for this to mean anything"
-
-    args = dict(security_model="computational (RLWE / FIPS-203 family)", pqc_hybrid=True,
-                kem="ml-kem-768+x25519")
-    # In the dangerous band, with the key measured dead.
-    dead = compute_security_score(**args, qkd_key_bits=0, qber=0.105)
-    assert dead["components"]["eavesdropper_detection"] == warn, (
-        "a run that produced no secure key must not score full eavesdropper-detection marks, "
-        "whatever its QBER sits below"
-    )
-    # The same QBER with a live key still scores full marks: the guard is about the KEY, not the QBER.
-    live = compute_security_score(**args, qkd_key_bits=256, qber=0.105)
-    assert live["components"]["eavesdropper_detection"] == full
-    assert dead["total"] < live["total"]
-
-    # And the guard must not fire when key bits were never reported, which is a different situation
-    # from a measured zero - a pqc-only profile has no quantum channel to judge.
-    unknown = compute_security_score(**args, qkd_key_bits=None, qber=0.105)
-    assert unknown["components"]["eavesdropper_detection"] == full
-
-
 def test_quantum_advantage_rewards_communication_compactness():
     classical = run_classical(*_linear_model_and_data(), backend_name="tenseal", n_samples=6)
     rng = np.random.default_rng(0)
@@ -120,6 +72,6 @@ def test_alice_bob_two_party_e2e():
     assert r["psi_intersection_size"] == r["psi_ground_truth"] == 8
     assert r["private_inference_error"] < 1e-2         # CKKS preserves the decision
     assert r["qber"] < 0.11                             # eavesdrop check passes
-    assert 0 < r["security_score"] <= 100
+    assert "security_score" not in r and "security_components" not in r   # retired, Round 86
     assert r["ttp_free"] is True and r["raw_data_shared"] is False
     assert len(r["phases"]) == 6 and r["total_ms"] > 0

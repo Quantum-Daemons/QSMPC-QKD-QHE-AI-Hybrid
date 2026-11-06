@@ -724,6 +724,7 @@ class QuantumComparisonStage(Stage):
         import numpy as np
 
         from ..benchmark.quantum_qsmpc_fhe import run_quantum
+        from ..config import get_config
 
         model_size = ctx.config.get("model_size", "medium")
         workload = ctx.config.get("workload", "linear")
@@ -739,13 +740,9 @@ class QuantumComparisonStage(Stage):
         if y is None:
             y = np.zeros(len(X), dtype=int)
 
-        # Score this row under the transport the run ACTUALLY used, from the same metrics the
-        # classical row is scored against - so the two rows differ by cryptography, not by which
-        # arguments each call site happened to supply.
-        q = run_quantum(X, y, n_qubits=qubits, n_samples=min(8, len(X)), seed=seed,
-                        kem=ctx.config.get("kem"),
-                        qkd_key_bits=ctx.metrics.get("secure_key_bits"),
-                        qber=ctx.metrics.get("qber"))
+        # As many samples as the standalone benchmark and the browser take (`benchmark.quantum_samples`);
+        # this site held a literal 8 until Round 86.
+        q = run_quantum(X, y, n_qubits=qubits, n_samples=min(get_config().benchmark.quantum_samples, len(X)), seed=seed)
         q.model_size = model_size
         q_row = q.to_row()
 

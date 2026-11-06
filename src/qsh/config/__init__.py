@@ -25,7 +25,6 @@ from .defaults import (  # noqa: F401  (re-exported for convenience)
     QSHConfig,
     QSMPCConfig,
     QuantumAdvantageConfig,
-    SecurityScoringConfig,
     TrainConfig,
 )
 
@@ -147,7 +146,6 @@ def frontend_config() -> dict:
             "quantum_qubits_max": b.quantum_qubits_max,
             "quantum_samples": b.quantum_samples,
         },
-        "security_scoring": asdict(c.security_scoring),
         "quantum_advantage": asdict(c.quantum_advantage),
         "data": {
             "aml_transactions": c.data.aml_transactions,

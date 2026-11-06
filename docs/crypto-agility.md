@@ -103,8 +103,8 @@ a new FHE backend) is **one `register(...)` call** - no stage code changes.
 ## Agility you can measure: the posture facts move with the selection
 
 This section used to document a 0-100 security score, which was not a defensible measure and is
-retired: `src/qsh/benchmark/security.py` still computes it and the full deployment's `/api/benchmark`
-returns it in each row, but no page renders it ([why it was retired](../references/security-scoring-fact-check.md#why-the-existing-score-had-to-go)).
+retired: no page rendered it from Round 22, and since Round 86 nothing computes it either, so no row,
+signed run summary or benchmark download carries it ([why it was retired](../references/security-scoring-fact-check.md#why-the-existing-score-had-to-go)).
 
 What replaced it is stronger for this purpose, because agility is now demonstrated against a
 published standard rather than against a weighted sum this project invented. Each row is either

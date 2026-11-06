@@ -20,7 +20,7 @@ from qsh.config import frontend_config
 def test_api_config_serves_frontend_config():
     data = app_config()                                   # the /api/config handler
     # the sections the frontend depends on
-    for key in ("benchmark", "security_scoring", "quantum_advantage", "data", "qkd", "web"):
+    for key in ("benchmark", "quantum_advantage", "data", "qkd", "web"):
         assert key in data
     b = data["benchmark"]
     assert b["tier_architectures"]["medical_fl"]["hidden"]["medium"]  # per-use-case arch present

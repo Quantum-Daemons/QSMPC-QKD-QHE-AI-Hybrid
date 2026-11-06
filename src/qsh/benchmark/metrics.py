@@ -28,7 +28,6 @@ class BenchResult:
     t_gate_count: int | None = None
     qubits: int | None = None
     security_model: str = ""       # "computational (RLWE)" | "information-theoretic"
-    security_score: float | None = None   # 0-100 (see benchmark/security.py)
     device: str = "cpu"
     # hybrid split (2026 standard): linear→FHE (GPU-capable), non-linear→MPC (secret-sharing/CPU)
     model_size: str | None = None          # lightweight | medium | large
