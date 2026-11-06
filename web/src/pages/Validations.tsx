@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import MpcNetBench from "../components/MpcNetBench";
 import NetKeyCards from "../components/NetKeyCards";
 import NetworkPositioning from "../components/NetworkPositioning";
@@ -36,6 +36,17 @@ export async function runValidation(
   }
 }
 
+/** Tickets for overlapping runs of one card: a ticket is current only until a newer one is issued. The Eve slider
+ *  starts a run on every step, and in the full deployment each run is a request, so answers can arrive out of order;
+ *  without this a slow answer for 0.3 replaced the table under the slider's 0.7 (Round 86, a reader). */
+export function newestWins(): () => () => boolean {
+  let newest = 0;
+  return () => {
+    const mine = ++newest;
+    return () => mine === newest;
+  };
+}
+
 /** The failure line inside the card whose run failed. */
 function RunFailed({ message }: { message?: string }) {
   if (!message) return null;
@@ -65,15 +76,21 @@ export default function Validations() {
   const run = (which: string, task: () => Promise<void>) => runValidation(which, task, setBusy, setFailure);
 
   // A failed run clears the table, which would otherwise show the previous setting's figures under
-  // the slider's new value.
-  const runQkd = (e: number) => run("qkd", async () => {
-    try {
-      setQkd(await api.demoQkd(qkdCfg().distance_km, e));
-    } catch (x) {
-      setQkd(null);
-      throw x;
-    }
-  });
+  // the slider's new value. Only the newest run's answer, or failure, is applied.
+  const qkdTicket = useRef(newestWins()).current;
+  const runQkd = (e: number) => {
+    const current = qkdTicket();
+    return run("qkd", async () => {
+      try {
+        const result = await api.demoQkd(qkdCfg().distance_km, e);
+        if (current()) setQkd(result);
+      } catch (x) {
+        if (!current()) return;
+        setQkd(null);
+        throw x;
+      }
+    });
+  };
 
   return (
     <div>
@@ -153,7 +170,7 @@ export default function Validations() {
         <div className="card">
           <h3>BB84 QKD with eavesdropper</h3>
           <p>Slide the intercept-resend fraction; watch the QBER rise and the finite key fall to zero, which
-            happens before the QBER reaches the 0.11 abort threshold that sets the &quot;eavesdropper?&quot; flag.</p>
+            happens before the QBER reaches the {qkdCfg().pp_threshold} abort threshold that sets the &quot;eavesdropper?&quot; flag.</p>
           <label className="muted" style={{ fontSize: 13 }} htmlFor="eve-range">Eve intercept fraction: {eve.toFixed(2)}</label>
           <input id="eve-range" name="eve" aria-label="Eve intercept fraction"
             type="range" min={0} max={1} step={0.1} value={eve}

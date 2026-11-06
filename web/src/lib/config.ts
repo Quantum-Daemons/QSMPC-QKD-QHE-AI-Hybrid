@@ -181,3 +181,12 @@ export const teacherModel = (usecase: string): ModelSpec | null =>
 /** The encrypted (FHE/MPC-feasible) model for a use case. */
 export const studentModel = (usecase: string): ModelSpec | null =>
   modelsFor(usecase).find((m) => m.tier === "t1_crypto") ?? null;
+
+/** A student's recorded parameter count, or null. The distiller records `student_params`; telecom's student, written by
+ *  another path, records `n_parameters`. Reading only the first sized telecom's encrypted-cost row by an invented MLP, nine
+ *  times the work, and left its use-case card without a count (Round 86). */
+export const studentParamCount = (student: ModelSpec | null | undefined): number | null => {
+  const a = (student?.achieved ?? {}) as { student_params?: unknown; n_parameters?: unknown };
+  const n = Number(a.student_params ?? a.n_parameters);
+  return Number.isFinite(n) && n > 0 ? n : null;
+};

@@ -6,7 +6,7 @@ import {
   hasTrainedQcnn, qcnnWidths, readsInferenceBackend, runsFibreQkd, runsQsmpc, type usePipelineRun,
 } from "../lib/usePipelineRun";
 import { atmosphericLossDb, channelLossDb, fibreIntensities, FREE_SPACE, freeSpaceLink, qsdcLink } from "../lib/quantumSim";
-import { linkProfiles, profileValues, qkdCfg } from "../lib/config";
+import { benchCfg, linkProfiles, profileValues, qkdCfg } from "../lib/config";
 import { rangeAtElevationKm } from "../lib/satNetwork";
 
 /** The downlink's atmosphere at a slant range for a given anchor, from the model a run uses, so the
@@ -281,13 +281,14 @@ export default function ParameterPanel({ run }: { run: Run }) {
        + "output only when that ceiling falls below the bits you asked for", -1]] },
     { title: "Quantum / run", fields: [
       // On a page with trained weights this row is REPLACED by a select of the widths that ship -
-      // see `qcnnWidths` below. It stays a free 2..14 number only where no trained circuit exists,
+      // see `qcnnWidths` below. It stays a free number in the configured range only where no trained circuit exists,
       // because there the width drives the untrained fallback and the benchmark row, where any value
       // is meaningful.
       ...(hasTrainedQcnn(usecase) ? [] : [
-      ["Comparison qubits", "qubits", 1, 2,
+      ["Comparison qubits", "qubits", 1, benchCfg().quantum_qubits_min,
        "qubits of the untrained QOTP + Clifford+T comparison circuit behind the QSMPC-FHE row - not a "
-       + "QCNN and not a classifier; capped at 14: the simulator is exact, so cost is 2^n", 14] as Field]),
+       + `QCNN and not a classifier; capped at ${benchCfg().quantum_qubits_max}: the simulator is exact, so cost is 2^n`,
+       benchCfg().quantum_qubits_max] as Field]),
       // min 1, not 0. quantumSim's rng() does `(seed >>> 0) || 1`, so seed 0 and seed 1 produced
       // byte-identical runs everywhere: the field's own minimum was a duplicate of the value one
       // step above it, and anyone comparing "seed 0" with "seed 1" was comparing a run with itself.

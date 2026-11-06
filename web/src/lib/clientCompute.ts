@@ -11,7 +11,7 @@ import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
-  demoSample, federatedCfg, fheCfg, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel,
+  demoSample, federatedCfg, fheCfg, qsmpcCfg, quantumAdvantageCfg, securityScoringCfg, studentModel, studentParamCount,
   tierArchitectures, webCfg, workloadMultipliers,
 } from "./config";
 import { CKKS_FLOOD_BITS, encryptedConv2d, encryptedHeldOutAgreement, encryptedLinear, encryptedLinearBatch,
@@ -208,10 +208,14 @@ function secFromConfig(
  * `new Float64Array(1 << -1)`, aborting the stage and leaving `explanation: null` in the signed
  * payload. `min`/`max` on a number input do not constrain a typed value, so the clamp has to be here.
  */
+/** The configured qubit range (`benchmark.quantum_qubits_min`/`_max`), applied to any requested width. */
+export const clampQubits = (n: number): number =>
+  Math.min(benchCfg().quantum_qubits_max, Math.max(benchCfg().quantum_qubits_min, Math.round(n)));
+
 const qubitsOf = (config: any) => {
   const n = Number(config?.qubits ?? benchCfg().quantum_qubits);
   if (!Number.isFinite(n)) return Number(benchCfg().quantum_qubits);
-  return Math.min(14, Math.max(2, Math.round(n)));
+  return clampQubits(n);
 };
 
 export interface SecOpts {
@@ -724,8 +728,6 @@ const FEATURE_NAMES: Record<string, string[]> = {
 // the backend (single source of truth). N_IN = the demo feature width; cost_per_op are representative
 // encrypted-op surrogates (plaintext-JS wall-clock can't reproduce CKKS cost, so the demo reports these;
 // the full deployment measures real latency — the demo still *executes* the matmul + secret-sharing).
-const tierDims = (size: string) => [demoFeatureDim(), ...(genericArchitecture()[size] ?? [16]), 2];
-const MPC_COMM_BYTES_PER_COMPARE = () => costPerOp().mpc_comm_bytes_per_cmp;
 const FHE_MS_PER_DOT = () => costPerOp().fhe_ms_per_dot;   // one CKKS encrypted linear dot per output neuron
 const MPC_MS_PER_CMP = () => costPerOp().mpc_ms_per_cmp;   // one secret-sharing secure comparison (ReLU/argmax)
 const tierOps = (dims: number[]) => dims.slice(1).reduce((a, x) => a + x, 0);  // output neurons = CKKS dots
@@ -772,7 +774,7 @@ function archDims(usecase: string | undefined, modelSize: string, workload: stri
   // "medium". Prefer the t1_crypto student's measured parameter count: it is the model CKKS
   // actually evaluates, so it is the right thing for an encrypted-cost row to describe.
   const student = usecase ? studentModel(usecase) : null;
-  const studentParams = Number((student?.achieved as { student_params?: number } | undefined)?.student_params ?? 0);
+  const studentParams = studentParamCount(student) ?? 0;
   if (studentParams > 0) {
     const inDim = demoFeatureDim();
     // Two layers whose parameter count matches the student's, so tierOps tracks a real model's
@@ -799,44 +801,10 @@ function archDims(usecase: string | undefined, modelSize: string, workload: stri
 // / (that measured model's op count) lets both the measured classical row AND the quantum-sim row genuinely
 // track lightweight/medium/large × linear/cnn/transformer, while keeping the real per-op measurement as the
 // unit cost. lightweight+linear === the measured model -> scale 1.0 (reports the raw measurement).
-function benchScale(usecase: string | undefined, modelSize: string, workload: string): number {
+export function benchScale(usecase: string | undefined, modelSize: string, workload: string): number {
   const ops = tierOps(archDims(usecase, modelSize, workload).dims);
   const baseOps = Math.max(1, tierOps(archDims(usecase, "lightweight", "linear").dims));
   return ops / baseOps;
-}
-
-// 2-party additive-secret-sharing non-linear (representative LAN sim): ReLU then (last layer) argmax.
-function mpcNonlinear(vec: number[], isLast: boolean, u: () => number) {
-  // additive share x = s0 + s1 with s0 pseudo-random; the full deployment's MPyC tier (three
-  // Shamir parties, t = 1) computes ReLU/argmax via secure comparison on the shares. Here we model
-  // the shares, charge that tier's measured bytes per comparison, and reconstruct in-sim
-  // (representative, not cryptographic).
-  const shares = vec.map((x) => { const s0 = (u() * 2 - 1) * 4; return [s0, x - s0]; });
-  const recon = shares.map(([a, b]) => a + b);
-  const out = isLast ? [recon.indexOf(Math.max(...recon))] : recon.map((v) => Math.max(0, v));
-  const compares = isLast ? Math.max(0, vec.length - 1) : vec.length;
-  return { out, compares, commBytes: compares * MPC_COMM_BYTES_PER_COMPARE() };
-}
-
-function hybridForward(dims: number[], u: () => number) {
-  // deterministic weights; linear layers timed as the FHE stage, non-linear as the MPC stage
-  const layers = dims.slice(0, -1).map((inp, i) => ({
-    W: Array.from({ length: dims[i + 1] }, () => Array.from({ length: inp }, () => (u() * 2 - 1) * 0.1)),
-    b: Array.from({ length: dims[i + 1] }, () => (u() * 2 - 1) * 0.05),
-  }));
-  let h = Array.from({ length: dims[0] }, () => u() * 2 - 1);
-  let fheMs = 0, mpcMs = 0, comm = 0, compares = 0;
-  layers.forEach((L, i) => {
-    let t = performance.now();
-    const z = L.W.map((row, j) => row.reduce((a, w, k) => a + w * h[k], 0) + L.b[j]); // FHE-linear
-    fheMs += performance.now() - t;
-    t = performance.now();
-    const nl = mpcNonlinear(z, i === layers.length - 1, u);                              // MPC-non-linear
-    mpcMs += performance.now() - t;
-    comm += nl.commBytes; compares += nl.compares;
-    h = i === layers.length - 1 ? z : (nl.out as number[]);
-  });
-  return { fheMs, mpcMs, comm, compares };
 }
 
 // Measured real client-side FHE/MPC (node-seal CKKS + secret-sharing) — when present, mpcFheRow reports
@@ -1182,7 +1150,7 @@ export async function realClientHybrid(features: number[],
 }
 
 // MPC-FHE row — uses REAL measured client-side FHE/MPC when ``measured`` is supplied, else a representative
-// cost model (e.g. the standalone clientBenchmark with no live run). Shared by clientBenchmark + assembleBenchmark.
+// cost model. Read by assembleBenchmark (the standalone clientBenchmark that also used it was removed in Round 86).
 function mpcFheRow(usecase: string | undefined, workload: string, modelSize: string, measured?: MeasuredHybrid | null,
   // `qber` belongs here even though this row is the CLASSICAL path. Both rows run under ONE transport
   // configuration, so both must be scored under it. This parameter used to omit it, so this row's
@@ -1286,7 +1254,7 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
   // Clamped at both ends. The state vector is exact, so cost is 2^n and there is no graceful
   // degradation past ~14 -- the tab simply stops responding. The UI caps the field too; this is the
   // backstop for a value arriving any other way (URL, restored state, API).
-  const nq = Math.min(14, Math.max(2, Math.round(nQubits)));
+  const nq = clampQubits(nQubits);
   qotpQcnnInfer(Array.from({ length: nq }, () => u() * 2 - 1), 0, nq);   // warm-up (drop the JIT spike)
   let last = qotpQcnnInfer(Array.from({ length: nq }, () => u() * 2 - 1), 1, nq);
   let total = 0;
@@ -1340,18 +1308,6 @@ function qsmpcFheRow(workload: string, modelSize: string, u: () => number, sampl
     }).total,
     device: "cpu-sim", simulated: true,
   };
-}
-
-export async function clientBenchmark(workload = "linear", samples = 20, modelSize = "medium") {
-  const u = rng(7);
-  const dims = tierDims(modelSize);
-  // light + medium genuinely execute the hybrid mechanism client-side (matmul + secret-sharing,
-  // zero /api); large is projected (not executed). Reported ms = the representative cost model.
-  if (modelSize !== "large") { const reps = Math.min(samples, 6); for (let i = 0; i < reps; i++) hybridForward(dims, u); }
-  const classical = mpcFheRow(undefined, workload, modelSize);
-  const quantum = qsmpcFheRow(workload, modelSize, u, Math.min(samples, 6), benchScale(undefined, modelSize, workload));
-  // `advantage` is null: the quantum-advantage score is retired from display (see `quantumAdvantage`).
-  return { workload, model_size: modelSize, results: [classical, quantum], advantage: null };
 }
 
 // Inference use cases produce both an MPC-FHE row + a QSMPC-FHE comparison; telecom/satellite get the
@@ -1408,7 +1364,7 @@ export function assembleBenchmark(
   // without them the QBER and secure-key-bits terms fall back to constants.
   const sec = secFromConfig(config, opts?.metrics);
   const u = rng(7);
-  const q = qsmpcFheRow(workload, modelSize, u, 6, benchScale(usecase, modelSize, workload), qubitsOf(config), sec);
+  const q = qsmpcFheRow(workload, modelSize, u, benchCfg().quantum_samples, benchScale(usecase, modelSize, workload), qubitsOf(config), sec);
   const clientComputeMs = opts?.metrics?.client_compute_ms ?? opts?.stageMs?.private_inference ?? null;
   // Present on every use case that ran one, including telecom and satellite, whose flows have no
   // private_inference stage and so never reach the MPC-FHE row below.
@@ -1425,116 +1381,6 @@ export function assembleBenchmark(
     advantage: null,                    // retired from display; see `quantumAdvantage`
     live: true, client_compute_ms: clientComputeMs, measured: !!measured,
     security_facts: securityFacts(config, opts?.metrics ?? {}) };
-}
-
-// --------------------------------------------------------------------------- //
-//  Alice <-> Bob two-party E2E (mirror of qsh/benchmark/alice_bob_e2e.py)
-// --------------------------------------------------------------------------- //
-export async function clientAliceBob(seed = 0, nShared = 8) {
-  const u = rng(seed + 11);
-  const timing: Record<string, number> = {};
-  const acct = () => `ACCT-${Math.floor(u() * 9e6 + 1e6)}`;
-
-  let t = performance.now();
-  const bob = ml_kem768.keygen();
-  timing.bob_keygen_ms = r2(performance.now() - t);
-
-  t = performance.now();
-  const qkd = bb84(webCfg().demo_alice_bob_pulses, { ...FIBER, distanceKm: qkdCfg().distance_km }, seed);
-  timing.qkd_negotiation_ms = r2(performance.now() - t);
-
-  t = performance.now();
-  const enc = ml_kem768.encapsulate(bob.publicKey);
-  timing.alice_pqc_handshake_ms = r2(performance.now() - t);
-  t = performance.now();
-  const recovered = ml_kem768.decapsulate(enc.cipherText, bob.secretKey);
-  timing.bob_pqc_handshake_ms = r2(performance.now() - t);
-  const agree = enc.sharedSecret.length === recovered.length &&
-    enc.sharedSecret.every((b, i) => b === recovered[i]);
-
-  // THE HYBRID, not just the PQ half.
-  //
-  // This read `const sessionKey = enc.sharedSecret.slice(0, 32)` - the raw ML-KEM shared secret,
-  // truncated. No X25519, no KDF, no transcript, no domain separator. Not merely SP 800-227's
-  // expression (16) `KDF(K1, K2)`, which that document says does not preserve IND-CCA; this was K1
-  // alone. And the function claims to mirror `src/qsh/benchmark/alice_bob_e2e.py`, whose Phase 3
-  // calls `establish_initiator`/`establish_responder` - the hybrid combiner, then `_mix_qkd`.
-  //
-  // Found by a completeness pass AFTER four other combiner sites had been fixed, which is the
-  // lesson worth keeping: "all the sites" was four because four were the ones anyone had listed.
-  const bobX = x25519.utils.randomSecretKey();
-  const bobXPub = x25519.getPublicKey(bobX);          // ek2, Bob's static X25519 public
-  const aliceX = x25519.utils.randomSecretKey();
-  const aliceXPub = x25519.getPublicKey(aliceX);      // c2, Alice's ephemeral public
-  const xAlice = x25519.getSharedSecret(aliceX, bobXPub);
-  const xBob = x25519.getSharedSecret(bobX, aliceXPub);
-  const xAgree = xAlice.length === xBob.length && xAlice.every((b, i) => b === xBob[i]);
-  // The shared combiner - same module the handshake and the Validations demo use, byte-compatible
-  // with `src/qsh/pqc/hybrid_kem.py`. This block used to build its own info string, which is how
-  // the browser came to disagree with Python and with its own two siblings.
-  const sessionKey = hybridCombine(
-    enc.sharedSecret, xAlice,
-    { c1: enc.cipherText, c2: aliceXPub, ek1: bob.publicKey, ek2: bobXPub }, "ML-KEM-768", 32);
-
-  const shared = Array.from({ length: nShared }, acct);
-  const aliceList = [...shared, ...Array.from({ length: 200 }, () => `A-${Math.floor(u() * 9e6 + 1e6)}`)];
-  const bobList = [...shared, ...Array.from({ length: 180 }, () => `B-${Math.floor(u() * 9e6 + 1e6)}`)];
-  // The OPRF PSI (oprfPsi.ts, RFC 9497): Alice blinds her list, Bob evaluates under a key fresh to
-  // this run and sends his own outputs, and the three messages are sealed under `sessionKey`. Alice
-  // learns the intersection and |Bob's list|, Bob learns |Alice's list|. The lists come from the seeded
-  // generator as before; the key, the blinds and Bob's shuffle come from the CSPRNG.
-  t = performance.now();
-  const psi = await oprfPSI(aliceList, bobList, sessionKey);
-  timing.psi_ms = r2(performance.now() - t);
-
-  t = performance.now();
-  const inf = await privateInference("demo", Array.from({ length: 8 }, () => u() * 2 - 1));
-  timing.private_inference_ms = r2(performance.now() - t);
-
-  const sec = securityScore({
-    securityModel: "computational + QKD (two-party, TTP-free)", kem: "ml-kem-768",
-    qkdKeyBits: qkd.secureKeyBits, qber: qkd.qber,
-  });
-  const totalMs = r2(Object.values(timing).reduce((a, b) => a + b, 0));
-  const uniqShared = new Set(shared).size;
-  return {
-    parties: ["Alice", "Bob"],
-    phases: [
-      { name: "Bob key generation", party: "Bob", ms: timing.bob_keygen_ms },
-      { name: "QKD (BB84)", party: "Alice+Bob", ms: timing.qkd_negotiation_ms },
-      { name: "PQC handshake (initiate)", party: "Alice", ms: timing.alice_pqc_handshake_ms },
-      { name: "PQC handshake (respond)", party: "Bob", ms: timing.bob_pqc_handshake_ms },
-      { name: "Private set intersection (OPRF)", party: "Alice+Bob", ms: timing.psi_ms },
-      // A plaintext placeholder score on random features (Round 86, review PI-11): the demo calls
-      // `privateInference("demo", ...)`, which takes the placeholder branch, so it is not private.
-      { name: "Placeholder linear score (plaintext)", party: "Bob", ms: timing.private_inference_ms },
-    ],
-    timing_ms: timing, total_ms: totalMs,
-    session_key_agreement: agree && xAgree, kem: "ML-KEM-768+X25519",
-    // `qkd_mixed` reported `secureKeyBits >= 256` - a PRECONDITION for mixing, stated as though the
-    // mix had happened, in a function that mixed nothing. The browser's `bb84()` returns bit COUNTS
-    // and no key material by design (checklist SC2), so there is nothing here to fold in and the
-    // honest value is false with the reason beside it. The agent panel, which DOES mix, mixes a
-    // stated fixed constant and says so - that is the shape this had to match.
-    qber: r2(qkd.qber), qkd_secure_key_bits: qkd.secureKeyBits,
-    qkd_mixed: false,
-    qkd_mix_note: qkd.secureKeyBits >= 256
-      ? "the BB84 run cleared 256 secure bits, but this mirror derives no key material from it - "
-        + "bb84() returns bit counts, so there is nothing to fold into the session key"
-      // Was "no secure key bits, so nothing to mix even in principle" for ANY value below 256,
-      // so a run with 94 bits printed `qkd_secure_key_bits: 94` beside prose denying they existed.
-      : qkd.secureKeyBits > 0
-      ? `${qkd.secureKeyBits} secure bits, below the 256 a session key needs - not enough to mix, `
-        + "which is a different statement from having none"
-      : "no secure key bits, so nothing to mix even in principle",
-    psi_intersection_size: psi.intersection_size, psi_ground_truth: uniqShared,
-    psi_correct: psi.intersection_size === uniqShared,
-    psi_protocol: psi.protocol, psi_set_size_a: psi.size_a, psi_set_size_b: psi.size_b,
-    psi_blind_evaluations: psi.blind_evaluations, psi_learned: psiLearnedSummary(psi, "Alice", "Bob"),
-    private_inference_class: inf.prediction, private_inference_backend: inf.backend,
-    security_score: sec.total, security_components: sec.components, security_summary: sec.summary,
-    ttp_free: true, raw_data_shared: false,
-  };
 }
 
 // --------------------------------------------------------------------------- //
@@ -3782,7 +3628,7 @@ export function runClientPipeline(
         // genomics, which fell through to a tier-architecture MLP until Round 84 priced its weighted
         // sum instead. So the diagram bar read 10/10 on the genomics page while the benchmark panel two
         // cards down read about 9.1 from the same run. One quantity, two values, both on screen.
-        const qrow = qsmpcFheRow(wl, ms, rng(7), 6, benchScale(usecase, ms, wl), qubitsOf(config), sec);
+        const qrow = qsmpcFheRow(wl, ms, rng(7), benchCfg().quantum_samples, benchScale(usecase, ms, wl), qubitsOf(config), sec);
         // Costed against the MEASURED hybrid, the same input assembleBenchmark uses.
         //
         // This passed `null` and therefore scored the quantum path against a COST MODEL of the

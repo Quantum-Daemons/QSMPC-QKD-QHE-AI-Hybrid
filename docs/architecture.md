@@ -365,11 +365,12 @@ explainability), `qml_ids/`, `benchmark/`, `usecases/`, `orchestration/`, `mcp/`
 `/api/mcp/call` and `/api/mcp/filesystem` have **no** reference anywhere in `web/src`; the SPA's MCP
 path is `/api/demo/mcp` or the in-browser `clientMcp.ts` mirror, so those three are reachable only by
 an external MCP client. `/api/health`, `/api/usecases`, `/api/benchmark`, `/api/alice-bob`,
-`/api/infer/fraud`, `/api/results` and `/api/download/{filename}` have wrappers in
-`web/src/lib/api.ts` that nothing in the SPA calls, so they too serve only direct API clients. The
+`/api/infer/fraud`, `/api/results`, `/api/download/{filename}` and `/api/restart` serve only direct
+API clients too: `web/src/lib/api.ts` carried wrappers for them that nothing in the SPA called, and
+Round 86 removed those, with the browser mirrors of the benchmark and Alice-Bob endpoints. The
 full-mode SPA uses the run controls (`/api/run`, `/api/stop`, `/api/pause`, `/api/resume`,
-`/api/step`, `/api/restart`, `/api/runs/{id}`, `/api/ws/{id}`), `/api/config`, `/api/crypto-options`
-and the three `/api/demo/*` endpoints. The dense+conv hybrid dispatch is unified
+`/api/step`, `/api/runs/{id}`, `/api/ws/{id}`; Restart stops the run and starts a new one),
+`/api/config`, `/api/crypto-options` and the three `/api/demo/*` endpoints. The dense+conv hybrid dispatch is unified
 (`normalize_layers`), and config is centralized.
 
 ## Two compute topologies

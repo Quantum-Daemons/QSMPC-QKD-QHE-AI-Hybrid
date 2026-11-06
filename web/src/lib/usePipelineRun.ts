@@ -130,12 +130,6 @@ export const qcnnWidths = (usecase: string) => QCNN_WIDTHS[usecase] ?? [];
 export const FEDERATED_USECASES = new Set(["medical_fl", "finance_aml"]);
 export const runsFederated = (usecase: string) => FEDERATED_USECASES.has(usecase);
 
-export const MODEL_SIZES = [
-  { id: "lightweight", label: "Lightweight" },
-  { id: "medium", label: "Medium" },
-  { id: "large", label: "Large (projected)" },
-];
-
 const DEMO = isClientDemo();
 
 // crypto-agility options for the pure static demo (mirror of /api/crypto-options)
@@ -144,7 +138,7 @@ export const DEMO_CRYPTO = {
     kem: ["ml-kem-768+x25519", "ml-kem-1024+x25519"],
     qkd: ["bb84-decoy", "pqc-only"],
     fhe: ["tenseal-cpu", "openfhe-cpu"],
-    mpc: ["mpyc-shamir", "mp-spdz", "hpmpc-gpu"],
+    mpc: ["mpyc-shamir"],
     sig: ["ml-dsa-65", "ml-dsa-87"],
   },
   defaults: { kem: "ml-kem-768+x25519", qkd: "bb84-decoy", fhe: "tenseal-cpu",

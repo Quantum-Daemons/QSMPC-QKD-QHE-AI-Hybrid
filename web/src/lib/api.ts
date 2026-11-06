@@ -4,15 +4,8 @@
 import { mlkemDemo } from "./crypto";
 import { isClientDemo } from "./demoMode";
 import { clientMcpDemo } from "./clientMcp";
-import { securityScoringCfg, webCfg } from "./config";
+import { qkdCfg, webCfg } from "./config";
 import { bb84, FIBER } from "./quantumSim";
-
-export interface UseCase {
-  id: string;
-  title: string;
-  industry: string;
-  depth: string;
-}
 
 export interface RunStatus {
   run_id: string;
@@ -38,9 +31,10 @@ async function j<T>(url: string, init?: RequestInit): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+// Only the calls a page makes. Wrappers for /api/health, /api/usecases, /api/restart, /api/benchmark,
+// /api/alice-bob, /api/infer/fraud, /api/results and /api/download had no caller in the SPA and were removed in
+// Round 86; the endpoints remain for direct API clients (docs/architecture.md).
 export const api = {
-  health: () => j<{ status: string }>("/api/health"),
-  usecases: () => j<UseCase[]>("/api/usecases"),
   start: (usecase: string, config: Record<string, unknown> = {}, startPaused = false) =>
     j<{ run_id: string }>(`/api/run/${usecase}`, {
       method: "POST",
@@ -51,27 +45,11 @@ export const api = {
   pause: (id: string) => j<{ paused: boolean }>(`/api/pause/${id}`, { method: "POST" }),
   resume: (id: string) => j<{ resumed: boolean }>(`/api/resume/${id}`, { method: "POST" }),
   step: (id: string) => j<{ stepped: boolean }>(`/api/step/${id}`, { method: "POST" }),
-  restart: (id: string) => j<{ run_id: string }>(`/api/restart/${id}`, { method: "POST" }),
   status: (id: string) => j<RunStatus>(`/api/runs/${id}`),
   cryptoOptions: () =>
     j<{ families: Record<string, string[]>; defaults: Record<string, string> }>("/api/crypto-options"),
   demoMcp: (qkd = false): Promise<any> =>
     isClientDemo() ? clientMcpDemo(qkd) : j<any>(`/api/demo/mcp?qkd=${qkd}`),
-  benchmark: (workload = "linear", samples = 20, modelSize = "medium") =>
-    j<{ workload: string; model_size: string; results: any[]; advantage: any }>(
-      `/api/benchmark?workload=${workload}&samples=${samples}&model_size=${modelSize}`),
-  aliceBob: (config: Record<string, unknown> = {}) =>
-    j<any>("/api/alice-bob", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ config }),
-    }),
-  inferFraud: (features: number[]) =>
-    j<{ fraud_probability: number; prediction: number }>("/api/infer/fraud", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ features }),
-    }),
   demoPqc: (): Promise<any> => {
     if (!isClientDemo()) return j<any>("/api/demo/pqc");
     const k = mlkemDemo();   // client-side hybrid-KEM mirror (shapes match the server response)
@@ -104,10 +82,10 @@ export const api = {
       secure_key_bits: r.secureKeyBits,
       // The block that count is the composable finite key of (Round 80); the server branch sends it too.
       block_pulses: Number((r.blockPulses ?? 0).toPrecision(6)),
-      eavesdropper_likely: r.qber > securityScoringCfg().qber_secure_threshold });
+      // The QKD stage's own abort threshold, as the server's twin reads it. Until Round 86 both read the retired security
+      // score's `qber_secure_threshold`, equal today, so the flag and the abort could part if either were edited.
+      eavesdropper_likely: r.qber > qkdCfg().pp_threshold });
   },
-  results: () => j<{ name: string; bytes: number }[]>("/api/results"),
-  downloadUrl: (name: string) => `/api/download/${encodeURIComponent(name)}`,
 };
 
 // Stream pipeline events over WebSocket; falls back to polling if WS is blocked.

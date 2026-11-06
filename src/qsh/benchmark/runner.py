@@ -210,7 +210,7 @@ def run_benchmark(workload: str = "linear", *, out_dir: str | Path = "results",
         # project the 'large' tier from a quick 'medium' calibration (keeps the page responsive)
         med_layers = _tier_mlp("medium", seed, base=model)
         med = run_hybrid(med_layers, X, y, backend_name="tenseal", workload=workload,
-                         model_size="medium", n_samples=min(n_hybrid, 4))
+                         model_size="medium", n_samples=min(n_hybrid, bcfg.large_calibration_samples))
         results.append(_project_large(med, med_layers, _tier_mlp("large", seed, base=model), workload))
     else:
         layers = _tier_mlp(model_size, seed, base=model)

@@ -635,8 +635,15 @@ class DataConfig:
 class BenchmarkConfig:
     n_samples: int = 30
     quantum_qubits: int = 8
+    #: The widths the comparison circuit may be simulated at. The simulator is exact, so the cost is 2^n: 22 qubits took
+    #: 4.4 s in a tab and 24 allocated 268 MB. The Parameters field, the browser's clamp and its cost row held 2 and 14
+    #: as three separate literals until Round 86.
+    quantum_qubits_min: int = 2
+    quantum_qubits_max: int = 14
     quantum_samples: int = 20
     hybrid_samples: int = 6            # MPC ReLU/argmax is per-sample; cap to keep the run responsive
+    #: Samples of the measured medium tier that the projected large tier is calibrated on (a literal 4 until Round 86).
+    large_calibration_samples: int = 4
     # THE MPyC TIER'S PARTIES, since Round 75 separate processes over loopback TCP (qsh/mpc/parties.py).
     # It ran as ONE in-process party with MPyC's defaults (m = 1, t = 0, k = 30), so its Shamir
     # shares were the values themselves, nothing crossed a wire, and the communication it reported

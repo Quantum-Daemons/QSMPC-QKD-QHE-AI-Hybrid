@@ -42,12 +42,12 @@ constructions wherever feasible**, which is what the `kem` family does by defaul
 | `kem` | `ml-kem-768+x25519`, `ml-kem-1024+x25519` | ml-kem-768+x25519 |
 | `qkd` | `bb84-decoy`, `pqc-only` | bb84-decoy |
 | `fhe` | `tenseal-cpu`, `openfhe-cpu` | tenseal-cpu |
-| `mpc` | `mpyc-shamir`, `mp-spdz`, `hpmpc-gpu` | mpyc-shamir |
+| `mpc` | `mpyc-shamir` | mpyc-shamir |
 | `sig` | `ml-dsa-65`, `ml-dsa-87` | ml-dsa-65 |
 
 `fhe` and `mpc` are the two halves of the **hybrid private-inference** path: linear layers run under
 FHE/CKKS (`fhe`), non-linear layers (ReLU/argmax) under secret-sharing MPC (`mpc`). `mpyc-shamir`
-(MIT, a normal PyPI dependency - nothing in this repository is vendored) is live; `mp-spdz` / `hpmpc-gpu` are heavyweight production references, registered by name only. No stage reads the `mpc` selection, so choosing either changes nothing a run computes: the non-linear half runs on MPyC whatever is selected.
+(MIT, a normal PyPI dependency - nothing in this repository is vendored) is the one MPC backend that runs, so the page shows it as text rather than offering a choice. Until Round 86 the family also registered `mp-spdz` and `hpmpc-gpu` by name and the page offered them, but no stage read the selection, so choosing either changed nothing a run computed. A name returns to the family when its backend runs.
 
 ## Config sub-strategies (not registry providers, but runtime-selectable + security-relevant)
 Three knobs in `config/defaults.py` are also runtime-selectable and shift the observed security, so they belong
@@ -83,8 +83,8 @@ a new FHE backend) is **one `register(...)` call** - no stage code changes.
   - `PrivateInferenceStage` -> `fhe` for the linear layers (TenSEAL CPU <-> OpenFHE CPU; both
     commercial-OK) and records the `mpc` provider for the non-linear layers - the full
     FHE-linear + MPC-non-linear hybrid is exercised by the benchmark
-    (`qsh.mpc.secret_inference` + `qsh.benchmark.classical_mpc_fhe`), so the chosen MPC backend
-    is named in the signed run summary.
+    (`qsh.mpc.secret_inference` + `qsh.benchmark.classical_mpc_fhe`), and the signed run summary names
+    the MPC backend that ran.
   - `SignatureStage` -> `sig` (ML-DSA signs + verifies the run summary with a per-run key, which detects accidental change and not an adversary who re-signs,
     quantum-safe audit record; emits `signature_verified`).
 
