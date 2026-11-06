@@ -11,6 +11,18 @@ const breakable = (k: string) => k.split("_").map((part, i, all) => (
   <Fragment key={i}>{part}{i < all.length - 1 && <>_<wbr /></>}</Fragment>
 ));
 
+/** What a log line says (UX19, Round 86). The browser emits a metric with its name and value in `data` and no message,
+ *  so most of a run's lines read a bare "metric <stage>". The value is written as the metrics table would hold it,
+ *  numbers to six significant figures and long text cut. */
+export function lineText(e: PipelineEvent): string {
+  if (e.message || e.type !== "metric" || typeof e.data?.name !== "string") return e.message;
+  const v = e.data.value;
+  const shown = typeof v === "number" ? String(Number.isInteger(v) ? v : Number(v.toPrecision(6)))
+    : typeof v === "string" ? (v.length > 120 ? `${v.slice(0, 117)}...` : v)
+    : v == null ? String(v) : (JSON.stringify(v) ?? String(v)).slice(0, 120);
+  return `${e.data.name} = ${shown}`;
+}
+
 export default function RunMonitor({
   events, metrics, signature, logRef,
 }: {
@@ -33,7 +45,7 @@ export default function RunMonitor({
             <div key={i} className="log-line">
               <span className="t">[{e.t?.toFixed?.(3)}s]</span>{" "}
               <span className={`ev-${e.type}`}>{e.type}</span>{" "}
-              <span className="muted">{e.stage}</span> {e.message}
+              <span className="muted">{e.stage}</span> {lineText(e)}
             </div>
           ))}
         </div>

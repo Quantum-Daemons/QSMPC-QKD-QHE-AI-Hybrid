@@ -85,8 +85,11 @@ BASELINE_GAP_NOTE = (
 )
 
 
-def build_resnet(arch: str, n_classes: int = 2, *, pretrained: bool = True):
+def build_resnet(arch: str, n_classes: int = 2, *, pretrained: bool = False):
     """A torchvision ResNet with a 1-channel stem and a fresh head.
+
+    Random initialisation unless asked, as the CLI already was: the function itself defaulted to ImageNet1K_V1 until
+    Round 86, so any caller that left the argument out took the restricted path.
 
     The stem rewrite is the only architecture-specific step and it is identical for both depths:
     torchvision names the first convolution ``conv1`` and the classifier ``fc`` in every ResNet.

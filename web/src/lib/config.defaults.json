@@ -1486,7 +1486,7 @@
           "ceiling": 0.919,
           "ceiling_source": "Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
           "companion": "accuracy",
-          "comparison_caveat": "",
+          "comparison_caveat": "Both bars are AUC on the official BreastMNIST test split, and that is where the agreement stops: this student reads 14 x 14 images, downsampled from the 28 x 28 the baseline's ResNet-18 reads, and it is a single-convolution CNN distilled for CKKS, not a ResNet. The gap is what the encrypted tier's size costs, not two methods compared on one input.",
           "display": "AUC",
           "name": "auc"
         },

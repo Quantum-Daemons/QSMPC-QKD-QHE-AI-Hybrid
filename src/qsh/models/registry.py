@@ -749,6 +749,14 @@ M_BREASTMNIST = MetricSpec(
     ceiling_source="Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
     companion="accuracy",
 )
+#: The CKKS student against the same baseline (Round 86). The bars share the metric and the test split, not the input:
+#: the chart said "Both bars are the same metric on the same axis" over a 14 x 14 single-convolution student and a
+#: 28 x 28 ResNet-18. The card does not print this field, so the student's card is unchanged.
+M_BREASTMNIST_STUDENT = replace(M_BREASTMNIST, comparison_caveat=(
+    "Both bars are AUC on the official BreastMNIST test split, and that is where the agreement stops: this student "
+    "reads 14 x 14 images, downsampled from the 28 x 28 the baseline's ResNet-18 reads, and it is a single-convolution "
+    "CNN distilled for CKKS, not a ResNet. The gap is what the encrypted tier's size costs, not two methods compared "
+    "on one input."))
 M_PRS = MetricSpec(
     name="auroc_eur",
     display="AUROC (European ancestry)",
@@ -1112,7 +1120,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         architecture="1 conv block (1->4ch, 3x3), avg-pool, dense head, 14x14 input",
         params=None,
         dataset=DS_BREASTMNIST,
-        metric=M_BREASTMNIST,
+        metric=M_BREASTMNIST_STUDENT,
         runs_encrypted=True,
         artifacts=_STUDENT_ARTIFACTS_TORCH,
         hf_repo="qsh-medical-breastmnist-ckks-student",

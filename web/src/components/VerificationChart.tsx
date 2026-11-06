@@ -1219,14 +1219,19 @@ export function VerificationChart(
       ? plot.hist.reduce((a, b) => a + b.positive, 0) /
         Math.max(1, plot.hist.reduce((a, b) => a + b.positive + b.negative, 0))
       : 0;
+    // The sample's own names for the two classes, when it ships them (C5): "positive" is class 1 here, which on
+    // BreastMNIST means "normal, benign".
+    const [neg, pos] = plot.classLabels ?? [null, null];
     return (
       <div className="chart-pair">
         <figure className="chart-figure">
           <figcaption className="muted small">
             Precision-recall for <code>{modelKey}</code> over {res.n} rows of its published evaluation
-            sample ({res.split ?? "split not declared"}). The dashed line is what a
+            sample ({res.split ?? "split not declared"}).
+            {pos ? <> The positive class is class 1, <strong>{pos}</strong>{neg ? <>; class 0 is {neg}</> : null}.</>
+              : null} The dashed line is what a
             random ranker achieves ({prevalence.toFixed(4)}) - PR rather than ROC because this
-            baseline moves with prevalence and ROC's does not.
+            baseline moves with prevalence and ROC&apos;s does not.
           </figcaption>
           <ChartReadout hint={HINT_KEYBOARD}>
             <ResponsiveContainer width="100%" height={180}>
@@ -1288,9 +1293,9 @@ export function VerificationChart(
                       the way WCAG's own pie-chart example uses a border, so each segment meets the
                       card at 3.72:1 or more. */}
                   <Bar dataKey="negative" stackId="a" fill="#717d92" stroke={CARD} strokeWidth={1}
-                       name="true class 0 (solid)" />
+                       name={`true class 0${neg ? `, ${neg}` : ""} (solid)`} />
                   <Bar dataKey="positive" stackId="a" fill="url(#hatch-positive)" stroke={CARD}
-                       strokeWidth={1} name="true class 1 (hatched)" />
+                       strokeWidth={1} name={`true class 1${pos ? `, ${pos}` : ""} (hatched)`} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartReadout>

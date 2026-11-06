@@ -604,6 +604,8 @@ export interface ModelEvalResult {
      *  pages whose config declares a decision curve; and, where it declares one and the page cannot draw it, why. */
     decisionCurve?: DecisionCurve;
     decisionCurveWithheld?: string;
+    /** A binary sample's class names, [class 0, class 1], when it ships them; class 1 is what the curves score. */
+    classLabels?: [string | null, string | null];
   };
 }
 
@@ -894,6 +896,10 @@ export async function evaluatePublishedModel(
         prob ? (i: number) => (width > 1 ? prob[i * width + 1] : prob[i]) : null, labels, n, thr);
       if (dc && "curve" in dc) plot.decisionCurve = dc.curve;
       else if (dc) plot.decisionCurveWithheld = dc.withheld;
+      // WHICH CLASS IS "POSITIVE" (Round 86). The curve and the histogram score class 1, and on BreastMNIST class 1
+      // is "normal, benign" while the Wisconsin charts on the same page call 1 malignant; the caption named neither.
+      const labelOf = (c: number) => file.classes?.[String(c)] ?? file.class_names?.[c] ?? null;
+      plot.classLabels = [labelOf(0), labelOf(1)];
     } else {
       const perClass: Array<{ label: string; f1: number }> = [];
       for (let c = 0; c < nClasses; c++) {

@@ -1930,13 +1930,13 @@ export function runClientPipeline(
         // "Simulated" is generous: `measurePlus` draws Bernoulli(0.5) from the run-seeded mulberry32
         // stream, and no stage downstream reads these bits; only the health and throughput metrics use
         // them. SP 800-22 here is 3 of that suite's 15 tests (monobit, runs, block frequency).
-        emit("log", stage, `QRNG (simulated: Bernoulli(0.5) draws from the run-seeded generator, standing in for |+> measurements; no key uses these bits): ${qr.nBits} bits, health `
+        emit("log", stage, `QRNG (simulated: Bernoulli(0.5) draws from the run-seeded mulberry32 generator, standing in for |+> measurements; no key uses these bits): ${qr.nBits} bits, health `
           + `${qr.healthConclusive ? (qr.healthPassed ? "PASS" : "FAIL") : "INCONCLUSIVE"} per SP 800-90B 4.4 `
           + `(repetition-count ${qr.repetitionCountLongest}/${qr.repetitionCountCutoff}, `
           + `adaptive-proportion ${qr.adaptiveProportionMax}/${qr.adaptiveProportionCutoff}, cutoffs at the `
           + `assessed ${qr.assessedMinEntropyPerBit} bit/sample; this stream's estimate `
           + `${r2(qr.minEntropyPerBit)}${qr.estimateBelowAssessment ? ", BELOW the assessment" : ""}); `
-          + `SP 800-22 subset (3 of its 15 tests) reported, not gating: ${qr.sp80022Passed ? "pass" : "fail"} (monobit p=${qr.monobitP.toFixed(3)}), `
+          + `SP 800-22 subset (monobit, runs and block frequency: 3 of its 15 tests) reported, not gating: ${qr.sp80022Passed ? "pass" : "fail"} (monobit p=${qr.monobitP.toFixed(3)}), `
           + `${r1(qr.throughputBitsPerSec / 1000)} kbit/s`);
         break;
       }
@@ -3520,6 +3520,8 @@ export function runClientPipeline(
         // exact for weights that mean nothing, so say which case this is rather than let a reader
         // assume the explanation describes the industry model.
         artifacts.explanation_provenance = realIn?.model?.W ? "real bundled model" : "placeholder weights";
+        // What each bar's feature is, when the payload says (PP14): the bars printed bare AML-style names for PaySim columns.
+        artifacts.explanation_feature_definitions = realIn?.definitions ?? null;
         // FROM THE BACKEND THAT SURFACED THE CLASS (Round 84). Round 83 left this `false` on every
         // path, so on finance, medical and genomics, where CKKS evaluates the same bundled model
         // explained here and reports its argmax, the panel called the class "a different

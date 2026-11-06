@@ -1,0 +1,157 @@
+"""What a re-read of the checklist's pending rows found still live, fixed where it lived (Round 86).
+
+WHY THIS EXISTS
+
+A Round 82 walk wrote thirty-nine findings into the private checklist as "PENDING (defects round)". Later rounds fixed
+most of them and nobody updated the rows; re-read against main on 2026-11-06, twenty-six were fixed, eleven in part
+and two not at all. These are the parts that could be fixed without republishing anything on the Hub:
+
+- C5: the medical precision-recall curve scores class 1, which BreastMNIST calls "normal, benign", while the Wisconsin
+  charts on the same page call 1 malignant, and the caption named neither.
+- B6: the medical student, a 14 x 14 single-convolution CNN, was drawn against ResNet-18 at 28 px under "Both bars are
+  the same metric on the same axis".
+- L3: `build_resnet()` defaulted to ImageNet weights, and DATA_LICENSES named a `--from-scratch` flag that never existed.
+- UX19: most of a run's log lines read a bare "metric <stage>".
+- QN6: the QRNG line did not name its three SP 800-22 tests or its generator.
+- PP14: the SHAP bars printed AML-style names for PaySim quantities and never said what they were.
+- Four documents that contradicted the code or themselves (SW6 D8, AM2, RD1, and a datasets line Round 86 made stale).
+"""
+
+from __future__ import annotations
+
+import ast
+import json
+import os
+import subprocess
+import tempfile
+from pathlib import Path
+
+import pytest
+
+REPO = Path(__file__).resolve().parents[1]
+WEB = REPO / "web"
+ESBUILD = WEB / "node_modules" / ".bin" / "esbuild"
+
+
+def _read(rel: str) -> str:
+    return (REPO / rel).read_text(encoding="utf-8")
+
+
+def _code(rel: str) -> str:
+    """The source without its comments, so a check reads what runs and not what a comment says ran."""
+    return "\n".join(line for line in _read(rel).splitlines() if not line.lstrip().startswith(("//", "*", "/*", "{/*")))
+
+
+# ---- C5 --------------------------------------------------------------------------------------------------------------
+
+def test_the_precision_recall_figure_names_its_positive_class() -> None:
+    infer = _code("web/src/lib/onnxInference.ts")
+    assert 'file.classes?.[String(c)] ?? file.class_names?.[c]' in infer and "plot.classLabels = [labelOf(0), labelOf(1)]" in infer
+    chart = _code("web/src/components/VerificationChart.tsx")
+    assert "const [neg, pos] = plot.classLabels ?? [null, null];" in chart
+    assert "The positive class is class 1, <strong>{pos}</strong>" in chart
+    assert "name={`true class 1${pos ? `, ${pos}` : \"\"} (hatched)`}" in chart
+    # The sample the medical page scores names its classes in the form the code reads.
+    sample = json.loads(_read("models/medical_breastmnist_resnet18/eval_sample.json"))
+    assert sample["classes"] == {"0": "malignant", "1": "normal, benign"}
+
+
+# ---- B6 --------------------------------------------------------------------------------------------------------------
+
+def test_the_medical_student_is_not_drawn_as_like_for_like() -> None:
+    cfg = json.loads(_read("web/src/lib/config.defaults.json"))
+    by_key = {m["key"]: m for m in cfg["models"]["medical_fl"]}
+    caveat = by_key["medical_fl.student"]["metric"]["comparison_caveat"]
+    assert "14 x 14" in caveat and "28 x 28" in caveat, caveat
+    # The ResNet-18 is compared with ResNet-18 at the baseline's own input, so its claim stands.
+    assert by_key["medical_fl.resnet18"]["metric"]["comparison_caveat"] == ""
+
+
+def test_the_caveat_leaves_the_published_card_unchanged() -> None:
+    import sys
+
+    sys.path.insert(0, str(REPO / "scripts"))
+    import publish_hf  # noqa: E402
+
+    from qsh.models import registry
+
+    spec = registry.get("medical_fl.student")
+    card = publish_hf.model_card(spec, registry.achieved("medical_fl.student"))
+    assert card == _read(registry.ARTIFACT_DIRS["medical_fl.student"] + "/README.md")
+
+
+# ---- L3 --------------------------------------------------------------------------------------------------------------
+
+def test_the_resnet_builder_defaults_to_random_initialisation() -> None:
+    tree = ast.parse(_read("scripts/train/medical_breastmnist.py"))
+    fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == "build_resnet")
+    defaults = dict(zip([a.arg for a in fn.args.kwonlyargs], fn.args.kw_defaults))
+    assert isinstance(defaults["pretrained"], ast.Constant) and defaults["pretrained"].value is False
+    # The row told a reader to run a flag that never existed; it may say so, not ask for it.
+    assert "medical_breastmnist.py --from-scratch" not in _read("DATA_LICENSES.md")
+
+
+# ---- UX19 ------------------------------------------------------------------------------------------------------------
+
+def _require_browser_or_skip() -> None:
+    if ESBUILD.exists():
+        return
+    msg = "web/node_modules/.bin/esbuild is absent, so the run log's line text cannot be executed. Run `npm ci` in web/."
+    if os.environ.get("QSH_REQUIRE_BROWSER_GATES") == "1":
+        pytest.fail(msg + " QSH_REQUIRE_BROWSER_GATES=1 is set, so this is a failure.")
+    pytest.skip(msg)
+
+
+def test_a_metric_line_says_which_metric_and_its_value() -> None:
+    _require_browser_or_skip()
+    with tempfile.TemporaryDirectory() as tmp:
+        d = Path(tmp)
+        entry, bundle, runner = d / "entry.ts", d / "bundle.mjs", d / "run.mjs"
+        entry.write_text(f"export {{ lineText }} from {json.dumps(str(WEB / 'src/components/RunMonitor'))};\n")
+        subprocess.run([str(ESBUILD), str(entry), "--bundle", "--format=esm", "--platform=node", "--jsx=automatic",
+                        f"--outfile={bundle}", "--log-level=error"], cwd=WEB, check=True, capture_output=True)
+        cases = [
+            {"type": "metric", "stage": "s", "message": "", "data": {"name": "encrypted_agreement", "value": 1}, "t": 0},
+            {"type": "metric", "stage": "s", "message": "", "data": {"name": "fhe_ms", "value": 12.3456789}, "t": 0},
+            {"type": "metric", "stage": "s", "message": "", "data": {"name": "model", "value": "finance_aml.gbm"}, "t": 0},
+            {"type": "log", "stage": "s", "message": "a sentence", "data": {}, "t": 0},
+        ]
+        runner.write_text(f"import {{ lineText }} from {json.dumps(bundle.as_uri())};\n"
+                          f"console.log(JSON.stringify({json.dumps(cases)}.map(lineText)));\n")
+        got = json.loads(subprocess.run(["node", str(runner)], check=True, capture_output=True, text=True).stdout)
+    assert got == ["encrypted_agreement = 1", "fhe_ms = 12.3457", "model = finance_aml.gbm", "a sentence"]
+    assert "{lineText(e)}" in _code("web/src/components/RunMonitor.tsx")
+
+
+# ---- QN6 -------------------------------------------------------------------------------------------------------------
+
+def test_the_qrng_line_names_its_tests_and_its_generator() -> None:
+    compute = _code("web/src/lib/clientCompute.ts")
+    assert "SP 800-22 subset (monobit, runs and block frequency: 3 of its 15 tests)" in compute
+    assert "draws from the run-seeded mulberry32 generator" in compute
+
+
+# ---- PP14 ------------------------------------------------------------------------------------------------------------
+
+def test_the_shap_bars_say_what_each_feature_is() -> None:
+    payload = json.loads(_read("web/public/data/finance/paysim_sample.json"))
+    assert set(payload["feature_definitions"]) == set(payload["names"])
+    assert "definitions: ds.feature_definitions ?? undefined" in _code("web/src/lib/realData.ts")
+    assert "artifacts.explanation_feature_definitions = realIn?.definitions ?? null;" in _code("web/src/lib/clientCompute.ts")
+    assert "definitions={artifacts?.explanation_feature_definitions ?? null}" in _code("web/src/pages/UseCasePage.tsx")
+    panel = _code("web/src/components/ShapPanel.tsx")
+    assert "<dd style={{ margin: 0 }}>{definitions[t.feature]}</dd>" in panel
+
+
+# ---- the documents ---------------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize(("path", "old"), [
+    ("docs/pqc-roadmap.md", "machine-readable marking of generated content, is **not applicable**"),
+    ("docs/pqc-roadmap.md", "`provenance_note` block is voluntary"),
+    ("docs/findings.md", "unpublished on licence grounds (the PRS)"),
+    ("docs/findings.md", "The decision rests on the FHE\n  path"),
+    ("docs/models-and-benchmarks.md", "PneumoniaMNIST as the full deployment's use-case default"),
+    ("DATA_LICENSES.md", "the script's *default* is still `IMAGENET1K_V1`"),
+])
+def test_a_corrected_sentence_does_not_come_back(path: str, old: str) -> None:
+    assert old not in _read(path), f"{path} says {old!r} again"
