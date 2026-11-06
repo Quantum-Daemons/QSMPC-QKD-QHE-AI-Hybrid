@@ -4,7 +4,7 @@ import {
 } from "recharts";
 
 import { api } from "../lib/api";
-import { qkdCfg, securityScoringCfg } from "../lib/config";
+import { qkdCfg } from "../lib/config";
 import { bb84, e91, FIBER, fibreIntensities, h2, qsdcLink, type ChannelParams } from "../lib/quantumSim";
 import { rangeAtElevationKm } from "../lib/satNetwork";
 import { ChartReadout, HINT_KEYBOARD, ReadoutTooltip } from "./ChartReadout";
@@ -35,7 +35,7 @@ export function EveSweepChart({ distanceKm }: { distanceKm: number }) {
     })).then((out) => { if (live) setRows(out); });
     return () => { live = false; };
   }, [distanceKm]);
-  const threshold = securityScoringCfg().qber_secure_threshold;
+  const threshold = qkdCfg().pp_threshold;   // the QKD stage's abort threshold, as the flag beside it reads
   if (!rows.length) return null;
   return (
     <figure className="chart-figure">

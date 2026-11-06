@@ -631,11 +631,16 @@ class PrivateInferenceStage(Stage):
             ctx.artifacts["fhe_prediction"] = out["prediction"]
             ctx.artifacts["private_prediction"] = out["prediction"]
             ctx.artifacts["private_prediction_backend"] = "ckks"
+            # The class's NAME where the use case knows it (the medical CNN path: MedMNIST's label map), because an index
+            # means opposite things in two corpora and the page shows this artifact as it is.
+            label = (ctx.data.get("class_labels") or {}).get(int(out["prediction"]))
+            if label:
+                ctx.artifacts["private_prediction_label"] = label
             # record exactly what was inferred so ExplainabilityStage explains the same thing
             ctx.data["linear_model"] = model
             ctx.data["features"] = np.asarray(x)
             bus.metric("fhe_max_abs_error", out["max_abs_error"], self.name)
-            bus.log(f"CKKS private inference: class={out['prediction']} (backend={out['backend']}, "
+            bus.log(f"CKKS private inference: class={out['prediction']}{f' ({label})' if label else ''} (backend={out['backend']}, "
                     f"err={out['max_abs_error']:.2e}); each logit decrypted with its bias added under "
                     f"encryption and every other slot masked, so the key holder reads the logits and "
                     f"nothing else", self.name)
@@ -727,6 +732,7 @@ class QuantumComparisonStage(Stage):
         import numpy as np
 
         from ..benchmark.quantum_qsmpc_fhe import run_quantum
+        from ..config import get_config
 
         model_size = ctx.config.get("model_size", "medium")
         workload = ctx.config.get("workload", "linear")
@@ -742,13 +748,9 @@ class QuantumComparisonStage(Stage):
         if y is None:
             y = np.zeros(len(X), dtype=int)
 
-        # Score this row under the transport the run ACTUALLY used, from the same metrics the
-        # classical row is scored against - so the two rows differ by cryptography, not by which
-        # arguments each call site happened to supply.
-        q = run_quantum(X, y, n_qubits=qubits, n_samples=min(8, len(X)), seed=seed,
-                        kem=ctx.config.get("kem"),
-                        qkd_key_bits=ctx.metrics.get("secure_key_bits"),
-                        qber=ctx.metrics.get("qber"))
+        # As many samples as the standalone benchmark and the browser take (`benchmark.quantum_samples`);
+        # this site held a literal 8 until Round 86.
+        q = run_quantum(X, y, n_qubits=qubits, n_samples=min(get_config().benchmark.quantum_samples, len(X)), seed=seed)
         q.model_size = model_size
         q_row = q.to_row()
 

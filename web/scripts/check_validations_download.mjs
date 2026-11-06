@@ -71,9 +71,29 @@ if (typeof m.page.ResultsDownload === "function") {
   check("after a run", !text(after).includes(REASON), "the reason line is still shown after a validation ran");
 }
 
+// 3. Overlapping QKD runs (Round 86): the Eve slider starts one per step, so only the newest may write the table.
+check("newest wins", typeof m.page.newestWins === "function", "Validations exports no newestWins");
+if (typeof m.page.newestWins === "function") {
+  const ticket = m.page.newestWins();
+  const older = ticket(), newer = ticket();
+  check("newest wins", newer() === true && older() === false, "an older run's ticket is still current after a newer one");
+  const newest = ticket();
+  check("newest wins", newest() && !newer(), "a third run did not supersede the second");
+}
+// And the page uses it at the one site that writes the QKD table: every `setQkd(` sits behind the run's ticket.
+{
+  const { readFileSync } = await import("node:fs");
+  const code = readFileSync(join(WEB, "src/pages/Validations.tsx"), "utf8")
+    .replace(/\/\*[\s\S]*?\*\//g, "").split("\n").map((l) => l.replace(/\/\/.*$/, "")).join("\n");
+  const body = code.slice(code.indexOf("const runQkd"), code.indexOf("return (", code.indexOf("const runQkd")));
+  check("newest wins", /if \(current\(\)\) setQkd\(result\)/.test(body), "runQkd writes an answer without checking it is the newest");
+  check("newest wins", /if \(!current\(\)\) return;\s*setQkd\(null\)/.test(body), "runQkd clears the table on a superseded run's failure");
+  check("newest wins", (body.match(/setQkd\(/g) || []).length === 2, "runQkd writes the table at a site this check does not read");
+}
+
 if (failures.length) {
   console.error(`check_validations_download: ${failures.length} failure(s)`);
   for (const f of failures) console.error(`  - ${f}`);
   process.exit(1);
 }
-console.log("check_validations_download: OK - the export waits for a result and says why");
+console.log("check_validations_download: OK - the export waits for a result and says why, and only the newest QKD run writes the table");

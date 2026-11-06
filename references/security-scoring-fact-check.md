@@ -74,10 +74,11 @@ run:
 Every one of these is per-use-case verifiable in the E2E simulator, which a synthesised score is not.
 That was the deciding argument.
 
-**Where the composite stands now.** `src/qsh/benchmark/security.py` still computes it for backwards
-compatibility, and the full deployment's `/api/benchmark` returns it in each row, but no page renders
-it: the security posture table and the benchmark table's Security model column took its place, and
-the benchmark panel carries only a note on why it was retired
+**Where the composite stands now.** Removed, in both tiers, in Round 86: until then
+`src/qsh/benchmark/security.py` computed it for backwards compatibility and every row, the signed run
+summary and the benchmark downloads carried it, though no page rendered it. On the pages the security
+posture table and the benchmark table's Security model column took its place, and the benchmark panel
+carries only a note on why it was retired
 ([`../docs/models-and-benchmarks.md`](../docs/models-and-benchmarks.md#per-use-case-architectures)).
 
 ## Defects fixed regardless of presentation

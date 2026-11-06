@@ -130,12 +130,6 @@ export const qcnnWidths = (usecase: string) => QCNN_WIDTHS[usecase] ?? [];
 export const FEDERATED_USECASES = new Set(["medical_fl", "finance_aml"]);
 export const runsFederated = (usecase: string) => FEDERATED_USECASES.has(usecase);
 
-export const MODEL_SIZES = [
-  { id: "lightweight", label: "Lightweight" },
-  { id: "medium", label: "Medium" },
-  { id: "large", label: "Large (projected)" },
-];
-
 const DEMO = isClientDemo();
 
 // crypto-agility options for the pure static demo (mirror of /api/crypto-options)
@@ -144,7 +138,7 @@ export const DEMO_CRYPTO = {
     kem: ["ml-kem-768+x25519", "ml-kem-1024+x25519"],
     qkd: ["bb84-decoy", "pqc-only"],
     fhe: ["tenseal-cpu", "openfhe-cpu"],
-    mpc: ["mpyc-shamir", "mp-spdz", "hpmpc-gpu"],
+    mpc: ["mpyc-shamir"],
     sig: ["ml-dsa-65", "ml-dsa-87"],
   },
   defaults: { kem: "ml-kem-768+x25519", qkd: "bb84-decoy", fhe: "tenseal-cpu",
@@ -379,6 +373,11 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // federated stage has real data and a figure to appear in.
     if (qfl && runsFederated(usecase)) c.qfl = true;
     if (optiqkd) c.qkd_optimize = true;                  // run the AI-QKD parameter optimization this run
+    // The full deployment's medical run takes its CNN path on MedMNIST, as the browser always runs the medical CNN
+    // student. Until Round 86 nothing on the page reached that path: the Workload selector was gone and `workload`
+    // stays "linear" for the cost model, so the full deployment ran a pixel-logistic model instead (a reader found it).
+    // `dataset`, not `workload`: the browser's cost model keeps reading "linear".
+    if (!DEMO && usecase === "medical_fl") c.dataset = "medmnist";
     return c;
   };
 

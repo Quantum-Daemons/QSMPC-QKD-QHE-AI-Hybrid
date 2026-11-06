@@ -51,10 +51,10 @@ ESBUILD = WEB / "node_modules" / ".bin" / "esbuild"
 
 #: Statements that draw share material from a seeded generator ON PURPOSE, each disclosed in place.
 #: The key is the file and the statement; the value is the disclosure that must stay beside it.
-WAIVED = {
-    ("web/src/lib/clientCompute.ts", "const s0 = (u() * 2 - 1) * 4"):
-        "representative, not cryptographic",  # mpcNonlinear: the cost model, which runs no protocol
-}
+#: Empty since Round 86: its one entry was `mpcNonlinear`'s representative shares (`const s0 = (u() * 2 - 1) * 4`), in the
+#: cost model, which went with `clientBenchmark`, the only code that called it. A new waiver needs a statement and the
+#: disclosure beside it in the code, as that one had.
+WAIVED: dict[tuple[str, str], str] = {}
 #: The QOTP demo key is drawn bit by bit (`if (u() < 0.5) X(q)`), so the statement scan cannot see it;
 #: its waiver is the Round 40 disclosure, held here explicitly.
 QOTP_DISCLOSURE = "anyone can recompute this mask"
@@ -216,15 +216,29 @@ def test_the_circuit_shares_mod_2_32_and_its_test_wraps() -> None:
     assert "u32::MAX" in tests and "wrapping_sub" in tests, "the crate's test no longer exercises the wrap"
 
 
+_SHARE_WORD = re.compile(r"\b(mask\w*|shares?|s0|s1|pad\w*|otp)\b", re.I)
+_SEEDED_CALL = re.compile(r"(?<![\w.])(u|rnd|rand|rng\(\w*\))\(\)|Math\.random\(\)")
+
+
+def _seeded_share(code: str) -> bool:
+    return bool(_SHARE_WORD.search(code) and _SEEDED_CALL.search(code))
+
+
+def test_the_scan_still_catches_a_seeded_share() -> None:
+    """The scan below has no positive in the tree since Round 86, so it proves here that it can still find one."""
+    for line in ("const s0 = (u() * 2 - 1) * 4;", "const mask = Math.random() * m;", "const pad = rng(7)();"):
+        assert _seeded_share(_code(line)), f"the scan no longer sees a seeded share: {line}"
+    for line in ("const mask = randomBelow(m);", "const u = rng(seed); // the cost model's stream"):
+        assert not _seeded_share(_code(line)), f"the scan flags a line that draws no share from a seed: {line}"
+
+
 def test_no_other_share_or_mask_comes_from_a_seeded_generator() -> None:
-    word = re.compile(r"\b(mask\w*|shares?|s0|s1|pad\w*|otp)\b", re.I)
-    seeded = re.compile(r"(?<![\w.])(u|rnd|rand|rng\(\w*\))\(\)|Math\.random\(\)")
     found = {}
     for f in sorted((WEB / "src").rglob("*.ts*")):
         rel = str(f.relative_to(REPO))
         for line in f.read_text().splitlines():
             code = _code(line)
-            if word.search(code) and seeded.search(code):
+            if _seeded_share(code):
                 stmt = next((k[1] for k in WAIVED if k[0] == rel and k[1] in code), code.strip())
                 found[(rel, stmt)] = line.strip()
     unexpected = sorted(set(found) - set(WAIVED))

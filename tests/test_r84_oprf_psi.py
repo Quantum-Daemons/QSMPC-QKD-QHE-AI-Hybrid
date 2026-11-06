@@ -656,7 +656,8 @@ def test_the_canvas_draws_the_oprf_roles_and_the_caption_states_them(browser) ->
 
 
 # The browser pipeline, run in node as tests/test_r84_finance_browser_run.py runs it, stopped once the
-# QSMPC stage has ended (the stages after it are that file's subject), plus the two-party mirror.
+# QSMPC stage has ended (the stages after it are that file's subject). The two-party mirror it also ran,
+# `clientAliceBob`, had no caller in the app and was removed in Round 86.
 _PIPELINE = r"""
 import { createRequire } from "node:module";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
@@ -669,7 +670,7 @@ const dir = mkdtempSync(join(tmpdir(), "qsh-r84-psi-"));
 const out = join(dir, "bundle.mjs");
 const sealWasm = resolve(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
 await build({
-  stdin: { contents: `export { runClientPipeline, clientAliceBob } from ${JSON.stringify(resolve(WEB, "src/lib/clientCompute"))};`,
+  stdin: { contents: `export { runClientPipeline } from ${JSON.stringify(resolve(WEB, "src/lib/clientCompute"))};`,
            resolveDir: WEB, loader: "ts" },
   bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error",
   define: { "import.meta.env": '{"BASE_URL":"/"}', "process.env.NODE_ENV": '"production"' },
@@ -721,8 +722,6 @@ for (const [name, usecase, config] of [["finance", "finance_aml", { seed: 0, qfl
   result[name] = { logs, metrics, stageSeconds: times.stage_end - times.stage_start,
                    intersection: artifacts?.psi_intersection ?? null };
 }
-const ab = await m.clientAliceBob(0, 8);
-result.aliceBob = Object.fromEntries(Object.entries(ab).filter(([k]) => k.startsWith("psi_") || k === "phases"));
 console.log(JSON.stringify(result));
 process.exit(0);
 """
@@ -762,17 +761,6 @@ def test_the_browser_pipeline_runs_the_oprf_psi_and_says_what_each_bank_learns(p
                      "not post-quantum", PROTOCOL):
             assert part in line, (name, part, line)
         assert not [x for x in _RETIRED if x in line], line
-
-
-def test_the_browser_two_party_demo_runs_the_oprf_psi(pipeline) -> None:
-    from qsh.qsmpc.psi import PROTOCOL
-
-    ab = pipeline["aliceBob"]
-    assert ab["psi_protocol"] == PROTOCOL and ab["psi_correct"] is True
-    assert ab["psi_intersection_size"] == ab["psi_ground_truth"]
-    assert ab["psi_blind_evaluations"] == ab["psi_set_size_a"]
-    assert ab["psi_learned"].startswith(f"Alice learns the intersection ({ab['psi_intersection_size']})")
-    assert next(p for p in ab["phases"] if p["name"].startswith("Private set intersection"))["party"] == "Alice+Bob"
 
 
 # --------------------------------------------------------------------------------------------------

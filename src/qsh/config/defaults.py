@@ -635,8 +635,15 @@ class DataConfig:
 class BenchmarkConfig:
     n_samples: int = 30
     quantum_qubits: int = 8
+    #: The widths the comparison circuit may be simulated at. The simulator is exact, so the cost is 2^n: 22 qubits took
+    #: 4.4 s in a tab and 24 allocated 268 MB. The Parameters field, the browser's clamp and its cost row held 2 and 14
+    #: as three separate literals until Round 86.
+    quantum_qubits_min: int = 2
+    quantum_qubits_max: int = 14
     quantum_samples: int = 20
     hybrid_samples: int = 6            # MPC ReLU/argmax is per-sample; cap to keep the run responsive
+    #: Samples of the measured medium tier that the projected large tier is calibrated on (a literal 4 until Round 86).
+    large_calibration_samples: int = 4
     # THE MPyC TIER'S PARTIES, since Round 75 separate processes over loopback TCP (qsh/mpc/parties.py).
     # It ran as ONE in-process party with MPyC's defaults (m = 1, t = 0, k = 30), so its Shamir
     # shares were the values themselves, nothing crossed a wire, and the communication it reported
@@ -693,28 +700,6 @@ class BenchmarkConfig:
         # medical_fl.student, and that student is distilled from the BreastMNIST teacher.
         "medmnist_name": "breastmnist", "subset": 512})
     demo_feature_dim: int = 8         # client-demo input feature width (N_IN)
-
-
-@dataclass
-class SecurityScoringConfig:
-    """Component weights + thresholds for the 0-100 security score (benchmark/security.py)."""
-    hndl_pqc_hybrid: float = 30.0
-    qkd_bonus: float = 5.0
-    info_theoretic: float = 30.0
-    computational: float = 18.0
-    # NIST ML-KEM category -> key-strength points
-    key_strength_by_category: dict = field(default_factory=lambda: {5: 20.0, 4: 18.0, 3: 16.0, 2: 13.0, 1: 10.0})
-    qber_secure_threshold: float = 0.11       # BB84 secure QBER threshold
-    qber_danger_threshold: float = 0.20
-    eavesdrop_secure_pts: float = 10.0
-    eavesdrop_warn_pts: float = 5.0
-    leakage_low: float = 0.1                   # PRX ~0.1 bit/weight is strong
-    leakage_mid: float = 0.5
-    leakage_pts_low: float = 10.0
-    leakage_pts_mid: float = 7.0
-    leakage_pts_high: float = 3.0
-    leakage_pts_default_it: float = 6.0
-    leakage_pts_default_comp: float = 4.0
 
 
 @dataclass
@@ -908,7 +893,6 @@ class QSHConfig:
     ids: IDSConfig = field(default_factory=IDSConfig)
     data: DataConfig = field(default_factory=DataConfig)
     benchmark: BenchmarkConfig = field(default_factory=BenchmarkConfig)
-    security_scoring: SecurityScoringConfig = field(default_factory=SecurityScoringConfig)
     quantum_advantage: QuantumAdvantageConfig = field(default_factory=QuantumAdvantageConfig)
     crypto: CryptoConfig = field(default_factory=CryptoConfig)
     orchestration: OrchestrationConfig = field(default_factory=OrchestrationConfig)

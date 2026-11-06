@@ -88,8 +88,14 @@ def pool_allele_counts(counts: list[int] | None = None) -> dict:
             "ghz_statevector_simulated": bool(res.honest_statevector)}
 
 
-def inspect_qkd_telemetry(qber: float = 0.02, threshold: float = 0.11) -> dict:
-    """Telecom/defense: classify QKD-link telemetry against a QBER threshold, by default the 11% Shor-Preskill bound; the pages use the f_EC-dependent threshold instead."""
+def inspect_qkd_telemetry(qber: float = 0.02, threshold: float | None = None) -> dict:
+    """Telecom/defense: classify QKD-link telemetry against a QBER threshold, by default the QKD stage's abort threshold."""
+    # `qkd.pp_threshold`, the value the QKD stage aborts at and the Validations flag compares with. It was a literal 0.11
+    # here, equal to it today but not tied to it (Round 86, a reader).
+    if threshold is None:
+        from ..config import get_config
+
+        threshold = get_config().qkd.pp_threshold
     eavesdrop = qber > threshold
     return {"qber": round(float(qber), 4), "threshold": float(threshold),
             "eavesdropper_detected": bool(eavesdrop),

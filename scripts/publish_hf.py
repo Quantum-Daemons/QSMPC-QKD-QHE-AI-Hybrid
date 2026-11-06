@@ -121,9 +121,13 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
         body.append(f"- **Baseline**: {m.baseline_source}")
     if m.ceiling is not None:
         body.append(f"- **Published ceiling**: {m.ceiling} - {m.ceiling_source}")
-    if m.companion:
-        body.append(f"- **Companion metric shown alongside**: `{m.companion}` - reported together "
-                    "because the aggregate figure can look healthy while the class that matters is not.")
+    # Only a companion this record carries. Five cards named one their own table did not contain: every student
+    # inherits its teacher's spec and records agreement instead, and the Telemanom spec named a key no record has
+    # (Round 86, a reader).
+    if m.companion and achieved and m.companion in achieved:
+        why = m.companion_note or ("reported together because the aggregate figure can look healthy while the class "
+                                   "that matters is not")
+        body.append(f"- **Companion metric shown alongside**: `{m.companion}` - {why}.")
     body.append("")
 
     if achieved and achieved.get("baseline_gap_note"):

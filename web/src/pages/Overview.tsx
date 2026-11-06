@@ -181,7 +181,7 @@ export default function Overview() {
             <tr><td>QKD protocol</td><td>BB84 decoy-state; E91/CHSH - both simulated</td><td>Parameters panel</td></tr>
             <tr><td>QRNG extractor</td><td>von Neumann; Toeplitz (LHL); seedless two-source</td><td>Parameters panel</td></tr>
             <tr><td>PQC+QKD combiner</td><td>HKDF (dual-PRF); a Toeplitz + QLHL extractor seeded with SHAKE-256 of its own inputs, so computational, not information-theoretic (the QLHL needs a seed independent of the input; Giestinhas and Spiller, arXiv:2603.26907). In the browser the QKD input is a fixed 32-byte constant</td><td>the agent panel's MCP channel on the use-case pages; browser pipeline runs mix no QKD key</td></tr>
-            <tr><td>FHE / MPC backend</td><td>browser: node-seal CKKS + garbled-circuit 2PC (fixed); full deployment: TenSEAL or OpenFHE, or HEonGPU on a machine with an NVIDIA GPU where it is built, with MPyC (the MPC selector's other options are not wired, so MPyC always runs)</td><td>run controls in the full deployment only</td></tr>
+            <tr><td>FHE / MPC backend</td><td>browser: node-seal CKKS + garbled-circuit 2PC (fixed); full deployment: TenSEAL or OpenFHE, or HEonGPU on a machine with an NVIDIA GPU where it is built, with MPyC for the non-linear layers, the one MPC backend this deployment runs</td><td>run controls in the full deployment only</td></tr>
           </tbody>
         </table>
         <p>Selection is operator-driven; there is no in-band cipher-suite negotiation. Open the{" "}

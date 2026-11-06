@@ -407,9 +407,9 @@ def test_the_python_two_party_demo_derives_the_session_key_the_browser_does() ->
     assert bits >= 256, (
         f"the Python two-party demo yields {bits} secure bits, below the 256 "
         "`derive_shared_key` needs, so `qkd_mixed` is "
-        f"{res['qkd_mixed']} and the run scores {res['security_score']}. The browser runs the same "
-        f"protocol at {browser_pulses:_} pulses and reports a mixed session. Two demonstrations of "
-        "one protocol must not disagree about whether the quantum half contributed."
+        f"{res['qkd_mixed']}. The browser's BB84 demo runs the same "
+        f"protocol at {browser_pulses:_} pulses. Two demonstrations of one protocol must not disagree "
+        "about whether the quantum half yields a usable key."
     )
     assert res["qkd_mixed"] is True, (
         f"{bits} secure bits were available and the session still did not mix them"

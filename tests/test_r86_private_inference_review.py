@@ -384,7 +384,9 @@ def test_the_medical_cnn_says_its_input_is_not_an_image() -> None:
 def test_the_two_party_demo_names_what_its_inference_phase_runs() -> None:
     compute = _read(LIB / "clientCompute.ts")
     alice_bob = (SRC / "benchmark" / "alice_bob_e2e.py").read_text()
-    assert '"Private inference (ONNX)"' not in compute and '"Placeholder linear score (plaintext)"' in compute
+    # The browser's two-party mirror, `clientAliceBob`, that carried the plaintext placeholder phase had no caller and was
+    # removed in Round 86; the Python demo below is the one that runs.
+    assert '"Private inference (ONNX)"' not in compute and "function clientAliceBob" not in compute
     assert '"Private inference (CKKS)"' not in alice_bob
     assert '"CKKS timing on a random model (single party)"' in alice_bob
 

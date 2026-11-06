@@ -143,9 +143,9 @@ def _qcnn_features(row_index: int) -> np.ndarray:
 def _medmnist_data(config: dict):
     """Real MedMNIST images for the genuine CNN-under-FHE path.
 
-    Loads a real MedMNIST 2D set (baked into the full Docker image at build time → no runtime
-    network; the synthetic generator in ``load_medmnist`` is an offline-CI fallback only, logged as
-    such — never a silent substitute for real data). Downsamples to a FHE-feasible resolution, trains
+    Loads the configured MedMNIST 2D set (``benchmark.medical_cnn``: BreastMNIST, the published student's
+    corpus), baked into the full Docker image at build time, so no runtime network. A set that cannot be
+    loaded is an error; synthetic images stand in only where a caller opts in (``load_medmnist``). Downsamples to a FHE-feasible resolution, trains
     a pixel-logistic surrogate (for the CKKS linear inference + faithful pixel-level SHAP), and picks
     a positive patient image. The genuine diagnostic CNN itself is federated-trained in
     ``FederatedTrainingStage`` and run under FHE+MPC in the benchmark row.
@@ -155,18 +155,23 @@ def _medmnist_data(config: dict):
     from sklearn.linear_model import LogisticRegression
 
     from ...ai.cnn_layers import downsample
+    from ...config import get_config
     from ...data.loaders import load_medmnist
     from ...fhe.ckks_inference import LinearModel
 
-    name = config.get("medmnist_name", "pneumoniamnist")
-    img_size = int(config.get("img_size", 14))
+    # The corpus, resolution and subset the published medical student and the benchmark's encrypted CNN use. These were
+    # the literals "pneumoniamnist", 14 and 512 until Round 86, so the full deployment trained and scored a chest X-ray
+    # model on a page whose browser tier and published student are BreastMNIST (a reader found it).
+    mc = get_config().benchmark.medical_cnn
+    name = config.get("medmnist_name", mc["medmnist_name"])
+    img_size = int(config.get("img_size", mc["img_size"]))
     X, y = load_medmnist(name, split="train")
     y = np.asarray(y).reshape(-1)
     if len(np.unique(y)) > 2:                        # collapse to binary for the small 2-class head
         y = (y > 0).astype(np.int64)
     y = y.astype(np.int64)
     Xs = downsample(X, img_size).astype(np.float32)  # (N, 1, s, s)
-    n = min(int(config.get("medmnist_n", 512)), len(Xs))
+    n = min(int(config.get("medmnist_n", mc["subset"])), len(Xs))
     Xs, y = Xs[:n], y[:n]
     flat = Xs.reshape(len(Xs), -1)
     clf = LogisticRegression(max_iter=300).fit(flat, y)
@@ -213,11 +218,25 @@ def _abnormal_class(dataset: str) -> int:
     return 1 - healthy[0]
 
 
+def _class_labels(dataset: str | None) -> dict[int, str]:
+    """MedMNIST's own names for a dataset's class indices, or {} without its metadata (the synthetic test images)."""
+    from ...config import get_config
+
+    name = dataset or get_config().benchmark.medical_cnn["medmnist_name"]
+    try:
+        from medmnist import INFO
+    except ImportError:
+        return {}
+    labels = (INFO.get(name) or {}).get("label") or {}
+    return {int(k): str(v) for k, v in labels.items()}
+
+
 def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     config = dict(config or {})
-    # the medical CNN path is opt-in: dataset='medmnist' or workload='cnn' (the WebUI's CNN selector)
+    # The medical CNN path: dataset='medmnist' (which the full deployment's page sends since Round 86) or workload='cnn'.
     use_cnn = config.get("dataset") == "medmnist" or config.get("workload") == "cnn"
     image = None
+    class_labels: dict[int, str] = {}
     feature_names = None
     if use_cnn:
         config.setdefault("dataset", "medmnist")
@@ -226,6 +245,9 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
         X, y, model, patient, image = _medmnist_data(config)
         feature_names = [f"px({r},{c})" for r in range(image.shape[1]) for c in range(image.shape[2])]
         patient_index = None
+        # What each class index MEANS, from MedMNIST's metadata: BreastMNIST's 0 is malignant where PneumoniaMNIST's 1
+        # was pneumonia, so a bare index reads the wrong way round the moment the corpus changes (Round 86).
+        class_labels = _class_labels(config.get("medmnist_name"))
     else:
         X, y, model, patient, patient_index = _data(config)
     ctx = Context(
@@ -254,6 +276,8 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     if image is not None:
         ctx.data["image"] = image
         ctx.data["feature_names"] = feature_names
+        if class_labels:
+            ctx.data["class_labels"] = class_labels
     else:
         try:                                        # human-readable names for the XAI chart
             from sklearn.datasets import load_breast_cancer as _skbc

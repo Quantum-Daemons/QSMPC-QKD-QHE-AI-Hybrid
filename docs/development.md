@@ -85,8 +85,8 @@ Measured on this machine on 2026-11-06 ([State-vector simulators, measured](mode
 - **MPyC** (MIT, pure-Python, v0.11 2026, a pip dependency - the submodule was dropped in Round 17) - Shamir secret-sharing with secure
   comparison drives the **non-linear** layers (ReLU/argmax) on shares, the `ReLU([x]) =
   [x] * [x>0]` pattern. Wired in `src/qsh/mpc/secret_inference.py` and run as three parties, each its own
-  process over loopback TCP (`src/qsh/mpc/parties.py`, t = 1, k = 40); selectable as the `mpc` crypto-agility family
-  (`mpyc-shamir` default; MP-SPDZ / hpmpc-gpu as heavyweight references). The linear layers stay under FHE - see
+  process over loopback TCP (`src/qsh/mpc/parties.py`, t = 1, k = 40); the `mpc` crypto-agility family's one
+  option, `mpyc-shamir` (MP-SPDZ and hpmpc were names in it that nothing ran, until Round 86). The linear layers stay under FHE - see
   the hybrid benchmark in [`docs/models-and-benchmarks.md`](models-and-benchmarks.md).
 
 ### Rust/WASM toolchain

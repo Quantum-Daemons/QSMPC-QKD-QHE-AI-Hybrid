@@ -150,8 +150,8 @@ communication).
   simulated rows (no QKD device exists here), QKD secure key bits, SKR, the QBER verdict taken from
   `secure_key_bits > 0` rather than a threshold, and, on BB84 runs, the GLLP tagged fraction showing
   what the decoy states are buying (E91 uses none, so its table has no such row). It and the table's
-  Security model column replaced the 0-100 composite, which `qsh/benchmark/security.py` still computes
-  and the full deployment's `/api/benchmark` still returns in each row, but no page renders
+  Security model column replaced the 0-100 composite, which nothing computes since Round 86: no row,
+  signed summary or download carries it
   ([why it was retired](../references/security-scoring-fact-check.md#why-the-existing-score-had-to-go)).
 - **Quantum advantage (0-10) - retired 2026-10-23, not rendered.** `qsh/benchmark/quantum_advantage.py`
   is kept for its own tests, as the 0-100 composite was, but no run computes it: the browser, the run

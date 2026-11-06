@@ -66,7 +66,7 @@ def test_the_demo_answers_an_aborted_run_instead_of_raising(eve: float) -> None:
     ok = qkd_demo(km, 0.0)
     r = qkd_demo(km, eve)                      # raised TypeError before the fix
     assert set(r) == set(ok), f"the aborted payload has another shape: {sorted(set(r) ^ set(ok))}"
-    threshold = get_config().security_scoring.qber_secure_threshold
+    threshold = get_config().qkd.pp_threshold       # the QKD stage's abort threshold, which the flag reads
     assert r["qber"] > threshold, f"Eve {eve} no longer aborts at {km} km (QBER {r['qber']}); re-derive ABORTING"
     assert r["eavesdropper_likely"] is True
     assert r["secure_key_bits"] == 0 and r["skr_per_pulse"] == 0.0

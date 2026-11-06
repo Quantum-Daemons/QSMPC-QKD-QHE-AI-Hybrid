@@ -8492,3 +8492,46 @@ and corrects two of its own statements: that both submodule pins were their upst
 file), and that `.dockerignore` excluded the module's build tree, which it did not until now. Its rule against recursive submodule
 initialisation keeps its reason and gains the exception HEonGPU's build needs, inside its own directory only. The hybrid table's CPU
 rows, measured on 2026-10-27 before every slot was masked, were measured again with the GPU rows on one day.
+
+### What the round's readers found a run could get wrong, fixed where it lived
+
+Nine readers went through the plans, orders and records against the code (2026-11-05), and these functional findings were
+still live on main. The owner chose the fix for each that had more than one (2026-11-06). `tests/test_r86_reader_findings.py`
+and `web/scripts/check_student_cost_rows.mjs` hold them, and each was seen to fail with its defect put back.
+
+- **Telecom's encrypted-cost row was sized by an invented MLP.** Its student records `n_parameters` where the distiller
+  writes `student_params`, and both readers asked for the second only, so the quantum row's latency was multiplied by 9
+  and the use-case card printed no size. One helper reads either key.
+- **The MPC selector changed nothing.** It offered MP-SPDZ and hpmpc, which no stage ran; the family names only MPyC now,
+  the page shows it as text, and the browser's offline mirror of the options is held to the registry.
+- **The eavesdropper flag read the retired score's threshold**, in both tiers, and the MCP telemetry tool a literal, while
+  the QKD stage aborts at `qkd.pp_threshold`; so did the posture facts' "aborts above" and the QKD chart's line. All read
+  that now, and on the Validations page only the newest of overlapping QKD runs writes the table.
+- **The retired 0-100 security score was still computed, signed and exported.** By the owner's choice it is removed from
+  both tiers, as the advantage score was in Round 84: `security.py`, its config section, the result field, the browser's
+  scorer and the arguments that only fed it.
+- **The full deployment's medical page never reached its CNN, and the CNN read another corpus.** Its path defaulted to
+  PneumoniaMNIST and the image baked that, while the config, the published student and the browser are BreastMNIST. By
+  the owner's choice the page sends `dataset=medmnist`, the path reads `benchmark.medical_cnn`, the image bakes
+  BreastMNIST and fails to build without it, and the run names its class from MedMNIST's label map, because the two
+  corpora's 0 and 1 mean opposite things. A missing dataset raises: synthetic images stand in only where a test sets
+  `QSH_ALLOW_SYNTHETIC_IMAGES=1`.
+- **Five Hub cards named a companion their table did not contain, and one model's headline was not in its record.** The
+  card states only keys its record carries; Telemanom's companion is the recorded `published_full_channel_f0_5`, a
+  figure from the paper and labelled so; the published `telecom_ids.qml`, a random forest, takes the forest's macro F1 as
+  its headline. The six cards were republished, README only, after every other file was checked byte for byte against
+  the pinned revision (owner's choice); the revisions are re-pinned in `models/metrics.json`.
+- **Literals the config already had**: the qubit range (2 and 14, at three sites), the quantum row's sample count (6 and
+  8) and the large tier's calibration count (4).
+- **Unused code**: `clientBenchmark`, `clientAliceBob` and the helpers only they used, the browser's `MODEL_SIZES`, and
+  the `api.ts` wrappers no page called. The endpoints stay for direct API clients.
+
+**Dated re-checks the register had no executor for**, written so the deadline gate fires on them:
+
+- **BLOCKED UNTIL 2026-12-03.** The AI Act's Article 111(4) transition for systems placed on the market before 2 August
+  2026 ends on 2 December 2026 (`docs/ai-act-art50-gap-analysis.md`, `docs/pqc-roadmap.md`). Re-read the Commission's
+  Article 50 guidance and the Code of Practice for anything issued at the transition's end, and correct both documents.
+- **BLOCKED UNTIL 2026-12-03.** ETSI's TB approval of GS QKD 015 ed3 was scheduled for 2026-12-02 (this register,
+  above). Read its status at ETSI and update the QKD-SDN control plane's references.
+- **BLOCKED UNTIL 2026-12-20.** The FAR Council's proposed rule was due within 180 days, about 2026-12-19
+  (`docs/pqc-roadmap.md`, this register above). Read the Federal Register and update the roadmap's row.

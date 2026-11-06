@@ -102,6 +102,7 @@ def qkd_demo(distance_km: float = 50.0, eve: float = 0.0) -> dict:
         "block_pulses": float(f"{r.block_pulses:.6g}") if r.block_pulses is not None else 0.0,
         # Config, not a literal. This was 0.08 while the browser used
         # security_scoring.qber_secure_threshold (0.11), so full mode and demo mode returned
-        # OPPOSITE eavesdropper verdicts for any QBER in the 0.08-0.11 band.
-        "eavesdropper_likely": r.qber > get_config().security_scoring.qber_secure_threshold,
+        # OPPOSITE eavesdropper verdicts for any QBER in the 0.08-0.11 band. Since Round 86 both read
+        # the QKD stage's own abort threshold, `qkd.pp_threshold`, rather than the retired score's.
+        "eavesdropper_likely": r.qber > get_config().qkd.pp_threshold,
     }

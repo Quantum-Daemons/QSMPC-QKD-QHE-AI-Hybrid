@@ -406,8 +406,8 @@ papers. Where the two used to overlap, that file is the owner.
   File: `Quantum-Secure_Multiparty_Deep_Learning.pdf`
   Photonic coherent linear-algebra inference; Holevo and Cramer-Rao leakage bounds (0.1 bit per
   weight, MNIST above 95 percent). Nothing in this repository implements the leakage analysis: its
-  0.1 bit per weight is quoted as a literature constant in the retired security score
-  (`src/qsh/benchmark/security.py`). Corrected 2026-10-30: this line said the analysis was
+  0.1 bit per weight was quoted as a literature constant in the retired security score
+  (`src/qsh/benchmark/security.py`, removed in Round 86). Corrected 2026-10-30: this line said the analysis was
   reimplemented in `src/qsh/qsmpc/` as security metrics.
 
 - **Quantum-Safe Multi-Party Computation for Distributed AI Datasets** - Gopher Security blog, 2026

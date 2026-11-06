@@ -182,7 +182,7 @@ def _project_large(med: BenchResult, med_layers, large_layers, workload: str) ->
         path="MPC-FHE", backend=f"{med.backend} (projected)", workload=workload, model_size="large",
         latency_ms=round(fhe + mpc, 3), throughput_ips=round(1000 / max(fhe + mpc, 1e-3), 2),
         accuracy=med.accuracy, ciphertext_plaintext_ratio=med.ciphertext_plaintext_ratio,
-        security_model=med.security_model, security_score=med.security_score,
+        security_model=med.security_model,
         fhe_linear_ms=round(fhe, 3), mpc_nonlinear_ms=round(mpc, 3), mpc_comm_kb=round(comm, 3),
         projected=True, device=med.device,
         extra={"projected_from": "medium", "fhe_scale": round(fr, 2), "mpc_scale": round(cr, 2),
@@ -210,7 +210,7 @@ def run_benchmark(workload: str = "linear", *, out_dir: str | Path = "results",
         # project the 'large' tier from a quick 'medium' calibration (keeps the page responsive)
         med_layers = _tier_mlp("medium", seed, base=model)
         med = run_hybrid(med_layers, X, y, backend_name="tenseal", workload=workload,
-                         model_size="medium", n_samples=min(n_hybrid, 4))
+                         model_size="medium", n_samples=min(n_hybrid, bcfg.large_calibration_samples))
         results.append(_project_large(med, med_layers, _tier_mlp("large", seed, base=model), workload))
     else:
         layers = _tier_mlp(model_size, seed, base=model)

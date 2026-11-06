@@ -26,6 +26,7 @@
     "check:control-plane": "node scripts/check_control_plane.mjs",
     "check:relay-pass-pairs": "node scripts/check_relay_pass_pairs.mjs",
     "check:model-cards": "node scripts/check_model_cards.mjs",
+    "check:student-cost-rows": "node scripts/check_student_cost_rows.mjs",
     "check:validations-download": "node scripts/check_validations_download.mjs",
     "check:link-contrast": "node scripts/check_link_and_label_contrast.mjs"
   },

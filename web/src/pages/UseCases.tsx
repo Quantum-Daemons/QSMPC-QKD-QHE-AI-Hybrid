@@ -3,7 +3,7 @@ import KeyPoints from "../components/KeyPoints";
 import StageBadge from "../components/StageBadge";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 import { USECASES } from "../lib/useCases";
-import { modelsFor, studentModel, teacherModel } from "../lib/config";
+import { modelsFor, studentModel, studentParamCount, teacherModel } from "../lib/config";
 
 const DEMO = isClientDemo();
 
@@ -71,7 +71,7 @@ export default function UseCases() {
           const achieved = teacher?.achieved as Record<string, number> | null | undefined;
           const headline = teacher?.metric?.name;
           const score = headline && achieved ? achieved[headline] : undefined;
-          const studentParams = (student?.achieved as { student_params?: number } | undefined)?.student_params;
+          const studentParams = studentParamCount(student);
           // How many events an event-wise headline was divided by, and whether the published figure
           // is a different measurement. Both are the registry's, as on the model panel.
           const scoredOver = typeof achieved?.n_events_scored === "number" ? achieved.n_events_scored : null;

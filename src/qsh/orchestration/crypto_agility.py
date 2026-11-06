@@ -117,12 +117,11 @@ def default_registry() -> CryptoRegistry:
     if heongpu_available():
         reg.register("fhe", "heongpu-gpu", lambda **kw: get_backend("heongpu", **kw))
 
-    # MPC family: the *non-linear* half of the hybrid (ReLU/argmax under secret sharing).
-    # MPyC (MIT, pure-Python Shamir + secure comparison) is the live engine. The other two names are
-    # references that nothing runs: MP-SPDZ was removed in Round 17, and hpmpc is a submodule.
+    # MPC family: the *non-linear* half of the hybrid (ReLU/argmax under secret sharing). MPyC (MIT,
+    # pure-Python Shamir + secure comparison) is the one engine that runs. MP-SPDZ and hpmpc were
+    # registered here by name until Round 86 and the page offered them, but no stage read the choice, so
+    # selecting either changed nothing a run computed. A name returns when its backend runs.
     reg.register("mpc", "mpyc-shamir", lambda **kw: "mpyc-shamir", default=True)
-    reg.register("mpc", "mp-spdz", lambda **kw: "mp-spdz")
-    reg.register("mpc", "hpmpc-gpu", lambda **kw: "hpmpc-gpu")
 
     # signature family
     from ..pqc.signatures import generate_keypair

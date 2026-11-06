@@ -45,16 +45,23 @@ def load_breast_cancer(scaler_fit_fraction: float = 0.7) -> tuple[np.ndarray, np
     return X, ds.target.astype(np.int64)
 
 
-def load_medmnist(name: str = "pneumoniamnist", split: str = "train"
+def load_medmnist(name: str | None = None, split: str = "train"
                   ) -> tuple[np.ndarray, np.ndarray]:
-    """Load a MedMNIST 2D dataset (real data; CC-BY 4.0). Returns X ``(N, 1, 28, 28)`` float32 in
-    ``[0, 1]`` and integer labels.
+    """Load a MedMNIST 2D dataset (real data). Returns X ``(N, 1, 28, 28)`` float32 in ``[0, 1]`` and integer labels.
 
-    The full Docker image **bakes the dataset at build time** so this needs no network at runtime.
-    If MedMNIST is genuinely unavailable (e.g. an offline CI box with no cached data), it falls back
-    to a clearly-logged **synthetic** image set — that path is for offline tests only and is NEVER a
-    silent substitute for real data in a real run (per the project's no-easy-fallback policy).
+    ``name`` defaults to the configured subset, ``benchmark.medical_cnn.medmnist_name`` (BreastMNIST), which the full
+    Docker image bakes at build time, so this needs no network at runtime.
+
+    A set that cannot be loaded RAISES. Until Round 86 it fell back to synthetic images with a warning in the server's
+    log, which a run never showed: a full-deployment medical run could report its CNN and its encrypted inference on
+    images that were not medical at all (a reader found it). Synthetic images stand in only when the caller sets
+    ``QSH_ALLOW_SYNTHETIC_IMAGES=1``, which the test suite does to exercise the mechanism where the file is absent.
     """
+    import os
+
+    from ..config import get_config
+
+    name = name or get_config().benchmark.medical_cnn["medmnist_name"]
     try:
         import medmnist
         from medmnist import INFO
@@ -69,13 +76,17 @@ def load_medmnist(name: str = "pneumoniamnist", split: str = "train"
             X = np.transpose(X, (0, 3, 1, 2))
         y = ds.labels.reshape(-1).astype(np.int64)
         return X, y
-    except Exception as exc:  # pragma: no cover - offline-CI fallback only (logged, not silent)
+    except Exception as exc:
+        if os.environ.get("QSH_ALLOW_SYNTHETIC_IMAGES") != "1":
+            raise RuntimeError(
+                f"MedMNIST {name!r} could not be loaded ({type(exc).__name__}: {exc}). The full Docker image bakes "
+                "it at build time; elsewhere fetch it with `python -m qsh.data.download --medmnist`. Synthetic images "
+                "stand in only for tests that set QSH_ALLOW_SYNTHETIC_IMAGES=1.") from exc
         import logging
 
         logging.getLogger("qsh").warning(
-            "MedMNIST '%s' unavailable (%s) — falling back to SYNTHETIC images. This is an "
-            "offline/CI path ONLY and is NOT real medical data; the full Docker image bakes the "
-            "real dataset so production runs use it.", name, exc)
+            "MedMNIST '%s' unavailable (%s): SYNTHETIC images, because QSH_ALLOW_SYNTHETIC_IMAGES=1. "
+            "This is NOT medical data.", name, exc)
         from .synthetic import synthetic_images
 
         return synthetic_images(n=512)

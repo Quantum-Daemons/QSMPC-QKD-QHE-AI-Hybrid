@@ -13,7 +13,7 @@ export default function PipelineControls({ run }: { run: Run }) {
   // In the public demo the FHE/MPC compute is REAL and runs entirely in the browser (node-seal CKKS +
   // local secret-sharing), so the server-side backend selectors (TenSEAL/OpenFHE/MPyC/…) don't apply.
   const demo = isClientDemo();
-  const { usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
+  const { usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, sig, setSig,
     optiqkd, setOptiqkd, publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
     state, running, paused, inFlight, start, startStepwise, pause, resume, step, stop } = run;
   // Resolved once: whether WebGPU can be offered at all. Without a usable adapter the option is shown
@@ -107,7 +107,8 @@ export default function PipelineControls({ run }: { run: Run }) {
           + "protocol is simulated - BB84 decoy-state or E91/CHSH - is a separate setting, "
           + "`qkd.protocol` in the Parameters panel below.")}
         {/* Demo: FHE/MPC run for real in the browser → a static badge, not inert backend dropdowns.
-            Full: the server-side TenSEAL/OpenFHE/MPyC selectors stay (real crypto-agility). */}
+            Full: the FHE selector stays (each option runs). The MPC one is text since Round 86: it offered
+            MP-SPDZ and hpmpc, which nothing ran, so choosing them changed nothing a run computed. */}
         {demo ? (
           <span className="muted" style={{ fontSize: 13 }}
             title="Where a page has a private-inference stage (finance, medical, genomics), the demo computes FHE/MPC for real in your browser (node-seal CKKS + a Polytune garbled-circuit 2PC whose two parties share this tab); telecom runs a CKKS check of its student and no MPC, and satellite runs neither. There is no server backend to select.">
@@ -116,7 +117,10 @@ export default function PipelineControls({ run }: { run: Run }) {
         ) : (
           <>
             {sel("FHE (linear)", "sel-fhe", "fhe", fhe, setFhe)}
-            {sel("MPC (non-linear)", "sel-mpc", "mpc", mpc, setMpc)}
+            <span className="muted" style={{ fontSize: 13, alignSelf: "center" }}
+              title="The non-linear layers run under MPyC Shamir secret sharing among three party processes; it is the one MPC backend this deployment runs, so there is nothing to select.">
+              MPC (non-linear): <strong>{mpc}</strong>
+            </span>
           </>
         )}
         <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}
