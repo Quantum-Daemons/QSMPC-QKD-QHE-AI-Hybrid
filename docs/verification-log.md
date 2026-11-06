@@ -3886,3 +3886,26 @@ correctness test is the control: it passes with the GPU visible and its matrix m
 
 **A credit has one owner too.** The OPS-SAT dataset record was appended by two payload builders and absent from the
 registry, so every file built from the registry, the cards and the evaluation samples, credited the article alone.
+
+**A field a script adds to a record is carried forward onto the next one.** The student's calibration map was first
+fitted by a script of its own, on the published weights. `record_metrics` carries any field a new payload lacks from
+the old record, so the next retrain, writing only the fidelity block, would have left the old weights' map beside new
+weights, and the page would have applied it to their logits. The map is now fitted in the run that fits the student,
+and a test fails if the trainer's call leaves it out.
+
+**A map is a function of the argument it was fitted on, and every surface must hand it that argument.** Fitted on the
+student's decision logit, the map was right for the private-inference figure and wrong for the model panel, which hands
+every published graph's probability to the same function once the config names the student there. Refitted on the
+probability with `on_logit` set, as the teacher's is, the two surfaces read 4.57 per 10,000 at $`t = 0.01`$ from two
+different routes, the decrypted logit and the graph's float32 output, and so does the measurement.
+
+**A record states what was measured on its own model.** `Platt.as_dict()` publishes the teacher's Round 49 isotonic
+comparison as its retention argument, so the student's record would have carried the teacher's numbers. Measured on the
+student, isotonic wins on both proper scoring rules, and the record says that, with the reason Platt is kept, in words
+derived from the numbers so a retrain cannot leave the sentence saying the opposite.
+
+**A published page is read where it is published, in that site's dialect.** The calibration card passed every local
+check, its numbers against the record included, and on the Hub its inline formulas printed as raw text with their
+backslashes, because the Hub reads `\\(...\\)` and not single dollars, and its display formula ran past a column that
+does not scroll. Both were found by reading the published card and measuring it, and both are now tests of the
+generator; the measurement that closes each is on the Hub, not in the tree.

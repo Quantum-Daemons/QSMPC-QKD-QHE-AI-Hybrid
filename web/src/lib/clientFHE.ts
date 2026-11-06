@@ -21,8 +21,9 @@
 // exposes ./throws + ./allows and blocks the deep ./dist/*.wasm specifier; this is a direct filesystem
 // asset reference, so Vite emits + hashes it normally and returns the served URL.
 import sealWasmUrl from "/node_modules/node-seal/dist/seal_throws.wasm?url";
-import { fheCfg } from "./config";
+import { fheCfg, modelsFor } from "./config";
 import { randomWords } from "./csprng";
+import { publishedDecisionCurve } from "./decisionCurve";
 // Types only, erased at build: the figure's own schema, so the producer below is checked against the
 // component that draws it rather than against a copy that could drift.
 import type { EncryptedAgreementPlot } from "../components/VerificationChart";
@@ -569,6 +570,19 @@ export async function encryptedHeldOutAgreement(held: HeldOutCorpus): Promise<He
     plane: held.plane ? { x: held.plane.x, y: held.plane.y } : null,
     accuracy: { encrypted: acc(encCls), plaintext: acc(plainCls), majority: majorityBaseline },
   };
+  // WHAT THE DECRYPTED SCORES ARE WORTH AS DECISIONS (Round 86). Agreement says the encryption reproduces the plaintext
+  // student; a decision curve says what acting on its output pays, across the same thresholds as the teacher's curve
+  // and at the same window's rate. Drawn from the DECRYPTED decision logits, and only where the config declares a
+  // curve for this model. The student's map is fitted on its own probability, sigmoid(logit), which is what its ONNX
+  // graph emits too, so the logit goes through the sigmoid first. The encrypted path classifies at logit 0, a
+  // probability of 0.5: the trainer folded the tuned threshold into the bias.
+  if (binary && held.modelKey) {
+    const spec = modelsFor(held.usecase).find((m) => m.key === held.modelKey);
+    const dc = publishedDecisionCurve(held.usecase, spec, (i) => 1 / (1 + Math.exp(-plot.points[i].enc)), labels,
+                                      batch.rows, 0.5);
+    if (dc && "curve" in dc) plot.decisionCurve = dc.curve;
+    else if (dc) plot.decisionCurveWithheld = dc.withheld;
+  }
   return {
     plot, batch, mismatches: flipped.length, tieRows, decidable, flippedDecidable, flipMarginMax,
     smallestMargin, medianAbsError, precisionBits: bitsOf(batch.maxAbsError),

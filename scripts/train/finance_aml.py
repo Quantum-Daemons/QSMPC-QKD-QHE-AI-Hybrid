@@ -3,8 +3,8 @@
 
     T2 teacher   graph-feature gradient boosting (this project's own graph features + XGBoost;
                  IBM's Graph Feature Preprocessor itself is excluded, see FEATURES below)
-    T1 student   logistic regression distilled from the teacher, built for CKKS (no code path
-                 encrypts it today; the public page encrypts the bundled PaySim model instead)
+    T1 student   logistic regression distilled from the teacher, built for CKKS. The public page
+                 encrypts it on the 8,192 test-window rows of the teacher's sample (since Round 84)
 
 Dataset: 5,078,345 transactions, 5,177 labelled laundering — 1 in 981. That ratio is the whole
 reason this script reports what it reports. Accuracy is 99.9% for a model that predicts "clean"
@@ -741,7 +741,13 @@ def main() -> int:
                     "int8_agreement": report.int8_agreement, "opset": report.opset}),
         "wall_clock_s": round(time.time() - started, 1),
     })
-    train.record_metrics("finance_aml.student", fidelity.as_metrics())
+    # The student's calibration in the same record, so a retrain refits it: written separately, the next record of this
+    # student would carry the previous weights' map forward and the page would apply it to new logits (Round 86).
+    student_cal = student_calibration(
+        student.decision_function(_student_features(Xval)), yval,
+        student.decision_function(_student_features(Xte)), yte,
+        fitted_by="scripts/train/finance_aml.py, in the run that fitted the student")
+    train.record_metrics("finance_aml.student", {**fidelity.as_metrics(), "calibration": student_cal})
     print(f"\n  wrote {out} and models/metrics.json in {time.time()-started:.0f}s")
     return 0
 
@@ -749,6 +755,92 @@ def main() -> int:
 def _est(student):
     """The estimator carrying the coefficients: a pipeline student keeps them on its last step."""
     return student[-1] if hasattr(student, "steps") else student
+
+
+def student_calibration(logit_val, y_val, logit_te, y_te, *, fitted_by: str) -> dict:
+    """The CKKS student's Platt map, fitted over validation and scored on test (Round 86).
+
+    The page draws a decision curve from the student's DECRYPTED logits, and a decision curve reads a risk against a
+    threshold, so the student's output needs a map to a risk first. The decision logit is ``W . z + b`` with the tuned
+    threshold already folded into ``b`` (`distil.fold_threshold_into_intercept`), which puts the student's emitted
+    probability, ``sigmoid(logit)``, at 0.5 at the operating point: it is not a risk, and it is the `raw` arm below.
+
+    Fitted on that probability with ``on_logit=True``, the teacher's convention, rather than on the logit itself. The
+    map then takes what every surface holds: the student's ONNX graph emits the probability (float32, at a resolution of
+    about 1.2e-7 near zero, far below any threshold here), and the private-inference figure takes the sigmoid of the
+    decrypted logit. A map fitted on the logit, applied to a graph's probability, would be a different function. The
+    windows are the teacher's map's: fitted on validation, which also chose the threshold, and scored on test, which
+    neither step saw.
+
+    Isotonic regression is measured beside it on the same windows rather than argued against. The teacher's comparison
+    (Round 49) measured a different model, and its text, which `Platt.as_dict()` publishes, is replaced here so the
+    student's record states nothing measured on the teacher.
+
+    Called by `main()` in the run that fits the student, and by `scripts/finance_student_calibration.py` on the published
+    weights. A record written without it would carry a previous student's map forward onto new weights.
+    """
+    from sklearn.isotonic import IsotonicRegression
+
+    from qsh.models import calibration as cal
+
+    lv, lt = np.asarray(logit_val, dtype=np.float64), np.asarray(logit_te, dtype=np.float64)
+    yv, yt = np.asarray(y_val).astype(int), np.asarray(y_te).astype(int)
+    pv, p_raw = 1.0 / (1.0 + np.exp(-lv)), 1.0 / (1.0 + np.exp(-lt))
+    platt = cal.fit_platt(pv, yv, on_logit=True)
+    p_cal = platt.apply(p_raw)
+    # Isotonic depends on the order of its argument alone, so the logit and the probability fit the same map.
+    p_iso = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip").fit(lv, yv).predict(lt)
+    clipped = int(((p_raw < cal.LOGIT_CLIP_EPS) | (p_raw > 1.0 - cal.LOGIT_CLIP_EPS)).sum())
+
+    def _r(d: dict) -> dict:
+        return {k: (round(v, 8) if isinstance(v, float) else v) for k, v in d.items()}
+
+    brier_cal, ll_cal = cal.brier(p_cal, yt), cal.log_loss(p_cal, yt)
+    brier_iso, ll_iso = cal.brier(p_iso, yt), cal.log_loss(p_iso, yt)
+    auprc = {k: metrics.auprc(yt, p) for k, p in (("raw", p_raw), ("calibrated", p_cal), ("isotonic", p_iso))}
+    record = {k: v for k, v in platt.as_dict().items() if k != "why_not_isotonic"}
+
+    def _vs(iso: float, platt_: float) -> str:
+        """Isotonic against Platt in words, from the numbers, so the sentence is true of whatever run wrote it."""
+        return "below" if iso < platt_ else "above" if iso > platt_ else "equal to"
+
+    distinct, zeros = int(np.unique(p_iso).size), int((p_iso == 0).sum())
+    return {
+        **record,
+        # The student's intercept is c here, not the weights file's `b`: the card prints this beside Platt's own b.
+        "argument": (r"the student's P(laundering), $q = \sigma(w^\top z + c)$, where $w^\top z + c$ is the "
+                     "decision logit the encrypted path decrypts, $z$ the z-scored features and $c$ the student's "
+                     "intercept (`b` in its weights file). The tuned threshold is folded into $c$, so the operating "
+                     "point is $q = 0.5$, a logit of 0"),
+        "test_rows_clipped_by_logit": clipped,
+        "fitted_on": "validation split; scored on the held-out test split",
+        "fitted_by": fitted_by,
+        "raw_is": ("the student's own probability, sigmoid of the decision logit. The folded threshold puts 0.5 at the "
+                   "operating point, so it is not a risk."),
+        "brier_raw": round(cal.brier(p_raw, yt), 8),
+        "brier_calibrated": round(brier_cal, 8),
+        "log_loss_raw": round(cal.log_loss(p_raw, yt), 8),
+        "log_loss_calibrated": round(ll_cal, 8),
+        "corp_raw": _r(cal.corp_decomposition(p_raw, yt)),
+        "corp_calibrated": _r(cal.corp_decomposition(p_cal, yt)),
+        "auprc_raw": round(auprc["raw"], 8),
+        "auprc_calibrated": round(auprc["calibrated"], 8),
+        "isotonic_measured": {
+            "brier": round(brier_iso, 8), "log_loss": round(ll_iso, 8), "auprc": round(auprc["isotonic"], 8),
+            "distinct_outputs": distinct, "rows_at_zero": zeros,
+        },
+        "why_not_isotonic": (
+            f"Measured on this student's windows, not carried from the teacher. Isotonic's Brier {brier_iso:.8f} is "
+            f"{_vs(brier_iso, brier_cal)} Platt's {brier_cal:.8f} and its log-loss {ll_iso:.8f} is {_vs(ll_iso, ll_cal)} "
+            f"{ll_cal:.8f}; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly "
+            "monotone, so the curve ranks rows as the student does (AUPRC "
+            f"{auprc['calibrated']:.8f} against the raw {auprc['raw']:.8f}"
+            + (f", with {clipped:,} test rows tied at the logit clip" if clipped else ", no row tied at the logit clip")
+            + f"; isotonic's {auprc['isotonic']:.8f} comes from the test window's scores tied at {distinct} values, "
+            f"{zeros:,} of them exactly zero), and it is the teacher's method, so the page's two decision curves differ by the "
+            "model and not by the map. scripts/measure_decision_curve.py records the student's window curve under both "
+            "maps."),
+    }
 
 
 def _best_threshold(y, score) -> float:

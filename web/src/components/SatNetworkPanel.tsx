@@ -342,8 +342,10 @@ function RelaySection({ link, defaultElevation, minEl, epsSec, deviation }: {
 }) {
   const [aId, setA] = useState("xinglong");
   const [bId, setB] = useState("graz");
-  const [elA, setElA] = useState(Math.round(defaultElevation));
-  const [elB, setElB] = useState(Math.round(defaultElevation));
+  // The pass section's own elevation, to a tenth of a degree (QK49). Rounded to a whole degree, the relay simulated
+  // 49 against the pass's 48.9, and its "Key with A" read 494.5 kbit beside 493.2 kbit for the same Xinglong pass.
+  const [elA, setElA] = useState(Math.round(defaultElevation * 10) / 10);
+  const [elB, setElB] = useState(Math.round(defaultElevation * 10) / 10);
   const [keys, setKeys] = useState<{ a: Uint8Array; b: Uint8Array } | null>(null);
   const a = LIAO_2018_STATIONS.find((s) => s.id === aId)!, b = LIAO_2018_STATIONS.find((s) => s.id === bId)!;
   const relay = useMemo(() => trustedRelay(link, a, b, elA, elB), [link, a, b, elA, elB]);
@@ -374,11 +376,11 @@ function RelaySection({ link, defaultElevation, minEl, epsSec, deviation }: {
       <div className="net-controls">
         {station(aId, setA, "Station A")}
         <label>A&apos;s pass, highest elevation (deg)
-          <input type="number" min={minEl} max={90} step={1} value={elA} onChange={(e) => setElA(Math.min(90, Math.max(minEl, Number(e.target.value) || minEl)))} />
+          <input type="number" min={minEl} max={90} step={0.1} value={elA} onChange={(e) => setElA(Math.min(90, Math.max(minEl, Number(e.target.value) || minEl)))} />
         </label>
         {station(bId, setB, "Station B")}
         <label>B&apos;s pass, highest elevation (deg)
-          <input type="number" min={minEl} max={90} step={1} value={elB} onChange={(e) => setElB(Math.min(90, Math.max(minEl, Number(e.target.value) || minEl)))} />
+          <input type="number" min={minEl} max={90} step={0.1} value={elB} onChange={(e) => setElB(Math.min(90, Math.max(minEl, Number(e.target.value) || minEl)))} />
         </label>
       </div>
       <div className="net-table">
@@ -388,7 +390,7 @@ function RelaySection({ link, defaultElevation, minEl, epsSec, deviation }: {
               <td className="small muted">{aId === bId ? "the same station" : relay.sharedView
                 ? `within one satellite's ${fmt(sharedViewMaxKm(link))} km footprint: both can be in view at once`
                 : `wider than one satellite's ${fmt(sharedViewMaxKm(link))} km footprint: the key has to be carried`}</td></tr>
-            <tr><th scope="row">Key with A, one pass</th><td className="num">{kbit(relay.a.keyBits)}</td><td className="small muted">{fmt(relay.a.durationS)} s above the minimum elevation; asymptotic, at the pass elevation rounded to a whole degree, so it can differ slightly from the one-pass figure above. As one block its composable finite key is {kbit(fin.a)}</td></tr>
+            <tr><th scope="row">Key with A, one pass</th><td className="num">{kbit(relay.a.keyBits)}</td><td className="small muted">{fmt(relay.a.durationS)} s above the minimum elevation; asymptotic: the pass simulation above, run at {fmt(elA, 1)} deg and {a.name}&apos;s altitude, so at the defaults, Xinglong at the pass&apos;s own elevation, it is the one-pass figure above. As one block its composable finite key is {kbit(fin.a)}</td></tr>
             <tr><th scope="row">Key with B, one pass</th><td className="num">{kbit(relay.b.keyBits)}</td><td className="small muted">{fmt(relay.b.durationS)} s; as one block, {kbit(fin.b)}</td></tr>
             <tr><th scope="row">Relayed key A to B</th><td className="num"><b>{kbit(relay.keyBits)}</b></td><td className="small muted">the shorter of the two: one key pads the other. At the finite keys, {kbit(fin.keyBits)}</td></tr>
             <tr><th scope="row">Second key exists after</th><td className="num">{fmt(relay.waitH, 1)} h</td><td className="small muted">a sun-synchronous orbit passes each station at the same local time, so the longitude difference sets the wait</td></tr>
