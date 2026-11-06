@@ -117,7 +117,7 @@
         "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118",
         "unc": 0.00152114
       },
-      "fitted_by": "scripts/finance_student_calibration.py at git d74d02f-dirty, on the published weights (sha256 c47afeadcc8816ce) without retraining",
+      "fitted_by": "scripts/finance_student_calibration.py at git 4390b75, on the published weights (sha256 c47afeadcc8816ce) without retraining",
       "fitted_on": "validation split; scored on the held-out test split",
       "formula": "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), logit(q) = log(q / (1 - q))",
       "isotonic_measured": {
