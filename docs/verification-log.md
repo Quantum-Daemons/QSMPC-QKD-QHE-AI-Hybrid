@@ -3871,3 +3871,18 @@ about it, is what turned the correction from plausible into checked.
 **An open issue is not a missing feature.** The 2026-11-01 re-check kept marimo declined on its offline issue #575.
 The release notes of 0.25.0 had shipped `--offline` 39 days earlier, and a probe with every other host unresolvable
 ran an exported cell. Test the capability, not the tracker.
+
+**A row marked pending is a claim about the past.** Thirty-nine checklist rows said "PENDING (defects round)" for a walk
+on 2026-10-30. Re-read against main a week later, twenty-six were already fixed and nobody had said so, and two of the
+rest were in files published on the Hub, which no test of the tree reads.
+
+**A failed build can leave a result behind.** hpmpc's Makefile went on after a compiler error and kept the previous
+executable, so the first GPU benchmark timed the matrix-multiplication test built before it: flat at 0.2 s from N = 128
+to 4096, with almost nothing sent. The sent volume, beside the CPU run's at the same N, is what gave it away; the script
+now checks the build log, the executable's age and the run's output before it records a time.
+
+**A benchmark that checks nothing runs without the hardware.** With the GPU hidden, function 36 still finished. The
+correctness test is the control: it passes with the GPU visible and its matrix multiplication fails with it hidden.
+
+**A credit has one owner too.** The OPS-SAT dataset record was appended by two payload builders and absent from the
+registry, so every file built from the registry, the cards and the evaluation samples, credited the article alone.
