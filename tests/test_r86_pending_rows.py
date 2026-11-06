@@ -191,3 +191,22 @@ def test_the_telemanom_sample_does_not_deny_the_satellite_ckks_check() -> None:
     text = _read("models/satellite_telemanom/eval_sample.json") + _read("scripts/prep_model_inputs.py")
     assert "no FHE or MPC stage runs on the satellite page" not in text
 
+
+# ---- G3 --------------------------------------------------------------------------------------------------------------
+
+def test_the_hpmpc_benchmark_checks_what_it_reports() -> None:
+    """The script's guards, each written because its failure happened: a stale executable reported as a GPU result, a
+    GPU result with no GPU, and the unlicensed nested submodule."""
+    script = _read("scripts/bench_hpmpc_gpu.sh")
+    subprocess.run(["bash", "-n", str(REPO / "scripts/bench_hpmpc_gpu.sh")], check=True)
+    assert "submodule update --init nn/PIGEON" in script and "--recursive" not in script
+    assert 'die "nn/Pygeon is populated; it carries no licence"' in script
+    assert "has a compiler error" in script and "left a stale run-P" in script and "a stale executable" in script
+    assert 'run "$W/test57_hidden.log" "CUDA_VISIBLE_DEVICES="' in script
+    assert not (REPO / "scripts/build_gpu_mpc.sh").exists()
+    rec = json.loads(_read("docs/measurements/hpmpc-gpu-2026-11-06.json"))
+    assert rec["checks"]["test57_gpu_hidden"] == "matrix multiplication failed"
+    gpu = {r["n"]: r for r in rec["results"] if r["device"] == "gpu"}
+    cpu = {r["n"]: r for r in rec["results"] if r["device"] == "cpu"}
+    for n in set(gpu) & set(cpu):  # the same protocol: the same volume sent at the same N
+        assert {x["p0_sent"] for x in gpu[n]["runs"]} == {x["p0_sent"] for x in cpu[n]["runs"]}, n

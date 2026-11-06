@@ -5,7 +5,10 @@ binding (``native/heongpu_py``, built by ``scripts/build_heongpu.sh``), and the 
 Until then this module ran ``scripts/run_gpu_mpc.sh``, which timed one multiply in HEonGPU's own example benchmark and
 reported it as the GPU row: none of this project's arithmetic. Both are gone.
 
-hpmpc (PIGEON, GPU secret-sharing MPC, MIT) is vendored as a submodule, and nothing here runs it yet.
+hpmpc (PIGEON's MPC framework, MIT) is vendored as a submodule. No stage or page runs it: since Round 86
+``scripts/bench_hpmpc_gpu.sh`` measures its secret-shared matrix multiplication on the CPU and the GPU, in a clone
+outside the submodule (``docs/measurements/hpmpc-gpu-*.json``). ``scripts/build_gpu_mpc.sh``, which built hpmpc's
+CPU default inside the submodule, discarded its errors and reported a GPU build, is gone.
 """
 
 from __future__ import annotations

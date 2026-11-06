@@ -458,3 +458,30 @@ one a timer reads the launch.
     parallel loop waits for its slowest thread. At 6 threads it held at 41 to 54 ms, and the table is at 6.
 - **A GPU is not where this project's inference runs.** The demo's pages encrypt in the visitor's browser (node-seal), and the
   full deployment's image has no GPU code. This is the full deployment's hybrid on a machine that has one.
+
+## Secret-shared matrix multiplication on the GPU, measured
+
+hpmpc (MIT), the MPC framework under PIGEON, multiplies two secret-shared $`N \times N`$ matrices twenty times under its
+Trio protocol, three parties on loopback sharing this machine's GPU, either with its tiled CPU loop or with a CUTLASS
+GEMM on the GPU (`scripts/bench_hpmpc_gpu.sh`,
+[`measurements/hpmpc-gpu-2026-11-06.json`](measurements/hpmpc-gpu-2026-11-06.json)). No stage or page runs it. Wall
+time of party 0, the median of three runs (one for the CPU at 4096), each started with the 1-minute load under 4:
+
+| $`N`$ | CPU | GPU | CPU / GPU | sent by party 0 |
+|---|---|---|---|---|
+| 128 | 0.023 s | 0.319 s | 0.07 | 1.3 MB |
+| 256 | 0.084 s | 0.318 s | 0.26 | 5.2 MB |
+| 512 | 0.616 s | 0.776 s | 0.79 | 21 MB |
+| 1024 | 4.75 s | 0.685 s | 6.9 | 84 MB |
+| 2048 | 38.6 s | 1.98 s | 19.5 | 336 MB |
+| 4096 | 316 s | 5.75 s | 54.9 | 1,342 MB |
+
+The GPU pays from $`N = 1024`$; below it a fixed cost of about 0.3 s, there at every size of the GPU's runs, decides.
+The parties send the same volume either way, because the GPU replaces only the local products. The GPU path is checked
+before it is timed: hpmpc's matrix-multiplication test passes with the GPU and fails with it hidden.
+
+Built at hpmpc `155c935` with one line changed in the script's clone: the benchmark's GPU branch calls `T::GEMM` where
+no `T` is declared, at that commit and at upstream's head, so it does not compile; the clone calls the share type's
+`S::GEMM`. CUTLASS v4.8.1, headers only, for `sm_120`. Only the GEMM object is built: CUTLASS 4.8.1's convolution
+header uses a function from problem-size headers it does not include, and hpmpc's 16-bit convolution fails a static
+assertion there, and the measured path links the GEMM alone.
