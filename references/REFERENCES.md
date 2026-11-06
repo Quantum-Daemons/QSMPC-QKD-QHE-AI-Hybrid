@@ -1829,6 +1829,18 @@ two conventions in the literature and this repository should look like one of th
   [`../docs/architecture.md`](../docs/architecture.md): Concrete-ML's **deployment model returns class
   scores and the CLIENT decrypts**, which is the mainstream construction for encrypted multiclass
   inference and is what this demo already does in a single tab.
+- **Lee, Kang, Lee, Choi, Eom, Deryabin, Lee, Lee, Yoo, Kim and No, "Privacy-Preserving Machine Learning with
+  Fully Homomorphic Encryption for Deep Neural Network", arXiv:2106.07229 (v1, 2021-06-14, the only version).**
+  `[link]`
+  URL: https://arxiv.org/abs/2106.07229
+  VERIFIED at the arXiv abstract and its API record 2026-11-06; the record carries no journal reference or DOI, so
+  none is cited. Verbatim: *"We numerically verify that the proposed model with the CIFAR-10 dataset shows 98.67%
+  identical results to the original ResNet-20 model with non-encrypted data. The classification accuracy of the
+  proposed model is 90.67%"*. The model is the standard ResNet-20 under RNS-CKKS **with bootstrapping**, its ReLU
+  evaluated by a polynomial approximation. **It enters as a relation, not a number to beat** (the owner's choice,
+  Round 36): every agreement figure on this project's pages encrypts one linear layer at one multiplicative level,
+  with no bootstrapping and no approximated activation, so it does far less homomorphic arithmetic and should agree
+  more often. `EncryptedAgreementChart` states that under its figure.
 
 ### What the cost literature rules out, and what verifiability does not prove
 

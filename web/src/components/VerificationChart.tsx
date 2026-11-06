@@ -391,6 +391,16 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
               : <>{exp2(plot.flipMarginMax)}.</>}
           </>
         ) : null}
+        {/* THE PUBLISHED SCALE, AS A RELATION AND NOT A NUMBER TO BEAT (the owner's choice, Round 36).
+            Lee et al. is the nearest primary source that reports this figure's quantity, the share of
+            inputs on which the encrypted model's top class equals the plaintext model's. Every figure
+            here encrypts one linear layer (one plaintext multiply and its rotations), so the two are
+            not like for like and the sentence says which way the difference should point. */}
+        {" "}For scale only: a 20-layer ResNet under RNS-CKKS, with bootstrapping and approximated ReLU,
+        reported &quot;98.67% identical results&quot; to its plaintext model on CIFAR-10 (Lee et al.,
+        arXiv:2106.07229, 2021). This model is one linear layer at one multiplicative level, with no
+        bootstrapping and no approximated activation, so it does far less homomorphic arithmetic and
+        should agree more often. Neither figure ranks the other.
         {plot.licence ? <> Rows: <LicenceLine licence={plot.licence} /></> : null}
       </figcaption>
       {mismatches > 0 && typeof plot.flipMarginMax === "number" && plot.flipMarginMax > 0 ? (
