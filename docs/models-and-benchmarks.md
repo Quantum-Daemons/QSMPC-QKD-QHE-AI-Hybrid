@@ -307,6 +307,33 @@ The window lies inside the sample's interval at 40 of the 43 thresholds the page
 error the estimator avoids. A perfect model would score 15.23, the window's rate per 10,000; the trainer's operating
 point, 0.3869 on the raw score, is a calibrated risk of 0.129, above the range.
 
+The private-inference figure draws the same curve for the CKKS student, `finance_aml.student`, from the logits it
+decrypts on the same 8,192 rows, over the same thresholds at the same rate. Its Platt map is fitted, as the teacher's
+is, on the model's own probability, here $`q = \sigma(W \cdot z + b)`$, over the validation window
+(`student_calibration` in `scripts/train/finance_aml.py`, which a retrain runs; `scripts/finance_student_calibration.py`
+applied it to the published weights without retraining). The student classifies at $`q = 0.5`$, where the trainer
+folded its tuned threshold into the bias, a calibrated risk of 0.013. Measured the same way, per 10,000 transactions
+([`measurements/finance-student-decision-curve-2026-11-06.json`](measurements/finance-student-decision-curve-2026-11-06.json)):
+
+| $`t`$ | whole window | the page's sample, pointwise 95% | weighted by the sample's 2.0% | whole window, isotonic map | whole window, no map |
+|---|---|---|---|---|---|
+| 0.002 | 11.08 | 10.92 (10.27 to 11.57) | 181.27 | 11.08 | 8.76 |
+| 0.005 | 7.58 | 7.38 (6.31 to 8.46) | 142.79 | 7.57 | 3.35 |
+| 0.01 | 4.98 | 4.57 (3.35 to 5.79) | 92.59 | 5.22 | -6.52 |
+| 0.02 | 1.87 | 2.05 (0.91 to 3.18) | 52.84 | 2.51 | -24.93 |
+| 0.05 | -0.96 | -0.83 (-1.63 to -0.02) | 8.22 | 0.00 | -67.15 |
+
+The window lies inside the sample's interval at all 43 thresholds. Over the whole window the student is above the
+teacher up to $`t \approx 0.0067`$ and below it from 0.0072, and below treat-none from 0.033. Net benefit is negative
+exactly when the flagged rows' laundering rate is under $`t`$, so from there the map overstates the risk of the rows it
+puts at the top of the student's range. On this student isotonic regression beats Platt on both proper scoring rules (Brier
+0.00149696 against 0.00154002, log-loss 0.00837343 against 0.00864886) and moves the window curve by at most 0.96 per
+10,000, at the top of the range, where it flags no row; Platt is kept so that the two curves differ by the model and
+not by the map, and the record says so. The calibrated student's Brier score is above the base rate's, a Brier skill of
+$`1 - 0.00154002/0.00152114 = -0.0124`$, so as a probability forecast it is worse than giving every row the window's
+rate. The two readings do not conflict: the curve asks what acting at each threshold pays, and that is positive
+through most of the range. The last column, the student's own probability read as a risk, is why the map is applied.
+
 #### Which pages encrypt
 
 In the browser, the finance, medical and genomics pages run node-seal CKKS and a Polytune

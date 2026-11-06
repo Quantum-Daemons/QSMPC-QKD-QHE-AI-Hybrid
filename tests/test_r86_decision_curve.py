@@ -16,6 +16,11 @@ wrong without any figure looking odd:
 3. TWO OWNERS OF ONE RANGE. The BFV scorecard is fitted over 0.002 to 0.05 and held the five thresholds as its own
    literal, while the page's curve spans the same range from the config. The trainer reads the config now, and the
    published scorecard must record the config's five.
+4. THE STUDENT'S MAP (Round 86, later). The private-inference figure draws the CKKS student's curve from its decrypted
+   logits, through a Platt map fitted on the student's own probability. Written by a separate script, the next record
+   of a retrained student would carry the old weights' map forward onto new logits, so the trainer writes it into the
+   student's record itself. And the map is fitted on the probability, as the teacher's is, because the model panel
+   hands every published graph's probability to the same function.
 """
 
 from __future__ import annotations
@@ -38,6 +43,8 @@ REPO = Path(__file__).resolve().parents[1]
 WEB = REPO / "web"
 ESBUILD = WEB / "node_modules" / ".bin" / "esbuild"
 MEASURED = REPO / "docs" / "measurements" / "finance-decision-curve-2026-11-06.json"
+MEASURED_STUDENT = REPO / "docs" / "measurements" / "finance-student-decision-curve-2026-11-06.json"
+RECORDS = REPO / "models" / "metrics.json"
 
 
 def _cfg():
@@ -178,16 +185,73 @@ def test_the_browser_and_python_agree():
         assert metrics.net_benefit_at_prevalence(ys, ss, p["t"], mu) == pytest.approx((nb, se), abs=1e-16)
 
 
-def test_the_platt_map_is_the_one_the_record_publishes():
-    rec = json.loads((REPO / "models" / "metrics.json").read_text())["finance_aml.gbm"]["calibration"]
+@pytest.mark.parametrize("key", ["finance_aml.gbm", "finance_aml.student"])
+def test_the_platt_map_is_the_one_the_record_publishes(key):
+    rec = json.loads(RECORDS.read_text())[key]["calibration"]
     platt = Platt(a=rec["a"], b=rec["b"], n_calibration=rec["n_calibration"],
                   positives_calibration=rec["positives_calibration"], on_logit=rec["on_logit"],
                   logit_clip_eps=rec["logit_clip_eps"])
-    scores = [0.0, 1e-14, 1e-6, 1e-4, 0.002, 0.05, 0.386869, 0.9, 1.0]
+    scores = [0.0, 1e-14, 1e-6, 1e-4, 0.002, 0.05, 0.386869, 0.5, 0.9, 1.0]
     got = _browser(f"const cal = {json.dumps(rec)};\n"
                    f"console.log(JSON.stringify({json.dumps(scores)}.map((s) => m.plattRisk(s, cal))));")
     want = platt.apply(np.array(scores))
     assert max(abs(a - b) for a, b in zip(got, want)) < 1e-12
+
+
+def test_every_curve_model_s_record_carries_a_map_on_its_probability():
+    """What `publishedDecisionCurve` reads, for each model the config names: a Platt map fitted on the model's own
+    probability (`on_logit` true, the one convention every call site can hand over), and the event count of the window
+    its sample was drawn from, which must be the window its record was scored on."""
+    records = json.loads(RECORDS.read_text())
+    for key in _cfg().curves["finance_aml"]["model_keys"]:
+        rec = records[key]
+        cal = rec.get("calibration")
+        assert cal and cal["method"] == "platt", f"{key}: no Platt map, so the page withholds its curve"
+        assert cal["on_logit"] is True, (
+            f"{key}: a map fitted on something other than the probability, which the model panel hands every graph's "
+            "probability to, would be a different function there")
+        corp = cal["corp_calibrated"]
+        assert (corp["positives"], corp["n"]) == (2321, 1523504)
+        assert corp["n"] == rec.get("n_test", rec.get("n_eval")), f"{key}: the map was scored on another window"
+        assert cal["n_calibration"] == 710969 and cal["positives_calibration"] == 801, "not the validation window"
+
+
+def test_the_student_s_record_states_nothing_measured_on_the_teacher():
+    """`Platt.as_dict()` publishes the teacher's Round 49 isotonic comparison as `why_not_isotonic`. The student's record
+    replaces it with its own measurement, so neither model's record carries the other's numbers."""
+    cal = json.loads(RECORDS.read_text())["finance_aml.student"]["calibration"]
+    assert "Round 49" not in cal["why_not_isotonic"] and "0.00142218" not in cal["why_not_isotonic"]
+    iso = cal["isotonic_measured"]
+    for v in (iso["brier"], iso["log_loss"], cal["brier_calibrated"], cal["log_loss_calibrated"]):
+        assert f"{v:.8f}" in cal["why_not_isotonic"], f"{v} is not the number the sentence states"
+    word = "below" if iso["brier"] < cal["brier_calibrated"] else "above"
+    assert f"Brier {iso['brier']:.8f} is {word} Platt's" in cal["why_not_isotonic"]
+
+
+def test_the_trainer_records_the_student_s_map_with_its_weights():
+    """The defect this prevents: `record_metrics` carries a field the new payload lacks forward from the old record, so a
+    retrain writing only the fidelity block would leave the previous student's map beside new weights, and the page
+    would apply it to their logits. The trainer's own call must carry the map."""
+    tree = ast.parse((REPO / "scripts" / "train" / "finance_aml.py").read_text())
+    calls = [n for n in ast.walk(tree) if isinstance(n, ast.Call) and getattr(n.func, "attr", "") == "record_metrics"
+             and n.args and isinstance(n.args[0], ast.Constant) and n.args[0].value == "finance_aml.student"]
+    assert len(calls) == 1, "the trainer no longer records the student in one call"
+    payload = calls[0].args[1]
+    keys = [k.value for k in getattr(payload, "keys", []) if isinstance(k, ast.Constant)]
+    assert "calibration" in keys, "the student's record is written without its calibration map"
+    fn = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "student_calibration")
+    src = ast.unparse(fn)
+    assert "fit_platt(pv, yv, on_logit=True)" in src, "the student's map is no longer fitted on its probability"
+
+
+def test_the_figure_draws_the_student_s_curve_from_decrypted_scores():
+    """The private-inference figure's curve is a claim about the DECRYPTED output. Fed the plaintext logits it would draw
+    the same picture and stop being one."""
+    src = (WEB / "src" / "lib" / "clientFHE.ts").read_text()
+    call = src[src.index("publishedDecisionCurve(held.usecase"):]
+    call = call[:call.index(";")]
+    assert "plot.points[i].enc" in call and ".plain" not in call, call
+    assert "Math.exp(-plot.points[i].enc)" in call, "the decrypted logit must reach the map as a probability"
 
 
 def test_the_page_weights_by_the_window_s_rate_and_not_the_sample_s():
@@ -209,6 +273,25 @@ def test_the_page_weights_by_the_window_s_rate_and_not_the_sample_s():
     assert abs(c["operating"]["risk"] - 0.12883530613165148) < 1e-12
 
 
+def test_the_student_s_curve_reads_its_own_record():
+    """The same function with the student's spec: the student's map, and the student's record's window, with its
+    operating point at a probability of 0.5, where its folded threshold puts logit 0."""
+    ys, ss, _ = _fixture()
+    cal = json.loads(RECORDS.read_text())["finance_aml.student"]["calibration"]
+    got = _browser(
+        f"const p = {json.dumps(ss.tolist())}; const y = {json.dumps(ys.tolist())};\n"
+        "const spec = m.modelsFor('finance_aml').find((s) => s.key === 'finance_aml.student');\n"
+        "const r = m.publishedDecisionCurve('finance_aml', spec, (i) => p[i], y, y.length, 0.5);\n"
+        "console.log(JSON.stringify({ r }));")
+    c = got["r"]["curve"]
+    assert (c["windowEvents"], c["windowRows"]) == (2321, 1523504)
+    assert abs(c["operating"]["risk"] - 1 / (1 + np.exp(cal["b"]))) < 1e-12
+    want = Platt(a=cal["a"], b=cal["b"], n_calibration=1, positives_calibration=1, on_logit=True).apply(ss)
+    t = c["atMedian"]["t"]
+    nb, _, _, _ = _python(ys, want, t, 2321 / 1523504)
+    assert abs(c["atMedian"]["corrected"] - nb) < 1e-15
+
+
 # ---- one owner of the range ------------------------------------------------------------------------------------------
 
 def test_the_scorecard_reads_the_thresholds_the_page_draws():
@@ -224,11 +307,18 @@ def test_the_scorecard_reads_the_thresholds_the_page_draws():
     assert published == declared, "the published scorecard was fitted over thresholds the config no longer declares"
 
 
-def test_the_recorded_measurement_is_for_this_config():
-    """The record is regenerated by `scripts/measure_decision_curve.py`; a changed range or grid makes it stale."""
-    rec = json.loads(MEASURED.read_text())
+@pytest.mark.parametrize("path", [MEASURED, MEASURED_STUDENT], ids=["teacher", "student"])
+def test_the_recorded_measurement_is_for_this_config(path):
+    """The records are regenerated by `scripts/measure_decision_curve.py`; a changed range, grid, map or pin makes one
+    stale."""
+    rec = json.loads(path.read_text())
     c = _cfg()
     entry = c.curves["finance_aml"]
+    key = rec["inputs"]["model_key"]
+    assert key in entry["model_keys"]
+    record = json.loads(RECORDS.read_text())[key]
+    assert rec["inputs"]["hf_revision"] == record["hf_revision"], f"{path.name} measured another revision of {key}"
+    assert {k: record["calibration"][k] for k in rec["inputs"]["calibration"]} == rec["inputs"]["calibration"]
     assert rec["inputs"]["thresholds"] == entry["thresholds"] and rec["inputs"]["grid_points"] == c.grid_points
     grid = metrics.decision_grid(entry["thresholds"], c.grid_points)
     assert [r["t"] for r in rec["results"]["window"]] == pytest.approx(grid, rel=1e-15)
@@ -236,3 +326,24 @@ def test_the_recorded_measurement_is_for_this_config():
     assert inside["of"] == len(grid) and inside["count"] >= 0.9 * len(grid)
     med = rec["results"]["at_median_threshold"]
     assert med["lo"] <= med["window"] <= med["hi"]
+
+
+def test_a_card_prints_the_map_the_page_applies():
+    """Until Round 86 no Hub card printed a calibration map, so a reader had the graph and not the function that turns its
+    output into the risks the page's decision curve plots. Each curve model's card carries its record's map."""
+    import importlib.util
+    import sys
+
+    sys.path.insert(0, str(REPO / "src"))
+    spec = importlib.util.spec_from_file_location("publish_hf", REPO / "scripts" / "publish_hf.py")
+    publish_hf = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(publish_hf)
+    from qsh.models import registry
+
+    for key in _cfg().curves["finance_aml"]["model_keys"]:
+        rec = registry.achieved(key)
+        card = publish_hf.model_card(registry.get(key), rec)
+        assert "## Calibration map" in card, f"{key}: the card prints no calibration map"
+        cal = rec["calibration"]
+        assert f"| `a` | {cal['a']!r} |" in card and f"| `b` | {cal['b']!r} |" in card, key
+        assert r"\operatorname{logit}" in card, f"{key}: the card's formula omits the logit its map applies"

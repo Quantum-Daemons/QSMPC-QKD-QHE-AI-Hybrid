@@ -885,15 +885,17 @@ class DecisionCurveConfig:
 
     A threshold probability ``t`` prices one false alarm at ``t / (1 - t)`` of a caught case, so a range of thresholds is
     the DECISION CONTEXT, the exchange rates a reviewer could plausibly act at. It is chosen from that context and never
-    from the data (``metrics.area_under_net_benefit``). Keyed by use case; ``model_key`` names the published model the page
-    scores, whose record must carry its calibration map and the event count of the window its sample was drawn from.
-    Read by the page (``web/src/lib/decisionCurve.ts``), the BFV scorecard's trainer and
-    ``scripts/measure_decision_curve.py``.
+    from the data (``metrics.area_under_net_benefit``). Keyed by use case; ``model_keys`` names the published models the page
+    draws a curve for, over the same thresholds, and each one's record must carry its calibration map and the event count
+    of the window its sample was drawn from. Finance draws two: the teacher from its evaluation sample, and the CKKS
+    student from its decrypted logits on the same rows. Read by the page (``web/src/lib/decisionCurve.ts``), the BFV
+    scorecard's trainer and ``scripts/measure_decision_curve.py``.
     """
 
     curves: dict = field(default_factory=lambda: {
         "finance_aml": {
-            "model_key": "finance_aml.gbm",
+            # The teacher in the model panel, and the student in the private-inference figure (Round 86).
+            "model_keys": ["finance_aml.gbm", "finance_aml.student"],
             # Review a 1-in-500 suspicion to a 1-in-20 one: at the test window's 1-in-656 base rate an alerting threshold
             # above a few percent reviews almost nothing. The BFV scorecard is fitted over these five and reports at their
             # median; its trainer held them as its own literal until Round 86.

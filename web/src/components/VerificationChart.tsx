@@ -147,6 +147,10 @@ export interface EncryptedAgreementPlot {
   /** Against the TRUE labels, over the scored rows. `majority` is what always calling the most common
       label scores on the same rows, the baseline an accuracy needs beside it (Round 86, review PI-12). */
   accuracy?: { encrypted: number | null; plaintext: number | null; majority?: number | null } | null;
+  /** Net benefit of acting on the DECRYPTED scores across the declared thresholds, through the model's own
+      calibration map (`publishedDecisionCurve`), or why there is none. Absent where the config declares no curve. */
+  decisionCurve?: DecisionCurve;
+  decisionCurveWithheld?: string;
 }
 
 /**
@@ -453,6 +457,12 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         </MarksHidden>
       </ChartReadout>
       {plot.plane ? <DecisionPlane plot={plot} plane={plot.plane} /> : null}
+      {plot.decisionCurve ? (
+        <DecisionCurveChart curve={plot.decisionCurve} modelKey={plot.modelKey ?? "the model"} n={plot.rows}
+                            scored="decrypted" />
+      ) : plot.decisionCurveWithheld ? (
+        <p className="muted small">No decision curve: {plot.decisionCurveWithheld}.</p>
+      ) : null}
     </figure>
   );
 }
@@ -958,7 +968,11 @@ const res_n = (d: Array<{ n: number }>) => d.reduce((a, b) => a + b.n, 0);
  *  it to read. The y axis stops a little below zero and treat-all falls past it, as in Vickers' own figures: above the
  *  prevalence, acting on everyone has a net benefit far below zero, and an axis stretched to hold it would flatten
  *  the model's curve into the zero line. The readout still gives treat-all's value. */
-function DecisionCurveChart({ curve, modelKey, n }: { curve: DecisionCurve; modelKey: string; n: number }) {
+function DecisionCurveChart({ curve, modelKey, n, scored = "graph" }: {
+  curve: DecisionCurve; modelKey: string; n: number;
+  /** What was scored: the published graph's own output on its evaluation sample, or the logits decrypted above. */
+  scored?: "graph" | "decrypted";
+}) {
   const captionId = useId();
   const PER = 10_000;
   const data = curve.points.map((p) => ({
@@ -994,8 +1008,9 @@ function DecisionCurveChart({ curve, modelKey, n }: { curve: DecisionCurve; mode
   return (
     <figure className="chart-figure">
       <figcaption id={captionId} className="muted small">
-        Decision curve for <code>{modelKey}</code> over the {count(n)} rows of its evaluation sample: net benefit
-        per 10,000 transactions of acting when the calibrated risk is at least t, each false alarm priced at
+        Decision curve for <code>{modelKey}</code> over the {count(n)}{" "}
+        {scored === "decrypted" ? "rows above, from their decrypted logits" : "rows of its evaluation sample"}: net
+        benefit per 10,000 transactions of acting when the calibrated risk is at least t, each false alarm priced at
         t/(1 &minus; t) of a caught case (Vickers and Elkin 2006). The model is above treat-none, the zero
         line, {where(above)}, and its {cov}% interval (dotted) clears zero {where(clear, true)}. Treat-all
         (dashed) is {allPays.length ? `above zero ${where(allPays)}` : "below zero across the range"}{gone
@@ -1039,9 +1054,14 @@ function DecisionCurveChart({ curve, modelKey, n }: { curve: DecisionCurve; mode
         {count(curve.windowEvents)} of {count(curve.windowRows)} ({pct(curve.prevalence)}), the case-control estimator of Pfeiffer and Gail (2020,
         eq. 11): at t = {m.t} it reads {per(m.corrected)} per 10,000, where the sample&apos;s own rate would
         read {per(m.naive)}. The interval is pointwise, for the rows drawn. Scores pass through the
-        record&apos;s Platt map first, because t is a risk{op ? <>; this page classifies at {op.raw.toFixed(4)} on
-          the graph&apos;s own output, a calibrated risk of {op.risk.toFixed(3)}{op.risk > tMax ? ", above this range" : ""}</>
+        record&apos;s Platt map first, because t is a risk{op ? (scored === "decrypted"
+          ? <>; the encrypted path classifies where the decrypted logit is 0 (the trainer folded its tuned
+              threshold into the bias), a calibrated risk of {op.risk.toFixed(3)}{op.risk > tMax ? ", above this range" : ""}</>
+          : <>; this page classifies at {op.raw.toFixed(4)} on the graph&apos;s own output, a calibrated risk
+              of {op.risk.toFixed(3)}{op.risk > tMax ? ", above this range" : ""}</>)
           : null}. A perfect model would score {ceiling.toFixed(2)}, the window&apos;s rate.
+        {scored === "decrypted" ? <> The teacher&apos;s curve, in the model panel, is drawn over the same thresholds at
+          the same rate, so the two differ by the model and its map, not by the decision context.</> : null}
       </p>
     </figure>
   );

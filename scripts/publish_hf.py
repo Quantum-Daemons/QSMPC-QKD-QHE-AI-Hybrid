@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 from pathlib import Path
@@ -133,6 +134,8 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
     if achieved and achieved.get("baseline_gap_note"):
         body += ["### Gap to the published baseline", "", achieved["baseline_gap_note"], ""]
 
+    body += _calibration_section((achieved or {}).get("calibration"))
+
     body += [
         "## Training data",
         "",
@@ -162,6 +165,66 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
         "",
     ]
     return "\n".join(front + body)
+
+
+def _calibration_section(cal: dict | None) -> list[str]:
+    """The record's Platt map, as the page applies it before it reads a score against a threshold (Round 86).
+
+    The finance page draws decision curves through these maps, and until Round 86 no card printed one: a Hub reader had
+    the graph and not the function that turns its output into the risks the page plots. Numbers go in a "quantity" table
+    so `tests/test_a_model_card_states_what_its_weights_state.py` checks each against the record, and in fixed notation,
+    since that gate reads `4.505e-05` as the integer 5.
+    """
+    if not cal or cal.get("method") != "platt":
+        return []
+    fx = lambda v: f"{v:.8f}".rstrip("0").rstrip(".") if abs(v) < 1e-3 else repr(v)  # noqa: E731
+    eps_exp = round(math.log10(cal["logit_clip_eps"]))
+    arg = (r"a\,\operatorname{logit}\big(\operatorname{clip}(q,\ \varepsilon,\ 1-\varepsilon)\big) + b"
+           if cal["on_logit"] else r"a\,q + b")
+    corp_raw, corp_cal = cal.get("corp_raw") or {}, cal.get("corp_calibrated") or {}
+    lines = [
+        "## Calibration map",
+        "",
+        "The demo page reads this model's score $q$ as a risk through this map before it compares it with a "
+        "threshold probability, as its decision curve does. Fitted on the "
+        f"{cal['fitted_on'].replace('; ', ' and ')}.",
+        "",
+        rf"$$p = \frac{{1}}{{1 + \exp\!\big({arg}\big)}}" + (
+            rf",\qquad \operatorname{{logit}}(q) = \log\frac{{q}}{{1-q}},\qquad \varepsilon = 10^{{{eps_exp}}}$$"
+            if cal["on_logit"] else "$$"),
+        "",
+    ]
+    if cal.get("argument"):
+        lines += [f"Here $q$ is {cal['argument']}.", ""]
+    lines += [
+        "| quantity | value |",
+        "|---|---|",
+        f"| `a` | {fx(cal['a'])} |",
+        f"| `b` | {fx(cal['b'])} |",
+        f"| fitted on | {cal['n_calibration']} validation rows, {cal['positives_calibration']} positive |",
+    ]
+    if corp_cal.get("n"):
+        lines.append(f"| scored on | {corp_cal['n']} test rows, {corp_cal['positives']} positive |")
+    for name, raw, calibrated in (("Brier score", cal.get("brier_raw"), cal.get("brier_calibrated")),
+                                  ("log-loss", cal.get("log_loss_raw"), cal.get("log_loss_calibrated")),
+                                  ("CORP miscalibration (MCB)", corp_raw.get("mcb"), corp_cal.get("mcb"))):
+        if raw is not None and calibrated is not None:
+            lines.append(f"| {name}, raw to calibrated | {fx(raw)} to {fx(calibrated)} |")
+    if corp_cal.get("unc") is not None:
+        lines.append(f"| base-rate Brier score (CORP UNC) | {fx(corp_cal['unc'])} |")
+    lines.append("")
+    if corp_cal.get("unc") and cal.get("brier_calibrated") is not None:
+        # Derived from the two rows above, in prose: the skill is not a recorded field, and the gate checks the table.
+        skill = 1 - cal["brier_calibrated"] / corp_cal["unc"]
+        lines += [r"Brier skill against the base rate, $1 - \mathrm{BS}/\mathrm{UNC}$, is " + f"{skill:.4f}" + (
+            ": negative, so as a probability forecast the calibrated score does worse than giving every row the "
+            "window's rate. A decision curve asks a different question, what acting at each threshold pays."
+            if skill < 0 else "."), ""]
+    if cal.get("raw_is"):
+        lines += [f"Raw is {cal['raw_is'][0].lower()}{cal['raw_is'][1:]}", ""]
+    if cal.get("why_not_isotonic"):
+        lines += [f"Why Platt and not isotonic: {cal['why_not_isotonic']}", ""]
+    return lines
 
 
 def _licence_slug(licence: str) -> str:
