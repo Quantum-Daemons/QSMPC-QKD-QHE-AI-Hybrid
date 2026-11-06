@@ -56,7 +56,7 @@
       "opset": null
     },
     "git_sha": "67138f8-dirty",
-    "hf_revision": "8e5cc9c0e8034fc72401b197c079b755c3bce9f6",
+    "hf_revision": "ca364923cc110f00fbd343c13cb4f2b23243aaff",
     "minority_class_f1": 0.15194805194805194,
     "n_test": 1523504,
     "n_train": 3554841,
