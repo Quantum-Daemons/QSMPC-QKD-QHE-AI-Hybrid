@@ -59,7 +59,7 @@ class FederatedTrainingStage(Stage):
                           seed=ctx.config.get("seed", 0))
         if is_cnn:
             img = ctx.data["image"]
-            bus.log(f"federated training a diagnostic CNN across {n_hosp} hospitals on real "
+            bus.log(f"federated training an image-classifier CNN across {n_hosp} hospitals on real "
                     f"MedMNIST images (secure aggregation on)", self.name)
             mk = {"in_ch": int(img.shape[0]), "img_size": int(img.shape[1]),
                   "channels": (int(ctx.config.get("cnn_channels", 4)),), "hidden": 16,
@@ -147,7 +147,7 @@ def _medmnist_data(config: dict):
     corpus), baked into the full Docker image at build time, so no runtime network. A set that cannot be
     loaded is an error; synthetic images stand in only where a caller opts in (``load_medmnist``). Downsamples to a FHE-feasible resolution, trains
     a pixel-logistic surrogate (for the CKKS linear inference + faithful pixel-level SHAP), and picks
-    a positive patient image. The genuine diagnostic CNN itself is federated-trained in
+    a positive patient image. The image-classifier CNN itself is federated-trained in
     ``FederatedTrainingStage`` and run under FHE+MPC in the benchmark row.
 
     Returns ``(X images (N,1,s,s), y, pixel_logistic LinearModel, patient_flat (s*s,), image (1,s,s))``.

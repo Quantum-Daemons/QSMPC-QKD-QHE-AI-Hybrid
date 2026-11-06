@@ -452,7 +452,7 @@ def _hybrid_bench_row(ctx, reg, x, base_model):
         else:                                          # medium = the genuine trained 1-block CNN
             specs = (smallcnn_to_specs(cnn_model, in_shape) if cnn_model is not None
                      else random_cnn_specs(in_shape, channels=(4,), seed=seed))
-            label = f"diagnostic CNN (MedMNIST {in_shape[1]}x{in_shape[2]}, 1-block) · medium"
+            label = f"image-classifier CNN (MedMNIST {in_shape[1]}x{in_shape[2]}, 1-block) · medium"
             n_params = _params(specs)
             row = run_hybrid(specs, img[None], y1, backend_name=backend_name,
                              workload="cnn", model_size="medium", n_samples=1)

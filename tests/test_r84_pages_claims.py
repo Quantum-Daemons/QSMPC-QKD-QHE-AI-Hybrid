@@ -213,11 +213,15 @@ def test_the_value_table_states_the_limits_the_code_has(rendered) -> None:
     assert "The PSI is an HMAC" not in t and "OPRF-based protocol" not in t, "the retired keyed-hash PSI is described again"
     for needle in (
         "The PSI is semi-honest and not post-quantum: it runs RFC 9497's OPRF over ristretto255",
-        "Each pair of federated clients agrees its mask seed by X25519, so the aggregator cannot remove a mask alone, "
-        "though every client runs in this tab and there is no dropout recovery or authentication of the public keys",
+        # Round 86: "an aggregator that follows the protocol" (the masks hold against a semi-honest one only),
+        # the seeds' missing post-quantum caveat, and the QSDC verdict with the conditions it rests on.
+        "Each pair of federated clients agrees its mask seed by X25519, so an aggregator that follows the protocol "
+        "cannot remove a mask alone, though every client runs in this tab and there is no dropout recovery or "
+        "authentication of the public keys",
+        "Those seeds are not post-quantum either",
         "The classifier is classical: the page runs a softmax and the published random forest",
         "It does not address HNDL, which is passive recording of classical traffic",
-        "this demo finds that QSDC cannot close over a LEO downlink",
+        "this demo's model finds that QSDC cannot close at any range over a LEO downlink",
     ):
         assert needle in t, f"the value table lost: {needle!r}"
 

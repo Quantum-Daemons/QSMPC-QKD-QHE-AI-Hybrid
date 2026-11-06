@@ -72,10 +72,13 @@ export default function PipelineControls({ run }: { run: Run }) {
   // clears 256 secure bits folds the simulated channel's key in. Naming it that removes both the
   // apparent duplication and the real inconsistency, and needs no change to the registry, the config
   // schema or the backend.
-  const DISPLAY: Record<string, string> = {
-    "bb84-decoy": "PQC + simulated QKD stage",
-    "pqc-only": "PQC only (no quantum channel)",
-  };
+  // Round 86: the label read "Key source: PQC + simulated QKD stage" in this browser too, where the stage
+  // contributes no key; the tooltip said so, the visible words did not. In the client demo the control is
+  // named for what it switches, and the full deployment, where the simulated bits are folded in, keeps
+  // "Key source".
+  const DISPLAY: Record<string, string> = demo
+    ? { "bb84-decoy": "on (simulated; the key comes from PQC)", "pqc-only": "off (PQC only)" }
+    : { "bb84-decoy": "PQC + simulated QKD stage", "pqc-only": "PQC only (no quantum channel)" };
 
   const sel = (label: string, id: string, fam: string, value: string, set: (v: string) => void,
                hint?: string) => (
@@ -100,7 +103,7 @@ export default function PipelineControls({ run }: { run: Run }) {
             comments here and in the diagram, and on screen the distinction existed only as a `title`
             tooltip. A visitor reading "QKD + PQC hybrid" had no way to know a second, hidden control
             decides which protocol runs. */}
-        {sel("Key source", "sel-qkd", "qkd", qkd, setQkd,
+        {sel(demo ? "Quantum channel" : "Key source", "sel-qkd", "qkd", qkd, setQkd,
           "Whether the simulated quantum channel runs at all. In this browser it contributes no key "
           + "material either way: the QKD stage yields a key length, and the session key comes from the "
           + "PQC handshake alone (the full deployment folds 256 or more simulated QKD bits in). WHICH "
@@ -111,7 +114,7 @@ export default function PipelineControls({ run }: { run: Run }) {
             MP-SPDZ and hpmpc, which nothing ran, so choosing them changed nothing a run computed. */}
         {demo ? (
           <span className="muted" style={{ fontSize: 13 }}
-            title="Where a page has a private-inference stage (finance, medical, genomics), the demo computes FHE/MPC for real in your browser (node-seal CKKS + a Polytune garbled-circuit 2PC whose two parties share this tab); telecom runs a CKKS check of its student and no MPC, and satellite runs neither. There is no server backend to select.">
+            title="Where a page has a private-inference stage (finance, medical, genomics), the demo computes FHE/MPC for real in your browser (node-seal CKKS + a Polytune garbled-circuit 2PC whose two parties share this tab); telecom and satellite each run a CKKS check of a student and no MPC. There is no server backend to select.">
             FHE/MPC, where a page runs them: <strong>node-seal CKKS + garbled-circuit 2PC</strong> - real protocol, in-browser, notional parties
           </span>
         ) : (
@@ -124,7 +127,7 @@ export default function PipelineControls({ run }: { run: Run }) {
           </>
         )}
         <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}
-          title="Set by `qkd.protocol` in the Parameters panel below, not by the Key source select.">
+          title={`Set by \`qkd.protocol\` in the Parameters panel below, not by the ${demo ? "Quantum channel" : "Key source"} select.`}>
           protocol: <strong>{String(run.params.qkd_protocol) === "e91" ? "E91 / CHSH" : "BB84 decoy-state"}</strong>
         </span>
         {sel("Signature", "sel-sig", "sig", sig, setSig)}

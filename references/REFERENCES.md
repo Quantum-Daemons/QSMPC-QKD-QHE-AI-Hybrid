@@ -1833,8 +1833,11 @@ two conventions in the literature and this repository should look like one of th
   Fully Homomorphic Encryption for Deep Neural Network", arXiv:2106.07229 (v1, 2021-06-14, the only version).**
   `[link]`
   URL: https://arxiv.org/abs/2106.07229
-  VERIFIED at the arXiv abstract and its API record 2026-11-06; the record carries no journal reference or DOI, so
-  none is cited. Verbatim: *"We numerically verify that the proposed model with the CIFAR-10 dataset shows 98.67%
+  **Published as** IEEE Access 10, 30039-30054 (2022), DOI 10.1109/ACCESS.2022.3159694, CC BY 4.0 (Crossref record
+  read 2026-11-06). The arXiv record carries no journal reference, which is why the entry below said none existed;
+  the journal version is the one to cite, and its abstract reports **98.43%** identical results and an accuracy of
+  **92.43% $`\pm`$ 2.65%** against the plaintext ResNet-20's 91.89%. The pages cite it since Round 86. The preprint's
+  figures, for the record - verified at the arXiv abstract 2026-11-06, verbatim: *"We numerically verify that the proposed model with the CIFAR-10 dataset shows 98.67%
   identical results to the original ResNet-20 model with non-encrypted data. The classification accuracy of the
   proposed model is 90.67%"*. The model is the standard ResNet-20 under RNS-CKKS **with bootstrapping**, its ReLU
   evaluated by a polynomial approximation. **It enters as a relation, not a number to beat** (the owner's choice,

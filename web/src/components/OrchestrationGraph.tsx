@@ -58,7 +58,7 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "data", label: "Data" },
     { id: "pqc_handshake", label: "PQC Handshake\n(ML-KEM + X25519)" },
     { id: "qkd_key_agreement", label: "QKD Key" },
-    { id: "qsmpc_compute", label: "QSMPC\n(PSI / secure sum)" },
+    { id: "qsmpc_compute", label: "PSI / secure sum\n(classical here)" },
     { id: "private_inference", label: "Private Inference\n(CKKS + 2PC argmax)" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(untrained QOTP +\nClifford+T circuit)" },
     { id: "result", label: "Result\n+ artifacts" },
@@ -76,7 +76,9 @@ const FLOWS: Record<string, { id: string; label: string }[]> = {
     { id: "data", label: "Banks' Data" },
     { id: "pqc_handshake", label: "PQC Handshake\n(ML-KEM + X25519)" },
     { id: "qkd_key_agreement", label: "QKD Key" },
-    { id: "qsmpc_compute", label: "QSMPC\n(OPRF PSI)" },
+    // "QSMPC (OPRF PSI)" until Round 86: the PSI is classical and, as the page says, not post-quantum;
+    // the project's own references reserve QSMPC for the QKD/QFT secure summation.
+    { id: "qsmpc_compute", label: "PSI\n(OPRF, classical)" },
     { id: "federated_training", label: "Federated Training\n(size-weighted FedAvg, demo)" },
     { id: "private_inference", label: "Private Inference\n(CKKS + 2PC argmax)" },
     { id: "quantum_comparison", label: "QSMPC-FHE\n(untrained QOTP +\nClifford+T circuit)" },
@@ -231,8 +233,12 @@ export default function OrchestrationGraph({
       if (m.published_model_status === "failed") return `${head}\n(${model}: did not run)`;
       const be = m.published_model_backend ? String(m.published_model_backend).replace("onnx-", "") : "";
       // "plaintext": the published model is an unencrypted ONNX run on its own corpus. On finance this
-      // node read "QHE/FHE (finance_aml.gbm on wasm)" while CKKS evaluated the page's 8-feature model.
-      return `${head}\n(${model}${be ? ` on ${be}` : ""}, plaintext)`;
+      // node read "QHE/FHE (finance_aml.gbm on wasm)" while CKKS evaluated a different model. Since Round 86
+      // it also names the encrypted half where the stage ran one: it read "(finance_aml.gbm on wasm,
+      // plaintext)" alone after a run whose primary backend was CKKS.
+      const enc = m.encrypted_model != null
+        ? (m.mpc_nonlinear_ms != null ? "CKKS + 2PC argmax;\n" : "CKKS check;\n") : "";
+      return `${head}\n(${enc}${model}${be ? ` on ${be}` : ""}, plaintext)`;
     }
     return label;
   };

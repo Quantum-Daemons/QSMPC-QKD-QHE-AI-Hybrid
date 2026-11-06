@@ -165,7 +165,10 @@ def test_the_ckks_run_encrypts_and_explains_the_four_column_model(run) -> None:
     assert sorted(f["feature"] for f in exp["top_features"]) == sorted(FOUR)
     assert exp["efficiency_gap"] < 1e-9
     driver = next(m for s, m in r["logs"] if m.startswith("XAI: top driver = "))
-    assert driver.removeprefix("XAI: top driver = ") in FOUR
+    # The name, then its signed contribution and direction (Round 86).
+    name, _, tail = driver.removeprefix("XAI: top driver = ").partition(" (contribution ")
+    assert name in FOUR, driver
+    assert tail.endswith(("toward class 1)", "toward class 0)")), driver
     # Nothing on the run's log names a balance-derived column.
     assert not [m for _, m in r["logs"] if "device_risk" in m or "geo_mismatch" in m]
     # The federated stage federates over the same four-column rows.

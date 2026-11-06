@@ -709,7 +709,7 @@ function archDims(usecase: string | undefined, modelSize: string, workload: stri
     const pixels = mc.img_size * mc.img_size;
     const convOut = pixels * ch;                              // encrypted conv patch-dots (FHE cost)
     const dims = [pixels, convOut, mc.hidden, 2];             // cost model: conv outputs dominate tierOps
-    const label = `diagnostic CNN (MedMNIST-scale, ${(mc.channels as number[]).length}-block) · ${modelSize}`;
+    const label = `image-classifier CNN (MedMNIST-scale, ${(mc.channels as number[]).length}-block) · ${modelSize}`;
     const convParams = ch * (1 * 3 * 3) + ch;                // shared 3x3 kernels (not pixels×convOut)
     const poolOut = Math.floor(mc.img_size / 2) ** 2 * ch;
     const params = convParams + poolOut * mc.hidden + mc.hidden + mc.hidden * 2 + 2;
@@ -734,7 +734,9 @@ function archDims(usecase: string | undefined, modelSize: string, workload: stri
     // The label names the published student whose size this cost row takes. It is NOT always the
     // model CKKS evaluated on the page: finance's CKKS run scores the bundled four-feature PaySim model,
     // and the row's `fhe_model` metric says which ran.
-    return { dims, label: `${student?.label ?? "encrypted student"} (${params} params, sizing this row; the CKKS run evaluated the model named by fhe_model)`, params };
+    // Round 86: it read "CKKS-linear fraud student (33 params, sizing this row; ...)", which named the
+    // AMLworld student beside timings that are the PaySim surrogate's. It now leads with what the row is.
+    return { dims, label: `cost row sized by ${student?.label ?? "the encrypted student"} (${params} params); its CKKS timing is of the model named by fhe_model`, params };
   }
   const a = usecase ? tierArchitectures()[usecase] : undefined;
   const base = a ? (a.hidden[modelSize] ?? [16]) : (genericArchitecture()[modelSize] ?? [16]);
@@ -1167,7 +1169,11 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     // Shamir across hosts) and was copied to this one, where the non-linear layer is a Polytune
     // authenticated-garbling 2PC whose INPUTS are additively shared - between notional parties in
     // one tab (clientMPC.ts). The benchmark table showed the Python mechanism on the browser row.
-    security_model: "computational (RLWE) + garbled-circuit 2PC",
+    // "not post-quantum" since Round 86: the RLWE half is (N = 8192 with a 200-bit modulus is inside
+    // the HE Standard's 128-bit quantum bound), but Polytune's OT extension (KOS) runs over
+    // Chou-Orlandi base OTs on ristretto255 (`ot_core/mod.rs` at the pinned commit), which rest on
+    // discrete log. The row named the 2PC with no such note while the PSI row carried one.
+    security_model: "computational (RLWE) + garbled-circuit 2PC (discrete-log base OT, not post-quantum)",
     device,
   };
 }
@@ -1495,7 +1501,9 @@ export function runClientPipeline(
     metric(stage, "encrypted_smallest_plaintext_margin", ho.smallestMargin);
     metric(stage, "encrypted_flip_possible", !ho.flipImpossible);
     metric(stage, "encrypted_top1_mismatches_batch", ho.mismatches);
-    metric(stage, "encrypted_scores_compared_batch", bt.rows * held.model.W.length);
+    // The scores CKKS evaluated: a one-logit student's zero class-0 row is its bias, never encrypted, so
+    // rows x classes double-counted finance (Round 86).
+    metric(stage, "encrypted_scores_compared_batch", ho.plot.noisyScores ?? bt.rows * held.model.W.length);
     // The rate and its three companions, together and unconditionally (see the parity test).
     metric(stage, "encrypted_agreement", r4(1 - ho.mismatches / Math.max(1, bt.rows)));
     metric(stage, "encrypted_agreement_rows", bt.rows);
@@ -1905,6 +1913,8 @@ export function runClientPipeline(
         metric(stage, "qrng_assessed_min_entropy_per_bit", r2(qr.assessedMinEntropyPerBit));
         metric(stage, "qrng_bits_delivered", qr.nBits);
         metric(stage, "qrng_extraction_rate", r2(qr.extractionRate));
+        metric(stage, "qrng_raw_bits", qr.rawBits);
+        metric(stage, "qrng_extractor_yield", r2(qr.extractorYield));
         // The leftover-hash-lemma ceiling. Reported on every run because it is the only observable
         // the LHL eps parameter moves: delivered output is min(bound, requested), and requested is
         // normally the smaller, so eps -1 against eps -128 produced byte-identical bits and the
@@ -1930,14 +1940,19 @@ export function runClientPipeline(
         // "Simulated" is generous: `measurePlus` draws Bernoulli(0.5) from the run-seeded mulberry32
         // stream, and no stage downstream reads these bits; only the health and throughput metrics use
         // them. SP 800-22 here is 3 of that suite's 15 tests (monobit, runs, block frequency).
-        emit("log", stage, `QRNG (simulated: Bernoulli(0.5) draws from the run-seeded mulberry32 generator, standing in for |+> measurements; no key uses these bits): ${qr.nBits} bits, health `
+        // Round 86: the counts say which stream each figure is computed on (the health tests and the estimate
+        // read the raw draws, not the delivered bits), and the closing sentence says what the estimate is not.
+        emit("log", stage, `QRNG (simulated: Bernoulli(0.5) draws from the run-seeded mulberry32 generator, standing in for |+> measurements; no key uses these bits): ${qr.nBits} bits delivered from ${qr.rawBits} raw draws (the extractor's yield ${r2(qr.extractorYield)}); health on the raw draws `
           + `${qr.healthConclusive ? (qr.healthPassed ? "PASS" : "FAIL") : "INCONCLUSIVE"} per SP 800-90B 4.4 `
           + `(repetition-count ${qr.repetitionCountLongest}/${qr.repetitionCountCutoff}, `
           + `adaptive-proportion ${qr.adaptiveProportionMax}/${qr.adaptiveProportionCutoff}, cutoffs at the `
-          + `assessed ${qr.assessedMinEntropyPerBit} bit/sample; this stream's estimate `
+          + `assessed ${qr.assessedMinEntropyPerBit} bit/sample; the raw draws' most-common-value estimate `
           + `${r2(qr.minEntropyPerBit)}${qr.estimateBelowAssessment ? ", BELOW the assessment" : ""}); `
           + `SP 800-22 subset (monobit, runs and block frequency: 3 of its 15 tests) reported, not gating: ${qr.sp80022Passed ? "pass" : "fail"} (monobit p=${qr.monobitP.toFixed(3)}), `
-          + `${r1(qr.throughputBitsPerSec / 1000)} kbit/s`);
+          + `${r1(qr.throughputBitsPerSec / 1000)} kbit/s, the speed of the JS generator standing in for the source. `
+          + `An indication, not an SP 800-90B assessment: that needs at least 1,000,000 raw samples (section 3.1.1), `
+          + `and the most-common-value estimate stands alone only for an IID source that has passed the section 5 `
+          + `tests, which do not run here.`);
         break;
       }
       case "qkd_key_agreement": {
@@ -2040,9 +2055,15 @@ export function runClientPipeline(
           const clk = keyRateWithClock(res.secretKeyRate, pulses,
                                        sourceRateHz(config?.qkd_source_rate_mhz,
                                                     Number(qkdCfg().source_rate_hz)));
-          if (clk.skrBitPerSec != null) metric(stage, "skr_bit_s", Math.round(clk.skrBitPerSec));
+          // `skr_asymptotic_bit_s` since Round 86 (was `skr_bit_s`, which read as the delivered rate): the
+          // asymptotic decoy bound times the clock. The finite key over its own block time is beside it, and
+          // is the lower figure; both come from the model's expected counts, not from this run's pulses.
+          if (clk.skrBitPerSec != null) metric(stage, "skr_asymptotic_bit_s", Math.round(clk.skrBitPerSec));
           const keySeconds = fibreBlockS ?? clk.channelSeconds;
           if (keySeconds != null) metric(stage, "channel_time_s", keySeconds);
+          if (keySeconds != null && keySeconds > 0 && typeof res.secureKeyBits === "number" && fibreBlockS != null) {
+            metric(stage, "skr_finite_bit_s", Math.round(res.secureKeyBits / keySeconds));
+          }
           if (clk.channelSeconds != null) metric(stage, "run_channel_time_s", clk.channelSeconds);
           metric(stage, "source_rate_hz", clk.sourceRateHz);
           metric(stage, "qkd_pulses", pulses);
@@ -2223,7 +2244,7 @@ export function runClientPipeline(
           const clk = keyRateWithClock(res.secretKeyRate, satPulses,
                                        sourceRateHz(config?.sat_source_rate_mhz,
                                                     Number(qkdCfg().free_space_source_rate_hz)));
-          if (clk.skrBitPerSec != null) metric(stage, "skr_bit_s", Math.round(clk.skrBitPerSec));
+          if (clk.skrBitPerSec != null) metric(stage, "skr_asymptotic_bit_s", Math.round(clk.skrBitPerSec));
           // The key's time and the sampled run's, named apart as on the fibre stage (Round 84).
           const keySeconds = satBlockS ?? clk.channelSeconds;
           if (keySeconds != null) metric(stage, "channel_time_s", keySeconds);
@@ -2683,6 +2704,11 @@ export function runClientPipeline(
         // as evidence that the federated rounds did anything, and the round series cannot supply
         // that either once the problem converges inside round one.
         metric(stage, "federated_baseline_accuracy", q.baselineAcc);
+        // Round 86: finance's 400 PaySim rows are a 50/50 draw (the sample's own `evaluation.note`), so an
+        // accuracy over them says nothing at PaySim's fraud rate; the label and the log say so when it holds.
+        const posShare = qflData?.Y?.length ? qflData.Y.reduce((a: number, v: number) => a + (v ? 1 : 0), 0) / qflData.Y.length : null;
+        const balanced = posShare != null && Math.abs(posShare - 0.5) < 1e-9;
+        metric(stage, "federated_rows_class_balanced", balanced);
         // What the aggregation ACTUALLY was, published so the diagram can render it instead of
         // carrying its own claim. See the QFLResult comment for why this replaced `secureAgg`.
         metric(stage, "qfl_aggregation", q.aggregation);
@@ -2696,7 +2722,9 @@ export function runClientPipeline(
           + `rounds (classical FedAvg; ${q.aggregation}) over `
           + `${qflData ? `the bundled ${usecase} sample (${qflData.X.length} rows)` : "a synthetic toy"}`
           + ` - held-out accuracy ${q.baselineAcc.toFixed(2)} untrained (every row class 0), `
-          + `${q.roundAcc[0].toFixed(2)} after round 1, ${q.finalAcc.toFixed(2)} after round ${q.rounds}`);
+          + `${q.roundAcc[0].toFixed(2)} after round 1, ${q.finalAcc.toFixed(2)} after round ${q.rounds}`
+          + (balanced ? "; the rows are a class-balanced draw, half of them positive, so no accuracy here "
+            + "estimates performance at the corpus's own rate" : ""));
         if (q.pairs > 0) {
           emit("log", stage, `Secure aggregation: each of the ${q.clients} clients drew an X25519 key pair for this run `
             + `and each of the ${q.pairs} pairs derived its mask seed from their shared secret by HKDF-SHA256 `
@@ -3195,15 +3223,22 @@ export function runClientPipeline(
             metric(stage, "encrypted_tier_measured_ms", r2(measuredMs));
             const withinWindow = measuredMs <= 10_000;
             metric(stage, "encrypted_tier_within_operational_window", withinWindow ? 1 : 0);
+            // Round 86: the CKKS time is stated on its own, because the 2PC half runs over scores the client has
+            // already decrypted and so measures a protocol cost, not a protection (see `secureArgmax` above).
             emit("log", stage, `measured encrypted-tier latency, all parts together: ${r2(measuredMs)} ms `
-              + `(CKKS linear${real.conv ? " + convolution" : ""} ${r2(real.fheMs)} ms, `
-              + `secret-shared non-linear ${r2(real.mpcMs)} ms), on WASM CPU in this tab. `
+              + `(CKKS linear${real.conv ? " + convolution" : ""} ${r2(real.fheMs)} ms, the encrypted part on its own; `
+              + `garbled-circuit 2PC argmax ${r2(real.mpcMs)} ms over the scores the client has already decrypted, `
+              + `so that part is the protocol's cost and hides nothing here), on WASM CPU in this tab. `
               + (withinWindow
                 ? "Within 10 s, the upper end assumed here for interactive use (an assumption, not a cited requirement)."
                 : "Over 10 s, the upper end assumed here for interactive use (an assumption, not a cited "
                   + "requirement), so too slow for that use.")
-              + " Note this is NOT the benchmark's `total` (where a benchmark panel is shown), which scales "
-              + `the same measurement by ${r2(bscale)}x for the selected model size.`);
+              // The scaled `total` note only where a scale applies: the model-size and workload selectors are
+              // gone, so at x1 it described a panel and a choice this page no longer has (Round 86).
+              + (bscale !== 1
+                ? " Note this is NOT the benchmark's `total`, which scales the same measurement by "
+                  + `${r2(bscale)}x for the configured model size.`
+                : ""));
           }
           metric(stage, "mpc_nonlinear_ms", r2(real.mpcMs * bscale));
           metric(stage, "mpc_comm_kb", r2((real.commBytes * bscale) / 1024));
@@ -3268,7 +3303,7 @@ export function runClientPipeline(
             if (real.conv.studentPrediction != null) {
               metric(stage, "fhe_student_input", "this page's tabular row tiled to fill the image; not an image");
             }
-            emit("log", stage, `private inference (REAL in-browser FHE, the PUBLISHED student's own `
+            emit("log", stage, `private inference (real in-browser CKKS, leveled with no bootstrapping, the PUBLISHED student's own `
               + `weights fetched from its pinned HF revision, ${real.conv.studentParams} params): `
               // WHICH class: `real.prediction` is the garbled-circuit argmax over the page's bundled
               // linear model (the WDBC logistic regression), not the CNN's; the CNN's own argmax is
@@ -3309,9 +3344,13 @@ export function runClientPipeline(
                 + `${real.studentNotRun}. No kernel pattern stands in for its weights, so the CKKS and `
                 + `MPC figures below are the bundled Wisconsin regression's alone.`);
             }
-            emit("log", stage, `private inference (REAL in-browser FHE, ${config.model_size ?? "medium"}/${config.workload ?? "linear"}): `
+            // Round 86: "REAL in-browser FHE, medium/linear" and "x1 arch scale" named selectors that were removed
+            // and called leveled CKKS fully homomorphic; the scale is printed only where it is not 1.
+            emit("log", stage, `private inference (real in-browser CKKS, leveled with no bootstrapping): `
               + `class=${real.prediction}; node-seal CKKS ${r2(real.fheMs * bscale)} ms + garbled-circuit 2PC ${r2(real.mpcMs * bscale)} ms `
-              + `(measured per-op x${r1(bscale)} arch scale; real unit ${r2(real.fheMs)}/${r2(real.mpcMs)} ms, ct=${real.ctBytes}B), `
+              + (bscale !== 1
+                ? `(the cost-model scale x${r1(bscale)}; measured ${r2(real.fheMs)}/${r2(real.mpcMs)} ms, ct=${real.ctBytes}B), `
+                : `(measured; ct=${real.ctBytes}B), `)
               // "plaintext reference", NOT "ONNX". `clientMs` times `privateInference`, which has had
               // no ONNX tier since Round 17 and says so in its own comments; its body is two plain-JS
               // dot products. The genuine ONNX latency (`published_inference_ms`) lands in the SAME
@@ -3531,7 +3570,14 @@ export function runClientPipeline(
           artifacts.primary_inference?.backend === "ckks" && ckksClassIsTheExplainedModels;
         metric(stage, "explanation_model", artifacts.explanation_provenance);
         metric(stage, "explanation_top_contribution", artifacts.explanation.top_features[0]?.contribution ?? 0);
-        emit("log", stage, `XAI: top driver = ${artifacts.explanation.top_features[0]?.feature}`);
+        {
+          // With its sign since Round 86: the name alone read as a reason FOR the reported class even where
+          // the contribution pushes the other way (finance's new_payee, -2.08, toward legitimate).
+          const top = artifacts.explanation.top_features[0];
+          const c = Number(top?.contribution ?? 0);
+          emit("log", stage, `XAI: top driver = ${top?.feature} (contribution ${c >= 0 ? "+" : ""}${r2(c)}, `
+            + `${c >= 0 ? "toward class 1" : "toward class 0"})`);
+        }
         break;
       }
       case "quantum_comparison": {

@@ -1,0 +1,152 @@
+{
+ "measured": "2026-11-06",
+ "script": "scripts/measure_finance_test_window_tail.py",
+ "corpus": "IBM AMLworld HI-Small (CDLA-Sharing-1.0)",
+ "stated_period": {
+  "first": "2022-09-01",
+  "last": "2022-09-10",
+  "source": "IBM's Kaggle dataset card, 'Date Range HI + LI (2022)', Small: Sep 1-10, the 'primary' period; the dataset's creator in Kaggle discussion 427517: the small datasets hold ten days of 'real' data, and the later transactions let laundering patterns that began earlier complete"
+ },
+ "tail_starts": "2022-09-11",
+ "test_window": {
+  "first": "2022-09-07 14:55:00",
+  "last": "2022-09-18 16:18:00",
+  "rule": "the last 30 percent of the transactions in time order (TEST_FRACTION)"
+ },
+ "test_window_by_day": {
+  "2022-09-07": {
+   "rows": 176831,
+   "positives": 171
+  },
+  "2022-09-08": {
+   "rows": 482773,
+   "positives": 539
+  },
+  "2022-09-09": {
+   "rows": 654467,
+   "positives": 514
+  },
+  "2022-09-10": {
+   "rows": 208325,
+   "positives": 442
+  },
+  "2022-09-11": {
+   "rows": 396,
+   "positives": 232
+  },
+  "2022-09-12": {
+   "rows": 281,
+   "positives": 170
+  },
+  "2022-09-13": {
+   "rows": 184,
+   "positives": 106
+  },
+  "2022-09-14": {
+   "rows": 121,
+   "positives": 70
+  },
+  "2022-09-15": {
+   "rows": 46,
+   "positives": 28
+  },
+  "2022-09-16": {
+   "rows": 46,
+   "positives": 26
+  },
+  "2022-09-17": {
+   "rows": 23,
+   "positives": 15
+  },
+  "2022-09-18": {
+   "rows": 11,
+   "positives": 8
+  }
+ },
+ "full_window": {
+  "rows": 1523504,
+  "positives": 2321,
+  "base_rate": 0.00152346,
+  "teacher": {
+   "minority_class_f1": 0.151948,
+   "auprc": 0.123338,
+   "flagged": 759,
+   "true_positives": 234,
+   "false_positives": 525,
+   "false_negatives": 2087,
+   "recall": 0.100819
+  },
+  "student": {
+   "minority_class_f1": 0.061394,
+   "auprc": 0.024101,
+   "flagged": 26151,
+   "true_positives": 874,
+   "false_positives": 25277,
+   "false_negatives": 1447,
+   "recall": 0.376562
+  }
+ },
+ "without_tail": {
+  "rows": 1522396,
+  "positives": 1666,
+  "base_rate": 0.00109433,
+  "teacher": {
+   "minority_class_f1": 0.138723,
+   "auprc": 0.103031,
+   "flagged": 684,
+   "true_positives": 163,
+   "false_positives": 521,
+   "false_negatives": 1503,
+   "recall": 0.097839
+  },
+  "student": {
+   "minority_class_f1": 0.047282,
+   "auprc": 0.018206,
+   "flagged": 25913,
+   "true_positives": 652,
+   "false_positives": 25261,
+   "false_negatives": 1014,
+   "recall": 0.391357
+  }
+ },
+ "tail_only": {
+  "rows": 1108,
+  "positives": 655,
+  "base_rate": 0.59115523,
+  "teacher": {
+   "minority_class_f1": 0.194521,
+   "auprc": 0.904456,
+   "flagged": 75,
+   "true_positives": 71,
+   "false_positives": 4,
+   "false_negatives": 584,
+   "recall": 0.108397
+  },
+  "student": {
+   "minority_class_f1": 0.4972,
+   "auprc": 0.933657,
+   "flagged": 238,
+   "true_positives": 222,
+   "false_positives": 16,
+   "false_negatives": 433,
+   "recall": 0.338931
+  }
+ },
+ "tail_share_of_window_positives": 0.282206,
+ "published_602020_test_split": {
+  "rows": 1015669,
+  "positives": 1797,
+  "tail_rows": 1108,
+  "tail_positives": 655
+ },
+ "reproduced": {
+  "teacher_onnx_sha256": "54511ef70652acb02be201cfed309ff1f95e03c55e9f2aa2b24e2b35a9c8996f",
+  "teacher_hf_revision": "ca364923cc110f00fbd343c13cb4f2b23243aaff",
+  "teacher_minority_class_f1": 0.15194805194805194,
+  "teacher_auprc_onnx": 0.12333814,
+  "teacher_auprc_record": 0.12334101789973353,
+  "teacher_auprc_note": "the record's AUPRC is the native booster's, in float64; the published ONNX graph scores in float32, which moves the ranking's AUPRC in the sixth decimal and no decision at the threshold",
+  "student_weights_sha256": "c47afeadcc8816ce0074f3cdfcc88ec89580096b1987a79f9f9a699596b3d17f",
+  "student_minority_class_f1": 0.061394
+ }
+}

@@ -115,7 +115,7 @@ def usecase_arch_specs(usecase, model_size: str, *, workload: str = "linear", se
             return specs, f"pixel logistic (MedMNIST {in_shape[1]}x{in_shape[2]}) · 1 layer", _params(specs)
         channels = (4,) if model_size == "medium" else (4, 8)   # large = 2-block (projected)
         specs = random_cnn_specs(in_shape, channels=channels, hidden=16, seed=seed)
-        label = f"diagnostic CNN (MedMNIST {in_shape[1]}x{in_shape[2]}, {len(channels)}-block) · {model_size}"
+        label = f"image-classifier CNN (MedMNIST {in_shape[1]}x{in_shape[2]}, {len(channels)}-block) · {model_size}"
         return specs, label, _params(specs)
     return usecase_arch_layers(usecase, model_size, workload=workload, seed=seed, base=base, n_in=n_in)
 

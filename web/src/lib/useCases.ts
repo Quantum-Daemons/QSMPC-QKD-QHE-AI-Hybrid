@@ -30,7 +30,11 @@ export const USECASES: UseCaseMeta[] = [
   },
   {
     id: "medical_fl", title: "Medical — federated learning + private inference", nav: "Medical — FL", industry: "healthcare",
-    blurb: "Hospitals train a shared model with FedAvg under pairwise masks that cancel exactly (no patient row leaves a hospital), then a clinician runs a CKKS-evaluated diagnosis with a signed explanation. Each pair of hospitals agrees its mask seed by X25519, so the aggregator, which receives only the public keys and the masked updates, cannot remove a mask alone; there is no dropout recovery and no authentication of the public keys, and every hospital runs in this one tab. The federation runs over the bundled Wisconsin breast-cancer rows; the published models are BreastMNIST image models trained centrally, and MedMNIST states that its dataset is not intended for clinical use.",
+    // Round 86: "then a clinician runs a CKKS-evaluated diagnosis" claimed two things the page does not do. The
+    // federated model is measured and set aside (QFLResult carries no weights), and the model evaluated
+    // under CKKS is a regression fitted centrally, offline, on the same 398 pooled rows; and the page itself
+    // says nothing on it is a diagnosis.
+    blurb: "Hospitals train a shared model with FedAvg under pairwise masks that cancel exactly (no patient row leaves a hospital), and a CKKS-evaluated classification runs with a signed explanation: a demonstration, not a diagnosis. They are two models: the federated one is measured and set aside, and the one evaluated under CKKS is a logistic regression fitted centrally, offline, on the same 398 pooled rows. Each pair of hospitals agrees its mask seed by X25519, so an aggregator that follows the protocol, receiving only the public keys and the masked updates, cannot remove a mask alone; the seeds are not post-quantum, there is no dropout recovery and no authentication of the public keys, and every hospital runs in this one tab. The federation runs over the bundled Wisconsin breast-cancer rows, dealt round-robin from one shuffled cohort, so every hospital's rows are alike (IID), unlike real multi-site data; the published models are BreastMNIST image models trained centrally, and MedMNIST states that its dataset is not intended for clinical use.",
     inference: true,
     agenticTool: "query_cohort",
     // Was "... need a quantum-safe (PQC + QKD) channel under HIPAA?". HIPAA names no PQC or QKD

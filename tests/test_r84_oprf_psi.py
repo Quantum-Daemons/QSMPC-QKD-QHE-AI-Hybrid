@@ -806,7 +806,7 @@ def test_the_visitor_facing_texts_state_the_oprf_psi() -> None:
     assert "The PSI runs RFC 9497&apos;s OPRF over ristretto255" in texts["Overview.tsx"]
     assert "quantum-safe private set intersection" not in texts["Overview.tsx"]
     assert "The PSI is semi-honest and not post-quantum" in texts["Value.tsx"]
-    assert '"QSMPC\\n(OPRF PSI)"' in texts["OrchestrationGraph.tsx"]
+    assert '"PSI\\n(OPRF, classical)"' in texts["OrchestrationGraph.tsx"]
     assert '"PSI: RFC 9497 OPRF,"' in texts["ArchitectureDiagram.tsx"]
 
 

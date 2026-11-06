@@ -34,15 +34,22 @@ export default function Overview() {
       {isClientDemo() && <div className="note" style={{ marginBottom: 14 }}>{DEMO_BANNER}</div>}
       <h1 className="page-title">Quantum-Safe Hybrid Orchestration</h1>
       <p className="page-sub">
-        An end-to-end security layer that chains <b className="hl-c">QKD</b> →{" "}
-        <b className="hl-c">QSMPC</b> → <b className="hl-q">QHE/FHE</b> →{" "}
-        <b>privacy-preserving AI</b> on a <b>PQC-first hybrid</b> foundation —{" "}
+        {/* Was "chains QKD -> QSMPC -> QHE/FHE -> privacy-preserving AI", which this page's own
+            diagram contradicts: in this build nothing the QKD stage produces reaches the session
+            key, the multi-party steps are classical, and the QHE circuit is "neither MPC nor a
+            homomorphic evaluation" (WS4 below). The chain is now the one a run executes. */}
+        An end-to-end security layer on a <b>PQC-first hybrid</b> foundation: an ML-KEM-768 + X25519
+        session key, then <b>multi-party computation</b>, <b className="hl-q">CKKS homomorphic
+        encryption</b> and <b>privacy-preserving inference</b>, with a simulated{" "}
+        <b className="hl-c">QKD</b> link beside them.{" "}
+        {isClientDemo()
+          ? "In this browser demo the session key comes from the PQC handshake alone, and the QKD stage reports a key length only."
+          : "This deployment folds simulated QKD bits into the session key."}{" "}
         {/* Was "validated for finance, healthcare, genomics and telecom/defence". Nothing here is
             validated in any of those settings - the Research PoC note on this page says the
             quantum-channel results are "simulated, not hardware-validated" - and the list left out
             the fifth use case. */}
-        demonstrated on finance, healthcare, genomics, telecom/defence and satellite use cases,
-        with the quantum channel simulated.
+        Demonstrated on finance, healthcare, genomics, telecom/defence and satellite use cases.
       </p>
 
       <div className="grid cols-4">
@@ -122,8 +129,8 @@ export default function Overview() {
           <thead><tr><th>Workstream</th><th>What it covers</th><th>In this demo</th></tr></thead>
           <tbody>
             <tr><td>WS1 · AI-QKD</td>
-              <td>BB84 two-intensity decoy-state and E91/CHSH key agreement; OptiQKD tunes decoy and basis parameters; a QRNG with SP 800-90B health tests</td>
-              <td><StageBadge kind="simulated" /> channel; the optimiser and the health tests really run. OptiQKD's reference framework reports +14–25% in simulation (arXiv:2603.04192v2)</td></tr>
+              <td>BB84 decoy-state (two intensities on fibre; signal, weak decoy and vacuum on the satellite link) and E91/CHSH key agreement; OptiQKD tunes decoy and basis parameters; a QRNG with SP 800-90B health tests</td>
+              <td><StageBadge kind="simulated" /> channel; the optimiser and the health tests really run. The optimiser is named after v1 of the paper it follows; that paper&apos;s v2, retitled AML-QKD, reports +14–25% in simulation (arXiv:2603.04192v2)</td></tr>
             <tr><td>WS2 · QML-IDS</td>
               <td>Seven QKD attack types plus normal traffic - eight classes; classical RF baseline against a PennyLane variational quantum classifier</td>
               <td>Synthetic telemetry. The page runs a softmax and the random forest published as telecom_ids.qml; the quantum-kernel SVC and the QNN are offline figures, not run here, and the SVC&apos;s fidelity kernel equals a classical product kernel</td></tr>
@@ -147,7 +154,10 @@ export default function Overview() {
             {/* arXiv:2603.04192 v1 (OptiQKD) reported a median SKR gain of +20-30%; v2 (AML-QKD,
                 2026-06) revised that down to +14-25%. Quoting ">20%" targets a figure the authors
                 themselves superseded. Both versions are simulation-only. */}
-            <p>BB84 <b>two-intensity decoy-state</b> (+ a selectable <b>E91/CHSH</b> protocol) with QBER/SKR telemetry; <b>OptiQKD</b> (gradient-free coordinate ascent, over the analytic decoy-state model in this browser and over a scikit-learn surrogate in the full deployment) searches the decoy and basis parameters for a higher asymptotic secret-key rate, with a convergence metric; in this browser what it finds is reported and not applied to the run&apos;s key, which takes the bases at even odds. The reference framework reports a median gain of +14–25% over static operation in simulation (arXiv:2603.04192v2), and a 2026 survey reports +15–20% for deep-RL controllers (arXiv:2608.08280). A run here reports its gain over this demo's default parameters, which is not comparable with either. A <b>QRNG</b> entropy source (state-vector measurement + SP 800-90B min-entropy and section 4.4 health tests + Leftover-Hash-Lemma extractor) is <b>measured and reported alongside</b> the key material. Eavesdropper detection via QBER inflation.</p>
+            {/* "a 2026 survey reports +15-20% for deep-RL controllers" read as the survey's finding.
+                The survey measures nothing; section V-B and section VII-A3 relay ONE study's figure,
+                Shingne et al.'s DRL+VAE controller under noisy conditions (read 2026-11-06). */}
+            <p>BB84 <b>decoy-state</b> (two intensities on fibre; signal, weak decoy and vacuum on the satellite link, after Micius) (+ a selectable <b>E91/CHSH</b> protocol) with QBER/SKR telemetry; <b>OptiQKD</b>, this project&apos;s optimiser (gradient-free coordinate ascent, over the analytic decoy-state model in this browser and over a scikit-learn surrogate in the full deployment), searches the decoy and basis parameters for a higher asymptotic secret-key rate, with a convergence metric; in this browser what it finds is reported and not applied to the run&apos;s key, which takes the bases at even odds. It is named after v1 of the paper it follows; v2, retitled AML-QKD, forecasts with a temporal convolutional network and tunes with a PPO agent, and reports a median gain of +14–25% over static operation in simulation (arXiv:2603.04192v2). A 2026 survey (arXiv:2608.08280) relays one study&apos;s +15–20% for a deep-RL controller under noisy conditions (Shingne et al.). A run here reports its gain over this demo's default parameters, which is not comparable with either. A <b>QRNG</b> entropy source (state-vector measurement + SP 800-90B min-entropy and section 4.4 health tests + Leftover-Hash-Lemma extractor) is <b>measured and reported alongside</b> the key material. Eavesdropper detection via QBER inflation.</p>
           </div>
           <div className="card">
             <h3>WS2 · QML-IDS — intrusion detection</h3>
@@ -157,11 +167,14 @@ export default function Overview() {
           </div>
           <div className="card">
             <h3>WS3 · QSMPC × QKD</h3>
-            <p>Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, and a private set intersection on RFC 9497&apos;s OPRF whose messages are sealed under the PQC session key. The OPRF itself rests on a discrete-log assumption, so the PSI is not post-quantum.</p>
+            {/* "quantum oblivious transfer" listed a protocol this project does not have: qot.py says
+                "It is not a secure OT" and "Nothing is built on it", and the table above already calls
+                it a sketch in no flow. */}
+            <p>Shamir + d-level QFT secure summation (faithful to the paper example), a quantum oblivious transfer sketch (not a secure OT, and no flow uses it), and a private set intersection on RFC 9497&apos;s OPRF whose messages are sealed under the PQC session key. The OPRF&apos;s security rests on the One-More Gap Computational Diffie-Hellman assumption (RFC 9497, section 7.2.1), which falls to a quantum computer that solves discrete logarithms, so the PSI is not post-quantum.</p>
           </div>
           <div className="card">
             <h3>WS4 · QHE × AI</h3>
-            <p>Quantum one-time pad (perfectly hiding as a scheme; the demo applies the mask with a seeded key, so its structure and cost are measured and its secrecy is not). Two separate circuits, and neither is a private inference: the QSMPC-FHE comparison, an untrained QOTP + Clifford+T circuit whose pad is never undone, so its output follows the key rather than the input; and, on finance, medical and telecom, a trained QCNN classifier that runs unencrypted. The trained circuit is a tree of two-qubit blocks on disjoint pairs for finance and medical, and Hur, Kim and Park's two-qubit block on every neighbouring pair for telecom, on 7 or 8 qubits; it is simulated exactly, so classically simulable at this size (Bermejo et al., PRX Quantum 7, 020304, 2026), and logistic regression beats or ties it on every use case (it ties medical at the shipped seed and leads over five seeds). The Python package also sends a QOTP-padded state with its pad under the hybrid KEM; that is transport only, with no homomorphic evaluation, so it is not the Rate-1 QFHE scheme (Chardouvelis, Doettling and Malavolta, TCC 2021) its module is named after. Classical CKKS (TenSEAL CPU / OpenFHE CPU, or HEonGPU on a GPU where it is built) for comparison.</p>
+            <p>Quantum one-time pad (perfectly hiding as a scheme; the demo applies the mask with a seeded key, so its structure and cost are measured and its secrecy is not). Two separate circuits, and neither is a private inference: the QSMPC-FHE comparison, an untrained QOTP + Clifford+T circuit whose pad is never undone, so its output follows the key rather than the input; and, on finance, medical and telecom, a trained QCNN classifier that runs unencrypted. The trained circuit is a tree of two-qubit blocks on disjoint pairs for finance and medical, and Hur, Kim and Park's two-qubit block on every neighbouring pair for telecom, on 7 or 8 qubits. It is simulated exactly, as any circuit of that width can be, and Bermejo et al. (PRX Quantum 7, 020304, 2026) show that QCNNs taking classical data through a product embedding, as these do, can be simulated classically with no quantum device at all. At the shipped seed logistic regression beats it on finance and telecom and ties it on medical; over five seeds logistic regression leads on medical by 0.0186, and on finance the circuit leads on 2 seeds and trails on 3, which five seeds do not separate. The Python package also sends a QOTP-padded state with its pad under the hybrid KEM; that is transport only, with no homomorphic evaluation, so it is not the Rate-1 QFHE scheme (Chardouvelis, Doettling and Malavolta, TCC 2021) its module is named after. Classical CKKS (TenSEAL CPU / OpenFHE CPU, or HEonGPU on a GPU where it is built) for comparison.</p>
           </div>
         </div>
         </Details>
@@ -177,7 +190,7 @@ export default function Overview() {
           <tbody>
             <tr><td>KEM</td><td>ML-KEM-768 + X25519; ML-KEM-1024 + X25519</td><td>run controls, every run page</td></tr>
             <tr><td>Signature</td><td>ML-DSA-65; ML-DSA-87</td><td>run controls</td></tr>
-            <tr><td>Key source</td><td>PQC + simulated QKD stage, whose session key in the browser still comes from the PQC handshake alone (the QKD stage yields a count, no key bytes); PQC only</td><td>run controls</td></tr>
+            <tr><td>Quantum channel (the key source in the full deployment)</td><td>On: a simulated QKD stage, which in the browser adds no key material (it yields a key length; the session key comes from the PQC handshake alone), and in the full deployment folds 256 or more simulated bits into the key; off: PQC only</td><td>run controls</td></tr>
             <tr><td>QKD protocol</td><td>BB84 decoy-state; E91/CHSH - both simulated</td><td>Parameters panel</td></tr>
             <tr><td>QRNG extractor</td><td>von Neumann; Toeplitz (LHL); seedless two-source</td><td>Parameters panel</td></tr>
             <tr><td>PQC+QKD combiner</td><td>HKDF (dual-PRF); a Toeplitz + QLHL extractor seeded with SHAKE-256 of its own inputs, so computational, not information-theoretic (the QLHL needs a seed independent of the input; Giestinhas and Spiller, arXiv:2603.26907). In the browser the QKD input is a fixed 32-byte constant</td><td>the agent panel's MCP channel on the use-case pages; browser pipeline runs mix no QKD key</td></tr>

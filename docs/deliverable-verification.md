@@ -8783,3 +8783,91 @@ which still excludes 1.6.0 and its bootstrap defect (issue #1364).
 - **WebGPU ships in every major engine without a flag**: Chrome and Edge, Firefox 141, Safari 26, iOS Safari 26 and
   Chrome for Android 121 (MDN browser-compat-data 8.1.8, 2026-11-02). WebNN is still behind a flag in Chromium only, as
   the documents already say; the page enables WebLLM only where it detects an adapter.
+
+### Five fact-checks of the public pages, and the first batch of their findings fixed (2026-11-06 to 11-07)
+
+Five read-only reviews checked every public page against primary sources and the code: the four overview pages,
+`/orchestration`, medical and telecom, finance and genomics, and satellite with its network tab. They returned 107
+findings. Each one acted on here was re-checked against the code, and against its source wherever it cites one. Two
+were narrower than reported: Bilgi et al. give no F1 for their encrypted model, only plaintext F1 and 99.25%
+agreement, and the QKD Forensic Dataset's record does not say whether its samples are measured. Fixed in this batch:
+
+- **What the cryptography protects.**
+  - The 2PC argmax runs over scores the client has already decrypted, so the captions and the run log now say it
+    measures the protocol's cost and hides nothing. The CKKS time is stated on its own.
+  - The federated mask seeds come from X25519 alone, and Polytune's OT extension (KOS) runs over Chou-Orlandi base
+    OTs on ristretto255 (`ot_core/mod.rs` at the pinned commit). Both are now labelled not post-quantum: in the
+    threat model, the benchmark row's security model, the Value page and the flow captions, beside the PSI's existing
+    label.
+  - The canvas legend no longer calls every classical lane sealed.
+  - The audit record's ML-DSA key is made for each run, so "verified: true" now says the record is unchanged, not
+    who signed it.
+  - The MCP sentence on Use cases matches Validations: one sealed, signed `tools/call` request, and no response.
+- **Wrong statements.**
+  - The Overview headline names the chain a run executes, and the QSMPC node label is now "PSI (OPRF, classical)".
+  - The QOTP sketch is no longer listed as a protocol. The OPRF's assumption is One-More Gap CDH (RFC 9497, section
+    7.2.1). The QCNN comparison now quotes its five-seed result, and Bermejo et al. are cited for what they show.
+  - The satellite page does run a CKKS check, of the OPS-SAT student on 529 segments, and the tooltip now says so.
+  - Gidney's runtime is 4.96 days against 8 hours, $`\approx 15\times`$. The two 2026 preprints (Cain et al.,
+    arXiv:2603.28627; Babbush et al., arXiv:2603.28846) are added and labelled as estimates.
+  - GDPR Art. 22 is scoped to decisions with legal or similarly significant effects. The QSDC verdict carries its
+    conditions. The node-seal benchmark is in the past tense, at its 7.0.0 tag.
+  - The OptiQKD optimiser is named after v1 of arXiv:2603.04192. v2, AML-QKD, uses a TCN forecaster and a PPO
+    agent. The survey's $`+15`$-$`20\%`$ is one study's figure (Shingne et al.).
+  - Lee et al. are cited in their IEEE Access version: 98.43% identical results, against the preprint's 98.67%.
+  - Rate-1 FHE is "a rate arbitrarily close to 1":
+    - Gentry and Halevi: $`1-\epsilon`$.
+    - Brakerski, Doettling, Garg and Malavolta: $`1-o(1)`$.
+  - The 5G-NIDD cross-station accuracies are 78.2-78.9% and 57.2-81.6% (Wang, Fok and Thing, Tables V and VI).
+  - The GNN card's target is Multi-PNA+EU's own 68.16 $`\pm`$ 2.65 (Egressy et al., AAAI 2024, Table 2).
+- **Figures the page computed or labelled wrong.**
+  - The student card printed the teacher's calibration comparison. It now prints each record's own
+    `why_not_isotonic`.
+  - "16384 class scores" counted a bias-only class. The figure and its metric now count the 8,192 scores CKKS
+    evaluated.
+  - The asymptotic key rate is renamed `skr_asymptotic_bit_s`, with the finite key's rate beside it.
+  - The QRNG names the raw draws its tests run on, reports the extractor's own yield, and states that SP 800-90B needs
+    $`10^{6}`$ raw samples (section 3.1.1) and that the most-common-value estimate stands alone only for IID sources
+    (section 6.1).
+  - The XAI driver carries its sign. The federated accuracy says when its rows are a 50/50 draw. The teacher's
+    accuracy shows the majority-class 0.9985 beside it.
+  - The telecom AUC-PR note reads 0.9931 as 94.5% of the way from chance to perfect, since a 0.875 base rate caps
+    lift at $`1/0.875 = 1.143\times`$.
+  - The genomics variant note states both divergence rates: 31 of 108 at or above the median weight, and 26 of 69
+    below it. It no longer says the larger weights "move a score". The ancestry gap is no longer attributed to allele
+    frequency as if measured.
+- **The finance test window runs past the data.**
+  - HI-Small holds September 1-10, 2022 (IBM's dataset card). The dataset's creator explains, on Kaggle (discussion
+    427517), that the later rows let laundering patterns complete.
+  - `scripts/measure_finance_test_window_tail.py` first checks both published models by digest and against their
+    recorded F1, then scores them with and without those rows. The 1,108 rows of September 11-18 hold 655 of the
+    window's 2,321 positives (28.2%).
+  - Without them:
+
+    | | with the rows | without them |
+    |---|---|---|
+    | Base rate | 0.152% | 0.109% |
+    | Teacher F1 | 0.1519 | 0.1387 |
+    | Teacher AUPRC | 0.1233 | 0.1030 |
+    | Student F1 | 0.0614 | 0.0473 |
+
+  - The published 60/20/20 split's test set carries the same rows.
+  - The figures are in `docs/measurements/finance-test-window-tail-2026-11-06.json`. The dataset notes, which every
+    finance card prints, and the finance chart's split note state them. `tests/test_r86_finance_tail.py` holds both
+    texts to the measurement; it was seeded with a drifted figure and failed.
+
+Not fixed here, and why:
+
+- **Need a measurement.**
+  - Telecom: score the forest binary, on the quantum models' own splits.
+  - Satellite: rewrite Telemanom's thresholding (per window, EWMA-smoothed, sequence-level pruning) and re-score.
+- **Need a record or a published file regenerated.**
+  - Texts in `models/metrics.json` written at training time.
+  - The medical student's `weights.json` note.
+  - The PaySim `night_tx` clock caveat.
+- **Need the owner's approval for a Hugging Face republish.** These cards print registry text that changed:
+  - the two finance cards (the dataset notes);
+  - `telecom_ids.nidd` (its baseline source);
+  - and, not yet changed: `medical_fl.student`'s title, "FHE-feasible diagnostic CNN", should read
+    "CKKS-evaluable BreastMNIST CNN student", since MedMNIST states its data is not for clinical use. It is
+    the card's title, and a test holds the card to its published README, so it changes with the republish.

@@ -23,8 +23,9 @@ export default function Value() {
       <KeyPoints items={[
         <><b>Not new:</b> secure multiparty computation in a browser (webSPDZ, JIFF, MPyC-Web).</>,
         <><b>Not new either:</b> homomorphic <i>evaluation</i> in a browser - node-seal, the SEAL build this
-          demo uses, benchmarks CKKS evaluation in three browsers, and she-wasm (AsiaCCS 2018) evaluates
-          two-level HE in WebAssembly. <b>Not found:</b> a peer-reviewed 2025-2026 report of encrypted
+          demo uses, published benchmarks of CKKS evaluation in three browsers (its BENCHMARK.md, at
+          the 7.0.0 tag; the file left its main branch on 2026-10-31), and she-wasm (AsiaCCS 2018)
+          evaluates two-level HE in WebAssembly. <b>Not found:</b> a peer-reviewed 2025-2026 report of encrypted
           neural-network inference inside a browser tab.</>,
       ]} />
       <p className="lead">
@@ -93,7 +94,11 @@ export default function Value() {
             collecting United States information now, and decrypting it later once large-scale
             quantum computers are operational". */}
         <div className="card"><h3>HNDL is a present risk</h3><p>"Harvest Now, Decrypt Later": data with 30-year secrecy needs is already at risk. A PQC hybrid key exchange (ML-KEM + X25519) addresses it today; QKD is a simulated add-on in this demo.</p></div>
-        <div className="card"><h3>Resource estimates falling</h3><p>RSA-2048 break estimated under 1M noisy qubits (Gidney, arXiv:2505.15917, 2025) &mdash; about 1/20 the qubits of the 2019 estimate, though the runtime rises roughly 20&times; in exchange.</p></div>
+        {/* "roughly 20x" read the abstract's upper bound ("less than a week") as the estimate; the
+            paper's own figure is 4.96 days per factoring (section 3.2), against the 2019 estimate's 8
+            hours. The two 2026 preprints (both 2026-03-30; abstracts read 2026-11-06) are resource
+            estimates, like Gidney's, and none of the three is a demonstration. */}
+        <div className="card"><h3>Resource estimates falling</h3><p>RSA-2048 break estimated under 1M noisy qubits (Gidney, arXiv:2505.15917, 2025) &mdash; about 1/20 the qubits of the 2019 estimate, though the runtime rises from 8 hours to about 5 days (&asymp;15&times;) in exchange. Two 2026 preprints lower the counts again: about 10,000 reconfigurable atomic qubits for Shor at cryptographic scale, and a few days for P-256 with 26,000 (Cain et al., arXiv:2603.28627), and a 256-bit elliptic-curve discrete logarithm in minutes on fewer than 500,000 superconducting qubits (Babbush et al., arXiv:2603.28846). All three are estimates, not demonstrations.</p></div>
         <div className="card"><h3>Regulation sets the clock</h3>
           <KeyPoints items={[
             "NIST FIPS 203/204/205 are final (August 2024).",
@@ -114,9 +119,10 @@ export default function Value() {
             explanation of the procedure and principles actually applied. What is not mandated today,
             by either instrument, is the SIGNATURE. */}
         <p style={{ marginTop: 10 }}>
-          Explanations of automated decisions are already owed today: under the GDPR, the person a
-          solely automated decision concerns is entitled to an explanation of the procedure and
-          principles actually applied (Art. 15(1)(h) with Art. 22, as the CJEU held in C-203/22,
+          Explanations of automated decisions are already owed today: under the GDPR, the person
+          concerned by a solely automated decision with legal or similarly significant effects
+          (Art. 22(1)) is entitled to an explanation of the procedure and principles actually applied
+          (Art. 15(1)(h) with Art. 22, as the CJEU held in C-203/22,
           Dun &amp; Bradstreet Austria, 27 February 2025). The AI Act&apos;s high-risk transparency
           duties follow in 2027/2028. Neither requires the explanation to be signed, so the signature
           here is this project&apos;s addition, not a mandate.
@@ -143,8 +149,8 @@ export default function Value() {
                 federated mask derived from, which the aggregator holds (docs/threat-model.md). Since
                 Round 84 the PSI is RFC 9497's OPRF and each pair of clients agrees its mask seed by
                 X25519, and the row says what each leaves out. */}
-            <tr><td>Loss avoidance</td><td>The PQC hybrid key exchange addresses HNDL exposure of session keys; an attack classifier on QKD-link telemetry can flag attacks on the link itself</td><td>The classifier is classical: the page runs a softmax and the published random forest, both on synthetic QKD-attack telemetry, and the quantum-kernel SVC and the QNN in the recorded comparison, run offline, lose to the forest. It does not address HNDL, which is passive recording of classical traffic. The QKD layer is simulated here</td></tr>
-            <tr><td>New privacy-preserving services</td><td>Cross-bank AML PSI, federated medical models, confidential genomics, free-space <b>satellite QKD</b> links</td><td>The PSI is semi-honest and not post-quantum: it runs RFC 9497&apos;s OPRF over ristretto255, so a bank that deviates from the protocol is not caught, and Bank A, with a quantum computer, could recover Bank B&apos;s list from the messages it receives. Each pair of federated clients agrees its mask seed by X25519, so the aggregator cannot remove a mask alone, though every client runs in this tab and there is no dropout recovery or authentication of the public keys. QKD and the satellite link are simulated, and this demo finds that QSDC cannot close over a LEO downlink</td></tr>
+            <tr><td>Loss avoidance</td><td>The PQC hybrid key exchange addresses HNDL exposure of session keys; an attack classifier on QKD-link telemetry could flag attacks on the link itself (here it runs on synthetic telemetry and never reads the simulated link)</td><td>The classifier is classical: the page runs a softmax and the published random forest, both on synthetic QKD-attack telemetry, and the quantum-kernel SVC and the QNN in the recorded comparison, run offline, lose to the forest. It does not address HNDL, which is passive recording of classical traffic. The QKD layer is simulated here</td></tr>
+            <tr><td>New privacy-preserving services</td><td>Cross-bank AML PSI, federated medical models, confidential genomics, free-space <b>satellite QKD</b> links</td><td>The PSI is semi-honest and not post-quantum: it runs RFC 9497&apos;s OPRF over ristretto255, so a bank that deviates from the protocol is not caught, and Bank A, with a quantum computer, could recover Bank B&apos;s list from the messages it receives. Each pair of federated clients agrees its mask seed by X25519, so an aggregator that follows the protocol cannot remove a mask alone, though every client runs in this tab and there is no dropout recovery or authentication of the public keys. Those seeds are not post-quantum either: the aggregator relays the public keys and the masked updates are not sealed, so with a quantum computer it, or anyone who recorded them, could recompute every seed and unmask each update. QKD and the satellite link are simulated, and with its default link budget, under a criterion that credits the eavesdropper with all of the channel&apos;s loss, this demo&apos;s model finds that QSDC cannot close at any range over a LEO downlink</td></tr>
             <tr><td>Operational savings</td><td><b>OptiQKD</b> (gradient-free coordinate ascent over decoy and basis parameters, with a convergence metric) points at automated QKD calibration; one config change migrates algorithms</td><td>The reference framework reports +14-25% in simulation; nothing here is field-validated, and no failover is implemented. In the browser the <b>QRNG</b>&apos;s bits feed only its own metrics, and the PQC+QKD combiner is seeded with SHAKE-256 of its own inputs and fed a fixed QKD-domain constant, so neither hardens a key</td></tr>
           </tbody>
         </table>
