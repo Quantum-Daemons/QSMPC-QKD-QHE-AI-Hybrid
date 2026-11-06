@@ -169,6 +169,9 @@ def frontend_config() -> dict:
         # Published measurements the models are checked against and the page draws (Round 78): one
         # JSON file each under src/qsh/config/validation/, read by the tests and the browser alike.
         "validation": _validation_sets(),
+        # Where a page draws a decision curve and over which thresholds (Round 86): one range per use case, shared with
+        # the BFV scorecard's trainer, which fits over the same five.
+        "decision_curve": asdict(c.decision_curve),
         "qrng": asdict(c.qrng),        # QRNG bits / source / post-processing / health alpha
         "ids": asdict(c.ids),          # QML-IDS sample sizes (incl. the in-browser demo IDS)
         "crypto": asdict(c.crypto),    # crypto-agility defaults incl. hybrid_combiner_mode (PQC+QKD combiner)

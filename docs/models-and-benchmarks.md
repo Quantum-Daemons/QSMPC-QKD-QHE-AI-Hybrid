@@ -280,6 +280,33 @@ visible number.
   model itself uses: the orbit, the elevation a slant range implies, the arc above the minimum
   elevation, and a constellation's spacing, line-of-sight clearance and shadow.
 
+#### The finance decision curve
+
+The finance verification card draws net benefit across threshold probabilities for `finance_aml.gbm`, scored in the
+tab on the 8,192 rows of its evaluation sample, against treat-all and treat-none (Vickers and Elkin 2006). Acting
+when the calibrated risk is at least $`t`$ prices each false alarm at $`t/(1-t)`$ of a caught case:
+
+$$NB(t) = \mu\,\mathrm{TPR}(t) - (1 - \mu)\,\mathrm{FPR}(t)\,\frac{t}{1 - t}$$
+
+The sample draws each class of the test window on its own (164 laundering rows, 2.0%), so the rates are unbiased
+and its prevalence is not; $`\mu`$ is the window's own, 2,321 of 1,523,504 (0.152%), which is the case-control
+estimator of Pfeiffer and Gail (2020, eq. 11). The score passes through the record's Platt map first, and the
+threshold range, 0.002 to 0.05, is the use case's decision context in the config, shared with the BFV scorecard's
+fit. Measured on 2026-11-06 against the whole window with the same graph, per 10,000 transactions
+([`measurements/finance-decision-curve-2026-11-06.json`](measurements/finance-decision-curve-2026-11-06.json)):
+
+| $`t`$ | whole window | the page's sample, pointwise 95% | weighted by the sample's 2.0% | treat-all |
+|---|---|---|---|---|
+| 0.002 | 9.81 | 10.08 (9.03 to 11.12) | 144.31 | -4.77 |
+| 0.005 | 7.24 | 8.00 (6.84 to 9.15) | 118.54 | -34.94 |
+| 0.01 | 5.44 | 6.26 (5.07 to 7.45) | 95.38 | -85.62 |
+| 0.02 | 3.78 | 4.49 (3.33 to 5.65) | 71.05 | -188.54 |
+| 0.05 | 1.98 | 2.06 (1.02 to 3.10) | 38.16 | -510.28 |
+
+The window lies inside the sample's interval at 40 of the 43 thresholds the page draws. The third column is the
+error the estimator avoids. A perfect model would score 15.23, the window's rate per 10,000; the trainer's operating
+point, 0.3869 on the raw score, is a calibrated risk of 0.129, above the range.
+
 #### Which pages encrypt
 
 In the browser, the finance, medical and genomics pages run node-seal CKKS and a Polytune

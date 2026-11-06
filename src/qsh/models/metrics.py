@@ -122,6 +122,52 @@ def net_benefit(y_true, y_score, threshold: float) -> float:
     return float(tp / n - (fp / n) * (q / (1.0 - q)))
 
 
+def net_benefit_at_prevalence(y_true, y_score, threshold: float, prevalence: float) -> tuple[float, float]:
+    """Net benefit from a sample drawn separately from each class, at a known prevalence; and its standard error.
+
+        NB(t) = mu * TPR(t) - (1 - mu) * FPR(t) * t / (1 - t)
+
+    Pfeiffer and Gail, "Estimating the decision curve and its precision from three study designs", Biometrical
+    Journal 62(3):764-776 (2020), eq. 11: the case-control estimator, with the event rate ``mu`` known. A sample
+    enriched in events by drawing each class on its own estimates the true- and false-positive rates without bias but
+    not the prevalence, so :func:`net_benefit` on it, which weights by the SAMPLE's rate, is biased by the enrichment.
+    With ``prevalence`` set to the sample's own rate the two functions agree.
+
+    The standard error is that of two independent binomial proportions over the sample's ``m`` events and ``n``
+    non-events, ``sqrt(mu^2 TPR (1 - TPR) / m + (1 - mu)^2 w^2 FPR (1 - FPR) / n)`` with ``w = t / (1 - t)``. Drawn
+    without replacement from a finite window, the rates would take a finite-population correction, which can only
+    narrow it, and is left out.
+    """
+    y = np.asarray(y_true).ravel().astype(int)
+    s_ = _positive_score(y_score)
+    events, non_events = int(np.sum(y == 1)), int(np.sum(y == 0))
+    if events == 0 or non_events == 0:
+        return float("nan"), float("nan")
+    pred = s_ >= threshold
+    tpr = float(np.sum(pred & (y == 1))) / events
+    fpr = float(np.sum(pred & (y == 0))) / non_events
+    q = float(min(max(threshold, 1e-9), 1 - 1e-9))
+    w = q / (1.0 - q)
+    mu = float(prevalence)
+    nb = mu * tpr - (1.0 - mu) * fpr * w
+    se = float(np.sqrt(mu ** 2 * tpr * (1.0 - tpr) / events + (1.0 - mu) ** 2 * w ** 2 * fpr * (1.0 - fpr) / non_events))
+    return float(nb), se
+
+
+def decision_grid(thresholds, points: int) -> list[float]:
+    """The thresholds a decision curve is drawn at: ``points`` log-spaced from the first declared threshold to the
+    last, with every declared one added exactly, and an interior point within a part in 10^9 of a declared one taken
+    as the declared one. The page builds the same grid (``web/src/lib/decisionCurve.ts::decisionGrid``)."""
+    declared = sorted(float(t) for t in thresholds)
+    lo, hi = declared[0], declared[-1]
+    grid = list(declared)
+    for k in range(1, points - 1):
+        t = lo * (hi / lo) ** (k / (points - 1))
+        if not any(abs(t - d) <= 1e-9 * d for d in declared):
+            grid.append(t)
+    return sorted(grid)
+
+
 def area_under_net_benefit(y_true, y_score, *, lo: float = 0.05, hi: float = 0.5,
                            steps: int = 46) -> float:
     """AUNBC - net benefit integrated over a RANGE of thresholds, not evaluated at one.

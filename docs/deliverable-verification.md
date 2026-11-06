@@ -2275,7 +2275,8 @@ together was imprecise.** JupyterLite supports self-hosting through `pyodideUrl`
 `jupyter lite build --pyodide <local tarball>`. marimo **hardcodes** `cdn.jsdelivr.net` in
 `frontend/src/core/wasm/worker/bootstrap.ts` as a bare template literal with no config key, no
 environment variable and no flag; its own bug #575 has been open since 2024-01-15 and was last touched
-2026-05-19. So the CDN objection is *fixable for JupyterLite and unfixable for marimo*. And
+2026-05-19. So the CDN objection is *fixable for JupyterLite and unfixable for marimo* (as of 2026-08-22;
+**superseded** by marimo 0.25.0's `--offline` export, measured in Round 86, below). And
 accessibility is unassessed upstream: no JupyterLab/JupyterLite issue cites SC 1.4.1, 1.4.11, 1.4.13
 or 4.1.3, and marimo has no accessibility documentation at all - absence of reports, not conformance.
 
@@ -2303,7 +2304,8 @@ lockfile; cold start is measured in-house, because **no citable benchmark exists
 repeated "6.4 MB, 4-5 seconds" is byte-identical boilerplate across the 2022 and current Pyodide
 roadmaps and is not a measurement of any shipped version; and the four WCAG criteria above are tested
 in-house. **For marimo specifically, a fifth:** it ships a supported way to move the runtime off
-`cdn.jsdelivr.net`, which as of 2026-08-22 it does not.
+`cdn.jsdelivr.net`, which as of 2026-08-22 it does not. (It does since 0.25.0, 2026-09-23, and that condition is
+met: Round 86, below.)
 
 *The 3-D path reopens only when this project acquires data that is genuinely three-dimensional.* If it
 ever does, the dependency to reach for is **`@kitware/vtk-wasm` direct from npm and vendored**, not
@@ -7692,7 +7694,9 @@ none of `tenseal`, `openfhe`, `seal`, `concrete-ml`, `onnxruntime` or `onnx` (it
 and on PyPI none of TenSEAL 0.3.18, OpenFHE 1.6.1, concrete-ml 1.9.0 or onnxruntime 1.31.1 has ever
 published an emscripten or Pyodide wheel. marimo's offline issue #575 is still open (last updated
 2026-09-30); pyvista-wasm is at 0.16.0 (2026-10-24), and this project still has no three-dimensional
-data. Declined as before.
+data. Declined as before. **Corrected in Round 86:** the open issue was read as a missing feature, and it is not
+the test. marimo 0.25.0 (2026-09-23) exports with `marimo export html-wasm --offline`, so marimo's own (fifth)
+condition is met, as the private checklist had recorded since 2026-10-30; the notebook stays declined on the first.
 
 
 ## Round 85 - every selection walked in one tab, two memory leaks, and the owner's decisions (2026-11-01)
@@ -8535,3 +8539,58 @@ and `web/scripts/check_student_cost_rows.mjs` hold them, and each was seen to fa
   above). Read its status at ETSI and update the QKD-SDN control plane's references.
 - **BLOCKED UNTIL 2026-12-20.** The FAR Council's proposed rule was due within 180 days, about 2026-12-19
   (`docs/pqc-roadmap.md`, this register above). Read the Federal Register and update the roadmap's row.
+
+### The finance page draws its decision curve, and three records catch up with decisions
+
+**The decision curve (the owner's choice, Round 29: "add the decision curve and cite the source").** The citation
+landed in Round 31 and the curve stayed in the technical report, which left the repository on 2026-11-02, so the page
+showed none. The finance verification card now draws net benefit across threshold probabilities for the published
+`finance_aml.gbm`, from the 8,192 rows of its evaluation sample scored in the tab, against treat-all and treat-none
+(Vickers and Elkin 2006):
+
+$$NB(t) = \mu\,\mathrm{TPR}(t) - (1 - \mu)\,\mathrm{FPR}(t)\,\frac{t}{1 - t}$$
+
+- **The rate $`\mu`$ is the window's, not the sample's.** The sample draws each class of the test window on its own and
+  holds 164 laundering rows (2.0%); the window holds 2,321 of 1,523,504 (0.152%). Drawn that way the two rates are
+  unbiased and the prevalence is not, which is the case-control estimator of Pfeiffer and Gail (Biometrical Journal
+  62(3):764-776, 2020, eq. 11). Measured against the whole window, at $`t = 0.01`$: the window's own net benefit is
+  5.44 per 10,000 transactions, the page's estimate 6.26 with a pointwise 95% interval of 5.07 to 7.45, and weighting
+  by the sample's 2.0% would read 95.4. The window lies inside the sample's interval at 40 of the 43 thresholds drawn,
+  at most 2.08 standard errors away (`docs/measurements/finance-decision-curve-2026-11-06.json`,
+  `scripts/measure_decision_curve.py`, which runs the graph the page downloads, pinned by its SHA-256).
+- **The score is calibrated first**, because $`t`$ is a risk: the record's Platt map (fitted on the validation window,
+  710,969 rows and 801 events). Over the window the calibrated curve is ahead of the graph's raw output below
+  $`t \approx 0.018`$ (9.81 against 7.91 per 10,000 at 0.002) and behind it above (1.98 against 2.29 at 0.05): a
+  two-parameter map is not exact in the upper tail, and isotonic regression scores better on CORP's miscalibration
+  term (`scripts/train/finance_aml.py`).
+- **The trainer's operating point, 0.3869 on the raw score, is a calibrated risk of 0.129**, about a 1-in-8 suspicion
+  and above the range the use case declares, 1-in-500 to 1-in-20. The page says so under the chart.
+- **One owner for the range.** `decision_curve.curves.finance_aml` in `src/qsh/config/defaults.py` holds the five
+  thresholds; the BFV scorecard's trainer read the same five as its own literal and reads the config now, and the
+  published `scorecard.json` records them.
+- **Not subject to the 200-event floor.** That floor is for a flexible calibration curve; this curve estimates two
+  rates with an interval, from a map fitted on far more events.
+- **The CKKS student's private-inference output gets no curve.** It is distilled to the teacher's uncalibrated
+  probability and has no calibration map of its own, so its outputs are not risks a threshold can be read against.
+  *Reopens if* a map is fitted for the student on the validation window.
+
+`tests/test_r86_decision_curve.py` holds the estimator (it equals plain net benefit at the sample's own rate, corrects a
+synthetic enrichment the uncorrected form misses by more than ten standard errors, and covers at close to 95% over 300
+draws), the browser's copy against Python through esbuild, the page reading the window's rate from the record, and the
+single owner of the range. Each was seen to fail with its defect put back: the sample's rate in either language, a
+dropped $`1 - \mu`$, the scorecard's literal restored and a standard error without its false-positive term.
+
+**Three records that had been decided and not written down:**
+
+- **Lee et al., arXiv:2106.07229, as a relation on the agreement figure** (the owner's choice, Round 36). A ResNet-20
+  under RNS-CKKS with bootstrapping and approximated ReLU reports "98.67% identical results" to its plaintext model on
+  CIFAR-10. Every agreement figure here encrypts one linear layer at one multiplicative level, so it should agree more
+  often, and the caption says neither figure ranks the other. `references/REFERENCES.md` has the entry.
+- **CERBSim `webgpu` declined on its licence** (the owner's choice, Round 40): LGPL-2.1-or-later, recorded in
+  `DATA_LICENSES.md` section 7 beside QKDNetSim with a reopening condition.
+- **marimo's fifth condition is met**, and the 2026-11-01 re-check above said otherwise by reading its open issue #575
+  as a missing feature. marimo 0.25.0 (2026-09-23) ships `marimo export html-wasm --offline`, "self-contained
+  WebAssembly export bundles for offline use" in its release notes. Measured 2026-11-06 on 0.25.2: a one-cell notebook
+  exported to 48 MB, Pyodide, its lockfile and packages included, and run in headless Chrome with every host but the
+  loopback address unresolvable, ran its cell in 4 s and asked no other host for anything. The notebook stays
+  declined: no CKKS or TFHE wheel exists for Pyodide, which is the first condition.

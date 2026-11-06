@@ -3857,3 +3857,17 @@ card printed the one no record has. A check that reads the record, not the spec,
 **A threshold has one owner.** The QKD stage aborts at `qkd.pp_threshold`, and four readers of the same idea took it from
 the retired score's config, equal to it only by value. Removing the score would have left them pointing at nothing; moving
 them first is what made the removal a deletion and not a breakage.
+
+**A decision made and only half done reads as done.** The owner chose a decision curve for finance in Round 29; the
+citation landed and the curve lived in the technical report, so when the report left the repository the page had
+none, and nothing listed it as owed. Re-reading the orders against the page is what found it.
+
+**An enriched sample is right about rates and wrong about the rate.** The finance sample draws each class on its own,
+so its true- and false-positive rates are fair and its 2 percent is not. Weighted by that 2 percent, net benefit at
+t = 0.01 reads 95.4 per 10,000 where the whole window gives 5.44; at the window's own rate the sample reads 6.26, with
+an interval that holds the window's value at 40 of 43 thresholds. Measuring against the window, not only reasoning
+about it, is what turned the correction from plausible into checked.
+
+**An open issue is not a missing feature.** The 2026-11-01 re-check kept marimo declined on its offline issue #575.
+The release notes of 0.25.0 had shipped `--offline` 39 days earlier, and a probe with every other host unresolvable
+ran an exported cell. Test the capability, not the tracker.

@@ -22,6 +22,7 @@ import {
   ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis,
 } from "recharts";
 
+import type { DecisionCurve } from "../lib/decisionCurve";
 import type { ModelEvalResult } from "../lib/onnxInference";
 import { modelsFor } from "../lib/config";
 import Details from "./Details";
@@ -390,6 +391,16 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
               : <>{exp2(plot.flipMarginMax)}.</>}
           </>
         ) : null}
+        {/* THE PUBLISHED SCALE, AS A RELATION AND NOT A NUMBER TO BEAT (the owner's choice, Round 36).
+            Lee et al. is the nearest primary source that reports this figure's quantity, the share of
+            inputs on which the encrypted model's top class equals the plaintext model's. Every figure
+            here encrypts one linear layer (one plaintext multiply and its rotations), so the two are
+            not like for like and the sentence says which way the difference should point. */}
+        {" "}For scale only: a 20-layer ResNet under RNS-CKKS, with bootstrapping and approximated ReLU,
+        reported &quot;98.67% identical results&quot; to its plaintext model on CIFAR-10 (Lee et al.,
+        arXiv:2106.07229, 2021). This model is one linear layer at one multiplicative level, with no
+        bootstrapping and no approximated activation, so it does far less homomorphic arithmetic and
+        should agree more often. Neither figure ranks the other.
         {plot.licence ? <> Rows: <LicenceLine licence={plot.licence} /></> : null}
       </figcaption>
       {mismatches > 0 && typeof plot.flipMarginMax === "number" && plot.flipMarginMax > 0 ? (
@@ -940,6 +951,102 @@ function ReliabilityChart(
 
 const res_n = (d: Array<{ n: number }>) => d.reduce((a, b) => a + b.n, 0);
 
+/** Net benefit across the declared thresholds, against treat-all and treat-none (Vickers and Elkin 2006; Round 86).
+ *
+ *  `lib/decisionCurve.ts` computes everything drawn and quoted here. Per 10,000 transactions, because at finance's
+ *  1-in-656 window rate a whole-row net benefit is a number like 0.0004, whose leading zeros are the hardest part of
+ *  it to read. The y axis stops a little below zero and treat-all falls past it, as in Vickers' own figures: above the
+ *  prevalence, acting on everyone has a net benefit far below zero, and an axis stretched to hold it would flatten
+ *  the model's curve into the zero line. The readout still gives treat-all's value. */
+function DecisionCurveChart({ curve, modelKey, n }: { curve: DecisionCurve; modelKey: string; n: number }) {
+  const captionId = useId();
+  const PER = 10_000;
+  const data = curve.points.map((p) => ({
+    t: p.t, model: p.model * PER, lo: p.lo * PER, hi: p.hi * PER, treatAll: p.treatAll * PER,
+  }));
+  const ceiling = curve.prevalence * PER;
+  // Down to minus the ceiling, so treat-all is seen leaving the axis rather than not drawn at all: at a rate below
+  // every threshold here it starts under zero and falls fast.
+  const yMin = Math.min(-ceiling, ...data.map((d) => d.lo)) - 0.05 * ceiling;
+  const yMax = Math.max(ceiling, ...data.map((d) => d.hi)) + 0.05 * ceiling;
+  const fmtT = (t: number) => (t < 0.01 ? t.toFixed(3) : t.toFixed(2));
+  const count = (x: number) => x.toLocaleString("en-US");
+  const per = (x: number) => (x * PER).toFixed(2);
+  const pct = (x: number) => `${(100 * x).toFixed(x < 0.01 ? 3 : 1)}%`;
+  const cov = Math.round(curve.coverage * 100);
+  // `of them` once the first clause has named the thresholds, so the caption does not say the same phrase twice.
+  const where = (rows: typeof data, again = false) => {
+    const span = rows.length > 0 && rows.length < data.length
+      ? `, between t = ${fmtT(rows[0].t)} and ${fmtT(rows[rows.length - 1].t)}` : "";
+    if (rows.length === data.length) return again ? "at all of them" : "at every threshold drawn";
+    if (rows.length === 0) return again ? "at none of them" : "at no threshold drawn";
+    return (again ? `at ${rows.length} of them` : `at ${rows.length} of the ${data.length} thresholds drawn`) + span;
+  };
+  const above = data.filter((d) => d.model > 0), clear = data.filter((d) => d.lo > 0);
+  const allPays = data.filter((d) => d.treatAll > 0);
+  const m = curve.atMedian, op = curve.operating;
+  const tMax = curve.thresholds[curve.thresholds.length - 1];
+  // Ticks at whole steps of a round size: recharts' own, on this hand-set domain, came out at -2, 3, 8 and 16.
+  const step = [1, 2, 5, 10, 20, 50].find((s) => (yMax - yMin) / s <= 7) ?? 100;
+  const gone = data.find((d) => d.treatAll < yMin);
+  const yTicks: number[] = [];
+  for (let v = Math.ceil(yMin / step) * step; v <= yMax; v += step) yTicks.push(v);
+  return (
+    <figure className="chart-figure">
+      <figcaption id={captionId} className="muted small">
+        Decision curve for <code>{modelKey}</code> over the {count(n)} rows of its evaluation sample: net benefit
+        per 10,000 transactions of acting when the calibrated risk is at least t, each false alarm priced at
+        t/(1 &minus; t) of a caught case (Vickers and Elkin 2006). The model is above treat-none, the zero
+        line, {where(above)}, and its {cov}% interval (dotted) clears zero {where(clear, true)}. Treat-all
+        (dashed) is {allPays.length ? `above zero ${where(allPays)}` : "below zero across the range"}{gone
+          ? `, and leaves the axis by t = ${gone.t.toFixed(4)}` : ""}: acting
+        on every transaction pays only at a threshold under the prevalence. Read a value against its
+        threshold, not as one number.
+      </figcaption>
+      <ChartReadout hint={HINT_KEYBOARD}>
+        <ResponsiveContainer width="100%" height={250}>
+          <LineChart accessibilityLayer title={`Decision curve for ${modelKey}`} aria-describedby={captionId}
+            data={data} margin={{ top: 6, right: 10, bottom: 14, left: 4 }}>
+            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+            <XAxis dataKey="t" type="number" scale="log" domain={[data[0].t, data[data.length - 1].t]}
+                   ticks={curve.thresholds} tick={AXIS} tickFormatter={fmtT}
+                   label={{ value: "threshold probability t (log scale)", position: "insideBottom",
+                            offset: -10, fill: "#8a94a6", fontSize: 10 }} />
+            <YAxis type="number" domain={[yMin, yMax]} allowDataOverflow tick={AXIS} width={Y_AXIS_W}
+                   ticks={yTicks} tickFormatter={(v: number) => String(v)}
+                   label={yAxisTitle("net benefit per 10,000", 14)} />
+            <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => Number(v).toFixed(2)}
+                     labelFormatter={(v: number) => `t = ${Number(v).toFixed(4)}`} />
+            {/* At the top: at the bottom it sat on the x axis's title. */}
+            <Legend verticalAlign="top" align="right" wrapperStyle={{ fontSize: 10 }} />
+            <ReferenceLine y={0} stroke="#8a94a6" strokeDasharray="4 4" />
+            {/* Dash pattern as well as colour (SC 1.4.1), named in each legend entry. */}
+            <Line dataKey="treatAll" stroke={MARK_AMBER} strokeDasharray="6 3" strokeWidth={1.4} dot={false}
+                  isAnimationActive={false} name="treat all (dashed)" />
+            <Line dataKey="lo" stroke={MARK_BLUE} strokeDasharray="1 3" strokeWidth={1} dot={false}
+                  isAnimationActive={false} name={`${cov}% interval (dotted)`} />
+            <Line dataKey="hi" stroke={MARK_BLUE} strokeDasharray="1 3" strokeWidth={1} dot={false}
+                  isAnimationActive={false} legendType="none" name={`${cov}% interval, upper`} />
+            <Line dataKey="model" stroke={MARK_BLUE} strokeWidth={1.8} dot={false} isAnimationActive={false}
+                  name="model" />
+          </LineChart>
+        </ResponsiveContainer>
+      </ChartReadout>
+      <p className="muted small">
+        Why the window&apos;s rate: the {count(curve.events)} laundering and {count(curve.nonEvents)} other rows were drawn
+        from each class of the test window on its own, so their true- and false-positive rates are unbiased and
+        their {pct(curve.events / n)} is not. The curve weights them by the window&apos;s own{" "}
+        {count(curve.windowEvents)} of {count(curve.windowRows)} ({pct(curve.prevalence)}), the case-control estimator of Pfeiffer and Gail (2020,
+        eq. 11): at t = {m.t} it reads {per(m.corrected)} per 10,000, where the sample&apos;s own rate would
+        read {per(m.naive)}. The interval is pointwise, for the rows drawn. Scores pass through the
+        record&apos;s Platt map first, because t is a risk{op ? <>; this page classifies at {op.raw.toFixed(4)} on
+          the graph&apos;s own output, a calibrated risk of {op.risk.toFixed(3)}{op.risk > tMax ? ", above this range" : ""}</>
+          : null}. A perfect model would score {ceiling.toFixed(2)}, the window&apos;s rate.
+      </p>
+    </figure>
+  );
+}
+
 /** Why there is no encrypted-vs-plaintext chart for this run.
  *
  *  ONE COPY, used by both surfaces. `/orchestration` carried this explanation and the satellite
@@ -1195,6 +1302,11 @@ export function VerificationChart(
                             modelKey={modelKey} />
         ) : plot.reliabilityWithheld ? (
           <p className="muted small">No calibration chart: {plot.reliabilityWithheld}.</p>
+        ) : null}
+        {plot.decisionCurve ? (
+          <DecisionCurveChart curve={plot.decisionCurve} modelKey={modelKey} n={res.n} />
+        ) : plot.decisionCurveWithheld ? (
+          <p className="muted small">No decision curve: {plot.decisionCurveWithheld}.</p>
         ) : null}
       </div>
     );

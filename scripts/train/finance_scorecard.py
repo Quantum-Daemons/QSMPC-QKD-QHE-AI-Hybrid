@@ -44,6 +44,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 import finance_aml as F  # noqa: E402
 
+from qsh.config import get_config  # noqa: E402
 from qsh.models import datasets, metrics, train  # noqa: E402
 from qsh.models.scorecard import fit_scorecard  # noqa: E402
 
@@ -53,8 +54,10 @@ N_BINS = 10
 
 #: The threshold range the fit integrates over. Chosen from the decision context, not the data: at a
 #: 1-in-981 base rate an alerting threshold above a few percent means almost nothing is reviewed, so
-#: this brackets "review a 1-in-500 suspicion" to "review a 1-in-20 suspicion".
-THRESHOLDS = np.array([0.002, 0.005, 0.01, 0.02, 0.05])
+#: this brackets "review a 1-in-500 suspicion" to "review a 1-in-20 suspicion". Read from the config
+#: since Round 86, because the finance page's decision curve spans the same range: a literal here and
+#: another in the page would be two owners of one decision context.
+THRESHOLDS = np.array(get_config().decision_curve.curves["finance_aml"]["thresholds"])
 
 
 def quantile_bins(Xfit: np.ndarray, n_bins: int = N_BINS):

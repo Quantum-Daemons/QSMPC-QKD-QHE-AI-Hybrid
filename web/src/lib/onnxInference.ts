@@ -62,6 +62,7 @@ function loadOrt(useWebGPU: boolean): Promise<typeof OrtTypes> {
 
 import { modelsFor, type ModelSpec, webCfg } from "./config";
 import { calibrationWithheld, outputKind, reliabilityBins, toProbabilities } from "./calibration";
+import { type DecisionCurve, publishedDecisionCurve } from "./decisionCurve";
 
 /** WASM unless a caller passes "webgpu": the visitor's selection, never the adapter's existence. */
 export const DEFAULT_ONNX_BACKEND = webCfg().onnx_default_backend as OnnxBackend;
@@ -599,6 +600,10 @@ export interface ModelEvalResult {
     reliabilityFrom?: "probabilities" | "logits";
     /** Why no reliability chart is drawn, when the graph's output does not say what it is. */
     reliabilityWithheld?: string;
+    /** Net benefit across the declared thresholds at the window's own prevalence (`decisionCurve.ts`), on the
+     *  pages whose config declares a decision curve; and, where it declares one and the page cannot draw it, why. */
+    decisionCurve?: DecisionCurve;
+    decisionCurveWithheld?: string;
   };
 }
 
@@ -882,6 +887,13 @@ export async function evaluatePublishedModel(
             reliability: reliabilityBins(n, (i) => (width > 1 ? prob[i * width + 1] : prob[i]),
                                          (i) => labels[i] === 1),
             reliabilityOf: "p(positive)", reliabilityFrom: kind! };
+      // The decision curve (Round 86), where the config declares one for this model: finance's. It reads the same
+      // column-1 probability the reliability bins read, through the record's calibration map, and is not subject to
+      // PP8: it estimates two rates with an interval instead of drawing a calibration curve.
+      const dc = publishedDecisionCurve(usecase, target.spec,
+        prob ? (i: number) => (width > 1 ? prob[i * width + 1] : prob[i]) : null, labels, n, thr);
+      if (dc && "curve" in dc) plot.decisionCurve = dc.curve;
+      else if (dc) plot.decisionCurveWithheld = dc.withheld;
     } else {
       const perClass: Array<{ label: string; f1: number }> = [];
       for (let c = 0; c < nClasses; c++) {
