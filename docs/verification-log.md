@@ -3916,3 +3916,8 @@ script now runs fixed integers through the layer on every path against a plain c
 paths to fail it with the GPU hidden, and removes the check before timing. A build flag chosen to get past an upstream
 defect, `PRINT_TIMINGS=0`, is recorded with the defect, and the claim that it was needed was checked by building without
 it.
+
+**A build that finishes can still install the wrong thing.** The OpenFHE 1.6.1 build compiled, linked and installed,
+and the venv went on importing the old binary: CMake had built for another Python, and the install step took the first
+`openfhe.cpython-*.so` it found. The import failed with the error the build exists to fix, which is the only reason it
+was noticed. The script now names the file by the venv's own ABI suffix and stops when that file is not there.

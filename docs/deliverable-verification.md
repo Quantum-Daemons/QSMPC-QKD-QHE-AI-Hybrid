@@ -8736,3 +8736,34 @@ from 8 to 512, because the layer calls the GPU once per image. Every path sends 
   last is added to the issue draft the owner posts.
 - **The refactor reproduces the record it extends.** Regenerated in report-only mode from the GEMM run's work directory,
   the matrix-multiplication record comes out byte-identical.
+
+### The public history rewritten a second time, and OpenFHE on 1.6.1
+
+**The rewrite (the owner's choice: "You do it via gh now").** The public repository was renamed
+`QSMPC-QKD-QHE-AI-Hybrid-archive-20261106` and made private, and a new public repository took the original name, so the
+old name's redirect stopped and the old SHAs left public view: the commit API answers 422 for them and the raw files
+404. Pushed to it: `main` at `12bd8c6` and the tag `v0.85.0`, regenerated from the final `main` minutes before, with
+the misspelt author name corrected in 591 commits and the companion demo's address replaced in the 10-24 to 10-30
+versions. Read from outside after the push: 740 commits, the tree of `main` identical to the old `main`'s, the tag's
+tree identical, no misspelt name in any commit. The release v0.85.0 was re-created from its saved notes with no asset.
+This machine's working copy and the demo host's deploy tree were re-attached to the new history; the demo serves
+`12bd8c6` from the same bundle as before. Pull request numbers start again at 1.
+
+**OpenFHE 1.6.1 (the owner's choice: "Port to 1.6.1 now").** The cap below 1.6 is lifted to `openfhe>=1.6.1,<1.7`,
+which still excludes 1.6.0 and its bootstrap defect (issue #1364).
+
+- **The one call that broke.** The 1.6 bindings no longer export the `FHECKKSRNS` class, which is the AttributeError CI
+  met on 2026-10-28; `GetBootstrapDepth` is now a static method of `CryptoContext` (openfhe-python v1.6.1.0,
+  `src/lib/pke/fbt.cpp`, and its own bootstrapping example calls it there). For the level budget $`(3, 3)`$ and a
+  uniform ternary secret it still returns 20.
+- **Measured on 1.6.1** (`tests/_openfhe_bootstrap_probe.py` and the backend, four runs, ring dimension 65536): one
+  bootstrap 6.2 to 7.7 s against 7.7 to 9.1 on 1.5.1, context and keys 1.7 to 1.8 s against 3.0, a level-22
+  ciphertext refreshed to level 19 as before, and the largest error per run $`2.0 \times 10^{-3}`$ to
+  $`3.8 \times 10^{-3}`$, 2.4 to 2.7 correct digits. In the backend table OpenFHE's 33-value dot product reads 15.31 ms
+  against 41.63, twice, within 1 percent, the second run on a quiet machine.
+- **The build script had two defects of its own**, both found by building: openfhe-python 1.6 asks CMake for pybind11
+  2.12 or later where EL9 ships 2.10.4, and pybind11's `FindPython` reads `Python_EXECUTABLE`, not the
+  `Python3_EXECUTABLE` the script set, so it built for the host's newest interpreter (`cpython-314`), installed that
+  file beside the wheel's `cpython-312` one, and the venv went on loading the wheel's, which needs `GLIBCXX_3.4.32`.
+  The script now installs pybind11 into the venv, sets both variables, and refuses an extension whose ABI suffix is not
+  the venv's.

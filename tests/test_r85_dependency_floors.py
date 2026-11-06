@@ -72,10 +72,15 @@ def test_the_filesystem_server_is_pinned_to_an_exact_version() -> None:
     assert '"@modelcontextprotocol/server-filesystem"' not in src.split("FILESYSTEM_SERVER =")[1]
 
 
-def test_openfhe_stays_below_1_6_and_says_never_1_6_0() -> None:
+def test_openfhe_is_1_6_1_or_newer_and_never_1_6_0() -> None:
+    """The cap below 1.6 is lifted (Round 86): the lower bound excludes 1.6.0, whose issue #1364 is this repository's
+    bootstrap path, and the bootstrap path calls the 1.6 bindings' `CryptoContext.GetBootstrapDepth`, not the 1.5
+    `FHECKKSRNS` class that 1.6 no longer exports (the AttributeError CI met on 2026-10-28)."""
     text = (REPO / "requirements-fhe.txt").read_text(encoding="utf-8")
-    assert "openfhe>=1.5.1,<1.6" in text
+    assert "openfhe>=1.6.1,<1.7" in text
     assert "NEVER 1.6.0" in text and "#1364" in text
+    src = (REPO / "src" / "qsh" / "fhe" / "backends.py").read_text(encoding="utf-8")
+    assert "ofhe.CryptoContext.GetBootstrapDepth(" in src and "ofhe.FHECKKSRNS." not in src
 
 
 def test_the_noble_packages_move_together() -> None:

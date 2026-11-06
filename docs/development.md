@@ -61,9 +61,9 @@ Measured on this machine on 2026-11-06 ([State-vector simulators, measured](mode
 ### FHE backends (commercial-OK only)
 - **TenSEAL** (Apache-2.0, CPU CKKS via Microsoft SEAL) - the always-available default (`TenSEALBackend`).
 - **OpenFHE** (BSD-2-Clause, CPU CKKS **with approximate bootstrapping**) - the live
-  `OpenFHEBackend` via the `openfhe` wheel, pinned to the 1.5 series (`openfhe>=1.5.1,<1.6`: OpenFHE
-  released 1.6.1 on 2026-10-09 and its 1.6.1 wheel on 2026-10-27, and that wheel's module lacks the
-  `FHECKKSRNS` the bootstrap path calls). The
+  `OpenFHEBackend` via the `openfhe` wheel, `openfhe>=1.6.1,<1.7` since Round 86 (never 1.6.0, whose issue
+  #1364 is this repository's bootstrap path; the 1.6 bindings moved `GetBootstrapDepth` from `FHECKKSRNS` to
+  `CryptoContext`, and the bootstrap path calls it there). The
   wheel needs a recent libstdc++ (Ubuntu 24.04 / the Debian-trixie Docker image); on RHEL 9 build the
   bindings with `env/build_openfhe_el9.sh`, and on an older host the import fails with a clear
   `ImportError`.

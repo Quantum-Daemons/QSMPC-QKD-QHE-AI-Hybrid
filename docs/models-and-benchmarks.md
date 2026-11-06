@@ -456,21 +456,21 @@ plaintext before its time is kept. Median of 20 runs after a first one, in milli
 machine (RTX PRO 6000 Blackwell, driver 620.70.06, CUDA 13.5; Core i5-13600K) by
 `OMP_NUM_THREADS=6 python scripts/bench_fhe_backends.py`, whose record is `docs/measurements/fhe-backends-2026-11-06.json`.
 TenSEAL 0.3.16 and HEonGPU v2.1.1 run the configured parameters ($`N = 8192`$, moduli (60, 40, 40, 60), scale $`2^{40}`$,
-128-bit security). OpenFHE 1.5.1 runs its own (depth 4, scale $`2^{50}`$, ring dimension 16384, 128 slots), so its column is
+128-bit security). OpenFHE 1.6.1 runs its own (depth 4, scale $`2^{50}`$, ring dimension 16384, 128 slots), so its column is
 not the same computation. A GPU time includes a synchronisation before the clock stops: GPU work is asynchronous, and without
 one a timer reads the launch.
 
 | operation | TenSEAL (CPU) | OpenFHE (CPU, own parameters) | HEonGPU (GPU) | HEonGPU against TenSEAL |
 |---|---|---|---|---|
-| dot product, 33 values | 5.79 | 41.63 | 0.216 | 27x |
-| dot product, 256 values | 7.45 | not run: 128 slots | 0.272 | 27x |
-| encrypt 33 values | 2.53 | 5.30 | 0.105 | 24x |
-| plaintext multiply | 0.84 | 1.56 | 0.040 | 21x |
-| ciphertext add | 0.032 | 0.156 | 0.0073 | 4.4x |
-| decrypt | 0.43 | 2.85 | 0.049 | 8.8x |
-| mask every slot (a fresh encryption, added) | 2.13 | 6.37 | 0.115 | 19x |
+| dot product, 33 values | 5.91 | 15.31 | 0.215 | 27x |
+| dot product, 256 values | 7.62 | not run: 128 slots | 0.274 | 28x |
+| encrypt 33 values | 2.59 | 4.04 | 0.104 | 25x |
+| plaintext multiply | 0.84 | 1.06 | 0.040 | 21x |
+| ciphertext add | 0.032 | 0.085 | 0.0075 | 4.3x |
+| decrypt | 0.44 | 2.99 | 0.052 | 8.5x |
+| mask every slot (a fresh encryption, added) | 2.14 | 5.05 | 0.114 | 19x |
 
-- **The GPU is 19 to 27 times faster on the operations with arithmetic in them**, and 19.5 times on the hybrid's whole linear
+- **The GPU is 19 to 28 times faster on the operations with arithmetic in them**, and 19.5 times on the hybrid's whole linear
   half (above). An addition is too small to gain much.
 - **These became the GPU's figures after three fixes**, each found by measuring:
   - *The module carried no code for this GPU.* Built inside the binding's CMake project, HEonGPU took nvcc's default architecture,
@@ -482,7 +482,10 @@ one a timer reads the launch.
     linear half from 24.9 to 13.2 ms.
   - *OpenFHE's column depends on OpenMP's thread count.* At OpenMP's default here, one thread per hardware thread (20 on this
     6 P-core, 8 E-core CPU), the 33-value dot product ranged from 81 to 577 ms as other processes came and went, because a
-    parallel loop waits for its slowest thread. At 6 threads it held at 41 to 54 ms, and the table is at 6.
+    parallel loop waits for its slowest thread. At 6 threads it held at 41 to 54 ms on OpenFHE 1.5.1, and the table is at 6.
+  - *OpenFHE moved to 1.6.1 (Round 86), and its column was measured again:* the 33-value dot product reads 15.31 ms
+    against 41.63 on 1.5.1, the same command on a quiet machine, twice, within 1 percent. The other backends' columns
+    came out within 6 percent of their earlier figures.
 - **A GPU is not where this project's inference runs.** The demo's pages encrypt in the visitor's browser (node-seal), and the
   full deployment's image has no GPU code. This is the full deployment's hybrid on a machine that has one.
 
