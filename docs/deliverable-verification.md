@@ -8767,3 +8767,19 @@ which still excludes 1.6.0 and its bootstrap defect (issue #1364).
   file beside the wheel's `cpython-312` one, and the venv went on loading the wheel's, which needs `GLIBCXX_3.4.32`.
   The script now installs pybind11 into the venv, sets both variables, and refuses an extension whose ABI suffix is not
   the venv's.
+
+### The bundled papers' grants and the notebook, 3-D and WebGPU paths, re-read on 2026-11-06
+
+- **Each of the seven tracked reference PDFs keeps its grant**, read at its source today: arXiv 2501.10083 CC0 1.0 and
+  2508.15998 CC BY 4.0 (their abstract pages; arXiv's OAI-PMH host did not answer from this machine), the PRX article
+  CC BY 4.0 under its new-format DOI `10.1103/k8wg-qmbh` (Crossref; the old-style DOI is not registered, so
+  `DATA_LICENSES.md` now names this one), the Research Square preprint and the *Research Directions: Quantum
+  Technologies* article CC BY 4.0 (Crossref), and IACR ePrint 2020/1454 and 2026/160 CC BY 4.0 (their pages). The four
+  PDFs without a grant stay gitignored, and `tests/test_bundled_reference_pdfs_carry_a_grant.py` holds the set.
+- **The notebook stays declined.** JupyterLite 0.8.7 with its Pyodide kernel 0.8.7 (2026-11-05) and marimo 0.25.2 run on
+  Pyodide, and Pyodide 314.0.7 carries no CKKS, TFHE or MPC package; the first reopening condition is unmet.
+- **The 3-D path stays declined**, because the project still has no genuinely three-dimensional data. pyvista 0.49.2,
+  `@kitware/vtk-wasm` 3.0.6 and vtk.js 38.0.5 are current; vtk-wasm remains the dependency to reach for if that changes.
+- **WebGPU ships in every major engine without a flag**: Chrome and Edge, Firefox 141, Safari 26, iOS Safari 26 and
+  Chrome for Android 121 (MDN browser-compat-data 8.1.8, 2026-11-02). WebNN is still behind a flag in Chromium only, as
+  the documents already say; the page enables WebLLM only where it detects an adapter.
