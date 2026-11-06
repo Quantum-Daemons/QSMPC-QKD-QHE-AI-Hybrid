@@ -45,16 +45,15 @@ jobs:
           # turns its absence into a failure, so the pure-Python fallback cannot pass for it.
           sudo apt-get update && sudo apt-get install -y --no-install-recommends libsodium23
           python -m pip install --upgrade pip
-          pip install -r requirements-core.txt -r requirements-api.txt -r requirements-fhe.txt
+          # The lock, with its hashes (scripts/lock_requirements.sh): what this job tests is what the image installs.
           # The AI tier IS required. An earlier revision of this workflow skipped it on the
           # assumption that only slow tests needed torch; that was wrong — test_usecases.py and
           # test_unified_benchmark.py import torch and xgboost through the use-case modules and
           # fail at collection without them. Skipping the tier would have meant CI silently not
           # covering the ML paths, which is the exact kind of false confidence this project avoids.
           # CPU wheels only: no GPU on the runner, and the CUDA build is an order of magnitude larger.
-          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
-          pip install -r requirements-ai.txt
-          pip install -e .
+          pip install --require-hashes --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.lock
+          pip install --no-deps -e .
 
       # Needed by the cross-language gates: they bundle `web/src/lib/*.ts` with esbuild and run it
       # under node to compare the browser's numbers against Python's. Without this the gates skip.

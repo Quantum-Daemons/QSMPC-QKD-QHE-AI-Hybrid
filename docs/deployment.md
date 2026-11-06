@@ -115,8 +115,11 @@ bind-mounted Caddyfile.
     docker compose -f docker/docker-compose.yml exec api \
       python -m qsh.orchestration.pipeline --usecase medical_fl --out results/
 
+    # the API writes results/ as root through the bind mount; hand the files back before running the tests here:
+    docker run --rm -v "$PWD/results:/r" --entrypoint chown docker-api -R "$(id -u):$(id -g)" /r
+
 The full `Dockerfile.api` (Debian-trixie) **bakes in the AI tier** (CPU torch + PennyLane + MedMNIST),
-the **live OpenFHE** CKKS backend, and **Node/npx** for the real MCP server, so a federated
+the **live OpenFHE** CKKS backend, and **Node** with the filesystem MCP server installed from `docker/mcp-fs`'s lockfile, so a federated
 `medical_fl` run and the MCP server work out of the box. GPU passthrough via the host's
 `nvidia-container-toolkit` and the `deploy.resources` GPU block is optional. The ports are env-overridable (`WEB_PORT`, `API_PORT`, `GRAFANA_PORT`,
 `PROMETHEUS_PORT`).

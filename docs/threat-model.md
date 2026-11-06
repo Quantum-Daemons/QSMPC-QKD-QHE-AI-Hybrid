@@ -369,8 +369,8 @@ statement of known limitations, not a conformance gap against any published requ
   carries a related one: `node-seal` 7.0.0, still its newest release, is aligned with Microsoft SEAL
   4.1.2 (2024), and upstream SEAL is at 4.7.2 (2026-10-28), past 4.4.0's critical security update
   (`docs/development.md`). **The residual risk, with versions (Round 86, review PI-2).** The browser
-  runs node-seal 7.0.0 (SEAL 4.1.2) and this repository's environment runs TenSEAL 0.3.16 (SEAL 4.1.1);
-  TenSEAL 0.3.17 and 0.3.18, which a fresh image can resolve, bundle SEAL 4.3.3, and no TenSEAL
+  runs node-seal 7.0.0 (SEAL 4.1.2). The API image and CI run TenSEAL 0.3.18, the version `requirements.lock` names,
+  which bundles SEAL 4.3.3, and a development environment may still hold TenSEAL 0.3.16 (SEAL 4.1.1), which the floor admits. No TenSEAL
   release bundles 4.4.0 or later. node-seal's main branch moved to SEAL 4.7.2 on 2026-10-31 (PR #168;
   its `CHANGES.md` calls the release 7.1.0, and that release also rejects NaN and infinities at CKKS
   encode), and npm's newest node-seal was still 7.0.0 on 2026-11-02. What bounds the exposure until
