@@ -144,14 +144,21 @@ positives; the 690 annotated rare *nominal* events do not.
 ### Telecom: the classical forest wins
 
 **Telecom reproduces the metric trap in-house.** The variational QNN scores **accuracy 0.875 but
-macro F1 0.467**. Stated precisely, because the earlier wording here said "on the same 8-class
-problem" and that was wrong: the QNN is a **binary** attack-vs-normal classifier - `qml_ids/detector.py`
-fits on `binary_labels(y)` and predicts `(preds > 0)` - so scoring its output against the 8-class
-labels guarantees a floor of zero on six of them by construction. The macro F1 is therefore not a
-like-for-like comparison, and the honest reading is narrower than the original claim: an aggregate
-can look respectable while the per-class picture is not, which is why per-class F1 is the headline
-everywhere here. The classical random forest, which **is** trained on all 8 classes, reaches macro
-F1 0.987; neither quantum model beats it, and the registry records `quantum_beats_classical: false`.
+macro F1 0.467**, and both are the constant predictor's: the QNN is a **binary** attack-vs-normal
+classifier (`qml_ids/detector.py` fits on `binary_labels(y)` and predicts `(preds > 0)`), it predicts
+"attack" for every row, and on its split, where 7 of 8 test rows are attacks, that gives accuracy
+$`7/8`$, attack F1 $`14/15`$ and macro F1 $`7/15`$, since the normal class scores zero. Its macro F1
+averages two classes, not eight. The kernel SVC is binary too: its 0.832 is the mean of its attack F1
+0.945 and its normal F1 0.718. Until Round 86 this paragraph, the registry and the training script set
+both against the random forest's 8-class macro F1 0.987 on a different draw, and the earlier wording
+explained the low score by a floor of zero on six classes. Neither was right.
+
+The like-for-like comparison is the forest trained and scored on each quantum model's own split and
+binary labels (`scripts/measure_telecom_quantum_like_for_like.py`, re-fitting the SVC to its recorded
+figures first): **0.990** on the QNN's 240 test rows and **1.000** on the SVC's 120. Neither quantum
+model beats it there either, and the registry records `quantum_beats_classical: false` on that basis.
+An aggregate can look respectable while the per-class picture is not, which is why per-class F1 is the
+headline everywhere here.
 Two more facts travel with these figures: the published `telecom_ids.qml` ONNX graph, which the
 telecom page runs and verifies, is that random forest, of 200 trees (the QSVC and the QNN run only
 offline, in the training script), and the QSVC's "fidelity quantum kernel" equals the classical

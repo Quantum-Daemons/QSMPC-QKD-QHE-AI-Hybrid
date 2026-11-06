@@ -272,11 +272,13 @@ docstring.
   method. It is listed here so that a reader who finds v1 elsewhere learns it was retracted.
 
 **What this repository measured**, and it is a negative result kept deliberately: on the synthetic
-2400-sample, 8-class telemetry, RandomForest reaches macro F1 0.9866 while the
-quantum-kernel SVC reaches 0.8316 and the variational QNN 0.4667. That comparison is not
-like-for-like and the registry says so: both quantum models are **binary**, so on their own task they
-score 0.9453 and 0.9333, and their macro F1 is depressed by the six classes they never
-attempt. Even granting the binary figures, neither earns its qubits against a random forest that
+8-class telemetry, RandomForest reaches macro F1 0.9866 on its 600 test rows, while the
+quantum-kernel SVC reaches 0.8316 and the variational QNN 0.4667. Those three are not one quantity:
+both quantum models are **binary**, each trained on its own smaller draw (60 and 120 rows per class),
+so their macro F1 averages attack and normal, and the QNN predicts "attack" for every row, which is
+what 0.4667 is. Until Round 86 this paragraph put the gap down to "the six classes they never
+attempt"; that was wrong. Like for like, a forest trained and scored on each quantum model's own split
+and labels reaches 0.9903 and 1.0 (`docs/measurements/telecom-quantum-like-for-like-2026-11-07.json`). Even granting the binary figures, neither earns its qubits against a random forest that
 takes a small fraction of the run the quantum pair needs - `wall_clock_s` in
 `models/metrics.json` covers the whole script and has been measured at 267.1 s and 341.5 s on the
 same machine, so the absolute seconds are load-dependent and only the order of magnitude is a

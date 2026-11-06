@@ -8871,3 +8871,54 @@ Not fixed here, and why:
   - and, not yet changed: `medical_fl.student`'s title, "FHE-feasible diagnostic CNN", should read
     "CKKS-evaluable BreastMNIST CNN student", since MedMNIST states its data is not for clinical use. It is
     the card's title, and a test holds the card to its published README, so it changes with the republish.
+
+### The telecom quantum comparison, made like for like (2026-11-07)
+
+The record compared the quantum models with the forest by macro F1 and called it "the same 8-class problem". It was
+not, in two ways:
+
+- **Labels.** Both quantum models are binary, attack against normal, so their macro F1 averages two classes. The
+  forest's averages eight.
+- **Draws.** Each quantum model trains on its own smaller draw, `generate(120, 42)` for the QNN and
+  `generate(60, 42)` for the kernel SVC. The forest trains on `generate(300, 42)`.
+
+The QNN predicts "attack" for every row. On its split, where 7 of 8 test rows are attacks, its accuracy, attack F1 and
+macro F1 are exactly the constant predictor's: $`7/8`$, $`14/15`$ and $`7/15`$.
+`scripts/measure_telecom_quantum_like_for_like.py` first re-fits the kernel SVC to its recorded figures and confirms
+that the QNN's are the constant predictor's. Only then does it score, on each quantum model's own split and labels:
+
+| split | test rows | quantum model | forest, trained binary | forest, 8 classes read binary | constant "attack" |
+|---|---|---|---|---|---|
+| QNN's | 240 | 0.4667 | 0.9903 | 0.9906 | 0.4667 |
+| kernel SVC's | 120 | 0.8316 | 1.0000 | 1.0000 | 0.4667 |
+
+All figures are binary macro F1.
+
+The verdict, `quantum_beats_classical: false`, survives on this basis. The record carries the comparison as
+`quantum_comparison_like_for_like`, written through `record_metrics` without retraining. `telecom_ids.py` makes the
+same comparison through `classical_on_quantum_split` in `qml_ids/detector.py`, so a retrain cannot bring the old one
+back.
+
+Updated to match:
+
+- the model panel's verdict row, which states each split's pair and says the 8-class figure is not the comparator;
+- the card's note, `docs/findings.md`, `references/REFERENCES.md`, `references/model-choice-vs-2026-practice.md` and
+  the detector's docstring. Two of these gave the wrong mechanism, "the six classes they never attempt" and a floor
+  of zero on six classes.
+
+`tests/test_r86_telecom_like_for_like.py` holds the record and the note to the measurement. It was seeded with a
+drifted figure, and it failed.
+
+Also fixed on the telecom page:
+
+- The run log names the in-tab model as classical. It read "QML-IDS (client, softmax ...".
+- `ids_train_per_class` is now `ids_generated_per_class`, with the rows actually trained on beside it.
+- The SHAP provenance names the contrast it attributes: the predicted class against the mean of the other seven,
+  not one-vs-rest.
+- The quantum-comparison label reports the CKKS student's class where one exists.
+
+Still open:
+
+- Whether the SHAP bars explain the class the page reports above them. The page has to be read after a run to settle
+  it.
+- The card now needs the owner's republish: `telecom_ids.qml` prints its notes and record.

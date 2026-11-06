@@ -239,8 +239,30 @@ def main() -> int:
             "quantum_svc_macro_f1": round(float(qsvc.macro_f1), 6),
             "quantum_svc_binary_f1": round(float(qsvc.binary_f1), 6),
         })
-        # Compare like with like: macro F1 against macro F1, on the same 8-class problem.
-        beat = max(qnn.macro_f1, qsvc.macro_f1) > rf_metrics["macro_f1"]
+        # LIKE WITH LIKE since Round 86. This compared max(qnn, qsvc) macro F1 with the forest's and called it
+        # "the same 8-class problem", but both quantum models are binary - their macro F1 averages attack and
+        # normal - and each trains on its own smaller draw. Each is now set against a forest trained and scored
+        # on its own split and labels (`classical_on_quantum_split`), and the record carries those numbers in
+        # the form scripts/measure_telecom_quantum_like_for_like.py writes them.
+        from qsh.qml_ids.detector import classical_on_quantum_split
+
+        on_qnn = classical_on_quantum_split(args.n_quantum, args.seed)
+        on_qsvc = classical_on_quantum_split(min(args.n_quantum, 60), args.seed)
+        record["quantum_comparison_like_for_like"] = {
+            "basis": ("binary attack-against-normal macro F1, each quantum model against a forest trained "
+                      "and scored on that model's own split and labels"),
+            "qnn": {"quantum_macro_f1": round(float(qnn.macro_f1), 6),
+                    "forest_macro_f1": on_qnn["forest_trained_binary"]["macro_f1"],
+                    "constant_attack_macro_f1": on_qnn["constant_attack"]["macro_f1"],
+                    "test_rows": on_qnn["test_rows"]},
+            "qsvc": {"quantum_macro_f1": round(float(qsvc.macro_f1), 6),
+                     "forest_macro_f1": on_qsvc["forest_trained_binary"]["macro_f1"],
+                     "constant_attack_macro_f1": on_qsvc["constant_attack"]["macro_f1"],
+                     "test_rows": on_qsvc["test_rows"]},
+            "measured_by": "scripts/train/telecom_ids.py --quantum",
+        }
+        beat = (qnn.macro_f1 > on_qnn["forest_trained_binary"]["macro_f1"]
+                or qsvc.macro_f1 > on_qsvc["forest_trained_binary"]["macro_f1"])
         record["quantum_beats_classical"] = bool(beat)
         print(f"\n  does either quantum model beat the random forest? {'yes' if beat else 'NO'}"
               f"{'' if beat else '  <- expected, and the reason this is framed as an architecture comparison'}")

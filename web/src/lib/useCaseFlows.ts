@@ -233,7 +233,11 @@ const QSMPC_COMPARE: Step = {
     // no per-use-case default behind the empty value; the label says so rather than implying one.
     const ran = m["primary_inference_backend"];
     const primary = ran === "qcnn-trained" ? "page class from the trained QCNN (unencrypted, not this circuit)"
-      : ran == null ? "no CKKS or trained-QCNN class to report"
+      // Telecom's CKKS student does report a class (`encrypted_student_class`, Round 86), so "no CKKS class to
+      // report" was false there.
+      : ran == null ? (m["encrypted_student_class"] != null
+        ? `the CKKS student's class ${m["encrypted_student_class"]}, a check of the encrypted tier`
+        : "no CKKS or trained-QCNN class to report")
       : String(c.inference ?? "") === "qcnn" ? "page class from CKKS (QCNN selected, no trained weights ship)"
       : String(c.inference ?? "") === "ckks" ? "page class from CKKS"
       : "page class from CKKS (default)";

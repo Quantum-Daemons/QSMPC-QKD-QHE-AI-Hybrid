@@ -716,6 +716,22 @@
     "n_classes": 8,
     "n_samples": 2400,
     "quantum_beats_classical": false,
+    "quantum_comparison_like_for_like": {
+      "basis": "binary attack-against-normal macro F1, each quantum model against a forest trained and scored on that model's own split and labels",
+      "measured_by": "scripts/measure_telecom_quantum_like_for_like.py at git e747111-dirty (docs/measurements/telecom-quantum-like-for-like-2026-11-07.json)",
+      "qnn": {
+        "constant_attack_macro_f1": 0.466667,
+        "forest_macro_f1": 0.990338,
+        "quantum_macro_f1": 0.466667,
+        "test_rows": 240
+      },
+      "qsvc": {
+        "constant_attack_macro_f1": 0.466667,
+        "forest_macro_f1": 1.0,
+        "quantum_macro_f1": 0.831611,
+        "test_rows": 120
+      }
+    },
     "quantum_qnn_accuracy": 0.875,
     "quantum_qnn_binary_f1": 0.933333,
     "quantum_qnn_macro_f1": 0.466667,

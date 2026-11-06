@@ -1993,6 +1993,22 @@
           "n_classes": 8,
           "n_samples": 2400,
           "quantum_beats_classical": false,
+          "quantum_comparison_like_for_like": {
+            "basis": "binary attack-against-normal macro F1, each quantum model against a forest trained and scored on that model's own split and labels",
+            "measured_by": "scripts/measure_telecom_quantum_like_for_like.py at git e747111-dirty (docs/measurements/telecom-quantum-like-for-like-2026-11-07.json)",
+            "qnn": {
+              "constant_attack_macro_f1": 0.466667,
+              "forest_macro_f1": 0.990338,
+              "quantum_macro_f1": 0.466667,
+              "test_rows": 240
+            },
+            "qsvc": {
+              "constant_attack_macro_f1": 0.466667,
+              "forest_macro_f1": 1.0,
+              "quantum_macro_f1": 0.831611,
+              "test_rows": 120
+            }
+          },
           "quantum_qnn_accuracy": 0.875,
           "quantum_qnn_binary_f1": 0.933333,
           "quantum_qnn_macro_f1": 0.466667,
@@ -2044,7 +2060,7 @@
           "display": "macro F1 (synthetic QKD-attack telemetry)",
           "name": "classical_rf_macro_f1"
         },
-        "notes": "The published model and its headline accuracy are the random forest's. The quantum-kernel SVC (macro F1 0.832) and the variational QNN (0.467) are an architecture comparison recorded at training time on identical data; neither runs on the page. The SVC's kernel uses no entangling gate, so it is computable classically in closed form.",
+        "notes": "The published model and its headline accuracy are the random forest's. The quantum-kernel SVC and the variational QNN, recorded at training time and not run on the page, are BINARY attack-against-normal classifiers, each trained on its own smaller draw (60 and 120 rows per class), so their macro F1, 0.832 and 0.467, averages two classes; the QNN predicts attack for every row, and 0.467 is that constant predictor's score. On each one's own split and labels a forest trained the same way scores 1.0 and 0.990 (docs/measurements/telecom-quantum-like-for-like-2026-11-07.json). The SVC's kernel uses no entangling gate, so it is computable classically in closed form.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
