@@ -70,7 +70,10 @@ deploy_branch() {
   ok "image built"
 
   say "start"
-  remote "$COMPOSE up -d" >/dev/null 2>&1 || die "compose up failed"
+  # Its output is kept, as the build's is. It went to /dev/null until Round 86, when a start failed because the host's
+  # container runtime was being upgraded and restarted under it, and the script said only "compose up failed".
+  remote "$COMPOSE up -d" >/tmp/qsh_deploy_up.log 2>&1 \
+    || { tail -20 /tmp/qsh_deploy_up.log; die "compose up failed"; }
   local age; age=$(remote "docker inspect -f '{{.State.StartedAt}}' qsh-demo-web-1")
   ok "container restarted at $age"
 
@@ -126,7 +129,8 @@ return_to_main() {
   say "rebuild from main, because leaving main checked out with a branch's image running is the same defect wearing a different label"
   remote "$COMPOSE build" >/tmp/qsh_deploy_build.log 2>&1 \
     || { tail -20 /tmp/qsh_deploy_build.log; die "rebuild from main failed"; }
-  remote "$COMPOSE up -d" >/dev/null 2>&1 || die "compose up failed"
+  remote "$COMPOSE up -d" >/tmp/qsh_deploy_up.log 2>&1 \
+    || { tail -20 /tmp/qsh_deploy_up.log; die "compose up failed"; }
 
   # The same assertions the deploy half runs. They were asymmetric until Round 41: the network check
   # and the bundle extraction ran only on the way out, and the branch re-read only on the way back -
