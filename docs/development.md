@@ -67,14 +67,19 @@ Measured on this machine on 2026-11-06 ([State-vector simulators, measured](mode
   wheel needs a recent libstdc++ (Ubuntu 24.04 / the Debian-trixie Docker image); on RHEL 9 build the
   bindings with `env/build_openfhe_el9.sh`, and on an older host the import fails with a clear
   `ImportError`.
-- **HEonGPU** (Apache-2.0, GPU CKKS/BFV + collective bootstrapping) - a build-gated reference, not a
-  running path: `HeongpuBackend` raises because HEonGPU exposes no Python API, `gpu_mpc_adapter`
-  returns no rows unless the submodule has been built with `scripts/build_gpu_mpc.sh`, and no measured
-  HEonGPU run is recorded in this repository. It is not a per-run selector option.
+- **HEonGPU** (Apache-2.0, GPU CKKS/BFV + collective bootstrapping) - the GPU `HeongpuBackend` since
+  Round 86. HEonGPU has no Python API, so this project binds the seven operations the hybrid uses
+  (`native/heongpu_py`), and `bash scripts/build_heongpu.sh` builds the pinned v2.1.1 with that
+  module for the GPU it finds (CUDA 12.8 or later, CMake 4, GMP's headers; it fetches NTL and checks
+  its hash). The script fails if the module carries no code for that GPU's architecture: the first
+  build carried only Turing's, which the driver recompiled at load. The backend runs where the module
+  is built and a GPU is present, and only there is `heongpu-gpu` an `fhe` option. CI has neither, so
+  `tests/test_r86_heongpu_backend.py` skips there. What it measured is in
+  [the benchmark document](models-and-benchmarks.md#ckks-on-each-backend-measured).
 
 > **DESILO `desilofhe` was removed.** Its license is **non-commercial** - commercial use requires a separate
 > paid license ([fhe.desilo.dev/latest/license](https://fhe.desilo.dev/latest/license/)). To keep the stack
-> unambiguously commercial-OK, the FHE layer uses TenSEAL + OpenFHE, with HEonGPU as the build-gated GPU reference.
+> unambiguously commercial-OK, the FHE layer uses TenSEAL + OpenFHE, and HEonGPU on a GPU where it is built.
 
 ### Non-linear MPC backend (the hybrid's other half)
 - **MPyC** (MIT, pure-Python, v0.11 2026, a pip dependency - the submodule was dropped in Round 17) - Shamir secret-sharing with secure
@@ -137,8 +142,8 @@ disables a public repository's scheduled workflows after 60 days without activit
 needs the workflow re-enabled in the Actions tab.
 
 ### Languages
-Python-first, plus **TypeScript** for the browser tier. **C++** is used only via the optional GPU-MPC
-submodules (HEonGPU / hpmpc). Go was evaluated and not needed. **Rust** builds the demo's MPC module
+Python-first, plus **TypeScript** for the browser tier. **C++ and CUDA** only for the GPU: the
+HEonGPU binding (`native/heongpu_py`) and the submodules it and hpmpc build from. Go was evaluated and not needed. **Rust** builds the demo's MPC module
 (`wasm/qsh-mpc`, Polytune, MIT) and the measurement prototypes in `prototypes/`; the client-side Rust
 decline recorded in the register concerned tfhe-rs (no FHE evaluation in its WASM build, and a licence
 that withholds patent rights) and still stands.
@@ -177,7 +182,7 @@ library with few releases is not refused for being finished. Commercial use must
 Only the two submodules that code actually builds against are vendored:
 
 ```bash
-QSH_SET=all bash scripts/bootstrap_submodules.sh  # HEonGPU + hpmpc (the GPU MPC-FHE benchmark path)
+QSH_SET=all bash scripts/bootstrap_submodules.sh  # HEonGPU (the GPU CKKS backend) + hpmpc
 # The bare command defaults to QSH_SET=min and both entries are tagged `all`, so it adds nothing.
 ```
 
@@ -199,8 +204,9 @@ library through its published package does not require vendoring its source tree
 | `pennylane` | variational quantum layers (QFL, QML-IDS) | pip | Apache-2.0 |
 | `qiskit` / `qiskit-aer` | circuit authoring + state-vector simulation | pip | Apache-2.0 |
 
-The two submodules, HEonGPU and hpmpc, serve the GPU MPC-FHE benchmark; their pins, licences and the
-unlicensed submodule one level below hpmpc are in [`DATA_LICENSES.md`](../DATA_LICENSES.md#6a-git-submodules).
+HEonGPU builds the GPU CKKS backend and hpmpc is vendored for a GPU MPC run not yet made; their pins,
+licences, what the HEonGPU build links and the unlicensed submodule one level below hpmpc are in
+[`DATA_LICENSES.md`](../DATA_LICENSES.md#6a-git-submodules).
 
 **Client-side / AI OSS (npm, all commercial-OK):** `@noble/post-quantum` **0.7.1** (MIT) for
 in-browser ML-KEM and ML-DSA, with `@noble/curves`, `@noble/hashes` and `@noble/ciphers` at 2.4.0, the
@@ -258,5 +264,5 @@ third-party notices served at `/licenses/qsh-mpc.txt`) for the demo's real in-br
 `@modelcontextprotocol/server-filesystem` (MIT and Apache-2.0, moving from one to the other) for the real MCP server (full deployment). Full table
 + dataset licenses in [`DATA_LICENSES.md`](../DATA_LICENSES.md).
 
-**Originality note:** the GPU MPC-FHE benchmark is our own integration over the *upstream*
-projects (`src/qsh/benchmark/gpu_mpc_adapter.py` + `scripts/build_gpu_mpc.sh`).
+**Originality note:** the GPU CKKS backend is this project's binding over the *upstream* HEonGPU
+(`native/heongpu_py`, `scripts/build_heongpu.sh`, `qsh.fhe.backends.HeongpuBackend`).

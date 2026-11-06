@@ -419,9 +419,12 @@ def _hybrid_bench_row(ctx, reg, x, base_model):
     workload = ctx.config.get("workload", "linear")
     seed = int(ctx.config.get("seed", 0))
     fhe = ctx.config.get("fhe") or reg.default("fhe") or "tenseal-cpu"
+    # An option is "<backend>-<device>" and the hybrid takes the backend. Until Round 86 any name but TenSEAL's and
+    # OpenFHE's became TenSEAL here, which was right while HEonGPU had no binding; with one, a run that selected it would
+    # have encrypted its inference on the GPU and timed this row on the CPU under the same selection.
     backend_name = fhe.split("-")[0]
-    if backend_name not in ("tenseal", "openfhe"):     # heongpu has no Python binding -> CPU FHE
-        backend_name = "tenseal"
+    if backend_name not in ("tenseal", "openfhe", "heongpu"):
+        raise ValueError(f"the hybrid has no backend for fhe={fhe!r}")
 
     # ---- genuine CNN under FHE+MPC (medical, when a real MedMNIST image is present) ----
     image = ctx.data.get("image")

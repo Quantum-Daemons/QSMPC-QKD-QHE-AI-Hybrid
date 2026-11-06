@@ -234,8 +234,8 @@ inference and is what this demo already does - with the client and the key holde
 
 ### The split itself
 A common private-inference split (the line of work from Gazelle through Delphi, BOLT and Bumblebee to BLB, and the
-preprint EncFormer) is **linear layers under homomorphic encryption** (matmul/conv, as CKKS here; GPU libraries such as HEonGPU accelerate it, though
-none runs here) and **non-linear
+preprint EncFormer) is **linear layers under homomorphic encryption** (matmul/conv, as CKKS here; GPU libraries such as HEonGPU accelerate it, and HEonGPU runs here where
+it is built) and **non-linear
 layers under MPC** (ReLU/argmax via secret-sharing secure comparison). `qsh.mpc.secret_inference`
 implements it with TenSEAL/OpenFHE for the linear half and **MPyC** (Shamir shares, the
 `ReLU([x]) = [x] * [x>0]` pattern) for the non-linear half, converting CKKS <-> shares at each boundary;
@@ -374,8 +374,7 @@ and the three `/api/demo/*` endpoints. The dense+conv hybrid dispatch is unified
 
 ## Two compute topologies
 - **Full** (GPU box): everything runs server-side - federated training (own FedAvg + PennyLane QFL), CPU
-  FHE (TenSEAL / OpenFHE; HEonGPU is a build-gated reference adapter with no Python API and no measured
-  run here), GPU quantum sim (CUDA-Q / lightning.gpu), the real MCP server, Prometheus + Grafana.
+  FHE (TenSEAL / OpenFHE) and GPU FHE (HEonGPU, where `scripts/build_heongpu.sh` has built it), GPU quantum sim (CUDA-Q / lightning.gpu), the real MCP server, Prometheus + Grafana.
 - **Client-side build** (no GPU, no server-side ML): the static SPA runs **all** heavy compute in the
   browser (PQC via @noble in plain JavaScript, **real CKKS FHE + garbled-circuit MPC**, ONNX inference, in-browser
   AI, JS BB84/PSI/SHAP/QFL, the client MCP mirror) - it makes **zero `/api` compute calls** (Validations'

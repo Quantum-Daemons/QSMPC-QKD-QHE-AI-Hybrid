@@ -1,0 +1,68 @@
+[
+  {
+    "path": "MPC-FHE",
+    "backend": "tenseal-ckks-cpu + mpyc-shamir (projected)",
+    "workload": "linear",
+    "latency_ms": 2262.617,
+    "throughput_ips": 0.44,
+    "accuracy": 1.0,
+    "max_abs_error": null,
+    "ciphertext_plaintext_ratio": 1392.2583333333334,
+    "t_gate_count": null,
+    "qubits": null,
+    "security_model": "computational (RLWE) + secret-sharing MPC",
+    "security_score": 68.0,
+    "device": "cpu",
+    "model_size": "large",
+    "model_arch": null,
+    "model_params": null,
+    "fhe_linear_ms": 2036.207,
+    "mpc_nonlinear_ms": 226.409,
+    "mpc_comm_kb": 1437.654,
+    "projected": true,
+    "extra": {
+      "projected_from": "medium",
+      "fhe_scale": 7.88,
+      "mpc_scale": 5.71,
+      "linear_under": "FHE/CKKS",
+      "nonlinear_under": "MPC/mpyc-shamir"
+    }
+  },
+  {
+    "path": "QSMPC-FHE",
+    "backend": "qotp+qcnn (state-vector simulation; QOTP pad numpy-generated)",
+    "workload": "qcnn",
+    "latency_ms": 2.629,
+    "throughput_ips": 380.35,
+    "accuracy": null,
+    "max_abs_error": null,
+    "ciphertext_plaintext_ratio": 1.2769,
+    "t_gate_count": 630,
+    "qubits": 8,
+    "security_model": "information-theoretic as a scheme (QOTP); not this run - numpy pad, ML-KEM-768 + X25519 wrap",
+    "security_score": 77.0,
+    "device": "cpu-sim",
+    "model_size": "large",
+    "model_arch": null,
+    "model_params": null,
+    "fhe_linear_ms": null,
+    "mpc_nonlinear_ms": null,
+    "mpc_comm_kb": null,
+    "projected": false,
+    "extra": {
+      "samples": 20,
+      "qcnn_params": 21,
+      "input_hidden": false,
+      "linear_analogue": "Clifford gates",
+      "nonlinear_analogue": "T-gates (\u00d7630, the expensive gates in this analogy)",
+      "no_fhe_mpc_boundary": true,
+      "security_components": {
+        "hndl_pqc_hybrid": 25.0,
+        "security_model": 30.0,
+        "key_strength": 16.0,
+        "eavesdropper_detection": 0.0,
+        "leakage_bound": 6.0
+      }
+    }
+  }
+]
