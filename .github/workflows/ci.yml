@@ -121,7 +121,7 @@ jobs:
         #
         # QSH_REQUIRE_OPENFHE_BOOTSTRAP=1 removes the last escape hatch: on a host where openfhe
         # cannot be imported the test would normally skip, and here that is a failure instead.
-        # The runner is ubuntu-24.04 and requirements-fhe.txt pins openfhe>=1.5.1, whose wheel is
+        # The runner is ubuntu-24.04 and requirements-fhe.txt pins openfhe>=1.6.1,<1.7, whose wheel is
         # built for exactly that distro — so an ImportError here means the dependency broke, not
         # that the platform is unsupported.
         env:

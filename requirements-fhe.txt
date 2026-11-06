@@ -3,7 +3,7 @@
 # tenseal: CPU CKKS/BFV built on Microsoft SEAL (Apache-2.0). Default + CI fallback.
 tenseal>=0.3.15
 #
-# openfhe: CPU CKKS via OpenFHE (BSD-2-Clause, commercial-OK; v1.5.1, Apr 2026), with
+# openfhe: CPU CKKS via OpenFHE (BSD-2-Clause, commercial-OK; v1.6.1, Oct 2026), with
 #   approximate bootstrapping. The published wheels are per-distro:
 #     *.0.24.4  Ubuntu 24.04 build, cpython-312, requires GLIBCXX_3.4.32
 #     *.0.22.4  Ubuntu 22.04 build, ships a cpython-310 .so (unusable on Python 3.12)
@@ -24,17 +24,16 @@ tenseal>=0.3.15
 #   that `import openfhe` is the thing actually failing: a libstdc++ story that is true history is
 #   not automatically the diagnosis for the next symptom.
 #   Measurements: docs/verification-log.md, "Round 34".
-# PINNED BELOW 1.6 (2026-10-28). CI resolved `openfhe>=1.5.1` to the new 1.6.1, whose module has no
-#   `FHECKKSRNS` (qsh/fhe/backends.py calls FHECKKSRNS.GetBootstrapDepth on the bootstrap path), and
-#   the bootstrap test failed with AttributeError. The 1.6 wheel needs GLIBCXX_3.4.32, which the
-#   RHEL 9 development host does not have, so its API cannot be tested here; the 1.5 series is the
-#   one every bootstrap measurement in this repository was taken on. Lift the cap with a port of the
-#   bootstrap path that is tested on 1.6.
-# WHEN IT IS LIFTED, NEVER 1.6.0 (Round 85). Its issue #1364 (closed 2026-10-06): a single-iteration
-#   UNIFORM_TERNARY bootstrap at FLEXIBLEAUTO, level budget (3, 3), 50-bit scaling and depth 25 or more
-#   returns values off by 0.2 to 0.5. That is this repository's bootstrap path (qsh/fhe/backends.py)
-#   once mult_depth reaches 5, since the bootstrap adds 20 levels. 1.6.1 (2026-10-09) fixes it.
-openfhe>=1.5.1,<1.6
+# ON 1.6.1 SINCE ROUND 86 (2026-11-06). It was pinned below 1.6 on 2026-10-28: CI resolved `openfhe>=1.5.1` to
+#   1.6.1, whose module has no `FHECKKSRNS`, and the bootstrap test failed with AttributeError. The 1.6 bindings
+#   moved `GetBootstrapDepth` to the `CryptoContext` class (openfhe-python v1.6.1.0, src/lib/pke/fbt.cpp; its
+#   examples/pke/simple-ckks-bootstrapping.py calls it there), and qsh/fhe/backends.py now does too. The bootstrap
+#   path is tested on 1.6.1 on the RHEL 9 host (`OPENFHE_VERSION=1.6.1 bash env/build_openfhe_el9.sh`) and in CI.
+# NEVER 1.6.0 (Round 85). Its issue #1364 (closed 2026-10-06): a single-iteration UNIFORM_TERNARY bootstrap at
+#   FLEXIBLEAUTO, level budget (3, 3), 50-bit scaling and depth 25 or more returns values off by 0.2 to 0.5. That is
+#   this repository's bootstrap path (qsh/fhe/backends.py) once mult_depth reaches 5, since the bootstrap adds 20
+#   levels. 1.6.1 (2026-10-09) fixes it, and the lower bound below excludes 1.6.0.
+openfhe>=1.6.1,<1.7
 #
 # mpyc: the NON-LINEAR half of the hybrid (ReLU/argmax under secret-sharing MPC). MIT, pure-Python,
 #   actively maintained (v0.11, released 2026-02-09). Installed from PyPI; the code is identical to

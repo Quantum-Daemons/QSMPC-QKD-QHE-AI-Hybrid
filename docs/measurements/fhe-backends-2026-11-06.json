@@ -8,19 +8,19 @@
   "date": "2026-11-06",
   "omp_num_threads": "6",
   "loadavg_1_5_15_before": [
-   1.13,
-   2.33,
-   2.86
+   2.43,
+   3.92,
+   2.37
   ],
   "loadavg_1_5_15_after": [
-   1.52,
-   2.39,
-   2.88
+   2.43,
+   3.92,
+   2.37
   ]
  },
  "versions": {
   "tenseal": "0.3.16",
-  "openfhe": "1.5.1.0.24.4",
+  "openfhe": "1.6.1.0.24.4",
   "HEonGPU": "v2.1.1",
   "HEonGPU module GPU code": "sm_120"
  },
@@ -29,37 +29,37 @@
    "backend": "tenseal-ckks-cpu",
    "slots": 4096,
    "ring_dimension": 8192,
-   "dot_33_ms": 5.7856,
-   "dot_256_ms": 7.4468,
-   "encrypt_ms": 2.5338,
-   "mul_plain_ms": 0.8416,
+   "dot_33_ms": 5.9126,
+   "dot_256_ms": 7.6201,
+   "encrypt_ms": 2.5933,
+   "mul_plain_ms": 0.8406,
    "add_ms": 0.0323,
-   "decrypt_ms": 0.4267,
-   "mask_every_slot_ms": 2.1295
+   "decrypt_ms": 0.4398,
+   "mask_every_slot_ms": 2.136
   },
   {
    "backend": "openfhe-ckks-cpu",
    "slots": 128,
    "ring_dimension": 16384,
-   "dot_33_ms": 41.6319,
+   "dot_33_ms": 15.3086,
    "dot_256_ms": "not run: 256 values do not fit 128 slots",
-   "encrypt_ms": 5.3014,
-   "mul_plain_ms": 1.564,
-   "add_ms": 0.1564,
-   "decrypt_ms": 2.8525,
-   "mask_every_slot_ms": 6.3661
+   "encrypt_ms": 4.04,
+   "mul_plain_ms": 1.0618,
+   "add_ms": 0.0845,
+   "decrypt_ms": 2.9939,
+   "mask_every_slot_ms": 5.045
   },
   {
    "backend": "heongpu-ckks-gpu",
    "slots": 4096,
    "ring_dimension": 8192,
-   "dot_33_ms": 0.2159,
-   "dot_256_ms": 0.2718,
-   "encrypt_ms": 0.1046,
-   "mul_plain_ms": 0.04,
-   "add_ms": 0.0073,
-   "decrypt_ms": 0.0486,
-   "mask_every_slot_ms": 0.1146
+   "dot_33_ms": 0.2151,
+   "dot_256_ms": 0.274,
+   "encrypt_ms": 0.1044,
+   "mul_plain_ms": 0.0403,
+   "add_ms": 0.0075,
+   "decrypt_ms": 0.0519,
+   "mask_every_slot_ms": 0.1135
   }
  ]
 }

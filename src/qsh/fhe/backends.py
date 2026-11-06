@@ -178,7 +178,7 @@ class TenSEALBackend:
 class OpenFHEBackend:
     """CPU CKKS backend via OpenFHE (BSD-2-Clause, commercial-OK; supports bootstrapping).
 
-    Uses the prebuilt ``openfhe`` Python wheel (v1.5.x, OpenFHE 1.5.1). The wheel is built
+    Uses the prebuilt ``openfhe`` Python wheel (OpenFHE 1.6.1). The wheel is built
     against a recent libstdc++ (Ubuntu 24.04 / Debian trixie -- i.e. the Docker image and the
     demo deploy target), so on those platforms this is a *live* backend; on an older host it
     raises a clear ImportError and callers fall back to TenSEAL.
@@ -188,15 +188,17 @@ class OpenFHEBackend:
     ``use_bootstrap=True`` to get it; that reconfigures the context (see ``__init__``) and is
     measurably more expensive, so it is off by default.
 
-    Measured with the defaults on the EL9 dev host (OpenFHE 1.5.1, 20-core, ring dimension
-    65536 at the standard 128-bit security level): context + key generation 3.0 s, one
-    ``EvalBootstrap`` 7.7-9.1 s.
+    Measured with the defaults on the EL9 dev host (OpenFHE 1.6.1 built for EL9 by
+    env/build_openfhe_el9.sh, 20 hardware threads, ring dimension 65536 at the standard 128-bit
+    security level), four runs on 2026-11-06: context + key generation 1.7-1.8 s, one
+    ``EvalBootstrap`` 6.2-7.7 s. On OpenFHE 1.5.1 the same measurement read 3.0 s and 7.7-9.1 s.
 
     Bootstrapping is *approximate*, and the error is not reproducible run to run - CKKS
     encryption is randomised, so each bootstrap draws fresh noise. Across four runs of
-    ``tests/_openfhe_bootstrap_probe.py`` the same input 0.25 came back as 0.24677, 0.25208,
-    0.24918 and 0.25012, and the largest error over all three probe values ranged 8.2e-4 to
-    4.5e-3 - between 2.3 and 3.1 correct decimal digits. Stated as a range because an earlier
+    ``tests/_openfhe_bootstrap_probe.py`` on OpenFHE 1.6.1 the same input 0.25 came back as 0.24984,
+    0.25123, 0.25026 and 0.25097, and the largest error over all three probe values ranged 2.0e-3 to
+    3.8e-3 - between 2.4 and 2.7 correct decimal digits (on 1.5.1, 8.2e-4 to 4.5e-3, 2.3 to 3.1
+    digits). Stated as a range because an earlier
     version of this docstring quoted one draw ("returns 0.25 as 0.2515") as though it
     characterised the operation; it was a real measurement, and repeating the run does not
     reproduce it. Callers must compare with a tolerance, and a tolerance tighter than about
@@ -239,7 +241,9 @@ class OpenFHEBackend:
             skd = ofhe.SecretKeyDist.UNIFORM_TERNARY
             params.SetSecretKeyDist(skd)
             params.SetScalingTechnique(ofhe.ScalingTechnique.FLEXIBLEAUTO)
-            boot_depth = ofhe.FHECKKSRNS.GetBootstrapDepth(list(bootstrap_level_budget), skd)
+            # On `CryptoContext` since OpenFHE 1.6 (openfhe-python v1.6.1.0, src/lib/pke/fbt.cpp); the 1.5 bindings
+            # had it on `FHECKKSRNS`, which 1.6 no longer exports. requirements-fhe.txt pins >= 1.6.1.
+            boot_depth = ofhe.CryptoContext.GetBootstrapDepth(list(bootstrap_level_budget), skd)
             total_depth = mult_depth + boot_depth
         else:
             total_depth = mult_depth

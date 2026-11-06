@@ -20,11 +20,11 @@
 #
 # USAGE
 #   bash env/build_openfhe_el9.sh                 # build + install into ./.venv
-#   OPENFHE_VERSION=1.5.1 bash env/build_openfhe_el9.sh
+#   OPENFHE_VERSION=1.6.1 bash env/build_openfhe_el9.sh
 #
 set -euo pipefail
 
-OPENFHE_VERSION="${OPENFHE_VERSION:-1.5.1}"
+OPENFHE_VERSION="${OPENFHE_VERSION:-1.6.1}"
 # openfhe-python tags carry a fourth component; keep the two in lockstep or its
 # find_package(OpenFHE <ver> REQUIRED) will reject the C++ build.
 OPENFHE_PY_TAG="${OPENFHE_PY_TAG:-v${OPENFHE_VERSION}.0}"
@@ -67,6 +67,11 @@ cmake --build openfhe-development/build -j "$JOBS"
 cmake --install openfhe-development/build
 
 # --- Python bindings --------------------------------------------------------
+# openfhe-python 1.6 asks CMake for pybind11 >= 2.12 and EL9 packages 2.10.4 (/usr/share/cmake/pybind11), so the
+# configure step failed with "Could not find a configuration file for package pybind11 ... compatible with requested
+# version 2.12". The venv gets its own (BSD-3-Clause, build time only) and CMake is pointed at it.
+"$VENV/bin/pip" install --quiet "pybind11>=2.12"
+PYBIND11_DIR="$("$VENV/bin/python" -m pybind11 --cmakedir)"
 if [ ! -d openfhe-python ]; then
   git clone --depth 1 --branch "$OPENFHE_PY_TAG" \
     https://github.com/openfheorg/openfhe-python.git
@@ -75,6 +80,8 @@ cmake -S openfhe-python -B openfhe-python/build \
   -DCMAKE_BUILD_TYPE=Release \
   -DOpenFHE_DIR="$PREFIX/lib/OpenFHE" \
   -DPython3_EXECUTABLE="$VENV/bin/python" \
+  -DPython_EXECUTABLE="$VENV/bin/python" \
+  -Dpybind11_DIR="$PYBIND11_DIR" \
   -DCMAKE_PREFIX_PATH="$PREFIX"
 cmake --build openfhe-python/build -j "$JOBS"
 
@@ -87,8 +94,13 @@ if [ ! -d "$SITE/openfhe" ]; then
   echo "error: openfhe wheel not installed. Run: $VENV/bin/pip install -r requirements-fhe.txt" >&2
   exit 1
 fi
-EXT="$(find openfhe-python/build -maxdepth 1 -name 'openfhe.cpython-*.so' | head -1)"
-[ -n "$EXT" ] || { echo "error: built extension not found" >&2; exit 1; }
+# The extension for THIS venv's Python, by its ABI suffix. pybind11 >= 2.12 finds Python through FindPython, which
+# reads Python_EXECUTABLE and not Python3_EXECUTABLE; with only the latter set it built for the newest interpreter on
+# the host (cpython-314), the old `find ... | head -1` installed that beside the wheel's cpython-312 file, and the
+# venv went on loading the wheel's, which needs GLIBCXX_3.4.32. Both hints are set above, and a mismatch stops here.
+EXT_SUFFIX="$("$VENV/bin/python" -c 'import sysconfig; print(sysconfig.get_config_var("EXT_SUFFIX"))')"
+EXT="openfhe-python/build/openfhe$EXT_SUFFIX"
+[ -f "$EXT" ] || { echo "error: no openfhe$EXT_SUFFIX in openfhe-python/build (built: $(ls openfhe-python/build/*.so 2>/dev/null))" >&2; exit 1; }
 install -m 0755 "$EXT" "$SITE/openfhe/"
 mkdir -p "$SITE/openfhe/lib"
 cp -P "$PREFIX"/lib/libOPENFHE*.so.1* "$SITE/openfhe/lib/"

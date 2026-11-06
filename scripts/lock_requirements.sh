@@ -11,6 +11,10 @@ set -eu
 cd "$(dirname "$0")/.."
 INPUTS="requirements-core.txt requirements-api.txt requirements-fhe.txt requirements-ai.txt"
 # shellcheck disable=SC2086
+# Seeded with the current lock, because uv prefers the versions already in its output file: a changed input then moves
+# only what it requires. Compiled into an empty file, the first regeneration after Round 86 (one floor, openfhe) would
+# have re-resolved every package against that day's index.
+[ -f requirements.lock ] && grep -v '^# ' requirements.lock > requirements.lock.new
 uv pip compile $INPUTS --python-version 3.12 --python-platform x86_64-unknown-linux-gnu --generate-hashes \
   --index-url https://pypi.org/simple --extra-index-url https://download.pytorch.org/whl/cpu \
   --index-strategy unsafe-best-match --no-header --quiet -o requirements.lock.new

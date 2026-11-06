@@ -540,7 +540,7 @@ by arithmetic, because a count corrected without looking is a count that will dr
 |---|---|---|---|
 | `Efficient_Simulation_of_Quantum_Secure_Multiparty_Computation.pdf` | arXiv:2501.10083v1 | **CC0 1.0** | arXiv OAI-PMH `<license>` |
 | `Quantum_Federated_Learning_A_Comprehensive_Survey.pdf` | arXiv:2508.15998v1 | **CC BY 4.0** | arXiv OAI-PMH `<license>` |
-| `Quantum-Secure_Multiparty_Deep_Learning.pdf` | Phys. Rev. X **15**, 041056 (2025) | **CC BY 4.0** | Crossref `license` (`vor`) and the PDF's own page-1 footer |
+| `Quantum-Secure_Multiparty_Deep_Learning.pdf` | Phys. Rev. X **15**, 041056 (2025), DOI `10.1103/k8wg-qmbh` | **CC BY 4.0** | Crossref `license` (`vor`) and the PDF's own page-1 footer; the DOI is APS's new format, and the old-style `PhysRevX.15.041056` is not registered |
 | `Quantum_Secure_Multiparty_Computation_based_on_Secure_Summation_and_QKD.pdf` | Research Square `10.21203/rs.3.rs-6706796/v1` | **CC BY 4.0** | Crossref `license` and the PDF's own cover page |
 | `Rate-1_Quantum_Fully_Homomorphic_Encryption.pdf` | IACR ePrint **2020/1454** | **CC BY 4.0** | ePrint licence link; **byte-identical** to the live ePrint PDF, sha256 `75abdb4e...`, 357,090 B |
 | `Leveraging_ASIC_AI_Chips_for_Homomorphic_Encryption.pdf` | IACR ePrint **2026/160** | **CC BY 4.0** | ePrint licence link; **byte-identical** to the live ePrint PDF, sha256 `65e6ccae...`, 3,634,311 B |
