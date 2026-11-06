@@ -373,6 +373,11 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // federated stage has real data and a figure to appear in.
     if (qfl && runsFederated(usecase)) c.qfl = true;
     if (optiqkd) c.qkd_optimize = true;                  // run the AI-QKD parameter optimization this run
+    // The full deployment's medical run takes its CNN path on MedMNIST, as the browser always runs the medical CNN
+    // student. Until Round 86 nothing on the page reached that path: the Workload selector was gone and `workload`
+    // stays "linear" for the cost model, so the full deployment ran a pixel-logistic model instead (a reader found it).
+    // `dataset`, not `workload`: the browser's cost model keeps reading "linear".
+    if (!DEMO && usecase === "medical_fl") c.dataset = "medmnist";
     return c;
   };
 

@@ -402,11 +402,10 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   ONE transport configuration before believing the gap.
 - **ct/pt is not a constant**: it moves with the feature count, so read it as a property of a
   configuration, not of CKKS ([what ct/pt measures](models-and-benchmarks.md#what-ctpt-measures)).
-- **The medical use-case pipeline and the medical AUC can use different datasets.** The AUC 0.9147 is
-  BreastMNIST, and so is the benchmark's encrypted CNN (`benchmark.medical_cnn.medmnist_name` is
-  `breastmnist`); the full deployment's medical use-case pipeline defaults to PneumoniaMNIST
-  (`usecases/medical_fl`, unless the run config sets `medmnist_name`). Both are MedMNIST v2, but
-  they are not the same images.
+- **The medical use-case pipeline and the medical AUC use the same dataset since Round 86.** The AUC 0.9147 is
+  BreastMNIST, and so are the benchmark's encrypted CNN and, since then, the full deployment's medical
+  pipeline, which reads `benchmark.medical_cnn` and runs its CNN path from the page. Until then that
+  pipeline defaulted to PneumoniaMNIST, a different MedMNIST v2 subset, and the page never reached it.
 - **`results/` retention.** It had none for three rounds and grew 953 -> 1133 -> 1421 files;
   `docker/docker-compose.yml` bind-mounts it, so a long-lived deployment grew without bound.
   `orchestration.keep_runs` (default 200, 0 disables) now prunes on persist, grouped by run stem

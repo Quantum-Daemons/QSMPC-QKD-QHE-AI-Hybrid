@@ -628,11 +628,16 @@ class PrivateInferenceStage(Stage):
             ctx.artifacts["fhe_prediction"] = out["prediction"]
             ctx.artifacts["private_prediction"] = out["prediction"]
             ctx.artifacts["private_prediction_backend"] = "ckks"
+            # The class's NAME where the use case knows it (the medical CNN path: MedMNIST's label map), because an index
+            # means opposite things in two corpora and the page shows this artifact as it is.
+            label = (ctx.data.get("class_labels") or {}).get(int(out["prediction"]))
+            if label:
+                ctx.artifacts["private_prediction_label"] = label
             # record exactly what was inferred so ExplainabilityStage explains the same thing
             ctx.data["linear_model"] = model
             ctx.data["features"] = np.asarray(x)
             bus.metric("fhe_max_abs_error", out["max_abs_error"], self.name)
-            bus.log(f"CKKS private inference: class={out['prediction']} (backend={out['backend']}, "
+            bus.log(f"CKKS private inference: class={out['prediction']}{f' ({label})' if label else ''} (backend={out['backend']}, "
                     f"err={out['max_abs_error']:.2e}); each logit decrypted with its bias added under "
                     f"encryption and every other slot masked, so the key holder reads the logits and "
                     f"nothing else", self.name)

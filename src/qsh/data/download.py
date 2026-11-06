@@ -63,7 +63,7 @@ def _full_scale():
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="python -m qsh.data.download")
     ap.add_argument("--medmnist", action="store_true",
-                    help="also download MedMNIST (BreastMNIST + PneumoniaMNIST)")
+                    help="also download MedMNIST BreastMNIST, the medical models' and the full deployment's corpus")
     args = ap.parse_args(argv)
 
     print("bundled samples (committed; no download needed)")

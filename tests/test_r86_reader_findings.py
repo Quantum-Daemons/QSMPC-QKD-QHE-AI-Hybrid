@@ -111,3 +111,44 @@ def test_the_retired_security_score_stays_retired(tmp_path) -> None:
     code = re.sub(r"//[^\n]*", "", (REPO / "web" / "src" / "lib" / "clientCompute.ts").read_text(encoding="utf-8"))
     assert "security_score" not in code and "function securityScore" not in code
     assert "securityScoringCfg" not in (REPO / "web" / "src" / "lib" / "config.ts").read_text(encoding="utf-8")
+
+
+def test_a_missing_medmnist_set_is_an_error_unless_a_test_opts_in(monkeypatch) -> None:
+    """The loader fell back to synthetic images with a warning only the server log showed (Round 86, a reader)."""
+    import pytest
+
+    from qsh.data.loaders import load_medmnist
+
+    monkeypatch.delenv("QSH_ALLOW_SYNTHETIC_IMAGES", raising=False)
+    with pytest.raises(RuntimeError, match="could not be loaded"):
+        load_medmnist("no-such-mnist")
+    monkeypatch.setenv("QSH_ALLOW_SYNTHETIC_IMAGES", "1")
+    X, y = load_medmnist("no-such-mnist")
+    assert X.ndim == 4 and len(X) == len(y) > 0
+
+
+def test_the_medical_cnn_path_reads_the_configured_corpus_and_names_its_class(monkeypatch) -> None:
+    """The full deployment's CNN path defaulted to PneumoniaMNIST, while the config, the published student and the browser
+    are BreastMNIST; and its result was a bare index, whose meaning flips between the two corpora."""
+    import numpy as np
+
+    from qsh.config import get_config
+    from qsh.data import loaders
+    from qsh.usecases import medical_fl
+
+    asked = []
+
+    def fake_load(name=None, split="train"):
+        asked.append(name)
+        rng = np.random.default_rng(0)
+        return rng.uniform(size=(64, 1, 28, 28)).astype(np.float32), rng.integers(0, 2, 64)
+
+    monkeypatch.setattr(loaders, "load_medmnist", fake_load)
+    pipe, ctx = medical_fl.build({"dataset": "medmnist", "img_size": 10, "medmnist_n": 64})
+    assert asked == [get_config().benchmark.medical_cnn["medmnist_name"]] == ["breastmnist"], asked
+    assert ctx.data["class_labels"] == {0: "malignant", 1: "normal, benign"}
+    # And the full deployment's page sends the dataset that selects this path.
+    hook = (REPO / "web" / "src" / "lib" / "usePipelineRun.ts").read_text(encoding="utf-8")
+    assert 'if (!DEMO && usecase === "medical_fl") c.dataset = "medmnist";' in hook
+    image = (REPO / "docker" / "Dockerfile.api").read_text(encoding="utf-8")
+    assert "BreastMNIST(split='train', download=True)" in image and "PneumoniaMNIST" not in image.split("RUN python -c")[1]
