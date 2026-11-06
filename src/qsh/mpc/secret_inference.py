@@ -4,9 +4,9 @@ A common secure-inference split (the Gazelle→Delphi→BOLT→Bumblebee→BLB l
 arXiv:2604.09975, a preprint): **linear** ops (matmul/conv) run
 homomorphically under CKKS, while **non-linear** ops (ReLU, argmax,
 comparison) run under **secret-sharing MPC** — they are cheap homomorphically only as low-degree
-polynomials, so a real hybrid delegates them to MPC. Here the CKKS half runs on the configured CPU
-backend (TenSEAL or OpenFHE): HEonGPU is a build-gated reference adapter with no Python API
-(qsh.fhe.backends.HeongpuBackend raises), and no HEonGPU run is measured in this repository.
+polynomials, so a real hybrid delegates them to MPC. Here the CKKS half runs on the configured
+backend: TenSEAL or OpenFHE on the CPU, or HEonGPU on the GPU through this project's binding where it
+is built (qsh.fhe.backends.HeongpuBackend, Round 86).
 
 The non-linear half uses **MPyC** (MIT, Shamir secret sharing + secure comparison), run as THREE
 parties in separate processes over loopback TCP (:mod:`qsh.mpc.parties`): threshold t = 1,

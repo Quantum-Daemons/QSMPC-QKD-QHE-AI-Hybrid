@@ -3834,3 +3834,14 @@ run in a capture, on a page that fetched no model.
 
 **Testing the fix found the next two defects.** Running every model for real, rather than one, found the wrong size on a label, and that a lost request
 ended a 2 GB download. Cancel was only testable with a library present: without one, the local preview answers a missing `.wasm` with `index.html` and a 200.
+
+**A checklist row is a check only once it is run on this project's own build.** G1, list the GPU architectures compiled into a shared
+library, was written for third-party wheels. The HEonGPU module built here carried only Turing's for a Blackwell GPU, and every test
+passed, because the driver recompiles PTX at load. The build script runs the check now.
+
+**A cause is established by varying it.** OpenFHE's 594 ms was put down to other load, and an idle machine then read 577. Varying the
+thread count, not the load, moved it: 81 to 577 ms at 20 threads, 41 to 54 at 6.
+
+**A fallback written for a missing capability outlives it.** `_hybrid_bench_row` sent every backend it did not know to TenSEAL, which
+was right while HEonGPU could not run. The day it could, the same line split one run across two backends under one selection, and
+nothing failed.

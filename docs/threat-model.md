@@ -58,7 +58,7 @@
 - The QKD hardware is modelled by simulation; real deployments must address device
   imperfections (the WS2 IDS targets exactly these).
 - The crypto/compute libraries are trusted as implemented, after review: server-side
-  TenSEAL / OpenFHE / liboqs / MPyC (and HEonGPU, if its build-gated adapter is ever wired); client-side **node-seal** (CKKS) + **Polytune /
+  TenSEAL / OpenFHE / liboqs / MPyC (and HEonGPU with this project's binding, where it is built); client-side **node-seal** (CKKS) + **Polytune /
   Garble** (garbled-circuit 2PC, Rust compiled to wasm from `wasm/qsh-mpc`, Round 65) for the in-browser
   demo; the **MCP Python SDK** (`MCPServer`, named `FastMCP` before v2.0.0) for
   the full-deployment MCP server. Only some of them are pinned. The browser's npm packages and the

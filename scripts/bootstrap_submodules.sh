@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Add/initialize the upstream OSS git submodules under submodules/.
 #
-# All repos below are commercially-usable (MIT / Apache-2.0 / BSD) and were verified
-# actively maintained (<= ~6 months) as of June 2026.
+# Both repos below are commercially usable (Apache-2.0 / MIT); their pins and maintenance are
+# re-read each round in DATA_LICENSES.md section 6a.
 #
-# The GPU MPC-FHE benchmark is our OWN integration over the upstream OSS pulled here.
+# HEonGPU is the GPU CKKS backend's library: scripts/build_heongpu.sh builds it with this project's
+# binding. hpmpc is vendored for a GPU MPC run not yet made.
 #
 # Usage:
 #   bash scripts/bootstrap_submodules.sh            # MIN set (light, needed early)
@@ -43,7 +44,7 @@ echo "Submodule set: $QSH_SET (depth=$QSH_DEPTH)"
 # submodules/ wholesale, so none of them ever reached an image anyway. Cloning ~10 GB of C++ that
 # nothing links against is a cost with no corresponding capability. They remain cited as upstream
 # work in references/REFERENCES.md, which is the accurate relationship.
-add https://github.com/Alisah-Ozcan/HEonGPU.git        submodules/HEonGPU       all  # GPU BFV/CKKS (linear layers), Apache-2.0
+add https://github.com/enCRYPTON-labs/HEonGPU.git       submodules/HEonGPU       all  # GPU BFV/CKKS (linear layers), Apache-2.0
 add https://github.com/chart21/hpmpc.git               submodules/hpmpc         all  # GPU secret-sharing MPC (PIGEON), MIT
 # CROSS (HE on AI-ASIC) — confirm public URL + license before enabling:
 # add https://github.com/EfficientHE/CROSS.git         submodules/CROSS         all

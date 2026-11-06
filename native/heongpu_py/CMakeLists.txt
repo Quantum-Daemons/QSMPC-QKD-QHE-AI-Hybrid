@@ -1,0 +1,16 @@
+cmake_minimum_required(VERSION 4.0 FATAL_ERROR)
+# Before project(), which otherwise sets nvcc's default (75 under CUDA 13): HEonGPU then reads the architecture as given and
+# skips its own detection, and the module carries Turing code that the driver recompiles for the GPU at load (Round 86).
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES AND NOT DEFINED ENV{CUDAARCHS})
+    set(CMAKE_CUDA_ARCHITECTURES native)
+endif()
+project(qsh_heongpu LANGUAGES C CXX CUDA ASM)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(HEONGPU_SRC "" CACHE PATH "HEonGPU source tree")
+add_subdirectory(${HEONGPU_SRC} heongpu EXCLUDE_FROM_ALL)
+find_package(pybind11 CONFIG REQUIRED)
+find_package(OpenMP REQUIRED)
+find_package(CUDAToolkit REQUIRED)
+pybind11_add_module(qsh_heongpu MODULE NO_EXTRAS binding.cpp)
+target_link_libraries(qsh_heongpu PRIVATE heongpu CUDA::cudart OpenMP::OpenMP_CXX)
+set_target_properties(qsh_heongpu PROPERTIES CUDA_SEPARABLE_COMPILATION ON CUDA_RUNTIME_LIBRARY Shared CUDA_RESOLVE_DEVICE_SYMBOLS ON CXX_VISIBILITY_PRESET default CUDA_VISIBILITY_PRESET default VISIBILITY_INLINES_HIDDEN OFF)

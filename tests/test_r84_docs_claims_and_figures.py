@@ -206,7 +206,10 @@ def test_owned_code_text_is_ascii() -> None:
         for n, line in enumerate(_read(rel).splitlines(), 1):
             if re.search(r"[^\x00-\x7f]", line):
                 bad.append(f"{rel}:{n}")
-    for n, line in enumerate(_read("scripts/run_gpu_mpc.sh").splitlines(), 1):
-        if line.lstrip().startswith("#") and re.search(r"[^\x00-\x7f]", line):
-            bad.append(f"scripts/run_gpu_mpc.sh:{n}")
+    # scripts/run_gpu_mpc.sh was read here until Round 86 removed it with the upstream-example GPU row it produced. The
+    # GPU code that replaced it is held to the same rule, comments included.
+    for rel in ("native/heongpu_py/binding.cpp", "scripts/build_heongpu.sh"):
+        for n, line in enumerate(_read(rel).splitlines(), 1):
+            if re.search(r"[^\x00-\x7f]", line):
+                bad.append(f"{rel}:{n}")
     assert not bad, f"non-ASCII text: {bad}"

@@ -1,0 +1,65 @@
+{
+ "machine": {
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 620.70.06",
+  "nvcc": "Build cuda_13.5.r13.5/compiler.39125733_0",
+  "kernel": "5.14.0-687.65.1.el9_8.x86_64",
+  "cpu": "13th Gen Intel(R) Core(TM) i5-13600K",
+  "hardware_threads": 20,
+  "date": "2026-11-06",
+  "omp_num_threads": "6",
+  "loadavg_1_5_15_before": [
+   1.13,
+   2.33,
+   2.86
+  ],
+  "loadavg_1_5_15_after": [
+   1.52,
+   2.39,
+   2.88
+  ]
+ },
+ "versions": {
+  "tenseal": "0.3.16",
+  "openfhe": "1.5.1.0.24.4",
+  "HEonGPU": "v2.1.1",
+  "HEonGPU module GPU code": "sm_120"
+ },
+ "results": [
+  {
+   "backend": "tenseal-ckks-cpu",
+   "slots": 4096,
+   "ring_dimension": 8192,
+   "dot_33_ms": 5.7856,
+   "dot_256_ms": 7.4468,
+   "encrypt_ms": 2.5338,
+   "mul_plain_ms": 0.8416,
+   "add_ms": 0.0323,
+   "decrypt_ms": 0.4267,
+   "mask_every_slot_ms": 2.1295
+  },
+  {
+   "backend": "openfhe-ckks-cpu",
+   "slots": 128,
+   "ring_dimension": 16384,
+   "dot_33_ms": 41.6319,
+   "dot_256_ms": "not run: 256 values do not fit 128 slots",
+   "encrypt_ms": 5.3014,
+   "mul_plain_ms": 1.564,
+   "add_ms": 0.1564,
+   "decrypt_ms": 2.8525,
+   "mask_every_slot_ms": 6.3661
+  },
+  {
+   "backend": "heongpu-ckks-gpu",
+   "slots": 4096,
+   "ring_dimension": 8192,
+   "dot_33_ms": 0.2159,
+   "dot_256_ms": 0.2718,
+   "encrypt_ms": 0.1046,
+   "mul_plain_ms": 0.04,
+   "add_ms": 0.0073,
+   "decrypt_ms": 0.0486,
+   "mask_every_slot_ms": 0.1146
+  }
+ ]
+}
