@@ -8652,3 +8652,61 @@ GPU build, is removed.
 **Left open:** the satellite relay still rounds the elevation to a whole degree, so its key can differ slightly from
 the pass figure, which the panel says (QK49); MEGA's Table 16 re-read at the source (B1); and the private report's copy
 of two documents (SW6 D10-D11, DC15).
+
+### The CKKS student's decision curve, and the sources re-read on 2026-11-06
+
+**The student's decision curve (the owner's choice: "Do it, republish the card").** The private-inference figure showed
+that the decrypted student agrees with its plaintext self and said nothing about what its output is worth as a decision.
+It now draws the student's net benefit across the same thresholds and at the same window's rate as the teacher's curve,
+from the logits it decrypts on the 8,192 rows. A risk needs a map, and the student's record had none:
+
+- **The map is fitted in the run that fits the student.** `student_calibration` in `scripts/train/finance_aml.py` fits
+  Platt on the validation window and scores it on the test window, and the trainer writes it into the student's record.
+  `scripts/finance_student_calibration.py` applied the same function to the published weights, checked by digest, after
+  reproducing the record's 1,523,504 rows and minority-class F1 0.061394. Written by that script alone, the next
+  retrain's record would have carried the old weights' map forward onto new logits, because `record_metrics` keeps a
+  field the new payload lacks.
+- **On the probability, as the teacher's.** Fitted first on the decision logit, the map was right for the figure and
+  wrong for the model panel, which hands every published graph's probability to the same function once the config names
+  the student. Refitted on $`q = \sigma(w^\top z + c)`$ with `on_logit` set, the decrypted route and the graph's
+  float32 route read the same 4.57 per 10,000 at $`t = 0.01`$, as the measurement does.
+- **Measured** (`docs/measurements/finance-student-decision-curve-2026-11-06.json`): the window lies inside the
+  sample's 95% interval at all 43 thresholds, at most 1.02 standard errors away. Over the window the student is above
+  the teacher up to $`t \approx 0.0067`$ and below treat-none from 0.033. Isotonic regression beats Platt on this
+  student's Brier score and log-loss (0.00149696 and 0.00837343 against 0.00154002 and 0.00864886) and moves the curve
+  by at most 0.96 per 10,000; Platt is kept so that the two curves differ by the model and not by the map, and the
+  record says so in words derived from the numbers. The calibrated student's Brier skill against the base rate is
+  $`-0.0124`$.
+- **The cards print the map**, the formula in LaTeX and the numbers in a table the card gate checks against the record.
+  The student's card is republished (pin `7ae5ada`; `README.md` is the only file that differs from the round's starting
+  pin `641566e`). Reading it on the Hub found two defects no local check could see: the Hub typesets `$$...$$` and
+  `\\(...\\)` before it parses the Markdown and prints a single-dollar span as raw text, so every inline formula showed
+  its backslashes; and the map and its definitions on one line set 736 px in a 589 px column that does not scroll, so
+  the clip constant ran off the card. The generator now converts inline spans and sets one equation per display block,
+  the card test fails on either, and the published card was measured again: 11 typeset spans, no error, each display
+  589 px wide. The teacher's card would gain the same section on its next publication, which is the owner's decision.
+
+**The sources, re-read on 2026-11-06.**
+
+- **MEGA v3, Table 16** (arXiv:2412.00241v3, AML Small HI): Multi-FraudGT 75.81 $`\pm`$ 0.75, MEGA-PNA 74.01 $`\pm`$
+  1.55, MEGA-GenAgg 74.48 $`\pm`$ 0.84, Multi-PNA 67.35 $`\pm`$ 2.89 and GFP+XGBoost 63.23 $`\pm`$ 0.17, each as the
+  registry, the cards and the trainer cite them. No change.
+- **node-seal**: npm's newest is still 7.0.0 (2025-11-08), so the poster's pin stands.
+- **Pyodide**: versioned by its Python since 314.0.0. The newest, 314.0.7 (2026-09-14, Python 3.14.2), ships 357
+  packages, none of them CKKS, TFHE or MPC; on PyPI, TenSEAL 0.3.18, OpenFHE 1.6.1 and concrete-ml 1.9.0 publish no
+  WebAssembly wheel. MPyC 0.11 is pure Python and micropip could install it, but its parties connect over TCP
+  (`loop.create_connection` in `mpyc/runtime.py`) and its local parties start as subprocesses, neither of which a tab
+  has. The notebook's first condition stays unmet.
+- **OpenFHE**: 1.6.1 has a PyPI wheel (2026-10-27). The cap below 1.6 stays, with the condition its pin already states:
+  a port of the bootstrap path tested on 1.6.
+- **HEonGPU** v2.1.1 (2026-11-02) is the pin and the newest release; **CUTLASS** v4.8.1 is still the newest release;
+  **hpmpc**'s master is one commit past the measured `155c935`, the log removal `DATA_LICENSES.md` records.
+- **The private report.** DC15 and SW6 D10-D11, left open above, were already fixed in the private report's sources and
+  its committed PDFs, and its own checks pass against the v0.85.0 release it describes. The PDFs name the tag and the
+  repository, not a commit, so the history rewrite leaves them correct; they are rebuilt with the next release.
+
+**QK49, the relay's elevation.** The relay section started at the pass section's elevation rounded to a whole degree,
+49 against 48.9, and read 494.5 kbit for the Xinglong pass beside the pass section's 493.2 kbit. It now starts at the
+pass section's own 48.9, and both rows are one simulation: 493,163.2 bits each, executed in
+`tests/test_r86_relay_at_the_pass_elevation.py`, which also fails when the panel's start is rounded again. Its note
+says which simulation it is instead of saying the two may differ.

@@ -79,9 +79,9 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
         f"Part of [QSMPC-QKD-QHE-AI-Hybrid]({REPO_URL}),",
         "a quantum-safe orchestration demo."]
     if spec.runs_encrypted:
-        # "and the demo runs it that way" was true of some students only: the public page encrypts
-        # the medical CNN student and the bundled telecom and OPS-SAT students, but encrypts a bundled PaySim
-        # model instead of the finance student, and the Telemanom student under CKKS nowhere.
+        # "and the demo runs it that way" was true of some students only. The public page encrypts the medical CNN
+        # student and, on held-out rows, the finance, telecom and OPS-SAT students (finance since Round 84, when it
+        # stopped encrypting a bundled PaySim model in its place), and the Telemanom student under CKKS nowhere.
         # The registry notes say what runs, per model, and the card points at them.
         body += [f"This is the **encrypted-tier** model for the `{spec.usecase}` use case: a",
                  "distilled student small enough to evaluate under CKKS. Whether the public demo",
@@ -91,8 +91,8 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
                  "teacher was measured offline, in plaintext."]
     else:
         # "the encrypted path runs a distilled student" was false for most teachers: nothing is
-        # distilled from the ResNet-50 or the 5G-NIDD model, the satellite page runs no encrypted
-        # stage, and the finance page encrypts a bundled PaySim model (Round 84).
+        # distilled from the ResNet-50 or the 5G-NIDD model, and on the satellite page the CKKS check
+        # (Round 86) scores the OPS-SAT student, not the Telemanom teacher's own student.
         body += [f"This is the **plaintext** model for the `{spec.usecase}` use case. No code path",
                  "evaluates this model under encryption; what each use case encrypts, if anything,",
                  "is stated in the notes below."]

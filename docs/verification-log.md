@@ -3903,3 +3903,9 @@ different routes, the decrypted logit and the graph's float32 output, and so doe
 comparison as its retention argument, so the student's record would have carried the teacher's numbers. Measured on the
 student, isotonic wins on both proper scoring rules, and the record says that, with the reason Platt is kept, in words
 derived from the numbers so a retrain cannot leave the sentence saying the opposite.
+
+**A published page is read where it is published, in that site's dialect.** The calibration card passed every local
+check, its numbers against the record included, and on the Hub its inline formulas printed as raw text with their
+backslashes, because the Hub reads `\\(...\\)` and not single dollars, and its display formula ran past a column that
+does not scroll. Both were found by reading the published card and measuring it, and both are now tests of the
+generator; the measurement that closes each is on the Hub, not in the tree.
