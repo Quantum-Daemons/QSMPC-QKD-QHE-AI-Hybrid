@@ -509,6 +509,52 @@ before it is timed: hpmpc's matrix-multiplication test passes with the GPU and f
 
 Built at hpmpc `155c935` with one line changed in the script's clone: the benchmark's GPU branch calls `T::GEMM` where
 no `T` is declared, at that commit and at upstream's head, so it does not compile; the clone calls the share type's
-`S::GEMM`. CUTLASS v4.8.1, headers only, for `sm_120`. Only the GEMM object is built: CUTLASS 4.8.1's convolution
-header uses a function from problem-size headers it does not include, and hpmpc's 16-bit convolution fails a static
-assertion there, and the measured path links the GEMM alone.
+`S::GEMM`. CUTLASS v4.8.1, headers only, for `sm_120`. The matrix multiplication's GPU path links the GEMM object
+alone.
+
+### The convolution layer on the GPU, checked and measured
+
+The same protocol runs one flexNN convolution layer on three paths: the CPU; `im2col` on the CPU with the GEMM above on
+the GPU; and the whole convolution on the GPU, CUTLASS's implicit-GEMM convolution (`PARTS=conv
+scripts/bench_hpmpc_gpu.sh`,
+[`measurements/hpmpc-gpu-conv-2026-11-06.json`](measurements/hpmpc-gpu-conv-2026-11-06.json)). hpmpc's source labels its
+three layers CryptGPU's figure 1, a to c: function 33 is an $`n \times n \times 3`$ input under an $`11 \times 11`$
+kernel to 64 channels at stride 4, function 34 a batch of $`k`$ such $`32 \times 32 \times 3`$ inputs, and function 35 an
+$`n \times n \times 512`$ input under a $`3 \times 3`$ kernel to 512 channels. Wall time of party 0, median of three
+runs, each started with the 1-minute load under 4:
+
+| layer | CPU | GPU GEMM | GPU convolution | CPU / GPU GEMM | CPU / GPU convolution | sent by party 0 |
+|---|---|---|---|---|---|---|
+| 33, $`n = 64`$ | 0.042 s | 0.241 s | 0.265 s | 0.18 | 0.16 | 1.2 MB |
+| 33, $`n = 128`$ | 0.153 s | 0.532 s | 0.276 s | 0.29 | 0.56 | 4.9 MB |
+| 33, $`n = 256`$ | 0.572 s | 0.720 s | 0.306 s | 0.79 | 1.87 | 20 MB |
+| 33, $`n = 512`$ | 2.24 s | 1.33 s | 0.873 s | 1.69 | 2.57 | 83 MB |
+| 33, $`n = 1024`$ | 9.11 s | 3.33 s | 1.42 s | 2.73 | 6.42 | 333 MB |
+| 34, $`k = 8`$ | 0.049 s | 0.296 s | 0.485 s | 0.17 | 0.10 | 2.0 MB |
+| 34, $`k = 32`$ | 0.202 s | 0.519 s | 1.31 s | 0.39 | 0.15 | 8.0 MB |
+| 34, $`k = 128`$ | 0.726 s | 1.48 s | 4.65 s | 0.49 | 0.16 | 32 MB |
+| 34, $`k = 512`$ | 2.88 s | 5.29 s | 18.0 s | 0.54 | 0.16 | 129 MB |
+| 35, $`n = 8`$ | 0.701 s | 0.440 s | 0.404 s | 1.59 | 1.74 | 2.6 MB |
+| 35, $`n = 16`$ | 2.70 s | 0.639 s | 0.495 s | 4.22 | 5.45 | 10 MB |
+| 35, $`n = 32`$ | 11.7 s | 1.22 s | 0.827 s | 9.6 | 14.1 | 42 MB |
+| 35, $`n = 64`$ | 47.2 s | 2.39 s | 0.882 s | 19.7 | 53.5 | 168 MB |
+
+The deep layer is where the GPU pays: function 35 is ahead from $`n = 8`$ and 53.5 times faster at $`n = 64`$ with the
+whole convolution there. The wide shallow one pays from $`n = 256`$. The batch never does, and the GPU convolution's time
+grows by about 35 ms an image, because the layer calls the GPU once per image (`local_batch = 1` in flexNN's
+`convolutional_layer.h`). Every path sends the same volume at the same size.
+
+**Checked before it is timed.** hpmpc has no test of its convolution, so the script inserts one into function 33 for
+its own builds: small fixed integers through the secret-shared layer, the input in fixed point and the weights as
+integers so the truncated output is the plain convolution, revealed and compared with a plain convolution in the
+program and, as a sum over the 576 outputs, with an independent NumPy one (1,036,170). Every path reproduces it exactly
+on all three parties; with the GPU hidden, neither GPU path does. The check is taken out of the clone before any run is
+timed, and a timed run that prints it is refused.
+
+The GPU convolution needs two more changes in the clone, printed by the script: CUTLASS 4.8.1's convolution header calls a
+function from problem-size headers it does not include, so the object is compiled with `-include` of both; and hpmpc's
+16-bit convolution fails a CUTLASS static assertion, so that instantiation is commented out, as upstream already does for
+the 8-bit one. And one build flag: functions 33 and 34 do not compile with hpmpc's default `PRINT_TIMINGS 1`, because
+`print.hpp` declares the layer-statistics functions only for function 35 and above while flexNN calls one, so every
+convolution build sets `PRINT_TIMINGS=0`. It governs per-layer statistics, which one layer never prints; the time comes
+from the protocol executor either way.

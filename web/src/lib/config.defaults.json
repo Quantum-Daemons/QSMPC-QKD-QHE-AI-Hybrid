@@ -1010,7 +1010,7 @@
             "opset": null
           },
           "git_sha": "67138f8-dirty",
-          "hf_revision": "8e5cc9c0e8034fc72401b197c079b755c3bce9f6",
+          "hf_revision": "ca364923cc110f00fbd343c13cb4f2b23243aaff",
           "minority_class_f1": 0.15194805194805194,
           "n_test": 1523504,
           "n_train": 3554841,
@@ -1053,7 +1053,7 @@
         "eval_sample_reason": null,
         "eval_split": "a draw from the held-out temporal test window, the last 30 percent of the transactions in time order, enriched to 2 percent laundering",
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "8e5cc9c0e8034fc72401b197c079b755c3bce9f6",
+        "hf_revision": "ca364923cc110f00fbd343c13cb4f2b23243aaff",
         "hf_revision_stale": null,
         "key": "finance_aml.gbm",
         "label": "Graph-feature gradient boosting",
