@@ -26,6 +26,7 @@ import argparse
 import json
 import math
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -167,6 +168,21 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
     return "\n".join(front + body)
 
 
+#: An inline math span written the repository's way, `$...$`, outside any `$$` display block.
+_INLINE_MATH = re.compile(r"(?<![$\\])\$(?!\$)([^$\n]+?)(?<!\\)\$(?!\$)")
+
+
+def _hub_inline_math(text: str) -> str:
+    r"""Inline math as the Hub renders it (Round 86).
+
+    The Hub typesets the card's source with KaTeX before it parses the Markdown, and its model-card guide gives
+    ``$$ ... $$`` for display math and ``\\(...\\)`` for inline math. A single-dollar span is not math there: the first
+    calibration card published showed ``$q = \sigma(...)$`` as raw text, backslashes and all, while its display
+    formula rendered.
+    """
+    return _INLINE_MATH.sub(lambda m: r"\\(" + m.group(1) + r"\\)", text)
+
+
 def _calibration_section(cal: dict | None) -> list[str]:
     """The record's Platt map, as the page applies it before it reads a score against a threshold (Round 86).
 
@@ -224,7 +240,7 @@ def _calibration_section(cal: dict | None) -> list[str]:
         lines += [f"Raw is {cal['raw_is'][0].lower()}{cal['raw_is'][1:]}", ""]
     if cal.get("why_not_isotonic"):
         lines += [f"Why Platt and not isotonic: {cal['why_not_isotonic']}", ""]
-    return lines
+    return [_hub_inline_math(line) for line in lines]
 
 
 def _licence_slug(licence: str) -> str:

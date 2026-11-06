@@ -28,6 +28,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -347,3 +348,9 @@ def test_a_card_prints_the_map_the_page_applies():
         cal = rec["calibration"]
         assert f"| `a` | {cal['a']!r} |" in card and f"| `b` | {cal['b']!r} |" in card, key
         assert r"\operatorname{logit}" in card, f"{key}: the card's formula omits the logit its map applies"
+        # The Hub renders `$$...$$` and `\\(...\\)` and prints a single-dollar span as raw text, backslashes and all,
+        # which is what the first calibration card published did.
+        section = card[card.index("## Calibration map"):]
+        section = section[:section.index("\n## ")] if "\n## " in section else section
+        assert "$" not in re.sub(r"\$\$.*?\$\$", "", section, flags=re.S), f"{key}: inline math in single dollars"
+        assert r"\\(q\\)" in section, f"{key}: the card's inline math is not in the Hub's delimiters"
