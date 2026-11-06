@@ -37,6 +37,12 @@ export const demoFeatureDim = () => CONFIG.benchmark.demo_feature_dim;
 export const quantumAdvantageCfg = () => CONFIG.quantum_advantage;
 export const dataCfg = () => CONFIG.data;
 export const qkdCfg = () => CONFIG.qkd;
+/** One declared decision curve (Round 86, `DecisionCurveConfig`): the published model it is drawn for and the
+ *  thresholds that are its decision context. */
+export type DecisionCurveEntry = { model_key: string; thresholds: number[] };
+export const decisionCurveCfg = () => CONFIG.decision_curve as unknown as {
+  curves: Record<string, DecisionCurveEntry>; grid_points: number; interval_coverage: number; interval_z: number;
+};
 /** One link profile (Round 77): `src/qsh/config/profiles/<kind>/<id>.json`, values with their sources.
  *  Every value carries exactly one of `quote` (the source states it) or `assumption`. */
 export type ProfileValue = { value: number | boolean; quote?: string; assumption?: string; note?: string };

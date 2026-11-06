@@ -108,6 +108,23 @@
     "genomics_n": 1200,
     "genomics_n_snps": 16
   },
+  "decision_curve": {
+    "curves": {
+      "finance_aml": {
+        "model_key": "finance_aml.gbm",
+        "thresholds": [
+          0.002,
+          0.005,
+          0.01,
+          0.02,
+          0.05
+        ]
+      }
+    },
+    "grid_points": 41,
+    "interval_coverage": 0.95,
+    "interval_z": 1.959963984540054
+  },
   "demo_samples": {
     "finance_aml": {
       "licence": "CC-BY-SA-4.0",

@@ -1729,6 +1729,23 @@ to no publication.
   form of the formula above and names **treat-all and treat-none as the standard reference lines** -
   which is exactly the pair `best_threshold_by_net_benefit` returns, so the reference lines on the page
   are the field's, not this project's invention.
+- **Pfeiffer and Gail, "Estimating the decision curve and its precision from three study designs",
+  *Biometrical Journal* 62(3):764-776 (2020; online 2019-08-08).** DOI 10.1002/bimj.201800240, PMID 31394013,
+  PMC8620346 `[link]`
+  URL: https://pmc.ncbi.nlm.nih.gov/articles/PMC8620346/
+  VERIFIED at the PMC full text 2026-11-06. Section 3.2.2, eq. 11, estimates net benefit from case-control data
+  when the event rate $`\mu`$ is known:
+
+  $$\widehat{NB}(t) = \mu\{1 - G_m(t)\} - (1 - \mu)\{1 - K_n(t)\}\,\frac{t}{1 - t}$$
+
+  where $`G_m`$ and $`K_n`$ are the empirical distributions of the risk among the $`m`$ cases and $`n`$ controls, so
+  $`1 - G_m(t)`$ and $`1 - K_n(t)`$ are the true- and false-positive rates; section 3.3 gives pointwise intervals as
+  $`\widehat{NB}(t) \pm 1.96\,\widehat{\mathrm{var}}^{1/2}`$. **This is the estimator the finance page's decision curve
+  uses** (`web/src/lib/decisionCurve.ts`, `src/qsh/models/metrics.py::net_benefit_at_prevalence`): the page's
+  evaluation sample draws each class of the test window on its own and is enriched to 164 events in 8,192 rows, and
+  the window's own 2,321 of 1,523,504 is the known rate. The variance used there is the one of two independent
+  binomial proportions, written out in `metrics.py`, not the paper's influence-function form, which its online
+  appendix holds and which was not read.
 - **Dimitriadis, Gneiting and Jordan, "Evaluating probabilistic classifiers: Reliability diagrams and
   score decompositions revisited", *PNAS* 118 (2021) e2016191118.** arXiv:2008.03033 `[link]`
   URL: https://arxiv.org/abs/2008.03033

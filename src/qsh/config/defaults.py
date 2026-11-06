@@ -880,6 +880,35 @@ class QuantumSimConfig:
 
 
 @dataclass
+class DecisionCurveConfig:
+    """The decision curves a use-case page draws (Vickers and Elkin 2006), and the thresholds each spans (Round 86).
+
+    A threshold probability ``t`` prices one false alarm at ``t / (1 - t)`` of a caught case, so a range of thresholds is
+    the DECISION CONTEXT, the exchange rates a reviewer could plausibly act at. It is chosen from that context and never
+    from the data (``metrics.area_under_net_benefit``). Keyed by use case; ``model_key`` names the published model the page
+    scores, whose record must carry its calibration map and the event count of the window its sample was drawn from.
+    Read by the page (``web/src/lib/decisionCurve.ts``), the BFV scorecard's trainer and
+    ``scripts/measure_decision_curve.py``.
+    """
+
+    curves: dict = field(default_factory=lambda: {
+        "finance_aml": {
+            "model_key": "finance_aml.gbm",
+            # Review a 1-in-500 suspicion to a 1-in-20 one: at the test window's 1-in-656 base rate an alerting threshold
+            # above a few percent reviews almost nothing. The BFV scorecard is fitted over these five and reports at their
+            # median; its trainer held them as its own literal until Round 86.
+            "thresholds": [0.002, 0.005, 0.01, 0.02, 0.05],
+        },
+    })
+    #: Points of the drawn curve, log-spaced from the first threshold to the last. The declared thresholds are added to
+    #: them, so each is evaluated exactly.
+    grid_points: int = 41
+    #: The pointwise interval's coverage, and the standard normal quantile that gives it, Phi^-1(0.975).
+    interval_coverage: float = 0.95
+    interval_z: float = 1.959963984540054
+
+
+@dataclass
 class QSHConfig:
     """Top-level config aggregating every subsystem."""
 
@@ -898,6 +927,7 @@ class QSHConfig:
     orchestration: OrchestrationConfig = field(default_factory=OrchestrationConfig)
     web: WebConfig = field(default_factory=WebConfig)
     quantum_sim: QuantumSimConfig = field(default_factory=QuantumSimConfig)
+    decision_curve: DecisionCurveConfig = field(default_factory=DecisionCurveConfig)
 
     def to_dict(self) -> dict:
         return asdict(self)
