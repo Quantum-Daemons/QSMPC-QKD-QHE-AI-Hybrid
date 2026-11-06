@@ -3845,3 +3845,15 @@ thread count, not the load, moved it: 81 to 577 ms at 20 threads, 41 to 54 at 6.
 **A fallback written for a missing capability outlives it.** `_hybrid_bench_row` sent every backend it did not know to TenSEAL, which
 was right while HEonGPU could not run. The day it could, the same line split one run across two backends under one selection, and
 nothing failed.
+
+**A reader's list is checked against the code before it becomes work.** Of twelve functional findings written down on
+2026-10-30, three were fixed outright and three in part by the time the readers re-read them on 2026-11-05, and the two
+that a reader marked unsure were both still live. Each item was re-read on main before anything was changed.
+
+**Two spellings of one key are two twins.** `student_params` and `n_parameters` both hold a student's size, and the
+readers asked for one; `event_wise_f0_5_full_channels` and `published_full_channel_f0_5` both name one figure, and the
+card printed the one no record has. A check that reads the record, not the spec, found the second kind on five cards at once.
+
+**A threshold has one owner.** The QKD stage aborts at `qkd.pp_threshold`, and four readers of the same idea took it from
+the retired score's config, equal to it only by value. Removing the score would have left them pointing at nothing; moving
+them first is what made the removal a deletion and not a breakage.
