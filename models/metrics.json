@@ -257,7 +257,7 @@
     "auc_pr": 0.968055,
     "both_scored_zero": false,
     "disagreement_on_positives": 0.070796,
-    "hf_revision": "cdbc77953c4c1f74ebb466d0c6f15966c054fa5a",
+    "hf_revision": "b1c32f6939e73037aaa3464334f3b0446078733e",
     "metric_delta": 0.014571,
     "metric_delta_pp": 1.4571,
     "metric_name": "minority_class_f1",

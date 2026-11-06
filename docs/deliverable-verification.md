@@ -8432,6 +8432,17 @@ at most 0.031, and the filesystem endpoint answered from the locked server. The 
 A cost of walking it here: the API container writes run records into the bind-mounted `results/` as root, and the next local test run that reuses a run id fails
 with a `PermissionError`. `docker run --rm -v "$PWD/results:/r" --entrypoint chown qsh-api -R "$(id -u):$(id -g)" /r` hands them back; `docs/deployment.md` says so.
 
+### The OPS-SAT student's Hub card and weights say what the page now runs
+
+By the owner's choice, after the satellite page began checking `satellite_comms.opssat_student` under CKKS. Its card still said no code path did, and its
+`weights.json` published `mean` and `scale` as null because the ONNX graph applies them, so an encrypted client had to read them out of the graph. The
+card is regenerated from the registry, and `weights.json` gains a `ckks_client` block: the expansion and the scaler a CKKS client applies before
+encrypting, read from the graph's `Scaler` node by `scripts/data/build_heldout_payloads.py`. `input` is unchanged, so the ONNX path reads exactly what
+it did. `distil.save_student` writes the same block for any pipeline student it trains from now on.
+
+Not retrained: the rules forbid retraining a shipped model for a better seed, the student already tracks its teacher (AUC-PR 0.968055 against 0.968107),
+and the same run would reproduce it. Published as revision `b1c32f6`, re-pinned; the ONNX graph is byte-identical to the previous revision's
+(SHA-256 `008ce438...`), and the card and weights on the Hub match the files here.
 
 ### The Python tiers' circuits run on one configured simulator, and the GPU ones were measured
 

@@ -236,6 +236,10 @@ def fold_threshold_into_torch_head(model, threshold: float, *, positive_class: i
     return model
 
 
+#: Round 86. Shared with scripts/data/build_heldout_payloads.py, which adds the block to a student published before it existed.
+CKKS_CLIENT_NOTE = ('What a CKKS client applies itself, on its plaintext row and before encrypting: the graph does this inside, so `input` '
+                    'above asks nothing of an ONNX caller, while an encrypted dot product needs the expanded, z-scored row.')
+
 def save_student(student, out_dir, *, n_features: int, teacher_key: str,
                  student_key: str, classes: list | None = None, scaler=None,
                  fixtures: np.ndarray | None = None) -> dict:
@@ -313,6 +317,13 @@ def save_student(student, out_dir, *, n_features: int, teacher_key: str,
         "W": coef.tolist(), "b": intercept.tolist(),
         "n_parameters": int(coef.size + intercept.size),
         "classes": classes if classes is not None else list(range(max(2, coef.shape[0] + 1))),
+        # Round 86: a pipeline student's scaler lived only inside its graph, so an encrypted client had to parse ONNX.
+        **({} if not (pipeline and fitted_scaler is not None) else {"ckks_client": {
+            "note": CKKS_CLIENT_NOTE,
+            "preprocessing": (["quadratic expansion"] if poly else []) + ["subtract mean", "divide by scale"],
+            "mean": [float(v) for v in fitted_scaler.mean_],
+            "scale": [float(v) for v in fitted_scaler.scale_],
+        }}),
     }, indent=2) + "\n")
 
     # Same fixtures-and-verify path the teachers take, so the artefact set matches. `fixtures` is
