@@ -29,15 +29,20 @@ WHY THIS DATASET AND NOT SMAP/MSL
 
 WHAT TO REPORT
     Event-wise F-beta at beta=0.5, which is what ESA-ADB and Telemanom actually report. Telemanom's
-    frequently-quoted 0.71 is F0.5 under an event-overlap rule, not F1, and the two are routinely
-    conflated. Point-adjusted F1 is computed too, purely so the page can show how much it inflates.
+    frequently-quoted 0.71 is printed in the "F0.5 score" column of Hundman et al. 2018's Table 2
+    (arXiv:1802.04431), not as an F1, and the two are routinely conflated. It does not follow from
+    that table's own precision and recall: the totals, 87.5% and 80.0%, give F0.5 = 0.859, and SMAP's
+    85.5% and 85.5% give 0.855 for any beta. So this project quotes it as printed and compares with
+    nothing derived from it. Point-adjusted F1 is computed too, purely so the page can show how much
+    it inflates.
 
-    The comparator is ESA-ADB **Supplementary Table 9** (anomalies alone), Mission1 lightweight
-    channels 41-46, Telemanom-ESA-Pruned: corrected event-wise F0.5 = 0.968. Earlier rounds cited
-    Table 2's 0.786, which is a real number correctly attributed but scores ALL events - anomalies
-    PLUS annotated rare nominal events - and this project scores anomalies only. So 0.786 was the
-    wrong row, and the lenient one. On the *full* Mission1 channel set the same method scores 0.061;
-    that collapse is the honest headline and is printed alongside.
+    The comparators are ESA-ADB's, Mission1 lightweight channels 41-46, Telemanom-ESA-Pruned, one per
+    reading. Anomalies alone: **Supplementary Table 9** (Table 18 of the DMLR version), corrected
+    event-wise F0.5 = 0.968, which the headline is set against. All events, anomalies PLUS annotated
+    rare nominal events: Table 2's 0.786 (DMLR Table 4). Until Round 86 this project scored anomalies
+    only, so Table 2 was then the wrong row, and the lenient one. Since Round 86 the record carries
+    both readings, each against its own row. On the *full* Mission1 channel set the same method
+    scores 0.061; that collapse is the honest headline and is printed alongside.
 
     CARE WITH THAT PAIRING, added Round 55. 0.061 is a TABLE 2 figure, so its matched partner is
     Table 2's 0.786 and NOT the 0.968 this paragraph just adopted - Supp. Table 9's own full-channel

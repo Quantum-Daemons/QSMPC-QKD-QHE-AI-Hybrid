@@ -184,8 +184,8 @@ export default function ParameterPanel({ run }: { run: Run }) {
        "intercept-resend fraction (0-1). On the DEFAULT 800 km downlink this link is already "
        + "loss-limited at Eve=0 - its secrecy-capacity bound is negative before she arrives - so raising "
        + "this cannot flip the abort from link-limited to attributable. It takes BOTH a short range "
-       + `and a near-zero budget: at 1 km with 0 + 0 dB the clean link carries C_s = ${csAt(1, 0, 0, 0)} `
-       + `bit/carrier, and Eve at 0.40 drives it to ${csAt(1, 0, 0, 0.4)} - an abort this link would NOT `
+       + `and a near-zero budget: at 1 km with 0 + 0 dB the clean link's Eq. 8 bound is ${csAt(1, 0, 0, 0)} `
+       + `bit per received carrier, and Eve at 0.40 drives it to ${csAt(1, 0, 0, 0.4)} - an abort this link would NOT `
        + "have suffered on its own, which is the one case that reports an eavesdropper. BB84 above "
        + "detects her at that fraction at any range", 1],
       ["Pulses", "sat_pulses", 500000, 1, "channel uses for the free-space downlink"],

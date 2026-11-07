@@ -221,7 +221,8 @@ def test_the_readme_counts_the_published_repos_and_their_one_exception() -> None
     # The sentence moved from the README to docs/findings.md in Round 80, with the findings it
     # belongs to; the README now links there.
     readme = (REPO / "docs" / "findings.md").read_text()
-    # Round 86: the satellite student's pin is withdrawn while it is replaced, so the sentence counts both.
+    # Round 86 withdrew the satellite student's pin while it was replaced, and the sentence counted both; its
+    # successor was pinned on 2026-11-07, so the two counts are equal again and still checked separately.
     m = re.search(r"All (\w+) repos are public, and\s+(\w+) are\s+pinned", readme)
     assert m, "the sentence counting the published repos moved; update this gate with it"
     assert words.get(m.group(1)) == len(_published()), (

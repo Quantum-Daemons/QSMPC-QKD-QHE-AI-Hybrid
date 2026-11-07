@@ -494,7 +494,7 @@ class QSDCStage(Stage):
         if sealed is not None:
             ctx.artifacts["telemetry_sealed_bytes"] = len(sealed)
         bus.log(f"QSDC delivered {res.message_bits} bits "
-                f"(secrecy capacity {res.secrecy_capacity:.3f} bit/carrier, "
+                f"(Eq. 8 bound per received carrier {res.secrecy_capacity:.3f} bit, "
                 f"error {res.error_rate:.3f})", self.name)
 
 

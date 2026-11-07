@@ -2451,20 +2451,20 @@ export function runClientPipeline(
         metric(stage, "qsdc_regime", "asymptotic (infinite block; no finite-size certificate)");
         artifacts.telemetry_delivered = !abort;
         emit("log", stage, !abort
-          ? `QSDC (simulated) delivered telemetry (secrecy-capacity bound C_s ${secrecy.toFixed(4)} bit/carrier, g=${g.toFixed(1)})`
+          ? `QSDC (simulated) delivered telemetry (Qi et al.'s Eq. 8 bound per received carrier, C_s/Q_Bob = ${secrecy.toFixed(4)} bit, g=${g.toFixed(1)})`
           : lossLimited
-            ? `QSDC (simulated) NOT AVAILABLE on this link - the secrecy-capacity bound C_s evaluates to ${secrecy.toFixed(4)} bit/carrier (below zero: no secrecy capacity) `
+            ? `QSDC (simulated) NOT AVAILABLE on this link - Qi et al.'s Eq. 8 bound per received carrier, C_s/Q_Bob, evaluates to ${secrecy.toFixed(4)} bit (below zero: it certifies no secrecy capacity) `
               + `at ${lossDb.toFixed(1)} dB from Eve to Bob's detector, the channel less the station optics `
               + `plus the detector (g=${g.toFixed(1)}), and it is still `
               + `${secrecyNoEve.toFixed(4)} with NO eavesdropper. The limit is the link budget, not `
               // The criterion as computed: C_s = 1 - h(e) - g h(e_x + e_z), with e_x + e_z = 2e here.
               // This line quoted "C_s > 0 requires h(QBER) < 1/(1+g)", the POOLED form that the
               // per-basis correction replaced - a necessary condition, not the one this code applies.
-              + `an attack: C_s = 1 - h(e) - g h(2e) = 1 - ${h2(e).toFixed(4)} - `
+              + `an attack: C_s/Q_Bob = 1 - h(e) - g h(2e) = 1 - ${h2(e).toFixed(4)} - `
               + `${(g * h2(Math.min(0.5, 2 * e))).toFixed(4)} at the channel model's error rate e = ${e.toFixed(4)} `
-              + `(the QKD stage's QBER is a sampled draw around it). `
-              + `Telemetry falls back to the PQC session key.`
-            : `QSDC (simulated) ABORTED: the secrecy-capacity bound C_s is ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
+              + `(the QKD stage's QBER is a sampled draw around it). This models the downlink alone: Qi et al.'s DL04 `
+              + `protocol is two-way, and its return path would only add loss. Telemetry falls back to the PQC session key.`
+            : `QSDC (simulated) ABORTED: Qi et al.'s Eq. 8 bound per received carrier, C_s/Q_Bob, is ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
               + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB: the channel less the station optics, plus `
               + `the detector) — this link closes at `
               + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — telemetry withheld`);
