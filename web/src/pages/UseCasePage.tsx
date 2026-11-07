@@ -421,12 +421,16 @@ function UseCaseView({ usecase }: { usecase: string }) {
         State: <b>{state}</b>. The diagram at the top is a live simulator of this use case&apos;s parties — each protocol step lights up as
         the pipeline runs, and every panel on this page fills in from that same run (one Run, one result). Demo mode
         computes entirely in the browser, with every party in this tab (no server compute); the full deployment adds
-        the server-side backends and the real MCP server.
-        <div className="muted" style={{ marginTop: 6, fontSize: 11 }}>
-          Hybrid split, on the pages that run one (finance, medical, genomics): linear layers to FHE and
-          non-linear ones to MPC, the line of work from Gazelle to BLB and the preprint <i>EncFormer</i>; in this
-          tab only the argmax runs as MPC. See <code>references/</code>.
-        </div>
+        the server-side backends and the real MCP server.{" "}
+        {/* Only on the pages that run the split (Round 86): it was static, so the satellite and telecom pages,
+            which run no 2PC, said "in this tab only the argmax runs as MPC". And it says what that argmax does. */}
+        {["finance_aml", "medical_fl", "genomics"].includes(usecase) && (
+          <div className="muted" style={{ marginTop: 6, fontSize: 11 }}>
+            Hybrid split: linear layers to FHE and non-linear ones to MPC, the line of work from Gazelle to BLB
+            and the preprint <i>EncFormer</i>. In this tab only the argmax runs as MPC, over scores the client has
+            already decrypted, so it measures the protocol&apos;s cost and hides nothing. See <code>references/</code>.
+          </div>
+        )}
       </div>
 
       {/* The run's status is shown in the sidebar (lib/runStatus.ts) since Round 80. */}

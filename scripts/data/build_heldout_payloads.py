@@ -62,8 +62,9 @@ APACHE_2 = "https://www.apache.org/licenses/LICENSE-2.0"
 #: registry still named SMAP/MSL; the two must now change together.
 SATELLITE_PROVENANCE = (
     "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588359, version 1, "
-    "CC-BY-4.0): 19 precomputed per-segment features of the benchmark's test partition. The demo's "
-    "anomaly regression is fitted here on 370 of those 529 segments and the verdict is drawn from "
+    "CC-BY-4.0): 18 precomputed per-segment features plus each segment's sampling rate, from the "
+    "benchmark's test partition. The demo's "
+    "anomaly regression is fitted offline, by this script, on 370 of those 529 segments and the verdict is drawn from "
     "the other 159; it is not the published satellite_comms.opssat model.")
 
 

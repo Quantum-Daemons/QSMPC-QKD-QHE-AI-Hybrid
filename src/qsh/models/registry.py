@@ -674,8 +674,9 @@ BUNDLED_DEMO_SAMPLES: dict[str, tuple[str, DatasetSpec]] = {
     # `SATELLITE_PROVENANCE` in scripts/data/build_heldout_payloads.py, which writes the file.
     "satellite_comms": (
         "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588359, version 1, "
-        "CC-BY-4.0): 19 precomputed per-segment features of the benchmark's test partition. The demo's "
-        "anomaly regression is fitted here on 370 of those 529 segments and the verdict is drawn from "
+        "CC-BY-4.0): 18 precomputed per-segment features plus each segment's sampling rate, from the "
+        "benchmark's test partition. The demo's "
+        "anomaly regression is fitted offline, by this script, on 370 of those 529 segments and the verdict is drawn from "
         "the other 159; it is not the published satellite_comms.opssat model.",
         DS_OPSSAT_AD,
     ),
@@ -812,7 +813,10 @@ M_OPSSAT = MetricSpec(
                      "Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, "
                      "MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963."),
     ceiling=0.979,
-    ceiling_source="FCNN, the best of the 30 published baselines - there is no higher number to cite.",
+    # "there is no higher number to cite" until Round 86: that holds of AUC PR, the only metric this field is read
+    # against, and was read as a claim about every metric.
+    ceiling_source=("FCNN, the best AUC PR among the 30 baselines Ruszczak et al. benchmarked on this split; "
+                    "no higher published AUC PR was found."),
     # Area under the precision-recall curve is the headline because the positive class is 20.4% of
     # the data: accuracy would read ~0.80 for a detector that never fires at all.
     companion="f1",
@@ -1220,7 +1224,9 @@ _SPECS: tuple[ModelSpec, ...] = (
         usecase="satellite_comms",
         tier="t2_industry",
         key="satellite_comms.telemanom",
-        label="Telemanom LSTM forecaster (per channel)",
+        # "(per channel)" until Round 86: it is ONE network over channels 41-46, predicting all six, which is
+        # ESA-ADB's Telemanom-ESA design and not original Telemanom's one model per channel.
+        label="Telemanom LSTM forecaster (one model over six channels, as Telemanom-ESA)",
         architecture="2 x LSTM(80), sequence length 250, dropout 0.3, non-parametric dynamic threshold with pruning",
         params=None,
         dataset=DS_ESA_ADB,
@@ -1329,9 +1335,10 @@ _SPECS: tuple[ModelSpec, ...] = (
                "reduction of it - and it had room to spare. The student now fits over the QUADRATIC "
                "expansion of those features, 209 terms, still one packed dot product at unchanged "
                "multiplicative depth, because the expansion is a function of the plaintext input "
-               "and is computed before encryption. The ring carries orders of magnitude more slots "
-               "than this feature map needs, so the cipher was never the binding constraint "
-               "here - the feature map was. Measured: "
+               "and is computed before encryption. The 209 terms pad to 256 slots, 16 times fewer than "
+               "the ring's 4,096, so each ciphertext packs 16 rows and the slots set the batching (34 "
+               "ciphertexts for 529 segments), not a limit on the feature map; the cipher was never the "
+               "binding constraint here - the feature map was. Measured: "
                "minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681 (0.968055 against the "
                "teacher's 0.968107, equal at four decimals). The satellite page evaluates this student "
                "under CKKS in the browser on all 529 test segments, as a check of agreement with "
