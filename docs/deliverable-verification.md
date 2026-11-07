@@ -8954,3 +8954,36 @@ regenerated them for the new pins. They reproduced exactly: only the pin, the ru
 
 Still open: the medical student's `weights.json` note still says its ReLU and argmax run under MPC. That note is part
 of the weights file, which this republish left byte-identical.
+
+### The satellite pages' text, against the satellite fact-check (2026-11-07)
+
+Each fix below was checked against its primary source or the code:
+
+- **Network tab.**
+  - The Khmelev et al. comparison set the model's key against their FINAL key, 310,400 bits, which is the key after
+    a detector-mismatch analysis this model does not run. The like-for-like key is the 629,000 bits from before it.
+    The table and the sentence now compare with that: 1.38 times, where they said 2.80.
+  - The relay row counted pass pairs for Liao et al.'s 100 kB on one basis. It said the asymptotic count, 2, was one
+    "no finite block distils", which is false on both bases, the convention Liao counted in, where the finite count
+    is also 2. The row now shows both. `web/scripts/check_relay_pass_pairs.mjs` checks the both-bases count against
+    the page's own computation; seeded with the wrong count, it fails.
+  - The rest of the tab:
+    - Lim et al. key X and estimate from Z; the tab had the bases the other way round.
+    - The eclipse-only rule for the links is Vergoossen et al.'s own (sections 2.2 and 2.3), not this page's
+      assumption.
+    - The weather is Liao et al.'s attribution of the scatter, not a measurement here.
+    - The 6.8 h wait is a minimum: in Liao et al.'s run the stations' passes fell on different nights.
+- **The use-case footer** said "in this tab only the argmax runs as MPC" on every page, including satellite and
+  telecom, which run no 2PC. It now renders on finance, medical and genomics only, and says the argmax runs over
+  decrypted scores and hides nothing.
+- **Registry.**
+  - The Telemanom card is titled for what it is: one model over the six channels, as Telemanom-ESA, not one per
+    channel.
+  - The OPS-SAT student's slots are 16 times its padded feature map, not orders of magnitude more.
+  - The OPS-SAT ceiling is the best AUC PR found, not "no higher number" of any kind.
+  - The OPS-SAT payload has 18 features plus each segment's sampling rate, not 19 features. Its demo regression is
+    fitted offline by the payload script, and `scripts/data/build_heldout_payloads.py` regenerated it: only the
+    provenance changed.
+
+The Telemanom detector itself is being re-implemented and retrained on ESA-ADB's own split, as the owner chose. It is
+recorded separately, and nothing here changes the published model.

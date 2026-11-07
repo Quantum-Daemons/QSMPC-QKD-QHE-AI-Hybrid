@@ -198,9 +198,10 @@ def test_the_tab_prints_both_conventions_beside_the_published_keys(pages) -> Non
     assert "Secret key, asymptotic (both bases) 462,290" in t
     # Khmelev et al., anchored on their final key, with the key before the mismatch analysis named.
     assert "Khmelev et al., Opt. Express 32, 11964 (2024)" in t
-    assert "Secret key, finite, one basis (Z) 435,095 310,400 (final) +40.2%" in t
-    assert "Secret key, finite, both bases 868,462 310,400 (final) +179.8%" in t
-    assert "before it their key is 629,000 bits" in t and "f_EC 1.44, where this model uses 1.16" in t
+    # Against their key before the detector-mismatch analysis, which this model has no mismatch to need (Round 86).
+    assert "Secret key, finite, one basis (Z) 435,095 629,000 (before the mismatch analysis) -30.8%" in t
+    assert "Secret key, finite, both bases 868,462 629,000 (before the mismatch analysis) +38.1%" in t
+    assert "Their final key is 310,400 bits" in t and "f_EC 1.44, where this model uses 1.16" in t
     # The run's own pass gives both too.
     assert re.search(r"keyed on the Z basis as the run keys it; on both bases, [\d.,]+ kbit", t)
 
@@ -210,7 +211,8 @@ def test_the_gap_paragraph_is_computed_and_tells_the_basis_story(pages) -> None:
     for story in ("45 percent", "29 percent", "the statistics close", "not most of either", "0.75 and 0.69"):
         assert story not in t, story
     assert "so 95% of the step from the asymptotic row to the one-basis row is the basis convention" in t
-    assert "the model's key is 1.50 times Liao's, and on Khmelev et al.'s session 2.80 times theirs" in t
+    assert ("the model's key is 1.50 times Liao's, and on Khmelev et al.'s session 1.38 times their key before the "
+            "detector-mismatch correction") in t
     # On another profile the same sentence carries that profile's figures, not the default's.
     u = pages["upper"]
     one = re.search(r"Secret key, finite, one basis \(Z\) ([\d,]+) 300,939", u).group(1)

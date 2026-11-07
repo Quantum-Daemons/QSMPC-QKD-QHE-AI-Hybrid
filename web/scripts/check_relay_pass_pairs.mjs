@@ -72,8 +72,15 @@ const row = html.match(/Pass pairs for Liao's 100 kB(.{0,400})/)?.[1] ?? "";
 check("panel", row.length > 0, "the pass-pairs row was not rendered - this check is inert");
 const shown = Number(row.trim().split(" ")[0]);
 check("panel", shown === pairs, `the row shows ${row.trim().split(" ")[0]} pass pairs; the page's own finite key needs ${pairs}`);
-check("panel", new RegExp(`asymptotic key would need ${relay.passPairsFor100kB}\\b`).test(row),
+// Round 86: the row names the both-bases finite count too, the convention Liao et al. counted in, and the asymptotic
+// count beside it. It said the asymptotic count was one "no finite block distils", which both bases contradict.
+const both = (pass) => m.fk.keyLength(...m.fk.blockCounts(pass.segments, fkSrc), { ...fkSrc, keyBasis: "both" }).keyBits;
+const pairsBoth = Math.ceil(800_000 / Math.min(both(relay.a), both(relay.b)));
+check("panel", new RegExp(`keyed on both bases, as Liao et al\\. counted, ${pairsBoth}\\b`).test(row),
+  `the both-bases count ${pairsBoth} is not shown beside the one-basis one`);
+check("panel", new RegExp(`the asymptotic key ${relay.passPairsFor100kB}\\b`).test(row),
   "the asymptotic count is not named as the comparison beside it");
+check("panel", !/no finite block distils/.test(row), "the row says no finite block distils the asymptotic count");
 
 if (failures.length) {
   console.error(`check_relay_pass_pairs: ${failures.length} failure(s)`);
