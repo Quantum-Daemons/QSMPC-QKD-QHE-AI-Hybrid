@@ -2555,25 +2555,122 @@
       },
       {
         "achieved": {
-          "agreement": 0.999192,
+          "agreement": 0.999624,
           "both_scored_zero": false,
-          "disagreement_on_positives": 0.184615,
+          "disagreement_on_positives": 0.024323,
+          "esa_scores": {
+            "direct_fit": {
+              "all_events_corrected_event_wise_f0_5": 0.718726,
+              "corrected_event_wise_f0_5": 0.939781,
+              "fn": 7,
+              "fp": 0,
+              "ridge_alpha": 100000.0,
+              "tp": 22
+            },
+            "student": {
+              "all_events_corrected_event_wise_f0_5": 0.71872,
+              "corrected_event_wise_f0_5": 0.93977,
+              "fn": 7,
+              "fp": 0,
+              "tp": 22
+            },
+            "teacher": {
+              "all_events_corrected_event_wise_f0_5": 0.745051,
+              "corrected_event_wise_f0_5": 0.949941,
+              "fn": 6,
+              "fp": 0,
+              "tp": 23
+            }
+          },
+          "export": {
+            "fp32_bytes": 1726,
+            "int8_skipped_reason": "ai.onnx.ml linear model: coefficients live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
+            "opset": 17
+          },
+          "floor": 0.0105,
+          "forecast_mae_student_to_teacher": 0.126269,
+          "forecast_mae_unlabelled_windows": {
+            "direct_fit": 0.27074,
+            "persistence": 0.351422,
+            "student": 0.276142,
+            "teacher": 0.304488
+          },
+          "git_sha": "97f9990-dirty",
           "hf_revision_invalidated_by_retrain": "abee00f126b206242276a1f115f84ca0fb3538ed",
-          "metric_delta": 0.961026,
-          "metric_delta_pp": 96.1026,
+          "k_rows": 8,
+          "metric_delta": 0.010171,
+          "metric_delta_pp": 1.0171,
           "metric_name": "corrected_event_wise_f0_5",
-          "n_eval": 2844581,
-          "n_scoring_units": 12,
-          "scoring_unit": "labelled anomaly events (ESA-ADB's ESAScores rules)",
+          "n_eval": 7364160,
+          "n_scoring_units": 29,
+          "n_unlabelled_windows": 7208289,
+          "ridge_alpha": 1000000.0,
+          "ridge_validation_table": [
+            {
+              "alpha": 0.0,
+              "validation_mse": 0.009947428
+            },
+            {
+              "alpha": 0.0001,
+              "validation_mse": 0.009947428
+            },
+            {
+              "alpha": 0.001,
+              "validation_mse": 0.009947428
+            },
+            {
+              "alpha": 0.01,
+              "validation_mse": 0.009947428
+            },
+            {
+              "alpha": 0.1,
+              "validation_mse": 0.009947427
+            },
+            {
+              "alpha": 1.0,
+              "validation_mse": 0.009947424
+            },
+            {
+              "alpha": 10.0,
+              "validation_mse": 0.009947394
+            },
+            {
+              "alpha": 100.0,
+              "validation_mse": 0.009947092
+            },
+            {
+              "alpha": 1000.0,
+              "validation_mse": 0.009944082
+            },
+            {
+              "alpha": 10000.0,
+              "validation_mse": 0.009915177
+            },
+            {
+              "alpha": 100000.0,
+              "validation_mse": 0.00971535
+            },
+            {
+              "alpha": 1000000.0,
+              "validation_mse": 0.009670992
+            },
+            {
+              "alpha": 10000000.0,
+              "validation_mse": 0.017086905
+            }
+          ],
+          "scoring_unit": "labelled anomaly events (ESA-ADB's ESAScores rules), over the whole test half",
           "student_key": "satellite_comms.student",
-          "student_metric": 0.0,
-          "student_params": 49,
+          "student_kind": "linear next-step forecaster, thresholded by the client",
+          "student_metric": 0.93977,
+          "student_params": 294,
           "teacher_key": "satellite_comms.telemanom",
-          "teacher_metric": 0.961026,
+          "teacher_metric": 0.949941,
           "teacher_params": 84860,
-          "teacher_scored_zero": false
+          "teacher_scored_zero": false,
+          "wall_clock_s": 354.1
         },
-        "architecture": "logistic regression over channel x timestep windows",
+        "architecture": "linear next-step forecaster over the last 8 rows x 6 channels (288 weights + 6 biases), evaluated under CKKS; the client thresholds the decrypted forecast with Telemanom's procedure",
         "artifacts": [
           {
             "browser_runnable": true,
@@ -2598,13 +2695,13 @@
           "publishable": true,
           "url": "https://zenodo.org/records/12528696"
         },
-        "eval_sample_reason": "its metric, event-wise F0.5, is defined over contiguous runs of a timeline and cannot be re-scored from independent rows, which is what the browser evaluator scores",
-        "eval_split": null,
+        "eval_sample_reason": null,
+        "eval_split": "one contiguous stretch of the held-out test half, ESA-ADB's own Mission1 split from 2007-01-01: the three days where the student's pipeline detects the most anomalies, so that the page has flags to reproduce",
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-ckks-student",
         "hf_revision": null,
         "hf_revision_stale": "abee00f126b206242276a1f115f84ca0fb3538ed",
         "key": "satellite_comms.student",
-        "label": "CKKS-linear telemetry anomaly student",
+        "label": "CKKS-linear telemetry forecaster student",
         "metric": {
           "baseline": 0.968,
           "baseline_source": "ESA-ADB Supplementary Table 9 (arXiv:2406.17826 v2; Table 18 of the DMLR 2026 version, read 2026-11-07), Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for ANOMALIES ALONE, which is what this project scores, so it is the like-for-like row. Earlier rounds cited Table 2's 0.786, which scores all events but communication gaps, anomalies PLUS annotated rare nominal events: a real number, and the lenient row. Since Round 86 the model is trained, thresholded and scored by ESA-ADB's own recipe and rules (scripts/train/satellite_telemanom.py): its Mission1 split, the 30 s zero-order hold, its scaling and training windows, Telemanom's thresholding as ESA-ADB's TelemanomThresholding applies it, and a reimplementation of its ESAScores over the test half's 29 anomalies. Two choices behind the published figure are not copied into this project's own result, and the record carries both: its floor of 0.05/7 is not shown to have been chosen without the test half, so the floor here is chosen on the validation months; and ESA-ADB's prepared series reads the labels to write annotated samples the zero-order hold dropped back onto the grid. Applying both reproduces the published figure (esa_scores.restored_annotated_samples in the record).",
@@ -2615,12 +2712,12 @@
           "display": "corrected event-wise F0.5 (ESA-ADB)",
           "name": "corrected_event_wise_f0_5"
         },
-        "notes": "The one published model with no browser evaluation sample, and the reason is the metric rather than the weights: event-wise F0.5 is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows, which is what the browser evaluator scores. It needs no scaler of its own: scripts/train/satellite_telemanom.py fits it on the forecaster's z-scored windows (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. NOT REPUBLISHED SINCE THE ROUND 86 RETRAIN, and to be replaced. Against the retrained forecaster this logistic student scores far below the teacher on its evaluation slice (the record's student_metric and teacher_metric) and raises far fewer alarms. A linear map over a window cannot reproduce a forecast-error threshold, so the replacement will be a linear next-step forecaster evaluated under CKKS, whose decrypted forecast the client thresholds itself (the owner's choice, 2026-11-07). The Hub copy is the student of the Round 71 model. No code path here evaluates this student under CKKS today: the satellite page has no private-inference stage, and the full deployment's telemetry stage encrypts the OPS-SAT-AD demo regression the browser scores in plaintext.",
+        "notes": "A LINEAR NEXT-STEP FORECASTER SINCE ROUND 86, trained by scripts/train/satellite_student_forecaster.py from the published teacher. The logistic student before it classified the teacher's flags from 8 rows and could not follow the retrained teacher, because a threshold on a forecast error is not linear in the window. A forecast is close to linear in the last rows, and Telemanom's thresholding needs nothing else. So the encrypted part is the forecast: six dot products with the last 8 z-scored rows, ridge-fitted to the teacher's own forecasts on its unlabelled training windows. The client decrypts the forecast and thresholds it with the teacher's procedure at the teacher's floor, in plaintext. The record holds the pipeline's event scores beside the teacher's over the whole test half, the forecast errors of both against persistence, and the same model fitted to the truth instead of the teacher. The page scores this student end to end on its published stretch: its forecasts in plaintext and under CKKS (encryptedLinearBatch), Telemanom's thresholding in a TypeScript port checked flag for flag against the Python, and ESA-ADB's scorer in a port checked against the Python. Its weights.json carries the z-score constants, because the thresholding works in raw units.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
         "params": null,
-        "pin_withdrawn_reason": "its teacher was retrained in Round 86 and this logistic student cannot follow it (the record's student_metric against teacher_metric); the owner chose to replace it with a linear next-step forecaster evaluated under CKKS before publishing again, so the Hub copy, the student of the Round 71 model, is no longer served",
+        "pin_withdrawn_reason": "it is being replaced: the Hub copy is the logistic student of the Round 71 teacher, which could not follow the Round 86 teacher, and its successor, the linear forecaster recorded here, is published only on the owner's approval",
         "runs_encrypted": true,
         "tier": "t1_crypto"
       },

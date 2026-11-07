@@ -27,6 +27,7 @@
 // registry in config.defaults.json — no model id, revision or URL is written in TypeScript.
 // Types only. The RUNTIME build is chosen at load time by loadOrt() below, because the two builds
 // are not interchangeable at runtime even though their APIs are identical.
+import { evaluateForecastStudent, fetchForecasterWeights, type ForecastEventsFile, type StudentEvaluation } from "./forecastStudent";
 import type * as OrtTypes from "onnxruntime-web";
 
 /**
@@ -541,11 +542,11 @@ export interface ModelEvalResult {
   decisionThreshold?: number | null;
   task: "classification" | "forecast";
   n: number;
-  /** Accuracy, rare-class F1, or mean absolute error, depending on `metricName`. */
+  /** Accuracy, rare-class F1, mean absolute error, or an event score, depending on `metricName`. */
   score: number | null;
   /** Which metric `score` and `expected` are. The model is scored on the metric it was PUBLISHED
    *  with, not on whichever one the browser found easiest to compute. */
-  metricName: "accuracy" | "minority_class_f1" | "macro_f1" | "mae";
+  metricName: "accuracy" | "minority_class_f1" | "macro_f1" | "mae" | "corrected_event_wise_f0_5";
   expected: number | null;
   /** Majority-class accuracy, or persistence MAE — what a trivial predictor would achieve. */
   baseline: number | null;
@@ -555,6 +556,9 @@ export interface ModelEvalResult {
    *  so the median absolute error of the model and of persistence, and the windows on which the model's own mean
    *  error is the lower, travel with it. Absent for classifiers. */
   forecastDetail?: { medianAe: number; persistenceMedianAe: number; windowsBetter: number; windows: number };
+  /** The satellite forecaster student scored end to end on its stretch (Round 86): the flags against the recorded
+   *  digest, the event scores, and every row's forecast under CKKS with the events the decrypted forecast gives. */
+  studentDetail?: StudentEvaluation;
   /** |measured - expected| within tolerance. False means the browser must NOT present the number. */
   matchesExpected: boolean;
   backend: string;
@@ -730,6 +734,24 @@ export async function evaluatePublishedModel(
   }
   const file = got.file;
   const split = base.split;
+  // The forecaster student's sample is a stretch of a timeline scored by events, not rows for a graph (Round 86).
+  if ((file as unknown as { task?: string }).task === "forecast_events") {
+    try {
+      const f = file as unknown as ForecastEventsFile;
+      const w = await fetchForecasterWeights(target.url);
+      // Every row under CKKS: the events of the decrypted forecast are the claim, so a 64-row spot check would not do.
+      const ev = await evaluateForecastStudent(f, w, { ckks: "all" });
+      return {
+        ...base, ran: true, task: "forecast", metricName: "corrected_event_wise_f0_5", n: f.stretch.rows,
+        score: ev.plain.anomalies.f05, expected: f.expected.anomalies.f_0_5, baseline: null, beatsBaseline: true,
+        matchesExpected: ev.flagsDigestMatches && ev.scoreMatches, backend: "cpu (float64) + CKKS (node-seal)",
+        provenance: f.provenance, note: f.expected.note, error: null, studentDetail: ev,
+      };
+    } catch (e) {
+      return { ...base, provenance: (file as ModelInputFile).provenance,
+               error: `the forecaster student could not be evaluated: ${(e as Error)?.message ?? String(e)}` };
+    }
+  }
   const thr = file.expected.decision_threshold ?? null;
   base.decisionThreshold = thr;
 

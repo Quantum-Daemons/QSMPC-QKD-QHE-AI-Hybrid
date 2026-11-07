@@ -1261,38 +1261,38 @@ _SPECS: tuple[ModelSpec, ...] = (
         usecase="satellite_comms",
         tier="t1_crypto",
         key="satellite_comms.student",
-        label="CKKS-linear telemetry anomaly student",
-        architecture="logistic regression over channel x timestep windows",
+        # A linear next-step forecaster since Round 86 (the owner's choice of 2026-11-07); a logistic classifier of
+        # the teacher's flags until then, which could not follow the retrained teacher.
+        label="CKKS-linear telemetry forecaster student",
+        architecture=("linear next-step forecaster over the last 8 rows x 6 channels (288 weights + 6 biases), "
+                      "evaluated under CKKS; the client thresholds the decrypted forecast with Telemanom's procedure"),
         params=None,
         dataset=DS_ESA_ADB,
         metric=M_ESA,
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-satellite-telemanom-ckks-student",
         pin_withdrawn_reason=(
-            "its teacher was retrained in Round 86 and this logistic student cannot follow it (the record's "
-            "student_metric against teacher_metric); the owner chose to replace it with a linear next-step forecaster "
-            "evaluated under CKKS before publishing again, so the Hub copy, the student of the Round 71 model, is no "
-            "longer served"),
+            "it is being replaced: the Hub copy is the logistic student of the Round 71 teacher, which could not follow "
+            "the Round 86 teacher, and its successor, the linear forecaster recorded here, is published only on the "
+            "owner's approval"),
         runs_encrypted=True,
-        eval_sample_reason=(
-            "its metric, event-wise F0.5, is defined over contiguous runs of a timeline and cannot "
-            "be re-scored from independent rows, which is what the browser evaluator scores"),
+        eval_split=(
+            "one contiguous stretch of the held-out test half, ESA-ADB's own Mission1 split from 2007-01-01: the three "
+            "days where the student's pipeline detects the most anomalies, so that the page has flags to reproduce"),
         notes=(
-            "The one published model with no browser evaluation sample, and the reason is the "
-            "metric rather than the weights: event-wise F0.5 is defined over contiguous runs of a timeline and "
-            "cannot be computed from a shuffled set of independent rows, which is what the browser evaluator scores. "
-            "It needs no scaler of its own: scripts/train/satellite_telemanom.py fits it on the forecaster's "
-            "z-scored windows (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json "
-            "is correct rather than the omission it looks like. "
-            "NOT REPUBLISHED SINCE THE ROUND 86 RETRAIN, and to be replaced. Against the retrained forecaster this "
-            "logistic student scores far below the teacher on its evaluation slice (the record's student_metric and "
-            "teacher_metric) and raises far fewer alarms. A linear map over a window cannot reproduce a forecast-error "
-            "threshold, so the replacement "
-            "will be a linear next-step forecaster evaluated under CKKS, whose decrypted forecast the client "
-            "thresholds itself (the owner's choice, 2026-11-07). The Hub copy is the student of the Round 71 model. "
-            "No code path here evaluates this student under CKKS today: the satellite page has no private-inference "
-            "stage, and the full deployment's telemetry stage encrypts the OPS-SAT-AD demo regression the browser "
-            "scores in plaintext."
+            "A LINEAR NEXT-STEP FORECASTER SINCE ROUND 86, trained by scripts/train/satellite_student_forecaster.py "
+            "from the published teacher. The logistic student before it classified the teacher's flags from 8 rows "
+            "and could not follow the retrained teacher, because a threshold on a forecast error is not linear in "
+            "the window. A forecast is close to linear in the last rows, and Telemanom's thresholding needs nothing "
+            "else. So the encrypted part is the forecast: six dot products with the last 8 z-scored rows, ridge-fitted "
+            "to the teacher's own forecasts on its unlabelled training windows. The client decrypts the forecast and "
+            "thresholds it with the teacher's procedure at the teacher's floor, in plaintext. The record holds the "
+            "pipeline's event scores beside the teacher's over the whole test half, the forecast errors of both "
+            "against persistence, and the same model fitted to the truth instead of the teacher. "
+            "The page scores this student end to end on its published stretch: its forecasts in plaintext and "
+            "under CKKS (encryptedLinearBatch), Telemanom's thresholding in a TypeScript port checked flag for flag "
+            "against the Python, and ESA-ADB's scorer in a port checked against the Python. Its weights.json carries "
+            "the z-score constants, because the thresholding works in raw units."
         ),
     ),
     ModelSpec(

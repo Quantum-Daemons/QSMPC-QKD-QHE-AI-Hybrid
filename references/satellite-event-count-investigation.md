@@ -83,10 +83,26 @@
 >   against 0.950) and higher on all events (0.845 against 0.745). The like-for-like headline,
 >   anomalies alone, stays with the floor.
 >
-> **The CKKS student is not republished.** Against this teacher, the 49-parameter logistic student
-> scores far below it on its evaluation slice (the record's `student_metric` and `teacher_metric`).
-> It is to be replaced by a linear next-step forecaster evaluated under CKKS, whose forecast the
-> client thresholds itself.
+> **The CKKS student is replaced by a linear next-step forecaster.** Against this teacher, the
+> 49-parameter logistic student scored 0 on its evaluation slice, where the teacher scored 0.961: a
+> threshold on a forecast error is not linear in the window. The forecast itself nearly is. So the new
+> student (`scripts/train/satellite_student_forecaster.py`) is six dot products over the last 8 rows
+> (294 parameters), ridge-fitted to the teacher's own forecasts on the teacher's unlabelled training
+> windows. Over the whole test half, at the teacher's floor:
+>
+> | pipeline | anomalies | tp / fp / fn | all events | forecast MAE, unlabelled windows |
+> |---|---|---|---|---|
+> | teacher (LSTM) | 0.950 | 23 / 0 / 6 | 0.745 | 0.304 |
+> | student (linear, distilled) | 0.940 | 22 / 0 / 7 | 0.719 | 0.276 |
+> | persistence | | | | 0.351 |
+>
+> The same model fitted to the truth instead of the teacher scores the same events. The page
+> evaluates the student on a published three-day stretch:
+> - the forecast is summed as the generator summed it;
+> - the thresholding is a TypeScript port that flags the same rows as the Python on random series and
+>   on the stretch;
+> - every forecast runs again under CKKS (8,640 rows in 135 ciphertexts, max error 1.5e-9), and the
+>   decrypted forecast changes no flag.
 
 
 > **THE MODEL MEASURED HERE WAS RETRAINED IN ROUND 71 (2026-10-26).** Its weights had been trained with

@@ -229,10 +229,11 @@ def test_the_readme_counts_the_published_repos_and_their_one_exception() -> None
     pinned = [s.key for s in _published() if (registry.achieved(s.key) or {}).get("hf_revision")]
     assert words.get(m.group(2)) == len(pinned), (
         f"the sentence says {m.group(2)} are pinned; the records pin {len(pinned)}: {pinned}")
+    # Round 86: the satellite student publishes a stretch of a timeline, so no published model goes without a sample.
     no_sample = [s.key for s in _published() if s.eval_sample_reason]
     tail = readme[m.end():m.end() + 400]
-    assert no_sample == ["satellite_comms.student"] and "satellite student" in tail, (
-        f"the README's exception no longer matches the registry's: {no_sample}")
+    assert no_sample == [] and "satellite student" in tail and "stretch of a timeline" in tail, (
+        f"the README's account of samples no longer matches the registry's: {no_sample}")
 
 
 def test_the_forecaster_sample_states_its_errors_beyond_the_mean() -> None:

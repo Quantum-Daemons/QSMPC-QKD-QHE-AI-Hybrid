@@ -327,23 +327,120 @@
     "teacher_scored_zero": false
   },
   "satellite_comms.student": {
-    "agreement": 0.999192,
+    "agreement": 0.999624,
     "both_scored_zero": false,
-    "disagreement_on_positives": 0.184615,
+    "disagreement_on_positives": 0.024323,
+    "esa_scores": {
+      "direct_fit": {
+        "all_events_corrected_event_wise_f0_5": 0.718726,
+        "corrected_event_wise_f0_5": 0.939781,
+        "fn": 7,
+        "fp": 0,
+        "ridge_alpha": 100000.0,
+        "tp": 22
+      },
+      "student": {
+        "all_events_corrected_event_wise_f0_5": 0.71872,
+        "corrected_event_wise_f0_5": 0.93977,
+        "fn": 7,
+        "fp": 0,
+        "tp": 22
+      },
+      "teacher": {
+        "all_events_corrected_event_wise_f0_5": 0.745051,
+        "corrected_event_wise_f0_5": 0.949941,
+        "fn": 6,
+        "fp": 0,
+        "tp": 23
+      }
+    },
+    "export": {
+      "fp32_bytes": 1726,
+      "int8_skipped_reason": "ai.onnx.ml linear model: coefficients live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
+      "opset": 17
+    },
+    "floor": 0.0105,
+    "forecast_mae_student_to_teacher": 0.126269,
+    "forecast_mae_unlabelled_windows": {
+      "direct_fit": 0.27074,
+      "persistence": 0.351422,
+      "student": 0.276142,
+      "teacher": 0.304488
+    },
+    "git_sha": "97f9990-dirty",
     "hf_revision_invalidated_by_retrain": "abee00f126b206242276a1f115f84ca0fb3538ed",
-    "metric_delta": 0.961026,
-    "metric_delta_pp": 96.1026,
+    "k_rows": 8,
+    "metric_delta": 0.010171,
+    "metric_delta_pp": 1.0171,
     "metric_name": "corrected_event_wise_f0_5",
-    "n_eval": 2844581,
-    "n_scoring_units": 12,
-    "scoring_unit": "labelled anomaly events (ESA-ADB's ESAScores rules)",
+    "n_eval": 7364160,
+    "n_scoring_units": 29,
+    "n_unlabelled_windows": 7208289,
+    "ridge_alpha": 1000000.0,
+    "ridge_validation_table": [
+      {
+        "alpha": 0.0,
+        "validation_mse": 0.009947428
+      },
+      {
+        "alpha": 0.0001,
+        "validation_mse": 0.009947428
+      },
+      {
+        "alpha": 0.001,
+        "validation_mse": 0.009947428
+      },
+      {
+        "alpha": 0.01,
+        "validation_mse": 0.009947428
+      },
+      {
+        "alpha": 0.1,
+        "validation_mse": 0.009947427
+      },
+      {
+        "alpha": 1.0,
+        "validation_mse": 0.009947424
+      },
+      {
+        "alpha": 10.0,
+        "validation_mse": 0.009947394
+      },
+      {
+        "alpha": 100.0,
+        "validation_mse": 0.009947092
+      },
+      {
+        "alpha": 1000.0,
+        "validation_mse": 0.009944082
+      },
+      {
+        "alpha": 10000.0,
+        "validation_mse": 0.009915177
+      },
+      {
+        "alpha": 100000.0,
+        "validation_mse": 0.00971535
+      },
+      {
+        "alpha": 1000000.0,
+        "validation_mse": 0.009670992
+      },
+      {
+        "alpha": 10000000.0,
+        "validation_mse": 0.017086905
+      }
+    ],
+    "scoring_unit": "labelled anomaly events (ESA-ADB's ESAScores rules), over the whole test half",
     "student_key": "satellite_comms.student",
-    "student_metric": 0.0,
-    "student_params": 49,
+    "student_kind": "linear next-step forecaster, thresholded by the client",
+    "student_metric": 0.93977,
+    "student_params": 294,
     "teacher_key": "satellite_comms.telemanom",
-    "teacher_metric": 0.961026,
+    "teacher_metric": 0.949941,
     "teacher_params": 84860,
-    "teacher_scored_zero": false
+    "teacher_scored_zero": false,
+    "wall_clock_s": 354.1
   },
   "satellite_comms.telemanom": {
     "anomaly_sample_rate": 0.00755741,

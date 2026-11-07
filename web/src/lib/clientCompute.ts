@@ -1781,6 +1781,16 @@ export function runClientPipeline(
               + `${r2(v.score)} but the recorded figure is ${r2(v.expected)} (|delta| `
               + `${delta.toExponential(2)}, tolerance 0.05). Treat every number on this page for `
               + `${key} as unverified until this is explained.`);
+          // The forecaster student (Round 86): what encryption did to its forecast and to the events it gives.
+          const sd = v.studentDetail;
+          if (sd?.ckks) {
+            const c = sd.ckks, e = c.encrypted.anomalies;
+            emit("log", stage, `${key}: its forecast under CKKS, all ${c.rows} rows in ${c.ciphertexts} `
+              + `ciphertexts (${r2(c.fheMs / 1000)} s): max |decrypted - plaintext| ${c.maxAbsError.toExponential(2)}; `
+              + `the decrypted forecast, thresholded in this tab, changes ${c.flagsChanged} of ${sd.plain.flags.length} `
+              + `flags and scores ${r2(e.f05)} (tp ${e.tp} fp ${e.fp} fn ${e.fn}) against ${r2(sd.plain.anomalies.f05)} `
+              + `from the plaintext forecast, whose flags match the published digest: ${sd.flagsDigestMatches ? "yes" : "NO"}.`);
+          }
           // A model that cannot beat a trivial predictor is worth saying out loud even when it
           // reproduces its own figure exactly - reproducing a bad number is still reproducing it.
           if (!v.beatsBaseline && v.baseline != null) {

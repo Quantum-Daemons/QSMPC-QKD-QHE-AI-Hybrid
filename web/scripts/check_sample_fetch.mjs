@@ -20,8 +20,8 @@
  *
  * Run: npm run check:sample-fetch   (CHECK_MODULE=<path> checks another copy of the module)
  */
-import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -36,8 +36,21 @@ const dir = mkdtempSync(join(tmpdir(), "qsh-sample-fetch-"));
 const entry = join(dir, "entry.ts");
 writeFileSync(entry, `export { runPublishedModel, evaluatePublishedModel } from ${JSON.stringify(MODULE)};\n`);
 const out = join(dir, "bundle.mjs");
-execFileSync("npx", ["esbuild", entry, "--bundle", "--format=esm", "--platform=node",
-                     `--outfile=${out}`, "--log-level=error"], { cwd: WEB, stdio: "pipe" });
+// Through esbuild's API rather than its CLI, for one plugin. Since Round 86 the module reaches clientFHE.ts
+// (the satellite student's CKKS, through forecastStudent.ts), whose SEAL wasm import is the one Vite-only
+// specifier, `?url`. The CLI cannot resolve it; the plugin turns it into the wasm's path on disk, as the node
+// CKKS tests (tests/test_r84_c3_encrypted_heldout_in_node.py) do. Nothing here runs the CKKS.
+const { build } = createRequire(join(WEB, "package.json"))("esbuild");
+const sealWasm = join(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
+await build({
+  entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error",
+  absWorkingDir: WEB,
+  plugins: [{ name: "wasm-url", setup(b) {
+    b.onResolve({ filter: /seal_throws\.wasm\?url$/ }, () => ({ path: "sealwasm", namespace: "wasmurl" }));
+    b.onLoad({ filter: /.*/, namespace: "wasmurl" },
+             () => ({ contents: `export default ${JSON.stringify(sealWasm)};`, loader: "js" }));
+  } }],
+});
 
 /** A fresh copy of the module per case, so one case's cache cannot answer for another's. */
 let instance = 0;
