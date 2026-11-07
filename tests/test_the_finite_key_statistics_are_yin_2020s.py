@@ -17,7 +17,9 @@ read on the rendered page:
 Those fractions are of one-basis keys, and the 0.56 is of Khmelev et al.'s 629,000 bits before their
 detector-mismatch analysis. Keyed on both bases, as both published keys were, the model's reach 1.08
 of Liao's key and 2.27 of Khmelev et al.'s final 310,400 under Hoeffding (Round 84,
-`tests/test_the_satellite_block_is_a_pass.py`): the gap was mostly the basis convention.
+`tests/test_the_satellite_block_is_a_pass.py`): the gap was mostly the basis convention. (Round 86
+counts Khmelev et al.'s session from the 28 deg where their tracking started, which makes the 0.56
+0.54 and the 2.27 2.16.)
 
 Neither statistics is tighter everywhere: Chernoff's deviation, about sqrt(2 beta x), beats
 Hoeffding's sqrt(n beta / 2) only for a count under a quarter of its basis. So the default bounds each

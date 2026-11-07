@@ -26,7 +26,8 @@ WHAT IS ASSERTED
   0.75 of the published 300,939 bits on one basis and 1.50 on both, and the both-bases key is within 3
   percent of the asymptotic figure: the drop from the asymptotic row to the one-basis row is 95 percent
   the basis convention, not the statistics (54 percent under Hoeffding, which reads 0.55 and 1.08).
-  Khmelev et al.'s Micius-Zvenigorod session reads 1.40 and 2.80 of its final 310,400 bits, which
+  Khmelev et al.'s Micius-Zvenigorod session reads 1.34 and 2.67 of its final 310,400 bits (1.40 and 2.80
+  until Round 86 counted it from the 28 deg where their tracking started), which
   subtract a detector-efficiency mismatch the model does not have (629,000 bits before it). Jinan-1's
   four passes (arXiv:2408.10994v1, Table 1): within a factor of 2.5 under Hoeffding, and within 25% on
   the pass whose count rate fixed the profile's one calibrated constant; within a factor of 3 under

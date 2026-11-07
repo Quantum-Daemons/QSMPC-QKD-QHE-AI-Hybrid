@@ -203,7 +203,8 @@ function PassSection({ link, liao, minEl, epsSec, deviation }: { link: ReturnTyp
         <table>
           <caption className="small muted" style={{ textAlign: "left", captionSide: "top", paddingBottom: 4 }}>
             Khmelev et al., Opt. Express 32, 11964 (2024): Micius to Zvenigorod on 1 March 2022, the session from
-            {" "}{KHMELEV_2024_SESSION.maxRangeKm} km to {KHMELEV_2024_SESSION.minRangeKm} km and back
+            {" "}{KHMELEV_2024_SESSION.trackingStartDeg} deg of elevation, where their stable tracking started, up to
+            {" "}{KHMELEV_2024_SESSION.minRangeKm} km and down to {KHMELEV_2024_SESSION.maxRangeKm} km
             ({fmt(khmelev.durationS)} s in this model, where they received states for roughly
             {" "}{KHMELEV_2024_SESSION.receivedS} s), on that link&apos;s own profile whatever this run&apos;s, at
             their failure probability of 1e-9 and this tab&apos;s statistics. They keyed both bases.

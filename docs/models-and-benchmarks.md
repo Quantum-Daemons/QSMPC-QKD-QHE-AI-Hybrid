@@ -408,8 +408,10 @@ satellite, ground station or quantum channel is involved.
   both bases, with the failure probability split between them, it carries 1.08 (325,556 bits) and
   1.50 (450,923 bits). Khmelev et al.'s final key is 310,400 bits (629,000 before their
   detector-mismatch analysis, at an error-correction efficiency of 1.44 against 1.16 here): on one
-  basis the model gives 0.56 of the 629,000 under Hoeffding and 0.69 under Chernoff, 1.40 of the final
-  key, and on both bases 2.80 of it (868,462 bits). So the drop from the pass's asymptotic key
+  basis the model gives 0.54 of the 629,000 under Hoeffding and 0.66 under Chernoff, 1.34 of the final
+  key, and on both bases 2.67 of it (829,658 bits). Their session is counted from the 28 deg where their
+  stable tracking started to 1,100 km on the way down (Round 86; it was 1,100 km on both sides, which
+  gave 0.56, 0.69, 1.40 and 2.80). So the drop from the pass's asymptotic key
   (462,290 bits) to the one-basis finite key is mostly the basis convention, 95 percent of it under
   Chernoff and 54 percent under Hoeffding, not the statistics; keyed as the flights keyed theirs, the
   model exceeds both published keys. On Jinan-1's four published passes the model's one-basis

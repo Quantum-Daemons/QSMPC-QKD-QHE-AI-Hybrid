@@ -249,12 +249,14 @@ def test_the_submodules_have_one_table() -> None:
 
 def test_the_key_blocks_and_the_ckks_quotes_have_one_owner() -> None:
     owner = _flat("docs/models-and-benchmarks.md")
-    for fact in ("0.56 of the 629,000 under Hoeffding and 0.69 under Chernoff", "about 7 s", "33 s",
+    # Khmelev's session rises from 28 deg since Round 86, which moved 0.56 and 0.69 to 0.54 and 0.66.
+    for fact in ("0.54 of the 629,000 under Hoeffding and 0.66 under Chernoff", "about 7 s", "33 s",
                  "5,214,327", "450,923"):
         assert fact in owner, fact
     assert _links_to("README.md", KEYS)
     refs = _read("references/REFERENCES.md")
-    assert "868,462" not in refs, "REFERENCES.md restates the model's key; it keeps what each source grounds"
+    for key in ("868,462", "829,658"):
+        assert key not in refs, "REFERENCES.md restates the model's key; it keeps what each source grounds"
     for quote in ("N_d = 128", "sqrt(D)", "since the scheme itself adds some error"):
         assert quote not in refs, f"REFERENCES.md quotes {quote!r}; the quote lives in the threat model"
         assert quote in _read("docs/threat-model.md"), quote
