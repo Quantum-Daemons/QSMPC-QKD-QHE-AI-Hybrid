@@ -139,7 +139,8 @@ arXiv:2109.05257). This sentence cited TSB-AD for "a uniform random score ranks 
 detectors" until Round 33, a figure that could not be verified at source. A windowed isolation
 forest runs as a trivial baseline every time (0.0002 here), because a deep model that cannot beat
 it has not earned its complexity. Only labels whose ESA-ADB Category is `Anomaly` count as
-positives; the 690 annotated rare *nominal* events do not.
+positives; the 63 annotated rare *nominal* events on these six channels do not (78 in all of
+Mission1; this said 690 until Round 86, which neither of ESA-ADB's label files supports).
 
 ### Telecom: the classical forest wins
 

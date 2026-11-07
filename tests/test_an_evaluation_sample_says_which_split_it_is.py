@@ -158,8 +158,13 @@ def test_the_generators_draw_from_the_trainers_test_window() -> None:
     assert "graph_features(df)" not in fin, "whole-timeline aggregates are the leaky arm"
     assert re.search(r"pos = np\.flatnonzero\(y_te == 1\)", fin), "positives must come from the test window"
     sat = _body("build_satellite")
-    assert "preprocess(D.load_esa_channels(), resample)" in sat
-    assert "windows(values[cut:], SEQ_LEN, 1)" in sat, "windows must come from the test window"
+    # With the record's own split since Round 86, so the sample is the published model's test half.
+    assert "preprocess(D.load_esa_channels(), resample, split_at=split_at)" in sat
+    assert ".get('split')" in sat, "the split must come from the trainer's record"
+    # ESA-ADB's recipe since Round 86: the trainer's prepare(), and the plain arm, never the label-restored one.
+    assert "prepare(resample, split_at, split['validation_from']" in sat and "prep.zscore(prep.raw_plain)" in sat
+    assert "raw_restored" not in sat, "the evaluation sample must not read the replication arm's labelled series"
+    assert "window_view(values[cut:], SEQ_LEN)" in sat, "windows must come from the test window"
     assert ".bfill()" not in sat and "values.mean(0)" not in sat, "a private copy of the preprocessing is back"
     for body in (fin, sat):
         assert "fixtures.npy" in body, "the sample is no longer checked against the trainer's own fixtures"

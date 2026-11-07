@@ -653,7 +653,7 @@ def build_satellite(rng: np.random.Generator) -> dict:
     model was trained at 300s is how Round 18 came to report the forecaster as 19-22x worse than
     persistence: it was being fed data at the wrong sampling rate.
     """
-    from train.satellite_telemanom import SEQ_LEN, preprocess, windows  # type: ignore
+    from train.satellite_telemanom import SEQ_LEN, prepare, preprocess, window_view  # type: ignore
 
     from qsh.models import datasets as D
     from qsh.models import registry
@@ -666,12 +666,22 @@ def build_satellite(rng: np.random.Generator) -> dict:
     if resample != published.get("resample") or chans != published.get("channels"):
         raise SystemExit(f"the record's cadence {resample!r} and channels disagree with the "
                          f"published feature_spec.json ({published.get('resample')!r})")
-    df, values, cut, mu, sigma = preprocess(D.load_esa_channels(), resample)
+    # The record's own split since Round 86 (ESA-ADB's 2007-01-01), so these windows are the published model's
+    # test half; a record from before it carries no split, and the trainer then cut 30 percent by row.
+    split = (registry.achieved(key) or {}).get("split") or {}
+    split_at = split.get("test_from")
+    if split.get("validation_from"):
+        # ESA-ADB's recipe (Round 86): the trainer's own prepare(), its zero-order hold and its scaling from the
+        # unlabelled training rows. The plain arm, which is the published model's input; never the restored one.
+        prep = prepare(resample, split_at, split["validation_from"], hold=published.get("hold", "last"))
+        df, values, cut, mu, sigma = prep.df, prep.zscore(prep.raw_plain), prep.cut, prep.mu, prep.sigma
+    else:
+        df, values, cut, mu, sigma = preprocess(D.load_esa_channels(), resample, split_at=split_at)
     norm = published["normalisation"]
     if not (np.allclose(mu, norm["mean"], rtol=0, atol=1e-6)
             and np.allclose(sigma, norm["std"], rtol=0, atol=1e-6)):
         raise SystemExit("the z-score constants fitted here differ from the ones the trainer published")
-    xte, yte = windows(values[cut:], SEQ_LEN, 1)
+    xte, yte = window_view(values[cut:], SEQ_LEN)      # a view: every test window, copied a batch at a time
     fixtures = np.load(out_dir / "fixtures.npy")
     if not np.array_equal(xte[:len(fixtures)], fixtures):
         raise SystemExit("the first test windows differ from the fixtures the export gate saved")
@@ -679,7 +689,7 @@ def build_satellite(rng: np.random.Generator) -> dict:
     # The same graph over EVERY test window, so the note can say how this sample sits in the whole.
     sess, graph = _session("satellite_telemanom", prefer_int8=True)
     name = sess.get_inputs()[0].name
-    window_pred = np.concatenate([sess.run(None, {name: xte[i:i + 4096]})[0]
+    window_pred = np.concatenate([sess.run(None, {name: np.ascontiguousarray(xte[i:i + 4096])})[0]
                                   for i in range(0, len(xte), 4096)])
     window_mae = float(np.abs(window_pred - yte).mean())
     window_persistence = float(np.abs(xte[:, -1, :] - yte).mean())
@@ -708,15 +718,20 @@ def build_satellite(rng: np.random.Generator) -> dict:
         "provenance": (
             f"Real ESA Anomaly Dataset (ESA-ADB) telemetry, Mission1 lightweight channels 41-46. "
             f"{ds.attribution} Missions are anonymised Mission1/2/3; they are not named Sentinel "
-            f"anything. Resampled to {resample}, forward-filled, and z-scored with the mean and "
-            "standard deviation of the training window, by the training script's own preprocess(). "
+            f"anything. Resampled to {resample}, "
+            + ("by ESA-ADB's zero-order hold, and z-scored with the mean and standard deviation of the "
+               "unlabelled training rows, by the training script's own prepare(). " if split.get("validation_from")
+               else "forward-filled, and z-scored with the mean and standard deviation of the training window, "
+               "by the training script's own preprocess(). ")
+            + 
             # No dates: the timeline is anonymised (the paper gives Mission1's span only as an
             # anonymised 14 years), so the corpus index is not quoted as though it were a calendar.
-            f"These are {n_windows} of the {len(xte):,} windows in the held-out test window, the last "
-            f"30 percent of the {len(df):,}-step timeline, drawn at random and kept in time order; "
-            "the model trained on none of them. The page's telemetry-anomaly step scores OPS-SAT-AD "
-            "segments, not these windows, with a demo linear model: in plaintext in the browser, "
-            "and on one bundled segment under CKKS in the full deployment."
+            f"These are {n_windows} of the {len(xte):,} windows in the held-out test window, "
+            + (f"the half of the {len(df):,}-step timeline from {split_at} in the corpus's anonymised "
+               "calendar, ESA-ADB's own Mission1 split, " if split_at else
+               f"the last 30 percent of the {len(df):,}-step timeline, ")
+            + "drawn at random and kept in time order; the model trained on none of them. The page's "
+            "CKKS check scores the OPS-SAT student on 529 OPS-SAT-AD segments, not these windows."
         ),
         "input": {"shape": [1, SEQ_LEN, len(chans)], "dtype": "float32", "preprocessing": [],
                   "layout": f"samples[i] is {SEQ_LEN} timesteps x {len(chans)} channels at {resample} "
