@@ -72,4 +72,7 @@ def test_the_page_computes_the_minority_curve_the_reference_does() -> None:
             assert g is None, i
             continue
         assert (g["detected"], g["total"]) == (w["detected"], w["total"]) and abs(g["prevalence"] - w["prevalence"]) < 1e-12
-        assert [(p["recall"], p["precision"]) for p in g["pr"]] == pytest.approx(w["pr"], abs=1e-12), i
+        # Arrays, not pytest.approx: CI's pytest rejects nested sequences in approx, which the local one accepted.
+        got_pr = np.asarray([(p["recall"], p["precision"]) for p in g["pr"]], dtype=float)
+        want_pr = np.asarray(w["pr"], dtype=float)
+        assert got_pr.shape == want_pr.shape and float(np.abs(got_pr - want_pr).max()) < 1e-12, i
