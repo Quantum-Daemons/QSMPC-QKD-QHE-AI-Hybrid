@@ -285,7 +285,8 @@ def _pipeline_tag(spec: registry.ModelSpec) -> str:
     if spec.usecase == "medical_fl":
         return "image-classification"
     if spec.usecase == "satellite_comms":
-        return ("time-series-forecasting" if spec.metric.name == "event_wise_f0_5"
+        # The corrected name since Round 86, the uncorrected one before; both are the forecaster's event-wise score.
+        return ("time-series-forecasting" if spec.metric.name in ("event_wise_f0_5", "corrected_event_wise_f0_5")
                 else "tabular-classification")
     return "tabular-classification"
 

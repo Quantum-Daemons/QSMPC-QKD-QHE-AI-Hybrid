@@ -71,6 +71,8 @@ def test_the_trainer_uses_it() -> None:
     assert "def dynamic_threshold" not in src and "esa_event_wise(t_times, flagged" in src
     assert 'ESA_ADB_SPLIT = "2007-01-01"' in src and "prepare(args.resample, args.split_at, args.validation_from" in src
     assert "preprocess(raw, resample, split_at=split_at, hold=hold)" in src
+    # Both of ESA-ADB's readings for every run: anomalies alone (Supp. Table 9) and all events (Table 2).
+    assert "for sel in (ANOMALIES, ALL_EVENTS)" in src and '"all_events": _all_events_brief(' in src
 
 
 def test_the_strided_view_is_the_copied_windows() -> None:

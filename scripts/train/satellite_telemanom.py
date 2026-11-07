@@ -119,8 +119,10 @@ ESA_LR = 1e-3
 PAPER_FLOOR = 0.007
 #: The floors tried on the validation months, in raw units.
 FLOOR_GRID = tuple(round(0.0005 * k, 4) for k in range(0, 41))
-#: What ESA-ADB's lightweight anomaly score counts as a positive.
+#: What ESA-ADB's lightweight anomaly score counts as a positive (its Supplementary Table 9).
 ANOMALIES = {"Category": ["Anomaly"]}
+#: ESA-ADB's Table 2 selection, all events but communication gaps, where Telemanom-ESA-Pruned reads 0.786.
+ALL_EVENTS = {"Category": ["Rare Event", "Anomaly"]}
 #: ESA-ADB's per-sample annotation codes (notebooks/data-prep/utils.py, AnnotationLabel). Its preparation gives every
 #: category other than Anomaly and Rare Event the gap code.
 _NOMINAL, _ANOMALY, _RARE, _GAP = 0, 1, 2, 3
@@ -487,11 +489,12 @@ def main() -> int:
     n_val_anomalies = int(v_labels.loc[v_labels["Category"] == "Anomaly", "ID"].nunique())
 
     def score(errors, vals, floor):
-        """Telemanom's flags at one error floor, and ESA-ADB's scores for them over the test half."""
+        """Telemanom's flags at one error floor, and ESA-ADB's scores for them over the test half: anomalies alone,
+        and all events but communication gaps (its Table 2 selection)."""
         per, flagged = telemanom_threshold.flag(errors, vals, telemanom_threshold.TelemanomConfig(min_error_value=floor))
-        s_ = esa_event_wise(t_times, flagged.astype(int), t_labels, select=ANOMALIES,
-                            full_range=(t_times[0], t_times[-1]))
-        return per, flagged.astype(int), s_
+        s_, s_all = (esa_event_wise(t_times, flagged.astype(int), t_labels, select=sel, full_range=(t_times[0], t_times[-1]))
+                     for sel in (ANOMALIES, ALL_EVENTS))
+        return per, flagged.astype(int), s_, s_all
 
     # Forecasts, errors in RAW units as ESA-ADB computes them (|y_hat_raw - y_raw|), and the values the thresholding's
     # scale checks read, per arm, for the validation months and the test half.
@@ -503,10 +506,11 @@ def main() -> int:
         floor, table = _choose_floor(v_err, vals_raw[vstart:cut], v_times, v_labels, (v_times[0], v_times[-1]))
         runs = {}
         for name, f in (("validation_floor", floor), ("paper_floor", PAPER_FLOOR), ("no_floor", 0.0)):
-            per, flagged, s_ = score(t_err, vals_raw[cut:], f)
-            runs[name] = {"floor": f, "per_channel": per, "flags": flagged, "esa": s_}
+            per, flagged, s_, s_all = score(t_err, vals_raw[cut:], f)
+            runs[name] = {"floor": f, "per_channel": per, "flags": flagged, "esa": s_, "esa_all_events": s_all}
             print(f"    {arm:28s} {name:16s} floor {f:<7} F0.5 {s_['f_0.50']:.4f}  P {s_['precision']:.4f}  "
-                  f"R {s_['recall']:.4f}  tp {s_['tp']} fp {s_['fp']} fn {s_['fn']}  TNR {s_['tnr']}")
+                  f"R {s_['recall']:.4f}  tp {s_['tp']} fp {s_['fp']} fn {s_['fn']}  TNR {s_['tnr']}  | all events "
+                  f"F0.5 {s_all['f_0.50']:.4f} (tp {s_all['tp']} fp {s_all['fp']} fn {s_all['fn']})")
         arms[arm] = {"floor_chosen_on_validation": floor, "floor_table": table, "runs": runs}
     del z_restored, raw_restored
 
@@ -603,12 +607,15 @@ def main() -> int:
                 "precision": round(float(s_["precision"]), 6), "recall": round(float(s_["recall"]), 6),
                 "tnr": None if s_["tnr"] is None else round(float(s_["tnr"]), 6),
                 "tp": int(s_["tp"]), "fp": int(s_["fp"]), "fn": int(s_["fn"]),
-                "flagged_points": int(r["flags"].sum())}
+                "flagged_points": int(r["flags"].sum()),
+                "all_events": _all_events_brief(r["esa_all_events"])}
 
     esa_scores = {
         "scorer": ("qsh.models.esa_scores.esa_event_wise, a reimplementation of ESAScores in kplabs-pl/ESA-ADB (MIT, "
                    "commit 67194d3), checked against that repository's own test cases in tests/test_r86_esa_scores.py"),
-        "selection": "Category Anomaly; labels of channels 41-46 that start and end inside the scored period",
+        "selection": ("Category Anomaly; labels of channels 41-46 that start and end inside the scored period. Each "
+                      "run's all_events block selects Rare Event and Anomaly instead, ESA-ADB's Table 2 reading, where "
+                      "Telemanom-ESA-Pruned is 0.786 (published_lightweight_f0_5) and plain Telemanom-ESA 0.178"),
         "test_range": [str(t_times[0]), str(t_times[-1])],
         "validation_range": [str(v_times[0]), str(v_times[-1])],
         "n_validation_anomalies": n_val_anomalies,
@@ -630,6 +637,7 @@ def main() -> int:
                              for k in ("f_0.50", "precision", "recall", "tnr", "tp", "fp", "fn")},
     }
     replication = arms["restored_annotated_samples"]["runs"]["paper_floor"]["esa"]
+    replication_all = arms["restored_annotated_samples"]["runs"]["paper_floor"]["esa_all_events"]
     train.record_metrics("satellite_comms.telemanom", {
         # ESA-ADB's event-wise F0.5 without its TNR correction, and with it, for the plain zero-order hold at the floor
         # chosen on the validation months; esa_scores holds the other floors and the replication arm.
@@ -705,9 +713,13 @@ def main() -> int:
             "chosen without the test half, and it is scored on ESA-ADB's prepared series, which writes annotated "
             "samples the zero-order hold dropped back onto the grid - a step that reads the labels. Replicating "
             "both gives "
-            f"{replication['f_0.50']:.3f} (tp={replication['tp']} fp={replication['fp']} fn={replication['fn']}); "
-            "esa_scores holds every arm and floor. Remaining differences: PyTorch where ESA-ADB uses Keras, one "
-            "seed, and ESA-ADB's per-file resampling at the split. Until Round 86 this model trained at 300 s on "
+            f"{replication['f_0.50']:.3f} (tp={replication['tp']} fp={replication['fp']} fn={replication['fn']}), and "
+            f"{replication_all['f_0.50']:.3f} over all events but communication gaps, where Table 2 prints 0.786 "
+            f"({replication_all['tp']} of {replication_all['n_selected_ids']} events here; the published recall "
+            "0.424 is no whole number of events out of this count, so ESA-ADB's all-events set differs from this "
+            "selection by at least one event); esa_scores holds every arm and floor. Remaining differences: "
+            "PyTorch where ESA-ADB uses Keras, from Keras's initialisers, one seed, and ESA-ADB's per-file "
+            "resampling at the split. Until Round 86 this model trained at 300 s on "
             "a 70/30 cut holding 3 events and flagged 2 of 441,600 points. Workings: "
             "references/satellite-event-count-investigation.md."
         ),
@@ -726,6 +738,13 @@ def main() -> int:
     train.record_metrics("satellite_comms.student", fidelity.as_metrics())
     print(f"\n  wrote {out} and models/metrics.json in {time.time()-started:.0f}s")
     return 0
+
+
+def _all_events_brief(s: dict) -> dict:
+    """ESA-ADB's Table 2 reading of one run: all events but communication gaps, corrected as ESA-ADB corrects it."""
+    return {"corrected_event_wise_f0_5": round(float(s["f_0.50"]), 6), "precision": round(float(s["precision"]), 6),
+            "recall": round(float(s["recall"]), 6), "tp": int(s["tp"]), "fp": int(s["fp"]), "fn": int(s["fn"]),
+            "n_events": int(s["n_selected_ids"])}
 
 
 def _uncorrected_f05(s: dict) -> float:

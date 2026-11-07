@@ -133,3 +133,14 @@ def test_timestamps_of_different_resolutions_are_compared_as_instants() -> None:
     lab = lab.assign(StartTime=lab["StartTime"].astype("datetime64[us]"), EndTime=lab["EndTime"].astype("datetime64[us]"))
     s = esa_event_wise(times_ns, _flags((41, 43)), lab, select=SELECT, full_range=(times_ns[0], times_ns[-1]))
     assert (s["tp"], s["fp"], s["fn"]) == (1, 0, 0)
+
+
+def test_all_events_counts_rare_events_as_positives_and_anomalies_alone_does_not() -> None:
+    # ESA-ADB's Table 2 selects Rare Event and Anomaly; its Supplementary Table 9, Anomaly alone. The satellite trainer
+    # records both for every run (Round 86).
+    lab = _labels(("a", 20, 25, "Anomaly"), ("r", 60, 62, "Rare Event"))
+    flags = _flags((20, 22), (60, 61))
+    anomalies = esa_event_wise(TIMES, flags, lab, select={"Category": ["Anomaly"]})
+    every = esa_event_wise(TIMES, flags, lab, select={"Category": ["Rare Event", "Anomaly"]})
+    assert (anomalies["tp"], anomalies["fp"], anomalies["fn"], anomalies["n_selected_ids"]) == (1, 0, 0, 1)
+    assert (every["tp"], every["fp"], every["fn"], every["n_selected_ids"]) == (2, 0, 0, 2)

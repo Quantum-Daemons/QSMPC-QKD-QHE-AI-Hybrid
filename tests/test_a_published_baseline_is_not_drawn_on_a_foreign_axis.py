@@ -70,6 +70,7 @@ _FAMILY = {
     "macro_f1": "f1",
     "minority_class_f1": "f1",
     "event_wise_f0_5": "f1",
+    "corrected_event_wise_f0_5": "f1",
     "auc": "auc",
     "auc_pr": "auc",
     "accuracy": "accuracy",
