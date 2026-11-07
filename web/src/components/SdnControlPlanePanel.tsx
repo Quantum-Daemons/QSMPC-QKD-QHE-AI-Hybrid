@@ -44,10 +44,12 @@ function rateCellTitle(perPulse: number, decoyStates: string | undefined, atPeak
   return `bit/s - this run's ${b.short} per pulse sent${where} (${b.paper}) multiplied by an ASSUMED source `
     + "repetition rate. ASYMPTOTIC: no finite-key "
     + "correction is applied to this rate (the satellite's key budget is a block's finite key since "
-    + "Round 79; the rate is not). It is the infinite-key limit of a LOWER bound, "
-    + "not a ceiling on real hardware - Li et al. (Nat. Photon. 17, 416-421, 2023) measured 22.2 Mb/s "
-    + `at 50 km on a 2.5 GHz clock, 8.88e-3 bit/pulse, ${ratio}, with full composable finite-key `
-    + "security. No QKD hardware exists in this project and nothing here measures a clock: the rate "
+    + "Round 79; the rate is not). It is the infinite-key limit of a LOWER bound on this channel. For "
+    + "scale, Li et al. (Nat. Photon. 17, 416-421, 2023) measured 22.2 Mb/s over 50 km of standard fibre, "
+    + `9.5 dB of loss, on a 2.5 GHz clock: 8.88e-3 bit/pulse, ${ratio}, with full composable finite-key `
+    + "security. That is another channel, and a channel with less loss keys more per pulse, so the ratio "
+    + "does not say what hardware could reach on this one. No QKD hardware exists in this project and "
+    + "nothing here measures a clock: the rate "
     + "scales exactly with the Source rate (MHz) control in the Parameters panel.";
 }
 export default function SdnControlPlanePanel({
@@ -166,12 +168,18 @@ export default function SdnControlPlanePanel({
               arXiv:2607.24118 (preprint, v2 2026-10-16, CC BY 4.0) reports an average finite-key rate of
               110 kbit/s at QBER 3.28% (v1 said 164.8 kbit/s) - its measurement over its own channel, not
               this one&apos;s. Li et al. (<i>Nat. Photon.</i>{" "}
-              <b>17</b>, 416-421, 2023) measured <b>22.2 Mb/s at 50 km</b> of fibre on a 2.5 GHz clock,{" "}
-              <b>8.88 x 10<sup>-3</sup> bit/pulse</b> with full composable finite-key security
+              <b>17</b>, 416-421, 2023) measured <b>22.2 Mb/s over 50 km</b> of standard fibre, 9.5 dB of
+              loss, on a 2.5 GHz clock, <b>8.88 x 10<sup>-3</sup> bit/pulse</b> with full composable
+              finite-key security
               {secretKeyRatePerPulse > 0
-                ? <> - {(8.88e-3 / secretKeyRatePerPulse).toFixed(1)}x this run&apos;s figure per pulse
-                    {usecase === "satellite_comms" ? <> (a fibre link against this satellite downlink)</> : null}</>
-                : null}, so this bound is not a ceiling on what hardware can do.
+                ? <> - {(8.88e-3 / secretKeyRatePerPulse).toFixed(1)}x this run&apos;s figure per pulse{channelLossDb != null
+                    && Number.isFinite(channelLossDb) ? <>, over this run&apos;s {channelLossDb.toFixed(1)} dB</> : null}</>
+                : null}. A channel with less loss keys more per pulse, so the ratio measures the two
+              channels as much as the two methods: it does not show what hardware could reach on this
+              channel.
+              {usecase === "satellite_comms"
+                ? <> For this downlink, the Network tab sets the model against every measured Micius pass
+                    (Liao et al. 2017).</> : null}
             </p>
             <p>
               A round of this project previously called the same number &quot;a modelled upper bound, ~2.4x a
