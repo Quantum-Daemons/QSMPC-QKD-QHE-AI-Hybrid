@@ -934,6 +934,7 @@
         "hf_repo_id": null,
         "hf_revision": null,
         "hf_revision_stale": null,
+        "int8_withheld_reason": null,
         "key": "finance_aml.gnn",
         "label": "Multi-PNA+EU transaction GNN",
         "metric": {
@@ -1056,6 +1057,7 @@
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
         "hf_revision": "536fbda25bbd550956050438bda473a7878519b6",
         "hf_revision_stale": null,
+        "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "finance_aml.gbm",
         "label": "Graph-feature gradient boosting",
         "metric": {
@@ -1180,6 +1182,7 @@
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
         "hf_revision": "ac6dd51b11d2034e90f34bb2aba78b4349718344",
         "hf_revision_stale": null,
+        "int8_withheld_reason": "ai.onnx.ml linear model: coefficients live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "finance_aml.student",
         "label": "CKKS-linear fraud student",
         "metric": {
@@ -1294,6 +1297,7 @@
         "hf_repo_id": null,
         "hf_revision": null,
         "hf_revision_stale": null,
+        "int8_withheld_reason": null,
         "key": "genomics.prs",
         "label": "Polygenic risk score (published effect weights)",
         "metric": {
@@ -1379,6 +1383,7 @@
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
         "hf_revision": "5bb4e4f0989cb28f1dde6cdee6bc70ed3eea854f",
         "hf_revision_stale": null,
+        "int8_withheld_reason": null,
         "key": "medical_fl.resnet18",
         "label": "ResNet-18 on BreastMNIST",
         "metric": {
@@ -1457,6 +1462,7 @@
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet50",
         "hf_revision": "cb700cfa0c26a61a57f7824e071f22c37684ae55",
         "hf_revision_stale": null,
+        "int8_withheld_reason": "int8 built and measured, then withheld: confident agreement 0.9865 is below the 0.99 gate (0.9615 over all fixtures). Serving fp32 only.",
         "key": "medical_fl.resnet50",
         "label": "ResNet-50 on BreastMNIST (published comparison)",
         "metric": {
@@ -1540,6 +1546,7 @@
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-ckks-student",
         "hf_revision": "273ddb84b7b5274f9d98d70cd39bc1f5464aca9c",
         "hf_revision_stale": null,
+        "int8_withheld_reason": null,
         "key": "medical_fl.student",
         "label": "CKKS-evaluable BreastMNIST CNN student",
         "metric": {
@@ -2532,6 +2539,7 @@
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
         "hf_revision": "c41a6551838555edddd1500ec7407d21502de6a8",
         "hf_revision_stale": null,
+        "int8_withheld_reason": null,
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (one model over six channels, as Telemanom-ESA)",
         "metric": {
@@ -2700,6 +2708,7 @@
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-ckks-student",
         "hf_revision": "231db244a9fa218501846531ad103644d6c77612",
         "hf_revision_stale": null,
+        "int8_withheld_reason": "ai.onnx.ml linear model: coefficients live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "satellite_comms.student",
         "label": "CKKS-linear telemetry forecaster student",
         "metric": {
@@ -2781,6 +2790,7 @@
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ad",
         "hf_revision": "6c601bed2b7d22af3497d8f13ff60fe2b23ed1e8",
         "hf_revision_stale": null,
+        "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "satellite_comms.opssat",
         "label": "OPS-SAT segment anomaly detector",
         "metric": {
@@ -2855,6 +2865,7 @@
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ckks-student",
         "hf_revision": "d89c2e1ee128c137903e8625a14b3b14295ef327",
         "hf_revision_stale": null,
+        "int8_withheld_reason": "ai.onnx.ml linear model: coefficients live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "satellite_comms.opssat_student",
         "label": "CKKS-linear OPS-SAT segment student",
         "metric": {
@@ -2925,6 +2936,7 @@
         "hf_repo_id": null,
         "hf_revision": null,
         "hf_revision_stale": null,
+        "int8_withheld_reason": null,
         "key": "telecom_ids.transformer",
         "label": "Encoder-only Transformer IDS",
         "metric": {
@@ -3054,6 +3066,7 @@
         "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
         "hf_revision": "fc403d128bc7d8b432f13febf3c35c2a46920ef6",
         "hf_revision_stale": null,
+        "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "telecom_ids.qml",
         "label": "Random-forest QKD-attack classifier, with quantum-kernel SVC and QNN comparisons",
         "metric": {
@@ -3402,6 +3415,7 @@
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-gbm",
         "hf_revision": "73b1320754f4cc911dd73ea1adb8738de0407909",
         "hf_revision_stale": null,
+        "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "telecom_ids.nidd",
         "label": "5G-NIDD network-attack classifier (9 classes)",
         "metric": {
@@ -3461,6 +3475,7 @@
         "hf_repo_id": null,
         "hf_revision": null,
         "hf_revision_stale": null,
+        "int8_withheld_reason": null,
         "key": "telecom_ids.student",
         "label": "CKKS-linear IDS student (8 classes)",
         "metric": {

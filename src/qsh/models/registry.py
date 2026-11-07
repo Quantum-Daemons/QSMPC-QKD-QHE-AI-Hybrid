@@ -1655,6 +1655,10 @@ def frontend_models() -> dict:
             "hf_revision": s.hf_revision,
             "hf_revision_stale": s.hf_revision_stale,
             "pin_withdrawn_reason": s.pin_withdrawn_reason or None,
+            # Why no int8 graph is served, from the export report (Round 86, fact-check C8). The card printed
+            # `export.int8_agreement 0.9615` beside `export.int8_bytes 0` and never said the graph was built,
+            # measured and withheld at the gate; the record keeps the figures, the report keeps the reason.
+            "int8_withheld_reason": _export_report(s.key).get("int8_skipped_reason") or None,
             # Whether ONNX Runtime Web can execute this graph at all. A tree ensemble is
             # ai.onnx.ml (TreeEnsembleClassifier), a domain ORT Web does not implement, so it is
             # not browser-runnable at any size. Exported so the browser can decline BEFORE

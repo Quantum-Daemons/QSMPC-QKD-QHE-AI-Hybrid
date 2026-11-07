@@ -1164,6 +1164,10 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     // is a property of the current UI, not of the value. Named for what it is.
     accuracy: null, max_abs_error_representative: cost.demo_max_abs_error, ciphertext_plaintext_ratio: ctpt,
     fhe_linear_ms: r2(fhe), mpc_nonlinear_ms: r2(mpc), mpc_comm_kb: r2(comm / 1024),
+    // Round 86 (fact-check C4): on the medical page `fhe` is TWO models, the encrypted CNN student plus the bundled
+    // Wisconsin regression, and the 2PC is the regression's argmax alone. The student's own share, so the panel can
+    // split the figure instead of printing 'total ... / inference' over two inferences.
+    fhe_student_ms: measured?.conv ? r2(measured.conv.convMs) : null,
     t_gate_count: null, qubits: null,
     // "garbled-circuit 2PC", not "secret-sharing MPC". That label is right for the Python row (MPyC
     // Shamir across hosts) and was copied to this one, where the non-linear layer is a Polytune
@@ -2738,6 +2742,11 @@ export function runClientPipeline(
           + `is a closed-form function, not a circuit): ${q.clients} clients x ${q.rounds} `
           + `rounds (classical FedAvg; ${q.aggregation}) over `
           + `${qflData ? `the bundled ${usecase} sample (${qflData.X.length} rows)` : "a synthetic toy"}`
+          // Round 86 (fact-check C9): the "hospitals" are shards dealt round-robin from one shuffled pool
+          // (clientQFL.ts), so every client's data share one distribution - the easy case for FedAvg.
+          + `, dealt round-robin to the clients from one shuffled pool, so every client's rows share one `
+          + `distribution (IID), which real hospitals' do not: on highly skewed non-IID shards, Zhao et al. `
+          + `(arXiv:1806.00582) measured accuracy losses of up to 55% for neural networks`
           + ` - held-out accuracy ${q.baselineAcc.toFixed(2)} untrained (every row class 0), `
           + `${q.roundAcc[0].toFixed(2)} after round 1, ${q.finalAcc.toFixed(2)} after round ${q.rounds}`
           + (balanced ? "; the rows are a class-balanced draw, half of them positive, so no accuracy here "

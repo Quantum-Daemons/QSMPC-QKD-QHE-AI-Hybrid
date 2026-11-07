@@ -734,6 +734,9 @@ export function ModelPanel({ usecase }: { usecase: string }) {
               condition and this line is where a visitor meets it; the same string also goes into
               the Hugging Face model card and the evaluation sample's provenance, so all three
               surfaces a reader can reach carry the attribution instead of one of them. */}
+          {spec.int8_withheld_reason && (
+            <p className="muted small"><strong>No int8 graph:</strong> {spec.int8_withheld_reason}</p>
+          )}
           {spec.dataset.attribution && (
             <p className="muted small"><strong>Attribution:</strong> {spec.dataset.attribution}</p>
           )}

@@ -118,6 +118,8 @@ export type ModelSpec = {
   /** Set when a published model's pin was retired ON PURPOSE, with the reason (Round 86: the satellite student,
    *  to be replaced rather than re-published). */
   pin_withdrawn_reason?: string | null;
+  /** Why no int8 graph is served, from the export report: a skip or a graph withheld at the gate (Round 86). */
+  int8_withheld_reason?: string | null;
   artifacts: ModelArtifact[];
   /** `attribution` is the CC BY credit line. Four of this project's corpora are CC BY and the
    *  condition attaches wherever the data or a model trained on it is published - which includes

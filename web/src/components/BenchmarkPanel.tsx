@@ -267,10 +267,15 @@ export default function BenchmarkPanel(
                   </ResponsiveContainer>
                 </ChartReadout>
                 <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
-                  <div><span style={{ color: FHE_COLOR }}>■</span> FHE-linear: <b>{split.fhe_linear_ms} ms</b></div>
+                  <div><span style={{ color: FHE_COLOR }}>■</span> FHE-linear: <b>{split.fhe_linear_ms} ms</b>
+                    {split.fhe_student_ms != null
+                      ? <span className="small muted"> (the encrypted CNN student {split.fhe_student_ms} ms, the bundled Wisconsin
+                          regression {Math.round((split.fhe_linear_ms - split.fhe_student_ms) * 100) / 100} ms)</span>
+                      : null}</div>
                   <div><span style={{ color: MPC_COLOR }}>■</span> MPC-non-linear: <b>{split.mpc_nonlinear_ms} ms</b></div>
                   <div className="muted">MPC communication: <b>{split.mpc_comm_kb ?? "-"} KiB</b></div>
-                  <div className="muted">total: <b>{split.latency_ms} ms</b> / inference</div>
+                  <div className="muted">total: <b>{split.latency_ms} ms</b>{split.fhe_student_ms != null
+                    ? <> for both encrypted models and the regression&apos;s 2PC argmax, not one inference</> : <> / inference</>}</div>
                   {/* WHAT THIS NUMBER IS, because directly under "total: 707 ms" and labelled
                       "client compute (wall-clock)" it read as the whole computation costing 0.07 ms
                       in the browser. It times the `privateInference` call only - the PLAINTEXT
