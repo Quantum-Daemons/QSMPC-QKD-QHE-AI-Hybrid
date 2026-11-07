@@ -297,20 +297,20 @@
       "opset": 17
     },
     "f1": 0.918918918918919,
-    "git_sha": "89d2fca-dirty",
-    "hf_revision": "e6177983b9f3901e5828bffc9f24e3e24733000c",
+    "git_sha": "f78e9e9-dirty",
+    "hf_revision": "6c601bed2b7d22af3497d8f13ff60fe2b23ed1e8",
     "n_features": 19,
     "n_test_segments": 529,
     "n_train_segments": 1594,
     "task": "segment classification - NOT comparable with satellite_comms.telemanom, which forecasts continuous ESA-ADB series against a persistence baseline",
-    "wall_clock_s": 7.5
+    "wall_clock_s": 7.1
   },
   "satellite_comms.opssat_student": {
     "agreement": 0.958412,
     "auc_pr": 0.968055,
     "both_scored_zero": false,
     "disagreement_on_positives": 0.070796,
-    "hf_revision": "82997056e503d2a9ce79a4e0240b499eec8b95ca",
+    "hf_revision": "d89c2e1ee128c137903e8625a14b3b14295ef327",
     "metric_delta": 0.014571,
     "metric_delta_pp": 1.4571,
     "metric_name": "minority_class_f1",
@@ -323,8 +323,9 @@
     "student_params": 210,
     "teacher_key": "satellite_comms.opssat",
     "teacher_metric": 0.918919,
-    "teacher_params": 117,
-    "teacher_scored_zero": false
+    "teacher_params": 5393,
+    "teacher_scored_zero": false,
+    "teacher_trees": 117
   },
   "satellite_comms.student": {
     "agreement": 0.999624,
@@ -1705,7 +1706,7 @@
     },
     "framing": "Architecture comparison, not a performance claim. The published model is the random forest; the quantum-kernel SVC and the variational QNN are recorded beside it and not published. The data is synthetic because no commercial-OK real QKD-attack corpus exists. Published QML-IDS results are mixed rather than uniformly below a random forest: Al-Kuwari et al. (arXiv:2509.14282) report a hybrid QLSTM at 94.7% against their own random forest, while arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
     "git_sha": "67dcd50-dirty",
-    "hf_revision": "233d49c6eefcb86e0b8d92ee6653317f183df09c",
+    "hf_revision": "fc403d128bc7d8b432f13febf3c35c2a46920ef6",
     "n_classes": 8,
     "n_samples": 2400,
     "quantum_beats_classical": false,

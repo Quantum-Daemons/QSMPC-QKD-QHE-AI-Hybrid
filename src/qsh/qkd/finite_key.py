@@ -159,10 +159,11 @@ everything else between the two bounds - the statistics and the other finite-siz
 decoy and vacuum detections Lim et al.'s key also draws on and the asymptotic row leaves out; under
 Hoeffding (164,183 and 325,556) it is 54 and 46. Counted as Liao counted, the model's key is 1.50
 times the published one (1.08 under Hoeffding), on detections within 1 percent of Liao's. On Khmelev
-et al.'s session (profile `micius_2022_zvenigorod`, 600 km at the top, the window at 1,100 km):
-435,095 and 868,462 bits, against their final 310,400 (arXiv:2310.17476v1), which subtracts a
-detector-efficiency mismatch this model does not have - 629,000 before it - at an f_EC of 1.44 where
-this model uses 1.16 (at 1.44 the model's two figures are 399,175 and 796,621).
+et al.'s session (profile `micius_2022_zvenigorod`, 600 km at the top, rising from the 28 deg where
+their tracking started and setting at 1,100 km, since Round 86): 415,669 and 829,658 bits, against
+their final 310,400 (arXiv:2310.17476v1), which subtracts a detector-efficiency mismatch this model
+does not have - 629,000 before it - at an f_EC of 1.44 where this model uses 1.16 (at 1.44 the
+model's two figures are 381,520 and 761,359).
 """
 
 from __future__ import annotations

@@ -447,10 +447,11 @@ function UseCaseView({ usecase }: { usecase: string }) {
  * Which figure the verification reproduces, when the model card above prints a different one for
  * the same metric (Round 84). The tab re-scores the PUBLISHED graph and checks it against that
  * graph's own recorded figure; the card's figures come from the training run. On OPS-SAT the two
- * are 0.9509 and 0.9660 on the same 529 rows - the scikit-learn model before export decides
- * differently on 8 of them - and the page showed the second while reproducing the first, with
- * nothing to say which was which (scratchpad audit82/factcheck-satellite.md, A3). Nothing is
- * retrained to make them agree: both figures are real, and this says which one ran here.
+ * were 0.9509 and 0.9660 on the same 529 rows, and the page showed the second while reproducing the
+ * first, with nothing to say which was which (scratchpad audit82/factcheck-satellite.md, A3). The
+ * gap was put down to the export until Round 86, which traced it to the sample: its features were
+ * rounded to 6 decimals, which flipped 8 decisions. This still says which figure ran here wherever
+ * the two differ.
  */
 export function ReproducedFigure({ usecase, verification }: { usecase: string; verification: Record<string, unknown> }) {
   const spec = modelsFor(usecase).find((m) => m.key === String(verification.modelKey ?? ""));

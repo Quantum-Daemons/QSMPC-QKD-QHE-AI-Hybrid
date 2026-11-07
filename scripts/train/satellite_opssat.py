@@ -127,7 +127,9 @@ def main() -> int:
         # A pipeline student keeps its coefficients on the final estimator, and they describe the
         # EXPANDED space - 209 terms from 19 raw features - which is the honest parameter count.
         student_params=int(student[-1].coef_.size + student[-1].intercept_.size),
-        teacher_params=int(sum(len(p) for p in teacher._predictors)),
+        # NODES, not trees (Round 86). This counted the 117 trees, so beside the student's 210 the teacher read as the
+        # smaller model; its trees hold 5,393 nodes. The tree count is recorded beside it.
+        teacher_params=int(sum(q.nodes.shape[0] for p in teacher._predictors for q in p)),
     )
     print(f"    agreement with teacher      {fidelity.agreement:.4f}")
     print(f"    F1 (positive) teacher/stu   {fidelity.teacher_metric:.4f} / {fidelity.student_metric:.4f}"
@@ -171,6 +173,7 @@ def main() -> int:
           f"   <- the metric the registry declares, so this is the one the baseline compares to")
     train.record_metrics(STUDENT, {
         **fidelity.as_metrics(),
+        "teacher_trees": int(sum(len(p) for p in teacher._predictors)),
         "auc_pr": round(float(student_auprc), 6),
         "metric_note": (
             "Two metrics are recorded and they answer different questions. `auc_pr` is the "

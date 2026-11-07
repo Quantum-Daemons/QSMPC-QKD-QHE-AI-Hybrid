@@ -97,24 +97,30 @@ export interface PassResult {
  * the range, and every sample runs the Downlink tab's own `bb84Rate` at that range.
  */
 export function simulatePass(link: ChannelParams, maxElevation: number,
-                             opts: { windowElevationDeg?: number; stepS?: number } = {}): PassResult {
+                             opts: { windowElevationDeg?: number; riseElevationDeg?: number; stepS?: number } = {}): PassResult {
   const g = geometry(link);
   const window = Math.max(opts.windowElevationDeg ?? g.minElevation, g.minElevation);
+  // The rising side may open higher than the window closes (Round 86): Khmelev et al.'s tracking started at 28 deg
+  // and ran down to 1,100 km. Never below the window; without it the pass is symmetric, as every other caller's.
+  const rise = Math.max(opts.riseElevationDeg ?? window, window);
   const empty: PassResult = { maxElevationDeg: maxElevation, windowElevationDeg: window, durationS: 0,
     minRangeKm: NaN, maxRangeKm: NaN, keyBits: 0, siftedBits: 0, detections: 0, samples: [], segments: [] };
-  if (!(maxElevation >= window) || maxElevation > 90) return empty;
+  if (!(maxElevation >= rise) || maxElevation > 90) return empty;
   const a = EARTH_RADIUS_KM + g.stationKm, b = EARTH_RADIUS_KM + g.orbitKm;
   const w = (2 * Math.PI) / orbitalPeriodS(g.orbitKm);
   const psi0 = centralAngleRad(maxElevation, g.orbitKm, g.stationKm);
   const psiW = centralAngleRad(window, g.orbitKm, g.stationKm);
+  const psiR = centralAngleRad(rise, g.orbitKm, g.stationKm);
   const half = Math.acos(Math.min(1, Math.cos(psiW) / Math.cos(psi0))) / w;
-  const n = Math.max(2, Math.ceil((2 * half) / (opts.stepS ?? 1)));
-  const h = (2 * half) / n;
+  const halfRise = Math.acos(Math.min(1, Math.cos(psiR) / Math.cos(psi0))) / w;
+  const span = halfRise + half;
+  const n = Math.max(2, Math.ceil(span / (opts.stepS ?? 1)));
+  const h = span / n;
   const samples: PassSample[] = [];
   const segments: [number, ChannelParams][] = [];
   let keyBits = 0, siftedBits = 0, detections = 0;
   for (let i = 0; i <= n; i++) {
-    const t = -half + i * h;
+    const t = -halfRise + i * h;
     const r = Math.sqrt(a * a + b * b - 2 * a * b * Math.cos(psi0) * Math.cos(w * t));
     const el = elevationDeg(r, g.orbitKm, g.stationKm) ?? 0;
     // Inside the window by construction; its two ends sit on the window elevation to rounding, and
@@ -135,7 +141,7 @@ export function simulatePass(link: ChannelParams, maxElevation: number,
     siftedBits += wt * sample.siftedRate;
     detections += wt * sample.detectionRate;
   }
-  return { maxElevationDeg: maxElevation, windowElevationDeg: window, durationS: 2 * half,
+  return { maxElevationDeg: maxElevation, windowElevationDeg: window, durationS: span,
     minRangeKm: rangeAtElevationKm(maxElevation, g.orbitKm, g.stationKm),
     maxRangeKm: rangeAtElevationKm(window, g.orbitKm, g.stationKm),
     keyBits, siftedBits, detections, samples, segments };
@@ -178,16 +184,20 @@ export function liaoPass(link: ChannelParams): PassResult {
 export const KHMELEV_2024_SESSION = {
   profile: "micius_2022_zvenigorod", minRangeKm: 600, maxRangeKm: 1100, receivedS: 220,
   finalKeyBits: 310_400, beforeMismatchBits: 629_000, fEC: 1.44, epsSec: 1e-9,
+  /** "The stable bidirectional tracking started at an elevation angle of 28 deg" (arXiv v1, Section II B); the pass
+   *  peaked at 54 deg. So the session rises from 28 deg and sets at 1,100 km (Round 86). */
+  trackingStartDeg: 28,
 };
 
 /** That session through this model, on whatever link is given (the Network tab passes the session's
- *  own profile): culminating where 600 km puts it, counted while the range is under 1,100 km, at the
- *  1 s step `tests/test_the_satellite_block_is_a_pass.py` integrates it at. */
+ *  own profile): culminating where 600 km puts it, counted from the 28 deg where their tracking started
+ *  until the range passes 1,100 km, at the 1 s step `tests/test_the_satellite_block_is_a_pass.py`
+ *  integrates it at. Until Round 86 it counted from 1,100 km on both sides, 252 s against their 220 s. */
 export function khmelevPass(link: ChannelParams): PassResult {
   const g = geometry(link);
   const top = elevationDeg(KHMELEV_2024_SESSION.minRangeKm, g.orbitKm, g.stationKm)!;
   const edge = elevationDeg(KHMELEV_2024_SESSION.maxRangeKm, g.orbitKm, g.stationKm)!;
-  return simulatePass(link, top, { windowElevationDeg: edge });
+  return simulatePass(link, top, { windowElevationDeg: edge, riseElevationDeg: KHMELEV_2024_SESSION.trackingStartDeg });
 }
 
 // --------------------------------------------------------------------------------------------- //

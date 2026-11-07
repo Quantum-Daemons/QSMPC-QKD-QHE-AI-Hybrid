@@ -10,18 +10,20 @@
  *     saying which metric it is (scratchpad audit82/factcheck-finance-genomics.md, B1).
  *   - The metric mini-tables had no header cells, so Lighthouse's `td-has-header` failed on every
  *     use-case page (checklist UX38).
- *   - The OPS-SAT card prints the scikit-learn model's accuracy, 0.9660, while the run reproduces the
+ *   - The OPS-SAT card printed the scikit-learn model's accuracy, 0.9660, while the run reproduced the
  *     ONNX graph's 0.9509 on the same 529 rows, and nothing on the page said which was which
- *     (factcheck-satellite.md, A3).
+ *     (factcheck-satellite.md, A3). Round 86 traced that gap to the sample's 6-decimal rounding; the
+ *     sample now reproduces the card.
  *
  * What this asserts, on the REAL components rendered to HTML with the shipped registry:
  *   1. the finance student's card carries the baseline on its measured row and no "NOT measured
  *      here", while genomics, which measures no AUROC, still says so;
  *   2. every mini-table on every use case's model panel has column headers and a row header (or a
  *      single spanning note cell) in every body row;
- *   3. with OPS-SAT's own published sample, the verification card names 0.9509 as what the tab
- *      reproduces, 0.9660 as the card's, and the 8 rows between them; it says nothing where the two
- *      figures agree, and names the rows as a reason where the card counted other rows.
+ *   3. the verification card says nothing where the two figures agree, which OPS-SAT's own published
+ *      sample now does. Where they differ on the same rows (the 0.9509 OPS-SAT's sample read until
+ *      Round 86, constructed here) it names both figures and the rows between them. Where the card
+ *      counted other rows, it names the rows as the reason.
  *
  * HOW IT LOADS THE TSX: esbuild's API bundles the components for node, with the imports node cannot
  * resolve stubbed (the gitignored wasm module and the ?url assets: node-seal's wasm, gif.js's worker).
@@ -112,10 +114,15 @@ if (typeof page.ReproducedFigure === "function") {
   const card = m.modelsFor("satellite_comms").find((s) => s.key === "satellite_comms.opssat").achieved.accuracy;
   const say = (usecase, v) => text(m.renderToStaticMarkup(m.createElement(page.ReproducedFigure, { usecase, verification: v })));
   const opssat = say("satellite_comms", { modelKey: "satellite_comms.opssat", metricName: "accuracy", n, score: expected, expected });
-  const net = Math.round(Math.abs(card - expected) * n);
-  check("reproduces", opssat.includes(expected.toFixed(4)) && opssat.includes(card.toFixed(4)),
-    `the OPS-SAT statement does not show both ${expected.toFixed(4)} (reproduced) and ${card.toFixed(4)} (card): "${opssat}"`);
-  check("reproduces", net === 8 && opssat.includes(`a net ${net} of them`) && opssat.includes(`same ${n} rows`),
+  check("reproduces", Math.abs(expected - card) < 1e-12 && opssat.trim() === "",
+    `OPS-SAT's sample should reproduce its card (${expected} against ${card}) and the page say nothing: "${opssat}"`);
+  // The disagreement the statement exists for: the 0.9509 OPS-SAT's 6-decimal sample read until Round 86.
+  const old = 0.9508506616257089;
+  const differ = say("satellite_comms", { modelKey: "satellite_comms.opssat", metricName: "accuracy", n, score: old, expected: old });
+  const net = Math.round(Math.abs(card - old) * n);
+  check("reproduces", differ.includes(old.toFixed(4)) && differ.includes(card.toFixed(4)),
+    `the statement does not show both ${old.toFixed(4)} (reproduced) and ${card.toFixed(4)} (card): "${differ}"`);
+  check("reproduces", net === 8 && differ.includes(`a net ${net} of them`) && differ.includes(`same ${n} rows`),
     `the statement does not give the reason: the same ${n} rows, a net ${net} decided differently`);
   // Where the card and the graph agree there is nothing to say; where the card counted other rows,
   // the rows are the reason, not the model.

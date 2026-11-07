@@ -1786,7 +1786,8 @@ export function runClientPipeline(
           if (sd?.ckks) {
             const c = sd.ckks, e = c.encrypted.anomalies;
             emit("log", stage, `${key}: its forecast under CKKS, all ${c.rows} rows in ${c.ciphertexts} `
-              + `ciphertexts (${r2(c.fheMs / 1000)} s): max |decrypted - plaintext| ${c.maxAbsError.toExponential(2)}; `
+              + `ciphertexts (${r2(c.fheMs / 1000)} s${sd.ranIn === "a Web Worker" ? ", in a Web Worker beside the page" : ""}): `
+              + `max |decrypted - plaintext| ${c.maxAbsError.toExponential(2)}; `
               + `the decrypted forecast, thresholded in this tab, changes ${c.flagsChanged} of ${sd.plain.flags.length} `
               + `flags and scores ${r2(e.f05)} (tp ${e.tp} fp ${e.fp} fn ${e.fn}) against ${r2(sd.plain.anomalies.f05)} `
               + `from the plaintext forecast, whose flags match the published digest: ${sd.flagsDigestMatches ? "yes" : "NO"}.`);

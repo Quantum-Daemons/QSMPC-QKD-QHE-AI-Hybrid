@@ -429,6 +429,23 @@ def _breastmnist_provenance(what: str) -> str:
 # --------------------------------------------------------------------------------------------- #
 #  medical_fl -- BreastMNIST 28x28, the corpus medical_fl.resnet18 was actually trained on
 # --------------------------------------------------------------------------------------------- #
+def float32_shortest(a) -> np.ndarray:
+    """Each value as the shortest decimal that reads back as the same float32 (Round 86).
+
+    Every graph here takes float32, and the page feeds it a Float32Array, so a decimal that reads back as the same
+    float32 loses nothing the graph would use. Rounding to a fixed number of decimals did not: 6 decimals keep a value
+    of order one and leave a value of order 1e-5 with one or two significant digits. On OPS-SAT-AD that flipped 8 of
+    529 decisions, so the page reproduced 0.9509 for a graph whose accuracy on the partition is 0.9660, and the sample
+    blamed the export. The round trip is checked for every value, not assumed.
+    """
+    a32 = np.asarray(a, dtype=np.float32)
+    out = np.array([float(np.format_float_scientific(v, unique=True)) for v in a32.ravel()],
+                   dtype=np.float64).reshape(a32.shape)
+    if not np.array_equal(out.astype(np.float32), a32):
+        raise SystemExit("float32_shortest: a written value does not read back as the same float32")
+    return out
+
+
 def build_medical(rng: np.random.Generator) -> dict:
     import os
 
@@ -561,10 +578,10 @@ def build_finance(rng: np.random.Generator) -> dict:
     idx = np.concatenate([rng.choice(pos, take_pos, replace=False),
                           rng.choice(neg, want - take_pos, replace=False)])
     rng.shuffle(idx)
-    # Round BEFORE predicting. The payload ships 6-decimal values, so an expectation computed on
-    # the unrounded array is an expectation for numbers the browser never sees. On a tree ensemble
-    # that shows up as split-boundary flips.
-    x = np.asarray(x_te[idx], dtype=float).round(6)
+    # Written as the browser reads them, BEFORE predicting: an expectation computed on other values is one for numbers
+    # the browser never sees, and on a tree ensemble that shows up as split-boundary flips. Until Round 86 that meant 6
+    # decimals; now float32 precision (float32_shortest).
+    x = float32_shortest(x_te[idx])
     y = y_te[idx]
     out = sess.run(None, {name: x.astype(np.float32)})
     scores = next((o for o in out if getattr(o, "ndim", 0) == 2 and o.shape[1] > 1), out[0])
@@ -941,10 +958,9 @@ def build_satellite_opssat(rng: np.random.Generator) -> dict:
     from qsh.models import datasets
 
     x, y = datasets.opssat_ad("test")
-    x = np.asarray(x, dtype=np.float32)
-
-    # Round before predicting, so `expected` describes the values the payload actually ships.
-    x = np.asarray(x, dtype=float).round(6)
+    # Written as the browser reads them, BEFORE predicting, so `expected` describes the values the payload ships: float32
+    # precision since Round 86, not 6 decimals, which flipped 8 of these 529 decisions (float32_shortest).
+    x = float32_shortest(x)
     sess, graph = _session("satellite_opssat")
     out = sess.run(None, {sess.get_inputs()[0].name: x.astype(np.float32)})
     scores = next((o for o in out if getattr(o, "ndim", 0) == 2 and o.shape[1] > 1), out[0])
@@ -964,7 +980,7 @@ def build_satellite_opssat(rng: np.random.Generator) -> dict:
         "input": {"shape": [1, x.shape[1]], "dtype": "float32", "preprocessing": [],
                   "layout": "samples[i] is one segment's 19 features, in the order below"},
         "feature_names": list(datasets.OPSSAT_FEATURES),
-        "samples": np.asarray(x, dtype=float).tolist(),  # already rounded above
+        "samples": x.tolist(),  # float32 precision, as predicted above
         "labels": y.astype(int).tolist(),
         "expected": {
             "graph": graph,
@@ -973,9 +989,10 @@ def build_satellite_opssat(rng: np.random.Generator) -> dict:
             **declared_metric_expectation("satellite_comms.opssat", y, pred),
             "note": ("The whole published test split, so this reproduces the benchmark's own "
                      "partition rather than a resample of it. The accuracy above is the exported "
-                     "ONNX graph's own on these rows; the model card's metrics come from the "
-                     "scikit-learn model before export, which predicts differently on a few of "
-                     "these rows, so the two accuracies differ."),
+                     "ONNX graph's own on these rows, which carry the partition's values to float32 "
+                     "precision, the precision the graph reads. Until Round 86 they were rounded to "
+                     "6 decimals, which flipped 8 decisions, and this note blamed the export for "
+                     "the gap; the export reproduces the scikit-learn model on these rows."),
         },
     }
 
@@ -1005,7 +1022,7 @@ def build_telecom(rng: np.random.Generator) -> dict:
     # name count, and 7 != 8 made telecom the one flat-feature use case never actually checked.
     x_all, y_all, label_names = generate(n_per_class=300, seed=42)
     _, x, _, y = train_test_split(x_all, y_all, test_size=0.25, random_state=42, stratify=y_all)
-    x = np.asarray(x, dtype=float).round(6)
+    x = float32_shortest(x)   # float32 precision, not 6 decimals (Round 86)
 
     sess, graph = _session("telecom_qml_ids")
     out = sess.run(None, {sess.get_inputs()[0].name: x.astype(np.float32)})
@@ -1294,7 +1311,10 @@ def declared_metric_expectation(key: str, y, pred) -> dict:
         return {}
     if declared == "minority_class_f1":
         return {"minority_class_f1": float(metrics.minority_class_f1(y, pred))}
-    if declared == "macro_f1":
+    # `classical_rf_macro_f1` is telecom_ids.qml's name for the same quantity since Round 86: its published graph IS
+    # the forest, so the macro F1 of the graph's own predictions is what its sample verifies. Unmapped, a regenerated
+    # sample dropped the macro F1 it had shipped and declared the headline not verifiable.
+    if declared in ("macro_f1", "classical_rf_macro_f1"):
         return {"macro_f1": float(metrics.macro_f1(y, pred))}
     if declared == "accuracy":
         return {}                                   # already written by every caller
@@ -1380,7 +1400,7 @@ def build_opssat_student(rng: np.random.Generator) -> dict:
     # student, which is still the shape every other use case ships.
     mean, _scale = _student_scaler("satellite_opssat_student")
     if mean is None:
-        z = np.asarray(x, dtype=float).round(6)
+        z = float32_shortest(x)   # raw features: float32 precision, not 6 decimals (Round 86)
         layout = "samples[i] is one segment's 19 RAW features, in the order below"
         prep_note = ("the published ONNX graph applies the quadratic expansion and the z-scoring "
                      "itself, so these are raw feature values and the caller applies nothing")

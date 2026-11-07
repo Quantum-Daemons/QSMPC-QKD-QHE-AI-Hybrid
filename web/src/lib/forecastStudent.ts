@@ -26,6 +26,8 @@ export interface StudentEvaluation {
     rows: number; ciphertexts: number; fheMs: number; maxAbsError: number;
     flagsChanged: number; encrypted: StretchScore;
   };
+  /** Where it ran: the page's own runs use a dedicated Web Worker; node, which has none, the calling thread. */
+  ranIn?: "a Web Worker" | "the calling thread";
 }
 
 /** Evaluate the student on its published stretch; `ckks` "all" also runs every forecast under CKKS. */
@@ -74,6 +76,36 @@ export async function evaluateForecastStudent(file: ForecastEventsFile, w: Forec
   result.ckks = { rows: enc.rows, ciphertexts: enc.ciphertexts, fheMs: enc.fheMs, maxAbsError: maxAbs,
                   flagsChanged: changed, encrypted };
   return result;
+}
+
+/**
+ * The same evaluation, off the page's thread. Under CKKS every row takes about 21 s in a tab, as 138 tasks of about
+ * 160 ms that left input lagging for the whole run, so in a browser this always runs `evaluateForecastStudent` in a
+ * dedicated worker (`forecastStudent.worker.ts`). A worker that fails is reported as the failure it is and is never
+ * retried on the page's thread, which would hide it behind 21 s of blocked input. Outside a browser (node, the
+ * tests) there is no Worker, and it runs on the calling thread. The result says which.
+ */
+export async function evaluateForecastStudentOffThread(file: ForecastEventsFile, w: ForecasterWeights,
+                                                       opts: { ckks?: "none" | "spot" | "all" } = {}): Promise<StudentEvaluation> {
+  if (typeof window === "undefined" || typeof Worker === "undefined") {
+    return { ...(await evaluateForecastStudent(file, w, opts)), ranIn: "the calling thread" };
+  }
+  // Vite bundles the worker from exactly this form: `new URL(...)` written inside `new Worker(...)`.
+  const worker = new Worker(new URL("./forecastStudent.worker.ts", import.meta.url), { type: "module" });
+  try {
+    return await new Promise<StudentEvaluation>((resolve, reject) => {
+      worker.onmessage = (e: MessageEvent<{ id: number; ok: boolean; ev?: StudentEvaluation; error?: string }>) => {
+        const d = e.data;
+        if (d.ok && d.ev) resolve({ ...d.ev, ranIn: "a Web Worker" });
+        else reject(new Error(`in its worker: ${d.error ?? "no result"}`));
+      };
+      worker.onerror = (e) => reject(new Error(`its worker failed: ${e.message || "the worker could not be loaded"}`));
+      worker.onmessageerror = () => reject(new Error("its worker's result could not be read back"));
+      worker.postMessage({ id: 1, file, weights: w, ckks: opts.ckks ?? "none" });
+    });
+  } finally {
+    worker.terminate();
+  }
 }
 
 /** The published weights, beside the evaluation sample at the same pinned revision. */

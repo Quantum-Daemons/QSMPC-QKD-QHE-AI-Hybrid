@@ -549,9 +549,9 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
   // selected one, so nothing is lost by deleting it: start the pipeline and the verification is
   // part of the result rather than a button somebody has to know to press.
   // WHICH FIGURE (Round 84): the re-score checks the published graph against that graph's own
-  // recorded figure, and the figures above come from the training run. They can differ - OPS-SAT's
-  // card prints 0.9660 where the graph scores 0.9509 on the same rows - and the run's verification
-  // card names both when they do.
+  // recorded figure, and the figures above come from the training run. They can differ, and the run's
+  // verification card names both when they do. OPS-SAT's did, 0.9660 against 0.9509, until Round 86
+  // traced the gap to its sample's 6-decimal rounding rather than the export.
   // The forecaster student (Round 86) is scored from its weights, not its graph, and end to end under CKKS.
   if (spec.key === "satellite_comms.student") {
     return <p className="muted small">

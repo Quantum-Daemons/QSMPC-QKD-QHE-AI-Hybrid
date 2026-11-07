@@ -69,7 +69,9 @@ def _liao_segments():
 def _khmelev_segments():
     ch = _sat_channel(Context(usecase="satellite_comms", config={"sat_profile": "micius_2022_zvenigorod"}))
     fs = ch.free_space
-    return simulate_pass(ch, link_elevation_deg(fs, 600.0), window_elevation_deg=link_elevation_deg(fs, 1100.0)).segments
+    # Rising from the 28 deg where their tracking started, setting at 1,100 km (Round 86).
+    return simulate_pass(ch, link_elevation_deg(fs, 600.0), window_elevation_deg=link_elevation_deg(fs, 1100.0),
+                         rise_elevation_deg=28.0).segments
 
 
 def _params(deviation: str, profile: str | None = None):
@@ -146,8 +148,10 @@ def test_a_basis_without_a_key_adds_none() -> None:
 
 
 @pytest.mark.parametrize("deviation,liao,khmelev", [
-    ("chernoff", (226_072, 450_923), (435_095, 868_462)),
-    ("hoeffding", (164_183, 325_556), (354_672, 705_542)),
+    # Khmelev's session rises from the 28 deg where their tracking started (Round 86): until then it counted from
+    # 1,100 km on both sides, and read (435_095, 868_462) and (354_672, 705_542).
+    ("chernoff", (226_072, 450_923), (415_669, 829_658)),
+    ("hoeffding", (164_183, 325_556), (337_103, 670_497)),
 ])
 def test_the_flown_passes_on_one_basis_and_on_both(deviation, liao, khmelev) -> None:
     """The figures the Network tab prints at the defaults, to the bit."""
@@ -199,8 +203,8 @@ def test_the_tab_prints_both_conventions_beside_the_published_keys(pages) -> Non
     # Khmelev et al., anchored on their final key, with the key before the mismatch analysis named.
     assert "Khmelev et al., Opt. Express 32, 11964 (2024)" in t
     # Against their key before the detector-mismatch analysis, which this model has no mismatch to need (Round 86).
-    assert "Secret key, finite, one basis (Z) 435,095 629,000 (before the mismatch analysis) -30.8%" in t
-    assert "Secret key, finite, both bases 868,462 629,000 (before the mismatch analysis) +38.1%" in t
+    assert "Secret key, finite, one basis (Z) 415,669 629,000 (before the mismatch analysis) -33.9%" in t
+    assert "Secret key, finite, both bases 829,658 629,000 (before the mismatch analysis) +31.9%" in t
     assert "Their final key is 310,400 bits" in t and "f_EC 1.44, where this model uses 1.16" in t
     # The run's own pass gives both too.
     assert re.search(r"keyed on the Z basis as the run keys it; on both bases, [\d.,]+ kbit", t)
@@ -211,7 +215,7 @@ def test_the_gap_paragraph_is_computed_and_tells_the_basis_story(pages) -> None:
     for story in ("45 percent", "29 percent", "the statistics close", "not most of either", "0.75 and 0.69"):
         assert story not in t, story
     assert "so 95% of the step from the asymptotic row to the one-basis row is the basis convention" in t
-    assert ("the model's key is 1.50 times Liao's, and on Khmelev et al.'s session 1.38 times their key before the "
+    assert ("the model's key is 1.50 times Liao's, and on Khmelev et al.'s session 1.32 times their key before the "
             "detector-mismatch correction") in t
     # On another profile the same sentence carries that profile's figures, not the default's.
     u = pages["upper"]

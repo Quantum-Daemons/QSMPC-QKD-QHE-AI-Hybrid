@@ -67,34 +67,42 @@ class Pass:
 
 
 def simulate_pass(link: ChannelParams, max_elevation: float, *, window_elevation_deg: float | None = None,
-                  step_s: float = 1.0) -> Pass:
+                  rise_elevation_deg: float | None = None, step_s: float = 1.0) -> Pass:
     """One pass culminating at `max_elevation` degrees, while the satellite is above the window
-    (default: the link's minimum elevation). Empty when the top is below the window."""
+    (default: the link's minimum elevation). Empty when the top is below the window.
+
+    `rise_elevation_deg` opens the rising side higher than the window closes (Round 86): Khmelev et al.'s
+    tracking started at 28 deg and ran down to 1,100 km. Never below the window; without it the pass is
+    symmetric. Twin of `satNetwork.ts::simulatePass`."""
     fs = link.free_space
     if fs is None:
         raise ValueError("a pass needs a downlink (ChannelParams.free_space)")
     window = max(fs.min_elevation_deg if window_elevation_deg is None else window_elevation_deg,
                  fs.min_elevation_deg)
-    if not (max_elevation >= window) or max_elevation > 90.0:
+    rise = max(window if rise_elevation_deg is None else rise_elevation_deg, window)
+    if not (max_elevation >= rise) or max_elevation > 90.0:
         return Pass(max_elevation, window, 0.0, math.nan, math.nan, ())
     orbit, station = fs.orbit_altitude_km, fs.station_altitude_km
     a, b = EARTH_RADIUS_KM + station, EARTH_RADIUS_KM + orbit
     w = 2.0 * math.pi / orbital_period_s(orbit)
     psi0 = central_angle_rad(max_elevation, orbit, station)
     psi_w = central_angle_rad(window, orbit, station)
+    psi_r = central_angle_rad(rise, orbit, station)
     half = math.acos(min(1.0, math.cos(psi_w) / math.cos(psi0))) / w
-    n = max(2, math.ceil(2.0 * half / step_s))
-    h = 2.0 * half / n
+    half_rise = math.acos(min(1.0, math.cos(psi_r) / math.cos(psi0))) / w
+    span = half_rise + half
+    n = max(2, math.ceil(span / step_s))
+    h = span / n
     # Inside the window by construction; the two ends sit on the window elevation to rounding, so
     # the cut is lifted on each sample rather than letting a last-digit difference drop an end.
     open_sky = replace(fs, min_elevation_deg=0.0)
     segments = []
     for i in range(n + 1):
-        t = -half + i * h
+        t = -half_rise + i * h
         r = math.sqrt(a * a + b * b - 2.0 * a * b * math.cos(psi0) * math.cos(w * t))
         wt = 0.5 * h if i in (0, n) else h
         segments.append((wt * link.source_rate_hz, replace(link, distance_km=r, free_space=open_sky)))
-    return Pass(max_elevation, window, 2.0 * half, range_at_elevation_km(max_elevation, orbit, station),
+    return Pass(max_elevation, window, span, range_at_elevation_km(max_elevation, orbit, station),
                 range_at_elevation_km(window, orbit, station), tuple(segments))
 
 
