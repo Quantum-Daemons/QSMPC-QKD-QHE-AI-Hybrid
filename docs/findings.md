@@ -73,9 +73,9 @@ browser reports `encrypted_agreement`: how often the CKKS evaluation reproduces 
 STUDENT's top-1 class over the rows it scored, which measures the encryption's noise (Concrete-ML
 calls the same quantity "Similarity"). Offline, from training, `models/metrics.json` records the
 student's `agreement` with its TEACHER on held-out data: finance 0.983, medical 0.827, OPS-SAT
-0.958, satellite 0.999, telecom 0.995, which measures what choosing an encryption-sized model
-costs, beside the industry's own metric (on satellite, agreement over a timeline its teacher rarely
-flags: that student scores 0 on events against its teacher's 0.961 and is not republished). Everything
+0.958, satellite 0.9996, telecom 0.995, which measures what choosing an encryption-sized model
+costs, beside the industry's own metric (on satellite, flag agreement over a timeline the teacher
+rarely flags; that student's event score is the comparison that means something, below). Everything
 below is what this repository measured, not
 what the papers report - published baselines are shown beside each figure, including where we
 fall short:
@@ -323,15 +323,15 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
 
 - **The models sized for encryption are published too.** Each use case has a teacher and a
   distilled student sized for CKKS: 33 parameters for finance against a 141,154-parameter teacher,
-  3,226 against 11,171,266 for medical, 49 against 84,860 for satellite. Which of them CKKS
+  3,226 against 11,171,266 for medical, 294 against 84,860 for satellite. Which of them CKKS
   evaluates in the browser, page by page, is under
   [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All eleven repos are public, and
   ten are pinned: the satellite student's pin is withdrawn while it is replaced. The evaluation sample
-  for each lives in that model's own repo at the same revision as its weights - except the satellite
-  student's, which publishes none by design, because its metric is defined over a timeline and
-  cannot be re-scored from independent rows.
+  for each lives in that model's own repo at the same revision as its weights. Since Round 86 that
+  includes the satellite student's, which is a stretch of a timeline rather than independent rows,
+  because its metric is defined over a timeline.
 
-  A test holds this sentence's count and its one exception to the registry.
+  A test holds this sentence's counts, and that no published model goes without a sample, to the registry.
 
 - **Retrained in Round 86 by ESA-ADB's own recipe; the three-event denominator below is gone.** The
   model now trains on ESA-ADB's Mission1 split and is scored by its rules over the 29 anomalies of the
@@ -341,8 +341,13 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   findings are new:
   - **The floor decides most of the score.** Without it both arms land near the benchmark's plain
     Telemanom-ESA (0.090).
-  - **The CKKS student cannot follow this teacher**, so it is not republished. It is to be replaced
-    by a linear next-step forecaster evaluated under CKKS.
+  - **The CKKS student is now a linear next-step forecaster.** The logistic student could not follow
+    this teacher: it scored 0 against the teacher's 0.961 on its slice. Its replacement has 294
+    parameters, and the client thresholds its decrypted forecast. Over the whole test half its pipeline
+    scores 0.940 (22 of 29, no false alarms) against the teacher's 0.950. On the windows that touch no
+    label its forecast is closer to the truth than the teacher's (MAE 0.276 against 0.304). The page
+    scores its published stretch end to end; every forecast there runs under CKKS and changes no flag.
+    It is published only on the owner's approval.
   - **Requiring several channels to agree in place of a floor** is now a third reading, with k chosen on
     the validation months (6 there). It scores 0.909 on anomalies and 0.845 on all events, against the
     floor's 0.950 and 0.745.

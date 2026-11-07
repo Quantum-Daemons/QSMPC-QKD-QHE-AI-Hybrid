@@ -225,8 +225,8 @@ data that trained a model is weaker (Round 86, review PI-16):
 
 - every recorded `git_sha` ends in `-dirty`: each model was trained from a working tree with uncommitted
   changes, so its commit alone does not reproduce it;
-- no student records a `git_sha`, and only `finance_aml.gbm` records a digest of its training data
-  (`data_digest`);
+- of the students, only `satellite_comms.student` records a `git_sha`, since Round 86 gave it a trainer
+  of its own, and only `finance_aml.gbm` records a digest of its training data (`data_digest`);
 - the ids recorded before 2026-11-02 name commits of the history before it was rewritten, which is kept
   privately with a map from each old commit to its new one.
 

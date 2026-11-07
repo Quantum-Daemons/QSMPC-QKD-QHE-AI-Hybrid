@@ -552,6 +552,16 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
   // recorded figure, and the figures above come from the training run. They can differ - OPS-SAT's
   // card prints 0.9660 where the graph scores 0.9509 on the same rows - and the run's verification
   // card names both when they do.
+  // The forecaster student (Round 86) is scored from its weights, not its graph, and end to end under CKKS.
+  if (spec.key === "satellite_comms.student") {
+    return <p className="muted small">
+      Verified during the pipeline run: press <strong>Start</strong> and this student&apos;s published stretch
+      ({spec.eval_split ?? "split not declared"}) is scored in this tab from its published weights. Its forecast is
+      summed as the generator summed it and thresholded with Telemanom&apos;s procedure, its flags are checked against the
+      published digest, and its events are scored by ESA-ADB&apos;s rules. Then every forecast runs again under CKKS, and
+      the run log says what the decrypted forecast changes.
+    </p>;
+  }
   return <p className="muted small">
     Verified during the pipeline run: press <strong>Start</strong> and this model is re-scored on its
     published evaluation sample ({spec.eval_split ?? "split not declared"}) in this tab, with the

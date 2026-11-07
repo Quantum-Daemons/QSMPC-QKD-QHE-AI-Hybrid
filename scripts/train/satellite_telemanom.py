@@ -3,7 +3,8 @@
 
     T2 teacher   one 2 x LSTM(80) forecaster over the six channels, multi-output as in ESA-ADB's Telemanom-ESA,
                  with Telemanom's non-parametric dynamic thresholding run per channel (qsh.models.telemanom_threshold)
-    T1 student   logistic regression over channel x timestep windows, evaluated under real CKKS
+    T1 student   a linear next-step forecaster evaluated under CKKS, trained from this model by
+                 scripts/train/satellite_student_forecaster.py (Round 86; a logistic classifier until then)
 
 WHY THIS DATASET AND NOT SMAP/MSL
     The bundled NASA SMAP/MSL sample is kept for the browser demo, but it is not a defensible
@@ -80,7 +81,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
 
-from qsh.models import datasets, distil, export, metrics, telemanom_threshold, train  # noqa: E402
+from qsh.models import datasets, export, metrics, telemanom_threshold, train  # noqa: E402
 from qsh.models.registry import get as get_spec  # noqa: E402
 
 #: Telemanom's published configuration (KDD'18): 2 LSTM layers of 80 units, sequence length 250,
@@ -547,46 +548,10 @@ def main() -> int:
           f"(tp {iso['tp']} fp {iso['fp']} fn {iso['fn']})   <- trivial baseline, run every time")
 
     # ---- T1 student -----------------------------------------------------------
-    print("\n  distilling to the CKKS-linear student ...")
-    flat_te = xte[:, -8:, :].reshape(len(xte), -1)      # last 8 timesteps x 6 channels = 48 features
-    # Split so that BOTH halves contain labelled anomaly events. A plain 60/40 cut of a 0.75%-positive
-    # timeline can leave the evaluation half with no events at all, and event-wise F-beta is then
-    # undefined (nan) rather than zero — which would be reported as a metric if left unchecked.
-    # The student reads the windows, so it pairs with the rows that have one: the teacher's flags from cut + SEQ_LEN.
-    pw, tw, w_times = pred[SEQ_LEN:], truth[SEQ_LEN:], t_times[SEQ_LEN:]
-    split = _split_with_events(tw, target=0.6)
-    student = distil.distil_linear(pw[:split], flat_te[:split], seed=args.seed)
-    student_pred = student.predict(flat_te[split:])
-    student_export = distil.save_student(
-        student, Path("models/satellite_telemanom_student"), n_features=int(flat_te.shape[1]),
-        teacher_key="satellite_comms.telemanom", student_key="satellite_comms.student")
-    print(f"  student persisted: {student_export['n_parameters']} params, "
-          f"browser_runnable={student_export['browser_runnable']}")
-    # Scored as the teacher is since Round 86: ESA-ADB's corrected event-wise F0.5 over the evaluation slice, with the
-    # labels that start and end inside it.
-    s_times = w_times[split:]
-    s_labels = period_labels(s_times[0], s_times[-1])
-
-    def slice_f05(_y, p):
-        return esa_event_wise(s_times, np.asarray(p).astype(int), s_labels, select=ANOMALIES,
-                              full_range=(s_times[0], s_times[-1]))["f_0.50"]
-
-    fidelity = distil.measure_fidelity(
-        teacher_key="satellite_comms.telemanom", student_key="satellite_comms.student",
-        teacher_pred=pw[split:], student_pred=student_pred, y_true=tw[split:],
-        metric_fn=slice_f05, metric_name="corrected_event_wise_f0_5",
-        student_params=int(student.coef_.size + student.intercept_.size), teacher_params=n_params,
-        # n_eval counts samples; this metric's denominator is events, so record both.
-        n_scoring_units=int(s_labels.loc[s_labels["Category"] == "Anomaly", "ID"].nunique()),
-        scoring_unit="labelled anomaly events (ESA-ADB's ESAScores rules)",
-    )
-    print(f"    agreement with teacher  {fidelity.agreement:.4f}")
-    print(f"    eval half holds {fidelity.n_scoring_units} labelled anomaly event(s) "
-          f"in {fidelity.n_eval:,} samples")
-    print(f"    corrected F0.5 t/s      {fidelity.teacher_metric:.4f} / {fidelity.student_metric:.4f}")
-    if fidelity.teacher_scored_zero:
-        print("      ^ the teacher scored 0 here, so there is no fidelity claim to make: the delta "
-              "compares the student against a model that caught nothing on this slice")
+    # Not here since Round 86. The logistic student this section distilled from the teacher's flags could not follow
+    # the retrained teacher (0 against its 0.961 on the evaluation slice), and its replacement, a linear next-step
+    # forecaster the page evaluates under CKKS and thresholds itself, is trained from the published teacher by
+    # scripts/train/satellite_student_forecaster.py, so a teacher run no longer overwrites the student's record.
 
     # ---- artefacts ------------------------------------------------------------
     out = args.out
@@ -755,7 +720,6 @@ def main() -> int:
         "export": _export_block(report),
         "wall_clock_s": round(time.time() - started, 1),
     })
-    train.record_metrics("satellite_comms.student", fidelity.as_metrics())
     print(f"\n  wrote {out} and models/metrics.json in {time.time()-started:.0f}s")
     return 0
 

@@ -288,6 +288,11 @@ MODIFICATIONS = {
         "standard deviation of the unlabelled training rows, and cut into 250-step windows; 128 windows drawn at "
         "random from the windows of the held-out test half (from 2007-01-01, ESA-ADB's own split) that touch no "
         "label, with each window's next-step values as targets, rounded to 4 decimals."),
+    "satellite_comms.student": (
+        "Channels 41 to 46 of ESA-ADB Mission1, resampled to 30 s by zero-order hold and z-scored with the mean and "
+        "standard deviation of the unlabelled training rows; one contiguous stretch of 8,640 rows of the held-out "
+        "test half (from 2007-01-01, ESA-ADB's own split) after 8 rows of history, rounded to 4 decimals, with the "
+        "annotations of these channels that start and end inside it, their times in milliseconds."),
     "satellite_comms.opssat": (
         "The 19 published per-segment features of the benchmark's test partition, all 529 segments, "
         "rounded to 6 decimals, with the published labels."),
@@ -394,6 +399,7 @@ _MODEL_KEY = {
     "medical_fl": "medical_fl.resnet18",
     "finance_aml": "finance_aml.gbm",
     "satellite_comms": "satellite_comms.telemanom",
+    "satellite_student": "satellite_comms.student",
     "satellite_opssat": "satellite_comms.opssat",
     "telecom_ids": "telecom_ids.qml",
     "telecom_nidd": "telecom_ids.nidd",
@@ -790,6 +796,136 @@ def build_satellite(rng: np.random.Generator) -> dict:
         },
     }
 
+
+
+#: The student's stretch: three days of the test half at 30 s, long enough for Telemanom's windows (2,100 rows) and its
+#: start-up (the first 500 rows are never flagged), short enough for the page to evaluate it under CKKS.
+STUDENT_STRETCH_ROWS = 8640
+#: Anomalies must sit at least this far into the stretch to count when it is chosen, past the start-up rows.
+STUDENT_STRETCH_WARMUP = 2100
+
+
+def build_satellite_student(rng: np.random.Generator) -> dict:
+    """A contiguous stretch of the test half, for the forecaster student scored end to end in the browser (Round 86).
+
+    The student is a linear next-step forecaster; the page evaluates its dot products (plaintext, and under CKKS),
+    thresholds |forecast - actual| with Telemanom's procedure (`telemanomThreshold.ts`, a port of
+    qsh.models.telemanom_threshold) and scores the flags with ESA-ADB's rules (`esaScores.ts`). Event scoring needs
+    a timeline, not independent rows, so the sample is one stretch of STUDENT_STRETCH_ROWS rows of the test half.
+
+    WHICH STRETCH, AND WHY THIS RULE. Anomalies are sparse - no three days of the test half hold more than one - and a
+    stretch the pipeline flags nothing in would be reproduced exactly by a page that flags nothing, which checks
+    nothing. So among the stretches, stepping by three hours, that hold an anomaly past their first
+    STUDENT_STRETCH_WARMUP rows, the sample takes the one where the student's pipeline, run on that stretch alone,
+    detects the most anomalies, then the most events of any category, then raises the fewest false alarms, then
+    starts earliest. It is chosen on the outcome, so its score is a reproduction check and not a measurement; the
+    student's measurement is its record's, over the whole test half. `rng` is unused.
+
+    Every expected figure is computed from the rows as SHIPPED (rounded to 4 decimals), with the dot products summed
+    in the order the page sums them, so the page can reproduce the flags exactly rather than approximately.
+    """
+    import hashlib
+
+    import pandas as pd
+    from train.satellite_telemanom import ALL_EVENTS, ANOMALIES, prepare  # type: ignore
+
+    from qsh.models import registry, telemanom_threshold
+    from qsh.models.esa_scores import esa_event_wise
+
+    key, teacher_key = "satellite_comms.student", "satellite_comms.telemanom"
+    w = json.loads((REPO / registry.ARTIFACT_DIRS[key] / "weights.json").read_text())
+    if w.get("kind") != "linear-forecaster":
+        raise SystemExit(f"{key}'s weights.json is a {w.get('kind')!r}, not the forecaster this sample is for")
+    W, b, k = np.asarray(w["W"], dtype=np.float64), np.asarray(w["b"], dtype=np.float64), int(w["k_rows"])
+    rec = registry.achieved(teacher_key) or {}
+    split = rec["split"]
+    prep = prepare(rec["resample"], split["test_from"], split["validation_from"], hold="last")
+    if not (np.allclose(prep.mu, w["input"]["mean"], rtol=0, atol=1e-9)
+            and np.allclose(prep.sigma, w["input"]["std"], rtol=0, atol=1e-9)):
+        raise SystemExit("the z-score constants fitted here differ from the ones the student published")
+    cut, index = prep.cut, prep.df.index
+    st = prep.labels_all["StartTime"].dt.tz_localize(None)
+    en = prep.labels_all["EndTime"].dt.tz_localize(None)
+
+    z_all = prep.zscore(prep.raw_plain)
+    sigma, mu = np.asarray(w["input"]["std"]), np.asarray(w["input"]["mean"])
+    cfg = telemanom_threshold.TelemanomConfig(**w["thresholding"])
+
+    def run(start: int):
+        """The student's pipeline on the stretch from `start`, from the rows as they would be shipped."""
+        rows_ = np.round(z_all[start - k:start + STUDENT_STRETCH_ROWS].astype(np.float64), 4)
+        times_ = index[start:start + STUDENT_STRETCH_ROWS]
+        actual_ = rows_[k:]
+        # The page's order: forecast[c] = b[c] + W[c, 0] x[0] + W[c, 1] x[1] + ..., one term at a time.
+        X = np.stack([rows_[i:i + k].ravel() for i in range(STUDENT_STRETCH_ROWS)])
+        pred_ = np.repeat(b[None, :], STUDENT_STRETCH_ROWS, axis=0)
+        for j in range(X.shape[1]):
+            pred_ = pred_ + W[:, j][None, :] * X[:, j][:, None]
+        per_, flagged_ = telemanom_threshold.flag(np.abs(pred_ - actual_) * sigma, actual_ * sigma + mu, cfg)
+        lab_ = prep.labels_all[(st >= times_[0]) & (en <= times_[-1])]
+        full_ = (times_[0], times_[-1])
+        scored_ = {name: esa_event_wise(times_, flagged_.astype(int), lab_, select=sel, full_range=full_)
+                   for name, sel in (("anomalies", ANOMALIES), ("all_events", ALL_EVENTS))}
+        return rows_, times_, actual_, pred_, per_, flagged_.astype(np.uint8), lab_, scored_
+
+    # The stretch, by the rule in the docstring.
+    an = prep.labels_all[prep.labels_all["Category"] == "Anomaly"].assign(_st=st, _en=en)
+    best, start = None, None
+    for a in range(cut + k, len(index) - STUDENT_STRETCH_ROWS, 360):
+        lo, hi = index[a + STUDENT_STRETCH_WARMUP], index[a + STUDENT_STRETCH_ROWS - 1]
+        if not an[(an["_st"] >= lo) & (an["_en"] <= hi)]["ID"].nunique():
+            continue
+        sc = run(a)[-1]
+        rank = (sc["anomalies"]["tp"], sc["all_events"]["tp"], -sc["anomalies"]["fp"], -a)
+        if best is None or rank > best:
+            best, start = rank, a
+    rows, times, actual, pred, per, flagged, lab, scored = run(start)
+    ms = lambda ts: int(pd.Timestamp(ts).tz_localize(None).value // 1_000_000)  # noqa: E731
+    persistence = np.abs(rows[k - 1:-1] - actual)
+    print(f"    stretch {times[0]} to {times[-1]}: {lab.loc[lab['Category'] == 'Anomaly', 'ID'].nunique()} anomalies, "
+          f"{int(flagged.sum())} flagged; anomalies F0.5 {scored['anomalies']['f_0.50']:.4f} "
+          f"(tp {scored['anomalies']['tp']} fp {scored['anomalies']['fp']} fn {scored['anomalies']['fn']})")
+
+    def brief(s_: dict) -> dict:
+        return {"f_0_5": s_["f_0.50"], "precision": s_["precision"], "recall": s_["recall"], "tp": int(s_["tp"]),
+                "fp": int(s_["fp"]), "fn": int(s_["fn"]), "n_events": int(s_["n_selected_ids"])}
+
+    ds = registry.get(key).dataset
+    return {
+        "task": "forecast_events",
+        "provenance": (
+            f"Real ESA Anomaly Dataset (ESA-ADB) telemetry, Mission1 lightweight channels 41-46. {ds.attribution} "
+            f"One contiguous stretch of the test half (ESA-ADB's own Mission1 split from {split['test_from']}, in the "
+            f"corpus's anonymised calendar): {STUDENT_STRETCH_ROWS:,} rows at {rec['resample']} after {k} rows of "
+            "history. Chosen, among the stretches stepping by three hours that hold an anomaly past their first "
+            f"{STUDENT_STRETCH_WARMUP:,} rows, as the one where the student's pipeline detects the most anomalies "
+            "(then the most events, the fewest false alarms, the earliest), so that the page has flags to "
+            "reproduce: its score here is a reproduction check, and the student's measurement is its record's, over "
+            "the whole test half. z-scored with the constants the student publishes, rounded to 4 decimals; neither "
+            "model trained on any of it."),
+        "stretch": {"start_ms": ms(times[0]), "step_ms": 30_000, "rows": STUDENT_STRETCH_ROWS, "history_rows": k},
+        "channels": list(prep.df.columns),
+        "rows": rows.tolist(),
+        "labels": [{"id": r.ID, "start_ms": ms(r.StartTime), "end_ms": ms(r.EndTime), "category": r.Category}
+                   for r in lab.itertuples()],
+        "weights": "weights.json",
+        "expected": {
+            "mae": float(np.abs(pred - actual).mean()),
+            "persistence_mae": float(persistence.mean()),
+            "median_ae": float(np.median(np.abs(pred - actual))),
+            "persistence_median_ae": float(np.median(persistence)),
+            "flagged": int(flagged.sum()),
+            "flagged_per_channel": [int(v) for v in per.sum(axis=0)],
+            "flags_sha256": hashlib.sha256(np.packbits(flagged).tobytes()).hexdigest(),
+            "anomalies": brief(scored["anomalies"]),
+            "all_events": brief(scored["all_events"]),
+            "note": (
+                "Computed from these rows as shipped, with the forecast summed term by term in the page's order, "
+                "so the page reproduces the flags exactly; the event scores are ESA-ADB's corrected event-wise F0.5 "
+                "over this stretch alone, so they are not the test half's. The forecast is the student's: the page "
+                "evaluates the same dot products under CKKS and reports how far the decrypted forecast moves."),
+        },
+    }
 
 
 # --------------------------------------------------------------------------------------------- #
@@ -1366,7 +1502,8 @@ BUILDERS = {"medical_fl": build_medical, "finance_aml": build_finance,
             "telecom_ids": build_telecom,
             "telecom_nidd": build_telecom_nidd,
             "medical_resnet50": build_medical_resnet50,
-            "satellite_comms": build_satellite}
+            "satellite_comms": build_satellite,
+            "satellite_student": build_satellite_student}
 
 
 def main() -> int:

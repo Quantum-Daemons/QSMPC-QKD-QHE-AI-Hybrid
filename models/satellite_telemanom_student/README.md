@@ -12,9 +12,9 @@ tags:
   - onnxruntime-web
 ---
 
-# CKKS-linear telemetry anomaly student
+# CKKS-linear telemetry forecaster student
 
-logistic regression over channel x timestep windows
+linear next-step forecaster over the last 8 rows x 6 channels (288 weights + 6 biases), evaluated under CKKS; the client thresholds the decrypted forecast with Telemanom's procedure
 
 Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid),
 a quantum-safe orchestration demo.
@@ -29,16 +29,22 @@ teacher was measured offline, in plaintext.
 
 | metric | value |
 |---|---|
-| `agreement` | 0.999192 |
-| `disagreement_on_positives` | 0.184615 |
-| `metric_delta` | 0.961026 |
-| `metric_delta_pp` | 96.1026 |
-| `n_eval` | 2844581 |
-| `n_scoring_units` | 12 |
-| `student_metric` | 0.0 |
-| `student_params` | 49 |
-| `teacher_metric` | 0.961026 |
+| `agreement` | 0.999624 |
+| `disagreement_on_positives` | 0.024323 |
+| `floor` | 0.0105 |
+| `forecast_mae_student_to_teacher` | 0.126269 |
+| `k_rows` | 8 |
+| `metric_delta` | 0.010171 |
+| `metric_delta_pp` | 1.0171 |
+| `n_eval` | 7364160 |
+| `n_scoring_units` | 29 |
+| `n_unlabelled_windows` | 7208289 |
+| `ridge_alpha` | 1000000.0 |
+| `student_metric` | 0.93977 |
+| `student_params` | 294 |
+| `teacher_metric` | 0.949941 |
 | `teacher_params` | 84860 |
+| `wall_clock_s` | 354.1 |
 
 ## Published baselines this is measured against
 
@@ -56,7 +62,7 @@ Missions are anonymised Mission1/2/3 - they are not named Sentinel anything. Mis
 
 ## Notes and limitations
 
-The one published model with no browser evaluation sample, and the reason is the metric rather than the weights: event-wise F0.5 is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows, which is what the browser evaluator scores. It needs no scaler of its own: scripts/train/satellite_telemanom.py fits it on the forecaster's z-scored windows (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. NOT REPUBLISHED SINCE THE ROUND 86 RETRAIN, and to be replaced. Against the retrained forecaster this logistic student scores far below the teacher on its evaluation slice (the record's student_metric and teacher_metric) and raises far fewer alarms. A linear map over a window cannot reproduce a forecast-error threshold, so the replacement will be a linear next-step forecaster evaluated under CKKS, whose decrypted forecast the client thresholds itself (the owner's choice, 2026-11-07). The Hub copy is the student of the Round 71 model. No code path here evaluates this student under CKKS today: the satellite page has no private-inference stage, and the full deployment's telemetry stage encrypts the OPS-SAT-AD demo regression the browser scores in plaintext.
+A LINEAR NEXT-STEP FORECASTER SINCE ROUND 86, trained by scripts/train/satellite_student_forecaster.py from the published teacher. The logistic student before it classified the teacher's flags from 8 rows and could not follow the retrained teacher, because a threshold on a forecast error is not linear in the window. A forecast is close to linear in the last rows, and Telemanom's thresholding needs nothing else. So the encrypted part is the forecast: six dot products with the last 8 z-scored rows, ridge-fitted to the teacher's own forecasts on its unlabelled training windows. The client decrypts the forecast and thresholds it with the teacher's procedure at the teacher's floor, in plaintext. The record holds the pipeline's event scores beside the teacher's over the whole test half, the forecast errors of both against persistence, and the same model fitted to the truth instead of the teacher. The page scores this student end to end on its published stretch: its forecasts in plaintext and under CKKS (encryptedLinearBatch), Telemanom's thresholding in a TypeScript port checked flag for flag against the Python, and ESA-ADB's scorer in a port checked against the Python. Its weights.json carries the z-score constants, because the thresholding works in raw units.
 
 ## Honest scope
 
