@@ -27,7 +27,7 @@
 // registry in config.defaults.json — no model id, revision or URL is written in TypeScript.
 // Types only. The RUNTIME build is chosen at load time by loadOrt() below, because the two builds
 // are not interchangeable at runtime even though their APIs are identical.
-import { evaluateForecastStudent, fetchForecasterWeights, type ForecastEventsFile, type StudentEvaluation } from "./forecastStudent";
+import { evaluateForecastStudentOffThread, fetchForecasterWeights, type ForecastEventsFile, type StudentEvaluation } from "./forecastStudent";
 import type * as OrtTypes from "onnxruntime-web";
 
 /**
@@ -740,7 +740,8 @@ export async function evaluatePublishedModel(
       const f = file as unknown as ForecastEventsFile;
       const w = await fetchForecasterWeights(target.url);
       // Every row under CKKS: the events of the decrypted forecast are the claim, so a 64-row spot check would not do.
-      const ev = await evaluateForecastStudent(f, w, { ckks: "all" });
+      // Off the page's thread, so the 21 s of CKKS leaves the page responsive.
+      const ev = await evaluateForecastStudentOffThread(f, w, { ckks: "all" });
       return {
         ...base, ran: true, task: "forecast", metricName: "corrected_event_wise_f0_5", n: f.stretch.rows,
         score: ev.plain.anomalies.f05, expected: f.expected.anomalies.f_0_5, baseline: null, beatsBaseline: true,

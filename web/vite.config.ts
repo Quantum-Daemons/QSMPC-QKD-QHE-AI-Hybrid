@@ -54,6 +54,9 @@ export default defineConfig({
       "/api": { target: API_TARGET, changeOrigin: true, ws: true },
     },
   },
+  // ES workers: the satellite student's worker reaches clientFHE.ts, which loads node-seal by a dynamic import, and
+  // the default IIFE worker format cannot split code (Round 86).
+  worker: { format: "es" },
   build: {
     target: "es2022",
     outDir: "dist",
