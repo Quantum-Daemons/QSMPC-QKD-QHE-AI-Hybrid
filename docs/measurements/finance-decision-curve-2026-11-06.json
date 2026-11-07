@@ -1,8 +1,8 @@
 {
  "machine": {
   "cpu": "x86_64",
-  "date": "2026-11-06",
-  "feature_seconds": 21.8
+  "date": "2026-11-07",
+  "feature_seconds": 22.0
  },
  "versions": {
   "onnxruntime": "1.31.1",
@@ -11,7 +11,7 @@
  },
  "inputs": {
   "model_key": "finance_aml.gbm",
-  "hf_revision": "ca364923cc110f00fbd343c13cb4f2b23243aaff",
+  "hf_revision": "536fbda25bbd550956050438bda473a7878519b6",
   "graph_sha256": "54511ef70652acb02be201cfed309ff1f95e03c55e9f2aa2b24e2b35a9c8996f",
   "eval_sample_git_blob": "36749368900cf674afac892d32edf91f9a8b27ef",
   "calibration": {

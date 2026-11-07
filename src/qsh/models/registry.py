@@ -1143,11 +1143,10 @@ _SPECS: tuple[ModelSpec, ...] = (
         usecase="medical_fl",
         tier="t1_crypto",
         key="medical_fl.student",
-        # PENDING THE OWNER'S REPUBLISH (Round 86): MedMNIST states its data is not for clinical use and the
-        # page says nothing on it is a diagnosis, so this should read "CKKS-evaluable BreastMNIST CNN student".
-        # It is the Hub card's title, and `test_the_caveat_leaves_the_published_card_unchanged` holds the card
-        # to the published README, so it changes with a republish and not before.
-        label="FHE-feasible diagnostic CNN",
+        # "FHE-feasible diagnostic CNN" until Round 86, republished with the owner's approval: MedMNIST states
+        # its data is not for clinical use and the page says nothing on it is a diagnosis. It is the Hub card's
+        # title, and `test_the_caveat_leaves_the_published_card_unchanged` holds the card to the README.
+        label="CKKS-evaluable BreastMNIST CNN student",
         architecture="1 conv block (1->4ch, 3x3), avg-pool, dense head, 14x14 input",
         params=None,
         dataset=DS_BREASTMNIST,
