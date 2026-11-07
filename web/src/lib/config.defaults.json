@@ -1570,10 +1570,78 @@
           "corrected_event_wise_f0_5": 0.949941,
           "dataset": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
           "esa_scores": {
+            "agreement_note": "the third reading: no floor, and a step is flagged only where at least k channels flag it, k chosen on the validation months by the floor's rule (the middle of the best plateau). Those months hold 2 anomalies, so the choice is weakly determined, as the floor's is",
             "n_validation_anomalies": 2,
             "paper_floor": 0.007,
             "paper_floor_source": "ESA-ADB Supplementary Table 8, Telemanom-ESA-Pruned: min_error_value 0.05/7 in raw units (scripts/reevaluate.py); plain Telemanom-ESA runs with 0",
             "plain_zero_order_hold": {
+              "agreement": {
+                "all_events": {
+                  "corrected_event_wise_f0_5": 0.844757,
+                  "fn": 29,
+                  "fp": 1,
+                  "n_events": 65,
+                  "precision": 0.972453,
+                  "recall": 0.553846,
+                  "tp": 36
+                },
+                "corrected_event_wise_f0_5": 0.908721,
+                "event_wise_f0_5": 0.909091,
+                "flagged_points": 9244,
+                "floor": 0.0,
+                "fn": 7,
+                "fp": 1,
+                "k": 6,
+                "precision": 0.956011,
+                "recall": 0.758621,
+                "tnr": 0.999466,
+                "tp": 22
+              },
+              "agreement_k_chosen_on_validation": 6,
+              "agreement_validation_table": [
+                {
+                  "f_0.50": 0.115216,
+                  "fn": 0,
+                  "fp": 19,
+                  "k": 1,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998502,
+                  "fn": 0,
+                  "fp": 0,
+                  "k": 2,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.99865,
+                  "fn": 0,
+                  "fp": 0,
+                  "k": 3,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998853,
+                  "fn": 0,
+                  "fp": 0,
+                  "k": 4,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998853,
+                  "fn": 0,
+                  "fp": 0,
+                  "k": 5,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.99937,
+                  "fn": 0,
+                  "fp": 0,
+                  "k": 6,
+                  "tp": 2
+                }
+              ],
               "floor_chosen_on_validation": 0.0105,
               "no_floor": {
                 "all_events": {
@@ -1929,6 +1997,73 @@
               ]
             },
             "restored_annotated_samples": {
+              "agreement": {
+                "all_events": {
+                  "corrected_event_wise_f0_5": 0.859381,
+                  "fn": 27,
+                  "fp": 1,
+                  "n_events": 65,
+                  "precision": 0.973801,
+                  "recall": 0.584615,
+                  "tp": 38
+                },
+                "corrected_event_wise_f0_5": 0.929819,
+                "event_wise_f0_5": 0.930233,
+                "flagged_points": 9522,
+                "floor": 0.0,
+                "fn": 5,
+                "fp": 1,
+                "k": 6,
+                "precision": 0.95945,
+                "recall": 0.827586,
+                "tnr": 0.999427,
+                "tp": 24
+              },
+              "agreement_k_chosen_on_validation": 6,
+              "agreement_validation_table": [
+                {
+                  "f_0.50": 0.115216,
+                  "fn": 0,
+                  "fp": 19,
+                  "k": 1,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998502,
+                  "fn": 0,
+                  "fp": 0,
+                  "k": 2,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.99865,
+                  "fn": 0,
+                  "fp": 0,
+                  "k": 3,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998853,
+                  "fn": 0,
+                  "fp": 0,
+                  "k": 4,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998853,
+                  "fn": 0,
+                  "fp": 0,
+                  "k": 5,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.99937,
+                  "fn": 0,
+                  "fp": 0,
+                  "k": 6,
+                  "tp": 2
+                }
+              ],
               "floor_chosen_on_validation": 0.0105,
               "no_floor": {
                 "all_events": {
@@ -2316,8 +2451,8 @@
             "int8_bytes": 332048,
             "opset": 17
           },
-          "git_sha": "f1c538f-dirty",
-          "hf_revision": "7b0ccea190342539ca66fb429a0ecd3b30d62ef6",
+          "git_sha": "52cc358-dirty",
+          "hf_revision": "7219c6ec1d1216b6725397ed0210f50ab4c4da61",
           "metric_note": "ESA-ADB's event-wise F0.5 for anomalies alone, scored by a reimplementation of its ESAScores: an anomaly is detected when any flagged event intersects it, and a flagged event is a false positive only when it intersects no annotated event of any category. corrected_event_wise_f0_5 multiplies event precision by the time-level true-negative rate, as ESA-ADB reports it; event_wise_f0_5 does not. Telemanom's paper prints 0.71 under F0.5 in its Table 2, though its own precision and recall there (87.5% and 80.0% overall) give 0.86. point_adjusted_f1 is shown only to expose how much point adjustment inflates: Kim et al. (AAAI 2022) show that under point adjustment even a random anomaly score can reach state-of-the-art. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 63 rare nominal events annotated on these six channels do not.",
           "n_anomaly_events_timeline": 51,
           "n_anomaly_intervals": 320,
@@ -2349,7 +2484,7 @@
             "validation_windows": 262214,
             "weights": "last epoch"
           },
-          "wall_clock_s": 1473.9,
+          "wall_clock_s": 1499.2,
           "windowed_iforest_corrected_event_wise_f0_5": 5.6e-05,
           "windowed_iforest_event_wise_f0_5": 8.6e-05
         },
@@ -2395,7 +2530,7 @@
         "eval_sample_reason": null,
         "eval_split": "windows drawn at random from the held-out test half's windows that touch no label, ESA-ADB's own Mission1 split from 2007-01-01",
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
-        "hf_revision": "7b0ccea190342539ca66fb429a0ecd3b30d62ef6",
+        "hf_revision": "7219c6ec1d1216b6725397ed0210f50ab4c4da61",
         "hf_revision_stale": null,
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (one model over six channels, as Telemanom-ESA)",
@@ -2409,7 +2544,7 @@
           "display": "corrected event-wise F0.5 (ESA-ADB)",
           "name": "corrected_event_wise_f0_5"
         },
-        "notes": "Report ESA-ADB's corrected event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset in the paper's Table 2 (all events, 0.949), though not on Mission1, where it reads below 0.001 in ESA-ADB's own tables and does here too. RETRAINED IN ROUND 86 by ESA-ADB's Telemanom-ESA recipe (see the metric's baseline_source). The record holds two arms from one model. The project's result is the plain zero-order hold at an error floor chosen on the validation months, inputs a deployed detector could compute. The replication arm applies the two steps of ESA-ADB's published figure this project does not take as its own, the label-reading restoration of annotated samples and the paper's floor, and it reproduces that figure. The floor skips the windows whose errors stay small; without one, both arms land near the benchmark's plain Telemanom-ESA (0.090). The record's esa_scores holds both of ESA-ADB's readings, anomalies alone and all events, for every arm and floor. Earlier models, kept as history: until Round 71 the weights carried a z-score fitted on the whole series; the Round 71 model, trained at 300 s on a 70/30 cut whose test window held 3 events, flagged 2 of 441,600 points and scored 0. A Round 18 note claimed it was 22x worse than persistence, a probe that resampled at 60 s against a model trained at 300 s, and the lesson stands: preprocessing for any evaluation is read from this record, never hardcoded, which scripts/prep_model_inputs.py does.",
+        "notes": "Report ESA-ADB's corrected event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset in the paper's Table 2 (all events, 0.949), though not on Mission1, where it reads below 0.001 in ESA-ADB's own tables and does here too. RETRAINED IN ROUND 86 by ESA-ADB's Telemanom-ESA recipe (see the metric's baseline_source). The record holds two arms from one model. The project's result is the plain zero-order hold at an error floor chosen on the validation months, inputs a deployed detector could compute. The replication arm applies the two steps of ESA-ADB's published figure this project does not take as its own, the label-reading restoration of annotated samples and the paper's floor, and it reproduces that figure. The floor skips the windows whose errors stay small; without one, both arms land near the benchmark's plain Telemanom-ESA (0.090). The record's esa_scores holds both of ESA-ADB's readings, anomalies alone and all events, for every arm and floor, and a third reading that requires k channels to agree in place of a floor (the owner's choice). Its k is chosen on the validation months, where every k from 2 to 6 finds both anomalies with no false alarm and the time-level TNR alone picks the largest: it scores lower than the floor on anomalies and higher on all events, because it keeps rare events the floor drops. Earlier models, kept as history: until Round 71 the weights carried a z-score fitted on the whole series; the Round 71 model, trained at 300 s on a 70/30 cut whose test window held 3 events, flagged 2 of 441,600 points and scored 0. A Round 18 note claimed it was 22x worse than persistence, a probe that resampled at 60 s against a model trained at 300 s, and the lesson stands: preprocessing for any evaluation is read from this record, never hardcoded, which scripts/prep_model_inputs.py does.",
         "onnx_domains": [
           "ai.onnx"
         ],

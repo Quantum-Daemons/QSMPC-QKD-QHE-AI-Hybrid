@@ -39,7 +39,7 @@ is stated in the notes below.
 | `point_adjusted_f1` | 0.948868 |
 | `published_full_channel_f0_5` | 0.061 |
 | `published_lightweight_f0_5` | 0.786 |
-| `wall_clock_s` | 1473.9 |
+| `wall_clock_s` | 1499.2 |
 | `windowed_iforest_corrected_event_wise_f0_5` | 5.6e-05 |
 | `windowed_iforest_event_wise_f0_5` | 8.6e-05 |
 
@@ -62,9 +62,11 @@ Corrected event-wise F0.5 over the test half's anomalies, and over all events bu
 | plain zero-order hold | floor from the validation months (0.0105) | **0.950** (this project's result) | 23 / 0 / 6 | 0.745 |
 | plain zero-order hold | the paper's floor (0.007) | 0.950 | 23 / 0 / 6 | 0.769 |
 | plain zero-order hold | no floor (0.0) | 0.094 | 26 / 309 / 3 | 0.185 |
+| plain zero-order hold | no floor, channels agreeing (k = 6 of 6, from the validation months) | 0.909 | 22 / 1 / 7 | 0.845 |
 | ESA-ADB's prepared series, which reads the labels | floor from the validation months (0.0105) | 0.968 | 25 / 0 / 4 | 0.769 |
 | ESA-ADB's prepared series, which reads the labels | the paper's floor (0.007) | **0.968** (replication) | 25 / 0 / 4 | 0.791 |
 | ESA-ADB's prepared series, which reads the labels | no floor (0.0) | 0.101 | 28 / 308 / 1 | 0.191 |
+| ESA-ADB's prepared series, which reads the labels | no floor, channels agreeing (k = 6 of 6, from the validation months) | 0.930 | 24 / 1 / 5 | 0.859 |
 | published Telemanom-ESA-Pruned (not measured here) | 0.05/7 | 0.968 | | 0.786 |
 
 ## Training data
@@ -78,7 +80,7 @@ Missions are anonymised Mission1/2/3 - they are not named Sentinel anything. Mis
 
 ## Notes and limitations
 
-Report ESA-ADB's corrected event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset in the paper's Table 2 (all events, 0.949), though not on Mission1, where it reads below 0.001 in ESA-ADB's own tables and does here too. RETRAINED IN ROUND 86 by ESA-ADB's Telemanom-ESA recipe (see the metric's baseline_source). The record holds two arms from one model. The project's result is the plain zero-order hold at an error floor chosen on the validation months, inputs a deployed detector could compute. The replication arm applies the two steps of ESA-ADB's published figure this project does not take as its own, the label-reading restoration of annotated samples and the paper's floor, and it reproduces that figure. The floor skips the windows whose errors stay small; without one, both arms land near the benchmark's plain Telemanom-ESA (0.090). The record's esa_scores holds both of ESA-ADB's readings, anomalies alone and all events, for every arm and floor. Earlier models, kept as history: until Round 71 the weights carried a z-score fitted on the whole series; the Round 71 model, trained at 300 s on a 70/30 cut whose test window held 3 events, flagged 2 of 441,600 points and scored 0. A Round 18 note claimed it was 22x worse than persistence, a probe that resampled at 60 s against a model trained at 300 s, and the lesson stands: preprocessing for any evaluation is read from this record, never hardcoded, which scripts/prep_model_inputs.py does.
+Report ESA-ADB's corrected event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset in the paper's Table 2 (all events, 0.949), though not on Mission1, where it reads below 0.001 in ESA-ADB's own tables and does here too. RETRAINED IN ROUND 86 by ESA-ADB's Telemanom-ESA recipe (see the metric's baseline_source). The record holds two arms from one model. The project's result is the plain zero-order hold at an error floor chosen on the validation months, inputs a deployed detector could compute. The replication arm applies the two steps of ESA-ADB's published figure this project does not take as its own, the label-reading restoration of annotated samples and the paper's floor, and it reproduces that figure. The floor skips the windows whose errors stay small; without one, both arms land near the benchmark's plain Telemanom-ESA (0.090). The record's esa_scores holds both of ESA-ADB's readings, anomalies alone and all events, for every arm and floor, and a third reading that requires k channels to agree in place of a floor (the owner's choice). Its k is chosen on the validation months, where every k from 2 to 6 finds both anomalies with no false alarm and the time-level TNR alone picks the largest: it scores lower than the floor on anomalies and higher on all events, because it keeps rare events the floor drops. Earlier models, kept as history: until Round 71 the weights carried a z-score fitted on the whole series; the Round 71 model, trained at 300 s on a 70/30 cut whose test window held 3 events, flagged 2 of 441,600 points and scored 0. A Round 18 note claimed it was 22x worse than persistence, a probe that resampled at 60 s against a model trained at 300 s, and the lesson stands: preprocessing for any evaluation is read from this record, never hardcoded, which scripts/prep_model_inputs.py does.
 
 ## Honest scope
 
