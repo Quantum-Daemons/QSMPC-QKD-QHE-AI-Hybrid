@@ -248,3 +248,18 @@ def test_the_forecaster_sample_states_its_errors_beyond_the_mean() -> None:
     assert f"lower on {exp['windows_better']} of {len(sample['samples'])}" in exp["note"]
     infer = _code(WEB / "lib" / "onnxInference.ts")
     assert "forecastDetail" in infer and "windowsBetter" in infer, "the page no longer recomputes them"
+
+
+def test_the_forecasters_change_notice_names_the_changes_its_sample_makes() -> None:
+    """Round 86: the CC BY 3.0 IGO notice of changes inside the satellite sample still described the Round 71
+    sample (300 s, forward-filled, the last 30 percent) after the sample changed. It is held to the record."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    from prep_model_inputs import MODIFICATIONS  # type: ignore
+
+    note = MODIFICATIONS["satellite_comms.telemanom"]
+    rec = registry.achieved("satellite_comms.telemanom") or {}
+    resample = rec["resample"].removesuffix("s") + " s"
+    assert resample in note and rec["split"]["test_from"] in note and "zero-order hold" in note, note
+    assert "300 s" not in note and "last 30 percent" not in note
+    sample = _sample("satellite_comms.telemanom")
+    assert sample["modifications"] == note, "the published sample carries another notice than the builder's"

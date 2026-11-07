@@ -161,3 +161,24 @@ def test_it_reproduces_esa_adbs_flags_on_random_series() -> None:
         y, yhat = _random_series(seed, n)
         _, f = tt.flag(np.abs(yhat - y)[:, None], y[:, None], tt.TelemanomConfig())
         assert int(f.sum()) == flagged and hashlib.sha256(np.packbits(f).tobytes()).hexdigest() == digest, seed
+
+
+def test_the_agreement_reading_chooses_k_by_the_floors_rule() -> None:
+    """The third reading (Round 86): k channels must agree, k chosen as the middle of the best plateau."""
+    import sys
+    from pathlib import Path
+
+    import pandas as pd
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    from train.satellite_telemanom import _choose_agreement
+
+    times = pd.date_range("2010-01-01", periods=200, freq="30s")
+    per = np.zeros((200, 4), dtype=bool)
+    per[40:46, :3] = True               # an anomaly three channels flag
+    per[120:123, 0] = True              # a false alarm one channel raises
+    labels = pd.DataFrame([{"ID": "a", "StartTime": times[40], "EndTime": times[45], "Category": "Anomaly"}])
+    k, table = _choose_agreement(per, times, labels, (times[0], times[-1]))
+    by_k = {r["k"]: (r["tp"], r["fp"], r["fn"]) for r in table}
+    assert by_k[1] == (1, 1, 0) and by_k[2] == by_k[3] == (1, 0, 0) and by_k[4] == (0, 0, 1)
+    assert k == 3, "two and three tie at the best score; the middle of [2, 3] by the floor's rule is 3"

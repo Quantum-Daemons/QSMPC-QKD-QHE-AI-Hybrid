@@ -69,9 +69,19 @@
 >     With k = 2 there are 10 false alarms and 0.739 / 0.762.
 >
 >   Both k values were read off the test half, which is the very objection made to the paper's floor
->   above, so this is a lead and not a result. Adopting it would mean choosing k on the validation
->   months and reporting it as its own reading. The like-for-like headline, anomalies alone, stays
->   with the floor, which scores higher there.
+>   above. So the owner chose to make it a third reading with k chosen on the validation months, and
+>   the trainer now records it per arm:
+>
+>   | input series | k (from the validation months) | anomalies | tp / fp / fn | all events |
+>   |---|---|---|---|---|
+>   | plain zero-order hold | 6 | 0.909 | 22 / 1 / 7 | 0.845 |
+>   | ESA-ADB's prepared series | 6 | 0.930 | 24 / 1 / 5 | 0.859 |
+>
+>   On those months every k from 2 to 6 finds both of their anomalies with no false alarm. The
+>   time-level TNR alone picks 6, which flags the least nominal time, so the choice is as weakly
+>   determined as the floor's. Against the floor the reading scores lower on anomalies (0.909
+>   against 0.950) and higher on all events (0.845 against 0.745). The like-for-like headline,
+>   anomalies alone, stays with the floor.
 >
 > **The CKKS student is not republished.** Against this teacher, the 49-parameter logistic student
 > scores far below it on its evaluation slice (the record's `student_metric` and `teacher_metric`).

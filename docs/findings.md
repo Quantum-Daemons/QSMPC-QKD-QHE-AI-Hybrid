@@ -343,8 +343,9 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
     Telemanom-ESA (0.090).
   - **The CKKS student cannot follow this teacher**, so it is not republished. It is to be replaced
     by a linear next-step forecaster evaluated under CKKS.
-  - **Requiring several channels to agree in place of a floor** scores 0.912 on anomalies and 0.900 on
-    all events. That is a lead to validate, since k was read off the test half.
+  - **Requiring several channels to agree in place of a floor** is now a third reading, with k chosen on
+    the validation months (6 there). It scores 0.909 on anomalies and 0.845 on all events, against the
+    floor's 0.950 and 0.745.
 
   The workings are in `references/satellite-event-count-investigation.md`.
 - **Retracted: the satellite forecaster is not worse than persistence.** Round 18 reported it as
