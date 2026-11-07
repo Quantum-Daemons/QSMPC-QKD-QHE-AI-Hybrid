@@ -27,6 +27,7 @@
 // registry in config.defaults.json — no model id, revision or URL is written in TypeScript.
 // Types only. The RUNTIME build is chosen at load time by loadOrt() below, because the two builds
 // are not interchangeable at runtime even though their APIs are identical.
+import { minorityPr, type MinorityPr } from "./minorityPr";
 import { evaluateForecastStudentOffThread, fetchForecasterWeights, type ForecastEventsFile, type StudentEvaluation } from "./forecastStudent";
 import type * as OrtTypes from "onnxruntime-web";
 
@@ -614,6 +615,9 @@ export interface ModelEvalResult {
     decisionCurveWithheld?: string;
     /** A binary sample's class names, [class 0, class 1], when it ships them; class 1 is what the curves score. */
     classLabels?: [string | null, string | null];
+    /** When class 0 is the minority: its own precision-recall curve, its prevalence, and how many of its rows the
+     *  page's decision rule detects (its sensitivity is detected / total). Round 86. */
+    minorityPr?: MinorityPr;
   };
 }
 
@@ -936,6 +940,10 @@ export async function evaluatePublishedModel(
       // is "normal, benign" while the Wisconsin charts on the same page call 1 malignant; the caption named neither.
       const labelOf = (c: number) => file.classes?.[String(c)] ?? file.class_names?.[c] ?? null;
       plot.classLabels = [labelOf(0), labelOf(1)];
+      // The minority class's own curve (Round 86, fact-check C7): on BreastMNIST the curve above scores "normal,
+      // benign", the majority, and the class a PR curve is for is the malignant one (minorityPr.ts).
+      const minority = minorityPr(n, labels, preds, positiveScore, stride);
+      if (minority) plot.minorityPr = minority;
     } else {
       const perClass: Array<{ label: string; f1: number }> = [];
       for (let c = 0; c < nClasses; c++) {

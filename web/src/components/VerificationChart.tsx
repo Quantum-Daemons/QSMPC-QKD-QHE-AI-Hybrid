@@ -1291,6 +1291,35 @@ export function VerificationChart(
           </ChartReadout>
         </figure>
 
+        {plot.minorityPr ? (
+          <figure className="chart-figure">
+            <figcaption className="muted small">
+              Precision-recall with class 0{neg ? <>, <strong>{neg}</strong>,</> : null} as the positive: the minority
+              class, {(100 * plot.minorityPr.prevalence).toFixed(1)}% of these rows, which is the class a PR curve is for.
+              At the page&apos;s decision rule the model detects {plot.minorityPr.detected} of its{" "}
+              {plot.minorityPr.total} rows, a sensitivity of{" "}
+              {(plot.minorityPr.detected / plot.minorityPr.total).toFixed(3)}. The dashed line is its random ranker
+              ({plot.minorityPr.prevalence.toFixed(4)}).
+            </figcaption>
+            <ChartReadout hint={HINT_KEYBOARD}>
+              <ResponsiveContainer width="100%" height={180}>
+                <LineChart accessibilityLayer title={`Precision-recall curve for ${modelKey}, class 0 as the positive`}
+                  data={plot.minorityPr.pr} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
+                  <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+                  <XAxis dataKey="recall" type="number" domain={[0, 1]} tick={AXIS}
+                         tickFormatter={(v: number) => v.toFixed(1)} />
+                  <YAxis domain={[0, 1]} tick={AXIS} />
+                  <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => v.toFixed(4)}
+                           labelFormatter={(v: number) => `recall ${Number(v).toFixed(3)}`} />
+                  <ReferenceLine y={plot.minorityPr.prevalence} stroke="#c05621" strokeDasharray="4 4" />
+                  <Line type="monotone" dataKey="precision" stroke="#4f9dff" dot={false} strokeWidth={1.8}
+                        isAnimationActive={false} name="precision" />
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartReadout>
+          </figure>
+        ) : null}
+
         {plot.hist?.length ? (
           <figure className="chart-figure">
             <figcaption className="muted small">
