@@ -508,10 +508,24 @@ def main() -> int:
         for name, f in (("validation_floor", floor), ("paper_floor", PAPER_FLOOR), ("no_floor", 0.0)):
             per, flagged, s_, s_all = score(t_err, vals_raw[cut:], f)
             runs[name] = {"floor": f, "per_channel": per, "flags": flagged, "esa": s_, "esa_all_events": s_all}
-            print(f"    {arm:28s} {name:16s} floor {f:<7} F0.5 {s_['f_0.50']:.4f}  P {s_['precision']:.4f}  "
-                  f"R {s_['recall']:.4f}  tp {s_['tp']} fp {s_['fp']} fn {s_['fn']}  TNR {s_['tnr']}  | all events "
-                  f"F0.5 {s_all['f_0.50']:.4f} (tp {s_all['tp']} fp {s_all['fp']} fn {s_all['fn']})")
-        arms[arm] = {"floor_chosen_on_validation": floor, "floor_table": table, "runs": runs}
+        # The third reading (the owner's choice, 2026-11-07): no floor, and a step flagged only where at least k of the six
+        # channels flag it, k chosen on the validation months by the floor's rule. It keeps rare events the floor drops.
+        per_v, _ = telemanom_threshold.flag(v_err, vals_raw[vstart:cut], telemanom_threshold.TelemanomConfig(min_error_value=0.0))
+        k, k_table = _choose_agreement(per_v, v_times, v_labels, (v_times[0], v_times[-1]))
+        per0 = runs["no_floor"]["per_channel"]
+        flagged_k = (per0.sum(axis=1) >= k).astype(int)
+        s_k, s_k_all = (esa_event_wise(t_times, flagged_k, t_labels, select=sel, full_range=(t_times[0], t_times[-1]))
+                        for sel in (ANOMALIES, ALL_EVENTS))
+        runs["agreement"] = {"floor": 0.0, "k": k, "per_channel": per0, "flags": flagged_k, "esa": s_k,
+                             "esa_all_events": s_k_all}
+        for name, r in runs.items():
+            s_, s_all = r["esa"], r["esa_all_events"]
+            print(f"    {arm:28s} {name:16s} floor {r['floor']:<7}{f' k {k}' if name == 'agreement' else ''} F0.5 "
+                  f"{s_['f_0.50']:.4f}  P {s_['precision']:.4f}  R {s_['recall']:.4f}  tp {s_['tp']} fp {s_['fp']} "
+                  f"fn {s_['fn']}  TNR {s_['tnr']}  | all events F0.5 {s_all['f_0.50']:.4f} (tp {s_all['tp']} "
+                  f"fp {s_all['fp']} fn {s_all['fn']})")
+        arms[arm] = {"floor_chosen_on_validation": floor, "floor_table": table, "runs": runs,
+                     "agreement_k_chosen_on_validation": k, "agreement_table": k_table}
     del z_restored, raw_restored
 
     # The project's own result: the plain zero-order hold, at the floor chosen on the validation months.
@@ -602,7 +616,8 @@ def main() -> int:
 
     def _brief(r: dict) -> dict:
         s_ = r["esa"]
-        return {"floor": r["floor"], "corrected_event_wise_f0_5": round(float(s_["f_0.50"]), 6),
+        return {"floor": r["floor"], **({"k": r["k"]} if "k" in r else {}),
+                "corrected_event_wise_f0_5": round(float(s_["f_0.50"]), 6),
                 "event_wise_f0_5": round(float(_uncorrected_f05(s_)), 6),
                 "precision": round(float(s_["precision"]), 6), "recall": round(float(s_["recall"]), 6),
                 "tnr": None if s_["tnr"] is None else round(float(s_["tnr"]), 6),
@@ -631,8 +646,13 @@ def main() -> int:
         "restored_samples": int(restored.sum()),
         **{arm: {"floor_chosen_on_validation": a["floor_chosen_on_validation"],
                  **{name: _brief(r) for name, r in a["runs"].items()},
-                 "validation_floor_table": a["floor_table"]}
+                 "validation_floor_table": a["floor_table"],
+                 "agreement_k_chosen_on_validation": a["agreement_k_chosen_on_validation"],
+                 "agreement_validation_table": a["agreement_table"]}
            for arm, a in arms.items()},
+        "agreement_note": ("the third reading: no floor, and a step is flagged only where at least k channels flag it, "
+                           "k chosen on the validation months by the floor's rule (the middle of the best plateau). "
+                           "Those months hold 2 anomalies, so the choice is weakly determined, as the floor's is"),
         "windowed_iforest": {k: round(float(iso[k]), 6) if isinstance(iso[k], float) else iso[k]
                              for k in ("f_0.50", "precision", "recall", "tnr", "tp", "fp", "fn")},
     }
@@ -858,6 +878,22 @@ def _forecast_step1(model, z: np.ndarray, first: int, last: int) -> np.ndarray:
         for i in range(0, len(starts), 8192):
             out.append(model(zt[starts[i:i + 8192, None] + offs])[:, 0, :].cpu().numpy())
     return np.concatenate(out)
+
+
+def _choose_agreement(per: np.ndarray, times, labels, full_range) -> tuple[int, list[dict]]:
+    """The k, from 1 to the channel count, that scores best on ESA-ADB's corrected event-wise F0.5 over these labels when
+    a step is flagged only where at least k channels flag it; on a tie, the middle of the best plateau, the floor's rule
+    (Round 86, the owner's choice of a third reading). `per` is the per-channel flags at no floor, (rows, channels)."""
+    from qsh.models.esa_scores import esa_event_wise
+
+    count = per.sum(axis=1)
+    table = []
+    for k in range(1, per.shape[1] + 1):
+        s = esa_event_wise(times, (count >= k).astype(int), labels, select=ANOMALIES, full_range=full_range)
+        table.append({"k": k, "f_0.50": round(s["f_0.50"], 6), "tp": s["tp"], "fp": s["fp"], "fn": s["fn"]})
+    best = max(r["f_0.50"] for r in table)
+    plateau = [r["k"] for r in table if r["f_0.50"] == best]
+    return plateau[len(plateau) // 2], table
 
 
 def _choose_floor(errors_raw, values_raw, times, labels, full_range):

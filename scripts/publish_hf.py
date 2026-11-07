@@ -199,7 +199,7 @@ def _esa_scores_section(esa: dict | None, published: float | None, published_all
     named = {("plain_zero_order_hold", "validation_floor"): "this project's result",
              ("restored_annotated_samples", "paper_floor"): "replication"}
     runs = (("validation_floor", "floor from the validation months"), ("paper_floor", "the paper's floor"),
-            ("no_floor", "no floor"))
+            ("no_floor", "no floor"), ("agreement", "no floor, channels agreeing"))
     rows = []
     for arm, arm_label in arms:
         for run, run_label in runs:
@@ -210,7 +210,8 @@ def _esa_scores_section(esa: dict | None, published: float | None, published_all
             value = f"{r['corrected_event_wise_f0_5']:.3f}"
             if (arm, run) in named:
                 value = f"**{value}** ({named[(arm, run)]})"
-            rows.append(f"| {arm_label} | {run_label} ({r['floor']}) | {value} | "
+            setting = f"k = {r['k']} of 6, from the validation months" if "k" in r else r["floor"]
+            rows.append(f"| {arm_label} | {run_label} ({setting}) | {value} | "
                         f"{r['tp']} / {r['fp']} / {r['fn']} | "
                         f"{'-' if every is None else format(every, '.3f')} |")
     if not rows:

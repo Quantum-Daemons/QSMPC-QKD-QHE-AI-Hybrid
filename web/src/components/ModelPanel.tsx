@@ -606,6 +606,9 @@ function EsaScoresRows({ spec }: { spec: ModelSpec }) {
     ["validation_floor", "floor from the validation months"],
     ["paper_floor", "the paper's floor"],
     ["no_floor", "no floor"],
+    // The third reading (Round 86): no floor, a step flagged only where at least k channels flag it, k chosen on the
+    // validation months.
+    ["agreement", "no floor, channels agreeing"],
   ];
   const rows = ARMS.flatMap(([arm, armLabel]) => RUNS.flatMap(([run, runLabel]) => {
     const r = e[arm]?.[run];
@@ -627,7 +630,8 @@ function EsaScoresRows({ spec }: { spec: ModelSpec }) {
         <tbody>
           {rows.map(({ key, armLabel, runLabel, r }) => (
             <tr key={key} className={key === "plain_zero_order_hold.validation_floor" ? "metric-headline" : undefined}>
-              <th scope="row">{armLabel} · {runLabel} ({r.floor}){NAMED[key] ? <> — <strong>{NAMED[key]}</strong></> : null}</th>
+              <th scope="row">{armLabel} · {runLabel} ({typeof r.k === "number" ? `k = ${r.k} of 6, from the validation months` : r.floor})
+                {NAMED[key] ? <> — <strong>{NAMED[key]}</strong></> : null}</th>
               <td className="num">{f3(r.corrected_event_wise_f0_5)}</td>
               <td className="mono">{r.tp} / {r.fp} / {r.fn}</td>
               <td className="num">{f3(r.all_events?.corrected_event_wise_f0_5)}</td>
