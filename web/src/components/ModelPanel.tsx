@@ -90,7 +90,9 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
     "classical_rf_permutation_importance",
     "classical_rf_permutation_importance_std",
   ]);
-  const NOT_A_SUBTREE = new Set(["not_measured", "licence_audit", ...ATTRIBUTION_SUBTREES]);
+  // `esa_scores` is the satellite forecaster's two arms at three floors (Round 86): sixty numbers that render as their
+  // own table below, not as rows here. `training` is how the run went (epochs, losses), not a property of the model.
+  const NOT_A_SUBTREE = new Set(["not_measured", "licence_audit", "esa_scores", "training", ...ATTRIBUTION_SUBTREES]);
   const walk = (obj: Record<string, unknown>, prefix: string, depth: number) => {
     for (const [k, v] of Object.entries(obj)) {
       if (NOT_A_SUBTREE.has(k)) continue;
@@ -579,6 +581,77 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
 // surface that actually appears. Deleted rather than left in place, because an unreferenced component
 // that looks like it handles a case is how the case went unhandled for several rounds.
 
+/** ESA-ADB's readings of the satellite forecaster, per arm and error floor, beside the published figures (Round 86).
+
+The record's headline is one cell of this table: the plain zero-order hold at the floor chosen on the validation months.
+The replication arm applies the two steps of the published figure this project does not take as its own, ESA-ADB's
+label-reading restoration of annotated samples and the paper's floor, so the table is where 0.968 is reproduced and
+where a reader sees what each step contributes. Renders only where the record carries `esa_scores`. */
+function EsaScoresRows({ spec }: { spec: ModelSpec }) {
+  const achieved = (spec.achieved ?? {}) as Record<string, unknown>;
+  const e = achieved.esa_scores as Record<string, any> | undefined;
+  if (!e || typeof e !== "object") return null;
+  const f3 = (v: unknown) => (typeof v === "number" ? v.toFixed(3) : "-");
+  const ARMS: [string, string][] = [
+    ["plain_zero_order_hold", "plain hold"],
+    ["restored_annotated_samples", "ESA-ADB's prepared series"],
+  ];
+  // The two cells the record names: this project's result, and the replication of the published figure.
+  const NAMED: Record<string, string> = {
+    "plain_zero_order_hold.validation_floor": "this project's result",
+    "restored_annotated_samples.paper_floor": "replication",
+  };
+  const RUNS: [string, string][] = [
+    ["validation_floor", "floor from the validation months"],
+    ["paper_floor", "the paper's floor"],
+    ["no_floor", "no floor"],
+  ];
+  const rows = ARMS.flatMap(([arm, armLabel]) => RUNS.flatMap(([run, runLabel]) => {
+    const r = e[arm]?.[run];
+    return r && typeof r.corrected_event_wise_f0_5 === "number" ? [{ key: `${arm}.${run}`, armLabel, runLabel, r }] : [];
+  }));
+  if (!rows.length) return null;
+  const iso = e.windowed_iforest as Record<string, number> | undefined;
+  const publishedAll = achieved.published_lightweight_f0_5;
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div className="muted small" style={{ marginBottom: 4 }}>
+        <strong>ESA-ADB&apos;s scores for this model</strong> — corrected event-wise F0.5 over the test half&apos;s
+        anomalies, and over all events but communication gaps as ESA-ADB&apos;s Table 2 counts them; one model,
+        two input series, three error floors
+      </div>
+      <table className="mini-table">
+        <thead><tr><th scope="col">input series · floor</th><th scope="col" className="num">anomalies</th>
+          <th scope="col">tp / fp / fn</th><th scope="col" className="num">all events</th></tr></thead>
+        <tbody>
+          {rows.map(({ key, armLabel, runLabel, r }) => (
+            <tr key={key} className={key === "plain_zero_order_hold.validation_floor" ? "metric-headline" : undefined}>
+              <th scope="row">{armLabel} · {runLabel} ({r.floor}){NAMED[key] ? <> — <strong>{NAMED[key]}</strong></> : null}</th>
+              <td className="num">{f3(r.corrected_event_wise_f0_5)}</td>
+              <td className="mono">{r.tp} / {r.fp} / {r.fn}</td>
+              <td className="num">{f3(r.all_events?.corrected_event_wise_f0_5)}</td>
+            </tr>
+          ))}
+          {iso && typeof iso["f_0.50"] === "number" && (
+            <tr className="metric-companion">
+              <th scope="row">windowed isolation forest (trivial baseline)</th>
+              <td className="num">{f3(iso["f_0.50"])}</td>
+              <td className="mono">{iso.tp} / {iso.fp} / {iso.fn}</td>
+              <td className="num">-</td>
+            </tr>
+          )}
+          <tr className="metric-companion">
+            <th scope="row">published: Telemanom-ESA-Pruned (ESA-ADB, not measured here) · 0.05/7</th>
+            <td className="num">{f3(spec.metric.baseline)}</td>
+            <td className="muted small">Supp. Table 9 / Table 2</td>
+            <td className="num">{f3(publishedAll)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function ModelPanel({ usecase }: { usecase: string }) {
   const specs = modelsFor(usecase);
   if (specs.length === 0) return null;
@@ -626,6 +699,8 @@ export function ModelPanel({ usecase }: { usecase: string }) {
           {spec.achieved
             ? <CalibrationRows achieved={spec.achieved as Record<string, unknown>} />
             : null}
+
+          <EsaScoresRows spec={spec} />
 
           {/* The one published model with no browser-runnable graph, so the in-run verification
               chart never fires for it. Its finding lives in the metric rows above and twenty rows

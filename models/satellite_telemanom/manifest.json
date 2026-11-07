@@ -1,9 +1,18 @@
 {
   "key": "satellite_comms.telemanom",
-  "best_metric": -0.33067023754119873,
-  "best_epoch": 12,
-  "epochs_run": 19,
-  "git_sha": "5ba453e-dirty",
+  "recipe": "ESA-ADB Telemanom-ESA (Round 86)",
+  "initialisation": "Keras's (glorot-uniform, orthogonal, unit forget bias)",
+  "epochs_run": 57,
+  "best_val_mse": 0.11761079344430037,
+  "last_val_mse": 0.1174381579952373,
+  "weights": "last epoch",
+  "horizon": 10,
+  "batch": 70,
+  "steps_per_epoch": 1000,
+  "patience": 20,
+  "min_delta": 0.0003,
+  "learning_rate": 0.001,
+  "git_sha": "f1c538f",
   "seed": 42,
-  "n_parameters": 80486
+  "n_parameters": 84860
 }

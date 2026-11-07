@@ -7,6 +7,9 @@
     ],
     "dtype": "float32"
   },
+  "output": "the first step of a forecast trained over HORIZON steps",
+  "horizon_trained": 10,
+  "hold": "last",
   "channels": [
     "channel_41",
     "channel_42",
@@ -15,24 +18,35 @@
     "channel_45",
     "channel_46"
   ],
-  "resample": "300s",
+  "resample": "30s",
   "normalisation": {
     "mean": [
-      0.8101338744163513,
-      0.7828466892242432,
-      0.7649034857749939,
-      0.7998835444450378,
-      0.8107547760009766,
-      0.7608049511909485
+      0.8112386221603269,
+      0.7848379231644974,
+      0.7723827431428607,
+      0.79729713334977,
+      0.8134450963626199,
+      0.7686703706147956
     ],
     "std": [
-      0.037023600190877914,
-      0.036569081246852875,
-      0.03812617436051369,
-      0.041465263813734055,
-      0.0372418537735939,
-      0.03633156046271324
+      0.0049807248241131395,
+      0.00693917507868161,
+      0.004966359705398171,
+      0.005941996354002627,
+      0.005595619726755546,
+      0.006900602067572767
     ]
   },
-  "threshold": 1.2557294368743896
+  "thresholding": {
+    "method": "Telemanom (Hundman et al., KDD 2018) per channel, as ESA-ADB's TelemanomThresholding applies it (qsh.models.telemanom_threshold); a timestep is flagged when any channel flags it",
+    "batch_size": 70,
+    "smoothing_window_size": 30,
+    "smoothing_perc": 0.05,
+    "error_buffer": 100,
+    "p": 0.13,
+    "window_size": 250,
+    "sd_lim": 12.0,
+    "min_error_value": 0.0105,
+    "adjust_start": false
+  }
 }

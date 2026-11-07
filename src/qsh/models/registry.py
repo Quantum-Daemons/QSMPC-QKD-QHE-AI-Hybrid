@@ -1230,7 +1230,8 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_ONNX_PAIR,
         hf_repo="qsh-satellite-telemanom-esa",
         eval_split=(
-            "windows drawn at random from the held-out test half, ESA-ADB's own Mission1 split from 2007-01-01"),
+            "windows drawn at random from the held-out test half's windows that touch no label, ESA-ADB's own "
+            "Mission1 split from 2007-01-01"),
         notes=(
             "Report ESA-ADB's corrected event-wise F0.5, never point-adjusted F1. Always run a trivial baseline "
             "alongside: a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset in the "

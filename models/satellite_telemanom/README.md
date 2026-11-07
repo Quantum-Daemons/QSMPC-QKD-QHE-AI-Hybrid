@@ -12,9 +12,9 @@ tags:
   - onnxruntime-web
 ---
 
-# Telemanom LSTM forecaster (per channel)
+# Telemanom LSTM forecaster (one model over six channels, as Telemanom-ESA)
 
-2 x LSTM(80), sequence length 250, dropout 0.3, non-parametric dynamic threshold with pruning
+2 x LSTM(80), sequence length 250, dropout 0.3, a 10-step forecast served by its first step, Telemanom's non-parametric dynamic threshold with pruning per channel
 
 Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid),
 a quantum-safe orchestration demo.
@@ -26,30 +26,46 @@ is stated in the notes below.
 
 | metric | value |
 |---|---|
-| `anomaly_sample_rate` | 0.0075528 |
-| `corrected_event_wise_f0_5` | 0.0 |
-| `event_wise_f0_5` | 0.0 |
-| `event_wise_fn` | 3 |
-| `event_wise_fp` | 2 |
-| `event_wise_tp` | 0 |
+| `anomaly_sample_rate` | 0.00755741 |
+| `corrected_event_wise_f0_5` | 0.949941 |
+| `event_wise_f0_5` | 0.950413 |
+| `event_wise_fn` | 6 |
+| `event_wise_fp` | 0 |
+| `event_wise_tp` | 23 |
+| `n_anomaly_events_timeline` | 51 |
 | `n_anomaly_intervals` | 320 |
-| `n_events_scored` | 3 |
-| `n_parameters` | 80486 |
-| `point_adjusted_f1` | 0.0 |
+| `n_events_scored` | 29 |
+| `n_parameters` | 84860 |
+| `point_adjusted_f1` | 0.948868 |
 | `published_full_channel_f0_5` | 0.061 |
 | `published_lightweight_f0_5` | 0.786 |
-| `wall_clock_s` | 41.4 |
-| `windowed_iforest_event_wise_f0_5` | 0.000248 |
+| `wall_clock_s` | 1473.9 |
+| `windowed_iforest_corrected_event_wise_f0_5` | 5.6e-05 |
+| `windowed_iforest_event_wise_f0_5` | 8.6e-05 |
 
 ## Published baselines this is measured against
 
-- **Target metric**: event-wise F0.5
-- **Baseline to beat**: 0.968 - ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal events, so it was the wrong comparator and the lenient one. Verified against the paper (arXiv:2406.17826 v2, whose table numbers these are; the DMLR version of record sits behind a bot check) in Round 24. FOUR protocol differences remain and none of them are closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; (3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are anomalies, against 3 in the window scored here; (4) ESA-ADB resamples Mission1 at 0.033 Hz, about one sample per 30 s, chosen from the dominant rate of channels 41-46, while this model resamples to 300 s, so its 250-step window spans about 20.8 hours where the benchmark's would span about 2.1, and short events can vanish. So this remains an indicative target, and the sample-size gap is roughly tenfold.
+- **Target metric**: corrected event-wise F0.5 (ESA-ADB)
+- **Baseline to beat**: 0.968 - ESA-ADB Supplementary Table 9 (arXiv:2406.17826 v2; Table 18 of the DMLR 2026 version, read 2026-11-07), Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for ANOMALIES ALONE, which is what this project scores, so it is the like-for-like row. Earlier rounds cited Table 2's 0.786, which scores all events but communication gaps, anomalies PLUS annotated rare nominal events: a real number, and the lenient row. Since Round 86 the model is trained, thresholded and scored by ESA-ADB's own recipe and rules (scripts/train/satellite_telemanom.py): its Mission1 split, the 30 s zero-order hold, its scaling and training windows, Telemanom's thresholding as ESA-ADB's TelemanomThresholding applies it, and a reimplementation of its ESAScores over the test half's 29 anomalies. Two choices behind the published figure are not copied into this project's own result, and the record carries both: its floor of 0.05/7 is not shown to have been chosen without the test half, so the floor here is chosen on the validation months; and ESA-ADB's prepared series reads the labels to write annotated samples the zero-order hold dropped back onto the grid. Applying both reproduces the published figure (esa_scores.restored_annotated_samples in the record).
 - **Companion metric shown alongside**: `published_full_channel_f0_5` - the same method's published score on the full Mission1 channel set (ESA-ADB Table 2, 0.061), a figure from the paper and not measured here, beside its matched lightweight figure 0.786.
 
 ### Gap to the published baseline
 
-Read n_events_scored before comparing this to the baseline. The scored test window holds 3 labelled anomaly event(s), not the 320 that n_anomaly_intervals counts over the whole timeline - the annotated anomalies sit earlier in the mission, so a temporal split leaves almost nothing to score. This run decomposes as tp=0 fp=2 fn=3, and the detector flags 2 of 441,600 points. The figure does not reproduce across identical-config retrains: two earlier runs recorded 0.714286 (tp=1 fp=0 fn=2) and 0.454545 (tp=1 fp=1 fn=2), one false-alarm run apart, both with the whole-series z-score this script used until Round 34. Three protocol gaps to the citation remain open and are stated rather than closed: ESA-ADB multiplies event precision by the time-level TNR (recorded here as corrected_event_wise_f0_5), it splits each mission in half where this tests on the last 30 percent, and its lightweight test partition holds 65 events against 3 here. Workings: references/satellite-event-count-investigation.md.
+Read n_events_scored before comparing this to the baseline. Since Round 86 the forecaster follows ESA-ADB's Telemanom-ESA recipe on its own Mission1 split: a 30 s zero-order hold, training only on unlabelled windows before 2007-01-01 with early stopping on the months from 2006-10-01, a 10-step forecast scored on its first step, and Telemanom's thresholding per channel. The half after the split holds 29 labelled anomalies of the 51 on these channels. This score is the plain zero-order hold at an error floor of 0.0105 raw units, chosen on the validation months, which hold 2 anomalies: tp=23 fp=0 fn=6, 8,069 of 7,364,160 points flagged. The published 0.968 is Telemanom-ESA-Pruned, whose floor of 0.05/7 the paper does not show was chosen without the test half, and it is scored on ESA-ADB's prepared series, which writes annotated samples the zero-order hold dropped back onto the grid - a step that reads the labels. Replicating both gives 0.968 (tp=25 fp=0 fn=4), and 0.791 over all events but communication gaps, where Table 2 prints 0.786 (28 of 65 events here; the published recall 0.424 is no whole number of events out of this count, so ESA-ADB's all-events set differs from this selection by at least one event); esa_scores holds every arm and floor. Remaining differences: PyTorch where ESA-ADB uses Keras, from Keras's initialisers, one seed, and ESA-ADB's per-file resampling at the split. Until Round 86 this model trained at 300 s on a 70/30 cut holding 3 events and flagged 2 of 441,600 points. Workings: references/satellite-event-count-investigation.md.
+
+### ESA-ADB's scores, both input series
+
+Corrected event-wise F0.5 over the test half's anomalies, and over all events but communication gaps (ESA-ADB's Table 2 selection). One model; the two series differ only in ESA-ADB's restoration of annotated samples.
+
+| input series | floor | anomalies | tp / fp / fn | all events |
+|---|---|---|---|---|
+| plain zero-order hold | floor from the validation months (0.0105) | **0.950** (this project's result) | 23 / 0 / 6 | 0.745 |
+| plain zero-order hold | the paper's floor (0.007) | 0.950 | 23 / 0 / 6 | 0.769 |
+| plain zero-order hold | no floor (0.0) | 0.094 | 26 / 309 / 3 | 0.185 |
+| ESA-ADB's prepared series, which reads the labels | floor from the validation months (0.0105) | 0.968 | 25 / 0 / 4 | 0.769 |
+| ESA-ADB's prepared series, which reads the labels | the paper's floor (0.007) | **0.968** (replication) | 25 / 0 / 4 | 0.791 |
+| ESA-ADB's prepared series, which reads the labels | no floor (0.0) | 0.101 | 28 / 308 / 1 | 0.191 |
+| published Telemanom-ESA-Pruned (not measured here) | 0.05/7 | 0.968 | | 0.786 |
 
 ## Training data
 
@@ -62,7 +78,7 @@ Missions are anonymised Mission1/2/3 - they are not named Sentinel anything. Mis
 
 ## Notes and limitations
 
-Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset in the paper's Table 2 (all events, 0.949), though not in Supplementary Table 9 (anomalies only, 0.000). RETRACTION, Round 19: a Round 18 note here claimed this forecaster was about 22x WORSE than persistence. That was a measurement error of ours, not a property of the model -- the probe resampled at 60s while the model is trained at 300s (see `resample` in the achieved record). Preprocessing for any evaluation must be read from this record rather than hardcoded, which is now what scripts/prep_model_inputs.py does. RETRAINED IN ROUND 71. The weights published until then were trained with a z-score fitted on the whole series, test window included: the trainer was fixed in Round 34 and the model was never retrained, so its feature_spec.json still carried whole-series constants. With the constants fitted on the training window, next-step MAE over all 441,600 test windows is 0.0250 against 0.0764 for persistence, about 3.1x better. The event-wise figure fell to 0 (tp=0 fp=2 fn=3): the detector still flags 2 points of 441,600 and neither lands in one of the 3 scored events, where the two leaky runs had caught one and recorded 0.714286 and 0.454545. Point-adjusted F1 fell with it, from 0.9937 to 0, which is how much one flagged point inside a long event carries under point adjustment; the isolation-forest baseline reproduces exactly (0.000248). Treat the event-wise figure as a single draw from a wide distribution: three events cannot rank detectors. With 0 of 3 events detected, the exact (Clopper-Pearson) 95% interval for recall runs from 0 to 0.71.
+Report ESA-ADB's corrected event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset in the paper's Table 2 (all events, 0.949), though not on Mission1, where it reads below 0.001 in ESA-ADB's own tables and does here too. RETRAINED IN ROUND 86 by ESA-ADB's Telemanom-ESA recipe (see the metric's baseline_source). The record holds two arms from one model. The project's result is the plain zero-order hold at an error floor chosen on the validation months, inputs a deployed detector could compute. The replication arm applies the two steps of ESA-ADB's published figure this project does not take as its own, the label-reading restoration of annotated samples and the paper's floor, and it reproduces that figure. The floor skips the windows whose errors stay small; without one, both arms land near the benchmark's plain Telemanom-ESA (0.090). The record's esa_scores holds both of ESA-ADB's readings, anomalies alone and all events, for every arm and floor. Earlier models, kept as history: until Round 71 the weights carried a z-score fitted on the whole series; the Round 71 model, trained at 300 s on a 70/30 cut whose test window held 3 events, flagged 2 of 441,600 points and scored 0. A Round 18 note claimed it was 22x worse than persistence, a probe that resampled at 60 s against a model trained at 300 s, and the lesson stands: preprocessing for any evaluation is read from this record, never hardcoded, which scripts/prep_model_inputs.py does.
 
 ## Honest scope
 

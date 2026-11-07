@@ -1,5 +1,84 @@
 # The satellite metric is computed over three events (Round 24, 2026-08-09)
 
+> **SUPERSEDED IN ROUND 86 (2026-11-07): THE MODEL IS NOW TRAINED AND SCORED AS ESA-ADB DOES, OVER ITS
+> 29 ANOMALIES.** Everything below this banner is the history of the earlier models and is kept as it
+> was written.
+>
+> The three-event denominator came from this project's own 70/30 cut by row. Since Round 86,
+> `scripts/train/satellite_telemanom.py` follows ESA-ADB's Telemanom-ESA recipe, read from
+> kplabs-pl/ESA-ADB at commit 67194d3:
+>
+> - **Data.** ESA-ADB's Mission1 split: train before 2007-01-01, stop early on the months from
+>   2006-10-01, test on the half after, which holds **29 anomalies** and 36 rare nominal events on
+>   channels 41-46. The 30 s zero-order hold; a z-score from the unlabelled training rows; training
+>   only on windows that touch no label.
+> - **Model.** A 10-step forecast scored on its first step, from Keras's initialisers; early
+>   stopping with patience 20, keeping the last epoch's weights.
+> - **Thresholding.** Telemanom's thresholding as ESA-ADB's TelemanomThresholding applies it. Run
+>   locally against that class, 480 comparisons over 210 random series flagged the same rows.
+> - **Scoring.** A reimplementation of ESAScores, checked against ESA-ADB's own test cases.
+>
+> One model, two input series, three error floors, scored over the test half (corrected event-wise
+> F0.5; the record's `esa_scores` holds every cell):
+>
+> | input series | floor | anomalies only | tp / fp / fn | all events |
+> |---|---|---|---|---|
+> | plain zero-order hold (**this project's result**) | 0.0105, chosen on the validation months | **0.950** | 23 / 0 / 6 | 0.745 |
+> | plain zero-order hold | 0.007, the paper's | 0.950 | 23 / 0 / 6 | 0.769 |
+> | plain zero-order hold | none | 0.094 | 26 / 309 / 3 | 0.185 |
+> | ESA-ADB's prepared series (replication) | 0.007, the paper's | **0.968** | 25 / 0 / 4 | 0.791 |
+> | ESA-ADB's prepared series | none | 0.101 | 28 / 308 / 1 | 0.191 |
+> | published, Telemanom-ESA-Pruned (Supp. Table 9 / Table 2) | 0.05/7 | 0.968 (P 0.999, R 0.862) | | 0.786 |
+> | published, plain Telemanom-ESA | none | 0.090 | | 0.178 |
+>
+> **The two arms differ by one step of ESA-ADB's data preparation.** That step reads the labels: in
+> every 30 s bin whose last raw sample is nominal, it writes the bin's last Anomaly or Rare Event
+> sample back onto the grid (`restore_annotated`, checked against a transcription of its loop). It
+> writes 10 samples on these channels, and with them the forecaster detects two more anomalies.
+> A deployed detector has no labels, so this project's own result does not use the step. The
+> replication applies it, and it reproduces the published figure exactly, precision and recall
+> included.
+>
+> **The floor decides most of the score.**
+>
+> - Without a floor, both arms land near the benchmark's plain Telemanom-ESA, and with one, near
+>   Pruned.
+> - The paper's 0.05/7 is not shown to have been chosen without the test half. This project picks
+>   its floor on the validation months instead. Those months hold only 2 anomalies, so the choice is
+>   weakly determined: every floor from 0.0045 to 0.016 scores the same there. The paper's 0.007
+>   lies inside that range and gives the same detections on the test half.
+> - One seed.
+>
+> **The all-events reading** selects ESA-ADB's Table 2 events. The published recall 0.424 is no whole
+> number of events out of this selection's 65, so ESA-ADB's all-events set differs from it by at
+> least one event. The anomalies-only reading, the like-for-like row, matches 25 of 29 exactly.
+>
+> **Methods surveyed (2025-2026) and tested.**
+>
+> - A web survey found other options: a rolling-IQR threshold, robust quantiles, EVT/POT, newer
+>   forecasters and cross-channel agreement. None is needed to reach the benchmark, and most have a
+>   stated problem: future data in a centred window, copyleft implementations, or no code.
+> - The cross-channel agreement rule was tested on this model at the owner's request: a step is
+>   flagged only when at least k channels flag it (a scratch probe on this checkpoint, not a recorded
+>   run). Two results:
+>   - **On top of a floor it collapses recall.** At either floor, k = 2 or 3 keeps 4 to 6 of the 29
+>     anomalies, where any one channel keeps 23 to 25.
+>   - **In place of a floor it is a real alternative.** With no floor, k = 3 gives 0.912 on the plain
+>     arm (25 / 2 / 4) and 0.905 on the replication arm (27 / 3 / 2). On all events it gives 0.900 and
+>     0.897, where the floored rule gives 0.745 and 0.791, because it keeps rare events the floor drops.
+>     With k = 2 there are 10 false alarms and 0.739 / 0.762.
+>
+>   Both k values were read off the test half, which is the very objection made to the paper's floor
+>   above, so this is a lead and not a result. Adopting it would mean choosing k on the validation
+>   months and reporting it as its own reading. The like-for-like headline, anomalies alone, stays
+>   with the floor, which scores higher there.
+>
+> **The CKKS student is not republished.** Against this teacher, the 49-parameter logistic student
+> scores far below it on its evaluation slice (the record's `student_metric` and `teacher_metric`).
+> It is to be replaced by a linear next-step forecaster evaluated under CKKS, whose forecast the
+> client thresholds itself.
+
+
 > **THE MODEL MEASURED HERE WAS RETRAINED IN ROUND 71 (2026-10-26).** Its weights had been trained with
 > a z-score fitted on the whole series, test window included, a leak the trainer lost in Round 34
 > without the model being retrained. The retrained model still flags 2 points of 441,600, and neither

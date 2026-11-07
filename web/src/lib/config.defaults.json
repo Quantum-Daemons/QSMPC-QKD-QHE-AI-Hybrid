@@ -1558,34 +1558,795 @@
     "satellite_comms": [
       {
         "achieved": {
-          "anomaly_sample_rate": 0.0075528,
-          "baseline_gap_note": "Read n_events_scored before comparing this to the baseline. The scored test window holds 3 labelled anomaly event(s), not the 320 that n_anomaly_intervals counts over the whole timeline - the annotated anomalies sit earlier in the mission, so a temporal split leaves almost nothing to score. This run decomposes as tp=0 fp=2 fn=3, and the detector flags 2 of 441,600 points. The figure does not reproduce across identical-config retrains: two earlier runs recorded 0.714286 (tp=1 fp=0 fn=2) and 0.454545 (tp=1 fp=1 fn=2), one false-alarm run apart, both with the whole-series z-score this script used until Round 34. Three protocol gaps to the citation remain open and are stated rather than closed: ESA-ADB multiplies event precision by the time-level TNR (recorded here as corrected_event_wise_f0_5), it splits each mission in half where this tests on the last 30 percent, and its lightweight test partition holds 65 events against 3 here. Workings: references/satellite-event-count-investigation.md.",
-          "corrected_event_wise_f0_5": 0.0,
+          "anomaly_sample_rate": 0.00755741,
+          "baseline_gap_note": "Read n_events_scored before comparing this to the baseline. Since Round 86 the forecaster follows ESA-ADB's Telemanom-ESA recipe on its own Mission1 split: a 30 s zero-order hold, training only on unlabelled windows before 2007-01-01 with early stopping on the months from 2006-10-01, a 10-step forecast scored on its first step, and Telemanom's thresholding per channel. The half after the split holds 29 labelled anomalies of the 51 on these channels. This score is the plain zero-order hold at an error floor of 0.0105 raw units, chosen on the validation months, which hold 2 anomalies: tp=23 fp=0 fn=6, 8,069 of 7,364,160 points flagged. The published 0.968 is Telemanom-ESA-Pruned, whose floor of 0.05/7 the paper does not show was chosen without the test half, and it is scored on ESA-ADB's prepared series, which writes annotated samples the zero-order hold dropped back onto the grid - a step that reads the labels. Replicating both gives 0.968 (tp=25 fp=0 fn=4), and 0.791 over all events but communication gaps, where Table 2 prints 0.786 (28 of 65 events here; the published recall 0.424 is no whole number of events out of this count, so ESA-ADB's all-events set differs from this selection by at least one event); esa_scores holds every arm and floor. Remaining differences: PyTorch where ESA-ADB uses Keras, from Keras's initialisers, one seed, and ESA-ADB's per-file resampling at the split. Until Round 86 this model trained at 300 s on a 70/30 cut holding 3 events and flagged 2 of 441,600 points. Workings: references/satellite-event-count-investigation.md.",
+          "corrected_event_wise_f0_5": 0.949941,
           "dataset": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
-          "event_wise_f0_5": 0.0,
-          "event_wise_fn": 3,
-          "event_wise_fp": 2,
-          "event_wise_tp": 0,
+          "esa_scores": {
+            "n_validation_anomalies": 2,
+            "paper_floor": 0.007,
+            "paper_floor_source": "ESA-ADB Supplementary Table 8, Telemanom-ESA-Pruned: min_error_value 0.05/7 in raw units (scripts/reevaluate.py); plain Telemanom-ESA runs with 0",
+            "plain_zero_order_hold": {
+              "floor_chosen_on_validation": 0.0105,
+              "no_floor": {
+                "all_events": {
+                  "corrected_event_wise_f0_5": 0.185431,
+                  "fn": 8,
+                  "fp": 309,
+                  "n_events": 65,
+                  "precision": 0.154896,
+                  "recall": 0.876923,
+                  "tp": 57
+                },
+                "corrected_event_wise_f0_5": 0.094457,
+                "event_wise_f0_5": 0.09496,
+                "flagged_points": 48549,
+                "floor": 0.0,
+                "fn": 3,
+                "fp": 309,
+                "precision": 0.077192,
+                "recall": 0.896552,
+                "tnr": 0.994595,
+                "tp": 26
+              },
+              "paper_floor": {
+                "all_events": {
+                  "corrected_event_wise_f0_5": 0.768896,
+                  "fn": 39,
+                  "fp": 0,
+                  "n_events": 65,
+                  "precision": 0.999293,
+                  "recall": 0.4,
+                  "tp": 26
+                },
+                "corrected_event_wise_f0_5": 0.949902,
+                "event_wise_f0_5": 0.950413,
+                "flagged_points": 9256,
+                "floor": 0.007,
+                "fn": 6,
+                "fp": 0,
+                "precision": 0.999293,
+                "recall": 0.793103,
+                "tnr": 0.999293,
+                "tp": 23
+              },
+              "validation_floor": {
+                "all_events": {
+                  "corrected_event_wise_f0_5": 0.745051,
+                  "fn": 41,
+                  "fp": 0,
+                  "n_events": 65,
+                  "precision": 0.999347,
+                  "recall": 0.369231,
+                  "tp": 24
+                },
+                "corrected_event_wise_f0_5": 0.949941,
+                "event_wise_f0_5": 0.950413,
+                "flagged_points": 8069,
+                "floor": 0.0105,
+                "fn": 6,
+                "fp": 0,
+                "precision": 0.999347,
+                "recall": 0.793103,
+                "tnr": 0.999347,
+                "tp": 23
+              },
+              "validation_floor_table": [
+                {
+                  "f_0.50": 0.115216,
+                  "floor": 0.0,
+                  "fn": 0,
+                  "fp": 19,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.115216,
+                  "floor": 0.0005,
+                  "fn": 0,
+                  "fp": 19,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.115216,
+                  "floor": 0.001,
+                  "fn": 0,
+                  "fp": 19,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.160199,
+                  "floor": 0.0015,
+                  "fn": 0,
+                  "fp": 13,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.712907,
+                  "floor": 0.002,
+                  "fn": 0,
+                  "fp": 1,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.712907,
+                  "floor": 0.0025,
+                  "fn": 0,
+                  "fp": 1,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.713061,
+                  "floor": 0.003,
+                  "fn": 0,
+                  "fp": 1,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998914,
+                  "floor": 0.0035,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998914,
+                  "floor": 0.004,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0045,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.005,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0055,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.006,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0065,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.007,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0075,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.008,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0085,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.009,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0095,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.01,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0105,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.011,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0115,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.012,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0125,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.013,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0135,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.014,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0145,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.015,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0155,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.016,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.0165,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.017,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.0175,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.018,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.0185,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.019,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.0195,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.02,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                }
+              ]
+            },
+            "restored_annotated_samples": {
+              "floor_chosen_on_validation": 0.0105,
+              "no_floor": {
+                "all_events": {
+                  "corrected_event_wise_f0_5": 0.191425,
+                  "fn": 6,
+                  "fp": 308,
+                  "n_events": 65,
+                  "precision": 0.159883,
+                  "recall": 0.907692,
+                  "tp": 59
+                },
+                "corrected_event_wise_f0_5": 0.10142,
+                "event_wise_f0_5": 0.101966,
+                "flagged_points": 49035,
+                "floor": 0.0,
+                "fn": 1,
+                "fp": 308,
+                "precision": 0.082877,
+                "recall": 0.965517,
+                "tnr": 0.994528,
+                "tp": 28
+              },
+              "paper_floor": {
+                "all_events": {
+                  "corrected_event_wise_f0_5": 0.790579,
+                  "fn": 37,
+                  "fp": 0,
+                  "n_events": 65,
+                  "precision": 0.999237,
+                  "recall": 0.430769,
+                  "tp": 28
+                },
+                "corrected_event_wise_f0_5": 0.968419,
+                "event_wise_f0_5": 0.968992,
+                "flagged_points": 9660,
+                "floor": 0.007,
+                "fn": 4,
+                "fp": 0,
+                "precision": 0.999237,
+                "recall": 0.862069,
+                "tnr": 0.999237,
+                "tp": 25
+              },
+              "validation_floor": {
+                "all_events": {
+                  "corrected_event_wise_f0_5": 0.768895,
+                  "fn": 39,
+                  "fp": 0,
+                  "n_events": 65,
+                  "precision": 0.999291,
+                  "recall": 0.4,
+                  "tp": 26
+                },
+                "corrected_event_wise_f0_5": 0.96846,
+                "event_wise_f0_5": 0.968992,
+                "flagged_points": 8473,
+                "floor": 0.0105,
+                "fn": 4,
+                "fp": 0,
+                "precision": 0.999291,
+                "recall": 0.862069,
+                "tnr": 0.999291,
+                "tp": 25
+              },
+              "validation_floor_table": [
+                {
+                  "f_0.50": 0.115216,
+                  "floor": 0.0,
+                  "fn": 0,
+                  "fp": 19,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.115216,
+                  "floor": 0.0005,
+                  "fn": 0,
+                  "fp": 19,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.115216,
+                  "floor": 0.001,
+                  "fn": 0,
+                  "fp": 19,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.160199,
+                  "floor": 0.0015,
+                  "fn": 0,
+                  "fp": 13,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.712907,
+                  "floor": 0.002,
+                  "fn": 0,
+                  "fp": 1,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.712907,
+                  "floor": 0.0025,
+                  "fn": 0,
+                  "fp": 1,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.713061,
+                  "floor": 0.003,
+                  "fn": 0,
+                  "fp": 1,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998914,
+                  "floor": 0.0035,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998914,
+                  "floor": 0.004,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0045,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.005,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0055,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.006,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0065,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.007,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0075,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.008,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0085,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.009,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0095,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.01,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0105,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.011,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0115,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.012,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0125,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.013,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0135,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.014,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0145,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.015,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.0155,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.998926,
+                  "floor": 0.016,
+                  "fn": 0,
+                  "fp": 0,
+                  "tp": 2
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.0165,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.017,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.0175,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.018,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.0185,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.019,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.0195,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                },
+                {
+                  "f_0.50": 0.0,
+                  "floor": 0.02,
+                  "fn": 2,
+                  "fp": 0,
+                  "tp": 0
+                }
+              ]
+            },
+            "restored_samples": 10,
+            "scored_rows": "each period whole; its first 250 rows, which have no input window inside it, take the period's first forecast, as ESA-ADB's reconstruction.csv pads them",
+            "scorer": "qsh.models.esa_scores.esa_event_wise, a reimplementation of ESAScores in kplabs-pl/ESA-ADB (MIT, commit 67194d3), checked against that repository's own test cases in tests/test_r86_esa_scores.py",
+            "selection": "Category Anomaly; labels of channels 41-46 that start and end inside the scored period. Each run's all_events block selects Rare Event and Anomaly instead, ESA-ADB's Table 2 reading, where Telemanom-ESA-Pruned is 0.786 (published_lightweight_f0_5) and plain Telemanom-ESA 0.178",
+            "test_range": [
+              "2007-01-01 00:00:00",
+              "2013-12-31 23:59:30"
+            ],
+            "thresholding": "every arm and floor uses Telemanom's thresholding as ESA-ADB's TelemanomThresholding applies it for Telemanom-ESA-Pruned (qsh.models.telemanom_threshold); no_floor is that procedure at floor 0, not Telemanom-ESA's own thresholding, which produced the benchmark's plain 0.090 and differs in two details the module states",
+            "validation_range": [
+              "2006-10-01 00:00:00",
+              "2006-12-31 23:59:30"
+            ],
+            "windowed_iforest": {
+              "f_0.50": 5.6e-05,
+              "fn": 14,
+              "fp": 216879,
+              "precision": 4.5e-05,
+              "recall": 0.517241,
+              "tnr": 0.643717,
+              "tp": 15
+            }
+          },
+          "event_wise_f0_5": 0.950413,
+          "event_wise_fn": 6,
+          "event_wise_fp": 0,
+          "event_wise_tp": 23,
           "export": {
-            "fp32_bytes": 329184,
-            "int8_bytes": 326889,
+            "fp32_bytes": 347172,
+            "int8_agreement": 0.996094,
+            "int8_bytes": 332048,
             "opset": 17
           },
-          "git_sha": "5ba453e-dirty",
-          "hf_revision": "32fa04cbe61a4dc6475990bc74e95f4208153de5",
-          "metric_note": "Event-wise F-beta at beta=0.5 under the overlap rule, which is what ESA-ADB and Telemanom report. Telemanom's widely-quoted 0.71 is F0.5, not F1. point_adjusted_f1 is shown only to expose how much point adjustment inflates: Kim et al. (AAAI 2022) show that under point adjustment even a random anomaly score can reach state-of-the-art. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 690 annotated rare *nominal* events do not.",
+          "git_sha": "f1c538f-dirty",
+          "hf_revision": "7b0ccea190342539ca66fb429a0ecd3b30d62ef6",
+          "metric_note": "ESA-ADB's event-wise F0.5 for anomalies alone, scored by a reimplementation of its ESAScores: an anomaly is detected when any flagged event intersects it, and a flagged event is a false positive only when it intersects no annotated event of any category. corrected_event_wise_f0_5 multiplies event precision by the time-level true-negative rate, as ESA-ADB reports it; event_wise_f0_5 does not. Telemanom's paper prints 0.71 under F0.5 in its Table 2, though its own precision and recall there (87.5% and 80.0% overall) give 0.86. point_adjusted_f1 is shown only to expose how much point adjustment inflates: Kim et al. (AAAI 2022) show that under point adjustment even a random anomaly score can reach state-of-the-art. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 63 rare nominal events annotated on these six channels do not.",
+          "n_anomaly_events_timeline": 51,
           "n_anomaly_intervals": 320,
-          "n_events_scored": 3,
-          "n_parameters": 80486,
-          "point_adjusted_f1": 0.0,
+          "n_events_scored": 29,
+          "n_parameters": 84860,
+          "point_adjusted_f1": 0.948868,
           "published_full_channel_f0_5": 0.061,
           "published_lightweight_f0_5": 0.786,
-          "resample": "300s",
-          "sample_size_note": "Read n_events_scored before comparing this to published_lightweight_f0_5. The denominator of an event-wise metric is EVENTS, and a temporal split of this corpus leaves very few of them in the scored window: 320 labelled intervals over the whole timeline reduce to 3 inside the test window, because the annotated anomalies are concentrated earlier in the mission. The recorded score is therefore a small-sample figure and one event either way moves it by tenths - it is NOT comparable to a published benchmark computed over the full annotated set, however similar the two decimals look. The number is reported as measured rather than reweighted, and the sample size is reported beside it so the comparison is not made silently.",
-          "wall_clock_s": 41.4,
-          "windowed_iforest_event_wise_f0_5": 0.000248
+          "resample": "30s",
+          "sample_size_note": "Read n_events_scored before comparing this to a published figure. The denominator of an event-wise metric is EVENTS: 29 anomalies in this test half, so one event either way moves the score by a visible step. n_anomaly_intervals counts label ROWS, one per channel an anomaly touches (320); n_anomaly_events_timeline counts the anomalies themselves (51). The number is reported as measured rather than reweighted, with the sample size beside it so the comparison is not made silently.",
+          "split": {
+            "source": "ESA-ADB's own Mission1 split (84_months, kplabs-pl/ESA-ADB datasets.csv and mission1_experiments.py)",
+            "test_from": "2007-01-01",
+            "validation_from": "2006-10-01"
+          },
+          "training": {
+            "batch": 70,
+            "best_val_mse": 0.11761079344430037,
+            "epochs_run": 57,
+            "hold": "last",
+            "horizon": 10,
+            "last_val_mse": 0.1174381579952373,
+            "learning_rate": 0.001,
+            "min_delta": 0.0003,
+            "patience": 20,
+            "recipe": "ESA-ADB Telemanom-ESA (Round 86)",
+            "steps_per_epoch": 1000,
+            "training_windows": 6984219,
+            "validation_windows": 262214,
+            "weights": "last epoch"
+          },
+          "wall_clock_s": 1473.9,
+          "windowed_iforest_corrected_event_wise_f0_5": 5.6e-05,
+          "windowed_iforest_event_wise_f0_5": 8.6e-05
         },
-        "architecture": "2 x LSTM(80), sequence length 250, dropout 0.3, non-parametric dynamic threshold with pruning",
+        "architecture": "2 x LSTM(80), sequence length 250, dropout 0.3, a 10-step forecast served by its first step, Telemanom's non-parametric dynamic threshold with pruning per channel",
         "artifacts": [
           {
             "browser_runnable": true,
@@ -1625,23 +2386,23 @@
           "url": "https://zenodo.org/records/12528696"
         },
         "eval_sample_reason": null,
-        "eval_split": "windows drawn at random from the held-out temporal test window, the last 30 percent of the resampled timeline",
+        "eval_split": "windows drawn at random from the held-out test half's windows that touch no label, ESA-ADB's own Mission1 split from 2007-01-01",
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
-        "hf_revision": "32fa04cbe61a4dc6475990bc74e95f4208153de5",
+        "hf_revision": "7b0ccea190342539ca66fb429a0ecd3b30d62ef6",
         "hf_revision_stale": null,
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (one model over six channels, as Telemanom-ESA)",
         "metric": {
           "baseline": 0.968,
-          "baseline_source": "ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal events, so it was the wrong comparator and the lenient one. Verified against the paper (arXiv:2406.17826 v2, whose table numbers these are; the DMLR version of record sits behind a bot check) in Round 24. FOUR protocol differences remain and none of them are closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; (3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are anomalies, against 3 in the window scored here; (4) ESA-ADB resamples Mission1 at 0.033 Hz, about one sample per 30 s, chosen from the dominant rate of channels 41-46, while this model resamples to 300 s, so its 250-step window spans about 20.8 hours where the benchmark's would span about 2.1, and short events can vanish. So this remains an indicative target, and the sample-size gap is roughly tenfold.",
+          "baseline_source": "ESA-ADB Supplementary Table 9 (arXiv:2406.17826 v2; Table 18 of the DMLR 2026 version, read 2026-11-07), Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for ANOMALIES ALONE, which is what this project scores, so it is the like-for-like row. Earlier rounds cited Table 2's 0.786, which scores all events but communication gaps, anomalies PLUS annotated rare nominal events: a real number, and the lenient row. Since Round 86 the model is trained, thresholded and scored by ESA-ADB's own recipe and rules (scripts/train/satellite_telemanom.py): its Mission1 split, the 30 s zero-order hold, its scaling and training windows, Telemanom's thresholding as ESA-ADB's TelemanomThresholding applies it, and a reimplementation of its ESAScores over the test half's 29 anomalies. Two choices behind the published figure are not copied into this project's own result, and the record carries both: its floor of 0.05/7 is not shown to have been chosen without the test half, so the floor here is chosen on the validation months; and ESA-ADB's prepared series reads the labels to write annotated samples the zero-order hold dropped back onto the grid. Applying both reproduces the published figure (esa_scores.restored_annotated_samples in the record).",
           "ceiling": null,
           "ceiling_source": "",
           "companion": "published_full_channel_f0_5",
-          "comparison_caveat": "The two bars are event-wise F0.5 under the same overlap rule, and that is where the agreement stops. This project's scored window contains THREE labelled anomaly events; ESA-ADB's Mission1 lightweight test partition contains 29, roughly a tenfold difference in the denominator. None of the three is caught here (tp 0, fp 2, fn 3), so the score is 0 and another false alarm cannot lower it; catching one event with the same two false alarms would lift it to 0.33. The splits differ too (last 30 percent here, half the mission there), so does the resampling (300 s here, about 30 s there), and ESA-ADB multiplies event precision by the time-level true-negative rate, which this figure does not. Treat 0.968 as an indicative target, not as a score this bar was competing against.",
-          "display": "event-wise F0.5",
-          "name": "event_wise_f0_5"
+          "comparison_caveat": "Both bars are ESA-ADB's corrected event-wise F0.5 over the same 29 anomalies of the Mission1 lightweight test half, from the same recipe. The difference between them is the two choices this project does not copy: ESA-ADB's prepared series writes 10 annotated samples back onto the grid by reading the labels, and its floor of 0.05/7 is not shown to have been chosen without the test half. Applying both reproduces the published figure; the record's esa_scores holds every arm and floor, and the all-events reading beside Table 2's 0.786. One seed, and the validation months that choose this floor hold 2 anomalies.",
+          "display": "corrected event-wise F0.5 (ESA-ADB)",
+          "name": "corrected_event_wise_f0_5"
         },
-        "notes": "Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset in the paper's Table 2 (all events, 0.949), though not in Supplementary Table 9 (anomalies only, 0.000). RETRACTION, Round 19: a Round 18 note here claimed this forecaster was about 22x WORSE than persistence. That was a measurement error of ours, not a property of the model -- the probe resampled at 60s while the model is trained at 300s (see `resample` in the achieved record). Preprocessing for any evaluation must be read from this record rather than hardcoded, which is now what scripts/prep_model_inputs.py does. RETRAINED IN ROUND 71. The weights published until then were trained with a z-score fitted on the whole series, test window included: the trainer was fixed in Round 34 and the model was never retrained, so its feature_spec.json still carried whole-series constants. With the constants fitted on the training window, next-step MAE over all 441,600 test windows is 0.0250 against 0.0764 for persistence, about 3.1x better. The event-wise figure fell to 0 (tp=0 fp=2 fn=3): the detector still flags 2 points of 441,600 and neither lands in one of the 3 scored events, where the two leaky runs had caught one and recorded 0.714286 and 0.454545. Point-adjusted F1 fell with it, from 0.9937 to 0, which is how much one flagged point inside a long event carries under point adjustment; the isolation-forest baseline reproduces exactly (0.000248). Treat the event-wise figure as a single draw from a wide distribution: three events cannot rank detectors. With 0 of 3 events detected, the exact (Clopper-Pearson) 95% interval for recall runs from 0 to 0.71.",
+        "notes": "Report ESA-ADB's corrected event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset in the paper's Table 2 (all events, 0.949), though not on Mission1, where it reads below 0.001 in ESA-ADB's own tables and does here too. RETRAINED IN ROUND 86 by ESA-ADB's Telemanom-ESA recipe (see the metric's baseline_source). The record holds two arms from one model. The project's result is the plain zero-order hold at an error floor chosen on the validation months, inputs a deployed detector could compute. The replication arm applies the two steps of ESA-ADB's published figure this project does not take as its own, the label-reading restoration of annotated samples and the paper's floor, and it reproduces that figure. The floor skips the windows whose errors stay small; without one, both arms land near the benchmark's plain Telemanom-ESA (0.090). The record's esa_scores holds both of ESA-ADB's readings, anomalies alone and all events, for every arm and floor. Earlier models, kept as history: until Round 71 the weights carried a z-score fitted on the whole series; the Round 71 model, trained at 300 s on a 70/30 cut whose test window held 3 events, flagged 2 of 441,600 points and scored 0. A Round 18 note claimed it was 22x worse than persistence, a probe that resampled at 60 s against a model trained at 300 s, and the lesson stands: preprocessing for any evaluation is read from this record, never hardcoded, which scripts/prep_model_inputs.py does.",
         "onnx_domains": [
           "ai.onnx"
         ],
@@ -1651,23 +2412,23 @@
       },
       {
         "achieved": {
-          "agreement": 0.975641,
-          "both_scored_zero": true,
-          "disagreement_on_positives": 0.0,
-          "hf_revision": "abee00f126b206242276a1f115f84ca0fb3538ed",
-          "metric_delta": 0.0,
-          "metric_delta_pp": 0.0,
-          "metric_name": "event_wise_f0_5",
-          "n_eval": 307601,
-          "n_scoring_units": 2,
-          "scoring_unit": "labelled anomaly events",
+          "agreement": 0.999192,
+          "both_scored_zero": false,
+          "disagreement_on_positives": 0.184615,
+          "hf_revision_invalidated_by_retrain": "abee00f126b206242276a1f115f84ca0fb3538ed",
+          "metric_delta": 0.961026,
+          "metric_delta_pp": 96.1026,
+          "metric_name": "corrected_event_wise_f0_5",
+          "n_eval": 2844581,
+          "n_scoring_units": 12,
+          "scoring_unit": "labelled anomaly events (ESA-ADB's ESAScores rules)",
           "student_key": "satellite_comms.student",
           "student_metric": 0.0,
           "student_params": 49,
           "teacher_key": "satellite_comms.telemanom",
-          "teacher_metric": 0.0,
-          "teacher_params": 80486,
-          "teacher_scored_zero": true
+          "teacher_metric": 0.961026,
+          "teacher_params": 84860,
+          "teacher_scored_zero": false
         },
         "architecture": "logistic regression over channel x timestep windows",
         "artifacts": [
@@ -1697,21 +2458,21 @@
         "eval_sample_reason": "its metric, event-wise F0.5, is defined over contiguous runs of a timeline and cannot be re-scored from independent rows, which is what the browser evaluator scores",
         "eval_split": null,
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-ckks-student",
-        "hf_revision": "abee00f126b206242276a1f115f84ca0fb3538ed",
-        "hf_revision_stale": null,
+        "hf_revision": null,
+        "hf_revision_stale": "abee00f126b206242276a1f115f84ca0fb3538ed",
         "key": "satellite_comms.student",
         "label": "CKKS-linear telemetry anomaly student",
         "metric": {
           "baseline": 0.968,
-          "baseline_source": "ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal events, so it was the wrong comparator and the lenient one. Verified against the paper (arXiv:2406.17826 v2, whose table numbers these are; the DMLR version of record sits behind a bot check) in Round 24. FOUR protocol differences remain and none of them are closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; (3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are anomalies, against 3 in the window scored here; (4) ESA-ADB resamples Mission1 at 0.033 Hz, about one sample per 30 s, chosen from the dominant rate of channels 41-46, while this model resamples to 300 s, so its 250-step window spans about 20.8 hours where the benchmark's would span about 2.1, and short events can vanish. So this remains an indicative target, and the sample-size gap is roughly tenfold.",
+          "baseline_source": "ESA-ADB Supplementary Table 9 (arXiv:2406.17826 v2; Table 18 of the DMLR 2026 version, read 2026-11-07), Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for ANOMALIES ALONE, which is what this project scores, so it is the like-for-like row. Earlier rounds cited Table 2's 0.786, which scores all events but communication gaps, anomalies PLUS annotated rare nominal events: a real number, and the lenient row. Since Round 86 the model is trained, thresholded and scored by ESA-ADB's own recipe and rules (scripts/train/satellite_telemanom.py): its Mission1 split, the 30 s zero-order hold, its scaling and training windows, Telemanom's thresholding as ESA-ADB's TelemanomThresholding applies it, and a reimplementation of its ESAScores over the test half's 29 anomalies. Two choices behind the published figure are not copied into this project's own result, and the record carries both: its floor of 0.05/7 is not shown to have been chosen without the test half, so the floor here is chosen on the validation months; and ESA-ADB's prepared series reads the labels to write annotated samples the zero-order hold dropped back onto the grid. Applying both reproduces the published figure (esa_scores.restored_annotated_samples in the record).",
           "ceiling": null,
           "ceiling_source": "",
           "companion": "published_full_channel_f0_5",
-          "comparison_caveat": "The two bars are event-wise F0.5 under the same overlap rule, and that is where the agreement stops. This project's scored window contains THREE labelled anomaly events; ESA-ADB's Mission1 lightweight test partition contains 29, roughly a tenfold difference in the denominator. None of the three is caught here (tp 0, fp 2, fn 3), so the score is 0 and another false alarm cannot lower it; catching one event with the same two false alarms would lift it to 0.33. The splits differ too (last 30 percent here, half the mission there), so does the resampling (300 s here, about 30 s there), and ESA-ADB multiplies event precision by the time-level true-negative rate, which this figure does not. Treat 0.968 as an indicative target, not as a score this bar was competing against.",
-          "display": "event-wise F0.5",
-          "name": "event_wise_f0_5"
+          "comparison_caveat": "Both bars are ESA-ADB's corrected event-wise F0.5 over the same 29 anomalies of the Mission1 lightweight test half, from the same recipe. The difference between them is the two choices this project does not copy: ESA-ADB's prepared series writes 10 annotated samples back onto the grid by reading the labels, and its floor of 0.05/7 is not shown to have been chosen without the test half. Applying both reproduces the published figure; the record's esa_scores holds every arm and floor, and the all-events reading beside Table 2's 0.786. One seed, and the validation months that choose this floor hold 2 anomalies.",
+          "display": "corrected event-wise F0.5 (ESA-ADB)",
+          "name": "corrected_event_wise_f0_5"
         },
-        "notes": "The one published model with no browser evaluation sample, and the reason is the metric rather than the weights. Round 21 gave the other three students samples; this one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows -- which is exactly what the browser evaluator scores. Shipping a per-row metric instead would verify a number nobody published for it. It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. Worth reading alongside its numbers: since the Round 71 retrain the teacher and the student both score 0.0 event-wise F0.5 on this split, so their agreement is agreement about finding nothing, and there is no fidelity claim to make. No code path here evaluates this student under CKKS today: the satellite page has no private-inference stage, and the full deployment's telemetry stage encrypts the OPS-SAT-AD demo regression the browser scores in plaintext.",
+        "notes": "The one published model with no browser evaluation sample, and the reason is the metric rather than the weights: event-wise F0.5 is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows, which is what the browser evaluator scores. It needs no scaler of its own: scripts/train/satellite_telemanom.py fits it on the forecaster's z-scored windows (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. NOT REPUBLISHED SINCE THE ROUND 86 RETRAIN, and to be replaced. Against the retrained forecaster this logistic student scores far below the teacher on its evaluation slice (the record's student_metric and teacher_metric) and raises far fewer alarms. A linear map over a window cannot reproduce a forecast-error threshold, so the replacement will be a linear next-step forecaster evaluated under CKKS, whose decrypted forecast the client thresholds itself (the owner's choice, 2026-11-07). The Hub copy is the student of the Round 71 model. No code path here evaluates this student under CKKS today: the satellite page has no private-inference stage, and the full deployment's telemetry stage encrypts the OPS-SAT-AD demo regression the browser scores in plaintext.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],

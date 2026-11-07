@@ -136,6 +136,8 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
         body += ["### Gap to the published baseline", "", achieved["baseline_gap_note"], ""]
 
     body += _calibration_section((achieved or {}).get("calibration"))
+    body += _esa_scores_section((achieved or {}).get("esa_scores"), m.baseline,
+                                (achieved or {}).get("published_lightweight_f0_5"))
 
     body += [
         "## Training data",
@@ -181,6 +183,47 @@ def _hub_inline_math(text: str) -> str:
     formula rendered.
     """
     return _INLINE_MATH.sub(lambda m: r"\\(" + m.group(1) + r"\\)", text)
+
+
+def _esa_scores_section(esa: dict | None, published: float | None, published_all: float | None) -> list[str]:
+    """The satellite forecaster's arms and floors as a table, so the replication is readable on the Hub (Round 86).
+
+    The card's prose names `esa_scores`, which lives in the repository's record; this puts the cells beside the
+    published figures on the card a Hub visitor reads.
+    """
+    if not isinstance(esa, dict):
+        return []
+    arms = (("plain_zero_order_hold", "plain zero-order hold"),
+            ("restored_annotated_samples", "ESA-ADB's prepared series, which reads the labels"))
+    #: The two cells the card names: this project's result, and the replication of the published figure.
+    named = {("plain_zero_order_hold", "validation_floor"): "this project's result",
+             ("restored_annotated_samples", "paper_floor"): "replication"}
+    runs = (("validation_floor", "floor from the validation months"), ("paper_floor", "the paper's floor"),
+            ("no_floor", "no floor"))
+    rows = []
+    for arm, arm_label in arms:
+        for run, run_label in runs:
+            r = (esa.get(arm) or {}).get(run)
+            if not isinstance(r, dict) or not isinstance(r.get("corrected_event_wise_f0_5"), (int, float)):
+                continue
+            every = (r.get("all_events") or {}).get("corrected_event_wise_f0_5")
+            value = f"{r['corrected_event_wise_f0_5']:.3f}"
+            if (arm, run) in named:
+                value = f"**{value}** ({named[(arm, run)]})"
+            rows.append(f"| {arm_label} | {run_label} ({r['floor']}) | {value} | "
+                        f"{r['tp']} / {r['fp']} / {r['fn']} | "
+                        f"{'-' if every is None else format(every, '.3f')} |")
+    if not rows:
+        return []
+    pub = "-" if published is None else f"{published:.3f}"
+    pub_all = "-" if published_all is None else f"{published_all:.3f}"
+    return ["### ESA-ADB's scores, both input series", "",
+            "Corrected event-wise F0.5 over the test half's anomalies, and over all events but communication gaps "
+            "(ESA-ADB's Table 2 selection). One model; the two series differ only in ESA-ADB's restoration of "
+            "annotated samples.", "",
+            "| input series | floor | anomalies | tp / fp / fn | all events |", "|---|---|---|---|---|",
+            *rows,
+            f"| published Telemanom-ESA-Pruned (not measured here) | 0.05/7 | {pub} | | {pub_all} |", ""]
 
 
 def _calibration_section(cal: dict | None) -> list[str]:

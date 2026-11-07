@@ -108,7 +108,7 @@ def test_the_forecaster_starts_from_kerass_initialisers() -> None:
     assert torch.all(b[h:2 * h] == 1) and torch.all(b[:h] == 0) and torch.all(b[2 * h:] == 0)
     assert torch.all(net.lstm.bias_hh_l0 == 0) and torch.all(net.head.bias == 0)
     limit = (6 / (6 + 4 * h)) ** 0.5           # glorot-uniform on the first layer's input kernel
-    assert float(net.lstm.weight_ih_l0.abs().max()) <= limit
+    assert float(net.lstm.weight_ih_l0.detach().abs().max()) <= limit
 
 
 # ---- ESA-ADB's own procedure ---------------------------------------------------------------------------------------
