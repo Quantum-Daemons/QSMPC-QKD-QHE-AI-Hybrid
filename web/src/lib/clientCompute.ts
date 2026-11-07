@@ -2742,6 +2742,11 @@ export function runClientPipeline(
           + `is a closed-form function, not a circuit): ${q.clients} clients x ${q.rounds} `
           + `rounds (classical FedAvg; ${q.aggregation}) over `
           + `${qflData ? `the bundled ${usecase} sample (${qflData.X.length} rows)` : "a synthetic toy"}`
+          // Round 86 (fact-check C9): the "hospitals" are shards dealt round-robin from one shuffled pool
+          // (clientQFL.ts), so every client's data share one distribution - the easy case for FedAvg.
+          + `, dealt round-robin to the clients from one shuffled pool, so every client's rows share one `
+          + `distribution (IID), which real hospitals' do not: on highly skewed non-IID shards, Zhao et al. `
+          + `(arXiv:1806.00582) measured accuracy losses of up to 55% for neural networks`
           + ` - held-out accuracy ${q.baselineAcc.toFixed(2)} untrained (every row class 0), `
           + `${q.roundAcc[0].toFixed(2)} after round 1, ${q.finalAcc.toFixed(2)} after round ${q.rounds}`
           + (balanced ? "; the rows are a class-balanced draw, half of them positive, so no accuracy here "
