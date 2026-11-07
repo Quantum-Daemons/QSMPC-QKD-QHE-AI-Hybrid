@@ -1233,7 +1233,7 @@
       "opset": 17
     },
     "git_sha": "52cc358-dirty",
-    "hf_revision": "7219c6ec1d1216b6725397ed0210f50ab4c4da61",
+    "hf_revision": "6a347a2f6cf32f84d4f25d64a966abde7b1ef9ff",
     "metric_note": "ESA-ADB's event-wise F0.5 for anomalies alone, scored by a reimplementation of its ESAScores: an anomaly is detected when any flagged event intersects it, and a flagged event is a false positive only when it intersects no annotated event of any category. corrected_event_wise_f0_5 multiplies event precision by the time-level true-negative rate, as ESA-ADB reports it; event_wise_f0_5 does not. Telemanom's paper prints 0.71 under F0.5 in its Table 2, though its own precision and recall there (87.5% and 80.0% overall) give 0.86. point_adjusted_f1 is shown only to expose how much point adjustment inflates: Kim et al. (AAAI 2022) show that under point adjustment even a random anomaly score can reach state-of-the-art. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 63 rare nominal events annotated on these six channels do not.",
     "n_anomaly_events_timeline": 51,
     "n_anomaly_intervals": 320,

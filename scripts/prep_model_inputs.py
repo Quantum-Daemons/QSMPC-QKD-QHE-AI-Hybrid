@@ -281,11 +281,13 @@ MODIFICATIONS = {
     "medical_fl.student": (
         "The official BreastMNIST test split, all 156 images, normalised and area-resized from 28x28 "
         "to 14x14 and rounded to 6 decimals, with the published labels."),
+    # Round 86: this described the Round 71 sample (300 s, forward-filled, the last 30 percent) for one regeneration
+    # after the sample itself changed, so the change notice travelling with it named changes it no longer made.
     "satellite_comms.telemanom": (
-        "Channels 41 to 46 of ESA-ADB Mission1, resampled to 300 s, forward-filled, z-scored with the "
-        "training window's mean and standard deviation, and cut into 250-step windows; 128 windows "
-        "drawn at random from the held-out test window (the last 30 percent of the timeline), with "
-        "each window's next-step values as targets, rounded to 4 decimals."),
+        "Channels 41 to 46 of ESA-ADB Mission1, resampled to 30 s by zero-order hold, z-scored with the mean and "
+        "standard deviation of the unlabelled training rows, and cut into 250-step windows; 128 windows drawn at "
+        "random from the windows of the held-out test half (from 2007-01-01, ESA-ADB's own split) that touch no "
+        "label, with each window's next-step values as targets, rounded to 4 decimals."),
     "satellite_comms.opssat": (
         "The 19 published per-segment features of the benchmark's test partition, all 529 segments, "
         "rounded to 6 decimals, with the published labels."),
