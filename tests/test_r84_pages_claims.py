@@ -271,33 +271,28 @@ def _telemanom() -> dict:
 
 
 def test_the_satellite_card_carries_its_registry_context(rendered) -> None:
+    """Round 86: the satellite figure is ESA-ADB's own metric over its 29 anomalies, so the card compares it
+    ordinarily and prints the record's replication of the published figure beside it."""
     t = _text(rendered["client"]["useCases"])
     spec = _telemanom()
-    n = spec["achieved"]["n_events_scored"]
-    assert "event-wise F0.5 0.0000 vs published 0.968" not in t, "the bare juxtaposition is back"
-    assert f"event-wise F0.5 0.0000 over {n} scored events \u00b7 published 0.968, a different measurement" in t
-    assert ("Not a like-for-like pair: ESA-ADB's 0.968 is scored on 29 anomaly events (65 annotated events in "
-            "all), with another split, resampling and precision correction.") in t
-    assert "two earlier, identically configured trainings, before a scaler fix, scored 0.714 and 0.455" in t
+    ach = spec["achieved"]
+    n, score = ach["n_events_scored"], ach[spec["metric"]["name"]]
+    rep = ach["esa_scores"]["restored_annotated_samples"]["paper_floor"]["corrected_event_wise_f0_5"]
+    assert (f"{spec['metric']['display']} {score:.4f} over {n} scored events vs published 0.968 \u00b7 "
+            f"replication of the published figure {rep:.4f}") in t
+    assert "a different measurement" not in t.split("Satellite")[1][:600], "the old caveat is back on the card"
     # Cards with a like-for-like baseline keep "vs published".
     assert "vs published 0.901" in t, "the medical card lost its ordinary comparison"
 
 
-def test_every_number_in_the_card_sentence_is_the_registry_entrys() -> None:
+def test_the_satellite_card_sentence_is_retired_with_its_caveat() -> None:
+    """The sentence quoted three-event-era figures (0.714, 0.455, 'not like-for-like'); with the caveat withdrawn
+    in Round 86 the card has no sentence of its own, and no number of it may come back unpinned."""
     code = (SRC / "pages" / "UseCases.tsx").read_text()
-    m = re.search(r'"satellite_comms\.telemanom":\s*((?:"[^"]*"\s*\+?\s*)+),', code)
-    assert m, "the satellite card's sentence moved; re-derive this test"
-    sentence = "".join(re.findall(r'"([^"]*)"', m.group(1)))
+    assert '"satellite_comms.telemanom":' not in code, "the satellite card's not-like-for-like sentence is back"
     spec = _telemanom()
-    note, source = spec["achieved"]["baseline_gap_note"], spec["metric"]["baseline_source"]
-    assert spec["metric"]["comparison_caveat"], "the registry no longer flags the pair as not like-for-like"
-    assert spec["metric"]["baseline"] == 0.968 and "0.968" in sentence
-    assert "65 annotated events of which 29 are anomalies" in source
-    assert "29 anomaly events" in sentence and "65 annotated events" in sentence
-    assert "0.714286" in note and "0.454545" in note and "identical-config retrains" in note
-    assert "0.714 and 0.455" in sentence
-    numbers = set(re.findall(r"\d+(?:\.\d+)?", sentence))
-    assert numbers == {"0.968", "29", "65", "0.714", "0.455"}, f"an unpinned number entered the sentence: {numbers}"
+    assert not spec["metric"]["comparison_caveat"], "the registry flags the pair as not like-for-like again"
+    assert spec["metric"]["baseline"] == 0.968
 
 
 def test_the_quantum_channel_column_names_no_classifier(rendered) -> None:

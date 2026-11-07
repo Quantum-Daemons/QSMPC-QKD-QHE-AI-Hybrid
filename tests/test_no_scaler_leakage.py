@@ -72,7 +72,7 @@ def test_the_satellite_trainer_fits_its_zscore_after_the_split():
 
     src = Path(__file__).resolve().parents[1] / "scripts" / "train" / "satellite_telemanom.py"
     text = src.read_text()
-    cut_at = text.index("cut = int(len(values)")
+    cut_at = text.index("cut = (int(len(values)")       # Round 86: or the first row at a split date
     mu_at = text.index("mu, sigma = values")
     assert cut_at < mu_at, (
         "the temporal split must be computed BEFORE the z-score, or the scaler sees the test window")

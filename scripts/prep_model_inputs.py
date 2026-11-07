@@ -653,7 +653,7 @@ def build_satellite(rng: np.random.Generator) -> dict:
     model was trained at 300s is how Round 18 came to report the forecaster as 19-22x worse than
     persistence: it was being fed data at the wrong sampling rate.
     """
-    from train.satellite_telemanom import SEQ_LEN, preprocess, windows  # type: ignore
+    from train.satellite_telemanom import SEQ_LEN, prepare, preprocess, window_view  # type: ignore
 
     from qsh.models import datasets as D
     from qsh.models import registry
@@ -666,12 +666,24 @@ def build_satellite(rng: np.random.Generator) -> dict:
     if resample != published.get("resample") or chans != published.get("channels"):
         raise SystemExit(f"the record's cadence {resample!r} and channels disagree with the "
                          f"published feature_spec.json ({published.get('resample')!r})")
-    df, values, cut, mu, sigma = preprocess(D.load_esa_channels(), resample)
+    # The record's own split since Round 86 (ESA-ADB's 2007-01-01), so these windows are the published model's
+    # test half; a record from before it carries no split, and the trainer then cut 30 percent by row.
+    split = (registry.achieved(key) or {}).get("split") or {}
+    split_at = split.get("test_from")
+    labelled = None
+    if split.get("validation_from"):
+        # ESA-ADB's recipe (Round 86): the trainer's own prepare(), its zero-order hold and its scaling from the
+        # unlabelled training rows. The plain arm, which is the published model's input; never the restored one.
+        prep = prepare(resample, split_at, split["validation_from"], hold=published.get("hold", "last"))
+        df, values, cut, mu, sigma = prep.df, prep.zscore(prep.raw_plain), prep.cut, prep.mu, prep.sigma
+        labelled = prep.any_label
+    else:
+        df, values, cut, mu, sigma = preprocess(D.load_esa_channels(), resample, split_at=split_at)
     norm = published["normalisation"]
     if not (np.allclose(mu, norm["mean"], rtol=0, atol=1e-6)
             and np.allclose(sigma, norm["std"], rtol=0, atol=1e-6)):
         raise SystemExit("the z-score constants fitted here differ from the ones the trainer published")
-    xte, yte = windows(values[cut:], SEQ_LEN, 1)
+    xte, yte = window_view(values[cut:], SEQ_LEN)      # a view: every test window, copied a batch at a time
     fixtures = np.load(out_dir / "fixtures.npy")
     if not np.array_equal(xte[:len(fixtures)], fixtures):
         raise SystemExit("the first test windows differ from the fixtures the export gate saved")
@@ -679,18 +691,33 @@ def build_satellite(rng: np.random.Generator) -> dict:
     # The same graph over EVERY test window, so the note can say how this sample sits in the whole.
     sess, graph = _session("satellite_telemanom", prefer_int8=True)
     name = sess.get_inputs()[0].name
-    window_pred = np.concatenate([sess.run(None, {name: xte[i:i + 4096]})[0]
+    window_pred = np.concatenate([sess.run(None, {name: np.ascontiguousarray(xte[i:i + 4096])})[0]
                                   for i in range(0, len(xte), 4096)])
     window_mae = float(np.abs(window_pred - yte).mean())
     window_persistence = float(np.abs(xte[:, -1, :] - yte).mean())
+    # The windows that touch no label, inputs and target (Round 86). The ESA-ADB recipe never trains on a labelled
+    # row, so its forecast is far off wherever the telemetry is anomalous - which is how it detects - and those rows
+    # reach tens of standard deviations: over all test windows they lift the mean error above persistence's, while
+    # on the unlabelled windows the forecaster is the better predictor. A random draw of 128 windows that catches
+    # one of them reads as a model worse than no-change, so the sample is drawn from the unlabelled windows and
+    # both figures are stated.
+    if labelled is not None:
+        bad = np.r_[0, np.cumsum(labelled[cut:].astype(np.int64))]
+        starts = np.arange(len(xte))
+        pool = np.flatnonzero(bad[starts + SEQ_LEN + 1] - bad[starts] == 0)
+    else:
+        pool = np.arange(len(xte))
+    pool_mae = float(np.abs(window_pred[pool] - yte[pool]).mean())
+    pool_persistence = float(np.abs(xte[pool, -1, :] - yte[pool]).mean())
     print(f"    z-score constants equal the published ones; the {len(fixtures)} export fixtures are the "
           f"first test windows; over all {len(xte):,} test windows MAE {window_mae:.6f} against "
-          f"persistence {window_persistence:.6f}")
+          f"persistence {window_persistence:.6f}; over the {len(pool):,} that touch no label "
+          f"{pool_mae:.6f} against {pool_persistence:.6f}")
 
     # 250x6 per window is 1500 floats, so keep this small -- the comparison against persistence is
     # stable well below N_SAMPLES and the payload has to ship. Sorted, so the rows read in time order.
     n_windows = N_SAMPLES["satellite_comms"]
-    pick = np.sort(rng.choice(len(xte), size=n_windows, replace=False))
+    pick = np.sort(rng.choice(pool, size=n_windows, replace=False))
     # Rounded BEFORE predicting, in float64 so the file carries 4 decimals rather than the float32
     # expansion of them. The expectation used to be measured on the unrounded windows and so
     # described numbers the browser never received (0.07415 recorded, 0.07416 on the shipped rows).
@@ -701,6 +728,12 @@ def build_satellite(rng: np.random.Generator) -> dict:
     # What predicting "no change from the last observed step" would score. A forecaster that cannot
     # beat persistence is not forecasting, and the browser should be able to see that too.
     persistence_mae = float(np.abs(x64[:, -1, :] - t64).mean())
+    # Beyond the mean (Round 86): a mean over 128 windows can be carried by two large misses, so the median absolute
+    # error of each predictor and the windows on which the model's own mean error is the lower ship with it, and the
+    # page computes the same three from the same rows.
+    abs_model, abs_persist = np.abs(pred - t64), np.abs(x64[:, -1, :] - t64)
+    median_ae, persistence_median_ae = float(np.median(abs_model)), float(np.median(abs_persist))
+    windows_better = int((abs_model.mean(1) < abs_persist.mean(1)).sum())
 
     ds = registry.get(key).dataset
     return {
@@ -708,15 +741,22 @@ def build_satellite(rng: np.random.Generator) -> dict:
         "provenance": (
             f"Real ESA Anomaly Dataset (ESA-ADB) telemetry, Mission1 lightweight channels 41-46. "
             f"{ds.attribution} Missions are anonymised Mission1/2/3; they are not named Sentinel "
-            f"anything. Resampled to {resample}, forward-filled, and z-scored with the mean and "
-            "standard deviation of the training window, by the training script's own preprocess(). "
+            f"anything. Resampled to {resample}, "
+            + ("by ESA-ADB's zero-order hold, and z-scored with the mean and standard deviation of the "
+               "unlabelled training rows, by the training script's own prepare(). " if split.get("validation_from")
+               else "forward-filled, and z-scored with the mean and standard deviation of the training window, "
+               "by the training script's own preprocess(). ")
+            + 
             # No dates: the timeline is anonymised (the paper gives Mission1's span only as an
             # anonymised 14 years), so the corpus index is not quoted as though it were a calendar.
-            f"These are {n_windows} of the {len(xte):,} windows in the held-out test window, the last "
-            f"30 percent of the {len(df):,}-step timeline, drawn at random and kept in time order; "
-            "the model trained on none of them. The page's telemetry-anomaly step scores OPS-SAT-AD "
-            "segments, not these windows, with a demo linear model: in plaintext in the browser, "
-            "and on one bundled segment under CKKS in the full deployment."
+            f"These are {n_windows} of the {len(xte):,} windows in the held-out test window, "
+            + (f"the half of the {len(df):,}-step timeline from {split_at} in the corpus's anonymised "
+               "calendar, ESA-ADB's own Mission1 split, " if split_at else
+               f"the last 30 percent of the {len(df):,}-step timeline, ")
+            + (f"drawn at random from the {len(pool):,} that touch no label, inputs and target, " if labelled is not None
+               else "drawn at random ")
+            + "and kept in time order; the model trained on none of them. The page's "
+            "CKKS check scores the OPS-SAT student on 529 OPS-SAT-AD segments, not these windows."
         ),
         "input": {"shape": [1, SEQ_LEN, len(chans)], "dtype": "float32", "preprocessing": [],
                   "layout": f"samples[i] is {SEQ_LEN} timesteps x {len(chans)} channels at {resample} "
@@ -728,12 +768,23 @@ def build_satellite(rng: np.random.Generator) -> dict:
             "graph": graph,
             "mae": mae,
             "persistence_mae": persistence_mae,
+            "median_ae": median_ae,
+            "persistence_median_ae": persistence_median_ae,
+            "windows_better": windows_better,
             "note": (
                 "Mean absolute error of the next-step forecast in z-score units, measured here with "
                 "onnxruntime on exactly these windows as shipped. persistence_mae is what predicting "
                 "no change would score, so a reader can tell whether the model is doing anything. "
+                f"On these windows the median absolute error is {median_ae:.4f} against "
+                f"{persistence_median_ae:.4f} for no change, and the model's own mean error is the lower on "
+                f"{windows_better} of {n_windows}: where the two means disagree, a few large misses carry the "
+                "first. "
                 f"Over all {len(xte):,} test windows the same graph scores {window_mae:.4f} against "
-                f"persistence {window_persistence:.4f}."),
+                f"persistence {window_persistence:.4f}"
+                + (f", and over the {len(pool):,} that touch no label, the pool these windows come from, "
+                   f"{pool_mae:.4f} against {pool_persistence:.4f}. The forecaster never trains on a labelled "
+                   "row, and its forecast is far off where the telemetry is anomalous - which is how it "
+                   "detects - so labelled rows dominate the first mean." if labelled is not None else ".")),
         },
     }
 

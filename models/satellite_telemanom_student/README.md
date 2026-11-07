@@ -29,21 +29,21 @@ teacher was measured offline, in plaintext.
 
 | metric | value |
 |---|---|
-| `agreement` | 0.975641 |
-| `disagreement_on_positives` | 0.0 |
-| `metric_delta` | 0.0 |
-| `metric_delta_pp` | 0.0 |
-| `n_eval` | 307601 |
-| `n_scoring_units` | 2 |
+| `agreement` | 0.999192 |
+| `disagreement_on_positives` | 0.184615 |
+| `metric_delta` | 0.961026 |
+| `metric_delta_pp` | 96.1026 |
+| `n_eval` | 2844581 |
+| `n_scoring_units` | 12 |
 | `student_metric` | 0.0 |
 | `student_params` | 49 |
-| `teacher_metric` | 0.0 |
-| `teacher_params` | 80486 |
+| `teacher_metric` | 0.961026 |
+| `teacher_params` | 84860 |
 
 ## Published baselines this is measured against
 
-- **Target metric**: event-wise F0.5
-- **Baseline to beat**: 0.968 - ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal events, so it was the wrong comparator and the lenient one. Verified against the paper (arXiv:2406.17826 v2, whose table numbers these are; the DMLR version of record sits behind a bot check) in Round 24. FOUR protocol differences remain and none of them are closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; (3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are anomalies, against 3 in the window scored here; (4) ESA-ADB resamples Mission1 at 0.033 Hz, about one sample per 30 s, chosen from the dominant rate of channels 41-46, while this model resamples to 300 s, so its 250-step window spans about 20.8 hours where the benchmark's would span about 2.1, and short events can vanish. So this remains an indicative target, and the sample-size gap is roughly tenfold.
+- **Target metric**: corrected event-wise F0.5 (ESA-ADB)
+- **Baseline to beat**: 0.968 - ESA-ADB Supplementary Table 9 (arXiv:2406.17826 v2; Table 18 of the DMLR 2026 version, read 2026-11-07), Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for ANOMALIES ALONE, which is what this project scores, so it is the like-for-like row. Earlier rounds cited Table 2's 0.786, which scores all events but communication gaps, anomalies PLUS annotated rare nominal events: a real number, and the lenient row. Since Round 86 the model is trained, thresholded and scored by ESA-ADB's own recipe and rules (scripts/train/satellite_telemanom.py): its Mission1 split, the 30 s zero-order hold, its scaling and training windows, Telemanom's thresholding as ESA-ADB's TelemanomThresholding applies it, and a reimplementation of its ESAScores over the test half's 29 anomalies. Two choices behind the published figure are not copied into this project's own result, and the record carries both: its floor of 0.05/7 is not shown to have been chosen without the test half, so the floor here is chosen on the validation months; and ESA-ADB's prepared series reads the labels to write annotated samples the zero-order hold dropped back onto the grid. Applying both reproduces the published figure (esa_scores.restored_annotated_samples in the record).
 
 ## Training data
 
@@ -56,7 +56,7 @@ Missions are anonymised Mission1/2/3 - they are not named Sentinel anything. Mis
 
 ## Notes and limitations
 
-The one published model with no browser evaluation sample, and the reason is the metric rather than the weights. Round 21 gave the other three students samples; this one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows -- which is exactly what the browser evaluator scores. Shipping a per-row metric instead would verify a number nobody published for it. It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. Worth reading alongside its numbers: since the Round 71 retrain the teacher and the student both score 0.0 event-wise F0.5 on this split, so their agreement is agreement about finding nothing, and there is no fidelity claim to make. No code path here evaluates this student under CKKS today: the satellite page has no private-inference stage, and the full deployment's telemetry stage encrypts the OPS-SAT-AD demo regression the browser scores in plaintext.
+The one published model with no browser evaluation sample, and the reason is the metric rather than the weights: event-wise F0.5 is defined over contiguous runs of a timeline and cannot be computed from a shuffled set of independent rows, which is what the browser evaluator scores. It needs no scaler of its own: scripts/train/satellite_telemanom.py fits it on the forecaster's z-scored windows (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json is correct rather than the omission it looks like. NOT REPUBLISHED SINCE THE ROUND 86 RETRAIN, and to be replaced. Against the retrained forecaster this logistic student scores far below the teacher on its evaluation slice (the record's student_metric and teacher_metric) and raises far fewer alarms. A linear map over a window cannot reproduce a forecast-error threshold, so the replacement will be a linear next-step forecaster evaluated under CKKS, whose decrypted forecast the client thresholds itself (the owner's choice, 2026-11-07). The Hub copy is the student of the Round 71 model. No code path here evaluates this student under CKKS today: the satellite page has no private-inference stage, and the full deployment's telemetry stage encrypts the OPS-SAT-AD demo regression the browser scores in plaintext.
 
 ## Honest scope
 

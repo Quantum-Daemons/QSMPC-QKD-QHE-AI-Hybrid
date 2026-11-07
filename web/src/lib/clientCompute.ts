@@ -1784,9 +1784,15 @@ export function runClientPipeline(
           // A model that cannot beat a trivial predictor is worth saying out loud even when it
           // reproduces its own figure exactly - reproducing a bad number is still reproducing it.
           if (!v.beatsBaseline && v.baseline != null) {
+            // A forecaster's mean over a few hundred windows can be carried by two large misses (Round 86), so the
+            // robust reading goes on the same line rather than letting the mean alone stand for the model.
+            const fd = v.forecastDetail;
             emit("log", stage, `note: this model does not beat the trivial baseline on that sample `
               + `(${r2(v.score)} against ${r2(v.baseline)}). Reproducing a figure and being useful `
-              + `are separate questions.`);
+              + `are separate questions.`
+              + (fd ? ` Beyond the mean: its median absolute error is ${r2(fd.medianAe)} against `
+                + `${r2(fd.persistenceMedianAe)} for no change, and its own mean error is the lower on `
+                + `${fd.windowsBetter} of ${fd.windows} windows, so a few large misses carry the mean.` : ""));
           }
         } else if (v && v.error) {
           if (isSelected) metric(stage, "verification", "ERROR");

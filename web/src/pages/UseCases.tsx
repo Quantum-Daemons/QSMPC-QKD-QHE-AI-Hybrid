@@ -21,11 +21,8 @@ const DEMO = isClientDemo();
  * from the record (`n_events_scored`), not written here.
  */
 const NOT_LIKE_FOR_LIKE: Record<string, string> = {
-  "satellite_comms.telemanom":
-    "Not a like-for-like pair: ESA-ADB's 0.968 is scored on 29 anomaly events (65 annotated events "
-    + "in all), with another split, resampling and precision correction. With this few events one "
-    + "detection moves the figure by tenths: two earlier, identically configured trainings, before a "
-    + "scaler fix, scored 0.714 and 0.455.",
+  // The satellite entry is gone since Round 86: its comparison is now like for like, ESA-ADB's corrected event-wise
+  // F0.5 over the same 29 anomalies by its own rules, and the card prints the replication beside it instead.
 };
 
 // Use Cases index — each card links to a dedicated per-use-case page (a live architecture
@@ -76,6 +73,10 @@ export default function UseCases() {
           // is a different measurement. Both are the registry's, as on the model panel.
           const scoredOver = typeof achieved?.n_events_scored === "number" ? achieved.n_events_scored : null;
           const notComparable = !!teacher?.metric?.comparison_caveat;
+          // The arm of the satellite record that applies the published figure's own two choices (Round 86).
+          const esa = (teacher?.achieved as Record<string, any> | null | undefined)?.esa_scores;
+          const replication = esa?.restored_annotated_samples?.paper_floor?.corrected_event_wise_f0_5 as
+            number | undefined;
           // "scaffold" used to be hardcoded to !inference, which understated telecom and satellite:
           // both now carry trained, published, pinned models. Earn it from registry state instead.
           // "measured", not "trained": the one unpublished model with recorded results is genomics'
@@ -98,7 +99,9 @@ export default function UseCases() {
                     {scoredOver != null && <> over {scoredOver} scored event{scoredOver === 1 ? "" : "s"}</>}
                     {teacher.metric.baseline != null && (notComparable
                       ? <> · published {teacher.metric.baseline}, a different measurement</>
-                      : <> vs published {teacher.metric.baseline}</>)}</>}
+                      : <> vs published {teacher.metric.baseline}</>)}
+                    {typeof replication === "number" && <> · replication of the published figure{" "}
+                      <b>{replication.toFixed(4)}</b></>}</>}
                   {!teacher.achieved && <> · <i>not trained in this build</i></>}
                 </p>
               )}

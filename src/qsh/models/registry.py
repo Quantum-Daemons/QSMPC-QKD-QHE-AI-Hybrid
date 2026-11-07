@@ -187,6 +187,10 @@ class ModelSpec:
     # say "retrained since publication, needs republishing" instead of the identical-looking "never
     # pinned". See train.record_metrics for why a retrain must not carry its old pin forward.
     hf_revision_stale: str | None = None
+    # Non-empty when a published model's pin was retired ON PURPOSE and it is not to be republished as it stands,
+    # and this is why (Round 86: the satellite student, to be replaced rather than re-published). Without it an
+    # unpinned published model is a retrain still owing its republish, which the pin gate refuses.
+    pin_withdrawn_reason: str = ""
     runs_encrypted: bool = False
     # Non-empty when the model publishes NO browser evaluation sample on purpose, and this is why.
     # The browser reads it and does not request `eval_sample.json`, which until Round 71 it fetched
@@ -822,27 +826,25 @@ M_OPSSAT = MetricSpec(
     companion="f1",
 )
 M_ESA = MetricSpec(
-    name="event_wise_f0_5",
-    display="event-wise F0.5",
+    # ESA-ADB's own metric since Round 86, the one its 0.968 is: event precision multiplied by the time-level true-negative
+    # rate. Until then the headline was `event_wise_f0_5`, the uncorrected score, read against this corrected baseline.
+    name="corrected_event_wise_f0_5",
+    display="corrected event-wise F0.5 (ESA-ADB)",
     baseline=0.968,
     baseline_source=(
-        "ESA-ADB Supplementary Table 9, Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: "
-        "corrected event-wise F0.5 0.968 (precision 0.999, recall 0.862) for detection of ANOMALIES "
-        "ALONE - which is what this project scores, so this is the like-for-like row. Earlier rounds "
-        "cited Table 2's 0.786 instead. That number is real and correctly attributed, but Table 2 "
-        "scores ALL EVENTS excluding communication gaps, i.e. anomalies PLUS annotated rare nominal "
-        "events, so it was the wrong comparator and the lenient one. Verified against the paper "
-        "(arXiv:2406.17826 v2, whose table numbers these are; the DMLR version of record sits behind a bot check) in Round 24. FOUR protocol differences remain and none of them are "
-        "closed by changing the number: (1) ESA-ADB's metric multiplies event precision by the "
-        "TIME-LEVEL true-negative rate, which is why most of its baselines read <0.001 - this "
-        "project records that corrected value as `corrected_event_wise_f0_5` beside the uncorrected "
-        "one; (2) ESA-ADB splits each mission in half, this project tests on the last 30 percent; "
-        "(3) ESA-ADB's Mission1 lightweight test partition holds 65 annotated events of which 29 are "
-        "anomalies, against 3 in the window scored here; (4) ESA-ADB resamples Mission1 at "
-        "0.033 Hz, about one sample per 30 s, chosen from the dominant rate of channels 41-46, "
-        "while this model resamples to 300 s, so its 250-step window spans about 20.8 hours "
-        "where the benchmark's would span about 2.1, and short events can vanish. So this remains "
-        "an indicative target, and the sample-size gap is roughly tenfold."
+        "ESA-ADB Supplementary Table 9 (arXiv:2406.17826 v2; Table 18 of the DMLR 2026 version, read 2026-11-07), "
+        "Mission1 lightweight (ch. 41-46), Telemanom-ESA-Pruned: corrected event-wise F0.5 0.968 (precision 0.999, "
+        "recall 0.862) for ANOMALIES ALONE, which is what this project scores, so it is the like-for-like row. Earlier "
+        "rounds cited Table 2's 0.786, which scores all events but communication gaps, anomalies PLUS annotated rare "
+        "nominal events: a real number, and the lenient row. Since Round 86 the model is trained, thresholded and "
+        "scored by ESA-ADB's own recipe and rules (scripts/train/satellite_telemanom.py): its Mission1 split, the 30 s "
+        "zero-order hold, its scaling and training windows, Telemanom's thresholding as ESA-ADB's "
+        "TelemanomThresholding applies it, and a reimplementation of its ESAScores over the test half's 29 anomalies. "
+        "Two choices behind the published figure are not copied into this project's own result, and the record "
+        "carries both: its floor of 0.05/7 is not shown to have been chosen without the test half, so the floor here "
+        "is chosen on the validation months; and ESA-ADB's prepared series reads the labels to write annotated "
+        "samples the zero-order hold dropped back onto the grid. Applying both reproduces the published figure "
+        "(esa_scores.restored_annotated_samples in the record)."
     ),
     ceiling=None,
     ceiling_source="",
@@ -855,17 +857,12 @@ M_ESA = MetricSpec(
     # but that is a TABLE 2 figure, whose matched lightweight partner is Table 2's 0.786, not the 0.968
     # three lines above (Supp. Table 9, anomalies alone, whose own full-channel number is 0.039). The
     # channel-scope collapse only means something within one table and one event set.
-    comparison_caveat=(
-        "The two bars are event-wise F0.5 under the same overlap rule, and that is where the "
-        "agreement stops. This project's scored window contains THREE labelled anomaly events; "
-        "ESA-ADB's Mission1 lightweight test partition contains 29, roughly a tenfold difference in "
-        "the denominator. None of the three is caught here (tp 0, fp 2, fn 3), so the score is 0 "
-        "and another false alarm cannot lower it; catching one event with the same two false alarms "
-        "would lift it to 0.33. The splits differ too (last 30 percent here, half the mission "
-        "there), so does the resampling (300 s here, about 30 s there), and ESA-ADB multiplies "
-        "event precision by the time-level true-negative rate, which this figure does not. Treat "
-        "0.968 as an indicative target, not as a score this bar was competing against."
-    ),
+    # NO comparison caveat since Round 86. Until then the two bars shared a metric name and not a measurement: three
+    # scored events here against ESA-ADB's 29, another split and resampling, and no time-level TNR factor. Now both are
+    # ESA-ADB's corrected event-wise F0.5 over the same 29 anomalies by its own rules, so the chart's like-for-like
+    # caption is true; the difference between the bars is the two choices `baseline_source` names, and the record's
+    # esa_scores carries the arm that applies them and reproduces the published figure.
+    comparison_caveat="",
 )
 M_IDS = MetricSpec(
     name="macro_f1",
@@ -1227,38 +1224,34 @@ _SPECS: tuple[ModelSpec, ...] = (
         # "(per channel)" until Round 86: it is ONE network over channels 41-46, predicting all six, which is
         # ESA-ADB's Telemanom-ESA design and not original Telemanom's one model per channel.
         label="Telemanom LSTM forecaster (one model over six channels, as Telemanom-ESA)",
-        architecture="2 x LSTM(80), sequence length 250, dropout 0.3, non-parametric dynamic threshold with pruning",
+        architecture=("2 x LSTM(80), sequence length 250, dropout 0.3, a 10-step forecast served by its first step, "
+                      "Telemanom's non-parametric dynamic threshold with pruning per channel"),
         params=None,
         dataset=DS_ESA_ADB,
         metric=M_ESA,
         artifacts=_ONNX_PAIR,
         hf_repo="qsh-satellite-telemanom-esa",
         eval_split=(
-            "windows drawn at random from the held-out temporal test window, the last 30 percent "
-            "of the resampled timeline"),
+            "windows drawn at random from the held-out test half's windows that touch no label, ESA-ADB's own "
+            "Mission1 split from 2007-01-01"),
         notes=(
-            "Report event-wise F0.5, never point-adjusted F1. Always run a trivial baseline alongside: "
-            "a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset "
-            "in the paper's Table 2 (all events, 0.949), though not in Supplementary Table 9 "
-            "(anomalies only, 0.000). "
-            "RETRACTION, Round 19: a Round 18 note here claimed this forecaster was about 22x WORSE "
-            "than persistence. That was a measurement error of ours, not a property of the model -- "
-            "the probe resampled at 60s while the model is trained at 300s (see `resample` in the "
-            "achieved record). Preprocessing for any evaluation must be read from this record "
-            "rather than hardcoded, which is now what scripts/prep_model_inputs.py does. "
-            "RETRAINED IN ROUND 71. The weights published until then were trained with a z-score "
-            "fitted on the whole series, test window included: the trainer was fixed in Round 34 "
-            "and the model was never retrained, so its feature_spec.json still carried whole-series "
-            "constants. With the constants fitted on the training window, next-step MAE over all "
-            "441,600 test windows is 0.0250 against 0.0764 for persistence, about 3.1x better. The "
-            "event-wise figure fell to 0 (tp=0 fp=2 fn=3): the detector still flags 2 points of "
-            "441,600 and neither lands in one of the 3 scored events, where the two leaky runs had "
-            "caught one and recorded 0.714286 and 0.454545. Point-adjusted F1 fell with it, from "
-            "0.9937 to 0, which is how much one flagged point inside a long event carries under "
-            "point adjustment; the isolation-forest baseline reproduces exactly (0.000248). Treat "
-            "the event-wise figure as a single draw from a wide distribution: three events cannot "
-            "rank detectors. With 0 of 3 events detected, the exact (Clopper-Pearson) 95% interval "
-            "for recall runs from 0 to 0.71."
+            "Report ESA-ADB's corrected event-wise F0.5, never point-adjusted F1. Always run a trivial baseline "
+            "alongside: a windowed isolation forest scores highest on the ESA-ADB Mission2 lightweight subset in the "
+            "paper's Table 2 (all events, 0.949), though not on Mission1, where it reads below 0.001 in ESA-ADB's own "
+            "tables and does here too. "
+            "RETRAINED IN ROUND 86 by ESA-ADB's Telemanom-ESA recipe (see the metric's baseline_source). The record "
+            "holds two arms from one model. The project's result is the plain zero-order hold at an error floor chosen "
+            "on the validation months, inputs a deployed detector could compute. The replication arm applies the two "
+            "steps of ESA-ADB's published figure this project does not take as its own, the label-reading restoration "
+            "of annotated samples and the paper's floor, and it reproduces that figure. The floor skips the windows "
+            "whose errors stay small; without one, both arms land near the benchmark's plain Telemanom-ESA (0.090). "
+            "The record's esa_scores holds both of ESA-ADB's readings, anomalies alone and all events, for every arm "
+            "and floor. "
+            "Earlier models, kept as history: until Round 71 the weights carried a z-score fitted on the whole series; "
+            "the Round 71 model, trained at 300 s on a 70/30 cut whose test window held 3 events, flagged 2 of "
+            "441,600 points and scored 0. A Round 18 note claimed it was 22x worse than persistence, a probe that "
+            "resampled at 60 s against a model trained at 300 s, and the lesson stands: preprocessing for any "
+            "evaluation is read from this record, never hardcoded, which scripts/prep_model_inputs.py does."
         ),
     ),
     ModelSpec(
@@ -1272,25 +1265,32 @@ _SPECS: tuple[ModelSpec, ...] = (
         metric=M_ESA,
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-satellite-telemanom-ckks-student",
+        pin_withdrawn_reason=(
+            "its teacher was retrained in Round 86 and this logistic student cannot follow it (the record's "
+            "student_metric against teacher_metric); the owner chose to replace it with a linear next-step forecaster "
+            "evaluated under CKKS before publishing again, so the Hub copy, the student of the Round 71 model, is no "
+            "longer served"),
         runs_encrypted=True,
         eval_sample_reason=(
             "its metric, event-wise F0.5, is defined over contiguous runs of a timeline and cannot "
             "be re-scored from independent rows, which is what the browser evaluator scores"),
         notes=(
             "The one published model with no browser evaluation sample, and the reason is the "
-            "metric rather than the weights. Round 21 gave the other three students samples; this "
-            "one is scored on event-wise F0.5, which is defined over contiguous runs of a timeline "
-            "and cannot be computed from a shuffled set of independent rows -- which is exactly "
-            "what the browser evaluator scores. Shipping a per-row metric instead would verify a "
-            "number nobody published for it. "
-            "It needs no scaler, unlike the other three: scripts/train/satellite_telemanom.py fits "
-            "it on raw `flat_te` (the last 8 timesteps x 6 channels), so the absent `input` block "
-            "in its weights.json is correct rather than the omission it looks like. "
-            "Worth reading alongside its numbers: since the Round 71 retrain the teacher and the "
-            "student both score 0.0 event-wise F0.5 on this split, so their agreement is agreement "
-            "about finding nothing, and there is no fidelity claim to make. No code path here "
-            "evaluates this student under CKKS today: the satellite page has no private-inference "
-            "stage, and the full deployment's telemetry stage encrypts the OPS-SAT-AD demo regression the browser scores in plaintext."),
+            "metric rather than the weights: event-wise F0.5 is defined over contiguous runs of a timeline and "
+            "cannot be computed from a shuffled set of independent rows, which is what the browser evaluator scores. "
+            "It needs no scaler of its own: scripts/train/satellite_telemanom.py fits it on the forecaster's "
+            "z-scored windows (the last 8 timesteps x 6 channels), so the absent `input` block in its weights.json "
+            "is correct rather than the omission it looks like. "
+            "NOT REPUBLISHED SINCE THE ROUND 86 RETRAIN, and to be replaced. Against the retrained forecaster this "
+            "logistic student scores far below the teacher on its evaluation slice (the record's student_metric and "
+            "teacher_metric) and raises far fewer alarms. A linear map over a window cannot reproduce a forecast-error "
+            "threshold, so the replacement "
+            "will be a linear next-step forecaster evaluated under CKKS, whose decrypted forecast the client "
+            "thresholds itself (the owner's choice, 2026-11-07). The Hub copy is the student of the Round 71 model. "
+            "No code path here evaluates this student under CKKS today: the satellite page has no private-inference "
+            "stage, and the full deployment's telemetry stage encrypts the OPS-SAT-AD demo regression the browser "
+            "scores in plaintext."
+        ),
     ),
     ModelSpec(
         usecase="satellite_comms",
@@ -1646,6 +1646,7 @@ def frontend_models() -> dict:
             "hf_repo_id": s.hf_repo_id,
             "hf_revision": s.hf_revision,
             "hf_revision_stale": s.hf_revision_stale,
+            "pin_withdrawn_reason": s.pin_withdrawn_reason or None,
             # Whether ONNX Runtime Web can execute this graph at all. A tree ensemble is
             # ai.onnx.ml (TreeEnsembleClassifier), a domain ORT Web does not implement, so it is
             # not browser-runnable at any size. Exported so the browser can decline BEFORE

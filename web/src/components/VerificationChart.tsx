@@ -1363,7 +1363,12 @@ export function VerificationChart(
         <figcaption className="muted small">
           Channel 0, predicted against actual over {plot.series.length} scored windows for{" "}
           <code>{modelKey}</code>. MAE {res.score?.toFixed(4)} against a persistence baseline of{" "}
-          {res.baseline?.toFixed(4)}. The error's SHAPE matters: uniform drift is a miscalibrated
+          {res.baseline?.toFixed(4)}
+          {res.forecastDetail
+            ? <>; median absolute error {res.forecastDetail.medianAe.toFixed(4)} against{" "}
+                {res.forecastDetail.persistenceMedianAe.toFixed(4)}, and the lower mean error on{" "}
+                {res.forecastDetail.windowsBetter} of {res.forecastDetail.windows} windows</>
+            : null}. The error&apos;s SHAPE matters: uniform drift is a miscalibrated
           model, a few large misses are missed events.
         </figcaption>
         <ChartReadout hint={HINT_KEYBOARD}>

@@ -158,8 +158,13 @@ def test_the_generators_draw_from_the_trainers_test_window() -> None:
     assert "graph_features(df)" not in fin, "whole-timeline aggregates are the leaky arm"
     assert re.search(r"pos = np\.flatnonzero\(y_te == 1\)", fin), "positives must come from the test window"
     sat = _body("build_satellite")
-    assert "preprocess(D.load_esa_channels(), resample)" in sat
-    assert "windows(values[cut:], SEQ_LEN, 1)" in sat, "windows must come from the test window"
+    # With the record's own split since Round 86, so the sample is the published model's test half.
+    assert "preprocess(D.load_esa_channels(), resample, split_at=split_at)" in sat
+    assert ".get('split')" in sat, "the split must come from the trainer's record"
+    # ESA-ADB's recipe since Round 86: the trainer's prepare(), and the plain arm, never the label-restored one.
+    assert "prepare(resample, split_at, split['validation_from']" in sat and "prep.zscore(prep.raw_plain)" in sat
+    assert "raw_restored" not in sat, "the evaluation sample must not read the replication arm's labelled series"
+    assert "window_view(values[cut:], SEQ_LEN)" in sat, "windows must come from the test window"
     assert ".bfill()" not in sat and "values.mean(0)" not in sat, "a private copy of the preprocessing is back"
     for body in (fin, sat):
         assert "fixtures.npy" in body, "the sample is no longer checked against the trainer's own fixtures"
@@ -212,15 +217,34 @@ def test_the_readme_counts_the_published_repos_and_their_one_exception() -> None
     """README's own sentence says it is "the second copy - and the second copy is the one that rots",
     and it rotted again: "All ten repos" with eleven published, and "the evaluation sample for each"
     with one published by design without one."""
-    words = {"ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15}
+    words = {"nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15}
     # The sentence moved from the README to docs/findings.md in Round 80, with the findings it
     # belongs to; the README now links there.
     readme = (REPO / "docs" / "findings.md").read_text()
-    m = re.search(r"All (\w+) repos are public and\s+pinned", readme)
+    # Round 86: the satellite student's pin is withdrawn while it is replaced, so the sentence counts both.
+    m = re.search(r"All (\w+) repos are public, and\s+(\w+) are\s+pinned", readme)
     assert m, "the sentence counting the published repos moved; update this gate with it"
     assert words.get(m.group(1)) == len(_published()), (
         f"README says {m.group(1)} published repos, the registry has {len(_published())}")
+    pinned = [s.key for s in _published() if (registry.achieved(s.key) or {}).get("hf_revision")]
+    assert words.get(m.group(2)) == len(pinned), (
+        f"the sentence says {m.group(2)} are pinned; the records pin {len(pinned)}: {pinned}")
     no_sample = [s.key for s in _published() if s.eval_sample_reason]
     tail = readme[m.end():m.end() + 400]
     assert no_sample == ["satellite_comms.student"] and "satellite student" in tail, (
         f"the README's exception no longer matches the registry's: {no_sample}")
+
+
+def test_the_forecaster_sample_states_its_errors_beyond_the_mean() -> None:
+    """Round 86: two windows of the 128 held an unlabelled level shift where no change is exact, and their misses
+    lifted the forecaster's mean above persistence's while it was the better predictor on most windows. The sample
+    ships the median absolute errors and the window count the page recomputes, and its note states them."""
+    sample = _sample("satellite_comms.telemanom")
+    exp = sample["expected"]
+    for k in ("median_ae", "persistence_median_ae", "windows_better"):
+        assert k in exp, f"the forecaster's sample no longer carries {k}"
+    assert 0 <= exp["windows_better"] <= len(sample["samples"])
+    assert f"{exp['median_ae']:.4f} against" in exp["note"]
+    assert f"lower on {exp['windows_better']} of {len(sample['samples'])}" in exp["note"]
+    infer = _code(WEB / "lib" / "onnxInference.ts")
+    assert "forecastDetail" in infer and "windowsBetter" in infer, "the page no longer recomputes them"

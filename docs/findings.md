@@ -73,8 +73,10 @@ browser reports `encrypted_agreement`: how often the CKKS evaluation reproduces 
 STUDENT's top-1 class over the rows it scored, which measures the encryption's noise (Concrete-ML
 calls the same quantity "Similarity"). Offline, from training, `models/metrics.json` records the
 student's `agreement` with its TEACHER on held-out data: finance 0.983, medical 0.827, OPS-SAT
-0.958, satellite 0.976, telecom 0.995, which measures what choosing an encryption-sized model
-costs, beside the industry's own metric. Everything below is what this repository measured, not
+0.958, satellite 0.999, telecom 0.995, which measures what choosing an encryption-sized model
+costs, beside the industry's own metric (on satellite, agreement over a timeline its teacher rarely
+flags: that student scores 0 on events against its teacher's 0.961 and is not republished). Everything
+below is what this repository measured, not
 what the papers report - published baselines are shown beside each figure, including where we
 fall short:
 
@@ -83,7 +85,7 @@ fall short:
 | **finance** | XGBoost over this project's own graph features (fan-in/fan-out and causal per-account aggregates over the transaction multigraph; IBM's Graph Feature Preprocessor is not used) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.1519**, AUPRC **0.1233** vs a 0.0015 prevalence baseline (the test window's positive rate; the corpus's is 1 in 981) | 0.632 (NeurIPS 2023 D&B) - see the gap note below |
 | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC BY 4.0 **asserted by MedMNIST**; the BUSI authors **publish no licence** - see [DATA_LICENSES.md](../DATA_LICENSES.md)) | AUC **0.9147** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
 | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000072** (Graff et al. 2021, CC BY 4.0; 183 of its 187 variants scored) over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.637 - *external citation, not measurable here: a reference panel carries no phenotype. Fitted WITH covariates a dot product does not have, on 162 of the 187 variants and at 5 years, so it is a citation and not a target* |
-| **satellite** | **Telemanom** 2xLSTM(80), seq 250, non-parametric dynamic threshold + pruning | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | event-wise F0.5 **0** over just **3 events** (tp=0 fp=2 fn=3) | 0.968 (ESA-ADB Supp. Table 9, anomalies only) |
+| **satellite** | **Telemanom** 2xLSTM(80), seq 250, a 10-step forecast served by its first step, non-parametric dynamic threshold + pruning, by ESA-ADB's Telemanom-ESA recipe | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | corrected event-wise F0.5 **0.950** over **29 anomalies** (tp=23 fp=0 fn=6); 0.968 with ESA-ADB's label-reading preparation and the paper's floor | 0.968 (ESA-ADB Supp. Table 9, anomalies only) |
 | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 - **RF 0.987**, quantum-kernel SVC **0.832**, variational QNN **0.467** | no trustworthy single number exists - see below |
 
 Four of those deserve their caveat stated here rather than buried.
@@ -130,16 +132,30 @@ sentence.
 
 ### Satellite: scored event-wise, never point-adjusted
 
-Satellite reports event-wise F-beta at $`\beta = 0.5`$, never point-adjusted F1. On the run before
-the Round 71 retrain the point-adjusted figure was **0.994** against an honest **0.4545**, and on
-the retrain both are 0 because neither of its 2 flags falls inside a scored event - under point
-adjustment "even a
+Satellite reports ESA-ADB's corrected event-wise F-beta at $`\beta = 0.5`$, never point-adjusted F1:
+under point adjustment "even a
 random anomaly score can easily turn into a state-of-the-art TAD method" (Kim et al., AAAI 2022,
 arXiv:2109.05257). This sentence cited TSB-AD for "a uniform random score ranks 26th of 32
-detectors" until Round 33, a figure that could not be verified at source. A windowed isolation
-forest runs as a trivial baseline every time (0.0002 here), because a deep model that cannot beat
-it has not earned its complexity. Only labels whose ESA-ADB Category is `Anomaly` count as
-positives; the 690 annotated rare *nominal* events do not.
+detectors" until Round 33, a figure that could not be verified at source.
+
+Since Round 86 the forecaster is trained and scored by ESA-ADB's own Telemanom-ESA recipe and
+rules, on its Mission1 split, whose test half holds 29 anomalies:
+
+- **This project's result: 0.950** (23 of 29, no false alarms), on the plain zero-order hold at an
+  error floor chosen on the validation months.
+- **Replication: 0.968** (25 of 29), the published Telemanom-ESA-Pruned figure. This adds the two
+  steps of the published figure that this project does not take as its own: a data preparation that
+  reads the labels, and the paper's floor.
+
+Until Round 86 the scored window held 3 events and the model flagged 2 points. The workings, every
+arm and floor, and the methods tested beside them are in
+`references/satellite-event-count-investigation.md`.
+
+A windowed isolation forest runs as a trivial baseline every time, because a deep model that cannot
+beat it has not earned its complexity. It scores 0.0001 here, and below 0.001 in ESA-ADB's own
+tables. Only labels whose ESA-ADB Category is `Anomaly` count as positives. The 63 annotated rare
+*nominal* events on these six channels do not; there are 78 in all of Mission1, and until Round 86
+this said 690, which neither of ESA-ADB's label files supports.
 
 ### Telecom: the classical forest wins
 
@@ -307,15 +323,30 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
 
 - **The models sized for encryption are published too.** Each use case has a teacher and a
   distilled student sized for CKKS: 33 parameters for finance against a 141,154-parameter teacher,
-  3,226 against 11,171,266 for medical, 49 against 80,486 for satellite. Which of them CKKS
+  3,226 against 11,171,266 for medical, 49 against 84,860 for satellite. Which of them CKKS
   evaluates in the browser, page by page, is under
-  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All eleven repos are public and
-  pinned, and the evaluation sample for each lives in that model's own repo at the same revision as
-  its weights - except the satellite student's, which publishes none by design, because its metric
-  is defined over a timeline and cannot be re-scored from independent rows.
+  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All eleven repos are public, and
+  ten are pinned: the satellite student's pin is withdrawn while it is replaced. The evaluation sample
+  for each lives in that model's own repo at the same revision as its weights - except the satellite
+  student's, which publishes none by design, because its metric is defined over a timeline and
+  cannot be re-scored from independent rows.
 
   A test holds this sentence's count and its one exception to the registry.
 
+- **Retrained in Round 86 by ESA-ADB's own recipe; the three-event denominator below is gone.** The
+  model now trains on ESA-ADB's Mission1 split and is scored by its rules over the 29 anomalies of the
+  test half. The plain zero-order hold scores **0.950** at a floor chosen on the validation months.
+  Adding ESA-ADB's label-reading preparation and the paper's floor reproduces the published **0.968**
+  exactly, 25 of 29. The items below are the earlier models' history, kept as written. Three
+  findings are new:
+  - **The floor decides most of the score.** Without it both arms land near the benchmark's plain
+    Telemanom-ESA (0.090).
+  - **The CKKS student cannot follow this teacher**, so it is not republished. It is to be replaced
+    by a linear next-step forecaster evaluated under CKKS.
+  - **Requiring several channels to agree in place of a floor** scores 0.912 on anomalies and 0.900 on
+    all events. That is a lead to validate, since k was read off the test half.
+
+  The workings are in `references/satellite-event-count-investigation.md`.
 - **Retracted: the satellite forecaster is not worse than persistence.** Round 18 reported it as
   roughly 19-22x worse on next-step MAE. That was our measurement error: the probe resampled the
   telemetry at 60s while the published model is trained at 300s, and feeding a 300s model 60s data
@@ -332,7 +363,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   and neither falls inside one of the 3 scored events, so event-wise F0.5 is **0** (tp=0 fp=2 fn=3)
   and point-adjusted F1 falls from 0.9937 to 0 with it. That is the denominator problem below,
   measured once more, not a new property of the model.
-- **CLOSED, and the explanation is the denominator.** The event-wise figure did not reproduce across
+- **CLOSED, and the explanation is the denominator (until Round 86).** The event-wise figure did not reproduce across
   identical-config retrains (0.7143, then 0.4545), and
   `references/satellite-event-count-investigation.md` explains why: the test split contains **3
   scored events**, so with one hit each extra false-alarm run walks the metric down a fixed ladder,

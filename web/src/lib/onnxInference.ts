@@ -551,6 +551,10 @@ export interface ModelEvalResult {
   baseline: number | null;
   /** True when the model is no better than the trivial baseline. Surfaced, not buried. */
   beatsBaseline: boolean;
+  /** A forecaster's errors beyond their mean (Round 86): a mean over 128 windows can be carried by two large misses,
+   *  so the median absolute error of the model and of persistence, and the windows on which the model's own mean
+   *  error is the lower, travel with it. Absent for classifiers. */
+  forecastDetail?: { medianAe: number; persistenceMedianAe: number; windowsBetter: number; windows: number };
   /** |measured - expected| within tolerance. False means the browser must NOT present the number. */
   matchesExpected: boolean;
   backend: string;
@@ -785,18 +789,25 @@ export async function evaluatePublishedModel(
       // A forecaster is scored by error against the true next step, and against what predicting
       // "no change" would score. If the model loses to persistence, the page says so.
       const targets = file.targets ?? [];
-      let err = 0, persist = 0, count = 0;
+      let err = 0, persist = 0, count = 0, windowsBetter = 0;
+      const absModel: number[] = [], absPersist: number[] = [];
       for (let i = 0; i < n; i++) {
         const truth = targets[i] ?? [];
         const lastStep = file.samples[i].slice(-truth.length);
+        let we = 0, wp = 0;
         for (let c = 0; c < truth.length; c++) {
-          err += Math.abs(data[i * width + c] - truth[c]);
-          persist += Math.abs(lastStep[c] - truth[c]);
-          count++;
+          const a = Math.abs(data[i * width + c] - truth[c]), b = Math.abs(lastStep[c] - truth[c]);
+          err += a; persist += b; we += a; wp += b; count++;
+          absModel.push(a); absPersist.push(b);
         }
+        if (truth.length && we < wp) windowsBetter++;
       }
       const mae = count ? err / count : NaN;
       const persistenceMae = count ? persist / count : NaN;
+      const median = (xs: number[]) => {
+        const v = [...xs].sort((p, q) => p - q), m = v.length >> 1;
+        return v.length === 0 ? NaN : v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2;
+      };
       const exp = file.expected.mae ?? null;
       // Channel 0 predicted against actual across the scored windows. A forecaster's MAE says how
       // far off it is on average; this says WHERE - whether the error is uniform drift or a few
@@ -808,6 +819,8 @@ export async function evaluatePublishedModel(
         ran: true, task, metricName: "mae", n, score: mae, expected: exp,
         baseline: file.expected.persistence_mae ?? persistenceMae,
         beatsBaseline: mae < (file.expected.persistence_mae ?? persistenceMae),
+        forecastDetail: { medianAe: median(absModel), persistenceMedianAe: median(absPersist), windowsBetter,
+                          windows: n },
         matchesExpected: exp == null ? false : Math.abs(mae - exp) <= Math.max(tolerance, exp * 0.1),
         backend: opened.status.backend, bytes: opened.status.bytes, provenance: file.provenance, split,
         decisionThreshold: thr,

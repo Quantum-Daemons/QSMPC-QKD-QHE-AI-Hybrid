@@ -171,6 +171,23 @@ def load_esa_channels(names=ESA_MISSION1_LIGHTWEIGHT):
     the union of their timestamps: ESA telemetry is irregularly sampled per channel, and a detector
     needs them on a common axis.
     """
+    return esa_common_axis(load_esa_channel_series(names))
+
+
+def esa_common_axis(series: dict):
+    """Per-channel samples on the union of their timestamps, carried forward, as `load_esa_channels` returns them."""
+    import pandas as pd
+
+    return pd.DataFrame(series).sort_index().ffill().bfill()
+
+
+def load_esa_channel_series(names=ESA_MISSION1_LIGHTWEIGHT) -> dict:
+    """Each named Mission1 channel's own samples, as float32 Series keyed by name (Round 86).
+
+    `load_esa_channels` puts them on the union of their timestamps, where a channel's row at another
+    channel's timestamp is a carried-forward copy, not a sample; ESA-ADB's restoration of annotated
+    samples (scripts/train/satellite_telemanom.py) needs each channel's real samples.
+    """
     import pandas as pd
 
     base = esa_mission1_dir() / "channels"
@@ -187,17 +204,17 @@ def load_esa_channels(names=ESA_MISSION1_LIGHTWEIGHT):
         df = read_esa_channel(raw_file)
         series = df.iloc[:, 0] if hasattr(df, "iloc") else df
         frames[name] = pd.Series(series).astype("float32")
-    out = pd.DataFrame(frames).sort_index()
-    return out.ffill().bfill()
+    return frames
 
 
 def load_esa_labels(names=ESA_MISSION1_LIGHTWEIGHT, *, anomalies_only: bool = True):
     """Anomaly intervals for the named channels.
 
     ``anomalies_only`` keeps only rows whose ``anomaly_types.csv`` Category is ``Anomaly``. ESA-ADB
-    deliberately also annotates 690 *rare nominal events*, which are unusual but not faults. Scoring
-    those as positives would both inflate the apparent anomaly rate and punish a detector for
-    correctly ignoring them.
+    deliberately also annotates *rare nominal events*, which are unusual but not faults: 78 in
+    Mission1, 63 of them on channels 41-46 (counted from ``anomaly_types.csv`` and ``labels.csv`` in
+    Round 86; this said 690, which neither file supports). Scoring those as positives would both
+    inflate the apparent anomaly rate and punish a detector for correctly ignoring them.
     """
     import pandas as pd
 
