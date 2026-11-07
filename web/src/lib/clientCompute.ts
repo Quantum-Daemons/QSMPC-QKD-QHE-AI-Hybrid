@@ -1164,6 +1164,10 @@ function mpcFheRow(usecase: string | undefined, workload: string, modelSize: str
     // is a property of the current UI, not of the value. Named for what it is.
     accuracy: null, max_abs_error_representative: cost.demo_max_abs_error, ciphertext_plaintext_ratio: ctpt,
     fhe_linear_ms: r2(fhe), mpc_nonlinear_ms: r2(mpc), mpc_comm_kb: r2(comm / 1024),
+    // Round 86 (fact-check C4): on the medical page `fhe` is TWO models, the encrypted CNN student plus the bundled
+    // Wisconsin regression, and the 2PC is the regression's argmax alone. The student's own share, so the panel can
+    // split the figure instead of printing 'total ... / inference' over two inferences.
+    fhe_student_ms: measured?.conv ? r2(measured.conv.convMs) : null,
     t_gate_count: null, qubits: null,
     // "garbled-circuit 2PC", not "secret-sharing MPC". That label is right for the Python row (MPyC
     // Shamir across hosts) and was copied to this one, where the non-linear layer is a Polytune

@@ -236,6 +236,20 @@ def fold_threshold_into_torch_head(model, threshold: float, *, positive_class: i
     return model
 
 
+#: The CNN student's weights.json note (Round 86). Until then its last sentence said the browser ran "the ReLU/argmax
+#: under MPC, the hybrid this project describes", which the page and the model card contradict: each layer's output is
+#: decrypted, and the ReLU, the pool and the argmax run in plaintext in the client. A constant, so the published file can
+#: be held to it without a retrain (tests/test_r86_cnn_student_note.py).
+CNN_STUDENT_NOTE = (
+    "The CKKS-evaluable medical student, layer by layer. Evaluate strictly in this order: conv (valid convolution over "
+    "the input zero-padded by `conv.padding`), conv.activation, average pool by `pool.stride`, flatten channel-major, "
+    "then each dense with its own `activation`. Every activation is recorded from the trained module order rather than "
+    "assumed - the conv is followed by a ReLU, and omitting it still reproduces every argmax on the test split while "
+    "shifting the logits, which is why it is stated here explicitly. The browser runs the conv and both dense layers "
+    "under CKKS and decrypts each layer's output; the ReLU, the average pool and the argmax run in plaintext in the "
+    "client. The project's hybrid puts the non-linear steps under MPC, and this student's do not go there: the page's "
+    "MPC argmax runs on its Wisconsin regression.")
+
 #: Round 86. Shared with scripts/data/build_heldout_payloads.py, which adds the block to a student published before it existed.
 CKKS_CLIENT_NOTE = ('What a CKKS client applies itself, on its plaintext row and before encrypting: the graph does this inside, so `input` '
                     'above asks nothing of an ONNX caller, while an encrypted dot product needs the expanded, z-scored row.')
@@ -438,15 +452,7 @@ def save_cnn_student_weights(model, out_dir, *, teacher_key: str, student_key: s
     pad = int(conv.padding[0] if isinstance(conv.padding, tuple) else conv.padding)
     payload = {
         "kind": "cnn-1conv-2dense",
-        "note": ("The FHE-feasible medical student, layer by layer. Evaluate strictly in this "
-                 "order: conv (valid convolution over the input zero-padded by `conv.padding`), "
-                 "conv.activation, average pool by `pool.stride`, flatten channel-major, then each "
-                 "dense with its own `activation`. Every activation is recorded from the trained "
-                 "module order rather than assumed - the conv is followed by a ReLU, and omitting "
-                 "it still reproduces every argmax on the test split while shifting the logits, "
-                 "which is why it is stated here explicitly. The browser runs conv and both dense "
-                 "layers under CKKS and the ReLU/argmax under MPC, the hybrid this project "
-                 "describes."),
+        "note": CNN_STUDENT_NOTE,
         "teacher_key": teacher_key, "student_key": student_key,
         "input": {"shape": [1, int(conv.in_channels), img_size, img_size],
                   "preprocessing": ["divide by 255", "subtract 0.5", "divide by 0.5",

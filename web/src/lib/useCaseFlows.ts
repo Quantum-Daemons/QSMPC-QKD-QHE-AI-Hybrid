@@ -204,13 +204,26 @@ const HYBRID_INFERENCE: Step[] = [
       // `fhe_bench_scale` (x9 on the generic demo, x1 where a student sets the size, and x1 on genomics,
       // which prices the weighted sum it runs),
       // while the rotation count beside it is raw.
-      return `FHE-linear · ${kindTxt} · ${f(m, "fhe_linear_ms")} ms at x${f(m, "fhe_bench_scale")} cost-model scale`
+      // Round 86 (fact-check C4): with the student encrypted, `fhe_linear_ms` is the student PLUS the bundled
+      // Wisconsin regression, while the rotation count is the student's alone; name each part. And a scale of 1 is a
+      // measurement, which "at x1 cost-model scale" contradicted beside a log saying nothing is scaled.
+      const scaled = Number(m["fhe_bench_scale"]) !== 1;
+      const scaleTxt = scaled ? ` at x${f(m, "fhe_bench_scale")} cost-model scale` : ", measured";
+      const student = m["fhe_encrypted_student_ms"];
+      if (shape && student != null) {
+        const rest = Math.round((Number(m["fhe_linear_ms"]) - Number(student)) * 100) / 100;
+        return `FHE-linear · ${kindTxt} · the student ${f(m, "fhe_encrypted_student_ms")} ms`
+          + (rot == null ? "" : ` in ${rot} rotations`)
+          + ` · the bundled Wisconsin regression ${rest} ms${scaleTxt}`;
+      }
+      return `FHE-linear · ${kindTxt} · ${f(m, "fhe_linear_ms")} ms${scaleTxt}`
         + (rot == null ? "" : ` · ${rot} rotations`);
     } },
   { stageId: "private_inference", kind: "mpc-bidir",
     // KiB: `mpc_comm_kb` is bytes / 1024.
     label: (m) => `MPC-non-linear · shares · ${f(m, "mpc_nonlinear_ms")} ms · ${f(m, "mpc_comm_kb")} KiB`
-      + `, both at x${f(m, "fhe_bench_scale")} cost-model scale` },
+      + (Number(m["fhe_bench_scale"]) !== 1 ? `, both at x${f(m, "fhe_bench_scale")} cost-model scale` : ", measured")
+      + (m["fhe_encrypted_student_ms"] != null ? " · the Wisconsin regression's argmax" : "") },
 ];
 
 // The QSMPC-FHE comparison row. The `quantum_comparison` stage simulates an UNTRAINED QOTP +
