@@ -157,6 +157,41 @@ tables. Only labels whose ESA-ADB Category is `Anomaly` count as positives. The 
 *nominal* events on these six channels do not; there are 78 in all of Mission1, and until Round 86
 this said 690, which neither of ESA-ADB's label files supports.
 
+### Telecom: the classical forest wins
+
+**Telecom reproduces the metric trap in-house.** The variational QNN scores **accuracy 0.875 but
+macro F1 0.467**, and both are the constant predictor's: the QNN is a **binary** attack-vs-normal
+classifier (`qml_ids/detector.py` fits on `binary_labels(y)` and predicts `(preds > 0)`), it predicts
+"attack" for every row, and on its split, where 7 of 8 test rows are attacks, that gives accuracy
+$`7/8`$, attack F1 $`14/15`$ and macro F1 $`7/15`$, since the normal class scores zero. Its macro F1
+averages two classes, not eight. The kernel SVC is binary too: its 0.832 is the mean of its attack F1
+0.945 and its normal F1 0.718. Until Round 86 this paragraph, the registry and the training script set
+both against the random forest's 8-class macro F1 0.987 on a different draw, and the earlier wording
+explained the low score by a floor of zero on six classes. Neither was right.
+
+The like-for-like comparison is the forest trained and scored on each quantum model's own split and
+binary labels (`scripts/measure_telecom_quantum_like_for_like.py`, re-fitting the SVC to its recorded
+figures first): **0.990** on the QNN's 240 test rows and **1.000** on the SVC's 120. Neither quantum
+model beats it there either, and the registry records `quantum_beats_classical: false` on that basis.
+An aggregate can look respectable while the per-class picture is not, which is why per-class F1 is the
+headline everywhere here.
+Two more facts travel with these figures: the published `telecom_ids.qml` ONNX graph, which the
+telecom page runs and verifies, is that random forest, of 200 trees (the QSVC and the QNN run only
+offline, in the training script), and the QSVC's "fidelity quantum kernel" equals the classical
+product kernel $`\prod_i \cos^2((x_i - x'_i)/2)`$, so its 0.832 is a classical kernel's score.
+
+**Quantum-ML IDS is presented as an architecture showcase, not a performance claim.** On this
+project's own synthetic telemetry neither quantum model beats the classical random forest. Published
+results, however, are **mixed rather than uniformly below a random forest** - an earlier revision of
+this paragraph claimed they were, and a paper this project cites in
+[`references/REFERENCES.md`](../references/REFERENCES.md) contradicts it:
+Al-Kuwari et al. (arXiv:2509.14282) Table VIII reports a hybrid QLSTM at 94.7% accuracy / 94.7% F1
+against their own random-forest baseline on the same generated data. What remains well-founded is
+caution about evaluation quality, not a universal ranking: arXiv:2512.05069 was withdrawn by its own
+authors for evaluation "insufficient to fully support the paper's conclusions".
+
+---
+
 ## Concerns & recommendations
 
 - **Planned, not started: CKKS-friendly students (the owner's decision, 2026-11-02).** The Round 86

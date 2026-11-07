@@ -83,7 +83,8 @@ _HEADING = re.compile(r"^#{1,6}\s")
 
 #: Not `\d+` alone: that would find the 8 in "arXiv:2412.00241" and the 2 in "14x14". The lookarounds
 #: refuse a number glued to a word character or sitting inside a longer dotted run.
-_NUMBER = re.compile(r"(?<![\w.])[-+]?\d+(?:\.\d+)?(?![\w.])")
+#: With an exponent since Round 86: the satellite card prints the iForest's 5.6e-05, which this read as "05".
+_NUMBER = re.compile(r"(?<![\w.])[-+]?\d+(?:\.\d+)?(?:[eE][-+]?\d+)?(?![\w.])")
 
 #: Rule C: "Current headline `macro_f1` = **0.458324**". Three of six QCNN cards had a banner in this
 #: shape that disagreed with the table on the same card, so the banner is read as a claim.
@@ -346,3 +347,8 @@ def test_the_extractor_fails_a_card_that_states_a_number_its_artifact_does_not()
         "The extractor is not reading the measured table, so its green result on the real card "
         "means nothing."
     )
+
+
+def test_the_number_pattern_reads_a_figure_in_exponent_notation() -> None:
+    assert _NUMBER.findall("5.6e-05 and 0.968, not 14x14") == ["5.6e-05", "0.968"]
+    assert _matches("5.6e-05", [("x", 5.6e-05)])

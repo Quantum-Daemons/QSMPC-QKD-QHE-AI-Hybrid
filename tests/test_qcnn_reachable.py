@@ -410,8 +410,10 @@ def test_every_published_model_is_pinned_to_a_revision() -> None:
     Offline on purpose: whether the sha RESOLVES is a network fact and lives in the checklist (RT8).
     Whether it exists at all is a repository fact and belongs here.
     """
+    # Round 86: a pin retired on purpose is declared, with its reason, and must still name the sha it retired.
     unpinned = [m["key"] for m in _frontend_models()
-                if m.get("hf_repo_id") and not m.get("hf_revision")]
+                if m.get("hf_repo_id") and not m.get("hf_revision")
+                and not (m.get("pin_withdrawn_reason") and m.get("hf_revision_stale"))]
     assert not unpinned, (
         f"published models with no pinned revision: {unpinned}. The browser will decline to fetch "
         f"them, so each is a Published-model panel that renders an explanation instead of a model. "
@@ -435,3 +437,14 @@ def test_a_pin_and_an_invalidation_never_name_the_same_revision() -> None:
     assert not clashes, (
         f"{clashes} name one revision as both the pin and the retrain-invalidated one. "
         f"publish_hf.py clears the marker it resolves; if this fires, that clearing was lost.")
+
+
+def test_a_withdrawn_pin_says_why_and_is_not_a_pinned_model_too() -> None:
+    """Round 86: the satellite student's pin is retired on purpose, which the registry declares with a reason."""
+    withdrawn = [m for m in _frontend_models() if m.get("pin_withdrawn_reason")]
+    assert [m["key"] for m in withdrawn] == ["satellite_comms.student"], [m["key"] for m in withdrawn]
+    for m in withdrawn:
+        assert not m.get("hf_revision"), f"{m['key']} declares a withdrawn pin and still carries one"
+        assert m.get("hf_revision_stale"), f"{m['key']} declares a withdrawn pin but names no retired sha"
+    panel = (Path(__file__).resolve().parents[1] / "web" / "src" / "components" / "ModelPanel.tsx").read_text()
+    assert "its pin is withdrawn: ${spec.pin_withdrawn_reason}" in panel, "the page no longer states the reason"

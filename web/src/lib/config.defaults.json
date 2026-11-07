@@ -949,6 +949,7 @@
         "notes": "Reference architecture only - never trained or published here. Message passing needs each account's graph neighbourhood at scoring time, which this demo's browser tier does not hold, so every tier ships the gradient-boosting model, which scores one precomputed feature row per transaction. That is a choice for this operating point, not an impossibility: Bilgi et al. (arXiv:2610.18054v2, preprint) run an edge-centric GNN under CKKS on the IBM AML benchmark at 5.31 s per queried transaction (1.65 s amortized over a batch of 16) with HEonGPU on one RTX 5090, with the graph held in plaintext by the server - server-side evaluation only, since those figures exclude the client's encryption and decryption, key generation and network communication - and its encrypted and plaintext predictions agree on 99.25% of transactions. Kept as a spec for the architecture it names. It is not the best published figure on this split: the published version of MEGA (TMLR, see the ceiling) re-runs Multi-PNA at 67.35 +/- 2.89 on Small HI, below FraudGT, Multi-FraudGT and every MEGA variant in its table.",
         "onnx_domains": [],
         "params": null,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
       },
@@ -1072,6 +1073,7 @@
           "ai.onnx.ml"
         ],
         "params": null,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
       },
@@ -1195,6 +1197,7 @@
           "ai.onnx.ml"
         ],
         "params": null,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
       }
@@ -1306,6 +1309,7 @@
         "notes": "WHAT RUNS UNDER CKKS: the full score, in both tiers. One person's effect-allele dosages at every variant are encrypted together in one CKKS ciphertext; the effect weights stay in plaintext and are applied by one multiply-plain; rotate-and-add sums the products into one slot, and the decrypted score is compared with a cut, the 90th percentile of the plaintext score over the bundled panel (the browser's 30 individuals, or the individuals the Python loader reads), by linear interpolation between order statistics. A demo cut, not a clinical threshold. Both tiers also score every panel individual encrypted and report the largest score deviation and how often the high-risk flag agrees with the plaintext one. Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: 1000 Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is computable from it and genomics_prs.py records auroc=null rather than inventing one. PGS000072 is the breast-cancer score of Graff et al. (Nat Commun 12:970, 2021; CC BY 4.0): 187 genome-wide significant variants weighted by their log odds ratios. 183 of them have a 1000 Genomes phase 3 genotype for every one of the 2,504 individuals and are scored; the other 4 are left out, never filled in, and the dosage files and the payload name each with its reason. The finding is the by_super_population.*.frac_above_global_cut rows listed above: one globally-set high-risk cut flags a far larger share of one ancestry group than of another, a gap that allele-frequency and linkage-disequilibrium differences between the groups can produce on their own (Martin et al., Nat Genet 51:584, 2019), and which this panel, carrying no case/control status, cannot split into frequency and risk. Read those rows, not this sentence - they are recomputed on every training run, so no figure quoted in prose here can drift away from them. The published European AUROC comes from a phenotyped UK Biobank cohort, which is why it cannot be reproduced on this page.",
         "onnx_domains": [],
         "params": null,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": true,
         "tier": "t2_industry"
       }
@@ -1392,6 +1396,7 @@
           "ai.onnx"
         ],
         "params": null,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
       },
@@ -1469,6 +1474,7 @@
           "ai.onnx"
         ],
         "params": null,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
       },
@@ -1551,6 +1557,7 @@
           "ai.onnx"
         ],
         "params": null,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
       }
@@ -2398,7 +2405,7 @@
           "ceiling": null,
           "ceiling_source": "",
           "companion": "published_full_channel_f0_5",
-          "comparison_caveat": "Both bars are ESA-ADB's corrected event-wise F0.5 over the same 29 anomalies of the Mission1 lightweight test half, from the same recipe. The difference between them is the two choices this project does not copy: ESA-ADB's prepared series writes 10 annotated samples back onto the grid by reading the labels, and its floor of 0.05/7 is not shown to have been chosen without the test half. Applying both reproduces the published figure; the record's esa_scores holds every arm and floor, and the all-events reading beside Table 2's 0.786. One seed, and the validation months that choose this floor hold 2 anomalies.",
+          "comparison_caveat": "",
           "display": "corrected event-wise F0.5 (ESA-ADB)",
           "name": "corrected_event_wise_f0_5"
         },
@@ -2407,6 +2414,7 @@
           "ai.onnx"
         ],
         "params": null,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
       },
@@ -2468,7 +2476,7 @@
           "ceiling": null,
           "ceiling_source": "",
           "companion": "published_full_channel_f0_5",
-          "comparison_caveat": "Both bars are ESA-ADB's corrected event-wise F0.5 over the same 29 anomalies of the Mission1 lightweight test half, from the same recipe. The difference between them is the two choices this project does not copy: ESA-ADB's prepared series writes 10 annotated samples back onto the grid by reading the labels, and its floor of 0.05/7 is not shown to have been chosen without the test half. Applying both reproduces the published figure; the record's esa_scores holds every arm and floor, and the all-events reading beside Table 2's 0.786. One seed, and the validation months that choose this floor hold 2 anomalies.",
+          "comparison_caveat": "",
           "display": "corrected event-wise F0.5 (ESA-ADB)",
           "name": "corrected_event_wise_f0_5"
         },
@@ -2477,6 +2485,7 @@
           "ai.onnx.ml"
         ],
         "params": null,
+        "pin_withdrawn_reason": "its teacher was retrained in Round 86 and this logistic student cannot follow it (the record's student_metric against teacher_metric); the owner chose to replace it with a linear next-step forecaster evaluated under CKKS before publishing again, so the Hub copy, the student of the Round 71 model, is no longer served",
         "runs_encrypted": true,
         "tier": "t1_crypto"
       },
@@ -2557,6 +2566,7 @@
           "ai.onnx.ml"
         ],
         "params": null,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
       },
@@ -2630,6 +2640,7 @@
           "ai.onnx.ml"
         ],
         "params": null,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
       }
@@ -2696,6 +2707,7 @@
         "notes": "NOT TRAINED IN THIS REPOSITORY, and an earlier revision of this note said otherwise. It read 'Trained on the Engelen-corrected corpus locally', which nothing here corroborates: there is no `telecom_ids.transformer` key in `models/metrics.json`, no entry in `ARTIFACT_DIRS`, no directory under `models/`, and no test asserting any of it. The `ModelPanel` printed that sentence directly beside its own 'Not trained in this build - no measured metrics', so the same panel asserted both. A local run nobody can point at is not a training claim. Weights would in any case not be published: the redistribution terms of the corrected dataset are unverified, which is why `hf_repo` is None.",
         "onnx_domains": [],
         "params": null,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
       },
@@ -2826,6 +2838,7 @@
           "ai.onnx.ml"
         ],
         "params": 25,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
       },
@@ -3173,6 +3186,7 @@
           "ai.onnx.ml"
         ],
         "params": null,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": false,
         "tier": "t2_industry"
       },
@@ -3229,6 +3243,7 @@
         "notes": "Distilled from the random forest published as telecom_ids.qml, from its PROBABILITIES, not its argmax: on 8 classes the argmax discards exactly the minority-class signal macro F1 is computed from, and hard-label distillation is a defect this project has already made once. Read n_classes_predicted before macro_f1 - a linear student that stops emitting a class scores 0 on it by construction, which reads as poor discrimination rather than an absent output.",
         "onnx_domains": [],
         "params": 64,
+        "pin_withdrawn_reason": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
       }

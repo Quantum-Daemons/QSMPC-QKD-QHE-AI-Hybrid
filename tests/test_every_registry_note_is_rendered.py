@@ -113,30 +113,33 @@ def test_every_exported_note_field_is_read_by_some_component():
     )
 
 
-def test_the_incomparable_baseline_carries_its_caveat_to_the_chart():
-    """The specific case the general gate above would not have caught on its own.
+def test_the_satellite_comparison_is_like_for_like_and_its_replication_reaches_the_page():
+    """The specific case the general gate above would not have caught on its own, as it stands since Round 86.
 
-    `sample_size_note` being unrendered was one half. The other half is that
-    `MeasuredAgainstPublished` asserted "both bars are the same metric on the same axis" for a model
-    whose registry says three times that they are not. Rendering the note in the model panel does not
-    fix a caption on a different component, so the caveat is a separate field and this pins it to the
-    chart that makes the claim.
+    Until Round 86 `MeasuredAgainstPublished` drew the satellite model's event-wise F0.5 beside ESA-ADB's 0.968
+    while the two were not one measurement: three scored events here against ESA-ADB's 29, another split, and a
+    time-level TNR factor applied there only. The registry's `comparison_caveat` carried that to the chart. Since
+    Round 86 the model is trained and scored by ESA-ADB's own recipe and rules over the same 29 anomalies, so the
+    caveat is withdrawn and the chart's like-for-like caption is true. The gap between the bars is the two choices
+    the baseline source names, and the record carries the arm that applies them and reproduces the figure, which
+    the model panel renders.
     """
     cfg = json.loads(CONFIG.read_text())
     spec = next((s for specs in cfg.get("models", {}).values() for s in specs
                  if s["key"] == "satellite_comms.telemanom"), None)
     assert spec is not None, "satellite_comms.telemanom is gone; re-derive this test"
 
-    caveat = (spec.get("metric") or {}).get("comparison_caveat") or ""
-    assert caveat, (
-        "satellite_comms.telemanom carries no `comparison_caveat`, so the use-case page draws its "
-        "measured event-wise F0.5 beside ESA-ADB's 0.968 under a caption claiming the two bars are "
-        "the same measurement. The registry's own `sample_size_note` says they are not: three scored "
-        "events here against 29 in ESA-ADB's test partition, a different split, and a time-level TNR "
-        "factor applied there and not here.")
-    assert "three" in caveat.lower() or "3" in caveat, (
-        "the caveat no longer states the event count, which is the number that makes the gap "
-        "unreadable - at three events one false alarm is worth 0.26.")
+    metric, achieved = spec.get("metric") or {}, spec.get("achieved") or {}
+    assert not metric.get("comparison_caveat"), "the satellite pair is flagged as not like-for-like again"
+    assert metric.get("name") == "corrected_event_wise_f0_5", "the headline is no longer ESA-ADB's own metric"
+    assert achieved.get("n_events_scored") == 29, "the scored events are no longer ESA-ADB's 29 anomalies"
+    replication = (((achieved.get("esa_scores") or {}).get("restored_annotated_samples") or {})
+                   .get("paper_floor") or {}).get("corrected_event_wise_f0_5")
+    assert isinstance(replication, float), "the record lost the replication arm the page reads"
+    assert "two choices" in metric.get("baseline_source", "").lower(), "the baseline source no longer names the gap"
+    panel = (WEB_SRC / "components" / "ModelPanel.tsx").read_text()
+    assert "function EsaScoresRows" in panel and "<EsaScoresRows spec={spec} />" in panel, (
+        "the model panel no longer renders the arms table")
 
     chart = (WEB_SRC / "components" / "VerificationChart.tsx").read_text()
     assert "caveat" in chart, "MeasuredAgainstPublished no longer takes a caveat; re-derive"

@@ -187,6 +187,10 @@ class ModelSpec:
     # say "retrained since publication, needs republishing" instead of the identical-looking "never
     # pinned". See train.record_metrics for why a retrain must not carry its old pin forward.
     hf_revision_stale: str | None = None
+    # Non-empty when a published model's pin was retired ON PURPOSE and it is not to be republished as it stands,
+    # and this is why (Round 86: the satellite student, to be replaced rather than re-published). Without it an
+    # unpinned published model is a retrain still owing its republish, which the pin gate refuses.
+    pin_withdrawn_reason: str = ""
     runs_encrypted: bool = False
     # Non-empty when the model publishes NO browser evaluation sample on purpose, and this is why.
     # The browser reads it and does not request `eval_sample.json`, which until Round 71 it fetched
@@ -853,14 +857,12 @@ M_ESA = MetricSpec(
     # but that is a TABLE 2 figure, whose matched lightweight partner is Table 2's 0.786, not the 0.968
     # three lines above (Supp. Table 9, anomalies alone, whose own full-channel number is 0.039). The
     # channel-scope collapse only means something within one table and one event set.
-    comparison_caveat=(
-        "Both bars are ESA-ADB's corrected event-wise F0.5 over the same 29 anomalies of the Mission1 lightweight "
-        "test half, from the same recipe. The difference between them is the two choices this project does not "
-        "copy: ESA-ADB's prepared series writes 10 annotated samples back onto the grid by reading the labels, and "
-        "its floor of 0.05/7 is not shown to have been chosen without the test half. Applying both reproduces the "
-        "published figure; the record's esa_scores holds every arm and floor, and the all-events reading beside "
-        "Table 2's 0.786. One seed, and the validation months that choose this floor hold 2 anomalies."
-    ),
+    # NO comparison caveat since Round 86. Until then the two bars shared a metric name and not a measurement: three
+    # scored events here against ESA-ADB's 29, another split and resampling, and no time-level TNR factor. Now both are
+    # ESA-ADB's corrected event-wise F0.5 over the same 29 anomalies by its own rules, so the chart's like-for-like
+    # caption is true; the difference between the bars is the two choices `baseline_source` names, and the record's
+    # esa_scores carries the arm that applies them and reproduces the published figure.
+    comparison_caveat="",
 )
 M_IDS = MetricSpec(
     name="macro_f1",
@@ -1263,6 +1265,11 @@ _SPECS: tuple[ModelSpec, ...] = (
         metric=M_ESA,
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-satellite-telemanom-ckks-student",
+        pin_withdrawn_reason=(
+            "its teacher was retrained in Round 86 and this logistic student cannot follow it (the record's "
+            "student_metric against teacher_metric); the owner chose to replace it with a linear next-step forecaster "
+            "evaluated under CKKS before publishing again, so the Hub copy, the student of the Round 71 model, is no "
+            "longer served"),
         runs_encrypted=True,
         eval_sample_reason=(
             "its metric, event-wise F0.5, is defined over contiguous runs of a timeline and cannot "
@@ -1639,6 +1646,7 @@ def frontend_models() -> dict:
             "hf_repo_id": s.hf_repo_id,
             "hf_revision": s.hf_revision,
             "hf_revision_stale": s.hf_revision_stale,
+            "pin_withdrawn_reason": s.pin_withdrawn_reason or None,
             # Whether ONNX Runtime Web can execute this graph at all. A tree ensemble is
             # ai.onnx.ml (TreeEnsembleClassifier), a domain ORT Web does not implement, so it is
             # not browser-runnable at any size. Exported so the browser can decline BEFORE
