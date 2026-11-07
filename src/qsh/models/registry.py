@@ -1278,10 +1278,6 @@ _SPECS: tuple[ModelSpec, ...] = (
         metric=M_ESA,
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-satellite-telemanom-ckks-student",
-        pin_withdrawn_reason=(
-            "it is being replaced: the Hub copy is the logistic student of the Round 71 teacher, which could not follow "
-            "the Round 86 teacher, and its successor, the linear forecaster recorded here, is published only on the "
-            "owner's approval"),
         runs_encrypted=True,
         eval_split=(
             "one contiguous stretch of the held-out test half, ESA-ADB's own Mission1 split from 2007-01-01: the three "

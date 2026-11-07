@@ -2452,7 +2452,7 @@
             "opset": 17
           },
           "git_sha": "52cc358-dirty",
-          "hf_revision": "6a347a2f6cf32f84d4f25d64a966abde7b1ef9ff",
+          "hf_revision": "c41a6551838555edddd1500ec7407d21502de6a8",
           "metric_note": "ESA-ADB's event-wise F0.5 for anomalies alone, scored by a reimplementation of its ESAScores: an anomaly is detected when any flagged event intersects it, and a flagged event is a false positive only when it intersects no annotated event of any category. corrected_event_wise_f0_5 multiplies event precision by the time-level true-negative rate, as ESA-ADB reports it; event_wise_f0_5 does not. Telemanom's paper prints 0.71 under F0.5 in its Table 2, though its own precision and recall there (87.5% and 80.0% overall) give 0.86. point_adjusted_f1 is shown only to expose how much point adjustment inflates: Kim et al. (AAAI 2022) show that under point adjustment even a random anomaly score can reach state-of-the-art. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 63 rare nominal events annotated on these six channels do not.",
           "n_anomaly_events_timeline": 51,
           "n_anomaly_intervals": 320,
@@ -2530,7 +2530,7 @@
         "eval_sample_reason": null,
         "eval_split": "windows drawn at random from the held-out test half's windows that touch no label, ESA-ADB's own Mission1 split from 2007-01-01",
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
-        "hf_revision": "6a347a2f6cf32f84d4f25d64a966abde7b1ef9ff",
+        "hf_revision": "c41a6551838555edddd1500ec7407d21502de6a8",
         "hf_revision_stale": null,
         "key": "satellite_comms.telemanom",
         "label": "Telemanom LSTM forecaster (one model over six channels, as Telemanom-ESA)",
@@ -2596,7 +2596,7 @@
             "teacher": 0.304488
           },
           "git_sha": "97f9990-dirty",
-          "hf_revision_invalidated_by_retrain": "abee00f126b206242276a1f115f84ca0fb3538ed",
+          "hf_revision": "231db244a9fa218501846531ad103644d6c77612",
           "k_rows": 8,
           "metric_delta": 0.010171,
           "metric_delta_pp": 1.0171,
@@ -2698,8 +2698,8 @@
         "eval_sample_reason": null,
         "eval_split": "one contiguous stretch of the held-out test half, ESA-ADB's own Mission1 split from 2007-01-01: the three days where the student's pipeline detects the most anomalies, so that the page has flags to reproduce",
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-ckks-student",
-        "hf_revision": null,
-        "hf_revision_stale": "abee00f126b206242276a1f115f84ca0fb3538ed",
+        "hf_revision": "231db244a9fa218501846531ad103644d6c77612",
+        "hf_revision_stale": null,
         "key": "satellite_comms.student",
         "label": "CKKS-linear telemetry forecaster student",
         "metric": {
@@ -2717,7 +2717,7 @@
           "ai.onnx.ml"
         ],
         "params": null,
-        "pin_withdrawn_reason": "it is being replaced: the Hub copy is the logistic student of the Round 71 teacher, which could not follow the Round 86 teacher, and its successor, the linear forecaster recorded here, is published only on the owner's approval",
+        "pin_withdrawn_reason": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"
       },

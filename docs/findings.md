@@ -326,7 +326,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   3,226 against 11,171,266 for medical, 294 against 84,860 for satellite. Which of them CKKS
   evaluates in the browser, page by page, is under
   [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All eleven repos are public, and
-  ten are pinned: the satellite student's pin is withdrawn while it is replaced. The evaluation sample
+  eleven are pinned. The evaluation sample
   for each lives in that model's own repo at the same revision as its weights. Since Round 86 that
   includes the satellite student's, which is a stretch of a timeline rather than independent rows,
   because its metric is defined over a timeline.
@@ -347,7 +347,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
     scores 0.940 (22 of 29, no false alarms) against the teacher's 0.950. On the windows that touch no
     label its forecast is closer to the truth than the teacher's (MAE 0.276 against 0.304). The page
     scores its published stretch end to end; every forecast there runs under CKKS and changes no flag.
-    It is published only on the owner's approval.
+    It was published on the owner's approval on 2026-11-07, at `231db24`.
   - **Requiring several channels to agree in place of a floor** is now a third reading, with k chosen on
     the validation months (6 there). It scores 0.909 on anomalies and 0.845 on all events, against the
     floor's 0.950 and 0.745.

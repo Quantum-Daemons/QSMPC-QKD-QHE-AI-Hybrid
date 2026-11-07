@@ -440,9 +440,13 @@ def test_a_pin_and_an_invalidation_never_name_the_same_revision() -> None:
 
 
 def test_a_withdrawn_pin_says_why_and_is_not_a_pinned_model_too() -> None:
-    """Round 86: the satellite student's pin is retired on purpose, which the registry declares with a reason."""
+    """A pin retired on purpose is declared with a reason, and is then neither pinned nor unexplained.
+
+    Round 86 withdrew the satellite student's pin while it was replaced; its successor was pinned on 2026-11-07, so
+    no model declares one now. The conditions hold for any that does, and the page still states the reason."""
     withdrawn = [m for m in _frontend_models() if m.get("pin_withdrawn_reason")]
-    assert [m["key"] for m in withdrawn] == ["satellite_comms.student"], [m["key"] for m in withdrawn]
+    assert not [m["key"] for m in withdrawn if m["key"] == "satellite_comms.student"], (
+        "the satellite student is pinned again but still declares its pin withdrawn")
     for m in withdrawn:
         assert not m.get("hf_revision"), f"{m['key']} declares a withdrawn pin and still carries one"
         assert m.get("hf_revision_stale"), f"{m['key']} declares a withdrawn pin but names no retired sha"
