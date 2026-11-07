@@ -184,7 +184,7 @@ function PassSection({ link, liao, minEl, epsSec, deviation }: { link: ReturnTyp
         <table>
           <caption className="small muted" style={{ textAlign: "left", captionSide: "top", paddingBottom: 4 }}>
             Liao et al., Nature 549, 43 (2017): the pass of 19 December 2016, counted the way the paper counts it -
-            the window from {LIAO_2017_PASS.maxRangeKm} km down to {LIAO_2017_PASS.minRangeKm} km and back, states
+            the window from {fmt(LIAO_2017_PASS.maxRangeKm)} km down to {fmt(LIAO_2017_PASS.minRangeKm)} km and back, states
             sent 50 / 25 / 25, and sifted key from signal states only. The finite rows are {bound}, at 1e-9, on
             one key basis and on both.
           </caption>
@@ -204,7 +204,7 @@ function PassSection({ link, liao, minEl, epsSec, deviation }: { link: ReturnTyp
           <caption className="small muted" style={{ textAlign: "left", captionSide: "top", paddingBottom: 4 }}>
             Khmelev et al., Opt. Express 32, 11964 (2024): Micius to Zvenigorod on 1 March 2022, the session from
             {" "}{KHMELEV_2024_SESSION.trackingStartDeg} deg of elevation, where their stable tracking started, up to
-            {" "}{KHMELEV_2024_SESSION.minRangeKm} km and down to {KHMELEV_2024_SESSION.maxRangeKm} km
+            {" "}{fmt(KHMELEV_2024_SESSION.minRangeKm)} km and down to {fmt(KHMELEV_2024_SESSION.maxRangeKm)} km
             ({fmt(khmelev.durationS)} s in this model, where they received states for roughly
             {" "}{KHMELEV_2024_SESSION.receivedS} s), on that link&apos;s own profile whatever this run&apos;s, at
             their failure probability of 1e-9 and this tab&apos;s statistics. They keyed both bases.
