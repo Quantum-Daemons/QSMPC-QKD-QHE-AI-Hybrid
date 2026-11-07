@@ -36,13 +36,14 @@ teacher was measured offline, in plaintext.
 | `student_metric` | 0.904348 |
 | `student_params` | 210 |
 | `teacher_metric` | 0.918919 |
-| `teacher_params` | 117 |
+| `teacher_params` | 5393 |
+| `teacher_trees` | 117 |
 
 ## Published baselines this is measured against
 
 - **Target metric**: AUC PR
 - **Baseline to beat**: 0.979 - FCNN, best of the 30 algorithms benchmarked in Ruszczak et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.
-- **Published ceiling**: 0.979 - FCNN, the best of the 30 published baselines - there is no higher number to cite.
+- **Published ceiling**: 0.979 - FCNN, the best AUC PR among the 30 baselines Ruszczak et al. benchmarked on this split; no higher published AUC PR was found.
 
 ## Training data
 
@@ -55,7 +56,7 @@ teacher was measured offline, in plaintext.
 
 ## Notes and limitations
 
-19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. The ring carries orders of magnitude more slots than this feature map needs, so the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681 (0.968055 against the teacher's 0.968107, equal at four decimals). The satellite page evaluates this student under CKKS in the browser on all 529 test segments, as a check of agreement with plaintext. It does not decide the page's verdict, and the client computes the expansion and the z-scoring before encrypting.
+19 columns is small enough to evaluate under CKKS as a single packed dot product, so the encrypted tier here runs on the published feature set rather than on a reduction of it - and it had room to spare. The student now fits over the QUADRATIC expansion of those features, 209 terms, still one packed dot product at unchanged multiplicative depth, because the expansion is a function of the plaintext input and is computed before encryption. The 209 terms pad to 256 slots, 16 times fewer than the ring's 4,096, so each ciphertext packs 16 rows and the slots set the batching (34 ciphertexts for 529 segments), not a limit on the feature map; the cipher was never the binding constraint here - the feature map was. Measured: minority-class F1 0.8649 -> 0.9043, AUC-PR 0.9275 -> 0.9681 (0.968055 against the teacher's 0.968107, equal at four decimals). The satellite page evaluates this student under CKKS in the browser on all 529 test segments, as a check of agreement with plaintext. It does not decide the page's verdict, and the client computes the expansion and the z-scoring before encrypting.
 
 ## Honest scope
 

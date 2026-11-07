@@ -281,9 +281,10 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   and its feature table (`dataset.csv`) is 507 KB, so the whole test partition ships in the model's
   own HF repo. The partition's labels are what the dataset's
   30 published baselines are quoted against (AUC PR 0.9681 measured offline by the training script,
-  against FCNN 0.979, XGBOD 0.975, RF+ICCS 0.963); the browser re-scores the exported ONNX graph on
-  the same 529 segments, which gives accuracy 0.9509 where the scikit-learn model records 0.9660,
-  because 8 of the 529 predictions differ between the two. It is a **different
+  against FCNN 0.979, XGBOD 0.975, RF+ICCS 0.963). The browser re-scores the exported ONNX graph on
+  the same 529 segments and reproduces the recorded accuracy, 0.9660. Until Round 86 it read 0.9509,
+  and the gap was put down to the export. It came from the evaluation sample, which rounded every
+  feature to 6 decimals and so flipped 8 of the 529 predictions. It is a **different
   task** from the Telemanom forecaster on the same page - segment classification, not forecasting -
   and neither number is the other's baseline.
 - **The encrypted path evaluates the published medical student itself, one layer at a time.** All

@@ -1317,9 +1317,11 @@ _SPECS: tuple[ModelSpec, ...] = (
             "comparison. Chosen because its corpus is CC BY 4.0 and small, so the whole test "
             "partition can be redistributed alongside the weights. The benchmark's split is "
             "stratified random, so these scores do not measure generalisation over time. The "
-            "card's metrics are the scikit-learn model's before export; the published ONNX graph "
-            "scores accuracy 0.9509 on the same 529 test segments against 0.9660 recorded here, "
-            "so the browser's re-score reproduces the graph, not the card."
+            "published ONNX graph reproduces the scikit-learn model on the test partition, so its "
+            "accuracy there is the 0.9660 recorded here, and the browser's re-score reproduces it. "
+            "Until Round 86 the evaluation sample rounded every feature to 6 decimals, which "
+            "flipped 8 of the 529 decisions: the re-score read 0.9509, and this note blamed the "
+            "export."
         ),
     ),
     ModelSpec(

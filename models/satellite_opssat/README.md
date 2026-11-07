@@ -33,13 +33,13 @@ is stated in the notes below.
 | `n_features` | 19 |
 | `n_test_segments` | 529 |
 | `n_train_segments` | 1594 |
-| `wall_clock_s` | 7.5 |
+| `wall_clock_s` | 7.1 |
 
 ## Published baselines this is measured against
 
 - **Target metric**: AUC PR
 - **Baseline to beat**: 0.979 - FCNN, best of the 30 algorithms benchmarked in Ruszczak et al., Scientific Data 12 (2025), on this dataset's own test split (AUC PR 0.979, F1 0.946, MCC 0.932). XGBOD reaches 0.975 and RF+ICCS 0.963.
-- **Published ceiling**: 0.979 - FCNN, the best of the 30 published baselines - there is no higher number to cite.
+- **Published ceiling**: 0.979 - FCNN, the best AUC PR among the 30 baselines Ruszczak et al. benchmarked on this split; no higher published AUC PR was found.
 - **Companion metric shown alongside**: `f1` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
 ## Training data
@@ -53,7 +53,7 @@ is stated in the notes below.
 
 ## Notes and limitations
 
-Segment CLASSIFICATION on real OPS-SAT telemetry, which is a different task from the Telemanom forecaster above: this one is scored against the 30 algorithms published with the dataset, not against persistence, and the two numbers must not be read as a comparison. Chosen because its corpus is CC BY 4.0 and small, so the whole test partition can be redistributed alongside the weights. The benchmark's split is stratified random, so these scores do not measure generalisation over time. The card's metrics are the scikit-learn model's before export; the published ONNX graph scores accuracy 0.9509 on the same 529 test segments against 0.9660 recorded here, so the browser's re-score reproduces the graph, not the card.
+Segment CLASSIFICATION on real OPS-SAT telemetry, which is a different task from the Telemanom forecaster above: this one is scored against the 30 algorithms published with the dataset, not against persistence, and the two numbers must not be read as a comparison. Chosen because its corpus is CC BY 4.0 and small, so the whole test partition can be redistributed alongside the weights. The benchmark's split is stratified random, so these scores do not measure generalisation over time. The published ONNX graph reproduces the scikit-learn model on the test partition, so its accuracy there is the 0.9660 recorded here, and the browser's re-score reproduces it. Until Round 86 the evaluation sample rounded every feature to 6 decimals, which flipped 8 of the 529 decisions: the re-score read 0.9509, and this note blamed the export.
 
 ## Honest scope
 
