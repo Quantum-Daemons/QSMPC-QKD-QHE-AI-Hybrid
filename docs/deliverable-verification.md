@@ -9020,6 +9020,7 @@ recorded separately, and nothing here changes the published model.
 | #14 | The medical CNN student runs under MPC on one held-out image per run: CKKS linear layers, ReLUs and the argmax in garbled circuits, average pooling on shares |
 | #15 | Twenty-three claims and papers read at source, the audit's last open rows closed, and each medical AUC given its interval |
 | #16 | A PSI among three to five banks under MPC on the finance page, WebM export of a run, and the planned items the audit found unbuilt settled |
+| #17 | A CycloneDX 1.7 CBOM on the Validations page and SBOMs in CI, the weak gates the audit named tightened and seeded, and the type scale |
 
 Findings worth keeping from those:
 
@@ -9117,3 +9118,11 @@ The owner's rule: confirm what exists, build what is recommendable as a research
 **The PSI's checks.** `cargo test` in the crate covers the circuit against the plain intersection, its size against the design, and the inputs it refuses. `npm run check:multi-psi` runs the module the page imports, in CI and in `scripts/ci_local.sh`: seeded with the zero-filter removed it fails four checks, and with the shuffle removed it fails one. In a browser tab three banks took 2.6 s, four 7.4 s and five 15.4 s, each matching the clear intersection.
 
 **WebM.** A run's recording decoded as `video/webm`, 486,076 bytes, duration 3.56 s, in Chromium.
+
+### Round 86, 2026-11-08: the bills of materials, the weak gates and the type scale
+
+**CBOM and SBOMs.** See `docs/development.md`, "Bills of materials". The CBOM lists the 21 algorithms this code calls, four of which a large quantum computer breaks (X25519, ECDH P-256, the OPRF over ristretto255, and WRK17b through its oblivious transfers). `tests/test_r86_cbom.py` holds the document to the generator, the vendored schema, each entry's evidence in the source, and every cryptographic import. The test run on the first draft already found nothing missing, because `blake2s` and `chacha20poly1305` were added to the inventory after reading the imports rather than from memory; the import scan is what keeps that true. Nothing here is a claim of conformance.
+
+**Weak gates, each seeded and seen to fail.** `qkd_params=None`; a block size spelled `40_000 * 1`; a bold clause wrapped across lines; a card whose Gap section differs from its record; `DATA_LICENSES.md` in the deadline scan; document basenames unique (the reachability gate accepts one). Declined: pinning the QKD band's crossing points, which the finite-key block model moved and the chart computes on each render.
+
+**The type scale** (the owner's choice recorded earlier and not carried out): body line height 1.5, card headings at body size, HTML notes, badges and tables at 12 px or more. Chart axes and the use-case canvas keep their sizes, because they are fitted to fixed geometry; `check_text_overlap.mjs` passes in both fonts.
