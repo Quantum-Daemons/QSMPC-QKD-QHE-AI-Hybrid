@@ -78,8 +78,8 @@ three activities and section 8.11 double-click handling are protocol logic a bro
 
 4. **Decoy versus non-decoy under photon-number splitting.** Closed form, canonical, unusually sharp
    assertions. Ma, Qi, Zhao, Lo, PRA 72, 012326 (2005) with the GYS parameter set ($`\alpha`$ 0.21 dB/km,
-   $`e_{\text{det}}`$ 3.3%, $`Y_0`$ 1.7e-6, $`\eta_{\text{Bob}}`$ 0.045, $`f_{EC}`$ 1.22): non-decoy $`R/\eta^2`$ approximately 0.15 flat,
-   decoy $`R/\eta \approx 0.11`$ flat; non-decoy dies near 42 km, decoy survives past 140 km.
+   $`e_{\text{det}}`$ 3.3%, $`Y_0`$ 1.7e-6, $`\eta_{\text{Bob}}`$ 0.045, $`f_{EC}`$ 1.22): non-decoy $`R/\eta^2`$ approximately 0.15 flat at short range (this model's own output at $`q = 1`$; the paper gives only the scaling),
+   decoy $`R/\eta \approx 0.11`$ flat (the paper's closed form above its Eq. (12), which has no $`q`$); non-decoy dies near 42 km, decoy survives past 140 km.
    The sharpest single claim: **with GYS parameters and $`\mu = 0.1`$ non-decoy, the tagged fraction
    exceeds 1 at zero distance** - no key even back-to-back.
 

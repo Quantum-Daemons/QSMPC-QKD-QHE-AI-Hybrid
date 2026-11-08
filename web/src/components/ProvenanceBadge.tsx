@@ -17,9 +17,10 @@
 //
 // SIMULATED is not a failure state and is used deliberately. QKD has no browser API and cannot have
 // one, so every QKD number here comes from an analytic channel model. Zama's own documentation says
-// the TFHE-rs WASM build "does not support FHE computations". No browser MPC library is maintained
-// (JIFF's last commit was 2024-06; the PSE MPC Framework is sunset). Labelling those SIMULATED is
-// the accurate description, and the badge exists so nothing has to be taken on trust.
+// the TFHE-rs WASM build "does not support FHE computations". Labelling what has no browser path
+// SIMULATED is the accurate description, and the badge exists so nothing has to be taken on trust.
+// Browser MPC is no longer on that list: the 2PC runs Polytune in WebAssembly, labelled "real protocol,
+// notional parties" (StageBadge), since JIFF went unmaintained and the PSE MPC Framework was sunset.
 import { useEffect, useState } from "react";
 
 import { onnxStatus, webgpuInfo } from "../lib/onnxInference";

@@ -116,9 +116,10 @@ which doubles the rate; at the q the paper names for that figure this model give
 Three possibilities and the record does not pretend to know which: the values were read off the
 plotted curve and the curve is at q ~ 1 despite the caption; or they were read correctly and this
 model is 2x low with `q_sift=1.0` closing the gap by coincidence; or they came from this model and
-were then attributed to the paper. **NOT resolved here** - resolving it means reading values off a
-plotted figure, which cannot be done from an extracted text layer. The 13 tests are left untouched
-and the docstring now says the assertions are this module's own outputs until that reading is done.
+were then attributed to the paper. **Not resolved in Round 53; resolved 2026-11-08 by reading the rendered figure.** Figure 2's
+asymptotic curve starts near 2.5e-3 per pulse at 0 km and its caption gives 142.05 km; this model gives 2.56e-3 and 142.19 km at q = 1/2 (and
+5.1e-3 at q = 1), so the curve is at q = 1/2 and the model is right. R/eta of about 0.11 is the paper's closed form above its Eq. (12), which has no q
+(0.1124), and R/eta^2 of about 0.15 is this model's own output. `tests/test_decoy_reference.py` now says which is which.
 
 Reported, and both are quotation-level claims worth re-reading at source before acting:
 
@@ -145,9 +146,7 @@ independently, `q_V + e - 2*q_V*e`, gives **0.029744** as well, agreeing to **0.
 than first-order agreement is what makes this a correction and not a modelling preference. The
 reported 24.8% understatement reproduces exactly.
 
-**QSDC NOT addressed.** Qi et al. Eq. (8) defining `g` as back-channel loss "including the efficiency
-of the detector" needs reading at source before `qsdc.py` is touched, and the reported 4.0x is
-unreproduced here. Left open.
+**QSDC not addressed in this pass** (closed since: `src/qsh/qkd/qsdc.py` carries Qi et al. Eq. (8), read at source, and explains the 4.0x).
 
 `src/qsh/qkd/e91.py:44-46` applies visibility as `V*(1-e)` and then `QBER=(1-V)/2`, which halves the
 error term - reported as 0.022372 against a self-consistent 0.029744, **24.8% low**.
@@ -190,8 +189,7 @@ The student-beats-teacher observation is also confirmed: `telecom_ids.student` s
 agreement. Recorded as an observation - soft-target distillation regularises and 0.0017 on 600 rows is
 inside this project's own recorded noise - not as a claim that the linear model is better.
 
-**FIRST CLAIM NOT RESOLVED.** The 15-qubit concentration reading requires arXiv:2605.31449 at source,
-and it is not settled by reasoning about the summary. Left open.
+**First claim not resolved in this pass** (closed in Round 55: arXiv:2605.31449 was read at source and the paragraph withdrawn, `model-choice-vs-2026-practice.md`).
 
 `:282-291` explains quantum-kernel underperformance by a 15-qubit concentration threshold. The cited
 work (arXiv:2605.31449) reportedly says 15 qubits is where the **Hamming** kernel overtakes the
@@ -251,13 +249,13 @@ moving:
 
 | # | state |
 |---|---|
-| 1 SP 800-90B on conditioned output | **FIXED** Round 53. `health_suite` takes `raw=`; a p(1)=0.90 source now reports 0.1472 bit/bit, not 0.9806 |
-| 2 `FiniteKeyParams` retired intensities | **FIXED** Round 53, `default_factory` against config. Downstream figures re-derived and the repo was ALREADY right |
+| 1 SP 800-90B on conditioned output | **FIXED** Round 51. `health_suite` takes `raw=`; a p(1)=0.90 source now reports 0.1472 bit/bit, not 0.9806 |
+| 2 `FiniteKeyParams` retired intensities | **FIXED** Round 51, `default_factory` against config. Downstream figures re-derived and the repo was ALREADY right |
 | 3 two-intensity naming | **FIXED** Round 53, verified by extracting the paper: Eqs. 34-37 are section 3.4 Vacuum+Weak, three intensities, Y0 measured |
-| 4 `decoy_reference.py` attributions | **BOTH CONFIRMED, one fixed.** `f_ec = 1.22` is prose not Table 1 (whose `f` column is a repetition rate) - corrected. The q claim was backwards and is corrected. The 0.11 / 0.15 reference values are NOT in the paper's prose and remain **open**: settling it needs values read off a plotted figure |
-| 5 E91 and QSDC | **E91 FIXED** across all four implementations, Rounds 53-54. **QSDC open** - Qi et al. Eq. (8) needs reading at source and the reported 4.0x is unreproduced |
+| 4 `decoy_reference.py` attributions | **BOTH CONFIRMED, one fixed.** `f_ec = 1.22` is prose not Table 1 (whose `f` column is a repetition rate) - corrected. The q claim was backwards and is corrected. The 0.11 / 0.15 reference values: **closed 2026-11-08** (0.11 is the paper's q-free closed form, 0.15 this model's own output, section 4 above). Before that they were NOT in the paper's prose and remained open: settling it needs values read off a plotted figure |
+| 5 E91 and QSDC | **E91 FIXED** across all four implementations, Rounds 53-54. **QSDC closed since**: `src/qsh/qkd/qsdc.py` carries Qi et al. Eq. (8) read at source and explains the 4.0x. Open when this table was written |
 | 6 currency | **RESOLVED Round 55, and my earlier refusal was the wrong call.** I declined to advance `REFERENCES.md`'s Y.3835 ceiling because search could not confirm Y.3836-3838, and treated that as caution. It was stale search indexing, not absence: `itu.int/rec/T-REC-Y.3838-202608-P/en` prints *"Approved in 2026-08-13"* verbatim, and ITU's own AAP JSON API returns `approvalDate 2026-08-13` for all three. Y.3839 returns HTTP 200 with a **0-byte body** against 9.5 KB for Y.3834-3838, so Y.3838 is the ceiling. **All three are prepublished, not just Y.3836** - the parenthetical singling out Y.3836 was also wrong. GS QKD 010 is likewise resolved: `portal.etsi.org` is reachable even though `www.etsi.org` 403s, and work item 43375 shows v0.6.2 Drafting - so "needs portal access" was true and the portal was available. Refusing to move a claim is the right default and it is not free: it left two wrong lines standing for a round |  Y.3836-Y.3838 unconfirmed by search; `etsi.org/deliver` returns 403 for QKD 010, 014 AND 020 alike, so the 403 carries no information about publication status. Needs ETSI portal access |
-| 7 `model-choice-vs-2026-practice.md` | **Second claim FIXED** - `runs_encrypted=True` is on six specs, not five, and the document contradicted itself two paragraphs apart. **First claim open**: the 15-qubit concentration reading needs arXiv:2605.31449 at source |
+| 7 `model-choice-vs-2026-practice.md` | **Second claim FIXED** - `runs_encrypted=True` is on six specs, not five, and the document contradicted itself two paragraphs apart. **First claim closed in Round 55**: arXiv:2605.31449 read at source, the paragraph is withdrawn (`model-choice-vs-2026-practice.md`) |
 
 Three of seven fully closed, two partly, two open with a stated obstacle. The open ones are NOT
 re-conditioned to a later round, because moving a promise is not discharging it - they are recorded as

@@ -1,14 +1,15 @@
-"""Assert the decoy-state reference model against PUBLISHED values, not against itself.
+"""Assert the decoy-state reference model against what Ma et al. publish, and say which number is whose.
 
-Every assertion here names the paper and the figure or statement it comes from. If one of these
-fails, the model is wrong - not the test - because none of these numbers originated in this
-repository.
+Ma et al. (PRA 72, 012326; arXiv:quant-ph/0503005) introduce the curve of their Figure 2 with "where q = 1/2 with standard
+BB84", which is this project's default. Read off the rendered figure on 2026-11-08, its asymptotic decoy curve starts near
+2.5e-3 per pulse at 0 km, and its caption gives a maximal secure distance of 142.05 km. This model gives 2.56e-3 and 142.19 km
+at q = 1/2, and would start at 5.1e-3 at q = 1, so the figure is at q = 1/2 and the model is right there
+(`test_the_model_reproduces_figure_2_at_the_q_the_paper_states`).
 
-The published curves are plotted for the efficient BB84 of Lo-Chau-Ardehali, where the sifting
-factor q tends to 1. This project runs standard BB84 (q = 1/2), so the comparisons below construct
-a channel with ``q_sift=1.0`` to meet the paper on its own terms. Without that, every rate here is
-exactly half the published one - close enough to look like a fitting discrepancy and wrong enough
-to invalidate the comparison.
+The paper's low-loss closed form, the unnumbered equation above its Eq. (12), carries no factor q. At its own mu = 0.48 it gives
+R/eta = 0.1124, the "about 0.11" of earlier rounds. Tests that meet that form use ``q_sift=1.0``, and that test computes the
+form rather than quoting it. R/eta^2 of about 0.15 has no published counterpart: the paper gives the scaling and no
+coefficient, so that test pins this model's own output and says so.
 """
 from __future__ import annotations
 
@@ -28,12 +29,12 @@ from qsh.qkd.decoy_reference import (
     transmittance,
 )
 
-PAPER = ChannelSpec(q_sift=1.0)     # efficient BB84, as Ma et al. plot it
+PAPER = ChannelSpec(q_sift=1.0)     # no factor q, as Ma et al.'s closed form above their Eq. (12)
 GYS = ChannelSpec()                 # this project's standard-BB84 default
 
 
 def test_gys_defaults_are_the_published_parameter_set():
-    """Ma et al. (2005) Table 1, from Gobby-Yuan-Shields APL 84, 3762 (2004)."""
+    """Ma et al. (2005) Table 1, from Gobby-Yuan-Shields APL 84, 3762 (2004); f_ec = 1.22 is the paper's prose, not Table 1."""
     assert GYS.alpha_db_per_km == 0.21
     assert GYS.detector_eff == 0.045
     assert GYS.dark_count == 1.7e-6
@@ -96,20 +97,34 @@ def test_nondecoy_dies_around_40_km():
     assert d < max_distance_km(key_rate_decoy, PAPER) / 3.0
 
 
-def test_decoy_rate_scales_linearly_in_eta():
-    """R/eta is flat at about 0.11 - the decoy method's headline result.
+def test_the_model_reproduces_figure_2_at_the_q_the_paper_states():
+    """Ma et al. Figure 2, read on the rendered page: about 2.5e-3 per pulse at 0 km, 142.05 km (caption), at q = 1/2.
 
-    Linear in eta, versus quadratic without decoy states. Scarani et al., Rev. Mod. Phys. 81, 1301
-    (2009) section II.1.3 restates it as t versus t^2.
+    Read off a logarithmic axis, so the rate is checked to about 15 percent; q = 1 would give 5.1e-3 and fail it.
     """
+    _, r0 = optimal_decoy(0.0, GYS)
+    assert 2.2e-3 < r0 < 2.9e-3, f"rate at 0 km = {r0}"
+    assert math.isclose(max_distance_km(key_rate_decoy, GYS), 142.05, abs_tol=0.5)
+
+
+def test_decoy_rate_scales_linearly_in_eta():
+    """R/eta is flat, at the value of Ma et al.'s closed form - the decoy method's headline result.
+
+    Their low-loss form above Eq. (12), with no factor q: R/eta = mu exp(-mu) [1 - H2(e)] - mu f H2(e), at mu = 0.48. Linear in
+    eta, versus quadratic without decoy states. Scarani et al., Rev. Mod. Phys. 81, 1301 (2009) section II.1.3 restates it as t
+    versus t^2.
+    """
+    mu = 0.48
+    closed_form = mu * math.exp(-mu) * (1.0 - h2(GYS.misalignment)) - mu * GYS.f_ec * h2(GYS.misalignment)
+    assert math.isclose(closed_form, 0.1124, abs_tol=5e-4), closed_form
     for L in (0.0, 20.0, 40.0, 60.0):
         eta = transmittance(L, PAPER)
         _, r = optimal_decoy(L, PAPER)
-        assert math.isclose(r / eta, 0.11, abs_tol=0.01), f"L={L}: R/eta = {r / eta}"
+        assert math.isclose(r / eta, closed_form, abs_tol=0.01), f"L={L}: R/eta = {r / eta}"
 
 
 def test_nondecoy_rate_scales_quadratically_in_eta():
-    """R/eta^2 is about 0.15 where the non-decoy link still produces key at all."""
+    """R/eta^2 of about 0.15 at 0 km: this model's own output at q = 1, a regression pin and not a published figure."""
     eta = transmittance(0.0, PAPER)
     _, r = optimal_nondecoy(0.0, PAPER)
     assert math.isclose(r / eta**2, 0.15, abs_tol=0.01), f"R/eta^2 = {r / eta**2}"

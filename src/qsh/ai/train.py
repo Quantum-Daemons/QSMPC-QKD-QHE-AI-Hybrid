@@ -1,8 +1,7 @@
 """Training utilities for the small models (centralized baseline).
 
-A minimal, GPU-aware training loop used both to produce the trained models the
-public demo serves and as the local "full implementation"
-counterpart to the federated path.
+A minimal, GPU-aware centralized training loop, the local counterpart to the federated path.
+The published models train through :mod:`qsh.models.train`; only ``tests/test_ai.py`` imports this one.
 """
 
 from __future__ import annotations

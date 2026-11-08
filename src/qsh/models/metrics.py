@@ -22,11 +22,12 @@ hypotheticals; each has a citation:
              40 algorithms and recommends VUS-PR), and "beats six real detectors" was an inference the
              source never made. Kim et al. was already cited on the line above for a different quote,
              so dropping the unverified clause loses nothing.
-             Telemanom's own headline 0.71 is F-beta at beta=0.5 under an event-overlap rule, not F1.
+             Telemanom's frequently quoted 0.71 is printed under F0.5 in its Table 2, with an event-overlap
+             rule, and is not an F1; that table's own precision and recall give 0.859, so nothing here derives from it.
 
-  genomics   Breast-cancer PRS AUROC is 0.60-0.69 in European ancestry and drops to 0.57-0.65 in
-             African ancestry. Reporting a single pooled AUROC hides the portability gap, which is
-             the clinically important finding.
+  genomics   Breast-cancer PRS accuracy falls outside the European-ancestry cohorts such scores are developed on.
+             Reporting a single pooled AUROC hides that portability gap, which is the clinically
+             important finding (the genomics page plots the ancestry spread).
 
 So each function here is named for exactly what it computes, and :func:`with_companion` returns the
 honest metric together with the flattering one so the UI can show both in the same row.

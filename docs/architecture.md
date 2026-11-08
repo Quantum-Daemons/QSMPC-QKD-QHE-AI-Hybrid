@@ -87,8 +87,8 @@ Each stage resolves its algorithm from the `CryptoRegistry` (crypto-agility), so
 same chain runs PQC-only or PQC+QKD, TenSEAL or OpenFHE (linear-FHE), ML-KEM-768 or -1024 -
 **selected by the operator from configuration and pinned into the run config before the run
 starts, never negotiated in-band between parties** (see [`crypto-agility.md`](crypto-agility.md)).
-The non-linear MPC half is always MPyC: the registry's `mpc` family also lists MP-SPDZ and
-hpmpc, but as named references, not engines, and no stage reads the `mpc` choice. Use cases swap
+The non-linear MPC half is always MPyC: the registry's `mpc` family has that one provider,
+and no stage reads the `mpc` choice. Use cases swap
 in their own data and extra stages (`FederatedTrainingStage` for medical, `QMLIDSStage` for telecom).
 
 ## Faithful hybrid private inference (linear -> FHE, non-linear -> MPC)
@@ -252,7 +252,7 @@ dispatches on tagged layer specs (`mpc/layers.py`: `ConvSpec`/`DenseSpec`/`PoolS
 so the **medical** use case runs a real MedMNIST-scale CNN under FHE-linear conv + MPC `secure_relu`,
 with its average pool on each party's share locally (`secure_maxpool` serves max-pool layers; the
 dense MLP path is byte-identical via `normalize_layers`), with every slot masked as above.
-FHE-feasible by design at this demo's operating point - MedMNIST-scale, not ResNet. The
+Small by design at this demo's operating point - MedMNIST-scale, not ResNet. The quantum-comparison stage has no published benchmark to be judged against, and the
 **QSMPC-FHE** row draws an analogy, not a fact about the gates, every one of which is a linear map: Clifford gates
 are cheap the way linear layers are and T gates expensive the way non-linear ones are, with no FHE <-> MPC
 boundary: the Python QOTP demo evaluates Clifford gates on the encrypted state with Pauli key updates,
@@ -262,8 +262,8 @@ evaluates nothing. **On ct/pt:** the QSMPC-FHE row's ct/pt is **not rendered** (
 transport, because no quantum ratio can share a column with the CKKS byte ratio
 ([what ct/pt measures](models-and-benchmarks.md#what-ctpt-measures)). The pages' **lightweight / medium / large** model-size selector was removed, because it scaled
 invented MLPs rather than the models that exist; `tier_architectures` and `workload_multipliers` remain
-in the config for the CLI benchmark's `--model-size` and `--workload`. On the pages, the benchmark costs
-the encrypted student where a use case has one.
+in the config for the CLI benchmark's `--model-size` and `--workload`. In the browser, the benchmark costs
+the encrypted student where a use case has one; the full deployment's dense path on finance still costs a random-weight MLP ([`models-and-benchmarks.md`](models-and-benchmarks.md)).
 
 ## SPA shape
 Overview, Introduction & Value, Validations, E2E Orchestration (generic "run any pipeline"), Use Cases
@@ -297,7 +297,7 @@ Orchestration page and every use-case page; the demo mirrors it client-side via
 `clientCompute.assembleBenchmark` (zero `/api` compute).
 
 **Config single source of truth.** The benchmark cost model, per-use-case tier architectures, workload
-multipliers, security/advantage scoring weights, demo data sizes and in-browser-AI knobs all live in
+multipliers, the retired advantage function's weights, demo data sizes and in-browser-AI knobs all live in
 `src/qsh/config/defaults.py`. The backend reads the dataclasses directly; the SPA gets the same data from
 `/api/config` (full mode) or the baked `web/src/lib/config.defaults.json` (demo, zero `/api`), generated
 by `scripts/export_config.py`. So the demo's representative numbers can never drift from the backend
@@ -319,7 +319,8 @@ cost - genomics and the generic demo - and labels it so):
   in one tab** (zero VPS) - the reported MPC ms + real garbled-circuit communication bytes are measured.
 - **QFL** - "Quantum Federated Learning" runs on every run of the finance and medical pages; it is
   not a toggle. It performs a real client-side FedAvg over the page's own bundled sample, so it is
-  part of what the demo does rather than something to opt into. Full deployment:
+  part of what the demo does rather than something to opt into. Server side, reached only by a direct
+  `POST /api/run/medical_fl` with `qfl` set and no `dataset` (no page sends that; the medical page federates its CNN):
   `ai.federated.federated_train(kind="qfl")` trains a hybrid **PennyLane VQC (`HybridQNN`) + classical**
   model with FedAvg under pairwise-mask secure aggregation, each pair of clients agreeing its mask
   seed by X25519 (CPU, since `default.qubit` simulates the VQC).
@@ -374,7 +375,7 @@ full-mode SPA uses the run controls (`/api/run`, `/api/stop`, `/api/pause`, `/ap
 (`normalize_layers`), and config is centralized.
 
 ## Two compute topologies
-- **Full** (GPU box): everything runs server-side - federated training (own FedAvg + PennyLane QFL), CPU
+- **Full** (GPU box): everything runs server-side - federated training (own FedAvg; PennyLane QFL by direct API call), CPU
   FHE (TenSEAL / OpenFHE) and GPU FHE (HEonGPU, where `scripts/build_heongpu.sh` has built it), GPU quantum sim (CUDA-Q / lightning.gpu), the real MCP server, Prometheus + Grafana.
 - **Client-side build** (no GPU, no server-side ML): the static SPA runs **all** heavy compute in the
   browser (PQC via @noble in plain JavaScript, **real CKKS FHE + garbled-circuit MPC**, ONNX inference, in-browser

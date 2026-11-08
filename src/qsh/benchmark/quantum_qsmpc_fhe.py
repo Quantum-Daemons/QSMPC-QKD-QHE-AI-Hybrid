@@ -10,7 +10,7 @@ CORRECTED ROUND 55, AND THE CORRECTION HAD ALREADY BEEN MADE ELSEWHERE. This sai
 and "T-gate count". `qsh/qhe/qcnn.py` builds no T gates at all - the circuit is RY/RZ rotations and
 CNOT entanglers - and `t_count()` is a Solovay-Kitaev BUDGET, `ceil(3*log2(1/eps))` per rotation
 times the parameter count, which its own docstring calls "rough" and "-ish". At 8 qubits it returns
-630, a number no gate list contains. `report/build_data.py` records this correction as *fixed* and
+630, a number no gate list contains. The technical report's data script recorded this correction as *fixed* and
 `docs/deliverable-verification.md` names README and architecture.md as the two files corrected. This
 module was the third copy, and its docstring is what a reader of this code sees first.
 

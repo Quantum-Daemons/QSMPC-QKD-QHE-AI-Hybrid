@@ -16,6 +16,10 @@ from dataclasses import asdict, dataclass, field
 class QKDConfig:
     # BLOCK SIZE, and it is a security parameter rather than a speed knob.
     #
+    # SINCE ROUND 80 A FIBRE KEY IS NOT COMPUTED ON THIS FIELD: `finite_key_block` below names the block, by default
+    # 1e7 key-basis bits. This field still sizes the Monte Carlo run and the "pulses" block option. Today's threshold at the
+    # shipped pair is 3.60e6 pulses, which 2e7 clears 5.6x; the figures in the history below are the rounds' own.
+    #
     # This was 200_000, giving `nSift = N * Q_mu * 0.5` = **1,244 sifted bits** at the shipped 50 km
     # channel. Round 46 raised it to 2_000_000 (**12,442 sifted bits**) and Round 47 raised it again,
     # to 20_000_000. The threshold Round 46 measured against was wrong twice over, so that is
@@ -34,7 +38,8 @@ class QKDConfig:
     #   THE NUMBER. `src/qsh/qkd/finite_key.py` now implements that paper's own equations, and
     #   evaluated on THIS project's 50 km channel at the intensities shipped until Round 47
     #   (mu = 0.5, nu = 0.1) they put the positive-key threshold near **1e5 sifted bits, about 4e7
-    #   pulses** - roughly an order of magnitude above the band stated here. The finite-key optimum
+    #   pulses** - roughly an order of magnitude above the band stated here (Round 47's channel and statistics; the
+    #   intensity table below has today's figures). The finite-key optimum
     #   for the intensities lowers the pulse count substantially; that is a separate change, measured
     #   in the note on `mu_signal` below, and it does not move the order of magnitude in sifted bits.
     #   At Round 46's 2_000_000 pulses the single-photon lower bound s^l_{Z,1} of Eq. (4) comes out
@@ -61,7 +66,7 @@ class QKDConfig:
     # single-photon count; the band stated here was far too small; and the citation was wrong
     # regardless of any numerics. The threshold is still quoted to one or two figures.
     #
-    # WHY IT IS 20_000_000, against a threshold this repository now COMPUTES rather than cites.
+    # WHY IT IS 20_000_000, against a threshold this repository now COMPUTES rather than cites (Round 47's figures).
     #
     # At the intensities that were shipped (mu = 0.5, nu = 0.1) the threshold is 3.84e7 pulses, and
     # the Python Monte Carlo allocates ~2.0 GB there - too much to put behind an interactive
@@ -398,7 +403,7 @@ class QKDConfig:
     #
     # Chosen by an optimiser, so the value is reproducible rather than tuned by hand:
     #   python -c "from qsh.qkd.finite_key import optimise_parameters; print(optimise_parameters()[0])"
-    mu_signal: float = 0.3416         # minimises the pulses a positive key needs (Round 47); GYS: ~0.5
+    mu_signal: float = 0.3416         # the "block_key" pair: most key on the default block (chosen in Round 47 for the threshold); GYS: ~0.5
     mu_decoy: float = 0.1417          # decoy mean photon number, optimised jointly with the signal
     # THE OTHER PAIR, AND A CHOICE BETWEEN THE TWO (Round 84, the user's choice: make both selectable).
     # The paragraph above has the trade on the shipped 50 km fibre: `mu_signal` / `mu_decoy` carry more
@@ -476,7 +481,7 @@ class QRNGConfig:
 
 @dataclass
 class QSMPCConfig:
-    # Sutradhar's construction works over GF(d) with **d prime and n <= d <= 2n** (arXiv:2501.10083,
+    # Sutradhar and Om's construction works over GF(d) with **d prime and n <= d <= 2n** (Sci. Rep. 11, 2206,
     # and the same bound in secure_summation.py's docstring). 4099 satisfied "prime" and "> n" and
     # nothing else: with n=7 the paper wants d in [7, 14], and 4099 is nearly 300x outside it.
     #
@@ -836,9 +841,10 @@ class WebConfig:
     # This line previously measured that against the "~5e3-1.1e4 finite-key positive-key band" and
     # concluded the gap could be closed with ~30e6 pulses and ~1.5 GB of Python array. Both figures
     # came from a band that Round 47 refuted - see the note on `QKDConfig.pulses` above and
-    # `src/qsh/qkd/finite_key.py`. The corrected positive-key threshold is ~1e5 sifted bits and about
-    # 4e7 pulses on the 50 km FIBRE channel, so 2,440 sifted bits is short by well over an order of
-    # magnitude rather than by the small factor implied here, and the 30e6-pulse fix was never a fix.
+    # `src/qsh/qkd/finite_key.py`. The threshold as corrected then was ~1e5 sifted bits and about
+    # 4e7 pulses on the 50 km FIBRE channel (3.60e6 pulses, about 3e4 sifted bits, at today's channel and statistics), so 2,440
+    # sifted bits was short by more than an order of magnitude either way rather than by the small factor implied here,
+    # and the 30e6-pulse fix was never a fix.
     #
     # The free-space threshold was not quoted until Round 79, because it had not been evaluated. It
     # has been now, and it settled what this block is for: at 800 km the downlink needs about 33 s of

@@ -55,7 +55,8 @@ Three claims never depended on that accuracy:
 
   (a) the shipped 2e6-pulse block carries no composable key, because `s^l_{Z,1}` is NEGATIVE there
       and no factor can rescue a negative count;
-  (b) the "~5e3 to 1.1e4" band was far too small, by an order of magnitude at minimum;
+  (b) the "~5e3 to 1.1e4" band was too small: by about an order of magnitude at the intensities shipped until Round 47, and by
+      2.8 to 6.1 times at today's pair and statistics (3.60e6 pulses, about 30,400 sifted bits);
   (c) the citation was wrong regardless of any numerics, since the paper contains no such threshold.
 
 WHAT IS AND IS NOT CLAIMED

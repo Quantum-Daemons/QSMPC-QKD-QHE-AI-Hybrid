@@ -1,9 +1,9 @@
 // Client-side compute for the public demo: in-browser equivalents of the backend
 // benchmark + E2E pipeline, so the demo runs entirely in the browser (PQC via @noble,
 // QKD/QBER via quantumSim, private inference via onnxruntime-web, PSI via RFC 9497's OPRF in oprfPsi.ts).
-// The security-score and quantum-advantage formulas mirror src/qsh/benchmark/{security,
-// quantum_advantage}.py. Neither is RENDERED: the 0-100 composite was retired in Round 22 and the
-// quantum-advantage score on 2026-10-23 (see `quantumAdvantage`).
+// The retired quantum-advantage formula mirrors src/qsh/benchmark/quantum_advantage.py and is rendered
+// nowhere (retired 2026-10-23, see `quantumAdvantage`). The 0-100 security composite was retired in
+// Round 22, and its module was removed in Round 86.
 import { ml_dsa65, ml_dsa87 } from "@noble/post-quantum/ml-dsa.js";
 import { ml_kem768, ml_kem1024 } from "@noble/post-quantum/ml-kem.js";
 import { x25519 } from "@noble/curves/ed25519.js";
@@ -148,7 +148,7 @@ export function qsmsField(maxTotal: number, askedPrime: number): number {
 }
 
 // --------------------------------------------------------------------------- //
-//  Security score (mirror of qsh/benchmark/security.py)
+//  KEM security categories and the posture table's inputs
 // --------------------------------------------------------------------------- //
 const KEM_CATEGORY: Record<string, number> = {
   "ml-kem-512": 1, "ml-kem-768": 3, "ml-kem-1024": 5,
@@ -173,9 +173,8 @@ export function sigImpl(sig?: string) {
     ? { fn: ml_dsa87, name: "ML-DSA-87" }
     : { fn: ml_dsa65, name: "ML-DSA-65" };
 }
-// The benchmark rows' security score reflects the run's chosen KEM (cat-3/cat-5) and whether QKD is mixed
-// in (config.qkd === "pqc-only" drops the ≥256-bit BB84 key ⇒ no defence-in-depth bonus). Both are
-// crypto-agility selections, so swapping them visibly moves the surfaced score.
+// What the benchmark rows' security posture is built from: the run's chosen KEM (cat-3/cat-5) and whether a
+// QKD key was mixed in (config.qkd === "pqc-only" gives none). Both are crypto-agility selections.
 function secFromConfig(
   config: any, metrics?: Record<string, any> | null,
 ): { kem?: string; qkdBits?: number | null; qber?: number | null } {
@@ -684,6 +683,8 @@ const tierOps = (dims: number[]) => dims.slice(1).reduce((a, x) => a + x, 0);  /
 // measured 15,120 B and the extra comparison stopped being a rounding error.
 const tierCmps = (dims: number[]) => Math.max(0, tierOps(dims) - 1);
 
+/** The tier a representative row is costed at. The model-size selector left in Round 18 and nothing sends one; named so the read is not mistaken for a control. */
+const BENCH_MODEL_SIZE = "medium";
 function archDims(usecase: string | undefined, modelSize: string, workload: string, nIn?: number) {
   // GENOMICS PRICES THE SCORE IT RUNS (Round 84). `tier_architectures` gave it a "genomic risk MLP",
   // 8 -> 64 -> 2 and 706 parameters, that nothing trains and the registry calls not a neural network,
@@ -1291,7 +1292,7 @@ export function assembleBenchmark(
   usecase: string, config: any,
   opts: { metrics?: any; artifacts?: any; stageMs?: Record<string, number> },
 ) {
-  const modelSize = config?.model_size ?? "medium";
+  const modelSize = BENCH_MODEL_SIZE;
   const workload = config?.workload ?? "linear";
   // Pass the run's metrics: this is the call site whose score the benchmark panel renders, and
   // without them the QBER and secure-key-bits terms fall back to constants.
@@ -1404,9 +1405,9 @@ export function runClientPipeline(
   usecase: string, config: Record<string, any>, h: PipelineHandlers, startPaused = false,
 ): PipelineControl {
   let stages = clientFlow(usecase);
-  // Federated learning (QFL by name) is a per-use-case WebUI option: when toggled on, inject a
-  // federated_training stage (if the flow lacks one) right before the inference/compute step, so EVERY
-  // simulator can run a real client-side QFL round (medical_fl already has the stage in its flow).
+  // Federated learning (QFL by name) runs on the finance and medical pages: usePipelineRun sets `qfl` for those
+  // two, and this injects a federated_training stage right before the inference/compute step on finance,
+  // whose flow lacks one (medical_fl already has the stage in its flow).
   if (config.qfl && !stages.includes("federated_training")) {
     const anchorIdx = stages.findIndex((s) =>
       ["private_inference", "qml_ids", "qsdc_telemetry", "quantum_comparison"].includes(s));
@@ -2113,8 +2114,8 @@ export function runClientPipeline(
           // default IS this run's `skr_per_pulse` (0.0014267105881521113 both, on the default fibre)
           // and the tuned figure is the same asymptotic bound at the tuned parameters. The log said
           // the two came from "a different model" until Round 84.
-          metric(stage, "qkd_surrogate_skr_default", Math.round(opt.baselineSkr * 1e6) / 1e6);
-          metric(stage, "qkd_surrogate_skr_tuned", Math.round(opt.bestSkr * 1e6) / 1e6);
+          metric(stage, "qkd_surrogate_skr_per_pulse_default", Math.round(opt.baselineSkr * 1e6) / 1e6);
+          metric(stage, "qkd_surrogate_skr_per_pulse_tuned", Math.round(opt.bestSkr * 1e6) / 1e6);
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
           // Only quote the decoy intensities for protocols whose model reads them. The E91/CHSH
           // model ignores muSignal/muDecoy entirely, so printing "tuned" values there described a
@@ -2286,8 +2287,8 @@ export function runClientPipeline(
           const opt = optimizeQKD(satChan, satProtocol,
             Number(config.qkd_opt_samples ?? qkdCfg().optimize_n_samples));
           if (opt.improvementPct !== null) metric(stage, "qkd_skr_improvement_pct", r1(opt.improvementPct));
-          metric(stage, "qkd_surrogate_skr_default", Math.round(opt.baselineSkr * 1e6) / 1e6);
-          metric(stage, "qkd_surrogate_skr_tuned", Math.round(opt.bestSkr * 1e6) / 1e6);
+          metric(stage, "qkd_surrogate_skr_per_pulse_default", Math.round(opt.baselineSkr * 1e6) / 1e6);
+          metric(stage, "qkd_surrogate_skr_per_pulse_tuned", Math.round(opt.bestSkr * 1e6) / 1e6);
           metric(stage, "qkd_convergence_evals", opt.convergenceEvals);
           const tunedSat = satProtocol === "e91"
             ? `basis p=${r2(opt.bestParams.basisProb)}`
@@ -2699,7 +2700,7 @@ export function runClientPipeline(
         // REAL client-side federated learning ("Quantum Federated Learning" by name): FedAvg of a
         // logistic head over the closed-form `qcnnExpectation` features - no circuit is simulated -
         // across simulated clients, round accuracy genuinely computed in-browser. The full
-        // deployment's PennyLane HybridQNN trains a real variational circuit; this does not.
+        // PennyLane HybridQNN (server side, direct API call only) trains a real variational circuit; this does not.
         // Federate over this page's REAL bundled sample where one exists, so the accuracy
         // describes the data the page is actually showing rather than an internal toy.
         //
@@ -3014,7 +3015,7 @@ export function runClientPipeline(
           // A real encrypted convolution is not scaled by anything: its latency IS the measurement.
           const bscale = real.conv
             ? 1
-            : benchScale(usecase, config.model_size ?? "medium", config.workload ?? "linear");
+            : benchScale(usecase, BENCH_MODEL_SIZE, config.workload ?? "linear");
           artifacts.fhe_prediction = real.prediction;
           // The garbled-circuit argmax over CKKS logits of `realIn.model` when the encryption evaluated
           // it; over the demo pattern otherwise, which the bars do not explain.
@@ -3415,7 +3416,7 @@ export function runClientPipeline(
           // `privateInference` scored the same weights the bars explain: `realIn.model`, or the
           // placeholder pair `linearShap` is given when no model ships.
           ckksClassIsTheExplainedModels = true;
-          const representative = mpcFheRow(usecase, config.workload ?? "linear", config.model_size ?? "medium", null, secFromConfig(config, metrics));
+          const representative = mpcFheRow(usecase, config.workload ?? "linear", BENCH_MODEL_SIZE, null, secFromConfig(config, metrics));
           const cause = real.failed === "mpc"
             ? `the garbled-circuit MPC did not run to completion (${real.reason})`
             : `the in-browser CKKS computation failed (${real.reason})`;
@@ -3617,7 +3618,7 @@ export function runClientPipeline(
         // run the QSMPC-FHE comparison circuit - an UNTRAINED QOTP + Clifford+T circuit on random
         // input, not a QCNN readout and not an inference - for the benchmark row; no quantum
         // advantage is derived from it. Mirrors the backend QuantumComparisonStage.
-        const ms = config.model_size ?? "medium", wl = config.workload ?? "linear";
+        const ms = BENCH_MODEL_SIZE, wl = config.workload ?? "linear";
         // `metrics` goes in here. This used to call secFromConfig(config) with no metrics and then
         // re-thread `qber` by hand on the next line - so `secure_key_bits` fell to the ?? 256
         // fallback, and the row claimed QKD-mixed key material on runs that produced none. One field

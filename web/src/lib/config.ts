@@ -1,5 +1,5 @@
 // Single source of truth for the SPA's cost model / tier architectures / workload multipliers / the
-// medical-CNN shape / security + advantage weights / demo data sizes / in-browser-AI knobs.
+// medical-CNN shape / the retired advantage function's weights / demo data sizes / in-browser-AI knobs.
 //
 // The values are GENERATED from src/qsh/config/defaults.py by scripts/export_config.py
 // (config.defaults.json) — so the frontend never hand-duplicates the backend's numbers (this kills the

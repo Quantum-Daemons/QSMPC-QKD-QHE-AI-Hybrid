@@ -2,7 +2,7 @@
 
 Produces the comparison table the SPA Benchmark page consumes (CSV + JSON). Runs the
 classical CKKS path on every available backend (TenSEAL CPU, OpenFHE CPU, and the optional
-HEonGPU/hpmpc GPU path via our glue) and the quantum QHE path, on a small linear /
+HEonGPU GPU path through this project's binding) and the quantum QHE path, on a small linear /
 CNN / Transformer workload.
 
 CLI:  ``python -m qsh.benchmark.runner --workload linear --out results/``

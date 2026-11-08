@@ -14,8 +14,8 @@ bound at intensities the demo does not run.
 WHY NOTHING CAUGHT IT, which is the part worth keeping
 
 The refuted-band test constructs `FiniteKeyParams()` with no arguments and asserts the positive-key
-threshold lands inside a 5e6 to 2e8 band. Measured at both pairs: **3.84e7 pulses** at the retired
-0.5 / 0.1 and **1.40e7** at the shipped 0.3416 / 0.1417. Both sit inside the band, so that test
+threshold lands inside a 5e6 to 2e8 band (2e6 to 2e8 today). Measured then at both pairs: **3.84e7 pulses** at the retired
+0.5 / 0.1 and **1.40e7** at the shipped 0.3416 / 0.1417 (the test below computes today's). Both sit inside the band, so that test
 passes either way - a gate positioned exactly where the drift happens and unable to see it, because
 its tolerance is wider than the effect.
 
@@ -39,7 +39,7 @@ from qsh.qkd.finite_key import FiniteKeyParams
 #: Field name on the params dataclass -> field name on `QKDConfig`. Both dataclasses use the same
 #: names, but the mapping is written out so a future rename fails loudly here rather than silently
 #: comparing an attribute against itself.
-INTENSITY_FIELDS = {"mu_signal": "mu_signal", "mu_decoy": "mu_decoy"}
+INTENSITY_FIELDS = {"mu_signal": "mu_signal", "mu_decoy": "mu_decoy", "basis_prob": "basis_prob"}
 
 
 def test_a_bare_construction_matches_the_shipped_config():
@@ -87,12 +87,20 @@ def test_the_defaults_are_wired_to_config_rather_than_copied():
 def test_the_band_gate_could_not_have_caught_this():
     """Anti-tautology, against the real gate rather than an invented one.
 
-    The refuted-band test asserts the positive-key threshold falls in 5e6 to 2e8. Measured at both
-    intensity pairs, both land inside it, so it is green on the defect and on the fix alike. Recorded
-    here as arithmetic so the reason this file exists cannot quietly stop being true.
+    The refuted-band test asserts the positive-key threshold falls in 2e6 to 2e8. Computed at both
+    intensity pairs on the shipped channel, both land inside it, so it is green on the defect and on the fix
+    alike. Computed here so the reason this file exists cannot quietly stop being true.
     """
-    lo, hi = 5e6, 2e8
-    retired, shipped = 3.84e7, 1.40e7        # measured, 50 km channel
+    from qsh.config import get_config
+    from qsh.qkd.finite_key import ChannelParams, FiniteKeyParams, minimum_pulses_for_positive_key
+
+    q = get_config().qkd
+    channel = ChannelParams(distance_km=q.distance_km, fiber_loss_db_per_km=q.fiber_loss_db_per_km,
+                            detector_efficiency=q.detector_efficiency,
+                            dark_count_prob=q.dark_count_prob, misalignment=q.misalignment)
+    lo, hi = 2e6, 2e8
+    retired = minimum_pulses_for_positive_key(channel, FiniteKeyParams(mu_signal=0.5, mu_decoy=0.1))
+    shipped = minimum_pulses_for_positive_key(channel, FiniteKeyParams())
     assert lo < retired < hi, "the retired pair left the band; re-derive"
     assert lo < shipped < hi, "the shipped pair left the band; re-derive"
     assert retired != shipped, "the two pairs must differ or there was nothing to catch"

@@ -1,8 +1,7 @@
 """Shamir (t, n)-threshold secret sharing over a prime field GF(p).
 
 Used as the classical layer of the QSMS quantum-secure-summation protocol
-(Sutradhar, arXiv:2501.10083, 2025 -- `references/Efficient_Simulation_of_Quantum_
-Secure_Multiparty_Computation.pdf`). Any `t` of `n` shares reconstruct the secret;
+(Sutradhar and Om, Sci. Rep. 11, 2206, 2021; see `references/REFERENCES.md`). Any `t` of `n` shares reconstruct the secret;
 fewer reveal nothing (information-theoretic, in the field).
 
 This module is pure Python / NumPy and has no quantum dependency, so it is unit

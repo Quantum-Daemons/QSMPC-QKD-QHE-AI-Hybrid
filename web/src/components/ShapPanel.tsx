@@ -8,8 +8,8 @@
 // QCNN on a use case that ships no trained weights falls back to CKKS, and gating this panel on the
 // control made it assert that a quantum circuit produced a class that CKKS produced.
 // `isOfReportedClass` says whether the explained model is the one that produced the class this page
-// reports. It is TRUE on telecom and satellite, whose flows have no `private_inference` stage, and
-// false on finance/genomics/medical, which do. The paragraph below used to assert the false case
+// reports. It is true where the page's class comes from that model (telecom and satellite have no
+// `private_inference` stage; on the others it holds only when CKKS evaluated the explained model), and false otherwise. The paragraph below used to assert the false case
 // unconditionally - so on the two pages where the attribution is of the reported decision, the panel
 // told the reader not to read it that way. It survived because the error points toward caution and so
 // reads as rigour. `clientCompute` sets the flag explicitly at each explanation site.

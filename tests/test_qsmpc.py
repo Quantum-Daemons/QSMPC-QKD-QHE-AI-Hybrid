@@ -25,7 +25,7 @@ def test_shamir_threshold_hides_secret():
 
 
 def test_qsms_paper_example():
-    # Sutradhar 2025 worked example: t=3, n=7, d=11, X=2, Y=3 -> S=5
+    # Sutradhar and Om (2021) worked example: t=3, n=7, d=11, X=2, Y=3 -> S=5
     res = QSMS(n=7, t=3, prime=11).run([2, 3], seed=1)
     assert res.total == 5
     assert res.honest_statevector

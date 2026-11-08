@@ -1,8 +1,8 @@
 """RETIRED composite "quantum-advantage" score (QSMPC-FHE path against classical MPC-FHE).
 
-Retired from every page of the demo on 2026-10-23 and displayed nowhere. It is still computed in
-the full deployment: ``GET /api/benchmark`` returns it (``api/main.py``) and the comparison stage
-writes it into the run artifact (``qsh.orchestration.stages``). Removing it from both is deferred.
+Retired from every page of the demo on 2026-10-23 and displayed nowhere. Since Round 84 the full deployment
+does not compute it either: ``GET /api/benchmark`` (``api/main.py``) and the comparison stage
+(``qsh.orchestration.stages``) both carry ``advantage: None``. The module is kept for its own tests.
 
 Why it is retired, so nobody quotes it. Its communication ratio divides a CKKS byte ratio by the
 byte ratio of a classically SIMULATED state vector, which are not the same quantity. The Rate-1

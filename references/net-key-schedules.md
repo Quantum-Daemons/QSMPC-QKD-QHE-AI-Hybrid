@@ -47,7 +47,7 @@ asserts that it does.
 | draft-ietf-ipsecme-ikev2-mlkem-09, 2026-07-05 | 2 shared secret used like $`g^{ir}`$, 2.1 KE payloads, 2.2 recipient tests, 4 IANA, Appendix A | https://www.ietf.org/archive/id/draft-ietf-ipsecme-ikev2-mlkem-09.txt | 31307 | `f93e8c536b34ffe52dd6a281212b278a16573cbf532465ac473789e7951b155e` |
 | IANA IKEv2 parameters (Last-Modified 2026-10-28, 93,735 bytes, SHA-256 `0ca6b516ad31cb27201303f140b6f7b0bd0201affc4f6d95b516aec55b818603`; read 2026-11-03, the only change since the copy below is Notify 16448 CHILD_SA_PFS_INFO_SUPPORTED) | Transform Type 4: 19 = 256-bit random ECP, 36 = ml-kem-768; Type 2: 6 = PRF_HMAC_SHA2_384; Type 1: 20 = ENCR_AES_GCM_16 | https://www.iana.org/assignments/ikev2-parameters/ikev2-parameters.xml | 93531 | `34c2d1e89049a167b51296b82c155f3a3cbab669f9ef8b701fc8a03c4af52545` |
 
-**Status of ML-KEM in IKEv2, as of 2026-10-24.** Not an RFC. The IETF datatracker
+**Status of ML-KEM in IKEv2, as of 2026-11-08.** Not an RFC (IESG state RFC Ed Queue, RFC Editor state Awaiting First editor, no number assigned). The IETF datatracker
 (https://datatracker.ietf.org/doc/draft-ietf-ipsecme-ikev2-mlkem/) shows draft-ietf-ipsecme-ikev2-mlkem-09,
 latest revision 2026-07-05, intended status Proposed Standard, IESG state "RFC Ed Queue". IANA already
 lists `ml-kem-768` as Key Exchange Method 36 with the draft as its reference. The datatracker page is

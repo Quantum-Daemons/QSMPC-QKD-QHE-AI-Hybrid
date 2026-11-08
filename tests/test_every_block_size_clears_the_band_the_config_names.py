@@ -14,7 +14,7 @@ existed could not see it because it checked call sites rather than values.
 
 The threshold itself is COMPUTED, from `src/qsh/qkd/finite_key.py`, at the channel and the
 intensities this project actually ships. The band that used to be quoted here - "~5e3 to 1.1e4
-sifted bits", attributed to Rusca et al. - was wrong by about an order of magnitude and appears
+sifted bits", attributed to Rusca et al. - was too small (2.8 to 6.1 times at today's pair) and appears
 nowhere in that paper; see `finite_key.py` for the full record.
 
 HOW THE SCOPE IS DERIVED
@@ -22,7 +22,7 @@ HOW THE SCOPE IS DERIVED
 By introspecting the config dataclasses for every integer field whose name contains "pulses",
 rather than by naming the two keys known to matter. A key added tomorrow is in scope on the day it
 is added. A block size that legitimately cannot clear the band - the free-space downlink, where
-24.48 dB of loss at 800 km is physics rather than a setting - must be DECLARED here with its
+32.21 dB of loss at 800 km is physics rather than a setting - must be DECLARED here with its
 reason, so the exception is visible instead of absent.
 
 WHAT IS DELIBERATELY NOT ASSERTED
@@ -80,7 +80,7 @@ def _threshold(n_pulses_hint: int = 0) -> int:
 
     ROUND 47 REPLACED A CONSTANT HERE. This file previously carried
     `FINITE_KEY_FLOOR_SIFTED = 5_000` with the comment that it came from Rusca et al.'s band of
-    ~5e3 to 1.1e4 sifted bits. That band was wrong by about an order of magnitude AND was never in
+    ~5e3 to 1.1e4 sifted bits. That band was too small (by about an order of magnitude then) AND was never in
     that paper - see `src/qsh/qkd/finite_key.py`. A gate that hardcodes a threshold is a gate that
     goes stale silently when the threshold is corrected, which is what happened here: this file was
     written earlier in the same round that refuted its own floor.

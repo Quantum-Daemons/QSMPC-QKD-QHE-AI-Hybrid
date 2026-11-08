@@ -206,8 +206,11 @@ class QKDKeyAgreementStage(Stage):
         # satellite stage report theirs.
         if protocol != "e91":
             bus.metric("qkd_block", block_kind, self.name)
-            bus.metric("qkd_block_pulses", float(f"{result.block_pulses:.6g}"), self.name)
-            bus.metric("qkd_block_s", float(f"{result.block_pulses / params.source_rate_hz:.4g}"), self.name)
+            # A run whose QBER is over the abort threshold computes no finite key, so it has no block: this
+            # formatted `None` and raised until Round 86, on every aborted full-deployment run (a test found it).
+            if result.block_pulses is not None:
+                bus.metric("qkd_block_pulses", float(f"{result.block_pulses:.6g}"), self.name)
+                bus.metric("qkd_block_s", float(f"{result.block_pulses / params.source_rate_hz:.4g}"), self.name)
             bus.metric("qkd_finite_key_bits", result.secure_key_bits, self.name)
             bus.metric("qkd_finite_key_bound", "Rusca et al. 2018 (one decoy)", self.name)
             bus.metric("qkd_eps_sec", eps_sec, self.name)
@@ -215,9 +218,10 @@ class QKDKeyAgreementStage(Stage):
             bus.metric("qkd_intensities", intensities, self.name)
             bus.metric("qkd_mu_signal", source.mu_signal, self.name)
             bus.metric("qkd_mu_decoy", source.mu_decoy, self.name)
-            fk = params_for_source(source, eps_sec=eps_sec, deviation=deviation)
-            bus.metric("qkd_block_units_for_key",
-                       blocks_for_positive_key(*block_counts([(result.block_pulses, params)], fk), fk), self.name)
+            if result.block_pulses is not None:
+                fk = params_for_source(source, eps_sec=eps_sec, deviation=deviation)
+                bus.metric("qkd_block_units_for_key",
+                           blocks_for_positive_key(*block_counts([(result.block_pulses, params)], fk), fk), self.name)
         bus.metric("secure_key_bits", result.secure_key_bits, self.name)
         ctx.metrics.update(qber=result.qber, skr_per_pulse=result.secret_key_rate)
         if result.secure_key_bits >= 256:
@@ -258,7 +262,8 @@ class QKDKeyAgreementStage(Stage):
                         f"fold it into", self.name)
         else:
             bus.metric("qkd_mixed", 0, self.name)
-            bus.log("insufficient secure key; continuing PQC-only", self.name)
+            bus.log(f"insufficient secure key ({result.secure_key_bits} bits, below the 256 a session key needs); "
+                    f"continuing PQC-only", self.name)
 
 
 class OptiQKDStage(Stage):
@@ -301,8 +306,8 @@ class OptiQKDStage(Stage):
                            # it ran, else the fibre run's intensity pair (Round 84)
                            baseline=ctx.data.get("sat_qkd_params") or ctx.data.get("fibre_qkd_params"))
         bus.metric("qkd_skr_improvement_pct", round(res.improvement_pct, 1), self.name)
-        bus.metric("qkd_optimized_skr", round(res.best_skr, 6), self.name)
-        bus.metric("qkd_baseline_skr", round(res.baseline_skr, 6), self.name)
+        bus.metric("qkd_optimized_skr_per_pulse", round(res.best_skr, 6), self.name)
+        bus.metric("qkd_baseline_skr_per_pulse", round(res.baseline_skr, 6), self.name)
         bus.metric("qkd_optimized_qber", round(res.best_qber, 5), self.name)
         bus.metric("qkd_convergence_evals", res.convergence_evals, self.name)
         ctx.artifacts["optiqkd"] = {

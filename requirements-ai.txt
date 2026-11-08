@@ -1,5 +1,5 @@
 # AI + federated learning. Torch CUDA build is selected by your local CUDA at install time.
-# For Blackwell (sm_120) + CUDA 13, use a recent torch cu12x/cu13 wheel (see README).
+# For Blackwell (sm_120) + CUDA 13, use a recent torch cu13 wheel (docs/development.md; measured on 2.13.0+cu130).
 torch>=2.3
 torchvision>=0.18
 onnx>=1.23.0               # GHSA-xrch-8vh7-h656 (2026-10-20, fixed in 1.23.0) and four shape-inference advisories of the same day

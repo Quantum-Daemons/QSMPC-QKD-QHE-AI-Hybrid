@@ -179,6 +179,15 @@ supported platform, or `ExportWebAssembly.jl` out of WIP.
 **12 months**, and an advisory with no fix fails a dependency at any age. The window is wide so that a stable cryptographic
 library with few releases is not refused for being finished. Commercial use must be allowed.
 
+**One recorded exception (the owner's choice, 2026-11-08).** `RUSTSEC-2025-0141`: bincode 2.0.1, reached through Polytune, is
+unmaintained. No vulnerability is reported against it and no fixed version exists, so `wasm/qsh-mpc/deny.toml` ignores that one id. Reopens if a
+vulnerability is reported against bincode 2.x, or if Polytune changes the dependency; `.github/workflows/audit.yml` runs `cargo deny` on a schedule.
+
+**The GPU tier's licences and the published timings (read 2026-11-08; a reading of the texts, not legal advice).** The cuQuantum SDK's "NVIDIA SOFTWARE LICENSE (version
+August 18, 2021)", the CUDA Toolkit EULA and cuTensorNet's shipped LICENSE contain no clause on benchmarks or on publishing results, and CUDA-Q is Apache-2.0, so
+the timings in `models-and-benchmarks.md` stand. A different NVIDIA agreement, the enterprise-software license, does bar disclosing benchmark results; it is not the licence these
+libraries carry. Re-read on an upgrade: https://docs.nvidia.com/cuda/cuquantum/latest/license.html and https://docs.nvidia.com/cuda/eula/index.html.
+
 Only the two submodules that code actually builds against are vendored:
 
 ```bash

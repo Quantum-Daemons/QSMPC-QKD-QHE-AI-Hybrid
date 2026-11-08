@@ -33,10 +33,6 @@ RUNHOOK = REPO / "web" / "src" / "lib" / "usePipelineRun.ts"
 #: bug again. Keeping the reasons in the test means the next person meets them at the point of
 #: failure rather than having to reconstruct why the list has holes.
 INTENTIONALLY_ABSENT = {
-    # The model-size selector was removed deliberately (see PipelineControls) and the read defaults to
-    # "medium". The consequence is cosmetic but real: the benchmark panel renders a permanent "medium"
-    # tag and a size column that can no longer change.
-    "model_size",
     # No combiner control exists on any run surface, so `combiner: config.combiner ?? null` in the
     # signed payload always records null. The Overview page's claim that the combiner is selectable at
     # configuration time is about the FULL deployment, not the browser demo.

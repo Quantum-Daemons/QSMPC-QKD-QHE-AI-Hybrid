@@ -1,8 +1,8 @@
 """Quantum Oblivious Transfer (BB84 + bit commitment), as a sketch.
 
 Follows Zhang et al., *Experimental SMPC from Quantum Oblivious Transfer with Bit
-Commitment*, npj Quantum Information 2026 (``references/Experimental_secure_
-multiparty_computation_from_quantum_oblivious_transfer_with_bit_commitment.pdf``):
+Commitment*, npj Quantum Information 12, 76 (2026), https://www.nature.com/articles/s41534-026-01219-w
+(its CC BY-NC-ND 4.0 PDF is not bundled; see ``references/REFERENCES.md``):
 a 1-out-of-2 OT is built from decoy-state BB84 plus a hash-based bit commitment,
 and OT yields Private Set Intersection (PSI). PSI on bank blacklists is the paper's
 headline application and our Finance/AML use case.

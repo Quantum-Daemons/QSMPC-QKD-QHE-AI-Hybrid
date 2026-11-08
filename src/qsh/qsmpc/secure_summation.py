@@ -1,9 +1,8 @@
 r"""QSMS - Quantum Secure Multiparty Summation (Shamir + d-level QFT).
 
 Faithful simulation of the (t, n)-threshold protocol of
-Sutradhar, *Efficient Simulation of Quantum Secure Multiparty Computation*,
-arXiv:2501.10083, 2025 (``references/Efficient_Simulation_of_Quantum_Secure_
-Multiparty_Computation.pdf``).
+Sutradhar and Om, *An efficient simulation for quantum secure multiparty computation*,
+Sci. Rep. 11, 2206 (2021), and its later single-author posting arXiv:2501.10083 (``references/REFERENCES.md``).
 
 Protocol (per the paper, steps 5-11):
   1.  Each party Shamir-shares its secret over GF(d) (d prime, n <= d <= 2n).
@@ -126,7 +125,7 @@ class QSMS:
         if self.prime <= self.n:
             raise ValueError("prime must exceed n")
         # The paper's field bound, now RECORDED rather than merely documented -- and deliberately
-        # not fatal. Sutradhar defines QSMS over GF(d) with n <= d <= 2n (arXiv:2501.10083), and
+        # not fatal. Sutradhar and Om define QSMS over GF(d) with n <= d <= 2n (Sci. Rep. 11, 2206), and
         # staying inside it is what keeps d**t within the statevector bound. But the sum must also
         # not wrap mod d, and an application whose secrets exceed 2n therefore CANNOT satisfy both:
         # the MCP allele-pooling tool picks 2^31-1 for exactly that reason. Raising here would force

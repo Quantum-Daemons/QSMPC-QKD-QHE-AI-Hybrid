@@ -223,7 +223,7 @@ def test_optiqkd_says_it_scores_the_runs_own_bound_and_applies_nothing(browser) 
     assert "nothing it finds is applied to this run" in line, line
     assert "basis bias" in line and "pZ = 0.5" in line, line
     # Its default IS the run's per-pulse rate (both rounded as emitted: 1e-6 and 1e-9).
-    assert abs(m["qkd_surrogate_skr_default"] - m["skr_per_pulse"]) < 1e-6
+    assert abs(m["qkd_surrogate_skr_per_pulse_default"] - m["skr_per_pulse"]) < 1e-6
 
 
 def test_optiqkd_reports_the_finite_key_its_tuned_intensities_would_give(browser) -> None:

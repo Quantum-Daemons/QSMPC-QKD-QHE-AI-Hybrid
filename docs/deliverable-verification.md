@@ -276,7 +276,7 @@ Round 39 added the marker so the date is enforced rather than remembered:
 a gate can fire on an item whose defining property is that nobody is editing it. Four rounds of
 "still blocked" happened because the blocker was a sentence. **Do not move the date** when it goes
 red - wire the Space or delete it and the `remote` tier, then stamp this paragraph. Moving the date
-is how the arXiv deadline in item 11 reached Round 39.
+is how the arXiv deadline in item 11 reached Round 39. [Discharged by the stamp above: decided against wiring it, and the `remote` tier is gone; `spaces/qsh-inference/` stays as a record.]
 
 **OpenFHE `EvalBootstrapSetup` SIGSEGV: THE REOPEN CONDITION HAS BEEN MET. Round 55.**
 Measured on this EL9 host with `QSH_REQUIRE_OPENFHE_BOOTSTRAP=1`, three consecutive runs:
@@ -458,7 +458,11 @@ So Rust is not missing from the client-side stack, it is declined, and WASM is p
 reopen this: Zama shipping FHE **evaluation** in the WASM target, or any Rust FHE library doing so under
 a licence that grants patent rights.
 
-### Additional models: DECIDED, re-stated 2026-08-15 (Round 43) - no additional model
+### Additional models: DECIDED, re-stated 2026-11-08 (Round 86) - none further needed today
+
+**Re-stated 2026-11-08.** Two models were added after the Round 43 statement, each to serve a page rather than to chase a trigger below: `telecom_ids.nidd`
+(Round 49, a licensed real corpus for telecom) and `satellite_comms.student` (Round 86, the CKKS student of the published forecaster). The binding
+constraint below is unchanged, and no further model is needed today. The medical CNN's MPC path, the owner's request of 2026-11-07, reuses the published student.
 
 **Moved here from `docs/browser-verification-checklist.md` in Round 34, and the move is the point.**
 That file is deliberately untracked and gitignored, so a deferred item whose resolving condition was
@@ -487,7 +491,7 @@ the date go stale.
 |---|---|
 | A bootstrapped CKKS CNN cheap enough for WASM at N about 8192 | cheapest bootstrapped ImageNet CNN is $`N = 2^{15}`$ |
 | A real, labelled, commercial-OK QKD attack corpus | closest is QF-LOG: synthetic, four classes, subscription-gated |
-| A fidelity quantum kernel beating a random forest at 8 qubits or fewer | **NO LONGER BLOCKED - Round 55.** The blocker read "concentration bound says >= 15 qubits"; arXiv:2605.31449 says 15 is where the fidelity kernel FAILS and that concentration worsens with qubit count, so 8 qubits is the favourable regime. This falsifier is live and unblocked |
+| A fidelity quantum kernel beating a random forest at 8 qubits or fewer | **NO LONGER BLOCKED - Round 55.** The blocker read "concentration bound says >= 15 qubits"; arXiv:2605.31449 says 15 is where the fidelity kernel FAILS and that concentration worsens with qubit count, so 8 qubits is the favourable regime. Measured 2026-10-30 on finance and medical (pre-registered, five seeds): no quantum kernel, GP or QELM/QRC beats a tuned RBF-SVM, so **declined there** ("Round 86, 2026-11-08" below); telecom's kernel lost to its forest (`references/model-choice-vs-2026-practice.md`) |
 | An encrypted transformer or tabular foundation model on any finance tabular benchmark | none published |
 | Anyone publishing an encrypted BreastMNIST result above this project's | two exist, both simpler architectures |
 | **A latent-space encoder whose latent fits 4096 CKKS slots at multiplicative depth 1 AND runs under `onnxruntime-web`** | Kim et al. (arXiv:2506.15258) encode chest X-rays with a VQGAN latent at downsampling factor 8, but f=8 on this project's 28x28 gives 3.5x3.5, so the transfer is the open measurement rather than a citation. Added Round 34 |
@@ -1798,7 +1802,7 @@ rounds of being asked.** Measured rather than asserted: a grep of all 16 markdow
 experience`, `HCI`, `cognitive load` and `eye-tracking` returns **zero** hits; widening to `interface
 design`, `visualis/visualiz`, `readability`, `legibility` and `colour-blind` returns two, neither a
 source; all 15 bundled PDFs are quantum, cryptography or business-of-quantum papers. There is no HCI
-source in the reference set at all. So the UX rows rest on the **WCAG 2.2 criteria themselves** and
+source in the reference set at all. [2026-11-08: the counts have moved (20 markdown files, 7 PDFs tracked plus 4 local); the finding has not, and `references/REFERENCES.md` holds the re-measurement.] So the UX rows rest on the **WCAG 2.2 criteria themselves** and
 on the checklist's own measurement procedures, and `references/REFERENCES.md` now says so. It is
 deliberately NOT resolved by adding one HCI citation to make the sentence true, because a citation no
 row derives from is the decoration-condition failure `QC16` exists to name.
@@ -2110,7 +2114,7 @@ for "the number without the certification" is how this survived seven surfaces.
   `undefined`. The comment above the broken line still called the rename "conditioned rather than
   done here", a sentence falsified in the same commit that broke the page.
 - **Two rendered strings promised a "Source rate control in the Parameters panel" that did not
-  exist.** Six INERT controls have been found here - rendered, read by nothing. This was the inverse
+  exist.** Six INERT controls had been found here by then (seven since: `qrng_eps_log2`) - rendered, read by nothing. This was the inverse
   and worse: a visitor could not even go and look. The control now exists, one per channel
   (`qkd_source_rate_mhz`, `sat_source_rate_mhz`), separate for the same reason `qkd_distance_km` and
   `sat_distance_km` are.
@@ -2184,7 +2188,7 @@ papers are kept because that distinction was checked.
 
 ### Mathematical notation: GitHub markdown math, adopted where it is safe
 
-Display equations use `$$...$$` and inline uses `` $`...`$ `` - the code-span form, which degrades to
+Two things are not converted: `F0.5` stays bare at every site, and a quotation stays byte-exact. Display equations use `$$...$$` and inline uses `` $`...`$ `` - the code-span form, which degrades to
 visible backticks in a non-rendering viewer and cannot be captured by a stray `$`. GitHub documents
 four delimiter forms and no per-surface difference between them.
 
@@ -3152,6 +3156,8 @@ tagged-fraction bound (QIC 4, 325). None of the asserted numbers originated here
 | decoy $`R/\eta`$, flat, linear in $`\eta`$ | 0.11 | 0.1136 |
 | non-decoy $`R/\eta^2`$, flat, quadratic | 0.15 | 0.1510 |
 
+[2026-11-08: the two "Published" values below the distances were not read from the paper. 0.11 is its closed form above Eq. (12), which has no $`q`$; 0.15 is this model's own output. See "Round 86, 2026-11-08" below.]
+
 The trap this closed is worth keeping: the published curves are plotted for efficient BB84 where the
 sifting factor $`q \to 1`$, while this project runs standard BB84 at $`q = 1/2`$. Reproducing them with
 $`q = 1/2`$ gives values at exactly HALF the published ones - close enough to read as a fitting
@@ -3950,8 +3956,8 @@ figures, 0.022372 against 0.029744.
 `decoy_reference.py` asserted its own outputs as the paper's: $`R/\eta \approx 0.11`$ and $`R/\eta^2 \approx 0.15`$ appear
 nowhere in Ma et al.'s prose, and the module reached them by passing `q_sift=1.0` while the paper
 introduces the figure those curves come from with "where q = 1/2 with standard BB84". Deliberately NOT
-resolved - deciding it needs values read off a plotted figure - and the docstring now carries that
-status instead of the claim.
+resolved then - deciding it needs values read off a plotted figure - and the docstring carried that
+status instead of the claim. [Resolved 2026-11-08, "Round 86, 2026-11-08" below.]
 
 `export.opset` does NOT still render 0; that sentence was written in the Round 52 log from a Round 50
 note rather than from the page. It renders 17 for `telecom_ids.qml` and is correctly OMITTED for the
@@ -8078,7 +8084,7 @@ place, which would have depended on GitHub Support to drop the pull-request refs
   tag) returns 404 under the organisation's URL and under the repository's former personal URL.
 - **Commit ids and PR numbers this register and the log cite before this entry refer to the old
   history**, which is private now; each commit maps through the kept commit map. PR #85's merge,
-  f578dc3 there, is 6debfe9 here.
+  f578dc3 there, is 6debfe9 here. [2026-11-06: the second rewrite below changed these ids again; ids cited above that section no longer resolve in the public repository.]
 - Five files still linked the repository's former personal URL: the four QCNN notes (not published)
   and the Space's README (not published). They link the organisation's URL now, as the 11 published
   model cards on Hugging Face already did, so no card needed republishing.
@@ -8535,8 +8541,12 @@ and `web/scripts/check_student_cost_rows.mjs` hold them, and each was seen to fa
 - **BLOCKED UNTIL 2026-12-03.** The AI Act's Article 111(4) transition for systems placed on the market before 2 August
   2026 ends on 2 December 2026 (`docs/ai-act-art50-gap-analysis.md`, `docs/pqc-roadmap.md`). Re-read the Commission's
   Article 50 guidance and the Code of Practice for anything issued at the transition's end, and correct both documents.
-- **BLOCKED UNTIL 2026-12-03.** ETSI's TB approval of GS QKD 015 ed3 was scheduled for 2026-12-02 (this register,
-  above). Read its status at ETSI and update the QKD-SDN control plane's references.
+- **BLOCKED UNTIL 2026-12-03.** ETSI's TB approval of GS QKD 015 ed3 and GS QKD 014 ed2 was scheduled for 2026-12-02 (this register,
+  above). Read their status at ETSI, update the QKD-SDN control plane's references and name the versions where the pages cite them.
+- **BLOCKED UNTIL 2026-12-20.** EO 14413 section 3(a) directs a National Quantum Strategy update within 180 days, about 2026-12-19 (this register,
+  above). If it or section 5 carries a migration or deployment directive, cite it in `docs/pqc-roadmap.md` as a roadmap instrument.
+- **BLOCKED UNTIL 2026-12-19.** The FHE.org 2027 poster's notification is due 2026-12-18, and until then `main` keeps what the poster states and cites
+  (`tests/test_poster_freeze_until_the_notice.py`). After it: lift that gate and take up the node-seal upgrade.
 - **BLOCKED UNTIL 2026-12-20.** The FAR Council's proposed rule was due within 180 days, about 2026-12-19
   (`docs/pqc-roadmap.md`, this register above). Read the Federal Register and update the roadmap's row.
 
@@ -8987,3 +8997,55 @@ Each fix below was checked against its primary source or the code:
 
 The Telemanom detector itself is being re-implemented and retrained on ESA-ADB's own split, as the owner chose. It is
 recorded separately, and nothing here changes the published model.
+
+### Round 86, 2026-11-07 to 2026-11-08: what merged, and the audit of the planning records
+
+**What merged since the second rewrite** (pull-request numbers restart at 1 there; each line is the merge's own description).
+
+| PR | What it did |
+|---|---|
+| #1 | The OpenFHE backend moves to 1.6.1 |
+| #2 | The first batch of the five read-only fact-checks of the public pages: about 45 findings that change no published artefact |
+| #3 | The telecom quantum comparison made like for like |
+| #4 | Six Hub cards republished with their corrected text, and their pins recorded |
+| #5 | The satellite pages' text corrected against the satellite fact-check |
+| #6 | The satellite forecaster retrained by ESA-ADB's Telemanom-ESA recipe at 30 s and scored by ESA-ADB's rules |
+| #7 | The forecaster's third reading: no floor, a step flagged where at least k of the six channels flag it, k chosen on the validation months |
+| #8 | A new satellite CKKS student, six dot products over the last 8 rows (294 parameters), replacing the logistic student that scored 0 on the test half |
+| #9 | Six satellite claims corrected at their sources, and the student published |
+| #10 | The student's CKKS runs in a Web Worker; samples are written at float32 precision; Khmelev et al.'s session is counted from the 28 degrees where their tracking started |
+| #11 | Two wording fixes on the satellite page |
+| #12 | The medical fact-check: the student's note, the timing row split into the student and the regression, the malignant class's own precision-recall curve, the int8 reason, the IID caveat |
+
+Findings worth keeping from those:
+
+- **A sample's rounding is a defect in the benchmark, not in the model.** OPS-SAT's sample reproduced 0.9509 against the card's 0.9660: six-decimal features flipped 8 of 529 segments. Its graph was exact
+  (0.9681, 0.9189, 0.9660). Samples are now written at float32 precision, and the sample reproduces the card.
+- **The student's CKKS in the page's thread blocked it.** 138 long tasks and 21.8 s of a 24.5 s run; in a Web Worker 4 tasks and 0.57 s locally, 3 tasks and 381 ms on the deployed site. The CKKS itself is about 21 s either way.
+- **The medical page's curve was for the majority class.** On BreastMNIST, class 1 is "normal, benign", 73% of the rows. The malignant curve reads ResNet-18 30 of 42 (0.714), ResNet-50 13 of 42 (0.310), student 24 of 42.
+
+**The audit of 2026-11-08.** Every distinct line of the project's private plans, orders and running notes was read against `main` in eight passes. A sample of 15 findings across the passes was re-checked by hand and all held. Most of
+what the passes found was a claim that outlived its code, in the project's most common form: a fix that reached one place. This entry records what it changed and decided.
+
+- **The decoy reference values are resolved.** Ma et al.'s Figure 2, read on the rendered page, starts near $`2.5\times10^{-3}`$ per pulse at 0 km, and its caption gives 142.05 km. At $`q = 1/2`$ this model gives $`2.56\times10^{-3}`$ and 142.19 km, and at $`q = 1`$ it would start at $`5.1\times10^{-3}`$. So the curve is at the $`q`$ the paper names and the model is right there. $`R/\eta \approx 0.11`$
+  is the paper's low-loss closed form above its Eq. (12), which carries no $`q`$ (0.1124 at its $`\mu = 0.48`$). $`R/\eta^2 \approx 0.15`$ has no published counterpart and is this model's own output. `tests/test_decoy_reference.py` says which is which and computes the closed form.
+- **Quantum kernels, a GP classifier on a quantum kernel, and QELM / QRC are declined for finance and medical.** Pre-registered (criteria hashed before any run, 2026-10-30), five seeds, on the QCNN experiment's own rows and an exact state vector. Worth adding only if a method beats the shipped QCNN by a supported margin and also beats a classical RBF-SVM given the same hyperparameter search.
+  All 14 quantum pairs fail the second test. The closest, an IQP projected kernel on finance, is $`+0.010`$ against the RBF-SVM, 95% interval $`[-0.008, +0.036]`$.
+
+  | method | finance minority F1 | medical accuracy |
+  |---|---|---|
+  | shipped QCNN | $`0.787 \pm 0.072`$ | $`0.893 \pm 0.015`$ |
+  | logistic regression | $`0.860 \pm 0.015`$ | $`0.953 \pm 0.027`$ |
+  | RBF-SVM, classical control | $`0.905 \pm 0.025`$ | $`0.953 \pm 0.022`$ |
+  | QSVC, fidelity kernel | $`0.892 \pm 0.016`$ | $`0.951 \pm 0.025`$ |
+  | GP on a quantum kernel | $`0.889 \pm 0.020`$ | $`0.949 \pm 0.024`$ |
+  | QELM / QRC | $`0.890 \pm 0.028`$ | $`0.935 \pm 0.018`$ |
+
+  The gain over the QCNN comes from using a kernel machine, and a classical one gets the same gain: on this encoding the fidelity kernel is exactly $`\prod_j \cos^2((\theta_j - \theta'_j)/2)`$, and at the bandwidths validation chose it aligns 0.985 and 0.992 with the RBF kernel. *Reopens if* one of them beats a tuned RBF-SVM under pre-registered criteria on fresh seeds.
+- **A citation corrected.** arXiv:2501.10083 is one author's reworking of Sutradhar and Om, Sci. Rep. 11, 2206 (2021), which the code and the references now cite. CC BY 4.0 permits the reworking with credit, so the bundled PDF stays, and `DATA_LICENSES.md` section 8 records both licences.
+- **One recorded exception to the dependency rule** (bincode 2.0.1 through Polytune) and **the NVIDIA licences read for the published timings**: both in `docs/development.md`.
+- **The ML-KEM in IKEv2 status re-read at the datatracker on 2026-11-08**: still draft-09, IESG state RFC Ed Queue, RFC Editor state Awaiting First editor, no number assigned.
+- **Small defects fixed**: the full deployment's band message names its count; the protocol read-out and the QKD fields say so under PQC-only; the generic graph node names the operation that runs; `/value` carries the simulated-channel banner; the medical page says federated averaging is not by itself a privacy guarantee; the per-pulse fractions are named `_per_pulse`; `QKDParams.basis_prob` reads config; two student notes follow their generator.
+- **New gates**: the IDS signature tables in Python and TypeScript agree (`tests/test_r86_ids_signature_tables_agree.py`); every merged pull request has a line above (`tests/test_every_merged_pr_is_in_the_record.py`); the poster's parameters and cited files stay put until the notice (`tests/test_poster_freeze_until_the_notice.py`).
+
+Left for the owner, each named where it is decided: republishing the two student cards (the note changed locally); which of the planned-and-not-built items (3-to-5-party PSI, Quantum RF, the VAE filter, WebM export, a stage on hpmpc) to build, which the owner asked to have judged against the code and the literature rather than declined.

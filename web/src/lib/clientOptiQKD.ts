@@ -42,7 +42,7 @@ const skrModel: Model = (p, prm, fEC = qkdCfg().error_correction_eff) => {
   // Measured gap while it was left behind: the surrogate baseline read 0.001966695848615933 on
   // fibre against `bb84()`'s 0.001976547318720314 (0.498% low) and 4.793756674e-5 against
   // 5.552428392e-5 on the free-space downlink (13.664% low), and both numbers are printed in the
-  // same stage - `qkd_surrogate_skr_default` beside `skr_per_pulse`.
+  // same stage - `qkd_surrogate_skr_per_pulse_default` beside `skr_per_pulse`.
   const eDet = eDetForBound(p);
   const siftRatio = prm.basisProb ** 2 + (1 - prm.basisProb) ** 2;
   // THE SHARED BOUND, not a fifth copy of its algebra. This file carried its own transcription and

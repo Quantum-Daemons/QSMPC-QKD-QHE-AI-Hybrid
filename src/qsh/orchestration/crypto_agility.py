@@ -11,8 +11,8 @@ the Transition to Post-Quantum Cryptography*, 23 June 2025, section 3.2):
 
 This registry implements the first half of that definition and deliberately does **not**
 implement the second. It maps a *family* (kem, qkd, fhe, mpc, sig) to named providers so a
-pipeline can be built with ML-KEM<->hybrid, QKD<->PQC-only, TenSEAL<->OpenFHE (the
-linear-FHE half of the hybrid), or MPyC<->MP-SPDZ (the non-linear-MPC half) without touching
+pipeline can be built with ML-KEM<->hybrid, QKD<->PQC-only or TenSEAL<->OpenFHE (the
+linear-FHE half of the hybrid; the `mpc` family has one provider, MPyC) without touching
 stage code -- so a future PQC migration, or the withdrawal of a broken primitive, is a
 configuration change rather than a rewrite.
 

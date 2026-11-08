@@ -177,9 +177,9 @@ export const makeDefaultParams = () => ({
   aml_transactions: dataCfg().aml_transactions,
   qubits: benchCfg().quantum_qubits,
   qrng_eps_log2: qrngCfg().security_epsilon_log2,   // LHL extractor security 2^this (toeplitz/seedless)
-  qsmpc_op: "",          // "" = use the use case's default
+  qsmpc_op: "",          // "" = the use case's default, which ParameterPanel names
   prime: 0,              // 0 = use config default
-  inference: "",         // "" = use the use case's default
+  inference: "ckks",     // "ckks" | "qcnn" where a trained circuit ships
   qrng_post: qrngCfg().post_processing,             // "von_neumann" | "toeplitz" | "seedless"
   qkd_protocol: qkdCfg().protocol,                  // "bb84" (decoy) | "e91" (CHSH) — OptiQKD model
   // The satellite channel. `satellite_qkd` and `qsdc_telemetry` have read these four keys since the
@@ -248,7 +248,8 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const [fhe, setFhe] = useState(DEMO_CRYPTO.defaults.fhe);
   const [mpc, setMpc] = useState(DEMO_CRYPTO.defaults.mpc);
   const [sig, setSig] = useState(DEMO_CRYPTO.defaults.sig);
-  const [workload, setWorkload] = useState("linear");
+  // Pinned: the browser's cost model reads "linear", and the Workload selector left in Round 18.
+  const workload = "linear";
   // On by default where it is real. It runs a client-side FedAvg over the page's own bundled sample,
   // which is worth showing without making a visitor find a checkbox - but only two use cases HAVE such
   // a sample, so `buildConfig` gates the flag on `runsFederated`. The state is kept so the flag can
@@ -520,7 +521,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
 
   return {
     usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
-    workload, setWorkload, qfl, setQfl, optiqkd, setOptiqkd,
+    workload, qfl, setQfl, optiqkd, setOptiqkd,
     publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
     params, setParams, resetParams,
     runId, state, events, active, done, metrics, signature, artifacts, benchmark, diagramConfig,

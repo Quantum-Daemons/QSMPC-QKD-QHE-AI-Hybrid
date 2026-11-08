@@ -183,7 +183,7 @@ preprocessing (ALIOTH). The model class is held fixed across all of them.
 | healthcare | ResNet teacher -> 3,226-param CNN student, CKKS | **defensible, and ahead of its direct baselines** |
 | genomics | linear per-SNP PRS + secure summation | **model correct, privacy framing wrong** |
 | satellite | Telemanom LSTM + CKKS-linear student | **defensible as stated; the danger is misstating it** |
-| telecom | 8-class QKD IDS, RF + quantum-kernel SVC + QNN | **weakest, and the quantum half is in a regime documented not to work.** Separately: **no encrypted tier existed at all** - see below, it is being added this round |
+| telecom | 8-class QKD IDS, RF + quantum-kernel SVC + QNN | **weakest; the quantum half lost to its classical comparators, cause unknown (the reading that said why is withdrawn below).** Separately: **no encrypted tier existed at all** - see below, it is being added this round |
 
 ## Healthcare: ahead of the two papers that do the same thing
 
@@ -314,7 +314,7 @@ to reach for if anyone proposes replacing the Telemanom teacher, not the one tha
 It is cited here and in no other file, including `references/REFERENCES.md`, which is where a paper this
 load-bearing should have an entry with its authors and date.
 
-## Telecom: the weakest vertical, and the quantum half is below its own threshold
+## Telecom: the weakest vertical
 
 Two findings, both of which this project should absorb rather than argue with.
 
@@ -480,7 +480,7 @@ behind.
 |---|---|---|
 | Finance | **No.** The US-UK PETs Prize Challenge (Track A, financial crime) concluded March 2023, its SWIFT data was never released, no leaderboard was published, and no successor exists. | Anchor on the plaintext AMLworld number: GFP+XGBoost minority-class F1 **0.6323** on HI-Small (NeurIPS 2023 D&B). This repository measures **0.1519** against it and does not close the gap - see the correction below. |
 | Medical | **No** privacy-preserving one. MedMNIST v2 has a real plaintext leaderboard; FeTS is federated with no cryptography; MedPerf is federated *evaluation* only. | Compare to MedMNIST plaintext. Every named production deployment is plain FL with no cryptographic guarantee, so adding CKKS puts this ahead of them rather than level. |
-| Genomics | **Yes, and it is the only one.** iDASH is live - 7 Nov 2026, Dallas - with a published rubric. Track 1 is homomorphic evaluation of a pretrained decoder, scored on a correlation term with a **60-minute disqualification**. | The one vertical where an external scoring rubric exists. Note that iDASH publishes participating teams but **not scores**, so the rubric is citable and a recent iDASH *number* is not. |
+| Genomics | **Yes, and it is the only one.** iDASH 2026 (scheduled for 7 Nov 2026, Dallas) has a published rubric. Track 1 is homomorphic evaluation of a pretrained decoder, scored on a correlation term with a **60-minute disqualification**. | The one vertical where an external scoring rubric exists. Note that iDASH publishes participating teams but **not scores**, so the rubric is citable and a recent iDASH *number* is not. |
 | Telecom | **No.** Two 2026 surveys say so in their own words, one of them noting it "could not compare the papers it reviewed" for lack of standard protocols. | The synthetic-corpus decision looks better after this sweep, not worse - see below. |
 | Satellite | **No**, and no *cryptographic* privacy work at all. The closest is plain FedAvg on ESA-ADB (Atefrad & Karami 2025, F0.5 0.86, precision 0.93, AUC 0.85), which lists differential privacy and secure aggregation as **future** work - the same category the Medical row already discounts. ESA-ADB is the credible plaintext benchmark. | Genuinely novel, which cuts both ways: nothing to be judged against, and nothing to be validated by. |
 

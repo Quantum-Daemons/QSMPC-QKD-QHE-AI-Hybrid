@@ -108,7 +108,7 @@ genomics pages - node-seal **CKKS** (a genuine homomorphic linear layer) + a rea
 garbled-circuit 2PC** for the non-linear argmax, so those FHE/MPC figures are **measured client-side,
 zero VPS compute** (telecom and satellite run a CKKS check of a published student and no 2PC:
 [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt)). The model and the data are
-public, the PSI's two banks are notional parties in one tab, and the secure-aggregation step keeps
+public, the PSI's two banks are notional parties in one tab with generated account lists, and the secure-aggregation step keeps
 nothing private between the parties ([what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)), so this demonstrates the
 computation rather than a privacy property.
 
@@ -145,11 +145,11 @@ SHAP explanation. The architecture canvas makes the **MPC-FHE secret-sharing ove
 explicit - linear layers cross as a **CKKS ciphertext**, non-linear layers as **secret-shares**. The
 **E2E Orchestration** page draws the same canvas for any use case, and for its generic
 demo between Party A and Party B, in an Architecture tab beside the stage-order graph. In
-the **public demo** (`?demo=client`) every use case runs **entirely in the browser**, with **real,
+the **public demo** (a client-only build) every use case runs **entirely in the browser**, with **real,
 measured FHE/MPC** (node-seal CKKS + a Polytune garbled-circuit 2PC) on the pages whose flow has a
 private-inference stage, and an in-browser federated stage on every finance and medical run (the
 "Quantum Federated Learning" label notwithstanding, nothing quantum is computed in it) - zero `/api`
-compute; the **full local** deployment adds the server-side PennyLane QFL + the real MCP server. See [`docs/architecture.md`](architecture.md)
+compute; the **full local** deployment adds the real MCP server, and a direct `POST /api/run/medical_fl` with `qfl` set and no `dataset` trains the server-side PennyLane QFL (no page sends that: the medical page federates its CNN). See [`docs/architecture.md`](architecture.md)
 for the full diagram.
 
 ## What the trained QCNNs are

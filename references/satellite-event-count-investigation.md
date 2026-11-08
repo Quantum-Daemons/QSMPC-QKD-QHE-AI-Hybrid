@@ -119,7 +119,7 @@
 > wrong comparator: Table 2 scores all events excluding communication gaps, i.e. anomalies PLUS
 > annotated rare *nominal* events, while this project scores anomalies alone. The like-for-like row is
 > Supplementary Table 9, Telemanom-ESA-Pruned, **corrected event-wise F0.5 0.968**, and that is what
-> the registry, the README, both model cards, `config.defaults.json`, `report/build_data.py` and the
+> the registry, the README, both model cards, `config.defaults.json`, the technical report's data script and the
 > trainer have all carried since Round 24.
 >
 > `docs/findings.md` (the README until Round 80) links here in the present tense, so a reader arrives at a page whose opening sentence

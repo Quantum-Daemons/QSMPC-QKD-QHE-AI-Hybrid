@@ -67,7 +67,7 @@ if [ -f .env.demo ]; then
            if [ "$n" -ge 3 ] && [[ ${lab[n-2]} =~ ^(co|ac|go|or|ne|com|net|org|gov|edu)$ ]]; then
              d="${lab[n-3]}.${lab[n-2]}.${lab[n-1]}"
            elif [ "$n" -ge 2 ]; then d="${lab[n-2]}.${lab[n-1]}"; fi
-           printf '%s\n%s\n%s\n%s\n%s\n' "$h" "$ssh_user" "${QSH_DEMO_PROVIDER:-}" "${PROXY_NETWORK:-}" "${QSH_PRIVATE_NAMES:-}"
+           printf '%s\n%s\n%s\n%s\n%s\n%s\n' "$h" "$ssh_user" "${QSH_DEMO_PROVIDER:-}" "${PROXY_NETWORK:-}" "${QSH_DEMO_DIR:-}" "${QSH_PRIVATE_NAMES:-}"
            printf 'DOMAIN=%s\n' "$d") )
   public=$( (set -a; . ./.env.demo >/dev/null 2>&1; set +a; printf '%s' "${QSH_PUBLIC_HOSTS:-}") )
   leaked=""

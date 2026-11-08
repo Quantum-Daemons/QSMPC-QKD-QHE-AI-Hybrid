@@ -33,8 +33,8 @@ implements that paper's equations, and on this project's own 50 km channel, at t
 intensities shipped until Round 47, it puts the positive-key threshold at **~1e5
 sifted bits, about 4e7 pulses** - an order of magnitude above the band that was
 quoted. Lucamarini et al., *Opt. Express* **21**, 24550 (2013) put "1.4x10^5
-counts" as "the smallest sample size providing a positive rate" at 50 km, which
-agrees with the computed figure and always did.
+counts" as "the smallest sample size providing a positive rate" at 50 km, within an
+order of magnitude of the computed figure at either pair of intensities.
 
 Quoted as an order of magnitude on purpose. Checked against Rusca et al.'s
 published Table I it reproduces the 26 dB row under the paper's dead-time convention
@@ -43,12 +43,12 @@ then was a test channel that applied the detector twice). What no accuracy quest
 touches: at Round 46's 2,000,000 pulses (12,442 sifted bits) the single-photon lower
 bound ``s^l_{Z,1}`` is NEGATIVE, so no composable key existed there at any parameter
 setting, and no factor can rescue a negative count. The raise from 200,000 to 2,000,000 therefore rested on a threshold
-that did not survive checking. ``QKDConfig.pulses`` carries the current block size
-and the margin it is sized for; what THIS module reports either way is the
+that did not survive checking. ``QKDConfig.finite_key_block`` names the block a fibre key is computed on
+(since Round 80); what THIS module reports either way is the
 asymptotic decoy bound, a different quantity, labelled as one.
 
 This is the physical substrate for WS1 (AI-QKD): the optimizer
-(:mod:`~qsh.qkd.ai_optimizer`) tunes parameters here to maximise SKR / minimise QBER.
+(:mod:`~qsh.qkd.optimize`) tunes parameters here to maximise SKR / minimise QBER.
 A small Qiskit circuit demo is provided in :func:`bb84_circuit_demo` to show the
 quantum mechanics explicitly; the Monte-Carlo path scales to long keys.
 """
@@ -206,7 +206,7 @@ class QKDParams:
 
     mu_signal: float = field(default_factory=lambda: _qkd_cfg().mu_signal)
     mu_decoy: float = field(default_factory=lambda: _qkd_cfg().mu_decoy)
-    basis_prob: float = 0.5
+    basis_prob: float = field(default_factory=lambda: _qkd_cfg().basis_prob)
     pp_threshold: float = field(default_factory=lambda: _qkd_cfg().pp_threshold)
     #: Whether the source also sends the vacuum state, which lets the bound use the measured vacuum
     #: yield (`_decoy_secure_fraction`), and how often it sends signal and decoy (the vacuum takes the

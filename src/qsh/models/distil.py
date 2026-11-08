@@ -240,6 +240,15 @@ def fold_threshold_into_torch_head(model, threshold: float, *, positive_class: i
 #: under MPC, the hybrid this project describes", which the page and the model card contradict: each layer's output is
 #: decrypted, and the ReLU, the pool and the argmax run in plaintext in the client. A constant, so the published file can
 #: be held to it without a retrain (tests/test_r86_cnn_student_note.py).
+LINEAR_STUDENT_NOTE = (
+    "The CKKS-linear student: the model this use case's encrypted tier is designed "
+    "to evaluate under homomorphic encryption. Small because it has to close at this "
+    "demo's operating point (CKKS in one browser tab), not because encrypted "
+    "evaluation is cost-bounded in general; distilled against the teacher's own "
+    "decisions, so `agreement` measures substitution rather than two independent fits "
+    "that happen to correlate."
+)
+
 CNN_STUDENT_NOTE = (
     "The CKKS-evaluable medical student, layer by layer. Evaluate strictly in this order: conv (valid convolution over "
     "the input zero-padded by `conv.padding`), conv.activation, average pool by `pool.stride`, flatten channel-major, "
@@ -288,12 +297,7 @@ def save_student(student, out_dir, *, n_features: int, teacher_key: str,
     intercept = np.asarray(estimator.intercept_, dtype=float)
     (out / "weights.json").write_text(json.dumps({
         "kind": "logistic-linear",
-        "note": ("The CKKS-linear student: the model this use case's encrypted tier is designed "
-                 "to evaluate under homomorphic encryption. Small because it has to close at this "
-                 "demo's operating point (CKKS in one browser tab), not because encrypted "
-                 "evaluation is cost-bounded in general; distilled against the teacher's own "
-                 "decisions, so `agreement` measures substitution rather than two independent fits "
-                 "that happen to correlate."),
+        "note": LINEAR_STUDENT_NOTE,
         "teacher_key": teacher_key, "student_key": student_key,
         "n_features": int(n_features),
         # The standardisation the student was FIT on. Without it the published weights cannot be

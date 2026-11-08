@@ -33,8 +33,8 @@ rather than weight tensors. This Space is the third tier: models too large for e
 
 Metrics are what the project measured, shown with the published baseline - including where the
 measurement falls short of it. The finance model reaches minority-class F1 0.151948 against a
-published 0.632; the model card explains why (the published baseline uses IBM's Graph Feature
-Preprocessor, which ships under a Proprietary licence this project cannot adopt).
+published 0.632; the model card explains why (a feature-architecture difference: the published baseline's
+Graph Feature Preprocessor computes per-transaction subgraph patterns, this project computes per-account aggregates; the licence is not itself the cause).
 
 This read 0.081 until Round 49, in BOTH this file and `app.py` - a pre-improvement figure left behind
 by a retrain, on the one surface in this project that is published outside the repository. The

@@ -141,9 +141,9 @@ somewhere quieter, because it does two things at once: it independently corrobor
 to be applied to space systems" is CISA saying the same thing the prior-art search found), and it
 sets the register - this is a research demonstrator, not something an operator could fly.
 
-CISA attributes the QKD caution to NSA's published position. nsa.gov was not machine-retrievable
-during verification, so **NSA's own wording is unverified here**; cite CISA for the assessment, not
-NSA.
+CISA attributes the QKD caution to NSA's published position. nsa.gov did not answer a script during
+the first verification; NSA's own page was read in a browser on 2026-11-05 and reads the same
+(`docs/use-cases.md`).
 
 The two threat catalogues worth pointing at, both real and both current: ESA **SPACE-SHIELD**
 (spaceshield.esa.int), an ATT&CK-style knowledge base that names "Telemetry Protocol Interception"

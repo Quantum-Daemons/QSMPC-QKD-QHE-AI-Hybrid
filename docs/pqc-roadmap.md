@@ -105,7 +105,7 @@ none of them. Licences are as listed, and their activity has not been re-read fo
    under a chosen QEC code; track against Gidney's **<1 million noisy qubits** for RSA-2048 (arXiv:2505.15917) - note that is a *qubit* count; the "~1.1M T-gate" figure previously quoted here appears in none of the cited papers.
 5. **GPU FHE at scale** - HEonGPU runs the linear half on the GPU since Round 86 (`scripts/build_heongpu.sh`),
    and the MPC half is still MPyC on the CPU. What remains: batched CNN/Transformer private inference,
-   bootstrapping on the GPU, and the non-linear half on PIGEON/hpmpc.
+   bootstrapping on the GPU, and a stage on hpmpc, whose GPU code covers matrix multiplication and convolution (its non-linear layers stay on the CPU; measured in `models-and-benchmarks.md`).
 6. **Continuous PQC inventory** - scan dependencies/protocols for quantum-vulnerable
    crypto (a "crypto bill of materials") to drive migration priority.
 7. **Finance AML graph features** - per-transaction subgraph patterns, the architectural difference
@@ -186,8 +186,11 @@ document on 2026-08-15; `references/REFERENCES.md` records the two ways an earli
   **91 FR 38487**, published **2026-06-25** (EO 14412 is document 2026-12909 at 91 FR 38483). Recorded
   because a migration roadmap that cites one of two same-day quantum EOs looks like it missed one. Only
   its **title, document number, FR citation and date are verified** (Federal Register API, Round 32,
-  re-stated here 2026-08-12); its text has not been read, so **it contributes no deadline to this list**
-  and nothing below rests on it. EO 14412 remains the binding cryptographic instrument.
+  re-stated here 2026-08-12); its text was then read at the primary source (`deliverable-verification.md`, the
+  entry "The second same-day quantum Executive Order"): it is not a cryptographic-migration instrument, its section 4(f) directs
+  an intelligence assessment that names the migration, and it imposes no obligation on any system. So **it contributes no deadline
+  to this list** and nothing below rests on it. Its section 3(a) directs a National Quantum Strategy update within 180 days, about
+  2026-12-19: re-check then. EO 14412 remains the binding cryptographic instrument.
 - **2026-10-22 / phased to 2035** - **OMB Memorandum M-26-15**, *Execution of the Migration to
   Post-Quantum Cryptography* (2026-06-24), which is how EO 14412 is actually executed and is newer than
   everything else in this list. Agency PQC Migration Plans were due to OMB and ONCD **within 120 days**

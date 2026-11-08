@@ -31,3 +31,11 @@ def test_the_note_says_what_the_browser_does() -> None:
     # The code it describes: the decryption stays, and ReLU and pooling are applied in the clear.
     src = CKKS.read_text()
     assert "ReLU and pooling are applied in the clear here" in src
+
+
+def test_the_linear_students_ship_the_generators_note() -> None:
+    """The same defect one class over: a generator's wording changed and two published students kept the old sentence."""
+    for path in ("models/finance_aml_student/weights.json", "models/satellite_opssat_student/weights.json",
+                 "web/public/data/finance/student_weights.json", "web/public/data/satellite/student_weights.json"):
+        assert json.loads((REPO / path).read_text())["note"] == distil.LINEAR_STUDENT_NOTE, path
+    assert "by necessity" not in distil.LINEAR_STUDENT_NOTE

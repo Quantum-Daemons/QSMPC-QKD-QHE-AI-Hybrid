@@ -118,7 +118,7 @@ def crypto_options() -> dict:
 @app.get("/api/config")
 def app_config() -> dict:
     """Single source of truth for the SPA: benchmark cost model, tier architectures, workload
-    multipliers, the medical-CNN shape, security/advantage weights, demo data sizes. The frontend
+    multipliers, the medical-CNN shape, the retired advantage function's weights, demo data sizes. The frontend
     fetches this (full mode) instead of duplicating the literals; the demo bakes the same JSON."""
     from qsh.config import frontend_config
 
