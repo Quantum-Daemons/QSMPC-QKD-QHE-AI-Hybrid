@@ -93,7 +93,7 @@ export default function UseCases() {
               </div>
               <p style={{ fontSize: 13 }}>{u.blurb}</p>
               {teacher && (
-                <p className="muted" style={{ fontSize: 11, marginBottom: 2 }}>
+                <p className="muted" style={{ fontSize: 12, marginBottom: 2 }}>
                   <b>Model</b> {teacher.label}
                   {score != null && headline && <> · {teacher.metric.display} <b>{score.toFixed(4)}</b>
                     {scoredOver != null && <> over {scoredOver} scored event{scoredOver === 1 ? "" : "s"}</>}
@@ -106,18 +106,18 @@ export default function UseCases() {
                 </p>
               )}
               {teacher && score != null && notComparable && (
-                <p className="muted" style={{ fontSize: 11, marginBottom: 2 }}>
+                <p className="muted" style={{ fontSize: 12, marginBottom: 2 }}>
                   {NOT_LIKE_FOR_LIKE[teacher.key]
                     ?? "Not a like-for-like pair: the published figure is measured under another protocol; the use-case page says how."}
                 </p>
               )}
               {teacher && (
-                <p className="muted" style={{ fontSize: 11, marginBottom: 2 }}>
+                <p className="muted" style={{ fontSize: 12, marginBottom: 2 }}>
                   <b>Data</b> {teacher.dataset.name} · {teacher.dataset.licence}
                   {studentParams != null && <> · encrypted student {studentParams} params</>}
                 </p>
               )}
-              <p className="muted" style={{ fontSize: 11 }}>
+              <p className="muted" style={{ fontSize: 12 }}>
                 {pinned.length > 0
                   ? <>{pinned.length} model{pinned.length > 1 ? "s" : ""} published and pinned - verifiable in your browser</>
                   : u.id === "genomics"

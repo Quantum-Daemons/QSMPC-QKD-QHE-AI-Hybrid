@@ -161,7 +161,7 @@ export default function BenchmarkPanel(
                     measures SLOT UTILISATION: the same N = 8192 ciphertext is about 12x against 4,096
                     packed values and about 1,500x against 33 (Cheon, Kim, Kim, Song, ASIACRYPT 2017). The
                     quantum row is left out because a quantum ciphertext has no byte size. */}
-                <p className="muted" style={{ fontSize: 11, margin: "0 0 6px" }}>
+                <p className="muted" style={{ fontSize: 12, margin: "0 0 6px" }}>
                   Depends on how many of the 4,096 slots are used (about 12x when all are filled). The quantum
                   row is not plotted: a quantum ciphertext has no size in bytes.
                 </p>
@@ -194,7 +194,7 @@ export default function BenchmarkPanel(
                 <h3>Latency per inference (ms)</h3>
                 {/* Kept as per-row measurements and captioned, following the recorded decision to state
                     non-comparability rather than hide a measurement. The two bars time different work. */}
-                <p className="muted" style={{ fontSize: 11, margin: "0 0 6px" }}>
+                <p className="muted" style={{ fontSize: 12, margin: "0 0 6px" }}>
                   Different computations, not a speed comparison: MPC-FHE runs a real CKKS and garbled-circuit
                   inference; QSMPC-FHE simulates an untrained QOTP + Clifford+T circuit (8 qubits by default) on
                   random input.
@@ -337,7 +337,7 @@ export default function BenchmarkPanel(
                   {rows.map((r, i) => (
                     <tr key={i}>
                       <td style={{ color: colorFor(r.path) }}>{r.path}</td>
-                      <td style={{ fontSize: 11 }}>{r.model_arch ?? "—"}</td>
+                      <td style={{ fontSize: 12 }}>{r.model_arch ?? "—"}</td>
                       <td>{r.backend}</td>
                       <td>{r.model_size ?? "—"}{r.projected ? "*" : ""}</td>
                       <td>{r.latency_ms}</td>
@@ -345,24 +345,24 @@ export default function BenchmarkPanel(
                       <td style={{ color: MPC_COLOR }}>{r.mpc_nonlinear_ms ?? "—"}</td>
                       <td>{r.mpc_comm_kb ?? "—"}</td>
                       <td>{agreement(r) ?? "—"}</td><td>{ctpt(r) ?? "—"}</td>
-                      <td style={{ fontSize: 11 }}>{r.security_model}</td>
+                      <td style={{ fontSize: 12 }}>{r.security_model}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {rows.some((r) => r.projected) && (
-                <p className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
+                <p className="muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
                   * large tier is projected from measured medium-tier per-op cost (MACs / comparison counts), not run end-to-end.
                 </p>
               )}
               {rows.some((r) => agreement(r) != null) && (
-                <p className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
+                <p className="muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
                   &quot;matches plaintext&quot; counts the inputs on which the encrypted path reached the same
                   decision as the plaintext model; it is agreement, not accuracy against true labels.
                 </p>
               )}
               {rows.some((r) => r.path === "plaintext") && (
-                <p className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
+                <p className="muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
                   The plaintext row is a reference point, not a denominator. It is a different model
                   from the encrypted rows - the published Hugging Face model on its own corpus, against
                   the page&apos;s bundled linear model (on medical, the CNN student) that the FHE path

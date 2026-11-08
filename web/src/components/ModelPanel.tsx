@@ -448,7 +448,7 @@ function CalibrationRows({ achieved }: { achieved: Record<string, unknown> }) {
         </tbody>
       </table>
       {worse && (
-        <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+        <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
           Calibration moved log-loss the wrong way here. Every term is shown anyway, because
           reporting only the metrics that moved the right way is the failure this project cites
           Arp et al. for. Two causes are worth separating before this is read as a property of the
@@ -462,7 +462,7 @@ function CalibrationRows({ achieved }: { achieved: Record<string, unknown> }) {
           scores to 138 - and printed on every card with a calibration, so the CKKS student's card
           said the opposite of its own record, where isotonic scores better on both proper scoring
           rules. Each trainer writes `why_not_isotonic` from its own measurement. */}
-      <p className="muted" style={{ fontSize: 11, marginTop: 4 }}>
+      <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>
         Platt is <i>strictly</i> monotone, so it reorders no rows: calibration fixes what a
         probability <i>means</i>, not how the rows are ordered.
         {typeof c.why_not_isotonic === "string" && c.why_not_isotonic

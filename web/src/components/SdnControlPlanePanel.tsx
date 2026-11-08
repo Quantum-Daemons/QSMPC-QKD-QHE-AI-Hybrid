@@ -206,8 +206,8 @@ export default function SdnControlPlanePanel({
           <div key={plane} className="card" style={{ padding: 12 }}>
             <div style={{ fontWeight: 700, fontSize: 13 }}>{plane}</div>
             <div style={{ fontSize: 12, marginTop: 2 }}>{who}</div>
-            <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>{spec}</div>
-            <div className="muted" style={{ fontSize: 11, marginTop: 4 }}>{does}</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{spec}</div>
+            <div className="muted" style={{ fontSize: 12, marginTop: 4 }}>{does}</div>
           </div>
         ))}
       </div>
@@ -301,14 +301,14 @@ export default function SdnControlPlanePanel({
         </tbody>
       </table>
 
-      <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>
+      <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
         Targets <b>{ext.spec}</b> - still the only published edition; ed2 remains a stable draft.
         The object model, workflows and field names follow the published ETSI YANG; the{" "}
         <b>quantum layer is simulated</b>, so every SKR figure comes from the analytic channel model,
         not from hardware. {ext.authentication}
       </p>
       {topo.notifications.map((n, i) => (
-        <div key={i} className="muted" style={{ fontSize: 11, marginTop: 4 }}>· {n}</div>
+        <div key={i} className="muted" style={{ fontSize: 12, marginTop: 4 }}>· {n}</div>
       ))}
     </div>
   );

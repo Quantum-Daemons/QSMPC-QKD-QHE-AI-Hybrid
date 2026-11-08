@@ -307,12 +307,12 @@ function UseCaseView({ usecase }: { usecase: string }) {
               once showed 0.3337 here beside a recorded 0.0178 for the same metric, with nothing on
               screen to reconcile them. */}
           {artifacts.verification.note ? (
-            <p className="muted" style={{ fontSize: 11, marginTop: 10 }}>
+            <p className="muted" style={{ fontSize: 12, marginTop: 10 }}>
               <b>About this figure.</b> {String(artifacts.verification.note)}
             </p>
           ) : null}
           {artifacts.verification.provenance ? (
-            <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>
+            <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
               {String(artifacts.verification.provenance)}
             </p>
           ) : null}
@@ -439,7 +439,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         {/* Only on the pages that run the split (Round 86): it was static, so the satellite and telecom pages,
             which run no 2PC, said "in this tab only the argmax runs as MPC". And it says what that argmax does. */}
         {["finance_aml", "medical_fl", "genomics"].includes(usecase) && (
-          <div className="muted" style={{ marginTop: 6, fontSize: 11 }}>
+          <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
             Hybrid split: linear layers to FHE and non-linear ones to MPC, the line of work from Gazelle to BLB
             and the preprint <i>EncFormer</i>. In this tab only the argmax runs as MPC, over scores the client has
             already decrypted, so it measures the protocol&apos;s cost and hides nothing. See <code>references/</code>.
