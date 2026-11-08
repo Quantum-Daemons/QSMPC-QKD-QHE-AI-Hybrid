@@ -85,7 +85,7 @@ UNPUBLISHED = {"docs/browser-verification-checklist.md"}
 
 
 def _watched() -> list[Path]:
-    """Tracked markdown under `docs/` and `references/`.
+    """Tracked markdown under `docs/` and `references/`, and `DATA_LICENSES.md`, which carries reopening conditions too.
 
     TRACKED, not globbed. A filesystem walk would pull in the gitignored checklist, and a promise
     only one machine can see is not the thing this gate is about. `git ls-files` is the same
@@ -93,7 +93,7 @@ def _watched() -> list[Path]:
     checklist does not exist - which is why it is the definition here rather than a glob.
     """
     out = subprocess.run(
-        ["git", "ls-files", "docs", "references"], cwd=REPO, capture_output=True, text=True, check=True
+        ["git", "ls-files", "docs", "references", "DATA_LICENSES.md"], cwd=REPO, capture_output=True, text=True, check=True
     )
     files = [f for f in out.stdout.split() if f.endswith(".md") and f not in UNPUBLISHED]
     assert files, "git ls-files returned no markdown under docs/ or references/ - the scope is empty"
@@ -164,9 +164,9 @@ _DEADLINE_LOOSE = re.compile(r"by" + _WRAP + r"(?:\*\*)?Round" + _WRAP + r"(\d+)
 
 
 def _inside_bold(text: str, pos: int) -> bool:
-    """Is `pos` inside a `**...**` span? True when an odd number of `**` precede it on its line."""
-    line_start = text.rfind("\n", 0, pos) + 1
-    return text.count("**", line_start, pos) % 2 == 1
+    """Is `pos` inside a `**...**` span? True when an odd number of `**` precede it in its paragraph, because these files are hard-wrapped and a bold clause can open on the line before."""
+    gap = text.rfind("\n\n", 0, pos)
+    return text.count("**", 0 if gap < 0 else gap + 2, pos) % 2 == 1
 
 
 class _Deadline:
@@ -637,3 +637,9 @@ def test_a_deadline_survives_being_bolded_as_a_whole_clause() -> None:
             f"`_DEADLINE` now fires on narrative prose: {narrative!r}. A deadline bolds the round; "
             "recollection does not. Dropping the closing `**` requirement is what breaks this."
         )
+
+
+def test_a_bold_clause_wrapped_onto_the_next_line_is_still_bold() -> None:
+    wrapped = "Some text **due by\nRound 90 at the latest** and more.\n\nNext paragraph."
+    assert _inside_bold(wrapped, wrapped.index("Round 90"))
+    assert not _inside_bold(wrapped, wrapped.index("Next paragraph"))

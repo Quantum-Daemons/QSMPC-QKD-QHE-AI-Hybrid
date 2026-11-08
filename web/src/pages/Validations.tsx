@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import CbomPanel from "../components/CbomPanel";
 import MpcNetBench from "../components/MpcNetBench";
 import NetKeyCards from "../components/NetKeyCards";
 import NetworkPositioning from "../components/NetworkPositioning";
@@ -151,7 +152,7 @@ export default function Validations() {
             <table style={{ marginTop: 12 }}>
               <tbody>
                 <tr><th scope="row">KEM</th><td>{pqc.kem} + {pqc.classical}</td></tr>
-                <tr><th scope="row">combiner</th><td className="mono" style={{ fontSize: 11 }}>{pqc.combiner}</td></tr>
+                <tr><th scope="row">combiner</th><td className="mono" style={{ fontSize: 12 }}>{pqc.combiner}</td></tr>
                 {/* Split out so the total is checkable against its parts rather than taken on trust:
                     an ML-KEM-768-only run would show 1088 B here with no classical contribution. */}
                 <tr><th scope="row">ciphertext</th><td>{pqc.ciphertext_bytes} B ({pqc.pqc_ciphertext_bytes} B ML-KEM + {pqc.classical_public_key_bytes} B X25519)</td></tr>
@@ -261,6 +262,9 @@ export default function Validations() {
         <NetworkPositioning />
       </div>
       <NetKeyCards />
+
+      <h2 style={{ marginTop: 28 }}>The cryptography this project calls</h2>
+      <CbomPanel />
 
       <ResultsDownload results={{ kem, sig, pqc, qkd, mcp }} />
     </div>

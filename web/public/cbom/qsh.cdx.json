@@ -1,0 +1,869 @@
+{
+ "bomFormat": "CycloneDX",
+ "specVersion": "1.7",
+ "serialNumber": "urn:uuid:079c1758-3662-5f2d-9696-7bbddd9ea43a",
+ "version": 1,
+ "metadata": {
+  "component": {
+   "type": "application",
+   "bom-ref": "qsh",
+   "name": "qsh",
+   "version": "0.85.0"
+  },
+  "properties": [
+   {
+    "name": "qsh:scope",
+    "value": "Generated from this repository's own list of the cryptography its code calls (src/qsh/crypto_inventory.py), each entry checked against the source. Not the output of a scanner; library internals are not listed, and nothing here is FIPS 140-3 validated."
+   }
+  ]
+ },
+ "components": [
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/ml-kem-768",
+   "name": "ML-KEM-768",
+   "description": "The post-quantum half of the session key, by default; the MCP channel",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "kem",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "keygen",
+      "encapsulate",
+      "decapsulate"
+     ],
+     "algorithmFamily": "ML-KEM",
+     "parameterSetIdentifier": "768",
+     "nistQuantumSecurityLevel": 3
+    },
+    "oid": "2.16.840.1.101.3.4.4.2"
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "FIPS 203"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/clientCompute.ts"
+     },
+     {
+      "location": "src/qsh/pqc/hybrid_kem.py"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/ml-kem-1024",
+   "name": "ML-KEM-1024",
+   "description": "The post-quantum half of the session key, when selected",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "kem",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "keygen",
+      "encapsulate",
+      "decapsulate"
+     ],
+     "algorithmFamily": "ML-KEM",
+     "parameterSetIdentifier": "1024",
+     "nistQuantumSecurityLevel": 5
+    },
+    "oid": "2.16.840.1.101.3.4.4.3"
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "FIPS 203"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/clientCompute.ts"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/x25519",
+   "name": "X25519",
+   "description": "The classical half of the session key; federated mask seeds; the WireGuard handshake test",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "key-agree",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "keygen",
+      "keyderive"
+     ],
+     "algorithmFamily": "ECDH",
+     "ellipticCurve": "other/Curve25519",
+     "nistQuantumSecurityLevel": 0,
+     "classicalSecurityLevel": 128
+    },
+    "oid": "1.3.101.110"
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "RFC 7748"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/clientCompute.ts"
+     },
+     {
+      "location": "web/src/lib/clientQFL.ts"
+     },
+     {
+      "location": "src/qsh/pqc/hybrid_kem.py"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/ecdh-p256",
+   "name": "ECDH P-256",
+   "description": "The IKEv2 key schedule test on the Validations page",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "key-agree",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "keygen",
+      "keyderive"
+     ],
+     "algorithmFamily": "ECDH",
+     "ellipticCurve": "nist/P-256",
+     "nistQuantumSecurityLevel": 0,
+     "classicalSecurityLevel": 128
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "NIST SP 800-56A"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/netkeys/ikev2.ts"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/hkdf-sha256",
+   "name": "HKDF-SHA256",
+   "description": "Session key derivation; federated mask seeds; the MCP channel",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "kdf",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "keyderive"
+     ],
+     "algorithmFamily": "HKDF",
+     "parameterSetIdentifier": "SHA-256"
+    },
+    "oid": "1.2.840.113549.1.9.16.3.29"
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "RFC 5869"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/hybridCombiner.ts"
+     },
+     {
+      "location": "src/qsh/pqc/hybrid_kem.py"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/hybrid-combiner",
+   "name": "ML-KEM + X25519 two-step HKDF combiner",
+   "description": "Combines the two shared secrets with the transcript",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "combiner",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "keyderive"
+     ]
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "NIST SP 800-227 section 4.6"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/hybridCombiner.ts"
+     },
+     {
+      "location": "src/qsh/pqc/hybrid_kem.py"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/aes-256-gcm",
+   "name": "AES-256-GCM",
+   "description": "Seals the PSI's messages, the MCP channel and the full deployment's records",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "ae",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "encrypt",
+      "decrypt",
+      "tag"
+     ],
+     "algorithmFamily": "AES",
+     "parameterSetIdentifier": "256",
+     "mode": "gcm",
+     "nistQuantumSecurityLevel": 5,
+     "classicalSecurityLevel": 256
+    },
+    "oid": "2.16.840.1.101.3.4.1.46"
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "NIST SP 800-38D"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/clientMcp.ts"
+     },
+     {
+      "location": "src/qsh/pqc/transport.py"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/chacha20-poly1305",
+   "name": "ChaCha20-Poly1305",
+   "description": "The WireGuard handshake test on the Validations page",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "ae",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "encrypt",
+      "decrypt",
+      "tag"
+     ],
+     "algorithmFamily": "ChaCha20",
+     "classicalSecurityLevel": 256
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "RFC 8439"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/netkeys/noiseIKpsk2.ts"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/ml-dsa-65",
+   "name": "ML-DSA-65",
+   "description": "Signs each run's result, by default; the MCP channel",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "signature",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "keygen",
+      "sign",
+      "verify"
+     ],
+     "algorithmFamily": "ML-DSA",
+     "parameterSetIdentifier": "65",
+     "nistQuantumSecurityLevel": 3
+    },
+    "oid": "2.16.840.1.101.3.4.3.18"
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "FIPS 204"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/clientCompute.ts"
+     },
+     {
+      "location": "src/qsh/pqc/signatures.py"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/ml-dsa-87",
+   "name": "ML-DSA-87",
+   "description": "Signs each run's result, when selected",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "signature",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "keygen",
+      "sign",
+      "verify"
+     ],
+     "algorithmFamily": "ML-DSA",
+     "parameterSetIdentifier": "87",
+     "nistQuantumSecurityLevel": 5
+    },
+    "oid": "2.16.840.1.101.3.4.3.19"
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "FIPS 204"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/clientCompute.ts"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/sha-256",
+   "name": "SHA-256",
+   "description": "Inside HKDF and HMAC; digests of published files; the account hashes of the PSI among banks",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "hash",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "digest"
+     ],
+     "algorithmFamily": "SHA-2"
+    },
+    "oid": "2.16.840.1.101.3.4.2.1"
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "FIPS 180-4"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/clientMultiPsi.ts"
+     },
+     {
+      "location": "web/src/lib/hybridCombiner.ts"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/sha-384",
+   "name": "SHA-384",
+   "description": "The IKEv2 key schedule test",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "hash",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "digest"
+     ],
+     "algorithmFamily": "SHA-2"
+    },
+    "oid": "2.16.840.1.101.3.4.2.2"
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "FIPS 180-4"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/netkeys/ikev2.ts"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/sha-512",
+   "name": "SHA-512",
+   "description": "The IKEv2 key schedule test; the OPRF's suite",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "hash",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "digest"
+     ],
+     "algorithmFamily": "SHA-2"
+    },
+    "oid": "2.16.840.1.101.3.4.2.3"
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "FIPS 180-4"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/netkeys/ikev2.ts"
+     },
+     {
+      "location": "src/qsh/qsmpc/oprf.py"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/shake256",
+   "name": "SHAKE256",
+   "description": "Expands federated mask seeds; seeds the Toeplitz combiner",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "xof",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "digest"
+     ],
+     "algorithmFamily": "SHA-3"
+    },
+    "oid": "2.16.840.1.101.3.4.2.12"
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "FIPS 202"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/clientQFL.ts"
+     },
+     {
+      "location": "web/src/lib/clientMcp.ts"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/hmac-sha256",
+   "name": "HMAC-SHA256",
+   "description": "The IKEv2 and WireGuard key schedule tests",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "mac",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "tag"
+     ],
+     "algorithmFamily": "HMAC"
+    },
+    "oid": "1.2.840.113549.2.9"
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "RFC 2104"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/netkeys/ikev2.ts"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/blake2s-256",
+   "name": "BLAKE2s-256",
+   "description": "The WireGuard handshake test on the Validations page",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "hash",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "digest"
+     ]
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "RFC 7693"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/netkeys/wireguard.ts"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/oprf-ristretto255",
+   "name": "OPRF(ristretto255, SHA-512)",
+   "description": "The private set intersection between two banks",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "other",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "other"
+     ],
+     "nistQuantumSecurityLevel": 0,
+     "classicalSecurityLevel": 128
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "RFC 9497, mode 0x00"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/oprfPsi.ts"
+     },
+     {
+      "location": "src/qsh/qsmpc/oprf.py"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/ckks",
+   "name": "CKKS",
+   "description": "Homomorphic evaluation of linear layers, on Microsoft SEAL (node-seal in the browser; TenSEAL, OpenFHE or HEonGPU in the full deployment)",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "other",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "encrypt",
+      "decrypt"
+     ],
+     "parameterSetIdentifier": "browser: N = 8192, coefficient moduli {60, 40, 40, 60} bits, scale 2^40",
+     "classicalSecurityLevel": 128
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "HomomorphicEncryption.org security standard (2018)"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser, full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/clientFHE.ts"
+     },
+     {
+      "location": "src/qsh/fhe/backends.py"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/wrk17b",
+   "name": "WRK17b authenticated garbling",
+   "description": "The argmax, the CNN's ReLUs and the PSI among banks, on Polytune. Its oblivious transfers rest on a discrete-log assumption",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "other",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "other"
+     ],
+     "nistQuantumSecurityLevel": 0
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "Wang, Ranellucci and Katz, CCS 2017"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/clientMPC.ts"
+     },
+     {
+      "location": "wasm/qsh-mpc/Cargo.toml"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/shamir",
+   "name": "Shamir secret sharing",
+   "description": "The non-linear layers in the full deployment, on MPyC",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "other",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "other"
+     ]
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "Shamir, CACM 1979"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "full deployment"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "src/qsh/benchmark/classical_mpc_fhe.py"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/csprng",
+   "name": "Platform CSPRNG",
+   "description": "Masks, shuffles and nonces: Web Crypto getRandomValues in the browser",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "drbg",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "generate"
+     ]
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "W3C Web Cryptography API"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/csprng.ts"
+     }
+    ]
+   }
+  }
+ ],
+ "dependencies": [
+  {
+   "ref": "qsh",
+   "dependsOn": [
+    "crypto/ml-kem-768",
+    "crypto/ml-kem-1024",
+    "crypto/x25519",
+    "crypto/ecdh-p256",
+    "crypto/hkdf-sha256",
+    "crypto/hybrid-combiner",
+    "crypto/aes-256-gcm",
+    "crypto/chacha20-poly1305",
+    "crypto/ml-dsa-65",
+    "crypto/ml-dsa-87",
+    "crypto/sha-256",
+    "crypto/sha-384",
+    "crypto/sha-512",
+    "crypto/shake256",
+    "crypto/hmac-sha256",
+    "crypto/blake2s-256",
+    "crypto/oprf-ristretto255",
+    "crypto/ckks",
+    "crypto/wrk17b",
+    "crypto/shamir",
+    "crypto/csprng"
+   ]
+  }
+ ]
+}

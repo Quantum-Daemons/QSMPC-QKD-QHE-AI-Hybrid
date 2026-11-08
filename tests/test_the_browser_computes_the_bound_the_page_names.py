@@ -341,7 +341,9 @@ def test_no_production_call_site_takes_the_legacy_branch() -> None:
     """
     offenders: list[str] = []
     for rel, line, node in _run_bb84_call_sites():
-        if not any(kw.arg == "qkd_params" for kw in node.keywords):
+        kw = next((k for k in node.keywords if k.arg == "qkd_params"), None)
+        # `qkd_params=None` names the keyword and still takes the legacy branch, which keys on `is None`.
+        if kw is None or (isinstance(kw.value, ast.Constant) and kw.value.value is None):
             offenders.append(f"{rel}:{line}")
     assert not offenders, (
         "these production call sites take `run_bb84`'s LEGACY branch, which computes the non-decoy "
@@ -350,6 +352,38 @@ def test_no_production_call_site_takes_the_legacy_branch() -> None:
         "explicitly-named model that the optimiser's comparison tests still need - but nothing "
         "user-facing should reach it by omission."
     )
+
+
+def _is_literal_number(node: ast.AST, constants: set[str]) -> bool:
+    """A number however it is spelled: `40_000`, `40_000 * 1`, `int(40000)`, or a module-level name bound to one."""
+    if isinstance(node, ast.Constant):
+        return isinstance(node.value, (int, float)) and not isinstance(node.value, bool)
+    if isinstance(node, ast.UnaryOp):
+        return _is_literal_number(node.operand, constants)
+    if isinstance(node, ast.BinOp):
+        return _is_literal_number(node.left, constants) and _is_literal_number(node.right, constants)
+    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in ("int", "float") and node.args:
+        return _is_literal_number(node.args[0], constants)
+    return isinstance(node, ast.Name) and node.id in constants
+
+
+def _module_constants(tree: ast.Module) -> set[str]:
+    names: set[str] = set()
+    for stmt in tree.body:
+        if isinstance(stmt, (ast.Assign, ast.AnnAssign)) and stmt.value is not None:
+            targets = stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]
+            if _is_literal_number(stmt.value, set()):
+                names |= {t.id for t in targets if isinstance(t, ast.Name)}
+    return names
+
+
+def test_a_literal_is_recognised_however_it_is_spelled() -> None:
+    expr = lambda src: ast.parse(src, mode="eval").body  # noqa: E731
+    for src in ("40_000", "40_000 * 1", "int(40000)", "-(-40000)", "BLOCK"):
+        assert _is_literal_number(expr(src), {"BLOCK"}), src
+    for src in ("cfg.web.demo_alice_bob_pulses", "n_pulses", "get_config().web.demo_alice_bob_pulses"):
+        assert not _is_literal_number(expr(src), {"BLOCK"}), src
+    assert _module_constants(ast.parse("A = 5\nB: int = 2 * 3\nC = other()")) == {"A", "B"}
 
 
 def test_no_call_site_hardcodes_its_block_size() -> None:
@@ -370,8 +404,9 @@ def test_no_call_site_hardcodes_its_block_size() -> None:
     for rel, line, node in _run_bb84_call_sites():
         block = node.args[0] if node.args else next(
             (kw.value for kw in node.keywords if kw.arg == "n_pulses"), None)
-        if isinstance(block, ast.Constant) and isinstance(block.value, int):
-            offenders.append(f"{rel}:{line}: run_bb84({block.value:_}, ...)")
+        constants = _module_constants(ast.parse((REPO / rel).read_text()))
+        if block is not None and _is_literal_number(block, constants):
+            offenders.append(f"{rel}:{line}: run_bb84({ast.unparse(block)}, ...)")
     assert not offenders, (
         "these call sites spell their BB84 block size as a literal:\n  " + "\n  ".join(offenders)
         + "\n\nRead it from config instead - `WebConfig.demo_alice_bob_pulses` for the two-party "

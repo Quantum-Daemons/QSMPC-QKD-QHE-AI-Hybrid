@@ -352,3 +352,19 @@ def test_the_extractor_fails_a_card_that_states_a_number_its_artifact_does_not()
 def test_the_number_pattern_reads_a_figure_in_exponent_notation() -> None:
     assert _NUMBER.findall("5.6e-05 and 0.968, not 14x14") == ["5.6e-05", "0.968"]
     assert _matches("5.6e-05", [("x", 5.6e-05)])
+
+
+@pytest.mark.parametrize("card", CARDS, ids=lambda p: p.parent.name)
+def test_a_card_s_gap_section_is_its_record_s_note(card: Path) -> None:
+    """The card prints `baseline_gap_note` as written (`scripts/publish_hf.py`), and a hand edit or a stale regeneration would otherwise pass every number check."""
+    from qsh.models import registry
+
+    text = card.read_text(encoding="utf-8")
+    heading = "### Gap to the published baseline"
+    if heading not in text:
+        return
+    key = next((k for k, d in registry.ARTIFACT_DIRS.items() if Path(d).name == card.parent.name), None)
+    assert key, f"{card.parent.name} prints a gap section and maps to no registry key"
+    note = json.loads((REPO / "models" / "metrics.json").read_text())[key]["baseline_gap_note"]
+    section = text.split(heading, 1)[1].split("\n#", 1)[0].strip()
+    assert section == note.strip(), f"{card.relative_to(REPO)}: regenerate the card with scripts/publish_hf.py --dry-run --key {key}"

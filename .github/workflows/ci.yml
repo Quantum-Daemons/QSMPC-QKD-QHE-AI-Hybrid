@@ -210,6 +210,37 @@ jobs:
           fi
           echo "clean"
 
+  sbom:
+    name: SBOMs and the CBOM
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install the generators
+        run: |
+          python -m pip install --quiet "cyclonedx-bom==8.0.1" "jsonschema==4.26.0"
+          cargo install cargo-cyclonedx --version 0.5.10 --locked
+
+      - name: Generate the SBOMs
+        run: bash scripts/generate_sbom.sh sbom-out
+
+      - name: Validate them and the CBOM against the vendored CycloneDX 1.7 schema
+        run: python scripts/validate_cyclonedx.py sbom-out/python.cdx.json sbom-out/web.cdx.json sbom-out/wasm.cdx.json web/public/cbom/qsh.cdx.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom-out/*.cdx.json
+          retention-days: 90
+
   web:
     name: web typecheck + build
     runs-on: ubuntu-24.04

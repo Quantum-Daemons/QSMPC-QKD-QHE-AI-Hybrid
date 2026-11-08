@@ -109,7 +109,7 @@ export default function App() {
           ))}
         </nav>
         <RunStatusBox collapsed={collapsed} />
-        <div style={{ marginTop: 28, fontSize: 11 }} className="muted sidebar-note">
+        <div style={{ marginTop: 28, fontSize: 12 }} className="muted sidebar-note">
           PQC-first hybrid · NIST FIPS 203/204<br />
           {/* Was "CNSA 2.0 · HNDL / Q-Day aware", which reads as a compliance badge. */}
           Tracks CNSA 2.0 (no configuration here is CNSA 2.0) - HNDL aware

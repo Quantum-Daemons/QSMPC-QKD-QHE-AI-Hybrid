@@ -39,7 +39,7 @@ export default function ShapPanel({ explanation, provenance, baseline, published
     <div className="card" style={{ marginTop: 16 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
         <h3 style={{ margin: 0 }}>Why — top features (SHAP)</h3>
-        <span className="tag" style={{ fontSize: 10 }}>🔏 signed explanation</span>
+        <span className="tag" style={{ fontSize: 12 }}>🔏 signed explanation</span>
       </div>
       {/* WHICH model this explains. The stage runs two inferences - the bundled model on this page's
           own data, and a pinned Hugging Face model on its own corpus - and this attribution is of
@@ -107,14 +107,14 @@ export default function ShapPanel({ explanation, provenance, baseline, published
           <div style={{ flex: 1, background: "#1a2233", borderRadius: 4, height: 16 }}>
             <div style={{ width: `${Math.max(3, (Math.abs(t.contribution) / max) * 100)}%`, height: "100%", borderRadius: 4, background: t.contribution >= 0 ? "#ff6b6b" : "#4f9dff" }} />
           </div>
-          <span className="mono" style={{ width: 66, fontSize: 11, textAlign: "right" }}>{t.contribution >= 0 ? "+" : ""}{Number(t.contribution).toFixed(3)}</span>
+          <span className="mono" style={{ width: 66, fontSize: 12, textAlign: "right" }}>{t.contribution >= 0 ? "+" : ""}{Number(t.contribution).toFixed(3)}</span>
         </div>
       ))}
       {/* WHAT EACH BAR IS (PP14). Finance's names are AML-style labels for PaySim quantities, and `cross_border` in
           particular is a transaction type, because PaySim records no geography. The payload defines them; the bars
           printed the bare names. */}
       {definitions && tops.some((t) => definitions[t.feature]) ? (
-        <dl className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
+        <dl className="muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
           {tops.filter((t) => definitions[t.feature]).map((t) => (
             <div key={t.feature} style={{ display: "flex", gap: 6 }}>
               <dt className="mono" style={{ minWidth: 90 }}>{BAR_LABEL[t.feature] ?? t.feature}</dt>
@@ -123,11 +123,11 @@ export default function ShapPanel({ explanation, provenance, baseline, published
           ))}
         </dl>
       ) : null}
-      <p className="muted" style={{ fontSize: 11, marginTop: 6 }}>
+      <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
         red = pushes toward the flagged class · blue = away · exact linear SHAP for independent features, signed with ML-DSA under a key made for this run: it shows the record is unchanged, not who signed it
       </p>
       {aiAct ? (
-        <p className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+        <p className="muted" style={{ fontSize: 12, marginTop: 2 }}>
           EU AI Act Art. 13 (transparency for high-risk systems). {aiAct.text} {AI_ACT_CAVEAT}
         </p>
       ) : null}

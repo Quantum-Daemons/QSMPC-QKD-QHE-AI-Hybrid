@@ -3972,3 +3972,17 @@ Republished on the owner's approval, each file fetched back and compared by hash
 Found there and fixed on the next branch: the Value page's prior-art row still described only the decrypted path; the clock's legend did not explain `announced`; at scale 1 the measured and scaled MPC rows printed the same numbers; and 26 flattened `calibration.*` rows pushed each finance card's headline metric off the screen. Mobile width (375 px) was read on the local build, because the Chrome window could not be narrowed: no horizontal overflow on the finance page after a run or on `/value`.
 
 Republished on the owner's approval, each file fetched back and compared with the local file: `qsh-finance-aml-gbm` at `eb15e2a9` (card only), `qsh-telecom-5g-nidd-gbm` at `1c198d29` (card only), and `qsh-telecom-qml-ids` at `78ef4189` (card, and the sample's provenance sentence: a JSON comparison with the old revision found no other field changed). The finance teacher's and student's decision-curve records were re-measured at their new revisions, and their results are identical.
+
+### Round 86, PR #16 on the deployed site (2026-11-08)
+
+`main` was `8d4ac02`, bundle `index-CDtBtyom.js`, read in a browser on the public URL.
+
+| what | read |
+|---|---|
+| finance, three banks (the default) | 3 accounts held by all, matches the clear intersection; 4,344 AND gates, 30.5 MB in 1,262 messages, 2.9 s in a Web Worker |
+| finance, five banks | 8,440 AND gates, 191.6 MB in 6,884 messages, 14.7 s in a Web Worker; matches the clear intersection |
+| finance, unticked | No PSI card, no `mpsi_*` metric, no lane; the bank count is disabled; the verification passes |
+| WebM | `finance_aml-simulator.webm`, 260,486 bytes, `video/webm`, decodes to 3.56 s at 1418 by 2530 |
+| the four fixes from the previous walk | The prior-art row, the clock's legend, no repeated measured MPC rows at scale 1, no flattened `calibration.*` rows |
+| pins | The cards show `eb15e2a93616`, `e822202dacbc`, `78ef41898e3d` and `1c198d29f934` |
+| medical, telecom, satellite | Each passes; no horizontal overflow; no console error on any page |

@@ -439,7 +439,7 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
             <XAxis type="number" dataKey="plain" name="plaintext" domain={[lo, hi]} tick={AXIS}
                    tickFormatter={(v: number) => v.toFixed(2)}
                    label={{ value: logit ? "plaintext logit" : "plaintext score", position: "insideBottom",
-                            offset: -10, fill: "#8a94a6", fontSize: 10 }} />
+                            offset: -10, fill: "#8a94a6", fontSize: 12 }} />
             <YAxis type="number" dataKey="enc" name="encrypted" domain={[lo, hi]} tick={AXIS}
                    tickFormatter={(v: number) => v.toFixed(2)}
                    label={yAxisTitle(logit ? "encrypted logit (decrypted)" : "encrypted score (decrypted)", 14)} />
@@ -575,7 +575,7 @@ function DecisionPlane({ plot, plane }: { plot: EncryptedAgreementPlot; plane: {
             <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
             <XAxis type="number" dataKey="x" name={plane.x.label} tick={AXIS}
                    label={{ value: plane.x.label, position: "insideBottom", offset: -20,
-                            fill: "#8a94a6", fontSize: 10 }} />
+                            fill: "#8a94a6", fontSize: 12 }} />
             {/* 72 px, not Recharts' 60 (Round 84): in DejaVu Sans, the CI runners' and many Linux
                 visitors' system-ui, the held-out telecom rows' five-character ticks (0.075, 0.225)
                 reached the rotated title at its fixed offset; in Noto they did not, so local scans passed. */}
@@ -807,7 +807,7 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
             <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
             <XAxis type="number" dataKey="x" name={data.x.label} tick={AXIS}
                    label={{ value: data.x.label, position: "insideBottom", offset: -20,
-                            fill: "#8a94a6", fontSize: 10 }} />
+                            fill: "#8a94a6", fontSize: 12 }} />
             {/* Log scale is carried in the payload, not inferred here. A heavy-tailed axis - finance's
                 burst fan-out runs to 12,540 with a 95th percentile of 7,801 - renders every point on
                 the baseline unless it is compressed, and whether that is warranted is a property of
@@ -1045,7 +1045,7 @@ function DecisionCurveChart({ curve, modelKey, n, scored = "graph" }: {
             <XAxis dataKey="t" type="number" scale="log" domain={[data[0].t, data[data.length - 1].t]}
                    ticks={curve.thresholds} tick={AXIS} tickFormatter={fmtT}
                    label={{ value: "threshold probability t (log scale)", position: "insideBottom",
-                            offset: -10, fill: "#8a94a6", fontSize: 10 }} />
+                            offset: -10, fill: "#8a94a6", fontSize: 12 }} />
             <YAxis type="number" domain={[yMin, yMax]} allowDataOverflow tick={AXIS} width={Y_AXIS_W}
                    ticks={yTicks} tickFormatter={(v: number) => String(v)}
                    label={yAxisTitle("net benefit per 10,000", 14)} />
@@ -1334,7 +1334,7 @@ export function VerificationChart(
                   data={plot.hist} margin={{ top: 4, right: 8, bottom: 4, left: -18 }}>
                   <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
                   <XAxis dataKey="bin" tick={AXIS} label={{ value: "score bin", position: "insideBottom",
-                         offset: -2, fill: "#8a94a6", fontSize: 10 }} />
+                         offset: -2, fill: "#8a94a6", fontSize: 12 }} />
                   <YAxis scale="log" domain={[0.7, "auto"]} allowDataOverflow tick={AXIS} />
                   <Tooltip content={<ReadoutTooltip labelName="score bin" />} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />

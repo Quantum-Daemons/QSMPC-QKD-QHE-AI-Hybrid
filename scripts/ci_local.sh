@@ -168,6 +168,10 @@ step "11c/18 The PSI among banks under MPC"
 ( cd web && npm run --silent check:multi-psi >/tmp/ci_multi_psi.log 2>&1 ) \
   && ok "the PSI among banks matches the intersection in the clear" || { bad "the PSI among banks under MPC"; tail -12 /tmp/ci_multi_psi.log; }
 
+step "11d/18 The CBOM against the vendored CycloneDX 1.7 schema"
+$PY scripts/validate_cyclonedx.py web/public/cbom/qsh.cdx.json >/tmp/ci_cbom.log 2>&1 \
+  && ok "the CBOM validates" || { bad "the CBOM"; tail -8 /tmp/ci_cbom.log; }
+
 step "12/18 Hybrid-KEM combiner parity (Python vectors vs the browser module)"
 (cd web && npm run --silent check:combiner && npm run --silent check:mcp-envelope) \
   && ok "combiner parity, MCP request parity and the AI-generated record" \
