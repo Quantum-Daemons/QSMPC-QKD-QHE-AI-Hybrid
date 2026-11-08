@@ -9019,6 +9019,7 @@ recorded separately, and nothing here changes the published model.
 | #13 | About 150 corrections from the audit of the planning records: claims that outlived their code, dead surfaces, the citation of arXiv:2501.10083, and three new gates |
 | #14 | The medical CNN student runs under MPC on one held-out image per run: CKKS linear layers, ReLUs and the argmax in garbled circuits, average pooling on shares |
 | #15 | Twenty-three claims and papers read at source, the audit's last open rows closed, and each medical AUC given its interval |
+| #16 | A PSI among three to five banks under MPC on the finance page, WebM export of a run, and the planned items the audit found unbuilt settled |
 
 Findings worth keeping from those:
 
