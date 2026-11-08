@@ -116,7 +116,7 @@ flowchart TB
   Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
-  P["PSI: OPRF (RFC 9497, ristretto255-SHA512) over two banks' account lists"]
+  P["PSI: OPRF (RFC 9497, ristretto255-SHA512) over two banks' generated account lists"]
   FL["Federated training, in the browser: 4 clients, 6 rounds of FedAvg, pairwise masks"]
   I["Private inference: CKKS linear layer (node-seal), garbled-circuit argmax (Polytune)"]
   X["Explainability: exact linear SHAP, signed"]
@@ -386,7 +386,7 @@ flowchart TB
   end
   subgraph W2["2. Before the merge"]
     direction LR
-    PR["Pull request: GitHub Actions CI"] --> DB["The branch on the demo: Docker, deployed from git"] --> LB["Live check in a browser"] --> RC["Records: register, log, report"]
+    PR["Pull request: GitHub Actions CI"] --> DB["The branch on the demo: Docker, deployed from git"] --> LB["Live check in a browser"] --> RC["Records: register, log"]
   end
   subgraph W3["3. After the merge"]
     direction LR

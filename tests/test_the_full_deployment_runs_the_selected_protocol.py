@@ -95,7 +95,7 @@ def test_pqc_only_runs_no_quantum_stage_on_satellite() -> None:
 
 #: What the OptiQKD stage reports when it tunes a channel. Its `qkd_optimize_ms` is the pipeline's
 #: timing of every stage, emitted even for one that returns at once, so it is not among them.
-OPTIQKD_OUTPUTS = ("qkd_baseline_skr", "qkd_optimized_skr", "qkd_optimized_qber",
+OPTIQKD_OUTPUTS = ("qkd_baseline_skr_per_pulse", "qkd_optimized_skr_per_pulse", "qkd_optimized_qber",
                    "qkd_skr_improvement_pct", "qkd_convergence_evals")
 
 

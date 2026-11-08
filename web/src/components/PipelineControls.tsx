@@ -128,7 +128,7 @@ export default function PipelineControls({ run }: { run: Run }) {
         )}
         <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}
           title={`Set by \`qkd.protocol\` in the Parameters panel below, not by the ${demo ? "Quantum channel" : "Key source"} select.`}>
-          protocol: <strong>{String(run.params.qkd_protocol) === "e91" ? "E91 / CHSH" : "BB84 decoy-state"}</strong>
+          protocol: <strong>{qkd === "pqc-only" ? "none (no QKD stage runs)" : String(run.params.qkd_protocol) === "e91" ? "E91 / CHSH" : "BB84 decoy-state"}</strong>
         </span>
         {sel("Signature", "sel-sig", "sig", sig, setSig)}
         {publishedCandidates.length > 1 && (
@@ -196,8 +196,8 @@ export default function PipelineControls({ run }: { run: Run }) {
             for the use cases whose students genuinely ARE linear. */}
         {/* Federated learning ("Quantum Federated Learning" by name) runs a real client-side FedAvg of
             a logistic head over a closed-form feature map - no circuit - with pairwise masks whose
-            seeds each pair of clients agrees by X25519 (the full deployment's PennyLane HybridQNN
-            trains a real variational circuit, under the same key agreement). */}
+            seeds each pair of clients agrees by X25519 (the server-side PennyLane HybridQNN, reached only by
+            a direct API call, trains a real variational circuit under the same key agreement). */}
         {/* AI-QKD parameter optimization (OptiQKD, WS1): a gradient-free search of the asymptotic
             per-pulse bound, whose result is reported and not applied to the run (Round 84). */}
         <label className={`muted${optiqkdDisabled ? " is-disabled" : ""}`} htmlFor="sel-optiqkd"

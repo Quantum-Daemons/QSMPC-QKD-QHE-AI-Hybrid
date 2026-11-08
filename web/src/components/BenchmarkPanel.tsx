@@ -2,7 +2,7 @@
 // drives the live E2E pipeline and the assembled benchmark is passed in via `result` — there is no
 // separate "Run benchmark" button. The MPC-FHE row is the live run's real measured FHE-linear +
 // MPC-non-linear split; the QSMPC-FHE row and the security posture are the comparison (the quantum-advantage score is retired).
-// `compact` (telecom/satellite, no private inference) shows the security + advantage only.
+// `compact` (telecom/satellite, no private inference) shows the security posture only.
 import { useRef } from "react";
 import {
   Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,

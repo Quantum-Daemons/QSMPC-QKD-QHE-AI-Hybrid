@@ -437,7 +437,7 @@ statement of known limitations, not a conformance gap against any published requ
       (2024-11-06), which moved it to save communication rounds.
     - None of the published analyses covers the earlier ordering. Its consequences are not assessed
       here.
-    - A comment asking the maintainers was drafted for #63 on 2026-10-26.
+    - A comment asking the maintainers was posted on `sine-fdn/polytune#63` on 2026-10-29 (issuecomment-6499773496); no reply is recorded here.
   - So nothing here claims malicious security for two hosts at this commit. The demo, with both
     parties in one tab, is unaffected.
   - What was fixed: the integration, not the library.

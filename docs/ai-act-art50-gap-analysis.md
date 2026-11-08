@@ -27,7 +27,7 @@ in a JSON download.
 
 Implemented since Round 21, shown unconditionally rather than behind a disclosure toggle, because
 the requirement is that the information reach the person, not that it be available to them.
-Measured contrast ratio 12.42:1, comfortably above WCAG 2.2 AA.
+Measured contrast ratio 12.42:1, above the 4.5:1 that WCAG 2.2 SC 1.4.3 (level AA) requires for normal text.
 
 **No transitional relief applies to 50(1)** and none is claimed - the Guidelines (point 153) deny the
 Art. 111(4) transition to the interactive half of a hybrid system.

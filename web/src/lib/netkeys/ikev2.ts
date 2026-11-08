@@ -45,7 +45,7 @@
 //       of prf+(PPK, .). `runIkev2Cavp()` and the demo result both say so in `notValidated`.
 //
 // ML-KEM IN IKEV2 IS NOT YET AN RFC. draft-ietf-ipsecme-ikev2-mlkem-09 (2026-07-05): IESG state "RFC
-// Ed Queue" on the IETF datatracker when checked 2026-10-24; IANA already lists ml-kem-768 as Key
+// Ed Queue" on the IETF datatracker when checked 2026-11-08; IANA already lists ml-kem-768 as Key
 // Exchange Method 36 with the draft as reference. Its section 2: the 32-byte shared secret "is used
 // without padding like the traditional shared g^ir value" - which is exactly SK(1) below. Sources,
 // hashes and the validated-vs-computed table: references/net-key-schedules.md.
@@ -338,7 +338,7 @@ export const IKEV2_DEMO_LENGTHS: SkLengths = { d: 48, ai: 0, ar: 0, ei: 36, er: 
 export const MLKEM_IKEV2_STATUS = {
   document: "draft-ietf-ipsecme-ikev2-mlkem-09",
   revisionDate: "2026-07-05",
-  checked: "2026-10-31",
+  checked: "2026-11-08",
   state: "IESG state 'RFC Ed Queue', intended status Proposed Standard; not yet published as an RFC",
   url: "https://datatracker.ietf.org/doc/draft-ietf-ipsecme-ikev2-mlkem/",
   ianaKeyExchangeMethod: 36,

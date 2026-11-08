@@ -1,7 +1,7 @@
 import Details from "../components/Details";
 import KeyPoints from "../components/KeyPoints";
 import RegulatoryClock from "../components/RegulatoryClock";
-import { isClientDemo } from "../lib/demoMode";
+import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 
 // LAYOUT, Round 58: the novelty sentence first, the evidence for it second, the context after.
 //
@@ -19,6 +19,7 @@ export default function Value() {
         architecture creates value for regulated industries.
       </p>
 
+      {isClientDemo() && <div className="note" style={{ marginBottom: 14 }}>{DEMO_BANNER}</div>}
       <h2>What is new here, and what is not</h2>
       <KeyPoints items={[
         <><b>Not new:</b> secure multiparty computation in a browser (webSPDZ, JIFF, MPyC-Web).</>,
@@ -31,8 +32,8 @@ export default function Value() {
       <p className="lead">
         {/* "then QKD-derived key material" until 2026-10-24: the browser's bb84() returns a count and
             never key bytes, so no QKD key material exists in the chain this sentence describes. The
-            same words are in README.md and in the technical report (kept outside this repository
-            since Round 86) - change all three together.
+            same claim is in README.md and in the technical report (kept outside this repository
+            since Round 86), each in its own words - change all three together.
             "with no server-side compute" is a fact of the client-only build the public demo ships,
             so the sentence names that build: a full deployment sends every run to its server
             (POST /api/run in `api.ts`), and this page renders there too. */}

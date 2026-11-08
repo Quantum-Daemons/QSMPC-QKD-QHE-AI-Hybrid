@@ -115,7 +115,7 @@ def build_resnet(arch: str, n_classes: int = 2, *, pretrained: bool = False):
 
 
 def loaders(size: int, batch_size: int, seed: int):
-    """BreastMNIST train/val/test loaders with light augmentation on train only."""
+    """BreastMNIST train/val/test loaders, no augmentation."""
     import torch
     from torch.utils.data import DataLoader, TensorDataset
 

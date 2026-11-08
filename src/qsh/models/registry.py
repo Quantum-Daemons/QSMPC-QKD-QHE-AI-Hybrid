@@ -228,8 +228,8 @@ DS_AMLWORLD = DatasetSpec(
     url="https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml",
     licence_checked="2026-08-03",
     publishable=True,
-    # CDLA-Sharing-1.0 section 3.1 requires the attribution notices to travel with the data and with
-    # anything published from it. Empty until Round 51, alongside `DS_ESA_ADB` - the two corpora whose
+    # CDLA-Sharing-1.0 section 3.1 requires the notices to travel with the data. Trained weights are Results under that
+    # licence (sections 1.11 and 3.5, `DATA_LICENSES.md`), so on a model card this credit is a courtesy. Empty until Round 51, alongside `DS_ESA_ADB` - the two corpora whose
     # licences are NOT spelled `CC-BY-4.0`, which is exactly what Round 49's backfill matched on.
     attribution=(
         "Altman et al., 'Realistic Synthetic Financial Transactions for Anti-Money Laundering "
@@ -1005,7 +1005,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         key="finance_aml.gnn",
         label="Multi-PNA+EU transaction GNN",
         architecture="PNA with reverse message passing, multigraph port numbering, ego IDs, edge updates",
-        params=None,          # filled from the trained checkpoint; AAAI-24 reports no count
+        params=None,          # never trained here, and AAAI-24 reports no count
         dataset=DS_AMLWORLD,
         # Its own published figure is its target (Round 86). Under M_AML this never-trained card read "the
         # baseline above is the target" beside GFP+XGBoost's 63.23, the gradient booster's baseline, where

@@ -118,7 +118,7 @@ export default function SdnControlPlanePanel({
 
   return (
     <div className="card" style={{ marginTop: 16 }}>
-      <h3>QKD control plane · ETSI GS QKD 015</h3>
+      <h3>QKD control plane · ETSI GS QKD 015 V2.1.1</h3>
       {/* THE ASSUMPTION, ADJACENT TO THE NUMBERS IT GOVERNS. A bit/s figure invites a comparison
           with published systems whether or not one is offered, and the nearest measured figure this
           repository cites belongs to a different channel. Saying so beside the table is cheaper than
@@ -287,7 +287,7 @@ export default function SdnControlPlanePanel({
       )}
 
       <h4 style={{ marginTop: 18, marginBottom: 6, fontSize: 13 }}>
-        Key delivery <span className="muted" style={{ fontWeight: 400 }}>(GS QKD 014)</span>
+        Key delivery <span className="muted" style={{ fontWeight: 400 }}>(GS QKD 014 V1.1.1)</span>
       </h4>
       <table className="mini-table">
         <thead><tr><th scope="col">GS QKD 014 status field</th><th scope="col" className="num">value</th></tr></thead>

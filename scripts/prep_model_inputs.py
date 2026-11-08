@@ -55,8 +55,6 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "scripts"))
 
-OUT_ROOT = REPO / "web" / "public" / "data"
-
 #: How many rows each use case ships, chosen per model rather than globally, because the right
 #: answer depends entirely on how big one row is.
 #:

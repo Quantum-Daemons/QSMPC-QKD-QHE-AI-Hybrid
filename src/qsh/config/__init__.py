@@ -79,7 +79,7 @@ def get_config(reload: bool = False) -> QSHConfig:
 
 def frontend_config() -> dict:
     """The config subset the SPA needs: the benchmark cost model + tier architectures + workload
-    multipliers + the medical-CNN shape + security/advantage weights + demo data sizes.
+    multipliers + the medical-CNN shape + the retired advantage function's weights + demo data sizes.
 
     Single source of truth for the frontend: served at ``/api/config`` (full mode) and baked into
     ``web/src/lib/config.defaults.json`` by ``scripts/export_config.py`` (demo mode). The backend reads
@@ -119,7 +119,7 @@ def frontend_config() -> dict:
         # The CKKS parameter set. Absent until Round 38, which meant the ring degree the browser ran
         # was a literal in `clientFHE.ts`, the ring degree the server ran was a default argument in
         # `fhe/backends.py`, and the ring degree the report PRINTED was a literal inside
-        # `report/build_data.py` - three copies, and `FHEConfig.poly_modulus_degree` read by none of
+        # its data script (the report has been kept outside this repository since Round 86) - three copies, and `FHEConfig.poly_modulus_degree` read by none of
         # them. They agreed only because no one had changed one. A ring change would have left the
         # published PDF asserting a parameter set the code no longer used.
         #

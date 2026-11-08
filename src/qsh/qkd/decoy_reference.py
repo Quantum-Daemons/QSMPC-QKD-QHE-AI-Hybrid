@@ -1,7 +1,7 @@
 """Published decoy-state BB84 reference curves, for reproducing literature values.
 
 This module exists to be CHECKED, not to be trusted. Every equation below is transcribed from a
-named paper and the test suite asserts the paper's own published reference values, so a reader can
+named paper and the test suite compares the model with that paper's Figure 2 and its closed form, so a reader can
 verify the implementation against the source rather than against this project's say-so.
 
 Primary source for the simulator equations:
@@ -80,21 +80,13 @@ class ChannelSpec:
     The paper does define both conventions earlier - "1/2 for the BB84 protocol ... and if one uses
     the efficient BB84 protocol, q ~ 1" - but for the figure this module reproduces it states 1/2.
 
-    **What follows from that, stated as an open question rather than silently repaired.** The
-    reference values this module is tested against, R/eta ~ 0.11 and R/eta^2 ~ 0.15, appear NOWHERE
-    in the paper's prose - searched, and they are not there. `tests/test_decoy_reference.py` passes
-    `q_sift=1.0` to reach them, which doubles the rate; at the q the paper names for that figure this
-    model produces 0.0568 and 0.0755. So one of three things is true and the record should not
-    pretend to know which: the figures were read off Figure 2's plotted curve rather than its text
-    and the curve is at q ~ 1 despite the caption; or they were read correctly and this model is 2x
-    low, with `q_sift=1.0` closing the gap by coincidence; or they were derived from this model in
-    the first place and then attributed to the paper.
-
-    **Not resolved here, because resolving it requires reading values off a plotted figure**, which
-    is not something to do from an extracted text layer. Until then the 0.11 / 0.15 assertions are
-    this module's own outputs at `q_sift=1.0`, and describing them as "the published values" is the
-    claim that needs evidence. The default stays 0.5 because that is what this project runs and what
-    the paper names.
+    **Resolved 2026-11-08 by reading the rendered figure.** Figure 2's asymptotic decoy curve starts near 2.5e-3 per pulse at
+    0 km and its caption gives 142.05 km. At q = 1/2 this model gives 2.56e-3 and 142.19 km; at q = 1 it would start at 5.1e-3.
+    So the curve is at the q the paper names, and this model is right there. R/eta ~ 0.11 is the paper's low-loss closed form,
+    the unnumbered equation above its Eq. (12), which carries no q: 0.1124 at mu = 0.48, e = 3.3%, f = 1.22 (0.0568 for this model at
+    q = 1/2). R/eta^2 ~ 0.15 has no published counterpart (the paper gives only the scaling) and is this model's own output at
+    q = 1. `tests/test_decoy_reference.py` records which is which. The default stays 0.5: it is what this project runs and what the
+    paper names.
     """
 
 

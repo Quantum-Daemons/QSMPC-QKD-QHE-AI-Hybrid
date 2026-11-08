@@ -5,7 +5,7 @@
 # re-read each round in DATA_LICENSES.md section 6a.
 #
 # HEonGPU is the GPU CKKS backend's library: scripts/build_heongpu.sh builds it with this project's
-# binding. hpmpc is vendored for a GPU MPC run not yet made.
+# binding. hpmpc is vendored for the GPU MPC measurement in scripts/bench_hpmpc_gpu.sh.
 #
 # Usage:
 #   bash scripts/bootstrap_submodules.sh            # MIN set (light, needed early)
@@ -46,11 +46,9 @@ echo "Submodule set: $QSH_SET (depth=$QSH_DEPTH)"
 # work in references/REFERENCES.md, which is the accurate relationship.
 add https://github.com/enCRYPTON-labs/HEonGPU.git       submodules/HEonGPU       all  # GPU BFV/CKKS (linear layers), Apache-2.0
 add https://github.com/chart21/hpmpc.git               submodules/hpmpc         all  # GPU secret-sharing MPC (PIGEON), MIT
-# CROSS (HE on AI-ASIC) — confirm public URL + license before enabling:
-# add https://github.com/EfficientHE/CROSS.git         submodules/CROSS         all
 
 echo
 echo "Done. Initialized submodules:"
 git submodule status 2>/dev/null || true
 echo
-echo "Tip: build C++/CUDA submodules with their own CMake (see README)."
+echo "Tip: build C++/CUDA submodules with their own CMake (see docs/development.md)."

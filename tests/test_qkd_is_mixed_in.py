@@ -159,6 +159,23 @@ def test_the_claim_follows_the_mix_not_the_derivation(stage, config) -> None:
         )
 
 
+def test_a_short_key_says_how_short() -> None:
+    """The band message names the count and the 256-bit need, as the satellite stage and the browser do (Round 86)."""
+    ctx, bus, reg = _Ctx(qkd_distance_km=400.0), _Bus(), _registry()
+    QKDKeyAgreementStage().run(ctx, bus, reg)
+    assert bus.metrics.get("qkd_mixed") == 0
+    assert any("insufficient secure key (" in m and "bits, below the 256" in m for m in bus.logs), bus.logs
+
+
+@pytest.mark.parametrize("config", [{"qkd_eve": 1.0}, {"qkd_distance_km": 400.0}], ids=["eve", "distance"])
+def test_an_aborted_run_has_no_block_and_finishes(config) -> None:
+    """QBER over the abort threshold: no finite key was computed, so no block is reported. It raised on `None` until Round 86."""
+    ctx, bus, reg = _Ctx(**config), _Bus(), _registry()
+    QKDKeyAgreementStage().run(ctx, bus, reg)
+    assert bus.metrics["secure_key_bits"] == 0, bus.metrics
+    assert "qkd_block_pulses" not in bus.metrics and "qkd_block_units_for_key" not in bus.metrics
+
+
 def test_no_pqc_channel_means_no_claim() -> None:
     """With no handshake, the stage must derive and say it could not fold - not claim a hybrid."""
     ctx, bus, reg = _Ctx(qkd_distance_km=1.0, qkd_misalignment=0.0), _Bus(), _registry()

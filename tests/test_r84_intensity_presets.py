@@ -110,7 +110,7 @@ def test_the_python_stage_runs_the_pair_it_is_given() -> None:
     assert first["skr_per_pulse"] > shipped["skr_per_pulse"]              # the asymptotic rate moves too
     # OptiQKD's baseline is the run's own source, not the shipped pair.
     tuned = _telecom({"qkd_intensities": "first_key", "qkd_optimize": True})
-    assert tuned["qkd_baseline_skr"] == round(first["skr_per_pulse"], 6)
+    assert tuned["qkd_baseline_skr_per_pulse"] == round(first["skr_per_pulse"], 6)
     with pytest.raises(ValueError, match="one of"):
         _telecom({"qkd_intensities": "bogus"})
 
@@ -206,7 +206,7 @@ def test_the_browser_stage_runs_the_same_pair_as_python(browser, preset: str) ->
     assert js["skr_per_pulse"] == pytest.approx(py["skr_per_pulse"], rel=1e-9)
     if preset == "first_key":
         # OptiQKD's "default" is this run's rate at this run's pair (the browser rounds it to 6 places).
-        assert js["qkd_surrogate_skr_default"] == round(js["skr_per_pulse"], 6)
+        assert js["qkd_surrogate_skr_per_pulse_default"] == round(js["skr_per_pulse"], 6)
 
 
 def test_the_panel_offers_both_pairs_from_config() -> None:

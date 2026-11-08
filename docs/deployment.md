@@ -39,7 +39,7 @@ success.
     cd clone-verify && ls web/src/components/ src/qsh/models/    # anything missing = incomplete commit
 
     # 3. server: reset the deploy tree to exactly that commit
-    cd ~/dev/QSMPC-QKD-QHE-AI-Hybrid
+    cd "$QSH_DEMO_DIR"
     git fetch origin && git reset --hard origin/<branch>
     git rev-parse --short HEAD                                   # record this; it is the deployed version
 

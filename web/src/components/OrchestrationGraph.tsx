@@ -186,7 +186,7 @@ export default function OrchestrationGraph({
   doneStages: Set<string>;
   /** Crypto-agility selections plus the Parameters-panel protocol, so the node captions name what
    *  actually ran. `qkd` is the family (is there a channel); `qkdProtocol` is the protocol. */
-  config?: { kem?: string; qkd?: string; sig?: string; qkdProtocol?: string };
+  config?: { kem?: string; qkd?: string; sig?: string; qkdProtocol?: string; qsmpcOp?: string };
   /** The live run's metrics, so the inference node can name the published model that ran.
    *
    *  This graph is the SECOND view of the same run, and the checklist's own rule is to audit every
@@ -224,6 +224,12 @@ export default function OrchestrationGraph({
     }
     if (id === "sign_result") {
       return `${head}\n(${config.sig ? String(config.sig).toUpperCase() : "ML-DSA"})`;
+    }
+    // The `default` flow serves the generic demo (PSI) and genomics (secure sum), and the op is selectable, so this
+    // node said "PSI / secure sum" whichever ran. Same resolution as ParameterPanel and clientCompute.
+    if (id === "qsmpc_compute" && head === "PSI / secure sum") {
+      const op = String(config.qsmpcOp || (usecase === "genomics" ? "sum" : "psi"));
+      return `${op === "sum" ? "Secure sum" : "PSI"}\n(classical here)`;
     }
     // Whichever stage carries this use case's inference: private_inference for finance, medical and
     // genomics, qml_ids for telecom, qsdc_telemetry for satellite. Same mapping the pipeline uses.

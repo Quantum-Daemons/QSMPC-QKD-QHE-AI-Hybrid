@@ -53,7 +53,6 @@ PROSE_FIELDS = frozenset({
     "sample_size_note",
     "classical_rf_attribution_note",
     "framing",
-    "note",
 })
 
 

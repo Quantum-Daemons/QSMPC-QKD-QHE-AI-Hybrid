@@ -79,7 +79,7 @@ class TenSEALBackend:
         # values as :class:`FHEConfig`, which nothing read. ``FHEConfig.poly_modulus_degree`` had no
         # reader anywhere in ``src/``: the value that actually built a context was this signature,
         # the value the browser ran was a literal in ``web/src/lib/clientFHE.ts``, and the value the
-        # report printed was a literal in ``report/build_data.py``. Three live copies and one dead
+        # report printed was a literal in its data script (kept outside this repository since Round 86). Three live copies and one dead
         # field, agreeing only because nobody had yet changed one. Raising the ring degree is what
         # exposed that, so the wiring lands before the change rather than after it.
         from ..config import get_config

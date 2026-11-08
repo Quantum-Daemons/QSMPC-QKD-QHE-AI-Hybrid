@@ -812,7 +812,7 @@ def test_the_visitor_facing_texts_state_the_oprf_psi() -> None:
 
 #: The finance flowchart's PSI node, and the wording of the keyed-hash PSI it replaced. Module level so
 #: the technical report's own tests (outside this repository since Round 86) hold its copy to the same.
-PSI_NODE = "PSI: OPRF (RFC 9497, ristretto255-SHA512) over two banks' account lists"
+PSI_NODE = "PSI: OPRF (RFC 9497, ristretto255-SHA512) over two banks' generated account lists"
 RETIRED_PSI_WORDING = ("keyed-hash", "HMAC-SHA256 keyed by the session key", "OPRF-based protocol",
                        "HMAC of both lists", "keyedHashPSI", "private_set_intersection")
 

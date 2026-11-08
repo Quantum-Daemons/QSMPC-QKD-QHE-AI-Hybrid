@@ -94,7 +94,7 @@ logs/
 *.npy
 *.zip
 # Round 11 — bundled SMALL commercial-OK real-data samples per industry, tracked so the demo + Docker run
-# on real data offline (PaySim CC-BY-SA, openSNP CC0 / PGS-Catalog CC-BY, ESA-ADB CC-BY-3.0-IGO). Placed
+# on real data offline (each file's licence is in DATA_LICENSES.md). Placed
 # LAST so these re-includes win over `data/*` and the `*.csv`/`*.npz` rules above (last match wins).
 !data/finance/
 !data/genomics/

@@ -81,7 +81,7 @@ export type OnnxBackend = "wasm" | "webgpu";
 
 export type OnnxStatus = {
   loaded: boolean;
-  backend: string;          // "onnx-webgpu" | "onnx-webnn" | "onnx-wasm" | "none"
+  backend: string;          // "onnx-webgpu" | "onnx-wasm" | "none"
   /** What the session was created FOR. WebGPU requested on a machine without a usable adapter
    *  gives backend "onnx-wasm" with requested "webgpu", and the page can say which happened. */
   requested: OnnxBackend | null;
@@ -91,7 +91,6 @@ export type OnnxStatus = {
   fromCache: boolean;
   threads: number;
   /** Probed, not used: the WebNN provider is deliberately not requested. */
-  webnnAvailable?: boolean;
   crossOriginIsolated: boolean;
   loadMs: number | null;
   error: string | null;     // non-null => nothing was inferred; the caller must say so
@@ -230,6 +229,7 @@ export async function webgpuInfo(): Promise<Record<string, unknown>> {
  * The cost is a few milliseconds once per page. The alternative cost was every model on every page
  * appearing unsupported, which is what a cheaper check bought last time.
  */
+/** Not called on the load path (no bundle here can consume WebNN); kept for re-measuring the register's reopening condition. */
 export async function hasWebNN(): Promise<boolean> {
   const ml = (navigator as any)?.ml;
   if (!ml?.createContext || typeof (globalThis as any).MLGraphBuilder !== "function") return false;
@@ -380,7 +380,6 @@ export async function loadModel(
       status.bytes = buf.byteLength;
 
       const gpu = gpuAvailable;
-      const webnn = await hasWebNN();   // reported in status only; see the EP note below
       const eps: any[] = [];
       if (gpu) eps.push("webgpu");
       // WebNN is probed but NOT offered to ORT, and this time the reason is measured rather than
@@ -439,7 +438,6 @@ export async function loadModel(
       // partial answer.
       status.backend = gpu ? "onnx-webgpu" : "onnx-wasm";
       status.requested = backend;
-      status.webnnAvailable = webnn;   // proven by execution, but deliberately not used
       status.loaded = true;
       status.modelKey = target.spec.key;
       status.url = target.url;

@@ -43,7 +43,7 @@ type Run = ReturnType<typeof usePipelineRun>;
 type Field = [label: string, key: string, step: number, min: number, title?: string, max?: number];
 
 export default function ParameterPanel({ run }: { run: Run }) {
-  const { params, setParams, resetParams, usecase, optiqkd } = run;
+  const { params, setParams, resetParams, usecase, optiqkd, qkd } = run;
   const p = params as Record<string, number | string>;
   /**
    * The QSMPC op the run will ACTUALLY perform, mirroring `clientCompute`:
@@ -55,6 +55,13 @@ export default function ParameterPanel({ run }: { run: Run }) {
    * not what the select happens to display.
    */
   const resolvedOp = String(p.qsmpc_op || (usecase === "genomics" ? "sum" : "psi"));
+  /**
+   * Under "pqc-only" the QKD stages return at once (`qkd_key_agreement` and `satellite_qkd` in clientCompute), so nothing
+   * reads these fields. The satellite's channel fields are not in the list: the QSDC stage reads them either way.
+   */
+  const qkdOff = qkd === "pqc-only";
+  const pqcOnlyWhy = "No effect under PQC-only - no QKD stage runs, so nothing reads this. ";
+  const qkdOnly = (key: string) => key.startsWith("qkd_") || key === "sat_pulses" || key === "sat_block_passes" || key === "sat_block_seconds";
   /**
    * Commit a numeric edit, CLAMPED to that field's own min/max.
    *
@@ -82,7 +89,9 @@ export default function ParameterPanel({ run }: { run: Run }) {
     // only consumed by the Toeplitz/seedless extractors, and aml_transactions is only read on the
     // PSI branch of the QSMPC stage.
     const inertBecause =
-      key === "qrng_eps_log2" && p.qrng_post === "von_neumann"
+      qkdOff && qkdOnly(key)
+        ? pqcOnlyWhy.trim()
+      : key === "qrng_eps_log2" && p.qrng_post === "von_neumann"
         ? "No effect on the von Neumann extractor - switch QRNG extractor to Toeplitz or seedless to use the LHL eps."
       : key === "aml_transactions" && resolvedOp === "sum"
         ? "No effect while QSMPC op is Secure sum - only the PSI branch sizes its sets from this."
@@ -136,7 +145,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
       ["QKD pulses", "qkd_pulses", 10000, 1,
        "channel uses the BB84 run samples: they measure the QBER and decide the abort, and they are the "
        + "key's block only when Key block is 'this run's pulses'"],
-      ["Distance (km)", "qkd_distance_km", 5, 1, "fibre distance - raises loss + QBER"],
+      ["Distance (km)", "qkd_distance_km", 5, 1, "fibre distance - raises loss + QBER. No block carries a key beyond about 300 km at these detector settings, so the field stops at 500", 500],
       // Both feed intrinsicQber. The misalignment cap of 0.5 is where the composed error saturates;
       // Eve alone reaches at most 0.25 (f = 1), composed independently with the channel's own error.
       ["Eve fraction", "qkd_eve", 0.05, 0, "intercept-resend fraction (0-1) - raises QBER", 1],
@@ -151,7 +160,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
       ["Misalignment", "qkd_misalignment", 0.005, 0, "baseline optical error", 0.5],
       // THE CONTROL THE PANEL ALREADY CLAIMED EXISTED. `SdnControlPlanePanel` told the visitor twice
       // that skr/eskr "scale exactly with the Source rate control in the Parameters panel", and no
-      // such control was ever rendered - the rate came from baked config. Six inert controls have
+      // such control was ever rendered - the rate came from baked config. Seven inert controls have
       // been found in this project; that was the inverse, and worse, because the sentence sent a
       // reader looking for something that was not there.
       //
@@ -259,7 +268,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
   groups.push(
     { title: "OptiQKD (AI-QKD)", fields: [
       ["Opt samples", "qkd_opt_samples", 8, 4,
-       "evaluation budget for the coordinate-ascent search - enable 'Optimize QKD' to use it"]] },
+       "evaluation budget for the coordinate-ascent search, about budget / 8 rounds, stopping at the first round that improves nothing, so a larger budget can change nothing - enable 'Optimize QKD' to use it"]] },
     { title: "QRNG", fields: [
       // The Toeplitz extractor is O(n^2) and synchronous. Unbounded, this freezes the tab exactly
       // as the QCNN qubit count used to: ~4e9 operations at 32768 bits.
@@ -331,7 +340,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
               <label className="muted" htmlFor="pp-op" style={{ fontSize: 12 }}>QSMPC op</label>
               <select id="pp-op" name="qsmpc_op" value={p.qsmpc_op as string} style={{ width: "100%" }}
                 onChange={(e) => setParams({ ...params, qsmpc_op: e.target.value })}>
-                <option value="">(use case default)</option><option value="psi">PSI</option><option value="sum">Secure sum</option>
+                <option value="">{usecase === "genomics" ? "Secure sum" : "PSI"} (use-case default)</option><option value="psi">PSI</option><option value="sum">Secure sum</option>
               </select>
             </div>)}
             {inference && (
@@ -339,9 +348,6 @@ export default function ParameterPanel({ run }: { run: Run }) {
               <label className="muted" htmlFor="pp-inf" style={{ fontSize: 12 }}>Inference</label>
               <select id="pp-inf" name="inference" value={p.inference as string} style={{ width: "100%" }}
                 onChange={(e) => setParams({ ...params, inference: e.target.value })}>
-                {/* "" resolves to ckks in clientCompute - there is no per-use-case table behind it - so the
-                    option says which backend it means rather than implying one. */}
-                <option value="">CKKS (FHE) - default</option>
                 <option value="ckks">CKKS (FHE)</option>
                 {/* Offered ONLY where trained weights actually ship. Genomics reaches the
                     private-inference stage but has no `qcnn_weights.json`, so selecting QCNN there
@@ -438,8 +444,8 @@ export default function ParameterPanel({ run }: { run: Run }) {
             {/* THE FIBRE KEY'S BLOCK (Round 80): the same choice the satellite's Key block makes, for a
                 link that holds its distance. QKDConfig.finite_key_block records the default and why. */}
             {fibreQkd && (() => {
-              const e91 = p.qkd_protocol === "e91";
-              const why = e91 ? "No effect on E91 - no finite-key bound is modelled for an entangled source, so its key stays asymptotic. " : "";
+              const e91 = p.qkd_protocol === "e91" || qkdOff;   // dims for either reason; `why` says which
+              const why = qkdOff ? pqcOnlyWhy : e91 ? "No effect on E91 - no finite-key bound is modelled for an entangled source, so its key stays asymptotic. " : "";
               return (<>
             <div style={{ minWidth: 200, flex: "2 1 200px" }}>
               <label className="muted" htmlFor="pp-qkdblock" style={{ fontSize: 12, opacity: e91 ? 0.45 : 1 }}
@@ -470,7 +476,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
                 optimise different things on this fibre; QKDConfig.first_key_mu_signal has the trade. */}
             {(() => {
               const blockKey = fibreIntensities("block_key"), firstKey = fibreIntensities("first_key");
-              const noDecoy = e91 ? "No effect on E91: an entangled source sends no signal or decoy pulses. " : "";
+              const noDecoy = qkdOff ? pqcOnlyWhy : e91 ? "No effect on E91: an entangled source sends no signal or decoy pulses. " : "";
               return (
             <div style={{ minWidth: 220, flex: "2 1 220px" }}>
               <label className="muted" htmlFor="pp-qkdmu" style={{ fontSize: 12, opacity: e91 ? 0.45 : 1 }}
@@ -487,8 +493,8 @@ export default function ParameterPanel({ run }: { run: Run }) {
             {/* THE KEY BLOCK (Round 79). The key is the finite-key length of a block of link time;
                 which block is the choice the published practice settles (QKDConfig.free_space_block). */}
             {!fibreQkd && (() => {
-              const e91 = p.qkd_protocol === "e91";
-              const why = e91 ? "No effect on E91 - no finite-key bound is modelled for an entangled source, so its key stays asymptotic. " : "";
+              const e91 = p.qkd_protocol === "e91" || qkdOff;   // dims for either reason; `why` says which
+              const why = qkdOff ? pqcOnlyWhy : e91 ? "No effect on E91 - no finite-key bound is modelled for an entangled source, so its key stays asymptotic. " : "";
               return (<>
             <div style={{ minWidth: 200, flex: "2 1 200px" }}>
               <label className="muted" htmlFor="pp-satblock" style={{ fontSize: 12, opacity: e91 ? 0.45 : 1 }}
@@ -535,8 +541,10 @@ export default function ParameterPanel({ run }: { run: Run }) {
               })()}
             </div>)}
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
-              <label className="muted" htmlFor="pp-proto" style={{ fontSize: 12 }}>QKD protocol</label>
-              <select id="pp-proto" name="qkd_protocol" value={p.qkd_protocol as string} style={{ width: "100%" }}
+              <label className="muted" htmlFor="pp-proto" style={{ fontSize: 12, opacity: qkdOff ? 0.45 : 1 }}
+                title={qkdOff ? pqcOnlyWhy.trim() : undefined}>QKD protocol</label>
+              <select id="pp-proto" name="qkd_protocol" value={p.qkd_protocol as string} disabled={qkdOff}
+                style={{ width: "100%", opacity: qkdOff ? 0.45 : 1 }}
                 onChange={(e) => setParams({ ...params, qkd_protocol: e.target.value })}>
                 <option value="bb84">BB84 (decoy)</option><option value="e91">E91 (CHSH)</option>
               </select>

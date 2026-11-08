@@ -15,8 +15,7 @@ wires the real primitives end to end with per-party timing:
             arithmetic and is not a private inference between the two (Round 86, review PI-11)
 
 Reuses :mod:`~qsh.pqc.hybrid_kem`, :mod:`~qsh.pqc.transport`, :mod:`~qsh.qkd.bb84`,
-:mod:`~qsh.qkd.channel`, :mod:`~qsh.qsmpc.psi`, :mod:`~qsh.fhe.ckks_inference`, and scores
-the run with :mod:`~qsh.benchmark.security`. The PSI is the semi-honest DH-OPRF PSI of
+:mod:`~qsh.qkd.channel`, :mod:`~qsh.qsmpc.psi` and :mod:`~qsh.fhe.ckks_inference`. The PSI is the semi-honest DH-OPRF PSI of
 :mod:`qsh.qsmpc.psi` (RFC 9497, ristretto255-SHA512): Alice learns the intersection and the size of
 Bob's set, Bob learns the size of Alice's and nothing else about her IDs, and its messages are
 sealed under the session key. It is not post-quantum and has no malicious security.

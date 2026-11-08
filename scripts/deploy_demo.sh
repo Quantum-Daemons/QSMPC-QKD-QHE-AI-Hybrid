@@ -19,7 +19,7 @@
 #
 #     QSH_DEMO_SSH   ssh destination, e.g. user@host
 #     QSH_DEMO_KEY   path to the ssh key            (optional; ssh config may supply it)
-#     QSH_DEMO_DIR   deploy tree on the host        (default ~/dev/QSMPC-QKD-QHE-AI-Hybrid)
+#     QSH_DEMO_DIR   deploy tree on the host
 #     QSH_DEMO_URL   public URL to verify against
 #     PROXY_NETWORK  the network the host's reverse proxy owns
 #
@@ -39,7 +39,8 @@ ok()  { printf '  PASS  %s\n' "$1"; }
 : "${QSH_DEMO_SSH:?set QSH_DEMO_SSH (ssh destination); it is deliberately not in this file}"
 : "${QSH_DEMO_URL:?set QSH_DEMO_URL (public demo URL); it is deliberately not in this file}"
 : "${PROXY_NETWORK:?set PROXY_NETWORK (the reverse proxy network on the host); it is deliberately not in this file}"
-DIR="${QSH_DEMO_DIR:-\$HOME/dev/QSMPC-QKD-QHE-AI-Hybrid}"
+: "${QSH_DEMO_DIR:?set QSH_DEMO_DIR (the deploy tree on the host); it is deliberately not in this file}"
+DIR="$QSH_DEMO_DIR"
 SSH=(ssh -o ConnectTimeout=20)
 [ -n "${QSH_DEMO_KEY:-}" ] && SSH+=(-i "$QSH_DEMO_KEY")
 SSH+=("$QSH_DEMO_SSH")
@@ -80,7 +81,7 @@ deploy_branch() {
   # The 502 trap, asserted rather than remembered: the container must be on the shared proxy network.
   local nets; nets=$(remote "docker inspect qsh-demo-web-1 --format '{{range \$k,\$v := .NetworkSettings.Networks}}{{\$k}} {{end}}'")
   case "$nets" in
-    *_mgmt-net*|*proxy*) ok "on the shared proxy network ($nets)" ;;
+    *"$PROXY_NETWORK"*) ok "on the shared proxy network ($nets)" ;;
     *) die "container is on '$nets' with no shared proxy network - the site will 502 while docker says Up" ;;
   esac
 
@@ -139,7 +140,7 @@ return_to_main() {
   local nets; nets=$(remote "docker inspect qsh-demo-web-1 --format '{{range \$k,\$v := .NetworkSettings.Networks}}{{\$k}} {{end}}'") \
     || die "could not read the container's networks"
   case "$nets" in
-    *_mgmt-net*|*proxy*) ok "on the shared proxy network ($nets)" ;;
+    *"$PROXY_NETWORK"*) ok "on the shared proxy network ($nets)" ;;
     *) die "container is on '$nets' with no shared proxy network - the site will 502 while docker says Up" ;;
   esac
 

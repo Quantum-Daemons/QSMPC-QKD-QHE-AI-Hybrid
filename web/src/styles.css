@@ -315,9 +315,8 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
   border-radius: 4px;
 }
 
-/* Text equivalent for content carried only by a graphic. `TwoPartyDiagram` is one `role="img"` with a
-   short label, which collapses its whole subtree for assistive tech - including the QBER, the
-   secure-key verdict, the QSDC abort reason and the advantage score. Announced, not drawn. */
+/* Text equivalent for content carried only by a graphic: a `role="img"` with a short label collapses
+   its whole subtree for assistive tech, so the values it draws are announced here. */
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;

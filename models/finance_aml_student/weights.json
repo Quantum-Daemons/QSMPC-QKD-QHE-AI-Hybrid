@@ -1,6 +1,6 @@
 {
   "kind": "logistic-linear",
-  "note": "The CKKS-linear student: this is what is evaluated under homomorphic encryption. Small by necessity -- encrypted evaluation is cost-bounded -- and distilled against the teacher's own decisions, so `agreement` measures substitution rather than two independent fits that happen to correlate.",
+  "note": "The CKKS-linear student: the model this use case's encrypted tier is designed to evaluate under homomorphic encryption. Small because it has to close at this demo's operating point (CKKS in one browser tab), not because encrypted evaluation is cost-bounded in general; distilled against the teacher's own decisions, so `agreement` measures substitution rather than two independent fits that happen to correlate.",
   "teacher_key": "finance_aml.gbm",
   "student_key": "finance_aml.student",
   "n_features": 32,
