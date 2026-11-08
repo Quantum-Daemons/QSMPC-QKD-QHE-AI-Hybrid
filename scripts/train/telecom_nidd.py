@@ -30,7 +30,7 @@ THE LEAK COUNTERFACTUAL, kept from the previous round because it is still the ho
     and `Offset`. This script fits the SAME model again with them restored and records the result.
     It reaches about 0.9997 accuracy, which is the published range for this corpus.
 
-    That is the shape of result Engelen, Rimmer & Joosen (WTMC 2021) produced for CIC-IDS2017, which
+    That is a shortcut of the kind Engelen, Rimmer & Joosen (WTMC 2021) found in CIC-IDS2017, which
     this repository already cites as its reason for reporting per-class F1 before any aggregate. It
     is recorded as a measurement rather than narrated, so `leak_counterfactual_accuracy` in
     `models/metrics.json` is checkable and this paragraph is not the evidence.

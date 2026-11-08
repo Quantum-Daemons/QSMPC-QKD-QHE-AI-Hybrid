@@ -22,7 +22,10 @@
  * requirement for national security systems and the Director of OMB for the rest, and M-26-15
  * "does not apply to national security systems".
  */
-export type Firmness = "in force" | "requirement" | "ordered" | "draft" | "target" | "passed" | "deferred";
+/** "announced" (Round 86): a schedule its issuer states it will follow, in a final document that does not itself bind anyone. NIST IR 8547
+ *  says "NIST will deprecate ... after 2030 and disallow ... after 2035", and "deprecated" there still means "may be used, but there is some
+ *  security risk". The status comes from SP 800-131A, whose Rev. 3 is still a draft. */
+export type Firmness = "in force" | "requirement" | "ordered" | "announced" | "draft" | "target" | "passed" | "deferred";
 
 export type Lane = "NIST" | "US federal" | "US NSS" | "EU" | "Companies";
 
@@ -94,7 +97,7 @@ export const CLOCK: ClockRow[] = [
   { lane: "US federal", short: "TLS 1.3 support", when: "2030-01-02", t: 2030.0, instrument: "OMB M-26-15, sec. 4, under EO 14306 (EO 14144 sec. 4(f)(ii) as amended)", binds: "US federal agencies, not NSS (for NSS, EO 14306 has NSA issue the requirement)",
     what: "agencies support TLS 1.3 or a successor version as soon as practicable, and not later than this date", firmness: "requirement", sources: [SOURCES.m2615, SOURCES.eo14306] },
   { lane: "NIST", short: "deprecate RSA/ECC", when: "after 2030", t: 2030.5, instrument: "NIST IR 8547 (final, Oct 2026), Tables 2 and 4", binds: "use under NIST standards and guidelines; NIST's announced schedule (SP 800-131A Rev. 3, which sets transition status, is still a draft), binding on federal migration plans through OMB M-26-15",
-    what: "all quantum-vulnerable public-key algorithms (RSA, ECDSA and EdDSA signatures; finite-field and elliptic-curve DH and MQV; RSA key establishment) deprecated: usable at the data owner's risk. The earlier EO 14412 / OMB M-26-15 dates for high value assets and high impact systems still apply", firmness: "requirement", sources: [SOURCES.ir8547] },
+    what: "all quantum-vulnerable public-key algorithms (RSA, ECDSA and EdDSA signatures; finite-field and elliptic-curve DH and MQV; RSA key establishment) deprecated: usable at the data owner's risk. The earlier EO 14412 / OMB M-26-15 dates for high value assets and high impact systems still apply", firmness: "announced", sources: [SOURCES.ir8547] },
   { lane: "US federal", short: "PQC key establishment", when: "2030-12-31", t: 2031.0, instrument: "EO 14412, sec. 4(b), via OMB M-26-15 (Phase 3)", binds: "US federal high-value assets and high impact systems (not NSS); OMB M-26-15 adds systems with highly sensitive data and systems an agency finds likely to be particularly vulnerable",
     what: "PQC key establishment", firmness: "requirement", sources: [SOURCES.eo14412, SOURCES.m2615] },
   { lane: "US NSS", short: "phase-out", when: "2030-12-31", t: 2031.0, instrument: "CNSSP 15 (CNSA 2.0)", binds: "US national security systems ONLY",
@@ -106,7 +109,7 @@ export const CLOCK: ClockRow[] = [
   { lane: "US NSS", short: "all NSS use", when: "2031-12-31", t: 2032.0, instrument: "CNSSP 15 (CNSA 2.0)", binds: "US national security systems ONLY",
     what: "CNSA 2.0 mandatory for all use", firmness: "requirement", sources: [SOURCES.cnsa] },
   { lane: "NIST", short: "disallow RSA/ECC", when: "after 2035", t: 2035.5, instrument: "NIST IR 8547 (final, Oct 2026), Tables 2 and 4", binds: "use under NIST standards and guidelines; NIST's announced schedule (SP 800-131A Rev. 3, which sets transition status, is still a draft), binding on federal migration plans through OMB M-26-15",
-    what: "all quantum-vulnerable public-key algorithms, RSA-3072 and P-256 included, disallowed", firmness: "requirement", sources: [SOURCES.ir8547] },
+    what: "all quantum-vulnerable public-key algorithms, RSA-3072 and P-256 included, disallowed", firmness: "announced", sources: [SOURCES.ir8547] },
   { lane: "EU", short: "medium-risk done", when: "2035-12-31", t: 2036.0, instrument: "EU NIS CG PQC roadmap v1.1", binds: "EU Member States",
     what: "medium-risk completed; low-risk \"completed as much as feasible\"", firmness: "target", sources: [SOURCES.nisRoadmap] },
 ];

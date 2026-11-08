@@ -251,7 +251,9 @@ baselines above are easy to miss.
 The linear per-SNP weighted sum is unambiguously current - *Nature Communications*, Jun 2025, finds
 neural models **outperformed by linear regression** across 28 UK Biobank traits. The nearest
 comparator is HEPRS (*Cell Reports Methods*, Jan 2026): CKKS via Lattigo, a 110,258-SNP schizophrenia
-score, r > 0.999 against plaintext at ~4.9 s and 3.3 GB per individual.
+score, r > 0.999 against plaintext. Its introduction gives 4.9 s and 3.3 GB per individual on a laptop with its
+best parameters; its results section gives about 10 s and 3 GB for one individual on a MacBook Pro M1 at ring
+dimension $`2^{13}`$.
 
 The problem is not the model. **Pooled allele counts are the canonical genomic privacy failure**, and
 encrypting their computation does nothing about their release. Full treatment now in
@@ -320,8 +322,8 @@ Two findings, both of which this project should absorb rather than argue with.
 
 **There is no public 8-class QKD-attack dataset.** At least three papers use eight classes with *incompatible*
 taxonomies - only three of seven attacks overlap - both on private simulated data. This project
-generates its own and labels it `synthetic, methodology-grounded`, citing arXiv:2509.14282, which is
-the honest framing. But the eight-class shape should not be described as a standard, because it is
+generates its own and labels it as synthetic with signatures of its own design, taking only the class list
+from arXiv:2509.14282, which is the honest framing. But the eight-class shape should not be described as a standard, because it is
 not one.
 
 **THIS PARAGRAPH READ ITS CITATION BACKWARDS AND IS WITHDRAWN. Round 55.**
@@ -480,7 +482,7 @@ behind.
 |---|---|---|
 | Finance | **No.** The US-UK PETs Prize Challenge (Track A, financial crime) concluded March 2023, its SWIFT data was never released, no leaderboard was published, and no successor exists. | Anchor on the plaintext AMLworld number: GFP+XGBoost minority-class F1 **0.6323** on HI-Small (NeurIPS 2023 D&B). This repository measures **0.1519** against it and does not close the gap - see the correction below. |
 | Medical | **No** privacy-preserving one. MedMNIST v2 has a real plaintext leaderboard; FeTS is federated with no cryptography; MedPerf is federated *evaluation* only. | Compare to MedMNIST plaintext. Every named production deployment is plain FL with no cryptographic guarantee, so adding CKKS puts this ahead of them rather than level. |
-| Genomics | **Yes, and it is the only one.** iDASH 2026 (scheduled for 7 Nov 2026, Dallas) has a published rubric. Track 1 is homomorphic evaluation of a pretrained decoder, scored on a correlation term with a **60-minute disqualification**. | The one vertical where an external scoring rubric exists. Note that iDASH publishes participating teams but **not scores**, so the rubric is citable and a recent iDASH *number* is not. |
+| Genomics | **Yes, and it is the only one.** iDASH 2026 (scheduled for 7 Nov 2026, Dallas) has a published rubric. Track 1 is homomorphic evaluation of a pretrained decoder, scored on a correlation term with a **60-minute disqualification**. | The one vertical where an external scoring rubric exists. Note that iDASH's site lists each track's top three teams but **not scores** (the 2025 page; the 2026 page shows no results yet), so the rubric is citable and a recent iDASH *number* is not. |
 | Telecom | **No.** Two 2026 surveys say so in their own words, one of them noting it "could not compare the papers it reviewed" for lack of standard protocols. | The synthetic-corpus decision looks better after this sweep, not worse - see below. |
 | Satellite | **No**, and no *cryptographic* privacy work at all. The closest is plain FedAvg on ESA-ADB (Atefrad & Karami 2025, F0.5 0.86, precision 0.93, AUC 0.85), which lists differential privacy and secure aggregation as **future** work - the same category the Medical row already discounts. ESA-ADB is the credible plaintext benchmark. | Genuinely novel, which cuts both ways: nothing to be judged against, and nothing to be validated by. |
 

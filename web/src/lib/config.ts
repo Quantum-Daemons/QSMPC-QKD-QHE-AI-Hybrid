@@ -76,7 +76,7 @@ export const webCfg = () => CONFIG.web;
 
 /** Provenance of the sample bundled INTO the demo (not the corpus the model was trained on).
  *  Generated from src/qsh/models/registry.py BUNDLED_DEMO_SAMPLES; CI checks the parity. */
-export type DemoSample = { provenance: string; licence: string; url: string; licence_checked: string };
+export type DemoSample = { provenance: string; licence: string; url: string; licence_checked: string; attribution?: string; file?: string };
 export const demoSample = (usecase: string): DemoSample | null =>
   ((CONFIG as any).demo_samples ?? {})[usecase] ?? null;
 

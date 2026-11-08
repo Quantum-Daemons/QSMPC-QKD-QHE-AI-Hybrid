@@ -82,7 +82,7 @@ def test_e91_runs_on_the_satellite_stage_when_selected() -> None:
 def test_pqc_only_runs_no_quantum_stage_on_satellite() -> None:
     r = _satellite({"qkd": "pqc-only"})
     m = r["metrics"]
-    for name in ("qber", "secure_key_bits", "skr_per_pulse", "qkd_mixed", "qsdc_secrecy_capacity",
+    for name in ("qber", "secure_key_bits", "skr_per_pulse", "qkd_mixed", "qsdc_eq8_bound",
                  "qsdc_link_budget_limited", "qsdc_statistics_limited", "qsdc_eavesdrop_detected"):
         assert name not in m, f"{name} was reported under the PQC-only profile"
     # Not a quantum stage (Round 84): the CKKS check scores a bundled OPS-SAT-AD segment, not the QSDC

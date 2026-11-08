@@ -44,7 +44,8 @@ sys.path.insert(0, str(REPO / "scripts"))
 GRAPH_SHA256 = "54511ef70652acb02be201cfed309ff1f95e03c55e9f2aa2b24e2b35a9c8996f"
 #: The student's weights as the Hub serves them at its record's revision (read 2026-11-06). The page's copy,
 #: `web/public/data/finance/student_weights.json`, is the same bytes (`build_heldout_payloads.py`).
-STUDENT_WEIGHTS_SHA256 = "c47afeadcc8816ce0074f3cdfcc88ec89580096b1987a79f9f9a699596b3d17f"
+#: Re-published 2026-11-08 with a rewritten `note` only: the weights, bias and scaler are those of sha256 c47afeadcc8816ce, which the 2026-11-06 measurements used.
+STUDENT_WEIGHTS_SHA256 = "d8823c8961bbc98699223bfa446cc3c5763701d2f363f8be23ee7851d1a420b2"
 
 TEACHER, STUDENT = "finance_aml.gbm", "finance_aml.student"
 

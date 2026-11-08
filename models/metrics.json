@@ -4,7 +4,7 @@
     "auprc": 0.12334101789973353,
     "auprc_baseline": 0.0015234617040716665,
     "auroc": 0.9525582593503528,
-    "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a tuning one: the gap is unreachable at any threshold, because measured AUPRC is far below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph; this project computes per-account scalar aggregates. A degree is one number per account, whereas a GFP feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. GFP ships in `snapml` under a Proprietary licence and is excluded by this project's commercial-OK-only rule, but the licence is not itself the cause - the architecture is, and it is reimplementable without `snapml`, simply at more cost than renaming aggregates. Reachability is computed to 4 hops against injected CYCLE attempts of up to 10; that was previously recorded as a main cause and is NOT one - the GFP paper (arXiv:2402.08593) decomposes its own contribution, and its Table 5 (HI-Small, XGBoost, batch 128) gives fan-in/fan-out, which is reimplemented here, 37 F1 points (19.75 to 56.88) and multi-hop cycle and scatter-gather patterns 1.7 more (to 58.60; 'up to 4%' in its text is F1 points, not a relative gain). The evaluation is strictly inductive and temporally split. Per-account aggregates are causal (each row sees only edges strictly before it); the structural block - cycle closure, scatter-gather, bank diversity, burst degree - is still fitted on the training window, because recomputing sparse reachability at every timestep is not tractable here. Reported as measured; not adjusted to close the gap. Full workings: references/finance-gap-investigation.md.",
+    "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a tuning one: the gap is unreachable at any threshold, because measured AUPRC is far below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph; this project computes per-account scalar aggregates. A degree is one number per account, whereas a GFP feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. GFP ships in `snapml` under a Proprietary licence and is excluded by this project's commercial-OK-only rule, but the licence is not itself the cause - the architecture is, and it is reimplementable without `snapml`, simply at more cost than renaming aggregates. Reachability is computed to 4 hops against injected CYCLE attempts of up to 10; that was previously recorded as a main cause and is NOT one - the GFP paper (arXiv:2402.08593) decomposes its own contribution, and its Table 5 (HI-Small, XGBoost, batch 128) gives fan-in/fan-out, which this project approximates with per-account aggregates, 37 F1 points (19.75 to 56.88) and multi-hop cycle and scatter-gather patterns 1.7 more (to 58.60; 'up to 4%' in its text is F1 points, not a relative gain). The evaluation is strictly inductive and temporally split. Per-account aggregates are causal (each row sees only edges strictly before it); the structural block - cycle closure, scatter-gather, bank diversity, burst degree - is still fitted on the training window, because recomputing sparse reachability at every timestep is not tractable here. Reported as measured; not adjusted to close the gap. Full workings: references/finance-gap-investigation.md.",
     "calibration": {
       "a": -0.5853491088584304,
       "b": 1.6417462922842536,
@@ -139,7 +139,12 @@
       "why_not_isotonic": "Measured on this student's windows, not carried from the teacher. Isotonic's Brier 0.00149696 is below Platt's 0.00154002 and its log-loss 0.00837343 is below 0.00864886; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly monotone, so the curve ranks rows as the student does (AUPRC 0.02410110 against the raw 0.02410110, with 168 test rows tied at the logit clip; isotonic's 0.02459877 comes from the test window's scores tied at 109 values, 207,340 of them exactly zero), and it is the teacher's method, so the page's two decision curves differ by the model and not by the map. scripts/measure_decision_curve.py records the student's window curve under both maps."
     },
     "disagreement_on_positives": 0.361913,
-    "hf_revision": "ac6dd51b11d2034e90f34bb2aba78b4349718344",
+    "flag_counts": {
+      "source": "docs/measurements/finance-test-window-tail-2026-11-06.json, full_window",
+      "student_flagged": 26151,
+      "teacher_flagged": 759
+    },
+    "hf_revision": "e822202dacbc33abbb24a7c23ad490e1c517cfa1",
     "metric_delta": 0.090554,
     "metric_delta_pp": 9.0554,
     "metric_name": "minority_class_f1",
@@ -238,7 +243,23 @@
     "n_parameters": 11171266,
     "resolution": 28,
     "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
-    "wall_clock_s": 8.4
+    "wall_clock_s": 8.4,
+    "auc_ci_95": {
+      "lo": 0.8584,
+      "hi": 0.9707,
+      "method": "DeLong",
+      "n_pos": 114,
+      "n_neg": 42,
+      "source": "scripts/measure_medical_auc_ci.py"
+    },
+    "seed_spread": {
+      "n_seeds": 6,
+      "mean": 0.8905,
+      "sd": 0.0198,
+      "lo": 0.863,
+      "hi": 0.9216,
+      "source": "references/medical-student-collapse-investigation.md"
+    }
   },
   "medical_fl.resnet50": {
     "accuracy": 0.782051282051282,
@@ -257,7 +278,15 @@
     "n_parameters": 23505858,
     "resolution": 28,
     "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
-    "wall_clock_s": 12.2
+    "wall_clock_s": 12.2,
+    "auc_ci_95": {
+      "lo": 0.7227,
+      "hi": 0.8759,
+      "method": "DeLong",
+      "n_pos": 114,
+      "n_neg": 42,
+      "source": "scripts/measure_medical_auc_ci.py"
+    }
   },
   "medical_fl.student": {
     "agreement": 0.826923,
@@ -265,7 +294,7 @@
     "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline. The reason is representational rather than cryptographic: 3,226 parameters over a 14x14 input is a REPRESENTATION choice, not a feasibility limit - and this note said 'a CKKS-feasibility budget' until Round 32, which overstated how forced it was. Kim et al. (arXiv:2506.15258) do HE chest-X-ray inference on a VQGAN latent at downsampling factor 8 rather than on pixels, so the alternative to downsampling 28->14 is re-representing the input. The browser already runs onnxruntime-web, so such an encoder would run locally in plaintext with no privacy loss. Recorded as the sixth falsifiable trigger in the additional-model decision in docs/deliverable-verification.md, not acted on - and note that f=8 on a 28x28 input gives 3.5x3.5, so the transfer is the open measurement rather than a citation. This sentence claimed the trigger existed for two rounds while the table held five rows and none of them was this one; the trigger was written, and the decision moved to a tracked file so the claim can be checked. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
     "both_scored_zero": false,
     "disagreement_on_positives": 0.149123,
-    "hf_revision": "273ddb84b7b5274f9d98d70cd39bc1f5464aca9c",
+    "hf_revision": "b582844a2805e5be14fcc5499938ce692057d130",
     "majority_class_rate": 0.730769,
     "metric_delta": 0.096154,
     "metric_delta_pp": 9.6154,
@@ -281,7 +310,15 @@
     "teacher_key": "medical_fl.resnet18",
     "teacher_metric": 0.865385,
     "teacher_params": 11171266,
-    "teacher_scored_zero": false
+    "teacher_scored_zero": false,
+    "auc_ci_95": {
+      "lo": 0.7026,
+      "hi": 0.8738,
+      "method": "DeLong",
+      "n_pos": 114,
+      "n_neg": 42,
+      "source": "scripts/measure_medical_auc_ci.py"
+    }
   },
   "satellite_comms.opssat": {
     "accuracy": 0.9659735349716446,
@@ -310,7 +347,7 @@
     "auc_pr": 0.968055,
     "both_scored_zero": false,
     "disagreement_on_positives": 0.070796,
-    "hf_revision": "d89c2e1ee128c137903e8625a14b3b14295ef327",
+    "hf_revision": "58450bb47601850f3620d83d1e9b3122306a2ae0",
     "metric_delta": 0.014571,
     "metric_delta_pp": 1.4571,
     "metric_name": "minority_class_f1",
@@ -1698,7 +1735,7 @@
       "timing_jitter": 0.018812
     },
     "data": "synthetic, class structure per arXiv:2509.14282 (Al-Kuwari et al., 2025)",
-    "dataset": "QKD attack telemetry (synthetic, methodology-grounded)",
+    "dataset": "QKD attack telemetry (synthetic, signatures of this project's own design)",
     "export": {
       "fp32_bytes": 2555013,
       "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",

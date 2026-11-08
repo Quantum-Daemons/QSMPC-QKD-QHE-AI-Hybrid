@@ -31,7 +31,8 @@ KEY = "finance_aml.student"
 
 #: `models/finance_aml_student/weights.json` as the Hub serves it at the record's revision 641566e (read 2026-11-06:
 #: git blob 0b0dcab90e88a38cb12387c6f69b1a5005f9af94, which is this file's).
-WEIGHTS_SHA256 = "c47afeadcc8816ce0074f3cdfcc88ec89580096b1987a79f9f9a699596b3d17f"
+#: Re-published 2026-11-08 with a rewritten `note` only: the weights, bias and scaler are those of sha256 c47afeadcc8816ce, which the 2026-11-06 measurements used.
+WEIGHTS_SHA256 = "d8823c8961bbc98699223bfa446cc3c5763701d2f363f8be23ee7851d1a420b2"
 
 
 def main() -> int:

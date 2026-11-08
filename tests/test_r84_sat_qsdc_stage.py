@@ -107,10 +107,10 @@ def flows() -> dict:
         runner.write_text(f"import * as m from {json.dumps(bundle.as_uri())};\n" + """
 const step = m.USECASE_SPECS.satellite_comms.steps.find((s) => s.stageId === "qsdc_telemetry");
 const cases = {
-  statistics: { qsdc_statistics_limited: 1, qsdc_link_budget_limited: 0, qsdc_eavesdrop_detected: 0, qsdc_secrecy_capacity: -1.85 },
-  link: { qsdc_statistics_limited: 0, qsdc_link_budget_limited: 1, qsdc_eavesdrop_detected: 0, qsdc_secrecy_capacity: -532.5,
+  statistics: { qsdc_statistics_limited: 1, qsdc_link_budget_limited: 0, qsdc_eavesdrop_detected: 0, qsdc_eq8_bound: -1.85 },
+  link: { qsdc_statistics_limited: 0, qsdc_link_budget_limited: 1, qsdc_eavesdrop_detected: 0, qsdc_eq8_bound: -532.5,
           channel_loss_db: 32.2, qsdc_eve_gain_g: 532.7 },
-  delivered: { qsdc_link_budget_limited: 0, qsdc_eavesdrop_detected: 0, qsdc_secrecy_capacity: 0.4 },
+  delivered: { qsdc_link_budget_limited: 0, qsdc_eavesdrop_detected: 0, qsdc_eq8_bound: 0.4 },
 };
 console.log(JSON.stringify({
   ...Object.fromEntries(Object.entries(cases).map(([k, mm]) => [k, { label: step.label(mm, {}), ok: step.ok(mm, {}) }])),

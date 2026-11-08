@@ -1013,7 +1013,7 @@ function DecisionCurveChart({ curve, modelKey, n, scored = "graph" }: {
     if (rows.length === 0) return again ? "at none of them" : "at no threshold drawn";
     return (again ? `at ${rows.length} of them` : `at ${rows.length} of the ${data.length} thresholds drawn`) + span;
   };
-  const above = data.filter((d) => d.model > 0), clear = data.filter((d) => d.lo > 0);
+  const above = data.filter((d) => d.model > 0), clear = data.filter((d) => d.lo > 0), below = data.filter((d) => d.model < 0);
   const allPays = data.filter((d) => d.treatAll > 0);
   const m = curve.atMedian, op = curve.operating;
   const tMax = curve.thresholds[curve.thresholds.length - 1];
@@ -1029,7 +1029,9 @@ function DecisionCurveChart({ curve, modelKey, n, scored = "graph" }: {
         {scored === "decrypted" ? "rows above, from their decrypted logits" : "rows of its evaluation sample"}: net
         benefit per 10,000 transactions of acting when the calibrated risk is at least t, each false alarm priced at
         t/(1 &minus; t) of a caught case (Vickers and Elkin 2006). The model is above treat-none, the zero
-        line, {where(above)}, and its {cov}% interval (dotted) clears zero {where(clear, true)}. Treat-all
+        line, {where(above)}, and its {cov}% interval (dotted) clears zero {where(clear, true)}.{below.length
+          ? ` It is below zero ${where(below, true)}: there the flagged rows' laundering rate is under t, so acting on them costs more than it catches.`
+          : ""} Treat-all
         (dashed) is {allPays.length ? `above zero ${where(allPays)}` : "below zero across the range"}{gone
           ? `, and leaves the axis by t = ${gone.t.toFixed(4)}` : ""}: acting
         on every transaction pays only at a threshold under the prevalence. Read a value against its

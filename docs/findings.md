@@ -272,7 +272,12 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   test a published claim rather than to win one: MedMNIST v2 reports ResNet-50 at AUC 0.857 against
   ResNet-18's 0.901 on this 780-image corpus, so the deeper network is expected to lose. It does,
   and by more than the published gap - 0.7988 against our ResNet-18's 0.9147, both trained from
-  random initialisation. A third consequence of the same over-parameterisation appears in the
+  random initialisation. One AUC on 156 test images is wide: ResNet-18's DeLong 95% interval is 0.858 to 0.971, ResNet-50's 0.723 to
+  0.876 (`docs/measurements/medical-auc-ci-2026-11-08.json`, on the served graphs), and six runs of the ResNet-18 pipeline
+  differing only in the seed gave mean 0.8905, sd 0.0198, range 0.8630 to 0.9216
+  (`references/medical-student-collapse-investigation.md`). So the +0.014 over the published 0.901 is not resolved here. MedMNIST+ (Doerrich et al.,
+  Sci Rep 15, 7669, 2025, Table S2) reports an ImageNet-pretrained ResNet-18 at 28 by 28 at AUC $`87.61 \pm 1.16`$ (percent) over three seeds, on a
+  different pipeline (zero-padded to 224 by 224, AdamW at $`10^{-4}`$). A third consequence of the same over-parameterisation appears in the
   export: its int8 graph agrees with its own fp32 on
   0.9865 of the confident set against a 0.99 gate, so the int8 artefact was built, measured and
   **withheld** rather than shipped with the gate relaxed. It replaces a DenseNet-121 card that named

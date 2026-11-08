@@ -5,7 +5,7 @@ paper to the **workstream (WS)** it informs, the **module** that implements or u
 open-source code reused.
 
 Entries for a paper, standard or library carry a `URL`, and an `Added` line where the date is known; older entries and notes
-may lack either (2026-11-08: 96 `URL` and 56 `Added` lines across 196 bullets). `URL` is the canonical landing page, not a mirror.
+may lack either. `URL` is the canonical landing page, not a mirror.
 `Added` is the date the PDF entered this repository, taken from `git log --diff-filter=A`, so it is
 checkable rather than asserted; entries with no bundled PDF give the date the claim was last
 verified against the source instead.
@@ -334,6 +334,18 @@ Licence adjudications belong in [`DATA_LICENSES.md`](../DATA_LICENSES.md); this 
 papers. Where the two used to overlap, that file is the owner.
 
 ---
+- **Gillani, Baig, Shah, Ali and Siddiqui, "How Quantum Is the Advantage? A Fair, Calibration- and
+  Noise-Aware Benchmark and Attribution Audit of Quantum Machine Learning for Network Intrusion
+  Detection"**, arXiv:2608.18155 v1, 2026-08-13, preprint `[link]`
+  URL: https://arxiv.org/abs/2608.18155
+  Added: 2026-11-08
+  Read in the arXiv PDF. Hybrid VQCs and quantum-kernel SVMs against five tuned classical models on four
+  NIDS datasets, 8 PCA components on 8 qubits, simulation only, three seeds for quantum models. Best
+  classical against leading 8-qubit quantum F1: 0.782/0.730, 0.891/0.836, 1.000/0.968, 0.991/0.949.
+  Parameter-matched classical controls remove the aggregate gain. Two NSL-KDD results survive
+  false-discovery correction (an IQP kernel over its random-feature surrogate, and a 4-qubit hybrid at 1%
+  FPR); only the first survives Holm. F1 near 0.98 under within-train cross-validation falls to about
+  0.78 on the official NSL-KDD test split. It tests neither this project's circuits nor its corpora.
 
 ## WS3 - QSMPC x QKD (quantum-secure multi-party computation)
 
@@ -579,10 +591,12 @@ reporting only the absence would be the omission this file exists to prevent.
   which is why it is cited beside the novelty claim rather than in the FHE section. Added:
   2026-08-11.
 - **Zama, TFHE-rs JS-on-WASM API documentation.** States that the WebAssembly client API supports
-  key generation, encryption and decryption but **not FHE computation**, citing missing WASM
-  threading and the 2 GB WASM memory ceiling. Documentation rather than a result, and the
-  strongest single sentence supporting the in-tab evaluation claim: the leading FHE toolchain
-  deliberately does not evaluate in the browser. Checked 2026-08-11.
+  key generation, encryption and decryption but **not FHE computation**, and gives no reason. It
+  notes separately that without WASM threading key generation can be too slow, and that some
+  parameter sets' keys exceed what it calls WASM's 2 GB memory limit (the JS API limit for a 32-bit
+  memory is 4 GiB). Documentation rather than a result, and the strongest single sentence supporting
+  the in-tab evaluation claim: the leading FHE toolchain does not evaluate in the browser. Checked
+  2026-08-11; re-read 2026-11-08.
 - **Wang, Yu, Han, Gu, Xu & Huang, "WAMO: Toward Secure Browser Inference via Web Model
   Obfuscation in WebAssembly."** Proceedings of the ACM Web Conference 2026 (WWW '26), 2026-04-09,
   DOI 10.1145/3774904.3792297. **Carried as a partial contradiction, which is why it is worth
@@ -853,6 +867,27 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   datasets. Design reference for the federated-learning architecture.
 
 ---
+- **Rajabi and Toorani, "Secure Aggregation for Privacy-Preserving Federated Learning on Clinical EEG
+  Data"**, arXiv:2607.28191 v2, 2026-09-07; a version is to appear at HotDiSec 2026 (ESORICS workshop)
+  `[link]`
+  URL: https://arxiv.org/abs/2607.28191
+  Added: 2026-11-08
+  Read in the arXiv v2 PDF. Four variants of Bell et al.'s SecAgg+ on Flower (semi-honest, malicious,
+  each with an optional notary): pairwise masks over a sparse graph, a self-mask, Shamir-shared
+  recovery and L2 clipping, on TUH Abnormal EEG with up to 70 simulated clients. No dropouts or active
+  server behaviour were injected, so recovery and the malicious checks are built but not measured.
+  Cited at `secureAggregate` in `web/src/lib/clientQFL.ts` as what a complete version adds; this
+  project's all-pairs masks with no self-mask are not that protocol.
+- **Gholizade, Ruffini, Ducange and Marcelloni, "Federated Explainable Artificial Intelligence: Roles,
+  Architectures, Evaluation, and Open Challenges"**, Expert Systems with Applications 331, 133183
+  (2026), DOI 10.1016/j.eswa.2026.133183; arXiv:2607.13045 v1, 2026-06-15 `[link]`
+  URL: https://doi.org/10.1016/j.eswa.2026.133183
+  Added: 2026-11-08
+  Read in part in the arXiv PDF. A survey and taxonomy of federated explainability. It lists
+  explanation-centric security threats among its open challenges, meaning leakage through explanations
+  and explanation poisoning by adversarial clients, and it covers secure aggregation, SMPC and
+  homomorphic encryption applied to SHAP values. Cited for that gap only. This project's per-run ML-DSA
+  signature on an explanation detects accidental change, and addresses neither of those threats.
 
 ## QKD networking standards implemented in Round 18
 
@@ -899,6 +934,18 @@ Added in Round 18 and previously recorded only in source docstrings.
   Cited in `docs/pqc-roadmap.md` as the ITU counterpart to the ETSI control plane. Not implemented.
 
 ---
+- **Barral et al., "Interconnecting Regional QKD Networks: Hybrid Key Delivery Across Quantum
+  Domains"**, IEEE Transactions on Quantum Engineering 7, 4102117 (2026), DOI
+  10.1109/TQE.2026.3728800; arXiv:2604.20376 v2 `[link]`
+  URL: https://doi.org/10.1109/TQE.2026.3728800
+  Added: 2026-11-08
+  Read in the arXiv v2 PDF. A key-management overlay on ETSI GS QKD 014 and 020 joining QKD islands
+  over classical links, each hop keyed by the XOR of a Kyber secret and, where a link exists, a QKD
+  key. Eight nodes on four QKD links at four sites in two Spanish regions, about 500 km apart (the
+  abstract says three regional subnetworks; the body says two regions and four sites). About 2-3 kb/s
+  pairwise, about 0.5 kb/s over the 120 km link. Routes are computed once at start-up and the
+  controller functions sit inside the key-management nodes, so this is not a GS QKD 015
+  implementation. The authors disclaim information-theoretic security on any path with a PQC-only hop.
 
 ## External standards and threat context (see `docs/pqc-roadmap.md`)
 
@@ -955,6 +1002,14 @@ Added in Round 18 and previously recorded only in source docstrings.
   reading only; no technical claim in this repository rests on it.
 
 ---
+- ANSSI, BSI, NLNCSA and the Swedish National Communications Security Authority (Swedish Armed Forces),
+  **Position Paper on Quantum Key Distribution**, January 2024 (BSI dates it 2024-01-26) `[link]`
+  URL: https://www.bsi.bund.de/SharedDocs/Downloads/EN/BSI/Crypto/Quantum_Positionspapier.html
+  Added: 2026-11-08
+  Read in full in the BSI copy. QKD is usable only in niche cases for now and lacks protocol standards,
+  comprehensive security proofs and evaluation methods; PQC and symmetric keying take priority. The two
+  fragments quoted in `src/qsh/qkd/sdn_controller.py` were compared byte for byte with the executive
+  summary and match. Section 5 states the priority as PQC in hybrid solutions.
 
 ## OSS reused
 
@@ -1035,6 +1090,14 @@ belongs in this file rather than only in a comment.
 
 - **Yang et al., "MedMNIST v2", *Scientific Data* 10:41 (2023).** DOI 10.1038/s41597-022-01721-8.
   Source of the BreastMNIST ResNet-18 AUC 0.901 / ResNet-50 AUC 0.857 baselines. Added: 2026-08-07.
+- **Doerrich, Di Salvo, Brockmann and Ledig, "Rethinking model prototyping through the MedMNIST+ dataset
+  collection"**, *Scientific Reports* 15, 7669 (2025), DOI 10.1038/s41598-025-92156-9; arXiv:2404.15786 `[link]`
+  URL: https://doi.org/10.1038/s41598-025-92156-9
+  Added: 2026-11-08
+  Read in the arXiv v3 PDF: Table S2 and the training pipeline; the journal's supplement was not opened. BreastMNIST,
+  end-to-end training, ImageNet-pretrained ResNet-18, images zero-padded from 28 by 28 to 224 by 224: AUC
+  $`87.61 \pm 1.16`$ and accuracy $`83.97 \pm 1.81`$ (percent), over three seeds. Cited in `docs/findings.md` for the
+  seed-to-seed spread a BreastMNIST AUC carries; this project's pipeline differs, so the numbers are not like for like.
 - **Altman et al., "Realistic Synthetic Financial Transactions for Anti-Money Laundering Models",
   NeurIPS 2023 Datasets and Benchmarks.** arXiv:2306.16424. AMLworld; source of the 0.6323 finance
   baseline and of the corpus's own synthetic-by-construction statement. Added: 2026-08-07.
@@ -1268,6 +1331,23 @@ boundary**, not displaying a value.
   q-IND-CPA-D-Secure Approximate Homomorphic Encryption", now "Accurate and Composable Noise
   Estimates for CKKS with Application to Exact HE Computation". Citing the old title points at a
   paper that no longer exists under that name.
+- **Chan, Mazzanti, Swaminathan, Vega, Mocskos and Venkatagiri, "When and Where Faults Matter: A Study
+  of Transient Errors in CKKS Multiplication"**, arXiv:2608.11147 v1, 2026, preprint `[link]`
+  URL: https://arxiv.org/abs/2608.11147
+  Added: 2026-11-08
+  Read in the arXiv PDF. Single-bit transient faults injected into ciphertext polynomials during
+  ciphertext multiplication, on the authors' own unoptimised CKKS (no NTT, no RNS, $`N = 64`$ in the
+  figure). A flip in both uses of a component leaves a valid ciphertext with a small extra error; a flip
+  in one use breaks the cancellation at decryption. Neither SEAL nor node-seal was tested.
+- **Mazzanti, Chan, Swaminathan, Vega, Mocskos and Venkatagiri, "On the Sensitivity to Errors in
+  Homomorphic Computing: Single Transient Bit-flip Client-side Error Characterization"**,
+  arXiv:2608.11155 v1, 2026, preprint `[link]`
+  URL: https://arxiv.org/abs/2608.11155
+  Added: 2026-11-08
+  Read in the arXiv PDF. Each bit of each plaintext and ciphertext coefficient flipped in turn, on the
+  authors' own CKKS. With NTT or RNS+NTT arithmetic any single flip ended in catastrophic decryption or
+  decoding failure. Whether those failures are flagged is not stated. Neither SEAL nor node-seal was
+  tested.
 
 ## QSDC security basis: secrecy capacity, not a fixed QBER (Round 24)
 
@@ -1309,7 +1389,8 @@ Three further facts that stop any single number being quoted safely:
   (Front. Phys. 19, 51201, 2024) give 0.11 for entanglement-distillation QSDC against 0.073 for their
   hybrid-entanglement scheme; Pan et al. (Sci. Adv. 11, eadt4627, 2025) state 11% and say plainly
   that their expression "is exactly the key rate of the BB84 QKD protocol". DL04 - the family every
-  fibre experiment implements - is put at ~5.7% (Wu, Lin, Yin and Long, Quantum Eng. 1, e26, 2019).
+  fibre experiment implements - has a ~5.7% figure attributed to Wu, Lin, Yin and Long (Quantum Eng. 1,
+  e26, 2019), not confirmed at source: the full text is behind a subscription and the abstract gives no number.
 - **There are two error rates and two aborts.** The forward-leg check error governs SECURITY; the
   return-leg QBER governs RELIABILITY and is bounded by the error-correcting capability, not by a
   security threshold. Collapsing them into one comparison is a modelling error in its own right.
@@ -1412,6 +1493,21 @@ established is worth keeping, because otherwise it gets re-litigated every round
   applied at constellation scale, and its finding that **finite-key effects eliminate short,
   low-elevation passes entirely** is a constraint the satellite path should state rather than a
   refinement.
+- **Ferreira, "AKE Protocol Combining PQC and QKD"**, IACR Communications in Cryptology 2(4), 2026,
+  DOI 10.62056/aesgsgbmo; IACR ePrint 2026/036 is a later major revision (revised 2026-06-18) `[link]`
+  URL: https://cic.iacr.org/p/2/4/4
+  Added: 2026-11-08
+  Read in the journal's PDF: the main body and the proof of the QKD-only case. The ePrint body refused
+  automated access, so what the major revision changes is not known here. A hybrid AKE of the author's
+  own design (ephemeral KEM, signatures, a carried shared state, one BB84 run) whose Extract/Expand
+  chain takes the QKD key only in its last Extract. Where the QKD key is the only unrevealed secret,
+  the key-indistinguishability bound carries the QKD secrecy term times $`n_T (n_P n_S)^2`$; with
+  vendors' claimed bounds of $`10^{-9}`$ to $`10^{-10}`$ and at least $`2^{35}`$ runs the author finds
+  it not meaningful, and calls the bounds non-tight. Direct quantum channel, no trusted nodes, no side
+  channels, BB84 without decoy states. The proof relies on HMAC being a dual PRF, the assumption
+  `_mix_qkd` in `src/qsh/pqc/transport.py` states, but it does not analyse that function, which takes
+  the QKD key as salt where the paper's chain takes it as input. The QKD term is the same for any
+  combiner, so the paper does not compare HKDF with Toeplitz. This project has no real QKD leg to price.
 
 ### Secure inference and threshold FHE
 
@@ -1563,6 +1659,28 @@ project is a browser tab.
 - **Lee, Kim & Chung, "BPBO: Blindness-Preserving Brickwork Optimization by Certified Region
   Resynthesis."** arXiv:2606.29962, 2026-06-29. Grover-3 pattern reduced from 3x725 to 3x98 while
   preserving blindness.
+
+### Read in Round 86, cited by nothing yet
+
+- **Harth-Kitzerow, Schiller, Schwanke, Prantl and Carle, "Benchmarking Secure Multiparty Computation
+  Frameworks for Real-World Workloads in Diverse Network Settings"**, IACR ePrint 2026/183, preprint,
+  2026 `[link]`
+  URL: https://eprint.iacr.org/2026/183
+  Added: 2026-11-08
+  ABSTRACT ONLY: the PDF refused automated access, so no figure from it may be used here. Six
+  reference use cases derived from more than 50 MPC applications, implemented on HPMPC, MPyC, MP-SPDZ
+  and MOTION and benchmarked under varied bandwidth, latency, packet loss and input size.
+- **Mazzone, Micali and Pronesti, "Secure Change-Point Detection for Time Series under Homomorphic
+  Encryption"**, Proceedings on Privacy Enhancing Technologies 2026(2), 127-142, DOI
+  10.56553/popets-2026-0040; arXiv:2601.05865 `[link]`
+  URL: https://doi.org/10.56553/popets-2026-0040
+  Added: 2026-11-08
+  Read in the arXiv PDF, with the main figures matched against the published PDF. CUSUM over encrypted
+  block summaries under CKKS (OpenFHE, ring degree $`2^{17}`$, no bootstrapping), run by an
+  honest-but-curious server for a single client. One million points in 101.52 s (mean) to 179.66 s
+  (frequency) on a 64-core server using up to 48.9 GB, with plaintext-level accuracy on synthetic and
+  three real series. It locates one change point assumed to exist; multiple change points and the
+  no-change case are left open. Not comparable with an in-tab student evaluated on satellite telemetry.
 
 ## Round 32 additions, verified at primary source 2026-08-11
 
@@ -1840,6 +1958,24 @@ to no publication.
   the telecom page asserts with no source, while `metrics.py::per_class_f1` and the WS2 section of this
   file both rest on it. Engelen et al. (WTMC 2021, above) is the measured instance of the same failure;
   this is the systematic statement of it.
+- **ISO/IEC 5259 series, "Artificial intelligence - Data quality for analytics and machine learning
+  (ML)"**: Part 1 (overview, terminology, examples), Part 2 (data quality measures), Part 3 (management
+  requirements and guidelines), Part 4 (process framework), all 2024; Part 5 (governance framework),
+  2025; ISO/IEC TR 5259-6:2026 (visualization framework, a Technical Report) `[link]`
+  URL: https://www.evs.ee/en/evs-en-iso-iec-5259-2-2025
+  Added: 2026-11-08
+  METADATA ONLY. Editions and scopes are from the Estonian standards body's catalogue and, for Part 6,
+  the publisher's front-matter preview; iso.org refused automated access and no clause has been read.
+  Part 2's scope is a data quality model, measures, and guidance on reporting them.
+- **Collins, Moons, Dhiman, Riley, Beam, Van Calster et al., "TRIPOD+AI statement: updated guidance for
+  reporting clinical prediction models that use regression or machine learning methods"**, BMJ 385,
+  e078378, 2024, DOI 10.1136/bmj-2023-078378, PMC11019967 `[link]`
+  URL: https://doi.org/10.1136/bmj-2023-078378
+  Added: 2026-11-08
+  The checklist read in full through NCBI's XML; supplementary tables not read. Minimum reporting recommendations
+  for clinical prediction model studies: 27 main items, 52 subitems, replacing TRIPOD 2015. Used here for
+  item 7 (pre-processing), item 11 (missing data) and item 12e (performance measures and their rationale).
+  Outside clinical prediction, as with this project's telemetry, it applies only by analogy.
 
 ### Encrypted-versus-plaintext agreement: the two published reporting conventions
 

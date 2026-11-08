@@ -1,0 +1,58 @@
+{
+ "measured": "2026-11-08",
+ "script": "scripts/measure_medical_auc_ci.py",
+ "positive_class": "class 1, normal or benign, as the record's AUC is computed",
+ "results": {
+  "medical_fl.resnet18": {
+   "auc_onnx_graph": 0.914578,
+   "auc_record": 0.914683,
+   "delong_95": [
+    0.8584,
+    0.9707
+   ],
+   "delong_se": 0.0286,
+   "bootstrap_95": [
+    0.8528,
+    0.9635
+   ],
+   "n_boot": 10000,
+   "bootstrap_seed": 0,
+   "n_pos": 114,
+   "n_neg": 42
+  },
+  "medical_fl.resnet50": {
+   "auc_onnx_graph": 0.79929,
+   "auc_record": 0.798768,
+   "delong_95": [
+    0.7227,
+    0.8759
+   ],
+   "delong_se": 0.0391,
+   "bootstrap_95": [
+    0.718,
+    0.8711
+   ],
+   "n_boot": 10000,
+   "bootstrap_seed": 0,
+   "n_pos": 114,
+   "n_neg": 42
+  },
+  "medical_fl.student": {
+   "auc_onnx_graph": 0.788221,
+   "auc_record": 0.788221,
+   "delong_95": [
+    0.7026,
+    0.8738
+   ],
+   "delong_se": 0.0437,
+   "bootstrap_95": [
+    0.6965,
+    0.8707
+   ],
+   "n_boot": 10000,
+   "bootstrap_seed": 0,
+   "n_pos": 114,
+   "n_neg": 42
+  }
+ }
+}

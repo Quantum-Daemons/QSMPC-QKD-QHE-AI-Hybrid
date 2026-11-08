@@ -435,8 +435,9 @@ class QKDConfig:
     #:
     #: Also worth knowing before quoting any single number: the founding QSDC papers (Long-Liu 2002,
     #: Deng-Long-Liu 2003, DL04 2004) give NO numeric threshold, only "if the error rate is high,
-    #: halt"; DL04 - the family every fibre experiment implements - is put at ~5.7% (Wu et al.,
-    #: Quantum Eng. 1, e26, 2019); and no standards body has ever specified one, because ETSI,
+    #: halt"; DL04 - the family every fibre experiment implements - has a ~5.7% figure attributed to
+    #: Wu et al. (Quantum Eng. 1, e26, 2019), NOT confirmed at source: the full text is behind a
+    #: subscription and the abstract gives no number; and no standards body has ever specified one, because ETSI,
     #: ITU-T, ISO/IEC and IEEE quantum series are all key DISTRIBUTION.
     pp_threshold: float = 0.11        # post-processing QBER abort threshold
     # --- optimizer (OptiQKD, WS1) knobs ---

@@ -15,6 +15,10 @@
 // reads as rigour. `clientCompute` sets the flag explicitly at each explanation site.
 import { AI_ACT_CAVEAT, AI_ACT_SCOPE } from "../lib/aiActScope";
 
+/** The label a bar shows where the column's name would mislead. `cross_border` is PaySim's transaction-type flag (TRANSFER or CASH_OUT), and PaySim
+ *  records no geography, so a bar reading "cross_border +1.465" reads as a geography effect. The column keeps its name in the data and the models. */
+const BAR_LABEL: Record<string, string> = { cross_border: "transfer_or_cash_out" };
+
 export default function ShapPanel({ explanation, provenance, baseline, publishedModel, surfacedBackend,
   isOfReportedClass, hasTreeAttribution, usecase, definitions }: {
   explanation: any; provenance?: string | null; baseline?: string | null;
@@ -99,7 +103,7 @@ export default function ShapPanel({ explanation, provenance, baseline, published
       )}
       {tops.map((t, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, margin: "3px 0" }}>
-          <span className="muted" style={{ width: 150, fontSize: 12, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t.feature}</span>
+          <span className="muted" style={{ width: 150, fontSize: 12, textAlign: "right", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{BAR_LABEL[t.feature] ?? t.feature}</span>
           <div style={{ flex: 1, background: "#1a2233", borderRadius: 4, height: 16 }}>
             <div style={{ width: `${Math.max(3, (Math.abs(t.contribution) / max) * 100)}%`, height: "100%", borderRadius: 4, background: t.contribution >= 0 ? "#ff6b6b" : "#4f9dff" }} />
           </div>
@@ -113,8 +117,8 @@ export default function ShapPanel({ explanation, provenance, baseline, published
         <dl className="muted" style={{ fontSize: 11, margin: "6px 0 0" }}>
           {tops.filter((t) => definitions[t.feature]).map((t) => (
             <div key={t.feature} style={{ display: "flex", gap: 6 }}>
-              <dt className="mono" style={{ minWidth: 90 }}>{t.feature}</dt>
-              <dd style={{ margin: 0 }}>{definitions[t.feature]}</dd>
+              <dt className="mono" style={{ minWidth: 90 }}>{BAR_LABEL[t.feature] ?? t.feature}</dt>
+              <dd style={{ margin: 0 }}>{BAR_LABEL[t.feature] ? <>Column <code>{t.feature}</code> in the data. </> : null}{definitions[t.feature]}</dd>
             </div>
           ))}
         </dl>

@@ -140,7 +140,7 @@ def test_the_shap_bars_say_what_each_feature_is() -> None:
     assert "artifacts.explanation_feature_definitions = realIn?.definitions ?? null;" in _code("web/src/lib/clientCompute.ts")
     assert "definitions={artifacts?.explanation_feature_definitions ?? null}" in _code("web/src/pages/UseCasePage.tsx")
     panel = _code("web/src/components/ShapPanel.tsx")
-    assert "<dd style={{ margin: 0 }}>{definitions[t.feature]}</dd>" in panel
+    assert "{definitions[t.feature]}</dd>" in panel
 
 
 # ---- the documents ---------------------------------------------------------------------------------------------------

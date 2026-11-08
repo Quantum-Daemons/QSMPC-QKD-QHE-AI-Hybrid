@@ -220,16 +220,22 @@ best on ESA-ADB Mission1, and QSMPC's demonstrated ceiling is still an MLP on MN
 
 ## The finite-key bound implemented is no longer the tightest available
 
-Rusca et al. use Hoeffding. Since superseded by Kamin, Tupkary and Luetkenhaus (arXiv:2502.05382,
-Phys. Rev. Research 2026), Mannalath, Zapatero and Curty (PRL **135**, 020803, 2025), and Mizutani et
-al. (arXiv:2511.21253, via Kato's inequality). Adopting any of them lowers the threshold discussed in
-finding 2. Recorded as an opportunity, not a defect: the implemented bound is valid, merely
+Rusca et al. use Hoeffding. Of three later papers only Mannalath, Zapatero and Curty (PRL **135**, 020803,
+2025) gives tighter statistics for this kind of bound: for decoy-state BB84 at 30 dB loss it reports minimum
+block sizes more than 22% smaller analytically and more than 38% smaller numerically than earlier analyses,
+including ones using Hoeffding and multiplicative-Chernoff intervals. Kamin, Tupkary and Luetkenhaus (Phys.
+Rev. Research **8**, 013332, 2026, arXiv:2502.05382) improve numerical proofs over 1-norm constraints and
+expect entropic-uncertainty proofs, the family Rusca et al. belong to, to give tighter rates where their
+detection assumption holds. Mizutani et al. (Quantum Sci. Technol. **11**, 015010, 2025, arXiv:2511.21253)
+is a passive-receiver proof using Kato's inequality, which it compares with Azuma's, not Hoeffding's. Only
+the first is a candidate for lowering the threshold discussed in finding 2. Recorded as an opportunity, not
+a defect: the implemented bound is valid, merely
 conservative. Note that the two identifiers `README.md:550` names as the future replacement concern
 device IMPERFECTIONS and leaky receivers, not tighter statistics, so they will not do this job.
 
 ## Not accessible
 
-Wu et al., *Quantum Engineering* **1**, e26 (2019) - the DL04 5.7% figure at `defaults.py:245`.
+Wu et al., *Quantum Engineering* **1**, e26 (2019) - the DL04 5.7% figure in `src/qsh/config/defaults.py` and `REFERENCES.md`, both marked unconfirmed since 2026-11-08 (the full text needs a subscription; the abstract gives no number).
 Publisher and mirror both returned 403. Metadata confirms the citation; the text was not opened, so
 the attribution is plausible and unrefuted rather than verified. CNSA 2.0 pages and the ITU AAP
 record for Y.3836 were likewise unreachable. (CNSA 2.0 resolved 2026-10-23: the CNSA 2.0 and Quantum

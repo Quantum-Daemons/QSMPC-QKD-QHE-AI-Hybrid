@@ -218,13 +218,20 @@ const HYBRID_INFERENCE: Step[] = [
           + (rot == null ? "" : ` in ${rot} rotations`)
           + ` · the bundled Wisconsin regression ${rest} ms${scaleTxt}`;
       }
-      return `FHE-linear · ${kindTxt} · ${f(m, "fhe_linear_ms")} ms${scaleTxt}`
+      // Measured first when a scale was applied (PF3, Round 86): the canvas led with the projection.
+      const timing = scaled && m["fhe_linear_measured_ms"] != null
+        ? `${f(m, "fhe_linear_measured_ms")} ms measured, ${f(m, "fhe_linear_ms")} ms${scaleTxt}`
+        : `${f(m, "fhe_linear_ms")} ms${scaleTxt}`;
+      return `FHE-linear · ${kindTxt} · ${timing}`
         + (rot == null ? "" : ` · ${rot} rotations`);
     } },
   { stageId: "private_inference", kind: "mpc-bidir",
     // KiB: `mpc_comm_kb` is bytes / 1024.
-    label: (m) => `MPC-non-linear · shares · ${f(m, "mpc_nonlinear_ms")} ms · ${f(m, "mpc_comm_kb")} KiB`
-      + (Number(m["fhe_bench_scale"]) !== 1 ? `, both at x${f(m, "fhe_bench_scale")} cost-model scale` : ", measured")
+    label: (m) => (Number(m["fhe_bench_scale"]) !== 1 && m["mpc_nonlinear_measured_ms"] != null
+      ? `MPC-non-linear · shares · ${f(m, "mpc_nonlinear_measured_ms")} ms · ${f(m, "mpc_comm_measured_kb")} KiB measured; `
+        + `${f(m, "mpc_nonlinear_ms")} ms · ${f(m, "mpc_comm_kb")} KiB at x${f(m, "fhe_bench_scale")} cost-model scale`
+      : `MPC-non-linear · shares · ${f(m, "mpc_nonlinear_ms")} ms · ${f(m, "mpc_comm_kb")} KiB`
+        + (Number(m["fhe_bench_scale"]) !== 1 ? `, both at x${f(m, "fhe_bench_scale")} cost-model scale` : ", measured"))
       + (m["fhe_encrypted_student_ms"] != null ? " · the Wisconsin regression's argmax" : "") },
 ];
 
@@ -496,7 +503,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
       // maximum eavesdropper - the log read "QSDC NOT AVAILABLE on this link ... Telemetry falls
       // back to the PQC session key" while this label read "QSDC direct telemetry · secrecy 0
       // bit/carrier ✓". The ABORTED branch was unreachable, so the symptom above survived its own
-      // repair, and the sign clamp on `qsdc_secrecy_capacity` rendered -5.2033 as "0".
+      // repair, and the sign clamp on `qsdc_eq8_bound` rendered -5.2033 as "0".
       //
       // Three states now, because there are three: delivered; withheld because the LINK cannot
       // carry it; withheld because of an attack this link would not have suffered on its own.
@@ -524,21 +531,21 @@ export const USECASE_SPECS: Record<string, Spec> = {
           // does: the criterion is secrecy capacity Cs <= 0, and Cs depends on channel loss via
           // g = Q_Eve/Q_Bob, so an error rate WELL under the old 0.11 can still abort. Naming
           // the real quantity keeps the diagram and the metrics table telling one story.
-          ? `QSDC ABORTED · eavesdropper · Eq. 8 bound ${f(m, "qsdc_secrecy_capacity")} bit per received carrier at error `
+          ? `QSDC ABORTED · eavesdropper · Eq. 8 bound ${f(m, "qsdc_eq8_bound")} bit per received carrier at error `
             + `${f(m, "qsdc_error_rate")} (g=${f(m, "qsdc_eve_gain_g")}) · telemetry withheld`
           : Number(m["qsdc_statistics_limited"]) === 1
             ? `QSDC WITHHELD · statistics-limited: the block is too short to certify an error rate · Eq. 8 bound `
-              + `${f(m, "qsdc_secrecy_capacity")} bit per received carrier at the certified bound · telemetry withheld, falls back to the PQC session key`
+              + `${f(m, "qsdc_eq8_bound")} bit per received carrier at the certified bound · telemetry withheld, falls back to the PQC session key`
           : Number(m["qsdc_link_budget_limited"]) === 1
             // "at 24.5 dB (g=701.06)" paired the CHANNEL loss with a g that includes the detector's
             // 4.0 dB (10^(24.5/10) is 282, not 701), while the run log printed the same g at 28.5 dB.
             // Both now name the channel loss and say g carries the detector too. Round 58. Since
             // Round 75 g also leaves out the station's optics, as Qi et al.'s did, so the channel's
             // 32.2 dB and g = 532.66 (27.26 dB) differ by more than the detector: the label says both.
-            ? `QSDC NOT AVAILABLE · link-budget limited · Eq. 8 bound ${f(m, "qsdc_secrecy_capacity")} `
+            ? `QSDC NOT AVAILABLE · link-budget limited · Eq. 8 bound ${f(m, "qsdc_eq8_bound")} `
               + `bit per received carrier at ${f(m, "channel_loss_db")} dB channel loss (g=${f(m, "qsdc_eve_gain_g")}: `
               + `the detector in, the station optics out) · telemetry withheld, falls back to the PQC session key`
-            : `QSDC direct telemetry · Eq. 8 bound ${f(m, "qsdc_secrecy_capacity")} bit per received carrier`) },
+            : `QSDC direct telemetry · Eq. 8 bound ${f(m, "qsdc_eq8_bound")} bit per received carrier`) },
       publishedStep("qsdc_telemetry"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },

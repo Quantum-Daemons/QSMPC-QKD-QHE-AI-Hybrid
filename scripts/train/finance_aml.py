@@ -54,7 +54,7 @@ VAL_FRACTION = 0.20
 #:
 #: The AMLworld baseline uses IBM's Graph Feature Preprocessor, which ships in `snapml` under a
 #: Proprietary licence and is therefore excluded by this project's commercial-OK-only rule. What is
-#: reimplemented here is the set of graph patterns the literature describes as carrying the
+#: approximated here, as per-account aggregates, is the set of graph patterns the literature describes as carrying the
 #: laundering signal — degree and fan-in/fan-out, reciprocity, 2-cycles, scatter-gather, and
 #: per-account amount and timing statistics. Expect a gap to the published number and report it.
 FEATURES = [
@@ -83,8 +83,8 @@ FEATURES = [
 #: Do NOT reach for this constant to close the gap to the published baseline. Raising it is the
 #: obvious-looking move and the measurement says it is nearly worthless: the GFP paper
 #: (arXiv:2402.08593) decomposes its own contribution, and its Table 5 (HI-Small, XGBoost, batch
-#: 128) moves minority F1 from 19.75 to 56.88 with fan-in/fan-out, which is already implemented
-#: here, then only to 58.60 with multi-hop patterns ("up to 4%" in its text means F1 points, not a
+#: 128) moves minority F1 from 19.75 to 56.88 with fan-in/fan-out, which is approximated here by
+#: per-account aggregates, then only to 58.60 with multi-hop patterns ("up to 4%" in its text means F1 points, not a
 #: relative gain). The gap is architectural - per-transaction subgraph patterns versus per-account
 #: scalar aggregates — and no value of this constant addresses that.
 MAX_CYCLE_HOPS = 4
@@ -719,7 +719,8 @@ def main() -> int:
             f"aggregates. Reachability is computed to {MAX_CYCLE_HOPS} hops against injected CYCLE "
             "attempts of up to 10; that was previously recorded as a main cause and is NOT one - the "
             "GFP paper (arXiv:2402.08593) decomposes its own contribution, and its Table 5 "
-            "(HI-Small, XGBoost, batch 128) gives fan-in/fan-out, which is reimplemented here, 37 "
+            "(HI-Small, XGBoost, batch 128) gives fan-in/fan-out, which this project approximates "
+            "with per-account aggregates, 37 "
             "F1 points (19.75 to 56.88) and multi-hop cycle and scatter-gather patterns 1.7 more "
             "(to 58.60; 'up to 4%' in its text is F1 points, not a relative gain). The evaluation "
             "is strictly inductive and "

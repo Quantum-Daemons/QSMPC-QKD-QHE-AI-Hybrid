@@ -206,12 +206,14 @@ def _link_profiles() -> dict:
 def _demo_samples() -> dict:
     """Bundled-sample provenance from the registry, or an empty mapping in the slim demo image."""
     try:
-        from ..models.registry import BUNDLED_DEMO_SAMPLES
+        from ..models.registry import BUNDLED_DEMO_SAMPLES, DEMO_SAMPLE_FILES
     except Exception:  # pragma: no cover - slim image only
         return {}
     return {
         usecase: {"provenance": text, "licence": ds.licence, "url": ds.url,
-                  "licence_checked": ds.licence_checked}
+                  "licence_checked": ds.licence_checked, "attribution": ds.attribution,
+                  # Served at this path under web/public, with `licence_url` and `modifications` in the file.
+                  "file": DEMO_SAMPLE_FILES.get(usecase, "").removeprefix("web/public")}
         for usecase, (text, ds) in BUNDLED_DEMO_SAMPLES.items()
     }
 
