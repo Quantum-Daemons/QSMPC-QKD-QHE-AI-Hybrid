@@ -298,7 +298,8 @@ PAYSIM_MODEL_FEATURES: dict[str, str] = {
     "cross_border": ("1 if the PaySim transaction type is TRANSFER or CASH_OUT, else 0; PaySim records "
                      "no geography, and its fraudulent agents transfer funds to another account and "
                      "then cash out"),
-    "night_tx": "1 if the PaySim step (one simulated hour) falls in hours 0 to 5 of its day, else 0",
+    "night_tx": ("1 if the PaySim step (one simulated hour) falls in hours 0 to 5 of its day, else 0; "
+                 "PaySim gives step 0 no clock time, so reading those hours as night assumes it is midnight"),
     "new_payee": ("1 if the transaction is the first row of the PaySim file to name its destination "
                   "account, else 0"),
 }
@@ -704,7 +705,7 @@ DEMO_SAMPLE_FILES: dict[str, str] = {
 #: anyone may do with them, and that phrase had once stood here as if it were a grant. The bare
 #: identifier lets the Hub card name it as `license: apache-2.0`.
 DS_QKD_ATTACK_SYNTH = DatasetSpec(
-    name="QKD attack telemetry (synthetic, methodology-grounded)",
+    name="QKD attack telemetry (synthetic, signatures of this project's own design)",
     licence="Apache-2.0",
     url="https://arxiv.org/abs/2509.14282",
     licence_checked="2026-11-01",
@@ -712,8 +713,10 @@ DS_QKD_ATTACK_SYNTH = DatasetSpec(
     notes=(
         "8 classes = 7 attack types + normal, per Al-Kuwari et al. (IET Quantum Communication 7(1), "
         "e70028, 2026). The class list follows the paper; the 7 features and their signature "
-        "values are this project's own design. No commercial-OK real QKD-attack capture exists; "
-        "this is labelled synthetic everywhere it is reported. The rows are written by this "
+        "values are this project's own design: illustrative, not fitted to any measurement. "
+        "No public real QKD-attack capture was found (arXiv:2508.12749 reports anomalies recorded "
+        "on an experimental QKD receiver and states no data release); this is labelled synthetic "
+        "everywhere it is reported. The rows are written by this "
         "repository's generator (qsh.qml_ids.attacks), and they and the weights trained on them are "
         "released under the repository's licence, Apache-2.0."
     ),
@@ -788,10 +791,12 @@ M_PRS = MetricSpec(
     # Read at the PGS Catalog REST API on 2026-10-31 (/rest/performance/search?pgs_id=PGS000072: three
     # records; Catalog release 2026-10-23).
     baseline_source=(
-        "PGS Catalog PPM002038 for PGS000072: AUROC 0.637 (no confidence interval recorded), incident "
+        "A citation and not a target: PGS Catalog PPM002038 gives PGS000072 an AUROC of 0.637 for a model "
+        "fitted WITH COVARIATES, on a cohort that used only 162 of the score's 187 SNPs. "
+        "The record (no confidence interval recorded) is incident "
         "breast cancer in n=216,273 European-ancestry women in UK Biobank - 4,760 cases and 211,513 "
         "controls - from Kachuri et al., Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. "
-        "A CITATION AND NOT A TARGET, for three reasons the record itself gives: the model is fitted WITH "
+        "Three reasons, all from the record itself: the model is fitted WITH "
         "COVARIATES (age at assessment, family history of breast cancer, genotyping array, PCs 1-15, "
         "parity, age at menarche, body mass index, menopausal status, hormone replacement therapy, oral "
         "contraceptive use, alcohol intake, and body mass index by menopausal status), which a bare "
@@ -1457,8 +1462,8 @@ _SPECS: tuple[ModelSpec, ...] = (
             "better. The residual error is 1.71% of the test split against 23.92% before, and it is "
             "one direction: UDPFlood predicted as Benign. "
             "THE LEAK COUNTERFACTUAL IS STILL RECORDED EVERY RUN and its claim is now narrower. "
-            "Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, the "
-            "same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. That shows "
+            "Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, a "
+            "shortcut of the kind Engelen et al. (WTMC 2021) found in CIC-IDS2017. That shows "
             "what a row counter is worth on this corpus. It does not show what the published "
             "figures used, and 0.9829 is reachable here with no identifiers at all; whether those "
             "figures lean on identifiers stays open -- see M_NIDD's baseline_source. "

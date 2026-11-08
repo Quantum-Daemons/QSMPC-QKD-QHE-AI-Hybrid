@@ -121,7 +121,7 @@ flowchart TB
   I["Private inference: CKKS linear layer (node-seal), garbled-circuit argmax (Polytune)"]
   X["Explainability: exact linear SHAP, signed"]
   M["Published model: finance_aml.gbm on ONNX Runtime Web"]
-  C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
+  C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
   H --> K
@@ -156,7 +156,7 @@ flowchart TB
   I["Private inference: CKKS linear layer and an encrypted 4x14x14 CNN (node-seal), garbled-circuit argmax"]
   X["Explainability: exact linear SHAP, signed"]
   M["Published model: medical_fl.resnet18 on a BreastMNIST image, ONNX Runtime Web"]
-  C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
+  C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
   H --> K
@@ -223,7 +223,7 @@ flowchart TB
   IDS["QML-IDS: 8-class detector trained in the browser, scored by macro-F1"]
   X["Explainability: exact linear SHAP, signed"]
   M["Published model: telecom_ids.qml on ONNX Runtime Web, and a CKKS check of the student"]
-  C["QSMPC-FHE comparison: QOTP and QCNN, T-gates counted"]
+  C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
   S["Result signed with ML-DSA-65"]
   D --> H
   H --> K
@@ -241,7 +241,7 @@ flowchart TB
 </details>
 
 <details>
-<summary>Satellite: free-space QKD and direct telemetry</summary>
+<summary>Satellite: simulated free-space QKD and direct telemetry</summary>
 
 <!-- figure: uc-satellite_comms -->
 ```mermaid

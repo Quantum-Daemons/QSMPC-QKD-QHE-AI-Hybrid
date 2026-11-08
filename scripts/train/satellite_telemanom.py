@@ -321,7 +321,8 @@ def preprocess(raw, resample: str, split_at: str | None = None, hold: str = "mea
     z-score on the whole series, and it drew windows from the whole timeline, training rows included,
     while the page called them held-out.
     """
-    # Imputation, stated because TRIPOD+AI item 11 requires it and because one half of it was a
+    # Imputation, stated because TRIPOD+AI item 11 asks clinical prediction studies to report it (this
+    # is telemetry, so the rule is borrowed) and because one half of it was a
     # look-ahead. `ffill` carries the last OBSERVED value forward across a gap, which is the standard
     # choice for telemetry and uses only the past. `bfill` carries a FUTURE value backwards, and it
     # was here until Round 34 - so any leading gap, and any gap `ffill` could not close, was filled

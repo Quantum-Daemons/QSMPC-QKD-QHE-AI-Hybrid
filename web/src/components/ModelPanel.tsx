@@ -92,7 +92,7 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   ]);
   // `esa_scores` is the satellite forecaster's two arms at three floors (Round 86): sixty numbers that render as their
   // own table below, not as rows here. `training` is how the run went (epochs, losses), not a property of the model.
-  const NOT_A_SUBTREE = new Set(["not_measured", "licence_audit", "esa_scores", "training", ...ATTRIBUTION_SUBTREES]);
+  const NOT_A_SUBTREE = new Set(["not_measured", "licence_audit", "esa_scores", "training", "flag_counts", ...ATTRIBUTION_SUBTREES]);
   const walk = (obj: Record<string, unknown>, prefix: string, depth: number) => {
     for (const [k, v] of Object.entries(obj)) {
       if (NOT_A_SUBTREE.has(k)) continue;
@@ -143,6 +143,11 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   const metricMismatch = recordedMetric != null && recordedMetric !== spec.metric.name;
   const headline = numeric.filter(([k]) => !isCompanion(k));
   const companion = numeric.filter(([k]) => isCompanion(k));
+  // Where the teacher flags almost nothing, agreement is high whatever the student does (Round 86): finance's teacher flags 759 of 1,523,504
+  // window rows, so a student that never flags would agree 0.9995, above this student's 0.9829. The counts are the measurement script's.
+  const flags = rec.flag_counts as { teacher_flagged?: number; student_flagged?: number } | undefined;
+  const nFlagged = rec.n_eval as number | undefined;
+  const neverFlagsAgrees = flags?.teacher_flagged != null && nFlagged ? 1 - flags.teacher_flagged / nFlagged : null;
   // The declared metric is not among the measured ones, so no row carries the baseline.
   //
   // This is genuinely the right state for genomics - 1000 Genomes has no phenotype, so no AUROC is
@@ -234,6 +239,10 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
               {k === declaredKey && scoredOver != null && (
                 <> · <strong>over {scoredOver} {scoredUnit}</strong>
                   {scoredOver < 10 && " — too few to compare with the baseline"}</>
+              )}
+              {k === "agreement" && neverFlagsAgrees != null && (
+                <>A student that never flags would agree {fmt(neverFlagsAgrees)}: the teacher flags {flags?.teacher_flagged?.toLocaleString("en-US")} of{" "}
+                  {nFlagged?.toLocaleString("en-US")} rows, this student {flags?.student_flagged?.toLocaleString("en-US")}. Agreement alone says little here; the minority-class F1 rows are the comparison.</>
               )}
             </td>
           </tr>
@@ -391,6 +400,9 @@ function CalibrationRows({ achieved }: { achieved: Record<string, unknown> }) {
   const f = (v: unknown, dp = 6) => (typeof v === "number" ? v.toFixed(dp) : "-");
   const worse = typeof c.log_loss_calibrated === "number" && typeof c.log_loss_raw === "number"
     && c.log_loss_calibrated > c.log_loss_raw;
+  // Against giving every row the base rate, whose Brier score is CORP's uncertainty term (Round 86). Finance's student comes out negative.
+  const unc = c.corp_calibrated?.unc;
+  const skill = typeof c.brier_calibrated === "number" && typeof unc === "number" && unc > 0 ? 1 - c.brier_calibrated / unc : null;
   return (
     <div style={{ marginTop: 10 }}>
       <div className="muted small" style={{ marginBottom: 4 }}>
@@ -411,6 +423,11 @@ function CalibrationRows({ achieved }: { achieved: Record<string, unknown> }) {
             : `p = 1 / (1 + exp(${f(c.a, 4)}·s + ${f(c.b, 4)}))`}</td></tr>
           <tr><th scope="row">Brier</th>
               <td className="mono">{f(c.brier_raw)} → {f(c.brier_calibrated)}</td></tr>
+          {skill != null && (
+            <tr><th scope="row">Brier skill against the base rate</th>
+                <td className="mono" style={skill < 0 ? { color: "var(--warn)" } : undefined}>
+                  {skill >= 0 ? "+" : "-"}{Math.abs(skill).toFixed(4)}{skill < 0 ? " (worse than giving every row the base rate)" : ""}</td></tr>
+          )}
           <tr><th scope="row">CORP miscalibration (MCB)</th>
               <td className="mono">{f(c.corp_raw?.mcb, 7)} → {f(c.corp_calibrated?.mcb, 7)}</td></tr>
           <tr><th scope="row">CORP discrimination (DSC)</th>

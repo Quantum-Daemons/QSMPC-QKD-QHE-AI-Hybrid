@@ -45,11 +45,11 @@ is stated in the notes below.
 
 ## Training data
 
-- **Dataset**: QKD attack telemetry (synthetic, methodology-grounded)
+- **Dataset**: QKD attack telemetry (synthetic, signatures of this project's own design)
 - **Licence**: Apache-2.0
 - **Source**: https://arxiv.org/abs/2509.14282 (licence read 2026-11-01)
 
-8 classes = 7 attack types + normal, per Al-Kuwari et al. (IET Quantum Communication 7(1), e70028, 2026). The class list follows the paper; the 7 features and their signature values are this project's own design. No commercial-OK real QKD-attack capture exists; this is labelled synthetic everywhere it is reported. The rows are written by this repository's generator (qsh.qml_ids.attacks), and they and the weights trained on them are released under the repository's licence, Apache-2.0.
+8 classes = 7 attack types + normal, per Al-Kuwari et al. (IET Quantum Communication 7(1), e70028, 2026). The class list follows the paper; the 7 features and their signature values are this project's own design: illustrative, not fitted to any measurement. No public real QKD-attack capture was found (arXiv:2508.12749 reports anomalies recorded on an experimental QKD receiver and states no data release); this is labelled synthetic everywhere it is reported. The rows are written by this repository's generator (qsh.qml_ids.attacks), and they and the weights trained on them are released under the repository's licence, Apache-2.0.
 
 ## Notes and limitations
 

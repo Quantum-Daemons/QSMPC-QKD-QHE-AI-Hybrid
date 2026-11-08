@@ -113,7 +113,7 @@ def test_satellite_clean_downlink_yields_key_but_qsdc_cannot_close():
     # by 61 bit/carrier indistinguishable from one missing by 0.001 - and from a marginal link that
     # is not negative at all. It also hid a 3.5 dB disagreement between this model and the browser's:
     # both sides reported "0" while computing -138.93 and -51.58 on the same nominal downlink.
-    assert r["qsdc_secrecy_capacity"] < -50.0
+    assert r["qsdc_eq8_bound"] < -50.0
     # diffraction 18.1 + atmosphere 3.2 (5.5 dB at 1200 km, scaled by air mass to 35.8 degrees)
     # + 3 pointing + 8.0 receiver optics; it was 34.0 with a fixed 5 dB atmosphere
     assert r["channel_loss_db"] == 32.2
@@ -250,13 +250,13 @@ def test_the_satellite_eavesdrop_check_is_reachable_from_the_use_case():
     assert clean["telemetry_delivered"] is True, (
         "the eavesdrop-detection branch is unreachable at EVERY setting the demo offers, which is "
         "the state Round 32 fixed - re-derive the budget rather than deleting this assertion")
-    assert clean["qsdc_secrecy_capacity"] > 0.0
+    assert clean["qsdc_eq8_bound"] > 0.0
     assert clean["eavesdrop_detected"] is False
 
     for seed in range(1, 6):
         attacked = satellite_comms.run_demo({"seed": seed, "sat_eve": 0.4, **ideal})
         assert attacked["telemetry_delivered"] is False, f"seed {seed} delivered under an attack"
-        assert attacked["qsdc_secrecy_capacity"] < 0.0, f"seed {seed} reported a non-negative C_s"
+        assert attacked["qsdc_eq8_bound"] < 0.0, f"seed {seed} reported a non-negative C_s"
         # The whole point: an abort this link would NOT have suffered on its own, and one the check
         # had enough carriers to conclude.
         assert attacked["eavesdrop_detected"] is True, (

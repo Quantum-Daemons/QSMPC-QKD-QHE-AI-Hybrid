@@ -20,7 +20,7 @@ const AXIS_Y = laneY("Companies") + 34;
 const HALO = { paintOrder: "stroke", stroke: "var(--panel)", strokeWidth: 6, strokeLinejoin: "round" } as const;
 
 const COLOR: Record<Firmness, string> = {
-  "in force": "var(--accent-2)", requirement: "var(--accent-2)", ordered: "var(--accent)",
+  "in force": "var(--accent-2)", requirement: "var(--accent-2)", ordered: "var(--accent)", announced: "var(--accent)",
   draft: "var(--warn)", deferred: "var(--warn)", target: "var(--quantum)", passed: "var(--muted)",
 };
 
@@ -65,7 +65,7 @@ export default function RegulatoryClock() {
             );
           })}
           {CLOCK.map((r, i) => {
-            const hollow = r.firmness === "draft" || r.firmness === "deferred" || r.firmness === "target";
+            const hollow = r.firmness === "draft" || r.firmness === "deferred" || r.firmness === "target" || r.firmness === "announced";
             return (
               <circle key={`m${i}`} cx={x(r.t)} cy={laneY(r.lane)} r={5.5} fill={hollow ? "var(--bg)" : COLOR[r.firmness]}
                 stroke={COLOR[r.firmness]} strokeWidth={2} />

@@ -22,7 +22,7 @@ recorded in [`docs/deliverable-verification.md`](deliverable-verification.md) an
 > servers"*, and Zama's TFHE-rs WASM API documents that it supports key generation, encryption and
 > decryption but **not FHE computation**. It gives no reason for that; separately it notes that
 > without WASM threads key generation can be too slow, and that some parameter sets' keys exceed
-> WASM's 2 GB memory limit. The narrower thing the search did not find is a peer-reviewed 2025-26 report of CKKS neural-network
+> what it calls WASM's 2 GB memory limit (WebAssembly's own limit is 4 GiB for a 32-bit memory and 16 GiB for a 64-bit one). The narrower thing the search did not find is a peer-reviewed 2025-26 report of CKKS neural-network
 > inference evaluated in a browser tab, and that is an absence of evidence rather than a proof.
 > This demo evaluates a real CKKS dot product and a real CKKS convolution in the tab.
 >
@@ -40,8 +40,11 @@ recorded in [`docs/deliverable-verification.md`](deliverable-verification.md) an
 > requires CNSA 2.0 algorithms in new acquisitions from 2027 and in all use by 2031; US EO 14412 moves
 > federal high-value assets and high impact systems to PQC key establishment by 2030 and signatures by
 > 2031; EU roadmap 2026/2030/2035; "harvest-now-decrypt-later"). A general **quantum *advantage*** for these workloads is **not** claimed
-> as a market benefit - it is broadly unproven in 2026 (e.g. classical tensor-network simulation matching
-> annealing results), and the numeric "quantum advantage" score the benchmark used to print is
+> as a market benefit - it is broadly unproven in 2026 (e.g. D-Wave's claim of beyond-classical spin-glass
+> simulation, King et al., *Science* 388, 199 (2025), is contested: Tindall et al., *Science* 392, 868 (2026),
+> matched or beat the annealer's error with tensor networks on the 2D and 3D lattices they ran, and D-Wave
+> replies in arXiv:2504.06283 that biclique graphs and fourth-order observables were not reproduced),
+> and the numeric "quantum advantage" score the benchmark used to print is
 > **retired from every page of the demo** (2026-10-23): its inputs measured different things on the two
 > sides, and no run computes it any more: `advantage` is null in the browser and in the full deployment. For the QCNN specifically the evidence is sharper than "unproven": the trained QCNNs here are
 > classically simulable, nothing on their path is encrypted, and logistic regression beats or ties

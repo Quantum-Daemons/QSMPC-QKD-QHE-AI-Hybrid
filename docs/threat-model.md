@@ -342,6 +342,12 @@ margin and not a worst-case bound: Guo et al. (USENIX Security 2024) recover key
 - Production key management / HSM integration (crypto-agility hooks are provided).
 
 ## Residual risk & honest limitations
+- **Accidental hardware faults.** Nothing here detects a transient bit flip. In fault injection on the
+  authors' own CKKS, one flip during ciphertext multiplication could reach the decrypted output as
+  silent data corruption (arXiv:2608.11147), and with NTT or RNS+NTT arithmetic, which SEAL uses, any
+  single flip ended in catastrophic failure (arXiv:2608.11155); both are 2026 preprints and neither
+  tested SEAL or node-seal. `encrypted_agreement` compares a CKKS decision with the same model's
+  plaintext decision, so it would show a flip that changes a decision and cannot show one that does not.
 - Quantum-channel results (QKD distance/QBER gains) and the QSMPC-FHE comparison row are
   **simulated**, not hardware-validated; photonic inference and qOLE are not implemented at all.
 - The QHE homomorphic evaluation is exact for Clifford circuits with key tracking (the Python

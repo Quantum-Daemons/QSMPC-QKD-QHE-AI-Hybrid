@@ -293,13 +293,16 @@ export function aggregateMaskedShares(maskedShares: readonly number[][]): number
  *     the aggregator's code path (`aggregateMaskedShares`) never reads one, which is what the run
  *     demonstrates - not mutually distrusting hosts.
  *
- * What a complete version adds, and the citation for it: arXiv:2607.28191 (2026-07-30, PREPRINT - no
- * journal_ref and no DOI as of 2026-08-13) implements exactly this scheme on Flower with threshold
- * secret sharing, dropout-resilient aggregation, local update clipping and semi-honest AND malicious
- * variants, on clinical EEG. It reports the semi-honest variant as the cheapest of the secure
- * configurations, with the malicious and notary variants adding computation, communication and round
- * duration. It corroborates the scope note above rather than contradicting it: the masking is the
- * core, and dropout recovery is the next layer, not a correction to this one.
+ * What a complete version adds, and the citation for it: arXiv:2607.28191 (v1 2026-07-30, v2
+ * 2026-09-07; to appear at HotDiSec 2026, an ESORICS workshop; no DOI or journal_ref as of
+ * 2026-11-08) builds Bell et al.'s SecAgg+ on Flower for clinical EEG: pairwise masks over a sparse
+ * neighbour graph plus a self-mask, Shamir-shared dropout recovery, local update clipping, and
+ * semi-honest and malicious variants. That is more than this file's all-pairs masks, and not the same
+ * protocol. It reports the semi-honest variant as the cheapest of its secure configurations, with
+ * the malicious and notary variants adding computation, communication and round duration. Its runs
+ * injected no client dropouts and no active server, so recovery and the malicious checks are built
+ * there but not measured. It corroborates the scope note above rather than contradicting it: the
+ * masking is the core, and dropout recovery is the next layer, not a correction to this one.
  */
 export function secureAggregate(
   updates: number[][], weights: number[], pairSeeds: readonly (readonly (Uint8Array | null)[])[], round: number,

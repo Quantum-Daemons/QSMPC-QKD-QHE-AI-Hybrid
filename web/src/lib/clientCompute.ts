@@ -1929,7 +1929,11 @@ export function runClientPipeline(
         // the generator script. They drifted, and a claim the project had already published a
         // correction for went on being printed by the live demo.
         const ds = demoSample(usecase);
-        if (ds) emit("log", stage, `dataset (bundled demo sample): ${ds.provenance}`);
+        // The credit, and where the licence link and the changes are (RD23, Round 86): an attribution or share-alike licence
+        // binds wherever the rows are served, and this line is what the page prints about them.
+        if (ds) emit("log", stage, `dataset (bundled demo sample): ${ds.provenance}`
+          + (ds.attribution ? ` Credit: ${ds.attribution}` : "")
+          + (ds.file ? ` Licence link and changes made: the \`licence_url\` and \`modifications\` fields of ${ds.file}.` : ""));
         else emit("log", stage, "synthetic dataset prepared (client-side; no real sample is bundled for this use case's pipeline)");
         break;
       }
@@ -2381,7 +2385,7 @@ export function runClientPipeline(
         // the page says so rather than presenting a modelled number as a measurement.
         // The same guard the free-space QKD stage above carries. Without it, selecting pqc-only on
         // satellite logged "free-space QKD disabled (PQC-only profile)" and then, one stage later,
-        // emitted qsdc_error_rate, qsdc_secrecy_capacity and qsdc_eavesdrop_detected - delivering
+        // emitted qsdc_error_rate, qsdc_eq8_bound and qsdc_eavesdrop_detected - delivering
         // telemetry over the quantum channel the run had just said did not exist. QSDC is a quantum
         // direct-communication protocol; there is no PQC-only version of it to fall back to.
         // A LABELLED BLOCK, NOT `break`. `break` inside a `switch` case exits the whole case, so
@@ -2501,7 +2505,7 @@ export function runClientPipeline(
         // current formula (-5.2033 when this was written, before detector efficiency entered g) and
         // the page displayed 0. How badly a link fails is the quantity that distinguishes "widen the
         // aperture" from "QSDC does not close over this class of link".
-        metric(stage, "qsdc_secrecy_capacity", r2(secrecy));
+        metric(stage, "qsdc_eq8_bound", r2(secrecy));
         metric(stage, "qsdc_eve_gain_g", r2(g));
         metric(stage, "qsdc_link_budget_limited", lossLimited ? 1 : 0);
         // Reserved for what the name says: an abort this link would NOT have suffered on its own.
@@ -3342,6 +3346,9 @@ export function runClientPipeline(
           }
           metric(stage, "mpc_nonlinear_ms", r2(real.mpcMs * bscale));
           metric(stage, "mpc_comm_kb", r2((real.commBytes * bscale) / 1024));
+          // The measured halves of those two, under their own names, as `fhe_linear_measured_ms` already is (PF3, Round 86).
+          metric(stage, "mpc_nonlinear_measured_ms", r2(real.mpcMs));
+          metric(stage, "mpc_comm_measured_kb", r2(real.commBytes / 1024));
           if (real.conv) {
             // Counted during the run. Rotations and the key-switch each one triggers are what
             // dominate CKKS inference cost, so this is the quantity worth surfacing - not a

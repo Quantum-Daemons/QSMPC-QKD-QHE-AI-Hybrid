@@ -37,7 +37,7 @@ below are the recommended future tracks (PoC milestones M3/M4).
   only its ML-KEM half is BSI-recommended (Table 2.7): X25519 is neither among BSI's recommended curves
   (Table B.3 lists only the Brainpool curves) nor among its TLS 1.3 groups (TR-02102-2 v2026-01,
   Table 10). For TLS, BSI's [TR-02102 page](https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/Technische-Richtlinien/TR-nach-Thema-sortiert/tr02102/tr02102_node.html),
-  updated 2026-10-02 after RFC 10024, says SecP256r1MLKEM768 and SecP384r1MLKEM1024 will be recommended in
+  read 2026-11-08 (it shows no update date), says, now RFC 10024 has specified them, that SecP256r1MLKEM768 and SecP384r1MLKEM1024 will be recommended in
   the next TR-02102-2 and can already be used TR-compliant in TLS 1.3, and that X25519MLKEM768 can also be
   used; the TR-02102-2 v2026-01 PDF itself is unchanged. Keeping QKD as an optional, simulated add-on to that
   hybrid, never standalone, is **this project's** choice; neither BSI nor NSA recommends it.
@@ -55,7 +55,7 @@ not a code rewrite. Add remote re-key + in-flight algorithm substitution next. [
   simulated channel, and reports a **convergence metric** (evaluations-to-95 %). An **E91 / CHSH**
   entanglement protocol (`src/qsh/qkd/e91.py`) is selectable via `protocol="e91"`.
   (`src/qsh/qkd/optimize.py`; grounds the WS1 "OptiQKD" theme - OptiQKD arXiv:2603.04192v1 +
-  AML-QKD arXiv:2603.04192v2, Mohamed et al. 2026, one paper in two versions: v1 reported +20-30 % and v2 revised that down to +14-25 % SKR via TCN+RL, in simulation. Benchmarking against v1 would be quoting a figure the authors superseded.)
+  AML-QKD arXiv:2603.04192v2, Mohamed et al. 2026, one paper in two versions: v1 reported +20-30 % and v2 revised that range down to +14-25 % median SKR via TCN+PPO, in simulation against static-heuristic baselines (BB84 +25 %, E91 +23 %, COW +14 %; these per-protocol results are the same in v1). Benchmarking against v1 would be quoting a figure the authors superseded.)
   Opt-in per run; a simulation, not deployed QKD. yes
 - **QRNG** - a local **state-vector quantum-measurement** entropy source with the **SP 800-90B section
   4.4 continuous health tests** (Repetition Count, cutoff $`C = 1 + \lceil -\log_2(\alpha)/H \rceil`$, and Adaptive
@@ -80,17 +80,18 @@ not a code rewrite. Add remote re-key + in-flight algorithm substitution next. [
   implemented it is computational, not information-theoretic, and the demo's QKD input is a fixed
   constant. yes
 
-## Reference implementations (2026, commercial-OK)
-Open-source projects that could deepen each workstream. None is a dependency here: QRNG and OptiQKD above import
-none of them. Licences are as listed, and their activity has not been re-read for this list:
+## Reference implementations (licences and last commits read 2026-11-08; three have no licence)
+Projects that could deepen each workstream. None is a dependency here: QRNG and OptiQKD above import
+none of them. Licence and last commit on the default branch were read from each repository on 2026-11-08. A
+repository with no licence file grants no right to copy or reuse it, so those entries are for reading only:
 
 | WS | Reference implementations |
 |----|---------------------------|
-| WS1 AI-QKD | TNO-Quantum `communication.qkd_key_rate` (Apache-2.0), `sequence-toolbox/SeQUeNCe` (Argonne; GitHub reports the licence as NOASSERTION, so confirm before depending on it), `DLR-RM/stable-baselines3` (MIT) - **QKDNetSim removed from this table: it is GPL-2.0**, i.e. strong copyleft, and this table is specifically the commercial-OK set |
-| WS2 QML-IDS | `rdisipio/qlstm` (PennyLane QLSTM), `ACE07-Sev/QSVM` (12-variant QSVM), `qiskit-community/qiskit-machine-learning` |
-| WS4 QHExAI / QFL | `elucidator8918/QFL-MLNCP-NeurIPS` (QFed+FHE), `goldenskygiang/flower-fhe`, `ibarrond/Pyfhel`, OpenFHE, Flower |
-| entropy | `dorahacksglobal/quantum-randomness-generator`, NIST SP 800-90B (health testing, required), NIST SP 800-22 (output sanity check only) |
-| cross-cutting PQC/QKD | `open-quantum-safe/oqs-provider`, `rosenpass/rosenpass`, `arnika-project/arnika`, ETSI GS QKD 014 KME (`thomasarmel/qkd_kme_server`) |
+| WS1 AI-QKD | TNO-Quantum `communication.qkd_key_rate` (Apache-2.0; 2026-02-23), `sequence-toolbox/SeQUeNCe` (Argonne; BSD-3-Clause terms under an Argonne header, which is why GitHub reports NOASSERTION; 2026-11-06), `DLR-RM/stable-baselines3` (MIT; 2026-10-26) - **QKDNetSim removed from this table: it is GPL-2.0**, i.e. strong copyleft |
+| WS2 QML-IDS | `rdisipio/qlstm` (PennyLane QLSTM; **no licence file**, read only; 2021-10-04), `ACE07-Sev/QSVM` (12-variant QSVM; Apache-2.0; 2024-09-04), `stfc/qiskit-machine-learning` (formerly `qiskit-community/qiskit-machine-learning`; Apache-2.0; 2026-08-18) |
+| WS4 QHExAI / QFL | `elucidator8918/QFL-MLNCP-NeurIPS` (QFed+FHE; MIT; 2024-12-27), `goldenskygiang/flower-fhe` (**no licence file**, read only; 2024-06-03), `ibarrond/Pyfhel` (Apache-2.0; 2026-08-31, last release v3.5.0 on 2025-08-21), OpenFHE (BSD-2-Clause; 2026-10-09), Flower (Apache-2.0; 2026-11-07) |
+| entropy | `dorahacksglobal/quantum-randomness-generator` (**no licence file**, read only; 2024-04-27), NIST SP 800-90B (health testing, required), NIST SP 800-22 (output sanity check only) |
+| cross-cutting PQC/QKD | `open-quantum-safe/oqs-provider` (MIT; 2026-11-02), `rosenpass/rosenpass` (MIT OR Apache-2.0; 2026-11-06), `arnika-project/arnika` (Apache-2.0; 2026-10-04), ETSI GS QKD 014 KME (`thomasarmel/qkd_kme_server`, MIT; 2026-09-27) |
 
 ## Recommended future workstreams
 1. **NIST-aligned IDS against HNDL / Q-Day** - extend WS2 (QML-IDS) into a full network

@@ -130,24 +130,32 @@
   },
   "demo_samples": {
     "finance_aml": {
+      "attribution": "E. A. Lopez-Rojas, A. Elmir and S. Axelsson, 'PaySim: A financial mobile money simulator for fraud detection', 28th European Modeling and Simulation Symposium (EMSS), Larnaca, Cyprus, 2016. Data: Kaggle ealaxi/paysim1.",
+      "file": "/data/finance/paysim_sample.json",
       "licence": "CC-BY-SA-4.0",
       "licence_checked": "2026-08-03",
       "provenance": "PaySim SIMULATOR output \u2014 synthetic transactions from aggregated real mobile-money logs (Kaggle ealaxi/paysim1, CC-BY-SA-4.0). ShareAlike applies to these bundled rows.",
       "url": "https://www.kaggle.com/datasets/ealaxi/paysim1"
     },
     "genomics": {
+      "attribution": "Score: Graff RE, Cavazos TB, Thai KK et al., 'Cross-cancer evaluation of polygenic risk scores for 16 cancer types in two large cohorts', Nat Commun 12:970 (2021), doi:10.1038/s41467-021-21288-z, CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/); its weights as the PGS Catalog distributes them (PGS000072). PGS Catalog: Lambert, Wingfield et al., 'Enhancing the Polygenic Score Catalog with tools for score calculation and ancestry normalization', Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x. Genotypes: The 1000 Genomes Project Consortium, 'A global reference for human genetic variation', Nature 526:68-74 (2015), doi:10.1038/nature15393. Changes: 183 of the 187 variants are scored, with their weights unchanged; the 4 that Ensembl's 1000 Genomes phase 3 records do not resolve are left out (DATA_LICENSES.md section 4).",
+      "file": "/data/genomics/pgs000072_breast_cancer.json",
       "licence": "CC-BY-4.0 (the score's source publication, Graff et al. 2021); the PGS Catalog record adds the EMBL-EBI Terms of Use",
       "licence_checked": "2026-10-31",
       "provenance": "real 1000 Genomes phase-3 genotypes (no licence instrument: open-consent data, per IGSR's disclaimer; The 1000 Genomes Project Consortium, Nature 526:68-74, 2015) + the published PGS000072 effect weights (PGS Catalog; Graff et al., Nat Commun 12:970, 2021, CC BY 4.0). 183 of its 187 variants are scored: the 4 that Ensembl's 1000 Genomes records do not resolve are left out, not filled in. 30 of 2,504 individuals ship in the browser payload - DATA_LICENSES section 4 justifies a slice of that size, not the full matrix.",
       "url": "https://www.pgscatalog.org/score/PGS000072/"
     },
     "medical_fl": {
+      "attribution": "Wolberg, Mangasarian, Street & Street, 'Breast Cancer Wisconsin (Diagnostic)', UCI Machine Learning Repository (1993), doi:10.24432/C5DW2B, CC BY 4.0.",
+      "file": "/data/medical/breast_cancer_sample.json",
       "licence": "CC-BY-4.0",
       "licence_checked": "2026-08-03",
       "provenance": "real Wisconsin breast-cancer diagnostic measurements (UCI / scikit-learn, CC-BY-4.0)",
       "url": "https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic"
     },
     "satellite_comms": {
+      "attribution": "Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, CC BY 4.0. Data: Ruszczak, B., Kotowski, K., Nalepa, J. & Evans, D., 'OPSSAT-AD - anomaly detection dataset for satellite telemetry', Zenodo (2024), doi:10.5281/zenodo.12588359 (version 1).",
+      "file": "/data/satellite/opssat_segments.json",
       "licence": "CC-BY-4.0",
       "licence_checked": "2026-10-31",
       "provenance": "real OPS-SAT-AD telemetry segments (ESA OPS-SAT CubeSat; Zenodo 10.5281/zenodo.12588359, version 1, CC-BY-4.0): 18 precomputed per-segment features plus each segment's sampling rate, from the benchmark's test partition. The demo's anomaly regression is fitted offline, by this script, on 370 of those 529 segments and the verdict is drawn from the other 159; it is not the published satellite_comms.opssat model.",
@@ -968,7 +976,7 @@
           "auprc": 0.12334101789973353,
           "auprc_baseline": 0.0015234617040716665,
           "auroc": 0.9525582593503528,
-          "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a tuning one: the gap is unreachable at any threshold, because measured AUPRC is far below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph; this project computes per-account scalar aggregates. A degree is one number per account, whereas a GFP feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. GFP ships in `snapml` under a Proprietary licence and is excluded by this project's commercial-OK-only rule, but the licence is not itself the cause - the architecture is, and it is reimplementable without `snapml`, simply at more cost than renaming aggregates. Reachability is computed to 4 hops against injected CYCLE attempts of up to 10; that was previously recorded as a main cause and is NOT one - the GFP paper (arXiv:2402.08593) decomposes its own contribution, and its Table 5 (HI-Small, XGBoost, batch 128) gives fan-in/fan-out, which is reimplemented here, 37 F1 points (19.75 to 56.88) and multi-hop cycle and scatter-gather patterns 1.7 more (to 58.60; 'up to 4%' in its text is F1 points, not a relative gain). The evaluation is strictly inductive and temporally split. Per-account aggregates are causal (each row sees only edges strictly before it); the structural block - cycle closure, scatter-gather, bank diversity, burst degree - is still fitted on the training window, because recomputing sparse reachability at every timestep is not tractable here. Reported as measured; not adjusted to close the gap. Full workings: references/finance-gap-investigation.md.",
+          "baseline_gap_note": "This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a tuning one: the gap is unreachable at any threshold, because measured AUPRC is far below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph; this project computes per-account scalar aggregates. A degree is one number per account, whereas a GFP feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. GFP ships in `snapml` under a Proprietary licence and is excluded by this project's commercial-OK-only rule, but the licence is not itself the cause - the architecture is, and it is reimplementable without `snapml`, simply at more cost than renaming aggregates. Reachability is computed to 4 hops against injected CYCLE attempts of up to 10; that was previously recorded as a main cause and is NOT one - the GFP paper (arXiv:2402.08593) decomposes its own contribution, and its Table 5 (HI-Small, XGBoost, batch 128) gives fan-in/fan-out, which this project approximates with per-account aggregates, 37 F1 points (19.75 to 56.88) and multi-hop cycle and scatter-gather patterns 1.7 more (to 58.60; 'up to 4%' in its text is F1 points, not a relative gain). The evaluation is strictly inductive and temporally split. Per-account aggregates are causal (each row sees only edges strictly before it); the structural block - cycle closure, scatter-gather, bank diversity, burst degree - is still fitted on the training window, because recomputing sparse reachability at every timestep is not tractable here. Reported as measured; not adjusted to close the gap. Full workings: references/finance-gap-investigation.md.",
           "calibration": {
             "a": -0.5853491088584304,
             "b": 1.6417462922842536,
@@ -1145,6 +1153,11 @@
             "why_not_isotonic": "Measured on this student's windows, not carried from the teacher. Isotonic's Brier 0.00149696 is below Platt's 0.00154002 and its log-loss 0.00837343 is below 0.00864886; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly monotone, so the curve ranks rows as the student does (AUPRC 0.02410110 against the raw 0.02410110, with 168 test rows tied at the logit clip; isotonic's 0.02459877 comes from the test window's scores tied at 109 values, 207,340 of them exactly zero), and it is the teacher's method, so the page's two decision curves differ by the model and not by the map. scripts/measure_decision_curve.py records the student's window curve under both maps."
           },
           "disagreement_on_positives": 0.361913,
+          "flag_counts": {
+            "source": "docs/measurements/finance-test-window-tail-2026-11-06.json, full_window",
+            "student_flagged": 26151,
+            "teacher_flagged": 759
+          },
           "hf_revision": "ac6dd51b11d2034e90f34bb2aba78b4349718344",
           "metric_delta": 0.090554,
           "metric_delta_pp": 9.0554,
@@ -1310,7 +1323,7 @@
         "label": "Polygenic risk score (published effect weights)",
         "metric": {
           "baseline": 0.637,
-          "baseline_source": "PGS Catalog PPM002038 for PGS000072: AUROC 0.637 (no confidence interval recorded), incident breast cancer in n=216,273 European-ancestry women in UK Biobank - 4,760 cases and 211,513 controls - from Kachuri et al., Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. A CITATION AND NOT A TARGET, for three reasons the record itself gives: the model is fitted WITH COVARIATES (age at assessment, family history of breast cancer, genotyping array, PCs 1-15, parity, age at menarche, body mass index, menopausal status, hormone replacement therapy, oral contraceptive use, alcohol intake, and body mass index by menopausal status), which a bare weighted dot product does not have; it used 'only 162 of the original 187 SNPs'; and it is an AUC at 5 years. It is the only AUROC among the score's three Catalog performance records; the other two report an odds ratio per standard deviation of 1.26 (95% CI 1.24-1.28; PPM000192, GERA and UK Biobank, n=237,549, Graff et al. 2021) and a hazard ratio of 1.26 (1.20-1.32; PPM017165, post-menopausal breast cancer, UK Biobank, n=1,990; Byrne et al., Int J Epidemiol 52:817-826, 2023).",
+          "baseline_source": "A citation and not a target: PGS Catalog PPM002038 gives PGS000072 an AUROC of 0.637 for a model fitted WITH COVARIATES, on a cohort that used only 162 of the score's 187 SNPs. The record (no confidence interval recorded) is incident breast cancer in n=216,273 European-ancestry women in UK Biobank - 4,760 cases and 211,513 controls - from Kachuri et al., Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. Three reasons, all from the record itself: the model is fitted WITH COVARIATES (age at assessment, family history of breast cancer, genotyping array, PCs 1-15, parity, age at menarche, body mass index, menopausal status, hormone replacement therapy, oral contraceptive use, alcohol intake, and body mass index by menopausal status), which a bare weighted dot product does not have; it used 'only 162 of the original 187 SNPs'; and it is an AUC at 5 years. It is the only AUROC among the score's three Catalog performance records; the other two report an odds ratio per standard deviation of 1.26 (95% CI 1.24-1.28; PPM000192, GERA and UK Biobank, n=237,549, Graff et al. 2021) and a hazard ratio of 1.26 (1.20-1.32; PPM017165, post-menopausal breast cancer, UK Biobank, n=1,990; Byrne et al., Int J Epidemiol 52:817-826, 2023).",
           "ceiling": 0.637,
           "ceiling_source": "The highest AUROC among PGS000072's own three Catalog performance records, and the only one: PPM002038, 0.637, with the covariates the baseline source lists (read 2026-10-31). All three are in European-ancestry samples, so the Catalog holds no figure for this score in any other ancestry: the ancestry gap this page shows is measured from genotypes, not read from a published AUROC.",
           "companion": "",
@@ -3007,7 +3020,7 @@
             "timing_jitter": 0.018812
           },
           "data": "synthetic, class structure per arXiv:2509.14282 (Al-Kuwari et al., 2025)",
-          "dataset": "QKD attack telemetry (synthetic, methodology-grounded)",
+          "dataset": "QKD attack telemetry (synthetic, signatures of this project's own design)",
           "export": {
             "fp32_bytes": 2555013,
             "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
@@ -3065,7 +3078,7 @@
         "dataset": {
           "attribution": "",
           "licence": "Apache-2.0",
-          "name": "QKD attack telemetry (synthetic, methodology-grounded)",
+          "name": "QKD attack telemetry (synthetic, signatures of this project's own design)",
           "publishable": true,
           "url": "https://arxiv.org/abs/2509.14282"
         },
@@ -3436,7 +3449,7 @@
           "display": "macro F1 across 9 network-attack classes",
           "name": "macro_f1"
         },
-        "notes": "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from the QKD-layer attack classifier on this same page, with zero overlap in label space or feature space, so neither score is the other's baseline. REFITTED IN ROUND 50 ON A WIDER EXPORT OF THE SAME CORPUS, which is the fact that explains every number here. It trained on `Combined.csv` (52 columns) and scored accuracy 0.7608; it now trains on `BTS1_BTS2_fields_preserved.csv` (113 columns) and scores about 0.9829. The rows are identical and the method is unchanged. One column does all of it: `IdleTime`, a flow statistic the narrow export omits. Removing it alone from the wide fit returns the model to 0.7616, and that ablation is re-measured on every run as `idle_time_ablation`. It is not an identifier - 17 distinct integer values over 1.2 million rows - and it separates SlowrateDoS, an attack defined by idling, at one-vs-rest AUC 0.9574. READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT - STILL. Every other model here reports an aggregate that flatters and a per-class figure that does not. On this corpus macro F1 is the OPTIMISTIC number and aggregate accuracy the pessimistic one, and the refit shrank that inversion without removing it: the gap was 0.1655 (0.9263 macro F1 against 0.7608 accuracy) and is about 0.0121 (0.9950 against 0.9829). The mechanism is the same one as before, not a new one - Benign and UDPFlood are 39.3% and 37.6% of the rows and remain the only pair that confuses, so accuracy is dominated by them while the macro average is carried by seven classes at 0.9999 or better. The residual error is 1.71% of the test split against 23.92% before, and it is one direction: UDPFlood predicted as Benign. THE LEAK COUNTERFACTUAL IS STILL RECORDED EVERY RUN and its claim is now narrower. Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, the same shape of result Engelen et al. (WTMC 2021) produced for CIC-IDS2017. That shows what a row counter is worth on this corpus. It does not show what the published figures used, and 0.9829 is reachable here with no identifiers at all; whether those figures lean on identifiers stays open -- see M_NIDD's baseline_source. NO STUDENT IS DISTILLED FROM THIS MODEL: the page's encrypted tier runs telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml).",
+        "notes": "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from the QKD-layer attack classifier on this same page, with zero overlap in label space or feature space, so neither score is the other's baseline. REFITTED IN ROUND 50 ON A WIDER EXPORT OF THE SAME CORPUS, which is the fact that explains every number here. It trained on `Combined.csv` (52 columns) and scored accuracy 0.7608; it now trains on `BTS1_BTS2_fields_preserved.csv` (113 columns) and scores about 0.9829. The rows are identical and the method is unchanged. One column does all of it: `IdleTime`, a flow statistic the narrow export omits. Removing it alone from the wide fit returns the model to 0.7616, and that ablation is re-measured on every run as `idle_time_ablation`. It is not an identifier - 17 distinct integer values over 1.2 million rows - and it separates SlowrateDoS, an attack defined by idling, at one-vs-rest AUC 0.9574. READ THE TWO NUMBERS THE OTHER WAY ROUND FROM EVERYWHERE ELSE IN THIS PROJECT - STILL. Every other model here reports an aggregate that flatters and a per-class figure that does not. On this corpus macro F1 is the OPTIMISTIC number and aggregate accuracy the pessimistic one, and the refit shrank that inversion without removing it: the gap was 0.1655 (0.9263 macro F1 against 0.7608 accuracy) and is about 0.0121 (0.9950 against 0.9829). The mechanism is the same one as before, not a new one - Benign and UDPFlood are 39.3% and 37.6% of the rows and remain the only pair that confuses, so accuracy is dominated by them while the macro average is carried by seven classes at 0.9999 or better. The residual error is 1.71% of the test split against 23.92% before, and it is one direction: UDPFlood predicted as Benign. THE LEAK COUNTERFACTUAL IS STILL RECORDED EVERY RUN and its claim is now narrower. Restoring the corpus's integer row identifiers takes accuracy to about 0.9997, a shortcut of the kind Engelen et al. (WTMC 2021) found in CIC-IDS2017. That shows what a row counter is worth on this corpus. It does not show what the published figures used, and 0.9829 is reachable here with no identifiers at all; whether those figures lean on identifiers stays open -- see M_NIDD's baseline_source. NO STUDENT IS DISTILLED FROM THIS MODEL: the page's encrypted tier runs telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml).",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -3474,7 +3487,7 @@
         "dataset": {
           "attribution": "",
           "licence": "Apache-2.0",
-          "name": "QKD attack telemetry (synthetic, methodology-grounded)",
+          "name": "QKD attack telemetry (synthetic, signatures of this project's own design)",
           "publishable": true,
           "url": "https://arxiv.org/abs/2509.14282"
         },

@@ -6,7 +6,7 @@ private-inference-vs-research.md), and the primary source each correction rests 
 1. Overview said the ML-KEM + X25519 layer "implements" what BSI recommends. BSI TR-02102-1 v2026-01
    recommends ML-KEM-768/1024 (Table 2.7) and the Brainpool curves (Table B.3) and never mentions
    25519; TR-02102-2 v2026-01 leaves x25519 out of its TLS 1.3 groups (Table 10). BSI's TR-02102 page,
-   updated 2026-10-02 after RFC 10024, says SecP256r1MLKEM768 and SecP384r1MLKEM1024 will be recommended
+   read 2026-11-08 (it shows no update date), after RFC 10024, says SecP256r1MLKEM768 and SecP384r1MLKEM1024 will be recommended
    in the next TR-02102-2 and may already be used, and that X25519MLKEM768 may also be used.
 2. "0 server-side compute" (Overview KPI, Value's novelty sentence) was unconditional; a full
    deployment sends every run to its server.

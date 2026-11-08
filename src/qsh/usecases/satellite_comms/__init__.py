@@ -454,7 +454,7 @@ class QSDCStage(Stage):
             telemetry, params, seed=ctx.config.get("seed", 0))
 
         bus.metric("qsdc_error_rate", res.error_rate, self.name)
-        bus.metric("qsdc_secrecy_capacity", res.secrecy_capacity, self.name)
+        bus.metric("qsdc_eq8_bound", res.secrecy_capacity, self.name)
         bus.metric("qsdc_eve_gain_g", res.eve_gain_g, self.name)
         bus.metric("qsdc_link_budget_limited", int(res.link_budget_limited), self.name)
         # THE THIRD ATTRIBUTION, emitted (Round 84). `quantum_secure_direct_comm` has told a block too
@@ -659,7 +659,7 @@ def run_demo(config: dict | None = None) -> dict:
         "secure_key_bits": m.get("secure_key_bits"),
         "channel_loss_db": m.get("channel_loss_db"),
         "telemetry_delivered": ctx.artifacts.get("telemetry_delivered"),
-        "qsdc_secrecy_capacity": m.get("qsdc_secrecy_capacity"),
+        "qsdc_eq8_bound": m.get("qsdc_eq8_bound"),
         "eavesdrop_detected": bool(m.get("qsdc_eavesdrop_detected")),
         "telemetry_anomaly": ctx.artifacts.get("telemetry_anomaly"),   # private CKKS anomaly verdict (1=anomaly)
         "telemetry_anomaly_case": ctx.artifacts.get("telemetry_anomaly_case"),   # which OPS-SAT-AD segment
