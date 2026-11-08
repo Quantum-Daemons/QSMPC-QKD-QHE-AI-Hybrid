@@ -71,6 +71,61 @@ def auroc(y_true, y_score) -> float:
     return float(roc_auc_score(y, _positive_score(y_score)))
 
 
+def _midranks(x: np.ndarray) -> np.ndarray:
+    """1-based ranks, ties sharing their mean rank."""
+    order = np.argsort(x, kind="mergesort")
+    ordered = x[order]
+    ranks = np.empty(len(x), dtype=float)
+    i = 0
+    while i < len(x):
+        j = i
+        while j < len(x) and ordered[j] == ordered[i]:
+            j += 1
+        ranks[order[i:j]] = 0.5 * (i + j - 1) + 1
+        i = j
+    return ranks
+
+
+def delong_auc_ci(y_true, y_score, *, level: float = 0.95) -> dict:
+    """AUROC with its DeLong (1988) confidence interval, by Sun and Xu's (2014) midrank algorithm.
+
+    DeLong's variance is a sum over the two classes, so a test split of 42 and 114 images says how far one AUROC can be
+    trusted without any resampling. The interval is the Wald one, clipped to [0, 1].
+    """
+    from statistics import NormalDist
+
+    y = np.asarray(y_true).ravel()
+    s = _positive_score(y_score)
+    pos, neg = s[y == 1], s[y == 0]
+    m, n = len(pos), len(neg)
+    if m < 2 or n < 2:
+        raise ValueError(f"DeLong needs at least two rows of each class; got {m} and {n}")
+    tx, ty, tz = _midranks(pos), _midranks(neg), _midranks(np.concatenate([pos, neg]))
+    auc = float(tz[:m].sum() / (m * n) - (m + 1) / (2 * n))
+    v01 = (tz[:m] - tx) / n
+    v10 = 1.0 - (tz[m:] - ty) / m
+    var = float(np.var(v01, ddof=1) / m + np.var(v10, ddof=1) / n)
+    half = NormalDist().inv_cdf(1 - (1 - level) / 2) * var ** 0.5
+    return {"auc": auc, "lo": max(0.0, auc - half), "hi": min(1.0, auc + half), "se": var ** 0.5,
+            "n_pos": m, "n_neg": n, "level": level}
+
+
+def bootstrap_auc_ci(y_true, y_score, *, level: float = 0.95, n_boot: int = 10_000, seed: int = 0) -> dict:
+    """Percentile bootstrap of AUROC, resampling within each class, so every resample keeps the split's class counts."""
+    y = np.asarray(y_true).ravel()
+    s = _positive_score(y_score)
+    pos, neg = s[y == 1], s[y == 0]
+    rng = np.random.default_rng(seed)
+    out = np.empty(n_boot)
+    for b in range(n_boot):
+        p = pos[rng.integers(0, len(pos), len(pos))]
+        q = neg[rng.integers(0, len(neg), len(neg))]
+        ranks = _midranks(np.concatenate([p, q]))
+        out[b] = (ranks[:len(p)].sum() - len(p) * (len(p) + 1) / 2) / (len(p) * len(q))
+    tail = (1 - level) / 2
+    return {"lo": float(np.quantile(out, tail)), "hi": float(np.quantile(out, 1 - tail)), "n_boot": n_boot, "seed": seed}
+
+
 def accuracy(y_true, y_pred) -> float:
     """Present only as a companion, never as a headline for an imbalanced task."""
     return float(np.mean(np.asarray(y_true).ravel() == _labels(y_pred)))

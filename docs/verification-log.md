@@ -3935,3 +3935,18 @@ The demo host was returned to `main` after each merge batch and read in a browse
 | all pages | Every verification passed and the console showed no error |
 
 `main` was then `2d9210d`, bundle `index-DaZW2Hat.js`. After the kernel and glibc update of 2026-11-08 (5.14.0-687.66.1, glibc 2.34-284), `scripts/ci_local.sh` passed all 25 gates on that commit.
+
+### Round 86, PR #14 on the deployed site and the student cards republished (2026-11-08)
+
+`main` was `d1c8474`, bundle `index-BmS-bF8M.js`, read in a browser on the public URL.
+
+| what | read |
+|---|---|
+| medical page, `#sel-mpccnn` ticked by default | One held-out image through the student under MPC: class "normal/benign", "matches the clear network"; 800 ReLUs in 15 batches, 69,167 AND gates, 174.4 MB in 5,235 messages, 28 rotations and 6 conjugations; 18.5 s in a Web Worker (garbled circuits 16.5 s, compiling them 1.4 s, CKKS 0.2 s); statistical distance at most $`2^{-22.7}`$; largest logit error $`1.89\times10^{-4}`$ |
+| medical page, unticked | No MPC card and the verification passes |
+| finance page | The verification passes and the page offers no MPC control |
+| console | No error on either page |
+
+Republished on the owner's approval, each file fetched back and compared by hash with the local file (the only change to `weights.json` in each is its `note`, a JSON comparison with the old revision showed): `qsh-medical-breastmnist-ckks-student` at `b582844a`, `qsh-finance-aml-ckks-student` at `e822202d`, and `qsh-satellite-opssat-ckks-student` at `58450bb4`. The page reads these pins from the next pull request on.
+
+**An interval is part of an AUC on 156 images.** The served ResNet-18 graph scores AUC 0.9146 on the official test split (the trainer's own figure, in PyTorch, is 0.9147: float32 export moves a pair or two of images). DeLong's 95% interval is 0.858 to 0.971 and a stratified bootstrap gives 0.853 to 0.964, so the published 0.901 lies inside it and the +0.014 is not a result. The card now prints the interval beside the AUC, and for ResNet-18 the spread over six earlier runs differing only in the seed.

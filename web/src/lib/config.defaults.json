@@ -1158,7 +1158,7 @@
             "student_flagged": 26151,
             "teacher_flagged": 759
           },
-          "hf_revision": "ac6dd51b11d2034e90f34bb2aba78b4349718344",
+          "hf_revision": "e822202dacbc33abbb24a7c23ad490e1c517cfa1",
           "metric_delta": 0.090554,
           "metric_delta_pp": 9.0554,
           "metric_name": "minority_class_f1",
@@ -1201,7 +1201,7 @@
         "eval_sample_reason": null,
         "eval_split": "the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, the last 30 percent of the transactions in time order, enriched to 2 percent laundering",
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": "ac6dd51b11d2034e90f34bb2aba78b4349718344",
+        "hf_revision": "e822202dacbc33abbb24a7c23ad490e1c517cfa1",
         "hf_revision_stale": null,
         "int8_withheld_reason": "ai.onnx.ml linear model: coefficients live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "finance_aml.student",
@@ -1344,6 +1344,14 @@
         "achieved": {
           "accuracy": 0.8653846153846154,
           "auc": 0.9146825396825395,
+          "auc_ci_95": {
+            "hi": 0.9707,
+            "lo": 0.8584,
+            "method": "DeLong",
+            "n_neg": 42,
+            "n_pos": 114,
+            "source": "scripts/measure_medical_auc_ci.py"
+          },
           "best_val_auc": 0.955723,
           "dataset": "MedMNIST v2 BreastMNIST",
           "export": {
@@ -1357,6 +1365,14 @@
           "macro_f1": 0.8249158249158248,
           "n_parameters": 11171266,
           "resolution": 28,
+          "seed_spread": {
+            "hi": 0.9216,
+            "lo": 0.863,
+            "mean": 0.8905,
+            "n_seeds": 6,
+            "sd": 0.0198,
+            "source": "references/medical-student-collapse-investigation.md"
+          },
           "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
           "wall_clock_s": 8.4
         },
@@ -1430,6 +1446,14 @@
         "achieved": {
           "accuracy": 0.782051282051282,
           "auc": 0.7987677527151211,
+          "auc_ci_95": {
+            "hi": 0.8759,
+            "lo": 0.7227,
+            "method": "DeLong",
+            "n_neg": 42,
+            "n_pos": 114,
+            "source": "scripts/measure_medical_auc_ci.py"
+          },
           "best_val_auc": 0.935673,
           "dataset": "MedMNIST v2 BreastMNIST",
           "export": {
@@ -1509,10 +1533,18 @@
         "achieved": {
           "agreement": 0.826923,
           "auc": 0.788221,
+          "auc_ci_95": {
+            "hi": 0.8738,
+            "lo": 0.7026,
+            "method": "DeLong",
+            "n_neg": 42,
+            "n_pos": 114,
+            "source": "scripts/measure_medical_auc_ci.py"
+          },
           "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline. The reason is representational rather than cryptographic: 3,226 parameters over a 14x14 input is a REPRESENTATION choice, not a feasibility limit - and this note said 'a CKKS-feasibility budget' until Round 32, which overstated how forced it was. Kim et al. (arXiv:2506.15258) do HE chest-X-ray inference on a VQGAN latent at downsampling factor 8 rather than on pixels, so the alternative to downsampling 28->14 is re-representing the input. The browser already runs onnxruntime-web, so such an encoder would run locally in plaintext with no privacy loss. Recorded as the sixth falsifiable trigger in the additional-model decision in docs/deliverable-verification.md, not acted on - and note that f=8 on a 28x28 input gives 3.5x3.5, so the transfer is the open measurement rather than a citation. This sentence claimed the trigger existed for two rounds while the table held five rows and none of them was this one; the trigger was written, and the decision moved to a tracked file so the claim can be checked. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
           "both_scored_zero": false,
           "disagreement_on_positives": 0.149123,
-          "hf_revision": "273ddb84b7b5274f9d98d70cd39bc1f5464aca9c",
+          "hf_revision": "b582844a2805e5be14fcc5499938ce692057d130",
           "majority_class_rate": 0.730769,
           "metric_delta": 0.096154,
           "metric_delta_pp": 9.6154,
@@ -1565,7 +1597,7 @@
         "eval_sample_reason": null,
         "eval_split": "the official BreastMNIST test split, whole, at 14x14",
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-ckks-student",
-        "hf_revision": "273ddb84b7b5274f9d98d70cd39bc1f5464aca9c",
+        "hf_revision": "b582844a2805e5be14fcc5499938ce692057d130",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "medical_fl.student",
@@ -2839,7 +2871,7 @@
           "auc_pr": 0.968055,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.070796,
-          "hf_revision": "d89c2e1ee128c137903e8625a14b3b14295ef327",
+          "hf_revision": "58450bb47601850f3620d83d1e9b3122306a2ae0",
           "metric_delta": 0.014571,
           "metric_delta_pp": 1.4571,
           "metric_name": "minority_class_f1",
@@ -2884,7 +2916,7 @@
         "eval_sample_reason": null,
         "eval_split": "the benchmark's own test partition, whole: a stratified random split, not a temporal one",
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ckks-student",
-        "hf_revision": "d89c2e1ee128c137903e8625a14b3b14295ef327",
+        "hf_revision": "58450bb47601850f3620d83d1e9b3122306a2ae0",
         "hf_revision_stale": null,
         "int8_withheld_reason": "ai.onnx.ml linear model: coefficients live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "satellite_comms.opssat_student",

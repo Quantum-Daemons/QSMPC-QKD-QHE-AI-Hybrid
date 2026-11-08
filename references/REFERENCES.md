@@ -1090,6 +1090,14 @@ belongs in this file rather than only in a comment.
 
 - **Yang et al., "MedMNIST v2", *Scientific Data* 10:41 (2023).** DOI 10.1038/s41597-022-01721-8.
   Source of the BreastMNIST ResNet-18 AUC 0.901 / ResNet-50 AUC 0.857 baselines. Added: 2026-08-07.
+- **Doerrich, Di Salvo, Brockmann and Ledig, "Rethinking model prototyping through the MedMNIST+ dataset
+  collection"**, *Scientific Reports* 15, 7669 (2025), DOI 10.1038/s41598-025-92156-9; arXiv:2404.15786 `[link]`
+  URL: https://doi.org/10.1038/s41598-025-92156-9
+  Added: 2026-11-08
+  Read in the arXiv v3 PDF: Table S2 and the training pipeline; the journal's supplement was not opened. BreastMNIST,
+  end-to-end training, ImageNet-pretrained ResNet-18, images zero-padded from 28 by 28 to 224 by 224: AUC
+  $`87.61 \pm 1.16`$ and accuracy $`83.97 \pm 1.81`$ (percent), over three seeds. Cited in `docs/findings.md` for the
+  seed-to-seed spread a BreastMNIST AUC carries; this project's pipeline differs, so the numbers are not like for like.
 - **Altman et al., "Realistic Synthetic Financial Transactions for Anti-Money Laundering Models",
   NeurIPS 2023 Datasets and Benchmarks.** arXiv:2306.16424. AMLworld; source of the 0.6323 finance
   baseline and of the corpus's own synthetic-by-construction statement. Added: 2026-08-07.

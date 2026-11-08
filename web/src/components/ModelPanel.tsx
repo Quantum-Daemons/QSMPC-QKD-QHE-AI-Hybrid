@@ -92,7 +92,7 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   ]);
   // `esa_scores` is the satellite forecaster's two arms at three floors (Round 86): sixty numbers that render as their
   // own table below, not as rows here. `training` is how the run went (epochs, losses), not a property of the model.
-  const NOT_A_SUBTREE = new Set(["not_measured", "licence_audit", "esa_scores", "training", "flag_counts", ...ATTRIBUTION_SUBTREES]);
+  const NOT_A_SUBTREE = new Set(["not_measured", "licence_audit", "esa_scores", "training", "flag_counts", "auc_ci_95", "seed_spread", ...ATTRIBUTION_SUBTREES]);
   const walk = (obj: Record<string, unknown>, prefix: string, depth: number) => {
     for (const [k, v] of Object.entries(obj)) {
       if (NOT_A_SUBTREE.has(k)) continue;
@@ -148,6 +148,9 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   const flags = rec.flag_counts as { teacher_flagged?: number; student_flagged?: number } | undefined;
   const nFlagged = rec.n_eval as number | undefined;
   const neverFlagsAgrees = flags?.teacher_flagged != null && nFlagged ? 1 - flags.teacher_flagged / nFlagged : null;
+  // One training run on 156 test images: the interval is what that image count allows, and the seeds what a second run would (Round 86).
+  const aucCi = rec.auc_ci_95 as { lo: number; hi: number; method: string; n_pos: number; n_neg: number } | undefined;
+  const seeds = rec.seed_spread as { n_seeds: number; mean: number; sd: number; lo: number; hi: number } | undefined;
   // The declared metric is not among the measured ones, so no row carries the baseline.
   //
   // This is genuinely the right state for genomics - 1000 Genomes has no phenotype, so no AUROC is
@@ -239,6 +242,12 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
               {k === declaredKey && scoredOver != null && (
                 <> · <strong>over {scoredOver} {scoredUnit}</strong>
                   {scoredOver < 10 && " — too few to compare with the baseline"}</>
+              )}
+              {k === "auc" && aucCi && (
+                <> · 95% CI {aucCi.lo.toFixed(3)} to {aucCi.hi.toFixed(3)} ({aucCi.method}, {aucCi.n_pos} + {aucCi.n_neg} test images, this training run)</>
+              )}
+              {k === "auc" && seeds && (
+                <> · over {seeds.n_seeds} earlier runs differing only in the seed: mean {seeds.mean.toFixed(4)}, sd {seeds.sd.toFixed(4)}, range {seeds.lo.toFixed(4)} to {seeds.hi.toFixed(4)}</>
               )}
               {k === "agreement" && neverFlagsAgrees != null && (
                 <>A student that never flags would agree {fmt(neverFlagsAgrees)}: the teacher flags {flags?.teacher_flagged?.toLocaleString("en-US")} of{" "}

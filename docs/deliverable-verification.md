@@ -9016,6 +9016,9 @@ recorded separately, and nothing here changes the published model.
 | #10 | The student's CKKS runs in a Web Worker; samples are written at float32 precision; Khmelev et al.'s session is counted from the 28 degrees where their tracking started |
 | #11 | Two wording fixes on the satellite page |
 | #12 | The medical fact-check: the student's note, the timing row split into the student and the regression, the malignant class's own precision-recall curve, the int8 reason, the IID caveat |
+| #13 | About 150 corrections from the audit of the planning records: claims that outlived their code, dead surfaces, the citation of arXiv:2501.10083, and three new gates |
+| #14 | The medical CNN student runs under MPC on one held-out image per run: CKKS linear layers, ReLUs and the argmax in garbled circuits, average pooling on shares |
+| #15 | Twenty-three claims and papers read at source, the audit's last open rows closed, and each medical AUC given its interval |
 
 Findings worth keeping from those:
 
