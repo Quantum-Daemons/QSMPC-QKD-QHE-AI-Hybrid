@@ -350,6 +350,27 @@ score; and, on finance, a linear surrogate over four columns of the PaySim demo 
 figure. What each step hides, in either tier, is in
 [the threat model's table](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment).
 
+#### The CNN student under MPC
+
+The published medical student, on one held-out BreastMNIST image per run, with no activation in either party's hands: CKKS for the convolution and both dense layers, a mask over every slot before the client decrypts, Polytune garbled circuits for the 800 ReLUs and the argmax, and average pooling on each
+party's own share ([what it hides and what it does not](threat-model.md#the-medical-cnn-under-mpc)). It runs in a Web Worker. Measured on 2026-11-08 under Node on this project's machine, over all 156 images of the official test split:
+
+| | |
+|---|---|
+| class from the 2PC argmax against the clear network | the same on 156 of 156 |
+| accuracy on the 156 images | 0.7692, the recorded figure |
+| malignant images detected | 24 of 42, as the page's clear evaluation |
+| largest logit error, shares against the clear network | $`4.9 \times 10^{-4}`$; the smallest logit gap is 0.018 |
+| statistical distance of everything masked, per run | $`2^{-22.5}`$ to $`2^{-24.2}`$ |
+| AND gates | 69,167: 800 ReLUs at 86 each, and the 2-class argmax's 367 |
+| garbled-circuit traffic | 174.4 MB in 15 batches and the argmax |
+| CKKS | 28 rotations and 6 conjugations, 3.5 MB of ciphertexts, 14.7 MB of keys |
+| wall-clock, median | 17.1 s: garbled circuits 16.9 s, CKKS 0.18 s |
+
+A ReLU costs 86 AND gates at a 20-bit ring and a 48-bit output mask because its adders are written bit by bit, one AND per bit, where Garble's own `+` costs three. Compiling all 800 at once took 75 s and 4 GB natively, so they run in batches of 56, compiled once.
+
+The weights did not change. Retraining to a polynomial activation, as Flash does (arXiv:2401.16732), was rejected for this path: Flash's protocol squares a masked integer in BFV, and with CKKS reals and a $`2^{30}`$ mask the square is about $`2^{60}`$, whose decode error is about 700.
+
 #### The QKD key blocks
 
 Every BB84 key a run reports, on the fibre and from the satellite, is the composable finite key of a

@@ -16,6 +16,7 @@ import {
 } from "./config";
 import { CKKS_FLOOD_BITS, encryptedConv2d, encryptedHeldOutAgreement, encryptedLinear, encryptedLinearBatch,
   encryptedStudentInference, warmFHE, type CnnStudentWeights } from "./clientFHE";
+import type { HybridCnnResult } from "./clientHybridCnn";
 import { clientTrainScoreIDS } from "./clientIDS";
 import { clientQFL } from "./clientQFL";
 import { secureArgmax, warmMPC } from "./clientMPC";
@@ -884,6 +885,71 @@ let _fheKeygenMs: number | null = null;
  *  sklearn-linear and ship a different JSON shape. A null means the encrypted student does not run,
  *  and the run says so; no kernel pattern stands in for the weights (Round 84).
  */
+/** The medical CNN student under MPC, as the page shows it. */
+export interface MpcCnnReport {
+  result: Omit<HybridCnnResult, never>; ranIn: string; imageIndex: number; imageCount: number; imageLabel: number; classes: Record<string, string> | null;
+}
+
+/** The published student's held-out images, at the pin its weights come from. */
+const _studentSampleCache = new Map<string, { samples: number[][]; labels: number[]; classes: Record<string, string> | null } | null>();
+async function publishedStudentSample(usecase: string): Promise<{ samples: number[][]; labels: number[]; classes: Record<string, string> | null } | null> {
+  if (_studentSampleCache.has(usecase)) return _studentSampleCache.get(usecase) ?? null;
+  let out: { samples: number[][]; labels: number[]; classes: Record<string, string> | null } | null = null;
+  try {
+    const spec = studentModel(usecase);
+    if (spec?.hf_repo_id && spec.hf_revision) {
+      const res = await fetch(`https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/eval_sample.json`, { mode: "cors", signal: AbortSignal.timeout(30_000) });
+      if (res.ok) { const j = await res.json(); if (Array.isArray(j?.samples) && Array.isArray(j?.labels)) out = { samples: j.samples, labels: j.labels, classes: j.classes ?? null }; }
+    }
+  } catch {
+    out = null;
+  }
+  _studentSampleCache.set(usecase, out);
+  return out;
+}
+
+/** One held-out image through the student under CKKS and garbled circuits, off the page's thread, reported whichever way it ends. */
+async function runStudentUnderMpc(stage: string, usecase: string, seed: number, emit: (t: "log", s: string, m: string) => void,
+                                  metric: (s: string, k: string, v: number | string) => void, artifacts: Record<string, unknown>): Promise<void> {
+  const [w, sample] = await Promise.all([publishedStudentWeights(usecase), publishedStudentSample(usecase)]);
+  if (!w || !sample) {
+    metric(stage, "mpc_cnn_ran", 0);
+    emit("log", stage, "The CNN student under MPC did not run: its weights or its held-out images could not be fetched from the pinned Hugging Face revision.");
+    return;
+  }
+  const n = sample.samples.length, index = ((seed % n) + n) % n;
+  const size = Math.round(Math.sqrt(sample.samples[index].length));
+  const image = Array.from({ length: size }, (_, y) => sample.samples[index].slice(y * size, (y + 1) * size));
+  const { hybridStudentInferenceOffThread } = await import("./clientHybridCnn");
+  emit("log", stage, `The CNN student under MPC: held-out image ${index} of ${n}, in a Web Worker. CKKS for the linear layers, garbled circuits for the ReLUs and the argmax, about 20 s.`);
+  try {
+    let lastQuarter = 0;
+    const r = await hybridStudentInferenceOffThread(w, image, { onProgress: (p) => {
+      if (p.phase !== "relu" || p.total < 100) return;
+      const quarter = Math.floor((4 * p.done) / p.total);
+      if (quarter > lastQuarter) { lastQuarter = quarter; emit("log", stage, `garbled circuits: ${Math.min(p.done, p.total)} of the convolution's ${p.total} ReLUs`); }
+    } });
+    artifacts.mpc_cnn = { result: r, ranIn: r.ranIn, imageIndex: index, imageCount: n, imageLabel: sample.labels[index], classes: sample.classes } satisfies MpcCnnReport;
+    metric(stage, "mpc_cnn_ran", 1);
+    metric(stage, "mpc_cnn_class", r.prediction);
+    metric(stage, "mpc_cnn_matches_clear", r.matchesClear ? 1 : 0);
+    metric(stage, "mpc_cnn_relu_count", r.reluCount);
+    metric(stage, "mpc_cnn_and_gates", r.andGates);
+    metric(stage, "mpc_cnn_gc_mb", r2(r.gcBytes / 1e6));
+    metric(stage, "mpc_cnn_gc_ms", r2(r.gcMs));
+    metric(stage, "mpc_cnn_ckks_ms", r2(r.ckksMs));
+    metric(stage, "mpc_cnn_total_ms", r2(r.totalMs));
+    metric(stage, "mpc_cnn_statistical_distance_log2", r2(r.statisticalDistanceLog2));
+    metric(stage, "mpc_cnn_logit_max_abs_error", r.logitMaxAbsError);
+    emit("log", stage, `CNN under MPC: class ${r.prediction} from the 2PC argmax${r.matchesClear ? ", as the same network gives in the clear" : `, and the same network gives ${r.clearPrediction} in the clear: treat this result as unverified`}. `
+      + `${r.reluCount} ReLUs in garbled circuits, ${r.andGates} AND gates, ${r2(r.gcBytes / 1e6)} MB between the two notional parties, ${r2(r.totalMs / 1000)} s in ${r.ranIn}. `
+      + `Statistical distance of everything masked, at most 2^${r2(r.statisticalDistanceLog2)}; the masks are bounded reals, so this is weaker than masking over the plaintext ring.`);
+  } catch (e) {
+    metric(stage, "mpc_cnn_ran", 0);
+    emit("log", stage, `The CNN student under MPC failed and no figure from it is shown: ${(e as Error)?.message ?? e}`);
+  }
+}
+
 const _studentWeightCache = new Map<string, CnnStudentWeights | null>();
 async function publishedStudentWeights(usecase: string | undefined): Promise<CnnStudentWeights | null> {
   if (!usecase) return null;
@@ -3408,6 +3474,7 @@ export function runClientPipeline(
             ? `garbled-circuit argmax checked in the clear: index ${real.prediction} both ways`
             : `garbled-circuit argmax DISAGREES with the same argmax in the clear: ${real.prediction} `
               + `against ${real.mpcClearIndex}. Treat this run's MPC result as unverified.`);
+          if (usecase === "medical_fl" && config.mpc_cnn) await runStudentUnderMpc(stage, usecase, seed, emit, metric, artifacts);
         } else {
           // Honest last resort, and it names the half that failed: node-seal not loading (no WASM,
           // say), or the garbled-circuit protocol not completing, which includes it ABORTING on a

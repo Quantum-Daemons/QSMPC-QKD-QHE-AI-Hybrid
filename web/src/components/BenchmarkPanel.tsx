@@ -251,7 +251,7 @@ export default function BenchmarkPanel(
                 server, ReLU and argmax run under MPyC secret sharing; in the browser only the argmax runs as
                 a <code>Polytune</code> garbled-circuit 2PC, and the medical student&apos;s ReLU and pooling run in the
                 clear in the client after each layer is decrypted (MPyC is pure Python and is not in the
-                bundle). {split.backend}.
+                bundle); the medical page's own card, &quot;The CNN student under MPC&quot;, runs them in garbled circuits on one held-out image. {split.backend}.
               </p>
               <div className="grid cols-2">
                 <ChartReadout hint={HINT_KEYBOARD}>

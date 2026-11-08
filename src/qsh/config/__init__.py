@@ -135,6 +135,7 @@ def frontend_config() -> dict:
             # a degree-N ring carries N/2 usable slots. Three prose sites had this multiplied out.
             "slots": c.fhe.poly_modulus_degree // 2,
         },
+        "hybrid_cnn": asdict(c.hybrid_cnn),
         "benchmark": {
             "tier_architectures": b.tier_architectures,
             "generic_architecture": b.generic_architecture,

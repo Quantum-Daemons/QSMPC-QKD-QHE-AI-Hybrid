@@ -653,6 +653,24 @@ directly, not against another file in this repository. The architecture discussi
   `docs/architecture.md` as the
   current end of the Gazelle -> Delphi -> BOLT -> Bumblebee line; recorded here with its numbers.
   Added: 2026-08-11.
+- **Lehmkuhl, Mishra, Srinivasan and Popa, "Muse: Secure Inference Resilient to Malicious Clients."** USENIX Security 2021 `[link]`
+  URL: https://www.usenix.org/system/files/sec21-lehmkuhl.pdf
+  A malicious client extracts model weights from semi-honest additive-share protocols by malleating its share, at 22 to 312 times fewer queries than the best black-box extraction, and the attack scales with the parameters, not the depth. Why `docs/threat-model.md` does not claim malicious security for the medical CNN under MPC. Added: 2026-11-08 (abstract, sections 1-2).
+- **Rathee et al., "CrypTFlow2: Practical 2-Party Secure Inference."** ACM CCS 2020, arXiv:2010.06457 `[link]`
+  URL: https://arxiv.org/abs/2010.06457
+  A GC ReLU at 32 bits costs 4l-2 = 126 AND gates (Table 2): the literature check on `web/src/lib/clientHybridCnn.ts`'s 86. Added: 2026-11-08.
+- **Huang, Lu, Hong and Ding, "Cheetah: Lean and Fast Secure Two-Party Deep Neural Network Inference."** USENIX Security 2022 `[link]`
+  URL: https://www.usenix.org/system/files/sec22-huang-zhicong.pdf
+  RLWE with coefficient encoding, shares over a ring; 12 fractional bits, the figure this project's fixed point follows. Added: 2026-11-08.
+- **Roh et al., "Flash: A Hybrid Private Inference Protocol for Deep CNNs with High Accuracy and Low Latency on CPU."** arXiv:2401.16732v2 `[link]`
+  URL: https://arxiv.org/abs/2401.16732
+  ReLU replaced by $`x^2 + x`$ with a retrained, batch-normalised network, the activation protocol squaring a masked integer in BFV. Considered and not adopted for the medical CNN (`docs/models-and-benchmarks.md`). Added: 2026-11-08.
+- **Zhu, Jin, Aung and Xiao, "FESC: Remodeling Long-Context Private Inference with Encrypted State-Space Models."** arXiv:2608.17442v2 (2026-08-19), preprint `[link]`
+  URL: https://arxiv.org/abs/2608.17442
+  The same CKKS-to-MPC boundary as EncFormer and BLB, a mask uniform over the plaintext ring. Added: 2026-11-08.
+- **Wang, Ranellucci and Katz, "Global-Scale Secure Multiparty Computation."** ACM CCS 2017 `[link]`
+  URL: https://acmccs.github.io/papers/p39-wangA.pdf
+  The authenticated garbling Polytune implements. Added: 2026-11-08.
 - **Juvekar, Vaikuntanathan & Chandrakasan, "GAZELLE: A Low Latency Framework for Secure Neural
   Network Inference."** arXiv:1801.05507; USENIX Security 2018. Its "encryption switching protocols"
   convert between homomorphic and garbled-circuit encodings at each layer boundary by masking: the

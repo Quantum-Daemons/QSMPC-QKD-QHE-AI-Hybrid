@@ -9,6 +9,8 @@ import { ModelPanel } from "../components/ModelPanel";
 import { ProvenanceBadge, type Provenance } from "../components/ProvenanceBadge";
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
+import MpcCnnPanel from "../components/MpcCnnPanel";
+import type { MpcCnnReport } from "../lib/clientCompute";
 import ShapPanel from "../components/ShapPanel";
 import UseCaseCanvas from "../components/UseCaseCanvas";
 import { USECASE_SPECS } from "../lib/useCaseFlows";
@@ -327,6 +329,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
         />
       ) : null}
 
+      {usecase === "medical_fl" && artifacts?.mpc_cnn ? <MpcCnnPanel report={artifacts.mpc_cnn as MpcCnnReport} /> : null}
+
       <h2 className="sr-only">Benchmark</h2>
       {/* Unified benchmark: auto-filled from the single Run above (no separate "Run benchmark" button).
           The MPC-FHE row is the live run's measured FHE-linear/MPC-non-linear split. */}
@@ -361,7 +365,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           <KeyPoints items={[
             "Federated learning runs on every run here - a real client-side FedAvg over the page's own bundled Wisconsin sample, with no toggle.",
             "Federated averaging is not a privacy guarantee by itself: the pairwise masks hide each hospital's update from the aggregator, but the trained model can still leak its training data (gradient inversion and similar attacks), and no differential-privacy budget is applied here.",
-            <><b>The encrypted path evaluates the published student itself</b>: all 3,226 parameters, from its pinned Hugging Face revision. CKKS evaluates the convolution and both dense layers, each layer&apos;s bias added under encryption and every slot but its outputs masked and flooded, so the client decrypts each layer&apos;s outputs and nothing else; it decrypts after every layer, applies ReLU and average pooling in plaintext, and takes the CNN&apos;s argmax in the clear. The garbled-circuit argmax runs on the bundled Wisconsin logistic regression, not on the CNN, over logits the client has already decrypted, so in this tab it hides nothing from the key holder.</>,
+            <><b>The encrypted path evaluates the published student itself</b>: all 3,226 parameters, from its pinned Hugging Face revision. CKKS evaluates the convolution and both dense layers, each layer&apos;s bias added under encryption and every slot but its outputs masked and flooded, so the client decrypts each layer&apos;s outputs and nothing else; it decrypts after every layer, applies ReLU and average pooling in plaintext, and takes the CNN&apos;s argmax in the clear. The garbled-circuit argmax runs on the bundled Wisconsin logistic regression, not on the CNN, over logits the client has already decrypted, so in this tab it hides nothing from the key holder. &quot;The CNN student under MPC&quot;, below, is the path that does not decrypt an activation.</>,
             "The run reports the total rotations it performed, because key-switching - one per rotation - is what dominates CKKS inference cost.",
             "Nothing is multiplied by a cost model; if the weights cannot be fetched, the run says so rather than substituting invented ones.",
             "MedMNIST, the source of the published models' images, is not intended for clinical use, and nothing on this page is a diagnosis.",

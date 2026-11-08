@@ -49,8 +49,8 @@ export interface MPCResult {
 // lower index, and logits beyond +-8 clamped together; 22 of medical's 171 held-out rows exceed 8. The
 // shares have been modulo 2^32 since Round 66, so the range is free: 2^-20 steps over +-512, at most
 // 2^30, and the circuit, which reconstructs in u64 and casts back to u32, is unchanged.
-const SCALE = 2 ** 20;       // fixed-point scale for the float logits
-const OFFSET = 512;          // logits assumed within [-OFFSET, OFFSET] -> quantised value is positive
+export const SCALE = 2 ** 20; // fixed-point scale for the float logits
+export const OFFSET = 512;   // logits assumed within [-OFFSET, OFFSET] -> quantised value is positive
 const QMAX = 2 * OFFSET * SCALE; // 2^30, the max quantised value (logits clamped to it)
 
 type QshMpc = typeof import("../wasm/qsh_mpc/qsh_mpc.js");
@@ -97,4 +97,19 @@ export async function secureArgmax(logits: number[]): Promise<MPCResult> {
   const r = await m.secure_argmax(a, b) as { arg: number; mpcMs: number; bytes: number; messages: number };
   return { out: [r.arg], compares: n - 1, commBytes: r.bytes, mpcMs: r.mpcMs, messages: r.messages,
            clearOut: [clear] };
+}
+
+/** One batch of ReLUs under Polytune, as `clientHybridCnn` calls it. `out` is what party 0 receives: each ReLU plus party 1's mask. */
+export interface ReluBatchResult { out: number[]; compileMs: number; mpcMs: number; bytes: number; messages: number; andOps: number; }
+
+export async function secureReluBatch(y: Uint32Array, r: Uint32Array, s: BigUint64Array, ringBits: number, outBits: number): Promise<ReluBatchResult> {
+  const m = await getModule();
+  const o = await m.secure_relu(y, r, s, ringBits, outBits) as Omit<ReluBatchResult, "out"> & { out: BigUint64Array };
+  return { ...o, out: Array.from(o.out, Number) };
+}
+
+/** The secure argmax over shares the caller already holds: q_k = a_k + b_k mod 2^32. */
+export async function secureArgmaxShares(a: Uint32Array, b: Uint32Array): Promise<{ arg: number; mpcMs: number; bytes: number; messages: number; andOps: number }> {
+  const m = await getModule();
+  return await m.secure_argmax(a, b) as { arg: number; mpcMs: number; bytes: number; messages: number; andOps: number };
 }

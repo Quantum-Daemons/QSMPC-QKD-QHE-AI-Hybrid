@@ -255,6 +255,8 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   // a sample, so `buildConfig` gates the flag on `runsFederated`. The state is kept so the flag can
   // still be turned off programmatically for a test or a comparison.
   const [qfl, setQfl] = useState(true);
+  // The medical CNN student under MPC: about 20 s in a worker, on by default, offered only where it can run.
+  const [mpcCnn, setMpcCnn] = useState(true);
   const [optiqkd, setOptiqkd] = useState(false);         // "Optimize QKD (OptiQKD)" toggle (WS1 AI-QKD)
   // Which published model the orchestration's inference stage runs. "" = the registry's first
   // fetchable one for this use case, which is what every run used before this existed. Three use
@@ -373,6 +375,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // Gated on the same predicate style as the controls above: the flag reaches the run only where a
     // federated stage has real data and a figure to appear in.
     if (qfl && runsFederated(usecase)) c.qfl = true;
+    if (mpcCnn && DEMO && usecase === "medical_fl") c.mpc_cnn = true;
     if (optiqkd) c.qkd_optimize = true;                  // run the AI-QKD parameter optimization this run
     // The full deployment's medical run takes its CNN path on MedMNIST, as the browser always runs the medical CNN
     // student. Until Round 86 nothing on the page reached that path: the Workload selector was gone and `workload`
@@ -509,11 +512,11 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   // protocol and the QSMPC op live in params, not in the family selects, and passing only the family
   // is what once let an E91 run draw a BB84 arrow.
   const diagramConfig: DiagramConfig = useMemo(() => ({
-    kem, qkd, sig, optiqkd, workload,
+    kem, qkd, sig, optiqkd, workload, mpcCnn: mpcCnn && DEMO,
     qkdProtocol: String(params.qkd_protocol ?? ""),
     qsmpcOp: String(params.qsmpc_op ?? ""),
     inference: String(params.inference ?? ""),
-  }), [kem, qkd, sig, optiqkd, workload, params]);
+  }), [kem, qkd, sig, optiqkd, workload, params, mpcCnn]);
   useEffect(() => {
     setRunStatus(inFlight ? { state, active } : null);
   }, [inFlight, state, active]);
@@ -521,7 +524,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
 
   return {
     usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, setMpc, sig, setSig,
-    workload, qfl, setQfl, optiqkd, setOptiqkd,
+    workload, qfl, setQfl, mpcCnn, setMpcCnn, optiqkd, setOptiqkd,
     publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
     params, setParams, resetParams,
     runId, state, events, active, done, metrics, signature, artifacts, benchmark, diagramConfig,

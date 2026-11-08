@@ -14,7 +14,7 @@ export default function PipelineControls({ run }: { run: Run }) {
   // local secret-sharing), so the server-side backend selectors (TenSEAL/OpenFHE/MPyC/…) don't apply.
   const demo = isClientDemo();
   const { usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, sig, setSig,
-    optiqkd, setOptiqkd, publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
+    optiqkd, setOptiqkd, mpcCnn, setMpcCnn, publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
     state, running, paused, inFlight, start, startStepwise, pause, resume, step, stop } = run;
   // Resolved once: whether WebGPU can be offered at all. Without a usable adapter the option is shown
   // disabled with the reason, rather than offered and then silently run on WASM.
@@ -214,6 +214,14 @@ export default function PipelineControls({ run }: { run: Run }) {
             onChange={(e) => setOptiqkd(e.target.checked)} style={{ marginRight: 4 }} />
           Optimize QKD (OptiQKD){optiqkdDisabled ? " - needs a QKD protocol" : ""}
         </label>
+        {demo && usecase === "medical_fl" && (
+          <label className="muted" htmlFor="sel-mpccnn"
+            title="Runs one held-out image through the published CNN student with its ReLUs and its argmax in garbled circuits, on top of the CKKS layers, in a Web Worker so the page stays responsive. About 20 s and 170 MB of traffic between the two notional parties in this tab.">
+            <input id="sel-mpccnn" name="sel-mpccnn" type="checkbox" checked={mpcCnn}
+              onChange={(e) => setMpcCnn(e.target.checked)} style={{ marginRight: 4 }} />
+            CNN under MPC (about 20 s)
+          </label>
+        )}
         <span style={{ flex: 1 }} />
         {/* A disclosure control, so it has to announce itself as one. The caret alone is visual:
             aria-expanded is what tells a screen reader the panel exists and whether it is open,

@@ -1171,7 +1171,11 @@ _SPECS: tuple[ModelSpec, ...] = (
                "client's whole view (see qsh.mpc.secret_inference). In the browser each layer's bias "
                "is added under encryption and every slot but its outputs is masked and flooded "
                "before the client decrypts, so the client decrypts the layer outputs and nothing "
-               "else. MedMNIST states that its dataset is NOT intended for clinical use, and neither "
+               "else. A separate path on the page runs one held-out image through this student with "
+               "no activation in either party's hands: CKKS for the convolution and the dense layers, "
+               "every slot masked before the client decrypts, and Polytune garbled circuits for the 800 "
+               "ReLUs and the argmax; its class matched the clear network on all 156 test images. "
+               "MedMNIST states that its dataset is NOT intended for clinical use, and neither "
                "is this model."),
     ),
     # ---------------- genomics ----------------

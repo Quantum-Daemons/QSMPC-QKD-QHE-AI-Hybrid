@@ -254,10 +254,11 @@ CNN_STUDENT_NOTE = (
     "the input zero-padded by `conv.padding`), conv.activation, average pool by `pool.stride`, flatten channel-major, "
     "then each dense with its own `activation`. Every activation is recorded from the trained module order rather than "
     "assumed - the conv is followed by a ReLU, and omitting it still reproduces every argmax on the test split while "
-    "shifting the logits, which is why it is stated here explicitly. The browser runs the conv and both dense layers "
-    "under CKKS and decrypts each layer's output; the ReLU, the average pool and the argmax run in plaintext in the "
-    "client. The project's hybrid puts the non-linear steps under MPC, and this student's do not go there: the page's "
-    "MPC argmax runs on its Wisconsin regression.")
+    "shifting the logits, which is why it is stated here explicitly. The browser runs this student in two ways. "
+    "Layer by layer: the conv and both dense layers under CKKS, each layer's output decrypted, and the ReLU, the "
+    "average pool and the argmax in plaintext in the client. And under MPC, on one held-out image: every slot is masked "
+    "before the client decrypts, garbled circuits apply the ReLUs and the argmax on additive shares, and each party "
+    "applies the average pool to its own share.")
 
 #: Round 86. Shared with scripts/data/build_heldout_payloads.py, which adds the block to a student published before it existed.
 CKKS_CLIENT_NOTE = ('What a CKKS client applies itself, on its plaintext row and before encrypting: the graph does this inside, so `input` '
