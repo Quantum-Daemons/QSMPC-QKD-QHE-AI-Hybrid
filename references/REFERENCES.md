@@ -450,6 +450,26 @@ papers. Where the two used to overlap, that file is the owner.
 
 ---
 
+- **Kolesnikov, Matania, Pinkas, Rosulek and Trieu, "Practical Multi-party Private Set Intersection from Symmetric-Key
+  Techniques"**, CCS 2017, IACR ePrint 2017/799 `[link]`
+  URL: https://eprint.iacr.org/2017/799
+  Added: 2026-11-08
+  Read at the abstract. Any number of semi-honest participants, from an oblivious programmable PRF; five parties with
+  $`2^{20}`$ items each in 72 s, or about 22 s in a weaker model. Cited in `docs/threat-model.md` for what a dedicated protocol
+  reaches: this project's PSI among banks is one generic circuit and stays at eight accounts each.
+- **Srikumar, Hill and Hollenberg, "A kernel-based quantum random forest for improved classification"**, Quantum Machine
+  Intelligence, 2024; arXiv:2210.02355 `[link]`
+  URL: https://arxiv.org/abs/2210.02355
+  Added: 2026-11-08
+  Read at the abstract. Decision trees of QSVM nodes, with a low-rank Nystrom approximation of the kernel; the abstract
+  compares the forest with QSVMs. Cited in the register's decision not to build a quantum random forest here.
+- **Rasyidi, Alhussein, Muhaidat and Damiani, "Hybrid Quantum-Classical Autoencoders for Unsupervised Network Intrusion
+  Detection"**, arXiv:2512.05069 `[link]`
+  URL: https://arxiv.org/abs/2512.05069
+  Added: 2026-11-08
+  Read at the abstract. The arXiv page marks v2 (2026-04-02) as withdrawn pending additional experiments and analysis, so no
+  figure from it may be used. Cited in the register's decision not to build a VAE filter here.
+
 ## WS4 - QHE x AI (quantum/classical homomorphic encryption + AI)
 
 - **Reverse Delegated Training and Private Inference via Perfectly-Secure Quantum Homomorphic

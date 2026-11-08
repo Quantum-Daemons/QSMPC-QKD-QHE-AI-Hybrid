@@ -1,4 +1,5 @@
 import { EncryptedAgreementChart, MeasuredAgainstPublished, NoEncryptedComparison, VerificationChart } from "../components/VerificationChart";
+import { webmType } from "../lib/export";
 import type { EncryptedAgreementPlot } from "../components/VerificationChart";
 import { useRef } from "react";
 import { Link, useParams } from "react-router";
@@ -10,7 +11,8 @@ import { ProvenanceBadge, type Provenance } from "../components/ProvenanceBadge"
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
 import MpcCnnPanel from "../components/MpcCnnPanel";
-import type { MpcCnnReport } from "../lib/clientCompute";
+import MultiPsiPanel from "../components/MultiPsiPanel";
+import type { MpcCnnReport, MultiPsiReport } from "../lib/clientCompute";
 import ShapPanel from "../components/ShapPanel";
 import UseCaseCanvas from "../components/UseCaseCanvas";
 import { USECASE_SPECS } from "../lib/useCaseFlows";
@@ -59,8 +61,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
   // built by launch()) and Metrics wrote an empty CSV. BenchmarkPanel already gates on
   // rows.length; these now match it.
   const hasRun = run.events.length > 0;
-  const { events, active, done, metrics, signature, artifacts, state, logRef, gifBusy, benchmark,
-    downloadGif, downloadPng, downloadEvents, downloadMetricsCsv } = run;
+  const { events, active, done, metrics, signature, artifacts, state, logRef, gifBusy, webmBusy, benchmark,
+    downloadGif, downloadWebm, downloadPng, downloadEvents, downloadMetricsCsv } = run;
 
   return (
     <div>
@@ -112,6 +114,12 @@ function UseCaseView({ usecase }: { usecase: string }) {
           disabled={gifBusy || !hasRun} title={hasRun ? undefined : "Run the simulator first"}>
           {gifBusy ? "Encoding…" : "⬇ Animation (GIF)"}
         </button>
+        {webmType() ? (
+          <button className="btn ghost" onClick={() => downloadWebm(`${usecase}-simulator.webm`)}
+            disabled={webmBusy || !hasRun} title={hasRun ? "The same frames as the GIF, by the browser's own video encoder, about 0.4 s per frame" : "Run the simulator first"}>
+            {webmBusy ? "Recording…" : "⬇ Animation (WebM)"}
+          </button>
+        ) : null}
         <button className="btn ghost" onClick={() => downloadEvents(`${usecase}-events.json`)}
           disabled={!hasRun} title={hasRun ? undefined : "Run the simulator first"}>⬇ Events (JSON)</button>
         <button className="btn ghost" onClick={() => downloadMetricsCsv(`${usecase}-metrics.csv`)}
@@ -330,6 +338,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       ) : null}
 
       {usecase === "medical_fl" && artifacts?.mpc_cnn ? <MpcCnnPanel report={artifacts.mpc_cnn as MpcCnnReport} /> : null}
+      {usecase === "finance_aml" && artifacts?.multi_party_psi ? <MultiPsiPanel report={artifacts.multi_party_psi as MultiPsiReport} /> : null}
 
       <h2 className="sr-only">Benchmark</h2>
       {/* Unified benchmark: auto-filled from the single Run above (no separate "Run benchmark" button).

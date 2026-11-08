@@ -1028,7 +1028,7 @@
             "opset": null
           },
           "git_sha": "67138f8-dirty",
-          "hf_revision": "536fbda25bbd550956050438bda473a7878519b6",
+          "hf_revision": "eb15e2a9361668ac3093810993d8d98eab875330",
           "minority_class_f1": 0.15194805194805194,
           "n_test": 1523504,
           "n_train": 3554841,
@@ -1071,7 +1071,7 @@
         "eval_sample_reason": null,
         "eval_split": "a draw from the held-out temporal test window, the last 30 percent of the transactions in time order, enriched to 2 percent laundering",
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "536fbda25bbd550956050438bda473a7878519b6",
+        "hf_revision": "eb15e2a9361668ac3093810993d8d98eab875330",
         "hf_revision_stale": null,
         "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "finance_aml.gbm",
@@ -3060,7 +3060,7 @@
           },
           "framing": "Architecture comparison, not a performance claim. The published model is the random forest; the quantum-kernel SVC and the variational QNN are recorded beside it and not published. The data is synthetic because no commercial-OK real QKD-attack corpus exists. Published QML-IDS results are mixed rather than uniformly below a random forest: Al-Kuwari et al. (arXiv:2509.14282) report a hybrid QLSTM at 94.7% against their own random forest, while arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
           "git_sha": "67dcd50-dirty",
-          "hf_revision": "fc403d128bc7d8b432f13febf3c35c2a46920ef6",
+          "hf_revision": "78ef41898e3d14eb8a4209bddd628f58bd2adfe1",
           "n_classes": 8,
           "n_samples": 2400,
           "quantum_beats_classical": false,
@@ -3117,7 +3117,7 @@
         "eval_sample_reason": null,
         "eval_split": "the held-out quarter of the seed-42 stratified split, whole",
         "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
-        "hf_revision": "fc403d128bc7d8b432f13febf3c35c2a46920ef6",
+        "hf_revision": "78ef41898e3d14eb8a4209bddd628f58bd2adfe1",
         "hf_revision_stale": null,
         "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "telecom_ids.qml",
@@ -3236,7 +3236,7 @@
           },
           "framing": "Real 5G network traffic, 9 attack classes, 47 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. IT IS FITTED ON THE FIELDS-PRESERVED EXPORT (113 columns) AND WAS FITTED ON Combined.csv (52) UNTIL ROUND 50, which is the single most important thing to know about the numbers here: the same rows and the same classes, but the narrow export omits `IdleTime` and that one column is worth 22 points of accuracy. `idle_time_ablation` re-measures this every run by refitting without it, and the result reproduces what this model used to score. Two controls are recorded beside the headline and both are worth more than the headline. `idle_time_ablation` says the old weakness was a choice of export, not a property of the corpus. `leak_counterfactual_accuracy` says that restoring four integer row counters takes accuracy to about 0.9997, which is not a better model but a leak.",
           "git_sha": "c89ff94-dirty",
-          "hf_revision": "73b1320754f4cc911dd73ea1adb8738de0407909",
+          "hf_revision": "1c198d29f93467c60a9f87d449ac13d440d51c97",
           "idle_time_ablation": {
             "what_this_means": "Removing `IdleTime` ALONE costs essentially the same accuracy as removing all six columns Combined.csv omits, and both land on the score this model published while it was fitted on Combined.csv. The other five - `Dir`, `Flgs`, `TcpOpt`, `sVlan`, `dVlan` - are worth 0.0006 accuracy between them. So the model's former weakness was one absent flow statistic, not the corpus and not the method. THAT IS REDUNDANCY AND NOT EMPTINESS, stated because the shorter version would be false. Two of those five are individually strong - `Dir` scores one-vs-rest AUC 0.9811 on ICMPFlood and `TcpOpt` 0.9433 on SlowrateDoS, both above the 0.90 threshold `single_feature_leak_check` uses, and both appear in its flagged list. What the ablation shows is that the other 41 columns already carry what they carry. `IdleTime` IS NOT AN IDENTIFIER and the distinction is the same one `leak_counterfactual_*` exists to draw: it takes 17 distinct integer values over 1,215,890 rows, so it cannot encode a row position, and it separates `SlowrateDoS` - an attack defined by holding a connection idle - at one-vs-rest AUC 0.9574. A row counter that scores that well describes where a row sits in a file. This describes what the traffic did.",
             "without_all_six_columns_combined_lacks": {
@@ -3466,7 +3466,7 @@
         "eval_sample_reason": null,
         "eval_split": "a per-class-floored draw from the held-out quarter of the seed-42 stratified split",
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-gbm",
-        "hf_revision": "73b1320754f4cc911dd73ea1adb8738de0407909",
+        "hf_revision": "1c198d29f93467c60a9f87d449ac13d440d51c97",
         "hf_revision_stale": null,
         "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "telecom_ids.nidd",
@@ -3549,6 +3549,12 @@
         "tier": "t1_crypto"
       }
     ]
+  },
+  "multi_party_psi": {
+    "max_parties": 5,
+    "parties": 3,
+    "set_size": 8,
+    "shared": 3
   },
   "qkd": {
     "basis_prob": 0.5,

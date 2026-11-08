@@ -136,6 +136,7 @@ def frontend_config() -> dict:
             "slots": c.fhe.poly_modulus_degree // 2,
         },
         "hybrid_cnn": asdict(c.hybrid_cnn),
+        "multi_party_psi": asdict(c.multi_party_psi),
         "benchmark": {
             "tier_architectures": b.tier_architectures,
             "generic_architecture": b.generic_architecture,

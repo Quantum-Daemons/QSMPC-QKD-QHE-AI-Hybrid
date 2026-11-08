@@ -109,6 +109,47 @@ export class FrameRecorder {
       gif.render();
     });
   }
+
+  /** The same frames as a WebM, with the browser's own encoder (Round 86). MediaRecorder stamps frames by the clock, so this takes `delayMs` per frame. */
+  async encodeWebM(filename = "orchestration.webm", delayMs = 400): Promise<void> {
+    if (this.frames.length === 0) return;
+    const mimeType = webmType();
+    if (!mimeType) throw new Error("this browser cannot write WebM");
+    // VP8 and VP9 want even dimensions, and the frames' sizes are whatever the figure measured.
+    const w = Math.max(...this.frames.map((f) => f.width)), h = Math.max(...this.frames.map((f) => f.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = w + (w % 2);
+    canvas.height = h + (h % 2);
+    const ctx = canvas.getContext("2d")!;
+    const paint = (f: HTMLCanvasElement) => {
+      ctx.fillStyle = "#0a0e1a";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(f, 0, 0);
+    };
+    paint(this.frames[0]);
+    const stream = canvas.captureStream(0);
+    const track = stream.getVideoTracks()[0] as MediaStreamTrack & { requestFrame?: () => void };
+    const recorder = new MediaRecorder(stream, { mimeType, videoBitsPerSecond: 8_000_000 });
+    const chunks: Blob[] = [];
+    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    const stopped = new Promise<void>((resolve) => { recorder.onstop = () => resolve(); });
+    recorder.start();
+    for (const f of this.frames) {
+      paint(f);
+      track.requestFrame?.();
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+    recorder.stop();
+    await stopped;
+    stream.getTracks().forEach((t) => t.stop());
+    downloadBlob(new Blob(chunks, { type: "video/webm" }), filename);
+  }
+}
+
+/** The WebM type this browser's MediaRecorder can write, or null where it has none. */
+export function webmType(): string | null {
+  if (typeof MediaRecorder === "undefined") return null;
+  return ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"].find((t) => MediaRecorder.isTypeSupported(t)) ?? null;
 }
 
 /** A frame on a w x h canvas of the page background, at the top left. */

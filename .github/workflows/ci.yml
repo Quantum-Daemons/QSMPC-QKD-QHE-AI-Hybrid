@@ -298,6 +298,11 @@ jobs:
         working-directory: web
         run: npm run check:hybrid-cnn
 
+      # The finance page's PSI among three to five banks: the module the page runs, against the intersection in the clear.
+      - name: The PSI among banks under MPC
+        working-directory: web
+        run: npm run check:multi-psi
+
       # Backend and browser derived DIFFERENT session keys for two rounds, because the output-length
       # tag was added to the Python combiner alone and no browser test touched the combiner at all.
       # Three shipped strings asserted they matched, one of them rendered in the Validations panel.

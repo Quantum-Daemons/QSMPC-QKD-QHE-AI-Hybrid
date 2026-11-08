@@ -73,9 +73,9 @@ export default function RegulatoryClock() {
           })}
         </svg>
         <figcaption className="figure-note">
-          Filled = in force or a binding requirement for the stated scope; hollow = draft, target or
-          deferred; grey = passed; blue = a rule ordered but not yet proposed. Each marker is one row
-          of the table below.
+          Filled = in force or a binding requirement for the stated scope; hollow = draft, target,
+          deferred or a schedule its issuer has announced; grey = passed; blue = a rule ordered but not
+          yet proposed, or that schedule. Each marker is one row of the table below.
         </figcaption>
       </figure>
       <table className="facts-table small" style={{ marginTop: 10 }}>

@@ -90,9 +90,10 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
     "classical_rf_permutation_importance",
     "classical_rf_permutation_importance_std",
   ]);
+  // `calibration` has its own table below this one, and walked here its 26 rows pushed the card's headline metric off the screen (the deployed finance page, Round 86).
   // `esa_scores` is the satellite forecaster's two arms at three floors (Round 86): sixty numbers that render as their
   // own table below, not as rows here. `training` is how the run went (epochs, losses), not a property of the model.
-  const NOT_A_SUBTREE = new Set(["not_measured", "licence_audit", "esa_scores", "training", "flag_counts", "auc_ci_95", "seed_spread", ...ATTRIBUTION_SUBTREES]);
+  const NOT_A_SUBTREE = new Set(["not_measured", "licence_audit", "esa_scores", "training", "flag_counts", "auc_ci_95", "seed_spread", "calibration", ...ATTRIBUTION_SUBTREES]);
   const walk = (obj: Record<string, unknown>, prefix: string, depth: number) => {
     for (const [k, v] of Object.entries(obj)) {
       if (NOT_A_SUBTREE.has(k)) continue;

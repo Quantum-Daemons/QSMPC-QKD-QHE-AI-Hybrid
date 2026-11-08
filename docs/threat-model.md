@@ -336,6 +336,16 @@ margin and not a worst-case bound: Guo et al. (USENIX Security 2024) recover key
 - **Not post-quantum as a whole.** The CKKS half is at these parameters, and Polytune's OT extension runs over Chou-Orlandi base OTs on ristretto255, which rest on discrete log.
 - **No protection against queries.** Anyone who can run inference learns the class, and model extraction by repeated queries is out of scope in every source read.
 
+## The PSI among banks under MPC
+
+The finance page's main PSI is two-party, RFC 9497's OPRF. Beside it, when ticked (the default), the page runs a PSI among three to five banks: one garbled circuit under Polytune's WRK17b protocol with every bank a party (`psi_source` in `wasm/qsh-mpc/src/lib.rs`).
+
+- **What each bank learns.** The accounts all the banks hold, and the list size, which is public here (8 each). It does not learn which accounts it shares with only some of the others, which a star of two-party PSIs would reveal to its centre.
+- **Position in the output.** The output has one slot per element of the first bank's list, so that bank shuffles its list with the CSPRNG.
+- **Accounts are hashed to 32 bits.** A false match needs two different accounts to collide; over the $`k^2(n-1)`$ comparisons of a run the union bound is below $`2^{-22}`$ at $`n = 5`$, $`k = 8`$.
+- **What it does not provide.** Every bank runs in this tab, so the separation is notional. WRK17b's security against all but one malicious party is the protocol's property, and at the pinned pre-release commit nothing here claims it between hosts. Its oblivious transfers rest on a discrete-log assumption, so it is not post-quantum, and a recording could be broken later; nothing is sent between hosts here to record.
+- **Size.** The circuit compares every pair, so it is quadratic in the list. Dedicated protocols scale far beyond this (Kolesnikov et al., CCS 2017: five parties with $`2^{20}`$ items each in 72 s, semi-honest), and the 10,000-accounts target of the original plan is not met here.
+
 ## Explicitly out of scope (PoC)
 - Side-channel / fault attacks on the host.
 - Formal verification of the protocols (referenced papers carry the proofs).

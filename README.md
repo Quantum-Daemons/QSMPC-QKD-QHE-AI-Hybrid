@@ -117,6 +117,7 @@ flowchart TB
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
   P["PSI: OPRF (RFC 9497, ristretto255-SHA512) over two banks' generated account lists"]
+  MP["PSI among 3 to 5 banks under MPC: one garbled circuit (Polytune), 8 generated accounts each"]
   FL["Federated training, in the browser: 4 clients, 6 rounds of FedAvg, pairwise masks"]
   I["Private inference: CKKS linear layer (node-seal), garbled-circuit argmax (Polytune)"]
   X["Explainability: exact linear SHAP, signed"]
@@ -130,7 +131,8 @@ flowchart TB
   Q -->|yes| L
   N --> P
   L --> P
-  P --> FL
+  P --> MP
+  MP --> FL
   FL --> I
   I --> X
   X --> M

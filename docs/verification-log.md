@@ -3950,3 +3950,25 @@ The demo host was returned to `main` after each merge batch and read in a browse
 Republished on the owner's approval, each file fetched back and compared by hash with the local file (the only change to `weights.json` in each is its `note`, a JSON comparison with the old revision showed): `qsh-medical-breastmnist-ckks-student` at `b582844a`, `qsh-finance-aml-ckks-student` at `e822202d`, and `qsh-satellite-opssat-ckks-student` at `58450bb4`. The page reads these pins from the next pull request on.
 
 **An interval is part of an AUC on 156 images.** The served ResNet-18 graph scores AUC 0.9146 on the official test split (the trainer's own figure, in PyTorch, is 0.9147: float32 export moves a pair or two of images). DeLong's 95% interval is 0.858 to 0.971 and a stratified bootstrap gives 0.853 to 0.964, so the published 0.901 lies inside it and the +0.014 is not a result. The card now prints the interval beside the AUC, and for ResNet-18 the spread over six earlier runs differing only in the seed.
+
+### Round 86, PR #15 on the deployed site and three card-only republishes (2026-11-08)
+
+`main` was `6a3c1b7`, bundle `index-r3dPuWGu.js`, read in a browser on the public URL: the five static routes, the five use-case pages, and the three negative paths.
+
+| what | read |
+|---|---|
+| `/` | The BSI sentence reads "read 2026-11-08" and names RFC 10024. No horizontal overflow |
+| `/value` | Both IR 8547 rows read `announced`; the rest of the clock is unchanged |
+| `/validations` | All eight Run buttons complete, none FAIL; Download results enables after them; the diagram reads "ML-KEM-768 (draft) + PPK (RFC 8784)" |
+| `/orchestration` | Start, Pause (`pausing`, then `paused`), Step, Resume to `done`; the use-case select disabled during the run; exports disabled before it and enabled after |
+| `/agentic-ai`, `/usecase/nope`, `/no-such-page` | Redirect to `/usecases`, "No such use case", "Page not found" |
+| finance | PASS. The student's agreement row prints the 0.9995 reference and the counts 759 and 26,151. Brier skill +0.0652 and -0.0124. The curve is below zero at 5 of 43 thresholds, and says what that means. The SHAP bar reads `transfer_or_cash_out` |
+| medical | PASS. Each `auc` row prints its 95% interval; ResNet-18 also the spread over six seeds. CNN under MPC ran and matched the clear network |
+| genomics | Done. The visible first sentence of the baseline carries the covariates and the 162 of 187 SNPs |
+| telecom | PASS. The corpus is named "signatures of this project's own design"; "No public real QKD-attack capture was found"; ML-KEM-1024 and ML-DSA-87 with QKD off give a 4,627-byte signature and "protocol: none". Events, Metrics, PNG and GIF each produced a file; the agent ran and returned its envelope |
+| satellite | PASS. The metric reads `qsdc_eq8_bound` = -80.82 |
+| console | No error on any page |
+
+Found there and fixed on the next branch: the Value page's prior-art row still described only the decrypted path; the clock's legend did not explain `announced`; at scale 1 the measured and scaled MPC rows printed the same numbers; and 26 flattened `calibration.*` rows pushed each finance card's headline metric off the screen. Mobile width (375 px) was read on the local build, because the Chrome window could not be narrowed: no horizontal overflow on the finance page after a run or on `/value`.
+
+Republished on the owner's approval, each file fetched back and compared with the local file: `qsh-finance-aml-gbm` at `eb15e2a9` (card only), `qsh-telecom-5g-nidd-gbm` at `1c198d29` (card only), and `qsh-telecom-qml-ids` at `78ef4189` (card, and the sample's provenance sentence: a JSON comparison with the old revision found no other field changed). The finance teacher's and student's decision-curve records were re-measured at their new revisions, and their results are identical.
