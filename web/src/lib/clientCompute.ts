@@ -3389,8 +3389,10 @@ export function runClientPipeline(
           metric(stage, "mpc_nonlinear_ms", r2(real.mpcMs * bscale));
           metric(stage, "mpc_comm_kb", r2((real.commBytes * bscale) / 1024));
           // The measured halves of those two, under their own names, as `fhe_linear_measured_ms` already is (PF3, Round 86).
-          metric(stage, "mpc_nonlinear_measured_ms", r2(real.mpcMs));
-          metric(stage, "mpc_comm_measured_kb", r2(real.commBytes / 1024));
+          if (bscale !== 1) {
+            metric(stage, "mpc_nonlinear_measured_ms", r2(real.mpcMs));
+            metric(stage, "mpc_comm_measured_kb", r2(real.commBytes / 1024));
+          }
           if (real.conv) {
             // Counted during the run. Rotations and the key-switch each one triggers are what
             // dominate CKKS inference cost, so this is the quantity worth surfacing - not a

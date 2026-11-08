@@ -87,3 +87,13 @@ def test_d1_d3_the_corpus_is_described_as_its_own_design():
     assert "own design" in registry.DS_QKD_ATTACK_SYNTH.name
     assert "No public real QKD-attack capture was found" in registry.DS_QKD_ATTACK_SYNTH.notes
     assert "No commercial-OK real" not in registry.DS_QKD_ATTACK_SYNTH.notes
+
+
+def test_the_live_walk_of_2026_11_08() -> None:
+    """Four things the deployed site showed that no gate held."""
+    assert "or a schedule its issuer has announced" in _read("web/src/components/RegulatoryClock.tsx")
+    value = _read("web/src/pages/Value.tsx")
+    assert "ReLUs and argmax in garbled circuits" in value, "the prior-art row still described only the decrypted path"
+    assert '"calibration"' in _read("web/src/components/ModelPanel.tsx").split("NOT_A_SUBTREE = new Set(")[1].split(")")[0]
+    compute = _read("web/src/lib/clientCompute.ts")
+    assert re.search(r'if \(bscale !== 1\) \{\s*metric\(stage, "mpc_nonlinear_measured_ms"', compute), "a measured row beside an identical scaled one at x1"

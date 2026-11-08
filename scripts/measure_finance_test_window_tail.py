@@ -35,7 +35,7 @@ sys.path.insert(0, str(REPO / "scripts"))
 #: The first day after HI-Small's stated date range (IBM's card: "Sep 1-10" for the small datasets).
 TAIL_STARTS = "2022-09-11"
 #: `onnx/model.onnx` as the Hub serves it at the teacher's revision ca364923 (LFS sha256 read 2026-11-06), and at
-#: 536fbda, the card-only republish that pins it since: only README.md differs between the two.
+#: 536fbda and eb15e2a, the card-only republishes that pin it since: only README.md differs between them.
 TEACHER_ONNX_SHA256 = "54511ef70652acb02be201cfed309ff1f95e03c55e9f2aa2b24e2b35a9c8996f"
 #: `weights.json` of the student, as in scripts/finance_student_calibration.py.
 #: Re-published 2026-11-08 with a rewritten `note` only: the weights, bias and scaler are those of sha256 c47afeadcc8816ce, which the 2026-11-06 measurements used.
