@@ -298,3 +298,10 @@ def test_every_trainable_parameter_reaches_the_readout() -> None:
         "cause is a diagonal gate applied last: RZ before a computational-basis readout is "
         "unobservable, and so is anything separated from the readout by only a basis permutation."
     )
+
+
+def test_the_untrained_comparison_circuit_says_so() -> None:
+    """`qsh/qhe/qcnn.py` holds a class named `QCNN` that this gate does not hold to the five elements: it is the untrained comparison circuit, not a trained classifier, and says so."""
+    source = (Path(__file__).resolve().parents[1] / "src" / "qsh" / "qhe" / "qcnn.py").read_text()
+    assert "class QCNN:" in source
+    assert "untrained" in source.split("class QCNN:", 1)[1][:120], "the class's docstring no longer says it is untrained"

@@ -110,3 +110,11 @@ def test_the_gate_fires_on_an_unreferenced_path() -> None:
         "docs/deployment.md is unreferenced again - it is the only document carrying the demo's "
         "port-collision workaround, and Round 43 linked it from README.md for that reason"
     )
+
+
+def test_document_basenames_are_unique() -> None:
+    """The gate above accepts a document's bare file name as a link to it, which is sound only while no two tracked documents share one."""
+    out = subprocess.run(["git", "ls-files", "docs", "references"], cwd=REPO, capture_output=True, text=True, check=True).stdout
+    names = [Path(f).name for f in out.split() if f.endswith(".md") and f != "docs/browser-verification-checklist.md"]
+    duplicates = sorted({n for n in names if names.count(n) > 1})
+    assert not duplicates, f"two documents share a name, so a bare-name link is ambiguous: {duplicates}"
