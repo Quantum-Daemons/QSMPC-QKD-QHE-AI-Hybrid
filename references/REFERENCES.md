@@ -969,6 +969,10 @@ Added in Round 18 and previously recorded only in source docstrings.
 
 ## External standards and threat context (see `docs/pqc-roadmap.md`)
 
+- **CycloneDX 1.7** (Ecma-424, second edition), Bill of Materials specification, release 1.7.2, 2026-09-17, `cryptographic-asset` components and the algorithm-family registry `[link]`
+  URL: https://github.com/CycloneDX/specification
+  Added: 2026-11-08
+  The schema is vendored in `schemas/cyclonedx/` at tag 1.7.2 and read there. Ecma's page lists ECMA-424, second edition, December 2025, as defining CycloneDX v1.7. `web/public/cbom/qsh.cdx.json` follows it.
 - NIST **FIPS 203/204/205** (ML-KEM, ML-DSA, SLH-DSA), 2024.
   URL: https://csrc.nist.gov/pubs/fips/203/final (204, 205 by the same pattern)
 - NIST **SP 800-90B** - entropy sources, including the clause 4.4 continuous health tests

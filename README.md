@@ -440,6 +440,7 @@ web/          React + Vite + TS SPA, and web/scripts/ checks and the screenshot 
 docker/       Dockerfiles, compose (full and client-only builds), Caddyfile
 monitoring/   Prometheus config and Grafana notes
 references/   primary-source notes and REFERENCES.md
+schemas/      the CycloneDX 1.7 JSON schema, vendored to validate the CBOM and SBOMs
 scripts/      bootstrap, benchmark, export_config.py, publish_hf.py, deploy_demo.sh, ci_local.sh,
               train/ (per-vertical training), data/ (dataset provenance)
 docs/         the documents below, and images/

@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import CbomPanel from "../components/CbomPanel";
 import MpcNetBench from "../components/MpcNetBench";
 import NetKeyCards from "../components/NetKeyCards";
 import NetworkPositioning from "../components/NetworkPositioning";
@@ -261,6 +262,9 @@ export default function Validations() {
         <NetworkPositioning />
       </div>
       <NetKeyCards />
+
+      <h2 style={{ marginTop: 28 }}>The cryptography this project calls</h2>
+      <CbomPanel />
 
       <ResultsDownload results={{ kem, sig, pqc, qkd, mcp }} />
     </div>

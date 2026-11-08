@@ -603,3 +603,7 @@ governed by the size and copyright rules above, and are not adjudicated in that 
 Enforced by `tests/test_bundled_reference_pdfs_carry_a_grant.py`, which derives the corpus from
 `git ls-files` rather than a glob - so a newly committed PDF is in scope the moment it is tracked,
 and cannot be admitted by editing a list.
+
+## Vendored schemas
+
+`schemas/cyclonedx/` holds the CycloneDX 1.7 JSON schema (`bom-1.7.schema.json`, `spdx.schema.json`, `jsf-0.82.schema.json`, `cryptography-defs.schema.json`) from `CycloneDX/specification` at tag 1.7.2, unchanged, under the Apache License 2.0 (the `LICENSE` file beside them). `tests/test_r86_cbom.py` validates this repository's CBOM against them, offline.
