@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react";
+import { webmType } from "../lib/export";
 import { useSearchParams } from "react-router";
 import KeyPoints from "../components/KeyPoints";
 import OrchestrationGraph from "../components/OrchestrationGraph";
@@ -60,8 +61,8 @@ export default function Orchestration() {
   const graphRef = useRef<HTMLDivElement>(null);
   const run = usePipelineRun(usecase, graphRef);
   const hasRun = run.events.length > 0;
-  const { events, active, done, metrics, signature, state, logRef, gifBusy, artifacts, inFlight,
-    downloadGif, downloadPng, downloadEvents, downloadMetricsCsv } = run;
+  const { events, active, done, metrics, signature, state, logRef, gifBusy, webmBusy, artifacts, inFlight,
+    downloadGif, downloadWebm, downloadPng, downloadEvents, downloadMetricsCsv } = run;
 
   return (
     <div>
@@ -207,6 +208,12 @@ export default function Orchestration() {
             disabled={gifBusy || !hasRun} title={hasRun ? undefined : "Run the orchestration first"}>
             {gifBusy ? "Encoding…" : "⬇ Animation (GIF)"}
           </button>
+          {webmType() ? (
+            <button className="btn ghost" onClick={() => downloadWebm(`${usecase}-orchestration.webm`)}
+              disabled={webmBusy || !hasRun} title={hasRun ? "The same frames as the GIF, by the browser's own video encoder, about 0.4 s per frame" : "Run the orchestration first"}>
+              {webmBusy ? "Recording…" : "⬇ Animation (WebM)"}
+            </button>
+          ) : null}
         </div>
       </div>
 

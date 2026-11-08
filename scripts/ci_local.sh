@@ -164,6 +164,10 @@ step "11b/18 The CNN student under MPC"
 ( cd web && npm run --silent check:hybrid-cnn >/tmp/ci_hybrid_cnn.log 2>&1 ) \
   && ok "the CNN student under MPC matches the clear network" || { bad "the CNN student under MPC"; tail -12 /tmp/ci_hybrid_cnn.log; }
 
+step "11c/18 The PSI among banks under MPC"
+( cd web && npm run --silent check:multi-psi >/tmp/ci_multi_psi.log 2>&1 ) \
+  && ok "the PSI among banks matches the intersection in the clear" || { bad "the PSI among banks under MPC"; tail -12 /tmp/ci_multi_psi.log; }
+
 step "12/18 Hybrid-KEM combiner parity (Python vectors vs the browser module)"
 (cd web && npm run --silent check:combiner && npm run --silent check:mcp-envelope) \
   && ok "combiner parity, MCP request parity and the AI-generated record" \

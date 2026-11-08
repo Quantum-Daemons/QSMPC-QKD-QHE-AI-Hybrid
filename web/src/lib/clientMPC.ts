@@ -108,6 +108,18 @@ export async function secureReluBatch(y: Uint32Array, r: Uint32Array, s: BigUint
   return { ...o, out: Array.from(o.out, Number) };
 }
 
+/** One n-party PSI under Polytune, as `clientMultiPsi` calls it: for each element of the first set, that element if every other set holds it, else 0. */
+export interface MultiPartyPsiOutcome { ids: number[]; compileMs: number; mpcMs: number; bytes: number; messages: number; andOps: number; }
+
+export async function secureMultiPartyPsi(sets: Uint32Array[]): Promise<MultiPartyPsiOutcome> {
+  const m = await getModule();
+  const k = sets[0].length;
+  const flat = new Uint32Array(sets.length * k);
+  sets.forEach((s, i) => flat.set(s, i * k));
+  const o = await m.secure_psi(flat, sets.length, k) as Omit<MultiPartyPsiOutcome, "ids"> & { ids: Uint32Array };
+  return { ...o, ids: Array.from(o.ids) };
+}
+
 /** The secure argmax over shares the caller already holds: q_k = a_k + b_k mod 2^32. */
 export async function secureArgmaxShares(a: Uint32Array, b: Uint32Array): Promise<{ arg: number; mpcMs: number; bytes: number; messages: number; andOps: number }> {
   const m = await getModule();

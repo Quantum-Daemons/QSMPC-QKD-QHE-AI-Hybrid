@@ -918,6 +918,20 @@ class DecisionCurveConfig:
 
 
 @dataclass
+class MultiPartyPsiConfig:
+    """The finance page's PSI among three to five banks, one garbled circuit under Polytune (Round 86).
+
+    The circuit compares every pair, so its AND count is k((n - 1) k 31 + (n - 1)(k - 1) + (n - 2) + 32) for n parties of k accounts: 4,344 at three
+    banks of eight, 8,440 at five. Natively that took 0.87 s and 4.5 s, and traffic grows with the square of n (30.5 MB and 191.6 MB).
+    """
+
+    parties: int = 3            # how many banks a run takes by default
+    max_parties: int = 5        # wasm/qsh-mpc's PSI_MAX_PARTIES
+    set_size: int = 8           # accounts each bank brings
+    shared: int = 3             # of those, how many every bank holds, by construction
+
+
+@dataclass
 class HybridCnnConfig:
     """The medical CNN student under MPC: CKKS for its linear layers, a garbled circuit for its ReLUs and argmax.
 
@@ -954,6 +968,7 @@ class QSHConfig:
     qhe: QHEConfig = field(default_factory=QHEConfig)
     fhe: FHEConfig = field(default_factory=FHEConfig)
     hybrid_cnn: HybridCnnConfig = field(default_factory=HybridCnnConfig)
+    multi_party_psi: MultiPartyPsiConfig = field(default_factory=MultiPartyPsiConfig)
     federated: FederatedConfig = field(default_factory=FederatedConfig)
     train: TrainConfig = field(default_factory=TrainConfig)
     ids: IDSConfig = field(default_factory=IDSConfig)

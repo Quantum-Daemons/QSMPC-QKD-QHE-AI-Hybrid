@@ -350,6 +350,18 @@ score; and, on finance, a linear surrogate over four columns of the PaySim demo 
 figure. What each step hides, in either tier, is in
 [the threat model's table](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment).
 
+#### The PSI among banks under MPC
+
+The finance page runs a private set intersection among three to five banks as one garbled circuit under Polytune, in a Web Worker (`wasm/qsh-mpc`, `web/src/lib/clientMultiPsi.ts`). Each bank brings eight generated accounts, hashed to 32 bits, and three are shared by construction. The circuit costs $`k((n-1)k \cdot 31 + (n-1)(k-1) + (n-2) + 32)`$ AND gates for $`n`$ banks of $`k`$ accounts. Measured in a browser tab on 2026-11-08, on a build of this tree, while other work ran on the machine:
+
+| banks | AND gates | traffic | messages | wall-clock |
+|---|---|---|---|---|
+| 3 | 4,344 | 30.5 MB | 1,262 | 2.6 s |
+| 4 | 6,392 | 88.2 MB | 3,411 | 7.4 s |
+| 5 | 8,440 | 191.6 MB | 6,884 | 15.4 s |
+
+Traffic grows much faster than the circuit because WRK17b authenticates each AND gate between every pair of parties. Every result is compared with the intersection in the clear, which is possible only because all the banks are in one tab.
+
 #### The CNN student under MPC
 
 The published medical student, on one held-out BreastMNIST image per run, with no activation in either party's hands: CKKS for the convolution and both dense layers, a mask over every slot before the client decrypts, Polytune garbled circuits for the 800 ReLUs and the argmax, and average pooling on each

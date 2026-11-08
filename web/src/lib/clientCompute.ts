@@ -11,7 +11,7 @@ import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
-  demoSample, federatedCfg, fheCfg, qsmpcCfg, quantumAdvantageCfg, studentModel, studentParamCount,
+  demoSample, federatedCfg, fheCfg, multiPartyPsiCfg, qsmpcCfg, quantumAdvantageCfg, studentModel, studentParamCount,
   tierArchitectures, webCfg, workloadMultipliers,
 } from "./config";
 import { CKKS_FLOOD_BITS, encryptedConv2d, encryptedHeldOutAgreement, encryptedLinear, encryptedLinearBatch,
@@ -41,6 +41,7 @@ import { heldOutCorpus, realInput, realInputCorpus, realSatelliteAnomaly, realFe
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
 import { isClientDemo } from "./demoMode";
 import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
+import type { MultiPsiResult } from "./clientMultiPsi";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -906,6 +907,44 @@ async function publishedStudentSample(usecase: string): Promise<{ samples: numbe
   }
   _studentSampleCache.set(usecase, out);
   return out;
+}
+
+/** The PSI among three to five banks under MPC, as one run reports it (Round 86): the card reads this. */
+export interface MultiPsiReport {
+  result: MultiPsiResult;
+  ranIn: string;
+}
+
+/** The accounts each bank brings, from a generator keyed on the run's seed and separate from the run's own, so that ticking this changes no other stage's draw. */
+async function runMultiPartyPsi(stage: string, parties: number, seed: number, emit: (t: "log", s: string, m: string) => void,
+                                metric: (s: string, k: string, v: number | string) => void, artifacts: Record<string, unknown>): Promise<void> {
+  const cfg = multiPartyPsiCfg();
+  if (!(parties >= 3 && parties <= cfg.max_parties)) throw new Error(`the PSI under MPC takes 3 to ${cfg.max_parties} banks, got ${parties}`);
+  const u = rng(seed + 0x6d70);
+  const name = () => Math.floor(u() * 1e9);
+  const shared = Array.from({ length: cfg.shared }, () => `acct-${name()}`);
+  const lists = Array.from({ length: parties }, (_, p) => [
+    ...shared, ...Array.from({ length: cfg.set_size - cfg.shared }, () => `bank${p}-${name()}`),
+  ]);
+  const { multiPartyPsiOffThread } = await import("./clientMultiPsi");
+  emit("log", stage, `PSI among ${parties} banks under MPC: ${cfg.set_size} accounts each, one garbled circuit under Polytune, in a Web Worker.`);
+  try {
+    const r = await multiPartyPsiOffThread(lists);
+    artifacts.multi_party_psi = { result: r, ranIn: r.ranIn } satisfies MultiPsiReport;
+    metric(stage, "mpsi_ran", 1);
+    metric(stage, "mpsi_parties", r.parties);
+    metric(stage, "mpsi_set_size", r.setSize);
+    metric(stage, "mpsi_intersection", r.intersection);
+    metric(stage, "mpsi_matches_clear", r.matchesClear ? 1 : 0);
+    metric(stage, "mpsi_and_gates", r.andGates);
+    metric(stage, "mpsi_mb", r2(r.bytes / 1e6));
+    metric(stage, "mpsi_ms", r2(r.mpcMs));
+    emit("log", stage, `PSI among ${r.parties} banks: ${r.intersection} accounts held by all of them, ${r.matchesClear ? "the same set as the intersection in the clear" : "DIFFERENT from the intersection in the clear"}; `
+      + `${r.andGates} AND gates, ${r2(r.bytes / 1e6)} MB, ${r2(r.mpcMs / 1000)} s. The banks run in this tab (notional parties), and the protocol's oblivious transfers rest on a discrete-log assumption, so it is not post-quantum.`);
+  } catch (e) {
+    metric(stage, "mpsi_ran", 0);
+    emit("log", stage, `The PSI among ${parties} banks did not finish: ${(e as Error).message}`);
+  }
 }
 
 /** One held-out image through the student under CKKS and garbled circuits, off the page's thread, reported whichever way it ends. */
@@ -2763,6 +2802,9 @@ export function runClientPipeline(
             + `by the ${psi.protocol}. ${psiLearnedSummary(psi, pa, pb)}. Its messages are sealed under the PQC `
             + `session key; ${pa} and ${pb} run in this tab (notional parties), and the OPRF rests on a `
             + "discrete-log assumption, so it is not post-quantum");
+          if (usecase === "finance_aml" && Number(config.multi_party_psi) >= 3) {
+            await runMultiPartyPsi(stage, Number(config.multi_party_psi), seed, emit, metric, artifacts);
+          }
         }
         break;
       }

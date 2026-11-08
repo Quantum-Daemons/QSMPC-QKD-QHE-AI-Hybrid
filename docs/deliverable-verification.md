@@ -9100,3 +9100,19 @@ Twelve further sources entered `references/REFERENCES.md`, each with what was an
 **Reviewed and kept.** The phrase "the last 30 percent of the transactions in time order" appears 12 times on the finance page after a run. Each instance describes a different model's sample or an event-log line, and it is part of `eval_split`, which the Hub samples carry, so shortening it would change published files for no gain in accuracy. The repeated blocks the fact-check found on the telecom and medical pages are gone: a sentence-level scan of each page after a run finds only short repeats (a model's citation on two cards, one caption pair).
 
 The text of four Hub repositories changed locally and has not been republished: `models/finance_aml_gbm/README.md`, `models/telecom_nidd/README.md`, and `models/telecom_qml_ids/{README.md,eval_sample.json}` (the sample's provenance sentence).
+
+### Round 86, 2026-11-08: planned items the audit found unbuilt, settled
+
+The owner's rule: confirm what exists, build what is recommendable as a research result, and leave out only what is impossible or of no value.
+
+| item | what existed | decision | why |
+|---|---|---|---|
+| WebM export of a run | GIF and PNG only | **Built**: `FrameRecorder.encodeWebM`, offered where `MediaRecorder` can write WebM | The same frames, a file of about 0.5 MB, one dependency fewer than any muxer |
+| 3-to-5-party PSI | Two-party OPRF only; a keyed-hash multi-party PSI was removed in Round 84 because both banks held the key | **Built**: one garbled circuit, three to five banks, in a Web Worker | No bank learns more than the accounts all of them hold, on the protocol the page already ships. Scope is eight accounts each: the original target of 10,000 accounts in 1 s is not met, and a quantum multi-party PSI is not attempted |
+| hpmpc on the GPU | Built and measured on 2026-11-06 (matrix multiplication and convolution) | **Closed by the measurement** | hpmpc's GPU code covers those two; its non-linear layers stay on the CPU, so a GPU-accelerated non-linear half is not available from it, and `docs/findings.md` says so |
+| Quantum random forest | Never built | **Declined, with a reopening condition** | The telecom corpus is separable by construction, so no classifier comparison on it can tell anything; on 5G-NIDD the gradient-boosted model is already at 0.98. The pre-registered experiment (this register, quantum kernels) found no quantum kernel beating a tuned RBF-SVM, and Gillani et al. (arXiv:2608.18155, 2026) find tuned forests matching or beating every hybrid they test. Srikumar et al. (arXiv:2210.02355) compare the forest with QSVMs, not with a tuned classical forest. Reopen on a real QKD-layer corpus, or if a pre-registered run on 5G-NIDD beats the tuned forest on fresh seeds |
+| VAE filter | Never built | **Declined, with a reopening condition** | On separable synthetic telemetry a filter has nothing to remove. The nearest work, Rasyidi et al. (arXiv:2512.05069), is withdrawn pending further experiments. A reconstruction-error score for traffic outside the training corpus remains a separate lead, and it needs a real novel-attack hold-out, which this project does not have. Reopen when one exists |
+
+**The PSI's checks.** `cargo test` in the crate covers the circuit against the plain intersection, its size against the design, and the inputs it refuses. `npm run check:multi-psi` runs the module the page imports, in CI and in `scripts/ci_local.sh`: seeded with the zero-filter removed it fails four checks, and with the shuffle removed it fails one. In a browser tab three banks took 2.6 s, four 7.4 s and five 15.4 s, each matching the clear intersection.
+
+**WebM.** A run's recording decoded as `video/webm`, 486,076 bytes, duration 3.56 s, in Chromium.

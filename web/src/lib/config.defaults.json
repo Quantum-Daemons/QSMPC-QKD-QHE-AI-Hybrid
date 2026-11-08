@@ -3550,6 +3550,12 @@
       }
     ]
   },
+  "multi_party_psi": {
+    "max_parties": 5,
+    "parties": 3,
+    "set_size": 8,
+    "shared": 3
+  },
   "qkd": {
     "basis_prob": 0.5,
     "dark_count_prob": 1e-08,

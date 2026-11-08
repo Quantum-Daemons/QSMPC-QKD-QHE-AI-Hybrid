@@ -14,7 +14,7 @@ export default function PipelineControls({ run }: { run: Run }) {
   // local secret-sharing), so the server-side backend selectors (TenSEAL/OpenFHE/MPyC/…) don't apply.
   const demo = isClientDemo();
   const { usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, sig, setSig,
-    optiqkd, setOptiqkd, mpcCnn, setMpcCnn, publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
+    optiqkd, setOptiqkd, mpcCnn, setMpcCnn, multiPsi, setMultiPsi, multiPsiParties, setMultiPsiParties, publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
     state, running, paused, inFlight, start, startStepwise, pause, resume, step, stop } = run;
   // Resolved once: whether WebGPU can be offered at all. Without a usable adapter the option is shown
   // disabled with the reason, rather than offered and then silently run on WASM.
@@ -221,6 +221,20 @@ export default function PipelineControls({ run }: { run: Run }) {
               onChange={(e) => setMpcCnn(e.target.checked)} style={{ marginRight: 4 }} />
             CNN under MPC (about 20 s)
           </label>
+        )}
+        {demo && usecase === "finance_aml" && (
+          <span className="muted" title="Runs a private set intersection among this many banks as one garbled circuit, in a Web Worker: three banks take a few seconds, five about half a minute. Each bank brings 8 generated accounts.">
+            <label htmlFor="sel-mpsi">
+              <input id="sel-mpsi" name="sel-mpsi" type="checkbox" checked={multiPsi}
+                onChange={(e) => setMultiPsi(e.target.checked)} style={{ marginRight: 4 }} />
+              PSI among
+            </label>{" "}
+            <select id="sel-mpsi-n" name="sel-mpsi-n" aria-label="How many banks" value={multiPsiParties} disabled={!multiPsi}
+              onChange={(e) => setMultiPsiParties(Number(e.target.value))}>
+              {[3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+            </select>{" "}
+            banks under MPC
+          </span>
         )}
         <span style={{ flex: 1 }} />
         {/* A disclosure control, so it has to announce itself as one. The caret alone is visual:

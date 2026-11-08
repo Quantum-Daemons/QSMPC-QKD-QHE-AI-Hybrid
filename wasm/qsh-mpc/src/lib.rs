@@ -22,7 +22,7 @@ use std::{
     rc::Rc,
 };
 
-use futures::{StreamExt, channel::mpsc, future::join, lock::Mutex};
+use futures::{StreamExt, channel::mpsc, future::{join, join_all}, lock::Mutex};
 use polytune::{
     channel::Channel,
     garble_lang::{
@@ -71,6 +71,26 @@ impl MemChannel {
         let p1 = MemChannel { tx: vec![Some(tx10), None], rx: vec![Some(Mutex::new(rx01)), None],
             sent: sent.clone(), msgs: msgs.clone() };
         (p0, p1, sent, msgs)
+    }
+
+    /// `n` fully connected endpoints, and the shared counts, for a protocol with more than two parties.
+    pub fn mesh(n: usize) -> (Vec<MemChannel>, Rc<Cell<u64>>, Rc<Cell<u64>>) {
+        let (sent, msgs) = (Rc::new(Cell::new(0)), Rc::new(Cell::new(0)));
+        let mut txs: Vec<Vec<_>> = (0..n).map(|_| (0..n).map(|_| None).collect()).collect();
+        let mut rxs: Vec<Vec<_>> = (0..n).map(|_| (0..n).map(|_| None).collect()).collect();
+        for a in 0..n {
+            for b in 0..n {
+                if a != b {
+                    let (t, r) = mpsc::unbounded();
+                    txs[a][b] = Some(t);
+                    rxs[b][a] = Some(Mutex::new(r));
+                }
+            }
+        }
+        let ends = txs.into_iter().zip(rxs)
+            .map(|(tx, rx)| MemChannel { tx, rx, sent: sent.clone(), msgs: msgs.clone() })
+            .collect();
+        (ends, sent, msgs)
     }
 }
 
@@ -308,6 +328,119 @@ pub async fn secure_relu(y: Vec<u32>, r: Vec<u32>, s: Vec<u64>, l: usize, b: usi
     Ok(obj.into())
 }
 
+/// Most parties and IDs a page may ask for: the circuit's size is quadratic in `k` and the protocol's cost in `n`.
+pub const PSI_MAX_PARTIES: usize = 5;
+pub const PSI_MAX_IDS: usize = 16;
+
+/// Garble source for the intersection of `n` parties' sets of `k` 32-bit IDs. Every element of party 0's set is compared with every element of
+/// the others', and the output is that element where all the others hold it and 0 where any does not, so an ID must never be 0.
+pub fn psi_source(n: usize, k: usize) -> String {
+    let params: Vec<String> = (0..n).map(|p| format!("s{p}: [u32; {k}]")).collect();
+    let mut s = format!("pub fn main({}) -> [u32; {k}] {{\n", params.join(", "));
+    for i in 0..k {
+        s += &format!("    let x{i} = s0[{i}usize];\n    let mut all{i} = true;\n");
+        for p in 1..n {
+            s += &format!("    let mut f{i}_{p} = false;\n");
+            for l in 0..k {
+                s += &format!("    if x{i} == s{p}[{l}usize] {{ f{i}_{p} = true; }}\n");
+            }
+            s += &format!("    if !f{i}_{p} {{ all{i} = false; }}\n");
+        }
+        s += &format!("    let y{i} = if all{i} {{ x{i} }} else {{ 0u32 }};\n");
+    }
+    let ys: Vec<String> = (0..k).map(|i| format!("y{i}")).collect();
+    s += &format!("    [{}]\n}}\n", ys.join(", "));
+    s
+}
+
+/// One n-party PSI: the output for party 0's positions, how long it took and what the parties exchanged.
+#[derive(Debug, Clone)]
+pub struct PsiOutcome {
+    pub ids: Vec<u32>,
+    pub compile_ms: f64,
+    pub mpc_ms: f64,
+    pub bytes: u64,
+    pub messages: u64,
+    pub and_ops: u64,
+}
+
+/// Runs the intersection with one party per set, every party receiving the output, under Polytune's WRK17b protocol.
+pub async fn secure_psi_ids(sets: &[Vec<u32>]) -> Result<PsiOutcome, String> {
+    let n = sets.len();
+    if !(2..=PSI_MAX_PARTIES).contains(&n) {
+        return Err(format!("need between 2 and {PSI_MAX_PARTIES} parties, got {n}"));
+    }
+    let k = sets[0].len();
+    if k == 0 || k > PSI_MAX_IDS || sets.iter().any(|s| s.len() != k) {
+        return Err(format!("each party needs the same number of IDs, between 1 and {PSI_MAX_IDS}"));
+    }
+    if sets.iter().flatten().any(|&id| id == 0) {
+        return Err("an ID must not be 0, which the circuit's output uses for no match".into());
+    }
+    let code = psi_source(n, k);
+    let t0 = Instant::now();
+    let prg = compile_with_options(&code, CompileOptions { circuit_kind: CircuitKind::Register, ..Default::default() })
+        .map_err(|e| e.prettify(&code))?;
+    let circuit = prg.circuit.unwrap_register_ref();
+    let compile_ms = t0.elapsed().as_secs_f64() * 1e3;
+
+    let lit = |v: &[u32]| Literal::Array(v.iter().map(|&x| Literal::NumUnsigned(x as u64, UnsignedNumType::U32)).collect());
+    let mut inputs = Vec::with_capacity(n);
+    for (p, set) in sets.iter().enumerate() {
+        inputs.push(prg.literal_arg(p, lit(set)).map_err(|e| format!("party {p} input: {e}"))?.as_bits());
+    }
+    let (ends, sent, msgs) = MemChannel::mesh(n);
+    let p_out: Vec<usize> = (0..n).collect();
+    let t1 = Instant::now();
+    let runs = ends.iter().zip(&inputs).enumerate().map(|(p, (ch, input))| mpc(ch, circuit, input, 0, p, &p_out, None));
+    let outputs = join_all(runs).await;
+    let mpc_ms = t1.elapsed().as_secs_f64() * 1e3;
+
+    let mut first: Option<Vec<bool>> = None;
+    for (p, o) in outputs.into_iter().enumerate() {
+        let o = o.map_err(|e| format!("party {p}: {e}"))?;
+        match &first {
+            None => first = Some(o),
+            Some(f) if *f != o => return Err(format!("party {p} disagrees with party 0 on the output")),
+            Some(_) => {}
+        }
+    }
+    let bits = first.ok_or("no output")?;
+    let ids = match prg.parse_output(&bits).map_err(|e| format!("output: {e}"))? {
+        Literal::Array(items) => items
+            .into_iter()
+            .map(|l| match l {
+                Literal::NumUnsigned(v, UnsignedNumType::U32) => Ok(v as u32),
+                other => Err(format!("expected a u32, got {other}")),
+            })
+            .collect::<Result<Vec<u32>, String>>()?,
+        other => return Err(format!("expected an array, got {other}")),
+    };
+    Ok(PsiOutcome { ids, compile_ms, mpc_ms, bytes: sent.get(), messages: msgs.get(), and_ops: circuit.and_ops as u64 })
+}
+
+/// Browser entry: `n` sets of `k` IDs, concatenated.
+#[wasm_bindgen]
+pub async fn secure_psi(flat: Vec<u32>, n: usize, k: usize) -> Result<JsValue, JsValue> {
+    if n == 0 || k == 0 || flat.len() != n * k {
+        return Err(JsValue::from_str(&format!("expected {n} sets of {k} IDs, got {} IDs", flat.len())));
+    }
+    let sets: Vec<Vec<u32>> = flat.chunks(k).map(|c| c.to_vec()).collect();
+    let r = secure_psi_ids(&sets).await.map_err(|e| JsValue::from_str(&e))?;
+    let o = js_sys::Object::new();
+    js_sys::Reflect::set(&o, &JsValue::from_str("ids"), &js_sys::Uint32Array::from(r.ids.as_slice()).into())?;
+    for (key, v) in [
+        ("compileMs", r.compile_ms),
+        ("mpcMs", r.mpc_ms),
+        ("bytes", r.bytes as f64),
+        ("messages", r.messages as f64),
+        ("andOps", r.and_ops as f64),
+    ] {
+        js_sys::Reflect::set(&o, &JsValue::from_str(key), &JsValue::from_f64(v))?;
+    }
+    Ok(o.into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -411,6 +544,57 @@ mod tests {
         assert!(run(&[0], &[0], &[0], 20, 53).unwrap_err().contains("below 2^53"));
         assert!(run(&[1 << 20], &[0], &[0], 20, 48).unwrap_err().contains("out of range"));
         assert!(run(&[0], &[0], &[1 << 48], 20, 48).unwrap_err().contains("out of range"));
+    }
+
+    fn psi_case(n: usize, k: usize, shared: usize) -> (Vec<Vec<u32>>, Vec<u32>) {
+        let common: Vec<u32> = (0..shared as u32).map(|j| 1000 + j).collect();
+        let sets: Vec<Vec<u32>> = (0..n as u32)
+            .map(|p| {
+                let mut s = common.clone();
+                s.extend((shared as u32..k as u32).map(|j| 2000 + 100 * p + j));
+                s
+            })
+            .collect();
+        (sets, common)
+    }
+
+    #[test]
+    fn psi_matches_the_plain_intersection() {
+        for (n, k, shared) in [(2, 4, 1), (3, 4, 2), (4, 3, 1), (5, 2, 1)] {
+            let (sets, common) = psi_case(n, k, shared);
+            let r = futures::executor::block_on(secure_psi_ids(&sets)).unwrap();
+            let mut got: Vec<u32> = r.ids.iter().copied().filter(|&x| x != 0).collect();
+            got.sort_unstable();
+            assert_eq!(got, common, "n={n} k={k}");
+            assert_eq!(r.ids.len(), k, "one output per element of party 0's set");
+        }
+    }
+
+    #[test]
+    fn psi_finds_nothing_when_one_party_holds_none_of_them() {
+        let (mut sets, _) = psi_case(3, 3, 2);
+        sets[2] = vec![7001, 7002, 7003];
+        let r = futures::executor::block_on(secure_psi_ids(&sets)).unwrap();
+        assert!(r.ids.iter().all(|&x| x == 0), "{:?}", r.ids);
+    }
+
+    #[test]
+    fn psi_costs_what_the_design_says() {
+        for (n, k) in [(3usize, 4usize), (3, 8), (5, 8)] {
+            let code = psi_source(n, k);
+            let prg = compile_with_options(&code, CompileOptions { circuit_kind: CircuitKind::Register, ..Default::default() }).unwrap();
+            let expected = k * ((n - 1) * k * 31 + (n - 1) * (k - 1) + (n - 2) + 32);
+            assert_eq!(prg.circuit.unwrap_register_ref().and_ops as usize, expected, "n={n} k={k}");
+        }
+    }
+
+    #[test]
+    fn psi_refuses_what_it_cannot_take() {
+        assert!(futures::executor::block_on(secure_psi_ids(&[vec![1, 2]])).is_err(), "one party");
+        assert!(futures::executor::block_on(secure_psi_ids(&vec![vec![1]; 6])).is_err(), "six parties");
+        assert!(futures::executor::block_on(secure_psi_ids(&[vec![1, 2], vec![3]])).is_err(), "unequal sets");
+        assert!(futures::executor::block_on(secure_psi_ids(&[vec![1, 0], vec![3, 4]])).is_err(), "an ID of 0");
+        assert!(futures::executor::block_on(secure_psi_ids(&[vec![1; 17], vec![2; 17]])).is_err(), "too many IDs");
     }
 
     /// The circuit size and traffic the register records, at the demo's 2 classes and at 10. Not part

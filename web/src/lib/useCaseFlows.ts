@@ -40,6 +40,7 @@ export interface DiagramConfig {
   inference?: string;
   /** The medical CNN student runs under MPC on this run. */
   mpcCnn?: boolean;
+  multiPsi?: boolean;
 }
 export interface Step {
   stageId: string;
@@ -371,6 +372,12 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk, failWord: QKD_NO_KEY },
       { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
+      { stageId: "qsmpc_compute", kind: "mpc-bidir", hidden: (c) => !c.multiPsi,
+        label: (m) => m["mpsi_ran"] == null
+          ? "PSI among three to five banks · one garbled circuit"
+          : Number(m["mpsi_ran"]) === 1
+            ? `PSI among ${f(m, "mpsi_parties")} banks · ${f(m, "mpsi_intersection")} accounts held by all · ${f(m, "mpsi_mb")} MB`
+            : "PSI among banks · did not finish" },
       // Finance is in FEDERATED_USECASES, so `runClientPipeline` injects `federated_training` here -
       // before the first of private_inference/qml_ids/qsdc_telemetry/quantum_comparison. This spec
       // had no such step, and `OrchestrationGraph.FLOWS` had no finance key either, so the run

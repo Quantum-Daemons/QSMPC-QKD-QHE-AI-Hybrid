@@ -72,6 +72,7 @@ export const cryptoCfg = () => CONFIG.crypto;   // crypto-agility defaults incl.
  *  `frontend_config()` for why three independent copies of it was worse than it looks. */
 export const fheCfg = () => CONFIG.fhe;
 export const hybridCnnCfg = () => CONFIG.hybrid_cnn;
+export const multiPartyPsiCfg = () => CONFIG.multi_party_psi;
 export const webCfg = () => CONFIG.web;
 
 /** Provenance of the sample bundled INTO the demo (not the corpus the model was trained on).
