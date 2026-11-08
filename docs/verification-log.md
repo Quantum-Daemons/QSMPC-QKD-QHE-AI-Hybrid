@@ -3921,3 +3921,17 @@ it.
 and the venv went on importing the old binary: CMake had built for another Python, and the install step took the first
 `openfhe.cpython-*.so` it found. The import failed with the error the build exists to fix, which is the only reason it
 was noticed. The script now names the file by the venv's own ABI suffix and stops when that file is not there.
+
+### Round 86, PRs #7 to #12 on the deployed site (2026-11-07 and 2026-11-08)
+
+The demo host was returned to `main` after each merge batch and read in a browser on the public URL. Measured there:
+
+| page | what was read |
+|---|---|
+| satellite | The student's verification runs in a Web Worker: 3 long tasks, 381 ms blocked over a 30 s run, CKKS 21.05 s, maximum error $`1.95\times10^{-9}`$, 0 of 8,640 flags changed |
+| satellite, OPS-SAT | The sample reproduces the card's accuracy, 0.9660, and no reproduced-figure note appears |
+| satellite, Network tab | Khmelev et al.'s session is counted from 28 degrees (227 s in the model against their roughly 220 s), 415,669 and 829,658 bits against 629,000, 1.32 times |
+| medical | The malignant curve at 30 of 42 (0.714); the timing row split into the student and the regression (145.67 and 34.94 ms); the int8 reason on the card; the IID caveat in the log |
+| all pages | Every verification passed and the console showed no error |
+
+`main` was then `2d9210d`, bundle `index-DaZW2Hat.js`. After the kernel and glibc update of 2026-11-08 (5.14.0-687.66.1, glibc 2.34-284), `scripts/ci_local.sh` passed all 25 gates on that commit.

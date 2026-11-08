@@ -538,7 +538,7 @@ by arithmetic, because a count corrected without looking is a count that will dr
 
 | File (`references/`) | Identified as | Licence | Verified at |
 |---|---|---|---|
-| `Efficient_Simulation_of_Quantum_Secure_Multiparty_Computation.pdf` | arXiv:2501.10083v1 | **CC0 1.0** | arXiv OAI-PMH `<license>` |
+| `Efficient_Simulation_of_Quantum_Secure_Multiparty_Computation.pdf` | arXiv:2501.10083v1 (2025), one author's reworking of Sutradhar and Om, Sci. Rep. 11, 2206 (2021) | **CC0 1.0** on the posting (arXiv), over an article under **CC BY 4.0** (Crossref, read 2026-11-08), which permits a reworking with credit; the credit is at `references/REFERENCES.md` and in the posting's own references | arXiv OAI-PMH `<license>` and Crossref `license` |
 | `Quantum_Federated_Learning_A_Comprehensive_Survey.pdf` | arXiv:2508.15998v1 | **CC BY 4.0** | arXiv OAI-PMH `<license>` |
 | `Quantum-Secure_Multiparty_Deep_Learning.pdf` | Phys. Rev. X **15**, 041056 (2025), DOI `10.1103/k8wg-qmbh` | **CC BY 4.0** | Crossref `license` (`vor`) and the PDF's own page-1 footer; the DOI is APS's new format, and the old-style `PhysRevX.15.041056` is not registered |
 | `Quantum_Secure_Multiparty_Computation_based_on_Secure_Summation_and_QKD.pdf` | Research Square `10.21203/rs.3.rs-6706796/v1` | **CC BY 4.0** | Crossref `license` and the PDF's own cover page |

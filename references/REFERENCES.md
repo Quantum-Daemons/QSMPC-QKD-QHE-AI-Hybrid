@@ -4,7 +4,8 @@ The `references/` folder holds the primary-source PDFs that ground this PoC. Eac
 paper to the **workstream (WS)** it informs, the **module** that implements or uses it, and any
 open-source code reused.
 
-Every entry carries a `URL` and an `Added` line. `URL` is the canonical landing page, not a mirror.
+Entries for a paper, standard or library carry a `URL`, and an `Added` line where the date is known; older entries and notes
+may lack either (2026-11-08: 96 `URL` and 56 `Added` lines across 196 bullets). `URL` is the canonical landing page, not a mirror.
 `Added` is the date the PDF entered this repository, taken from `git log --diff-filter=A`, so it is
 checkable rather than asserted; entries with no bundled PDF give the date the claim was last
 verified against the source instead.
@@ -345,14 +346,28 @@ papers. Where the two used to overlap, that file is the owner.
   File: `Quantum_Secure_Multiparty_Computation_based_on_Secure_Summation_and_QKD.pdf`
   Core protocol for `src/qsh/qsmpc/secure_summation.py`: QKD-shared keys plus secure summation.
 
-- **Efficient Simulation of Quantum Secure Multiparty Computation** - Sutradhar, arXiv:2501.10083,
-  2025 `[R]`
-  URL: https://arxiv.org/abs/2501.10083
-  Added: 2026-06-27
-  File: `Efficient_Simulation_of_Quantum_Secure_Multiparty_Computation.pdf`
+- **An efficient simulation for quantum secure multiparty computation** - Sutradhar and Om, Scientific Reports **11**,
+  2206 (2021), DOI `10.1038/s41598-021-81799-z`, CC BY 4.0 `[R]`
+  URL: https://www.nature.com/articles/s41598-021-81799-z
+  Added: 2026-06-27 (the bundled posting); the article cited here from 2026-11-08
+  File: `Efficient_Simulation_of_Quantum_Secure_Multiparty_Computation.pdf`, which is the later single-author posting of the same protocol:
+  K. Sutradhar, arXiv:2501.10083 (2025). Its abstract paraphrases this article's sentence by sentence, with the same worked example and simulation, and its reference list
+  cites the article. This entry cited only the posting until 2026-11-08 (`DATA_LICENSES.md` section 8 has the licence of each).
   (t,n)-threshold QSMS = Shamir secret sharing plus QFT plus Pauli ops. Directly reimplemented in
   `secure_summation.py` and `shamir.py` (Qiskit-native, no hardware). Validated on the paper's
   worked example (t=3, n=7, d=11, X=2, Y=3, giving S=5).
+
+- **Quantum convolutional neural networks** - Cong, Choi and Lukin, Nature Physics **15**, 1273 (2019), DOI `10.1038/s41567-019-0648-8`,
+  arXiv:1810.03787 `[link]`
+  URL: https://arxiv.org/abs/1810.03787
+  Added: 2026-11-08
+  The source of the name QCNN and of the convolution-and-pooling structure that `tests/test_the_qcnn_has_the_structure_the_name_claims.py` holds the trained circuits to.
+
+- **Quantum convolutional neural network for classical data classification** - Hur, Kim and Park, Quantum Machine Intelligence **4**, 3
+  (2022), DOI `10.1007/s42484-021-00061-x`, arXiv:2108.00661 `[link]`
+  URL: https://arxiv.org/abs/2108.00661
+  Added: 2026-11-08
+  The SU(4) two-qubit block telecom's circuit uses on every neighbouring pair (`scripts/train/qcnn_variational.py`).
 
 - **Experimental secure multiparty computation from quantum oblivious transfer with bit commitment**
 - Zhang et al., npj Quantum Information, 2026 `[link]`
@@ -795,8 +810,9 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
 ## QFL - quantum federated and delegated learning (medical and finance use cases)
 
 - **Quantum Delegated and Federated Learning via Quantum Homomorphic Encryption** - Li and Deng,
-  arXiv:2409.19359, 2024 `[R]`
-  URL: https://arxiv.org/abs/2409.19359
+  *Research Directions: Quantum Technologies* **3**, e3, DOI `10.1017/qut.2025.2` (the bundled PDF, CC BY 4.0, is this version of
+  record); preprint arXiv:2409.19359, 2024 `[R]`
+  URL: https://doi.org/10.1017/qut.2025.2
   Added: 2026-06-27
   File: `Quantum_Delegated_and_Federated_Learning_via_Quantum_Homomorphic_Encryption.pdf`
   QOTP-encrypted delegated and federated learning; informs the `src/qsh/ai/federated.py` privacy
@@ -1033,8 +1049,8 @@ belongs in this file rather than only in a comment.
 > more.** Some no longer carry it, and the rest record its withdrawal. The paragraph is kept as it
 > was written.
 >
-> **The withdrawn number is quoted in seven places outside this file and they are NOT yet fixed.**
-> Listed so the cleanup is a task rather than a discovery, because a correction that lands in the
+> **The withdrawn number was quoted in seven places outside this file. All are corrected since** (2026-11-08: only correction notes remain, at `src/qsh/models/metrics.py` and `scripts/train/satellite_telemanom.py`).
+> Listed so the cleanup was a task rather than a discovery, because a correction that lands in the
 > provenance file only is the weakest possible version of it: `README.md:823`;
 > `report/technical-report.tex:201` and `:636`; `scripts/train/satellite_telemanom.py:10` and `:308`
 > (which is what writes the string into `models/metrics.json:273`, whose `metric_note` therefore carries
