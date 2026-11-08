@@ -16,13 +16,17 @@
 //! 64 bits, where two 32-bit values cannot overflow, and casts back to 32: a narrowing cast keeps the
 //! low bits, which is the reduction mod 2^32.
 
-use std::{cell::Cell, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    collections::HashMap,
+    rc::Rc,
+};
 
 use futures::{StreamExt, channel::mpsc, future::join, lock::Mutex};
 use polytune::{
     channel::Channel,
     garble_lang::{
-        CircuitKind, CompileOptions, compile_with_options,
+        CircuitKind, CompileOptions, GarbleProgram, compile_with_options,
         literal::Literal,
         token::UnsignedNumType,
     },
@@ -167,6 +171,143 @@ pub async fn secure_argmax(a: Vec<u32>, b: Vec<u32>) -> Result<JsValue, JsValue>
     Ok(o.into())
 }
 
+/// Garble source for a batch of `n` ReLUs, bit by bit, so an adder costs one AND gate per bit where Garble's own `+` costs three.
+///
+/// Party 0 holds `y[i]`, party 1 holds `r[i]` and `s[i]`, all least significant bit first. `x = y + r mod 2^l`, read as signed; `z` is `x` where
+/// `x >= 0` and 0 otherwise; the output is `z + s`, over the integers, in `b + 1` bits. Over the integers because the result goes back into CKKS
+/// as a real number, which a value reduced mod 2^b cannot do. 86 AND gates per ReLU at l = 20 and b = 48.
+pub fn relu_source(n: usize, l: usize, b: usize) -> String {
+    let msb = l - 1;
+    let out = b + 1;
+    format!(
+        "fn relu1(y: [bool; {l}], r: [bool; {l}], s: [bool; {b}]) -> [bool; {out}] {{
+    let mut x = [false; {l}];
+    let mut c = false;
+    for i in 0usize..{l}usize {{
+        x[i] = y[i] ^ r[i] ^ c;
+        c = ((y[i] ^ c) & (r[i] ^ c)) ^ c;
+    }}
+    let keep = !x[{msb}usize];
+    let mut z = [false; {b}];
+    for i in 0usize..{msb}usize {{
+        z[i] = x[i] & keep;
+    }}
+    let mut o = [false; {out}];
+    let mut k = false;
+    for i in 0usize..{b}usize {{
+        o[i] = z[i] ^ s[i] ^ k;
+        k = ((z[i] ^ k) & (s[i] ^ k)) ^ k;
+    }}
+    o[{b}usize] = k;
+    o
+}}
+pub fn main(y: [[bool; {l}]; {n}], rs: [([bool; {l}], [bool; {b}]); {n}]) -> [[bool; {out}]; {n}] {{
+    let mut o = [[false; {out}]; {n}];
+    for i in 0usize..{n}usize {{
+        let (r, s) = rs[i];
+        o[i] = relu1(y[i], r, s);
+    }}
+    o
+}}
+"
+    )
+}
+
+thread_local! {
+    /// One compiled program per (n, l, b). A page runs fourteen batches of one size, and compiling is the slow part: 0.9 s against 0.4 s for one run,
+    /// natively, at 64 ReLUs, and it grows faster than the circuit does (75 s at 800).
+    static RELU_PROGRAMS: RefCell<HashMap<(usize, usize, usize), Rc<GarbleProgram>>> = RefCell::new(HashMap::new());
+}
+
+fn relu_program(n: usize, l: usize, b: usize) -> Result<(Rc<GarbleProgram>, f64), String> {
+    if let Some(p) = RELU_PROGRAMS.with(|m| m.borrow().get(&(n, l, b)).cloned()) {
+        return Ok((p, 0.0));
+    }
+    let code = relu_source(n, l, b);
+    let t0 = Instant::now();
+    let prg = compile_with_options(&code, CompileOptions { circuit_kind: CircuitKind::Register, ..Default::default() })
+        .map_err(|e| e.prettify(&code))?;
+    let ms = t0.elapsed().as_secs_f64() * 1e3;
+    let prg = Rc::new(prg);
+    RELU_PROGRAMS.with(|m| m.borrow_mut().insert((n, l, b), prg.clone()));
+    Ok((prg, ms))
+}
+
+fn bits(v: u64, width: usize) -> Literal {
+    Literal::Array((0..width).map(|i| if (v >> i) & 1 == 1 { Literal::True } else { Literal::False }).collect())
+}
+
+/// One batch of ReLUs: what party 0 receives, and what the batch cost.
+#[derive(Debug, Clone)]
+pub struct ReluOutcome {
+    pub out: Vec<u64>,
+    pub compile_ms: f64,
+    pub mpc_ms: f64,
+    pub bytes: u64,
+    pub messages: u64,
+    pub and_ops: u64,
+}
+
+/// A batch of ReLUs under Polytune. Only party 0 receives the outputs, each masked by `s`, which only party 1 knows.
+pub async fn secure_relu_shares(y: &[u32], r: &[u32], s: &[u64], l: usize, b: usize) -> Result<ReluOutcome, String> {
+    let n = y.len();
+    if n == 0 || r.len() != n || s.len() != n {
+        return Err(format!("need three equal, non-empty vectors, got {n}, {} and {}", r.len(), s.len()));
+    }
+    if !(2..=32).contains(&l) || b < l || b > 52 {
+        return Err(format!("need 2 <= l <= 32 and l <= b <= 52 (a double holds an output exactly below 2^53), got l = {l} and b = {b}"));
+    }
+    let ring = 1u64 << l;
+    if y.iter().chain(r).any(|&v| (v as u64) >= ring) || s.iter().any(|&v| v >= (1u64 << b)) {
+        return Err("a share is out of range for its ring".into());
+    }
+    let (prg, compile_ms) = relu_program(n, l, b)?;
+    let circuit = prg.circuit.unwrap_register_ref();
+    let lit0 = Literal::Array(y.iter().map(|&v| bits(v as u64, l)).collect());
+    let lit1 = Literal::Array(r.iter().zip(s).map(|(&a, &c)| Literal::Tuple(vec![bits(a as u64, l), bits(c, b)])).collect());
+    let in0 = prg.literal_arg(0, lit0).map_err(|e| format!("party 0 input: {e}"))?.as_bits();
+    let in1 = prg.literal_arg(1, lit1).map_err(|e| format!("party 1 input: {e}"))?.as_bits();
+
+    let (ch0, ch1, sent, msgs) = MemChannel::pair();
+    let p_out = [0usize];
+    let t1 = Instant::now();
+    let (o0, o1) = join(mpc(&ch0, circuit, &in0, 0, 0, &p_out, None), mpc(&ch1, circuit, &in1, 0, 1, &p_out, None)).await;
+    let mpc_ms = t1.elapsed().as_secs_f64() * 1e3;
+    let (o0, o1) = (o0.map_err(|e| format!("party 0: {e}"))?, o1.map_err(|e| format!("party 1: {e}"))?);
+    if !o1.is_empty() {
+        return Err(format!("party 1 is not an output party and it received {} bits", o1.len()));
+    }
+    let Literal::Array(rows) = prg.parse_output(&o0).map_err(|e| format!("output: {e}"))? else {
+        return Err("expected an array of outputs".into());
+    };
+    let mut out = Vec::with_capacity(n);
+    for row in rows {
+        let Literal::Array(row_bits) = row else {
+            return Err("expected an array of bits".into());
+        };
+        out.push(row_bits.iter().enumerate().fold(0u64, |v, (i, bit)| v | ((matches!(bit, Literal::True) as u64) << i)));
+    }
+    Ok(ReluOutcome { out, compile_ms, mpc_ms, bytes: sent.get(), messages: msgs.get(), and_ops: circuit.and_ops as u64 })
+}
+
+/// Browser entry for one batch of ReLUs.
+#[wasm_bindgen]
+pub async fn secure_relu(y: Vec<u32>, r: Vec<u32>, s: Vec<u64>, l: usize, b: usize) -> Result<JsValue, JsValue> {
+    let o = secure_relu_shares(&y, &r, &s, l, b).await.map_err(|e| JsValue::from_str(&e))?;
+    let obj = js_sys::Object::new();
+    js_sys::Reflect::set(&obj, &JsValue::from_str("out"), &js_sys::BigUint64Array::from(&o.out[..]))?;
+    for (k, v) in [
+        ("compileMs", o.compile_ms),
+        ("mpcMs", o.mpc_ms),
+        ("bytes", o.bytes as f64),
+        ("messages", o.messages as f64),
+        ("andOps", o.and_ops as f64),
+    ] {
+        js_sys::Reflect::set(&obj, &JsValue::from_str(k), &JsValue::from_f64(v))?;
+    }
+    Ok(obj.into())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -204,6 +345,72 @@ mod tests {
         assert!(run(1, 1).unwrap_err().contains("at least 2"));
         assert!(run(3, 2).unwrap_err().contains("equal-length"));
         assert!(run(256, 256).unwrap_err().contains("at most 255"));
+    }
+
+    struct XorShift(u64);
+    impl XorShift {
+        fn next(&mut self) -> u64 {
+            self.0 ^= self.0 << 13;
+            self.0 ^= self.0 >> 7;
+            self.0 ^= self.0 << 17;
+            self.0
+        }
+    }
+
+    /// Values at the sign boundary and at the ring's edges, with masks across the whole ring, so most reconstructions wrap.
+    fn relu_case(n: usize, l: usize, b: usize) -> (Vec<i64>, Vec<u32>, Vec<u32>, Vec<u64>) {
+        let ring = 1u64 << l;
+        let half = 1i64 << (l - 1);
+        let mut g = XorShift(0x9E37_79B9_7F4A_7C15);
+        let (mut x, mut y, mut r, mut s) = (vec![], vec![], vec![], vec![]);
+        for i in 0..n {
+            let v = match i % 6 {
+                0 => -1,
+                1 => 0,
+                2 => 1,
+                3 => half - 1,
+                4 => -half,
+                _ => (g.next() % ring) as i64 - half,
+            };
+            let m = g.next() & (ring - 1);
+            x.push(v);
+            y.push((v as u64).wrapping_add(m) as u32 & (ring - 1) as u32);
+            r.push(m.wrapping_neg() as u32 & (ring - 1) as u32);
+            s.push(g.next() & ((1u64 << b) - 1));
+        }
+        (x, y, r, s)
+    }
+
+    /// The circuit against the plaintext ReLU, over the integers: the output is relu(x) + s exactly, including past 2^b.
+    #[test]
+    fn relu_matches_the_plaintext() {
+        for (l, b) in [(20, 48), (20, 42), (8, 8)] {
+            let (x, y, r, s) = relu_case(18, l, b);
+            let o = futures::executor::block_on(secure_relu_shares(&y, &r, &s, l, b)).expect("mpc runs");
+            for i in 0..x.len() {
+                assert_eq!(o.out[i], x[i].max(0) as u64 + s[i], "l = {l}, b = {b}, i = {i}, x = {}", x[i]);
+            }
+            assert!(o.bytes > 0);
+        }
+    }
+
+    /// The AND count the design rests on: one per adder bit and one per bit gated by the sign.
+    #[test]
+    fn relu_costs_what_the_design_says() {
+        let (_, y, r, s) = relu_case(4, 20, 48);
+        let o = futures::executor::block_on(secure_relu_shares(&y, &r, &s, 20, 48)).expect("mpc runs");
+        assert_eq!(o.and_ops, 4 * (19 + 19 + 48));
+    }
+
+    /// Inputs the circuit cannot take are refused before anything is compiled or sent.
+    #[test]
+    fn relu_refuses_what_it_cannot_take() {
+        let run = |y: &[u32], r: &[u32], s: &[u64], l, b| futures::executor::block_on(secure_relu_shares(y, r, s, l, b));
+        assert!(run(&[], &[], &[], 20, 48).unwrap_err().contains("non-empty"));
+        assert!(run(&[0], &[0, 1], &[0], 20, 48).unwrap_err().contains("equal"));
+        assert!(run(&[0], &[0], &[0], 20, 53).unwrap_err().contains("below 2^53"));
+        assert!(run(&[1 << 20], &[0], &[0], 20, 48).unwrap_err().contains("out of range"));
+        assert!(run(&[0], &[0], &[1 << 48], 20, 48).unwrap_err().contains("out of range"));
     }
 
     /// The circuit size and traffic the register records, at the demo's 2 classes and at 10. Not part

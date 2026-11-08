@@ -9049,3 +9049,23 @@ what the passes found was a claim that outlived its code, in the project's most 
 - **New gates**: the IDS signature tables in Python and TypeScript agree (`tests/test_r86_ids_signature_tables_agree.py`); every merged pull request has a line above (`tests/test_every_merged_pr_is_in_the_record.py`); the poster's parameters and cited files stay put until the notice (`tests/test_poster_freeze_until_the_notice.py`).
 
 Left for the owner, each named where it is decided: republishing the two student cards (the note changed locally); which of the planned-and-not-built items (3-to-5-party PSI, Quantum RF, the VAE filter, WebM export, a stage on hpmpc) to build, which the owner asked to have judged against the code and the literature rather than declined.
+
+### Round 86, 2026-11-08: the medical CNN under MPC (the owner's request of 2026-11-07)
+
+**The ask.** The student's ReLU, pooling and argmax ran in the clear in the client after each layer was decrypted, which the page said and the owner asked to change. Decided by the owner: a separate module, so the poster's `web/src/lib/clientFHE.ts` is untouched, and larger masks than the frozen path's 16 bits.
+
+**The design, and what the primary sources changed in it.** Gazelle's shape (USENIX Security 2018), read in full with Delphi, CrypTFlow2, Cheetah, Flash, BLB, EncFormer and FESC. Four corrections came from that reading:
+
+- The published CKKS hybrids mask over the plaintext ring. Bounded real masks hide a value only statistically, and BLB's theorem does not cover them, so the run reports its own bound.
+- Masks encoded from real values leave every slot's imaginary part unmasked, so the server adds the ciphertext's conjugate first. This needs a conjugation key, which the frozen path's key set does not have.
+- A ReLU's output returns to CKKS as a real, so its re-masking has to be over the integers and not modulo $`2^l`$.
+- Exact ReLU is kept. Flash's $`x^2 + x`$ needs exact BFV arithmetic: over CKKS reals a $`2^{30}`$ mask squared decodes with an error of about 700.
+
+**Results** are in [`models-and-benchmarks.md`](models-and-benchmarks.md#the-cnn-student-under-mpc): the same class as the clear network on 156 of 156 test images, 17.1 s median, 69,167 AND gates. No weight changed, so nothing retrained. An early setting of $`2^{30}`$ on the first dense layer gave a bound of $`2^{-18.6}`$, because a dense layer's other slots hold partial sums and they are masked too; $`2^{36}`$ gives $`2^{-22.5}`$ to $`2^{-24.2}`$ at no cost in the class.
+
+**A ReLU costs 86 AND gates, not 230.** Garble's `+` is three ANDs per bit; the circuit writes its adders bit by bit. Compiling 800 ReLUs at once took 75 s and 4 GB natively, and a batch of 56 takes under a second and is compiled once.
+
+**Checks.** `web/scripts/check_hybrid_cnn.mjs` runs a held-out image through the real node-seal and Polytune, in CI and in `scripts/ci_local.sh`, and asserts the class against the clear network, the size of the circuits, the bound, the client's view being masked, and the weight-holding class having no decryptor. Seen to fail with the mask left off, with the server keeping its share, and with the conjugation uncounted. The crate's own tests hold the circuit to the plaintext ReLU over the integers. `tests/test_r86_cnn_student_note.py` holds the student's note to its generator.
+
+**Left for the owner.** The Hub's copy of the student's note and card still describes the layer-by-layer path alone, until the owner approves a republish.
+

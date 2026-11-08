@@ -71,6 +71,7 @@ export const cryptoCfg = () => CONFIG.crypto;   // crypto-agility defaults incl.
  *  `clientFHE.ts` used to hold its own `POLY_MODULUS_DEGREE` literal; see the note in
  *  `frontend_config()` for why three independent copies of it was worse than it looks. */
 export const fheCfg = () => CONFIG.fhe;
+export const hybridCnnCfg = () => CONFIG.hybrid_cnn;
 export const webCfg = () => CONFIG.web;
 
 /** Provenance of the sample bundled INTO the demo (not the corpus the model was trained on).

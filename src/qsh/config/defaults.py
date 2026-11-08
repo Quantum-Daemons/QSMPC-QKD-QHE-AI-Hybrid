@@ -917,6 +917,33 @@ class DecisionCurveConfig:
 
 
 @dataclass
+class HybridCnnConfig:
+    """The medical CNN student under MPC: CKKS for its linear layers, a garbled circuit for its ReLUs and argmax.
+
+    Gazelle's protocol shape (USENIX Security 2018), with one difference a reader must not miss. Gazelle, Delphi and the 2025-26 CKKS hybrids
+    (BLB, EncFormer) mask uniformly over the plaintext ring, which hides a value perfectly. This path masks CKKS slot values with a bounded
+    real, which hides one only statistically: for a mask uniform on [-R, R), the statistical distance between two values is |x - x'| / (2R). The ring
+    masks would need about two million AND gates per ciphertext in Polytune to convert, so they cannot run in a browser tab.
+    """
+
+    # Fractional bits of a fixed-point value entering a garbled circuit. Delphi uses 15, Cheetah 12, BLB and EncFormer 13.
+    frac_bits: int = 12
+    # The ring a ReLU's input is reconstructed in. It must hold the layer's largest |activation| * 2^frac_bits and a sign: 20 bits at 12 fractional
+    # bits holds |x| < 128, and the student's activations reach about 6.
+    relu_ring_bits: int = 20
+    # log2 of the masks' half-width, by layer. A mask has to hide every slot of a ciphertext, and a dense layer's slots hold partial sums beside its outputs:
+    # 2^30 on the first dense layer left this run's bound at 2^-18.6, and 2^36 gives 2^-22.5 to 2^-24.2 over the 156 test images. A real mask of 2^R costs about
+    # 6e-16 * 2^R in double-precision decoding (measured: 6.0e-7 at 2^30, 6.9e-4 at 2^40), which is what caps them. At these widths the class matches the
+    # clear network on all 156 test images, with the largest logit error 4.9e-4 against a smallest logit gap of 0.018. The return masks use the same widths, so a
+    # ReLU's output carries frac_bits + mask bits of mask, which stays under 2^53, where a double is exact.
+    conv_mask_bits: int = 36
+    dense_mask_bits: int = 36
+    logit_mask_bits: int = 30
+    # ReLUs per garbled circuit. Compiling 800 at once took 75 s and 4 GB natively, and 56 takes under a second, so 14 batches of one compiled circuit.
+    conv_relu_batch: int = 56
+
+
+@dataclass
 class QSHConfig:
     """Top-level config aggregating every subsystem."""
 
@@ -925,6 +952,7 @@ class QSHConfig:
     qsmpc: QSMPCConfig = field(default_factory=QSMPCConfig)
     qhe: QHEConfig = field(default_factory=QHEConfig)
     fhe: FHEConfig = field(default_factory=FHEConfig)
+    hybrid_cnn: HybridCnnConfig = field(default_factory=HybridCnnConfig)
     federated: FederatedConfig = field(default_factory=FederatedConfig)
     train: TrainConfig = field(default_factory=TrainConfig)
     ids: IDSConfig = field(default_factory=IDSConfig)

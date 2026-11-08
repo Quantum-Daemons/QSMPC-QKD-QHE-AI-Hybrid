@@ -38,6 +38,8 @@ export interface DiagramConfig {
   workload?: string;
   /** `` | `ckks` | `qcnn`. Which inference backend the run surfaces as primary. */
   inference?: string;
+  /** The medical CNN student runs under MPC on this run. */
+  mpcCnn?: boolean;
 }
 export interface Step {
   stageId: string;
@@ -392,6 +394,12 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk, failWord: QKD_NO_KEY },
       FEDERATED_STEP,
       ...HYBRID_INFERENCE,
+      // The student on a held-out image with its ReLUs and argmax in garbled circuits (Round 86). A second step, because the two steps above are the
+      // layer-by-layer path, decrypted between layers, which still runs on every medical run.
+      { stageId: "private_inference", kind: "mpc-bidir", hidden: (c) => !c.mpcCnn,
+        label: (m) => m["mpc_cnn_relu_count"] == null
+          ? "CNN under MPC · a held-out image, CKKS and garbled circuits"
+          : `CNN under MPC · ${f(m, "mpc_cnn_relu_count")} ReLUs in garbled circuits · ${f(m, "mpc_cnn_gc_mb")} MB · class ${f(m, "mpc_cnn_class")}` },
       publishedStep("private_inference"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record + explanation` },

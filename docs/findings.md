@@ -543,7 +543,8 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   the medical CNN under real encrypted convolution). In the browser, node-seal CKKS evaluates the
   published medical student's convolution and both dense layers, 28 counted rotations, each layer's
   bias added under encryption, and the client decrypts each layer's outputs between layers to apply
-  ReLU and average pooling in plaintext.
+  ReLU and average pooling in plaintext. A separate run puts one held-out image through the same student with no activation in either party's hands
+  ([the CNN student under MPC](models-and-benchmarks.md#the-cnn-student-under-mpc)).
 - **There is no third (remote) tier, and that is a decision rather than an omission.**
   `spaces/qsh-inference/` was written to serve full-precision models from a Hugging Face ZeroGPU Space
   for anything too large to run in a tab or under encryption. It was **decided against in Round 24**

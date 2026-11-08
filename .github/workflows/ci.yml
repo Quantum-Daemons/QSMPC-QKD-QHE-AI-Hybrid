@@ -292,6 +292,12 @@ jobs:
         working-directory: web
         run: npm run check:qfl
 
+      # The medical CNN student under MPC: a held-out image through CKKS and the garbled circuits, against the clear network. The
+      # same circuit and masks the page runs, and the only check that sees the two halves and the shares between them together.
+      - name: The CNN student under MPC
+        working-directory: web
+        run: npm run check:hybrid-cnn
+
       # Backend and browser derived DIFFERENT session keys for two rounds, because the output-length
       # tag was added to the Python combiner alone and no browser test touched the combiner at all.
       # Three shipped strings asserted they matched, one of them rendered in the Validations panel.
