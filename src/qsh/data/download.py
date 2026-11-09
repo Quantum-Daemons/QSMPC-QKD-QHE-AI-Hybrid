@@ -53,8 +53,7 @@ def _full_scale():
         # still listed rather than downloaded: `make data` reports and prints commands, and one
         # corpus quietly breaking that rule is how the rule stops being true.
         #
-        # The FIELDS-PRESERVED export, not Combined.csv: same rows, 113 columns against 52, and one
-        # of the extra columns (`IdleTime`) is worth 22 accuracy points. Round 50 changed this.
+        # The FIELDS-PRESERVED export, not Combined.csv: same rows, 113 columns against 52.
         ("telecom / 5G-NIDD fields-preserved",
          ds.raw("5g-nidd", "fields_preserved", "BTS1_BTS2_fields_preserved.csv"), ds.NIDD_FETCH),
     ]

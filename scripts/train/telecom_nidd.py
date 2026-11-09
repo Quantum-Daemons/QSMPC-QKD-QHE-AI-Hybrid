@@ -4,26 +4,21 @@
 WHAT THIS IS
     The telecom use case's second T2 model, and the first one on REAL network data. The other one,
     `telecom_ids.qml`, classifies 8 QKD-LAYER attack types from synthetic per-session physical
-    observables. This one classifies 9 NETWORK-LAYER attack types from 47 Argus flow statistics.
+    observables. This one classifies 9 NETWORK-LAYER attack types from 46 Argus flow statistics.
     There is no overlap in label space or feature space, so the two numbers on the telecom page are
     not a comparison and neither is the other's baseline. `registry.py` carries that sentence and
     the page prints it.
 
-WHAT CHANGED IN ROUND 50: THE EXPORT, NOT THE MODEL
-    Until Round 50 this trained on `Combined.csv`, the 52-column export, and scored accuracy 0.7608.
-    The release also ships `BTS1_BTS2_fields_preserved.csv`: the same 1,215,890 rows, the same nine
-    classes, 113 columns. Every one of Combined's 52 is present and informationally identical in the
-    wide file, so Combined is a strict column SUBSET - and one of the columns it omits, `IdleTime`,
-    is worth 22 accuracy points on its own.
-
-    `idle_time_ablation` below refits this identical configuration with `IdleTime` removed and with
-    all six of Combined's missing columns removed, every run. The first reproduces the old 0.76 and
-    the second adds nothing to it, which is the whole finding: one flow statistic, not five.
-
-    `IdleTime` IS NOT AN IDENTIFIER. It takes 17 distinct integer values over 1.2 million rows, so
-    it cannot encode a row position, and it scores one-vs-rest AUC 0.9574 on `SlowrateDoS` - an
-    attack whose definition is holding a connection open and idle. That is a dominant feature doing
-    its job. The contrast with the row counters below is the point.
+WHAT CHANGED IN ROUND 86: THE CAPTURE TIME CAME OUT
+    From Round 50 this model read `IdleTime`, a column of the corpus's 113-column export that the
+    52-column `Combined.csv` omits, and it scored accuracy 0.9829 against 0.7616 without it. Round 50
+    took that for a flow statistic, on the argument that 17 distinct integer values cannot address a
+    row. They do not have to. All 17 are multiples of 128, the spacing of a 32-bit float at this
+    size, and as Unix times they fall between 13 and 15 September 2022, so the column reads as WHEN A
+    FLOW WAS CAPTURED, and each value is dominated by one attack scenario and benign traffic. The
+    attacks were run in their own windows, as the loader's reason for dropping `StartTime` says, so
+    the column names the scenario. `capture_time_counterfactual` below refits with it restored every
+    run, beside the row-counter one, and the shipped model does not read it.
 
 THE LEAK COUNTERFACTUAL, kept from the previous round because it is still the honest control
     The corpus carries four integer row counters - `Unnamed: 0` (the CSV's own index), `Rank`, `Seq`
@@ -82,40 +77,43 @@ KEY = "telecom_ids.nidd"
 #: restate it as a literal inside the `record_metrics` dict - is the one at
 #: `scripts/train/telecom_ids.py:283-285`; the `**record` entry has no static key and is skipped.
 
+CAPTURE_TIME_NOTE = (
+    "`IdleTime` holds 17 values, all multiples of 128, the spacing of a 32-bit float at this size. As "
+    "Unix times they fall between 13 and 15 September 2022, and each is dominated by one attack "
+    "scenario and benign traffic, so the column reads as when a flow was captured, the reason the "
+    "loader drops `StartTime`. Restoring it lifts accuracy by about 22 points. That gain is a model "
+    "learning when each attack was run, and none of it is a flow statistic. The shipped model does "
+    "not read it."
+)
+
 FRAMING = (
-    "Real 5G network traffic, 9 attack classes, 47 flow-statistic features. This is a "
+    "Real 5G network traffic, 9 attack classes, 46 flow-statistic features. This is a "
     "NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no "
     "shared labels, no shared features, so the two scores are not a comparison. "
-    "IT IS FITTED ON THE FIELDS-PRESERVED EXPORT (113 columns) AND WAS FITTED ON Combined.csv (52) "
-    "UNTIL ROUND 50, which is the single most important thing to know about the numbers here: the "
-    "same rows and the same classes, but the narrow export omits `IdleTime` and that one column is "
-    "worth 22 points of accuracy. `idle_time_ablation` re-measures this every run by refitting "
-    "without it, and the result reproduces what this model used to score. Two controls are recorded "
-    "beside the headline and both are worth more than the headline. `idle_time_ablation` says the "
-    "old weakness was a choice of export, not a property of the corpus. "
-    "`leak_counterfactual_accuracy` says that restoring four integer row counters takes accuracy to "
-    "about 0.9997, which is not a better model but a leak."
+    "UNTIL ROUND 86 THIS MODEL ALSO READ `IdleTime` AND SCORED ACCURACY 0.9829. That column reads as "
+    "when a flow was captured, not as anything the flow did, so the model was learning when each "
+    "attack was run; it no longer reads it, and accuracy is 0.7616. "
+    "Two controls are recorded beside the headline and both are worth more than the headline: "
+    "`capture_time_counterfactual` restores that column and `leak_counterfactual_accuracy` restores "
+    "four integer row counters, and each takes accuracy to 0.98 or above, which is not a better "
+    "model but a leak."
 )
 
 METRIC_NOTE = (
-    "THE TWO NUMBERS STILL READ THE OPPOSITE WAY ROUND FROM EVERY OTHER MODEL IN THIS PROJECT, and "
-    "the refit onto the wide export did NOT fix that - it shrank it. Everywhere else here the "
-    "aggregate flatters and the per-class figure exposes it, which is why `aggregate_accuracy` is "
-    "rendered as the companion 'shown so the gap is visible'. On this corpus macro F1 is still the "
-    "OPTIMISTIC number and aggregate accuracy still the PESSIMISTIC one. What changed is the size "
-    "of the disagreement: macro F1 minus accuracy was 0.1655 on the narrow export (0.9263 against "
-    "0.7608) and is about 0.0121 now (0.9950 against 0.9829). "
-    "THE MECHANISM IS UNCHANGED, which is the part a reader is most likely to get wrong. It is not "
-    "that a small class now drags the macro average - the smallest class, ICMPFlood at 289 test "
-    "rows, scores 1.0000 and lifts it. It is the same two majority classes as before: Benign at "
-    "39.3% of rows and UDPFlood at 37.6% are the only pair that confuses at all, they carry 77% of "
-    "the test set between them, so accuracy is dominated by them while a macro average over 9 "
-    "classes is carried by the seven scoring 0.9999 or better. Adding `IdleTime` separated that "
-    "pair almost completely rather than changing which pair it is. "
-    "The residual is one directional confusion - UDPFlood predicted as Benign - and it is 1.71% of "
-    "the test set against 23.92% before. Read `per_class_f1` and it is visible directly: the two "
-    "lowest entries are Benign and UDPFlood, and every other class is at or above 0.9999. Neither "
-    "figure is the flattering one to quote alone."
+    "THE TWO NUMBERS READ THE OPPOSITE WAY ROUND FROM EVERY OTHER MODEL IN THIS PROJECT. Everywhere "
+    "else here the aggregate flatters and the per-class figure exposes it, which is why "
+    "`aggregate_accuracy` is rendered as the companion 'shown so the gap is visible'. On this corpus "
+    "macro F1 is the OPTIMISTIC number and aggregate accuracy the PESSIMISTIC one: 0.9275 against "
+    "0.7616. "
+    "THE MECHANISM, which is the part a reader is most likely to get wrong. It is not that a small "
+    "class drags the macro average - the smallest class, ICMPFlood at 289 test rows, scores 1.0000 "
+    "and lifts it. Benign at 39.3% of rows and UDPFlood at 37.6% are the only pair that confuses at "
+    "all, they carry 77% of the test set between them, so accuracy is dominated by them while a macro "
+    "average over 9 classes is carried by the seven scoring 0.9875 or better. "
+    "Read `per_class_f1` and it is visible directly: the two lowest entries are Benign at 0.6401 and "
+    "UDPFlood at 0.7308, and every other class is at or above 0.9875. A linear model on the numeric "
+    "columns reaches accuracy 0.7549, so on this split the trees add little on those two classes. "
+    "Neither figure is the flattering one to quote alone."
 )
 
 SAMPLE_SIZE_NOTE = (
@@ -137,21 +135,19 @@ BASELINE_GAP_NOTE = (
     "ACCURACIES on the BINARY benign-versus-malicious task, and this model is judged on 9-class "
     "macro F1, so putting them in `baseline` would render an accuracy beside a macro F1 as though "
     "the two were the same scale. "
-    "WHAT THE COMPARISON CAN AND CANNOT SAY. This model scores about 0.9829 9-class accuracy with "
-    "every row identifier and every host fingerprint dropped. Set beside binary accuracies, the "
-    "1.3-point difference is not a gap on one task. The 9-class anchors are the dataset paper's "
-    "random forest at 99.48% accuracy on its top-10 features (Samarakoon et al., "
-    "arXiv:2212.01298) and BiTAD (Future Internet 17(11) 482) at 0.9047; this model sits between "
+    "WHAT THE COMPARISON CAN AND CANNOT SAY. This model scores about 0.7616 9-class accuracy with "
+    "every row identifier, every host fingerprint and the capture time dropped. The 9-class anchors "
+    "are the dataset paper's random forest at 99.48% accuracy on its top-10 features (Samarakoon et "
+    "al., arXiv:2212.01298) and BiTAD (Future Internet 17(11) 482) at 0.9047; this model sits below "
     "them, on its own stratified random split rather than a shared one, so each is an anchor and "
     "not a head-to-head. "
-    "WHAT THE COUNTERFACTUAL SHOWS. Restoring the corpus's integer row counters takes accuracy to "
-    "about 0.9997, recorded every run as `leak_counterfactual_accuracy`: that is what a row counter "
-    "is worth on this corpus. It does not show what the published figures used, because 0.9829 is "
-    "reachable here with no identifiers at all, using one additional flow statistic (`IdleTime`) "
-    "that Combined.csv does not carry. Whether the published figures lean on identifiers is OPEN: "
-    "the dataset paper's top-10 inputs include the sequence number `Seq` and `Offset`, "
-    "Wang/Fok/Thing's inputs include `Offset`, both columns are dropped here, and no published "
-    "ablation settles it."
+    "WHAT THE COUNTERFACTUALS SHOW. Restoring the corpus's integer row counters takes accuracy to "
+    "about 0.9997, recorded every run as `leak_counterfactual_accuracy`, and restoring the capture "
+    "time to about 0.9829, recorded as `capture_time_counterfactual`: that is what a bookkeeping "
+    "column is worth on this corpus. They do not show what the published figures used. Whether the "
+    "published figures lean on such columns is OPEN: the dataset paper's top-10 inputs include the "
+    "sequence number `Seq` and `Offset`, Wang/Fok/Thing's inputs include `Offset`, both columns are "
+    "dropped here, and no published ablation settles it."
 )
 
 
@@ -176,12 +172,12 @@ def main() -> int:
     print(f"loading 5G-NIDD BTS1_BTS2_fields_preserved.csv ({spec.dataset.licence}, "
           f"{spec.dataset.url})")
     x, y, feature_names, class_names = D.load_5g_nidd(nrows=args.nrows)
-    assert x.shape[1] == len(D.NIDD_FEATURES) == 47, (
+    assert x.shape[1] == len(D.NIDD_FEATURES) == 46, (
         f"loader returned {x.shape[1]} columns for {len(D.NIDD_FEATURES)} declared feature names - "
         "the ONNX input contract and the published feature_spec would disagree")
-    assert "IdleTime" in feature_names, (
-        "`IdleTime` is not in the feature set, so this run is the narrow-export configuration under "
-        "a wide-export label and will score about 0.76. Do not record it as this model.")
+    assert not set(D.NIDD_CAPTURE_TIME) & set(feature_names), (
+        "the capture-time column is in the feature set, so this run would score about 0.98 by "
+        "reading when each attack was run. Do not record it as this model.")
     counts = np.bincount(y, minlength=len(class_names))
     majority_baseline = float(counts.max() / counts.sum())
     print(f"  {x.shape[0]:,} flows x {x.shape[1]} features, {len(class_names)} classes")
@@ -205,8 +201,8 @@ def main() -> int:
 
     xtr, xte, ytr, yte = train_test_split(x, y, test_size=0.25, random_state=args.seed, stratify=y)
 
-    # ---- the shipped model: 47 features, every trap removed -------------------------------------
-    print(f"\n  training XGBoost ({args.n_estimators} trees, depth {args.max_depth}) on 47 features ...")
+    # ---- the shipped model: 46 features, every trap removed -------------------------------------
+    print(f"\n  training XGBoost ({args.n_estimators} trees, depth {args.max_depth}) on 46 features ...")
     teacher = _booster(args)
     teacher.fit(xtr, ytr)
     # Train on the GPU, score and export on the CPU. Leaving the booster on cuda while handing it
@@ -235,17 +231,17 @@ def main() -> int:
     assert n_predicted == len(class_names), (
         f"the model emits only {n_predicted} of {len(class_names)} classes, so macro F1 has a floor "
         f"of zero on the ones it never predicts - do not publish this")
-    assert m["macro_f1"] > 0.80, f"macro F1 {m['macro_f1']:.4f} is far below the measured 0.995"
+    assert m["macro_f1"] > 0.80, f"macro F1 {m['macro_f1']:.4f} is far below the measured 0.93"
     assert m["aggregate_accuracy"] > majority_baseline, (
         f"accuracy {m['aggregate_accuracy']:.4f} does not beat the majority-class baseline "
         f"{majority_baseline:.4f} - this model would be worse than guessing the commonest label")
-    # THE REGRESSION THIS GUARDS IS SPECIFIC: 0.76 is what this configuration scores on the narrow
-    # export, and it is the number a wrong CSV at the fetch path produces without any other symptom.
-    # Only on a full read - a --nrows head is a different distribution and its score means nothing.
+    # THE REGRESSION THIS GUARDS IS SPECIFIC: 0.98 is what this configuration scores when it reads the
+    # capture time, and it is the number a leak produces without any other symptom. Only on a full
+    # read - a --nrows head is a different distribution and its score means nothing.
     if args.nrows is None:
-        assert m["aggregate_accuracy"] > 0.95, (
-            f"accuracy {m['aggregate_accuracy']:.4f} against the measured 0.9829. Anything near 0.76 "
-            f"means the fit ran on Combined.csv's column set, i.e. without `IdleTime`.")
+        assert 0.70 < m["aggregate_accuracy"] < 0.85, (
+            f"accuracy {m['aggregate_accuracy']:.4f} against the measured 0.76. Near 0.98 means a "
+            f"capture-time column is back in the features.")
 
     record: dict = {
         "macro_f1": round(float(m["macro_f1"]), 6),
@@ -261,45 +257,20 @@ def main() -> int:
         "dropped_columns": dict(D.NIDD_DROPPED),
     }
 
-    # ---- THE ABLATION: what the wide export is actually worth, and which column carries it -------
-    # This is the model's most important single fact and it is measured here rather than quoted.
-    # Two refits, both on columns taken out of the SAME encoded matrix `x` so nothing but the column
-    # subset differs - no second CSV read, no second drop list, no second encoding to disagree with.
-    print("\n  ablating the columns Combined.csv does not carry (the Round 50 finding) ...")
-    ablations = {}
-    for tag, drop in (("without_idle_time", ("IdleTime",)),
-                      ("without_all_six_columns_combined_lacks", D.NIDD_ABSENT_FROM_COMBINED)):
-        keep = [i for i, n in enumerate(feature_names) if n not in drop]
-        a_acc, a_macro = _refit(args, x[:, keep], y, seed=args.seed)
-        ablations[tag] = {
-            "dropped": list(drop),
-            "n_features": len(keep),
-            "macro_f1": round(a_macro, 6),
-            "accuracy": round(a_acc, 6),
-            "accuracy_cost": round(float(m["aggregate_accuracy"]) - a_acc, 6),
-        }
-        print(f"    -{len(drop)} column(s) {list(drop)}")
-        print(f"      macro F1 {a_macro:.4f}   accuracy {a_acc:.4f}   "
-              f"({a_acc - float(m['aggregate_accuracy']):+.4f} against the shipped fit)")
-    record["idle_time_ablation"] = {
-        **ablations,
-        "what_this_means": (
-            "Removing `IdleTime` ALONE costs essentially the same accuracy as removing all six "
-            "columns Combined.csv omits, and both land on the score this model published while it "
-            "was fitted on Combined.csv. The other five - `Dir`, `Flgs`, `TcpOpt`, `sVlan`, `dVlan` "
-            "- are worth 0.0006 accuracy between them. So the model's former weakness was one "
-            "absent flow statistic, not the corpus and not the method. "
-            "THAT IS REDUNDANCY AND NOT EMPTINESS, stated because the shorter version would be "
-            "false. Two of those five are individually strong - `Dir` scores one-vs-rest AUC 0.9811 "
-            "on ICMPFlood and `TcpOpt` 0.9433 on SlowrateDoS, both above the 0.90 threshold "
-            "`single_feature_leak_check` uses, and both appear in its flagged list. What the "
-            "ablation shows is that the other 41 columns already carry what they carry. "
-            "`IdleTime` IS NOT AN IDENTIFIER and the distinction is the same one "
-            "`leak_counterfactual_*` exists to draw: it takes 17 distinct integer values over "
-            "1,215,890 rows, so it cannot encode a row position, and it separates `SlowrateDoS` - "
-            "an attack defined by holding a connection idle - at one-vs-rest AUC 0.9574. A row "
-            "counter that scores that well describes where a row sits in a file. This describes "
-            "what the traffic did."),
+    # ---- THE CAPTURE-TIME COUNTERFACTUAL: what a model reading when each attack ran would score ----
+    # Loaded through the same loader with the same encoding, so the only difference is the one column.
+    print(f"\n  refitting with {list(D.NIDD_CAPTURE_TIME)} restored (the capture-time counterfactual) ...")
+    xc, yc, _, _ = D.load_5g_nidd(nrows=args.nrows, with_capture_time=True)
+    assert np.array_equal(yc, y), "the two loads disagree on the labels; the counterfactual is void"
+    c_acc, c_macro = _refit(args, xc, yc, seed=args.seed)
+    print(f"    macro F1 {c_macro:.4f} (vs {m['macro_f1']:.4f})   accuracy {c_acc:.4f} (vs {m['aggregate_accuracy']:.4f})")
+    record["capture_time_counterfactual"] = {
+        "restored": list(D.NIDD_CAPTURE_TIME),
+        "n_features": int(xc.shape[1]),
+        "macro_f1": round(c_macro, 6),
+        "accuracy": round(c_acc, 6),
+        "accuracy_gain": round(c_acc - float(m["aggregate_accuracy"]), 6),
+        "what_this_means": CAPTURE_TIME_NOTE,
     }
 
     # ---- THE COUNTERFACTUAL: the same fit with the four row identifiers restored ----------------
@@ -348,10 +319,9 @@ def main() -> int:
     # tool against a different service, TTL, packet rate, TCP window and ACK timing separating those
     # classes is the detector working rather than a sampling artefact. What it must NOT still fire on
     # is the four identifiers, and it cannot, because they are not in this matrix - that contrast is
-    # the whole point and `single_feature_leak_check` records it as data. `IdleTime` DOES appear in
-    # the flagged list, at 0.9574 on SlowrateDoS, and that is the same distinction one level down:
-    # 17 distinct values over 1.2 million rows cannot address a row, so it is a dominant feature and
-    # not a counter. The flagged list is published; a reader can check that claim against it.
+    # the whole point and `single_feature_leak_check` records it as data. The check could not tell
+    # that `IdleTime` was a capture time, and until Round 86 this comment argued it was not; what
+    # told it was reading the values. The flagged list is published; a reader can check it.
     print("\n  single-feature leak check on the held-out split (a warning, not a gate):")
     record["single_feature_leak_check"] = _leak_check(xte, yte, feature_names, class_names,
                                                       seed=args.seed)
@@ -386,14 +356,10 @@ def main() -> int:
         "missing_value": D.NIDD_MISSING,
         "dropped_columns": dict(D.NIDD_DROPPED),
         "note": (
-            "47 of the 113 columns in BTS1_BTS2_fields_preserved.csv. THIS IS THE WIDE EXPORT AND "
-            "THE MODEL WAS FITTED ON Combined.csv (52 columns) UNTIL ROUND 50; the two carry the "
-            "same 1,215,890 rows, and the six columns the narrow one lacks are the difference "
-            "between accuracy 0.76 and 0.98. One of them does all of it: `idle_time_ablation` in "
-            "models/metrics.json refits without `IdleTime` alone every run and lands on the old "
-            "score. "
-            "The 66 dropped columns are listed above WITH THE REASON each was dropped. They are 3 "
+            "46 of the 113 columns in BTS1_BTS2_fields_preserved.csv, the corpus's wide export. "
+            "The 67 dropped columns are listed above WITH THE REASON each was dropped. They are 3 "
             "targets, 9 row identifiers, 10 host fingerprints, 5 columns bit-identical to `Dur`, "
+            "1 capture time, "
             "and 39 that hold exactly one state in this release - 30 of those are 100% null, "
             "including every SIntPkt/DIntPkt inter-packet-time and jitter column, which are EMPTY "
             "here and not merely uninformative. "
@@ -404,7 +370,7 @@ def main() -> int:
             "A SEPARATE AND LEGITIMATE MATTER, stated because the numbers look alarming next to "
             f"that: {record['single_feature_leak_check']['n_features_flagged']} of the "
             f"{len(D.NIDD_FEATURES)} kept features still clear the 0.90 one-vs-rest AUC threshold "
-            "after all 66 drops. Those are real flow statistics rather than bookkeeping columns: "
+            "after all 67 drops. Those are real flow statistics rather than bookkeeping columns: "
             "each attack class in this corpus was produced by a different tool against a different "
             "service, so packet rate, ACK timing, TTL and TCP window separating them is the signal "
             "an intrusion detector is meant to use. They are reported and kept. The row identifiers "
@@ -566,11 +532,10 @@ def _leak_check(xte, yte, feature_names, class_names, *, seed: int, n_rows: int 
             "The distinction that matters is against `leak_counterfactual_*`: `Unnamed: 0`, `Rank`, "
             "`Seq` and `Offset` cleared the same threshold while being bookkeeping columns that "
             "carry no information about the traffic at all, which is why those four are dropped and "
-            "these are kept. `IdleTime` is in this list and is the case that shows the rule is not "
-            "circular - it clears the threshold on SlowrateDoS, it is the single most valuable "
-            "column in the corpus by `idle_time_ablation`, and it takes 17 distinct integer values "
-            "over 1.2 million rows, so no amount of it can address a row. Recorded rather than "
-            "described so the distinction is checkable."),
+            "these are kept. The check cannot tell a capture time from a statistic: `IdleTime` is "
+            "out because its values read as when a flow was captured, which only reading the values "
+            "showed, and `capture_time_counterfactual` records what it was worth. Recorded rather "
+            "than described so the distinction is checkable."),
     }
 
 
