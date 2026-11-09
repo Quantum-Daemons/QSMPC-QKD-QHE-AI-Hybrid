@@ -76,6 +76,20 @@ def test_the_record_is_the_cleaned_fit_and_keeps_the_rows_as_published_beside_it
     assert as_published["accuracy"] < as_published["flow_level_ceiling"]["accuracy"] < m["aggregate_accuracy"]
 
 
+def test_the_page_has_what_it_needs_to_draw_the_two_sets_of_rows() -> None:
+    config = json.loads((REPO / "web" / "src" / "lib" / "config.defaults.json").read_text())
+    achieved = next(m for m in config["models"]["telecom_ids"] if m["key"] == "telecom_ids.nidd")["achieved"]
+    published = achieved["contradictory_copies"]["as_published"]
+    for value in (published["accuracy"], published["macro_f1"], published["flow_level_ceiling"]["accuracy"],
+                  published["accuracy_with_the_file_label"], published["cross_base_station"]["first_file_to_second"]["accuracy"],
+                  published["cross_base_station"]["second_file_to_first"]["accuracy"], achieved["cross_base_station"]["first_file_to_second"]["accuracy"],
+                  achieved["cross_base_station"]["second_file_to_first"]["accuracy"], achieved["file_label_counterfactual"]["accuracy"],
+                  achieved["flow_level_ceiling"]["accuracy"]):
+        assert isinstance(value, float)
+    panel = (REPO / "web" / "src" / "components" / "ModelPanel.tsx").read_text()
+    assert "<RowsAsPublished" in panel
+
+
 def test_the_loader_removes_exactly_the_copies_on_the_real_file() -> None:
     try:
         D.nidd_fields_preserved_csv()

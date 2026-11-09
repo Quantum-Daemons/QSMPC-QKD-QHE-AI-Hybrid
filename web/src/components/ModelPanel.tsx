@@ -93,7 +93,9 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   // `calibration` has its own table below this one, and walked here its 26 rows pushed the card's headline metric off the screen (the deployed finance page, Round 86).
   // `esa_scores` is the satellite forecaster's two arms at three floors (Round 86): sixty numbers that render as their
   // own table below, not as rows here. `training` is how the run went (epochs, losses), not a property of the model.
-  const NOT_A_SUBTREE = new Set(["not_measured", "licence_audit", "esa_scores", "training", "flag_counts", "auc_ci_95", "seed_spread", "calibration", ...ATTRIBUTION_SUBTREES]);
+  // The 5G-NIDD blocks (Round 86) repeat a model's numbers per direction, class and set of rows; walked here they
+  // were ninety rows above the headline. `RowsAsPublished` draws what they say, and the framing note states the rest.
+  const NOT_A_SUBTREE = new Set(["cross_base_station", "without_ttl_and_hops", "contradictory_copies", "published_inputs_check", "test_rows_unseen_in_training", "flow_level_ceiling", "file_label_counterfactual", "not_measured", "licence_audit", "esa_scores", "training", "flag_counts", "auc_ci_95", "seed_spread", "calibration", ...ATTRIBUTION_SUBTREES]);
   const walk = (obj: Record<string, unknown>, prefix: string, depth: number) => {
     for (const [k, v] of Object.entries(obj)) {
       if (NOT_A_SUBTREE.has(k)) continue;
@@ -404,6 +406,45 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
  * page whether a curve would be defensible on that split, which is a different question from whether
  * this panel is the place for it.
  */
+/** The same fit on the rows as published and on the rows used, where a record carries both (5G-NIDD, Round 86). */
+function RowsAsPublished({ achieved }: { achieved: Record<string, unknown> }) {
+  const copies = achieved.contradictory_copies as Record<string, any> | undefined;
+  const published = copies?.as_published as Record<string, any> | undefined;
+  if (!copies || !published) return null;
+  const used = achieved as Record<string, any>;
+  const f = (v: unknown) => (typeof v === "number" ? v.toFixed(4) : "-");
+  const rows: Array<[string, unknown, unknown]> = [
+    ["accuracy", published.accuracy, used.aggregate_accuracy],
+    ["macro F1", published.macro_f1, used.macro_f1],
+    ["the most any model reading these columns can score", published.flow_level_ceiling?.accuracy, used.flow_level_ceiling?.accuracy],
+    ["accuracy with the file label restored (a leak)", published.accuracy_with_the_file_label, used.file_label_counterfactual?.accuracy],
+    ["accuracy, trained on one base station, tested on the other", published.cross_base_station?.first_file_to_second?.accuracy, used.cross_base_station?.first_file_to_second?.accuracy],
+    ["accuracy, the other way round", published.cross_base_station?.second_file_to_first?.accuracy, used.cross_base_station?.second_file_to_first?.accuracy],
+  ];
+  return (
+    <div style={{ marginTop: 10 }}>
+      <div className="muted small" style={{ marginBottom: 4 }}>
+        <strong>The rows as published and the rows used</strong> — the same model on both
+      </div>
+      <table className="mini-table">
+        <thead>
+          <tr>
+            <th scope="col">measure</th>
+            <th scope="col">as published, {Number(published.n_samples).toLocaleString("en-US")} rows</th>
+            <th scope="col">used, {Number(used.n_samples).toLocaleString("en-US")} rows</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(([name, a, b]) => (
+            <tr key={name}><th scope="row">{name}</th><td className="num">{f(a)}</td><td className="num">{f(b)}</td></tr>
+          ))}
+        </tbody>
+      </table>
+      {typeof copies.what_this_means === "string" && <p className="muted small">{copies.what_this_means}</p>}
+    </div>
+  );
+}
+
 function CalibrationRows({ achieved }: { achieved: Record<string, unknown> }) {
   const c = achieved.calibration as Record<string, any> | undefined;
   if (!c || typeof c.a !== "number") return null;
@@ -740,6 +781,9 @@ export function ModelPanel({ usecase }: { usecase: string }) {
               rather than showing a placeholder. */}
           {spec.achieved
             ? <CalibrationRows achieved={spec.achieved as Record<string, unknown>} />
+            : null}
+          {spec.achieved
+            ? <RowsAsPublished achieved={spec.achieved as Record<string, unknown>} />
             : null}
 
           <EsaScoresRows spec={spec} />

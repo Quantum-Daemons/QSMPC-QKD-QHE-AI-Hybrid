@@ -1407,24 +1407,6 @@
   "telecom_ids.nidd": {
     "aggregate_accuracy": 0.997932,
     "baseline_gap_note": "There is no baseline number to have a gap to, and that is a deliberate registry decision rather than a missing measurement: the two figures usually quoted for this corpus (99.61% for a classical CNN, 99.71% for a hybrid quantum-classical Quan-ConvCNN, Wang/Fok/Thing) are ACCURACIES on the BINARY benign-versus-malicious task, and this model is judged on 9-class macro F1, so putting them in `baseline` would render an accuracy beside a macro F1 as though the two were the same scale. WHAT THE COMPARISON CAN AND CANNOT SAY. The 9-class anchors are the dataset paper's random forest at 99.48% accuracy on its top-10 features (Samarakoon et al., arXiv:2212.01298) and BiTAD (Future Internet 17(11) 482) at 0.9047. This model's 0.9979 is on 934,361 rows and its own stratified random split, and those figures are on the rows as published, so each is an anchor and not a head-to-head. WHAT THE ROWS SAY ABOUT THOSE FIGURES. On the 1,215,890 rows as published, inputs equal on the two copies of the flood cannot pass 0.7685, binary or nine-class, so a score above that rests on a column that differs between the copies. Those are `Unnamed: 0`, `Rank`, `Seq`, `Offset` and `IdleTime`. The dataset paper's top-10 inputs include `Seq` and `Offset`. Of Wang/Fok/Thing's 28 inputs exactly one, `Offset`, differs between the copies, and `published_inputs_check` fits this project's booster to them: on the binary task accuracy 0.9599 with `Offset` and 0.7643 without it. That measures what those columns can do on these rows and does not rerun those papers' models. Wang/Fok/Thing's fall across base stations, from above 98% to 78.23% and 74.28% for the classical CNN, has the same shape here: with the copies in place this booster scores 0.4199 and 0.6059, and with them out 0.9973 and 0.9877.",
-    "capture_time_counterfactual": {
-      "accuracy": 0.982893,
-      "accuracy_gain": 0.221335,
-      "macro_f1": 0.994977,
-      "n_features": 47,
-      "restored": [
-        "IdleTime"
-      ],
-      "what_this_means": "`IdleTime` holds 17 values, all multiples of 128, the spacing of a 32-bit float at this size. As Unix times they fall between 13 and 15 September 2022, and each is dominated by one attack scenario and benign traffic, so the column reads as when a flow was captured, the reason the loader drops `StartTime`. Restoring it lifts accuracy by about 22 points. That gain is a model learning when each attack was run, and none of it is a flow statistic. The shipped model does not read it."
-    },
-    "carried_forward_not_remeasured": {
-      "fields": [
-        "capture_time_counterfactual",
-        "idle_time_ablation"
-      ],
-      "measured_at_git_sha": "9377d27-dirty",
-      "note": "These fields were NOT measured by the run that wrote this record. They were inherited from the previous one because this run did not produce them - usually an optional stage that was skipped. Read them as measurements of the run named in measured_at_git_sha, not of this record's own git_sha. Re-run the stage that produces them to refresh, or delete them deliberately if the model no longer emits them; either way the change is then visible in the diff rather than silent."
-    },
     "class_counts": {
       "Benign": 196208,
       "HTTPFlood": 140812,
@@ -1639,32 +1621,6 @@
     "framing": "Real 5G network traffic, 9 attack classes, 46 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. TWO CORRECTIONS MADE IN ROUND 86 EXPLAIN THE NUMBERS. The published file holds one attacker's UDP flood twice, the same 281,529 flows labelled Benign in one base station's file and UDPFlood in the other's; the Benign copies are removed, leaving 934,361 flows. And the model no longer reads `IdleTime`, which names the attack-session file a flow came from. Accuracy is 0.9979 and macro F1 0.9972. On the rows as published the same fit scores accuracy 0.7616, and no model reading these columns could pass 0.7685 there (`contradictory_copies`). `file_label_counterfactual` and `leak_counterfactual_accuracy` restore bookkeeping columns and reach about 1.0000, which is not a better model but a leak. `cross_base_station` trains on one base station and tests on the other: accuracy 0.9973 and 0.9877, against 0.4199 and 0.6059 on the rows as published. Two weak spots remain. Trained on the second base station, SYNFlood on the first scores F1 0.22. And without the TTL and hop columns, UDPScan across base stations falls to F1 0.05 (`without_ttl_and_hops`).",
     "git_sha": "9377d27-dirty",
     "hf_revision": "5852153ee4115e6636a10f95f18e4936f904c623",
-    "idle_time_ablation": {
-      "what_this_means": "Removing `IdleTime` ALONE costs essentially the same accuracy as removing all six columns Combined.csv omits, and both land on the score this model published while it was fitted on Combined.csv. The other five - `Dir`, `Flgs`, `TcpOpt`, `sVlan`, `dVlan` - are worth 0.0006 accuracy between them. So the model's former weakness was one absent flow statistic, not the corpus and not the method. THAT IS REDUNDANCY AND NOT EMPTINESS, stated because the shorter version would be false. Two of those five are individually strong - `Dir` scores one-vs-rest AUC 0.9811 on ICMPFlood and `TcpOpt` 0.9433 on SlowrateDoS, both above the 0.90 threshold `single_feature_leak_check` uses, and both appear in its flagged list. What the ablation shows is that the other 41 columns already carry what they carry. `IdleTime` IS NOT AN IDENTIFIER and the distinction is the same one `leak_counterfactual_*` exists to draw: it takes 17 distinct integer values over 1,215,890 rows, so it cannot encode a row position, and it separates `SlowrateDoS` - an attack defined by holding a connection idle - at one-vs-rest AUC 0.9574. A row counter that scores that well describes where a row sits in a file. This describes what the traffic did.",
-      "without_all_six_columns_combined_lacks": {
-        "accuracy": 0.760949,
-        "accuracy_cost": 0.221947,
-        "dropped": [
-          "Flgs",
-          "IdleTime",
-          "Dir",
-          "sVlan",
-          "dVlan",
-          "TcpOpt"
-        ],
-        "macro_f1": 0.926455,
-        "n_features": 41
-      },
-      "without_idle_time": {
-        "accuracy": 0.761558,
-        "accuracy_cost": 0.221339,
-        "dropped": [
-          "IdleTime"
-        ],
-        "macro_f1": 0.927503,
-        "n_features": 46
-      }
-    },
     "leak_counterfactual_accuracy": 0.999987,
     "leak_counterfactual_accuracy_gain": 0.002055,
     "leak_counterfactual_features": [
