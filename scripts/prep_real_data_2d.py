@@ -683,18 +683,20 @@ def telecom_nidd() -> dict:
         "licence_url": CC_BY_4,
         "attribution": ds.attribution,
         "modifications": "Two of the 113 columns, rounded to 4 significant figures, on 4,096 rows of a "
-                         "stratified held-out draw; the 8 attack classes collapsed to attack against benign.",
+                         "stratified held-out draw, after removing the 281,529 Benign-labelled copies of "
+                         "flows the file also labels UDPFlood; the 8 attack classes collapsed to attack "
+                         "against benign.",
         "x": {"key": "sMeanPktSz", "label": "mean packet size from the source (bytes)"},
         "y": {"key": "TotBytes", "label": "total bytes in the flow", "scale": "log"},
         "class_names": ["Benign", "attack (any of 8)"],
         "separability_auc_pr": auc_pr,
         "separability_method": SEPARABILITY_ESTIMATOR,
         "base_rate": _round(base),
-        "note": f"AUC-PR {auc_pr} against a {_round(base)} base rate. Most of the attacks stand apart "
-                "and much of the benign traffic does not: UDPFlood sits on top of it, which is where "
-                "this model's errors are. The model reads 46 columns and scores accuracy 0.7616 over "
-                "9 classes, Benign and UDPFlood being the only pair it confuses; two columns are "
-                "enough to show that pair overlapping and not enough to score the model.",
+        "note": f"AUC-PR {auc_pr} against a {_round(base)} base rate. On these two columns benign flows "
+                "sit at larger mean packet sizes than most attacks; telling the eight attacks apart takes "
+                "the other columns. The model reads 46 and scores accuracy 0.9979 over 9 classes. The "
+                "file holds one attacker's UDP flood twice under contradictory labels, and the Benign "
+                "copy is removed before anything here is drawn.",
         "points": pts,
     }
 

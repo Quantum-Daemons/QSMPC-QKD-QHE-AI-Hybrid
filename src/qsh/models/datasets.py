@@ -341,8 +341,7 @@ def opssat_ad(split: str = "train"):
 #: rows, but 52 columns against 113. Every one of those 52 is present and informationally identical
 #: in the wide export - equal distinct-value counts on all of them - so ``Combined.csv`` is a strict
 #: column SUBSET. The one column it omits that moved the score, ``IdleTime``, turned out in Round 86
-#: to be a per-file label (NIDD_FILE_LABEL) and is dropped; without it the two exports score the
-#: same, about 0.76 accuracy. See
+#: to be a per-file label (NIDD_FILE_LABEL) and is dropped. See
 #: ``references/5g-nidd-metric-profile.md`` and the `file_label_counterfactual` block that
 #: ``scripts/train/telecom_nidd.py`` re-measures every run.
 #:
@@ -397,8 +396,8 @@ _ZERO = "constant: a single value on all 1,215,890 rows, so it carries no state 
 #: `feature_spec.json` can publish the reasons and a reader can check them against the corpus.
 #:
 #: `Unnamed: 0` IS THE ENTRY THAT MATTERS MOST and omitting it is the mistake this file has now seen
-#: made twice. It is the CSV's own row index; leaving it in takes accuracy to 0.9997, which looks
-#: like a result and is a leak. The first wide fit attempted in Round 50 named `SrcId`, `Rank`, `Seq`
+#: made twice. It is the CSV's own row index; on the rows as published, leaving it in took accuracy
+#: to 0.9997, which looks like a result and is a leak. The first wide fit attempted in Round 50 named `SrcId`, `Rank`, `Seq`
 #: and `Offset` but not `Unnamed: 0` and was briefly recorded as confirmation of the published
 #: figures. `scripts/train/telecom_nidd.py` refits with all four restored every run so the number is
 #: measured rather than remembered.
@@ -412,8 +411,9 @@ NIDD_DROPPED: dict[str, str] = {
         "Torshammer). Alone it scores accuracy 0.9615, macro F1 0.5017"),
     # ---- row identifiers: where a row sits in a file, not what the traffic did ------------------
     "Unnamed: 0": (
-        "row identifier: the CSV's own index column, 728,316 distinct values. Restoring it alone "
-        "takes accuracy from 0.9829 to 0.9997 - it is the single most dangerous column in the file"),
+        "row identifier: the CSV's own index column, 728,316 distinct values, so it says which file "
+        "and where in it a row sits; `leak_counterfactual_*` re-measures what the row counters are "
+        "worth on every run"),
     "SrcId": "row identifier: Argus source identifier, and constant `0.0.0.0` on every row here",
     "Rank": "row identifier: Argus record rank, 467,717 distinct integer values",
     "Seq": "row identifier: Argus flow sequence number, 137,210 distinct integer values",
@@ -551,12 +551,52 @@ NIDD_MISSING = -1.0
 #: so once. The dataset's description says the flow files of the two base stations were concatenated.
 NIDD_SECOND_FILE_STARTS_AT = 728_316
 
+#: The columns that together say which flow a row records: two rows agreeing on all ten are one flow.
+NIDD_FLOW_KEY = ("StartTime", "LastTime", "SrcAddr", "DstAddr", "Sport", "Dport", "Proto", "TotPkts",
+                 "TotBytes", "Dur")
+
+#: THE SAME FLOWS ARE IN THE FILE TWICE, UNDER CONTRADICTORY LABELS (found in Round 86). Base station
+#: 1's UDP-flood file also holds the traffic of base station 2's attacker towards the victim, labelled
+#: Benign; base station 2's file holds those flows labelled UDPFlood. The two copies agree on every
+#: column but the labels and the file-position columns (`Unnamed: 0`, `Rank`, `Seq`, `Offset`,
+#: `IdleTime`), and one value of `Cause` and of `State` on a single row. In the two capture files the
+#: 421,471 packets behind them have identical timestamps, which two separate capture points could
+#: not produce, so one capture is in both. The dataset's descriptor gives no labelling method;
+#: labelling only a base station's own attacker would produce this.
+#:
+#: They set the ceiling of the file: on these rows no model reading flow statistics can pass
+#: 1 - 281,529 / 1,215,890 = 0.7685, for the binary task as well as the nine classes. The loader keeps
+#: the UDPFlood copy, which is what the traffic was, and removes the Benign one.
+NIDD_CONTRADICTORY_COPIES = 281_529
+NIDD_COPY_SOURCE = "10.155.15.7"
+NIDD_COPY_DESTINATION = "10.41.150.68"
+
+#: Every copy removed sits in the first file, so the boundary moves by exactly that many rows.
+NIDD_SECOND_FILE_STARTS_AT_CLEANED = NIDD_SECOND_FILE_STARTS_AT - NIDD_CONTRADICTORY_COPIES
+
+
+def nidd_contradictory_copies(frame):
+    """Return a boolean mask of the rows labelled Benign that record a flow also labelled as an attack.
+
+    A flow cannot be both. The rule is on the labels and `NIDD_FLOW_KEY`, not on the addresses, so a
+    re-release that moved the copies would still be caught and would fail the counts in the loader.
+    An empty port field is a value here: flows without ports must still match each other.
+    """
+    import numpy as np
+    import pandas as pd
+
+    key = pd.util.hash_pandas_object(frame[list(NIDD_FLOW_KEY)].fillna("").astype(str),
+                                     index=False).to_numpy()
+    benign = frame["Attack Type"].astype(str).to_numpy() == "Benign"
+    return benign & np.isin(key, key[~benign])
+
 
 def nidd_fields_preserved_csv() -> Path:
     return require(raw("5g-nidd", "fields_preserved", "BTS1_BTS2_fields_preserved.csv"), NIDD_FETCH)
 
 
-def load_5g_nidd(nrows: int | None = None, *, with_identifiers: bool = False, with_file_label: bool = False):
+def load_5g_nidd(nrows: int | None = None, *, with_identifiers: bool = False, with_file_label: bool = False,
+                 with_contradictory_copies: bool = False):
     """Return ``(X float32, y int64, feature_names, class_names)`` for the WIDE 5G-NIDD export.
 
     Reads ``BTS1_BTS2_fields_preserved.csv`` (113 columns), the corpus's wide export.
@@ -567,6 +607,10 @@ def load_5g_nidd(nrows: int | None = None, *, with_identifiers: bool = False, wi
     loader and the same encoding, rather than reimplementing the drop list beside it and reporting
     a difference that is partly its own. Nothing exported to ONNX may be fitted with either on - the
     shipped model takes 46 columns.
+
+    ``with_contradictory_copies`` keeps the rows as published, including the flows present twice under
+    contradictory labels (NIDD_CONTRADICTORY_COPIES). It is a diagnostic too, for `as_published` in the
+    trainer. Rows keep the file's order either way.
 
     THE TRAPS ARE ASSERTED, NOT ASSUMED. Every drop rests on a property of the published file, and
     an upstream re-release that FIXES one of them must fail loudly here rather than silently discard
@@ -617,6 +661,21 @@ def load_5g_nidd(nrows: int | None = None, *, with_identifiers: bool = False, wi
             "`IdleTime` no longer holds 17 values, all multiples of 128, in the Unix-time range of "
             "September 2022. It is dropped because that is what it held: re-measure it before "
             "treating it as either a leak or a feature (see NIDD_FILE_LABEL).")
+
+    # Trap 5. One attacker's flood is in the file twice, once labelled Benign (NIDD_CONTRADICTORY_COPIES).
+    # A fixed re-release changes these counts and must stop here rather than silently removing rows.
+    if nrows is None:
+        copies = nidd_contradictory_copies(df)
+        pairs = {tuple(p) for p in df.loc[copies, ["SrcAddr", "DstAddr"]].drop_duplicates().to_numpy()}
+        assert int(copies.sum()) == NIDD_CONTRADICTORY_COPIES \
+            and pairs == {(NIDD_COPY_SOURCE, NIDD_COPY_DESTINATION)} \
+            and not copies[NIDD_SECOND_FILE_STARTS_AT:].any(), (
+            f"the rows labelled Benign that record a flow also labelled as an attack are "
+            f"{int(copies.sum()):,} rows between {sorted(pairs)}, not {NIDD_CONTRADICTORY_COPIES:,} "
+            f"between {NIDD_COPY_SOURCE} and {NIDD_COPY_DESTINATION} in the first file. The release has "
+            f"changed: re-measure before removing anything.")
+        if not with_contradictory_copies:
+            df = df.loc[~copies].reset_index(drop=True)
 
     y_names = df["Attack Type"].astype(str)
     unknown = sorted(set(y_names.unique()) - set(NIDD_CLASSES))
