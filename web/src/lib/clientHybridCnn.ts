@@ -78,11 +78,11 @@ export interface HybridCnnResult {
   clientViewMedianAbs: number;
 }
 
-interface Sealed { seal: any; context: any; slots: number; scale: number }
+export interface Sealed { seal: any; context: any; slots: number; scale: number }
 
 let _sealed: Promise<Sealed> | null = null;
 
-function sealed(): Promise<Sealed> {
+export function sealed(): Promise<Sealed> {
   return (_sealed ??= (async () => {
     const SEAL = (await import("node-seal/throws")).default;
     const seal = await SEAL({ locateFile: (path: string) => (path.endsWith(".wasm") ? sealWasmUrl : path) });
@@ -95,7 +95,7 @@ function sealed(): Promise<Sealed> {
 }
 
 /** Frees every SEAL object it was handed, including on a throw. */
-class Arena {
+export class Arena {
   private readonly live: { delete(): void }[] = [];
   hold<T extends { delete(): void }>(o: T): T { this.live.push(o); return o; }
   close(): void { for (const o of this.live) o.delete(); this.live.length = 0; }
@@ -119,7 +119,7 @@ function uniformBits(n: number, bits: number): Float64Array {
 }
 
 /** round(v) reduced to [0, modulus), for |v| below 2^53, where a double still holds the integer. */
-function toRing(v: number, modulus: number): number {
+export function toRing(v: number, modulus: number): number {
   const m = Math.round(v) % modulus;
   return m < 0 ? m + modulus : m;
 }
@@ -128,7 +128,7 @@ function toRing(v: number, modulus: number): number {
 type Mpc = typeof import("./clientMPC");
 
 /** The party with the secret key and the image. */
-class Client {
+export class Client {
   private readonly arena = new Arena();
   private readonly encoder: any;
   private readonly encryptor: any;
@@ -172,7 +172,7 @@ class Client {
 }
 
 /** The party with the weights. It holds a public key and rotation keys, never the secret key. */
-class Server {
+export class Server {
   private readonly arena = new Arena();
   private readonly encoder: any;
   private readonly encryptor: any;

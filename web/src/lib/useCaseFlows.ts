@@ -360,6 +360,24 @@ const PSI_HOLDS = "In the PSI, side A blinds its IDs and side B evaluates them u
 const FL_NOT_PQ = "The mask seeds are not post-quantum: they come from X25519 alone and the masked updates are not sealed, so the aggregator, or anyone who records the public keys and the updates, could recompute every seed with a quantum computer and unmask each update.";
 
 export const USECASE_SPECS: Record<string, Spec> = {
+  defi_lending: {
+    a: { name: "Alice: the pool", sub: "prices, its own thresholds, the index · no balances" },
+    b: { name: "Bob: a borrower", sub: "collateral, debt, the CKKS secret key" },
+    inferenceClient: "b",
+    meet: () => "Alice's pool and Bob, one of its borrowers, exchange ciphertexts over a session sealed under the PQC key. "
+      + "Bob's balances stay under his CKKS key, the pool's liquidation thresholds stay with the pool, and the market around them is simulated.",
+    steps: [
+      { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
+      { stageId: "lending_market", kind: "local-wide",
+        label: (m) => `Simulated market · ${f(m, "lending_hours")} h · ${f(m, "lending_liquidations")} liquidations · generated prices` },
+      { stageId: "private_liquidation", kind: "fhe-arrow",
+        label: (m) => `Bob's margin under CKKS · ${f(m, "lending_checks")} checks · ${f(m, "lending_ckks_mb")} MB sealed` },
+      { stageId: "private_liquidation", kind: "mpc-bidir",
+        label: (m) => `Its sign in a garbled circuit · ${f(m, "lending_flagged")} of ${f(m, "lending_checks")} can be liquidated`,
+        ok: (m) => m.lending_checks_agree == null || Number(m.lending_checks_agree) === 1, failWord: "disagrees with the clear check" },
+      { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed record of the run` },
+    ],
+  },
   finance_aml: {
     a: { name: "Bank A", sub: "blacklist + fraud model · LAN" },
     b: { name: "Bank B", sub: "candidate accounts · LAN" },
@@ -650,6 +668,10 @@ export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: Diag
       if (kind === "fhe-arrow")
         return { ...sides("CKKS: encrypts the input, decrypts the scores", "CKKS: evaluates the linear layers"), flow: "both", channel: "fhe" };
       return { ...sides("MPC argmax: holds shares a", "MPC argmax: holds shares b"), flow: "both", channel: "mpc" };
+    case "private_liquidation":
+      return kind === "fhe-arrow"
+        ? { ...sides("CKKS: encrypts its balances, decrypts the masked margin", "CKKS: adds the weights, masks the margin"), flow: "both", channel: "fhe" }
+        : { ...sides("garbled circuit: holds a share", "garbled circuit: holds a share"), flow: "both", channel: "mpc" };
     case "qml_ids":
       // Synthetic rows generated in the tab, not this link's telemetry (see the telecom `meet`).
       return { a: "IDS: classifies synthetic attack telemetry, not this link's", channel: "none" };
@@ -675,7 +697,9 @@ export const kindOf = (s: Step, c: DiagramConfig): Kind => (typeof s.kind === "f
  *  `psiTranscriptKeys`), so the canvas's key bus runs to it. The federated masks take their seeds
  *  from an X25519 agreement per pair of clients (clientQFL.ts), and the secure sum reads no key. */
 export const consumesSessionKey = (step: Step, row: CanvasRow): boolean =>
-  step.stageId === "qsmpc_compute" && row.channel === "classical";
+  (step.stageId === "qsmpc_compute" && row.channel === "classical")
+  // The lending check seals both of its CKKS messages under keys derived from the session (lending/privateCheck.ts).
+  || (step.stageId === "private_liquidation" && row.channel === "fhe");
 
 /** The kinds of lane a run with this configuration draws, and whether it draws the key bus: what the
  *  canvas's legend may list. The legend listed all five on every use case until Round 81, so the
@@ -697,10 +721,11 @@ export function captionOf(usecase: string, c: DiagramConfig = {}): string {
   const spec = USECASE_SPECS[usecase];
   if (!spec) return "";
   const infers = visibleSteps(usecase, c).some((s) => s.stageId === "private_inference");
+  const quantum = visibleSteps(usecase, c).some((s) => kindOf(s, c) === "q-arrow");
   return [
     spec.meet(c),
     infers ? "MPC-FHE hybrid: linear layers under CKKS, biases included, decrypted by the client, and the argmax as two-party MPC over the scores the client has decrypted, both parties in this tab, so the MPC measures the protocol's cost and hides nothing; the QSMPC-FHE bar is a simulated comparison circuit beside it, not a score." : "",
-    pqcOnly(c) ? "This profile has no quantum channel, and the proof of concept runs in this tab."
+    pqcOnly(c) || !quantum ? "This profile has no quantum channel, and the proof of concept runs in this tab."
       : "The quantum channel is simulated, and the proof of concept runs in this tab.",
   ].filter(Boolean).join(" ");
 }

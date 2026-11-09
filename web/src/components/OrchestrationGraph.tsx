@@ -46,6 +46,7 @@ const BACKEND_EXTRA: Record<string, { id: string; label: string; before: string 
   genomics: [{ id: "explainability", label: "Explainability\n(full deployment; the\ndemo explains inside\nPrivate Inference)", before: "quantum_comparison" }],
   demo: [{ id: "explainability", label: "Explainability\n(full deployment; the\ndemo explains inside\nPrivate Inference)", before: "quantum_comparison" }],
   medical_fl: [{ id: "explainability", label: "Explainability\n(full deployment; the\ndemo explains inside\nPrivate Inference)", before: "quantum_comparison" }],
+  defi_lending: [],     // the browser's only: no full-deployment stage belongs on its graph
   telecom_ids: [{ id: "qkd_optimize", label: "OptiQKD\n(full deployment)", before: "qml_ids" }],
   satellite_comms: [
     { id: "qkd_optimize", label: "OptiQKD\n(full deployment)", before: "qsdc_telemetry" },
@@ -54,6 +55,13 @@ const BACKEND_EXTRA: Record<string, { id: string; label: string; before: string 
 };
 
 const FLOWS: Record<string, { id: string; label: string }[]> = {
+  defi_lending: [
+    { id: "pqc_handshake", label: "PQC Handshake\n(ML-KEM + X25519)" },
+    { id: "lending_market", label: "Lending Market\n(simulated)" },
+    { id: "private_liquidation", label: "Private Liquidation\n(CKKS + 2PC sign)" },
+    { id: "result", label: "Result" },
+    { id: "sign_result", label: "Sign Result\n(ML-DSA)" },
+  ],
   default: [
     { id: "data", label: "Data" },
     { id: "pqc_handshake", label: "PQC Handshake\n(ML-KEM + X25519)" },

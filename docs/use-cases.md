@@ -124,6 +124,13 @@ computation rather than a privacy property.
 | `genomics` | PQC -> QKD -> **QSMS secure summation** (pooled allele counts) -> FHE | genomics |
 | `telecom_ids` | PQC -> simulated QKD (optional eavesdropper) -> **QML-IDS** attack detection | telecom / defence |
 | `satellite_comms` | PQC -> simulated **free-space QKD** (BB84 downlink) -> **QSDC** test with an inline eavesdrop check (it cannot close at the default link budget, and the run says why) | satellite |
+| `defi_lending` | PQC -> simulated lending market -> **margin under CKKS, its sign in a garbled circuit**. Browser demo only, no QKD and no model | DeFi |
+
+**The lending page in one paragraph.** Alice's pool and Bob, one of its borrowers, run through a simulated month with the mechanics of Aave V3's public contracts, re-derived: a two-slope rate, debt on a public index and liquidation below a health factor of 1, up to half the debt in one step, or all of it at or below 0.95. At chosen hours the pool checks Bob's position with his balances under his own CKKS key and its liquidation thresholds kept from him. The check is the sign of the margin
+
+$$M = \frac{1}{1000}\sum_i c_i\, p_i\, \mathrm{LT}_i - \frac{\tilde d}{1000}\, I_t ,$$
+
+linear in what Bob holds, with $`M < 0`$ exactly when the health factor is below 1. **Why the thresholds are secret here:** on a public chain they are public, Bob can compute $`M`$ himself, and neither the mask nor the circuit hides anything from anyone. The page says so; this check suits a lender whose thresholds are its own. The protocol, what each side learns and what is out of scope are in [`threat-model.md`](threat-model.md).
 
 **Maturity, stated in the same breath as the novelty.** CISA's Space Systems Critical Infrastructure
 Working Group (*Space Systems Security and Resilience Landscape: Zero Trust in the Space
@@ -143,7 +150,7 @@ Pause / Step / Stop / Restart. A **single Run** drives both the animated E2E pro
 benchmark: the benchmark is **assembled from that very run** (no separate "Run benchmark" button) -
 the MPC-FHE row is built from the run's **measured FHE-linear + MPC-non-linear cost** (scaled to a
 cost-model architecture except on genomics, which prices its own weighted sum at every model size), shown next to
-the QSMPC-FHE comparison, security posture, and (on all five use-case pages) a signed
+the QSMPC-FHE comparison, security posture, and (on the five industry pages) a signed
 SHAP explanation. The architecture canvas makes the **MPC-FHE secret-sharing over a LAN <-> WAN <-> LAN** link
 explicit - linear layers cross as a **CKKS ciphertext**, non-linear layers as **secret-shares**. The
 **E2E Orchestration** page draws the same canvas for any use case, and for its generic

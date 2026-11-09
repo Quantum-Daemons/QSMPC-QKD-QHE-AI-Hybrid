@@ -320,7 +320,7 @@ flowchart LR
 | Introduction and Value | `/value` | what is and is not new, the prior art checked, and why now: the regulatory clock |
 | Validations | `/validations` | the PQC primitives, a BB84 run with an eavesdropper, NIST ACVP cases, network key schedules, an MCP agent call, all in the browser |
 | E2E Orchestration | `/orchestration` | the pipeline of any use case or the generic demo, run live (start, pause, step, stop), in two tabs: the architecture canvas, and the stage order with the stages only the full deployment adds |
-| Use cases | `/usecases` | the five industry use cases |
+| Use cases | `/usecases` | the five industry use cases and the DeFi lending check |
 | A use case | `/usecase/<id>` | an animated architecture simulator, the run's metrics and security facts, the benchmark, the models, an MCP panel; the satellite page adds the Network tab |
 
 <table>

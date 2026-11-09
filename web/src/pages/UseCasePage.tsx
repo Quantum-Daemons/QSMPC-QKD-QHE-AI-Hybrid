@@ -12,6 +12,8 @@ import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
 import MpcCnnPanel from "../components/MpcCnnPanel";
 import MultiPsiPanel from "../components/MultiPsiPanel";
+import LendingPanels from "../components/LendingPanels";
+import type { LendingMarketReport, LendingPrivateReport, LendingSweepReport } from "../lib/lending/report";
 import type { MpcCnnReport, MultiPsiReport } from "../lib/clientCompute";
 import ShapPanel from "../components/ShapPanel";
 import UseCaseCanvas from "../components/UseCaseCanvas";
@@ -61,6 +63,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
   // built by launch()) and Metrics wrote an empty CSV. BenchmarkPanel already gates on
   // rows.length; these now match it.
   const hasRun = run.events.length > 0;
+  // No model, no quantum channel and no benchmark row describes this page, so those panels do not appear on it.
+  const lending = usecase === "defi_lending";
   const { events, active, done, metrics, signature, artifacts, state, logRef, gifBusy, webmBusy, benchmark,
     downloadGif, downloadWebm, downloadPng, downloadEvents, downloadMetricsCsv } = run;
 
@@ -166,7 +170,12 @@ function UseCaseView({ usecase }: { usecase: string }) {
         </div>
       )}
 
-      <h2 className="sr-only">Models and verification</h2>
+      <h2 className="sr-only">{lending ? "The market and the private check" : "Models and verification"}</h2>
+      {lending && (
+        <LendingPanels market={artifacts?.lending as LendingMarketReport | undefined}
+          sweep={artifacts?.lending_sweep as LendingSweepReport | undefined}
+          check={artifacts?.lending_private as LendingPrivateReport | undefined} ran={hasRun} state={state} />
+      )}
       {/* What produced the inference on this page: the published ONNX model, the bundled real
           model, or placeholder weights. Read from the run's own metrics, not asserted. */}
       {/* BOTH inferences, because the run performs two and this panel used to name only one - the
@@ -220,7 +229,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {/* The registry's models and their measured numbers, next to the published baselines - and a
           Run button per model, or the reason it has none. This absorbed PublishedModelPanel, which
           used to sit forty lines below and offer the same run again with different chrome. */}
-      <ModelPanel usecase={usecase} />
+      {!lending && <ModelPanel usecase={usecase} />}
 
       {/* XAI: signed SHAP attribution.
           Gated on an explanation EXISTING, not on `meta.inference`. The flag meant "has a
@@ -246,7 +255,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           <EncryptedAgreementChart
             plot={artifacts.encrypted_agreement_plot as EncryptedAgreementPlot} />
         </div>
-      ) : hasRun ? (
+      ) : hasRun && !lending ? (
         <NoEncryptedComparison />
       ) : null}
 
@@ -340,11 +349,11 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && artifacts?.mpc_cnn ? <MpcCnnPanel report={artifacts.mpc_cnn as MpcCnnReport} /> : null}
       {usecase === "finance_aml" && artifacts?.multi_party_psi ? <MultiPsiPanel report={artifacts.multi_party_psi as MultiPsiReport} /> : null}
 
-      <h2 className="sr-only">Benchmark</h2>
+      {!lending && <h2 className="sr-only">Benchmark</h2>}
       {/* Unified benchmark: auto-filled from the single Run above (no separate "Run benchmark" button).
           The MPC-FHE row is the live run's measured FHE-linear/MPC-non-linear split. */}
-      <BenchmarkPanel compact={!meta.inference} result={benchmark}
-        clientComputeMs={benchmark?.client_compute_ms ?? null} />
+      {!lending && <BenchmarkPanel compact={!meta.inference} result={benchmark}
+        clientComputeMs={benchmark?.client_compute_ms ?? null} />}
 
       {/* What the QSMPC-FHE row's circuit does, in 3D: the per-qubit reduced Bloch vectors of the real
           state-vector simulation (content), beside the one-time pad on a single qubit (illustration).
@@ -359,7 +368,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         </div>
       )}
 
-      <h2 className="sr-only">Agentic AI and the QKD control plane</h2>
+      <h2 className="sr-only">{lending ? "Agentic AI" : "Agentic AI and the QKD control plane"}</h2>
       {/* Agentic AI · quantum-safe MCP — per-industry panel, fed by THIS run's live metrics (Round 10).
           MCP is a per-use-case cross-cutting layer here.
           It is an application-plane SAE: see the control-plane panel directly below, which is the
@@ -388,7 +397,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         </div>
       )}
 
-      <SdnControlPlanePanel
+      {!lending && <SdnControlPlanePanel
         usecase={usecase}
         // The satellite pipeline runs its QKD stage over FREE_SPACE, not the fibre channel the
         // qkd_distance_km parameter drives, so feeding that parameter here drew a 50 km terrestrial
@@ -428,7 +437,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         // And the block's kind, so skr says whether the run's range is a pass's closest approach.
         blockKind={metrics.qkd_block as string | undefined}
         decoyStates={metrics.qkd_decoy_states as string | undefined}
-        qkdEnabled={run.qkd !== "pqc-only"} />
+        qkdEnabled={run.qkd !== "pqc-only"} />}
 
       <div className="note" style={{ marginTop: 16, fontSize: 12 }}>
         {/* "the benchmark below fills in" sat BELOW the benchmark (fixed in Round 58). */}

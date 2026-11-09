@@ -9,6 +9,8 @@ import Tabs from "../components/Tabs";
 import UseCaseCanvas from "../components/UseCaseCanvas";
 import { EncryptedAgreementChart, NoEncryptedComparison, RealDataScatter } from "../components/VerificationChart";
 import type { EncryptedAgreementPlot } from "../components/VerificationChart";
+import LendingPanels from "../components/LendingPanels";
+import type { LendingMarketReport, LendingPrivateReport, LendingSweepReport } from "../lib/lending/report";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 import { USECASES as USE_CASE_META } from "../lib/useCases";
 import { usePipelineRun } from "../lib/usePipelineRun";
@@ -157,6 +159,11 @@ export default function Orchestration() {
           <EncryptedAgreementChart
             plot={artifacts.encrypted_agreement_plot as EncryptedAgreementPlot} />
         </div>
+      ) : usecase === "defi_lending" ? (
+        // Its own comparison: the margin from the shares against the clear margin, one point per check.
+        <LendingPanels market={artifacts?.lending as LendingMarketReport | undefined}
+          sweep={artifacts?.lending_sweep as LendingSweepReport | undefined}
+          check={artifacts?.lending_private as LendingPrivateReport | undefined} ran={hasRun} state={state} />
       ) : hasRun ? (
         // A card that vanishes and a flow that performs no private inference look identical, and on
         // `satellite_comms` the second is the truth - no stage there produces the plot. Saying so is

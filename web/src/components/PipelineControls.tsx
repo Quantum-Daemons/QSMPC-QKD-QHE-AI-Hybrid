@@ -1,7 +1,7 @@
 // Crypto-agility selectors + advanced params + Run/Pause/Resume/Step/Stop/Restart controls.
 // Shared by the generic Orchestration page and every per-use-case page (driven by usePipelineRun).
 import { useEffect, useState } from "react";
-import { type usePipelineRun } from "../lib/usePipelineRun";
+import { runsAnyQkd, type usePipelineRun } from "../lib/usePipelineRun";
 import { browserModels, hasWebGPU } from "../lib/onnxInference";
 import { isClientDemo } from "../lib/demoMode";
 import ParameterPanel from "./ParameterPanel";
@@ -59,6 +59,8 @@ export default function PipelineControls({ run }: { run: Run }) {
   // OptiQKD is kept everywhere -- it does real work -- but it cannot run without a quantum channel:
   // qkd_key_agreement returns before the optimise block when the PQC-only profile is selected.
   const optiqkdDisabled = qkd === "pqc-only";
+  // A flow with no QKD stage has nothing for the profile switch, the protocol line or OptiQKD to change.
+  const quantum = runsAnyQkd(usecase);
 
   // Display names, kept separate from the registry VALUES the backend resolves. The QKD control
   // named a protocol it does not select: its options read "bb84-decoy" and "pqc-only" while the
@@ -103,7 +105,7 @@ export default function PipelineControls({ run }: { run: Run }) {
             comments here and in the diagram, and on screen the distinction existed only as a `title`
             tooltip. A visitor reading "QKD + PQC hybrid" had no way to know a second, hidden control
             decides which protocol runs. */}
-        {sel(demo ? "Quantum channel" : "Key source", "sel-qkd", "qkd", qkd, setQkd,
+        {quantum && sel(demo ? "Quantum channel" : "Key source", "sel-qkd", "qkd", qkd, setQkd,
           "Whether the simulated quantum channel runs at all. In this browser it contributes no key "
           + "material either way: the QKD stage yields a key length, and the session key comes from the "
           + "PQC handshake alone (the full deployment folds 256 or more simulated QKD bits in). WHICH "
@@ -114,7 +116,7 @@ export default function PipelineControls({ run }: { run: Run }) {
             MP-SPDZ and hpmpc, which nothing ran, so choosing them changed nothing a run computed. */}
         {demo ? (
           <span className="muted" style={{ fontSize: 13 }}
-            title="Where a page has a private-inference stage (finance, medical, genomics), the demo computes FHE/MPC for real in your browser (node-seal CKKS + a Polytune garbled-circuit 2PC whose two parties share this tab); telecom and satellite each run a CKKS check of a student and no MPC. There is no server backend to select.">
+            title="Where a page has a private-inference stage (finance, medical, genomics) or the lending page's margin check, the demo computes FHE/MPC for real in your browser (node-seal CKKS + a Polytune garbled-circuit 2PC whose two parties share this tab); telecom and satellite each run a CKKS check of a student and no MPC. There is no server backend to select.">
             FHE/MPC, where a page runs them: <strong>node-seal CKKS + garbled-circuit 2PC</strong> - real protocol, in-browser, notional parties
           </span>
         ) : (
@@ -126,10 +128,10 @@ export default function PipelineControls({ run }: { run: Run }) {
             </span>
           </>
         )}
-        <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}
+        {quantum && <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}
           title={`Set by \`qkd.protocol\` in the Parameters panel below, not by the ${demo ? "Quantum channel" : "Key source"} select.`}>
           protocol: <strong>{qkd === "pqc-only" ? "none (no QKD stage runs)" : String(run.params.qkd_protocol) === "e91" ? "E91 / CHSH" : "BB84 decoy-state"}</strong>
-        </span>
+        </span>}
         {sel("Signature", "sel-sig", "sig", sig, setSig)}
         {publishedCandidates.length > 1 && (
           <>
@@ -200,7 +202,7 @@ export default function PipelineControls({ run }: { run: Run }) {
             a direct API call, trains a real variational circuit under the same key agreement). */}
         {/* AI-QKD parameter optimization (OptiQKD, WS1): a gradient-free search of the asymptotic
             per-pulse bound, whose result is reported and not applied to the run (Round 84). */}
-        <label className={`muted${optiqkdDisabled ? " is-disabled" : ""}`} htmlFor="sel-optiqkd"
+        {quantum && <label className={`muted${optiqkdDisabled ? " is-disabled" : ""}`} htmlFor="sel-optiqkd"
           title={optiqkdDisabled
             ? "Unavailable with the PQC-only profile: there is no quantum channel to optimise. Select a QKD protocol to enable it."
             : "Runs OptiQKD (WS1): a gradient-free coordinate ascent over the decoy intensities, the basis "
@@ -213,7 +215,7 @@ export default function PipelineControls({ run }: { run: Run }) {
             disabled={optiqkdDisabled}
             onChange={(e) => setOptiqkd(e.target.checked)} style={{ marginRight: 4 }} />
           Optimize QKD (OptiQKD){optiqkdDisabled ? " - needs a QKD protocol" : ""}
-        </label>
+        </label>}
         {demo && usecase === "medical_fl" && (
           <label className="muted" htmlFor="sel-mpccnn"
             title="Runs one held-out image through the published CNN student with its ReLUs and its argmax in garbled circuits, on top of the CKKS layers, in a Web Worker so the page stays responsive. About 20 s and 170 MB of traffic between the two notional parties in this tab.">

@@ -128,9 +128,9 @@ for (const usecase of ["telecom_ids", "satellite_comms"]) {
 }
 for (const usecase of Object.keys(m.USECASE_SPECS)) {
   const l = legend(usecase);
-  // Only the PSI reads the session key (Round 84): the federated masks' seeds are agreed per pair of
+  // Only the PSI and the lending check read the session key (Round 84; the lending check since Round 86): the federated masks' seeds are agreed per pair of
   // clients by X25519, so a federated stage must not draw the key bus.
-  const readsKey = rowsOf(usecase).some(({ s, row }) => s.stageId === "qsmpc_compute" && row.channel === "classical");
+  const readsKey = rowsOf(usecase).some(({ s, row }) => (s.stageId === "qsmpc_compute" && row.channel === "classical") || (s.stageId === "private_liquidation" && row.channel === "fhe"));
   check("legend", l.keyBus === readsKey,
     `${usecase}'s legend ${l.keyBus ? "lists" : "omits"} the key bus, and ${readsKey ? "a" : "no"} stage reads the session key`);
   check("legend", !legend(usecase, { qkd: "pqc-only" }).lanes.includes("quantum"),

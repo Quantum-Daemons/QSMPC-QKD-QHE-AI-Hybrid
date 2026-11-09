@@ -346,6 +346,22 @@ The finance page's main PSI is two-party, RFC 9497's OPRF. Beside it, when ticke
 - **What it does not provide.** Every bank runs in this tab, so the separation is notional. WRK17b's security against all but one malicious party is the protocol's property, and at the pinned pre-release commit nothing here claims it between hosts. Its oblivious transfers rest on a discrete-log assumption, so it is not post-quantum, and a recording could be broken later; nothing is sent between hosts here to record.
 - **Size.** The circuit compares every pair, so it is quadratic in the list. Dedicated protocols scale far beyond this (Kolesnikov et al., CCS 2017: five parties with $`2^{20}`$ items each in 72 s, semi-honest), and the 10,000-accounts target of the original plan is not met here.
 
+## The private liquidation check (DeFi lending page)
+
+Bob holds his balances and the CKKS secret key, the pool holds its liquidation thresholds, and prices and the interest index are public. One check, implemented in `web/src/lib/lending/privateCheck.ts`:
+
+1. Bob encrypts $`[c_1, c_2, \tilde d / 1000]`$ into one ciphertext, signs it with ML-DSA and seals it with AES-256-GCM under a key derived from the PQC session key.
+2. The pool checks the signature, multiplies by its weights $`[p_1 \mathrm{LT}_1 / 1000,\ p_2 \mathrm{LT}_2 / 1000,\ -I_t]`$, sums the three slots with two rotations, adds the conjugate to cancel the imaginary half, and adds a mask on every slot, uniform on $`[-2^{36}, 2^{36})`$, which it keeps.
+3. Bob decrypts $`M + r`$, so the two hold additive shares of $`M`$.
+4. Both enter the existing two-party argmax over $`(M + \text{offset},\ \text{offset})`$. The first maximum wins, so index 1 means $`M < 0`$ strictly. Both receive that one bit.
+
+- **What each side learns.** The pool: ciphertexts and the bit. Bob: the masked margin and the bit. Neither sees $`M`$, which is what keeps the thresholds from Bob, and the balances are under Bob's key throughout.
+- **When it protects nothing.** With public thresholds, as on a public chain, Bob already knows $`M`$ and the mask and the circuit have nothing to hide. The check only earns its place when the thresholds are the pool's own.
+- **What it does not provide.** Semi-honest only: nothing proves Bob encrypted his real balances (commitments and zero-knowledge proofs would be needed), and a malicious Bob could probe the thresholds with crafted ciphertexts, the shape of MUSE (Lehmkuhl et al., USENIX Security 2021). Both parties run in one tab, so the separation is notional. The output bit and any settlement are visible, and repeated bits narrow the thresholds down.
+- **The mask is statistical.** For $`r`$ uniform on $`[-R, R)`$, $`\mathrm{SD}(x + r, x' + r) = |x - x'| / (2R)`$, and the run reports the sum over the slots it masks. At double precision the width is capped by the decode error, which is why a margin within a few hundredths of a stable unit of zero can come out either way.
+- **Post-quantum status.** ML-KEM (with X25519 as a hedge), ML-DSA and CKKS rest on lattice assumptions. The garbled circuit's oblivious transfers rest on discrete logs: a deployment's sealed session would keep them from outsiders, but a counterparty that records them could open them with a future quantum computer.
+- **No chain.** There is no contract, no oracle and no real price. Aave V4's target health factor and auction-style bonus are not modelled. The closest published design found is Martinico, Calabrese, Rubin and Ciampi (ACNS 2026), which proves a stronger notion against a corrupted decryptor in the UC model; this page gives no such guarantee.
+
 ## Explicitly out of scope (PoC)
 - Side-channel / fault attacks on the host.
 - Formal verification of the protocols (referenced papers carry the proofs).

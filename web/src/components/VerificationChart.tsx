@@ -165,7 +165,7 @@ export interface EncryptedAgreementPlot {
  * An observer rather than one pass: a resize gives the symbols new keys (recharts keys them on their
  * pixel position), so React mounts fresh nodes with the role back on them.
  */
-function MarksHidden({ children }: { children: ReactNode }) {
+export function MarksHidden({ children }: { children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const root = ref.current;

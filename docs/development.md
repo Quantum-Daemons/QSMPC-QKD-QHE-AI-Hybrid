@@ -174,6 +174,10 @@ supported platform, or `ExportWebAssembly.jl` out of WIP.
 ---
 
 
+## The lending page's checks
+
+`npm run check:lending` holds the market to closed forms, Aave's own worked example, its knots and its books. `npm run check:lending-private` runs the private check on the real node-seal and Polytune against the same check in the clear: every checkpoint's bit, positions built one stable unit either side of zero, the masks, the circuit's size, a tampered, replayed or wrongly signed submission, and the worker pool's own path through a stub `Worker`. Both run in CI and in `scripts/ci_local.sh`.
+
 ## Bills of materials
 
 **SBOMs.** The `sbom` job in `.github/workflows/ci.yml` runs `scripts/generate_sbom.sh` on every push and keeps the output as a 90-day workflow artefact: CycloneDX 1.7 documents for `requirements.lock` (cyclonedx-py), `web/package-lock.json` without development dependencies (cyclonedx-npm) and `wasm/qsh-mpc/Cargo.lock` (cargo-cyclonedx). All three tools are Apache-2.0. No container image is built in CI, so there is no SBOM of an image.

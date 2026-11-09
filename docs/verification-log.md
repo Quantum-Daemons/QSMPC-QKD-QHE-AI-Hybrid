@@ -3986,3 +3986,14 @@ Republished on the owner's approval, each file fetched back and compared with th
 | the four fixes from the previous walk | The prior-art row, the clock's legend, no repeated measured MPC rows at scale 1, no flattened `calibration.*` rows |
 | pins | The cards show `eb15e2a93616`, `e822202dacbc`, `78ef41898e3d` and `1c198d29f934` |
 | medical, telecom, satellite | Each passes; no horizontal overflow; no console error on any page |
+
+### Round 86, PR #17 on the deployed site (2026-11-09)
+
+`main` was `786bb13`, bundle `index-BFh2pMO-.js`, read in a browser on the public URL.
+
+| what | read |
+|---|---|
+| the CBOM card on the Validations page | 21 rows, and the JSON file it links to parses |
+| the type scale | body line height 24 px on 16 px text, card headings 16 px |
+| every page | no horizontal overflow and no console error |
+

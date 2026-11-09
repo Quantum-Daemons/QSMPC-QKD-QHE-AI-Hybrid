@@ -168,7 +168,11 @@ step "11c/18 The PSI among banks under MPC"
 ( cd web && npm run --silent check:multi-psi >/tmp/ci_multi_psi.log 2>&1 ) \
   && ok "the PSI among banks matches the intersection in the clear" || { bad "the PSI among banks under MPC"; tail -12 /tmp/ci_multi_psi.log; }
 
-step "11d/18 The CBOM against the vendored CycloneDX 1.7 schema"
+step "11d/18 The lending model and its private check"
+( cd web && npm run --silent check:lending >/tmp/ci_lending.log 2>&1 && npm run --silent check:lending-private >>/tmp/ci_lending.log 2>&1 ) \
+  && ok "the lending model and its private check" || { bad "the lending model and its private check"; tail -12 /tmp/ci_lending.log; }
+
+step "11e/18 The CBOM against the vendored CycloneDX 1.7 schema"
 $PY scripts/validate_cyclonedx.py web/public/cbom/qsh.cdx.json >/tmp/ci_cbom.log 2>&1 \
   && ok "the CBOM validates" || { bad "the CBOM"; tail -8 /tmp/ci_cbom.log; }
 

@@ -4,7 +4,7 @@
 // (WS) transport branch, the live event stream, metrics, signature, and GIF/PNG frame capture.
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { api, type PipelineEvent, streamRun } from "./api";
-import { multiPartyPsiCfg, benchCfg, dataCfg, idsCfg, qkdCfg, qrngCfg, webCfg } from "./config";
+import { multiPartyPsiCfg, benchCfg, dataCfg, idsCfg, lendingCfg, qkdCfg, qrngCfg, webCfg } from "./config";
 import { FREE_SPACE } from "./quantumSim";
 import { assembleBenchmark, clientFlow, type PipelineControl, runClientPipeline } from "./clientCompute";
 import { isClientDemo } from "./demoMode";
@@ -28,6 +28,8 @@ import type { DiagramConfig } from "./useCaseFlows";
 export const runsQsmpc = (usecase: string) => clientFlow(usecase).includes("qsmpc_compute");
 export const runsInference = (usecase: string) => clientFlow(usecase).includes("private_inference");
 export const runsFibreQkd = (usecase: string) => clientFlow(usecase).includes("qkd_key_agreement");
+/** Whether any quantum channel runs at all. The lending page has none, so its profile switch and QKD controls have nothing to read them. */
+export const runsAnyQkd = (usecase: string) => clientFlow(usecase).some((s) => s === "qkd_key_agreement" || s === "satellite_qkd");
 
 /** Stages whose implementation reads `config.inference` to choose a backend.
  *
@@ -175,6 +177,13 @@ export const makeDefaultParams = () => ({
   qrng_bits: qrngCfg().bits,
   n_per_class: idsCfg().n_per_class,
   aml_transactions: dataCfg().aml_transactions,
+  // The lending page's market (Round 86). `lending/model.ts` `withRunParams` reads them; percentages because the panel shows them so.
+  lending_borrowers: lendingCfg().borrowers,
+  lending_bob_ltv_pct: lendingCfg().bob_initial_ltv * 100,
+  lending_shock_hour: lendingCfg().shock_hour,
+  lending_shock_pct: lendingCfg().shock_fraction * 100,
+  lending_vol_mult: 1,
+  lending_checks: lendingCfg().check_points,
   qubits: benchCfg().quantum_qubits,
   qrng_eps_log2: qrngCfg().security_epsilon_log2,   // LHL extractor security 2^this (toeplitz/seedless)
   qsmpc_op: "",          // "" = the use case's default, which ParameterPanel names
@@ -346,6 +355,8 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usecase]);
 
+  // A flow with no quantum channel signs and draws "pqc-only", whatever the switch held on the last page.
+  const effectiveQkd = runsAnyQkd(usecase) ? qkd : "pqc-only";
   const buildConfig = () => {
     // spread every numeric/editable param into the run config; the backend + demo read the keys they
     // know (ctx.config.get(key, <config default>)), so a Parameters-panel edit overrides the default.
@@ -357,7 +368,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // parameters that page does not even render, where the free-space downlink gives roughly 125.
     // A number labelled `measured` that describes a different channel is the defect class this
     // project treats as most serious, and it was caused by a missing key rather than by wrong maths.
-    const c: Record<string, unknown> = { usecase, kem, qkd, fhe, mpc, sig, workload, ...nums };
+    const c: Record<string, unknown> = { usecase, kem, qkd: effectiveQkd, fhe, mpc, sig, workload, ...nums };
     // Gated on the SAME predicates that decide whether the control is rendered, because `params`
     // survives a use-case change and the Orchestration page changes it without remounting. Set QSMPC
     // op = sum, Inference = qcnn and prime = 97 on Finance, then switch to Generic demo: the three
@@ -409,6 +420,8 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   // assemble the unified benchmark from the finished run (prefer the server-assembled
   // `benchmark_result`; fall back to a client-side assembly for the pure demo / older runs)
   const finishBenchmark = (st: { metrics: Record<string, any>; artifacts: Record<string, any> }) => {
+    // No model and no comparison circuit, so no row of the benchmark describes this run.
+    if (!clientFlow(usecase).includes("quantum_comparison")) return;
     const server = (st.artifacts as any)?.benchmark_result;
     setBenchmark(server ?? assembleBenchmark(usecase, buildConfig(),
       { metrics: st.metrics, artifacts: st.artifacts, stageMs: stageMsRef.current }));
@@ -522,11 +535,11 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   // protocol and the QSMPC op live in params, not in the family selects, and passing only the family
   // is what once let an E91 run draw a BB84 arrow.
   const diagramConfig: DiagramConfig = useMemo(() => ({
-    kem, qkd, sig, optiqkd, workload, mpcCnn: mpcCnn && DEMO, multiPsi: multiPsi && DEMO,
+    kem, qkd: effectiveQkd, sig, optiqkd, workload, mpcCnn: mpcCnn && DEMO, multiPsi: multiPsi && DEMO,
     qkdProtocol: String(params.qkd_protocol ?? ""),
     qsmpcOp: String(params.qsmpc_op ?? ""),
     inference: String(params.inference ?? ""),
-  }), [kem, qkd, sig, optiqkd, workload, params, mpcCnn, multiPsi]);
+  }), [kem, effectiveQkd, sig, optiqkd, workload, params, mpcCnn, multiPsi]);
   useEffect(() => {
     setRunStatus(inFlight ? { state, active } : null);
   }, [inFlight, state, active]);

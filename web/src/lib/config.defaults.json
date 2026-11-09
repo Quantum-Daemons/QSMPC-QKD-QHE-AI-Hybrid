@@ -203,6 +203,59 @@
     "rf_estimators": 200,
     "test_fraction": 0.25
   },
+  "lending": {
+    "adjust_fraction": 0.1,
+    "adjust_probability": 0.02,
+    "annual_vol": [
+      0.8,
+      0.6
+    ],
+    "base_rate": 0.0,
+    "bob_initial_ltv": 0.62,
+    "borrowers": 24,
+    "check_points": 8,
+    "close_factor": 0.5,
+    "collateral_log_mean": 11.0,
+    "collateral_log_sd": 0.6,
+    "full_close_at_or_below_hf": 0.95,
+    "hours": 720,
+    "initial_prices": [
+      3000.0,
+      60000.0
+    ],
+    "jump_mean": -0.08,
+    "jump_sd": 0.05,
+    "jumps_per_year": 6.0,
+    "liquidation_bonus": 0.05,
+    "liquidation_thresholds": [
+      0.83,
+      0.78
+    ],
+    "ltv_max": 0.72,
+    "ltv_min": 0.4,
+    "margin_mask_bits": 36,
+    "margin_scale_bits": 16,
+    "max_borrowers": 48,
+    "max_workers": 4,
+    "optimal_utilisation": 0.8,
+    "price_correlation": 0.7,
+    "reserve_factor": 0.1,
+    "shock_fraction": 0.35,
+    "shock_hour": 360,
+    "slope1": 0.04,
+    "slope2": 0.6,
+    "supply": 1500000.0,
+    "sweep_multipliers": [
+      0.25,
+      0.5,
+      1.0,
+      2.0,
+      3.0,
+      4.0,
+      6.0
+    ],
+    "sweep_seeds": 24
+  },
   "link_profiles": {
     "downlink": {
       "jinan1_2022_jinan": {
