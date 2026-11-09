@@ -1727,6 +1727,12 @@ project is a browser tab.
   URL: https://github.com/yushan1986/5g-nidd
   Added: 2026-11-09
   Read the README, the attack commands, the loading script and `IP_Change.ipynb`. There is no labelling step. The repository carries no licence, so nothing from it is reused here.
+- **Window statistics from the 5G-NIDD captures**: the study and what it found, in [`5g-nidd-window-features.md`](5g-nidd-window-features.md).
+- **Python walkthroughs on the demo**: marimo, JupyterLite and pyvista-wasm assessed against the demo's constraints, in [`notebook-walkthroughs.md`](notebook-walkthroughs.md).
+- **Mirsky, Doitshman, Elovici and Shabtai, "Kitsune: An Ensemble of Autoencoders for Online Network Intrusion Detection"**, NDSS 2018, arXiv:1802.09089 `[link]`
+  URL: https://arxiv.org/abs/1802.09089
+  Added: 2026-11-09
+  Read for its feature extractor, AfterImage: statistics per host, channel and socket over damped windows with decay $`d_\lambda(t) = 2^{-\lambda t}`$, 115 features. The source of the idea of several time windows per channel in the window study; that study uses plain sliding windows and a supervised booster, and not Kitsune's autoencoders.
 - **Samarakoon, Siriwardhana, Porambage, Liyanage, Chang, Kim, Kim and Ylianttila, "5G-NIDD"**, arXiv:2212.01298, 2022 `[link]`
   URL: https://arxiv.org/abs/2212.01298
   Added: 2026-11-09
