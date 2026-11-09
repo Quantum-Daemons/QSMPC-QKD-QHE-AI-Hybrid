@@ -9,16 +9,20 @@ WHAT THIS IS
     not a comparison and neither is the other's baseline. `registry.py` carries that sentence and
     the page prints it.
 
-WHAT CHANGED IN ROUND 86: THE CAPTURE TIME CAME OUT
+WHAT CHANGED IN ROUND 86: THE FILE LABEL CAME OUT
     From Round 50 this model read `IdleTime`, a column of the corpus's 113-column export that the
     52-column `Combined.csv` omits, and it scored accuracy 0.9829 against 0.7616 without it. Round 50
     took that for a flow statistic, on the argument that 17 distinct integer values cannot address a
     row. They do not have to. All 17 are multiples of 128, the spacing of a 32-bit float at this
-    size, and as Unix times they fall between 13 and 15 September 2022, so the column reads as WHEN A
-    FLOW WAS CAPTURED, and each value is dominated by one attack scenario and benign traffic. The
-    attacks were run in their own windows, as the loader's reason for dropping `StartTime` says, so
-    the column names the scenario. `capture_time_counterfactual` below refits with it restored every
-    run, beside the row-counter one, and the shipped model does not read it.
+    size, and they go with the attack sessions and the two base stations, one value per session
+    file, so the column NAMES THE FILE, and each file is one attack. `file_label_counterfactual`
+    below refits with it restored every run, beside the row-counter one, and the shipped model does
+    not read it.
+
+    Two more measurements come with that, because the headline is a random split and the question is
+    how far to believe it. `flow_level_ceiling` is the accuracy no model reading these 46 columns can
+    beat on this corpus, since whole feature vectors occur under both Benign and UDPFlood.
+    `cross_base_station` trains on one base station's file and tests on the other's.
 
 THE LEAK COUNTERFACTUAL, kept from the previous round because it is still the honest control
     The corpus carries four integer row counters - `Unnamed: 0` (the CSV's own index), `Rank`, `Seq`
@@ -77,26 +81,29 @@ KEY = "telecom_ids.nidd"
 #: restate it as a literal inside the `record_metrics` dict - is the one at
 #: `scripts/train/telecom_ids.py:283-285`; the `**record` entry has no static key and is skipped.
 
-CAPTURE_TIME_NOTE = (
-    "`IdleTime` holds 17 values, all multiples of 128, the spacing of a 32-bit float at this size. As "
-    "Unix times they fall between 13 and 15 September 2022, and each is dominated by one attack "
-    "scenario and benign traffic, so the column reads as when a flow was captured, the reason the "
-    "loader drops `StartTime`. Restoring it lifts accuracy by about 22 points. That gain is a model "
-    "learning when each attack was run, and none of it is a flow statistic. The shipped model does "
-    "not read it."
+FILE_LABEL_NOTE = (
+    "`IdleTime` holds 17 values, all multiples of 128, the spacing of a 32-bit float at this size, "
+    "one for each attack session and base station. Read as Unix times they fall between 13 and 15 "
+    "September 2022, and the dataset paper gives the captures as 26 and 29 August 2022, so the "
+    "column does not measure anything about the flow: it names the file the flow came from, and each "
+    "file is one attack. Restoring it lifts accuracy by about 22 points. That gain is a model "
+    "recognising the file, and none of it is a flow statistic. The shipped model does not read it."
 )
 
 FRAMING = (
     "Real 5G network traffic, 9 attack classes, 46 flow-statistic features. This is a "
     "NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no "
     "shared labels, no shared features, so the two scores are not a comparison. "
-    "UNTIL ROUND 86 THIS MODEL ALSO READ `IdleTime` AND SCORED ACCURACY 0.9829. That column reads as "
-    "when a flow was captured, not as anything the flow did, so the model was learning when each "
-    "attack was run; it no longer reads it, and accuracy is 0.7616. "
-    "Two controls are recorded beside the headline and both are worth more than the headline: "
-    "`capture_time_counterfactual` restores that column and `leak_counterfactual_accuracy` restores "
+    "UNTIL ROUND 86 THIS MODEL ALSO READ `IdleTime` AND SCORED ACCURACY 0.9829. That column names "
+    "the attack-session file a flow came from, not anything the flow did, so the model was "
+    "recognising the file; it no longer reads it, and accuracy is 0.7616. "
+    "Four numbers are recorded beside the headline and each is worth more than the headline. "
+    "`file_label_counterfactual` restores that column and `leak_counterfactual_accuracy` restores "
     "four integer row counters, and each takes accuracy to 0.98 or above, which is not a better "
-    "model but a leak."
+    "model but a leak. `flow_level_ceiling` is about 0.7685, the most any model reading these 46 "
+    "columns could score, because whole feature vectors occur under both Benign and UDPFlood. And "
+    "`cross_base_station` trains on one base station and tests on the other, where accuracy falls to "
+    "about 0.42 and 0.61: the random split behind the headline flatters it."
 )
 
 METRIC_NOTE = (
@@ -136,14 +143,14 @@ BASELINE_GAP_NOTE = (
     "macro F1, so putting them in `baseline` would render an accuracy beside a macro F1 as though "
     "the two were the same scale. "
     "WHAT THE COMPARISON CAN AND CANNOT SAY. This model scores about 0.7616 9-class accuracy with "
-    "every row identifier, every host fingerprint and the capture time dropped. The 9-class anchors "
+    "every row identifier, every host fingerprint and the file label dropped. The 9-class anchors "
     "are the dataset paper's random forest at 99.48% accuracy on its top-10 features (Samarakoon et "
     "al., arXiv:2212.01298) and BiTAD (Future Internet 17(11) 482) at 0.9047; this model sits below "
     "them, on its own stratified random split rather than a shared one, so each is an anchor and "
     "not a head-to-head. "
     "WHAT THE COUNTERFACTUALS SHOW. Restoring the corpus's integer row counters takes accuracy to "
-    "about 0.9997, recorded every run as `leak_counterfactual_accuracy`, and restoring the capture "
-    "time to about 0.9829, recorded as `capture_time_counterfactual`: that is what a bookkeeping "
+    "about 0.9997, recorded every run as `leak_counterfactual_accuracy`, and restoring the file "
+    "label to about 0.9829, recorded as `file_label_counterfactual`: that is what a bookkeeping "
     "column is worth on this corpus. They do not show what the published figures used. Whether the "
     "published figures lean on such columns is OPEN: the dataset paper's top-10 inputs include the "
     "sequence number `Seq` and `Offset`, Wang/Fok/Thing's inputs include `Offset`, both columns are "
@@ -175,9 +182,9 @@ def main() -> int:
     assert x.shape[1] == len(D.NIDD_FEATURES) == 46, (
         f"loader returned {x.shape[1]} columns for {len(D.NIDD_FEATURES)} declared feature names - "
         "the ONNX input contract and the published feature_spec would disagree")
-    assert not set(D.NIDD_CAPTURE_TIME) & set(feature_names), (
-        "the capture-time column is in the feature set, so this run would score about 0.98 by "
-        "reading when each attack was run. Do not record it as this model.")
+    assert not set(D.NIDD_FILE_LABEL) & set(feature_names), (
+        "the file-label column is in the feature set, so this run would score about 0.98 by "
+        "recognising each attack's file. Do not record it as this model.")
     counts = np.bincount(y, minlength=len(class_names))
     majority_baseline = float(counts.max() / counts.sum())
     print(f"  {x.shape[0]:,} flows x {x.shape[1]} features, {len(class_names)} classes")
@@ -236,12 +243,12 @@ def main() -> int:
         f"accuracy {m['aggregate_accuracy']:.4f} does not beat the majority-class baseline "
         f"{majority_baseline:.4f} - this model would be worse than guessing the commonest label")
     # THE REGRESSION THIS GUARDS IS SPECIFIC: 0.98 is what this configuration scores when it reads the
-    # capture time, and it is the number a leak produces without any other symptom. Only on a full
+    # file label, and it is the number a leak produces without any other symptom. Only on a full
     # read - a --nrows head is a different distribution and its score means nothing.
     if args.nrows is None:
         assert 0.70 < m["aggregate_accuracy"] < 0.85, (
             f"accuracy {m['aggregate_accuracy']:.4f} against the measured 0.76. Near 0.98 means a "
-            f"capture-time column is back in the features.")
+            f"file-label column is back in the features.")
 
     record: dict = {
         "macro_f1": round(float(m["macro_f1"]), 6),
@@ -257,21 +264,27 @@ def main() -> int:
         "dropped_columns": dict(D.NIDD_DROPPED),
     }
 
-    # ---- THE CAPTURE-TIME COUNTERFACTUAL: what a model reading when each attack ran would score ----
+    # ---- THE FILE-LABEL COUNTERFACTUAL: what a model reading which file a flow came from would score
     # Loaded through the same loader with the same encoding, so the only difference is the one column.
-    print(f"\n  refitting with {list(D.NIDD_CAPTURE_TIME)} restored (the capture-time counterfactual) ...")
-    xc, yc, _, _ = D.load_5g_nidd(nrows=args.nrows, with_capture_time=True)
+    print(f"\n  refitting with {list(D.NIDD_FILE_LABEL)} restored (the file-label counterfactual) ...")
+    xc, yc, _, _ = D.load_5g_nidd(nrows=args.nrows, with_file_label=True)
     assert np.array_equal(yc, y), "the two loads disagree on the labels; the counterfactual is void"
     c_acc, c_macro = _refit(args, xc, yc, seed=args.seed)
     print(f"    macro F1 {c_macro:.4f} (vs {m['macro_f1']:.4f})   accuracy {c_acc:.4f} (vs {m['aggregate_accuracy']:.4f})")
-    record["capture_time_counterfactual"] = {
-        "restored": list(D.NIDD_CAPTURE_TIME),
+    record["file_label_counterfactual"] = {
+        "restored": list(D.NIDD_FILE_LABEL),
         "n_features": int(xc.shape[1]),
         "macro_f1": round(c_macro, 6),
         "accuracy": round(c_acc, 6),
         "accuracy_gain": round(c_acc - float(m["aggregate_accuracy"]), 6),
-        "what_this_means": CAPTURE_TIME_NOTE,
+        "what_this_means": FILE_LABEL_NOTE,
     }
+
+    # ---- HOW FAR THE HEADLINE CAN BE TRUSTED: the ceiling of these columns, and the other base station
+    record["flow_level_ceiling"] = _flow_level_ceiling(x, y, class_names)
+    print(f"\n  ceiling of any per-flow model on these columns: accuracy {record['flow_level_ceiling']['accuracy']:.4f}")
+    if args.nrows is None:
+        record["cross_base_station"] = _cross_base_station(args, x, y, class_names)
 
     # ---- THE COUNTERFACTUAL: the same fit with the four row identifiers restored ----------------
     # Loaded through the same loader with the same encoding rather than re-derived here, so the only
@@ -320,7 +333,7 @@ def main() -> int:
     # classes is the detector working rather than a sampling artefact. What it must NOT still fire on
     # is the four identifiers, and it cannot, because they are not in this matrix - that contrast is
     # the whole point and `single_feature_leak_check` records it as data. The check could not tell
-    # that `IdleTime` was a capture time, and until Round 86 this comment argued it was not; what
+    # that `IdleTime` was a per-file label, and until Round 86 this comment argued it was not; what
     # told it was reading the values. The flagged list is published; a reader can check it.
     print("\n  single-feature leak check on the held-out split (a warning, not a gate):")
     record["single_feature_leak_check"] = _leak_check(xte, yte, feature_names, class_names,
@@ -359,7 +372,7 @@ def main() -> int:
             "46 of the 113 columns in BTS1_BTS2_fields_preserved.csv, the corpus's wide export. "
             "The 67 dropped columns are listed above WITH THE REASON each was dropped. They are 3 "
             "targets, 9 row identifiers, 10 host fingerprints, 5 columns bit-identical to `Dur`, "
-            "1 capture time, "
+            "1 file label, "
             "and 39 that hold exactly one state in this release - 30 of those are 100% null, "
             "including every SIntPkt/DIntPkt inter-packet-time and jitter column, which are EMPTY "
             "here and not merely uninformative. "
@@ -438,6 +451,74 @@ def _refit(args, x, y, *, seed: int) -> tuple[float, float]:
     model.set_params(device="cpu")
     pred = model.predict_proba(xte).argmax(1)
     return float(metrics.accuracy(yte, pred)), float(metrics.macro_f1(yte, pred))
+
+
+def _flow_level_ceiling(x, y, class_names) -> dict:
+    """The accuracy no model reading only these columns can beat on this corpus.
+
+    Rows with the same feature vector get the same prediction, so the best any classifier can do is the
+    most common label of each distinct vector. Whole vectors occur under both Benign and UDPFlood, and
+    this is why tuning cannot move the headline: it sits just under this figure. It is computed over the
+    whole corpus, so it is an upper bound for any split. The idea is the "near-duplicate flows" of Flood
+    et al. (EuroS&P 2024), taken to exact identity across classes.
+    """
+    rows = np.ascontiguousarray(x.astype(np.float32))
+    keys = rows.view(np.dtype((np.void, rows.dtype.itemsize * rows.shape[1]))).ravel()
+    _, group = np.unique(keys, return_inverse=True)
+    n_classes = len(class_names)
+    pairs = group.astype(np.int64) * n_classes + y.astype(np.int64)
+    unique_pairs, counts = np.unique(pairs, return_counts=True)
+    groups = unique_pairs // n_classes
+    best = np.zeros(int(groups.max()) + 1, dtype=np.int64)
+    np.maximum.at(best, groups, counts)
+    labels_per_group = np.bincount(groups)
+    ambiguous = labels_per_group > 1
+    rows_per_group = np.bincount(group)
+    pair_names: dict[str, int] = {}
+    # `groups` is sorted, so each ambiguous group's labels are one contiguous slice of `unique_pairs`.
+    which = np.flatnonzero(ambiguous)
+    for lo, hi in zip(np.searchsorted(groups, which, "left"), np.searchsorted(groups, which, "right"), strict=True):
+        name = " / ".join(class_names[int(c)] for c in unique_pairs[lo:hi] % n_classes)
+        pair_names[name] = pair_names.get(name, 0) + 1
+    return {
+        "accuracy": round(float(best.sum() / len(y)), 6),
+        "distinct_feature_vectors": int(len(best)),
+        "vectors_under_more_than_one_class": int(ambiguous.sum()),
+        "share_of_rows_in_those_vectors": round(float(rows_per_group[ambiguous].sum() / len(y)), 6),
+        "class_sets_of_those_vectors": dict(sorted(pair_names.items(), key=lambda kv: -kv[1])),
+    }
+
+
+def _cross_base_station(args, x, y, class_names) -> dict:
+    """Train on one base station's file and test on the other's, both ways.
+
+    The dataset was captured at two base stations and the CSV concatenates their files (the row index
+    restarts once, at `D.NIDD_SECOND_FILE_STARTS_AT`). A stratified random split puts flows of the same
+    attack session on both sides; this does not. Wang, Fok and Thing report the same fall on the
+    binary task, and it is the fairer reading of what a model of this corpus would do elsewhere.
+    """
+    import xgboost as xgb  # noqa: F401  (the booster's own dependency; imported here for a clear error)
+    from sklearn.metrics import f1_score
+
+    cut = D.NIDD_SECOND_FILE_STARTS_AT
+    assert len(y) > cut and set(np.unique(y[:cut])) == set(np.unique(y[cut:])) == set(range(len(class_names))), (
+        "the two base-station files should each hold all nine classes; the file boundary has moved")
+    out: dict = {}
+    for name, (tr, te) in {"first_file_to_second": (np.arange(cut), np.arange(cut, len(y))),
+                           "second_file_to_first": (np.arange(cut, len(y)), np.arange(cut))}.items():
+        model = _booster(args)
+        model.fit(x[tr], y[tr])
+        model.set_params(device="cpu")
+        pred = model.predict_proba(x[te]).argmax(1)
+        per = f1_score(y[te], pred, average=None, labels=list(range(len(class_names))))
+        out[name] = {
+            "accuracy": round(float(metrics.accuracy(y[te], pred)), 6),
+            "macro_f1": round(float(metrics.macro_f1(y[te], pred)), 6),
+            "benign_f1": round(float(per[class_names.index("Benign")]), 6),
+            "udpflood_f1": round(float(per[class_names.index("UDPFlood")]), 6),
+        }
+        print(f"    train {name}: accuracy {out[name]['accuracy']:.4f}, macro F1 {out[name]['macro_f1']:.4f}")
+    return out
 
 
 def _linear_floor(xtr, ytr, xte, yte, class_names, *, n_rows: int, seed: int) -> dict:
@@ -532,9 +613,9 @@ def _leak_check(xte, yte, feature_names, class_names, *, seed: int, n_rows: int 
             "The distinction that matters is against `leak_counterfactual_*`: `Unnamed: 0`, `Rank`, "
             "`Seq` and `Offset` cleared the same threshold while being bookkeeping columns that "
             "carry no information about the traffic at all, which is why those four are dropped and "
-            "these are kept. The check cannot tell a capture time from a statistic: `IdleTime` is "
-            "out because its values read as when a flow was captured, which only reading the values "
-            "showed, and `capture_time_counterfactual` records what it was worth. Recorded rather "
+            "these are kept. The check cannot tell a file label from a statistic: `IdleTime` is "
+            "out because its values name the attack session's file, which only reading the values "
+            "showed, and `file_label_counterfactual` records what it was worth. Recorded rather "
             "than described so the distinction is checkable."),
     }
 

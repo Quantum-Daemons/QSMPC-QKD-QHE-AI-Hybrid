@@ -1146,9 +1146,9 @@ def build_telecom_nidd(rng: np.random.Generator) -> dict:
             "qsh.models.datasets.NIDD_DROPPED and in this model's feature_spec.json. Nine of those "
             "are integer row identifiers whose restoration takes accuracy to about 0.9997, the "
             "range published for this corpus; that counterfactual is recorded in "
-            "models/metrics.json as leak_counterfactual_*. One more is `IdleTime`, which reads as "
-            "the time of capture and is worth 22 accuracy points by naming the attack scenario; "
-            "that is recorded as capture_time_counterfactual."
+            "models/metrics.json as leak_counterfactual_*. One more is `IdleTime`, which names "
+            "the attack-session file a flow came from and is worth 22 accuracy points for that "
+            "reason; it is recorded as file_label_counterfactual."
         ),
         "input": {"shape": [1, x.shape[1]], "dtype": "float32", "preprocessing": [],
                   "layout": ("samples[i] is one network flow's 46 features, in the order below. The "

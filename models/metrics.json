@@ -1406,7 +1406,7 @@
   },
   "telecom_ids.nidd": {
     "aggregate_accuracy": 0.761558,
-    "baseline_gap_note": "There is no baseline number to have a gap to, and that is a deliberate registry decision rather than a missing measurement: the two figures usually quoted for this corpus (99.61% for a classical CNN, 99.71% for a hybrid quantum-classical Quan-ConvCNN, Wang/Fok/Thing) are ACCURACIES on the BINARY benign-versus-malicious task, and this model is judged on 9-class macro F1, so putting them in `baseline` would render an accuracy beside a macro F1 as though the two were the same scale. WHAT THE COMPARISON CAN AND CANNOT SAY. This model scores about 0.7616 9-class accuracy with every row identifier, every host fingerprint and the capture time dropped. The 9-class anchors are the dataset paper's random forest at 99.48% accuracy on its top-10 features (Samarakoon et al., arXiv:2212.01298) and BiTAD (Future Internet 17(11) 482) at 0.9047; this model sits below them, on its own stratified random split rather than a shared one, so each is an anchor and not a head-to-head. WHAT THE COUNTERFACTUALS SHOW. Restoring the corpus's integer row counters takes accuracy to about 0.9997, recorded every run as `leak_counterfactual_accuracy`, and restoring the capture time to about 0.9829, recorded as `capture_time_counterfactual`: that is what a bookkeeping column is worth on this corpus. They do not show what the published figures used. Whether the published figures lean on such columns is OPEN: the dataset paper's top-10 inputs include the sequence number `Seq` and `Offset`, Wang/Fok/Thing's inputs include `Offset`, both columns are dropped here, and no published ablation settles it.",
+    "baseline_gap_note": "There is no baseline number to have a gap to, and that is a deliberate registry decision rather than a missing measurement: the two figures usually quoted for this corpus (99.61% for a classical CNN, 99.71% for a hybrid quantum-classical Quan-ConvCNN, Wang/Fok/Thing) are ACCURACIES on the BINARY benign-versus-malicious task, and this model is judged on 9-class macro F1, so putting them in `baseline` would render an accuracy beside a macro F1 as though the two were the same scale. WHAT THE COMPARISON CAN AND CANNOT SAY. This model scores about 0.7616 9-class accuracy with every row identifier, every host fingerprint and the file label dropped. The 9-class anchors are the dataset paper's random forest at 99.48% accuracy on its top-10 features (Samarakoon et al., arXiv:2212.01298) and BiTAD (Future Internet 17(11) 482) at 0.9047; this model sits below them, on its own stratified random split rather than a shared one, so each is an anchor and not a head-to-head. WHAT THE COUNTERFACTUALS SHOW. Restoring the corpus's integer row counters takes accuracy to about 0.9997, recorded every run as `leak_counterfactual_accuracy`, and restoring the file label to about 0.9829, recorded as `file_label_counterfactual`: that is what a bookkeeping column is worth on this corpus. They do not show what the published figures used. Whether the published figures lean on such columns is OPEN: the dataset paper's top-10 inputs include the sequence number `Seq` and `Offset`, Wang/Fok/Thing's inputs include `Offset`, both columns are dropped here, and no published ablation settles it.",
     "capture_time_counterfactual": {
       "accuracy": 0.982893,
       "accuracy_gain": 0.221335,
@@ -1419,6 +1419,7 @@
     },
     "carried_forward_not_remeasured": {
       "fields": [
+        "capture_time_counterfactual",
         "idle_time_ablation"
       ],
       "measured_at_git_sha": "12e0a6a-dirty",
@@ -1434,6 +1435,20 @@
       "TCPConnectScan": 20052,
       "UDPFlood": 457340,
       "UDPScan": 15906
+    },
+    "cross_base_station": {
+      "first_file_to_second": {
+        "accuracy": 0.419891,
+        "benign_f1": 0.334548,
+        "macro_f1": 0.810795,
+        "udpflood_f1": 0.0
+      },
+      "second_file_to_first": {
+        "accuracy": 0.6059,
+        "benign_f1": 0.468441,
+        "macro_f1": 0.795025,
+        "udpflood_f1": 0.555352
+      }
     },
     "dataset": "5G-NIDD (BTS1_BTS2_fields_preserved.csv)",
     "dataset_attribution": "Y. Siriwardhana et al., 'Descriptor: 5G Wireless Network Intrusion Detection Dataset (5G-NIDD)', in IEEE Data Descriptions, doi:10.1109/IEEEDATA.2025.3592888. Dataset: doi:10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361, CC BY 4.0.",
@@ -1455,7 +1470,7 @@
       "DstOui": "host fingerprint (MAC vendor prefix); also empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
       "DstRetra": "constant: a single value on all 1,215,890 rows, so it carries no state at all",
       "ERange": "empty in this release: 100% null on all 1,215,890 rows, so it carries no state at all",
-      "IdleTime": "capture time under another name: 17 values, all multiples of 128, which as Unix times fall between 13 and 15 September 2022, each dominated by one attack scenario and benign traffic. Like `StartTime` it separates the classes by when the capture ran. Kept from Round 50 to Round 86 as a flow statistic; `capture_time_counterfactual` re-measures what it is worth",
+      "IdleTime": "a per-file label under another name: 17 values, all multiples of 128, one for each attack session and base station. Read as Unix times they fall between 13 and 15 September 2022, and the dataset paper gives the captures as 26 and 29 August 2022. Like `StartTime` it separates the classes by which capture a flow came from. Kept from Round 50 to Round 86 as a flow statistic; `file_label_counterfactual` re-measures what it is worth",
       "Label": "target leak: the binary collapse of `Attack Type` (Benign vs Malicious)",
       "LastTime": "row identifier: wall-clock capture timestamp, same objection as `StartTime`",
       "Max": "duplicate of `Dur`, bit-identical on all 1,215,890 rows",
@@ -1514,9 +1529,31 @@
       ],
       "opset": null
     },
-    "framing": "Real 5G network traffic, 9 attack classes, 46 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. UNTIL ROUND 86 THIS MODEL ALSO READ `IdleTime` AND SCORED ACCURACY 0.9829. That column reads as when a flow was captured, not as anything the flow did, so the model was learning when each attack was run; it no longer reads it, and accuracy is 0.7616. Two controls are recorded beside the headline and both are worth more than the headline: `capture_time_counterfactual` restores that column and `leak_counterfactual_accuracy` restores four integer row counters, and each takes accuracy to 0.98 or above, which is not a better model but a leak.",
-    "git_sha": "12e0a6a-dirty",
-    "hf_revision_invalidated_by_retrain": "1c198d29f93467c60a9f87d449ac13d440d51c97",
+    "file_label_counterfactual": {
+      "accuracy": 0.982893,
+      "accuracy_gain": 0.221335,
+      "macro_f1": 0.994977,
+      "n_features": 47,
+      "restored": [
+        "IdleTime"
+      ],
+      "what_this_means": "`IdleTime` holds 17 values, all multiples of 128, the spacing of a 32-bit float at this size, one for each attack session and base station. Read as Unix times they fall between 13 and 15 September 2022, and the dataset paper gives the captures as 26 and 29 August 2022, so the column does not measure anything about the flow: it names the file the flow came from, and each file is one attack. Restoring it lifts accuracy by about 22 points. That gain is a model recognising the file, and none of it is a flow statistic. The shipped model does not read it."
+    },
+    "flow_level_ceiling": {
+      "accuracy": 0.768455,
+      "class_sets_of_those_vectors": {
+        "Benign / UDPFlood": 33708,
+        "SYNScan / TCPConnectScan": 2,
+        "SYNScan / UDPScan": 1,
+        "TCPConnectScan / UDPScan": 1
+      },
+      "distinct_feature_vectors": 374933,
+      "share_of_rows_in_those_vectors": 0.520105,
+      "vectors_under_more_than_one_class": 33712
+    },
+    "framing": "Real 5G network traffic, 9 attack classes, 46 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. UNTIL ROUND 86 THIS MODEL ALSO READ `IdleTime` AND SCORED ACCURACY 0.9829. That column names the attack-session file a flow came from, not anything the flow did, so the model was recognising the file; it no longer reads it, and accuracy is 0.7616. Four numbers are recorded beside the headline and each is worth more than the headline. `file_label_counterfactual` restores that column and `leak_counterfactual_accuracy` restores four integer row counters, and each takes accuracy to 0.98 or above, which is not a better model but a leak. `flow_level_ceiling` is about 0.7685, the most any model reading these 46 columns could score, because whole feature vectors occur under both Benign and UDPFlood. And `cross_base_station` trains on one base station and tests on the other, where accuracy falls to about 0.42 and 0.61: the random split behind the headline flatters it.",
+    "git_sha": "950b45a-dirty",
+    "hf_revision": "5225100720656d396e4cb7f71b49f86144448396",
     "idle_time_ablation": {
       "what_this_means": "Removing `IdleTime` ALONE costs essentially the same accuracy as removing all six columns Combined.csv omits, and both land on the score this model published while it was fitted on Combined.csv. The other five - `Dir`, `Flgs`, `TcpOpt`, `sVlan`, `dVlan` - are worth 0.0006 accuracy between them. So the model's former weakness was one absent flow statistic, not the corpus and not the method. THAT IS REDUNDANCY AND NOT EMPTINESS, stated because the shorter version would be false. Two of those five are individually strong - `Dir` scores one-vs-rest AUC 0.9811 on ICMPFlood and `TcpOpt` 0.9433 on SlowrateDoS, both above the 0.90 threshold `single_feature_leak_check` uses, and both appear in its flagged list. What the ablation shows is that the other 41 columns already carry what they carry. `IdleTime` IS NOT AN IDENTIFIER and the distinction is the same one `leak_counterfactual_*` exists to draw: it takes 17 distinct integer values over 1,215,890 rows, so it cannot encode a row position, and it separates `SlowrateDoS` - an attack defined by holding a connection idle - at one-vs-rest AUC 0.9574. A row counter that scores that well describes where a row sits in a file. This describes what the traffic did.",
       "without_all_six_columns_combined_lacks": {
@@ -1702,9 +1739,9 @@
       "n_features_total": 46,
       "n_rows_checked": 100000,
       "threshold": 0.9,
-      "what_this_means": "One-vs-rest rank-AUC per feature per class, at the 0.90 threshold scripts/prep_model_inputs.py already publishes against, measured AFTER all 66 drops. A LARGE NUMBER HERE IS EXPECTED ON THIS CORPUS AND IS NOT THE LEAK THIS MODEL IS ABOUT. The attacks are generated by distinct tools against distinct services, so a scan, a SYN flood and a slow-rate HTTP attack genuinely differ in TTL, packet rate, TCP window and ACK timing - these are the flow statistics an intrusion detector is supposed to use. The check's own docstring anticipates the case and warns rather than failing. The distinction that matters is against `leak_counterfactual_*`: `Unnamed: 0`, `Rank`, `Seq` and `Offset` cleared the same threshold while being bookkeeping columns that carry no information about the traffic at all, which is why those four are dropped and these are kept. The check cannot tell a capture time from a statistic: `IdleTime` is out because its values read as when a flow was captured, which only reading the values showed, and `capture_time_counterfactual` records what it was worth. Recorded rather than described so the distinction is checkable."
+      "what_this_means": "One-vs-rest rank-AUC per feature per class, at the 0.90 threshold scripts/prep_model_inputs.py already publishes against, measured AFTER all 66 drops. A LARGE NUMBER HERE IS EXPECTED ON THIS CORPUS AND IS NOT THE LEAK THIS MODEL IS ABOUT. The attacks are generated by distinct tools against distinct services, so a scan, a SYN flood and a slow-rate HTTP attack genuinely differ in TTL, packet rate, TCP window and ACK timing - these are the flow statistics an intrusion detector is supposed to use. The check's own docstring anticipates the case and warns rather than failing. The distinction that matters is against `leak_counterfactual_*`: `Unnamed: 0`, `Rank`, `Seq` and `Offset` cleared the same threshold while being bookkeeping columns that carry no information about the traffic at all, which is why those four are dropped and these are kept. The check cannot tell a file label from a statistic: `IdleTime` is out because its values name the attack session's file, which only reading the values showed, and `file_label_counterfactual` records what it was worth. Recorded rather than described so the distinction is checkable."
     },
-    "wall_clock_s": 73.8
+    "wall_clock_s": 84.6
   },
   "telecom_ids.qml": {
     "aggregate_accuracy": 0.986667,

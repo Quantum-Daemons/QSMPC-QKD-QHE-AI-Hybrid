@@ -647,8 +647,8 @@ def telecom_nidd() -> dict:
     per-class-floored draw of the held-out quarter the published evaluation sample holds; 4,096 of its
     16,379 rows, by a seeded permutation, keep the payload the size of the others.
 
-    `sMeanPktSz` and `TotBytes` are two of the 46 columns the model reads. The capture time is not one
-    of them, and it would have been the obvious pair member: it separates the classes best of all.
+    `sMeanPktSz` and `TotBytes` are two of the 46 columns the model reads. The file label `IdleTime` is
+    not one of them, and it would have been the obvious pair member: it separates the classes best of all.
     """
     path = REPO / "models" / "telecom_nidd" / "eval_sample.json"
     if not path.exists():
