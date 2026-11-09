@@ -6,6 +6,7 @@
  */
 
 import { encryptedLinearBatch } from "./clientFHE";
+import { asJson, checkPinned } from "./pinnedFetch";
 import {
   featureRows, flagsDigest, type ForecastEventsFile, type ForecasterWeights, plaintextForecast, scoreStretch,
   type StretchScore,
@@ -109,9 +110,11 @@ export async function evaluateForecastStudentOffThread(file: ForecastEventsFile,
 }
 
 /** The published weights, beside the evaluation sample at the same pinned revision. */
-export async function fetchForecasterWeights(modelUrl: string): Promise<ForecasterWeights> {
+export async function fetchForecasterWeights(modelUrl: string, expectedSha256: string | undefined): Promise<ForecasterWeights> {
   if (!/\/onnx\/[^/]+$/.test(modelUrl)) throw new Error(`cannot derive weights.json from "${modelUrl}"`);
   const res = await fetch(modelUrl.replace(/\/onnx\/[^/]+$/, "/weights.json"), { mode: "cors" });
   if (!res.ok) throw new Error(`the Hugging Face Hub answered HTTP ${res.status} for weights.json`);
-  return (await res.json()) as ForecasterWeights;
+  const bytes = await res.arrayBuffer();
+  await checkPinned(bytes, expectedSha256, "weights.json");
+  return asJson<ForecasterWeights>(bytes);
 }

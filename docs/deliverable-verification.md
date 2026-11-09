@@ -9027,6 +9027,7 @@ recorded separately, and nothing here changes the published model.
 | #22 | A Python walkthrough at `/walkthrough/`, served entirely from the demo's own origin |
 | #23 | The satellite's telemetry goes by one-way quasi-QSDC from a pre-shared key pool where two-way QSDC cannot close, with both bounds and published measurements plotted against loss |
 | #24 | The audit's remaining items: labelled rows on the model cards, the QCNN's tree property as a test, a watch on Polytune upstream, the GPU lock, a matched local liboqs, and the plain-text formulas |
+| #25 | Every model file the browser fetches from the Hub is checked against a SHA-256 recorded for its pin, and refused if it differs |
 
 Findings worth keeping from those:
 
@@ -9205,3 +9206,12 @@ The audit of the planning records left these open. Each is settled here, or by t
 - **Plain-text formulas.** 32 more moved to the house math form. Quotations are left byte-exact.
 - **The demo container's log** had no size limit. `docker/docker-compose.demo.yml` now rotates it at 10 MB, three files.
 - **The satellite diagram's lane** said only "QSDC NOT AVAILABLE" on a run that sent the telemetry one way. Its second part now says so.
+
+### Round 86, 2026-11-09: what the browser runs is what was published
+
+A pin names a commit and says nothing about what a server returns for it. `scripts/pin_hub_hashes.py` now hashes the bytes of every file the browser fetches at each pin, 35 files across 11 models, compares each Git LFS file with the digest the Hub states, and writes `models/hub_file_hashes.json`. The registry exports them per model, and `web/src/lib/pinnedFetch.ts` checks each ONNX graph, weights file and evaluation sample before anything reads it. A file that does not match, or has no entry, is refused: the run says which file and which digests, and no other figure is put in its place. The published-model log line gives the digest it matched.
+
+**Checks.** `tests/test_r86_hub_file_hashes.py`: the record is for the revision each model is pinned to, so a republish fails it until the script is run; every file the browser fetches has a digest; every Hub fetch goes through the check before it is read; the check refuses altered bytes and a missing entry. Eleven seeded defects, each caught. On a local build with `fetch` replaced to flip one byte of each ONNX file, the finance page reported `the file served hashes to e867b6118655a50e..., not the 54511ef70652acb0... recorded for this revision, so it was not used`, for both models it fetches, and ran neither.
+
+**What it does not cover.** The in-browser LLM's weight shards, which the WebLLM engine fetches itself; its integrity option covers the configuration, tokenizer and model library. The record is as trustworthy as the site that serves it.
+

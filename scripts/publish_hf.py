@@ -515,6 +515,8 @@ def main() -> int:
             payload.pop("hf_revision_invalidated_by_retrain", None)
             record_metrics(key, payload)
         print(f"\nrecorded {len(revisions)} pinned revision(s) in models/metrics.json")
+        # The browser refuses a file with no digest for its pin, so a moved pin takes the model off the page until this runs.
+        print("NEXT: python scripts/pin_hub_hashes.py, then scripts/export_config.py")
     return 0
 
 

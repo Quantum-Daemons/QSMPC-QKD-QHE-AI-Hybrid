@@ -29,6 +29,7 @@
 // are not interchangeable at runtime even though their APIs are identical.
 import { minorityPr, type MinorityPr } from "./minorityPr";
 import { evaluateForecastStudentOffThread, fetchForecasterWeights, type ForecastEventsFile, type StudentEvaluation } from "./forecastStudent";
+import { asJson, checkPinned } from "./pinnedFetch";
 import type * as OrtTypes from "onnxruntime-web";
 
 /**
@@ -89,6 +90,8 @@ export type OnnxStatus = {
   url: string | null;
   bytes: number | null;     // transferred size, or null when served from cache
   fromCache: boolean;
+  /** The digest the fetched file matched, as recorded in `models/hub_file_hashes.json`. */
+  sha256: string | null;
   threads: number;
   /** Probed, not used: the WebNN provider is deliberately not requested. */
   crossOriginIsolated: boolean;
@@ -98,7 +101,7 @@ export type OnnxStatus = {
 
 const status: OnnxStatus = {
   loaded: false, backend: "none", requested: null, modelKey: null, url: null, bytes: null,
-  fromCache: false, threads: 1, crossOriginIsolated: false, loadMs: null, error: null,
+  fromCache: false, sha256: null, threads: 1, crossOriginIsolated: false, loadMs: null, error: null,
 };
 
 /** Per-model, not per-page: see loadModel for the swap this prevents. */
@@ -282,8 +285,8 @@ function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> 
  *  `browserModel` keeps returning the first so existing callers are unchanged; the verification
  *  panel offers the whole list so a visitor can check either one rather than whichever happens to
  *  be declared first. */
-export function browserModels(usecase: string): { spec: ModelSpec; url: string }[] {
-  const out: { spec: ModelSpec; url: string }[] = [];
+export function browserModels(usecase: string): { spec: ModelSpec; url: string; path: string }[] {
+  const out: { spec: ModelSpec; url: string; path: string }[] = [];
   for (const spec of modelsFor(usecase)) {
     if (!spec.hf_repo_id || !spec.hf_revision) continue;   // unpublished or unpinned => not fetchable
     // NOTE: an earlier revision skipped models here on a `browser_runnable` flag derived from their
@@ -299,12 +302,12 @@ export function browserModels(usecase: string): { spec: ModelSpec; url: string }
     if (!art) continue;
     // Pinned to a 40-char commit sha, never "main": a visitor must not silently get a different
     // model from the one whose metrics this page is printing.
-    out.push({ spec, url: `https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/${art.path}` });
+    out.push({ spec, url: `https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/${art.path}`, path: art.path });
   }
   return out;
 }
 
-export function browserModel(usecase: string): { spec: ModelSpec; url: string } | null {
+export function browserModel(usecase: string): { spec: ModelSpec; url: string; path: string } | null {
   return browserModels(usecase)[0] ?? null;
 }
 
@@ -378,6 +381,7 @@ export async function loadModel(
         (res as any).headers?.get?.("x-cache") ?? "");
       const buf = new Uint8Array(await res.arrayBuffer());
       status.bytes = buf.byteLength;
+      status.sha256 = await checkPinned(buf, target.spec.file_sha256?.[target.path], `${target.spec.key} ${target.path}`);
 
       const gpu = gpuAvailable;
       const eps: any[] = [];
@@ -654,7 +658,7 @@ function sampleUrlFor(modelUrl: string): string {
   return modelUrl.replace(/\/onnx\/[^/]+$/, "/eval_sample.json");
 }
 
-function evalSample(modelUrl: string): Promise<SampleFetch> {
+function evalSample(modelUrl: string, expectedSha256: string | undefined): Promise<SampleFetch> {
   const url = sampleUrlFor(modelUrl);
   let hit = _sampleCache.get(url);
   if (!hit) {
@@ -669,8 +673,15 @@ function evalSample(modelUrl: string): Promise<SampleFetch> {
       }
       if (res.status === 404) return { kind: "absent" };   // the Hub's answer: none at this revision
       if (!res.ok) return { kind: "error", reason: `the Hugging Face Hub answered HTTP ${res.status}` };
+      let bytes: ArrayBuffer;
       try {
-        return { kind: "ok", file: (await res.json()) as ModelInputFile };
+        bytes = await res.arrayBuffer();
+        await checkPinned(bytes, expectedSha256, "eval_sample.json");
+      } catch (e) {
+        return { kind: "error", reason: (e as Error)?.message ?? String(e) };
+      }
+      try {
+        return { kind: "ok", file: asJson<ModelInputFile>(bytes) };
       } catch (e) {
         return { kind: "error", reason: `the sample did not parse: ${(e as Error)?.message ?? String(e)}` };
       }
@@ -729,7 +740,7 @@ export async function evaluatePublishedModel(
   base.split = target.spec.eval_split ?? null;
   // A model that publishes no sample BY DESIGN is not asked for one: the request could only 404.
   if (target.spec.eval_sample_reason) return { ...base, noSampleReason: target.spec.eval_sample_reason };
-  const got = await evalSample(target.url);
+  const got = await evalSample(target.url, target.spec.file_sha256?.["eval_sample.json"]);
   if (got.kind === "absent") return null;           // the Hub has no evaluation sample for this model
   if (got.kind === "error") {
     return { ...base, error: `its evaluation sample could not be fetched: ${got.reason}. ${notEvidence}` };
@@ -740,7 +751,7 @@ export async function evaluatePublishedModel(
   if ((file as unknown as { task?: string }).task === "forecast_events") {
     try {
       const f = file as unknown as ForecastEventsFile;
-      const w = await fetchForecasterWeights(target.url);
+      const w = await fetchForecasterWeights(target.url, target.spec.file_sha256?.["weights.json"]);
       // Every row under CKKS: the events of the decrypted forecast are the claim, so a 64-row spot check would not do.
       // Off the page's thread, so the 21 s of CKKS leaves the page responsive.
       const ev = await evaluateForecastStudentOffThread(f, w, { ckks: "all" });
@@ -1136,7 +1147,7 @@ export async function runPublishedModel(
   }
   let got: SampleFetch;
   try {
-    got = await evalSample(target.url);
+    got = await evalSample(target.url, target.spec.file_sha256?.["eval_sample.json"]);
   } catch (e) {
     return { kind: "failed", modelKey: key, error: e instanceof Error ? e.message : String(e) };
   }

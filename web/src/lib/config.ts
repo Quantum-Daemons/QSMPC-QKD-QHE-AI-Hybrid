@@ -127,6 +127,8 @@ export type ModelSpec = {
   eval_split?: string | null;
   hf_repo_id: string | null;
   hf_revision: string | null;
+  /** SHA-256, by path within the repo, of each file the browser fetches at `hf_revision`: `models/hub_file_hashes.json`. */
+  file_sha256?: Record<string, string>;
   /** The sha that WAS pinned before a retrain superseded the published artefact. Distinguishes
    *  "retrained since publication, needs republishing" from "never pinned", which look identical
    *  from `hf_revision` alone and are fixed by completely different actions. */

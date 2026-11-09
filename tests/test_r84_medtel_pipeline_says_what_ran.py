@@ -86,7 +86,8 @@ globalThis.fetch = async (url) => {
   const miss = { ok: false, status: 404, headers: { get: () => null },
                  json: async () => { throw new Error("404"); }, text: async () => "" };
   const ok = (text) => ({ ok: true, status: 200, headers: { get: () => "application/json" },
-                          json: async () => JSON.parse(text), text: async () => text });
+                          json: async () => JSON.parse(text), text: async () => text,
+                          arrayBuffer: async () => new TextEncoder().encode(text).buffer });
   if (/^[a-z]+:/i.test(p)) {
     if (serveStudent && /qsh-medical-breastmnist-ckks-student\/resolve\/[0-9a-f]{40}\/weights\.json$/.test(p)) {
       return ok(readFileSync(STUDENT, "utf8"));

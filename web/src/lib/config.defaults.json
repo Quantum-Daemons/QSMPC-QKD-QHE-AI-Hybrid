@@ -1001,6 +1001,7 @@
         },
         "eval_sample_reason": null,
         "eval_split": null,
+        "file_sha256": {},
         "hf_repo_id": null,
         "hf_revision": null,
         "hf_revision_stale": null,
@@ -1124,6 +1125,11 @@
         },
         "eval_sample_reason": null,
         "eval_split": "a draw from the held-out temporal test window, the last 30 percent of the transactions in time order, enriched to 2 percent laundering",
+        "file_sha256": {
+          "eval_sample.json": "012b1638174705a72a3d07ee77fd4cd87e7c2db7b5318bf6d1fdaeff14b93f3b",
+          "feature_spec.json": "60aff09d5d85ac262a9f0c3bc668c9cd651e2d971c21837693b471eaef589f3c",
+          "onnx/model.onnx": "54511ef70652acb02be201cfed309ff1f95e03c55e9f2aa2b24e2b35a9c8996f"
+        },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
         "hf_revision": "eb15e2a9361668ac3093810993d8d98eab875330",
         "hf_revision_stale": null,
@@ -1254,6 +1260,11 @@
         },
         "eval_sample_reason": null,
         "eval_split": "the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, the last 30 percent of the transactions in time order, enriched to 2 percent laundering",
+        "file_sha256": {
+          "eval_sample.json": "5b847bfb4ff624145442e100d5cd4469f8a45516878709d342982128a75b050a",
+          "onnx/model.onnx": "68198cfe44f393a03c403fd4b27d62f7c1814194e5f3d5ded5ac2a1df8f939a6",
+          "weights.json": "d8823c8961bbc98699223bfa446cc3c5763701d2f363f8be23ee7851d1a420b2"
+        },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
         "hf_revision": "e822202dacbc33abbb24a7c23ad490e1c517cfa1",
         "hf_revision_stale": null,
@@ -1369,6 +1380,7 @@
         },
         "eval_sample_reason": null,
         "eval_split": null,
+        "file_sha256": {},
         "hf_repo_id": null,
         "hf_revision": null,
         "hf_revision_stale": null,
@@ -1471,6 +1483,12 @@
         },
         "eval_sample_reason": null,
         "eval_split": "the official BreastMNIST test split, whole",
+        "file_sha256": {
+          "eval_sample.json": "c663a0ba2c44a58cb09bd0d7c1462d246eb7a01f2cc45892c6cf2180c21ba4d9",
+          "feature_spec.json": "5c76de07d5f288193cdb887b802ae52c4a85ed213d466426829412490f95dca1",
+          "onnx/model.onnx": "f48cd2e00defb158151574ce4d75a9da460b613e03e4cc696c10a726ed6d0eb6",
+          "onnx/model_int8.onnx": "ad9ba2a8f235994f67706947ce3c9a361b7782b33fcf651570b46f32eb6b08d1"
+        },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
         "hf_revision": "5bb4e4f0989cb28f1dde6cdee6bc70ed3eea854f",
         "hf_revision_stale": null,
@@ -1558,6 +1576,11 @@
         },
         "eval_sample_reason": null,
         "eval_split": "the official BreastMNIST test split, whole, the same rows as medical_fl.resnet18",
+        "file_sha256": {
+          "eval_sample.json": "9e3bc8a7ef362c4ad5eeddff5daff4b2f15f03898d2d2b1a3e329c638b81646a",
+          "feature_spec.json": "5c76de07d5f288193cdb887b802ae52c4a85ed213d466426829412490f95dca1",
+          "onnx/model.onnx": "e9f9c576e5a80c5af8aa4c4905059fe9d8549d0ad3056fe4c68168204e1ea08e"
+        },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet50",
         "hf_revision": "cb700cfa0c26a61a57f7824e071f22c37684ae55",
         "hf_revision_stale": null,
@@ -1650,6 +1673,11 @@
         },
         "eval_sample_reason": null,
         "eval_split": "the official BreastMNIST test split, whole, at 14x14",
+        "file_sha256": {
+          "eval_sample.json": "1ce6f2e62d72d04a812c216187c52c73e033f076c053177a70fe16d2cedca9cb",
+          "onnx/model.onnx": "3550db7b5ff71393b7c0382224c42c8f9ad51ed8b5857603a3921c12f517ddbc",
+          "weights.json": "7b4ab81a951cd65b10301d34badc73f3e641a06ab8e5ceec413c19bba3ec090f"
+        },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-ckks-student",
         "hf_revision": "b582844a2805e5be14fcc5499938ce692057d130",
         "hf_revision_stale": null,
@@ -2643,6 +2671,12 @@
         },
         "eval_sample_reason": null,
         "eval_split": "windows drawn at random from the held-out test half's windows that touch no label, ESA-ADB's own Mission1 split from 2007-01-01",
+        "file_sha256": {
+          "eval_sample.json": "77486ed34e541f5f4d97b8702f00a08478ce6dc389dea3b99261d7075db35677",
+          "feature_spec.json": "fb3286fe42ac3c6f377658af9a801c9ca4b7730d505aa970644cfdee41e03040",
+          "onnx/model.onnx": "09e3fa74c3cf38d58df07728a5ab3d3b7fd1a662d4127a76bd1a711233849045",
+          "onnx/model_int8.onnx": "01ca9c6381fe0c49d5cdcdab11d0038279fb33b874165b7470b9d612125f1230"
+        },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
         "hf_revision": "c41a6551838555edddd1500ec7407d21502de6a8",
         "hf_revision_stale": null,
@@ -2812,6 +2846,11 @@
         },
         "eval_sample_reason": null,
         "eval_split": "one contiguous stretch of the held-out test half, ESA-ADB's own Mission1 split from 2007-01-01: the three days where the student's pipeline detects the most anomalies, so that the page has flags to reproduce",
+        "file_sha256": {
+          "eval_sample.json": "2b086cfc2387a2ba5877d8988a604b126b901000018fa84672ddbf64305e46e9",
+          "onnx/model.onnx": "7c27b9a7d115c2e06a0395433248bdcac7f37fc3eb9a4d80229c870d3939d071",
+          "weights.json": "33f2ea603d3af7e87234decd160441ee9ce617866c68d48943462a9417f70895"
+        },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-ckks-student",
         "hf_revision": "231db244a9fa218501846531ad103644d6c77612",
         "hf_revision_stale": null,
@@ -2894,6 +2933,11 @@
         },
         "eval_sample_reason": null,
         "eval_split": "the benchmark's own test partition, whole: a stratified random split, not a temporal one",
+        "file_sha256": {
+          "eval_sample.json": "130cdeb1033497f30a1c4f7df710b0baddf5f64ec4090c9f5b2f6ceb1f64fe8f",
+          "feature_spec.json": "c4a56d4151889c52d5892ee6e54d0201f3bf80bd35dfdc02a4f6404792ea8c37",
+          "onnx/model.onnx": "3ddae79e9ac46a86a0b75dee3f819149127bd07792bf407a40fc4b64b5e561b4"
+        },
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ad",
         "hf_revision": "6c601bed2b7d22af3497d8f13ff60fe2b23ed1e8",
         "hf_revision_stale": null,
@@ -2969,6 +3013,11 @@
         },
         "eval_sample_reason": null,
         "eval_split": "the benchmark's own test partition, whole: a stratified random split, not a temporal one",
+        "file_sha256": {
+          "eval_sample.json": "99c34cc3841e923bc418bdc06611c60c7c675cbe164fb55e5801cd4d4591af37",
+          "onnx/model.onnx": "008ce438f1b9a9364c2e0b919f206ccb488bb5ee5b8b57540ad631896226454d",
+          "weights.json": "970794d7066226866d7965fa4ab06bc09eea83a2224208c44ebe3e0cdb927d0a"
+        },
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ckks-student",
         "hf_revision": "58450bb47601850f3620d83d1e9b3122306a2ae0",
         "hf_revision_stale": null,
@@ -3040,6 +3089,7 @@
         },
         "eval_sample_reason": null,
         "eval_split": null,
+        "file_sha256": {},
         "hf_repo_id": null,
         "hf_revision": null,
         "hf_revision_stale": null,
@@ -3170,6 +3220,11 @@
         },
         "eval_sample_reason": null,
         "eval_split": "the held-out quarter of the seed-42 stratified split, whole",
+        "file_sha256": {
+          "eval_sample.json": "89f69af86c64fcc8cf44a45083a136927456ccad8fc5c160a8371d5c22209814",
+          "feature_spec.json": "b82fbe1101293f6841f00dcfac7e1866e68d6a2511abbb0499149a6c49b2cdb8",
+          "onnx/model.onnx": "505c91b833b850f5ac88a8531fc87cc923a7789faca2ad871ca3fdc1732b0834"
+        },
         "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
         "hf_revision": "78ef41898e3d14eb8a4209bddd628f58bd2adfe1",
         "hf_revision_stale": null,
@@ -3701,6 +3756,11 @@
         },
         "eval_sample_reason": null,
         "eval_split": "a per-class-floored draw from the held-out quarter of the seed-42 stratified split",
+        "file_sha256": {
+          "eval_sample.json": "b092f69d4e4e8f39723ee4018a7002fa6f69338d6a1fe55ede0fedd88777da6a",
+          "feature_spec.json": "584a6dd4ce618af8adf2544de61f7f5a15017f7cc3cad02a7275b56e302d6831",
+          "onnx/model.onnx": "de6444c2af766a45a354f0e839f64db904fcbc6eb854a585ce6685ab6ec51213"
+        },
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-gbm",
         "hf_revision": "5852153ee4115e6636a10f95f18e4936f904c623",
         "hf_revision_stale": null,
@@ -3761,6 +3821,7 @@
         },
         "eval_sample_reason": null,
         "eval_split": null,
+        "file_sha256": {},
         "hf_repo_id": null,
         "hf_revision": null,
         "hf_revision_stale": null,

@@ -43,6 +43,7 @@ import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner"
 import { isClientDemo } from "./demoMode";
 import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
 import type { MultiPsiResult } from "./clientMultiPsi";
+import { asJson, checkPinned, HubFileRefused } from "./pinnedFetch";
 import type { LendingMarketReport } from "./lending/report";
 import type { KeyholderSetup } from "./lending/privateCheck";
 import type { TaskInit } from "./lending/tasks";
@@ -904,9 +905,15 @@ async function publishedStudentSample(usecase: string): Promise<{ samples: numbe
     const spec = studentModel(usecase);
     if (spec?.hf_repo_id && spec.hf_revision) {
       const res = await fetch(`https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/eval_sample.json`, { mode: "cors", signal: AbortSignal.timeout(30_000) });
-      if (res.ok) { const j = await res.json(); if (Array.isArray(j?.samples) && Array.isArray(j?.labels)) out = { samples: j.samples, labels: j.labels, classes: j.classes ?? null }; }
+      if (res.ok) {
+        const bytes = await res.arrayBuffer();
+        await checkPinned(bytes, spec.file_sha256?.["eval_sample.json"], `${spec.key} eval_sample.json`);
+        const j = asJson<{ samples?: number[][]; labels?: number[]; classes?: Record<string, string> | null }>(bytes);
+        if (Array.isArray(j?.samples) && Array.isArray(j?.labels)) out = { samples: j.samples, labels: j.labels, classes: j.classes ?? null };
+      }
     }
-  } catch {
+  } catch (e) {
+    if (e instanceof HubFileRefused) console.error(e.message);
     out = null;
   }
   _studentSampleCache.set(usecase, out);
@@ -1006,14 +1013,17 @@ async function publishedStudentWeights(usecase: string | undefined): Promise<Cnn
       // Bounded for the same reason as the two in `onnxInference` - see HF_FETCH_TIMEOUT_MS there.
       const res = await fetch(url, { mode: "cors", signal: AbortSignal.timeout(30_000) });
       if (res.ok) {
-        const j = await res.json();
+        const bytes = await res.arrayBuffer();
+        await checkPinned(bytes, spec.file_sha256?.[art.path], `${spec.key} ${art.path}`);
+        const j = asJson<CnnStudentWeights & { kind?: string }>(bytes);
         // Only the structural CNN encoding is evaluable here; a linear student's JSON is a
         // different shape and must not be coerced into this one.
         if (j && j.kind === "cnn-1conv-2dense") out = j as CnnStudentWeights;
       }
     }
-  } catch {
-    out = null;                       // offline or blocked: the student does not run, and says so
+  } catch (e) {
+    if (e instanceof HubFileRefused) console.error(e.message);
+    out = null;                       // offline, blocked or refused: the student does not run, and says so
   }
   _studentWeightCache.set(usecase, out);
   return out;
@@ -1812,6 +1822,8 @@ export function runClientPipeline(
           + (p.trueClass != null ? ` (true ${p.trueClassName ?? p.trueClass})` : "");
       }
       metric(stage, "published_model_backend_requested", onnxBackendChoice);
+      const fileSha256 = onnxStatus().sha256;
+      if (fileSha256) metric(stage, "published_model_sha256", fileSha256);
       // Says which of the two facts applies when they differ: WebGPU selected, no usable adapter.
       const fellBack = onnxBackendChoice === "webgpu" && p.backend !== "onnx-webgpu"
         ? " (WebGPU was selected; this browser has no usable adapter)" : "";
@@ -1819,7 +1831,7 @@ export function runClientPipeline(
         `published model ${p.modelKey} ran here on ${p.backend}${fellBack}: row ${p.rowIndex} of its `
         + `published evaluation sample (${p.split ?? "split not declared"}), input `
         + `${p.inputShape.join("x")}, ${r2(p.latencyMs)} ms. ${outcome}`
-        + `. Weights from ${p.repoId} at ${p.revision.slice(0, 12)}, ${p.provenance}`);
+        + `. Weights from ${p.repoId} at ${p.revision.slice(0, 12)}${fileSha256 ? `, SHA-256 ${fileSha256.slice(0, 12)}... as recorded for that revision` : ""}, ${p.provenance}`);
     } else if (pub.kind === "failed") {
       // Deliberately NOT substituted. A published model that exists and did not run is a reportable
       // failure, not an occasion to quietly show a different model's number in its place.
