@@ -9024,6 +9024,7 @@ recorded separately, and nothing here changes the published model.
 | #18 | A DeFi lending page: a simulated market and a private liquidation check, the margin under CKKS and its sign in a garbled circuit, across a pool of Web Workers |
 | #19 | The lending check's key moved to a separate key holder by default, on the 2026 sources read at origin, with the bilateral arrangement kept as a mode |
 | #20 | The 5G-NIDD model refitted without a column that named the attack session's file and without the 281,529 flows the published file holds twice under contradictory labels, with its ceiling, a cross-base-station measurement and the rows as published recorded, and a 2D plot of its own |
+| #21 | Window statistics from the raw 5G-NIDD captures measured across base stations, and an assessment of Python walkthroughs for the demo, both as research |
 
 Findings worth keeping from those:
 
@@ -9159,3 +9160,11 @@ Without it the model scored 0.7616, and no model reading those columns could pas
 The loader removes the Benign copy and asserts the count. On the 934,361 rows left, accuracy is 0.9979 and macro F1 0.9972, and training on one base station and testing on the other gives 0.9973 and 0.9877, against 0.4199 and 0.6059 on the rows as published. Those are recorded on every run in `contradictory_copies`. The owner chose this over keeping the rows as published, and chose to take the window features from the raw captures forward separately as research.
 
 **Checks.** `tests/test_r86_nidd_contradictory_copies.py` covers the rule, the published sample, the record and the real file, and was seen to fail on each of six seeded defects. `tests/test_r86_no_file_label_feature.py` reads every published tabular sample for a column whose every value is a Unix time. The loader's traps 3 and 5 fail if either property of the file changes. The trainer refuses accuracy outside 0.99 to 0.9995, which is where the copies or a file label would put it.
+
+### Round 86, 2026-11-09: window statistics from the captures
+
+The owner asked for this after the first reading of the 5G-NIDD ceiling, and kept it as research when that reading was withdrawn. `scripts/research/nidd_window_features.py` reads the captures with no third-party parser, writes one causal row per conversation per second over windows of 1 and 10 seconds, and tests one base station against the other. Without TTL, UDPScan reaches F1 0.99 across base stations where the flow model without TTL reaches 0.05. SYNFlood's weakness is TTL itself: about a third of the first station's SYN flood arrives with TTL 64 and all of the second's with 63. Windows are no replacement, since SYNScan falls to 0.33 in one direction on 34 windows. The demo keeps the flow model. The numbers and the reasoning are in `references/5g-nidd-window-features.md`.
+
+The owner also asked whether a walkthrough belongs on the demo. A marimo export ran under the demo's headers; the assessment is `references/notebook-walkthroughs.md`, and nothing is deployed.
+
+**Checks.** `tests/test_r86_nidd_window_features.py` builds a capture byte by byte and reads it back, shows that no row changes when later packets are removed, and holds the write-up to the record. It was seen to fail on six seeded defects, and a first version of the causality test that passed on a future leak was replaced.

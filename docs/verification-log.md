@@ -4031,3 +4031,15 @@ WebGPU is optional and off by default: the published models use WASM unless it i
 | the same page, seed 3 | 9 checks |
 | the borrower holding the key | 9 submissions, one per check |
 | every page | no console error |
+
+### Round 86, PR #20 on the deployed site (2026-11-09)
+
+`main` was `e2a0fb3`, bundle `index-ARJpglst.js`, read in a browser on the public URL.
+
+| what | read |
+|---|---|
+| the telecom page, 5G-NIDD selected | the pipeline names `telecom_ids.nidd @ 5852153ee411`; the verification passes, 0.9976 on all 16,379 rows of the sample |
+| the card | the table of the rows as published and the rows used: accuracy 0.7616 and 0.9979, macro F1 0.9275 and 0.9972, ceiling 0.7685 and 1.0000, across base stations 0.4199 and 0.6059, and 0.9973 and 0.9877 |
+| the calibration chart | withheld, "34 wrong predictions and 16,345 right ones", under the 200 events it needs |
+| the 2D plot | the rows this model was scored on, 4,096 of them, AUC-PR 0.9956 against a base rate of 0.8052 |
+| every page | no console error |

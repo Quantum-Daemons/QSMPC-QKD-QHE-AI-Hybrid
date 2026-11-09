@@ -66,6 +66,7 @@ On the rows as published, inputs equal on the two copies cannot pass 0.7685, on 
 
 - **SYNFlood across base stations.** Trained on the second station and tested on the first, its F1 is 0.22, while the reverse is 0.997.
 - **The scan classes lean on TTL.** Without `sTtl`, `dTtl`, `sHops` and `dHops` (`without_ttl_and_hops`), UDPScan's F1 across base stations is 0.05 and 0.04. Nmap's raw probes carry a TTL of their own, so this is a property of the tool and a real signal, but it is one signal.
+- Window statistics computed from the raw captures take UDPScan to 0.99 across base stations without TTL, and do not change SYNFlood: [`5g-nidd-window-features.md`](5g-nidd-window-features.md).
 - **A random split is the easier test**, and 64% of test rows have a feature vector also present in the training rows. On the remaining rows accuracy is 0.9942 and macro F1 0.9812 (`test_rows_unseen_in_training`).
 
 ## What earlier rounds got wrong
