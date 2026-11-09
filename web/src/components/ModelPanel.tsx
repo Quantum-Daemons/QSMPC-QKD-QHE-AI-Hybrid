@@ -857,7 +857,7 @@ export function ModelPanel({ usecase }: { usecase: string }) {
                 {spec.hf_repo_id}
               </a>
               {spec.hf_revision
-                ? <> · pinned to <code>{spec.hf_revision.slice(0, 12)}</code></>
+                ? <> · pinned to <code>{spec.hf_revision.slice(0, 12)}</code>{Object.keys(spec.file_sha256 ?? {}).length > 0 && " · each file fetched is checked against the SHA-256 recorded for this revision, and refused if it differs"}</>
                 : <> · <em>no pinned revision; the browser will not fetch an unpinned model</em></>}
             </p>
           )}

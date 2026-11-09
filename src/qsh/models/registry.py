@@ -1647,6 +1647,15 @@ def _browser_runnable(key: str, precision: str = "fp32") -> bool:
     return bool(report.get(field, False))
 
 
+def _hub_file_hashes(key: str, revision: str | None) -> dict[str, str]:
+    """The recorded digests of the files the browser fetches, for this revision only."""
+    path = METRICS_PATH.parent / "hub_file_hashes.json"
+    if not revision or not path.exists():
+        return {}
+    entry = json.loads(path.read_text(encoding="utf-8")).get(key) or {}
+    return entry.get("files", {}) if entry.get("revision") == revision else {}
+
+
 def frontend_models() -> dict:
     """The registry subset the SPA needs, so no model id, URL, baseline or metric is hard-coded in TS.
 
@@ -1668,6 +1677,9 @@ def frontend_models() -> dict:
             "hf_revision": s.hf_revision,
             "hf_revision_stale": s.hf_revision_stale,
             "pin_withdrawn_reason": s.pin_withdrawn_reason or None,
+            # What each file fetched from the Hub must hash to, at this pin (Round 86). The browser refuses a file with no
+            # entry, so a pin that moved without `scripts/pin_hub_hashes.py` shows up as a refusal and as a failed test.
+            "file_sha256": _hub_file_hashes(s.key, s.hf_revision),
             # Why no int8 graph is served, from the export report (Round 86, fact-check C8). The card printed
             # `export.int8_agreement 0.9615` beside `export.int8_bytes 0` and never said the graph was built,
             # measured and withheld at the gate; the record keeps the figures, the report keeps the reason.

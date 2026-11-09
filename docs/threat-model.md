@@ -9,6 +9,7 @@
   neither BSI nor NSA recommends ([their positions, in the roadmap](pqc-roadmap.md#standards-alignment-done--in-progress)).
   Real QKD would add key material whose secrecy rests on physics rather than on a hardness
   assumption; here the quantum channel is simulated, so the add-on contributes none of that security.
+- **A substituted model file**: a Hub, its CDN or the network serves other bytes for a pinned revision. A pin names a commit and says nothing about what comes back for it. Mitigation: the browser checks every model file, weights file and evaluation sample against a SHA-256 that ships with this site, and refuses a file that does not match or has no entry (`web/src/lib/pinnedFetch.ts`; the record is `models/hub_file_hashes.json`, written by `scripts/pin_hub_hashes.py`). A refused file is reported as refused, and no other figure is put in its place. Not covered: the in-browser LLM's weight shards, which the WebLLM engine fetches itself and whose integrity option covers only its configuration, tokenizer and model library. The record is as trustworthy as the site that serves it.
 - **Honest-but-curious compute server** (delegated AI): would read inputs/model. Mitigation:
   QHE (QOTP, perfectly hiding as a scheme; the demo's pad is seeded) for the quantum path; CKKS for
   the classical path, with masked HE-to-MPC conversions in the full deployment; secure aggregation

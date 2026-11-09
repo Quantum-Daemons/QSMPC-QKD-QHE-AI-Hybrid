@@ -92,6 +92,7 @@ export function ProvenanceBadge({
         modelKey: s.modelKey,
         modelBytes: s.bytes,
         servedFromCache: s.fromCache,
+        modelSha256: s.sha256,
         loadMs: s.loadMs != null ? Math.round(s.loadMs) : null,
         onnxError: s.error,
         gpuAdapter: (gpu as any)?.info

@@ -11,7 +11,7 @@
  * cut (web/scripts/check_text_overlap.mjs, SCAN_OFFLINE=1).
  *
  * What this asserts, with `fetch` replaced, through the real module bundled by esbuild:
- *   1. a network error, a timeout, an HTTP 503 and a body that does not parse are each reported as a
+ *   1. a network error, a timeout, an HTTP 503 and a body that fails its digest are each reported as a
  *      fetch that failed, with the reason, by both readers (the one-row run and the verification),
  *      and never as a sample the model lacks;
  *   2. a failed fetch is asked again on the next run;
@@ -61,7 +61,8 @@ const FAILURES = {
   "a network error": { fetch: async () => { throw new TypeError("fetch failed"); }, says: "failed" },
   "a timeout": { fetch: async () => { throw timeout(); }, says: "did not answer within" },
   "an HTTP 503": { fetch: async () => new Response("busy", { status: 503 }), says: "HTTP 503" },
-  "a body that does not parse": { fetch: async () => new Response("<html>", { status: 200 }), says: "did not parse" },
+  // Since Round 86 a body is checked against its recorded SHA-256 before it is parsed.
+  "a body altered in transit": { fetch: async () => new Response("<html>", { status: 200 }), says: "hashes to" },
 };
 const ABSENT = "ships no eval_sample.json";
 

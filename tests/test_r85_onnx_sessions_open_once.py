@@ -54,6 +54,7 @@ SAMPLES = {"Daemons-Q/qsh-finance-aml-gbm": "models/finance_aml_gbm/eval_sample.
            "Daemons-Q/qsh-finance-aml-ckks-student": "models/finance_aml_student/eval_sample.json"}
 
 HARNESS = r"""
+import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -82,7 +83,8 @@ const FAKE_ORT = `
       release: async () => { globalThis.__ort.released++; } };
   } };`;
 await build({
-  stdin: { contents: `export { runClientPipeline } from ${JSON.stringify(resolve(WEB, "src/lib/clientCompute"))};`,
+  stdin: { contents: `export { runClientPipeline } from ${JSON.stringify(resolve(WEB, "src/lib/clientCompute"))};
+export { modelsFor } from ${JSON.stringify(resolve(WEB, "src/lib/config"))};`,
            resolveDir: WEB, loader: "ts" },
   bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error",
   define: { "import.meta.env": '{"BASE_URL":"/","VITE_CLIENT_ONLY":"1"}', "process.env.NODE_ENV": '"production"' },
@@ -122,6 +124,16 @@ globalThis.fetch = async (url) => {
 };
 const m = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
+// Since Round 86 the browser checks each Hub file against a recorded digest. These bytes stand in for the real graphs, so the
+// record they are checked against has to stand in too: the digest of what this harness serves.
+const digest = (text) => createHash("sha256").update(text).digest("hex");
+for (const spec of m.modelsFor("finance_aml")) {
+  if (!spec.file_sha256) continue;
+  for (const path of Object.keys(spec.file_sha256)) {
+    if (path.startsWith("onnx/")) spec.file_sha256[path] = digest("onnx");
+    else if (path === "eval_sample.json" && SAMPLES[spec.hf_repo_id]) spec.file_sha256[path] = digest(readFileSync(join(REPO, SAMPLES[spec.hf_repo_id]), "utf8"));
+  }
+}
 const run = (config) => new Promise((done) => {
   const verified = [];
   const timer = setTimeout(() => done({ verified }), 600_000);

@@ -92,5 +92,5 @@ def test_the_check_fails_on_the_conflation_it_exists_for() -> None:
         seeded.unlink(missing_ok=True)
     out = r.stdout + r.stderr
     assert r.returncode == 1, f"the conflated fetch passed the check:\n{out}"
-    for kind in ("a network error", "a timeout", "an HTTP 503", "a body that does not parse"):
+    for kind in ("a network error", "a timeout", "an HTTP 503", "a body altered in transit"):
         assert f"{kind}: the one-row run reported a failed request as the model shipping no sample" in out, out
