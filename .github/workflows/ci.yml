@@ -334,6 +334,13 @@ jobs:
         working-directory: web
         run: npm run check:multi-psi
 
+      # The lending page: its model against closed forms and its own books, then the private check against the same check in the clear.
+      - name: The lending model and its private check
+        working-directory: web
+        run: |
+          npm run check:lending
+          npm run check:lending-private
+
       # Backend and browser derived DIFFERENT session keys for two rounds, because the output-length
       # tag was added to the Python combiner alone and no browser test touched the combiner at all.
       # Three shipped strings asserted they matched, one of them rendered in the Validations panel.

@@ -38,6 +38,8 @@ USECASE_PAGE = REPO / "web" / "src" / "pages" / "UseCasePage.tsx"
 #: Use cases with no page of their own. `demo` is the generic fallback flow, reachable only by an
 #: explicit usecase override, so there is no rendered surface for a paragraph to be wrong on.
 NO_RENDERED_PAGE = {"demo"}
+#: Flows with no model at all, so no explanation to scope: the lending page's stages emit no `explanation`, and its page renders no ShapPanel.
+NO_EXPLANATION = {"defi_lending"}
 
 
 def _flows() -> dict[str, list[str]]:
@@ -92,7 +94,7 @@ def test_the_counts_match_the_flows_that_lack_private_inference() -> None:
     the bars explain and reports its argmax. The flag now follows the backend that surfaced the class,
     which tests/test_r84_finance_browser_run.py checks on a run.
     """
-    flows = {k: v for k, v in _flows().items() if k not in NO_RENDERED_PAGE}
+    flows = {k: v for k, v in _flows().items() if k not in NO_RENDERED_PAGE | NO_EXPLANATION}
     without = sorted(k for k, stages in flows.items() if "private_inference" not in stages)
     assert without == ["satellite_comms", "telecom_ids"], (
         f"the set of use cases with no private_inference stage changed to {without}. That is the "
