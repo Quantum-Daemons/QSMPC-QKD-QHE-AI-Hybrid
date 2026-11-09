@@ -4,6 +4,20 @@ Measured 2026-08-17, Round 50. Written because Round 49 published a claim about 
 consulting work that already existed, and because the shape of the disagreement rules out the
 explanation Round 49 offered.
 
+## Correction, Round 86 (2026-11-09): `IdleTime` is a capture time
+
+This file argued from Round 50 to Round 86 that `IdleTime` is a flow statistic and that the published 0.90 to 0.98 figures are reachable without leakage. The first is wrong and the second does not follow. Reading the column's values settles it:
+
+- It holds **17 distinct values over 1,215,890 rows, all exact multiples of 128**, which is the spacing of a 32-bit float at this magnitude.
+- As Unix times they fall **between 2022-09-13 07:49 and 2022-09-15 21:09 UTC**. That is a time of day, not an idle duration.
+- **Each value is dominated by one attack scenario and benign traffic**: 1663055360 holds 10,019 SYNScan and 1,431 Benign flows, 1663055744 holds 10,022 TCPConnectScan and 1,623 Benign, 1663272960 holds 175,521 UDPFlood and 53,066 Benign, 1663273088 holds 238,840 Benign and 290 UDPFlood, and so on.
+
+So the column names the capture window a flow came from, and the attacks were run in their own windows, the reason the loader has always dropped `StartTime`. "17 distinct values cannot address a row" was true and beside the point: they address the scenario. The model that read it was learning when each attack was run.
+
+**What changed.** `telecom_ids.nidd` is refitted on 46 features without it: **accuracy 0.7616, macro F1 0.9275** on the same 303,973-row test split, with per-class F1 Benign 0.6401 and UDPFlood 0.7308 and every other class at 0.9875 or above. A linear model on the numeric columns reaches accuracy 0.7549. Restoring the column gives 0.9829 and 0.9950, recorded on every run as `capture_time_counterfactual`, beside the row-counter one at 0.9997.
+
+What follows is the document as Round 50 wrote it, corrected where it depended on that reading.
+
 ## The disagreement
 
 | source | task | accuracy | macro F1 |
@@ -61,7 +75,7 @@ against a distinct service, so protocol and service fingerprints identify them a
 project's own leak check flags **21 of 39** features at one-vs-rest AUC above 0.90 (`Rate` 0.9941,
 `AckDat` 0.9928, `sTtl` 0.9920). That is not a defect in the features; it is what this corpus is.
 
-## The cause, measured: ONE COLUMN, and `Combined.csv` does not ship it
+## What Round 50 measured, and what it read wrongly
 
 The release also offers `BTS1_BTS2_fields_preserved.zip` - 113 columns against `Combined.csv`'s 52,
 the same 1,215,890 rows. Fitting the identical configuration on it, with row identifiers, host
@@ -70,15 +84,14 @@ dropped:
 
 | configuration | features | accuracy | macro F1 |
 |---|---|---|---|
-| wide export, identifiers and hosts dropped | 47 | **0.982897** | 0.995019 |
+| wide export, identifiers and hosts dropped | 47 | 0.982897 | 0.995019 |
 | the same, minus the six columns `Combined.csv` lacks | 41 | 0.760949 | 0.926455 |
 | the same, **minus `IdleTime` alone** | 46 | **0.761558** | 0.927503 |
 | shipped narrow (`Combined.csv`) | 39 | 0.7608 | 0.9263 |
 
 **`IdleTime` accounts for the entire gap.** Removing that one column from the wide export reproduces
-the narrow result to within 0.001 accuracy. `IdleTime` scores one-vs-rest AUC **0.9574** on
-`SlowrateDoS`, which is what a legitimately dominant feature looks like on an attack defined by
-idling - a flow statistic, not an identifier.
+the narrow result to within 0.001 accuracy. Round 50 took this for a dominant flow statistic. It is
+the capture time, so the 0.98 row measures how well a model recognises when each attack was run.
 
 **A claim made here in an earlier revision was wrong and is corrected rather than quietly dropped.**
 It said the other five columns absent from `Combined.csv` "change nothing, each scoring one-vs-rest
@@ -88,11 +101,6 @@ SlowrateDoS, both above this project's own 0.90 leak-screen threshold (`sVlan` 0
 accuracy against 0.2213 for `IdleTime` alone, so the five together are worth 0.0006. Individually
 informative and jointly superfluous is a different statement from uninformative, and the first
 version asserted the second on the strength of a measurement taken in a different feature context.
-
-So the published 0.90-0.98 figures **are reproducible without any leakage**: 0.982897 accuracy and
-0.995019 macro F1 on the wide export, dropping every identifier. This project's model is not wrong; it
-was fitted on a feature-poor export of the corpus and then compared against results obtained from a
-richer one.
 
 Also verified: all 52 columns `Combined.csv` shares with the wide export are informationally
 identical between the two files - equal distinct-value counts on every one - so `Combined.csv` is a
@@ -125,14 +133,6 @@ without checking, and leakage-aware work on this corpus exists:
 The identifier finding itself stands - restoring `Unnamed: 0`, `Seq` and `Offset` moves this
 configuration from 0.7608 to 0.9997, and three integer row counters should not be able to do that.
 
-What does **not** stand is the implication that the published figures are explained by it. They are
-not. 0.982897 accuracy is reachable on this corpus with every identifier removed, using one extra flow
-statistic that `Combined.csv` does not carry. Round 49 read a 24-point gap as evidence that published
-work leaned on row counters, when the larger part of that gap was its own choice of export.
+Whether the published figures lean on such columns stays open. Round 50 said they could not, because 0.982897 was reachable with every identifier removed; that figure reads the capture time, so it says nothing either way.
 
-**What should change.** The model should be refitted on `BTS1_BTS2_fields_preserved.csv` with
-`IdleTime` included and every identifier and host fingerprint dropped. **Done in Round 50**: the model
-now scores 0.982897 / 0.995019 and is published at revision `a3cbe059`, with Benign recall moving from
-0.5345 to 1.0000 and the residual error down to 1.71% of the test split, all of it UDPFlood -> Benign. Until that is done, `telecom_ids.nidd` remains
-an honest measurement of a narrower experiment than the one its card compares itself to, and the card
-should say so.
+**What changed.** Round 50 refitted the model on the wide export with `IdleTime` kept and published it at 0.982897 and 0.995019. Round 86 removed the column; see the correction at the top.

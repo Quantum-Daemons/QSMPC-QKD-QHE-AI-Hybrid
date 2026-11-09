@@ -3661,7 +3661,7 @@ leakage-aware work on this corpus exists - three papers, now cited in
 
 Measured instead of argued. Binary benign-vs-attack scores **0.7630** against the 9-class **0.7608**,
 so the multiclass structure costs nothing and the whole error budget is one pair: Benign/UDPFlood,
-23.7% of the test split, with all seven other classes contributing 0.23%. The cause is **`IdleTime`**,
+23.7% of the test split, with all seven other classes contributing 0.23%. [Corrected in Round 86: `IdleTime` is the capture time; see the correction at the top of `references/5g-nidd-metric-profile.md`.] The cause is **`IdleTime`**,
 a flow statistic the release's `Combined.csv` export does not carry and its
 `BTS1_BTS2_fields_preserved.csv` does. Refitted on the wide export with every identifier and host
 fingerprint dropped: **accuracy 0.982897, macro F1 0.995019**, Benign recall 0.5345 -> **1.0000**,

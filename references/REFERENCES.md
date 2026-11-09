@@ -205,11 +205,7 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
 **Workings for the 5G-NIDD metric profile live in
 [`5g-nidd-metric-profile.md`](5g-nidd-metric-profile.md).** Round 49 published `telecom_ids.nidd` with
 accuracy 0.7608 against literature figures of 0.90 to 0.98 and attributed the gap to row-identifier
-leakage in the published work. Round 50 measured the cause instead and it is one column: `IdleTime`,
-which `Combined.csv` does not carry and the release's `BTS1_BTS2_fields_preserved.csv` does. Adding it
-gives 0.982897 with every identifier and host fingerprint dropped, so the published range is reachable
-without leakage of any kind. The leakage-aware prior work Round 49 did not consult is cited in that
-file. The identifier finding itself stands - three integer counters move the narrow configuration to
+leakage in the published work. Round 50 measured the cause as one column, `IdleTime`, which `Combined.csv` does not carry, and refitted on it to reach 0.982897. Round 86 read that column's values: they are Unix times from the capture, and each names an attack scenario, so the 0.98 measured when each attack was run. The model is refitted without it, at accuracy 0.7616 and macro F1 0.9275, and that file carries the correction. The leakage-aware prior work Round 49 did not consult is cited there. The identifier finding itself stands - three integer counters move the narrow configuration to
 0.9997 - but it does not explain anyone else's numbers.
 
 This section was promised by the preamble of every earlier revision of this file and never written,
