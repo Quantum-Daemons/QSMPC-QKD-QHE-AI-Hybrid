@@ -5,6 +5,16 @@
 # say "when available"; both are now available and the versions are written down. One is still not,
 # and that is stated rather than left as an open question.
 #
+# THE LOCKED PART (Round 86, the owner's choice). What the training and simulation runs on this machine use, recorded with
+# hashes in requirements-gpu.lock by scripts/lock_requirements.sh. Install it with
+#     pip install --require-hashes -r requirements-gpu.lock
+# It is its own lock because a CUDA build of torch and the CPU build CI installs cannot be one resolution. CUDA-Q and the
+# cuQuantum packages below stay commented out: they need an environment of their own.
+torch==2.13.0+cu130
+torchvision==0.28.0+cu130
+xgboost==3.3.0
+pennylane-lightning-gpu==0.45.0
+
 # LICENCE WARNING, because this file used to imply otherwise. CUDA-Q itself is Apache-2.0, but the
 # cuQuantum LIBRARIES it pulls in - custatevec-cu13, cutensornet-cu13, cudensitymat-cu13 - are
 # "NVIDIA Proprietary Software" on PyPI. The Python BINDINGS (cuquantum-python) are BSD-3-Clause.

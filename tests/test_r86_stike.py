@@ -220,6 +220,9 @@ def test_the_browser_charges_the_pool_the_same_way(browser) -> None:
 def test_the_canvas_says_what_became_of_the_telemetry(browser) -> None:
     c = browser["canvas"]
     assert c["sent"]["ok"] is True and "STIKE" in c["sent"]["label"] and "pre-shared" in c["sent"]["label"] and "QSDC NOT AVAILABLE" in c["sent"]["label"]
+    # The diagram's lane shows the first two parts, so what became of the telemetry has to be the second.
+    assert c["sent"]["label"].split(" · ")[:2] == ["QSDC NOT AVAILABLE", "sent by quasi-QSDC"]
+    assert c["small"]["label"].split(" · ")[:2] == ["QSDC NOT AVAILABLE", "link-budget limited"]
     assert c["small"]["ok"] is False and "too small" in c["small"]["label"] and "PQC session key" in c["small"]["label"]
     assert c["none"]["ok"] is False and "falls back to the PQC session key" in c["none"]["label"]
 

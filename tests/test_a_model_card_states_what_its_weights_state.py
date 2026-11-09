@@ -212,6 +212,34 @@ def _matches(written: str, pool: list[tuple[str, float]]) -> bool:
     return any(v == x or round(v, decimals) == x for _, v in pool)
 
 
+#: The metric a row says it holds, when that is one of the three the real cards have swapped: a retrain
+#: wrote accuracy into `macro F1`, and printed one card's accuracy as its minority-class F1. A floor is
+#: left out because the record names it for the baseline (`majority_baseline`), not for the metric.
+def _metric_named_by(label: str) -> set[str] | None:
+    words = set(re.findall(r"[a-z0-9]+", label.lower()))
+    if words & {"floor", "floors", "baseline"}:
+        return None
+    for family in ({"macro", "f1"}, {"minority", "f1"}, {"accuracy"}):
+        if family <= words:
+            return family
+    return None
+
+
+def _under_the_wrong_name(claims: list[tuple[str, str]], pool: list[tuple[str, float]]) -> list[tuple[str, str, list[str]]]:
+    """Rows whose number the artifact does record, but only under a key for some other metric."""
+    wrong: list[tuple[str, str, list[str]]] = []
+    for label, written in claims:
+        family = _metric_named_by(label)
+        if family is None:
+            continue
+        x = float(written)
+        decimals = len(written.split(".")[1]) if "." in written else 0
+        keys = [k for k, v in pool if v == x or round(v, decimals) == x]
+        if keys and not any(family <= set(re.findall(r"[a-z0-9]+", k.lower())) for k in keys):
+            wrong.append((label, written, keys))
+    return wrong
+
+
 def _nearest(written: str, pool: list[tuple[str, float]], n: int = 5) -> str:
     x = float(written)
     close = sorted(pool, key=lambda kv: abs(kv[1] - x))[:n]
@@ -249,6 +277,24 @@ def test_every_metric_a_card_prints_is_a_metric_its_artifact_records(card: Path)
         "way round, and never by deleting the number, which makes the card look right by making it "
         "say less."
     )
+
+
+@pytest.mark.parametrize("card", CARDS, ids=lambda p: p.parent.name)
+def test_a_labelled_row_holds_the_number_of_the_metric_it_names(card: Path) -> None:
+    """The right number under the wrong name passes the check above, which only asks that the artifact records it."""
+    _, artifact = _artifact_for(card)
+    wrong = _under_the_wrong_name(_claims(card.read_text(encoding="utf-8")), _scalars(artifact))
+    assert not wrong, f"{card.relative_to(REPO)}: " + "; ".join(
+        f"the row {label!r} holds {written}, which the artifact records only as {keys}" for label, written, keys in wrong)
+
+
+def test_the_label_check_refuses_a_swapped_metric() -> None:
+    pool = [("test_accuracy", 0.976667), ("test_minority_f1", 0.813559), ("test_macro_f1", 0.902), ("majority_baseline", 0.948333)]
+    assert _under_the_wrong_name([("minority-class F1", "0.976667")], pool) == [("minority-class F1", "0.976667", ["test_accuracy"])]
+    assert _under_the_wrong_name([("macro F1", "0.8136")], pool) == [("macro F1", "0.8136", ["test_minority_f1"])]
+    assert _under_the_wrong_name([("accuracy", "0.9020")], pool)
+    assert not _under_the_wrong_name([("accuracy", "0.9767"), ("macro F1", "0.902"), ("minority-class F1", "0.813559")], pool)
+    assert not _under_the_wrong_name([("majority-class accuracy floor", "0.948333")], pool)
 
 
 @pytest.mark.parametrize(

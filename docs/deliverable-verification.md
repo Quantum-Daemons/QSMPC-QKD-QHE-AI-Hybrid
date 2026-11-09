@@ -494,7 +494,7 @@ the date go stale.
 | A fidelity quantum kernel beating a random forest at 8 qubits or fewer | **NO LONGER BLOCKED - Round 55.** The blocker read "concentration bound says >= 15 qubits"; arXiv:2605.31449 says 15 is where the fidelity kernel FAILS and that concentration worsens with qubit count, so 8 qubits is the favourable regime. Measured 2026-10-30 on finance and medical (pre-registered, five seeds): no quantum kernel, GP or QELM/QRC beats a tuned RBF-SVM, so **declined there** ("Round 86, 2026-11-08" below); telecom's kernel lost to its forest (`references/model-choice-vs-2026-practice.md`) |
 | An encrypted transformer or tabular foundation model on any finance tabular benchmark | none published |
 | Anyone publishing an encrypted BreastMNIST result above this project's | two exist, both simpler architectures |
-| **A latent-space encoder whose latent fits 4096 CKKS slots at multiplicative depth 1 AND runs under `onnxruntime-web`** | Kim et al. (arXiv:2506.15258) encode chest X-rays with a VQGAN latent at downsampling factor 8, but f=8 on this project's 28x28 gives 3.5x3.5, so the transfer is the open measurement rather than a citation. Added Round 34 |
+| **A latent-space encoder whose latent fits 4096 CKKS slots at multiplicative depth 1 AND runs under `onnxruntime-web`** | Kim et al. (arXiv:2506.15258) encode chest X-rays with a VQGAN latent at downsampling factor 8, but $`f = 8`$ on this project's 28x28 gives 3.5x3.5, so the transfer is the open measurement rather than a citation. Added Round 34 |
 
 The sixth is the one `metrics.json` was already claiming existed. It is now here, with the condition
 stated as a measurement someone could take rather than as a direction someone could agree with.
@@ -2419,7 +2419,7 @@ quantity shown beside it, not a relabelling of the first.
 
 **The honest residual, and it is bigger than Round 46 recorded:** at 10e6 the 800 km downlink yields
 **~2,440 sifted bits** - a 5-seed mean of 2,442, spread 2,397 to 2,470, measured at the intensities
-this round shipped (mu = 0.3416, nu = 0.1417). **This entry said ~3,660 for one round**, which is the
+this round shipped ($`\mu = 0.3416`$, $`\nu = 0.1417`$). **This entry said ~3,660 for one round**, which is the
 figure at the retired $`\mu = 0.5`$ / $`\nu = 0.1`$ (5-seed mean 3,582); this subsection was rewritten in the
 same round that moved the intensities and the line was carried across without re-measurement. Round
 46 measured its own figure against the refuted band and concluded ~30e6 pulses and ~1.5 GB of Python
@@ -3382,11 +3382,10 @@ backlog gate was written to catch and did not:
   `references/`, not in a redrawn figure.
   *Reopens if* the QOT path ever runs against real optics rather than a simulation, because then the
   bench layout stops being someone else's picture and starts describing this project's own apparatus;
-  or if `TwoPartyDiagram.tsx` stops filling from live metrics, since the whole argument for declining
-  is that the diagram which exists is the measured one. [2026-10-30: `TwoPartyDiagram.tsx` was
-  replaced in Round 80 by the use-case canvas (`web/src/components/UseCaseCanvas.tsx`, labels in
-  `web/src/lib/useCaseFlows.ts`), so the second condition names a file that no longer exists and
-  cannot fire as written. Which diagram it should watch is the owner's to restate.]
+  or if the use-case canvas (`web/src/components/UseCaseCanvas.tsx`, labels in `web/src/lib/useCaseFlows.ts`)
+  stops filling from live metrics, since the whole argument for declining is that the diagram which exists
+  is the measured one. [Restated 2026-11-09, the owner's choice: the condition named `TwoPartyDiagram.tsx`,
+  which Round 80 replaced with that canvas, so as written it could not fire.]
 - *GitHub / Google Drive MCP interop.* Deferred with the reason "needs OAuth creds and outward-facing
   accounts that cannot be provisioned in an automated build", which is still true. **Declined**:
   filesystem MCP interop already demonstrates that the quantum-safe channel carries a real third-party
@@ -4074,7 +4073,7 @@ session. Nothing was changed on the strength of a secondary write-up.
 
 | item | was | is | source |
 |---|---|---|---|
-| E91 security facts | the QBER row said "two-intensity decoy-state bound ... aborts above 0.11" on an E91 run, because the protocol test was declared inside a branch the row could not see | Werner-model error rate; device-dependent rate reaches zero at 0.0981 (f = 1.16); a device-independent analysis would need S > 2.424, i.e. Q < 0.0715 | Acin et al., Phys. Rev. Lett. 98, 230501 (2007); Ma, Fung and Lo, Phys. Rev. A 76, 012307 (2007) |
+| E91 security facts | the QBER row said "two-intensity decoy-state bound ... aborts above 0.11" on an E91 run, because the protocol test was declared inside a branch the row could not see | Werner-model error rate; device-dependent rate reaches zero at 0.0981 ($`f = 1.16`$); a device-independent analysis would need S > 2.424, i.e. Q < 0.0715 | Acin et al., Phys. Rev. Lett. 98, 230501 (2007); Ma, Fung and Lo, Phys. Rev. A 76, 012307 (2007) |
 | E91 model error rate | not exposed, so the relation $`S = 2\sqrt{2}\,(1 - 2e_0)`$ could only be checked against the 2-dp SAMPLED QBER, from which two of three reported rows do not reproduce | `e91_model_qber` at both E91 sites (fibre and satellite) | the simulator's own model |
 | QKD rows of the security-posture table | "measured", under "what this run measured", with "The bits are real" | kind "simulated"; the browser's `bb84()` returns a count, never key bytes (checklist SC2) | code |
 | Demo banner | silent about QKD; the simulated label sat at the bottom of two pages and in hover text | every page says the quantum channel (QKD, QSDC) is simulated | code |
@@ -4105,7 +4104,7 @@ this same PR:
 | item | adopted as |
 |---|---|
 | Eve's error was added linearly to the channel error | composed as independent errors, $`a + b - 2ab`$, at all four sites (`intrinsic_qber` / `e_det_for_bound` and their browser mirrors) through one helper per language. Eve-free figures unchanged; E91 at 50 km with a full attack moves from S 1.29 / e0 0.2722 to S 1.33 / e0 0.2649 (displayed QBER 0.27 either way). The relation $`S = 2\sqrt{2}\,(1 - 2Q)`$ still holds exactly |
-| The S > 2 gate never binds | stated in the caption and the code; the device-independent threshold is now computed from the configured f: S > 2.456, Q < 0.0658 at f = 1.16 (the caption had compared an f = 1 threshold, S > 2.424, with an f = 1.16 zero-key point) |
+| The S > 2 gate never binds | stated in the caption and the code; the device-independent threshold is now computed from the configured f: S > 2.456, Q < 0.0658 at $`f = 1.16`$ (the caption had compared an $`f = 1`$ threshold, S > 2.424, with an $`f = 1.16`$ zero-key point) |
 | "Werner state" for Eve > 0 | the caption names the state a mixture of Werner and intercept-resend pairs, separable once $`V'(3 - 2f) \le 1`$ |
 | `/orchestration` log lines | "simulated" in the QKD and QSDC log lines, on the graph's quantum nodes and in the diagram legend |
 
@@ -4178,7 +4177,7 @@ WireGuard checks, CAVP 7/7 and RFC 5903) with their chunks fetched only on click
 3D view on an inference page, the E91 caption under an eavesdropper, and the computed QSDC tooltips
 (+0.1150, -64.7390). At a 390 px emulated phone viewport every route measured zero horizontal page
 overflow. One defect was found and fixed in this PR: the diagram's QSDC label paired the 24.5 dB
-channel loss with a g that includes the detector's 4 dB (g = 701 is 28.5 dB), while the log printed the
+channel loss with a g that includes the detector's 4 dB ($`g = 701`$ is 28.5 dB), while the log printed the
 same g at 28.5 dB; both now say which loss they name.
 
 
@@ -5729,9 +5728,9 @@ sourced Micius set, and make the MPC tier multi-party now, and then mask its con
 - Each value is now Liao et al.'s (Nature 549, 43, 2017), and `tests/test_the_satellite_channel_is_sourced.py`
   quotes the sentence beside each one. At 800 km: 34.0 dB of channel loss plus 3.0 dB of detector,
   1.72 kbit/s, QBER 1.17 percent. Not fitted to it, the model gives a sifted 12.2 kbit/s at Micius's
-  own mu = 0.8 and 645 km, against Liao's ~12.
+  own $`\mu = 0.8`$ and 645 km, against Liao's ~12.
 - The QSDC gap leaves the station optics out, as Qi et al.'s did, and its thresholds are corrected to
-  0.0757 at 0 dB, 0.0286 at Qi's g = 2.57 and about 5.5e-6 on this downlink. The satellite stage now
+  0.0757 at 0 dB, 0.0286 at Qi's $`g = 2.57`$ and about 5.5e-6 on this downlink. The satellite stage now
   reads its channel from the config; it carried literal copies of three of the values.
 
 **The MPC tier: real parties, then real masking.**
@@ -5939,7 +5938,7 @@ pressure correction cancel. Implemented in both languages (`channel.py::atmosphe
 `quantumSim.ts::atmosphericLossDb`).
 
 **The check it replaced was not like-for-like, and the anchor changed because of it.** Round 75
-compared Liao's "~12 kbit/s at 645 km" with half of every detection at mu = 0.8, as if every pulse
+compared Liao's "~12 kbit/s at 645 km" with half of every detection at $`\mu = 0.8`$, as if every pulse
 were a signal, and found 12.2. Liao sent "probabilities of 50%, 25%, and 25%" and counted signal
 states only: 1,671,072 sifted of 3,551,136 detections is 0.47057, against 0.47059 for signal-only
 sifting and 0.5 for all states. The user had chosen the 8 dB upper value on the old comparison; shown
@@ -6172,7 +6171,7 @@ its twin `finiteKey.ts` implement Eqs. (1) to (5) on COUNTS, so a pass whose los
 from its top to its edge is the sum of its seconds; `qkd/satellite_pass.py` is the browser's
 `simulatePass` step for step. A source without the vacuum keeps Rusca et al.'s 1-decoy bound. Checked
 against Rusca et al.'s Table I 2-decoy rows, optimised over the variables they optimise with mu3 =
-1e-6: 0.47 and 0.41 of the 26 and 46 dB rows at n_Z = 1e7, 0.49 and 0.44 at 1e9, always below; the
+1e-6: 0.47 and 0.41 of the 26 and 46 dB rows at $`n_Z = 10^{7}`$, 0.49 and 0.44 at 1e9, always below; the
 ratio of the two protocols, which cancels the shared channel model, within 15 percent of the paper's
 at all four cells, the 1-decoy protocol winning as in the paper; and the optimum's vacuum share above
 the 11 percent Rusca et al. report.
@@ -6268,7 +6267,7 @@ experiments and deployed systems: they fix the block as a count of key-basis bit
 privacy-amplification input, and let the time follow from the distance - Rusca et al.'s Table I uses
 1e7, Boaron et al. 2018 8.2e6 (cut tenfold at 405 km to keep a block under a day), Grunenfelder et
 al. 2020 8,149,248, Li et al. 2023 1e8 - while a fixed time is the minority (Lucamarini et al.'s 20
-min) and a pulse count mostly a theorist's convention. The default is n_Z = 1e7
+min) and a pulse count mostly a theorist's convention. The default is $`n_Z = 10^{7}`$
 (`QKDConfig.finite_key_block*`), with seconds of link time and the run's own pulses offered, and
 controls on the page. On the shipped channel the block is 5.3 s at 50 km and 35 s at 100 km and
 carries about 5.1 Mbit at either, 0.68 of the asymptotic product. The old 2e7-pulse block, now an
@@ -7004,7 +7003,7 @@ user chose to test that.
   | Block | Hoeffding | Chernoff | Tighter (default) |
   |---|---|---|---|
   | Fibre threshold (pulses) | 5.35e6 | 5.71e6 | 3.60e6 |
-  | Fibre key at the default n_Z = 1e7 (bits) | 5,174,318 | 5,189,863 | 5,214,327 |
+  | Fibre key at the default $`n_Z = 10^{7}`$ (bits) | 5,174,318 | 5,189,863 | 5,214,327 |
   | Liao's pass, share of the published key | 0.546 | 0.751 | 0.751 |
   | Khmelev's session, share of the published key | 0.564 | 0.692 | 0.692 |
 
@@ -7029,7 +7028,7 @@ user chose to test that.
   - The fibre threshold: 4.78e6 to 5.35e6 pulses.
   - The 1-decoy bound on Liao's pulses: 152,598 to 140,400 bits, so the vacuum adds 17 percent, not 8.
   - Rusca's Table I: the 26 dB row under the paper's dead time reads 1.5 percent below, where it
-    matched to a few parts in a thousand; the 46 dB row at n_Z = 1e7 reads 5.5 percent below.
+    matched to a few parts in a thousand; the 46 dB row at $`n_Z = 10^{7}`$ reads 5.5 percent below.
 - **The table may have been computed the old way.** The bound follows the printed form, the safe
   one, and the test's bands say what it gives.
 - **A test that recomputes it.** `test_a16_is_as_the_paper_prints_it` recomputes the single-photon
@@ -7242,7 +7241,7 @@ fixed in the repository two rounds ago and never republished).
     10 s; a 0.13 s run is below the window, not inside it.
   - Satellite event-wise F0.5 is 0 since the Round 71 retrain (tp 0, fp 2, fn 3); 0.714 and 0.455
     were the two leaky runs before it.
-  - The free-space QSDC threshold at 800 km is about 6.5e-5, with g = 532.66 from 27.26 dB: the
+  - The free-space QSDC threshold at 800 km is about 6.5e-5, with $`g = 532.66`$ from 27.26 dB: the
     channel's 32.21 dB less the station's 7.96 dB of optics, plus the detector's 3.01 dB, recomputed
     in `channel.py`. The 37.0 dB, g about 5,000 and 5.5e-6 the references still carried were Round
     75's.
@@ -8639,19 +8638,19 @@ revision is head, its diff against the old one is those files, and its sample se
 **hpmpc on the GPU (G3, the owner's choice: build and measure now).** `scripts/bench_hpmpc_gpu.sh` builds hpmpc (MIT) in a clone outside
 the submodule, initialising only `nn/PIGEON` (flexNN, MIT) and never the unlicensed `nn/Pygeon`, compiles its CUTLASS
 GEMM (v4.8.1, BSD-3-Clause) for `sm_120`, and times function 36, a secret-shared N x N matrix multiplication repeated
-twenty times under the Trio protocol on loopback. The GPU is ahead from N = 1024: 6.9 times there, 19.5 at 2048 and 54.9
+twenty times under the Trio protocol on loopback. The GPU is ahead from $`N = 1024`$: 6.9 times there, 19.5 at 2048 and 54.9
 at 4096, 316 s against 5.75 s; below it a fixed cost of about 0.3 s decides (`docs/models-and-benchmarks.md`,
 `docs/measurements/hpmpc-gpu-2026-11-06.json`). What measuring found:
 
 - The benchmark's GPU branch calls `T::GEMM` with no `T` declared, at the pinned commit and at upstream's head, so it
   does not compile. The clone changes that one line to the benchmark's share type, `S`, and the script prints it.
 - hpmpc's Makefile goes on after a compiler error and keeps the previous executable. The first GPU figures timed the
-  matrix-multiplication test built before them, flat at about 0.2 s from N = 128 to 4096 with almost nothing sent, and
+  matrix-multiplication test built before them, flat at about 0.2 s from $`N = 128`$ to 4096 with almost nothing sent, and
   were discarded; the script now checks every build for a compiler error and a fresh executable, and every run for the
   test's output.
 - With the GPU hidden the benchmark still finishes, because it checks no result. The control is the correctness test,
   which passes with the GPU and whose matrix multiplication fails without it.
-- A six-worker job of another project started mid-measurement and took the CPU figure at N = 1024 from 4.8 s to 8-10 s.
+- A six-worker job of another project started mid-measurement and took the CPU figure at $`N = 1024`$ from 4.8 s to 8-10 s.
   Those runs were discarded, and the script waits for the 1-minute load to fall under 4 before each run and records it.
 - CUTLASS 4.8.1's convolution header calls a function from problem-size headers it does not include, and the 16-bit
   convolution fails a static assertion. The convolution objects are not built; the measured path links the GEMM alone.
@@ -9027,6 +9026,7 @@ recorded separately, and nothing here changes the published model.
 | #21 | Window statistics from the raw 5G-NIDD captures measured across base stations, and an assessment of Python walkthroughs for the demo, both as research |
 | #22 | A Python walkthrough at `/walkthrough/`, served entirely from the demo's own origin |
 | #23 | The satellite's telemetry goes by one-way quasi-QSDC from a pre-shared key pool where two-way QSDC cannot close, with both bounds and published measurements plotted against loss |
+| #24 | The audit's remaining items: labelled rows on the model cards, the QCNN's tree property as a test, a watch on Polytune upstream, the GPU lock, a matched local liboqs, and the plain-text formulas |
 
 Findings worth keeping from those:
 
@@ -9190,3 +9190,18 @@ The owner asked whether the page's "QSDC NOT AVAILABLE" line was the specified r
 **What it does not claim.** It is quasi-QSDC: it rests on a key both ends already hold, assumed provisioned before the pass. The rate is asymptotic, as Pan et al. derive it, and they leave the finite-length analysis open. Spreading with a majority stands in for their LDPC code, so it spends more key per message bit. It is not a satellite result: no source read reports QSDC or quasi-QSDC over a satellite link. `docs/threat-model.md` has the section.
 
 **Checks.** `tests/test_r86_stike.py` reproduces Sun et al.'s gains and places Eq. 3 inside their measured key rates, recomputes every plotted point from the Python estimator, checks the two-way closure against its closed form, and re-derives the four published points from the papers' own terms. `tests/test_r84_integrator_wiring.py` runs the browser's stage in node for both outcomes. Each check was proved on a seeded defect, including the one that first came back silent: a charge of every pulse to the pool in TypeScript passed until the test bounded the spend by the retained count.
+
+### Round 86, 2026-11-09: the audit's remaining items
+
+The audit of the planning records left these open. Each is settled here, or by the owner's choice of 2026-11-09.
+
+- **Model cards.** A card could print the right number under the wrong metric's name, because the gate asked only that the artifact records the number. `tests/test_a_model_card_states_what_its_weights_state.py` now holds a row naming macro F1, minority F1 or accuracy to a key for that metric. Proved on a real card with two metrics swapped.
+- **The QCNN's tree.** Both cards say "a tree of two-qubit blocks, classically simulable in linear time". The check behind it lived outside the repository. `tests/test_r86_qcnn_tree_is_a_tree.py` evaluates each tree artifact from one-wire states alone, $`n - 1`$ merges, and matches the full state vector to $`10^{-5}`$; shuffled angles do not match, and a seeded coupling across pairs fails it.
+- **Polytune upstream.** `scripts/audit_deps.sh polytune` runs daily and fails on a change to issue 63 or 100, or on protocol source past the pin. Read on 2026-11-09: 12 commits past the pin, none of them protocol source.
+- **liboqs.** The development machine now builds 0.16.0 from the tag and with the flags the Docker image uses, and the version warning is gone.
+- **The GPU tier** has a hash-pinned lock, `requirements-gpu.lock`, written by `scripts/lock_requirements.sh`.
+- **The QOT figure's reopening condition** watched a file Round 80 replaced. It now names the use-case canvas, by the owner's choice.
+- **`/orchestration?usecase=`** is kept and documented in `docs/use-cases.md`.
+- **Plain-text formulas.** 32 more moved to the house math form. Quotations are left byte-exact.
+- **The demo container's log** had no size limit. `docker/docker-compose.demo.yml` now rotates it at 10 MB, three files.
+- **The satellite diagram's lane** said only "QSDC NOT AVAILABLE" on a run that sent the telemetry one way. Its second part now says so.

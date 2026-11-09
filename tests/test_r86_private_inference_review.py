@@ -464,7 +464,7 @@ def test_the_seal_residual_risk_carries_versions_and_its_check() -> None:
         assert needle in tm, f"the SEAL residual risk lost {needle!r}"
     script = _read(REPO / "scripts" / "audit_deps.sh")
     assert "audit_seal()" in script and "seal) audit_seal ;;" in script
-    assert "all) audit_npm && audit_seal && audit_python && audit_rust ;;" in script
+    assert "all) audit_npm && audit_seal && audit_polytune && audit_python && audit_rust ;;" in script
     workflow = _read(REPO / ".github" / "workflows" / "audit.yml")
     assert "bash scripts/audit_deps.sh seal" in workflow
 

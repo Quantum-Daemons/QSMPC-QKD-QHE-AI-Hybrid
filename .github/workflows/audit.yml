@@ -81,6 +81,21 @@ jobs:
       - name: Fail once npm's newest node-seal is not the locked one
         run: bash scripts/audit_deps.sh seal
 
+  polytune:
+    # Round 86. The crate's pin is watched by a test, and nothing watched upstream: an answer on the issues the threat
+    # model waits on, or a change to the protocol's source past the pin, would have passed unseen.
+    name: Polytune upstream (protocol source, issues 63 and 100)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Fail once the protocol source or either issue changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/audit_deps.sh polytune
+
   rust:
     name: cargo-deny (advisories, sources)
     runs-on: ubuntu-24.04

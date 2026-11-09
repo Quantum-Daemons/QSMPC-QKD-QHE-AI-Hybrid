@@ -31,6 +31,31 @@ def _locked() -> dict[str, str]:
     return {m[0].lower().replace("_", "-"): m[1] for m in re.findall(r"^([A-Za-z0-9_.-]+)==(\S+)", LOCK, re.M)}
 
 
+GPU_INPUT = "requirements-gpu.txt"
+GPU_LOCK = (REPO / "requirements-gpu.lock").read_text(encoding="utf-8")
+
+
+def _gpu_digest(root: Path) -> str:
+    lines = [ln.split("#")[0].strip() for ln in (root / GPU_INPUT).read_text(encoding="utf-8").splitlines()]
+    return hashlib.sha256("".join(f"{ln}\n" for ln in lines if ln).encode()).hexdigest()
+
+
+def test_the_gpu_lock_was_generated_from_its_input_and_names_every_input_by_hash() -> None:
+    assert f"# inputs sha256: {_gpu_digest(REPO)}" in GPU_LOCK, "requirements-gpu.txt changed: run scripts/lock_requirements.sh"
+    blocks = re.split(r"^(?=[A-Za-z0-9_.-]+==)", GPU_LOCK, flags=re.M)[1:]
+    assert len(blocks) > 20 and all("--hash=sha256:" in b for b in blocks)
+    inputs = [ln.split("#")[0].strip() for ln in (REPO / GPU_INPUT).read_text(encoding="utf-8").splitlines() if ln.split("#")[0].strip()]
+    assert inputs and all(any(b.startswith(i) for b in blocks) for i in inputs), inputs
+
+
+def test_the_gpu_digest_would_notice_a_changed_input_and_not_a_comment(tmp_path: Path) -> None:
+    text = (REPO / GPU_INPUT).read_text(encoding="utf-8")
+    (tmp_path / GPU_INPUT).write_text(text + "\n# a remark\n", encoding="utf-8")
+    assert f"# inputs sha256: {_gpu_digest(tmp_path)}" in GPU_LOCK
+    (tmp_path / GPU_INPUT).write_text(text + "\nnumpy>=99\n", encoding="utf-8")
+    assert f"# inputs sha256: {_gpu_digest(tmp_path)}" not in GPU_LOCK
+
+
 def test_the_lock_was_generated_from_these_inputs() -> None:
     assert f"# inputs sha256: {_digest(REPO)}" in LOCK, "an input changed: run scripts/lock_requirements.sh"
 

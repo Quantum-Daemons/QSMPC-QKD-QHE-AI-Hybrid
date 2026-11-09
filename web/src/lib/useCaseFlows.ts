@@ -600,7 +600,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
             // Both now name the channel loss and say g carries the detector too. Round 58. Since
             // Round 75 g also leaves out the station's optics, as Qi et al.'s did, so the channel's
             // 32.2 dB and g = 532.66 (27.26 dB) differ by more than the detector: the label says both.
-            ? `QSDC NOT AVAILABLE · link-budget limited · Eq. 8 bound ${f(m, "qsdc_eq8_bound")} `
+            ? `QSDC NOT AVAILABLE · ${Number(m["stike_delivered"]) === 1 ? "sent by quasi-QSDC · " : ""}link-budget limited · Eq. 8 bound ${f(m, "qsdc_eq8_bound")} `
               + `bit per received carrier at ${f(m, "channel_loss_db")} dB channel loss (g=${f(m, "qsdc_eve_gain_g")}: `
               + `the detector in, the station optics out)${quasiTag(m)}`
             : `QSDC direct telemetry · Eq. 8 bound ${f(m, "qsdc_eq8_bound")} bit per received carrier`) },
