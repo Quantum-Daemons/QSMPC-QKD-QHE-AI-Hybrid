@@ -190,6 +190,7 @@ UNMASKED_ALLOWED = {
     ("fhe/masking.py", "masked_decrypt"): "the masked decryption itself",
     ("mpc/secret_inference.py", "_fhe_linear"): "mask=None: the plaintext fallback, client_learns says so",
     ("fhe/conv.py", "fhe_conv2d"): "mask=None: the same fallback for the convolution",
+    ("qhe/qcnn_pauli.py", "under_ckks"): "the key holder reads its own readout, and a dot product's result has no partial sums to expose",
     ("usecases/genomics/__init__.py", "encrypted_scores"):
         "the panel check; its other slots hold products of the PUBLISHED PGS weights (docstring, threat model)",
 }

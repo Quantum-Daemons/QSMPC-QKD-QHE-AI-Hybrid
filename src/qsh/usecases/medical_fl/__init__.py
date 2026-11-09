@@ -258,7 +258,7 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     ctx.data.update(X=X, y=y, linear_model=model, features=patient)
     # The trained QCNN's own row, in its declared columns and units, only where it will be read: a
     # run that selects QCNN on the tabular data. The CNN variant has no QCNN artifact.
-    if patient_index is not None and ctx.config.get("inference") == "qcnn":
+    if patient_index is not None and ctx.config.get("inference") in ("qcnn", "qcnn-ckks"):
         ctx.data["qcnn_features"] = _qcnn_features(patient_index)
         # THE TWO PATHS COUNT MALIGNANT DIFFERENTLY. The QCNN trainer labels malignant 1
         # (`scripts/train/qcnn_variational.py`: y = target == 0), while this use case keeps

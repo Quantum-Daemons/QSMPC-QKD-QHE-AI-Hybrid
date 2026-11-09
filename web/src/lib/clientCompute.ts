@@ -17,6 +17,7 @@ import {
 import { CKKS_FLOOD_BITS, encryptedConv2d, encryptedHeldOutAgreement, encryptedLinear, encryptedLinearBatch,
   encryptedStudentInference, warmFHE, type CnnStudentWeights } from "./clientFHE";
 import type { HybridCnnResult } from "./clientHybridCnn";
+import type { QcnnCkksResult } from "./clientQcnnCkks";
 import { clientTrainScoreIDS } from "./clientIDS";
 import { clientQFL } from "./clientQFL";
 import { secureArgmax, warmMPC } from "./clientMPC";
@@ -958,6 +959,58 @@ async function runMultiPartyPsi(stage: string, parties: number, seed: number, em
   }
 }
 
+/** What the run reports for the trained QCNN with its input under CKKS: the panel reads this (Round 86). */
+export interface QcnnCkksReport {
+  usecase: string; qubits: number; result: QcnnCkksResult; classNames: string[] | null;
+  /** Recorded at training time on the artifact's held-out split, as the weights file carries them; the comparison the literature asks of a QML model. */
+  headline: { label: string; qcnn: number | null; classical: number | null; surrogate: number | null; surrogateFeatures: number | null; baseline: number | null };
+  circuit: string;
+}
+
+/**
+ * The trained QCNN's class with its input under CKKS, surfaced in place of the plaintext circuit's. Both QCNN sites call this one function, so the two cannot report it differently.
+ * Returns false if it fails: the site then reports the plaintext class, and the log says that it is not encrypted.
+ */
+async function surfaceQcnnUnderCkks(stage: string, usecase: string, w: QcnnWeights, row: number[], emit: (t: "log", s: string, m: string) => void,
+                                    metric: (s: string, k: string, v: number | string) => void, artifacts: Record<string, unknown>): Promise<boolean> {
+  try {
+    const { qcnnInferCkks } = await import("./clientQcnnCkks");
+    const r = await qcnnInferCkks(w, row);
+    const head = w.headline_metric, macro = head === "macro_f1", f1 = head === "minority_class_f1";
+    artifacts.qcnn_ckks = {
+      usecase, qubits: w.n_qubits, result: r, classNames: w.class_names ?? null, circuit: w.circuit?.name ?? "tree",
+      headline: {
+        label: macro ? "macro F1" : f1 ? "minority-class F1" : "accuracy",
+        qcnn: (macro ? w.test_macro_f1 : f1 ? w.test_minority_f1 : w.test_accuracy) ?? null,
+        classical: (macro ? w.classical_lr_macro_f1 : f1 ? w.classical_lr_minority_f1 : w.classical_lr_accuracy) ?? null,
+        surrogate: (macro ? w.classical_surrogate?.test_macro_f1 : f1 ? w.classical_surrogate?.test_minority_f1 : w.classical_surrogate?.test_accuracy) ?? null,
+        surrogateFeatures: w.classical_surrogate?.n_features ?? null,
+        baseline: (macro ? w.macro_f1_floors?.uniform_random : f1 ? w.all_positive_f1 : w.majority_baseline) ?? null,
+      },
+    } satisfies QcnnCkksReport;
+    artifacts.primary_inference = { backend: "qcnn-ckks", class: r.cls, qubits: w.n_qubits };
+    metric(stage, "primary_inference_backend", "qcnn-ckks");
+    metric(stage, "primary_inference_class", w.class_names?.[r.cls] ?? r.cls);
+    metric(stage, "qcnn_ckks_ran", 1);
+    metric(stage, "qcnn_ckks_terms", r.nTerms);
+    metric(stage, "qcnn_ckks_ciphertexts_up", r.nCiphertexts);
+    metric(stage, "qcnn_ckks_rotations", r.rotations);
+    metric(stage, "qcnn_ckks_up_kb", r2(r.upBytes / 1024));
+    metric(stage, "qcnn_ckks_down_kb", r2(r.downBytes / 1024));
+    metric(stage, "qcnn_ckks_ms", r2(r.totalMs));
+    metric(stage, "qcnn_ckks_max_error", r.maxError);
+    metric(stage, "qcnn_ckks_matches_clear", r.matchesClear ? 1 : 0);
+    emit("log", stage, `QCNN under CKKS: class ${w.class_names?.[r.cls] ?? r.cls}${r.matchesClear ? ", as the same circuit gives on the plaintext features" : `, and the same circuit gives ${r.clearClass} on the plaintext features`}. `
+      + `The readout is a linear form over ${r.nTerms} products of sines and cosines of the encoded angles, so the features were encrypted as ${r.nCiphertexts} ciphertext${r.nCiphertexts > 1 ? "s" : ""} and the server took one inner product per readout `
+      + `(${r.rotations} rotations, one multiplicative level). The decrypted readout differs from the clear circuit's by at most ${r.maxError.toExponential(1)}. ${r2(r.totalMs)} ms. Both parties are in this tab, so the separation is notional, and only that allows the comparison.`);
+    return true;
+  } catch (e) {
+    metric(stage, "qcnn_ckks_ran", 0);
+    emit("log", stage, `The QCNN under CKKS did not finish: ${(e as Error).message}. The class reported here is the plaintext circuit's and is not encrypted.`);
+    return false;
+  }
+}
+
 /** One held-out image through the student under CKKS and garbled circuits, off the page's thread, reported whichever way it ends. */
 async function runStudentUnderMpc(stage: string, usecase: string, seed: number, emit: (t: "log", s: string, m: string) => void,
                                   metric: (s: string, k: string, v: number | string) => void, artifacts: Record<string, unknown>): Promise<void> {
@@ -1498,7 +1551,7 @@ function dataDirFor(usecase: string): string {
  *  default file is the fallback, so a requested width that was never trained degrades to the shipped
  *  circuit rather than to nothing - and `qcnn_qubits` then reports the width that actually RAN,
  *  which is what lets the page tell the truth about a request it could not honour. */
-async function loadQcnnWeights(usecase: string, qubits?: number): Promise<QcnnWeights | null> {
+export async function loadQcnnWeights(usecase: string, qubits?: number): Promise<QcnnWeights | null> {
   const key = `${usecase}@${qubits ?? "default"}`;
   if (key in _qcnnCache) return _qcnnCache[key];
   const dir = `${import.meta.env.BASE_URL}data/${dataDirFor(usecase)}`;
@@ -3056,7 +3109,8 @@ export function runClientPipeline(
         // and do nothing. An inert control is the defect class this file's own checklist opens with
         // (Round 20 audited use-case pages and found five), and the only thing that surfaced it was
         // running the deployed page: every local gate was green.
-        if (String(config.inference || "ckks") === "qcnn" && ids.explain?.xRaw) {
+        const qcnnAsked = String(config.inference || "ckks");
+        if ((qcnnAsked === "qcnn" || qcnnAsked === "qcnn-ckks") && ids.explain?.xRaw) {
           const w = await loadQcnnWeights(usecase, qubitsOf(config));
           if (w) {
             // Timed here TOO, and that "too" is the point. The latency was added to the
@@ -3071,8 +3125,10 @@ export function runClientPipeline(
             const qcnnMs = performance.now() - t0;
             artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
                                             qubits: qc.qubits, expectation: r2(qc.expectation) };
-            metric(stage, "primary_inference_backend", "qcnn-trained");
-            metric(stage, "primary_inference_class", w.class_names?.[qc.cls] ?? qc.cls);
+            if (!(qcnnAsked === "qcnn-ckks" && await surfaceQcnnUnderCkks(stage, usecase, w, ids.explain.xRaw.slice(0, w.n_qubits), emit, metric, artifacts))) {
+              metric(stage, "primary_inference_backend", "qcnn-trained");
+              metric(stage, "primary_inference_class", w.class_names?.[qc.cls] ?? qc.cls);
+            }
             metric(stage, "qcnn_classes_available", w.readout?.n_classes ?? 2);
             metric(stage, "qcnn_inference_ms", r2(qcnnMs));
             metric(stage, "qcnn_qubits", qc.qubits);
@@ -3088,8 +3144,9 @@ export function runClientPipeline(
               + `"${w.class_names?.[qc.cls] ?? qc.cls}". Class index is ${w.readout?.class_index}, `
               + `${w.readout?.bit_order} - reading those bits in another order permutes the class map `
               + `while leaving every aggregate metric identical, which is why the convention ships in `
-              + `the weights. The circuit runs UNENCRYPTED, simulated exactly on a state vector in this `
-              + `tab; ${qcnnSimulability(w)}.`);
+              + `the weights. ${qcnnAsked === "qcnn-ckks"
+                ? "This run of the circuit on the plaintext features is the self-check of the CKKS evaluation reported above, which decides the class. "
+                : `The circuit runs UNENCRYPTED, simulated exactly on a state vector in this tab; ${qcnnSimulability(w)}.`}`);
             // The verdict is COMPUTED, not asserted. This read `and it LOSES:` as a literal, guarded
             // only on the field being PRESENT - no comparison was ever performed, so a retrained
             // artifact that put the circuit ahead would have gone on printing that it lost. The
@@ -3632,7 +3689,7 @@ export function runClientPipeline(
         // "ckks"/default keeps the CKKS(FHE)+MPC path. The CKKS run happens either way - this selects
         // which one is surfaced as the primary prediction (genuinely changes it).
         const inferBackend = String(config.inference || "ckks");
-        if (inferBackend === "qcnn") {
+        if (inferBackend === "qcnn" || inferBackend === "qcnn-ckks") {
           const nq = qubitsOf(config);
           // TRAINED variational circuit where weights exist for this use case; the untrained
           // Clifford+T path is not a predictor. Measured: over 24 vectors x 8 seeds its class flipped
@@ -3684,8 +3741,10 @@ export function runClientPipeline(
             const qcnnMs = performance.now() - t0;
             artifacts.primary_inference = { backend: "qcnn-trained", class: qc.cls,
                                             qubits: qc.qubits, expectation: r2(qc.expectation) };
-            metric(stage, "primary_inference_class", qc.cls);
-            metric(stage, "primary_inference_backend", "qcnn-trained");
+            if (!(inferBackend === "qcnn-ckks" && await surfaceQcnnUnderCkks(stage, usecase, w, qcnnFeats.slice(0, w.n_qubits), emit, metric, artifacts))) {
+              metric(stage, "primary_inference_class", qc.cls);
+              metric(stage, "primary_inference_backend", "qcnn-trained");
+            }
             metric(stage, "qcnn_expectation_z0", r2(qc.expectation));
             metric(stage, "qcnn_inference_ms", r2(qcnnMs));
             metric(stage, "qcnn_qubits", qc.qubits);
@@ -3722,7 +3781,7 @@ export function runClientPipeline(
             // and "6x8" = 48 for telecom's 57: the only architecture description on the page,
             // describing a circuit the page does not run. The count is now read from the artifact,
             // so it cannot disagree with the weights it is printed beside.
-            emit("log", stage, `inference backend = QCNN (TRAINED, NOT encrypted): class=${qc.cls} `
+            emit("log", stage, `inference backend = QCNN (TRAINED, ${inferBackend === "qcnn-ckks" ? "this run on the plaintext features is the self-check of the CKKS evaluation reported above" : "NOT encrypted"}): class=${qc.cls} `
               + `(<Z0>=${qc.expectation.toFixed(4)}, ${w.theta.length} trained angles - shared conv filters `
               + `plus pooling and final rotations - over ${w.n_qubits} wires, ${w.layers} conv rounds per stage, `
               + `simulated exactly on a state vector; ${qcnnSimulability(w)}). `

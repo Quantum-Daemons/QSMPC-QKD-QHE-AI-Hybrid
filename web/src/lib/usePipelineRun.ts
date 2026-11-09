@@ -189,7 +189,7 @@ export const makeDefaultParams = () => ({
   qrng_eps_log2: qrngCfg().security_epsilon_log2,   // LHL extractor security 2^this (toeplitz/seedless)
   qsmpc_op: "",          // "" = the use case's default, which ParameterPanel names
   prime: 0,              // 0 = use config default
-  inference: "ckks",     // "ckks" | "qcnn" where a trained circuit ships
+  inference: "ckks",     // "ckks" | "qcnn" | "qcnn-ckks" where a trained circuit ships
   qrng_post: qrngCfg().post_processing,             // "von_neumann" | "toeplitz" | "seedless"
   qkd_protocol: qkdCfg().protocol,                  // "bb84" (decoy) | "e91" (CHSH) — OptiQKD model
   // The satellite channel. `satellite_qkd` and `qsdc_telemetry` have read these four keys since the

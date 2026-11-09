@@ -12,6 +12,7 @@
     "check:qkd": "node scripts/check_qkd.mjs",
     "check:qfl": "node scripts/check_qfl.mjs",
     "check:hybrid-cnn": "node scripts/check_hybrid_cnn.mjs",
+    "check:qcnn-ckks": "node scripts/check_qcnn_ckks.mjs",
     "check:multi-psi": "node scripts/check_multi_psi.mjs",
     "check:lending": "node scripts/check_lending.mjs",
     "check:lending-private": "node scripts/check_lending_private.mjs",

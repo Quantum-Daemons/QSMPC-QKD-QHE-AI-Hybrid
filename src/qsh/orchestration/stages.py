@@ -496,7 +496,7 @@ class PrivateInferenceStage(Stage):
 
     def run(self, ctx, bus, reg):
         mode = ctx.config.get("inference", "ckks")
-        if mode == "qcnn":
+        if mode in ("qcnn", "qcnn-ckks"):
             import numpy as np
 
             from ..config import get_config
@@ -535,6 +535,21 @@ class PrivateInferenceStage(Stage):
                 _t0 = time.perf_counter()
                 expectation, cls, _logit = qcnn_infer(x_qcnn, weights)
                 _qcnn_ms = (time.perf_counter() - _t0) * 1000.0
+                backend_name = "qcnn-trained"
+                if mode == "qcnn-ckks":
+                    # The twin of `surfaceQcnnUnderCkks` in clientCompute.ts: the class is the decrypted readout's, and the circuit in the clear above is its self-check. TenSEAL, whichever backend the run selected for its linear layers, because this path needs only a dot product.
+                    from ..fhe.backends import get_backend
+                    from ..qhe.qcnn_pauli import fhe_note, under_ckks
+                    _t0 = time.perf_counter()
+                    enc = under_ckks(weights, x_qcnn, get_backend("tenseal"))
+                    bus.metric("qcnn_ckks_ms", round((time.perf_counter() - _t0) * 1000.0, 2), self.name)
+                    bus.metric("qcnn_ckks_ran", 1, self.name)
+                    bus.metric("qcnn_ckks_terms", enc["n_terms"], self.name)
+                    bus.metric("qcnn_ckks_max_error", enc["max_error"], self.name)
+                    bus.metric("qcnn_ckks_matches_clear", int(enc["class"] == cls), self.name)
+                    bus.log(f"QCNN under CKKS ({fhe_note()}): class {enc['class']}, the clear circuit gives {cls}; a linear form over {enc['n_terms']} Pauli products in {enc['n_ciphertexts']} ciphertext(s), "
+                            f"decrypted readout within {enc['max_error']:.1e} of the clear one. Classical computation under RLWE, not quantum homomorphic encryption.", self.name)
+                    cls, backend_name = enc["class"], "qcnn-ckks"
                 bus.metric("qcnn_inference_ms", round(_qcnn_ms, 2), self.name)
                 bus.metric("qcnn_qubits", int(weights.get("n_qubits", 0)), self.name)
                 # The artifact's own class index, and the same class in the use case's convention: a
@@ -550,6 +565,8 @@ class PrivateInferenceStage(Stage):
                 # backend beside it, so a summary cannot read one path and miss the other.
                 ctx.artifacts["private_prediction"] = case_cls
                 ctx.artifacts["private_prediction_backend"] = "qcnn-trained"
+                if backend_name == "qcnn-ckks":
+                    ctx.artifacts["qhe_backend"] = ctx.artifacts["private_prediction_backend"] = backend_name
                 bus.metric("qhe_expectation_z0", round(expectation, 4), self.name)
                 # Three regimes, mirroring `headline_metric` in the artifact and the browser path
                 # in clientCompute.ts. `.get` rather than `[...]`: the fields that do not apply to a

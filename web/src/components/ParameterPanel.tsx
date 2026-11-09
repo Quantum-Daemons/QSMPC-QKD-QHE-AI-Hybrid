@@ -398,6 +398,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
                 {/* "QCNN (QHE)" until 2026-10-30: the trained circuit applies no QOTP and no
                     homomorphic step - it runs on the plaintext features in this tab. */}
                 {hasTrainedQcnn(usecase) && <option value="qcnn">QCNN (trained, not encrypted)</option>}
+                {hasTrainedQcnn(usecase) && <option value="qcnn-ckks">QCNN (trained, under CKKS)</option>}
               </select>
             </div>)}
             {/* QCNN WIDTH, offered as the widths that actually ship rather than as 2..14.
@@ -414,7 +415,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
             {hasTrainedQcnn(usecase) && qcnnWidths(usecase).length > 1 && (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <label className="muted" htmlFor="pp-qubits" style={{ fontSize: 12 }}
-                title="Wires in the trained QCNN, which runs unencrypted and is simulated exactly on 2^n amplitudes, so it is classically simulable at this size. Only widths with a shipped circuit are offered: a width with no artifact would silently load a different one. Telecom's 7 and 8 are different trained circuits, each with Hur, Kim and Park's two-qubit block on every neighbouring pair of wires.">QCNN qubits</label>
+                title="Wires in the trained QCNN, simulated exactly on 2^n amplitudes in the clear or evaluated under CKKS on its input, so it is classically simulable at this size. Only widths with a shipped circuit are offered: a width with no artifact would silently load a different one. Telecom's 7 and 8 are different trained circuits, each with Hur, Kim and Park's two-qubit block on every neighbouring pair of wires.">QCNN qubits</label>
               <select id="pp-qubits" name="qubits" value={String(p.qubits)} style={{ width: "100%" }}
                 onChange={(e) => setParams({ ...params, qubits: Number(e.target.value) })}>
                 {qcnnWidths(usecase).map((w) => (
@@ -425,7 +426,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
             {hasTrainedQcnn(usecase) && qcnnWidths(usecase).length === 1 && (
             <div style={{ minWidth: 120, flex: "1 1 120px" }}>
               <span className="muted" style={{ fontSize: 12 }}
-                title="One trained width ships for this use case: one wire per feature the circuit encodes, so a wider register would only add wires that carry no feature. The circuit runs unencrypted and is simulated exactly on 2^n amplitudes, so it is classically simulable at this size.">QCNN qubits</span>
+                title="One trained width ships for this use case: one wire per feature the circuit encodes, so a wider register would only add wires that carry no feature. The circuit is simulated exactly on 2^n amplitudes in the clear, or evaluated under CKKS on its input, so it is classically simulable at this size.">QCNN qubits</span>
               <div style={{ fontSize: 13, padding: "3px 0" }}>{qcnnWidths(usecase)[0]} wires (the one trained width)</div>
             </div>)}
             {/* Only the secure-sum path reads it, and only genomics/finance run that path. The old

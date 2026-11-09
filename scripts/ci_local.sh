@@ -164,6 +164,10 @@ step "11b/18 The CNN student under MPC"
 ( cd web && npm run --silent check:hybrid-cnn >/tmp/ci_hybrid_cnn.log 2>&1 ) \
   && ok "the CNN student under MPC matches the clear network" || { bad "the CNN student under MPC"; tail -12 /tmp/ci_hybrid_cnn.log; }
 
+step "11h/18 The trained QCNN under CKKS"
+( cd web && npm run --silent check:qcnn-ckks >/tmp/ci_qcnn_ckks.log 2>&1 ) \
+  && ok "the trained QCNN under CKKS matches the circuit in the clear" || { bad "the trained QCNN under CKKS"; tail -12 /tmp/ci_qcnn_ckks.log; }
+
 step "11c/18 The PSI among banks under MPC"
 ( cd web && npm run --silent check:multi-psi >/tmp/ci_multi_psi.log 2>&1 ) \
   && ok "the PSI among banks matches the intersection in the clear" || { bad "the PSI among banks under MPC"; tail -12 /tmp/ci_multi_psi.log; }

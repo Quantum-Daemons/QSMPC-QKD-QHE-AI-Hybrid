@@ -617,6 +617,29 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
     return (p * sign).sum(1)
 
 
+def classical_surrogate(Xs: np.ndarray, y: np.ndarray, tr, te, c_enc: float, readout_q: int) -> dict:
+    """Logistic regression on the 3^n products of sines and cosines of the encoded angles: the classical model with the QCNN's own hypothesis class.
+
+    `Xs` is the bounded input the circuit encodes, tanh(z); the wire angle is c pi tanh(z). The figures use the conventions of the raw logistic regression above, on the same rows.
+    """
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.metrics import f1_score
+
+    theta = c_enc * np.pi * Xs
+    phi = np.ones((len(Xs), 1))
+    for q in range(theta.shape[1]):
+        phi = np.hstack([phi, phi * np.sin(theta[:, q:q + 1]), phi * np.cos(theta[:, q:q + 1])])
+    m = LogisticRegression(max_iter=2000).fit(phi[tr], y[tr])
+    pred = m.predict(phi[te])
+    return {
+        "model": f"logistic regression on the {phi.shape[1]} Pauli products of the same encoded angles, same split, same estimator as the raw comparator",
+        "n_features": int(phi.shape[1]),
+        "test_accuracy": round(float((pred == y[te]).mean()), 6),
+        "test_macro_f1": round(float(f1_score(y[te], pred, average="macro", zero_division=0)), 6) if readout_q else None,
+        "test_minority_f1": None if readout_q else round(float(f1_score(y[te], pred, zero_division=0)), 6),
+    }
+
+
 def artifact_dir(usecase: str, nq: int) -> Path:
     """Where `main()` writes a run's artifact when no `--out` is given.
 
@@ -1152,6 +1175,7 @@ def main() -> int:
                               "and a long multiclass run amplifies that.")},
         "test_accuracy": round(qcnn_acc, 6),
         "classical_lr_accuracy": round(float(lr_acc), 6),
+        "classical_surrogate": classical_surrogate(Xs[:, :X.shape[1]], y, tr, te, c_enc, readout_q),
         "majority_baseline": round(float(major), 6),
         # Named for what was MEASURED, which is not the same metric in both regimes. On two
         # classes `f1_score(average="binary")` is the minority-class F1 and an all-positive

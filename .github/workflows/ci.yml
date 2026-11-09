@@ -336,6 +336,11 @@ jobs:
         working-directory: web
         run: npm run check:hybrid-cnn
 
+      # The trained QCNN with its input under CKKS: the module the page runs, against the circuit in the clear.
+      - name: The trained QCNN under CKKS
+        working-directory: web
+        run: npm run check:qcnn-ckks
+
       # The finance page's PSI among three to five banks: the module the page runs, against the intersection in the clear.
       - name: The PSI among banks under MPC
         working-directory: web

@@ -889,6 +889,7 @@ export interface QcnnWeights {
      *  to bin by `i & (k-1)`, i.e. wires 0..m-1, which includes wires pooling discarded. */
     wires?: number[]; bit_order?: string;
               class_index?: string; note?: string };
+  feature_names?: string[];
   class_names?: string[] | null;
   per_class_f1?: Record<string, number> | null;
   n_classes_predicted?: number | null;
@@ -907,6 +908,8 @@ export interface QcnnWeights {
   test_macro_f1?: number | null; classical_lr_macro_f1?: number | null;
   all_positive_f1?: number; headline_metric?: string;
   test_accuracy: number; classical_lr_accuracy: number; majority_baseline: number;
+  /** Logistic regression on the same 3^n Pauli products, same split: the classical model with this circuit's hypothesis class. */
+  classical_surrogate?: { model: string; n_features: number; test_accuracy: number; test_macro_f1: number | null; test_minority_f1: number | null };
 }
 
 /** The circuits `qcnnInferTrained` implements: angles per conv round and per pool stage. */
@@ -986,16 +989,23 @@ export function validateQcnnWeights(w: QcnnWeights) {
   return { nq, layers, nf, m, circuit, c, ...lay };
 }
 
-export function qcnnInferTrained(features: number[], w: QcnnWeights):
-    { expectation: number; cls: number; logit: number; qubits: number; latencyMs: number;
-      probs?: number[]; className?: string } {
-  const t0 = performance.now();
-  // FIRST, before a single amplitude is touched: a malformed artifact throws here, on the binary
-  // path as on the multiclass one.
-  const L = validateQcnnWeights(w);
-  const nq = L.nq, N = 1 << nq;
-  const re = new Float64Array(N), im = new Float64Array(N);
-  re[0] = 1;
+/** What a trained circuit needs from whatever it runs on: a state vector here and in `qcnnPauli.ts`, a recorder for the page's diagram. */
+export interface GateOps {
+  RY(q: number, th: number): void; RZ(q: number, th: number): void; CNOT(ctl: number, tgt: number): void; X(q: number): void;
+  CRY(ctl: number, tgt: number, th: number): void; CRZ(ctl: number, tgt: number, th: number): void; CRX(ctl: number, tgt: number, th: number): void;
+  /** Called before each block, for a backend that records the circuit's structure; the state-vector backend has no use for it. */
+  mark?(m: CircuitMark): void;
+}
+
+/** A block of the trained circuit, as the circuit function announces it. */
+export type CircuitMark =
+  | { kind: "conv"; stage: number; round: number; wires: [number, number] }
+  | { kind: "pool"; stage: number; discarded: number; kept: number }
+  | { kind: "fc"; wires: number[] }
+  | { kind: "ring"; wires: number[] };
+
+/** The gates acting on amplitudes `re + i im` of a register of `N` basis states. */
+export function stateVectorOps(re: Float64Array, im: Float64Array, N: number): GateOps {
   const g1 = (q: number, a: number, b: number, c: number, d: number) => {
     const bit = 1 << q;
     for (let i = 0; i < N; i++) {
@@ -1020,35 +1030,6 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
       }
     }
   };
-  // THE SPACE THE ARTIFACT DECLARES. `raw` - every shipped artifact since Round 84 - is
-  // standardised here with the artifact's OWN training moments; `zscore` is passed through. A first
-  // version min-max scaled z-scores against raw-unit ranges, which pinned seven of eight features to
-  // -1 and produced <Z0> = 0.0098: a degenerate state that made the trained path exactly as
-  // meaningless as the untrained one. tanh bounds an unbounded z-score without reordering it.
-  //
-  // ROUND 84: medical was `zscore`, fed the bundle's z-scores as they came - and those are NOT the
-  // trainer's: the bundle standardised with its own StandardScaler, the trainer with its shuffled
-  // training split, so 2 of 86 held-out classes differed from the trainer's. Medical now declares
-  // `raw`, like finance, so this line applies the artifact's constants and no others.
-  //
-  // Wires past `n_features` stay in |0>, as the trainer's zero pad leaves them, whatever the caller
-  // passed there. THE ANGLE is c * tanh(z) * pi with c = `encoding_scale`: at c = 1 a feature's two
-  // tails fold onto one state (RY(pi)|0> and RY(-pi)|0> are the same ray); medical and telecom ship
-  // c = 0.5.
-  const raw = w.input_space === "raw";
-  for (let q = 0; q < nq; q++) {
-    let v = q < L.nf ? (features[q] ?? 0) : 0;
-    if (raw && q < L.nf) v = (v - w.feature_mean![q]) / (w.feature_std![q] || 1);
-    RY(q, L.c * Math.tanh(v) * Math.PI);
-  }
-  // ---- QCNN, mirroring scripts/train/qcnn_variational.py exactly ----
-  //
-  // ROUND 46 REPLACED WHAT WAS HERE, IN BOTH LANGUAGES IN THE SAME CHANGE. This read
-  // `for l: for q: RY(theta[l][q]); CNOT ring` - PennyLane's `BasicEntanglerLayers` - under the name
-  // QCNN, and so did the trainer. Porting only Python would have left the browser running a
-  // different circuit on weights trained by another, which is this round's own subject.
-  //
-  // Cong, Choi & Lukin, Nat. Phys. 15, 1273 (2019); Hur, Kim & Park, QMI 4, 3 (2022).
   const RZ = (q: number, th: number) => {
     // diag(e^{-i th/2}, e^{+i th/2}). RY alone spans only real rotations.
     const c = Math.cos(th / 2), s = Math.sin(th / 2), bit = 1 << q;
@@ -1090,6 +1071,20 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
     }
   };
   const X = (q: number) => g1(q, 0, 1, 1, 0);
+  return { RY, RZ, CNOT, X, CRY, CRZ, CRX };
+}
+
+/** The trained circuit after its encoding, on whichever backend `ops` is. Returns the surviving wires, in the order the readout reads them. */
+export function applyQcnnCircuit(w: QcnnWeights, L: ReturnType<typeof validateQcnnWeights>, ops: GateOps): number[] {
+  const { RY, RZ, CNOT, X, CRY, CRZ, CRX } = ops;
+  // ---- QCNN, mirroring scripts/train/qcnn_variational.py exactly ----
+  //
+  // ROUND 46 REPLACED WHAT WAS HERE, IN BOTH LANGUAGES IN THE SAME CHANGE. This read
+  // `for l: for q: RY(theta[l][q]); CNOT ring` - PennyLane's `BasicEntanglerLayers` - under the name
+  // QCNN, and so did the trainer. Porting only Python would have left the browser running a
+  // different circuit on weights trained by another, which is this round's own subject.
+  //
+  // Cong, Choi & Lukin, Nat. Phys. 15, 1273 (2019); Hur, Kim & Park, QMI 4, 3 (2022).
   // PennyLane's U3(t, p, l) up to a global phase: RZ(l), then RY(t), then RZ(p).
   const U3 = (q: number, t: number, p: number, l: number) => { RZ(q, l); RY(q, t); RZ(q, p); };
 
@@ -1125,7 +1120,7 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
   // the identity numerically, so the next divergence cannot be silent.
   const fcAt = (j: number, k: 0 | 1) => w.theta[nConv + nPool + 2 * j + k];
 
-  let active = Array.from({ length: nq }, (_, i) => i);
+  let active = Array.from({ length: L.nq }, (_, i) => i);
   for (let st = 0; st < stages; st++) {
     for (let r = 0; r < layers; r++) {                         // conv: ONE filter, every position
       if (su4) {
@@ -1140,6 +1135,7 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
         }
         const k = (j: number) => convAt(st, r, j);
         for (const [a, b] of bonds) {                          // circuit 9: 15 angles, 3 CNOTs
+          ops.mark?.({ kind: "conv", stage: st, round: r, wires: [a, b] });
           U3(a, k(0), k(1), k(2)); U3(b, k(3), k(4), k(5));
           CNOT(a, b); RY(a, k(6)); RZ(b, k(7));
           CNOT(b, a); RY(a, k(8));
@@ -1149,6 +1145,7 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
       }
       for (let i = 0; i + 1 < active.length; i += 2) {
         const a = active[i], b = active[i + 1];
+        ops.mark?.({ kind: "conv", stage: st, round: r, wires: [a, b] });
         RY(a, convAt(st, r, 0)); RZ(a, convAt(st, r, 1));
         RY(b, convAt(st, r, 2)); RZ(b, convAt(st, r, 3));
         CNOT(a, b);
@@ -1161,6 +1158,7 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
     // pool: condition each survivor on its discarded partner, then never touch the partner again.
     // Tree: CRY. SU(4): RZ where the partner is 1, X on the partner, RX where it is now 1.
     const pool = (ctl: number, tgt: number) => {
+      ops.mark?.({ kind: "pool", stage: st, discarded: ctl, kept: tgt });
       if (su4) { CRZ(ctl, tgt, poolAt(st, 0)); X(ctl); CRX(ctl, tgt, poolAt(st, 1)); }
       else CRY(ctl, tgt, poolAt(st));
     };
@@ -1182,8 +1180,49 @@ export function qcnnInferTrained(features: number[], w: QcnnWeights):
   // telecom readout by 5.96e-08, which is 2^-24 - a float32 ULP, so the angle was inert rather than
   // weak. The recipe and the other three artifacts are in scripts/train/qcnn_variational.py.
   // Half the fully-connected block was decoration.
+  ops.mark?.({ kind: "fc", wires: active.slice() });
   active.forEach((q, j) => { RZ(q, fcAt(j, 1)); RY(q, fcAt(j, 0)); });   // unitary on what survives
-  if (active.length > 1) for (let j = 0; j < active.length; j++) CNOT(active[j], active[(j + 1) % active.length]);
+  if (active.length > 1) {
+    ops.mark?.({ kind: "ring", wires: active.slice() });
+    for (let j = 0; j < active.length; j++) CNOT(active[j], active[(j + 1) % active.length]);
+  }
+  return active;
+}
+
+export function qcnnInferTrained(features: number[], w: QcnnWeights):
+    { expectation: number; cls: number; logit: number; qubits: number; latencyMs: number;
+      probs?: number[]; className?: string } {
+  const t0 = performance.now();
+  // FIRST, before a single amplitude is touched: a malformed artifact throws here, on the binary
+  // path as on the multiclass one.
+  const L = validateQcnnWeights(w);
+  const nq = L.nq, N = 1 << nq;
+  const re = new Float64Array(N), im = new Float64Array(N);
+  re[0] = 1;
+  const ops = stateVectorOps(re, im, N);
+  const { RY } = ops;
+  // THE SPACE THE ARTIFACT DECLARES. `raw` - every shipped artifact since Round 84 - is
+  // standardised here with the artifact's OWN training moments; `zscore` is passed through. A first
+  // version min-max scaled z-scores against raw-unit ranges, which pinned seven of eight features to
+  // -1 and produced <Z0> = 0.0098: a degenerate state that made the trained path exactly as
+  // meaningless as the untrained one. tanh bounds an unbounded z-score without reordering it.
+  //
+  // ROUND 84: medical was `zscore`, fed the bundle's z-scores as they came - and those are NOT the
+  // trainer's: the bundle standardised with its own StandardScaler, the trainer with its shuffled
+  // training split, so 2 of 86 held-out classes differed from the trainer's. Medical now declares
+  // `raw`, like finance, so this line applies the artifact's constants and no others.
+  //
+  // Wires past `n_features` stay in |0>, as the trainer's zero pad leaves them, whatever the caller
+  // passed there. THE ANGLE is c * tanh(z) * pi with c = `encoding_scale`: at c = 1 a feature's two
+  // tails fold onto one state (RY(pi)|0> and RY(-pi)|0> are the same ray); medical and telecom ship
+  // c = 0.5.
+  const raw = w.input_space === "raw";
+  for (let q = 0; q < nq; q++) {
+    let v = q < L.nf ? (features[q] ?? 0) : 0;
+    if (raw && q < L.nf) v = (v - w.feature_mean![q]) / (w.feature_std![q] || 1);
+    RY(q, L.c * Math.tanh(v) * Math.PI);
+  }
+  const active = applyQcnnCircuit(w, L, ops);
   // MULTICLASS readout: marginal probabilities of the first m SURVIVING wires - the ones the
   // fully-connected block above just acted on - with survivor j contributing bit j of the class
   // index, least significant first. The same convention the `i & 1` below relies on for <Z0>.
@@ -1255,6 +1294,9 @@ export function blochVectors(re: Float64Array, im: Float64Array, nQubits: number
   return out;
 }
 
+/** Rounds of the untrained comparison circuit below; the page's diagram reads this. */
+export const QOTP_COMPARISON_ROUNDS = 7;
+
 /** `onSnapshot`, when given, receives the state after encoding, after the pad and after each conv
  *  round - for the 3D view of what the circuit does. Absent (every measured call), it costs nothing. */
 export function qotpQcnnInfer(features: number[], seed = 0, nQubits = 8,
@@ -1315,7 +1357,7 @@ export function qotpQcnnInfer(features: number[], seed = 0, nQubits = 8,
   // this line read "QOTP perfect-hiding mask" with no qualification.
   for (let q = 0; q < nQubits; q++) { if (u() < 0.5) X(q); if (u() < 0.5) Z(q); }
   onSnapshot?.("padded", re, im);
-  for (let round = 0; round < 7; round++) {                                   // 7 fixed Clifford+T rounds (untrained; not a QCNN)
+  for (let round = 0; round < QOTP_COMPARISON_ROUNDS; round++) {             // fixed Clifford+T rounds (untrained; not a QCNN)
     for (let q = 0; q < nQubits; q++) H(q);
     for (let q = 0; q < nQubits; q++) CNOT(q, (q + 1) % nQubits);
     for (let q = 0; q < nQubits; q++) T(q);                                  // n T per round, 7n counted (56 at 8 qubits)

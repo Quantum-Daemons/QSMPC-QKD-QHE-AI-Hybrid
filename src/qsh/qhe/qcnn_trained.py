@@ -122,7 +122,20 @@ def validate(weights: dict) -> dict:
 
 
 def infer(features, weights: dict) -> tuple[float, int, float]:
-    """Return ``(expectation, cls, logit)`` for one feature vector.
+    """Return ``(expectation, cls, logit)`` for one feature vector; see :func:`_run_circuit`."""
+    return _run_circuit(features, weights)[:3]
+
+
+def final_state(initial: np.ndarray, weights: dict) -> tuple[np.ndarray, np.ndarray]:
+    """The trained circuit applied to the basis-state amplitudes ``initial``: ``(re, im)``, with no encoding step.
+
+    `qcnn_pauli` builds the circuit's readout as a linear form from this, through the same gates :func:`infer` applies.
+    """
+    return _run_circuit(None, weights, initial=np.asarray(initial, dtype=float))[3:]
+
+
+def _run_circuit(features, weights: dict, initial: np.ndarray | None = None) -> tuple[float, int, float, np.ndarray, np.ndarray]:
+    """Return ``(expectation, cls, logit, re, im)``; ``initial`` replaces the encoding.
 
     Mirrors ``scripts/train/qcnn_variational.py`` gate for gate: RY(c*tanh(z)*pi) data encoding,
     with c the artifact's ``encoding_scale`` (1 when absent); then
@@ -171,7 +184,7 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
         re[src], re[dst] = re[dst].copy(), re[src].copy()
         im[src], im[dst] = im[dst].copy(), im[src].copy()
 
-    x = np.asarray(features, dtype=float).ravel()
+    x = np.zeros(0) if features is None else np.asarray(features, dtype=float).ravel()
     # The caller's units are the artifact's to name, and assuming them is how the first trained model
     # became as meaningless as the untrained one. finance arrives RAW and mixed-scale (a log amount
     # and three binary flags since its Round 84 retrain), so it must be standardised here with the
@@ -182,7 +195,7 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
     # held-out classes in the browser. Raw units standardised here with the artifact's constants
     # cannot drift from the trainer, whoever scales their copy of the data.
     nf = layout["nf"]
-    if weights.get("input_space") == "raw":
+    if features is not None and weights.get("input_space") == "raw":
         mu = np.asarray(weights["feature_mean"], dtype=float)[:nf]
         sd = np.asarray(weights["feature_std"], dtype=float)[:nf]
         sd = np.where(sd == 0, 1.0, sd)
@@ -191,8 +204,12 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
     # Wires past n_features stay in |0>, as the trainer's zero pad leaves them. The angle carries the
     # artifact's encoding scale: c = 1 folds a feature's two tails onto one state, and medical ships 0.5.
     c = layout["c"]
-    for q in range(nq):
-        ry(q, c * float(np.tanh(x[q] if q < min(x.size, nf) else 0.0)) * np.pi)
+    if initial is None:
+        for q in range(nq):
+            ry(q, c * float(np.tanh(x[q] if q < min(x.size, nf) else 0.0)) * np.pi)
+    else:
+        re[:] = initial
+        im[:] = 0.0
     # QCNN, mirroring scripts/train/qcnn_variational.py and web/src/lib/quantumSim.ts.
     #
     # ROUND 46: THIS WAS THE THIRD COPY OF THE CIRCUIT. The trainer, the browser and this inference
@@ -291,4 +308,4 @@ def infer(features, weights: dict) -> tuple[float, int, float]:
     sign = np.where((np.arange(n) & 1) == 0, 1.0, -1.0)
     expectation = float((p * sign).sum())
     logit = expectation * float(weights["scale"]) + float(weights["bias"])
-    return expectation, int(logit > 0), logit
+    return expectation, int(logit > 0), logit, re, im

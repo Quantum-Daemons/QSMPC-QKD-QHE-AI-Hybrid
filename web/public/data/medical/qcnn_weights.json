@@ -155,6 +155,13 @@
  "headline_metric": "accuracy",
  "n_train": 398,
  "n_test": 86,
+ "classical_surrogate": {
+  "model": "logistic regression on the 6561 Pauli products of the same encoded angles, same split, same estimator as the raw comparator",
+  "n_features": 6561,
+  "test_accuracy": 0.94186,
+  "test_macro_f1": null,
+  "test_minority_f1": 0.923077
+ },
  "note": "Variational QCNN trained by backpropagation through a dense state vector. The prediction path applies NO QOTP mask: undoing a Pauli frame through Clifford+T is not implemented here (T X T-dagger is not Pauli), so hiding and prediction are kept separate rather than claiming a correction that does not exist. Simulated, not hardware; the classical baseline above is reported so no quantum advantage is implied.",
  "circuit": {
   "name": "tree",

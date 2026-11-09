@@ -115,6 +115,8 @@ public, the PSI's two banks are notional parties in one tab with generated accou
 nothing private between the parties ([what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)), so this demonstrates the
 computation rather than a privacy property.
 
+The `Inference` control on the finance, medical and telecom pages can also run the trained QCNN with its input under CKKS ([what that is](models-and-benchmarks.md#the-trained-qcnn-under-ckks)), and each page draws its circuit in the `Quantum circuits on this page` panel.
+
 ### Industry use cases
 
 | Use case | Pipeline | Industry |
