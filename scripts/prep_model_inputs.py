@@ -266,6 +266,8 @@ MODIFICATIONS = {
         "laundering, each one 32 features computed from the transactions by the training script "
         "(per-account aggregates over earlier transactions, structural features from the rows before "
         "the window), rounded to 6 decimals."),
+    "finance_aml.mlp_large": (
+        "The rows of finance_aml.gbm's sample: its 32 features computed from the published transactions, enriched to 2 percent laundering, plus 79 per-transaction window features computed by the training script."),
     "finance_aml.student": (
         "The rows of finance_aml.gbm's sample (32 features computed from the published transactions, "
         "drawn from the held-out test window and enriched to 2 percent laundering), z-scored with the "
@@ -405,6 +407,7 @@ _MODEL_KEY = {
     "medical_student": "medical_fl.student",
     "opssat_student": "satellite_comms.opssat_student",
     "finance_student": "finance_aml.student",
+    "finance_mlp_large": "finance_aml.mlp_large",
 }
 
 
@@ -502,6 +505,23 @@ def build_medical(rng: np.random.Generator) -> dict:
 # --------------------------------------------------------------------------------------------- #
 #  finance_aml -- AMLworld HI-Small, the 32 engineered features finance_aml.gbm expects
 # --------------------------------------------------------------------------------------------- #
+def _finance_sample_index(y_te: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    """The 8,192 test-window rows of the finance sample.
+
+    At the window's real rate an unenriched draw of 8,192 holds about a dozen positives, and every metric on it is noise. 2 percent keeps 164 positives for a stable interval while staying recognisably
+    imbalanced. The share is a constant of this sample, so the registry's `eval_split` states it.
+    """
+    pos = np.flatnonzero(y_te == 1)
+    neg = np.flatnonzero(y_te == 0)
+    want = N_SAMPLES["finance_aml"]
+    positive_share = 0.02
+    take_pos = min(len(pos), max(1, round(want * positive_share)))
+    idx = np.concatenate([rng.choice(pos, take_pos, replace=False),
+                          rng.choice(neg, want - take_pos, replace=False)])
+    rng.shuffle(idx)
+    return idx
+
+
 def build_finance(rng: np.random.Generator) -> dict:
     """A draw from the held-out temporal test window, featurised by the trainer's own functions.
 
@@ -564,18 +584,8 @@ def build_finance(rng: np.random.Generator) -> dict:
     print(f"    the {len(fixtures)} export fixtures are identical; AUPRC over all {len(y_te):,} test rows "
           f"{window_auprc:.6f} against the recorded {float(rec['auprc']):.6f}")
 
-    pos = np.flatnonzero(y_te == 1)
-    neg = np.flatnonzero(y_te == 0)
-    # At the window's real rate an unenriched draw of 8,192 holds about a dozen positives, and every
-    # metric on it is noise. 2 percent keeps 164 positives for a stable interval while staying
-    # recognisably imbalanced. The share is a constant of this sample, so the registry's
-    # `eval_split` states it.
-    want = N_SAMPLES["finance_aml"]
-    POSITIVE_SHARE = 0.02
-    take_pos = min(len(pos), max(1, round(want * POSITIVE_SHARE)))
-    idx = np.concatenate([rng.choice(pos, take_pos, replace=False),
-                          rng.choice(neg, want - take_pos, replace=False)])
-    rng.shuffle(idx)
+    idx = _finance_sample_index(y_te, rng)
+    want, take_pos = len(idx), int(y_te[idx].sum())
     # Written as the browser reads them, BEFORE predicting: an expectation computed on other values is one for numbers
     # the browser never sees, and on a tree ensemble that shows up as split-boundary flips. Until Round 86 that meant 6
     # decimals; now float32 precision (float32_shortest).
@@ -1435,6 +1445,49 @@ def build_opssat_student(rng: np.random.Generator) -> dict:
     }
 
 
+def _build_finance_mlp(key: str) -> dict:
+    """The finance teacher's own 8,192 rows with the per-transaction features added, raw: the graph scales its own input.
+
+    Drawn by the helper the teacher's sample uses, from the same seed, and refused unless the first 32 columns are that sample's rows.
+    """
+    from train.finance_aml import FEATURES, causal_account_features, graph_features, load_sorted, temporal_windows  # type: ignore
+    from train.finance_aml_fan import transaction_features  # type: ignore
+
+    from qsh.models import registry
+
+    directory = Path(registry.ARTIFACT_DIRS[key]).name
+    teacher = json.loads((REPO / "models" / "finance_aml_gbm" / "eval_sample.json").read_text())
+    df = load_sorted()
+    _, _, te, tr = temporal_windows(df)
+    base = graph_features(te, fit_on=tr, causal=causal_account_features(df))
+    y_te = te["label"].to_numpy().astype(int)
+    extra, names = transaction_features(df)
+    idx = _finance_sample_index(y_te, np.random.default_rng(17))
+    x = float32_shortest(np.hstack([base[idx], extra[-len(te):][idx]]))
+    y = y_te[idx]
+    # Within the teacher sample's own rounding: it is stored to 6 decimals, this at float32 precision.
+    if not np.isclose(x[:, :base.shape[1]], np.asarray(teacher["samples"], dtype=float), rtol=1e-6, atol=1e-5).all() or not np.array_equal(y, np.asarray(teacher["labels"], dtype=int)):
+        raise SystemExit("the rows drawn here are not the teacher sample's: refusing to write a sample that would compare different rows")
+    pred = _predict(directory, x)
+    f1, all_pos, _ = _f1_over_baseline(y, pred)
+    window = float((registry.achieved(key) or {})["minority_class_f1"])
+    return {
+        "task": "classification",
+        "provenance": teacher["provenance"] + " The identical rows the gradient-boosting teacher's sample ships, with the 79 per-transaction features added.",
+        "input": {"shape": [1, x.shape[1]], "dtype": "float32", "preprocessing": [],
+                  "layout": "samples[i] is one transaction's 111 engineered features, raw: the graph scales them itself"},
+        "feature_names": list(FEATURES) + names,
+        "samples": x.tolist(),
+        "labels": y.tolist(),
+        "expected": {
+            "graph": "model.onnx", "accuracy": float((pred == y).mean()), "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            **declared_metric_expectation(key, y, pred), "all_positive_f1": all_pos,
+            "note": (f"On these rows, enriched to 2 percent laundering, minority-class F1 is {f1:.4f}. The record's {window:.4f} is over the whole "
+                     f"test window at its real prevalence, so the two are not comparable, and this sample checks that the browser reproduces the graph."),
+        },
+    }
+
+
 def build_finance_student(rng: np.random.Generator) -> dict:
     """The finance teacher's own 8192 rows, z-scored by the published scaler.
 
@@ -1515,6 +1568,7 @@ BUILDERS = {"medical_fl": build_medical, "finance_aml": build_finance,
             "medical_student": build_medical_student,
             "opssat_student": build_opssat_student,
             "finance_student": build_finance_student,
+            "finance_mlp_large": lambda rng: _build_finance_mlp("finance_aml.mlp_large"),
             "satellite_opssat": build_satellite_opssat,
             "telecom_ids": build_telecom,
             "telecom_nidd": build_telecom_nidd,

@@ -7,6 +7,14 @@
   },
   "revision": "eb15e2a9361668ac3093810993d8d98eab875330"
  },
+ "finance_aml.mlp_large": {
+  "files": {
+   "eval_sample.json": "44b27887a182a927791f322c63b3190227e5511af5e40a1a2b31b36dd043080c",
+   "onnx/model.onnx": "73fe010423f1155676966ab9dc5e07675fc777dcfb5c6b094c66e9bcc77578fc",
+   "weights.json": "c450fe4454e2a5f7453e45bf39bf7ce81f8615d6ca8c4acfd9502f66852cbc21"
+  },
+  "revision": "3bddcf07034fdd192657a8a7af1b39cb24dffdec"
+ },
  "finance_aml.student": {
   "files": {
    "eval_sample.json": "5b847bfb4ff624145442e100d5cd4469f8a45516878709d342982128a75b050a",

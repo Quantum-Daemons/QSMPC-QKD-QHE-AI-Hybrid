@@ -14,7 +14,7 @@ export default function PipelineControls({ run }: { run: Run }) {
   // local secret-sharing), so the server-side backend selectors (TenSEAL/OpenFHE/MPyC/…) don't apply.
   const demo = isClientDemo();
   const { usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, sig, setSig,
-    optiqkd, setOptiqkd, mpcCnn, setMpcCnn, multiPsi, setMultiPsi, multiPsiParties, setMultiPsiParties, publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
+    optiqkd, setOptiqkd, mpcCnn, setMpcCnn, mpcMlp, setMpcMlp, multiPsi, setMultiPsi, multiPsiParties, setMultiPsiParties, publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
     state, running, paused, inFlight, start, startStepwise, pause, resume, step, stop } = run;
   // Resolved once: whether WebGPU can be offered at all. Without a usable adapter the option is shown
   // disabled with the reason, rather than offered and then silently run on WASM.
@@ -222,6 +222,12 @@ export default function PipelineControls({ run }: { run: Run }) {
             <input id="sel-mpccnn" name="sel-mpccnn" type="checkbox" checked={mpcCnn}
               onChange={(e) => setMpcCnn(e.target.checked)} style={{ marginRight: 4 }} />
             CNN under MPC (about 20 s)
+          </label>
+        )}
+        {demo && usecase === "finance_aml" && (
+          <label className="muted" title="Runs one held-out row through the published MLP, its linear layers under CKKS and its ReLUs and argmax in garbled circuits, in a Web Worker so the page stays responsive. Its features see transactions up to the end of their batch of 2,048.">
+            <input type="checkbox" id="chk-mpcmlp" checked={mpcMlp} onChange={(e) => setMpcMlp(e.target.checked)} />{" "}
+            MLP under MPC (a few seconds)
           </label>
         )}
         {demo && usecase === "finance_aml" && (

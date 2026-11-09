@@ -9029,6 +9029,7 @@ recorded separately, and nothing here changes the published model.
 | #24 | The audit's remaining items: labelled rows on the model cards, the QCNN's tree property as a test, a watch on Polytune upstream, the GPU lock, a matched local liboqs, and the plain-text formulas |
 | #25 | Every model file the browser fetches from the Hub is checked against a SHA-256 recorded for its pin, and refused if it differs |
 | #26 | The trained QCNN can run with its input under CKKS, as a linear form over its encoding's Pauli products; classical surrogate comparators; each page draws its circuit from the code that runs it |
+| #27 | One published finance MLP on 111 per-account and per-transaction features, under CKKS and garbled circuits on the page; the full deployment's finance tiers are that model; the local gate cannot test a stale build |
 
 Findings worth keeping from those:
 
@@ -9233,4 +9234,20 @@ The circuit here is simulated classically, as it already was, so the private for
 **Checks.** `tests/test_r86_qcnn_under_ckks.py`: the Python form is the circuit's readout and equals the browser's to rounding; the class under TenSEAL is the clear one; the selector offers it only with a trained circuit; both QCNN sites go through one function; the panel states what it is not; the surrogate is on the circuit's own features. Six seeded defects fire: a sign in the features, a dropped rotation step, a gate lost by the recorder, a sign in the Python readout, the selector option, the CI step.
 
 **The CBOM** now lists the Hub-file digest check and this CKKS path among the code's uses of SHA-256 and CKKS.
+
+### Round 86, 2026-11-09: one published finance MLP, on features that can be compared with the literature
+
+Audit item B19 found the full deployment still pricing MLPs with random weights on finance. Trained tiers on the teacher's 32 per-account features replaced them, and on the owner's questions the tiers were examined against the literature: the 32 features reach F1 about 0.2, the level of the "basic features" row of the Graph Feature Preprocessor paper (Blanusa et al., ICAIF 2024, Table 5: 19.75 for XGBoost on HI-Small), so they could not be compared with the published 56 to 68. The page's model-size selector had been removed in Round 20 because it invited comparisons of shapes nothing had trained, so this is one model and one switch.
+
+`scripts/train/finance_aml_fan.py` adds 79 per-transaction features, computed in the open: fan-in and fan-out, the spread of amounts and the time since each account's last edge in windows of one hour to three days, and scatter-gather counts, in batches of 2,048 as that paper processes them (its library is proprietary). Strictly causal windows, with nothing from the current batch, reach F1 0.196 on the booster; these reach 0.401. No label is read. The data was checked before training: no non-finite value, no constant column, and no single feature above AUROC 0.752 on the test window.
+
+**Result, over the whole held-out window** (1,523,504 rows, 2,321 laundering), with scaling and seed chosen on validation: the MLP $`[111, 128, 64, 2]`$, 22,722 parameters, F1 0.3350, AUPRC 0.3059; the median over its five seeds 0.3696 and the range 0.335 to 0.405. XGBoost on the same inputs F1 0.4006, AUPRC 0.3358. On the page, 192 ReLUs in garbled circuits, 42.7 MB and about 5 s, and the class and logits match the clear network. It does not reproduce the published figures: it has no cycle enumeration or message passing, and its split is 56/14/30.
+
+**What the model is not.** The registry's `finance_aml.gnn`, "Multi-PNA+EU transaction GNN", is a different thing: a card for an architecture this project has never trained, with no Hub repository, kept for its published target of 68.16.
+
+**Licence.** The model's `weights.json` carries 16 held-out rows for checks, which are Data under CDLA-Sharing-1.0, so the file states the licence, link, credit and changes, and a test now holds every weights file that carries rows to that.
+
+**Checks.** `tests/test_r86_trained_tiers.py`, `tests/test_r86_mpc_mlp_wiring.py` and `npm run check:hybrid-mlp`, the module the page runs against the trainer's logits, in both CI paths. The Hub repository was republished with the owner's approval at `3bddcf0` with its pin and digests recorded.
+
+**The local gate.** An interrupted `scripts/ci_local.sh` left its preview server on the scan's port, and the next run's text-layout gate read the old build. The script now refuses a busy port, checks that the page it scans is the build it just made, removes the server on any exit, and limits the scan's time; `tests/test_r86_ci_local_preview_guard.py` holds that.
 

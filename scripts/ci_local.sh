@@ -54,6 +54,10 @@ step "3/18 generated artifacts match their generator and their history"
 step "4/18 lint, BLOCKING scope (this is the one that was red)"
 "$PY" -m ruff check src/qsh/models scripts/train scripts/publish_hf.py scripts/data \
   && ok "ruff blocking scope" || bad "ruff blocking scope"
+# Over every Python file, because an undefined name is a NameError waiting on a path no test runs. A refactor of the finance
+# sample builder left six in scripts/prep_model_inputs.py, outside the scope above, and only a rebuild would have shown them.
+"$PY" -m ruff check --select F821 src tests api scripts \
+  && ok "no undefined name anywhere" || bad "an undefined name"
 
 step "5/18 no confidential files tracked"
 make check-secrets >/dev/null 2>&1 && ok "no confidential files" || bad "confidential files tracked"
@@ -110,23 +114,31 @@ bash scripts/build_wasm.sh >/tmp/ci_wasm.log 2>&1 \
 # served on its own port, scanned in a headless Chrome in this machine's font and again in DejaVu Sans,
 # the CI runner's font, which is wider (Round 84), then torn down.
 SCAN_OUT=$(mktemp -d)
-if ( cd web && VITE_CLIENT_ONLY=1 npx vite build --outDir "$SCAN_OUT" >/tmp/ci_scanbuild.log 2>&1 ); then
+# Round 86: a run interrupted here left its `vite preview` listening. The next run's --strictPort server then exited, curl answered from the old one, and the scan reported on a build from
+# before the fix. So the port must be free before the server starts, the page it serves must be the build just made, the server goes away on any exit, and a scan that hangs fails.
+# shellcheck disable=SC2064
+trap "pkill -f 'vite preview --outDir $SCAN_OUT' 2>/dev/null; rm -rf '$SCAN_OUT'" EXIT
+if curl -sf -o /dev/null http://localhost:4182/; then
+  bad "text layout: port 4182 already serves something, probably a preview left by an interrupted run: stop it and run this again"
+elif ( cd web && VITE_CLIENT_ONLY=1 npx vite build --outDir "$SCAN_OUT" >/tmp/ci_scanbuild.log 2>&1 ); then
   ( cd web && exec npx vite preview --outDir "$SCAN_OUT" --port 4182 --strictPort >/tmp/ci_preview.log 2>&1 ) &
   for _ in $(seq 1 30); do curl -sf -o /dev/null http://localhost:4182/ && break; sleep 1; done
-  ( cd web && node scripts/check_text_overlap.mjs http://localhost:4182 1280 720 >/tmp/ci_textlayout.log 2>&1 ) \
+  BUILT=$(grep -o 'assets/index-[A-Za-z0-9_-]*\.js' "$SCAN_OUT/index.html" | head -1)
+  curl -sf http://localhost:4182/ | grep -q "$BUILT" \
+    || bad "text layout: the page on port 4182 is not the build just made"
+  ( cd web && timeout 1500 node scripts/check_text_overlap.mjs http://localhost:4182 1280 720 >/tmp/ci_textlayout.log 2>&1 ) \
     && ok "no text over text, out of its box or clipped, no table wider than its box, no text under WCAG contrast, no table without a header cell, no layout shift of 0.1 while loading, on any page" \
     || { bad "text layout (web/scripts/check_text_overlap.mjs)"; grep -E "FAIL|^ +\[" /tmp/ci_textlayout.log | head -20; }
   # Round 84: and again in DejaVu Sans, the CI runners' system-ui. The telecom plane charts' ticks met
   # their rotated title there while this machine's Noto passed, so the push was the first run that
   # saw it. `web/scripts/fonts-dejavu.conf` prepends DejaVu Sans to system-ui and the sans families.
-  ( cd web && FONTCONFIG_FILE="$PWD/scripts/fonts-dejavu.conf" node scripts/check_text_overlap.mjs http://localhost:4182 1280 720 >/tmp/ci_textlayout_dejavu.log 2>&1 ) \
+  ( cd web && FONTCONFIG_FILE="$PWD/scripts/fonts-dejavu.conf" timeout 1500 node scripts/check_text_overlap.mjs http://localhost:4182 1280 720 >/tmp/ci_textlayout_dejavu.log 2>&1 ) \
     && ok "the same layout scan in DejaVu Sans, the CI runners' font" \
     || { bad "text layout in DejaVu Sans (web/scripts/check_text_overlap.mjs, FONTCONFIG_FILE=web/scripts/fonts-dejavu.conf)"; grep -E "FAIL|^ +\[|page font" /tmp/ci_textlayout_dejavu.log | head -20; }
   pkill -f "vite preview --outDir $SCAN_OUT" 2>/dev/null
 else
   bad "client-only build for the text-layout scan"; tail -8 /tmp/ci_scanbuild.log
 fi
-rm -rf "$SCAN_OUT"
 # Round 80, by the owner's choice: the README's Mermaid diagrams, laid out and fitting GitHub's column.
 ( cd web && npm run --silent check:readme-mermaid >/tmp/ci_mermaid.log 2>&1 ) \
   && ok "README diagrams: no label out of its node, over another or crossed; each fits 830 px" \
@@ -163,6 +175,10 @@ step "11/18 Federated secure aggregation"
 step "11b/18 The CNN student under MPC"
 ( cd web && npm run --silent check:hybrid-cnn >/tmp/ci_hybrid_cnn.log 2>&1 ) \
   && ok "the CNN student under MPC matches the clear network" || { bad "the CNN student under MPC"; tail -12 /tmp/ci_hybrid_cnn.log; }
+
+step "11g/18 The finance MLPs under MPC"
+( cd web && npm run --silent check:hybrid-mlp >/tmp/ci_hybrid_mlp.log 2>&1 ) \
+  && ok "the finance MLPs under MPC match the logits their trainer recorded" || { bad "the finance MLPs under MPC"; tail -12 /tmp/ci_hybrid_mlp.log; }
 
 step "11h/18 The trained QCNN under CKKS"
 ( cd web && npm run --silent check:qcnn-ckks >/tmp/ci_qcnn_ckks.log 2>&1 ) \

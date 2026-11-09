@@ -11,13 +11,14 @@ import { ProvenanceBadge, type Provenance } from "../components/ProvenanceBadge"
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
 import MpcCnnPanel from "../components/MpcCnnPanel";
+import MpcMlpPanel from "../components/MpcMlpPanel";
 import QcnnCkksPanel from "../components/QcnnCkksPanel";
 import QcnnCircuitCard from "../components/QcnnCircuitCard";
 import MultiPsiPanel from "../components/MultiPsiPanel";
 import LendingPanels from "../components/LendingPanels";
 import QsdcLinkPanel from "../components/QsdcLinkPanel";
 import type { LendingMarketReport, LendingPrivateReport, LendingSweepReport } from "../lib/lending/report";
-import type { MpcCnnReport, MultiPsiReport, QcnnCkksReport } from "../lib/clientCompute";
+import type { MpcCnnReport, MpcMlpReport, MultiPsiReport, QcnnCkksReport } from "../lib/clientCompute";
 import ShapPanel from "../components/ShapPanel";
 import UseCaseCanvas from "../components/UseCaseCanvas";
 import { USECASE_SPECS } from "../lib/useCaseFlows";
@@ -355,6 +356,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
 
       {usecase === "medical_fl" && artifacts?.mpc_cnn ? <MpcCnnPanel report={artifacts.mpc_cnn as MpcCnnReport} /> : null}
       {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} /> : null}
+      {usecase === "finance_aml" && artifacts?.mpc_mlp ? <MpcMlpPanel report={artifacts.mpc_mlp as MpcMlpReport} /> : null}
       {usecase === "finance_aml" && artifacts?.multi_party_psi ? <MultiPsiPanel report={artifacts.multi_party_psi as MultiPsiReport} /> : null}
 
       {!lending && <h2 className="sr-only">Benchmark</h2>}

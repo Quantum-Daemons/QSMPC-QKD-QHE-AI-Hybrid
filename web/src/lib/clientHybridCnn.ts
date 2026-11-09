@@ -125,7 +125,7 @@ export function toRing(v: number, modulus: number): number {
 }
 
 // Dynamic, so this module costs nothing until the run asks for it, and the node harnesses that stand in a plaintext argmax for `clientMPC` still bundle.
-type Mpc = typeof import("./clientMPC");
+export type Mpc = typeof import("./clientMPC");
 
 /** The party with the secret key and the image. */
 export class Client {
@@ -262,7 +262,7 @@ export class Server {
 }
 
 /** The garbled circuits' running totals. */
-interface GcTotals { and: number; batches: number; bytes: number; messages: number; compileMs: number; mpcMs: number }
+export interface GcTotals { and: number; batches: number; bytes: number; messages: number; compileMs: number; mpcMs: number }
 
 function addBatch(t: GcTotals, r: Pick<ReluBatchResult, "compileMs" | "mpcMs" | "bytes" | "messages" | "andOps">): void {
   t.and += r.andOps; t.batches++; t.bytes += r.bytes; t.messages += r.messages; t.compileMs += r.compileMs; t.mpcMs += r.mpcMs;
@@ -272,7 +272,7 @@ function addBatch(t: GcTotals, r: Pick<ReluBatchResult, "compileMs" | "mpcMs" | 
  * A layer's ReLUs, in batches. The client holds `y` = x + r and the server `r`; afterwards the client holds relu(x) + s and the server -s, as reals.
  * The output mask is `frac + maskBits` bits of fixed point, which stays below 2^53, so both shares are exact doubles.
  */
-async function reluLayer(mpc: Mpc, y: ArrayLike<number>, r: ArrayLike<number>, maskBits: number, batch: number, gc: GcTotals,
+export async function reluLayer(mpc: Mpc, y: ArrayLike<number>, r: ArrayLike<number>, maskBits: number, batch: number, gc: GcTotals,
                          onBatch: () => void): Promise<{ client: Float64Array; server: Float64Array }> {
   const { frac_bits: frac, relu_ring_bits: ringBits } = hybridCnnCfg();
   const unit = 2 ** frac, ring = 2 ** ringBits, outBits = frac + maskBits, n = y.length;
@@ -302,7 +302,7 @@ function convLayout(image: number[][], w: CnnStudentWeights) {
 }
 
 /** Sum over each block, in the clear: what the ciphertext's slots hold, for the statistical bound and the self-test. */
-function reduceBlocks(v: Float64Array<ArrayBufferLike>, block: number): Float64Array<ArrayBufferLike> {
+export function reduceBlocks(v: Float64Array<ArrayBufferLike>, block: number): Float64Array<ArrayBufferLike> {
   let acc = v;
   for (let step = 1; step < block; step <<= 1) {
     const next = new Float64Array(acc.length);
@@ -312,8 +312,8 @@ function reduceBlocks(v: Float64Array<ArrayBufferLike>, block: number): Float64A
   return acc;
 }
 
-const sumAbs = (v: ArrayLike<number>): number => { let s = 0; for (let i = 0; i < v.length; i++) s += Math.abs(v[i]); return s; };
-const relu = (v: number) => (v > 0 ? v : 0);
+export const sumAbs = (v: ArrayLike<number>): number => { let s = 0; for (let i = 0; i < v.length; i++) s += Math.abs(v[i]); return s; };
+export const relu = (v: number) => (v > 0 ? v : 0);
 
 export async function hybridStudentInference(w: CnnStudentWeights, image: number[][],
                                              opts: { onProgress?: (p: HybridCnnProgress) => void } = {}): Promise<HybridCnnResult> {

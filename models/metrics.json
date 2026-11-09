@@ -64,6 +64,128 @@
     "split": "temporal, inductive",
     "wall_clock_s": 96.6
   },
+  "finance_aml.mlp_large": {
+    "accuracy": 0.997894,
+    "auprc": 0.305865,
+    "auprc_baseline": 0.00152346,
+    "auroc": 0.969699,
+    "baseline_gap_note": "On HI-Small the published figures are 63.23 for GFP + XGBoost, 62.86 for GFP + LightGBM and 56.77 for PNA (Altman et al., NeurIPS 2023, Table 2), 68.16 for Multi-PNA+EU (Egressy et al., AAAI 2024), and 63.72 for a GNN also evaluated under CKKS (Bilgi et al., arXiv:2610.18054). The Graph Feature Preprocessor paper's own decomposition (Blanusa et al., ICAIF 2024, Table 5) puts basic features at 19.75 and fan-in and fan-out at 56.88 to 59.71 for XGBoost. These 111 features are the 32 per-account aggregates plus per-transaction fan-in and fan-out, vertex statistics and scatter-gather in time windows, in batches of 2048, with no cycle enumeration, on a 56/14/30 temporal split rather than the papers' 60/20/20. The comparison that means most here is with the booster on the same features: AUPRC 0.3059 against 0.3358. This project's published teacher, on the 32 aggregates, has AUPRC 0.1233. AMLworld is synthetic by IBM's own statement.",
+    "batch_window": 2048,
+    "data_digest": "7557382f4133d1f0",
+    "dataset": "IBM AMLworld HI-Small",
+    "export": {
+      "fp32_bytes": 93339,
+      "int8": "not shipped: the fp32 graph is already small",
+      "opset": 17
+    },
+    "git_sha": "e5e64a9-dirty",
+    "hf_revision": "3bddcf07034fdd192657a8a7af1b39cb24dffdec",
+    "max_of_seeds_minority_f1": 0.404806,
+    "median_of_seeds_minority_f1": 0.369612,
+    "min_of_seeds_minority_f1": 0.334992,
+    "minority_class_f1": 0.334992,
+    "n_features": 111,
+    "n_parameters": 22722,
+    "n_test": 1523504,
+    "n_train": 2843872,
+    "n_val": 710969,
+    "precision": 0.322813,
+    "recall": 0.348126,
+    "scaling": "standard",
+    "seed": 2,
+    "seeds": [
+      {
+        "scaling": "standard",
+        "seed": 0,
+        "best_epoch": 6,
+        "val_auprc": 0.441978,
+        "test_auprc": 0.288221,
+        "test_minority_f1": 0.342955
+      },
+      {
+        "scaling": "standard",
+        "seed": 1,
+        "best_epoch": 10,
+        "val_auprc": 0.46986,
+        "test_auprc": 0.353532,
+        "test_minority_f1": 0.404806
+      },
+      {
+        "scaling": "standard",
+        "seed": 2,
+        "best_epoch": 11,
+        "val_auprc": 0.483983,
+        "test_auprc": 0.305862,
+        "test_minority_f1": 0.334992
+      },
+      {
+        "scaling": "standard",
+        "seed": 3,
+        "best_epoch": 16,
+        "val_auprc": 0.475409,
+        "test_auprc": 0.331574,
+        "test_minority_f1": 0.369612
+      },
+      {
+        "scaling": "standard",
+        "seed": 4,
+        "best_epoch": 14,
+        "val_auprc": 0.480661,
+        "test_auprc": 0.32198,
+        "test_minority_f1": 0.372283
+      },
+      {
+        "scaling": "robust",
+        "seed": 0,
+        "best_epoch": 18,
+        "val_auprc": 0.44345,
+        "test_auprc": 0.337515,
+        "test_minority_f1": 0.388082
+      },
+      {
+        "scaling": "robust",
+        "seed": 1,
+        "best_epoch": 11,
+        "val_auprc": 0.454383,
+        "test_auprc": 0.298493,
+        "test_minority_f1": 0.344301
+      },
+      {
+        "scaling": "robust",
+        "seed": 2,
+        "best_epoch": 22,
+        "val_auprc": 0.448855,
+        "test_auprc": 0.310614,
+        "test_minority_f1": 0.357975
+      },
+      {
+        "scaling": "robust",
+        "seed": 3,
+        "best_epoch": 10,
+        "val_auprc": 0.426803,
+        "test_auprc": 0.286124,
+        "test_minority_f1": 0.347416
+      },
+      {
+        "scaling": "robust",
+        "seed": 4,
+        "best_epoch": 14,
+        "val_auprc": 0.445681,
+        "test_auprc": 0.327666,
+        "test_minority_f1": 0.37278
+      }
+    ],
+    "selected_on": "validation AUPRC, over two scalings and five seeds each",
+    "share_clipped_on_fit_window": 0.00012958,
+    "split": "temporal, inductive",
+    "teacher_agreement": 0.998077,
+    "threshold_on_validation": 0.995822,
+    "wall_clock_s": 237.1,
+    "xgboost_same_features": {
+      "auprc": 0.335772,
+      "minority_class_f1": 0.400642
+    }
+  },
   "finance_aml.scorecard": {
     "aunbc_fit": 0.00018612,
     "auprc": 0.036529,

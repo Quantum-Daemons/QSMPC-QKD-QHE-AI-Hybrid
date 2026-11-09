@@ -121,7 +121,7 @@ The `Inference` control on the finance, medical and telecom pages can also run t
 
 | Use case | Pipeline | Industry |
 |----------|----------|----------|
-| `finance_aml` | PQC -> QKD -> **PSI** (cross-bank blacklists) -> FHE fraud inference | finance / AML |
+| `finance_aml` | PQC -> QKD -> **PSI** (cross-bank blacklists) -> FHE fraud inference, and the published MLP on one held-out row under CKKS and garbled circuits | finance / AML |
 | `medical_fl` | PQC -> QKD -> **federated training** + pairwise-masked aggregation -> private diagnosis | healthcare |
 | `genomics` | PQC -> QKD -> **QSMS secure summation** (pooled allele counts) -> FHE | genomics |
 | `telecom_ids` | PQC -> simulated QKD (optional eavesdropper) -> **QML-IDS** attack detection | telecom / defence |

@@ -40,6 +40,8 @@ export interface DiagramConfig {
   inference?: string;
   /** The medical CNN student runs under MPC on this run. */
   mpcCnn?: boolean;
+  /** The finance page's published MLP runs under MPC on this run. */
+  mpcMlp?: boolean;
   multiPsi?: boolean;
   /** The lending page: who holds the CKKS key. */
   custody?: string;
@@ -427,6 +429,12 @@ export const USECASE_SPECS: Record<string, Spec> = {
           : Number(m["mpsi_ran"]) === 1
             ? `PSI among ${f(m, "mpsi_parties")} banks · ${f(m, "mpsi_intersection")} accounts held by all · ${f(m, "mpsi_mb")} MB`
             : "PSI among banks · did not finish" },
+      { stageId: "private_inference", kind: "mpc-bidir", hidden: (c) => !c.mpcMlp,
+        label: (m) => m["mpc_mlp_ran"] == null
+          ? "Published MLP under MPC · a held-out row, CKKS and garbled circuits"
+          : Number(m["mpc_mlp_ran"]) === 1
+            ? `MLP under MPC · ${f(m, "mpc_mlp_relu_count")} ReLUs in garbled circuits · ${f(m, "mpc_mlp_gc_mb")} MB · class ${f(m, "mpc_mlp_class")}`
+            : "MLP under MPC · did not finish" },
       // Finance is in FEDERATED_USECASES, so `runClientPipeline` injects `federated_training` here -
       // before the first of private_inference/qml_ids/qsdc_telemetry/quantum_comparison. This spec
       // had no such step, and `OrchestrationGraph.FLOWS` had no finance key either, so the run
