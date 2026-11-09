@@ -1448,6 +1448,26 @@ Primary sources: Qi, Sun, Lin, Yin, Long, Light Sci. Appl. 8, 22 (2019), doi:10.
 arXiv:2005.05102 - free-space QSDC, 500 bps over 10 m, QBER $`0.49\% \pm 0.27\%`$, and the DBER/QBER
 distinction. Long and Liu (2002), Deng, Long and Liu (2003), Deng and Long (2004) - the protocols.
 
+## One-way quasi-QSDC: what the satellite page sends when two-way QSDC cannot close (Round 86, read at source 2026-11-09)
+
+**Two-way QSDC stops early.** Qi et al.'s bound, per received carrier scaled by the gain, is
+
+$$C_s = Q^{\mathrm{Bob}}\,\bigl[\,1 - h(e) - g\,h(e_x + e_z)\,\bigr],$$
+
+their Eq. 8, with $`g`$ the gap between Eve's channel and Bob's, counting the channel and the detector and not the station's optics. At this page's error floor $`e = 0.0111`$ it is positive only for $`g \le (1 - h(e)) / h(2e)`$, or 7.7 dB, against 27.26 dB on the default downlink. A floor of 0.1% would lift that to 16.8 dB. Zhang et al. (Light Sci. Appl. 11, 83, 2022, doi:10.1038/s41377-022-00769-w), with the same structure in their Eq. 10, measured $`e_x = 0.001`$ and $`e_z = 0.0003`$ at 6 dB, carried 22.4 kbps there and 0.54 bps at 15.8 dB of ultra-low-loss fibre, and give 18.4 dB as the most their system could tolerate.
+
+**STIKE removes the penalty for loss by adding a key.** Pan et al., "Simultaneous transmission of information and key exchange using the same photonic quantum states", Sci. Adv. 11, eadt4627 (2025), doi:10.1126/sciadv.adt4627. Alice one-time pads the message from a pool both ends hold, masks it (INCUM), and sends it one way. Bob's untriggered pulses are treated as lost, the key for them is returned, and the rest distils new key. Their Eq. 2 is the BB84 key rate, $`C_s = 1 - H_2(\delta_p) - H_2(\delta_b)`$, which they say outright. With decoy states, per pulse,
+
+$$C_s = q\,Q_\mu\bigl[-f H_2(E_\mu) + \Delta_1\bigl(1 - H_2(e_1)\bigr)\bigr],\qquad C_r = q\,Q_\mu\bigl[1 - f H_2(E_\mu)\bigr],$$
+
+their Eqs. 3 and 4, with the recovered share $`P_{\mathrm{rec}} = 1 - q\,Q_\mu`$. Measured, at a 1.25 GHz clock over fibre of 0.2 dB/km with 6.5 dB of optics at Bob and 20% detectors: 34.08 kbps at 50.3 km (QBER 2.94%), 11.36 kbps at 81.1 km (3.20%) and 2.38 kbps at 104.8 km (3.60%), the last over a week, at spreading ratios of 1:192, 1:768 and 1:3840 with an LDPC code. Their secrecy capacities at 81.1 and 104.8 km exceed the upper limit of two-way QSDC. They derive the capacity in the asymptotic regime and leave the finite-length analysis, and the strategy for keeping the pool filled, open.
+
+**The nearest thing to a space link.** Sun et al., "High-speed phase-encoded quantum secure direct communication over 11.4 km heterogeneous free-space and fiber links", arXiv:2602.06624 (2026), preprint: STIKE over 1.4 km of urban air and 10 km of fibre, the same clock, detector efficiency and receiver optics, 4.22 kbps with a mean QBER of 2.38%, and a simulated reach past 30 km of free space. Their Table S1 is what `tests/test_r86_stike.py` reproduces: 17.83 dB of channel, $`Q_\mu = 5.31 \times 10^{-4}`$ and $`Q_\nu = 2.09 \times 10^{-4}`$, with key generated at 13.51 and 30.42 kbps on two days.
+
+**What was not found, and nearby work that is different.** No source read reports QSDC or quasi-QSDC over a satellite link. A 2023 review (Advanced Devices & Instrumentation, doi:10.34133/adi.0004) lists the feasibility of satellite-to-ground QSDC among the open problems. Vazquez-Castro, Winter and Zbinden, arXiv:2409.05694, analyse a keyless scheme for optical inter-satellite links in the asymptotic regime, resting on a limit to the share of Bob's detected photon energy that Eve can collect; only its abstract was read, and it is not modelled here.
+
+**What the page does with this.** It keeps Eq. 8's verdict, sends the telemetry by Eqs. 3 and 4's model where a pool is configured, and plots both against loss. The published points on the plot are each paper's rate over its clock at its own channel, optics and detector, and $`\text{loss} = 0.2L + 6.5 + 10\log_{10}(1/0.2)`$ dB for the fibre runs. Zhang et al.'s 18.4 dB counts the channel alone, a different definition, so it is here and not on the axis. See `docs/threat-model.md`.
+
 ## Round 31 additions, verified at primary source 2026-08-11
 
 Every entry below was loaded at its arXiv abstract page, IACR eprint listing, Federal Register API

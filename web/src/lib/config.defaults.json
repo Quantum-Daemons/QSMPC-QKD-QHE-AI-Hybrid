@@ -3858,7 +3858,31 @@
     "pp_threshold": 0.11,
     "protocol": "bb84",
     "pulses": 20000000,
-    "source_rate_hz": 1000000000.0
+    "qsdc_published_points": [
+      {
+        "bit_per_pulse": 2.726e-05,
+        "label": "Pan et al. 2025, 50.3 km fibre",
+        "loss_db": 23.55
+      },
+      {
+        "bit_per_pulse": 9.088e-06,
+        "label": "Pan et al. 2025, 81.1 km fibre",
+        "loss_db": 29.71
+      },
+      {
+        "bit_per_pulse": 1.904e-06,
+        "label": "Pan et al. 2025, 104.8 km fibre",
+        "loss_db": 34.45
+      },
+      {
+        "bit_per_pulse": 3.376e-06,
+        "label": "Sun et al. 2026, 1.4 km air and 10 km fibre",
+        "loss_db": 31.32
+      }
+    ],
+    "source_rate_hz": 1000000000.0,
+    "stike_pool_bits": 128000000,
+    "stike_votes_per_bit": 20
   },
   "qrng": {
     "anu_opt_in": false,
@@ -4093,6 +4117,7 @@
     "agent_timeout_ms": 120000,
     "demo_alice_bob_pulses": 20000000,
     "demo_sat_pulses": 20000000,
+    "demo_sat_telemetry_bytes": 74,
     "onnx_default_backend": "wasm",
     "sdn_sae_allocation_fraction": 0.25,
     "tfjs_default_device": "wasm",

@@ -199,6 +199,8 @@ export const makeDefaultParams = () => ({
   sat_distance_km: FREE_SPACE.distanceKm,
   sat_eve: FREE_SPACE.eveFraction,
   sat_pulses: webCfg().demo_sat_pulses,
+  sat_stike_pool_mbit: qkdCfg().stike_pool_bits / 1e6,
+  sat_stike_votes: qkdCfg().stike_votes_per_bit,
   // The two fixed terms of the link budget, and the reason the eavesdrop check could never fire.
   // `channelLossDb` caps the diffraction term at the near field, so these floor total loss at 8 dB
   // no matter how short the range - with the detector's 3.0 dB, g >= 12.6 - and at the default

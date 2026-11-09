@@ -13,6 +13,7 @@ import RunMonitor from "../components/RunMonitor";
 import MpcCnnPanel from "../components/MpcCnnPanel";
 import MultiPsiPanel from "../components/MultiPsiPanel";
 import LendingPanels from "../components/LendingPanels";
+import QsdcLinkPanel from "../components/QsdcLinkPanel";
 import type { LendingMarketReport, LendingPrivateReport, LendingSweepReport } from "../lib/lending/report";
 import type { MpcCnnReport, MultiPsiReport } from "../lib/clientCompute";
 import ShapPanel from "../components/ShapPanel";
@@ -151,6 +152,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
                     { id: "downlink", title: "Downlink", content: () => (
                       <>
                         <QsdcRangeChart channel={sat} />
+                        <QsdcLinkPanel channel={sat} metrics={metrics} />
                         <Details summary="Downlink geometry in 3D">
                           <Sat3D slantKm={sat.distanceKm} orbitKm={Number(sat.freeSpace!.orbitAltitudeKm)}
                             minElevationDeg={Number(sat.freeSpace!.minElevationDeg)}

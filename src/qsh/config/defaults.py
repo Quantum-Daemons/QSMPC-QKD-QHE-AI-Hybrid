@@ -299,6 +299,25 @@ class QKDConfig:
     # runs; `micius_2017_one_decoy` is the same link without the vacuum. The probabilities set the
     # mix of clicks (for the dead time) and the like-for-like pass counts; the asymptotic rate, as on
     # the fibre page, is per pulse at the signal intensity.
+    # ONE-WAY QUASI-QSDC (STIKE), the satellite telemetry's path when two-way QSDC cannot close (Round 86).
+    # Pan, Liu, ..., Long, Sci. Adv. 11, eadt4627 (2025). The message is one-time padded with a key from a pool both
+    # ends already hold, and the key of every pulse that did not reach the receiver goes back to the pool. That pool is
+    # an assumption of the link, provisioned before the pass: `stike_pool_bits` is its size. A frame reserves a key as
+    # long as its spread codeword (their step 2) and spends only the detected pulses' (their step 11), so what the pool
+    # must hold is the reservation and what it loses is the retained pulses. `stike_votes_per_bit` sets the spreading:
+    # how many retained pulses each message bit gets on average, 20 leaving a chance of about 2e-9 that a bit gets none.
+    stike_pool_bits: int = 128_000_000
+    stike_votes_per_bit: int = 20
+    # Measured one-way quasi-QSDC, for the satellite page's plot against loss: the communication rate over the clock, at
+    # the loss from the transmitter to the detector's output (channel, the receiver's optics and the detector). Those
+    # three terms are stated in each source. Pan et al. give fibre at 0.2 dB/km, 6.5 dB in Bob and a 20% detector
+    # (6.99 dB); Sun et al. (Table S1) 17.83 dB of channel, 6.5 dB in Bob and the same detector.
+    qsdc_published_points: tuple[dict, ...] = (
+        {"label": "Pan et al. 2025, 50.3 km fibre", "loss_db": 23.55, "bit_per_pulse": 2.726e-5},
+        {"label": "Pan et al. 2025, 81.1 km fibre", "loss_db": 29.71, "bit_per_pulse": 9.088e-6},
+        {"label": "Pan et al. 2025, 104.8 km fibre", "loss_db": 34.45, "bit_per_pulse": 1.904e-6},
+        {"label": "Sun et al. 2026, 1.4 km air and 10 km fibre", "loss_db": 31.32, "bit_per_pulse": 3.376e-6},
+    )
     free_space_mu_signal: float = 0.8
     free_space_mu_decoy: float = 0.1
     free_space_p_signal: float = 0.5
@@ -865,6 +884,7 @@ class WebConfig:
     # Micius's own source with its vacuum state gave 3.356e-5 bit/pulse per SIGNAL pulse. Counted per
     # pulse SENT since Round 78 - Micius sends signals on half its pulses - that is 1.678e-5: 335
     # secure bits at 20e6, and 167 at 10e6, which would not clear the 256, so 20e6 stays.
+    demo_sat_telemetry_bytes: int = 74  # len(satellite_comms._DEFAULT_TELEMETRY); a test holds the two together
     demo_sat_pulses: int = 20_000_000   # the satellite run's sampled pulses at its range (Round 79: not the key's block)
     # The share of a run's secure key bits the control-plane panel allocates to the MCP agent's SAE,
     # to show the budget drawing down: an ILLUSTRATIVE demand, not a measured one, and browser-only

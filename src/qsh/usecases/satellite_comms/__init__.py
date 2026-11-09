@@ -40,9 +40,10 @@ report section 6) - a direct message transfer with an inline eavesdrop check, wh
 satellite link where re-keying round-trips are costly (though DL04-family QSDC is itself two-way
 and only the downlink leg is modelled; see :mod:`qsh.qkd.qsdc`). Telemetry QSDC delivers is also
 sealed in the AES-256-GCM session for an auditable, signed record. At the 74 bytes the demo sends
-by default, the check carriers certify no error rate a link could close at, so QSDC withholds them
-at every link setting, as link-limited or as statistics-limited, and they travel under the PQC
-session key. A CKKS anomaly check scores a bundled OPS-SAT-AD telemetry segment (CC BY 4.0) with the
+by default, the check carriers certify no error rate a link could close at, so two-way QSDC
+withholds them at every link setting, as link-limited or as statistics-limited. Where a pre-shared
+key pool is configured they then go by one-way quasi-QSDC (:mod:`qsh.qkd.stike`), and otherwise
+under the PQC session key. A CKKS anomaly check scores a bundled OPS-SAT-AD telemetry segment (CC BY 4.0) with the
 browser's demo regression either way.
 
 Maps to: WS1 (AI-QKD, here over a free-space channel) + QSDC.
@@ -466,11 +467,15 @@ class QSDCStage(Stage):
 
         if res.delivered is None:
             ctx.artifacts["telemetry_delivered"] = False
+            # What became of the telemetry, for the verdicts below: a run that sent it one way must not also say it fell back.
+            quasi = self._quasi_qsdc(ctx, params, telemetry, bus)
+            after = ("One-way quasi-QSDC carries the telemetry instead, as the next line says." if quasi is not None and quasi[0]
+                     else "Telemetry falls back to the PQC session key.")
             if res.link_budget_limited:
                 bus.log(f"QSDC NOT AVAILABLE on this link - secrecy capacity is not positive at "
                         f"{res.loss_db:.1f} dB (g={res.eve_gain_g:.1f}) even with no eavesdropper. "
                         f"The limit is the link budget, not an attack; error {res.error_rate:.4f}. "
-                        f"Telemetry falls back to the PQC session key.", self.name)
+                        f"{after}", self.name)
             elif res.statistics_limited:
                 bus.log(f"QSDC WITHHELD, statistics-limited: {res.check_bits} check carriers beside "
                         f"{res.message_bits} message bits certify an error rate of at most "
@@ -478,12 +483,15 @@ class QSDCStage(Stage):
                         f"capacity at that bound is {res.secrecy_capacity:.4f} (g={res.eve_gain_g:.1f}, "
                         f"{res.loss_db:.1f} dB). Without Eve this link closes asymptotically, so the "
                         f"abort says nothing about the channel or an eavesdropper: the block is too "
-                        f"short. Telemetry falls back to the PQC session key.", self.name)
+                        f"short. {after}", self.name)
             else:
                 bus.log(f"QSDC ABORTED: secrecy capacity exhausted at error {res.error_rate:.4f} "
                         f"(g={res.eve_gain_g:.1f}, {res.loss_db:.1f} dB) - this link closes without "
                         f"Eve and the block certifies its error rate, so the loss is attributable - "
-                        f"telemetry withheld", self.name)
+                        f"{'one-way quasi-QSDC carries the telemetry instead, as the next line says' if quasi is not None and quasi[0] else 'telemetry withheld'}",
+                        self.name)
+            if quasi is not None:
+                bus.log(quasi[1], self.name)
             return
 
         # also seal the delivered telemetry in the AEAD session for an audit record
@@ -496,6 +504,34 @@ class QSDCStage(Stage):
         bus.log(f"QSDC delivered {res.message_bits} bits "
                 f"(Eq. 8 bound per received carrier {res.secrecy_capacity:.3f} bit, "
                 f"error {res.error_rate:.3f})", self.name)
+
+
+    def _quasi_qsdc(self, ctx: Context, params, telemetry: bytes, bus) -> tuple[bool, str] | None:
+        """One-way quasi-QSDC (STIKE, Pan et al. 2025) when two-way QSDC would not carry the telemetry (Round 86).
+
+        Returns whether it was delivered and the sentence for the log, or None when no key pool is configured.
+        """
+        from ...config import get_config
+        from ...qkd.stike import stike_rates, stike_send
+
+        q = get_config().qkd
+        pool = int(round(float(ctx.config.get("sat_stike_pool_mbit", q.stike_pool_bits / 1e6)) * 1e6))
+        if pool <= 0:
+            return None
+        source = _sat_source(ctx)
+        rates = stike_rates(params, source.mu_signal, source.mu_decoy, q.error_correction_eff, vacuum=bool(source.vacuum_decoy))
+        res = stike_send(telemetry, rates, p_signal=source.p_signal, source_rate_hz=params.source_rate_hz, pool_bits=pool,
+                         votes_per_bit=int(ctx.config.get("sat_stike_votes", q.stike_votes_per_bit)), seed=int(ctx.config.get("seed", 0)))
+        for name, value in (("stike_status", res.status), ("stike_delivered", int(res.status == "delivered")),
+                            ("stike_secrecy_per_signal", float(f"{rates.secrecy:.4g}")), ("stike_reliable_per_signal", float(f"{rates.reliable:.4g}")),
+                            ("stike_qber", round(rates.qber, 5)), ("stike_signal_pulses", res.signal_pulses), ("stike_seconds", round(res.seconds, 3)),
+                            ("stike_key_in_flight_bits", res.key_in_flight_bits), ("stike_key_consumed_bits", res.key_consumed_bits),
+                            ("stike_key_regenerated_bits", res.key_regenerated_bits), ("stike_pool_after_bits", res.pool_after_bits)):
+            bus.metric(name, value, self.name)
+        ctx.artifacts["telemetry_quasi_qsdc"] = res.status == "delivered"
+        return res.status == "delivered", (f"Quasi-QSDC (one-way STIKE) {res.status}: {res.signal_pulses} signal pulses, QBER {rates.qber:.4f}, Eq. 3 bound "
+                                           f"{rates.secrecy:.3g} bit per signal pulse, {res.key_consumed_bits} key bits spent of {res.key_in_flight_bits} reserved."
+                                           + ("" if res.status == "delivered" else " Telemetry falls back to the PQC session key."))
 
 
 class TelemetryAnomalyStage(Stage):
@@ -512,7 +548,7 @@ class TelemetryAnomalyStage(Stage):
     ``satellite_comms.opssat`` models, and the log says so in the payload's words.
 
     It scores the bundled segment, not the payload QSDC carries: it runs whether or not QSDC delivered,
-    as the browser's plaintext twin does; gated on a delivery, it could not run, since QSDC withholds
+    as the browser's plaintext twin does; gated on a delivery, it could not run, since two-way QSDC withholds
     the demo's telemetry at every setting. Full deployment only: the public satellite page has no FHE
     or MPC stage, and scores the same segments in plaintext.
     """
@@ -659,6 +695,7 @@ def run_demo(config: dict | None = None) -> dict:
         "secure_key_bits": m.get("secure_key_bits"),
         "channel_loss_db": m.get("channel_loss_db"),
         "telemetry_delivered": ctx.artifacts.get("telemetry_delivered"),
+        "telemetry_quasi_qsdc": ctx.artifacts.get("telemetry_quasi_qsdc"),
         "qsdc_eq8_bound": m.get("qsdc_eq8_bound"),
         "eavesdrop_detected": bool(m.get("qsdc_eavesdrop_detected")),
         "telemetry_anomaly": ctx.artifacts.get("telemetry_anomaly"),   # private CKKS anomaly verdict (1=anomaly)
