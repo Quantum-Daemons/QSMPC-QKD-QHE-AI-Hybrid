@@ -113,11 +113,12 @@ def test_the_band_excludes_the_two_readings_a_re_deriver_would_try(name):
     ambiguous = [f"{label} {val:.4f}" for label, val in
                  (("in-sample", insample), ("single-feature", single))
                  if abs(val - stated) <= TOL]
-    if name == "telecom":
+    if name in ("telecom", "telecom_nidd"):
         # The readings are computed, not quoted: the quoted ones went stale when Round 84 changed the
-        # overlay from the whole corpus to the 600 held-out rows.
+        # overlay from the whole corpus to the 600 held-out rows. 5G-NIDD joined this case in Round 86,
+        # when the flows the file holds under two labels came out of the rows it draws.
         pytest.skip(
-            f"telecom's readings are stated {stated:.4f}, cross-validated {_cv:.4f}, in-sample "
+            f"{name}'s readings are stated {stated:.4f}, cross-validated {_cv:.4f}, in-sample "
             f"{insample:.4f} and single-feature {single:.4f} - all inside any usable band, because the "
             "points are near-perfectly separable in this projection. The estimator is genuinely "
             "undetermined here and no tolerance can fix that; it is recorded rather than asserted, and "

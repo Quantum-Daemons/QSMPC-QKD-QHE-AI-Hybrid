@@ -26,7 +26,7 @@ $$
 
 The ceiling measured on the 46 columns is 0.768455. For the binary task on 27 of Wang, Fok and Thing's inputs it is 0.768458. No other cause is needed to reach that figure.
 
-**What is not known is why.** The descriptor says the data were labelled and each attack given its own label, without saying how, and the authors' published scripts have no labelling step. Labelling only a base station's own attacker would produce exactly this, and that is an inference.
+**Why the labels disagree can be read from the files, and that it is an error cannot be proved from them.** The descriptor says the data were labelled and each attack given its own label, without saying how, and the authors' published scripts have no labelling step. In all 18 per-attack files exactly one source and destination pair carries the attack label, and no flow of that pair is labelled anything else, so labels go by address pair and session. In `UDPFlood1.csv` that pair is `.4` to the victim, so the `.7` flows it also holds came out Benign. Why that capture holds them is not documented.
 
 ## What the loader does
 

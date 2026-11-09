@@ -105,7 +105,8 @@ CONTRADICTORY_COPIES_NOTE = (
     "Benign; the second base station's file holds those flows labelled UDPFlood. The two copies "
     "agree on every column but the labels and the file-position columns, and in the two capture "
     "files the 421,471 packets behind them carry identical timestamps, which two separate capture "
-    "points could not produce. On these rows no model reading flow statistics can pass "
+    "points could not produce. In each attack file exactly one address pair carries the attack "
+    "label, which is why the second attacker's flows came out Benign in the first file. On these rows no model reading flow statistics can pass "
     "1 - 281,529 / 1,215,890 = 0.7685. The loader keeps the UDPFlood copy, which is what the traffic "
     "was, and removes the Benign one; `as_published` repeats the same fit without that removal."
 )
