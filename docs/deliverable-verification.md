@@ -9142,13 +9142,6 @@ The owner's idea, an Alice-Bob dynamic lending simulator with quantum-safe eleme
 
 **Client resources.** The sweep and the checks run in up to four Web Workers (half the logical cores at most), each with its own SEAL and Polytune wasm, and the page reports how many cores' worth of work the pool did. SEAL's wasm build has one thread and has no GPU path, so WebGPU has nothing to do on this page, and the card says so.
 
-### Round 86, 2026-11-09: what `IdleTime` was
-
-Found while choosing two columns to draw for audit item B18. `IdleTime` holds 17 values, all multiples of 128, one for each attack session and base station, so it names the file. From Round 50 the published 5G-NIDD model read it and scored accuracy 0.9829; without it the model scores 0.7616, and the record is corrected in `references/5g-nidd-metric-profile.md`.
-
-The owner asked for the result, the room to improve it and the recommendation to be judged on the sources read at origin before anything was republished. The result stands and the first explanation did not: the column was first described here as the capture time, and the dataset paper's capture dates, 26 and 29 August 2022, ruled that out. Two measurements came of it and are recorded on every run: `flow_level_ceiling`, 0.7685, the most any model reading these 46 columns can score, and `cross_base_station`, 0.42 and 0.61, what training on one base station and testing on the other gives. Tuning cannot help, so the next step is more information per flow, from the raw captures: a separate change.
-
-**Checks.** `tests/test_r86_no_file_label_feature.py` reads every published tabular sample for a column whose every value is a Unix time, and was seen to fire on the column that got through. The loader's Trap 3 fails if the column stops being what it was. The trainer refuses to fit with it.
 ### Round 86, 2026-11-09: who holds the lending check's key
 
 The owner asked for the two arrangements to be judged on real 2026 use and on the literature, read at origin, before choosing; `references/defi-lending-key-custody.md` is that reading. Liquidations do not wait for the borrower, and the systems being built keep the key in a threshold network, so a separate key holder is now the default, and the bilateral arrangement stays as a mode.
@@ -9157,3 +9150,10 @@ The owner asked for the two arrangements to be judged on real 2026 use and on th
 
 **Checks, each seen to fail on its seeded defect.** `check:lending-private` runs both arrangements on the real SEAL and Polytune: not applying a settlement fails it, as does a signature that does not bind the bit, and as does a message from Bob during a check. A seed with two partial liquidations of Bob is in the run.
 
+### Round 86, 2026-11-09: what `IdleTime` was
+
+Found while choosing two columns to draw for audit item B18. `IdleTime` holds 17 values, all multiples of 128, one for each attack session and base station, so it names the file. From Round 50 the published 5G-NIDD model read it and scored accuracy 0.9829; without it the model scores 0.7616, and the record is corrected in `references/5g-nidd-metric-profile.md`.
+
+The owner asked for the result, the room to improve it and the recommendation to be judged on the sources read at origin before anything was republished. The result stands and the first explanation did not: the column was first described here as the capture time, and the dataset paper's capture dates, 26 and 29 August 2022, ruled that out. Two measurements came of it and are recorded on every run: `flow_level_ceiling`, 0.7685, the most any model reading these 46 columns can score, and `cross_base_station`, 0.42 and 0.61, what training on one base station and testing on the other gives. Tuning cannot help, so the next step is more information per flow, from the raw captures: a separate change.
+
+**Checks.** `tests/test_r86_no_file_label_feature.py` reads every published tabular sample for a column whose every value is a Unix time, and was seen to fire on the column that got through. The loader's Trap 3 fails if the column stops being what it was. The trainer refuses to fit with it.
