@@ -205,7 +205,7 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
 **Workings for the 5G-NIDD metric profile live in
 [`5g-nidd-metric-profile.md`](5g-nidd-metric-profile.md).** Round 49 published `telecom_ids.nidd` with
 accuracy 0.7608 against literature figures of 0.90 to 0.98 and attributed the gap to row-identifier
-leakage in the published work. Round 50 measured the cause as one column, `IdleTime`, which `Combined.csv` does not carry, and refitted on it to reach 0.982897. Round 86 read that column's values: they are Unix times from the capture, and each names an attack scenario, so the 0.98 measured when each attack was run. The model is refitted without it, at accuracy 0.7616 and macro F1 0.9275, and that file carries the correction. The leakage-aware prior work Round 49 did not consult is cited there. The identifier finding itself stands - three integer counters move the narrow configuration to
+leakage in the published work. Round 50 measured the cause as one column, `IdleTime`, which `Combined.csv` does not carry, and refitted on it to reach 0.982897. Round 86 read that column's values: one per attack session and base station, so it names the file a flow came from, and the 0.98 measured how well a model recognises the file. The model is refitted without it, at accuracy 0.7616 and macro F1 0.9275, against a ceiling of 0.7685 for these columns and 0.42 and 0.61 across base stations, and that file carries the correction. The leakage-aware prior work Round 49 did not consult is cited there. The identifier finding itself stands - three integer counters move the narrow configuration to
 0.9997 - but it does not explain anyone else's numbers.
 
 This section was promised by the preamble of every earlier revision of this file and never written,
@@ -1706,6 +1706,19 @@ project is a browser tab.
   URL: https://arxiv.org/abs/2604.14583
   Added: 2026-11-09
   ABSTRACT ONLY. An agent on Aave V3 that estimates liquidation risk by survival analysis, validated on a simulator rather than on live data. No cryptography. Context for what a simulated market can and cannot show.
+
+- **Flood, Engelen, Aspinall and Desmet, "Bad Design Smells in Benchmark NIDS Datasets"**, IEEE EuroS&P 2024, pp. 658-675 `[link]`
+  URL: https://detlearsom.github.io/pubs/BadSmells-EuroSP24-finaldraft.pdf
+  Added: 2026-11-09
+  Read in the authors' final draft. Audits seven benchmark NIDS datasets and reports labels leaked via features and millions of near-duplicate flows, and warns that standard randomised splits leak where similar attacks cross categories. The source for treating identical flows across classes as a measurement.
+- **Arp et al., "Dos and Don'ts of Machine Learning in Computer Security"**, USENIX Security 2022, pp. 3971-3988 `[link]`
+  URL: https://www.usenix.org/conference/usenixsecurity22/presentation/arp
+  Added: 2026-11-09
+  Read in the authors' PDF. Names data snooping (P3) and spurious correlations (P4) among ten pitfalls, the second being artifacts unrelated to the security problem that create shortcuts between classes.
+- **Samarakoon, Siriwardhana, Porambage, Liyanage, Chang, Kim, Kim and Ylianttila, "5G-NIDD"**, arXiv:2212.01298, 2022 `[link]`
+  URL: https://arxiv.org/abs/2212.01298
+  Added: 2026-11-09
+  Read in its HTML version, section V. Captures on 26 and 29 August 2022, each attack in its own session and each session at two base stations; 112 Argus features; a multiclass ANOVA ranking whose top ten include `Seq` and `Offset`, and accuracies around 0.99 on those ten.
 
 ### Read in Round 86, cited by nothing yet
 

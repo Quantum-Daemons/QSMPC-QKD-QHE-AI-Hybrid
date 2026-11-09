@@ -4,17 +4,21 @@ Measured 2026-08-17, Round 50. Written because Round 49 published a claim about 
 consulting work that already existed, and because the shape of the disagreement rules out the
 explanation Round 49 offered.
 
-## Correction, Round 86 (2026-11-09): `IdleTime` is a capture time
+## Correction, Round 86 (2026-11-09): `IdleTime` is a per-file label
 
 This file argued from Round 50 to Round 86 that `IdleTime` is a flow statistic and that the published 0.90 to 0.98 figures are reachable without leakage. The first is wrong and the second does not follow. Reading the column's values settles it:
 
 - It holds **17 distinct values over 1,215,890 rows, all exact multiples of 128**, which is the spacing of a 32-bit float at this magnitude.
-- As Unix times they fall **between 2022-09-13 07:49 and 2022-09-15 21:09 UTC**. That is a time of day, not an idle duration.
-- **Each value is dominated by one attack scenario and benign traffic**: 1663055360 holds 10,019 SYNScan and 1,431 Benign flows, 1663055744 holds 10,022 TCPConnectScan and 1,623 Benign, 1663272960 holds 175,521 UDPFlood and 53,066 Benign, 1663273088 holds 238,840 Benign and 290 UDPFlood, and so on.
+- Read as Unix times they fall between 2022-09-13 07:49 and 2022-09-15 21:09 UTC, while the dataset paper gives the captures as 26 and 29 August 2022 (Samarakoon et al., arXiv:2212.01298, section V-A). So they are neither an idle duration nor the capture time.
+- **The values go with the attack sessions and the two base stations.** The paper records each attack in its own session and each session at two base stations, into separate files. In the CSV, 1663055360 holds 10,019 SYNScan and 1,431 Benign flows and its counterpart in the other base station's file, 1663275008, holds 10,024 SYNScan and 1,502 Benign; 1663272960 holds 175,521 UDPFlood and 53,066 Benign; 1663273088 holds 238,840 Benign and 290 UDPFlood.
 
-So the column names the capture window a flow came from, and the attacks were run in their own windows, the reason the loader has always dropped `StartTime`. "17 distinct values cannot address a row" was true and beside the point: they address the scenario. The model that read it was learning when each attack was run.
+So the column names the file a flow came from, and each file is one attack. "17 distinct values cannot address a row" was true and beside the point: they address the file. The model that read it was recognising the file.
 
-**What changed.** `telecom_ids.nidd` is refitted on 46 features without it: **accuracy 0.7616, macro F1 0.9275** on the same 303,973-row test split, with per-class F1 Benign 0.6401 and UDPFlood 0.7308 and every other class at 0.9875 or above. A linear model on the numeric columns reaches accuracy 0.7549. Restoring the column gives 0.9829 and 0.9950, recorded on every run as `capture_time_counterfactual`, beside the row-counter one at 0.9997.
+**What changed.** `telecom_ids.nidd` is refitted on 46 features without it: **accuracy 0.7616, macro F1 0.9275** on the same 303,973-row test split, with per-class F1 Benign 0.6401 and UDPFlood 0.7308 and every other class at 0.9875 or above. A linear model on the numeric columns reaches accuracy 0.7549. Restoring the column gives 0.9829 and 0.9950, recorded on every run as `file_label_counterfactual`, beside the row-counter one at 0.9997.
+
+**Is 0.7616 the model's fault?** No model reading these 46 columns can exceed accuracy **0.7685** on this corpus (`flow_level_ceiling`): the rows reduce to 374,933 distinct feature vectors, 33,712 of them occur under more than one class, almost all under both Benign and UDPFlood, and those vectors hold 52% of the rows. This is the "near-duplicate flows" smell of Flood et al. (EuroS&P 2024), taken to exact identity across classes. Tuning cannot move it; more information per flow could.
+
+**How far the random split can be believed.** Training on one base station's file and testing on the other's gives **accuracy 0.4199 and 0.6059, macro F1 0.8108 and 0.7950** (`cross_base_station`), and the UDPFlood F1 falls to 0.0 in the first direction. The headline is a stratified random split, which puts flows of one attack session on both sides. Arp et al. (USENIX Security 2022) name this family of problem as data snooping and spurious correlations.
 
 What follows is the document as Round 50 wrote it, corrected where it depended on that reading.
 
@@ -91,7 +95,7 @@ dropped:
 
 **`IdleTime` accounts for the entire gap.** Removing that one column from the wide export reproduces
 the narrow result to within 0.001 accuracy. Round 50 took this for a dominant flow statistic. It is
-the capture time, so the 0.98 row measures how well a model recognises when each attack was run.
+a per-file label, so the 0.98 row measures how well a model recognises the file each flow came from.
 
 **A claim made here in an earlier revision was wrong and is corrected rather than quietly dropped.**
 It said the other five columns absent from `Combined.csv` "change nothing, each scoring one-vs-rest
@@ -133,6 +137,6 @@ without checking, and leakage-aware work on this corpus exists:
 The identifier finding itself stands - restoring `Unnamed: 0`, `Seq` and `Offset` moves this
 configuration from 0.7608 to 0.9997, and three integer row counters should not be able to do that.
 
-Whether the published figures lean on such columns stays open. Round 50 said they could not, because 0.982897 was reachable with every identifier removed; that figure reads the capture time, so it says nothing either way.
+Whether the published figures lean on such columns stays open. Round 50 said they could not, because 0.982897 was reachable with every identifier removed; that figure reads the file label, so it says nothing either way. The dataset paper's own multiclass feature ranking lists `Seq` and `Offset` among its top ten.
 
 **What changed.** Round 50 refitted the model on the wide export with `IdleTime` kept and published it at 0.982897 and 0.995019. Round 86 removed the column; see the correction at the top.
