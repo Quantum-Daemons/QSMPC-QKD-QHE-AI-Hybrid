@@ -1711,6 +1711,8 @@ project is a browser tab.
   Added: 2026-11-09
   ABSTRACT ONLY. An agent on Aave V3 that estimates liquidation risk by survival analysis, validated on a simulator rather than on live data. No cryptography. Context for what a simulated market can and cannot show.
 
+- **Who holds the key in a private liquidation check**: the 2026 sources on custody and liquidation, read at origin, are in [`defi-lending-key-custody.md`](defi-lending-key-custody.md).
+
 ### Read in Round 86, cited by nothing yet
 
 - **Harth-Kitzerow, Schiller, Schwanke, Prantl and Carle, "Benchmarking Secure Multiparty Computation

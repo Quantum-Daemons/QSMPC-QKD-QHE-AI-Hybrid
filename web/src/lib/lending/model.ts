@@ -54,6 +54,7 @@ export function withRunParams(c: LendingCfg, p: Record<string, unknown>): Lendin
     shock_fraction: num(p.lending_shock_pct, c.shock_fraction * 100) / 100,
     annual_vol: c.annual_vol.map((v) => v * volatility),
     check_points: num(p.lending_checks, c.check_points),
+    custody: p.lending_custody === "borrower" || p.lending_custody === "keyholder" ? p.lending_custody : c.custody,
   };
 }
 
@@ -86,6 +87,8 @@ export interface LendingCheckpoint {
   hour: number;
   amounts: number[];
   scaledDebt: number;
+  /** What Bob's liquidations have settled so far, in the open: the collateral seized per asset and the scaled debt repaid. The pool applies it to his ciphertext. */
+  settled: { seized: number[]; scaledRepaid: number };
   prices: number[];
   thresholds: number[];
   index: number;
@@ -120,6 +123,7 @@ export function simulate(c: LendingCfg, seed: number): LendingRun {
   const hours = c.hours, dt = 1 / (365 * 24);
   const prices: number[][] = c.initial_prices.map((p) => [p]);
   let index = 1;
+  const bobSettled = { seized: c.initial_prices.map(() => 0), scaledRepaid: 0 };
   let accruedToSuppliers = 0, reserves = 0, badDebt = 0;
 
   const positions: Position[] = [];
@@ -166,11 +170,13 @@ export function simulate(c: LendingCfg, seed: number): LendingRun {
       const seized = Math.min(want, have);
       const repaidCovered = seized / (1 + c.liquidation_bonus);
       const share = have > 0 ? seized / have : 0;
+      if (b === 0) p.amounts.forEach((a, i) => { bobSettled.seized[i] += a * share; });
       p.amounts = p.amounts.map((a) => a * (1 - share));
       // Repaying all of it, `debt * (1 + bonus) / (1 + bonus)` can round above `debt`, and a debt of -1e-18 made the utilisation negative.
       let remaining = Math.max(0, debt - repaidCovered);
       let lost = 0;
       if (p.amounts.every((a) => a * price[0] < 1e-9) && remaining > 0) { lost = remaining; remaining = 0; }
+      if (b === 0) bobSettled.scaledRepaid += p.scaledDebt - remaining / index;
       p.scaledDebt = remaining / index;
       liquidity += repaidCovered;
       badDebt += lost;
@@ -185,7 +191,8 @@ export function simulate(c: LendingCfg, seed: number): LendingRun {
       // A closed position has nothing to check. Its margin is exactly zero or rests on leftover collateral alone, and the closing liquidation was settled in the open.
       if (debtValue <= 0) return;
       checkpoints.push({
-        hour, amounts: [...p.amounts], scaledDebt: p.scaledDebt, prices: price, thresholds: [...c.liquidation_thresholds], index, debtValue,
+        hour, amounts: [...p.amounts], scaledDebt: p.scaledDebt, settled: { seized: [...bobSettled.seized], scaledRepaid: bobSettled.scaledRepaid },
+        prices: price, thresholds: [...c.liquidation_thresholds], index, debtValue,
         margin: margin(p.amounts, price, c.liquidation_thresholds, debtValue),
         healthFactor: healthFactor(p.amounts, price, c.liquidation_thresholds, debtValue),
       });

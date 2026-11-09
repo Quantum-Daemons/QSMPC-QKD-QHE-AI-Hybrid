@@ -7,8 +7,9 @@
  *
  *   - every checkpoint of a default run gets the clear answer, and the margin added back from the two shares is close to the clear margin;
  *   - positions built to sit on either side of zero by one stable unit get the right answer;
- *   - what Bob decoded is masked: the median magnitude across all slots is about half the mask's width, far above any margin;
+ *   - what the key holder decoded is masked: the median magnitude across all slots is about half the mask's width, far above any margin;
  *   - the circuit is the size the existing argmax has, and every check cancelled the imaginary half and used the two rotations the design says;
+ *   - under Carol's custody Bob sends nothing during a check, only masked margins reach her, each settled liquidation is applied to his ciphertext, and her signature binds the hour, the ciphertext and the bit;
  *   - the sealing is real: a changed byte, a different key or a signature from another key is refused;
  *   - the class holding the weights has no decryptor, which the medical check asserts of the same class.
  *
@@ -54,34 +55,66 @@ try {
   const m = await import(pathToFileURL(join(tmp, "b.mjs")).href);
   const cfg = m.lendingCfg();
   const sessionKey = crypto.getRandomValues(new Uint8Array(32));
-  const session = await m.openCheckSession({ sessionKey, sig: "ml-dsa-65", cfg });
-
-  // ---- a default run's checkpoints
-  const run = m.simulate(cfg, 1);
-  const outcomes = [];
-  for (const c of run.checkpoints) outcomes.push(await session.check(c));
-  const bound = outcomes.reduce((s, o) => s + o.statisticalDistance, 0);
-  const worst = Math.max(...outcomes.map((o) => o.absError));
-  const liquidatable = outcomes.filter((o) => o.flag).length;
-  check(outcomes.length >= 2 && outcomes.length <= cfg.check_points + 1 && run.checkpoints.every((c) => c.debtValue > 0),
-    `${outcomes.length} checkpoints ran, all on an open position (at most the configured ${cfg.check_points}, plus the first hour Bob can be liquidated)`);
-  check(outcomes.every((o) => o.agrees), "every checkpoint's bit is the clear answer");
-  check(liquidatable >= 1 && liquidatable < outcomes.length, `the run has both answers: ${liquidatable} of ${outcomes.length} liquidatable`);
-  check(worst < 1e-3, `the margin from the shares is within 1 stable unit of the clear margin (worst ${(worst * 1000).toExponential(2)} stable units)`);
   const mask = 2 ** cfg.margin_mask_bits;
-  check(outcomes.every((o) => o.bobViewMedianAbs > mask / 8), `what Bob decoded is masked (smallest median |value| ${Math.min(...outcomes.map((o) => o.bobViewMedianAbs)).toExponential(2)}, against margins of about ${Math.max(...outcomes.map((o) => Math.abs(o.clearMargin))).toFixed(0)})`);
-  check(outcomes.every((o) => o.andGates === 367), `the circuit is the existing two-value argmax (${outcomes[0].andGates} AND gates)`);
-  check(outcomes.every((o) => o.rotations === 2 && o.conjugations === 1), "each check made two rotations and one conjugation");
-  check(Math.log2(bound) < -20, `the run's bound on the masks is below 2^-20 (2^${Math.log2(bound).toFixed(1)})`);
+  const run = m.simulate(cfg, 1);
+
+  async function holds(name, session, checkpoints) {
+    const outcomes = [];
+    for (const c of checkpoints) outcomes.push(await session.check(c));
+    const bound = outcomes.reduce((s, o) => s + o.statisticalDistance, 0);
+    const worst = Math.max(...outcomes.map((o) => o.absError));
+    check(outcomes.every((o) => o.agrees), `${name}: every checkpoint's bit is the clear answer`);
+    check(worst < 1e-3, `${name}: the margin from the shares is within 1 stable unit of the clear margin (worst ${(worst * 1000).toExponential(2)} stable units)`);
+    check(outcomes.every((o) => o.keyHolderViewMedianAbs > mask / 8), `${name}: what the key holder decoded is masked (smallest median |value| ${Math.min(...outcomes.map((o) => o.keyHolderViewMedianAbs)).toExponential(2)}, against margins of about ${Math.max(...outcomes.map((o) => Math.abs(o.clearMargin))).toFixed(0)})`);
+    check(outcomes.every((o) => o.andGates === 367), `${name}: the circuit is the existing two-value argmax (${outcomes[0].andGates} AND gates)`);
+    check(outcomes.every((o) => o.rotations === 2 && o.conjugations === 1), `${name}: each check made two rotations and one conjugation`);
+    check(Math.log2(bound) < -20, `${name}: the run's bound on the masks is below 2^-20 (2^${Math.log2(bound).toFixed(1)})`);
+    return outcomes;
+  }
+
+  // ---- Bob holds the key (the bilateral mode)
+  const session = await m.openCheckSession({ sessionKey, sig: "ml-dsa-65", cfg, custody: "borrower" });
+  check(run.checkpoints.length >= 2 && run.checkpoints.length <= cfg.check_points + 1 && run.checkpoints.every((c) => c.debtValue > 0),
+    `${run.checkpoints.length} checkpoints, all on an open position (at most the configured ${cfg.check_points}, plus the first hour Bob can be liquidated)`);
+  const bilateral = await holds("bilateral", session, run.checkpoints);
+  const liquidatable = bilateral.filter((o) => o.flag).length;
+  check(liquidatable >= 1 && liquidatable < bilateral.length, `the run has both answers: ${liquidatable} of ${bilateral.length} liquidatable`);
+  check(bilateral.every((o) => o.messages.filter((x) => x.from === "Bob").length === 1 && o.bitSignatureVerified === null), "bilateral: Bob sends at every check, and there is no signed bit");
 
   // ---- positions built on either side of zero, by one stable unit
   for (const margin of [1, -1, 25, -25]) {
     const prices = cfg.initial_prices, thresholds = cfg.liquidation_thresholds, amounts = [10, 0.5];
     const collateral = amounts[0] * prices[0] * thresholds[0] + amounts[1] * prices[1] * thresholds[1];
     const debtValue = collateral - margin;
-    const o = await session.check({ hour: 100000 + margin, amounts, scaledDebt: debtValue, prices, thresholds, index: 1, debtValue, margin, healthFactor: collateral / debtValue });
+    const o = await session.check({ hour: 100000 + margin, amounts, scaledDebt: debtValue, settled: { seized: [0, 0], scaledRepaid: 0 }, prices, thresholds, index: 1, debtValue, margin, healthFactor: collateral / debtValue });
     check(o.agrees && o.flag === (margin < 0), `a margin of ${margin} stable units gets the bit ${margin < 0 ? "liquidatable" : "safe"} (reconstructed ${(o.reconstructedMargin * 1000).toFixed(3)})`);
   }
+
+  // ---- Carol holds the key: Bob sends once, and a settled liquidation is applied by the pool. Seed 3 has Bob partly liquidated twice.
+  const partial = m.simulate(cfg, 3);
+  check(partial.checkpoints.some((c) => c.settled.scaledRepaid > 0), "the seed-3 run has checkpoints after a partial liquidation of Bob");
+  const setup = await m.setupKeyholder({ sessionKey, sig: "ml-dsa-65", kem: "ml-kem-768+x25519" }, partial.checkpoints[0]);
+  check(setup.linkAgreed, "the pool and Carol's own hybrid handshake agrees");
+  const carolSession = await m.openCheckSession({ sessionKey, sig: "ml-dsa-65", cfg, custody: "keyholder", keyholder: setup });
+  const custody = await holds("Carol's custody", carolSession, partial.checkpoints);
+  check(custody.every((o) => o.messages.every((x) => x.from !== "Bob")), "Carol's custody: Bob sends nothing during any check");
+  check(custody.every((o) => o.messages.filter((x) => x.to === "Carol").every((x) => x.what === "the masked margin, sealed")), "Carol's custody: only the masked margin reaches Carol");
+  check(custody.every((o) => o.bitSignatureVerified === true), "Carol's custody: every signed bit verifies against her public key");
+  check(custody.some((o) => o.hour > 0 && Math.abs(o.clearMargin) > 0) && custody.every((o) => o.encryptMs === 0), "Carol's custody: no check encrypts anything new");
+  const moved = custody.filter((o) => partial.checkpoints.find((c) => c.hour === o.hour).settled.scaledRepaid > 0);
+  check(moved.length >= 1 && moved.every((o) => o.agrees && o.absError < 1e-3), `after a settlement the pool's updated ciphertext still gives the clear margin (${moved.length} checks)`);
+  carolSession.close();
+
+  // ---- what Carol's signature binds
+  const carolKey = m.ml_dsa65.keygen(crypto.getRandomValues(new Uint8Array(32)));
+  const digestOf = crypto.getRandomValues(new Uint8Array(64));
+  const signed = m.ml_dsa65.sign(m.bitMessage(360, digestOf, true), carolKey.secretKey);
+  const bitOk = (hour, ct, flag) => m.ml_dsa65.verify(signed, m.bitMessage(hour, ct, flag), carolKey.publicKey);
+  check(bitOk(360, digestOf, true), "a signed bit verifies");
+  check(!bitOk(360, digestOf, false), "the other bit does not");
+  check(!bitOk(361, digestOf, true), "the same bit for another hour does not");
+  const otherCt = digestOf.slice(); otherCt[0] ^= 1;
+  check(!bitOk(360, otherCt, true), "the same bit for another ciphertext does not");
 
   // ---- the pool's parts: a changed byte, another key and another signer are all refused
   const { submission: key } = m.checkKeys(sessionKey);
@@ -139,12 +172,24 @@ try {
   }
   const again = m.sweepLevel(cfg, 2, [1, 2, 3]), twice = m.sweepLevel(cfg, 2, [1, 2, 3]);
   check(JSON.stringify(again) === JSON.stringify(twice), "a sweep level is reproducible from its seeds");
-  const pair = await m.runLendingTasks(run.checkpoints.slice(0, 2).map((input) => ({ kind: "check", input })), { sessionKey, sig: "ml-dsa-87", cfg }, 1);
+  const pair = await m.runLendingTasks(run.checkpoints.slice(0, 2).map((input) => ({ kind: "check", input })), { sessionKey, sig: "ml-dsa-87", cfg, custody: "borrower" }, 1);
   check(pair.results.every((r) => r.kind === "check" && r.outcome.agrees && r.signatureBytes === 4627), `the task path runs a check, with the selected signature (${pair.results[0].signatureBytes} B)`);
   m.closeTaskSession();
 
+  // ---- the same through the task path a worker takes, for Carol's custody
+  const init = { sessionKey, sig: "ml-dsa-65", cfg, custody: "keyholder", kem: "ml-kem-768+x25519" };
+  const first = await m.runLendingTasks([{ kind: "setup", input: run.checkpoints[0] }], init, 1);
+  const viaTasks = await m.runLendingTasks(run.checkpoints.map((input) => ({ kind: "check", input })), { ...init, keyholder: first.results[0].setup }, cfg.max_workers);
+  check(viaTasks.results.every((r) => r.outcome.agrees && r.outcome.bitSignatureVerified === true), `the task path runs Carol's custody (${viaTasks.results.length} checks)`);
+  m.closeTaskSession();
+
   const src = readFileSync(join(WEB, "src/lib/lending/privateCheck.ts"), "utf8");
-  check(/M < 0/.test(src) && /public, and then Bob can compute M himself/.test(src), "the module states why the thresholds are the pool's secret");
+  check(/M < 0/.test(src) && /public, and then Bob can compute M himself/.test(src), "the module states when the bilateral check protects nothing");
+  const carolClass = src.slice(src.indexOf("class KeyHolderDecryptor"), src.indexOf("/**\n * One check in Carol's custody"));
+  check(carolClass.length > 200 && !/Encryptor|Evaluator|evaluate\(/.test(carolClass), "Carol's class can decrypt and nothing else");
+  check((src.match(/\.decryptMasked\(/g) ?? []).length === 1 && /carol\.decryptMasked\(opened\)/.test(src), "and the one record handed to it is what the pool sealed to her");
+  const bobPart = src.slice(src.indexOf("// Bob, with Carol's public key only"), src.indexOf("const keys = checkKeys(o.sessionKey);\n    const signature"));
+  check(bobPart.length > 100 && !/Decryptor|secretKey|SecretKey/.test(bobPart), "Bob's encryption uses her public key and nothing that could decrypt");
 } finally {
   rmSync(tmp, { recursive: true, force: true });
 }

@@ -9022,6 +9022,7 @@ recorded separately, and nothing here changes the published model.
 | #16 | A PSI among three to five banks under MPC on the finance page, WebM export of a run, and the planned items the audit found unbuilt settled |
 | #17 | A CycloneDX 1.7 CBOM on the Validations page and SBOMs in CI, the weak gates the audit named tightened and seeded, and the type scale |
 | #18 | A DeFi lending page: a simulated market and a private liquidation check, the margin under CKKS and its sign in a garbled circuit, across a pool of Web Workers |
+| #19 | The lending check's key moved to a separate key holder by default, on the 2026 sources read at origin, with the bilateral arrangement kept as a mode |
 
 Findings worth keeping from those:
 
@@ -9139,3 +9140,12 @@ The owner's idea, an Alice-Bob dynamic lending simulator with quantum-safe eleme
 **Read at source (2026-11-09).** Aave's `LiquidationLogic.sol` makes the close factor 100% at or below 0.95, where the memo had said below, and the model now does the same. Its licence's change date has passed for `aave-v3-core` and falls on 2027-03-06 at the latest for `aave-v3-origin`, so the page no longer gives the licence as the reason nothing is copied. Aave V4's target health factor is not modelled, and the page says so. `references/REFERENCES.md` lists what was read and how far.
 
 **Client resources.** The sweep and the checks run in up to four Web Workers (half the logical cores at most), each with its own SEAL and Polytune wasm, and the page reports how many cores' worth of work the pool did. SEAL's wasm build has one thread and has no GPU path, so WebGPU has nothing to do on this page, and the card says so.
+
+### Round 86, 2026-11-09: who holds the lending check's key
+
+The owner asked for the two arrangements to be judged on real 2026 use and on the literature, read at origin, before choosing; `references/defi-lending-key-custody.md` is that reading. Liquidations do not wait for the borrower, and the systems being built keep the key in a threshold network, so a separate key holder is now the default, and the bilateral arrangement stays as a mode.
+
+**What changed.** Bob sends one ciphertext. The pool applies each public settlement to it as a plaintext update, so it follows his position without him. Only masked margins reach Carol, over a second hybrid session, and she signs the bit. Her key crosses to each worker because every party is in this tab, and the page says so.
+
+**Checks, each seen to fail on its seeded defect.** `check:lending-private` runs both arrangements on the real SEAL and Polytune: not applying a settlement fails it, as does a signature that does not bind the bit, and as does a message from Bob during a check. A seed with two partial liquidations of Bob is in the run.
+

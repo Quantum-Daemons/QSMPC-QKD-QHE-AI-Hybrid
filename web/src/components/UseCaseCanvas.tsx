@@ -286,11 +286,12 @@ function build(usecase: string, steps: Step[], status: (s: Step) => Status, metr
   }
 
   const height = y + 4;
+  const heads = spec.parties?.(config) ?? spec;
   nodes.unshift(
     sized<PartyData>({ id: "party-a", type: "party", position: { x: LEFT_X, y: 0 }, zIndex: -1,
-      data: { name: spec.a.name, sub: spec.a.sub, height }, draggable: false, selectable: false }, COL_W, height),
+      data: { name: heads.a.name, sub: heads.a.sub, height }, draggable: false, selectable: false }, COL_W, height),
     sized<PartyData>({ id: "party-b", type: "party", position: { x: RIGHT_X, y: 0 }, zIndex: -1,
-      data: { name: spec.b.name, sub: spec.b.sub, height }, draggable: false, selectable: false }, COL_W, height),
+      data: { name: heads.b.name, sub: heads.b.sub, height }, draggable: false, selectable: false }, COL_W, height),
   );
   return { nodes, edges, height };
 }
@@ -377,7 +378,7 @@ export default function UseCaseCanvas({
               nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
               panOnDrag={false} zoomOnScroll={false} zoomOnPinch={false} zoomOnDoubleClick={false}
               preventScrolling={false} proOptions={{ hideAttribution: true }}
-              aria-label={`${spec.a.name} and ${spec.b.name}: the use case's architecture, stage by stage`}>
+              aria-label={`${(spec.parties?.(config) ?? spec).a.name} and ${(spec.parties?.(config) ?? spec).b.name}: the use case's architecture, stage by stage`}>
               <ViewportSync zoom={zoom} ids={nodes.map((n) => n.id)} />
             </ReactFlow>
           </ReactFlowProvider>}
