@@ -1,4 +1,6 @@
 // Shared per-use-case metadata for the index page, the per-use-case pages, and the nav.
+import { isClientDemo } from "./demoMode";
+
 export interface UseCaseMeta {
   id: string;
   title: string;
@@ -14,9 +16,10 @@ export interface UseCaseMeta {
   // use-case page embeds an AgenticAIPanel with an industry-specific prompt + MCP tool name.
   agenticTool: string;     // the MCP tool this industry's request is named after; the browser calls nothing
   agenticPrompt: string;   // the default in-browser-agent prompt for this industry
+  clientOnly?: boolean;    // runs only in the browser build: the full deployment's pipelines have no such stages
 }
 
-export const USECASES: UseCaseMeta[] = [
+const ALL_USECASES: UseCaseMeta[] = [
   {
     id: "finance_aml", title: "Finance — cross-bank AML / PSI", nav: "Finance — AML", industry: "finance",
     blurb: "Two banks find shared flagged accounts with an OPRF-based PSI (RFC 9497 over ristretto255), then score a transaction under CKKS. Bank A blinds its IDs and Bank B evaluates them under an OPRF key only it holds, so Bank A learns the shared accounts and the size of Bank B's list, Bank B learns only the size of Bank A's, and neither can test IDs against the other's list on its own. The PSI is semi-honest and not post-quantum, both banks run in this tab, and its messages are sealed under the PQC session key. The scored rows are PaySim simulator output, and the model reads four quantities computed from them under AML-style names: amount, cross_border (the TRANSFER or CASH_OUT type, since PaySim records no geography), night_tx and new_payee. None is built from PaySim's balance columns, which the dataset's description says must not be used for fraud detection. (The full deployment's score_transaction tool is a separate fixed rule of thumb that does read balances; nothing on this page runs it.)",
@@ -71,6 +74,17 @@ export const USECASES: UseCaseMeta[] = [
     // the old question asked the model to argue against the page.
     agenticPrompt: "In one sentence, what limits Quantum Secure Direct Communication over a LEO free-space downlink compared with QKD plus classical encryption?",
   },
+  {
+    id: "defi_lending", title: "DeFi — private liquidation check", nav: "DeFi lending", industry: "defi",
+    blurb: "Alice's lending pool and Bob, one of its borrowers, run through a simulated month: a two-slope interest rate, debt that grows on a public index, and liquidation below a health factor of 1, the mechanics of Aave V3's public contracts, with illustrative parameters and generated prices. At chosen hours the pool asks whether Bob can be liquidated, with his balances under his own CKKS key and its liquidation thresholds kept from him: the margin is computed under encryption and its sign in a garbled circuit. No chain is involved.",
+    inference: false,
+    agenticTool: "check_position_health",
+    agenticPrompt: "In one sentence, what does a lending pool learn when a borrower's margin is computed under CKKS and its sign in a garbled circuit?",
+    clientOnly: true,
+  },
 ];
+
+/** The use cases this build can run: the full deployment drops the ones its pipelines do not have. */
+export const USECASES: UseCaseMeta[] = ALL_USECASES.filter((u) => !u.clientOnly || isClientDemo());
 
 export const USECASE_META: Record<string, UseCaseMeta> = Object.fromEntries(USECASES.map((u) => [u.id, u]));

@@ -10,7 +10,7 @@ import { x25519 } from "@noble/curves/ed25519.js";
 import { hkdf } from "@noble/hashes/hkdf.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
-  benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, medicalCnn, qkdCfg, qrngCfg,
+  benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, lendingCfg, medicalCnn, qkdCfg, qrngCfg,
   demoSample, federatedCfg, fheCfg, multiPartyPsiCfg, qsmpcCfg, quantumAdvantageCfg, studentModel, studentParamCount,
   tierArchitectures, webCfg, workloadMultipliers,
 } from "./config";
@@ -42,6 +42,7 @@ import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner"
 import { isClientDemo } from "./demoMode";
 import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
 import type { MultiPsiResult } from "./clientMultiPsi";
+import type { LendingMarketReport } from "./lending/report";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -1445,6 +1446,8 @@ const FLOWS: Record<string, string[]> = {
   telecom_ids: ["data", "pqc_handshake", "qkd_key_agreement", "qml_ids", "quantum_comparison", "result", "sign_result"],
   satellite_comms: ["data", "pqc_handshake", "satellite_qkd", "qsdc_telemetry", "quantum_comparison", "result", "sign_result"],
   demo: ["data", "pqc_handshake", "qkd_key_agreement", "qsmpc_compute", "private_inference", "quantum_comparison", "result", "sign_result"],
+  // No quantum channel and no model: the market is simulated and the check is a margin's sign (Round 86).
+  defi_lending: ["pqc_handshake", "lending_market", "private_liquidation", "result", "sign_result"],
 };
 
 export function clientFlow(usecase: string): string[] {
@@ -3730,6 +3733,75 @@ export function runClientPipeline(
           emit("log", stage, `XAI: top driver = ${top?.feature} (contribution ${c >= 0 ? "+" : ""}${r2(c)}, `
             + `${c >= 0 ? "toward class 1" : "toward class 0"})`);
         }
+        break;
+      }
+      case "lending_market": {
+        const { simulate, withRunParams } = await import("./lending/model");
+        const { runLendingTasks } = await import("./lending/pool");
+        const { summariseSweep } = await import("./lending/report");
+        const base = lendingCfg();
+        const cfg = withRunParams(base, config);
+        const started = performance.now();
+        const run = simulate(cfg, seed);
+        const simulateMs = performance.now() - started;
+        const repaid = run.events.reduce((sum, e) => sum + e.repaid, 0);
+        const bobEvents = run.events.filter((e) => e.borrower === 0).length;
+        metric(stage, "lending_hours", run.hours);
+        metric(stage, "lending_borrowers", run.borrowers);
+        metric(stage, "lending_liquidations", run.events.length);
+        metric(stage, "lending_repaid", Math.round(repaid));
+        metric(stage, "lending_bad_debt", Math.round(run.badDebt));
+        metric(stage, "lending_peak_utilisation", Math.max(...run.utilisation));
+        metric(stage, "lending_peak_borrow_rate", Math.max(...run.borrowRate));
+        metric(stage, "lending_bob_min_health", Math.min(...run.bobHealth));
+        metric(stage, "lending_bob_liquidations", bobEvents);
+        metric(stage, "lending_books_gap", run.maxAccountingGap);
+        emit("log", stage, `market simulated in this tab: ${run.hours} hours, ${run.borrowers} borrowers, generated prices with one stated fall `
+          + `of ${(cfg.shock_fraction * 100).toFixed(0)}% at hour ${cfg.shock_hour}; ${run.events.length} liquidations, ${bobEvents} of them Bob's. No chain is involved.`);
+        // The sweep moves only volatility, from the configured one, so this run's multiplier does not move the curve's axis.
+        const sweepCfg = { ...cfg, annual_vol: base.annual_vol };
+        const seeds = Array.from({ length: cfg.sweep_seeds }, (_, i) => seed + i);
+        artifacts.lending = { cfg, run, simulateMs } satisfies LendingMarketReport;
+        try {
+          const pool = await runLendingTasks(cfg.sweep_multipliers.map((multiplier) => ({ kind: "sweep" as const, cfg: sweepCfg, multiplier, seeds })), {}, cfg.max_workers);
+          artifacts.lending_sweep = summariseSweep(pool);
+          metric(stage, "lending_sweep_paths", cfg.sweep_multipliers.length * cfg.sweep_seeds);
+          metric(stage, "lending_sweep_workers", pool.workers);
+          emit("log", stage, `volatility sweep: ${cfg.sweep_multipliers.length} levels of ${cfg.sweep_seeds} price paths, in ${pool.ranIn}, ${pool.wallMs.toFixed(0)} ms.`);
+        } catch (e) {
+          // The month above is intact, so the failure is the sweep's alone and the private check still runs.
+          emit("log", stage, `the volatility sweep did not finish: ${String(e)}`);
+        }
+        break;
+      }
+      case "private_liquidation": {
+        const market = artifacts.lending as LendingMarketReport | undefined;
+        if (!market) throw new Error("the private check needs the market's checkpoints, and the market stage produced none");
+        const sessionKey = (config as any)._sessionKey as Uint8Array | undefined;
+        if (!sessionKey || sessionKey.length === 0) throw new Error("the private check is sealed under the PQC session key, and there is no unsealed mode");
+        const { runLendingTasks } = await import("./lending/pool");
+        const { summariseChecks } = await import("./lending/report");
+        const inputs = market.run.checkpoints;
+        const sig = String(config.sig ?? "ml-dsa-65");
+        emit("log", stage, `checking Bob's position at ${inputs.length} hours: the margin under CKKS, its sign in a garbled circuit, off the page's thread.`);
+        const pool = await runLendingTasks(inputs.map((input) => ({ kind: "check" as const, input })),
+          { sessionKey, sig, cfg: market.cfg }, market.cfg.max_workers);
+        const report = summariseChecks(pool, sigImpl(sig).name, market.cfg.margin_mask_bits);
+        artifacts.lending_private = report;
+        metric(stage, "lending_checks", report.outcomes.length);
+        metric(stage, "lending_checks_agree", report.allAgree ? 1 : 0);
+        metric(stage, "lending_flagged", report.flagged);
+        metric(stage, "lending_margin_max_error", report.maxAbsError * 1000);
+        metric(stage, "lending_statistical_distance_log2", report.statisticalDistanceLog2);
+        metric(stage, "lending_ckks_mb", +(report.ckksBytes / 1e6).toFixed(2));
+        metric(stage, "lending_key_mb", +(report.keyBytes / 1e6).toFixed(2));
+        metric(stage, "lending_gc_mb", +(report.gcBytes / 1e6).toFixed(2));
+        metric(stage, "lending_and_gates", report.andGates);
+        metric(stage, "lending_check_ms", Math.round(report.pool.wallMs));
+        metric(stage, "lending_workers", report.pool.workers);
+        metric(stage, "lending_speedup", +report.pool.speedUp.toFixed(2));
+        emit("log", stage, `${report.outcomes.length} checks in ${report.pool.ranIn}, ${report.pool.wallMs.toFixed(0)} ms: ${report.flagged} could be liquidated, `
+          + `and ${report.allAgree ? "every" : "NOT every"} bit matches the check in the clear (a self-test only this tab can make).`);
         break;
       }
       case "quantum_comparison": {

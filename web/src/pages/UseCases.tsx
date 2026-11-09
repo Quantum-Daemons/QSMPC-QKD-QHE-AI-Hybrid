@@ -46,12 +46,14 @@ export default function UseCases() {
             <tr key={u.id}>
               <td>{u.nav}</td>
               <td><code>{u.agenticTool}</code></td>
-              <td>{u.inference ? "CKKS + garbled-circuit 2PC" : u.id === "telecom_ids" || u.id === "satellite_comms" ? "CKKS check of the student" : "-"}</td>
+              <td>{u.inference ? "CKKS + garbled-circuit 2PC" : u.id === "defi_lending" ? "no model: a margin under CKKS, its sign in 2PC" : u.id === "telecom_ids" || u.id === "satellite_comms" ? "CKKS check of the student" : "-"}</td>
               {/* The attack classifier is not a quantum channel, and by default it is not quantum
                   either (an in-tab softmax and the published random forest), so "+ QML-IDS" left
                   this column. Telecom's page names its classifier itself. */}
-              <td>{u.id === "satellite_comms" ? "free-space BB84/E91 + QSDC test" : "fibre BB84/E91"}{" "}
-                <StageBadge kind="simulated" /></td>
+              {u.id === "defi_lending"
+                ? <td>none</td>
+                : <td>{u.id === "satellite_comms" ? "free-space BB84/E91 + QSDC test" : "fibre BB84/E91"}{" "}
+                    <StageBadge kind="simulated" /></td>}
             </tr>
           ))}
         </tbody>
@@ -81,7 +83,7 @@ export default function UseCases() {
           // both now carry trained, published, pinned models. Earn it from registry state instead.
           // "measured", not "trained": the one unpublished model with recorded results is genomics'
           // PRS, whose weights are PGS000072's published ones, measured here and trained by no one.
-          const depth = pinned.length > 0 ? "published" : teacher?.achieved ? "measured" : "scaffold";
+          const depth = u.id === "defi_lending" ? "simulated market" : pinned.length > 0 ? "published" : teacher?.achieved ? "measured" : "scaffold";
           return (
             <Link key={u.id} to={`/usecase/${u.id}`} className="card" style={{ textDecoration: "none", color: "inherit", display: "block" }}>
               {/* h2: each card is a section of this page, and an h3 here left the outline going
@@ -117,7 +119,7 @@ export default function UseCases() {
                   {studentParams != null && <> · encrypted student {studentParams} params</>}
                 </p>
               )}
-              <p className="muted" style={{ fontSize: 12 }}>
+              {u.id !== "defi_lending" && <p className="muted" style={{ fontSize: 12 }}>
                 {pinned.length > 0
                   ? <>{pinned.length} model{pinned.length > 1 ? "s" : ""} published and pinned - verifiable in your browser</>
                   : u.id === "genomics"
@@ -125,7 +127,7 @@ export default function UseCases() {
                     // the licence the Data line above prints.
                     ? <>not on the Hugging Face Hub: the score's published effect weights are served with this page, under the licence above</>
                     : <>weights not published: the source data's licence does not clearly permit redistributing them</>}
-              </p>
+              </p>}
               <span className="btn" style={{ marginTop: 6, display: "inline-block" }}>Open simulator →</span>
             </Link>
           );

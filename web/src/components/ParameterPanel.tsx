@@ -6,7 +6,7 @@ import {
   hasTrainedQcnn, qcnnWidths, readsInferenceBackend, runsFibreQkd, runsQsmpc, type usePipelineRun,
 } from "../lib/usePipelineRun";
 import { atmosphericLossDb, channelLossDb, fibreIntensities, FREE_SPACE, freeSpaceLink, qsdcLink } from "../lib/quantumSim";
-import { benchCfg, linkProfiles, profileValues, qkdCfg } from "../lib/config";
+import { benchCfg, lendingCfg, linkProfiles, profileValues, qkdCfg } from "../lib/config";
 import { rangeAtElevationKm } from "../lib/satNetwork";
 
 /** The downlink's atmosphere at a slant range for a given anchor, from the model a run uses, so the
@@ -120,6 +120,38 @@ export default function ParameterPanel({ run }: { run: Run }) {
       </div>
     );
   };
+
+  const fieldset = (title: string, children: React.ReactNode) => (
+    <fieldset key={title} style={{ flex: "1 1 210px", minWidth: 190, border: "1px solid var(--border, #33384a)",
+      borderRadius: 8, padding: "4px 10px 10px" }}>
+      <legend className="muted" style={{ fontSize: 12, padding: "0 4px" }}>{title}</legend>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{children}</div>
+    </fieldset>
+  );
+
+  // The lending page has one market and no channel: only these reach `simulate` and the private check.
+  if (usecase === "defi_lending") {
+    const market: Field[] = [
+      ["Borrowers", "lending_borrowers", 1, 2, "borrowers in the pool, Bob among them. The pool's supply grows with them, so the utilisation a run starts at stays the same", lendingCfg().max_borrowers],
+      ["Bob's opening LTV (%)", "lending_bob_ltv_pct", 1, 10, "Bob's opening debt as a share of his collateral's value. Liquidation starts where his health factor falls below 1", 80],
+      ["Shock hour", "lending_shock_hour", 1, 1, "the hour of the one stated price fall", lendingCfg().hours - 1],
+      ["Shock size (%)", "lending_shock_pct", 1, 0, "how far both assets fall at that hour; 0 turns it off", 90],
+      ["Volatility (x)", "lending_vol_mult", 0.25, 0, "a multiple of both assets' configured volatility. The sweep below keeps its own axis", 8],
+      ["Private checks", "lending_checks", 1, 2, "evenly spaced hours at which Bob's position is checked under encryption, and the first hour he can be liquidated. A closed position is not checked", 16],
+      ["RNG seed", "seed", 1, 1, "the price path and the borrowers. The CKKS keys, masks and shares come from the browser's CSPRNG and take no draw from it"],
+    ];
+    return (
+      <div style={{ marginTop: 10 }}>
+        <div className="btn-row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+          <span className="muted" style={{ fontSize: 12 }}>Parameters — defaults from config; edits apply on the next Run.</span>
+          <button className="btn ghost" onClick={resetParams} style={{ fontSize: 12 }}>Reset to defaults</button>
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
+          {fieldset("Market", market.map(numField))}
+        </div>
+      </div>
+    );
+  }
 
   // Which stages a use case runs decides which fields can affect anything at all (FLOWS in
   // clientCompute.ts). A field that no stage reads is the same defect as a select that changes no
@@ -316,14 +348,6 @@ export default function ParameterPanel({ run }: { run: Run }) {
     fields: [["AML transactions", "aml_transactions", 500, 200,
               "sizes the per-party PSI sets (about n/20 each, 20-2000). It does not train anything: "
               + "the fraud model is the published GBM. Only read when QSMPC op is PSI"]] });
-
-  const fieldset = (title: string, children: React.ReactNode) => (
-    <fieldset key={title} style={{ flex: "1 1 210px", minWidth: 190, border: "1px solid var(--border, #33384a)",
-      borderRadius: 8, padding: "4px 10px 10px" }}>
-      <legend className="muted" style={{ fontSize: 12, padding: "0 4px" }}>{title}</legend>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>{children}</div>
-    </fieldset>
-  );
 
   return (
     <div style={{ marginTop: 10 }}>
