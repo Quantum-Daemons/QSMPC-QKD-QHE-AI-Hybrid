@@ -1869,8 +1869,9 @@ export function runClientPipeline(
           // whichever finished last.
           if (isSelected) {
             metric(stage, "verified_metric", v.metricName);
-            metric(stage, "verified_score", r2(v.score));
-            metric(stage, "verified_expected", r2(v.expected));
+            // Four places: at two, 0.9976 printed as 1.
+            metric(stage, "verified_score", r4(v.score));
+            metric(stage, "verified_expected", r4(v.expected));
             metric(stage, "verified_n", v.n);
             metric(stage, "verification", v.matchesExpected ? "PASS" : "FAIL");
             // Carried as an artifact so the page can DRAW what was measured. A single number is the

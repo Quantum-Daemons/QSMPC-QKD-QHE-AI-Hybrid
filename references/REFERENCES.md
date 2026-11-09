@@ -203,13 +203,9 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
 ## WS2 - QML-IDS (quantum machine learning for intrusion detection)
 
 **Workings for the 5G-NIDD metric profile live in
-[`5g-nidd-metric-profile.md`](5g-nidd-metric-profile.md).** Round 49 published `telecom_ids.nidd` with
+[`5g-nidd-metric-profile.md`](5g-nidd-metric-profile.md).** Its finding is that the published file holds one attacker's UDP flood twice under contradictory labels, which sets a ceiling of 0.7685 on the rows as published; the model is fitted with the Benign copy removed and scores 0.9979. Round 49 published `telecom_ids.nidd` with
 accuracy 0.7608 against literature figures of 0.90 to 0.98 and attributed the gap to row-identifier
-leakage in the published work. Round 50 measured the cause instead and it is one column: `IdleTime`,
-which `Combined.csv` does not carry and the release's `BTS1_BTS2_fields_preserved.csv` does. Adding it
-gives 0.982897 with every identifier and host fingerprint dropped, so the published range is reachable
-without leakage of any kind. The leakage-aware prior work Round 49 did not consult is cited in that
-file. The identifier finding itself stands - three integer counters move the narrow configuration to
+leakage in the published work. Round 50 measured the cause as one column, `IdleTime`, which `Combined.csv` does not carry, and refitted on it to reach 0.982897. Round 86 read that column's values: one per attack session and base station, so it names the file a flow came from, and the 0.98 measured how well a model recognises the file. The model is refitted without it, at accuracy 0.7616 and macro F1 0.9275, against a ceiling of 0.7685 for these columns and 0.42 and 0.61 across base stations, and that file carries the correction. The leakage-aware prior work Round 49 did not consult is cited there. The identifier finding itself stands - three integer counters move the narrow configuration to
 0.9997 - but it does not explain anyone else's numbers.
 
 This section was promised by the preamble of every earlier revision of this file and never written,
@@ -264,6 +260,9 @@ docstring.
   card to name the baseline it is measured against, and until this entry there was no such baseline
   on record for 5G-NIDD - which made the corpus look, from inside this repository, like a dataset
   with no external comparison point rather than one with a 2025 quantum paper already on it.
+  Of its 28 inputs (Table III) exactly one, `Offset`, differs between the two copies of the flood in
+  the published file; the same counts in its Table II show that it used those rows. See
+  [`5g-nidd-metric-profile.md`](5g-nidd-metric-profile.md).
 
 - **Withdrawn: a hybrid quantum-classical autoencoder IDS** - arXiv:2512.05069 `[link]`
   URL: https://arxiv.org/abs/2512.05069
@@ -1712,6 +1711,26 @@ project is a browser tab.
   ABSTRACT ONLY. An agent on Aave V3 that estimates liquidation risk by survival analysis, validated on a simulator rather than on live data. No cryptography. Context for what a simulated market can and cannot show.
 
 - **Who holds the key in a private liquidation check**: the 2026 sources on custody and liquidation, read at origin, are in [`defi-lending-key-custody.md`](defi-lending-key-custody.md).
+- **Flood, Engelen, Aspinall and Desmet, "Bad Design Smells in Benchmark NIDS Datasets"**, IEEE EuroS&P 2024, pp. 658-675 `[link]`
+  URL: https://detlearsom.github.io/pubs/BadSmells-EuroSP24-finaldraft.pdf
+  Added: 2026-11-09
+  Read in the authors' final draft. Audits seven benchmark NIDS datasets and reports labels leaked via features and millions of near-duplicate flows, and warns that standard randomised splits leak where similar attacks cross categories. The source for treating identical flows across classes as a measurement.
+- **Arp et al., "Dos and Don'ts of Machine Learning in Computer Security"**, USENIX Security 2022, pp. 3971-3988 `[link]`
+  URL: https://www.usenix.org/conference/usenixsecurity22/presentation/arp
+  Added: 2026-11-09
+  Read in the authors' PDF. Names data snooping (P3) and spurious correlations (P4) among ten pitfalls, the second being artifacts unrelated to the security problem that create shortcuts between classes.
+- **Siriwardhana et al., "Descriptor: 5G Wireless Network Intrusion Detection Dataset (5G-NIDD)"**, IEEE Data Descriptions 2, 358-369, 2025, doi:10.1109/IEEEDATA.2025.3592888 `[link]`
+  URL: https://ieeexplore.ieee.org/document/11098458
+  Added: 2026-11-09
+  Read in full, open access under CC BY. The testbed, the session schedule with the 5-minute overlap of the two attackers, GTP removal with TraceWrangler and flows from Argus. It says the data were labelled and each attack given its own label and gives no method. The form of citation the dataset's record asks for.
+- **Siriwardhana et al., scripts for 5G-NIDD** `[link]`
+  URL: https://github.com/yushan1986/5g-nidd
+  Added: 2026-11-09
+  Read the README, the attack commands, the loading script and `IP_Change.ipynb`. There is no labelling step. The repository carries no licence, so nothing from it is reused here.
+- **Samarakoon, Siriwardhana, Porambage, Liyanage, Chang, Kim, Kim and Ylianttila, "5G-NIDD"**, arXiv:2212.01298, 2022 `[link]`
+  URL: https://arxiv.org/abs/2212.01298
+  Added: 2026-11-09
+  Read in its HTML version, section V. Captures on 26 and 29 August 2022, each attack in its own session and each session at two base stations; 112 Argus features; a multiclass ANOVA ranking whose top ten include `Seq` and `Offset`, and accuracies around 0.99 on those ten.
 
 ### Read in Round 86, cited by nothing yet
 
@@ -1995,9 +2014,9 @@ to no publication.
   label at all** - 1000 Genomes carries no case/control status, which is why the PRS AUROC there is
   cited as external and never computed. So **no binary page clears the 200-event bar**, medical does
   not clear even the 100-event bar, and a smooth calibration curve drawn on any of them would be a
-  picture of noise. (Telecom, measured Round 74: its top-label question - was the winning class right -
-  has 250 wrong and 16,129 right predictions on the NIDD sample, which clears it, and 8 wrong on the
-  QML sample, which does not.) The satellite figure above is the OPS-SAT segment model; the telemanom path is far worse
+  picture of noise. (Telecom: its top-label question - was the winning class right -
+  had 250 wrong predictions on the NIDD sample in Round 74, which cleared it; on the sample of the model
+  refitted in Round 86 it has 34 wrong, which does not, nor do the 8 wrong on the QML sample.) The satellite figure above is the OPS-SAT segment model; the telemanom path is far worse
   (`n_events_scored` **3**, `models/metrics.json`), so the conclusion does not depend on which satellite
   model is meant. Recorded as the reason for an absence, which is the kind of decision this file exists to hold.
 - **Arp, Quiring, Pendlebury, Warnecke, Pierazzi, Wressnegger, Cavallaro and Rieck, "Dos and Don'ts of

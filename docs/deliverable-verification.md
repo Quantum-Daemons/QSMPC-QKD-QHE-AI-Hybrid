@@ -3661,7 +3661,7 @@ leakage-aware work on this corpus exists - three papers, now cited in
 
 Measured instead of argued. Binary benign-vs-attack scores **0.7630** against the 9-class **0.7608**,
 so the multiclass structure costs nothing and the whole error budget is one pair: Benign/UDPFlood,
-23.7% of the test split, with all seven other classes contributing 0.23%. The cause is **`IdleTime`**,
+23.7% of the test split, with all seven other classes contributing 0.23%. [Corrected in Round 86: `IdleTime` is a per-file label; see the correction at the top of `references/5g-nidd-metric-profile.md`.] The cause is **`IdleTime`**,
 a flow statistic the release's `Combined.csv` export does not carry and its
 `BTS1_BTS2_fields_preserved.csv` does. Refitted on the wide export with every identifier and host
 fingerprint dropped: **accuracy 0.982897, macro F1 0.995019**, Benign recall 0.5345 -> **1.0000**,
@@ -9023,6 +9023,7 @@ recorded separately, and nothing here changes the published model.
 | #17 | A CycloneDX 1.7 CBOM on the Validations page and SBOMs in CI, the weak gates the audit named tightened and seeded, and the type scale |
 | #18 | A DeFi lending page: a simulated market and a private liquidation check, the margin under CKKS and its sign in a garbled circuit, across a pool of Web Workers |
 | #19 | The lending check's key moved to a separate key holder by default, on the 2026 sources read at origin, with the bilateral arrangement kept as a mode |
+| #20 | The 5G-NIDD model refitted without a column that named the attack session's file and without the 281,529 flows the published file holds twice under contradictory labels, with its ceiling, a cross-base-station measurement and the rows as published recorded, and a 2D plot of its own |
 
 Findings worth keeping from those:
 
@@ -9149,3 +9150,12 @@ The owner asked for the two arrangements to be judged on real 2026 use and on th
 
 **Checks, each seen to fail on its seeded defect.** `check:lending-private` runs both arrangements on the real SEAL and Polytune: not applying a settlement fails it, as does a signature that does not bind the bit, and as does a message from Bob during a check. A seed with two partial liquidations of Bob is in the run.
 
+### Round 86, 2026-11-09: what `IdleTime` was, and what the ceiling was
+
+Found while choosing two columns to draw for audit item B18. `IdleTime` holds 17 values, all multiples of 128, one for each attack session and base station, so it names the file. From Round 50 the published 5G-NIDD model read it and scored accuracy 0.9829.
+
+Without it the model scored 0.7616, and no model reading those columns could pass 0.7685. That was first read as a shortage of information per flow, and the first explanation of the column as the capture time was ruled out by the dataset paper's capture dates. Looking at the addresses behind the two classes that confused then showed the cause: the published file holds one attacker's UDP flood twice, the same 281,529 flows labelled Benign in the first base station's file and UDPFlood in the second's. The two captures hold the 421,471 packets behind them with identical timestamps, and $`1 - 281529/1215890 = 0.76846`$ is the ceiling. The account is in `references/5g-nidd-metric-profile.md`.
+
+The loader removes the Benign copy and asserts the count. On the 934,361 rows left, accuracy is 0.9979 and macro F1 0.9972, and training on one base station and testing on the other gives 0.9973 and 0.9877, against 0.4199 and 0.6059 on the rows as published. Those are recorded on every run in `contradictory_copies`. The owner chose this over keeping the rows as published, and chose to take the window features from the raw captures forward separately as research.
+
+**Checks.** `tests/test_r86_nidd_contradictory_copies.py` covers the rule, the published sample, the record and the real file, and was seen to fail on each of six seeded defects. `tests/test_r86_no_file_label_feature.py` reads every published tabular sample for a column whose every value is a Unix time. The loader's traps 3 and 5 fail if either property of the file changes. The trainer refuses accuracy outside 0.99 to 0.9995, which is where the copies or a file label would put it.

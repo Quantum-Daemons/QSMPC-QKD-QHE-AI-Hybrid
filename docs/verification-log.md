@@ -4021,3 +4021,13 @@ One run per page, on a machine with 20 logical cores, cross-origin isolated, wit
 
 WebGPU is optional and off by default: the published models use WASM unless it is selected, and the agent panel's models can use it. SEAL and Polytune have no GPU path. ONNX Runtime takes half the logical cores up to four threads.
 
+### Round 86, PR #19 on the deployed site (2026-11-09)
+
+`main` was `87fceeb`, bundle `index-Cet92AlO.js`, read in a browser on the public URL.
+
+| what | read |
+|---|---|
+| the default run, a separate key holder | 5 checks, every bit matching the clear check; every signed bit verified; one submission from Bob; 4 Web Workers |
+| the same page, seed 3 | 9 checks |
+| the borrower holding the key | 9 submissions, one per check |
+| every page | no console error |

@@ -639,14 +639,76 @@ def telecom() -> dict:
     }
 
 
+def telecom_nidd() -> dict:
+    """The held-out 5G-NIDD flows `telecom_ids.nidd` was scored on (Round 86).
+
+    The telecom page has two corpora and until now only drew one, so with the 5G-NIDD model selected
+    it showed rows that model never saw. These are real flows under CC BY 4.0, from the same
+    per-class-floored draw of the held-out quarter the published evaluation sample holds; 4,096 of its
+    16,379 rows, by a seeded permutation, keep the payload the size of the others.
+
+    `sMeanPktSz` and `TotBytes` are two of the 46 columns the model reads. The file label `IdleTime` is
+    not one of them, and it would have been the obvious pair member: it separates the classes best of all.
+    """
+    path = REPO / "models" / "telecom_nidd" / "eval_sample.json"
+    if not path.exists():
+        return {}
+    sample = json.loads(path.read_text())
+    names = sample["feature_names"]
+    xs = np.asarray(sample["samples"], dtype=float)
+    ys = np.asarray(sample["labels"], dtype=int)
+    benign = sample["class_names"].index("Benign")
+    keep = np.random.default_rng(42).permutation(len(ys))[:4096]
+    xi, yi = names.index("sMeanPktSz"), names.index("TotBytes")
+    labels = (ys[keep] != benign).astype(int)
+    pts = [[_round(float(xs[k, xi])), _round(float(xs[k, yi])), int(t)]
+           for k, t in zip(keep, labels, strict=True)]
+    auc_pr, base = _separability(pts), _base_rate(labels)
+    reg = _registry()
+    ds = reg.DS_5G_NIDD
+    return {
+        "dir": "telecom_nidd",
+        "usecase": "telecom_ids",
+        "corpus_is_synthetic": False,
+        "is_training_corpus": True,
+        "models": ["telecom_ids.nidd"],
+        "provenance": "5G-NIDD: real traffic from a 5G test network at the University of Oulu, as flow "
+                      "statistics. This is the network layer, a different task from the QKD-layer "
+                      "attacks the other model on this page classifies, with no feature in common.",
+        "split_note": f"{len(pts):,} rows from the published evaluation sample, a per-class-floored draw "
+                      "of the held-out quarter of the seed-42 stratified split: none was used to fit "
+                      "telecom_ids.nidd. The floor over-represents the rare attacks, so the base rate "
+                      "here is the sample's and not the corpus's.",
+        "licence": ds.licence,
+        "licence_url": CC_BY_4,
+        "attribution": ds.attribution,
+        "modifications": "Two of the 113 columns, rounded to 4 significant figures, on 4,096 rows of a "
+                         "stratified held-out draw, after removing the 281,529 Benign-labelled copies of "
+                         "flows the file also labels UDPFlood; the 8 attack classes collapsed to attack "
+                         "against benign.",
+        "x": {"key": "sMeanPktSz", "label": "mean packet size from the source (bytes)"},
+        "y": {"key": "TotBytes", "label": "total bytes in the flow", "scale": "log"},
+        "class_names": ["Benign", "attack (any of 8)"],
+        "separability_auc_pr": auc_pr,
+        "separability_method": SEPARABILITY_ESTIMATOR,
+        "base_rate": _round(base),
+        "note": f"AUC-PR {auc_pr} against a {_round(base)} base rate. On these two columns benign flows "
+                "sit at larger mean packet sizes than most attacks; telling the eight attacks apart takes "
+                "the other columns. The model reads 46 and scores accuracy 0.9979 over 9 classes. The "
+                "file holds one attacker's UDP flood twice under contradictory labels, and the Benign "
+                "copy is removed before anything here is drawn.",
+        "points": pts,
+    }
+
+
 def main() -> int:
-    for fn in (satellite, medical, finance, genomics, telecom):
+    for fn in (satellite, medical, finance, genomics, telecom, telecom_nidd):
         payload = fn()
         if not payload:
             continue
-        out = WEB / {"satellite_comms": "satellite", "medical_fl": "medical",
+        out = WEB / (payload.pop("dir", None) or {"satellite_comms": "satellite", "medical_fl": "medical",
                      "finance_aml": "finance", "genomics": "genomics",
-                     "telecom_ids": "telecom"}[payload["usecase"]]
+                     "telecom_ids": "telecom"}[payload["usecase"]])
         out.mkdir(parents=True, exist_ok=True)
         path = out / "real_2d.json"
         path.write_text(json.dumps(payload, separators=(",", ":")) + "\n")
