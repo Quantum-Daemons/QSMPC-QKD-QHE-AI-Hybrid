@@ -67,6 +67,19 @@ export interface Step {
    */
   failWord?: string;
 }
+/** What became of the telemetry once two-way QSDC would not carry it (Round 86). */
+const quasiTag = (m: M): string => {
+  const status = String(m["stike_status"] ?? "");
+  if (status === "delivered") {
+    return ` · sent by one-way quasi-QSDC (STIKE, pre-shared key): Eq. 3 bound ${f(m, "stike_secrecy_per_signal")} bit per signal pulse, `
+      + `${f(m, "stike_key_consumed_bits")} key bits spent, ${f(m, "stike_key_regenerated_bits")} regenerated`;
+  }
+  if (status === "no_secure_rate") return " · one-way quasi-QSDC refused: no positive key rate · telemetry falls back to the PQC session key";
+  if (status === "pool_too_small") return " · one-way quasi-QSDC not attempted: the key pool is too small · telemetry falls back to the PQC session key";
+  if (status === "undecodable") return " · one-way quasi-QSDC could not decode · telemetry falls back to the PQC session key";
+  return " · telemetry withheld, falls back to the PQC session key";
+};
+
 /** The badge word of a step that ran and did not succeed: its own word, else "failed". */
 export const failWordOf = (step: Step): string => step.failWord ?? "failed";
 /** A party, as the canvas heads its column. */
@@ -524,12 +537,14 @@ export const USECASE_SPECS: Record<string, Spec> = {
       // key LENGTH and no key bytes, and the session key is the PQC handshake's (Overview's key-source row).
       : "The LEO satellite and the ground station meet over a free-space downlink while the satellite is in view: "
         + "a QKD key length is modelled for the downlink (in this tab the session key is the PQC handshake's), "
-        + "and the telemetry goes by QSDC where the link can carry it, else under the PQC session key.",
+        + "and the telemetry goes by two-way QSDC where the link can carry it, else by one-way quasi-QSDC from a pre-shared "
+        + "key pool, else under the PQC session key.",
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
       { stageId: "satellite_qkd", kind: "q-arrow", label: (m, c) => `free-space ${qkdName(c)}${eveTag(m)} (${f(m, "channel_loss_db")} dB) · QBER ${f(m, "qber")}${optiTag(m, c)}`,
         ok: qkdOk, failWord: QKD_NO_KEY,
         hidden: pqcOnly },
+      // (Round 86) What happened to the telemetry once two-way QSDC would not carry it is the second half of this label.
       // The abort has to reach the arrow. With Eve at 0.5 the log said "QSDC ABORTED: error 0.158 >
       // 0.11 - telemetry withheld" while this label read "QSDC direct telemetry · secrecy 0
       // bit/carrier" with a done tick beside it - which reads as delivered-but-not-secret, the
@@ -562,9 +577,10 @@ export const USECASE_SPECS: Record<string, Spec> = {
       // asymptotic and never emits it.
       { stageId: "qsdc_telemetry",
         kind: (c) => (pqcOnly(c) ? "c-arrow" : "q-arrow"),
-        ok: (m) => Number(m["qsdc_link_budget_limited"]) !== 1
-          && Number(m["qsdc_eavesdrop_detected"]) !== 1 && Number(m["qsdc_statistics_limited"]) !== 1,
-        // All three of those withhold the telemetry, which then falls back to the PQC session key.
+        ok: (m) => Number(m["stike_delivered"]) === 1 || (Number(m["qsdc_link_budget_limited"]) !== 1
+          && Number(m["qsdc_eavesdrop_detected"]) !== 1 && Number(m["qsdc_statistics_limited"]) !== 1),
+        // All three of those withhold the telemetry from two-way QSDC, which then goes by one-way quasi-QSDC
+        // if the link and the key pool allow, else under the PQC session key.
         failWord: "withheld",
         label: (m, c) => pqcOnly(c)
           ? "telemetry under the PQC session key · QSDC skipped: a PQC-only profile has no quantum channel"
@@ -586,7 +602,7 @@ export const USECASE_SPECS: Record<string, Spec> = {
             // 32.2 dB and g = 532.66 (27.26 dB) differ by more than the detector: the label says both.
             ? `QSDC NOT AVAILABLE · link-budget limited · Eq. 8 bound ${f(m, "qsdc_eq8_bound")} `
               + `bit per received carrier at ${f(m, "channel_loss_db")} dB channel loss (g=${f(m, "qsdc_eve_gain_g")}: `
-              + `the detector in, the station optics out) · telemetry withheld, falls back to the PQC session key`
+              + `the detector in, the station optics out)${quasiTag(m)}`
             : `QSDC direct telemetry · Eq. 8 bound ${f(m, "qsdc_eq8_bound")} bit per received carrier`) },
       publishedStep("qsdc_telemetry"),
       QSMPC_COMPARE,

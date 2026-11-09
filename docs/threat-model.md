@@ -374,6 +374,18 @@ Implemented in `web/src/lib/lending/privateCheck.ts`, in two arrangements. The s
 - **Post-quantum status.** ML-KEM (with X25519 as a hedge), ML-DSA and CKKS rest on lattice assumptions. The garbled circuit's oblivious transfers rest on discrete logs: a deployment's sealed session would keep them from outsiders, but a counterparty that records them could open them with a future quantum computer.
 - **No chain.** There is no contract, no oracle and no real price. Aave V4's target health factor and auction-style bonus are not modelled. The closest published design found is Martinico, Calabrese, Rubin and Ciampi (ACNS 2026), which proves a stronger notion against a corrupted decryptor in the UC model; this page gives no such guarantee.
 
+## One-way quasi-QSDC on the satellite page
+
+Where two-way QSDC cannot close, the page sends its telemetry by STIKE (Pan et al., Sci. Adv. 11, eadt4627, 2025). What is computed is statistics: no photons and no bytes cross a channel, and in the browser the session key stays the PQC handshake's.
+
+**What it rests on.**
+
+- **A pre-shared key.** The message is one-time padded from a pool both ends already hold, which is why this is quasi-QSDC and not the keyless communication Qi et al.'s Eq. 8 bounds. The model assumes the pool was provisioned before the pass, by a means it does not model. Pan et al. leave the strategy for filling it to future work. Whoever holds the pool reads the telemetry.
+- **Reservation before the pass.** A frame reserves a key as long as its spread codeword, 98.5 Mbit for the 74-byte frame here, since the pad is applied before anyone knows which pulses will arrive. Only the part for pulses Bob retains is spent.
+- **The channel check.** As in BB84, the secrecy comes from comparing a sample of basis-matched events, with an authenticated classical channel assumed for the timestamps and bases. A run with no positive Eq. 3 rate is refused and spends nothing.
+
+**What it does not give.** The rate is asymptotic, as in the source: a finite-length analysis is left open there and would lower it. The spreading and majority stand in for their LDPC code. The sources measure fibre and 1.4 km of urban air, so nothing read shows the protocol over a satellite link.
+
 ## Explicitly out of scope (PoC)
 - Side-channel / fault attacks on the host.
 - Formal verification of the protocols (referenced papers carry the proofs).

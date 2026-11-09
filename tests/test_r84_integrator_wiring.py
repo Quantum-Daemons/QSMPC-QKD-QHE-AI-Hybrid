@@ -228,6 +228,8 @@ GROUPS = {
         {"name": "telecom_qcnn", "usecase": "telecom_ids", "config": {"inference": "qcnn"},
          "stopAfter": "qml_ids"},
         {"name": "satellite", "usecase": "satellite_comms", "config": {}, "stopAfter": "qsdc_telemetry"},
+        {"name": "satellite_small_pool", "usecase": "satellite_comms", "config": {"sat_stike_pool_mbit": 1},
+         "stopAfter": "qsdc_telemetry"},
     ],
     "no_raw_rows": [
         {"name": "medical_no_raw", "usecase": "medical_fl", "config": {"inference": "qcnn"},
@@ -316,6 +318,18 @@ def test_the_pipeline_encrypts_every_held_out_row(browser, name, stage, model, r
 def test_the_telecom_page_still_reports_its_per_rotation_cost(browser) -> None:
     m, _ = _stage(browser["telecom_qcnn"], "qml_ids")
     assert m["fhe_ms_per_rotation"] == m["fhe_batch_ms_per_rotation"] > 0
+
+
+def test_the_browser_log_says_what_became_of_the_telemetry(browser) -> None:
+    """Round 86: when one-way quasi-QSDC carries the telemetry the verdict above it must not say it fell back."""
+    _, logs = _stage(browser["satellite"], "qsdc_telemetry")
+    i = next(n for n, x in enumerate(logs) if x.startswith("QSDC (simulated) NOT AVAILABLE"))
+    assert "carries the telemetry instead" in logs[i] and "falls back" not in logs[i]
+    assert logs[i + 1].startswith("Quasi-QSDC (simulated, one-way STIKE"), logs[i + 1]
+    _, small = _stage(browser["satellite_small_pool"], "qsdc_telemetry")
+    j = next(n for n, x in enumerate(small) if x.startswith("QSDC (simulated) NOT AVAILABLE"))
+    assert "falls back to the PQC session key" in small[j] and "carries the telemetry instead" not in small[j]
+    assert small[j + 1].startswith("Quasi-QSDC (STIKE) not attempted"), small[j + 1]
 
 
 def test_the_satellite_verdict_names_its_model_and_the_segments_label(browser) -> None:

@@ -26,6 +26,7 @@ import { generateQuantumBits } from "./clientQRNG";
 import { outOfView, satBlock, satChannel } from "./satLink";
 import { blockCounts, blocksForPositiveKey, DEVIATION_LABELS, fibreBlockPulses, FINITE_KEY_BOUNDS, finiteKeySourceOf,
   keyLength, scaleCounts, type Deviation } from "./finiteKey";
+import { stikeRates, stikeSend } from "./stike";
 import { bb84, channelLossDb, e91, FIBER, fibreIntensities, h2, inView, intrinsicQber,
   keyRateWithClock, linkElevationDeg, qsdcLink, qsdcSecrecyCapacity, sourceOf, sourceRateHz, type ChannelParams,
   qcnnExpectation,
@@ -2571,6 +2572,48 @@ export function runClientPipeline(
         // setting, against the 74 bytes of telemetry the demo sends.
         metric(stage, "qsdc_regime", "asymptotic (infinite block; no finite-size certificate)");
         artifacts.telemetry_delivered = !abort;
+        // WHEN TWO-WAY QSDC CANNOT CLOSE, ONE-WAY QUASI-QSDC (Round 86, the owner's choice). Pan et al.'s STIKE:
+        // the message is one-time padded from a pre-shared pool and loss costs rate rather than secrecy. See `stike.ts`.
+        const stikeChannel = satChannel(config);
+        const stikePoolBits = Math.round(Number(config.sat_stike_pool_mbit ?? qkdCfg().stike_pool_bits / 1e6) * 1e6);
+        const quasi = abort && stikePoolBits > 0
+          ? stikeSend(webCfg().demo_sat_telemetry_bytes, stikeRates(stikeChannel), {
+            pSignal: Number(sourceOf(stikeChannel).pSignal), sourceRateHz: Number(stikeChannel.sourceRateHz),
+            poolBits: stikePoolBits, votesPerBit: Number(config.sat_stike_votes ?? qkdCfg().stike_votes_per_bit),
+            seed: Number(config.seed ?? 0),
+          })
+          : null;
+        if (quasi) {
+          metric(stage, "stike_status", quasi.status);
+          metric(stage, "stike_delivered", quasi.status === "delivered" ? 1 : 0);
+          metric(stage, "stike_secrecy_per_signal", Number(quasi.rates.secrecy.toPrecision(4)));
+          metric(stage, "stike_reliable_per_signal", Number(quasi.rates.reliable.toPrecision(4)));
+          metric(stage, "stike_qber", Number(quasi.rates.qber.toFixed(5)));
+          metric(stage, "stike_signal_pulses", quasi.signalPulses);
+          metric(stage, "stike_seconds", Number(quasi.seconds.toFixed(3)));
+          metric(stage, "stike_key_in_flight_bits", quasi.keyInFlightBits);
+          metric(stage, "stike_key_consumed_bits", quasi.keyConsumedBits);
+          metric(stage, "stike_key_regenerated_bits", quasi.keyRegeneratedBits);
+          metric(stage, "stike_pool_after_bits", quasi.poolAfterBits);
+          artifacts.telemetry_quasi_qsdc = quasi.status === "delivered";
+        }
+        // What became of the telemetry, for the verdict below: a run that sent it one way must not also say it fell back.
+        const quasiSent = quasi?.status === "delivered";
+        const afterAbort = quasiSent ? "One-way quasi-QSDC carries the telemetry instead, as the next line says." : "Telemetry falls back to the PQC session key.";
+        const quasiLog = quasi == null ? null
+          : quasi.status === "delivered"
+            ? `Quasi-QSDC (simulated, one-way STIKE, Pan et al. 2025) delivered the ${webCfg().demo_sat_telemetry_bytes}-byte telemetry where `
+              + `two-way QSDC cannot close: ${quasi.signalPulses.toLocaleString("en-US")} signal pulses (${quasi.seconds.toFixed(2)} s), QBER `
+              + `${(100 * quasi.rates.qber).toFixed(2)}%, Eq. 3 bound ${quasi.rates.secrecy.toExponential(2)} bit per signal pulse. Key pool: `
+              + `${quasi.keyInFlightBits.toLocaleString("en-US")} bits reserved, ${quasi.keyConsumedBits.toLocaleString("en-US")} spent on the pulses Bob `
+              + `retained, ${quasi.keyRegeneratedBits.toLocaleString("en-US")} regenerated at the asymptotic rate. It rests on that pre-shared key: this `
+              + `is quasi-QSDC, and not the keyless direct communication Eq. 8 bounds.`
+            : quasi.status === "pool_too_small"
+              ? `Quasi-QSDC (STIKE) not attempted: a frame reserves a key as long as its spread codeword, `
+                + `${quasi.signalPulses.toLocaleString("en-US")} bits here, and the pool holds ${quasi.poolBeforeBits.toLocaleString("en-US")}. Telemetry falls back to the PQC session key.`
+              : quasi.status === "no_secure_rate"
+                ? `Quasi-QSDC (STIKE) refused: no positive key rate at QBER ${(100 * quasi.rates.qber).toFixed(2)}% (Eq. 3 of Pan et al.). Telemetry falls back to the PQC session key.`
+                : `Quasi-QSDC (STIKE) could not decode: ${quasi.wrongBits} bits wrong and ${quasi.erasedBits} with no retained pulse. Telemetry falls back to the PQC session key.`;
         emit("log", stage, !abort
           ? `QSDC (simulated) delivered telemetry (Qi et al.'s Eq. 8 bound per received carrier, C_s/Q_Bob = ${secrecy.toFixed(4)} bit, g=${g.toFixed(1)})`
           : lossLimited
@@ -2584,11 +2627,12 @@ export function runClientPipeline(
               + `an attack: C_s/Q_Bob = 1 - h(e) - g h(2e) = 1 - ${h2(e).toFixed(4)} - `
               + `${(g * h2(Math.min(0.5, 2 * e))).toFixed(4)} at the channel model's error rate e = ${e.toFixed(4)} `
               + `(the QKD stage's QBER is a sampled draw around it). This models the downlink alone: Qi et al.'s DL04 `
-              + `protocol is two-way, and its return path would only add loss. Telemetry falls back to the PQC session key.`
+              + `protocol is two-way, and its return path would only add loss. ${afterAbort}`
             : `QSDC (simulated) ABORTED: Qi et al.'s Eq. 8 bound per received carrier, C_s/Q_Bob, is ${secrecy.toFixed(4)} <= 0 at error ${e.toFixed(4)} `
               + `with g=${g.toFixed(1)} (${lossDb.toFixed(1)} dB: the channel less the station optics, plus `
               + `the detector) — this link closes at `
-              + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — telemetry withheld`);
+              + `${secrecyNoEve.toFixed(4)} without Eve, so the loss is attributable — ${quasiSent ? "one-way quasi-QSDC carries the telemetry instead, as the next line says" : "telemetry withheld"}`);
+        if (quasiLog) emit("log", stage, quasiLog);
         }   // end qsdc: everything below scores the BUNDLED corpus and runs on both profiles
         {
           // REAL OPS-SAT-AD telemetry segments (CC BY 4.0) + a demo linear anomaly regression, scored
@@ -2602,7 +2646,7 @@ export function runClientPipeline(
           // moved out: this step scores a segment of the BUNDLED corpus, not the telemetry the channel
           // just delivered, so it has no dependency on whether QSDC aborted.
           //
-          // Gating it was not a harmless over-caution, because QSDC essentially never delivers here.
+          // Gating it was not a harmless over-caution, because two-way QSDC essentially never delivers here.
           // `C_s > 0` needs `1 - h(e) > g h(2e)`, and `g` scales with link loss: secrecy capacity is
           // -80.82 bit/carrier at the default 800 km (g = 532.66) and still -22.46 at the zenith,
           // 499 km (g = 152.99), with no eavesdropper. So the anomaly verdict, the model's provenance

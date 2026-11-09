@@ -99,7 +99,7 @@ flowchart TB
 | `medical_fl` | healthcare | federated training with pairwise masks whose seeds each pair of hospitals agrees by X25519 (no dropout recovery, no public-key authentication), private diagnosis: the encrypted CNN reads a tabular (WDBC) row tiled to the image size in the browser, and MedMNIST images only in the full deployment |
 | `genomics` | genomics | secure summation of pooled allele counts, FHE |
 | `telecom_ids` | telecom, defence | simulated QKD with an optional eavesdropper, a QML intrusion detector |
-| `satellite_comms` | satellite | simulated free-space QKD over a model of the Micius downlink, and a QSDC feasibility check with an inline eavesdrop check |
+| `satellite_comms` | satellite | simulated free-space QKD over a model of the Micius downlink, a two-way QSDC feasibility check with an inline eavesdrop check, and one-way quasi-QSDC under a pre-shared key where that check cannot close |
 
 Each use case's implementation, stage by stage: what runs it in the browser, and where the full
 deployment differs. Open a section to see its flowchart.
@@ -254,8 +254,11 @@ flowchart TB
   NV["Out of view: no QKD key and no QSDC; the anomaly score still runs"]
   K["Free-space QKD, simulated: a model of the Micius downlink, BB84 with a vacuum state, or E91; OptiQKD tunes it when switched on"]
   L["Key length: BB84 finite key of one pass, Lim et al. 2014, E91 asymptotic; the full deployment mixes 256 bits or more"]
-  QD{"QSDC: secrecy capacity positive?"}
-  NA["QSDC aborts: link budget too small, an eavesdropper detected, or, in the full deployment, too few check carriers to certify an error rate; nothing is sent over the quantum channel"]
+  QD{"Two-way QSDC: secrecy capacity positive?"}
+  NA["Two-way QSDC aborts: link budget too small, an eavesdropper detected, or, in the full deployment, too few check carriers to certify an error rate"]
+  QS{"One-way quasi-QSDC: a key pool holding the frame, a positive key rate, and the message decodes?"}
+  QT["Telemetry sent one way under the pre-shared key, simulated"]
+  F["Nothing sent over the quantum channel: the telemetry falls back to the PQC session key"]
   T["Telemetry sent directly over the simulated quantum channel"]
   A["Anomaly score, the published model satellite_comms.telemanom, and a CKKS check of the OPS-SAT student, in the browser; the full deployment also scores a bundled OPS-SAT-AD segment under CKKS, whatever QSDC did"]
   X["Explainability: exact linear SHAP, signed"]
@@ -269,7 +272,11 @@ flowchart TB
   L --> QD
   QD -->|no| NA
   QD -->|yes| T
-  NA --> A
+  NA --> QS
+  QS -->|yes| QT
+  QS -->|no| F
+  QT --> A
+  F --> A
   T --> A
   A --> X
   X --> C

@@ -61,7 +61,7 @@ export default function ParameterPanel({ run }: { run: Run }) {
    */
   const qkdOff = qkd === "pqc-only";
   const pqcOnlyWhy = "No effect under PQC-only - no QKD stage runs, so nothing reads this. ";
-  const qkdOnly = (key: string) => key.startsWith("qkd_") || key === "sat_pulses" || key === "sat_block_passes" || key === "sat_block_seconds";
+  const qkdOnly = (key: string) => key.startsWith("qkd_") || key.startsWith("sat_stike_") || key === "sat_pulses" || key === "sat_block_passes" || key === "sat_block_seconds";
   /**
    * Commit a numeric edit, CLAMPED to that field's own min/max.
    *
@@ -241,6 +241,13 @@ export default function ParameterPanel({ run }: { run: Run }) {
        + "have suffered on its own, which is the one case that reports an eavesdropper. BB84 above "
        + "detects her at that fraction at any range", 1],
       ["Pulses", "sat_pulses", 500000, 1, "channel uses for the free-space downlink"],
+      ["Quasi-QSDC key pool (Mbit)", "sat_stike_pool_mbit", 16, 0,
+       "the pre-shared key one-way quasi-QSDC (STIKE, Pan et al. 2025) pads the telemetry with when two-way QSDC cannot close. "
+       + "A frame reserves a key as long as its spread codeword and spends only the bits of the pulses Bob retained, so this "
+       + "has to hold the reservation, not the spend. 0 means no pool: the telemetry falls back to the PQC session key"],
+      ["Votes per telemetry bit", "sat_stike_votes", 2, 3,
+       "how many retained pulses each telemetry bit gets on average in quasi-QSDC: the spreading. Bob takes the majority. "
+       + "Fewer votes reserve and spend less key, and below a few leave bits with no retained pulse at all"],
       // The two fixed dB that decided every abort this page has ever shown. `channelLossDb` caps the
       // diffraction term inside the near field. At the defaults the floor is 4.9 dB at the zenith (1.87
       // dB of air and 3 dB of pointing), and with the detector g = 6.14 at zero range (Round 84; this

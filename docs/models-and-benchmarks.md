@@ -262,7 +262,8 @@ visible number.
   connects to it, and no figure from it is quoted.
 - **Use-case pages** - model curves for the simulated channel, computed by the functions a run calls:
   BB84's rate with and without decoy states and E91's CHSH value against fibre length (telecom), and
-  QSDC secrecy capacity against downlink range (satellite).
+  QSDC secrecy capacity against downlink range (satellite), and two-way QSDC against one-way quasi-QSDC per pulse
+  against loss, with four published measurements.
 - **Satellite network** (the satellite card's Network tab) - what carries a key past the horizon a
   downlink cannot see over. A pass model, checked against Liao et al. 2017's pass of 19 December
   2016 counted the way the paper counts it (detections and signal-state sifted bits within 1

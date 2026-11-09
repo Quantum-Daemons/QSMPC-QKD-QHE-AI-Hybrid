@@ -9026,6 +9026,7 @@ recorded separately, and nothing here changes the published model.
 | #20 | The 5G-NIDD model refitted without a column that named the attack session's file and without the 281,529 flows the published file holds twice under contradictory labels, with its ceiling, a cross-base-station measurement and the rows as published recorded, and a 2D plot of its own |
 | #21 | Window statistics from the raw 5G-NIDD captures measured across base stations, and an assessment of Python walkthroughs for the demo, both as research |
 | #22 | A Python walkthrough at `/walkthrough/`, served entirely from the demo's own origin |
+| #23 | The satellite's telemetry goes by one-way quasi-QSDC from a pre-shared key pool where two-way QSDC cannot close, with both bounds and published measurements plotted against loss |
 
 Findings worth keeping from those:
 
@@ -9175,3 +9176,17 @@ The owner also asked whether a walkthrough belongs on the demo. A marimo export 
 The owner chose one marimo notebook, with Pyodide served from the demo itself. A marimo export loads Pyodide from a third-party CDN by default, which would have added an origin to a page whose claim is that its code comes from this site. The build fetches every file against a recorded sha256 and points marimo at the copies. The notebook reads 200 pairs of the flows 5G-NIDD holds twice and shows that 105 of the 113 columns agree in every pair, and which 8 do not. See `references/notebook-walkthroughs.md`.
 
 **Checks.** `tests/test_r86_walkthrough.py` reads the record, the Dockerfile and the excerpt, and applies five defects to copies of the record, each refused. CI runs `--check` and the notebook under CPython. The page was run with every third-party host name in the export replaced by an invalid one. The routing was read under the demo's Caddyfile, and the stage was built.
+
+### Round 86, 2026-11-09: what the satellite does when two-way QSDC cannot close
+
+The owner asked whether the page's "QSDC NOT AVAILABLE" line was the specified result, and what current practice would do instead. It was: an independent recomputation gives $`e = 0.011083`$, $`g = 532.66`$ and an Eq. 8 bound of $`-80.818`$, as the page printed. Eq. 8 closes at this error floor only up to $`g \approx 7.7`$ dB, against 27.26 dB on this link. The reading at source is in `references/REFERENCES.md`, "One-way quasi-QSDC". The verdict stays. The owner chose to send the telemetry as well, by the one-way protocol that has since been demonstrated past where two-way stops, with a modelled key pool and the plot.
+
+**What runs now.** `src/qsh/qkd/stike.py` and its twin `web/src/lib/stike.ts` model STIKE (Pan et al. 2025): the rates of their Eqs. 3 and 4 from the QKD stage's own decoy estimator, the reservation of a key as long as the spread codeword, the return of the key of pulses Bob did not retain, the regeneration at the Eq. 3 rate, and the three ways it can refuse. The stage runs it only when two-way QSDC has not delivered, and the log and the canvas say which of the two happened. A run that sent the telemetry one way no longer also says it fell back. `telemetry_delivered` keeps its meaning, delivery by two-way QSDC, so nothing that reads it changes. Two controls set the pool and the spreading. The default is 128 Mbit against the 98.5 Mbit one frame reserves.
+
+**The plot** on the satellite page's Downlink tab draws the two-way bound and Eqs. 3 and 4 per pulse against the loss from transmitter to detector output, on the page's own link, with this link's loss marked and four published measurements for scale. Their loss is each paper's channel, receiver optics and detector, stated in the source, and their rate is the measured rate over the 1.25 GHz clock. They are fibre, and 1.4 km of air plus 10 km of fibre.
+
+**Result on the default link.** Secrecy $`3.36 \times 10^{-5}`$ bit per signal pulse, QBER 1.12%; the 74-byte frame takes 98.5 million signal pulses, 1.97 s at 100 MHz, reserves 98.5 Mbit and spends about 11.8 kbit, and 3.3 kbit is regenerated. Two-way stays positive only up to 15.5 dB on the same axis, against this link's 35.2 dB.
+
+**What it does not claim.** It is quasi-QSDC: it rests on a key both ends already hold, assumed provisioned before the pass. The rate is asymptotic, as Pan et al. derive it, and they leave the finite-length analysis open. Spreading with a majority stands in for their LDPC code, so it spends more key per message bit. It is not a satellite result: no source read reports QSDC or quasi-QSDC over a satellite link. `docs/threat-model.md` has the section.
+
+**Checks.** `tests/test_r86_stike.py` reproduces Sun et al.'s gains and places Eq. 3 inside their measured key rates, recomputes every plotted point from the Python estimator, checks the two-way closure against its closed form, and re-derives the four published points from the papers' own terms. `tests/test_r84_integrator_wiring.py` runs the browser's stage in node for both outcomes. Each check was proved on a seeded defect, including the one that first came back silent: a charge of every pulse to the pool in TypeScript passed until the test bounded the spend by the retained count.

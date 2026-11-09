@@ -4043,3 +4043,14 @@ WebGPU is optional and off by default: the published models use WASM unless it i
 | the calibration chart | withheld, "34 wrong predictions and 16,345 right ones", under the 200 events it needs |
 | the 2D plot | the rows this model was scored on, 4,096 of them, AUC-PR 0.9956 against a base rate of 0.8052 |
 | every page | no console error |
+
+### PR #22 on the deployed site (2026-11-09)
+
+Deployed from merged `main`, bundle `index-BuktvS8o.js`, read in Chrome on the public site.
+
+| page | read |
+|---|---|
+| the telecom page, 5G-NIDD selected | the card's link, "Check the two copies yourself", opens `/walkthrough/` in a new tab |
+| `/walkthrough/`, loading | cross-origin isolated under `require-corp`; all 250 resources came from the site itself; no Python error |
+| `/walkthrough/`, the result | 105 of 113 columns identical over all 200 pairs, and the eight that differ are the three labels and five columns that place a row in its file; the ceiling 0.7685 |
+| `/walkthrough/`, the slider | moving it re-ran the table: `Unnamed: 0` went from 235186 to 236603 between pairs 2 and 3 |
