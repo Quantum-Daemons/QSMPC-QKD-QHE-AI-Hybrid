@@ -703,7 +703,10 @@ const REAL_2D_PATH: Record<string, string> = {
  * a mapped use case can fetch a payload with no points. A caller cannot condition on an answer that
  * arrives in a `useEffect`, so a caller-side frame is a copy of a decision the caller cannot make.
  */
-export function RealDataScatter({ usecase, card = false }: { usecase: string; card?: boolean }) {
+/** Overlays beyond a use case's own, by name: the telecom page has two corpora, one per model family (Round 86). */
+const REAL_2D_EXTRA: Record<string, string> = { telecom_nidd: "data/telecom_nidd/real_2d.json" };
+
+export function RealDataScatter({ usecase, card = false, overlay }: { usecase: string; card?: boolean; overlay?: string }) {
   const [data, setData] = useState<Real2D | null>(null);
   const captionId = useId();
   // The two classes, on the canvas (`CanvasMarks`, Round 85), at the opacities the SVG symbols had.
@@ -713,7 +716,7 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
     points: data.points.filter((p) => p[2] === c).map((p) => ({ x: p[0], y: p[1] })),
   })) : []), [data]);
   useEffect(() => {
-    const rel = REAL_2D_PATH[usecase];
+    const rel = overlay ? REAL_2D_EXTRA[overlay] : REAL_2D_PATH[usecase];
     if (!rel) { setData(null); return; }
     let live = true;
     // Missing file is not an error worth shouting about - the generator skips a use case whose
@@ -727,7 +730,7 @@ export function RealDataScatter({ usecase, card = false }: { usecase: string; ca
       .then((j) => { if (live) setData(j); })
       .catch(() => { if (live) setData(null); });
     return () => { live = false; };
-  }, [usecase]);
+  }, [usecase, overlay]);
 
   // The single decision point. Everything below - including the frame, when `card` is set - is
   // downstream of it, so there is no second place that can answer this question differently.

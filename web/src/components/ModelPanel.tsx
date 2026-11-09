@@ -819,6 +819,8 @@ export function ModelPanel({ usecase }: { usecase: string }) {
       {/* Once per use case, not once per model: this is the corpus, not any model's output. It
           answers the question a lone score cannot - whether the classes were separable at all. */}
       <RealDataScatter usecase={usecase} />
+      {/* The telecom page's second corpus, the one telecom_ids.nidd is scored on: until Round 86 selecting that model still drew rows it never saw. */}
+      {usecase === "telecom_ids" && <RealDataScatter usecase={usecase} overlay="telecom_nidd" />}
     </section>
   );
 }

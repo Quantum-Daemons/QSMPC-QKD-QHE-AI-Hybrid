@@ -184,6 +184,7 @@ export default function Orchestration() {
           written in the same commit, promised the same. The frame now belongs to the only code that
           can know whether there is anything to frame. */}
       {hasRun ? <RealDataScatter usecase={usecase} card /> : null}
+      {hasRun && usecase === "telecom_ids" ? <RealDataScatter usecase={usecase} overlay="telecom_nidd" card /> : null}
 
       <div className="card" style={{ marginTop: 16 }}>
         <h3>Download artifacts</h3>

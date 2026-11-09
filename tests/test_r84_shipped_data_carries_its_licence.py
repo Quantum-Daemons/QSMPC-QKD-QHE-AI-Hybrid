@@ -53,7 +53,7 @@ SHIPPED = sorted(glob.glob(str(REPO / "models" / "*" / "eval_sample.json"))) + [
         "medical/breast_cancer_sample.json", "medical/real_2d.json", "satellite/real_2d.json",
         "satellite/opssat_segments.json", "finance/real_2d.json", "finance/student_heldout.json",
         "finance/paysim_sample.json", "genomics/real_2d.json", "genomics/pgs000072_breast_cancer.json",
-        "telecom/real_2d.json", "telecom/student_heldout.json")]
+        "telecom/real_2d.json", "telecom/student_heldout.json", "telecom_nidd/real_2d.json")]
 
 
 def _head(licence: str) -> str:
