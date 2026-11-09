@@ -76,7 +76,7 @@ const ALL_USECASES: UseCaseMeta[] = [
   },
   {
     id: "defi_lending", title: "DeFi — private liquidation check", nav: "DeFi lending", industry: "defi",
-    blurb: "Alice's lending pool and Bob, one of its borrowers, run through a simulated month: a two-slope interest rate, debt that grows on a public index, and liquidation below a health factor of 1, the mechanics of Aave V3's public contracts, with illustrative parameters and generated prices. At chosen hours the pool asks whether Bob can be liquidated, with his balances under his own CKKS key and its liquidation thresholds kept from him: the margin is computed under encryption and its sign in a garbled circuit. No chain is involved.",
+    blurb: "Alice's lending pool and Bob, one of its borrowers, run through a simulated month: a two-slope interest rate, debt that grows on a public index, and liquidation below a health factor of 1, the mechanics of Aave V3's public contracts, with illustrative parameters and generated prices. At chosen hours the pool asks whether Bob can be liquidated. By default Carol, a separate key holder standing in for the threshold committees confidential-DeFi systems use, holds the CKKS key: Bob encrypts his balances once and can go offline, the pool computes his margin on that ciphertext at public prices and thresholds, and a garbled circuit between the pool and Carol gives only its sign. A bilateral mode, with Bob holding the key and the pool's thresholds kept from him, is one setting away. No chain is involved.",
     inference: false,
     agenticTool: "check_position_health",
     agenticPrompt: "In one sentence, what does a lending pool learn when a borrower's margin is computed under CKKS and its sign in a garbled circuit?",

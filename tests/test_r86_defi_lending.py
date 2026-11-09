@@ -56,7 +56,26 @@ def test_a_page_with_no_quantum_channel_offers_no_control_that_needs_one() -> No
 def test_the_page_states_when_the_check_protects_nothing() -> None:
     assert "On a public chain they are public, and then Bob can compute his margin himself" in _read("components/LendingPanels.tsx")
     assert "public, and then Bob can compute M himself" in _read("lib/lending/privateCheck.ts")
-    assert "its liquidation thresholds kept from him" in _read("lib/useCases.ts")
+    assert "Carol, a separate key holder" in _read("lib/useCases.ts")
+    assert "the pool's thresholds kept from him" in _read("lib/useCases.ts")
+
+
+def test_both_arrangements_say_what_they_depend_on() -> None:
+    panels = _read("components/LendingPanels.tsx")
+    assert "Two parties must not collude" in panels, "Carol's custody has to state its non-collusion assumption"
+    assert "no answer counts as a default" in panels, "the bilateral mode has to say Bob can refuse"
+    assert "no primary source for a confidential liquidation running in production" in panels
+    assert re.search(r"held === \"borrower\" \? BILATERAL_LIMITS : KEYHOLDER_LIMITS", panels), "the limits have to follow the run's own arrangement"
+
+
+def test_carol_is_the_default_and_the_control_reaches_the_run() -> None:
+    defaults = (REPO / "src" / "qsh" / "config" / "defaults.py").read_text()
+    assert 'custody: str = "keyholder"' in defaults
+    panel = _read("components/ParameterPanel.tsx")
+    assert 'id="pp-custody"' in panel and 'value="keyholder"' in panel and 'value="borrower"' in panel
+    model = _read("lib/lending/model.ts")
+    assert "p.lending_custody" in model, "the control has to reach the simulation's configuration"
+    assert "parties: (c) => bilateral(c)" in _read("lib/useCaseFlows.ts"), "the canvas has to name who holds the key in this run"
 
 
 def test_the_close_factor_boundary_is_the_contracts() -> None:

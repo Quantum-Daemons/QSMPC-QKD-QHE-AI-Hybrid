@@ -1707,6 +1707,7 @@ project is a browser tab.
   Added: 2026-11-09
   ABSTRACT ONLY. An agent on Aave V3 that estimates liquidation risk by survival analysis, validated on a simulator rather than on live data. No cryptography. Context for what a simulated market can and cannot show.
 
+- **Who holds the key in a private liquidation check**: the 2026 sources on custody and liquidation, read at origin, are in [`defi-lending-key-custody.md`](defi-lending-key-custody.md).
 - **Flood, Engelen, Aspinall and Desmet, "Bad Design Smells in Benchmark NIDS Datasets"**, IEEE EuroS&P 2024, pp. 658-675 `[link]`
   URL: https://detlearsom.github.io/pubs/BadSmells-EuroSP24-finaldraft.pdf
   Added: 2026-11-09

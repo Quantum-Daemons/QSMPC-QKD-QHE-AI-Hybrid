@@ -343,7 +343,7 @@ def opssat_ad(split: str = "train"):
 #: column SUBSET. The one column it omits that moved the score, ``IdleTime``, turned out in Round 86
 #: to be a per-file label (NIDD_FILE_LABEL) and is dropped; without it the two exports score the
 #: same, about 0.76 accuracy. See
-#: ``references/5g-nidd-metric-profile.md`` and the `idle_time_ablation` block that
+#: ``references/5g-nidd-metric-profile.md`` and the `file_label_counterfactual` block that
 #: ``scripts/train/telecom_nidd.py`` re-measures every run.
 #:
 #: The dataset's advertised 7,985,550,132 B across 14 files is real but misleading: 12 of those are

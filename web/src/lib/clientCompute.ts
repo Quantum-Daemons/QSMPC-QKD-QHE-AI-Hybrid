@@ -43,6 +43,8 @@ import { isClientDemo } from "./demoMode";
 import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
 import type { MultiPsiResult } from "./clientMultiPsi";
 import type { LendingMarketReport } from "./lending/report";
+import type { KeyholderSetup } from "./lending/privateCheck";
+import type { TaskInit } from "./lending/tasks";
 
 const r1 = (x: number) => Math.round(x * 10) / 10;
 const r2 = (x: number) => Math.round(x * 100) / 100;
@@ -3783,11 +3785,27 @@ export function runClientPipeline(
         const { summariseChecks } = await import("./lending/report");
         const inputs = market.run.checkpoints;
         const sig = String(config.sig ?? "ml-dsa-65");
-        emit("log", stage, `checking Bob's position at ${inputs.length} hours: the margin under CKKS, its sign in a garbled circuit, off the page's thread.`);
-        const pool = await runLendingTasks(inputs.map((input) => ({ kind: "check" as const, input })),
-          { sessionKey, sig, cfg: market.cfg }, market.cfg.max_workers);
-        const report = summariseChecks(pool, sigImpl(sig).name, market.cfg.margin_mask_bits);
+        const custody = market.cfg.custody;
+        let init: TaskInit = { sessionKey, sig, cfg: market.cfg, custody, kem: kemName(config) };
+        let setup: KeyholderSetup | undefined;
+        if (custody === "keyholder") {
+          // Carol's keys, Bob's one submission and the pool-Carol handshake, once, on one worker, before any check.
+          const first = await runLendingTasks([{ kind: "setup", input: inputs[0] }], init, 1);
+          const result = first.results[0];
+          if (result.kind !== "setup") throw new Error("the key holder's setup returned something else");
+          setup = result.setup;
+          init = { ...init, keyholder: setup };
+          emit("log", stage, `Carol generated the CKKS keys; Bob encrypted his balances once under her public key and signed them (${(setup.submission.length / 1e6).toFixed(2)} MB, sealed to the pool), and takes no further part.`);
+        }
+        emit("log", stage, `checking Bob's position at ${inputs.length} hours: the margin under CKKS, its sign in a garbled circuit, off the page's thread. `
+          + (custody === "keyholder" ? "Carol holds the key, and prices and thresholds are public." : "Bob holds the key, and the pool's thresholds are its own."));
+        const pool = await runLendingTasks(inputs.map((input) => ({ kind: "check" as const, input })), init, market.cfg.max_workers);
+        const report = summariseChecks(pool, sigImpl(sig).name, market.cfg.margin_mask_bits, custody, setup);
         artifacts.lending_private = report;
+        metric(stage, "lending_custody", custody);
+        metric(stage, "lending_bob_submissions", report.bobSubmissions);
+        if (report.bitSignaturesVerified != null) metric(stage, "lending_bit_signatures_verified", report.bitSignaturesVerified ? 1 : 0);
+        if (report.setup) metric(stage, "lending_link_agreed", report.setup.linkAgreed ? 1 : 0);
         metric(stage, "lending_checks", report.outcomes.length);
         metric(stage, "lending_checks_agree", report.allAgree ? 1 : 0);
         metric(stage, "lending_flagged", report.flagged);

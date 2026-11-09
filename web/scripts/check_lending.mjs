@@ -46,6 +46,13 @@ try {
   check(params.borrowers === 12 && params.supply === c.supply / 2 && params.bob_initial_ltv === 0.5 && params.shock_hour === 100 && params.shock_fraction === 0.2
     && params.annual_vol.every((v, i) => v === c.annual_vol[i] * 2) && params.check_points === 4, "every control on the page reaches the simulation");
   check(JSON.stringify(m.withRunParams(c, {})) === JSON.stringify(c), "with no controls set the simulation runs on the configured values");
+  check(c.custody === "keyholder" && m.withRunParams(c, { lending_custody: "borrower" }).custody === "borrower" && m.withRunParams(c, { lending_custody: "nonsense" }).custody === c.custody, "the key holder control is read, and an unknown value keeps the configured one");
+  for (const seed of [1, 3, 5, 9]) {
+    const r = m.simulate(c, seed), b0 = r.checkpoints[0];
+    const off = r.checkpoints.flatMap((k) => [Math.abs(k.amounts[0] - (b0.amounts[0] - k.settled.seized[0])), Math.abs(k.amounts[1] - (b0.amounts[1] - k.settled.seized[1])), Math.abs(k.scaledDebt - (b0.scaledDebt - k.settled.scaledRepaid))]);
+    if (Math.max(...off) > 1e-6) check(false, `seed ${seed}: Bob's position is not his opening one less what was settled (off by ${Math.max(...off)})`);
+  }
+  check(true, "Bob's position at every checkpoint is his opening one less what was settled in the open, so the pool can follow it");
 
   let sameSign = true;
   for (let i = 0; i < 2000; i++) {

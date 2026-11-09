@@ -21,16 +21,31 @@ const mb = (bytes: number) => `${(bytes / 1e6).toFixed(2)} MB`;
 const ms = (v: number) => `${v.toFixed(0)} ms`;
 const short = (v: number) => (Math.abs(v) >= 1e6 ? `${+(v / 1e6).toFixed(1)}M` : Math.abs(v) >= 1e3 ? `${+(v / 1e3).toFixed(0)}k` : String(v));
 
-const LIMITS = [
-  <><b>Why the thresholds are the pool's secret here.</b> On a public chain they are public, and then Bob can compute his margin himself: the mask and the circuit would hide nothing from anyone. This check suits a lender whose thresholds are its own, and a Bob who should learn no more than the answer.</>,
-  <><b>Semi-honest.</b> Nothing proves that Bob encrypted his real balances, which takes commitments and zero-knowledge proofs, and a malicious Bob could probe the thresholds with crafted ciphertexts, as MUSE (USENIX Security 2021) does to model weights.</>,
+const COMMON_LIMITS = [
   <><b>A bounded mask.</b> The mask is a real number of limited width, so it hides the margin statistically, not perfectly. Gazelle-style masking over the plaintext ring is perfect and costs about two million AND gates per ciphertext in this circuit library.</>,
   <><b>What is post-quantum.</b> ML-KEM (with X25519 alongside as a hedge), ML-DSA and CKKS rest on lattice assumptions. The garbled circuit's oblivious transfers rest on discrete logs: in a deployment the sealed session would keep them from outsiders, but a counterparty that records them could open them with a future quantum computer. In this tab they stay in memory.</>,
-  <><b>What leaks by design.</b> The bit reaches both parties, repeated bits narrow the thresholds down, and a liquidation is settled in the open.</>,
   <><b>A simulated market.</b> There is no chain, no oracle and no real price here: the prices are generated, the parameters illustrative, and the mechanics re-derived from Aave V3's public contracts, with none of their code. Aave V4's target health factor and auction-style bonus are not modelled.</>,
 ];
 
-export default function LendingPanels({ market, sweep, check, ran, state }: { market?: LendingMarketReport; sweep?: LendingSweepReport; check?: LendingPrivateReport; ran: boolean; state: string }) {
+const KEYHOLDER_LIMITS = [
+  <><b>Why a separate key holder.</b> Liquidations are carried out by third parties, without the borrower taking part, so a check cannot wait on the borrower. Carol holds the key instead, and Bob is needed only for his one submission. Confidential-DeFi systems use a threshold network for this: Zama's KMS runs 13 MPC nodes and, in its documentation's example, needs 9 of them. node-seal has no threshold CKKS, so here Carol is one party standing in for such a committee.</>,
+  <><b>Two parties must not collude.</b> The pool holds Bob's ciphertext and Carol the key, so together they see everything. Carol must never hold his ciphertext unmasked: here only the pool keeps it, and a deployment would enforce that with access control.</>,
+  <><b>Semi-honest.</b> Nothing proves that Bob encrypted his real balances, which takes commitments and zero-knowledge proofs.</>,
+  ...COMMON_LIMITS,
+  <><b>What leaks by design.</b> The bit is published and signed, and a liquidation is settled in the open. In production so far, confidential lending hides deposits (Zama, Morpho and Steakhouse, June 2026), and this project found no primary source for a confidential liquidation running in production.</>,
+];
+
+const BILATERAL_LIMITS = [
+  <><b>Why the thresholds are the pool's secret here.</b> On a public chain they are public, and then Bob can compute his margin himself: the mask and the circuit would hide nothing from anyone. This check suits a lender whose thresholds are its own, and a Bob who should learn no more than the answer.</>,
+  <><b>Bob has to answer.</b> He holds the key, so every check waits on him, and he is the party who loses by a liquidation. He could refuse or go offline, so a deployment would need a rule that no answer counts as a default.</>,
+  <><b>Semi-honest.</b> Nothing proves that Bob encrypted his real balances, which takes commitments and zero-knowledge proofs, and a malicious Bob could probe the thresholds with crafted ciphertexts, as MUSE (USENIX Security 2021) does to model weights.</>,
+  ...COMMON_LIMITS,
+  <><b>What leaks by design.</b> The bit reaches both parties, repeated bits narrow the thresholds down, and a liquidation is settled in the open.</>,
+];
+
+export default function LendingPanels({ market, sweep, check, ran, state, custody }: { market?: LendingMarketReport; sweep?: LendingSweepReport; check?: LendingPrivateReport; ran: boolean; state: string; custody: string }) {
+  // The run's own arrangement once it has one, and the control's before it does.
+  const held = check?.custody ?? market?.cfg.custody ?? custody;
   return (
     <>
       {market ? <Market report={market} check={check} /> : ran && state !== "running" ? (
@@ -42,7 +57,7 @@ export default function LendingPanels({ market, sweep, check, ran, state }: { ma
       {sweep ? <Sweep report={sweep} /> : null}
       {market ? <WhereItRan market={market} sweep={sweep} check={check} /> : null}
       <div className="note" style={{ marginTop: 14, fontSize: 12 }}>
-        <KeyPoints title="What this page does and does not show" items={LIMITS} />
+        <KeyPoints title="What this page does and does not show" items={held === "borrower" ? BILATERAL_LIMITS : KEYHOLDER_LIMITS} />
       </div>
     </>
   );
@@ -166,9 +181,13 @@ function PrivateCheck({ report: r }: { report: LendingPrivateReport }) {
   const all = r.outcomes.map((o) => o.clearMargin);
   const lo = Math.min(0, ...all), hi = Math.max(0, ...all);
   const pad = (hi - lo) * 0.05 || 1;
+  const bilateral = r.custody === "borrower";
+  const held = bilateral ? "Bob" : "Carol";
   const costs: [string, string][] = [
-    ["Per check", `${mb(r.ckksBytes / n)} of sealed CKKS traffic, ${r.signatureBytes.toLocaleString("en-US")} B of it Bob's ${r.signature} signature; ${(r.andGates / n).toLocaleString("en-US")} AND gates and ${mb(r.gcBytes / n)} of garbled-circuit traffic in ${Math.round(r.gcMessages / n).toLocaleString("en-US")} messages`],
-    ["Keys", `${mb(r.keyBytes)} of public and rotation keys, once per key pair; ${r.pool.workers === 1 ? "one key pair" : `${r.pool.workers} key pairs here, one per worker`}, ${ms(r.keygenMs)} to set up the slowest`],
+    ["Per check", `${mb(r.ckksBytes / n)} of sealed CKKS traffic${bilateral ? `, ${r.signatureBytes.toLocaleString("en-US")} B of it Bob's ${r.signature} signature` : ""}; ${(r.andGates / n).toLocaleString("en-US")} AND gates and ${mb(r.gcBytes / n)} of garbled-circuit traffic in ${Math.round(r.gcMessages / n).toLocaleString("en-US")} messages${bilateral ? "" : `; ${r.signatureBytes.toLocaleString("en-US")} B for Carol's ${r.signature} signature on the bit`}`],
+    ["Keys", bilateral
+      ? `${mb(r.keyBytes)} of public and rotation keys, once per key pair; ${r.pool.workers === 1 ? "one key pair" : `${r.pool.workers} key pairs here, one per worker`}, ${ms(r.keygenMs)} to set up the slowest`
+      : `${mb(r.keyBytes)} of Carol's public and rotation keys, sent once. Her one key pair is loaded on ${r.pool.workers === 1 ? "the worker" : `each of the ${r.pool.workers} workers`}, ${ms(r.keygenMs)} for the slowest, which only a tab holding every party can do`],
     ["Time, summed over the checks", `CKKS ${ms(r.ckksMs)}, the circuits ${ms(r.gcMs)}, ML-DSA and sealing ${ms(r.pqcMs)}`],
     ["Wall-clock", `${ms(r.pool.wallMs)} in ${r.pool.ranIn}`],
     ["The mask", `uniform on [-2^${r.maskBits}, 2^${r.maskBits}), on every slot; this run's bound on the statistical distance from any margin of no larger magnitude, summed over all the slots it masks, is 2^${r.statisticalDistanceLog2.toFixed(1)}`],
@@ -178,13 +197,22 @@ function PrivateCheck({ report: r }: { report: LendingPrivateReport }) {
     <div className="card" id="lending-private-check" style={{ marginTop: 14 }}>
       <h3>Private liquidation check <StageBadge kind="notional" /></h3>
       <p className="small" style={{ marginTop: 4 }}>
-        At each checked hour Bob encrypted his two collateral amounts and his scaled debt under his own CKKS key, signed the ciphertext and sent it over the session sealed under the PQC key.
-        The pool applied its weights, each asset&apos;s public price times its private liquidation threshold and the public interest index, and added a mask it kept.
-        Bob decrypted the masked margin, and the two of them put their shares into a garbled circuit, which told both whether the margin is negative: a health factor below 1.
+        {bilateral ? (
+          <>At each checked hour Bob encrypted his two collateral amounts and his scaled debt under his own CKKS key, signed the ciphertext and sent it over the session sealed under the PQC key.
+          The pool applied its weights, each asset&apos;s public price times its private liquidation threshold and the public interest index, and added a mask it kept.
+          Bob decrypted the masked margin, and the two of them put their shares into a garbled circuit, which told both whether the margin is negative: a health factor below 1.</>
+        ) : (
+          <>Bob encrypted his two collateral amounts and his scaled debt once, under Carol&apos;s public key, signed the ciphertext and sent it to the pool over their sealed session. After that he took no part.
+          At each checked hour the pool applied what had been settled in the open, multiplied by the public weights, each asset&apos;s price times its liquidation threshold and the interest index, and added a mask it kept.
+          Carol decrypted only the masked margin, the pool and Carol put their shares into a garbled circuit, which told both whether the margin is negative, a health factor below 1, and Carol signed that bit.</>
+        )}
       </p>
       <p style={{ margin: "6px 0 10px" }}>
         {r.flagged} of {n} checks: can be liquidated.{" "}
-        <span className={`badge-state ${r.allAgree ? "done" : "error"}`}>{r.allAgree ? `all ${n} match the check in the clear` : "DISAGREES with the check in the clear"}</span>
+        <span className={`badge-state ${r.allAgree ? "done" : "error"}`}>{r.allAgree ? `all ${n} match the check in the clear` : "DISAGREES with the check in the clear"}</span>{" "}
+        {r.bitSignaturesVerified != null && (
+          <span className={`badge-state ${r.bitSignaturesVerified ? "done" : "error"}`}>{r.bitSignaturesVerified ? "every bit's signature verifies" : "A SIGNATURE ON A BIT DOES NOT VERIFY"}</span>
+        )}
       </p>
       <div style={{ overflowX: "auto" }}>
         <table className="table small">
@@ -200,7 +228,7 @@ function PrivateCheck({ report: r }: { report: LendingPrivateReport }) {
         </table>
       </div>
       <p className="muted small" style={{ margin: "6px 0 10px" }}>
-        In stable units. The clear columns and the sum of the shares are a self-test, possible only because both parties are in this tab. In a deployment neither party would see them: Bob sees the masked margin, about 2^{r.maskBits - 1} in size at every slot, and the pool sees ciphertext; each receives the one bit.
+        In stable units. The clear columns and the sum of the shares are a self-test, possible only because both parties are in this tab. In a deployment neither party would see them: {held} sees the masked margin, about 2^{r.maskBits - 1} in size at every slot, and the pool sees ciphertext; each receives the one bit.
       </p>
       <figure className="chart-figure">
         <figcaption id={captionId} className="small muted"><b>The margin from both shares against the margin in the clear,</b> in thousands of stable units, one point per check. A point on the diagonal is a check that came out the same; a cross is one the circuit answered &quot;can be liquidated&quot;.</figcaption>
@@ -224,8 +252,29 @@ function PrivateCheck({ report: r }: { report: LendingPrivateReport }) {
       <table className="table small" style={{ marginTop: 10 }}>
         <tbody>{costs.map(([k, v]) => <tr key={k}><th scope="row" style={{ textAlign: "left", fontWeight: 500 }}>{k}</th><td>{v}</td></tr>)}</tbody>
       </table>
+      <h4 style={{ margin: "12px 0 4px" }}>Who sent what</h4>
+      <div style={{ overflowX: "auto" }}>
+        <table className="table small">
+          <thead><tr><th>From, to</th><th>What</th><th>When</th><th>Size</th></tr></thead>
+          <tbody>{whoSentWhat(r).map(([route, what, when, size]) => <tr key={route + what}><td>{route}</td><td>{what}</td><td>{when}</td><td>{size}</td></tr>)}</tbody>
+        </table>
+      </div>
     </div>
   );
+}
+
+/** The run's own messages, grouped: every row is read from what the checks reported. */
+function whoSentWhat(r: LendingPrivateReport): [string, string, string, string][] {
+  const n = r.outcomes.length;
+  const rows: [string, string, string, string][] = [];
+  if (r.setup) rows.push(["Bob to the pool", "his ciphertext, signed and sealed", "once, at the start", mb(r.setup.submissionBytes)]);
+  const first = r.outcomes[0];
+  for (const m of first?.messages ?? []) {
+    const total = r.outcomes.reduce((s, o) => s + (o.messages.find((x) => x.what === m.what)?.bytes ?? 0), 0);
+    rows.push([`${m.from} to ${m.to}`, m.what, `each of the ${n} checks`, total / n >= 1e5 ? mb(total / n) : `${Math.round(total / n).toLocaleString("en-US")} B`]);
+  }
+  rows.push([r.custody === "borrower" ? "the pool and Bob" : "the pool and Carol", "the garbled circuit's messages", `each of the ${n} checks`, mb(r.gcBytes / n)]);
+  return rows;
 }
 
 function Sweep({ report }: { report: LendingSweepReport }) {

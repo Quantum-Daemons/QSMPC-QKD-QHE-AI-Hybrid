@@ -184,6 +184,7 @@ export const makeDefaultParams = () => ({
   lending_shock_pct: lendingCfg().shock_fraction * 100,
   lending_vol_mult: 1,
   lending_checks: lendingCfg().check_points,
+  lending_custody: lendingCfg().custody as string,   // "keyholder" | "borrower"
   qubits: benchCfg().quantum_qubits,
   qrng_eps_log2: qrngCfg().security_epsilon_log2,   // LHL extractor security 2^this (toeplitz/seedless)
   qsmpc_op: "",          // "" = the use case's default, which ParameterPanel names
@@ -539,6 +540,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     qkdProtocol: String(params.qkd_protocol ?? ""),
     qsmpcOp: String(params.qsmpc_op ?? ""),
     inference: String(params.inference ?? ""),
+    custody: String(params.lending_custody ?? ""),
   }), [kem, effectiveQkd, sig, optiqkd, workload, params, mpcCnn, multiPsi]);
   useEffect(() => {
     setRunStatus(inFlight ? { state, active } : null);

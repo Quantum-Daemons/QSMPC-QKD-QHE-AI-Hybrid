@@ -217,6 +217,7 @@
     "close_factor": 0.5,
     "collateral_log_mean": 11.0,
     "collateral_log_sd": 0.6,
+    "custody": "keyholder",
     "full_close_at_or_below_hf": 0.95,
     "hours": 720,
     "initial_prices": [

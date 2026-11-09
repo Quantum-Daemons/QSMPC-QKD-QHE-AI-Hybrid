@@ -134,6 +134,7 @@ export class Client {
   private readonly encryptor: any;
   private readonly decryptor: any;
   private readonly pt: any;
+  private readonly secretKey: any;
   readonly publicKey: Uint8Array;
   readonly galoisKeys: Uint8Array;
 
@@ -145,8 +146,14 @@ export class Client {
     this.galoisKeys = this.arena.hold(gen.createGaloisKeysWithSteps(Int32Array.from(steps))).saveToArray(seal.ComprModeType.none);
     this.encoder = this.arena.hold(new seal.CKKSEncoder(context));
     this.encryptor = this.arena.hold(new seal.Encryptor(context, pk));
-    this.decryptor = this.arena.hold(new seal.Decryptor(context, gen.secretKey()));
+    this.secretKey = this.arena.hold(gen.secretKey());
+    this.decryptor = this.arena.hold(new seal.Decryptor(context, this.secretKey));
     this.pt = this.arena.hold(new seal.Plaintext());
+  }
+
+  /** Her key as bytes, so a key holder's other threads can load it (lending/privateCheck.ts). Every party is in this tab. */
+  exportSecretKey(): Uint8Array {
+    return this.secretKey.saveToArray(this.s.seal.ComprModeType.none);
   }
 
   encrypt(values: Float64Array): Uint8Array {

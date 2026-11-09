@@ -41,6 +41,8 @@ export interface DiagramConfig {
   /** The medical CNN student runs under MPC on this run. */
   mpcCnn?: boolean;
   multiPsi?: boolean;
+  /** The lending page: who holds the CKKS key. */
+  custody?: string;
 }
 export interface Step {
   stageId: string;
@@ -71,6 +73,8 @@ export const failWordOf = (step: Step): string => step.failWord ?? "failed";
 export interface Party { name: string; sub: string }
 export interface Spec {
   a: Party; b: Party; steps: Step[];
+  /** The two columns' heads, where a run's configuration changes who stands there. */
+  parties?: (c: DiagramConfig) => { a: Party; b: Party };
   /** The side whose input the private inference protects: it encrypts and decrypts, the other side
    *  evaluates. Finance's input is Bank B's transaction, scored by Bank A's fraud model. */
   inferenceClient?: "a" | "b";
@@ -100,6 +104,8 @@ export const qkdName = (c: DiagramConfig) => {
   return q || "QKD";
 };
 export const pqcOnly = (c: DiagramConfig) => String(c.qkd ?? "") === "pqc-only";
+/** The lending page's bilateral arrangement: Bob holds the key. */
+const bilateral = (c: DiagramConfig) => c.custody === "borrower";
 
 /** The OptiQKD suffix for a QKD arrow: the measured improvement once a run has produced one,
  *  otherwise just that tuning is enabled. Reads the run's metrics rather than restating the
@@ -361,17 +367,28 @@ const FL_NOT_PQ = "The mask seeds are not post-quantum: they come from X25519 al
 
 export const USECASE_SPECS: Record<string, Spec> = {
   defi_lending: {
-    a: { name: "Alice: the pool", sub: "prices, its own thresholds, the index · no balances" },
-    b: { name: "Bob: a borrower", sub: "collateral, debt, the CKKS secret key" },
+    a: { name: "Alice: the pool", sub: "the stored ciphertext, public prices and thresholds" },
+    b: { name: "Carol: the key holder", sub: "the CKKS secret key · one party, for a committee" },
+    parties: (c) => bilateral(c)
+      ? { a: { name: "Alice: the pool", sub: "prices, its own thresholds, the index · no balances" },
+          b: { name: "Bob: a borrower", sub: "collateral, debt, the CKKS secret key" } }
+      : { a: { name: "Alice: the pool", sub: "the stored ciphertext, public prices and thresholds" },
+          b: { name: "Carol: the key holder", sub: "the CKKS secret key · one party, for a committee" } },
     inferenceClient: "b",
-    meet: () => "Alice's pool and Bob, one of its borrowers, exchange ciphertexts over a session sealed under the PQC key. "
-      + "Bob's balances stay under his CKKS key, the pool's liquidation thresholds stay with the pool, and the market around them is simulated.",
+    meet: (c) => (bilateral(c)
+      ? "Alice's pool and Bob, one of its borrowers, exchange ciphertexts over a session sealed under the PQC key. Bob's balances stay under his CKKS key, the pool's liquidation "
+        + "thresholds stay with the pool, and Bob has to answer every check."
+      : "Bob encrypts his balances once under Carol's public key and can go offline. The pool computes on that ciphertext at public prices and thresholds, and only masked margins reach "
+        + "Carol, over a session of their own sealed under a second PQC handshake. The pool and Carol must not collude.")
+      + " The market around them is simulated.",
     steps: [
-      { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => `PQC handshake — ${kemName(c)}` },
+      { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => bilateral(c) ? `PQC handshake — ${kemName(c)}` : `PQC handshakes, Bob with the pool and the pool with Carol — ${kemName(c)}` },
       { stageId: "lending_market", kind: "local-wide",
         label: (m) => `Simulated market · ${f(m, "lending_hours")} h · ${f(m, "lending_liquidations")} liquidations · generated prices` },
+      { stageId: "private_liquidation", kind: "local-wide", hidden: bilateral,
+        label: (m) => `Bob encrypts once under Carol's key, then goes offline · ${f(m, "lending_bob_submissions")} submission` },
       { stageId: "private_liquidation", kind: "fhe-arrow",
-        label: (m) => `Bob's margin under CKKS · ${f(m, "lending_checks")} checks · ${f(m, "lending_ckks_mb")} MB sealed` },
+        label: (m) => `The margin under CKKS · ${f(m, "lending_checks")} checks · ${f(m, "lending_ckks_mb")} MB sealed` },
       { stageId: "private_liquidation", kind: "mpc-bidir",
         label: (m) => `Its sign in a garbled circuit · ${f(m, "lending_flagged")} of ${f(m, "lending_checks")} can be liquidated`,
         ok: (m) => m.lending_checks_agree == null || Number(m.lending_checks_agree) === 1, failWord: "disagrees with the clear check" },
@@ -670,7 +687,9 @@ export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: Diag
       return { ...sides("MPC argmax: holds shares a", "MPC argmax: holds shares b"), flow: "both", channel: "mpc" };
     case "private_liquidation":
       return kind === "fhe-arrow"
-        ? { ...sides("CKKS: encrypts its balances, decrypts the masked margin", "CKKS: adds the weights, masks the margin"), flow: "both", channel: "fhe" }
+        ? (bilateral(c)
+          ? { ...sides("CKKS: encrypts its balances, decrypts the masked margin", "CKKS: adds the weights, masks the margin"), flow: "both", channel: "fhe" }
+          : { a: "CKKS: applies the settlements, adds the weights, masks the margin", b: "CKKS: decrypts the masked margin", flow: "ab", channel: "fhe" })
         : { ...sides("garbled circuit: holds a share", "garbled circuit: holds a share"), flow: "both", channel: "mpc" };
     case "qml_ids":
       // Synthetic rows generated in the tab, not this link's telemetry (see the telecom `meet`).

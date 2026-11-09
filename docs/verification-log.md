@@ -3997,3 +3997,27 @@ Republished on the owner's approval, each file fetched back and compared with th
 | the type scale | body line height 24 px on 16 px text, card headings 16 px |
 | every page | no horizontal overflow and no console error |
 
+### Round 86, PR #18 on the deployed site, and what each page uses in the browser (2026-11-09)
+
+`main` was `12e0a6a`, bundle `index-DoS3Lbnq.js`, read in a browser on the public URL with no other load on the client.
+
+| what | read |
+|---|---|
+| the lending page | 5 checks, all matching the clear check; the margin from both shares within 0.020 stable units; 4 Web Workers, 3.6 cores' worth of work, 91% busy, 1,325 ms |
+| the Use Cases page | six cards, the table row reads "no model: a margin under CKKS, its sign in 2PC" and "none" for the quantum channel |
+| the E2E page | the selector offers the lending page; on the satellite page the quantum controls are still there |
+| every page | no console error |
+
+One run per page, on a machine with 20 logical cores, cross-origin isolated, with `navigator.gpu` and `navigator.ml` present. "Long tasks" are the main thread's, from a `PerformanceObserver`.
+
+| page | run | long tasks on the page's thread | WebAssembly | Web Workers |
+|---|---|---|---|---|
+| finance | 10.9 s | 12, 2.7 s in all, longest 414 ms | ONNX Runtime (threaded), SEAL, Polytune | the PSI among banks |
+| medical | 26.5 s | 12, 3.1 s in all, longest 746 ms | ONNX Runtime (threaded), SEAL, Polytune | the CNN under MPC |
+| genomics | 2.1 s | 9, 1.6 s in all, longest 291 ms | SEAL, Polytune | none |
+| telecom | 4.2 s | 11, 1.5 s in all, longest 230 ms | ONNX Runtime (threaded), SEAL | none |
+| satellite | 28.6 s | 10, 1.1 s in all, longest 189 ms | ONNX Runtime (threaded), SEAL | the forecaster student |
+| DeFi lending | 1.3 s for the checks | 6, 0.6 s in all, longest 191 ms | SEAL and Polytune, inside the workers | four, for the sweep and for the checks |
+
+WebGPU is optional and off by default: the published models use WASM unless it is selected, and the agent panel's models can use it. SEAL and Polytune have no GPU path. ONNX Runtime takes half the logical cores up to four threads.
+

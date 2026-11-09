@@ -2,7 +2,7 @@
 import type { LendingCfg } from "../config";
 import type { LendingRun } from "./model";
 import type { PoolRun } from "./pool";
-import type { PrivateCheckOutcome } from "./privateCheck";
+import type { Custody, KeyholderSetup, PrivateCheckOutcome } from "./privateCheck";
 
 export interface PoolSummary { workers: number; ranIn: string; logicalCores: number; wallMs: number; speedUp: number; utilisation: number; busyMs: number[] }
 
@@ -24,7 +24,14 @@ export interface LendingMarketReport {
 export interface LendingSweepReport { rows: SweepRow[]; seeds: number; pool: PoolSummary }
 
 export interface LendingPrivateReport {
+  custody: Custody;
   outcomes: PrivateCheckOutcome[];
+  /** How many times Bob had to send anything: once under Carol's custody, once per check under his own. */
+  bobSubmissions: number;
+  /** Carol's custody only. */
+  setup: { submissionBytes: number; keygenMs: number; encryptMs: number; linkAgreed: boolean } | null;
+  /** Carol's custody only: every signed bit checked against her public key. */
+  bitSignaturesVerified: boolean | null;
   allAgree: boolean;
   flagged: number;
   /** In thousands of stable units. */
@@ -68,12 +75,15 @@ export function summariseSweep(pool: PoolRun): LendingSweepReport {
   return { rows, seeds: first.kind === "sweep" ? first.outcome.liquidations.length : 0, pool: poolSummary(pool) };
 }
 
-export function summariseChecks(pool: PoolRun, signature: string, maskBits: number): LendingPrivateReport {
+export function summariseChecks(pool: PoolRun, signature: string, maskBits: number, custody: Custody, setup?: KeyholderSetup): LendingPrivateReport {
   const checks = pool.results.map((r) => { if (r.kind !== "check") throw new Error("a sweep level came back to the private check"); return r; });
   const outcomes = checks.map((c) => c.outcome).sort((a, b) => a.hour - b.hour);
   const sum = (f: (o: PrivateCheckOutcome) => number) => outcomes.reduce((s, o) => s + f(o), 0);
   const statisticalDistance = sum((o) => o.statisticalDistance);
   return {
+    custody, bobSubmissions: custody === "keyholder" ? 1 : outcomes.length,
+    setup: setup ? { submissionBytes: setup.submission.length, keygenMs: setup.keygenMs, encryptMs: setup.encryptMs, linkAgreed: setup.linkAgreed } : null,
+    bitSignaturesVerified: custody === "keyholder" ? outcomes.every((o) => o.bitSignatureVerified === true) : null,
     outcomes, allAgree: outcomes.every((o) => o.agrees), flagged: outcomes.filter((o) => o.flag).length,
     maxAbsError: Math.max(...outcomes.map((o) => o.absError)), statisticalDistance, statisticalDistanceLog2: Math.log2(statisticalDistance), maskBits,
     ckksBytes: sum((o) => o.ckksBytes), keyBytes: checks[0]?.keyBytes ?? 0, gcBytes: sum((o) => o.gcBytes), gcMessages: sum((o) => o.gcMessages), andGates: sum((o) => o.andGates),
