@@ -174,7 +174,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {lending && (
         <LendingPanels market={artifacts?.lending as LendingMarketReport | undefined}
           sweep={artifacts?.lending_sweep as LendingSweepReport | undefined}
-          check={artifacts?.lending_private as LendingPrivateReport | undefined} ran={hasRun} state={state} />
+          check={artifacts?.lending_private as LendingPrivateReport | undefined} ran={hasRun} state={state}
+          custody={String(run.params.lending_custody)} />
       )}
       {/* What produced the inference on this page: the published ONNX model, the bundled real
           model, or placeholder weights. Read from the run's own metrics, not asserted. */}

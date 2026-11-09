@@ -163,7 +163,8 @@ export default function Orchestration() {
         // Its own comparison: the margin from the shares against the clear margin, one point per check.
         <LendingPanels market={artifacts?.lending as LendingMarketReport | undefined}
           sweep={artifacts?.lending_sweep as LendingSweepReport | undefined}
-          check={artifacts?.lending_private as LendingPrivateReport | undefined} ran={hasRun} state={state} />
+          check={artifacts?.lending_private as LendingPrivateReport | undefined} ran={hasRun} state={state}
+          custody={String(run.params.lending_custody)} />
       ) : hasRun ? (
         // A card that vanishes and a flow that performs no private inference look identical, and on
         // `satellite_comms` the second is the truth - no stage there produces the plot. Saying so is
