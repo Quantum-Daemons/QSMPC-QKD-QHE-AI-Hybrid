@@ -160,6 +160,13 @@ jobs:
         # out of the AST - no model runs - and diffs it against the recorded value.
         run: python scripts/check_generated_prose.py
 
+      - name: The Python walkthrough's record and its notebook
+        run: |
+          python scripts/build_walkthrough.py --check
+          python -m venv /tmp/walkthrough
+          /tmp/walkthrough/bin/pip install --quiet --require-hashes -r walkthroughs/requirements.lock
+          /tmp/walkthrough/bin/python walkthroughs/nidd_copies.py
+
       - name: Lint (blocking, Round-17 modules)
         # The repository carries 51 pre-existing ruff findings that predate this workflow. Turning
         # them into a red build on day one would mean the first thing anyone learns about CI is to

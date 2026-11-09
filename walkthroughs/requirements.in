@@ -1,0 +1,3 @@
+marimo==0.25.2
+# marimo needs uv on the PATH to work out local imports for a WebAssembly export.
+uv

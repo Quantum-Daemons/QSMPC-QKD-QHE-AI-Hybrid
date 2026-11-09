@@ -24,13 +24,27 @@ A marimo notebook that fetches the demo's own `/data/telecom_nidd/real_2d.json` 
 
 ## Reading
 
-**marimo fits, if a walkthrough is wanted.** The demo's selling point is that a reader can check the result, and the checks most worth re-deriving are short analyses over data the site already serves, for example the arithmetic behind the 5G-NIDD ceiling. It adds no backend and costs nothing unless visited.
+**marimo fits.** The demo's selling point is that a reader can check the result, and the checks most worth re-deriving are short analyses over data the site already serves. It adds no backend and costs nothing unless visited.
 
-**The one thing to settle first is where Pyodide comes from.** The demo says compute happens in the tab and loads its own code. By default a marimo export loads Pyodide from a third-party CDN, which adds an origin that can change what runs. Serving it from the demo's own origin removes that and costs about the size of the Pyodide files actually used.
+**Pyodide had to come from the demo's own origin.** The demo says compute happens in the tab and loads its own code, and by default a marimo export loads Pyodide from a third-party CDN and its lock file from marimo's own host. Both are options: marimo reads them from two attributes on its root element.
 
 **JupyterLite does not fit this demo.** It brings an editor and per-browser file storage. Those suit a teaching site where a reader writes code, and a verification page does not need them.
 
 **pyvista-wasm is not needed.** No use case here has volumetric or mesh data, and the 3D views the demo has (Bloch vectors and satellite geometry) are three.js and small.
+
+## What was built
+
+One notebook, `walkthroughs/nidd_copies.py`, at `/walkthrough/` on the demo, linked from the 5G-NIDD card. It reads 200 evenly spaced pairs of the flows the published 5G-NIDD file holds twice, on all 113 columns, and works out the ceiling they set.
+
+`scripts/build_walkthrough.py` runs in a stage of the web image. It exports the notebook, fetches 16 files (the Pyodide core and 13 wheels) against the sha256 in `walkthroughs/pyodide-sources.json`, writes a lock file naming only those local files, sets the two attributes, drops the note the export carries, and lists the third-party works in `THIRD_PARTY.txt`.
+
+| | |
+|---|---|
+| served | 47 MB of static files, under the demo's own headers, fetched only if a reader opens it |
+| run, from a cold cache | under 10 seconds on a 20-core machine |
+| hosts it reaches | none other than this site: the page ran with every third-party host name in the export replaced by an invalid one |
+
+A marimo or Pyodide bump is `python scripts/build_walkthrough.py --refresh`. `--check`, in CI, holds the record together without the network, and CI runs the notebook under CPython.
 
 ## Sources
 

@@ -124,6 +124,10 @@ the **live OpenFHE** CKKS backend, and **Node** with the filesystem MCP server i
 `nvidia-container-toolkit` and the `deploy.resources` GPU block is optional. The ports are env-overridable (`WEB_PORT`, `API_PORT`, `GRAFANA_PORT`,
 `PROMETHEUS_PORT`).
 
+## The Python walkthrough
+
+The web image builds `/walkthrough/` in its own stage, with `scripts/build_walkthrough.py`. It needs the network at build time, for Pyodide and its packages, and checks each against the sha256 recorded in `walkthroughs/pyodide-sources.json`. Nothing is added at run time: it is 47 MB of static files.
+
 ## Verify the deploy, in this order
 
 Order matters. The first command says what the server sends; it says nothing about what a browser
