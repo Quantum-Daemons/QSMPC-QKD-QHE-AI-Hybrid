@@ -918,6 +918,50 @@ class DecisionCurveConfig:
 
 
 @dataclass
+class LendingConfig:
+    """The lending simulator's parameters (Round 86): an illustrative pool, not any live market's settings.
+
+    The mechanics follow Aave V3's public contracts, re-derived: a two-slope rate, a health factor, 50% close factor (100% at or below HF 0.95), a liquidation bonus.
+    `web/src/lib/lending/model.ts` is the simulation and `web/scripts/check_lending.mjs` holds it to closed forms and its own books.
+    """
+
+    hours: int = 720                    # the simulated span, one step per hour
+    borrowers: int = 24                 # the first is Bob, the borrower whose position is checked under encryption
+    max_borrowers: int = 48             # the Parameters panel's ceiling: about 40,000 of opening debt each, inside the supply
+    supply: float = 1_500_000.0         # what Alice's pool holds in the stable asset at the start, for `borrowers` borrowers: sized so a run starts near the optimal utilisation
+    initial_prices: tuple = (3000.0, 60000.0)
+    liquidation_thresholds: tuple = (0.83, 0.78)
+    liquidation_bonus: float = 0.05
+    close_factor: float = 0.5
+    full_close_at_or_below_hf: float = 0.95
+    collateral_log_mean: float = 11.0   # log of a borrower's opening collateral in stable units: exp(11) is about 60,000
+    collateral_log_sd: float = 0.6
+    ltv_min: float = 0.40
+    ltv_max: float = 0.72
+    bob_initial_ltv: float = 0.62
+    base_rate: float = 0.0
+    optimal_utilisation: float = 0.80
+    slope1: float = 0.04
+    slope2: float = 0.60
+    reserve_factor: float = 0.10
+    annual_vol: tuple = (0.80, 0.60)
+    price_correlation: float = 0.70
+    jumps_per_year: float = 6.0
+    jump_mean: float = -0.08
+    jump_sd: float = 0.05
+    shock_hour: int = 360               # one stated fall, so that a run shows liquidations
+    shock_fraction: float = 0.35
+    adjust_probability: float = 0.02    # a borrower changes its debt with this chance each hour
+    adjust_fraction: float = 0.10
+    check_points: int = 8               # hours at which Bob's position is checked under encryption, plus the first hour it can be liquidated
+    margin_scale_bits: int = 16         # fixed-point bits of the margin entering the garbled circuit, in thousands of stable units
+    margin_mask_bits: int = 36          # log2 of the mask's half-width on the decrypted margin
+    max_workers: int = 4                # the Web Workers a run may use, and never more than half the logical cores
+    sweep_multipliers: tuple = (0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 6.0)   # volatility multiples of the sweep, each run with no scripted shock
+    sweep_seeds: int = 24               # price paths per multiple
+
+
+@dataclass
 class MultiPartyPsiConfig:
     """The finance page's PSI among three to five banks, one garbled circuit under Polytune (Round 86).
 
@@ -969,6 +1013,7 @@ class QSHConfig:
     fhe: FHEConfig = field(default_factory=FHEConfig)
     hybrid_cnn: HybridCnnConfig = field(default_factory=HybridCnnConfig)
     multi_party_psi: MultiPartyPsiConfig = field(default_factory=MultiPartyPsiConfig)
+    lending: LendingConfig = field(default_factory=LendingConfig)
     federated: FederatedConfig = field(default_factory=FederatedConfig)
     train: TrainConfig = field(default_factory=TrainConfig)
     ids: IDSConfig = field(default_factory=IDSConfig)

@@ -73,6 +73,20 @@ export const cryptoCfg = () => CONFIG.crypto;   // crypto-agility defaults incl.
 export const fheCfg = () => CONFIG.fhe;
 export const hybridCnnCfg = () => CONFIG.hybrid_cnn;
 export const multiPartyPsiCfg = () => CONFIG.multi_party_psi;
+export const lendingCfg = (): LendingCfg => CONFIG.lending as unknown as LendingCfg;
+
+/** The lending simulator's parameters, from `LendingConfig` in defaults.py. */
+export interface LendingCfg {
+  hours: number; borrowers: number; max_borrowers: number; supply: number;
+  initial_prices: number[]; liquidation_thresholds: number[]; liquidation_bonus: number;
+  close_factor: number; full_close_at_or_below_hf: number;
+  collateral_log_mean: number; collateral_log_sd: number; ltv_min: number; ltv_max: number; bob_initial_ltv: number;
+  base_rate: number; optimal_utilisation: number; slope1: number; slope2: number; reserve_factor: number;
+  annual_vol: number[]; price_correlation: number; jumps_per_year: number; jump_mean: number; jump_sd: number;
+  shock_hour: number; shock_fraction: number; adjust_probability: number; adjust_fraction: number;
+  check_points: number; margin_scale_bits: number; margin_mask_bits: number;
+  max_workers: number; sweep_multipliers: number[]; sweep_seeds: number;
+}
 export const webCfg = () => CONFIG.web;
 
 /** Provenance of the sample bundled INTO the demo (not the corpus the model was trained on).
