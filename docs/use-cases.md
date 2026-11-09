@@ -130,7 +130,7 @@ computation rather than a privacy property.
 
 $$M = \frac{1}{1000}\sum_i c_i\, p_i\, \mathrm{LT}_i - \frac{\tilde d}{1000}\, I_t ,$$
 
-linear in what Bob holds, with $M < 0$ exactly when the health factor is below 1. **Why the thresholds are secret here:** on a public chain they are public, Bob can compute $M$ himself, and neither the mask nor the circuit hides anything from anyone. The page says so; this check suits a lender whose thresholds are its own. The protocol, what each side learns and what is out of scope are in [`threat-model.md`](threat-model.md).
+linear in what Bob holds, with $`M < 0`$ exactly when the health factor is below 1. **Why the thresholds are secret here:** on a public chain they are public, Bob can compute $`M`$ himself, and neither the mask nor the circuit hides anything from anyone. The page says so; this check suits a lender whose thresholds are its own. The protocol, what each side learns and what is out of scope are in [`threat-model.md`](threat-model.md).
 
 **Maturity, stated in the same breath as the novelty.** CISA's Space Systems Critical Infrastructure
 Working Group (*Space Systems Security and Resilience Landscape: Zero Trust in the Space
