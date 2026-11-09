@@ -126,6 +126,8 @@ computation rather than a privacy property.
 | `satellite_comms` | PQC -> simulated **free-space QKD** (BB84 downlink) -> two-way **QSDC** test with an inline eavesdrop check (it cannot close at the default link budget, and the run says why) -> one-way **quasi-QSDC** (STIKE) from a pre-shared key pool | satellite |
 | `defi_lending` | PQC -> simulated lending market -> **margin under CKKS, its sign in a garbled circuit**. Browser demo only, no QKD and no model | DeFi |
 
+`/orchestration?usecase=<id>` opens the end-to-end page on that use case. An id the page does not know selects the finance use case and says so on the page.
+
 **The lending page in one paragraph.** Alice's pool and Bob, one of its borrowers, run through a simulated month with the mechanics of Aave V3's public contracts, re-derived: a two-slope rate, debt on a public index and liquidation below a health factor of 1, up to half the debt in one step, or all of it at or below 0.95. At chosen hours the pool checks Bob's position with his balances encrypted. By default a separate key holder, Carol, holds the CKKS key, standing in for the threshold committees confidential-DeFi systems use: Bob encrypts once and can go offline, and prices and thresholds are public. A bilateral mode has Bob hold the key and the pool keep its thresholds from him. The check is the sign of the margin
 
 $$M = \frac{1}{1000}\sum_i c_i\, p_i\, \mathrm{LT}_i - \frac{\tilde d}{1000}\, I_t ,$$

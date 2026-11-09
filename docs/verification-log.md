@@ -435,8 +435,8 @@ existing at all.
   hardest one on the page to find. Now its own row, labelled "published baseline, NOT measured here".
 - **Satellite's anomaly verdict and its whole attribution panel were unreachable.** Both sat inside
   `if (!abort)` in the `qsdc_telemetry` stage, and QSDC essentially never delivers: measured secrecy
-  capacity **-51.58 bit/carrier at the default 800 km** (24.5 dB, g=280) and still **-2.15 at 200 km**
-  (12.4 dB, g=17.5), the shortest downlink the panel offers. A page advertised a published model whose
+  capacity **-51.58 bit/carrier at the default 800 km** (24.5 dB, $`g = 280`$) and still **-2.15 at 200 km**
+  (12.4 dB, $`g = 17.5`$), the shortest downlink the panel offers. A page advertised a published model whose
   output no user action could produce. The abort is correct physics and is unchanged; the false dependency
   is gone.
 - **The genomics 2D overlay still described "the 77 variants of PGS000001, 64 resolved"** after the page
@@ -2045,7 +2045,7 @@ homomorphic convolution. So the sentence resting on the count, "neither performs
 convolution, this project does", fell with it. A claim of the form "nobody else does X" is only ever as
 good as the search behind it, and this one had a search behind it that stopped at two. What replaces it
 is a cost claim, which is checkable rather than exhaustive: PriMed pays 294.2 MB of encrypted input and
-a mid-inference re-encryption round-trip under BFV, against CKKS at N=8192 with no round-trip. A fourth,
+a mid-inference re-encryption round-trip under BFV, against CKKS at $`N = 8192`$ with no round-trip. A fourth,
 Gecko (arXiv:2608.02378), is listed with the caveat that has to travel with it - its 413 ms never
 encrypts the image, only the features.
 
@@ -2815,8 +2815,8 @@ measured plane equals a Werner state's at the same error rate. The caption had c
 Werner state; it is separable at a full attack.
 
 **The caption's two thresholds came from different error-correction assumptions.** "S > 2.424, i.e.
-Q < 0.0715" is the device-independent point at f = 1; the zero-key point beside it, 0.0981, is at
-f = 1.16. At one f the device-independent threshold is S > 2.456, Q < 0.0658, and both are now
+Q < 0.0715" is the device-independent point at $`f = 1`$; the zero-key point beside it, 0.0981, is at
+$`f = 1.16`$. At one f the device-independent threshold is S > 2.456, Q < 0.0658, and both are now
 computed rather than quoted.
 
 **Plotting a quantity across its range found two things a single run hides.** Without decoy states the
@@ -3877,7 +3877,7 @@ on 2026-10-30. Re-read against main a week later, twenty-six were already fixed 
 rest were in files published on the Hub, which no test of the tree reads.
 
 **A failed build can leave a result behind.** hpmpc's Makefile went on after a compiler error and kept the previous
-executable, so the first GPU benchmark timed the matrix-multiplication test built before it: flat at 0.2 s from N = 128
+executable, so the first GPU benchmark timed the matrix-multiplication test built before it: flat at 0.2 s from $`N = 128`$
 to 4096, with almost nothing sent. The sent volume, beside the CPU run's at the same N, is what gave it away; the script
 now checks the build log, the executable's age and the run's output before it records a time.
 
@@ -4054,3 +4054,16 @@ Deployed from merged `main`, bundle `index-BuktvS8o.js`, read in Chrome on the p
 | `/walkthrough/`, loading | cross-origin isolated under `require-corp`; all 250 resources came from the site itself; no Python error |
 | `/walkthrough/`, the result | 105 of 113 columns identical over all 200 pairs, and the eight that differ are the three labels and five columns that place a row in its file; the ceiling 0.7685 |
 | `/walkthrough/`, the slider | moving it re-ran the table: `Unnamed: 0` went from 235186 to 236603 between pairs 2 and 3 |
+
+### PR #23 on the deployed site (2026-11-09)
+
+Deployed from merged `main`, bundle `index-CeQi94Vk.js`, read in Chrome on the public site at 0, 5, 10, 15 and 27 s.
+
+| where | read |
+|---|---|
+| the satellite page, before a run | the Downlink tab draws three curves, four published points and ticks from 10 to 60 dB |
+| the run, in order | QSDC NOT AVAILABLE at $`C_s/Q_{\mathrm{Bob}} = -80.8180`$ and $`g = 532.7`$, then quasi-QSDC delivered the 74-byte telemetry; the word "falls back" does not appear |
+| the table | delivered, QBER 1.12%, Eq. 3 bound $`3.36 \times 10^{-5}`$, 98,512,944 signal pulses, 1.97 s, 98,512,944 bits reserved, 11,847 spent, 3,306 regenerated |
+| each published point, on hover | Pan et al. at 23.55, 29.71 and 34.45 dB and Sun et al. at 31.32 dB, each beside the bounds at that loss |
+| the page | no console error and no horizontal overflow |
+

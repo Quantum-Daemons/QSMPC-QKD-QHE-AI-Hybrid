@@ -7,8 +7,8 @@ below are the recommended future tracks (PoC milestones M3/M4).
 - **NIST FIPS 203 (ML-KEM)** - implemented in the hybrid KEM. yes
 - **NIST FIPS 204 (ML-DSA)** - implemented for message authentication. yes
 - **NIST FIPS 205 (SLH-DSA)** - add as a hash-based signature option. liboqs carries SLH-DSA since
-  0.15.0, and the Docker image's liboqs 0.16.0 builds it by default; the local development
-  environment's liboqs 0.14.0 has SPHINCS+ instead. No code here registers either. []
+  0.15.0, and 0.16.0, which the Docker image and the development machine both build, has it by
+  default. No code here registers it. []
 - **NSA CNSA 2.0** - national security systems (NSS) only: NSA *"does not mandate requirements on any
   other entity outside of NSS"* (CNSA 2.0 and Quantum Computing FAQ, Ver. 2.2, October 2026). CNSSP 15
   requires CNSA 2.0 algorithms in all new NSS acquisitions from **2027-01-01**; equipment that cannot
@@ -225,9 +225,8 @@ document on 2026-08-15; `references/REFERENCES.md` records the two ways an earli
   disabled HQC by default from 0.13.0 after a "theoretical design flaw" advisory
   (GHSA-3rxw-4v8q-9gq5, CVSS 3.7), pending an updated specification, and 0.16.0 (2026-07-09), the
   version the Docker image pins, updated it to the 2025-08-22 specification and enables
-  `KEM_hqc_1/3/5` by default again. The local development environment's liboqs 0.14.0 lists
-  HQC-128/192/256 and enables none of them. Either way no code here registers HQC: it is built into
-  the image's library and unused.
+  `KEM_hqc_1/3/5` by default again, in the image and on the development machine, which builds the same
+  tag. No code here registers HQC: it is built into the library and unused.
 
 ## Standards status re-checked 2026-10-27
 

@@ -56,7 +56,7 @@ Measured on this machine on 2026-11-06 ([State-vector simulators, measured](mode
 - `quantum_sim.device` (`qsh.quantum_device`) chooses the Python tiers' simulator: `default.qubit` by default, `lightning.gpu` for a large
   experiment. `tests/test_r86_quantum_device.py` holds every simulator to the same outputs.
 - CUDA-Q 0.16.0.post1 needs `custatevec-cu13` 1.14 and `cuquantum-python-cu13` 26.9.0 needs 1.15 or later, so the two cannot share one
-  environment. See [`requirements-gpu.txt`](../requirements-gpu.txt).
+  environment. See [`requirements-gpu.txt`](../requirements-gpu.txt); `requirements-gpu.lock` pins the part this machine trains and simulates with, by hash.
 
 ### FHE backends (commercial-OK only)
 - **TenSEAL** (Apache-2.0, CPU CKKS via Microsoft SEAL) - the always-available default (`TenSEALBackend`).
@@ -218,7 +218,7 @@ library through its published package does not require vendoring its source tree
 
 | Dependency | How it is used | How it is obtained | License |
 |---|---|---|---|
-| `liboqs-python` | PQC ML-KEM / ML-DSA. The Docker image's liboqs 0.16.0 also builds SLH-DSA (in liboqs since 0.15.0) and enables HQC by default; the local venv's liboqs 0.14.0 has SPHINCS+ instead and HQC off. No code here registers SLH-DSA, SPHINCS+ or HQC | pip; the C library built from the 0.16.0 tag in `docker/Dockerfile.api` | MIT |
+| `liboqs-python` | PQC ML-KEM / ML-DSA. liboqs 0.16.0, in the Docker image and on the development machine (built from the same tag with the same flags, 2026-11-09), also builds SLH-DSA (in liboqs since 0.15.0) and enables HQC by default. No code here registers SLH-DSA or HQC | pip; the C library built from the 0.16.0 tag in `docker/Dockerfile.api` | MIT |
 | `pysodium` | libsodium's ristretto255 for the full deployment's RFC 9497 OPRF PSI (`qsmpc/oprf.py`, Round 85); without the system library the OPRF falls back to its pure-Python code, which is not constant-time, and the run says so (`psi_oprf_backend`) | pip, over the system libsodium 1.0.18 (`libsodium23` in `docker/Dockerfile.api` and CI; EL9 `libsodium`) | BSD-2-Clause (libsodium: ISC) |
 | `tenseal` | CKKS (default FHE backend). It bundles its own SEAL: 4.1.1 in 0.3.16, the version the venv runs, and 4.3.3 from 0.3.17 on, which the `>=0.3.15` floor admits; both predate SEAL 4.4.0 | pip | Apache-2.0 (over Microsoft SEAL, MIT) |
 | `openfhe` | CKKS + approximate bootstrapping | pip; on RHEL 9 build with [`env/build_openfhe_el9.sh`](../env/build_openfhe_el9.sh) | BSD-2-Clause |

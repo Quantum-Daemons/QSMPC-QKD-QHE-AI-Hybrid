@@ -28,6 +28,8 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     deploy: { resources: { limits: { memory: 256m, cpus: "0.5" } } }
+    # A public site's access log grows with its visitors, and json-file has no limit of its own.
+    logging: { driver: json-file, options: { max-size: "10m", max-file: "3" } }
 
 volumes:
   caddy_data:

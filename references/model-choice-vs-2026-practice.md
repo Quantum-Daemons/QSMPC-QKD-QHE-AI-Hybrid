@@ -193,7 +193,7 @@ the exclusivity claim that rested on it.** Round 55 searched properly and found 
 | baseline | architecture | result | latency | ring |
 |---|---|---|---|---|
 | **PriMed** - Gopalakrishnan et al., *Expert Systems* 42(1):e13283 (online Mar 2023) | Conv(3->8,k3) -> Square -> AvgPool -> FC, **BFV** via Pyfhel/SEAL | **87.58%** | **171.4 s** | m=4096 |
-| Al Badawi & Bin Yusof, *BioData Mining* 17:33 (Sep 2024) | RBF-kernel **SVM**, CKKS/OpenFHE | F1 0.80 | 2.09 s | **N=65536** |
+| Al Badawi & Bin Yusof, *BioData Mining* 17:33 (Sep 2024) | RBF-kernel **SVM**, CKKS/OpenFHE | F1 0.80 | 2.09 s | **$`N = 65536`$** |
 | Selvakumar & Senthilkumar, *Sci Rep* (Jul 2025) | 2-layer quantized **FCNN**, TFHE | 81.82% -> 81.81% encrypted | **137.68 s/sample** | - |
 | **Gecko** - Wei et al., arXiv:2608.02378 (Aug 2026), preprint | frozen ResNet50v2 in **plaintext client-side**, then encrypted predictor, CKKS/Lattigo | **87.18%** vs 87.82% plaintext | **413 ms** | conjugate-invariant |
 
@@ -206,9 +206,9 @@ a search behind it that stopped at two.
 
 What survives is a claim about COST, which is checkable rather than exhaustive: PriMed pays 294.2 MB of
 encrypted input and a mid-inference client re-encryption round-trip to replenish the BFV noise budget,
-where this project's CKKS path runs at N=8192 without a round-trip. So the medical use case should be
+where this project's CKKS path runs at $`N = 8192`$ without a round-trip. So the medical use case should be
 presented against *these* papers rather than against crypto-systems work like Orion or BootNet - the
-latter needs N=32768 for ImageNet and is a different claim entirely.
+latter needs $`N = 32768`$ for ImageNet and is a different claim entirely.
 
 **Gecko is listed with a caveat that has to travel with it.** Its 413 ms is not comparable to the others:
 the raw image is never encrypted. The client runs the frozen backbone in plaintext and encrypts only the
@@ -228,7 +228,7 @@ about efficiency at fixed capability. Comparing the two operating points honestl
 | input | full **28x28** | **14x14** downsample |
 | model | RBF-kernel SVM | one conv block, 3,226 parameters |
 | result | **F1 0.80** | **AUC 0.788221** against the ResNet-18 baseline's 0.9146825; teacher agreement 0.826923 |
-| ring | N=65536 | N=8192 |
+| ring | $`N = 65536`$ | $`N = 8192`$ |
 
 Deeper circuit and higher precision on a larger input, by construction, needs a larger ring. **A smaller
 ring on a smaller input at lower accuracy is a different operating point, not an efficiency win** - the
