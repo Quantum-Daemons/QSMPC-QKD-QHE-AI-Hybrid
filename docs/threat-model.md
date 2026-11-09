@@ -348,16 +348,28 @@ The finance page's main PSI is two-party, RFC 9497's OPRF. Beside it, when ticke
 
 ## The private liquidation check (DeFi lending page)
 
-Bob holds his balances and the CKKS secret key, the pool holds its liquidation thresholds, and prices and the interest index are public. One check, implemented in `web/src/lib/lending/privateCheck.ts`:
+Implemented in `web/src/lib/lending/privateCheck.ts`, in two arrangements. The sources behind the choice are in [`references/defi-lending-key-custody.md`](../references/defi-lending-key-custody.md).
 
-1. Bob encrypts $`[c_1, c_2, \tilde d / 1000]`$ into one ciphertext, signs it with ML-DSA and seals it with AES-256-GCM under a key derived from the PQC session key.
-2. The pool checks the signature, multiplies by its weights $`[p_1 \mathrm{LT}_1 / 1000,\ p_2 \mathrm{LT}_2 / 1000,\ -I_t]`$, sums the three slots with two rotations, adds the conjugate to cancel the imaginary half, and adds a mask on every slot, uniform on $`[-2^{36}, 2^{36})`$, which it keeps.
-3. Bob decrypts $`M + r`$, so the two hold additive shares of $`M`$.
-4. Both enter the existing two-party argmax over $`(M + \text{offset},\ \text{offset})`$. The first maximum wins, so index 1 means $`M < 0`$ strictly. Both receive that one bit.
+**Carol holds the key (the default).** Prices, thresholds and the interest index are public, as on a real market, and Carol stands in for the threshold committees confidential-DeFi systems use.
 
-- **What each side learns.** The pool: ciphertexts and the bit. Bob: the masked margin and the bit. Neither sees $`M`$, which is what keeps the thresholds from Bob, and the balances are under Bob's key throughout.
-- **When it protects nothing.** With public thresholds, as on a public chain, Bob already knows $`M`$ and the mask and the circuit have nothing to hide. The check only earns its place when the thresholds are the pool's own.
-- **What it does not provide.** Semi-honest only: nothing proves Bob encrypted his real balances (commitments and zero-knowledge proofs would be needed), and a malicious Bob could probe the thresholds with crafted ciphertexts, the shape of MUSE (Lehmkuhl et al., USENIX Security 2021). Both parties run in one tab, so the separation is notional. The output bit and any settlement are visible, and repeated bits narrow the thresholds down.
+1. Carol generates the CKKS keys. Bob encrypts $`[c_1, c_2, \tilde d / 1000]`$ once under her public key, signs it with ML-DSA and seals it to the pool under the PQC session key, and takes no further part.
+2. At each check the pool applies what has been settled in the open as a plaintext update, multiplies by the public weights $`[p_1 \mathrm{LT}_1 / 1000,\ p_2 \mathrm{LT}_2 / 1000,\ -I_t]`$, sums the three slots with two rotations, adds the conjugate to cancel the imaginary half, and adds a mask on every slot, uniform on $`[-2^{36}, 2^{36})`$, which it keeps.
+3. The masked ciphertext goes to Carol under a session of its own, a second hybrid handshake. She decrypts $`M + r`$.
+4. The pool and Carol enter the existing two-party argmax over $`(M + \text{offset},\ \text{offset})`$. Index 1 means $`M < 0`$ strictly. Both receive the bit and Carol signs it, binding the hour and a digest of what she decrypted.
+
+- **What each side learns.** The pool: Bob's ciphertext and the bit. Carol: the masked margin and the bit. Bob needs to be online only for his one submission.
+- **What it depends on.** The pool and Carol must not collude: together they see everything. Carol must never hold Bob's ciphertext unmasked. Here only the pool keeps it; a deployment enforces that with access control, as Zama's does.
+- **A single Carol.** node-seal has no threshold CKKS, so she is one party. A deployment splits her across a committee.
+
+**Bob holds the key (the bilateral mode).** The pool's thresholds are its own. Bob encrypts afresh at each check, the pool evaluates and masks, Bob decrypts $`M + r`$, and the two run the circuit.
+
+- **When it protects nothing.** With public thresholds Bob already knows $`M`$, so the mask and the circuit have nothing to hide. The mode only earns its place when the thresholds are the pool's own.
+- **Bob has to answer.** He holds the key and he loses by a liquidation, so he could refuse or go offline. A deployment would need a rule that no answer counts as a default.
+- **Probing.** A malicious Bob could probe the thresholds with crafted ciphertexts, the shape of MUSE (Lehmkuhl et al., USENIX Security 2021), and repeated bits narrow them down.
+
+**In both.**
+
+- **Semi-honest only.** Nothing proves Bob encrypted his real balances; commitments and zero-knowledge proofs would be needed. Every party runs in one tab, so the separation is notional, and Carol's key crosses to each worker for that reason.
 - **The mask is statistical.** For $`r`$ uniform on $`[-R, R)`$, $`\mathrm{SD}(x + r, x' + r) = |x - x'| / (2R)`$, and the run reports the sum over the slots it masks. At double precision the width is capped by the decode error, which is why a margin within a few hundredths of a stable unit of zero can come out either way.
 - **Post-quantum status.** ML-KEM (with X25519 as a hedge), ML-DSA and CKKS rest on lattice assumptions. The garbled circuit's oblivious transfers rest on discrete logs: a deployment's sealed session would keep them from outsiders, but a counterparty that records them could open them with a future quantum computer.
 - **No chain.** There is no contract, no oracle and no real price. Aave V4's target health factor and auction-style bonus are not modelled. The closest published design found is Martinico, Calabrese, Rubin and Ciampi (ACNS 2026), which proves a stronger notion against a corrupted decryptor in the UC model; this page gives no such guarantee.
