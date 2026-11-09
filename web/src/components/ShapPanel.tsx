@@ -94,11 +94,9 @@ export default function ShapPanel({ explanation, provenance, baseline, published
           and the bars are then not an attribution of it.
         </p>
       )}
-      {surfacedBackend === "qcnn-trained" && (
+      {(surfacedBackend === "qcnn-trained" || surfacedBackend === "qcnn-ckks") && (
         <div className="note" style={{ marginBottom: 8, borderColor: "var(--warn)", color: "var(--warn)" }}>
-          ⚠ The class this page surfaces came from the <b>trained QCNN</b> circuit, which runs
-          unencrypted and is simulated exactly on a few qubits, so it is classically simulable at this
-          size. These bars describe the bundled linear model, which is a different decision.
+          ⚠ The class this page surfaces came from the <b>trained QCNN</b> circuit, simulated exactly on a few qubits{surfacedBackend === "qcnn-ckks" ? " and evaluated with its input under CKKS" : ", which runs unencrypted"}, so it is classically simulable at this size. These bars describe the bundled linear model, which is a different decision.
         </div>
       )}
       {tops.map((t, i) => (

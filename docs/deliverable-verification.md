@@ -9028,6 +9028,7 @@ recorded separately, and nothing here changes the published model.
 | #23 | The satellite's telemetry goes by one-way quasi-QSDC from a pre-shared key pool where two-way QSDC cannot close, with both bounds and published measurements plotted against loss |
 | #24 | The audit's remaining items: labelled rows on the model cards, the QCNN's tree property as a test, a watch on Polytune upstream, the GPU lock, a matched local liboqs, and the plain-text formulas |
 | #25 | Every model file the browser fetches from the Hub is checked against a SHA-256 recorded for its pin, and refused if it differs |
+| #26 | The trained QCNN can run with its input under CKKS, as a linear form over its encoding's Pauli products; classical surrogate comparators; each page draws its circuit from the code that runs it |
 
 Findings worth keeping from those:
 
@@ -9214,4 +9215,22 @@ A pin names a commit and says nothing about what a server returns for it. `scrip
 **Checks.** `tests/test_r86_hub_file_hashes.py`: the record is for the revision each model is pinned to, so a republish fails it until the script is run; every file the browser fetches has a digest; every Hub fetch goes through the check before it is read; the check refuses altered bytes and a missing entry. Eleven seeded defects, each caught. On a local build with `fetch` replaced to flip one byte of each ONNX file, the finance page reported `the file served hashes to e867b6118655a50e..., not the 54511ef70652acb0... recorded for this revision, so it was not used`, for both models it fetches, and ran neither.
 
 **What it does not cover.** The in-browser LLM's weight shards, which the WebLLM engine fetches itself; its integrity option covers the configuration, tokenizer and model library. The record is as trustworthy as the site that serves it.
+
+### Round 86, 2026-11-09: the trained QCNN with its input under CKKS
+
+The page said the QCNN ran unencrypted, which it did, and which was the design since Round 25, when the old "QCNN (QHE)" path was found to be a coin flip. The owner asked what the private form could be. Every quantum route needs quantum resources a browser lacks: Broadbent and Jeffery (2015) and Dulek, Schaffner and Speelman (2016) need a quantum gadget per T gate, and the one server-held-QCNN private inference found, Ortega and Martin-Delgado (arXiv:2602.12712), is a simulation on five samples with two ancilla qubits per T gate.
+
+The circuit here is simulated classically, as it already was, so the private form is a classical HE problem. Every shipped circuit encodes a feature on its own wire as $`\mathrm{RY}(\theta)|0\rangle`$, so the readout is exactly a linear form in the $`3^n`$ products of sines and cosines of the encoded angles: $`\langle O\rangle = \sum_P c_P\phi_P(x)`$ with $`c_P = 2^{-n}\operatorname{Tr}(AP)`$ (Schuld, arXiv:2101.11020). The client encrypts the products and the server takes one inner product per readout, one multiplicative level at the frozen parameters, power-of-two rotation keys only.
+
+**Result.** `npm run check:qcnn-ckks`, in Node, on the module the page runs: the form differs from the circuit by at most 8e-15 on 200 rows of each artifact, the decrypted readout by at most 2e-9, and the class equals the clear circuit's on all 16 rows of each case. Medical (8 qubits, 6,561 terms, 2 ciphertexts) 0.15 s; telecom (7 features, 8 readouts) 0.5 s. The accuracy is the plaintext QCNN's.
+
+**Compared with classical models, on the circuit's own split.** `scripts/train/qcnn_classical_surrogate.py` refits logistic regression on the same inputs (reproducing the recorded figure, which is how it knows it has the trainer's split) and on the same $`3^n`$ products. Medical accuracy 0.9535 for the QCNN against 0.9535 and 0.9419; finance minority-class F1 0.2286 against 0.4390 and 0.4889; telecom macro F1 0.9444 against 0.9764 and 0.9723. The QCNN has no teacher, since it is trained on labels, so these are its comparators, as Schreiber et al. (PRL 131, 100803, 2023) and Bowles et al. (arXiv:2403.07059) advise, and none of them shows a quantum advantage.
+
+**The circuit on the page.** `recordQcnn` runs the simulator's own circuit function against a recording backend, and `QcnnCircuitCard` draws what it records, as blocks and then one block gate by gate. The check replays the recorded gates on a state vector and requires the circuit's readout, so the diagram cannot show gates the simulator does not apply.
+
+**What it does not claim.** It is not quantum homomorphic encryption. The evaluator knows the circuit, and the scores determine the form's $`3^n`$ coefficients. Both parties are in one tab. No claim of priority is made: searches for homomorphic evaluation of a simulated QNN found nothing, with Semantic Scholar and DBLP rate-limited and ePrint blocked.
+
+**Checks.** `tests/test_r86_qcnn_under_ckks.py`: the Python form is the circuit's readout and equals the browser's to rounding; the class under TenSEAL is the clear one; the selector offers it only with a trained circuit; both QCNN sites go through one function; the panel states what it is not; the surrogate is on the circuit's own features. Six seeded defects fire: a sign in the features, a dropped rotation step, a gate lost by the recorder, a sign in the Python readout, the selector option, the CI step.
+
+**The CBOM** now lists the Hub-file digest check and this CKKS path among the code's uses of SHA-256 and CKKS.
 

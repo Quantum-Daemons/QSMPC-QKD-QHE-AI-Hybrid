@@ -11,11 +11,13 @@ import { ProvenanceBadge, type Provenance } from "../components/ProvenanceBadge"
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
 import MpcCnnPanel from "../components/MpcCnnPanel";
+import QcnnCkksPanel from "../components/QcnnCkksPanel";
+import QcnnCircuitCard from "../components/QcnnCircuitCard";
 import MultiPsiPanel from "../components/MultiPsiPanel";
 import LendingPanels from "../components/LendingPanels";
 import QsdcLinkPanel from "../components/QsdcLinkPanel";
 import type { LendingMarketReport, LendingPrivateReport, LendingSweepReport } from "../lib/lending/report";
-import type { MpcCnnReport, MultiPsiReport } from "../lib/clientCompute";
+import type { MpcCnnReport, MultiPsiReport, QcnnCkksReport } from "../lib/clientCompute";
 import ShapPanel from "../components/ShapPanel";
 import UseCaseCanvas from "../components/UseCaseCanvas";
 import { USECASE_SPECS } from "../lib/useCaseFlows";
@@ -37,7 +39,8 @@ import { FIBER, FREE_SPACE } from "../lib/quantumSim";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 import { hasTreeAttribution, modelsFor } from "../lib/config";
 import { USECASE_META } from "../lib/useCases";
-import { usePipelineRun } from "../lib/usePipelineRun";
+import { hasTrainedQcnn, usePipelineRun } from "../lib/usePipelineRun";
+import { clientFlow } from "../lib/clientCompute";
 
 const DEMO = isClientDemo();
 
@@ -233,6 +236,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           Run button per model, or the reason it has none. This absorbed PublishedModelPanel, which
           used to sit forty lines below and offer the same run again with different chrome. */}
       {!lending && <ModelPanel usecase={usecase} />}
+      {hasTrainedQcnn(usecase) && <QcnnCircuitCard usecase={usecase} qubits={Number(run.params.qubits ?? 8)} hasComparison={clientFlow(usecase).includes("quantum_comparison")} />}
 
       {/* XAI: signed SHAP attribution.
           Gated on an explanation EXISTING, not on `meta.inference`. The flag meant "has a
@@ -350,6 +354,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       ) : null}
 
       {usecase === "medical_fl" && artifacts?.mpc_cnn ? <MpcCnnPanel report={artifacts.mpc_cnn as MpcCnnReport} /> : null}
+      {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} /> : null}
       {usecase === "finance_aml" && artifacts?.multi_party_psi ? <MultiPsiPanel report={artifacts.multi_party_psi as MultiPsiReport} /> : null}
 
       {!lending && <h2 className="sr-only">Benchmark</h2>}

@@ -57,6 +57,22 @@ measures cost only, and the Rate-1 module is a transport with no `Eval`. There i
 boundary** on that side, and nothing there does a secure comparison: QSMS is a secure sum, and no flow runs the
 QOT sketch.
 
+### The trained QCNN under CKKS
+
+Finance, medical and telecom offer `QCNN (trained, under CKKS)` beside the plaintext `QCNN (trained, not encrypted)`. The readout is exactly $`\langle O\rangle = \sum_P c_P\,\phi_P(x)`$ over $`P \in \{I, X, Z\}^{\otimes n}`$, because the encoding is a product of real states ($`\phi_I = 1`$, $`\phi_X = \sin\theta`$, $`\phi_Z = \cos\theta`$ per wire, $`c_P = 2^{-n}\operatorname{Tr}(AP)`$ with $`A`$ the real part of $`U^\dagger O U`$ on the encoded basis states). So the client encrypts $`3^n`$ products and the server takes one inner product per readout: one multiplicative level at the frozen parameters, power-of-two rotation keys only, no relinearisation key.
+
+Measured in Node on the shipped weights (`npm run check:qcnn-ckks`, the module the page runs): the form differs from the circuit by at most 8e-15; the decrypted readout by at most 2e-9; the class equals the plaintext circuit's on every row checked. Finance (4 qubits, 81 terms) takes about 0.1 s, medical (8 qubits, 6,561 terms in 2 ciphertexts) 0.15 s, and telecom (7 features, 2,187 terms, 8 readouts) 0.5 s, of which most is building the form and the keys. The accuracy is the plaintext QCNN's, since the class is the same.
+
+**Compared with classical models, on the circuit's own split** (`classical_surrogate` and `classical_lr_*` in each artifact; the surrogate refits the same estimator on the same Pauli products):
+
+| Page | Metric | Trained QCNN | LR on the same inputs | LR on the same $`3^n`$ products |
+|---|---|---|---|---|
+| Medical (8 wires) | accuracy | 0.9535 | 0.9535 | 0.9419 |
+| Finance (4 wires) | minority-class F1 | 0.2286 | 0.4390 | 0.4889 |
+| Telecom (8 wires) | macro F1 | 0.9444 | 0.9764 | 0.9723 |
+
+The classical comparators are level or ahead on all three, which matches Bowles, Ahmed and Schuld (arXiv:2403.07059). Nothing here claims a quantum advantage. The circuit diagram on each of those pages (`Quantum circuits on this page`) is drawn from a recording of the circuit function, and the gates it draws are replayed against the simulator in the same check.
+
 ### Per-use-case architectures
 
 The benchmark's architecture is **per use case**, not a single generic shape

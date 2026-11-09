@@ -1,7 +1,7 @@
 {
  "bomFormat": "CycloneDX",
  "specVersion": "1.7",
- "serialNumber": "urn:uuid:079c1758-3662-5f2d-9696-7bbddd9ea43a",
+ "serialNumber": "urn:uuid:27082790-7ca4-5771-a2cc-1234d2501cda",
  "version": 1,
  "metadata": {
   "component": {
@@ -433,7 +433,7 @@
    "type": "cryptographic-asset",
    "bom-ref": "crypto/sha-256",
    "name": "SHA-256",
-   "description": "Inside HKDF and HMAC; digests of published files; the account hashes of the PSI among banks",
+   "description": "Inside HKDF and HMAC; digests of published files, including the check of every model file fetched from the Hub against its recorded digest; the account hashes of the PSI among banks",
    "cryptoProperties": {
     "assetType": "algorithm",
     "algorithmProperties": {
@@ -464,6 +464,9 @@
      },
      {
       "location": "web/src/lib/hybridCombiner.ts"
+     },
+     {
+      "location": "web/src/lib/pinnedFetch.ts"
      }
     ]
    }
@@ -695,7 +698,7 @@
    "type": "cryptographic-asset",
    "bom-ref": "crypto/ckks",
    "name": "CKKS",
-   "description": "Homomorphic evaluation of linear layers, on Microsoft SEAL (node-seal in the browser; TenSEAL, OpenFHE or HEonGPU in the full deployment)",
+   "description": "Homomorphic evaluation of linear layers, and of the trained QCNN's readout as a linear form, on Microsoft SEAL (node-seal in the browser; TenSEAL, OpenFHE or HEonGPU in the full deployment)",
    "cryptoProperties": {
     "assetType": "algorithm",
     "algorithmProperties": {
@@ -727,6 +730,12 @@
      },
      {
       "location": "src/qsh/fhe/backends.py"
+     },
+     {
+      "location": "web/src/lib/clientQcnnCkks.ts"
+     },
+     {
+      "location": "src/qsh/qhe/qcnn_pauli.py"
      }
     ]
    }

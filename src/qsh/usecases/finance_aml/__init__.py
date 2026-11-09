@@ -151,7 +151,7 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     ctx.data["feature_names"] = list(PAYSIM_MODEL_FEATURES)
     # The same transaction in the trained QCNN's own raw columns (its `feature_names`), only where it will be read: a run
     # that selects the QCNN (as `usecases/medical_fl` does for its own artifact).
-    if ctx.config.get("inference") == "qcnn":
+    if ctx.config.get("inference") in ("qcnn", "qcnn-ckks"):
         qcnn_row = _qcnn_features(flagged_raw)
         if qcnn_row is not None:
             ctx.data["qcnn_features"] = qcnn_row

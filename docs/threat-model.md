@@ -387,6 +387,12 @@ Where two-way QSDC cannot close, the page sends its telemetry by STIKE (Pan et a
 
 **What it does not give.** The rate is asymptotic, as in the source: a finite-length analysis is left open there and would lower it. The spreading and majority stand in for their LDPC code. The sources measure fibre and 1.4 km of urban air, so nothing read shows the protocol over a satellite link.
 
+## The trained QCNN under CKKS
+
+`Inference` offers the trained QCNN under CKKS where one ships. Every shipped circuit encodes a feature on its own wire as $`\mathrm{RY}(\theta)|0\rangle`$, so its readout is exactly a linear form in the $`3^n`$ products of sines and cosines of the encoded angles ([`references/REFERENCES.md`](../references/REFERENCES.md)). The client computes those products from its features and encrypts them. The server, which holds the circuit, returns one encrypted inner product per readout at one multiplicative level, and only the client can decrypt it.
+
+**What it hides.** The input from the evaluator, under RLWE at the demo's frozen parameters. **What it does not.** The circuit is simulated classically, so this is classical computation under RLWE and not quantum homomorphic encryption; the evaluator knows the circuit; the readout reveals its value to the client, and the form's $`3^n`$ coefficients can be recovered from that many chosen scores, which matters only for a private model and is why a deployment with one would add output perturbation; and both parties run in one tab, so the separation is notional. The accuracy is the plaintext circuit's, which the class reproduces, so nothing here makes the model more accurate than it is.
+
 ## Explicitly out of scope (PoC)
 - Side-channel / fault attacks on the host.
 - Formal verification of the protocols (referenced papers carry the proofs).
