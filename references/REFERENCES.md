@@ -1684,6 +1684,33 @@ project is a browser tab.
   Resynthesis."** arXiv:2606.29962, 2026-06-29. Grover-3 pattern reduced from 3x725 to 3x98 while
   preserving blindness.
 
+### Read for the lending page (Round 86), each on 2026-11-09
+
+- **Aave, `LiquidationLogic.sol`**, `aave/aave-v3-core`, GitHub `[link]`
+  URL: https://github.com/aave/aave-v3-core/blob/master/contracts/protocol/libraries/logic/LiquidationLogic.sol
+  Added: 2026-11-09
+  Read at source. `DEFAULT_LIQUIDATION_CLOSE_FACTOR = 0.5e4`, `MAX_LIQUIDATION_CLOSE_FACTOR = 1e4`, `CLOSE_FACTOR_HF_THRESHOLD = 0.95e18`, and the close factor is the default above the threshold and the maximum at or below it. The page re-derives this and copies no code. That repository's licence (Business Source License 1.1) names a change date of 27 January 2023 at the latest; the current `aave-dao/aave-v3-origin` is under the same licence with a change date of 2027-03-06 at the latest.
+- **Aave, "Aave V4's New Liquidation Engine"**, blog, 11 December 2025 `[link]`
+  URL: https://aave.com/blog/aave-v4-liquidations
+  Added: 2026-11-09
+  A Target Health Factor set by governance for each Spoke replaces the fixed percentage of the debt, and the bonus grows as the health factor falls. The lending page models V3's rule and says so.
+- **Martinico, Calabrese, Rubin and Ciampi, "Crypto-Asset Collateralised Loans in Open Finance via Robust Fully Homomorphic Encryption"**, ACNS 2026, LNCS 16572, published 24 July 2026, DOI 10.1007/978-3-032-32575-4_18 `[link]`
+  URL: https://doi.org/10.1007/978-3-032-32575-4_18
+  Added: 2026-11-09
+  ABSTRACT ONLY, read in a browser. A lender scores a borrower by a privacy-preserving function of net worth, with blockchain assets as collateral, on a new notion, Robust FHE, secure against a corrupted decryptor, proved in the UC model. It does not describe a liquidation check. The closest published design found; the lending page is semi-honest and gives no such guarantee.
+- **Sachan, Fickett, Buchinger and Miller, "Post-Quantum Secure Federated DeFi for Inclusive Banking"**, arXiv:2606.10658, preprint, June 2026 `[link]`
+  URL: https://arxiv.org/abs/2606.10658
+  Added: 2026-11-09
+  ABSTRACT ONLY. Banks pool encrypted data for lending decisions under lattice-based FHE, tested on agricultural lending. Neither liquidation nor a health factor appears in the abstract.
+- **Sadeghi and Feinstein, "Liquidation Dynamics in DeFi and the Role of Transaction Fees"**, arXiv:2602.12104, preprint, February 2026 `[link]`
+  URL: https://arxiv.org/abs/2602.12104
+  Added: 2026-11-09
+  ABSTRACT ONLY. A liquidator's dynamic program with a constant-product market maker as the oracle, oracle manipulation by sandwiching, and fees as a defence. The page's market has no oracle to manipulate, which is one of the things it does not show.
+- **Spadea and Seneviratne, "From Risk to Rescue: An Agentic Survival Analysis Framework for Liquidation Prevention"**, arXiv:2604.14583, preprint, April 2026 `[link]`
+  URL: https://arxiv.org/abs/2604.14583
+  Added: 2026-11-09
+  ABSTRACT ONLY. An agent on Aave V3 that estimates liquidation risk by survival analysis, validated on a simulator rather than on live data. No cryptography. Context for what a simulated market can and cannot show.
+
 ### Read in Round 86, cited by nothing yet
 
 - **Harth-Kitzerow, Schiller, Schwanke, Prantl and Carle, "Benchmarking Secure Multiparty Computation

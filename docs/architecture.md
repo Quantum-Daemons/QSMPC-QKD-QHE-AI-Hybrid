@@ -286,7 +286,7 @@ run's metrics composed into the prompt. Everything fails soft (WebGPU selected w
 -> Transformers.js WASM, and the result says so; the MCP envelope always runs). Each use-case page
 unifies a **live architecture canvas** (each party's components and a lane per stage, driven by the running pipeline's
 stages - Start/Pause/Step/Stop/Restart), that industry's benchmark, and a signed SHAP explanation
-(all five use-case pages). **One Run drives both**: the live pipeline runs, and the
+(the five industry pages; the DeFi lending page has no model to explain). **One Run drives both**: the live pipeline runs, and the
 `QuantumComparisonStage` assembles the benchmark **from that run** into `ctx.artifacts["benchmark_result"]`
 (rides on `/api/runs/{id}`, no extra endpoint) - the MPC-FHE row is built from the run's measured FHE-linear +
 MPC-non-linear cost, next to the QSMPC-FHE comparison row (no advantage score is displayed). There is **no separate "Run

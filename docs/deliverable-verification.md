@@ -9021,6 +9021,7 @@ recorded separately, and nothing here changes the published model.
 | #15 | Twenty-three claims and papers read at source, the audit's last open rows closed, and each medical AUC given its interval |
 | #16 | A PSI among three to five banks under MPC on the finance page, WebM export of a run, and the planned items the audit found unbuilt settled |
 | #17 | A CycloneDX 1.7 CBOM on the Validations page and SBOMs in CI, the weak gates the audit named tightened and seeded, and the type scale |
+| #18 | A DeFi lending page: a simulated market and a private liquidation check, the margin under CKKS and its sign in a garbled circuit, across a pool of Web Workers |
 
 Findings worth keeping from those:
 
@@ -9126,3 +9127,15 @@ The owner's rule: confirm what exists, build what is recommendable as a research
 **Weak gates, each seeded and seen to fail.** `qkd_params=None`; a block size spelled `40_000 * 1`; a bold clause wrapped across lines; a card whose Gap section differs from its record; `DATA_LICENSES.md` in the deadline scan; document basenames unique (the reachability gate accepts one). Declined: pinning the QKD band's crossing points, which the finite-key block model moved and the chart computes on each render.
 
 **The type scale** (the owner's choice recorded earlier and not carried out): body line height 1.5, card headings at body size, HTML notes, badges and tables at 12 px or more. Chart axes and the use-case canvas keep their sizes, because they are fitted to fixed geometry; `check_text_overlap.mjs` passes in both fonts.
+
+### Round 86, 2026-11-09: the DeFi lending page
+
+The owner's idea, an Alice-Bob dynamic lending simulator with quantum-safe elements, built in the order the owner approved: the model, the private check, the page, the verification.
+
+**The correction to the approved design.** The design memo kept prices and thresholds public and hid only Bob's balances. Written down as code, that protects nothing: Bob can compute his own margin, so the mask and the circuit have nothing to hide from anyone, and the result is the same as Bob stating the bit. The thresholds are therefore the pool's own here, which gives the mask and the circuit a job, and the page says plainly that with public thresholds the check protects nothing. The flow did not change; what each side hides did. The owner is told at the merge.
+
+**Found by running it, each now held by a check.** A debt of `-1e-18` after a full repayment made the utilisation negative, and the first swept paths threw in the browser: `check:lending` now sweeps 420 paths. `onDone?.(++done, ...)` skips its arguments when there is no callback, so the worker pool never finished: `check:lending-private` now drives the pool through a stub `Worker`, and that check was seen to fail on the defect. A fully closed position has a margin of exactly zero and a sign set by noise: a closed position is no longer checked.
+
+**Read at source (2026-11-09).** Aave's `LiquidationLogic.sol` makes the close factor 100% at or below 0.95, where the memo had said below, and the model now does the same. Its licence's change date has passed for `aave-v3-core` and falls on 2027-03-06 at the latest for `aave-v3-origin`, so the page no longer gives the licence as the reason nothing is copied. Aave V4's target health factor is not modelled, and the page says so. `references/REFERENCES.md` lists what was read and how far.
+
+**Client resources.** The sweep and the checks run in up to four Web Workers (half the logical cores at most), each with its own SEAL and Polytune wasm, and the page reports how many cores' worth of work the pool did. SEAL's wasm build has one thread and has no GPU path, so WebGPU has nothing to do on this page, and the card says so.
