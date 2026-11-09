@@ -9025,6 +9025,7 @@ recorded separately, and nothing here changes the published model.
 | #19 | The lending check's key moved to a separate key holder by default, on the 2026 sources read at origin, with the bilateral arrangement kept as a mode |
 | #20 | The 5G-NIDD model refitted without a column that named the attack session's file and without the 281,529 flows the published file holds twice under contradictory labels, with its ceiling, a cross-base-station measurement and the rows as published recorded, and a 2D plot of its own |
 | #21 | Window statistics from the raw 5G-NIDD captures measured across base stations, and an assessment of Python walkthroughs for the demo, both as research |
+| #22 | A Python walkthrough at `/walkthrough/`, served entirely from the demo's own origin |
 
 Findings worth keeping from those:
 
@@ -9168,3 +9169,9 @@ The owner asked for this after the first reading of the 5G-NIDD ceiling, and kep
 The owner also asked whether a walkthrough belongs on the demo. A marimo export ran under the demo's headers; the assessment is `references/notebook-walkthroughs.md`, and nothing is deployed.
 
 **Checks.** `tests/test_r86_nidd_window_features.py` builds a capture byte by byte and reads it back, shows that no row changes when later packets are removed, and holds the write-up to the record. It was seen to fail on six seeded defects, and a first version of the causality test that passed on a future leak was replaced.
+
+### Round 86, 2026-11-09: a walkthrough a reader can re-run
+
+The owner chose one marimo notebook, with Pyodide served from the demo itself. A marimo export loads Pyodide from a third-party CDN by default, which would have added an origin to a page whose claim is that its code comes from this site. The build fetches every file against a recorded sha256 and points marimo at the copies. The notebook reads 200 pairs of the flows 5G-NIDD holds twice and shows that 105 of the 113 columns agree in every pair, and which 8 do not. See `references/notebook-walkthroughs.md`.
+
+**Checks.** `tests/test_r86_walkthrough.py` reads the record, the Dockerfile and the excerpt, and applies five defects to copies of the record, each refused. CI runs `--check` and the notebook under CPython. The page was run with every third-party host name in the export replaced by an invalid one. The routing was read under the demo's Caddyfile, and the stage was built.

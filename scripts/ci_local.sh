@@ -176,6 +176,14 @@ step "11e/18 The CBOM against the vendored CycloneDX 1.7 schema"
 $PY scripts/validate_cyclonedx.py web/public/cbom/qsh.cdx.json >/tmp/ci_cbom.log 2>&1 \
   && ok "the CBOM validates" || { bad "the CBOM"; tail -8 /tmp/ci_cbom.log; }
 
+step "11f/18 The Python walkthrough's record and its notebook"
+# In its own environment: it needs marimo, which the project's lock file does not carry.
+$PY scripts/build_walkthrough.py --check >/tmp/ci_walkthrough.log 2>&1 \
+  && python3.12 -m venv /tmp/ci_walkthrough_venv >>/tmp/ci_walkthrough.log 2>&1 \
+  && /tmp/ci_walkthrough_venv/bin/pip install --quiet --require-hashes -r walkthroughs/requirements.lock >>/tmp/ci_walkthrough.log 2>&1 \
+  && /tmp/ci_walkthrough_venv/bin/python walkthroughs/nidd_copies.py >>/tmp/ci_walkthrough.log 2>&1 \
+  && ok "the walkthrough's record is consistent and its notebook runs" || { bad "the walkthrough"; tail -8 /tmp/ci_walkthrough.log; }
+
 step "12/18 Hybrid-KEM combiner parity (Python vectors vs the browser module)"
 (cd web && npm run --silent check:combiner && npm run --silent check:mcp-envelope) \
   && ok "combiner parity, MCP request parity and the AI-generated record" \
