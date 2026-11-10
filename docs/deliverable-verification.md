@@ -9031,6 +9031,8 @@ recorded separately, and nothing here changes the published model.
 | #26 | The trained QCNN can run with its input under CKKS, as a linear form over its encoding's Pauli products; classical surrogate comparators; each page draws its circuit from the code that runs it |
 | #27 | One published finance MLP on 111 per-account and per-transaction features, under CKKS and garbled circuits on the page; the full deployment's finance tiers are that model; the local gate cannot test a stale build |
 | #28 | Each page shows a figure of the kind a reviewer expects beside its model: laundering patterns and the scored transaction's neighbourhood as graphs on finance, occlusion sensitivity on medical, a locus plot on genomics, the confusion matrix on telecom |
+| #29 | Labels that overprinted inside closed disclosures, found by a walk of the deployed pages with every disclosure open, fixed; the layout scan now opens every disclosure before it measures |
+| #30 | The dependency table gives each Python dependency's locked version and its release date; the README's images retaken from the deployed site, the DeFi page's added |
 
 Findings worth keeping from those:
 
@@ -9263,3 +9265,6 @@ The owner asked that the pages explain their models the way a reviewer expects, 
 - **Telecom.** The confusion matrix of the student on its 600 held-out rows, recomputed in the page from the shipped weights; 593 of 600 correct, equal to the recorded 0.988333.
 
 `tests/test_r86_model_explanations.py` holds the shipped data to its sources and the drawing code to its captions, including that the confusion matrix reproduces the recorded accuracy. The text-layout gate covers the new figures at both widths and in both fonts.
+### Round 86, 2026-11-10: what closed disclosures had hidden from the layout scan
+
+A walk of the deployed pages at 1280 px with every `<details>` opened, each SVG label's box compared with the others and with its container, found the finance transaction graphs' edge numbers overprinted at hubs, the genomics locus plot's names overlapping and one past the plot, the telecom confusion matrix's counts at 1.08:1 contrast, the circuit card's top and longest labels clipped by a pixel, and corner ticks meeting on the private-against-plaintext scatter and two lending charts. `web/scripts/check_text_overlap.mjs` had never opened a disclosure, so the first four had never been measured. It now opens every one before it scrolls and measures; run on a build from before the fixes it fails on the locus plot and the confusion matrix, and on the fixed build it passes in both fonts. The deployed read after the fix is clean at 1280 px and in a 375 px frame (`docs/verification-log.md`).

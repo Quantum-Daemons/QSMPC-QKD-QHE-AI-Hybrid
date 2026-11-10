@@ -216,15 +216,19 @@ no matching capability. They remain **cited as upstream work** in
 [`references/REFERENCES.md`](../references/REFERENCES.md), which is the accurate relationship - using a
 library through its published package does not require vendoring its source tree.
 
-| Dependency | How it is used | How it is obtained | License |
-|---|---|---|---|
-| `liboqs-python` | PQC ML-KEM / ML-DSA. liboqs 0.16.0, in the Docker image and on the development machine (built from the same tag with the same flags, 2026-11-09), also builds SLH-DSA (in liboqs since 0.15.0) and enables HQC by default. No code here registers SLH-DSA or HQC | pip; the C library built from the 0.16.0 tag in `docker/Dockerfile.api` | MIT |
-| `pysodium` | libsodium's ristretto255 for the full deployment's RFC 9497 OPRF PSI (`qsmpc/oprf.py`, Round 85); without the system library the OPRF falls back to its pure-Python code, which is not constant-time, and the run says so (`psi_oprf_backend`) | pip, over the system libsodium 1.0.18 (`libsodium23` in `docker/Dockerfile.api` and CI; EL9 `libsodium`) | BSD-2-Clause (libsodium: ISC) |
-| `tenseal` | CKKS (default FHE backend). It bundles its own SEAL: 4.1.1 in 0.3.16, the version the venv runs, and 4.3.3 from 0.3.17 on, which the `>=0.3.15` floor admits; both predate SEAL 4.4.0 | pip | Apache-2.0 (over Microsoft SEAL, MIT) |
-| `openfhe` | CKKS + approximate bootstrapping | pip; on RHEL 9 build with [`env/build_openfhe_el9.sh`](../env/build_openfhe_el9.sh) | BSD-2-Clause |
-| `mpyc` | **non-linear MPC** - Shamir ReLU/argmax, the hybrid's non-linear half | pip | MIT |
-| `pennylane` | variational quantum layers (QFL, QML-IDS) | pip | Apache-2.0 |
-| `qiskit` / `qiskit-aer` | circuit authoring + state-vector simulation | pip | Apache-2.0 |
+| Dependency | How it is used | How it is obtained | License | Locked, and its release |
+|---|---|---|---|---|
+| `liboqs-python` | PQC ML-KEM / ML-DSA. liboqs 0.16.0, in the Docker image and on the development machine (built from the same tag with the same flags, 2026-11-09), also builds SLH-DSA (in liboqs since 0.15.0) and enables HQC by default. No code here registers SLH-DSA or HQC | pip; the C library built from the 0.16.0 tag in `docker/Dockerfile.api` | MIT | 0.16.0.2, 2026-10-28 |
+| `pysodium` | libsodium's ristretto255 for the full deployment's RFC 9497 OPRF PSI (`qsmpc/oprf.py`, Round 85); without the system library the OPRF falls back to its pure-Python code, which is not constant-time, and the run says so (`psi_oprf_backend`) | pip, over the system libsodium 1.0.18 (`libsodium23` in `docker/Dockerfile.api` and CI; EL9 `libsodium`) | BSD-2-Clause (libsodium: ISC) | 0.7.19, 2026-10-17 |
+| `tenseal` | CKKS (default FHE backend). It bundles its own SEAL: 4.1.1 in 0.3.16, the version the venv runs, and 4.3.3 from 0.3.17 on, which the `>=0.3.15` floor admits; both predate SEAL 4.4.0 | pip | Apache-2.0 (over Microsoft SEAL, MIT) | 0.3.18, 2026-09-12 |
+| `openfhe` | CKKS + approximate bootstrapping | pip; on RHEL 9 build with [`env/build_openfhe_el9.sh`](../env/build_openfhe_el9.sh) | BSD-2-Clause | 1.6.1.0.24.4, 2026-10-27 |
+| `mpyc` | **non-linear MPC** - Shamir ReLU/argmax, the hybrid's non-linear half | pip | MIT | 0.11, 2026-02-09 |
+| `pennylane` | variational quantum layers (QFL, QML-IDS) | pip | Apache-2.0 | 0.45.1, 2026-06-26 |
+| `qiskit` / `qiskit-aer` | circuit authoring + state-vector simulation | pip | Apache-2.0 | 2.6.2, 2026-11-05 / 0.18.2, 2026-10-26 |
+
+The last column is the version `requirements.lock` pins and the date PyPI gives for that release, read 2026-11-10; each is the newest on PyPI that day, so every row
+has a release inside the last year, which checklist rows TR5 and G3 ask. A development venv can lag the lock: this machine's ran TenSEAL 0.3.16, Qiskit 2.5.1 and Qiskit Aer
+0.17.2 that day, while CI and the Docker image install from the lock. TenSEAL 0.3.18's notes name no SEAL bump after 0.3.17's move to 4.3.3.
 
 HEonGPU builds the GPU CKKS backend and hpmpc is vendored for a GPU MPC run not yet made; their pins,
 licences, what the HEonGPU build links and the unlicensed submodule one level below hpmpc are in
