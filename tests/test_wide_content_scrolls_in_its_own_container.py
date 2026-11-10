@@ -88,7 +88,8 @@ def test_every_deliberately_wide_component_is_rendered_inside_a_scroller():
     wide_components = {}
     for path, src in _tsx():
         for m in re.finditer(r"minWidth:\s*(\d{3,})", src):
-            if int(m.group(1)) > PHONE_PX:
+            # A component that wraps the pinned element in a scroller of its own carries the property with it, so its call sites need nothing.
+            if int(m.group(1)) > PHONE_PX and "overflowX" not in src[max(0, m.start() - 400): m.start()]:
                 wide_components.setdefault(path.stem, int(m.group(1)))
     assert wide_components, "no wide components found; the anti-tautology test covers this"
 

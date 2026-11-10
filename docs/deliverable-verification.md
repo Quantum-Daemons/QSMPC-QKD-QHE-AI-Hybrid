@@ -9030,6 +9030,7 @@ recorded separately, and nothing here changes the published model.
 | #25 | Every model file the browser fetches from the Hub is checked against a SHA-256 recorded for its pin, and refused if it differs |
 | #26 | The trained QCNN can run with its input under CKKS, as a linear form over its encoding's Pauli products; classical surrogate comparators; each page draws its circuit from the code that runs it |
 | #27 | One published finance MLP on 111 per-account and per-transaction features, under CKKS and garbled circuits on the page; the full deployment's finance tiers are that model; the local gate cannot test a stale build |
+| #28 | Each page shows a figure of the kind a reviewer expects beside its model: laundering patterns and the scored transaction's neighbourhood as graphs on finance, occlusion sensitivity on medical, a locus plot on genomics, the confusion matrix on telecom |
 
 Findings worth keeping from those:
 
@@ -9251,3 +9252,14 @@ Audit item B19 found the full deployment still pricing MLPs with random weights 
 
 **The local gate.** An interrupted `scripts/ci_local.sh` left its preview server on the scan's port, and the next run's text-layout gate read the old build. The script now refuses a busy port, checks that the page it scans is the build it just made, removes the server on any exit, and limits the scan's time; `tests/test_r86_ci_local_preview_guard.py` holds that.
 
+
+### Round 86, 2026-11-10: a figure beside each model
+
+The owner asked that the pages explain their models the way a reviewer expects, starting with the transaction-network figure of the AML literature. Each figure reads data the page already ships or the run's own result, in the clear, and says so.
+
+- **Finance.** `scripts/data/build_transaction_graphs.py` writes `web/public/data/finance/transaction_graphs.json`: six laundering-labelled components of the AMLworld test window, chosen by a fixed rule and named for the pattern their edges form (fan-out, fan-in, gather-scatter, bipartite, cycle, chain), and up to 30 edges around each of the 16 rows the published MLP can score. Account identifiers are replaced by letters per figure, and the file carries the CDLA-Sharing-1.0 notices. `HI-Small_Patterns.txt` is not used: the shapes come from the labelled edges.
+- **Medical.** Occlusion sensitivity (Zeiler and Fergus, Sec. 4.2) of the CNN student on the image it has just run under MPC, patches of 6 by 6 at stride 2, computed in the clear. It explains the model, not the protocol, and the caption says so.
+- **Genomics.** A locus plot of the 183 variants of PGS000072, from the published scoring file, with the credit, link and change note its CC BY 4.0 licence asks for.
+- **Telecom.** The confusion matrix of the student on its 600 held-out rows, recomputed in the page from the shipped weights; 593 of 600 correct, equal to the recorded 0.988333.
+
+`tests/test_r86_model_explanations.py` holds the shipped data to its sources and the drawing code to its captions, including that the confusion matrix reproduces the recorded accuracy. The text-layout gate covers the new figures at both widths and in both fonts.

@@ -11,9 +11,11 @@ import { ProvenanceBadge, type Provenance } from "../components/ProvenanceBadge"
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
 import MpcCnnPanel from "../components/MpcCnnPanel";
+import { ConfusionCard, PrsLocusCard } from "../components/ModelExplanations";
 import MpcMlpPanel from "../components/MpcMlpPanel";
 import QcnnCkksPanel from "../components/QcnnCkksPanel";
 import QcnnCircuitCard from "../components/QcnnCircuitCard";
+import TransactionGraphCard from "../components/TransactionGraphCard";
 import MultiPsiPanel from "../components/MultiPsiPanel";
 import LendingPanels from "../components/LendingPanels";
 import QsdcLinkPanel from "../components/QsdcLinkPanel";
@@ -238,6 +240,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
           used to sit forty lines below and offer the same run again with different chrome. */}
       {!lending && <ModelPanel usecase={usecase} />}
       {hasTrainedQcnn(usecase) && <QcnnCircuitCard usecase={usecase} qubits={Number(run.params.qubits ?? 8)} hasComparison={clientFlow(usecase).includes("quantum_comparison")} />}
+      {usecase === "genomics" && <PrsLocusCard />}
+      {usecase === "telecom_ids" && <ConfusionCard />}
 
       {/* XAI: signed SHAP attribution.
           Gated on an explanation EXISTING, not on `meta.inference`. The flag meant "has a
@@ -357,6 +361,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && artifacts?.mpc_cnn ? <MpcCnnPanel report={artifacts.mpc_cnn as MpcCnnReport} /> : null}
       {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_mlp ? <MpcMlpPanel report={artifacts.mpc_mlp as MpcMlpReport} /> : null}
+      {usecase === "finance_aml" && <TransactionGraphCard scoredRow={artifacts?.mpc_mlp ? (artifacts.mpc_mlp as MpcMlpReport).rowIndex : null} />}
       {usecase === "finance_aml" && artifacts?.multi_party_psi ? <MultiPsiPanel report={artifacts.multi_party_psi as MultiPsiReport} /> : null}
 
       {!lending && <h2 className="sr-only">Benchmark</h2>}

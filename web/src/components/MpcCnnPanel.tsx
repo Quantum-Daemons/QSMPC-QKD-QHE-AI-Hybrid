@@ -2,6 +2,7 @@
 //
 // Every number here comes from the run. The self-test is only possible because both parties are in this tab, and the panel says so; the caveats are part of
 // the result, not a footnote to it, so they are not folded away.
+import { CnnOcclusion } from "./ModelExplanations";
 import StageBadge from "./StageBadge";
 import type { MpcCnnReport } from "../lib/clientCompute";
 
@@ -37,6 +38,7 @@ export default function MpcCnnPanel({ report }: { report: MpcCnnReport }) {
           {rows.map(([k, v]) => <tr key={k}><th scope="row" style={{ textAlign: "left", fontWeight: 500 }}>{k}</th><td>{v}</td></tr>)}
         </tbody>
       </table>
+      {report.explanation && <CnnOcclusion e={report.explanation} className={name(report.explanation.predicted)} />}
       <p className="muted small" style={{ marginTop: 10 }}>
         Both parties run in this tab, so the separation is notional, and only that lets the page compare the result with the clear network. The protocol is semi-honest: the garbled circuits are
         designed against malicious parties, but the CKKS half and the shares are not authenticated, and a malicious client can extract weights from protocols of this shape (MUSE, USENIX Security 2021). The
