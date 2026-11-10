@@ -37,6 +37,8 @@ const SHOTS = [
   { name: "usecase-telecom", path: "/usecase/telecom_ids", run: true },
   { name: "usecase-satellite", path: "/usecase/satellite_comms", run: true },
   { name: "usecase-satellite-network", path: "/usecase/satellite_comms", tab: "Network", scrollTo: "One pass over one station" },
+  // The DeFi lending page (Round 86), the one use case the README had no image of.
+  { name: "usecase-defi", path: "/usecase/defi_lending", run: true },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

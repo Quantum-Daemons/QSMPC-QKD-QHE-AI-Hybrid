@@ -355,7 +355,7 @@ flowchart LR
 </tr>
 <tr>
 <td><img src="docs/images/usecase-satellite-network.jpg" alt="Satellite Network tab: a pass, the measured nights, the relay" width="420"><br>Satellite, Network tab</td>
-<td></td>
+<td><img src="docs/images/usecase-defi.jpg" alt="DeFi lending use case after a run" width="420"><br>DeFi lending</td>
 </tr>
 </table>
 

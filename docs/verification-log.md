@@ -4114,3 +4114,16 @@ Deployed from merged `main`, bundle `index-DgDuTCPd.js`, read in Chrome at 1280 
 | Validations, Use Cases | clean |
 
 The layout scan had never opened a disclosure, so none of the first four was measured; it opens them now, and the locus plot and the contrast failure are what it found on the next build, before the fixes.
+
+### PR #29 on the deployed site (2026-11-10)
+
+Deployed from merged `main`, bundle `index-CgSfj_T8.js`, read in Chrome with every `<details>` open, after a run on each pipeline page at 1280 px and in a 375 px same-origin frame.
+
+| where | read |
+|---|---|
+| finance | the transaction graphs' edge numbers sit near the leaves and clear of each other; after a run, 16 cards and no label over another or past its box |
+| genomics | the locus plot's 183 points and five names, none overlapping and none past the plot |
+| telecom | the confusion matrix 593 of 600, its lowest cell contrast 6.3:1 |
+| medical | the circuit card's wire labels and "CNOT ring" inside their SVGs |
+| DeFi | the market and volatility charts' corner ticks clear of each other |
+| 375 px | finance, genomics, telecom and medical with every disclosure open: no overlap, no clipped label, no sideways page scroll |
