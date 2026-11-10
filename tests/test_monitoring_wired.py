@@ -75,3 +75,44 @@ def test_the_pipeline_actually_calls_them():
 
     assert "record_benchmark(" in Path(runner.__file__).read_text(), \
         "record_benchmark has no call site in benchmark/runner.py"
+
+
+def test_latency_buckets_are_in_milliseconds():
+    """Round 86, found on the full stack's Grafana walk: the latencies are milliseconds and the default buckets are seconds,
+    so every stage above 10 ms fell into +Inf and the dashboard's p95 read exactly 10. A 557 ms observation must land in a
+    finite bucket, and the top finite bound must cover a ten-minute stage."""
+    finite = [b for b in exporter.LATENCY_BUCKETS_MS if b != float("inf")]
+    assert min(finite) <= 1 and max(finite) >= 600_000
+    exporter.record_benchmark("MPC-FHE", 557.0)
+    lines = [ln for ln in scrape() if ln.startswith('qsh_benchmark_latency_ms_bucket{le="1000.0",path="MPC-FHE"}')]
+    assert lines and float(lines[0].split()[-1]) >= 1, "a 557 ms run is not counted at or below 1,000 ms"
+
+
+def test_every_stage_series_exists_before_the_first_run():
+    """So the first run after the API starts is an increase `rate()` can see."""
+    text = "\n".join(scrape())
+    for stage in exporter.STAGES:
+        assert f'qsh_stage_latency_ms_count{{stage="{stage}"}}' in text, stage
+
+
+def test_every_stage_a_pipeline_can_run_is_pre_initialised():
+    """The list above is a literal, so a stage class added later would bring the first-run gap back for that stage alone.
+    Walk every Stage subclass the use cases define (conditional ones such as qkd_optimize included) and require each name."""
+    import importlib
+    import pkgutil
+
+    import qsh.usecases as usecases
+    from qsh.orchestration.stages import Stage
+
+    for mod in pkgutil.iter_modules(usecases.__path__):
+        importlib.import_module(f"qsh.usecases.{mod.name}")
+
+    def walk(cls):
+        for sub in cls.__subclasses__():
+            yield sub
+            yield from walk(sub)
+
+    names = {sub.name for sub in walk(Stage) if isinstance(getattr(sub, "name", None), str)}
+    assert len(names) >= 14, f"the walk found only {sorted(names)}"
+    missing = sorted(names - set(exporter.STAGES))
+    assert not missing, f"stages without a pre-initialised latency series: {missing}"

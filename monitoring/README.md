@@ -35,9 +35,19 @@ dashboards here, and Zabbix's agent/server footprint is unjustified at this scal
   The call sites are `src/qsh/orchestration/pipeline.py` - `record_stage` per stage, `record_run` and
   `record_qber` per run in a `finally`, so a run that raised is counted in the state it ended in -
   and `src/qsh/benchmark/runner.py`, `record_benchmark` per row, which is where the `path` label was
-  always going to come from. Measured: the scrape goes from 1 series to 39 after one run.
+  always going to come from. Measured in Round 21: the scrape went from 1 series to 39 after one run.
   `tests/test_monitoring_wired.py` asserts that production code CALLS them, rather than that the
   helpers exist; the helpers always existed.
+- **Until Round 86 the two latency histograms had bucket bounds in seconds and values in
+  milliseconds.** prometheus-client's default bounds run from 0.005 to 10, so every stage slower than
+  10 ms landed in `+Inf` and the dashboard's p95 read exactly 10 for CKKS, MPC and QKD stages that
+  take hundreds or thousands of milliseconds; the benchmark's 557 ms MPC-FHE row read 10 as well.
+  Found on the full stack's Grafana walk. Both histograms now use `LATENCY_BUCKETS_MS`, 1 ms to
+  10 minutes about 2.5x apart. A second, smaller gap: a labelled series that first appears with a
+  count of 1 is no increase to `rate()`, so the rate panels stayed empty until a second run. Every
+  stage class a use case can run, and both benchmark paths, now has its series at zero from start-up;
+  the tests fail when a 557 ms observation lands in `+Inf` or a new stage class is missing from the
+  list.
 - **Grafana provisioning was silently broken until it was fixed here.** `docker-compose.yml` mounted
   the bare dashboard directory onto `/etc/grafana/provisioning/dashboards`. Grafana reads *provider
   YAML* from that path and follows each provider's own `options.path`, so a directory containing only
@@ -50,10 +60,9 @@ dashboards here, and Zabbix's agent/server footprint is unjustified at this scal
 
 ## Recommendations
 
-1. Instrument the stages: call the exporter helpers from `src/qsh/orchestration/pipeline.py` so the
-   metrics carry data, and add a recorder for `qsh_benchmark_latency_ms`.
-2. Verify provisioning after any compose change by asserting a non-empty dashboard list
+1. Verify provisioning after any compose change by asserting a non-empty dashboard list
    (`curl -s localhost:3000/api/search`) rather than by the container reporting healthy.
-3. For the public demo, decide deliberately between "no telemetry, by design" (state it in
-   `docs/threat-model.md` as an accepted residual risk) and adding a minimal client-side error beacon.
-   Right now the absence is undocumented rather than chosen.
+2. Read each quantile panel against a run whose time you know. A quantile that equals a bucket bound
+   for every series, as the p95 of 10 did, says the bounds do not cover the values.
+3. The public demo's absence of telemetry is recorded in `docs/threat-model.md` as an accepted
+   residual risk. A minimal client-side error beacon remains the alternative if that choice changes.
