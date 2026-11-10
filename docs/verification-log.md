@@ -4098,3 +4098,19 @@ Deployed from merged `main`, bundle `index-DrzwzzZ0.js`, read in Chrome on the p
 | the finance page, `MLP under MPC` on | class laundering on held-out row 1 of 16, the clear network's; 192 ReLUs, 16,879 AND gates, 42.66 MB of garbled-circuit traffic, 5.8 s in a Web Worker; statistical distance at most $`2^{-21.5}`$; logits $`-4.349, -1.256`$ recorded and $`-4.350, -1.256`$ reconstructed |
 | `finance_aml.mlp_large` as the published model | ran on `onnx-wasm` at revision `3bddcf07034f`; the SHA-256 the run reports equals the entry in `models/hub_file_hashes.json` |
 | the page | no console error |
+
+### PR #28 on the deployed site, with every disclosure open (2026-11-10)
+
+Deployed from merged `main`, bundle `index-DgDuTCPd.js`, read in Chrome at 1280 px after a run on each pipeline page, with every `<details>` opened and every SVG label's box compared with the others and with its container.
+
+| where | read |
+|---|---|
+| finance, the transaction graphs | six laundering shapes, letters only; the edge numbers of the fan-out, fan-in and bipartite shapes overprinted where the edges meet (16 pairs) |
+| medical | the occlusion map under the MPC panel after a run; the QCNN wire label "mean smoothn..." 1 px past the SVG's left edge |
+| genomics, the locus plot | 183 points and five names; "rs11785598" over "rs10979327", and "rs6039942" past the right edge |
+| telecom, the confusion matrix | 593 of 600; the diagonal counts in muted grey on full-strength blue, 1.08:1 against the 4.5:1 SC 1.4.3 asks |
+| every pipeline page and the E2E page | the private-against-plaintext scatter printed its lower bound on both axes at the corner, the two labels meeting by up to $`6.2 \times 3.0`$ px; "CNOT ring" 1 px above its SVG |
+| DeFi | the market and volatility charts' corner ticks met, by $`1.2 \times 3.6`$ and $`5.4 \times 4.1`$ px |
+| Validations, Use Cases | clean |
+
+The layout scan had never opened a disclosure, so none of the first four was measured; it opens them now, and the locus plot and the contrast failure are what it found on the next build, before the fixes.

@@ -52,12 +52,23 @@ export function PrsLocusCard() {
     const max = Math.max(...data.loci.map((l) => Math.abs(l.beta))) * 1.1;
     const X = (l: Locus) => left + ((start[l.chr] + l.pos) / cumulative) * (W - left - right);
     const Y = (b: number) => top + ((max - b) / (2 * max)) * (H - top - bottom);
-    // Stagger the five labels: two strong variants can sit close together on the genome, and their names must not overprint.
-    const top5 = [...data.loci].sort((a, b) => Math.abs(b.beta) - Math.abs(a.beta)).slice(0, 5).sort((a, b) => X(a) - X(b))
-      .reduce<{ l: Locus; dy: number }[]>((acc, l) => {
-        const clash = acc.filter((p) => Math.abs(X(p.l) - X(l)) < 90 && Math.abs(Y(p.l.beta) - Y(l.beta)) < 14 + Math.abs(p.dy));
-        return [...acc, { l, dy: clash.length ? (clash[clash.length - 1].dy <= 0 ? 14 : -14) * (clash.length) : 0 }];
-      }, []);
+    // The five names, placed greedily, largest effect first: beside the point on whichever side keeps the name inside the plot and clear of the names already placed. Staggering by a
+    // fixed step still overprinted two neighbours on chromosomes 8 and 9 and ran the chromosome-20 name past the right edge, on the deployed page. Widths are an upper estimate, in
+    // viewBox units, that also covers DejaVu Sans.
+    const CHAR = 6.2, LINE = 12;
+    const placed: { x1: number; x2: number; y1: number; y2: number }[] = [];
+    const top5 = [...data.loci].sort((a, b) => Math.abs(b.beta) - Math.abs(a.beta)).slice(0, 5).map((l) => {
+      const px = X(l), py = Y(l.beta), w = l.rsid.length * CHAR;
+      const options = [[5, -4, "start"], [5, 12, "start"], [-5, -4, "end"], [-5, 12, "end"], [5, -18, "start"], [-5, -18, "end"], [5, 26, "start"], [-5, 26, "end"]] as const;
+      for (const [dx, dy, anchor] of options) {
+        const x1 = anchor === "start" ? px + dx : px + dx - w, x2 = x1 + w, y2 = py + dy + 2, y1 = y2 - LINE;
+        if (x1 < left || x2 > W - 2 || y1 < 0 || y2 > H - bottom) continue;
+        if (placed.some((q) => x1 < q.x2 + 2 && x2 > q.x1 - 2 && y1 < q.y2 + 2 && y2 > q.y1 - 2)) continue;
+        placed.push({ x1, x2, y1, y2 });
+        return { l, x: px + dx, y: py + dy, anchor };
+      }
+      return { l, x: px + 5, y: py - 4, anchor: "start" as const };
+    });
     return { chroms, start, cumulative, W, H, left, right, top, bottom, max, X, Y, top5 };
   }, [data]);
   return (
@@ -80,7 +91,7 @@ export function PrsLocusCard() {
                 <text x={12} y={plot.Y(0) - 6} fontSize={10} fill={muted}>effect</text>
                 <text x={12} y={plot.Y(0) + 8} fontSize={10} fill={muted}>ln(OR)</text>
                 {data.loci.map((l) => <circle key={l.rsid} cx={plot.X(l)} cy={plot.Y(l.beta)} r={3} fill={l.beta >= 0 ? danger : accent} opacity={0.85}><title>{`${l.rsid}, chromosome ${l.chr}, position ${l.pos.toLocaleString()}, effect allele ${l.effect_allele}, ln(OR) ${l.beta.toFixed(4)}`}</title></circle>)}
-                {plot.top5.map(({ l, dy }) => <text key={l.rsid} x={plot.X(l) + 5} y={plot.Y(l.beta) - 4 + dy} fontSize={10} fill={ink} style={{ paintOrder: "stroke", stroke: "var(--panel)", strokeWidth: 6 }}>{l.rsid}</text>)}
+                {plot.top5.map(({ l, x, y, anchor }) => <text key={l.rsid} x={x} y={y} textAnchor={anchor} fontSize={10} fill={ink} style={{ paintOrder: "stroke", stroke: "var(--panel)", strokeWidth: 6 }}>{l.rsid}</text>)}
               </svg>
             </div>
             <p className="small muted">Weights: PGS Catalog score PGS000072, Graff et al., Nat Commun 12:970 (2021), <a href={data.licence_url}>{data.licence}</a>. Eight of the positions are the UK Biobank coordinates the scoring file gives in its variant description.</p>
@@ -102,6 +113,7 @@ export function ConfusionCard() {
     }).catch(() => undefined);
   }, [open, model]);
   const short = (s: string) => s.replace(/_/g, " ");
+  // Fills stop at 45 percent and the count is in the body colour: a full-strength blue under the table's muted grey measured 1.08:1 on the deployed page, where SC 1.4.3 asks 4.5:1.
   return (
     <details className="card details" style={{ marginTop: 14 }} id="confusion" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
       <summary>Which attacks the detector confuses</summary>
@@ -115,7 +127,7 @@ export function ConfusionCard() {
                 <tbody>
                   {model.matrix.map((row, i) => {
                     const sum = row.reduce((a, b) => a + b, 0) || 1;
-                    return <tr key={model.names[i]}><th scope="row" style={{ fontSize: 11, textAlign: "left" }}>{short(model.names[i])}</th>{row.map((v, j) => <td key={j} style={{ textAlign: "center", background: v === 0 ? undefined : i === j ? `rgba(79,157,255,${(v / sum).toFixed(2)})` : `rgba(245,101,101,${Math.min(1, 4 * v / sum).toFixed(2)})` }}>{v || ""}</td>)}</tr>;
+                    return <tr key={model.names[i]}><th scope="row" style={{ fontSize: 11, textAlign: "left" }}>{short(model.names[i])}</th>{row.map((v, j) => <td key={j} style={{ textAlign: "center", color: "var(--text)", background: v === 0 ? undefined : i === j ? `rgba(79,157,255,${(0.45 * v / sum).toFixed(2)})` : `rgba(245,101,101,${Math.min(0.45, 1.8 * v / sum).toFixed(2)})` }}>{v || ""}</td>)}</tr>;
                   })}
                 </tbody>
               </table>

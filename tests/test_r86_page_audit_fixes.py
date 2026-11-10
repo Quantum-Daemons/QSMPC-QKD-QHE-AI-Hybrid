@@ -125,3 +125,11 @@ def test_the_page_scan_measures_contrast_headers_and_the_load_shift() -> None:
     for needle in ("const A11Y", "[contrast]", "[table] no header cell", "layout-shift", "while loading, 0.1 or more",
                    "button:disabled"):
         assert needle in scan, f"the page scan no longer checks {needle!r}"
+
+
+def test_the_page_scan_opens_every_disclosure_before_it_measures() -> None:
+    """Round 86: content inside a closed <details> is not laid out, so the scan never measured it. The deployed walk found the finance page's
+    transaction graphs, the QCNN circuit card, the genomics locus plot and the telecom confusion matrix failing there, all inside disclosures."""
+    scan = (WEB / "scripts" / "check_text_overlap.mjs").read_text()
+    opened = scan.index("document.querySelectorAll('details').forEach((d) => { d.open = true; })")
+    assert opened < scan.index("// Through the page a screen at a time"), "the disclosures must be open before the page is scrolled and measured"

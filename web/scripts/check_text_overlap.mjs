@@ -346,6 +346,10 @@ async function check(s, page) {
       if (done && i > 3) break;
     }
   }
+  // Every disclosure open (Round 86): what sits inside a closed <details> is not laid out, so it was never measured, and the
+  // finance page's transaction graphs and the QCNN circuit card went out with labels drawn over each other.
+  await ev(s, "document.querySelectorAll('details').forEach((d) => { d.open = true; })");
+  await sleep(800);
   // Through the page a screen at a time, so lazily drawn charts render before they are measured.
   const height = await ev(s, "document.documentElement.scrollHeight");
   for (let y = 0; y < height; y += HEIGHT * 0.8) { await ev(s, `window.scrollTo(0, ${y})`); await sleep(350); }
