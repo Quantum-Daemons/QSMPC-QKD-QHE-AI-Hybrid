@@ -15,6 +15,7 @@ import {
   tierArchitectures, webCfg, workloadMultipliers, modelsFor } from "./config";
 import { CKKS_FLOOD_BITS, encryptedConv2d, encryptedHeldOutAgreement, encryptedLinear, encryptedLinearBatch,
   encryptedStudentInference, warmFHE, type CnnStudentWeights } from "./clientFHE";
+import type { OcclusionMap } from "./cnnSaliency";
 import type { HybridCnnResult } from "./clientHybridCnn";
 import type { QcnnCkksResult } from "./clientQcnnCkks";
 import { clientTrainScoreIDS } from "./clientIDS";
@@ -894,7 +895,7 @@ let _fheKeygenMs: number | null = null;
  */
 /** The medical CNN student under MPC, as the page shows it. */
 export interface MpcCnnReport {
-  result: Omit<HybridCnnResult, never>; ranIn: string; imageIndex: number; imageCount: number; imageLabel: number; classes: Record<string, string> | null;
+  result: Omit<HybridCnnResult, never>; ranIn: string; imageIndex: number; imageCount: number; imageLabel: number; classes: Record<string, string> | null; explanation?: OcclusionMap;
 }
 
 /** The published student's held-out images, at the pin its weights come from. */
@@ -1080,7 +1081,8 @@ async function runStudentUnderMpc(stage: string, usecase: string, seed: number, 
       const quarter = Math.floor((4 * p.done) / p.total);
       if (quarter > lastQuarter) { lastQuarter = quarter; emit("log", stage, `garbled circuits: ${Math.min(p.done, p.total)} of the convolution's ${p.total} ReLUs`); }
     } });
-    artifacts.mpc_cnn = { result: r, ranIn: r.ranIn, imageIndex: index, imageCount: n, imageLabel: sample.labels[index], classes: sample.classes } satisfies MpcCnnReport;
+    const { occlusionMap } = await import("./cnnSaliency");
+    artifacts.mpc_cnn = { result: r, ranIn: r.ranIn, imageIndex: index, imageCount: n, imageLabel: sample.labels[index], classes: sample.classes, explanation: occlusionMap(w, image) } satisfies MpcCnnReport;
     metric(stage, "mpc_cnn_ran", 1);
     metric(stage, "mpc_cnn_class", r.prediction);
     metric(stage, "mpc_cnn_matches_clear", r.matchesClear ? 1 : 0);

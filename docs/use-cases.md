@@ -117,6 +117,8 @@ computation rather than a privacy property.
 
 The `Inference` control on the finance, medical and telecom pages can also run the trained QCNN with its input under CKKS ([what that is](models-and-benchmarks.md#the-trained-qcnn-under-ckks)), and each page draws its circuit in the `Quantum circuits on this page` panel.
 
+Each use case shows a figure of the kind a reviewer expects beside its model, computed from data the page already ships or from the run's own result: the finance page draws laundering patterns and the neighbourhood of the transaction its MLP scored as a graph, the medical page an occlusion map of the held-out image, the genomics page a locus plot of its score's variants, and the telecom page the confusion matrix of its detector. The satellite page's forecast chart and the DeFi page's lending charts already play this part.
+
 ### Industry use cases
 
 | Use case | Pipeline | Industry |

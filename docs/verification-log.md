@@ -4088,3 +4088,13 @@ Deployed from merged `main`, bundle `index-BUsEwUaY.js`, read in Chrome on the p
 
 On each page the run recorded `primary_inference_backend` as `qcnn-ckks`, the decrypted class equalled the class of the same circuit in the clear, and the panel listed the held-out figures beside the classical comparators (finance minority-class F1 0.2286, logistic regression 0.4390, the 81 products 0.4889; medical accuracy 0.9535, 0.9535, 0.9419; telecom macro F1 0.9444, 0.9764, 0.9723). The circuit card drew finance's 90 gates, medical's 206 and telecom's 895, the last in a box that scrolls; no page scrolled sideways and the console held no error.
 
+
+### PR #27 on the deployed site (2026-11-10)
+
+Deployed from merged `main`, bundle `index-DrzwzzZ0.js`, read in Chrome on the public site at 0, 5, 10 and 15 s and after the run.
+
+| where | read |
+|---|---|
+| the finance page, `MLP under MPC` on | class laundering on held-out row 1 of 16, the clear network's; 192 ReLUs, 16,879 AND gates, 42.66 MB of garbled-circuit traffic, 5.8 s in a Web Worker; statistical distance at most $`2^{-21.5}`$; logits $`-4.349, -1.256`$ recorded and $`-4.350, -1.256`$ reconstructed |
+| `finance_aml.mlp_large` as the published model | ran on `onnx-wasm` at revision `3bddcf07034f`; the SHA-256 the run reports equals the entry in `models/hub_file_hashes.json` |
+| the page | no console error |
