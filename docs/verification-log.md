@@ -4127,3 +4127,19 @@ Deployed from merged `main`, bundle `index-CgSfj_T8.js`, read in Chrome with eve
 | medical | the circuit card's wire labels and "CNOT ring" inside their SVGs |
 | DeFi | the market and volatility charts' corner ticks clear of each other |
 | 375 px | finance, genomics, telecom and medical with every disclosure open: no overlap, no clipped label, no sideways page scroll |
+
+### PR #31 on the full local deployment (2026-11-10)
+
+Not the public demo, which has no monitoring. The compose stack (`docker/docker-compose.yml`: API, web, Prometheus, Grafana,
+node-exporter) started from this branch, then one finance run and one benchmark, read on Grafana and in Prometheus's API.
+
+| where | read |
+|---|---|
+| Prometheus targets | `qsh-api` and `node` up |
+| before any run | 14 stage series at count 0; `qsh_qber NaN`; the QBER panel empty rather than 0 |
+| Stage latency p95 | the first run drawn, eight stages: PQC handshake 24 ms, QKD key agreement 975 ms, QSMPC 242 ms, each interpolated inside a bucket about 2.5x wide; the six stages that did not run hidden. Before the fix every stage read 10 |
+| Benchmark latency | one line per backend, equal to the rows: TenSEAL 411.2 ms, OpenFHE 818.5 ms, QSMPC-FHE 3.7 ms. Before the fix MPC-FHE read the 1,000 ms bucket bound for two rows that were neither |
+| QBER | 0.011 after the run; a gap, not a 0, between the API restart and the run |
+
+A compose project keeps the bind mounts of the checkout it was first started from: rebuilding only the API from another
+checkout left Grafana on the first checkout's dashboard. Start every service from one checkout before reading a panel.

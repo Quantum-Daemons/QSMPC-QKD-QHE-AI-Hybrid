@@ -9033,6 +9033,7 @@ recorded separately, and nothing here changes the published model.
 | #28 | Each page shows a figure of the kind a reviewer expects beside its model: laundering patterns and the scored transaction's neighbourhood as graphs on finance, occlusion sensitivity on medical, a locus plot on genomics, the confusion matrix on telecom |
 | #29 | Labels that overprinted inside closed disclosures, found by a walk of the deployed pages with every disclosure open, fixed; the layout scan now opens every disclosure before it measures |
 | #30 | The dependency table gives each Python dependency's locked version and its release date; the README's images retaken from the deployed site, the DeFi page's added |
+| #31 | The full deployment's Grafana dashboard reads what ran: millisecond latency buckets, the first run drawn, QBER empty until a QKD stage reports, the benchmark per backend and measured rows only |
 
 Findings worth keeping from those:
 
