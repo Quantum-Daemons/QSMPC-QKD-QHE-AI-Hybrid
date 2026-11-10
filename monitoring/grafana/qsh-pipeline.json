@@ -21,11 +21,11 @@
     {
       "type": "timeseries",
       "title": "Stage latency p95 (ms)",
-      "description": "qsh_stage_latency_ms is a histogram; p95 shows which stage dominates a run.",
+      "description": "p95 over the last five minutes, read from a histogram whose bucket bounds are about 2.5x apart, so a stage that ran once reads an interpolated value inside its bucket, not its exact time. Stages that did not run in the window are hidden.",
       "gridPos": { "h": 6, "w": 16, "x": 8, "y": 0 },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum by (le, stage) (rate(qsh_stage_latency_ms_bucket[5m])))",
+          "expr": "histogram_quantile(0.95, sum by (le, stage) (rate(qsh_stage_latency_ms_bucket[5m]))) > 0",
           "legendFormat": "{{stage}}"
         }
       ]
@@ -33,7 +33,7 @@
     {
       "type": "timeseries",
       "title": "QBER",
-      "description": "Quantum bit error rate from the most recent QKD stage. The BB84 secure threshold is 11%; sustained values above it mean the key must be discarded.",
+      "description": "Quantum bit error rate from the most recent QKD stage; empty until one has run. The BB84 secure threshold is 11%; sustained values above it mean the key must be discarded.",
       "gridPos": { "h": 6, "w": 12, "x": 0, "y": 6 },
       "fieldConfig": {
         "defaults": {
@@ -53,13 +53,13 @@
     },
     {
       "type": "timeseries",
-      "title": "Benchmark latency by path (ms)",
-      "description": "MPC-FHE (classical CKKS + MPC) against QSMPC-FHE (QOTP + Clifford+T QCNN).",
+      "title": "Benchmark latency, mean per backend (ms)",
+      "description": "Mean of the measured benchmark rows since the API started, per path and backend: MPC-FHE is linear layers under CKKS and the non-linear ones under MPyC, on TenSEAL, OpenFHE and HEonGPU where built; QSMPC-FHE is the QOTP and QCNN state-vector simulation. The extrapolated 'large' tier is not recorded. A sum over count is exact; a quantile of two rows would read a bucket bound.",
       "gridPos": { "h": 6, "w": 12, "x": 12, "y": 6 },
       "targets": [
         {
-          "expr": "histogram_quantile(0.5, sum by (le, path) (rate(qsh_benchmark_latency_ms_bucket[5m])))",
-          "legendFormat": "{{path}}"
+          "expr": "(sum by (path, backend) (qsh_benchmark_latency_ms_sum) / sum by (path, backend) (qsh_benchmark_latency_ms_count)) > 0",
+          "legendFormat": "{{path}} {{backend}}"
         }
       ]
     }

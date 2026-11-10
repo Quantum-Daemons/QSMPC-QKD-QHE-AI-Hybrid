@@ -34,8 +34,8 @@ dashboards here, and Zabbix's agent/server footprint is unjustified at this scal
 
   The call sites are `src/qsh/orchestration/pipeline.py` - `record_stage` per stage, `record_run` and
   `record_qber` per run in a `finally`, so a run that raised is counted in the state it ended in -
-  and `src/qsh/benchmark/runner.py`, `record_benchmark` per row, which is where the `path` label was
-  always going to come from. Measured in Round 21: the scrape went from 1 series to 39 after one run.
+  and `src/qsh/benchmark/runner.py`, `record_benchmark` per measured row, which is where the `path`
+  and `backend` labels come from. Measured in Round 21: the scrape went from 1 series to 39 after one run.
   `tests/test_monitoring_wired.py` asserts that production code CALLS them, rather than that the
   helpers exist; the helpers always existed.
 - **Until Round 86 the two latency histograms had bucket bounds in seconds and values in
@@ -44,10 +44,17 @@ dashboards here, and Zabbix's agent/server footprint is unjustified at this scal
   take hundreds or thousands of milliseconds; the benchmark's 557 ms MPC-FHE row read 10 as well.
   Found on the full stack's Grafana walk. Both histograms now use `LATENCY_BUCKETS_MS`, 1 ms to
   10 minutes about 2.5x apart. A second, smaller gap: a labelled series that first appears with a
-  count of 1 is no increase to `rate()`, so the rate panels stayed empty until a second run. Every
-  stage class a use case can run, and both benchmark paths, now has its series at zero from start-up;
-  the tests fail when a 557 ms observation lands in `+Inf` or a new stage class is missing from the
-  list.
+  count of 1 is no increase to `rate()`, so the p95 panel stayed empty until a second run. Every
+  stage class a use case can run now has its series at zero from start-up, and the panel hides the
+  stages that did not run in its window; the tests fail when a 557 ms observation lands in `+Inf` or
+  a new stage class is missing from the list.
+- **Three more readings on the same walk were wrong, and are fixed in Round 86.** The QBER gauge
+  started at 0, so the panel read "QBER 0" before any key agreement had run and after each API
+  restart; it is now not a number until a QKD stage reports one. The benchmark histogram had a
+  `path` label only, so MPC-FHE's TenSEAL and OpenFHE rows shared one series and the median of the
+  two read a bucket bound that was neither; it now carries a `backend` label and the panel shows the
+  exact mean per path and backend (sum over count, since the API started). And the extrapolated
+  `large` tier's latency went into that histogram as if measured; only measured rows are recorded.
 - **Grafana provisioning was silently broken until it was fixed here.** `docker-compose.yml` mounted
   the bare dashboard directory onto `/etc/grafana/provisioning/dashboards`. Grafana reads *provider
   YAML* from that path and follows each provider's own `options.path`, so a directory containing only

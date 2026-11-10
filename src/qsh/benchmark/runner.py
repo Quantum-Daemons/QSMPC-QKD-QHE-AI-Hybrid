@@ -291,13 +291,19 @@ def run_benchmark(workload: str = "linear", *, out_dir: str | Path = "results",
     q.model_size = model_size
     results.append(q)
 
-    # BENCH_LATENCY was declared with a "path" label and had no reader anywhere - not even inside
-    # the exporter that defined it. These are its rows.
-    for r in results:
-        record_benchmark(r.path, float(r.latency_ms))
-
+    record_measured_rows(results)
     _persist(results, out_dir, workload)
     return results
+
+
+def record_measured_rows(results: list[BenchResult]) -> None:
+    """BENCH_LATENCY was declared with a "path" label and had no reader anywhere - not even inside the exporter that
+    defined it. These are its rows, the measured ones only: the 'large' tier's latency is extrapolated from 'medium'
+    (`_project_large`), and a histogram of latencies has no field that could say so, so it went into the dashboard as a
+    measurement until Round 86."""
+    for r in results:
+        if not r.projected:
+            record_benchmark(r.path, float(r.latency_ms), r.backend)
 
 
 def compute_advantage(results: list[BenchResult]) -> dict | None:
