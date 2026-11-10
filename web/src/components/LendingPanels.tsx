@@ -81,7 +81,8 @@ function Market({ report, check }: { report: LendingMarketReport; check?: Lendin
   const repaid = run.events.reduce((s, e) => s + e.repaid, 0);
   const bobEvents = run.events.filter((e) => e.borrower === 0).length;
   const shock = cfg.shock_fraction > 0 ? <ReferenceLine x={cfg.shock_hour} stroke="var(--danger)" strokeDasharray="4 3" /> : null;
-  const xAxis = <XAxis dataKey="hour" type="number" domain={[0, run.hours]} tick={tick} label={axisLabel("hour")} />;
+  // Padded at both ends, so the first and last hour sit clear of the y axes' lowest ticks: "720" met the right axis's "0" in the corner.
+  const xAxis = <XAxis dataKey="hour" type="number" domain={[0, run.hours]} padding={{ left: 10, right: 10 }} tick={tick} label={axisLabel("hour")} />;
   return (
     <div className="card" id="lending-market">
       <h3>The market, this run <StageBadge kind="simulated" /></h3>
@@ -237,7 +238,7 @@ function PrivateCheck({ report: r }: { report: LendingPrivateReport }) {
           <ResponsiveContainer width="100%" height={240}>
             <ScatterChart role="img" title="Margin reconstructed from both shares against the margin in the clear, per check" aria-describedby={captionId} margin={{ top: 8, right: 12, bottom: 18, left: 4 }}>
               {grid}
-              <XAxis type="number" dataKey="clear" name="clear margin" domain={[lo - pad, hi + pad]} tick={tick} tickFormatter={(v: number) => v.toFixed(0)} label={axisLabel("margin in the clear")} />
+              <XAxis type="number" dataKey="clear" name="clear margin" domain={[lo - pad, hi + pad]} padding={{ left: 10, right: 10 }} tick={tick} tickFormatter={(v: number) => v.toFixed(0)} label={axisLabel("margin in the clear")} />
               <YAxis type="number" dataKey="shares" name="from both shares" domain={[lo - pad, hi + pad]} tick={tick} tickFormatter={(v: number) => v.toFixed(0)} label={yLabel("margin from both shares")} />
               <Tooltip content={<ReadoutTooltip />} formatter={(v: number) => v.toFixed(5)} />
               <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
@@ -291,7 +292,7 @@ function Sweep({ report }: { report: LendingSweepReport }) {
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={data} accessibilityLayer title="Share of opening debt liquidated and share of paths with bad debt, against the volatility multiple" margin={{ top: 8, right: 12, bottom: 18, left: 4 }}>
               {grid}
-              <XAxis dataKey="label" tick={tick} label={axisLabel("volatility, as a multiple of the configured one")} />
+              <XAxis dataKey="label" padding={{ left: 14, right: 14 }} tick={tick} label={axisLabel("volatility, as a multiple of the configured one")} />
               <YAxis tick={tick} domain={[0, "auto"]} label={yLabel("per cent")} />
               <Tooltip content={<ReadoutTooltip labelName="volatility" />} formatter={(v: number) => (Array.isArray(v) ? "" : `${v.toFixed(1)}%`)} />
               <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />

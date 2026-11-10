@@ -11,6 +11,13 @@ const describe = (e: TxEdge) => `${e.from} to ${e.to}: ${e.amount.toLocaleString
 function GraphSvg({ g, layout, w, h, scoredEdge, numbered, label }: { g: TxGraph; layout: Layout; w: number; h: number; scoredEdge?: { from: string; to: string }; numbered: boolean; label: string }) {
   const marker = useId().replace(/:/g, "");
   const groups = useMemo(() => groupEdges(g), [g]);
+  // Each account's distinct counterparties in this figure. A label sits nearer the end with fewer, so the labels of edges that meet at a hub spread out with the leaves instead of
+  // piling up beside the hub: at the midpoint, the six of a fan-out sat 11 px apart and overprinted.
+  const degree = useMemo(() => {
+    const d: Record<string, number> = {};
+    for (const grp of groups) if (grp.from !== grp.to) { d[grp.from] = (d[grp.from] ?? 0) + 1; d[grp.to] = (d[grp.to] ?? 0) + 1; }
+    return d;
+  }, [groups]);
   return (
     <svg role="img" aria-label={label} viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", maxWidth: w, height: "auto", display: "block" }}>
       <defs>
@@ -30,10 +37,11 @@ function GraphSvg({ g, layout, w, h, scoredEdge, numbered, label }: { g: TxGraph
         }
         const dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len;
         const x1 = a.x + ux * (NODE + 1), y1 = a.y + uy * (NODE + 1), x2 = b.x - ux * (NODE + 3), y2 = b.y - uy * (NODE + 3);
+        const da = degree[grp.from] ?? 0, db = degree[grp.to] ?? 0, at = da > db ? 0.78 : db > da ? 0.22 : 0.5;
         return (
           <g key={`${grp.from}${grp.to}`}>
             <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={color} strokeWidth={scored ? 2.4 : 1.3} markerEnd={`url(#${marker}${kind})`} />
-            {(numbered || grp.edges.length > 1) && <text x={(x1 + x2) / 2} y={(y1 + y2) / 2 + 3} textAnchor="middle" fontSize={10} fill={ink} style={halo}>{numbered ? grp.order : `×${grp.edges.length}`}</text>}
+            {(numbered || grp.edges.length > 1) && <text x={x1 + (x2 - x1) * at} y={y1 + (y2 - y1) * at + 3} textAnchor="middle" fontSize={10} fill={ink} style={halo}>{numbered ? grp.order : `×${grp.edges.length}`}</text>}
             <title>{grp.edges.map(describe).join("; ")}</title>
           </g>
         );

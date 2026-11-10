@@ -48,7 +48,7 @@ function BlockDiagram({ r, weights }: { r: RecordedQcnn; weights: QcnnWeights })
       <svg role="img" aria-label={`Block diagram of the trained ${r.circuit} circuit on ${r.nQubits} wires`} width={end + 8} height={h} style={{ display: "block" }}>
         {Array.from({ length: r.nQubits }, (_, q) => (
           <g key={q}>
-            <text x={LEFT - 8} y={y(q) + 4} textAnchor="end" fontSize={11} fill={muted}>{name(q).length > 13 ? `${name(q).slice(0, 12)}…` : name(q)}<title>{name(q)}</title></text>
+            <text x={LEFT - 8} y={y(q) + 4} textAnchor="end" fontSize={11} fill={muted}>{name(q).length > 12 ? `${name(q).slice(0, 11)}…` : name(q)}<title>{name(q)}</title></text>
             <line x1={LEFT} x2={x(lastUse[q]) + COL / 2} y1={y(q)} y2={y(q)} stroke={edge} />
             {lastUse[q] < columns && <line x1={x(lastUse[q]) + COL / 2} x2={end} y1={y(q)} y2={y(q)} stroke={edge} strokeDasharray="2 4" opacity={0.55} />}
           </g>
@@ -95,7 +95,8 @@ function GateDiagram({ r }: { r: RecordedQcnn }) {
 }
 
 function ComparisonDiagram({ qubits }: { qubits: number }) {
-  const n = Math.min(qubits, 4), X = (c: number) => 56 + c * 44, Y = (q: number) => 18 + q * 28, end = X(5) + 6;
+  // The first wire sits low enough that "CNOT ring" above it stays inside the SVG: at 18 its ascenders were clipped by a pixel.
+  const n = Math.min(qubits, 4), X = (c: number) => 56 + c * 44, Y = (q: number) => 26 + q * 28, end = X(5) + 6;
   const box = (cx: number, q: number, t: string, s: string) => <g key={`${t}${q}`}><rect x={cx - 14} y={Y(q) - 11} width={28} height={22} rx={3} fill="var(--panel)" stroke={s} /><text x={cx} y={Y(q) + 4} textAnchor="middle" fontSize={11} fill={ink} style={halo}>{t}</text></g>;
   return (
     <div style={{ overflowX: "auto" }}>
