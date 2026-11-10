@@ -35,7 +35,7 @@ and is not new, the positioning (quantum-safe, not quantum-advantage) and the fo
 | Private inference | CKKS linear layers (node-seal) and a garbled-circuit 2PC for the argmax (Polytune); on the medical CNN's layer-by-layer path ReLU and pooling run in plaintext between its encrypted layers, and a separate run puts one held-out image through the same CNN with its ReLUs and argmax in garbled circuits | real protocols, notional parties | plaintext against CKKS on the same inputs |
 | QSMPC | a semi-honest set intersection on RFC 9497's OPRF over ristretto255 (not post-quantum) and secure summation; quantum forms in the full deployment | computed in the browser with both parties in one tab (notional parties), simulated quantum forms | the plaintext result; the RFC 9496 and RFC 9497 test vectors, in Python and in the browser |
 | QHE and QML | quantum one-time pad, an untrained Clifford+T comparison circuit, trained QCNNs (run in the clear, or with their input under CKKS as a linear form), a QML intrusion detector | simulated circuits | the QCNNs against a logistic-regression baseline on the same split |
-| Models | eleven published models, run with ONNX Runtime in the browser | real inference | per-model metrics and model cards |
+| Models | twelve published models, run with ONNX Runtime in the browser, and the finance MLP under CKKS and garbled circuits | real inference | per-model metrics and model cards |
 | Agentic AI | a small language model in the browser over a quantum-safe MCP channel | real | a signed, sealed `tools/call` request in the browser (no tool runs); signed tool results in the full deployment |
 
 What each step hides, in the browser and in the full deployment:
@@ -120,6 +120,7 @@ flowchart TB
   MP["PSI among 3 to 5 banks under MPC: one garbled circuit (Polytune), 8 generated accounts each"]
   FL["Federated training, in the browser: 4 clients, 6 rounds of FedAvg, pairwise masks"]
   I["Private inference: CKKS linear layer (node-seal), garbled-circuit argmax (Polytune)"]
+  MM["The published MLP on one held-out row: CKKS layers, ReLUs and argmax in garbled circuits"]
   X["Explainability: exact linear SHAP, signed"]
   M["Published model: finance_aml.gbm on ONNX Runtime Web"]
   C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
@@ -134,7 +135,8 @@ flowchart TB
   P --> MP
   MP --> FL
   FL --> I
-  I --> X
+  I --> MM
+  MM --> X
   X --> M
   M --> C
   C --> S

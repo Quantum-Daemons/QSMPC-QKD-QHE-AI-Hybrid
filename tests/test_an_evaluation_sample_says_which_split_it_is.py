@@ -156,7 +156,8 @@ def test_the_generators_draw_from_the_trainers_test_window() -> None:
     assert "graph_features(te, fit_on=tr, causal=causal_account_features(df))" in fin, (
         "the finance sample must be featurised exactly as main() featurises its test rows")
     assert "graph_features(df)" not in fin, "whole-timeline aggregates are the leaky arm"
-    assert re.search(r"pos = np\.flatnonzero\(y_te == 1\)", fin), "positives must come from the test window"
+    assert "_finance_sample_index(y_te, rng)" in fin, "the rows must be drawn from the test window's labels"
+    assert re.search(r"pos = np\.flatnonzero\(y_te == 1\)", _body("_finance_sample_index")), "positives must come from the test window"
     sat = _body("build_satellite")
     # With the record's own split since Round 86, so the sample is the published model's test half.
     assert "preprocess(D.load_esa_channels(), resample, split_at=split_at)" in sat

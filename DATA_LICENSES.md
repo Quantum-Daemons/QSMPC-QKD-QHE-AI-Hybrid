@@ -158,7 +158,7 @@ of the changes. A shipped file travels alone, to the Hub and out of it, so each 
 | CC BY 4.0 (section 3(a)) | credit as the creator asks, the licence's text or a link to it, and a note of any changes | WDBC sample and overlay; BreastMNIST (as MedMNIST asserts it), OPS-SAT-AD and 5G-NIDD evaluation samples; the 5G-NIDD excerpt the walkthrough reads (`walkthroughs/public/nidd_copies_excerpt.json`); OPS-SAT-AD overlay and anomaly-demo segments; medical QCNN weights | the samples' and overlays' `licence_url`, `attribution` and `modifications` fields (UCI's order and year for WDBC, MedMNIST v2 and v1 and the BUSI article for BreastMNIST, the OPS-SAT-AD dataset record); the QCNN weights' `provenance` (link and UCI's credit) |
 | CC BY-SA 4.0 (sections 3(a) and 3(b)) | as CC BY, and adaptations under CC BY-SA 4.0 or a compatible licence | PaySim sample (`paysim_sample.tsv` and `.json`), finance QCNN weights | the JSON's fields; the TSV's header lines (licence and link, credit, changes); the weights' `provenance` |
 | CC BY 3.0 IGO (section 4) | the licence or its URI with every copy, the credit, and changes identified | ESA-ADB evaluation sample (128 windows) | the sample's `licence_url`, `attribution` (the DMLR 2026 paper and the Zenodo record) and `modifications` |
-| CDLA-Sharing-1.0 (sections 3.1 and 3.3) | the same agreement, prominent notices on changed files, preserved credit, and the agreement's text, name or link | AMLworld evaluation samples, the finance overlay and `finance/student_heldout.json` | each file's `licence`, `licence_url`, `attribution` and `modifications` |
+| CDLA-Sharing-1.0 (sections 3.1 and 3.3) | the same agreement, prominent notices on changed files, preserved credit, and the agreement's text, name or link | AMLworld evaluation samples, the finance MLP's `weights.json` fixture rows, the finance overlay and `finance/student_heldout.json` | each file's `licence`, `licence_url`, `attribution` and `modifications` |
 | CC0 1.0 | nothing; gnomAD's terms add one condition, no attempt to re-identify participants | gnomAD frequencies and the genomics overlay | the overlay, and the `_source` of both caches, the active `gnomad_af_pgs000072.json` and the retired `gnomad_af.json` |
 | CC BY 4.0 (PGS000072's publication), with the PGS Catalog's EMBL-EBI Terms of Use; IGSR's disclaimer (1000 Genomes, no licence) | credit, the licence link and a note of changes; the PGS Catalog's citation; the 1000 Genomes consortium paper | PGS000072 weights (scoring file, browser payload, `weights.json`); the 1000 Genomes dosage slices | the browser payload's `attribution`, `genotypes_attribution`, `licence_url` and `modifications`; the scoring file's first line and the dosage files' headers |
 | Apache-2.0 (section 4) | a copy of the licence, and the notices kept | the telecom data and weights generated here (section 2b) and the telecom QML evaluation sample | each file's `licence` and `licence_url`, or the weights' `provenance` |
@@ -195,7 +195,7 @@ this as synthetic; it is never presented as measured on real traffic.
 - **Published evaluation samples (`models/*/eval_sample.json`), committed and redistributed.** Each
   model's held-out sample ships inside that model's own Hugging Face repo at the same pinned
   revision as the weights, so a sample can never be paired with a different revision of the model it
-  scores; ten of the eleven repos ship one (all but the satellite student's). They carry their source
+  scores; eleven of the twelve repos ship one (all but the satellite student's). They carry their source
   corpus's licence: AMLworld under CDLA-Sharing-1.0, BreastMNIST
   under CC BY 4.0 **as asserted by MedMNIST, the BUSI authors publishing no licence of their own** (see the
   medical rows in section 1 - this is the surface where that ambiguity actually binds, because the
@@ -213,6 +213,8 @@ this as synthetic; it is never presented as measured on real traffic.
   them CKKS evaluates in the browser is in
   [`docs/models-and-benchmarks.md`](docs/models-and-benchmarks.md#which-pages-encrypt).
 
+- **The finance MLP is published too, with rows in its weights.** `finance_aml.mlp_large` is fitted on AMLworld under CDLA-Sharing-1.0, and the weights are Results (sections 1.11 and 3.5). Its `weights.json` also carries 16 held-out rows for checks, which are Data, so that file states the licence, its link, the credit and how the rows differ from the source, as its Hub card does. The same rows' 111-feature `eval_sample.json` is listed with the other evaluation samples.
+
 - **ImageNet-derived weights: the question was removed, not answered.** An earlier revision of this
   file analysed whether ImageNet-pretrained weights could be redistributed and concluded it could not
   be settled: ImageNet's terms bind "the Database" to non-commercial research and say nothing about a
@@ -223,8 +225,8 @@ this as synthetic; it is never presented as measured on real traffic.
   The trade was expected to cost accuracy and did not: AUC went from 0.8876 to **0.9147**, above the
   MedMNIST v2 published ResNet-18 baseline of 0.901, while accuracy and macro F1 each fell about a
   point. The earlier text predicted "the metric will be lower than 0.878 and that is the honest
-  trade"; that prediction was wrong and is recorded here rather than quietly replaced. All eleven Hub
-  repos, seven teachers and four encrypted students, are public.
+  trade"; that prediction was wrong and is recorded here rather than quietly replaced. All twelve Hub
+  repos, seven teachers, four encrypted students and the finance MLP, are public.
 
 - **PGS Catalog is not blanket CC BY 4.0: a score's terms are its publication's.** The scoring-file
   format defines an optional `#license` line, and PGS000072's file has none. Its REST record carries
@@ -313,7 +315,7 @@ this as synthetic; it is never presented as measured on real traffic.
 The published models' graphs live on the Hugging Face Hub (repo ids in `src/qsh/models/registry.py`),
 pinned by 40-character commit sha, and never in git (`.gitignore` excludes `*.onnx`, `*.safetensors`,
 `*.pt`, `*.npy`; CI fails the build if one is staged). Small JSON weight files are a different matter and are tracked in
-git: the QCNN angles and the telecom student (section 2b), the four Hub students' `weights.json`, the
+git: the QCNN angles and the telecom student (section 2b), the four Hub students' and the finance MLP's `weights.json`, the
 finance scorecard, and the PGS000072 effect weights the page scores (183 of them in
 `models/genomics_prs/weights.json` and in the browser payload
 `web/public/data/genomics/pgs000072_breast_cancer.json`; all 187 in the bundled scoring file). Those

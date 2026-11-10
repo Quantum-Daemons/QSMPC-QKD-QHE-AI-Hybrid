@@ -45,11 +45,11 @@
           ],
           "lightweight": [],
           "medium": [
-            32,
-            16
+            128,
+            64
           ]
         },
-        "label": "tabular fraud MLP"
+        "label": "MLP on AMLworld's 111 per-account and per-transaction features"
       },
       "genomics": {
         "hidden": {
@@ -62,8 +62,8 @@
       "medical_fl": {
         "hidden": {
           "large": [
-            256,
-            128
+            128,
+            64
           ],
           "lightweight": [],
           "medium": [
@@ -71,7 +71,7 @@
             32
           ]
         },
-        "label": "diagnostic net (MedMNIST-scale)"
+        "label": "MLP on WDBC"
       }
     },
     "workload_multipliers": {
@@ -1284,6 +1284,186 @@
         "notes": "Encrypted on the public page since Round 84: its private-inference figure scores this 33-parameter AMLworld student under CKKS on the 8,192 test-window rows of finance_aml.gbm's sample (64 ciphertexts), against the same model in plaintext. The page's one-row CKKS step, its MPC argmax, the reported class and the SHAP bars still use the four-feature linear model bundled with the PaySim sample (log amount, a TRANSFER or CASH_OUT flag, a night-hour flag and a first-seen-payee flag; no feature built from PaySim's balance columns), and the full deployment's finance pipeline encrypts its own PaySim-trained surrogate over the same four. Its agreement with the teacher (`agreement`) is measured offline, at training time, in plaintext; each browser run measures `encrypted_agreement`, CKKS against plaintext for the model it encrypts.",
         "onnx_domains": [
           "ai.onnx.ml"
+        ],
+        "params": null,
+        "pin_withdrawn_reason": null,
+        "runs_encrypted": true,
+        "tier": "t1_crypto"
+      },
+      {
+        "achieved": {
+          "accuracy": 0.997894,
+          "auprc": 0.305865,
+          "auprc_baseline": 0.00152346,
+          "auroc": 0.969699,
+          "baseline_gap_note": "On HI-Small the published figures are 63.23 for GFP + XGBoost, 62.86 for GFP + LightGBM and 56.77 for PNA (Altman et al., NeurIPS 2023, Table 2), 68.16 for Multi-PNA+EU (Egressy et al., AAAI 2024), and 63.72 for a GNN also evaluated under CKKS (Bilgi et al., arXiv:2610.18054). The Graph Feature Preprocessor paper's own decomposition (Blanusa et al., ICAIF 2024, Table 5) puts basic features at 19.75 and fan-in and fan-out at 56.88 to 59.71 for XGBoost. These 111 features are the 32 per-account aggregates plus per-transaction fan-in and fan-out, vertex statistics and scatter-gather in time windows, in batches of 2048, with no cycle enumeration, on a 56/14/30 temporal split rather than the papers' 60/20/20. The comparison that means most here is with the booster on the same features: AUPRC 0.3059 against 0.3358. This project's published teacher, on the 32 aggregates, has AUPRC 0.1233. AMLworld is synthetic by IBM's own statement.",
+          "batch_window": 2048,
+          "data_digest": "7557382f4133d1f0",
+          "dataset": "IBM AMLworld HI-Small",
+          "export": {
+            "fp32_bytes": 93339,
+            "int8": "not shipped: the fp32 graph is already small",
+            "opset": 17
+          },
+          "git_sha": "e5e64a9-dirty",
+          "hf_revision": "3bddcf07034fdd192657a8a7af1b39cb24dffdec",
+          "max_of_seeds_minority_f1": 0.404806,
+          "median_of_seeds_minority_f1": 0.369612,
+          "min_of_seeds_minority_f1": 0.334992,
+          "minority_class_f1": 0.334992,
+          "n_features": 111,
+          "n_parameters": 22722,
+          "n_test": 1523504,
+          "n_train": 2843872,
+          "n_val": 710969,
+          "precision": 0.322813,
+          "recall": 0.348126,
+          "scaling": "standard",
+          "seed": 2,
+          "seeds": [
+            {
+              "best_epoch": 6,
+              "scaling": "standard",
+              "seed": 0,
+              "test_auprc": 0.288221,
+              "test_minority_f1": 0.342955,
+              "val_auprc": 0.441978
+            },
+            {
+              "best_epoch": 10,
+              "scaling": "standard",
+              "seed": 1,
+              "test_auprc": 0.353532,
+              "test_minority_f1": 0.404806,
+              "val_auprc": 0.46986
+            },
+            {
+              "best_epoch": 11,
+              "scaling": "standard",
+              "seed": 2,
+              "test_auprc": 0.305862,
+              "test_minority_f1": 0.334992,
+              "val_auprc": 0.483983
+            },
+            {
+              "best_epoch": 16,
+              "scaling": "standard",
+              "seed": 3,
+              "test_auprc": 0.331574,
+              "test_minority_f1": 0.369612,
+              "val_auprc": 0.475409
+            },
+            {
+              "best_epoch": 14,
+              "scaling": "standard",
+              "seed": 4,
+              "test_auprc": 0.32198,
+              "test_minority_f1": 0.372283,
+              "val_auprc": 0.480661
+            },
+            {
+              "best_epoch": 18,
+              "scaling": "robust",
+              "seed": 0,
+              "test_auprc": 0.337515,
+              "test_minority_f1": 0.388082,
+              "val_auprc": 0.44345
+            },
+            {
+              "best_epoch": 11,
+              "scaling": "robust",
+              "seed": 1,
+              "test_auprc": 0.298493,
+              "test_minority_f1": 0.344301,
+              "val_auprc": 0.454383
+            },
+            {
+              "best_epoch": 22,
+              "scaling": "robust",
+              "seed": 2,
+              "test_auprc": 0.310614,
+              "test_minority_f1": 0.357975,
+              "val_auprc": 0.448855
+            },
+            {
+              "best_epoch": 10,
+              "scaling": "robust",
+              "seed": 3,
+              "test_auprc": 0.286124,
+              "test_minority_f1": 0.347416,
+              "val_auprc": 0.426803
+            },
+            {
+              "best_epoch": 14,
+              "scaling": "robust",
+              "seed": 4,
+              "test_auprc": 0.327666,
+              "test_minority_f1": 0.37278,
+              "val_auprc": 0.445681
+            }
+          ],
+          "selected_on": "validation AUPRC, over two scalings and five seeds each",
+          "share_clipped_on_fit_window": 0.00012958,
+          "split": "temporal, inductive",
+          "teacher_agreement": 0.998077,
+          "threshold_on_validation": 0.995822,
+          "wall_clock_s": 237.1,
+          "xgboost_same_features": {
+            "auprc": 0.335772,
+            "minority_class_f1": 0.400642
+          }
+        },
+        "architecture": "MLP [111, 128, 64, 2], ReLU: the 32 per-account AMLworld features plus 79 per-transaction window features, in batches of 2,048",
+        "artifacts": [
+          {
+            "browser_runnable": true,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "json",
+            "path": "weights.json",
+            "precision": "fp32",
+            "serves": "both"
+          }
+        ],
+        "browser_runnable": true,
+        "dataset": {
+          "attribution": "Altman et al., 'Realistic Synthetic Financial Transactions for Anti-Money Laundering Models', NeurIPS 2023 Datasets and Benchmarks. Data: IBM Transactions for Anti-Money Laundering (AML), CDLA-Sharing-1.0.",
+          "licence": "CDLA-Sharing-1.0",
+          "name": "IBM AMLworld HI-Small",
+          "publishable": true,
+          "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
+        },
+        "eval_sample_reason": null,
+        "eval_split": "the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, the last 30 percent of the transactions in time order, enriched to 2 percent laundering, with the 79 per-transaction features added",
+        "file_sha256": {
+          "eval_sample.json": "44b27887a182a927791f322c63b3190227e5511af5e40a1a2b31b36dd043080c",
+          "onnx/model.onnx": "73fe010423f1155676966ab9dc5e07675fc777dcfb5c6b094c66e9bcc77578fc",
+          "weights.json": "c450fe4454e2a5f7453e45bf39bf7ce81f8615d6ca8c4acfd9502f66852cbc21"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-finance-aml-mlp-large",
+        "hf_revision": "3bddcf07034fdd192657a8a7af1b39cb24dffdec",
+        "hf_revision_stale": null,
+        "int8_withheld_reason": null,
+        "key": "finance_aml.mlp_large",
+        "label": "MLP on per-transaction features, under CKKS and garbled circuits",
+        "metric": {
+          "baseline": 0.6323,
+          "baseline_source": "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17). Same metric and corpus, different protocol: that figure uses a 60/20/20 split by transaction order and IBM's Graph Feature Preprocessor updated over the test window; this project tests on the last 30 percent of transactions (fit 56, validation 14) with its own graph features, whose structural block is fitted on the training window.",
+          "ceiling": 0.7581,
+          "ceiling_source": "Multi-FraudGT, the best AML Small HI row of Table 16 ('Minority class F1 scores (%) for six AML datasets') in Bilgi and Atasu, 'MEGA: Message Passing Neural Networks for Multigraphs with EdGe Attributes', TMLR (08/2026), arXiv:2412.00241v3: 75.81 +/- 0.75. In the same column the paper's own MEGA-PNA scores 74.01 +/- 1.55 and MEGA-GenAgg 74.48 +/- 0.84, and Multi-PNA 67.35 +/- 2.89; Small HI is the one AML dataset of the six where Multi-FraudGT is ahead of MEGA-PNA.",
+          "companion": "auprc",
+          "comparison_caveat": "",
+          "display": "minority-class F1 (laundering)",
+          "name": "minority_class_f1"
+        },
+        "notes": "The finance page's non-linear model under encryption, the linear layers under CKKS and the ReLUs and argmax in garbled circuits. Trained on the fit window with class weights, on labels rather than distilled; scaling and seed chosen on the validation window, every seed's figure in the record. Its features see transactions up to the end of their batch of 2,048, as the Graph Feature Preprocessor paper processes them. Different from `finance_aml.gnn`, the never-trained Multi-PNA+EU card, which is a target architecture and not a model that runs here.",
+        "onnx_domains": [
+          "ai.onnx"
         ],
         "params": null,
         "pin_withdrawn_reason": null,

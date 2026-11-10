@@ -4067,3 +4067,24 @@ Deployed from merged `main`, bundle `index-CeQi94Vk.js`, read in Chrome on the p
 | each published point, on hover | Pan et al. at 23.55, 29.71 and 34.45 dB and Sun et al. at 31.32 dB, each beside the bounds at that loss |
 | the page | no console error and no horizontal overflow |
 
+### PR #25 on the deployed site (2026-11-09)
+
+Deployed from merged `main`, bundle `index-lyVicXRc.js`, read in Chrome on the public site.
+
+| where | read |
+|---|---|
+| the finance page, published model | the run's `published_model_sha256` equals the value recorded for the file it fetched |
+| the network, one run on each of five pipeline pages | finance 37 requests, genomics 10, telecom 23, satellite 32, DeFi 15; every one a GET, to the site or to the model host and its storage |
+
+### PR #26 on the deployed site (2026-11-10)
+
+Deployed from merged `main`, bundle `index-BUsEwUaY.js`, read in Chrome on the public site with Inference set to "QCNN (trained, under CKKS)".
+
+| page | products encrypted | evaluation | up, down | wall-clock | largest difference from the circuit in the clear |
+|---|---|---|---|---|---|
+| finance | 81 in 1 ciphertext | 1 inner product, 12 rotations | 0.39 MB, 0.39 MB | 307 ms | $`3.1 \times 10^{-10}`$ |
+| medical | 6,561 in 2 ciphertexts | 1 inner product, 12 rotations | 0.79 MB, 0.39 MB | 594 ms | $`1.3 \times 10^{-9}`$ |
+| telecom | 2,187 in 1 ciphertext | 8 inner products, 96 rotations | 0.39 MB, 3.15 MB | 709 ms | $`5.7 \times 10^{-10}`$ |
+
+On each page the run recorded `primary_inference_backend` as `qcnn-ckks`, the decrypted class equalled the class of the same circuit in the clear, and the panel listed the held-out figures beside the classical comparators (finance minority-class F1 0.2286, logistic regression 0.4390, the 81 products 0.4889; medical accuracy 0.9535, 0.9535, 0.9419; telecom macro F1 0.9444, 0.9764, 0.9723). The circuit card drew finance's 90 gates, medical's 206 and telecom's 895, the last in a box that scrolls; no page scrolled sideways and the console held no error.
+

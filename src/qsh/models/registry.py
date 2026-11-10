@@ -1110,7 +1110,26 @@ _SPECS: tuple[ModelSpec, ...] = (
                "plaintext; each browser run measures `encrypted_agreement`, CKKS against plaintext "
                "for the model it encrypts."),
     ),
-    # ---------------- medical / federated ----------------
+    # The medium and large encrypted tiers, trained (Round 86, audit item B19). After the student, because the browser takes
+    # the first t1_crypto model as the use case's student.
+    ModelSpec(
+        usecase="finance_aml",
+        tier="t1_crypto",
+        key="finance_aml.mlp_large",
+        label="MLP on per-transaction features, under CKKS and garbled circuits",
+        architecture="MLP [111, 128, 64, 2], ReLU: the 32 per-account AMLworld features plus 79 per-transaction window features, in batches of 2,048",
+        params=None,
+        dataset=DS_AMLWORLD,
+        metric=M_AML,
+        runs_encrypted=True,
+        artifacts=_STUDENT_ARTIFACTS,
+        hf_repo="qsh-finance-aml-mlp-large",
+        eval_split=("the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, the last 30 percent of the "
+                    "transactions in time order, enriched to 2 percent laundering, with the 79 per-transaction features added"),
+        notes=("The finance page's non-linear model under encryption, the linear layers under CKKS and the ReLUs and argmax in garbled circuits. Trained on the fit window with class weights, on labels rather than distilled; "
+               "scaling and seed chosen on the validation window, every seed's figure in the record. Its features see transactions up to the end of their batch of 2,048, as the Graph Feature Preprocessor paper processes them. "
+               "Different from `finance_aml.gnn`, the never-trained Multi-PNA+EU card, which is a target architecture and not a model that runs here."),
+    ),
     ModelSpec(
         usecase="medical_fl",
         tier="t2_industry",
@@ -1569,6 +1588,7 @@ def achieved(key: str) -> dict | None:
 #: whether the graph is browser-runnable -- and two copies would drift on the first new model.
 ARTIFACT_DIRS: dict[str, str] = {
     "finance_aml.gbm": "models/finance_aml_gbm",
+    "finance_aml.mlp_large": "models/finance_aml_mlp_large",
     "medical_fl.resnet18": "models/medical_breastmnist_resnet18",
     "medical_fl.resnet50": "models/medical_breastmnist_resnet50",
     "genomics.prs": "models/genomics_prs",

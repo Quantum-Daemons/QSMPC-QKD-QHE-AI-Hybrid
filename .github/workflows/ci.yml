@@ -176,6 +176,8 @@ jobs:
         run: |
           pip install ruff
           ruff check src/qsh/models scripts/train scripts/publish_hf.py scripts/data
+          # Undefined names over every Python file: a NameError waiting on a path no test runs.
+          ruff check --select F821 src tests api scripts
 
       - name: Lint (advisory, whole tree)
         continue-on-error: true
@@ -335,6 +337,11 @@ jobs:
       - name: The CNN student under MPC
         working-directory: web
         run: npm run check:hybrid-cnn
+
+      # The finance page's published MLPs under MPC: the module the page runs, against the logits the trainer recorded.
+      - name: The finance MLPs under MPC
+        working-directory: web
+        run: npm run check:hybrid-mlp
 
       # The trained QCNN with its input under CKKS: the module the page runs, against the circuit in the clear.
       - name: The trained QCNN under CKKS

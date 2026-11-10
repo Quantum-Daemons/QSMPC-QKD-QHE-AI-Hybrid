@@ -57,6 +57,21 @@ measures cost only, and the Rate-1 module is a transport with no `Eval`. There i
 boundary** on that side, and nothing there does a secure comparison: QSMS is a secure sum, and no flow runs the
 QOT sketch.
 
+### The published finance MLP
+
+`finance_aml.mlp_large` is a trained MLP, $`[111, 128, 64, 2]`$ with ReLU (22,722 parameters), on the 32 per-account features of the teacher plus 79 per-transaction features: fan-in and fan-out, the spread of amounts and the time since each account's last edge in windows of one hour to three days, and scatter-gather counts, computed in the open by `scripts/train/finance_aml_fan.py`. Like the Graph Feature Preprocessor paper's pipeline, each transaction's features see every transaction up to the end of its batch of 2,048, so this is micro-batch scoring and not a per-transaction real-time decision. No label is read, and strictly causal windows reach F1 0.196 on the booster where these reach 0.401.
+
+Measured on the whole held-out window (1,523,504 rows, 2,321 of them laundering, the last 30 percent in time order), with the threshold and the scaling and seed chosen on the validation window:
+
+| Model | Features | Minority-class F1 | AUPRC |
+|---|---|---|---|
+| CKKS linear student (`finance_aml.student`) | 32, distilled | 0.0614 | - |
+| Gradient-boosting teacher (`finance_aml.gbm`) | 32 | 0.1519 | 0.1233 |
+| XGBoost on the MLP's own inputs | 111 | 0.4006 | 0.3358 |
+| **This MLP, seed chosen on validation** | 111 | **0.3350** (median of the five seeds 0.3696, range 0.335 to 0.405) | **0.3059** |
+
+Against the published figures on this corpus: on HI-Small the Graph Feature Preprocessor paper (Blanusa et al., ICAIF 2024, Table 5) reports 19.75 percent for XGBoost on basic features, 56.88 to 59.71 with fan-in and fan-out, and 63.23 to 64.77 with its other features; Altman et al. (NeurIPS 2023) report 63.23 for GFP + XGBoost and 56.77 for PNA; Egressy et al. (AAAI 2024) 68.16 for Multi-PNA+EU, the architecture the registry's `finance_aml.gnn` card names and this project has never trained; and Bilgi et al. (arXiv:2610.18054) 63.72 in plaintext for a GNN they also run under CKKS, at 5.31 s per transaction on a consumer GPU with bootstrapping at $`N = 65536`$. This MLP has no cycle enumeration or message passing, and its split is 56/14/30 rather than their 60/20/20, so 0.34 is not a reproduction of those figures. It is a non-linear model that runs in a tab under CKKS and garbled circuits. On one held-out row, the page runs it in about 5 s with 192 ReLUs in garbled circuits, and the classes and logits match the clear network ([what it hides](threat-model.md#the-finance-mlp-under-mpc)).
+
 ### The trained QCNN under CKKS
 
 Finance, medical and telecom offer `QCNN (trained, under CKKS)` beside the plaintext `QCNN (trained, not encrypted)`. The readout is exactly $`\langle O\rangle = \sum_P c_P\,\phi_P(x)`$ over $`P \in \{I, X, Z\}^{\otimes n}`$, because the encoding is a product of real states ($`\phi_I = 1`$, $`\phi_X = \sin\theta`$, $`\phi_Z = \cos\theta`$ per wire, $`c_P = 2^{-n}\operatorname{Tr}(AP)`$ with $`A`$ the real part of $`U^\dagger O U`$ on the encoded basis states). So the client encrypts $`3^n`$ products and the server takes one inner product per readout: one multiplicative level at the frozen parameters, power-of-two rotation keys only, no relinearisation key.
@@ -77,9 +92,7 @@ The classical comparators are level or ahead on all three, which matches Bowles,
 
 The benchmark's architecture is **per use case**, not a single generic shape
 (`qsh.benchmark.runner.usecase_arch_layers` / `usecase_arch_specs`, mirrored client-side). Its
-lightweight row is the trained linear model; its medium and large rows cost representative hidden-layer
-shapes from `config.tier_architectures`, labelled "tabular fraud MLP" for finance, and **no use case
-trains such an MLP**: finance's encrypted student is a 33-parameter logistic regression. Genomics
+lightweight row is the trained linear model; its medium and large rows cost the use case's trained model where one exists: **finance** the one published MLP, `finance_aml.mlp_large`, whichever size is asked for ([below](#the-published-finance-mlp)); **medical** an MLP or a two-block CNN trained in the run on its own rows; and a use case with neither falls back to generic shapes with random weights, labelled as cost only. Genomics
 has no hidden layer at any size, because what runs is one weighted sum over its scored variants.
 **Medical** is the
 exception, a **genuine small CNN**: in the browser it reads a tabular (WDBC) row tiled to the image
@@ -110,7 +123,7 @@ stays exact. The benchmark shows the architecture label + parameter count.
 The pages have **no lightweight / medium / large** selector either; the CLI's `--model-size` and the
 config's `tier_architectures` still exist and produce the rows below. The selector scaled invented
 architectures - a "tabular fraud MLP" at 18/850/9,538 parameters against a real distilled student of
-33 - so the sizes described models nothing had trained. What survives of the idea: **the measured
+33 - so the sizes described models nothing had trained. Finance's page has one trained MLP and one switch for it. What survives of the idea: **the measured
 path runs end to end for real**
 (CKKS-FHE linear + MPyC-MPC non-linear); **large is clearly labelled *projected*** - extrapolated from the
 measured medium per-op cost (MAC / comparison counts) so the page stays responsive. Results on the
@@ -242,7 +255,8 @@ data that trained a model is weaker (Round 86, review PI-16):
 - every recorded `git_sha` ends in `-dirty`: each model was trained from a working tree with uncommitted
   changes, so its commit alone does not reproduce it;
 - of the students, only `satellite_comms.student` records a `git_sha`, since Round 86 gave it a trainer
-  of its own, and only `finance_aml.gbm` records a digest of its training data (`data_digest`);
+  of its own, and only `finance_aml.gbm` and `finance_aml.mlp_large` record a digest of their training data
+  (`data_digest`);
 - the ids recorded before 2026-11-02 name commits of the history before it was rewritten, which is kept
   privately with a map from each old commit to its new one.
 

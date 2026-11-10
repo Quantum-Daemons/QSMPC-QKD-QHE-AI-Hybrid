@@ -521,10 +521,10 @@ def test_the_models_doc_states_what_their_records_say_about_provenance() -> None
     assert students and with_sha == ["satellite_comms.student"], (
         f"the students that record a git_sha changed ({with_sha}): update the provenance list")
     digests = sorted(k for k, v in metrics.items() if isinstance(v, dict) and v.get("data_digest"))
-    assert digests == ["finance_aml.gbm"], f"data digests changed ({digests}): update the provenance list"
+    assert digests == ["finance_aml.gbm", "finance_aml.mlp_large"], f"data digests changed ({digests}): update the provenance list"
     doc = _flat(_read(DOCS / "models-and-benchmarks.md"))
     for needle in ("every recorded `git_sha` ends in `-dirty`",
                    "of the students, only `satellite_comms.student` records a `git_sha`",
-                   "only `finance_aml.gbm` records a digest of its training data",
+                   "only `finance_aml.gbm` and `finance_aml.mlp_large` record a digest of their training data",
                    "name commits of the history before it was rewritten"):
         assert needle in doc, f"the provenance list lost {needle!r}"

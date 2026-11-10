@@ -417,7 +417,7 @@ def _hybrid_bench_row(ctx, reg, x, base_model):
     import numpy as np
 
     from ..benchmark.classical_mpc_fhe import run_hybrid
-    from ..benchmark.runner import _params, _project_large, usecase_arch_layers, usecase_arch_specs
+    from ..benchmark.runner import _params, _project_large, published_tier, trained_tabular_tier, usecase_arch_layers, usecase_arch_specs
 
     uc = ctx.usecase
     model_size = ctx.config.get("model_size", "medium")
@@ -446,9 +446,14 @@ def _hybrid_bench_row(ctx, reg, x, base_model):
                 n_in=int(np.prod(in_shape)), img=in_shape)
             row = run_hybrid(specs, img.reshape(1, -1), y1, backend_name=backend_name,
                              workload="cnn", model_size="lightweight", n_samples=1)
-        elif model_size == "large":                    # 2-block CNN, projected from a medium calibration
-            med_specs = (smallcnn_to_specs(cnn_model, in_shape) if cnn_model is not None
-                         else random_cnn_specs(in_shape, channels=(4,), seed=seed))
+        elif model_size == "large" and cnn_model is not None:   # the 2-block CNN the federated stage trained for this tier
+            specs = smallcnn_to_specs(cnn_model, in_shape)
+            label = f"image-classifier CNN (MedMNIST {in_shape[1]}x{in_shape[2]}, 2-block, trained) · large"
+            n_params = _params(specs)
+            row = run_hybrid(specs, img[None], y1, backend_name=backend_name,
+                             workload="cnn", model_size="large", n_samples=1)
+        elif model_size == "large":                    # no trained model in this run: 2-block CNN, projected from a medium calibration
+            med_specs = random_cnn_specs(in_shape, channels=(4,), seed=seed)
             large_specs, label, n_params = usecase_arch_specs(uc, "large", workload="cnn",
                                                               seed=seed, img=in_shape)
             med = run_hybrid(med_specs, img[None], y1, backend_name=backend_name,
@@ -465,7 +470,30 @@ def _hybrid_bench_row(ctx, reg, x, base_model):
         row.model_params = n_params
         return row
 
-    # ---- dense path (tabular use cases — unchanged) ----
+    # ---- the trained tiers (Round 86, audit B19): a model someone would run, measured, not random weights projected ----
+    tier = None if model_size == "lightweight" else published_tier(uc, model_size)
+    if tier is not None:
+        index = seed % len(tier["rows"])
+        row = run_hybrid(tier["layers"], tier["rows"][index][None], np.zeros(1, dtype=int), backend_name=backend_name,
+                         workload=workload, model_size=model_size, n_samples=1)
+        row.model_arch = tier["label"]
+        row.model_params = tier["n_parameters"]
+        row.extra.update(trained_model=tier["key"], fixture_row=index, fixture_label=int(tier["labels"][index]))
+        return row
+    if uc == "medical_fl" and model_size != "lightweight" and ctx.data.get("X") is not None:
+        from ..config import get_config
+
+        hidden = get_config().benchmark.tier_architectures[uc]["hidden"][model_size]
+        x_train, y_train = np.asarray(ctx.data["X"], dtype=float), np.asarray(ctx.data["y"])
+        trained, held_out = trained_tabular_tier(x_train, y_train, hidden, seed=seed)
+        row = run_hybrid(trained, np.atleast_2d(np.asarray(x, dtype=float)), np.zeros(1, dtype=int), backend_name=backend_name,
+                         workload=workload, model_size=model_size, n_samples=1)
+        row.model_arch = f"MLP {[x_train.shape[1], *hidden, 2]}, trained in this run on WDBC · {model_size}"
+        row.model_params = _params(trained)
+        row.extra.update(trained_in_run=True, held_out_accuracy=round(held_out, 4))
+        return row
+
+    # ---- dense path (no trained tier for this use case: generic shapes, random weights, for cost only) ----
     x1 = np.atleast_2d(np.asarray(x, dtype=float))
     y1 = np.zeros(len(x1), dtype=int)
     n_in = x1.shape[1]

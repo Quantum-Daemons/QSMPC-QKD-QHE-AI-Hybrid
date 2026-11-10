@@ -12,8 +12,7 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import {
   benchCfg, costPerOp, dataCfg, demoFeatureDim, genericArchitecture, idsCfg, lendingCfg, medicalCnn, qkdCfg, qrngCfg,
   demoSample, federatedCfg, fheCfg, multiPartyPsiCfg, qsmpcCfg, quantumAdvantageCfg, studentModel, studentParamCount,
-  tierArchitectures, webCfg, workloadMultipliers,
-} from "./config";
+  tierArchitectures, webCfg, workloadMultipliers, modelsFor } from "./config";
 import { CKKS_FLOOD_BITS, encryptedConv2d, encryptedHeldOutAgreement, encryptedLinear, encryptedLinearBatch,
   encryptedStudentInference, warmFHE, type CnnStudentWeights } from "./clientFHE";
 import type { HybridCnnResult } from "./clientHybridCnn";
@@ -45,6 +44,7 @@ import { isClientDemo } from "./demoMode";
 import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
 import type { MultiPsiResult } from "./clientMultiPsi";
 import { asJson, checkPinned, HubFileRefused } from "./pinnedFetch";
+import type { MlpWeights } from "./clientHybridMlp";
 import type { LendingMarketReport } from "./lending/report";
 import type { KeyholderSetup } from "./lending/privateCheck";
 import type { TaskInit } from "./lending/tasks";
@@ -1008,6 +1008,54 @@ async function surfaceQcnnUnderCkks(stage: string, usecase: string, w: QcnnWeigh
     metric(stage, "qcnn_ckks_ran", 0);
     emit("log", stage, `The QCNN under CKKS did not finish: ${(e as Error).message}. The class reported here is the plaintext circuit's and is not encrypted.`);
     return false;
+  }
+}
+
+/** What a published MLP's run under MPC reports (Round 86): the card reads this. */
+export interface MpcMlpReport {
+  key: string; nFeatures: number; result: HybridCnnResult; ranIn: string; rowIndex: number; rowCount: number; rowLabel: number; expectedLogits: number[]; classes: Record<string, string>;
+}
+
+/** One held-out row through a published MLP under CKKS and garbled circuits, off the page's thread, reported whichever way it ends. */
+async function runMlpUnderMpc(stage: string, seed: number, emit: (t: "log", s: string, m: string) => void,
+                              metric: (s: string, k: string, v: number | string) => void, artifacts: Record<string, unknown>): Promise<void> {
+  const key = "finance_aml.mlp_large";
+  const spec = modelsFor("finance_aml").find((m) => m.key === key);
+  let weights: MlpWeights | null = null;
+  try {
+    if (!spec?.hf_repo_id || !spec.hf_revision) throw new Error("it is not pinned to a revision");
+    const res = await fetch(`https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/weights.json`, { mode: "cors", signal: AbortSignal.timeout(30_000) });
+    if (!res.ok) throw new Error(`the Hub answered HTTP ${res.status}`);
+    const bytes = await res.arrayBuffer();
+    await checkPinned(bytes, spec.file_sha256?.["weights.json"], `${key} weights.json`);
+    weights = asJson<MlpWeights>(bytes);
+  } catch (e) {
+    metric(stage, "mpc_mlp_ran", 0);
+    emit("log", stage, `The MLP under MPC did not run: ${key} could not be used (${(e as Error).message}).`);
+    return;
+  }
+  const n = weights.fixtures.rows.length, index = ((seed % n) + n) % n;
+  const { hybridMlpInferenceOffThread } = await import("./clientHybridMlp");
+  emit("log", stage, `The MLP under MPC: ${key}, held-out row ${index} of ${n}, in a Web Worker. CKKS for the linear layers, garbled circuits for the ReLUs and the argmax.`);
+  try {
+    const r = await hybridMlpInferenceOffThread(weights, weights.fixtures.rows[index]);
+    const expected = weights.fixtures.logits[index];
+    artifacts.mpc_mlp = { key, nFeatures: weights.n_features, result: r, ranIn: r.ranIn, rowIndex: index, rowCount: n, rowLabel: weights.fixtures.labels[index], expectedLogits: expected, classes: weights.classes } satisfies MpcMlpReport;
+    metric(stage, "mpc_mlp_ran", 1);
+    metric(stage, "mpc_mlp_model", key);
+    metric(stage, "mpc_mlp_class", r.prediction);
+    metric(stage, "mpc_mlp_matches_clear", r.matchesClear ? 1 : 0);
+    metric(stage, "mpc_mlp_relu_count", r.reluCount);
+    metric(stage, "mpc_mlp_and_gates", r.andGates);
+    metric(stage, "mpc_mlp_gc_mb", r2(r.gcBytes / 1e6));
+    metric(stage, "mpc_mlp_total_ms", r2(r.totalMs));
+    metric(stage, "mpc_mlp_statistical_distance_log2", r2(r.statisticalDistanceLog2));
+    metric(stage, "mpc_mlp_logit_max_abs_error", r.logitMaxAbsError);
+    emit("log", stage, `MLP under MPC: class ${r.prediction} from the 2PC argmax${r.matchesClear ? ", as the same network gives in the clear" : `, and the same network gives ${r.clearPrediction} in the clear`}. `
+      + `${r.reluCount} ReLUs in garbled circuits, ${r2(r.gcBytes / 1e6)} MB, ${r2(r.totalMs / 1000)} s in ${r.ranIn}. Both parties are in this tab, so the separation is notional, and only that allows the comparison.`);
+  } catch (e) {
+    metric(stage, "mpc_mlp_ran", 0);
+    emit("log", stage, `The MLP under MPC did not finish: ${(e as Error).message}`);
   }
 }
 
@@ -3645,6 +3693,7 @@ export function runClientPipeline(
             : `garbled-circuit argmax DISAGREES with the same argmax in the clear: ${real.prediction} `
               + `against ${real.mpcClearIndex}. Treat this run's MPC result as unverified.`);
           if (usecase === "medical_fl" && config.mpc_cnn) await runStudentUnderMpc(stage, usecase, seed, emit, metric, artifacts);
+          if (usecase === "finance_aml" && config.mpc_mlp) await runMlpUnderMpc(stage, seed, emit, metric, artifacts);
         } else {
           // Honest last resort, and it names the half that failed: node-seal not loading (no WASM,
           // say), or the garbled-circuit protocol not completing, which includes it ABORTING on a

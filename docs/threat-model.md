@@ -337,6 +337,12 @@ margin and not a worst-case bound: Guo et al. (USENIX Security 2024) recover key
 - **Not post-quantum as a whole.** The CKKS half is at these parameters, and Polytune's OT extension runs over Chou-Orlandi base OTs on ristretto255, which rest on discrete log.
 - **No protection against queries.** Anyone who can run inference learns the class, and model extraction by repeated queries is out of scope in every source read.
 
+## The finance MLP under MPC
+
+`web/src/lib/clientHybridMlp.ts` runs one held-out row through the published MLP in the protocol shape of the medical CNN above, without the convolution: the client scales the row and encrypts it, the server evaluates each dense layer under CKKS and masks every slot, a garbled circuit applies the ReLUs on additive shares, and the last layer's shares go into the 2PC argmax. The same limits apply, and the page prints them: both parties run in this tab, the protocol is semi-honest, and the masks are bounded reals that hide a value only statistically.
+
+**What the row is.** A per-transaction feature for this model sees transactions up to the end of its batch of 2,048, as the Graph Feature Preprocessor paper processes them, so a real deployment of it would decide per micro-batch. The features are computed in the clear by the bank that holds the transactions: encryption protects them from the party with the weights, not from the bank that computes them, and building features across banks is a separate problem this demo does not address.
+
 ## The PSI among banks under MPC
 
 The finance page's main PSI is two-party, RFC 9497's OPRF. Beside it, when ticked (the default), the page runs a PSI among three to five banks: one garbled circuit under Polytune's WRK17b protocol with every bank a party (`psi_source` in `wasm/qsh-mpc/src/lib.rs`).

@@ -61,9 +61,12 @@ class FederatedTrainingStage(Stage):
             img = ctx.data["image"]
             bus.log(f"federated training an image-classifier CNN across {n_hosp} hospitals on real "
                     f"MedMNIST images (secure aggregation on)", self.name)
+            # The large tier is a two-block CNN, trained here like the one-block one rather than random weights priced (Round 86).
+            first = int(ctx.config.get("cnn_channels", 4))
+            two_blocks = ctx.config.get("model_size") == "large"
             mk = {"in_ch": int(img.shape[0]), "img_size": int(img.shape[1]),
-                  "channels": (int(ctx.config.get("cnn_channels", 4)),), "hidden": 16,
-                  "one_block": True, "pool": "avg"}
+                  "channels": (first, 2 * first) if two_blocks else (first,), "hidden": 16,
+                  "one_block": not two_blocks, "pool": "avg"}
             res, model = federated_train(
                 parts, kind="cnn", rounds=rounds, local_epochs=1, lr=0.05,
                 eval_data=(X[cut:], y[cut:]), secure_aggregation=True, model_kwargs=mk,

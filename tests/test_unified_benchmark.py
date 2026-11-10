@@ -43,10 +43,19 @@ def test_inference_usecase_unifies_run_and_benchmark(usecase):
     assert "benchmark_result" in ctx.artifacts["summary"]["artifacts"]
 
 
-def test_large_tier_is_projected():
-    _, ctx = _run("finance_aml", {"model_size": "large", "seed": 0})
+def test_a_large_tier_with_no_trained_model_is_projected():
+    """Genomics has no trained tier, so its large row is extrapolated from a measured medium one, and says so."""
+    _, ctx = _run("genomics", {"model_size": "large", "seed": 0})
     row = ctx.artifacts["mpc_fhe_row"]
     assert row["projected"] is True
+    assert row["fhe_linear_ms"] > 0 and row["mpc_nonlinear_ms"] > 0
+
+
+def test_a_large_tier_with_a_trained_model_is_measured():
+    """Finance's is the published MLP since Round 86 (tests/test_r86_trained_tiers.py), so the row is a measurement."""
+    _, ctx = _run("finance_aml", {"model_size": "large", "seed": 0})
+    row = ctx.artifacts["mpc_fhe_row"]
+    assert row["projected"] is False
     assert row["fhe_linear_ms"] > 0 and row["mpc_nonlinear_ms"] > 0
 
 

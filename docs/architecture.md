@@ -263,7 +263,7 @@ transport, because no quantum ratio can share a column with the CKKS byte ratio
 ([what ct/pt measures](models-and-benchmarks.md#what-ctpt-measures)). The pages' **lightweight / medium / large** model-size selector was removed, because it scaled
 invented MLPs rather than the models that exist; `tier_architectures` and `workload_multipliers` remain
 in the config for the CLI benchmark's `--model-size` and `--workload`. In the browser, the benchmark costs
-the encrypted student where a use case has one; the full deployment's dense path on finance still costs a random-weight MLP ([`models-and-benchmarks.md`](models-and-benchmarks.md)).
+the encrypted student where a use case has one, and the full deployment's dense path on finance costs the one published MLP ([`models-and-benchmarks.md`](models-and-benchmarks.md#the-published-finance-mlp)).
 
 ## SPA shape
 Overview, Introduction & Value, Validations, E2E Orchestration (generic "run any pipeline"), Use Cases

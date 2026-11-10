@@ -54,7 +54,9 @@ SHIPPED = sorted(glob.glob(str(REPO / "models" / "*" / "eval_sample.json"))) + [
         "satellite/opssat_segments.json", "finance/real_2d.json", "finance/student_heldout.json",
         "finance/paysim_sample.json", "genomics/real_2d.json", "genomics/pgs000072_breast_cancer.json",
         "telecom/real_2d.json", "telecom/student_heldout.json", "telecom_nidd/real_2d.json")] + [
-    str(REPO / "walkthroughs" / "public" / "nidd_copies_excerpt.json")]
+    str(REPO / "walkthroughs" / "public" / "nidd_copies_excerpt.json")] + [
+    # A weights file holds fitted numbers, which raise no such question, unless it also holds the rows they are checked on. Those are data like any other (Round 86).
+    str(p) for p in sorted(REPO.glob("models/*/weights.json")) if "fixtures" in json.loads(p.read_text())]
 
 
 def _head(licence: str) -> str:

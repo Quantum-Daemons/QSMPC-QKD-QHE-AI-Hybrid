@@ -53,6 +53,10 @@ def token() -> str:
     return json.loads(path.read_text())["key"]
 
 
+#: Trained, not distilled, so a card must not call them distilled students.
+TIER_MODELS = {"finance_aml.mlp_large"}
+
+
 def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
     """A model card built from the registry, so the card cannot drift from what the code believes."""
     m = spec.metric
@@ -78,7 +82,13 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
         "",
         f"Part of [QSMPC-QKD-QHE-AI-Hybrid]({REPO_URL}),",
         "a quantum-safe orchestration demo."]
-    if spec.runs_encrypted:
+    if spec.key in TIER_MODELS:
+        # Trained on labels, not distilled, and costed as a CKKS and MPC hybrid: the student's paragraph below says neither.
+        body += [f"This is the **published non-linear model** the `{spec.usecase}` page runs under encryption: an MLP on the 32 per-account features of the teacher plus 79 per-transaction",
+                 "window features, trained on the labels with class weights rather than distilled. Its linear layers run under CKKS and its ReLUs and argmax in garbled circuits, and",
+                 "its features see transactions up to the end of their batch of 2,048, as the Graph Feature Preprocessor paper processes them. Its scaling and seed were chosen on the validation window,",
+                 "and the record below carries every seed's figure. `weights.json` also carries 16 held-out rows for checks, under the data's licence."]
+    elif spec.runs_encrypted:
         # "and the demo runs it that way" was true of some students only. The public page encrypts the medical CNN
         # student and, on held-out rows, the finance, telecom and OPS-SAT students (finance since Round 84, when it
         # stopped encrypting a bundled PaySim model in its place), and the Telemanom student under CKKS nowhere.

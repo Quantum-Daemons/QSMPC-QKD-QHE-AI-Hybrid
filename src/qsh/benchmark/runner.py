@@ -84,6 +84,57 @@ def usecase_arch_layers(usecase, model_size: str, *, workload: str = "linear", s
     return layers, label, _params(layers)
 
 
+def published_tier(usecase: str, model_size: str) -> dict | None:
+    """The published trained model a use case's tier costs, with the held-out rows it runs on; None where there is none.
+
+    Finance has one trained MLP on AMLworld's 111 features (`scripts/train/finance_aml_mlp.py`), which both sizes price, so a run costs a model someone would run, on the corpus it was trained
+    on rather than the page's four-column PaySim row.
+    """
+    import json
+    from pathlib import Path
+
+    key = {("finance_aml", "medium"): "finance_aml.mlp_large", ("finance_aml", "large"): "finance_aml.mlp_large"}.get((usecase, model_size))
+    if key is None:
+        return None
+    from ..models import registry
+
+    path = Path(__file__).resolve().parents[3] / registry.ARTIFACT_DIRS[key] / "weights.json"
+    weights = json.loads(path.read_text(encoding="utf-8"))
+    layers = [(np.asarray(layer["weight"], dtype=float), np.asarray(layer["bias"], dtype=float)) for layer in weights["layers"]]
+    scaling = weights["scaling"]
+    centre, scale, clip = np.asarray(scaling["center"], dtype=float), np.asarray(scaling["scale"], dtype=float), float(scaling["clip"])
+    rows = np.clip((np.asarray(weights["fixtures"]["rows"], dtype=float) - centre) / scale, -clip, clip)
+    shape = [layers[0][0].shape[1], *[w.shape[0] for w, _ in layers]]
+    return {"key": key, "layers": layers, "rows": rows, "labels": weights["fixtures"]["labels"], "n_parameters": int(weights["n_parameters"]),
+            "label": f"MLP {shape}, trained on AMLworld HI-Small ({key})"}
+
+
+def trained_tabular_tier(x: np.ndarray, y: np.ndarray, hidden: list[int], *, seed: int = 0, epochs: int = 300) -> tuple[list, float]:
+    """A small MLP trained here on a use case's own rows, and its accuracy on the fifth of them it was not trained on.
+
+    The rows are few enough to train on the CPU in the run. Returns the layers as the hybrid takes them.
+    """
+    import torch
+
+    from ..ai.cnn_layers import dense_mlp
+
+    order = np.random.default_rng(seed).permutation(len(x))
+    cut = int(0.8 * len(x))
+    fit, held = order[:cut], order[cut:]
+    torch.manual_seed(seed)
+    model = dense_mlp(x.shape[1], hidden)
+    opt = torch.optim.AdamW(model.parameters(), lr=3e-3, weight_decay=1e-4)
+    xf, yf = torch.tensor(x[fit], dtype=torch.float32), torch.tensor(y[fit], dtype=torch.long)
+    for _ in range(epochs):
+        opt.zero_grad(set_to_none=True)
+        torch.nn.functional.cross_entropy(model(xf), yf).backward()
+        opt.step()
+    with torch.no_grad():
+        accuracy = float((model(torch.tensor(x[held], dtype=torch.float32)).argmax(1).numpy() == y[held]).mean())
+    layers = [(m.weight.detach().numpy().astype(float), m.bias.detach().numpy().astype(float)) for m in model if isinstance(m, torch.nn.Linear)]
+    return layers, accuracy
+
+
 def _tier_mlp(model_size: str, seed: int = 0, base=None, n_in: int = 30):
     """Generic tiered MLP (standalone benchmark). Per-use-case shapes go through ``usecase_arch_layers``."""
     layers, _, _ = usecase_arch_layers(None, model_size, seed=seed, base=base, n_in=n_in)

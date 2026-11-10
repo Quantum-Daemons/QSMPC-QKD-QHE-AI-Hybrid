@@ -40,6 +40,19 @@ def small_medmnist_cnn(in_ch: int = 1, n_classes: int = 2, img_size: int = 14,
                     img_size=img_size, hidden=hidden, one_block=(len(channels) == 1))
 
 
+def dense_mlp(n_in: int, hidden: list[int], n_classes: int = 2):
+    """Hidden layers with ReLUs and a linear head: the shape the hybrid runs a dense model in."""
+    import torch.nn as nn
+
+    layers: list = []
+    last = n_in
+    for h in hidden:
+        layers += [nn.Linear(last, h), nn.ReLU()]
+        last = h
+    layers.append(nn.Linear(last, n_classes))
+    return nn.Sequential(*layers)
+
+
 def smallcnn_to_specs(model, in_shape):
     """Convert a trained ``SmallCNN`` into a hybrid spec list (ConvSpec/PoolSpec/FlattenSpec/DenseSpec).
 

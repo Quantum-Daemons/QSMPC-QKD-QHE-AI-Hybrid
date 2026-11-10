@@ -683,14 +683,18 @@ class BenchmarkConfig:
     # conversion with every slot masked (400 draws, worst case), 8.8e-7 at 2^30 against 3.8e-5 at
     # 2^36 and 6.3e-4 at 2^40. (Round 75's scalar mask, slot 0 only: 5e-7, 8e-6 and 2e-4.)
     mpc_mask_bits: int = 30
-    # per-use-case architectures (web-grounded). lightweight === the trained linear model (faithful SHAP);
-    # medium/large are representative hidden-layer shapes. The encrypted hybrid preserves the plaintext
-    # decision for any weights, so the metric is FHE-linear/MPC-non-linear COST + fidelity, not task SOTA.
+    # Per-use-case shapes, and since Round 86 every finance and medical tier is a model that was trained: lightweight is the
+    # trained linear model, finance's medium and large are published MLPs on AMLworld's 32 features (their weights decide the
+    # row, `published_tier`), and medical's are trained in the run. Two hidden layers of 16-256 units are what the tabular
+    # private-inference literature evaluates (references/REFERENCES.md). The hidden sizes here are the shapes those models have.
     tier_architectures: dict = field(default_factory=lambda: {
-        "finance_aml": {"label": "tabular fraud MLP",
-                        "hidden": {"lightweight": [], "medium": [32, 16], "large": [128, 64]}},
-        "medical_fl": {"label": "diagnostic net (MedMNIST-scale)",
-                       "hidden": {"lightweight": [], "medium": [64, 32], "large": [256, 128]}},
+        # One trained MLP (Round 86): both sizes price it, so the CLI's --model-size cannot ask for a shape that was never trained.
+        "finance_aml": {"label": "MLP on AMLworld's 111 per-account and per-transaction features",
+                        "hidden": {"lightweight": [], "medium": [128, 64], "large": [128, 64]}},
+        # 41,090 parameters at [256, 128] would be more than 70 per row of the 569 in WDBC, past the top of what a November 2026
+        # clinical benchmark searched (arXiv:2611.02856, [h, h/2] for h up to 128), and accuracy does not rise with width there.
+        "medical_fl": {"label": "MLP on WDBC",
+                       "hidden": {"lightweight": [], "medium": [64, 32], "large": [128, 64]}},
         # NOT AN MLP (Round 84). This was "genomic risk MLP" with a 64-unit hidden layer at medium,
         # a model nothing trains and the registry calls "not a neural network", priced x33 over the
         # dot product that runs. The score is one weighted sum, so every size prices that shape.
