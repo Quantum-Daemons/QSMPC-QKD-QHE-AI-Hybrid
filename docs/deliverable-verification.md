@@ -9034,6 +9034,7 @@ recorded separately, and nothing here changes the published model.
 | #29 | Labels that overprinted inside closed disclosures, found by a walk of the deployed pages with every disclosure open, fixed; the layout scan now opens every disclosure before it measures |
 | #30 | The dependency table gives each Python dependency's locked version and its release date; the README's images retaken from the deployed site, the DeFi page's added |
 | #31 | The full deployment's Grafana dashboard reads what ran: millisecond latency buckets, the first run drawn, QBER empty until a QKD stage reports, the benchmark per backend and measured rows only |
+| #32 | The trained QCNN's held-out figure is re-scored in the tab over its trainer's own test rows, in a run and from a button on the circuit card, and equals the record on every page |
 
 Findings worth keeping from those:
 

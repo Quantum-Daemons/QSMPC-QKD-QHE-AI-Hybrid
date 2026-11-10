@@ -384,12 +384,18 @@ def test_the_full_deployment_field_is_agreement_with_plaintext() -> None:
 # 9. QCNN log lines
 # ----------------------------------------------------------------------------------------------------
 
-def test_the_qcnn_log_says_its_figures_are_recorded_not_re_scored() -> None:
+def test_the_qcnn_log_says_which_figure_is_re_scored_here_and_which_is_recorded() -> None:
+    """Round 84 made the lines say the figures were recorded, not measured. Round 86 re-scores the circuit's figure in the tab
+    (`web/src/lib/qcnnRescore.ts`), so each line now says that one was re-scored here and the comparators were recorded, through
+    one sentence builder, and says plainly when the rows could not be read and nothing was re-scored."""
     # Log lines are template literals concatenated across source lines; join them before matching.
     code = re.sub(r"`\s*\+\s*`", "", _code("lib/clientCompute.ts"))
     assert "this reports what was measured" not in code
     assert "Reported because it is the measured result" not in code
-    assert code.count("recorded at training time") == 3, (
-        "each QCNN figure line (telecom verdict, telecom fallback, finance/medical) must say its "
-        "figures were recorded at training time")
-    assert code.count("not re-scored in this tab") == 2 and "this tab does not re-score them" in code
+    assert code.count("rescoreSentence(rescore, ") == 3, (
+        "each QCNN figure line (telecom verdict, telecom fallback, finance/medical) must state the circuit's figure through "
+        "rescoreSentence, so the three cannot describe it differently")
+    assert "this tab does not re-score them" not in code and "not re-scored in this tab" not in code
+    assert "logistic regression's was recorded at training time" in code
+    assert "the baseline and logistic regression were recorded at training time" in code
+    assert "so this tab did not re-score it" in code, "a run whose rows could not be read must not claim a re-score"

@@ -908,6 +908,8 @@ export interface QcnnWeights {
   test_macro_f1?: number | null; classical_lr_macro_f1?: number | null;
   all_positive_f1?: number; headline_metric?: string;
   test_accuracy: number; classical_lr_accuracy: number; majority_baseline: number;
+  /** Rows in the trainer's test split, the rows `public/data/<dir>/qcnn_heldout.json` ships for the in-tab re-score. */
+  n_test?: number;
   /** Logistic regression on the same 3^n Pauli products, same split: the classical model with this circuit's hypothesis class. */
   classical_surrogate?: { model: string; n_features: number; test_accuracy: number; test_macro_f1: number | null; test_minority_f1: number | null };
 }

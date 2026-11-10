@@ -1,12 +1,13 @@
 // The trained QCNN's class with its input under CKKS (Round 86). Every number comes from the run or from the weights file, and the caveats are part of the result.
 import type { QcnnCkksReport } from "../lib/clientCompute";
+import type { QcnnRescore } from "../lib/qcnnRescore";
 import StageBadge from "./StageBadge";
 
 const mb = (b: number) => `${(b / 1e6).toFixed(2)} MB`;
 const ms = (v: number) => `${v.toFixed(0)} ms`;
 const f = (v: number | null) => (v == null ? "n/a" : v.toFixed(4));
 
-export default function QcnnCkksPanel({ report }: { report: QcnnCkksReport }) {
+export default function QcnnCkksPanel({ report, rescore }: { report: QcnnCkksReport; rescore?: QcnnRescore | null }) {
   const r = report.result;
   const name = (c: number) => report.classNames?.[c] ?? String(c);
   const { label, qcnn, classical, surrogate, surrogateFeatures, baseline } = report.headline;
@@ -18,6 +19,7 @@ export default function QcnnCkksPanel({ report }: { report: QcnnCkksReport }) {
     ["Wall-clock", `${ms(r.totalMs)}: building the form from the circuit ${ms(r.formMs)}, keys ${ms(r.keyMs)}, encrypting ${ms(r.encryptMs)}, evaluating ${ms(r.evaluateMs)}, decrypting ${ms(r.decryptMs)}`],
     ["Largest difference from the same circuit in the clear", `${r.maxError.toExponential(1)} on the decrypted readout${r.nOutputs > 1 ? "s" : ""}; the form itself, in the clear, ${r.maxIdentityError.toExponential(1)}`],
     [`${label} recorded on the held-out split`, `the trained QCNN ${f(qcnn)}; logistic regression on the same inputs and split ${f(classical)}; ${surrogate == null ? "" : `the same estimator on the same ${surrogateFeatures?.toLocaleString()} products ${f(surrogate)}; `}the constant-predictor baseline ${f(baseline)}. ${verdict}`],
+    ...(rescore ? [[`${rescore.label} re-scored in this tab`, `${rescore.headline.toFixed(4)} over the ${rescore.rows} rows of the trainer's test split, by the circuit this page runs, in ${ms(rescore.ms)}: ${rescore.matchesRecord ? "the value the weights file records" : `DIFFERS from the recorded ${f(rescore.recorded)}`}`] as [string, string]] : []),
   ];
   return (
     <div className="card" style={{ marginTop: 14 }} id="qcnn-ckks">
@@ -38,7 +40,7 @@ export default function QcnnCkksPanel({ report }: { report: QcnnCkksReport }) {
       <p className="muted small" style={{ marginTop: 10 }}>
         This is classical computation under RLWE, not quantum homomorphic encryption. The circuit is simulated classically, as it is when it runs in the clear, and nothing here is faster or more accurate than the
         circuit in the clear: the figures above are that circuit&apos;s. The evaluator knows the circuit, and the {r.nTerms.toLocaleString()} coefficients can be recovered from that many chosen scores, which matters only
-        for a private model. Both parties run in this tab, so the separation is notional. The training-time figures come from the weights file and are not re-scored here.
+        for a private model. Both parties run in this tab, so the separation is notional. {rescore ? "The circuit's held-out figure is re-scored in this tab; logistic regression's, the surrogate's and the baseline's come from the weights file." : "The training-time figures come from the weights file; the held-out rows could not be read, so none is re-scored here."}
       </p>
     </div>
   );

@@ -184,6 +184,10 @@ step "11h/18 The trained QCNN under CKKS"
 ( cd web && npm run --silent check:qcnn-ckks >/tmp/ci_qcnn_ckks.log 2>&1 ) \
   && ok "the trained QCNN under CKKS matches the circuit in the clear" || { bad "the trained QCNN under CKKS"; tail -12 /tmp/ci_qcnn_ckks.log; }
 
+step "11j/18 The trained QCNN re-scored on its held-out rows"
+( cd web && npm run --silent check:qcnn-rescore >/tmp/ci_qcnn_rescore.log 2>&1 ) \
+  && ok "the circuit this page runs reproduces every recorded QCNN figure on its test split" || { bad "the QCNN re-score"; tail -12 /tmp/ci_qcnn_rescore.log; }
+
 step "11c/18 The PSI among banks under MPC"
 ( cd web && npm run --silent check:multi-psi >/tmp/ci_multi_psi.log 2>&1 ) \
   && ok "the PSI among banks matches the intersection in the clear" || { bad "the PSI among banks under MPC"; tail -12 /tmp/ci_multi_psi.log; }

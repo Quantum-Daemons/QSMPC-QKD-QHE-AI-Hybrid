@@ -2,7 +2,8 @@
 // Nothing here is typed in: the blocks and gates come from `recordQcnn`, which runs the simulator's own circuit function against a recording backend.
 import { useEffect, useMemo, useState } from "react";
 import { gateCounts, layoutBlocks, layoutGates, type PlacedBlock, type RecordedQcnn, recordQcnn } from "../lib/circuitDiagram";
-import { loadQcnnWeights } from "../lib/clientCompute";
+import { loadQcnnWeights, rescoreTrainedQcnn } from "../lib/clientCompute";
+import type { QcnnRescore } from "../lib/qcnnRescore";
 import { QOTP_COMPARISON_ROUNDS, type QcnnWeights } from "../lib/quantumSim";
 
 const WIRE = 30, LEFT = 96, TOP = 22;
@@ -117,6 +118,18 @@ export default function QcnnCircuitCard({ usecase, qubits, hasComparison }: { us
   const [open, setOpen] = useState(false);
   const [w, setW] = useState<QcnnWeights | null>(null);
   const [failed, setFailed] = useState("");
+  // The re-score of the recorded held-out figure, on demand: idle, running, a result, or why there is none.
+  const [rescore, setRescore] = useState<QcnnRescore | "running" | { error: string } | null>(null);
+  useEffect(() => { setRescore(null); }, [usecase, qubits]);
+  const runRescore = async (weights: QcnnWeights) => {
+    setRescore("running");
+    try {
+      const r = await rescoreTrainedQcnn(usecase, weights);
+      setRescore(r ?? { error: "the held-out rows could not be read" });
+    } catch (e) {
+      setRescore({ error: (e as Error).message });
+    }
+  };
   useEffect(() => {
     if (!open) return;
     let live = true;
@@ -140,6 +153,22 @@ export default function QcnnCircuitCard({ usecase, qubits, hasComparison }: { us
           <h3 style={{ marginTop: 12 }}>One U block, gate by gate</h3>
           <GateDiagram r={recorded} />
           {w.circuit?.simulability && <p>{w.circuit.simulability}.</p>}
+          <h3 style={{ marginTop: 12 }}>Its held-out figure, re-scored here</h3>
+          <p>
+            The weights file records the circuit&apos;s figure on the trainer&apos;s test split. This runs the circuit above, in this tab, over the {w.n_test ?? "held-out"} rows of that split and
+            computes the same metric.{" "}
+            <button className="btn ghost" type="button" disabled={rescore === "running"} onClick={() => runRescore(w)}>
+              {rescore === "running" ? "Re-scoring..." : "Re-score on the held-out rows"}
+            </button>
+          </p>
+          {rescore && rescore !== "running" && ("error" in rescore
+            ? <p className="muted">Not re-scored: {rescore.error}.</p>
+            : <p id="qcnn-rescore-result">
+                {rescore.label} <b>{rescore.headline.toFixed(4)}</b> over {rescore.rows} rows in {rescore.ms.toFixed(0)} ms{rescore.label === "accuracy" ? "" : ` (accuracy ${rescore.accuracy.toFixed(4)})`}:{" "}
+                <span className={`badge-state ${rescore.matchesRecord ? "done" : "error"}`} style={{ display: "inline-block" }}>
+                  {rescore.matchesRecord ? "the value the weights file records" : `DIFFERS from the recorded ${rescore.recorded ?? "n/a"}`}
+                </span>
+              </p>)}
         </>)}
         {hasComparison && (<>
           <h3 style={{ marginTop: 12 }}>The QSMPC-FHE comparison circuit</h3>
