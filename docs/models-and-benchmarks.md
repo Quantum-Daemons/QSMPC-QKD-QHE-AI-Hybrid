@@ -88,6 +88,8 @@ Measured in Node on the shipped weights (`npm run check:qcnn-ckks`, the module t
 
 The classical comparators are level or ahead on all three, which matches Bowles, Ahmed and Schuld (arXiv:2403.07059). Nothing here claims a quantum advantage. The circuit diagram on each of those pages (`Quantum circuits on this page`) is drawn from a recording of the circuit function, and the gates it draws are replayed against the simulator in the same check.
 
+**The QCNN column is re-scored in the tab** (Round 86). Until then the pages printed it from the weights file and said so. Each page now ships its circuit's test rows, `public/data/<dir>/qcnn_heldout.json`: the last 15 percent of the trainer's seed-0 shuffle, in raw units, written by `scripts/data/build_qcnn_heldout.py` only after the trainer's own circuit reproduces every recorded figure from them. A run with a QCNN selected, and the `Re-score on the held-out rows` button in the circuit card, run the page's circuit over every row and compute the same metric: medical 0.9535 over 86 rows, finance 0.2286 over 600, telecom 0.9444 over 480 (and 0.9679 at 7 wires), each equal to the record, in about 10 to 170 ms. `npm run check:qcnn-rescore` asserts the equality for every served artifact and that one flipped label breaks it. The logistic-regression columns are still read from the weights files.
+
 ### Per-use-case architectures
 
 The benchmark's architecture is **per use case**, not a single generic shape

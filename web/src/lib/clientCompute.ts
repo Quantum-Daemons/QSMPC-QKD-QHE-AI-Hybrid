@@ -45,6 +45,7 @@ import { isClientDemo } from "./demoMode";
 import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
 import type { MultiPsiResult } from "./clientMultiPsi";
 import { asJson, checkPinned, HubFileRefused } from "./pinnedFetch";
+import { loadQcnnHeldOut, rescoreQcnn, type QcnnRescore } from "./qcnnRescore";
 import type { MlpWeights } from "./clientHybridMlp";
 import type { LendingMarketReport } from "./lending/report";
 import type { KeyholderSetup } from "./lending/privateCheck";
@@ -966,6 +967,42 @@ export interface QcnnCkksReport {
   /** Recorded at training time on the artifact's held-out split, as the weights file carries them; the comparison the literature asks of a QML model. */
   headline: { label: string; qcnn: number | null; classical: number | null; surrogate: number | null; surrogateFeatures: number | null; baseline: number | null };
   circuit: string;
+}
+
+/**
+ * The trained QCNN re-scored in this tab over the rows of the trainer's own test split (Round 86). Both QCNN sites call this one
+ * function and print `rescoreSentence`, so the two cannot report it differently. Until Round 86 they printed the weights file's figure
+ * and said it was "not re-scored in this tab"; `scripts/data/build_qcnn_heldout.py` now ships the rows, written only after the
+ * trainer's circuit reproduces every recorded metric from them. Null when the rows cannot be read: the sites then say so.
+ */
+async function rescoreQcnnInTab(stage: string, usecase: string, w: QcnnWeights,
+                                metric: (s: string, k: string, v: number | string) => void,
+                                artifacts: Record<string, unknown>): Promise<QcnnRescore | null> {
+  try {
+    const r = await rescoreTrainedQcnn(usecase, w);
+    if (!r) return null;
+    artifacts.qcnn_rescore = r;
+    metric(stage, "qcnn_rescored_rows", r.rows);
+    metric(stage, "qcnn_rescored_headline", Math.round(r.headline * 1e6) / 1e6);
+    metric(stage, "qcnn_rescore_matches_record", r.matchesRecord ? 1 : 0);
+    metric(stage, "qcnn_rescore_ms", r2(r.ms));
+    return r;
+  } catch {
+    return null;
+  }
+}
+
+/** The re-score the circuit card's button runs: the same rows and function as the pipeline's QCNN sites. Null when the rows cannot be read. */
+export async function rescoreTrainedQcnn(usecase: string, w: QcnnWeights): Promise<QcnnRescore | null> {
+  const held = await loadQcnnHeldOut(dataDirFor(usecase));
+  return held ? rescoreQcnn(w, held) : null;
+}
+
+/** What both sites say about the circuit's held-out figure: re-scored here and equal to the record, re-scored and different, or not re-scored. */
+function rescoreSentence(r: QcnnRescore | null, recorded: number | null | undefined): string {
+  if (!r) return "recorded at training time and shipped in the weights file; the held-out rows could not be read, so this tab did not re-score it";
+  return `re-scored in this tab by this circuit over the ${r.rows} rows of the trainer's test split: ${r.headline.toFixed(4)}, `
+    + (r.matchesRecord ? "the value the weights file records" : `which DIFFERS from the ${recorded ?? "missing value"} the weights file records`);
 }
 
 /**
@@ -3202,23 +3239,22 @@ export function runClientPipeline(
             // artifact that put the circuit ahead would have gone on printing that it lost. The
             // numbers were right beside the sentence the whole time.
             // THREE-WAY (Round 84): a tie printed WINS, because only `mine < theirs` was tested.
-            const mine = w.test_macro_f1, theirs = w.classical_lr_macro_f1;
+            // RE-SCORED IN THIS TAB since Round 86: the circuit's figure is computed here over the test split's rows and the
+            // verdict uses it; logistic regression's is still read from the weights file, and the line says which is which.
+            const rescore = await rescoreQcnnInTab(stage, usecase, w, metric, artifacts);
+            const mine = rescore ? Math.round(rescore.headline * 1e6) / 1e6 : w.test_macro_f1, theirs = w.classical_lr_macro_f1;
             if (typeof mine === "number" && typeof theirs === "number") {
               const behind = mine < theirs, level = mine === theirs;
-              // RECORDED, NOT RE-SCORED (Round 84): both figures are read from the weights file,
-              // computed when the circuit was trained; unlike the published ONNX models, nothing in
-              // this tab re-scores them, so the line says where they come from.
               emit("log", stage, `and it ${behind ? "LOSES" : level ? "TIES" : "WINS"}: macro F1 ${mine} `
                 + `against a classical logistic regression at ${theirs} on the same held-out split, with `
-                + `${w.n_classes_predicted ?? "?"} of ${w.readout?.n_classes ?? 2} classes predicted - `
-                + `figures recorded at training time and shipped in the weights file, not re-scored in `
-                + `this tab. Reported because it is the result, not because it flatters`
+                + `${w.n_classes_predicted ?? "?"} of ${w.readout?.n_classes ?? 2} classes predicted. The circuit's figure was `
+                + `${rescoreSentence(rescore, w.test_macro_f1)}; logistic regression's was recorded at training time. `
+                + `Reported because it is the result, not because it flatters`
                 + (behind || level ? "." : " - and if this ever reads WINS, check the split before believing it."));
             } else if (typeof mine === "number" || w.per_class_f1) {
               // One number without the other cannot support a verdict, so it does not state one.
-              emit("log", stage, `held-out macro F1 ${mine ?? "n/a"}, recorded at training time and not `
-                + `re-scored in this tab; no classical comparator ships in this artifact, so no verdict is `
-                + `stated here.`);
+              emit("log", stage, `held-out macro F1 ${mine ?? "n/a"}, ${rescoreSentence(rescore, w.test_macro_f1)}; no `
+                + `classical comparator ships in this artifact, so no verdict is stated here.`);
             }
           } else {
             emit("log", stage, "QCNN selected but no trained weights are published for this use case");
@@ -3808,7 +3844,11 @@ export function runClientPipeline(
             // the two the trainer ships, so the comparison is against the harder baseline.
             const head = w.headline_metric;
             const macroLed = head === "macro_f1", f1Led = head === "minority_class_f1";
-            const mine = macroLed ? w.test_macro_f1 : f1Led ? w.test_minority_f1 : w.test_accuracy;
+            const recordedMine = macroLed ? w.test_macro_f1 : f1Led ? w.test_minority_f1 : w.test_accuracy;
+            // RE-SCORED IN THIS TAB since Round 86, by the same function as `qml_ids`; the baseline and logistic
+            // regression are still read from the weights file.
+            const rescore = await rescoreQcnnInTab(stage, usecase, w, metric, artifacts);
+            const mine = rescore ? Math.round(rescore.headline * 1e6) / 1e6 : recordedMine;
             const theirs = macroLed ? w.classical_lr_macro_f1
                          : f1Led ? w.classical_lr_minority_f1 : w.classical_lr_accuracy;
             const base = macroLed ? w.macro_f1_floors?.uniform_random
@@ -3836,14 +3876,12 @@ export function runClientPipeline(
               + `(<Z0>=${qc.expectation.toFixed(4)}, ${w.theta.length} trained angles - shared conv filters `
               + `plus pooling and final rotations - over ${w.n_qubits} wires, ${w.layers} conv rounds per stage, `
               + `simulated exactly on a state vector; ${qcnnSimulability(w)}). `
-              // RECORDED, NOT RE-SCORED (Round 84): "this reports what was measured" read as a
-              // measurement of this run. The three figures come from the weights file, computed when
-              // the circuit was trained, and nothing in this tab re-scores them.
+              // Round 84 named which figures were recorded rather than measured; since Round 86 the circuit's is
+              // measured here and the sentence says so, and the baseline's and logistic regression's still come from the file.
               + `Held-out ${label} ${(mine ?? 0).toFixed(4)} against a baseline of `
               + `${(base ?? 0).toFixed(4)} and logistic regression at ${(theirs ?? 0).toFixed(4)} on `
-              + `the same split - ${ahead}. These figures were recorded at training time on the `
-              + `artifact's held-out split and ship in its weights file; this tab does not re-score `
-              + `them. Test rows were never used to pick the checkpoint.`);
+              + `the same split - ${ahead}. The circuit's figure was ${rescoreSentence(rescore, recordedMine)}; the `
+              + `baseline and logistic regression were recorded at training time. Test rows were never used to pick the checkpoint.`);
           } else {
             // No trained weights for this use case: refuse to surface a class rather than pass off
             // the untrained circuit's coin flip as a prediction.

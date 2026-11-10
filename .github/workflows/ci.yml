@@ -348,6 +348,11 @@ jobs:
         working-directory: web
         run: npm run check:qcnn-ckks
 
+      # The trained QCNN re-scored on the rows of its trainer's test split: the module the page runs, against every recorded figure.
+      - name: The trained QCNN re-scored on its held-out rows
+        working-directory: web
+        run: npm run check:qcnn-rescore
+
       # The finance page's PSI among three to five banks: the module the page runs, against the intersection in the clear.
       - name: The PSI among banks under MPC
         working-directory: web

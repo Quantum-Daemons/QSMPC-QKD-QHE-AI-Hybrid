@@ -21,6 +21,7 @@ import LendingPanels from "../components/LendingPanels";
 import QsdcLinkPanel from "../components/QsdcLinkPanel";
 import type { LendingMarketReport, LendingPrivateReport, LendingSweepReport } from "../lib/lending/report";
 import type { MpcCnnReport, MpcMlpReport, MultiPsiReport, QcnnCkksReport } from "../lib/clientCompute";
+import type { QcnnRescore } from "../lib/qcnnRescore";
 import ShapPanel from "../components/ShapPanel";
 import UseCaseCanvas from "../components/UseCaseCanvas";
 import { USECASE_SPECS } from "../lib/useCaseFlows";
@@ -359,7 +360,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       ) : null}
 
       {usecase === "medical_fl" && artifacts?.mpc_cnn ? <MpcCnnPanel report={artifacts.mpc_cnn as MpcCnnReport} /> : null}
-      {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} /> : null}
+      {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} rescore={(artifacts.qcnn_rescore as QcnnRescore | undefined) ?? null} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_mlp ? <MpcMlpPanel report={artifacts.mpc_mlp as MpcMlpReport} /> : null}
       {usecase === "finance_aml" && <TransactionGraphCard scoredRow={artifacts?.mpc_mlp ? (artifacts.mpc_mlp as MpcMlpReport).rowIndex : null} />}
       {usecase === "finance_aml" && artifacts?.multi_party_psi ? <MultiPsiPanel report={artifacts.multi_party_psi as MultiPsiReport} /> : null}
