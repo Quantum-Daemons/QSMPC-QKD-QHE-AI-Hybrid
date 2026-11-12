@@ -37,7 +37,7 @@ is stated in the notes below.
 ## Published baselines this is measured against
 
 - **Target metric**: AUC
-- **Baseline to beat**: 0.901 - ResNet-18 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.901 / ACC 0.863)
+- **Baseline to beat**: 0.901 - ResNet-18 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.901 / ACC 0.863). That baseline is "the mean value of at least 3 trials" (Yang et al.); this card's 0.9147 is one run, and its six seeds average 0.8905 +/- 0.0198 (the record's seed_spread), below 0.901
 - **Published ceiling**: 0.919 - Google AutoML Vision, MedMNIST v2 (AUC 0.919)
 - **Companion metric shown alongside**: `accuracy` - reported together because the aggregate figure can look healthy while the class that matters is not.
 

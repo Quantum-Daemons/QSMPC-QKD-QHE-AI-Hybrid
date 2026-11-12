@@ -744,7 +744,8 @@ Added 2026-08-11, verified at the arXiv abstract page.
   features on the imbalanced version. Added: 2026-08-11.
 
 **Read those two numbers together, because the pair is the lesson.** This repository's finance
-teacher scores minority-class F1 **0.1519** at AMLworld's real prevalence of roughly 1 in 981. The
+teacher scores minority-class F1 **0.1519** at AMLworld's real prevalence of roughly 1 in 981 (0.6161 since
+Round 86, on 114 inputs; the lesson below is unchanged). The
 published work scores over 0.99 on a balanced set. Both are correct; they are not the same task,
 and a reader comparing them without the prevalence would conclude this implementation is six times
 worse than the state of the art rather than measured on harder rows. It is the same reason this

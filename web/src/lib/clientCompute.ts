@@ -799,7 +799,11 @@ export interface MeasuredHybrid {
             *  Round 84: without them no convolution runs (`RealHybridRun.studentNotRun`), where a
             *  stated kernel pattern used to stand in and set this false. */
            publishedWeights: boolean; totalRotations: number;
-           studentParams?: number; studentPrediction?: number };
+           studentParams?: number; studentPrediction?: number;
+           /** The held-out image the student was given: its index in the published evaluation sample, the
+            *  sample's size, and its true class. Until Round 86 the input was this page's tabular row tiled
+            *  to fill the image (review PI-10), which made the CNN's class meaningless. */
+           studentInput?: { index: number; count: number; label: number; className: string | null } };
   /** Rotations and multiply-plain for the DENSE layer, so the two workloads compare like for like. */
   /** `rotateMs` is the measured time inside `rotateVector`, kept separate from `fheMs` because the
    *  page scales `fheMs` by a cost model and a scaled total cannot yield a per-rotation cost. */
@@ -1225,6 +1229,7 @@ export async function realClientHybrid(features: number[],
                                       usecase?: string,
                                       realModel?: { W: number[][]; b: number[] } | null,
                                       corpus?: number[][] | null,
+                                      seed = 0,
 ): Promise<RealHybridRun | HybridFailure> {
   let half: HybridFailure["failed"] = "fhe";       // which half is running, for the failure report
   try {
@@ -1272,14 +1277,25 @@ export async function realClientHybrid(features: number[],
     if (convolve) {
       const mc = medicalCnn();
       const size = Number(mc.img_size);
-      const img = Array.from({ length: size }, (_, y) =>
-        Array.from({ length: size }, (_, x) => features[(y * size + x) % features.length] ?? 0));
       // The PUBLISHED student's own weights when they can be fetched. Running the real network is
       // what turns this from a cost model of the right shape into the model's actual layer-by-layer
       // CKKS inference (decrypted between layers), which makes its encrypted-against-plaintext
       // agreement checkable in a browser; crypto_fidelity (student against teacher) stays offline.
-      const wts = await publishedStudentWeights(usecase);
-      if (wts) {
+      //
+      // ITS INPUT IS A HELD-OUT IMAGE (Round 86). It was this page's tabular row tiled to fill the
+      // image, which the page stated (review PI-10) and which gave the CNN a class that meant nothing.
+      // The student's published evaluation sample is the official BreastMNIST test split at 14x14,
+      // already normalised and checked against its recorded digest; the image is the one the CNN-under-MPC
+      // card takes for the same seed, so the two encrypted runs on the page read the same picture.
+      const [wts, sample] = await Promise.all([publishedStudentWeights(usecase),
+                                               usecase ? publishedStudentSample(usecase) : Promise.resolve(null)]);
+      const count = sample?.samples.length ?? 0;
+      const index = count ? ((seed % count) + count) % count : 0;
+      const pixels = count ? sample!.samples[index] : null;
+      const img = pixels && pixels.length === size * size
+        ? Array.from({ length: size }, (_, y) => pixels.slice(y * size, (y + 1) * size))
+        : null;
+      if (wts && img) {
         const r = await encryptedStudentInference(wts, img);
         conv = { rotations: r.rotations, multiplies: r.multiplies,
                  patchesPerCiphertext: r.patchesPerCiphertext, outH: r.outH, outW: r.outW,
@@ -1295,15 +1311,21 @@ export async function realClientHybrid(features: number[],
                  rotateMs: r.rotateMs, convOnlyMs: r.convOnlyMs,
                  denseMs: r.denseMs, denseRotations: r.denseRotations, denseRotateMs: r.denseRotateMs,
                  publishedWeights: true, totalRotations: r.totalRotations,
-                 studentParams: wts.n_parameters, studentPrediction: r.prediction };
+                 studentParams: wts.n_parameters, studentPrediction: r.prediction,
+                 studentInput: { index, count, label: sample!.labels[index],
+                                 className: sample!.classes?.[String(sample!.labels[index])] ?? null } };
       } else {
         // NO WEIGHTS, NO STUDENT (Round 84). This branch ran the student's SHAPE with kernels
         // ((ky * 3 + kx + k) % 5 - 2) * 0.1 and zero biases, the conv layer only, while its log said
         // "none were invented" and the page promised the run would not substitute any: a fixed
         // kernel pattern IS invented weights. Now the encrypted student does not run without its
         // published weights, the run says so, and the CKKS figures are the bundled regression's.
-        studentNotRun = "its published weights could not be fetched from the pinned Hugging Face "
-          + "revision (offline, blocked, or not the student's JSON shape)";
+        // Nor without a held-out image (Round 86): no tiled row stands in for one.
+        studentNotRun = !wts
+          ? "its published weights could not be fetched from the pinned Hugging Face "
+            + "revision (offline, blocked, or not the student's JSON shape)"
+          : `its held-out images could not be read from the pinned Hugging Face revision's evaluation sample `
+            + `(offline, blocked, or not ${size}x${size} images)`;
       }
     }
     // The same model over a whole corpus, where the caller supplied one. `encryptedLinearBatch` packs
@@ -3378,7 +3400,7 @@ export function runClientPipeline(
         const held = await heldOutCorpus(usecase);
         const corpus = !held && realIn?.model?.W ? await realInputCorpus(usecase) : null;
         const real = await realClientHybrid(feats, usecase === "medical_fl", usecase,
-                                            realIn?.model ?? null, corpus);
+                                            realIn?.model ?? null, corpus, seed);
         if (!("failed" in real)) {
           // A real encrypted convolution is not scaled by anything: its latency IS the measurement.
           const bscale = real.conv
@@ -3705,10 +3727,13 @@ export function runClientPipeline(
             metric(stage, "fhe_total_rotations", real.conv.totalRotations);
             if (real.conv.studentParams != null) metric(stage, "fhe_student_params", real.conv.studentParams);
             if (real.conv.studentPrediction != null) metric(stage, "fhe_student_class", real.conv.studentPrediction);
-            // What the CNN was given, beside its class (Round 86, review PI-10): this page's tabular row
-            // tiled to fill the image, with the student's pixel preprocessing not applied.
-            if (real.conv.studentPrediction != null) {
-              metric(stage, "fhe_student_input", "this page's tabular row tiled to fill the image; not an image");
+            // What the CNN was given, beside its class (Round 86, review PI-10): a held-out image of the
+            // student's published evaluation sample, named with its true class so the class can be read.
+            const si = real.conv.studentInput;
+            if (real.conv.studentPrediction != null && si) {
+              metric(stage, "fhe_student_input", `held-out image ${si.index} of ${si.count}, the official BreastMNIST test split at 14x14`);
+              metric(stage, "fhe_student_true_class", si.label);
+              metric(stage, "fhe_student_matches_label", real.conv.studentPrediction === si.label ? 1 : 0);
             }
             emit("log", stage, `private inference (real in-browser CKKS, leveled with no bootstrapping, the PUBLISHED student's own `
               + `weights fetched from its pinned HF revision, ${real.conv.studentParams} params): `
@@ -3722,8 +3747,12 @@ export function runClientPipeline(
               + `layers with its bias added under encryption and every slot but the layer's outputs `
               + `masked and flooded, so the client decrypts each layer's outputs and nothing else; it `
               + `decrypts after every layer, applies ReLU and average pooling in plaintext, and takes `
-              + `the CNN's own argmax in the clear. Its input is this page's tabular row tiled to fill `
-              + `the image, not an image, so the CNN's class is not a diagnosis. `
+              + `the CNN's own argmax in the clear: class ${real.conv.studentPrediction}`
+              + (si
+                ? ` on held-out image ${si.index} of ${si.count} (the official BreastMNIST test split at 14x14, `
+                  + `the image the CNN-under-MPC card takes for this seed), whose true class is ${si.label}`
+                  + `${si.className ? ` (${si.className})` : ""}; a demonstration on a public test image, not a diagnosis. `
+                : ". ")
               + `${real.conv.channels}x3x3 kernels over a `
               + `${real.conv.outH}x${real.conv.outW} output, ${real.conv.patchesPerCiphertext} im2col `
               + `patches packed into one ciphertext, ${real.conv.rotations} rotations and `
@@ -3748,7 +3777,7 @@ export function runClientPipeline(
             if (real.studentNotRun) {
               metric(stage, "fhe_weights", "not fetched: the encrypted student did not run");
               emit("log", stage, `the published medical student's encrypted inference did NOT run: `
-                + `${real.studentNotRun}. No kernel pattern stands in for its weights, so the CKKS and `
+                + `${real.studentNotRun}. Nothing stands in for its weights or its image, so the CKKS and `
                 + `MPC figures below are the bundled Wisconsin regression's alone.`);
             }
             // Round 86: "REAL in-browser FHE, medium/linear" and "x1 arch scale" named selectors that were removed

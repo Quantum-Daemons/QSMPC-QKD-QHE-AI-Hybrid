@@ -4215,3 +4215,57 @@ Read from each paper's own HTML or record, the tables by their captions; the dat
 | the rows after September 10 | the dataset card says they "are all laundering" | the raw file has 1,108 such rows and 655 laundering, as the cards say; the card's sentence overstates it |
 | an edge-centric GNN under CKKS: F1 $`63.72 \pm 1.86`$, 5.31 s per query, 1.65 s amortised at batch 16, 99.25% agreement, HEonGPU on an RTX 5090, timings excluding the client's encryption, decryption, key generation and network | Bilgi et al., arXiv:2610.18054v2 | as quoted |
 | Pfeiffer and Gail, Biometrical Journal 62(3):764-776; Van Calster et al., J Clin Epidemiol 74:167-176 (2016); Riley et al., Stat Med 40(19):4230-4251 (2021); Dimitriadis, Gneiting and Jordan, PNAS 118(8) e2016191118 | Crossref | as cited |
+
+### PR #33 on the deployed site (2026-11-13)
+
+Deployed from merged `main` (961a3b7) with `scripts/deploy_demo.sh --return-to-main`; the box, the public URL and the
+browser all serve `index-DDyVXW9b.js`, which carries the four new finance pins and neither old one. Read in Chrome, two
+full finance runs of all 12 stages, the second after a reload with the console recorded.
+
+| where | read |
+|---|---|
+| requests | every Hub file at the new pins: gbm `f3373960`, student `67cdb41e`, MLP `2733e357`, GNN `006a55c6`; no console error or warning |
+| verification | PASS for `finance_aml.gbm` and `finance_aml.student`, each re-scored on all 8,192 rows of its sample |
+| the compact GNN under MPC | one held-out transaction, 16 of 16 slots filled; class laundering from the 2PC argmax, matching the clear network; 608 ReLUs in 13 batches, 52,655 AND gates; logits recorded -2.483, 0.722 and reconstructed the same, largest error 1.43e-4; 6.8 s in a Web Worker; the neighbourhood figure on its 720-wide canvas with no label past its edge |
+| the MLP under MPC | the class from the 2PC argmax matches the clear network; the 114 features and the batch of 2,048 named |
+| the CKKS student | 8,192 rows in 256 ciphertexts of up to 32 rows, 8,435 ms of encrypted work |
+| decision curves | student 9.65 per 10,000 at $`t = 0.01`$ (166 at the sample's rate), operating point a calibrated risk of 0.079; teacher 10.91 (148) and 0.309; both above treat-none at every threshold drawn |
+| Models panel | the compact GNN reads "Verified during the pipeline run: press Start with GNN under MPC ticked..." where it read "Cannot be run here" |
+
+One defect found and left for the next PR: the `finance_aml.gnn` reference card says "Cannot be run here: never trained
+in this build" under notes that now say IBM's Multi-PNA+EU was run here as a teacher.
+
+### Three cards republished, card only (2026-11-13)
+
+With the owner's approval, after the per-page audit of the published models. Each baseline line was read again at its
+source before the publish.
+
+| model | revision | what the card said | what it says |
+|---|---|---|---|
+| `finance_aml.gnn_compact` | `10104e89` | GFP + XGBoost's 0.6323 as the baseline to beat, a gradient booster's figure | Multi-PNA+EU, the architecture it is distilled from: $`68.16 \pm 2.65`$ on AML Small HI, averaged over five runs (Egressy et al., arXiv:2306.11586, Table 2), and 0.6616 and 0.6878 in this project's two runs of it; the capped 16-edge neighbourhood named as the difference |
+| `medical_fl.resnet18` | `638b7a4a` | one run's 0.9147 against MedMNIST's 0.901 | the same, and that 0.901 is "the mean value of at least 3 trials" (Yang et al.), while this model's six seeds average $`0.8905 \pm 0.0198`$ |
+| `telecom_ids.qml` | `ce545929` | the paper's hybrid QLSTM at 94.7% against its own random forest | the same, with that forest's 81.5 to 82.6% accuracy by tree count (Al-Kuwari et al., arXiv:2509.14282, Table VIII), and that its metrics and simulations differ from this project's |
+
+Every other file at each new revision equals the previous pin's, compared by LFS digest or blob id; each served card equals
+the local one; `models/hub_file_hashes.json` changed only in the three revisions.
+
+### Every page's encrypted path, on the deployed site (2026-11-13)
+
+The owner asked whether each page runs its models under encryption as well as in plaintext, as finance does. Read in
+Chrome on the deployed `main` (961a3b7, `index-DDyVXW9b.js`), one default run per page; finance is the entry above. No
+console error on any page.
+
+| page | in plaintext, re-scored on the published sample | under encryption |
+|---|---|---|
+| medical | `resnet18`, `resnet50` and `student`: PASS on all 156 test images | the bundled WDBC regression on 171 held-out rows, 1 ciphertext, 0 top-1 mismatches; the published CNN student under CKKS, logits within 1.85e-9 of plaintext; with "CNN under MPC" ticked, as it is by default, held-out image 1 of 156 through CKKS and garbled circuits, 800 ReLUs, 69,167 AND gates, 174.38 MB, 16.6 s, class equal to the clear network's |
+| genomics | no trained model: PGS000072's published weights | the 183-variant score in one ciphertext, equal to plaintext within 5.7e-10; the 30-person panel in 2 ciphertexts, 0 mismatches; the garbled-circuit argmax |
+| telecom | `qml` PASS on 600 rows, `nidd` PASS on 16,379 | `telecom_ids.student`, 64 parameters, on 600 held-out rows in 2 ciphertexts, 0 mismatches, accuracy 0.988 against a majority baseline of 0.125; the argmax decrypted, as the page says |
+| satellite | `telemanom` PASS on 128 windows, `student` on 8,640, `opssat` and `opssat_student` on 529 | the ESA student's forecast on all 8,640 rows in 135 ciphertexts, 0 of 8,640 flags changed; the OPS-SAT student on 529 held-out rows in 34 ciphertexts, 0 mismatches; each decision read after decryption |
+| DeFi | no trained model | the margin under CKKS and its sign in a garbled circuit, 5 checks, each equal to the check in the clear, 1,835 AND gates |
+
+One finding, fixed on the branch: in the default medical run the CNN student's encrypted input was the page's tabular row
+tiled to fill the image, which the page said, so its class meant nothing. It now reads a held-out image of its published
+evaluation sample, the one the CNN-under-MPC card takes for the same seed, and names its true class; without that sample
+the student does not run, as without its weights. On a local client-only build of the branch: image 1 of 156, true class 1,
+the CKKS student's class 1 and the MPC card's class 1, no console error. Telecom's student reads weights bundled with the page, not fetched from
+a pin; that and the other gate gaps of the audit are the next PR's.

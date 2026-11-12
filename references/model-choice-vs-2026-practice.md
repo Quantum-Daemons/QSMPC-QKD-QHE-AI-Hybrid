@@ -19,7 +19,9 @@ distribution is lopsided:
 | **sequence models over transaction streams** | **0** |
 | **tabular foundation models (TabPFN line)** | **0** |
 
-This project publishes an XGBoost teacher and a 33-parameter logistic student under CKKS. That is
+This project publishes an XGBoost teacher and a 115-parameter logistic student under CKKS (33 parameters
+until Round 86, when both moved to 114 inputs), and since Round 86 an MLP and a compact GNN that run under
+CKKS and garbled circuits. The first two are
 squarely what the field evaluates, and the absence at the bottom of that table is not for want of
 looking: encrypted-transformer machinery is mature (EncFormer arXiv:2604.09975; AEGIS
 arXiv:2604.03425) and tabular foundation models are mature, but every verified encrypted **transformer or tabular-foundation-model**
@@ -77,6 +79,15 @@ search behind it - the second time this round that reading has been forced.
    accuracy ~90% against ~91% plaintext, with CKKS drift under 1%.
 
 ## Then why is the shipped encrypted model a 33-parameter linear student? Browser latency, and nothing else
+
+**Round 86 update, read first.** Two premises below no longer hold. The student has 115 parameters on 114
+inputs, a 128-slot block and 32 rows to a ciphertext. And a GNN is trained and published,
+`finance_aml.gnn_compact`: the statefulness the next paragraphs cite is met by a capped neighbourhood of 16
+edges per transaction, which the client computes from its own transactions and encrypts, so the server sees
+only the tree's shape. Its linear maps run under CKKS and its 608 ReLUs and argmax in garbled circuits
+(52,655 AND gates), beside the MLP (192 ReLUs); both are distilled from IBM's Multi-PNA+EU run on this
+project's windows. The latency argument below still holds for CKKS alone; garbled circuits are how the deeper
+models fit a page interaction.
 
 **Stated plainly here in Round 33, because neither of the two reasons this project had on record does the
 work, and leaving the question unanswered flattered the choice.** The table above establishes tree
@@ -144,6 +155,12 @@ accuracy and F1" holds only on a **50%-illicit balanced subset**. On its own imb
 which is more adverse again - so that paper is evidence about the size of the graph-feature
 contribution (single-digit points, not a factor) and **not** a target to be measured against.
 
+**Corrected in Round 86: on HI-Small at its real prevalence the contribution is a multiple, not single
+digits.** The eight points above are that paper's, on its own subsets. The GFP paper's own decomposition takes
+XGBoost on HI-Small from 19.75 with basic features to 56.88 with fan-in and fan-out at a batch of 128
+(Blanusa et al., arXiv:2402.08593, Table 5), and this project's per-transaction features took its teacher
+from minority-class F1 0.1519 to 0.6161 on its own split.
+
 Two further details worth carrying: its FHE latency is **~10.5 s per transaction at a 119,926x
 slowdown**, and **its GNN pipeline failed to compile to FHE entirely** - only the XGBoost path
 worked. Both are useful when anyone proposes an encrypted graph model for this use case.
@@ -156,6 +173,14 @@ final compilation". Read the section, not the abstract. But cite it as a **2024 
 impossibility**: DESIGN (arXiv:2507.05649) and TGHE (arXiv:2606.26664, IEEE ICWS 2026) have since run
 encrypted GNN inference. Neither is end-to-end either - TGHE transmits edge attributes in plaintext for
 its correction terms.
+
+**And on this corpus, since Round 86.** Bilgi et al. (arXiv:2610.18054v2, Oct 2026) run an edge-centric GNN
+under CKKS on IBM AML: minority-class F1 $`63.72 \pm 1.86`$ on Small-HI, 5.31 s per query and 1.65 s
+amortised at a batch of 16 with HEonGPU on one RTX 5090, the server holding the graph and weights in
+plaintext, and the timings excluding the client's encryption, decryption, key generation and network (read
+at the source on 2026-11-11). This project's compact GNN runs in a browser tab under CKKS and garbled circuits
+on a capped 16-edge neighbourhood and scores 0.6587 over its test window. The protocols, threat models and
+splits differ, so the two are not ranked.
 
 ## What is genuinely absent, stated as a non-goal rather than a gap
 
@@ -311,6 +336,14 @@ the linear tier here is not yet defensible on the merits in either direction, be
 this corpus separates the two hypotheses - and the paper is external evidence about a different setup.
 The honest position is the cost one, which was the original argument and did not need improving.
 
+**Round 86: the student changed, and the measurement now exists.** `satellite_comms.student` is a
+294-parameter linear next-step forecaster over the last 8 rows of 6 channels, ridge-fitted to the teacher's
+own forecasts; the client thresholds the decrypted forecast with Telemanom's procedure. On ESA-ADB's Mission1
+test half it scores corrected event-wise F0.5 0.9398 against the LSTM teacher's 0.9499, its flags agreeing on
+0.9996 of rows. That is closer in kind to Yugay et al.'s linear models, a forecaster rather than a classifier
+of the teacher's flags, though still fitted to the teacher: it gives the cost argument a measured accuracy
+cost of 0.010 rather than settling whether the LSTM is needed.
+
 The paper is still worth carrying, for the use this project can actually make of it: **it is the citation
 to reach for if anyone proposes replacing the Telemanom teacher, not the one that justifies the student.**
 It is cited here and in no other file, including `references/REFERENCES.md`, which is where a paper this
@@ -360,6 +393,13 @@ still an honest recorded negative. What it is NOT is
 "underperforming for a published, quantified reason" - removing the inverted citation leaves *quantum
 lost, cause unknown*, and saying so is the correct state of the record. Claiming a better finding than
 "quantum lost" on the strength of a paper that says the reverse is worse than reporting the loss.
+
+**Read at the source in Round 86: this generator is easier than the paper whose classes it takes.**
+Al-Kuwari et al. (arXiv:2509.14282, Table VIII) report a random forest at 81.5 to 82.6 percent accuracy,
+by tree count, and a hybrid QLSTM at 94.7 percent on their simulated decoy-state BB84 data. The forest here
+reaches macro F1 0.987 on this project's generator. The metrics differ, and the data are different
+simulations, so the figures rank nothing; what they say is that this generator's classes separate more
+easily than theirs.
 
 The relevant literature is also not empty: 2025-26 QML-IDS work operates at exactly these 4-8 qubit
 counts because that is what NISQ hardware and simulators allow, and is audited as showing no advantage
@@ -529,6 +569,10 @@ with `baseline_source` naming GFP+XGBoost, `metrics.json` carries `minority_clas
 per-transaction subgraph patterns over a dynamically updated graph, this project computes per-account
 scalar aggregates, and the gap is unreachable at any threshold because measured AUPRC is far below
 what that F1 requires. It closes with "Reported as measured; not adjusted to close the gap."
+
+(Round 86: the measured figure is 0.6161 since the teacher gained per-transaction and pair features, against the
+published 0.6323 at a batch of 128 and 64.77 at the batch of 2,048 those features use; `baseline_gap_note` now
+describes those features, and the AUPRC is 0.6428.)
 
 Recorded rather than silently edited, because the failure mode is the one this document is about: a
 number that appears on a page next to a model is not automatically that model's score, and reading a

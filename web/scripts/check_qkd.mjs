@@ -349,9 +349,10 @@ const cfg_qrng = m.qrngCfg();
 //  6. GLLP tagged fraction, and the free-space loss law
 // --------------------------------------------------------------------------------------------- //
 // MOVED HERE FROM THE BROWSER, and the reason is the point. QK6 was written as a browser check -
-// "tagged fraction rises with distance and with mu" - and could never be run: `mu` is
+// "tagged fraction rises with distance and with mu" - and could never be run: `mu` was
 // `qkdCfg().mu_signal`, a config constant with NO control on any page, so one of its two axes was
-// not exercisable by a person at all. That is the sibling of a check that cannot fail: a check that
+// not exercisable by a person at all. (Round 84 added the intensity-pair select, which sets it to one
+// of two fixed pairs; the assertion stays here, where both axes move freely.) That is the sibling of a check that cannot fail: a check that
 // cannot be RUN. `taggedFraction` is a pure function, so the assertion belongs where both axes move.
 //
 // Delta = P(n >= 2) / Q_mu, and this is not a formula re-derivation: the ORDERING is asserted, not

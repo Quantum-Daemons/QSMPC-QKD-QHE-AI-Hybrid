@@ -599,7 +599,9 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
       from Hugging Face, and the page&apos;s pipeline run scores it under CKKS.</em></p>;
   }
   const blocked =
-    !spec.achieved ? "never trained in this build, so there is nothing to run - the baseline above is the target, not a result"
+    // "No trained artifact", not "never trained": IBM's Multi-PNA+EU was trained here as the finance networks' teacher
+    // (its card's notes say so) and ships nothing, so "never trained" contradicted the card it sat under (Round 86).
+    !spec.achieved ? "no trained artifact in this build, so there is nothing to run - the baseline above is the target, not a result"
     : !spec.hf_repo_id ? "not published on Hugging Face, so this panel has no pinned artefact to fetch"
     : spec.hf_revision_stale && spec.pin_withdrawn_reason ? `its pin is withdrawn: ${spec.pin_withdrawn_reason}`
     : spec.hf_revision_stale ? "retrained since it was last published, so the pinned artefact no longer matches the metrics above and the pin was retired rather than pointed at stale weights"
