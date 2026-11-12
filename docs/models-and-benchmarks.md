@@ -57,20 +57,31 @@ measures cost only, and the Rate-1 module is a transport with no `Eval`. There i
 boundary** on that side, and nothing there does a secure comparison: QSMS is a secure sum, and no flow runs the
 QOT sketch.
 
-### The published finance MLP
+### The finance models on 114 inputs, and the compact GNN
 
-`finance_aml.mlp_large` is a trained MLP, $`[111, 128, 64, 2]`$ with ReLU (22,722 parameters), on the 32 per-account features of the teacher plus 79 per-transaction features: fan-in and fan-out, the spread of amounts and the time since each account's last edge in windows of one hour to three days, and scatter-gather counts, computed in the open by `scripts/train/finance_aml_fan.py`. Like the Graph Feature Preprocessor paper's pipeline, each transaction's features see every transaction up to the end of its batch of 2,048, so this is micro-batch scoring and not a per-transaction real-time decision. No label is read, and strictly causal windows reach F1 0.196 on the booster where these reach 0.401.
+All four finance models read the same 114 inputs, computed in the open by `model_inputs` in `scripts/train/finance_aml.py` and by `scripts/train/finance_aml_fan.py`: the 32 per-account aggregates, causal so that each row sees only earlier transactions; 79 per-transaction window features, fan-in and fan-out, the spread of amounts and the time since each account's last edge in windows of one hour to three days, and scatter-gather counts; and 3 pair features, the earlier transactions between the same two accounts in each direction and whether this is their first contact (motivated by MEGA-GNN's count of illicit edges on single-edge pairs, 0.7292 against 0.0894 overall, reproduced here from the corpus). Like the Graph Feature Preprocessor paper's pipeline, a transaction's window and pair features see the transactions up to the end of its batch of 2,048, so this is micro-batch scoring and not a per-transaction real-time decision. That horizon is capped at the furthest any batch of the fit window reaches, 17 minutes: in the sparse last days of the corpus a batch takes days to fill, and more than a quarter of the test window's laundering rows would otherwise see over a day ahead. No label is read.
 
-Measured on the whole held-out window (1,523,504 rows, 2,321 of them laundering, the last 30 percent in time order), with the threshold and the scaling and seed chosen on the validation window:
+Measured on the whole held-out window (1,523,504 rows, 2,321 of them laundering, the last 30 percent in time order), with every threshold, scaling and seed chosen on the validation window:
 
-| Model | Features | Minority-class F1 | AUPRC |
-|---|---|---|---|
-| CKKS linear student (`finance_aml.student`) | 32, distilled | 0.0614 | - |
-| Gradient-boosting teacher (`finance_aml.gbm`) | 32 | 0.1519 | 0.1233 |
-| XGBoost on the MLP's own inputs | 111 | 0.4006 | 0.3358 |
-| **This MLP, seed chosen on validation** | 111 | **0.3350** (median of the five seeds 0.3696, range 0.335 to 0.405) | **0.3059** |
+| Model | Inputs | Minority-class F1 | AUPRC | Where it runs |
+|---|---|---|---|---|
+| CKKS linear student (`finance_aml.student`), 115 parameters | 114, distilled from the teacher | 0.3088 | - | the browser, under CKKS |
+| MLP (`finance_aml.mlp_large`), $`[114, 128, 64, 2]`$, 23,106 parameters, distilled | 114 | 0.5953 (seeds 0.595 to 0.636, median 0.599) | 0.6436 | the browser, CKKS and garbled circuits |
+| XGBoost on the same inputs | 114 | 0.6076 | 0.6368 | comparator |
+| Gradient-boosting teacher (`finance_aml.gbm`) | 114 | 0.6161 | 0.6428 | the full deployment |
+| **Compact GNN (`finance_aml.gnn_compact`)**, 34,962 parameters, distilled | 114, and 16 neighbouring edges | **0.6587** (seeds 0.640 to 0.659, median 0.646) | **0.6676** | the browser, CKKS and garbled circuits |
+| IBM's Multi-GIN+EU, official code, this split, seed 1 | the raw edges; neighbours sampled from every edge of the test window | 0.6024 | - | a server GPU |
+| IBM's Multi-PNA+EU, official code, this split, seed 1, two runs | the raw edges; neighbours sampled from every edge of the test window | 0.6878 and 0.6616 (0.6782 at a threshold tuned on validation) | 0.6415 | a server GPU |
 
-Against the published figures on this corpus: on HI-Small the Graph Feature Preprocessor paper (Blanusa et al., ICAIF 2024, Table 5) reports 19.75 percent for XGBoost on basic features, 56.88 to 59.71 with fan-in and fan-out, and 63.23 to 64.77 with its other features; Altman et al. (NeurIPS 2023) report 63.23 for GFP + XGBoost and 56.77 for PNA; Egressy et al. (AAAI 2024) 68.16 for Multi-PNA+EU, the architecture the registry's `finance_aml.gnn` card names and this project has never trained; and Bilgi et al. (arXiv:2610.18054) 63.72 in plaintext for a GNN they also run under CKKS, at 5.31 s per transaction on a consumer GPU with bootstrapping at $`N = 65536`$. This MLP has no cycle enumeration or message passing, and its split is 56/14/30 rather than their 60/20/20, so 0.34 is not a reproduction of those figures. It is a non-linear model that runs in a tab under CKKS and garbled circuits. On one held-out row, the page runs it in about 5 s with 192 ReLUs in garbled circuits, and the classes and logits match the clear network ([what it hides](threat-model.md#the-finance-mlp-under-mpc)).
+**The compact GNN.** For a transaction from account u to account v, each endpoint carries 16 statistics and 4 neighbouring edges in each direction, the most recent ones up to the transaction's horizon. Each slot and each endpoint is embedded by a shared linear map without bias, so an empty slot stays exactly zero, and a ReLU; the slot embeddings are summed per direction, and a second layer per endpoint mixes the endpoint with its two sums before a head joins them with the MLP channel over the 114 inputs. The shape is fixed and public, so the evaluator learns nothing from it. Under encryption, sums over additive shares cost no AND gates, so the price is the 608 ReLUs and not the edges: the first layer runs under CKKS with one evaluation per output dimension serving every account at once (39 ciphertexts), and the ReLUs run in garbled circuits (52,655 AND gates), batched across a pool of Web Workers. A search of the literature to November 2026 found no private GNN in a browser and none under garbled circuits; the nearest, Bilgi et al. (arXiv:2610.18054) under CKKS with bootstrapping on a GPU and TGHE (arXiv:2606.26664) on capped ego trees, run on servers. That is a search result, not a claim of being first.
+
+**Distilled from IBM's Multi-PNA+EU.** Both networks are trained towards $`(1-\alpha)\,y + \alpha\,p_{\mathrm{PNA}}`$ on each fit-window edge, $`p_{\mathrm{PNA}}`$ the probability IBM's official Multi-PNA+EU gives it on this project's windows (`scripts/train/ibm_multignn/`), with $`\alpha = 0.3`$ chosen on the validation window (0, 0.3, 0.5 and 0.7, three seeds each: mean validation AUPRC 0.5440, 0.5817, 0.5809, 0.5802 for the GNN). This is generalised distillation (Lopez-Paz, Bottou, Schoelkopf and Vapnik, ICLR 2016, arXiv:1511.03643): PNA's neighbourhoods on the fit window include transactions later than the one scored, which these models never see, and that reaches them only through the training targets, so nothing changes at inference and the test window plays no part. It lifted mean validation AUPRC from 0.4929 to 0.5821 for the MLP and the GNN's test F1 from 0.6283 to 0.6587. SALT-GNN's mean-and-spread aggregation was tried first and not adopted (`references/REFERENCES.md`).
+
+**Against IBM's official models, run here on the same windows.** The official `IBM/Multi-GNN` code reproduces Multi-GIN+EU on the paper's own split at 0.6205 for seed 1 (the paper reports $`64.79 \pm 1.22`$ over five seeds), and on this project's 56/14/30 windows it reaches 0.6024 at its best validation epoch; Multi-PNA+EU, the paper's best ($`68.16 \pm 2.65`$), reaches 0.6878 there at its best validation epoch (25), and 0.6616 in a second run of the same command and seed (epoch 36), the spread GPU non-determinism gives; at a threshold tuned on the validation window, as this project's models are, the second run's test F1 is 0.6782 and its AUPRC 0.6415. Every test-window laundering edge was scored; the 875 edges IBM's neighbour sampling never returned, and its evaluation drops, are all legitimate. Their test graph holds every edge of the test window, so their neighbours include transactions later than the one scored; the compact GNN sees 16 edges and nothing past its batch, and its AUPRC, 0.6676, is above the saved PNA run's while its F1 is 0.02 below PNA's at a tuned threshold. The figures are reported side by side, not ranked.
+
+Against the published figures on this corpus: on HI-Small the Graph Feature Preprocessor paper (Blanusa et al., ICAIF 2024, Table 5) reports 19.75 percent for XGBoost on basic features, 56.88 to 59.71 with fan-in and fan-out, and 63.23 to 64.77 with its other features; Altman et al. (NeurIPS 2023) report 63.23 for GFP + XGBoost and 56.77 for PNA; Egressy et al. (AAAI 2024) 68.16 for Multi-PNA+EU; and Bilgi et al. 63.72 in plaintext for a GNN they also run under CKKS, at 5.31 s per transaction on a consumer GPU with bootstrapping at $`N = 65536`$. Their splits are 60/20/20 or 64/19/17 and their neighbourhoods include later transactions, so none of the rows above is a reproduction of those figures.
+
+The pages show each network's logits and its decision, not a probability. Trained with class weights towards soft targets, the networks' raw probabilities are not risks: their Brier scores on test, 0.00278 for the MLP and 0.00210 for the GNN, are worse than giving every row the window's rate (0.00152). Each record carries a Platt map fitted on validation that brings the CORP miscalibration term down 36- to 53-fold, to $`3.8 \times 10^{-5}`$, as the teacher's and the student's records do. By CORP's discrimination term the GNN (0.000783) leads the teacher (0.000763) and the MLP (0.000744).
 
 ### The trained QCNN under CKKS
 
@@ -94,7 +105,7 @@ The classical comparators are level or ahead on all three, which matches Bowles,
 
 The benchmark's architecture is **per use case**, not a single generic shape
 (`qsh.benchmark.runner.usecase_arch_layers` / `usecase_arch_specs`, mirrored client-side). Its
-lightweight row is the trained linear model; its medium and large rows cost the use case's trained model where one exists: **finance** the one published MLP, `finance_aml.mlp_large`, whichever size is asked for ([below](#the-published-finance-mlp)); **medical** an MLP or a two-block CNN trained in the run on its own rows; and a use case with neither falls back to generic shapes with random weights, labelled as cost only. Genomics
+lightweight row is the trained linear model; its medium and large rows cost the use case's trained model where one exists: **finance** the one published MLP, `finance_aml.mlp_large`, whichever size is asked for ([below](#the-finance-models-on-114-inputs-and-the-compact-gnn)); **medical** an MLP or a two-block CNN trained in the run on its own rows; and a use case with neither falls back to generic shapes with random weights, labelled as cost only. Genomics
 has no hidden layer at any size, because what runs is one weighted sum over its scored variants.
 **Medical** is the
 exception, a **genuine small CNN**: in the browser it reads a tabular (WDBC) row tiled to the image
@@ -257,8 +268,8 @@ data that trained a model is weaker (Round 86, review PI-16):
 - every recorded `git_sha` ends in `-dirty`: each model was trained from a working tree with uncommitted
   changes, so its commit alone does not reproduce it;
 - of the students, only `satellite_comms.student` records a `git_sha`, since Round 86 gave it a trainer
-  of its own, and only `finance_aml.gbm` and `finance_aml.mlp_large` record a digest of their training data
-  (`data_digest`);
+  of its own, and only `finance_aml.gbm`, `finance_aml.mlp_large` and `finance_aml.gnn_compact` record a digest of
+  their training data (`data_digest`);
 - the ids recorded before 2026-11-02 name commits of the history before it was rewritten, which is kept
   privately with a map from each old commit to its new one.
 
@@ -325,47 +336,56 @@ The sample draws each class of the test window on its own (164 laundering rows, 
 and its prevalence is not; $`\mu`$ is the window's own, 2,321 of 1,523,504 (0.152%), which is the case-control
 estimator of Pfeiffer and Gail (2020, eq. 11). The score passes through the record's Platt map first, and the
 threshold range, 0.002 to 0.05, is the use case's decision context in the config, shared with the BFV scorecard's
-fit. Measured on 2026-11-06 against the whole window with the same graph, per 10,000 transactions
-([`measurements/finance-decision-curve-2026-11-06.json`](measurements/finance-decision-curve-2026-11-06.json)):
+fit. Measured on 2026-11-11 against the whole window with the published graph, and again on 2026-11-12 at the pin its card-only
+republish moved, with the same figures, per 10,000 transactions
+([`measurements/finance-decision-curve-2026-11-11.json`](measurements/finance-decision-curve-2026-11-11.json)):
 
 | $`t`$ | whole window | the page's sample, pointwise 95% | weighted by the sample's 2.0% | treat-all |
 |---|---|---|---|---|
-| 0.002 | 9.81 | 10.08 (9.03 to 11.12) | 144.31 | -4.77 |
-| 0.005 | 7.24 | 8.00 (6.84 to 9.15) | 118.54 | -34.94 |
-| 0.01 | 5.44 | 6.26 (5.07 to 7.45) | 95.38 | -85.62 |
-| 0.02 | 3.78 | 4.49 (3.33 to 5.65) | 71.05 | -188.54 |
-| 0.05 | 1.98 | 2.06 (1.02 to 3.10) | 38.16 | -510.28 |
+| 0.002 | 12.46 | 12.13 (11.25 to 13.01) | 165.52 | -4.77 |
+| 0.005 | 11.59 | 11.47 (10.51 to 12.43) | 156.97 | -34.94 |
+| 0.01 | 10.93 | 10.91 (9.88 to 11.93) | 148.51 | -85.62 |
+| 0.02 | 10.11 | 10.38 (9.30 to 11.46) | 140.08 | -188.54 |
+| 0.05 | 9.10 | 8.35 (7.17 to 9.53) | 112.11 | -510.28 |
 
-The window lies inside the sample's interval at 40 of the 43 thresholds the page draws. The third column is the
-error the estimator avoids. A perfect model would score 15.23, the window's rate per 10,000; the trainer's operating
-point, 0.3869 on the raw score, is a calibrated risk of 0.129, above the range.
+The window lies inside the sample's interval at all 43 thresholds the page draws, at most 1.24 standard errors from
+it. The third column is the error the estimator avoids. A perfect model would score 15.23, the window's rate per
+10,000; the trainer's operating point, 0.7451 on the raw score, is a calibrated risk of 0.309, above the range. The
+teacher on the 32 aggregates that this one replaced scored 5.44 at $`t = 0.01`$
+([`measurements/finance-decision-curve-2026-11-06.json`](measurements/finance-decision-curve-2026-11-06.json)).
+The map lowers this teacher's Brier score on the validation rows it was fitted on, from 0.00070321 to 0.00061622,
+and raises it on the test window, from 0.00077072 to 0.00082539, where laundering is 0.152 percent of rows against
+0.113 on validation, and on the test window it lowers the log-loss. Through the map the curve reaches a higher net
+benefit than the raw score gives at 25 of the 43 thresholds, by at most 0.42 per 10,000, and a lower one at the other
+18, by at most 0.27, so the choice between them does not change what the curve says. The record states the scores
+beside the map.
 
 The private-inference figure draws the same curve for the CKKS student, `finance_aml.student`, from the logits it
 decrypts on the same 8,192 rows, over the same thresholds at the same rate. Its Platt map is fitted, as the teacher's
 is, on the model's own probability, here $`q = \sigma(w^\top z + c)`$, over the validation window
 (`student_calibration` in `scripts/train/finance_aml.py`, which a retrain runs; `scripts/finance_student_calibration.py`
 applied it to the published weights without retraining). The student classifies at $`q = 0.5`$, where the trainer
-folded its tuned threshold into the bias, a calibrated risk of 0.013. Measured the same way, per 10,000 transactions
-([`measurements/finance-student-decision-curve-2026-11-06.json`](measurements/finance-student-decision-curve-2026-11-06.json)):
+folded its tuned threshold into the bias, a calibrated risk of 0.079. Measured the same way, per 10,000 transactions
+([`measurements/finance-student-decision-curve-2026-11-11.json`](measurements/finance-student-decision-curve-2026-11-11.json)):
 
 | $`t`$ | whole window | the page's sample, pointwise 95% | weighted by the sample's 2.0% | whole window, isotonic map | whole window, no map |
 |---|---|---|---|---|---|
-| 0.002 | 11.08 | 10.92 (10.27 to 11.57) | 181.27 | 11.08 | 8.76 |
-| 0.005 | 7.58 | 7.38 (6.31 to 8.46) | 142.79 | 7.57 | 3.35 |
-| 0.01 | 4.98 | 4.57 (3.35 to 5.79) | 92.59 | 5.22 | -6.52 |
-| 0.02 | 1.87 | 2.05 (0.91 to 3.18) | 52.84 | 2.51 | -24.93 |
-| 0.05 | -0.96 | -0.83 (-1.63 to -0.02) | 8.22 | 0.00 | -67.15 |
+| 0.002 | 12.56 | 12.60 (12.11 to 13.09) | 189.70 | 12.52 | 11.93 |
+| 0.005 | 10.83 | 10.86 (10.16 to 11.56) | 180.09 | 11.17 | 8.50 |
+| 0.01 | 9.86 | 9.65 (8.72 to 10.57) | 166.47 | 10.05 | 3.84 |
+| 0.02 | 8.11 | 7.96 (6.80 to 9.11) | 149.00 | 8.10 | -3.48 |
+| 0.05 | 6.69 | 6.11 (4.66 to 7.56) | 120.08 | 6.01 | -13.14 |
 
-The window lies inside the sample's interval at all 43 thresholds. Over the whole window the student is above the
-teacher up to $`t \approx 0.0067`$ and below it from 0.0072, and below treat-none from 0.033. Net benefit is negative
-exactly when the flagged rows' laundering rate is under $`t`$, so from there the map overstates the risk of the rows it
-puts at the top of the student's range. On this student isotonic regression beats Platt on both proper scoring rules (Brier
-0.00149696 against 0.00154002, log-loss 0.00837343 against 0.00864886) and moves the window curve by at most 0.96 per
-10,000, at the top of the range, where it flags no row; Platt is kept so that the two curves differ by the model and
-not by the map, and the record says so. The calibrated student's Brier score is above the base rate's, a Brier skill of
-$`1 - 0.00154002/0.00152114 = -0.0124`$, so as a probability forecast it is worse than giving every row the window's
-rate. The two readings do not conflict: the curve asks what acting at each threshold pays, and that is positive
-through most of the range. The last column, the student's own probability read as a risk, is why the map is applied.
+The window lies inside the sample's interval at all 43 thresholds, at most 0.79 standard errors from it. Over the
+whole window the student is level with the teacher at the bottom of the range, 12.56 against 12.46 at $`t = 0.002`$,
+and below it from $`t \approx 0.0022`$, by 2.40 at $`t = 0.05`$; it stays above treat-none across the range, where
+the 32-input student it replaced went below it from 0.033. On this student isotonic regression scores a lower Brier
+score than Platt and a higher log-loss (0.00134853 against 0.00138016, and 0.00654373 against 0.00620012) and moves
+the window curve by at most 0.68 per 10,000, at the top of the range; Platt is kept so that the two curves differ by
+the model and not by the map, and the record says so. The calibrated student's Brier skill against the base rate is
+$`1 - 0.00138016/0.00152114 = 0.0927`$, and the teacher's $`1 - 0.00082539/0.00152114 = 0.4574`$: as probability
+forecasts both beat giving every row the window's rate, the student by much less. The last column, the student's own
+probability read as a risk, negative from $`t \approx 0.015`$, is why the map is applied.
 
 #### Which pages encrypt
 
@@ -379,7 +399,7 @@ logits are from the plaintext ones. What CKKS evaluates in the browser: on the m
 Wisconsin logistic regression, whose logits the 2PC argmax then compares, and the published medical
 student's convolution and both dense layers; the telecom student; the full 183-variant genomics
 score; and, on finance, a linear surrogate over four columns of the PaySim demo sample, while the
-33-parameter AMLworld student is encrypted on 8,192 held-out test-window rows for its agreement
+115-parameter AMLworld student is encrypted on 8,192 held-out test-window rows for its agreement
 figure. What each step hides, in either tier, is in
 [the threat model's table](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment).
 

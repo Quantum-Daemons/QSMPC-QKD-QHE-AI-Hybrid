@@ -6,7 +6,7 @@ node-seal's plaintexts and ciphertexts live in the WebAssembly heap, which the J
 neither sees nor frees: an object nobody deletes stays allocated for the life of the tab. Only the
 dense layer and the masked decryption deleted theirs, so every other CKKS path (the held-out batch,
 the single-row linear layer, the convolution) left its inputs, weights, products and rotations
-behind. A finance run scores 8,192 held-out rows in 64 ciphertexts, and each run left about 330 MB:
+behind. A finance run scored 8,192 held-out rows in 64 ciphertexts (256 since the 114 inputs), and each run left about 330 MB:
 the heap grew from 431 MB after the first run to 2,097 MB after the sixth, measured here in node with
 the collector forced between runs. In headless Chrome the finance page stopped responding at its
 fourteenth run with nothing changed between runs but the Start button, its renderer past 5 GB (a

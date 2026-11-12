@@ -35,6 +35,7 @@ from pathlib import Path
 import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "src"))
+sys.path.insert(1, str(Path(__file__).resolve().parent))
 
 from qsh.models import datasets, distil, export, metrics, train  # noqa: E402
 from qsh.models.registry import get as get_spec  # noqa: E402
@@ -390,6 +391,25 @@ def graph_features(df, *, fit_on=None, causal=None):
     return f[FEATURES].to_numpy(dtype=np.float32)
 
 
+def model_inputs(df, fit, val, te, tr, causal):
+    """The 114 inputs every finance model reads since Round 86, as fit, validation and test matrices, with their names and the batch reach.
+
+    The 32 per-account aggregates of `graph_features`, then the 79 per-transaction window features and the 3 pair features of
+    `finance_aml_fan`, the last two up to each transaction's horizon: the end of its batch of 2,048 and at most `batch_reach` minutes past it.
+    One function, so the teacher, its CKKS student, the MLP and the GNN cannot drift apart on what a row is.
+    """
+    from finance_aml_fan import PAIR_FEATURES, batch_reach, pair_features, transaction_features
+
+    reach = batch_reach(df, len(fit))
+    extra, names = transaction_features(df, horizon_minutes=reach)
+    tail = np.hstack([extra, pair_features(df, horizon_minutes=reach)])
+    n_fit, n_val = len(fit), len(val)
+    base = (graph_features(fit, causal=causal), graph_features(val, fit_on=fit, causal=causal), graph_features(te, fit_on=tr, causal=causal))
+    parts = (tail[:n_fit], tail[n_fit:n_fit + n_val], tail[n_fit + n_val:])
+    matrices = tuple(np.hstack([b, t]).astype(np.float32) for b, t in zip(base, parts, strict=True))
+    return matrices, list(FEATURES) + names + list(PAIR_FEATURES), reach
+
+
 def _cycle_closures(source, df) -> dict:
     """For each row a->b: is ``a`` reachable from ``b`` in k hops, for k = 2..MAX_CYCLE_HOPS.
 
@@ -504,9 +524,8 @@ def main() -> int:
     cz = causal_account_features(df) if args.causal else None
     if cz is not None:
         print("  causal per-account aggregates: ON (prior-at-time, no fit_on needed)")
-    Xfit = graph_features(fit, causal=cz)
-    Xval = graph_features(val, fit_on=fit, causal=cz)
-    Xte = graph_features(te, fit_on=tr, causal=cz)
+    (Xfit, Xval, Xte), feature_names, reach = model_inputs(df, fit, val, te, tr, cz)
+    print(f"  {len(feature_names)} inputs: per-account aggregates, per-transaction windows and pair counts, reaching at most {reach} minutes past each transaction")
     yfit = fit["label"].to_numpy(dtype=np.int8)
     yval = val["label"].to_numpy(dtype=np.int8)
     yte = te["label"].to_numpy(dtype=np.int8)
@@ -536,71 +555,14 @@ def main() -> int:
     # ---- probability calibration ---------------------------------------------------------------
     # Fitted on VAL, scored on TEST. The val rows already pick `thr`, and reusing them for the
     # calibration map is sound precisely because the map's quality is measured on test, which neither
-    # step has seen. Fitting and scoring on the same rows is what would flatter it.
-    #
-    # Platt rather than isotonic is a MEASURED tie-break since Round 49, not the size argument the
-    # earlier note made: this calibration set is 710,969 cases, far past the ICML/UAI thresholds, and
-    # on this split isotonic and Platt score within noise on Brier and log-loss. Isotonic loses on
-    # what is not a proper scoring rule - it is only weakly monotone, and it cost 9.09% of AUPRC by
-    # collapsing 1,388,669 distinct scores to 138. No reliability DIAGRAM is drawn - Van Calster et al.
-    # (J Clin Epidemiol 2016) ask for 200 events and 200 non-events - but the CORP terms are SCALARS and
-    # pool-adjacent-violators chooses no bin count, so they are reportable exactly where a curve is
-    # not. Full workings: references/finance-calibration-isotonic-vs-platt.md.
-    #
-    # `on_logit=True` IS THE FIX FOR THE DEFECT ROUND 49 MEASURED AND LEFT IN PLACE. This call used
-    # to hand `fit_platt` a PROBABILITY. Platt's map is linear in its argument, 90% of these scores
-    # are under 1e-4, so the fitted sigmoid returned the one constant 0.00090148 across nine of ten
-    # deciles - which is where the +8.7% log-loss this block used to report came from, and the 2.83x
-    # ECE(20) the ablation measured alongside it (0.00183223 against 0.00064837 uncalibrated; this
-    # block computes no ECE). Fitted on logit(s) instead, the same `fit_platt` - different a and b,
-    # since they are the output of a fit on a different argument - gives Brier 0.00142199 and
-    # log-loss 0.00818964. That beats the old map on both, and is within noise of isotonic
-    # (0.00142218 / 0.00820025), which still WINS on CORP MCB, 9.34e-06 against 1.18e-05: the term
-    # printed below as "the term calibration is supposed to move". Platt is kept on the ranking and
-    # publication tie-breaks recorded above, not on a clean sweep of the scores. The flag lives in
-    # `fit_platt` rather
-    # than here so that `Platt.as_dict()` publishes which argument the floats belong to; a transform
-    # applied here would leave the published formula describing a different function.
-    from qsh.models import calibration as cal
-
-    platt = cal.fit_platt(teacher.predict_proba(Xval)[:, 1], yval, on_logit=True)
-    p_raw, p_cal = proba[:, 1], platt.apply(proba[:, 1])
-    def _r(d: dict) -> dict:
-        """Round the float terms; the CORP dict also carries strings and ints."""
-        return {k: (round(v, 8) if isinstance(v, float) else v) for k, v in d.items()}
-
-    teacher_metrics["calibration"] = {
-        **platt.as_dict(),
-        "fitted_on": "validation split; scored on the held-out test split",
-        "brier_raw": round(cal.brier(p_raw, yte), 8),
-        "brier_calibrated": round(cal.brier(p_cal, yte), 8),
-        "log_loss_raw": round(cal.log_loss(p_raw, yte), 8),
-        "log_loss_calibrated": round(cal.log_loss(p_cal, yte), 8),
-        "corp_raw": _r(cal.corp_decomposition(p_raw, yte)),
-        "corp_calibrated": _r(cal.corp_decomposition(p_cal, yte)),
-        "reliability_diagram_defensible_here": (
-            "YES on the test split, which carries 2,321 events. Van Calster et al. (J Clin "
-            "Epidemiol 2016) ask for at least 200 events and 200 non-events before a flexible "
-            "calibration curve, and Riley et al. (Stat Med 2021) show that such rules of thumb can "
-            "still be too few. NO on the browser's evaluation sample: 8,192 rows from the same test "
-            "window at a 0.02 base rate, so 164 events, which is why the page draws no curve and "
-            "says so. Each number is right for its own denominator, and confusing the two is the "
-            "mistake this repository documents under 'ask what the metric was divided by'. The "
-            "floor also binds on medical (42 events) and satellite (113). The CORP terms below are "
-            "reported regardless, because PAV picks no bin count and so they are stable where a "
-            "binned curve is not."),
-        "does_not_move_ranking": (
-            "Platt is STRICTLY monotone, so AUC and AUC-PR are unchanged by construction: measured "
-            "Round 49, both are identical to the uncalibrated values to ten decimals, and that held "
-            "for the map fitted on the probability and for the logit(s) map that now ships alike. "
-            "The qualifier matters and was missing - isotonic is only WEAKLY monotone, and on this "
-            "same split it moved AUROC by -0.00031674 and AUPRC by -0.01121590 (-9.09%). "
-            "Calibration by a strictly monotone map fixes what a probability MEANS, never how the "
-            "rows are ordered. ONE HONEST QUALIFIER ON THE MAP THAT SHIPS: logit() clips at 1e-12, "
-            "so scores below 1e-12 or above 1-1e-12 would tie. None exist on this split (the raw "
-            "range is 4.4e-11 to 0.99997), so no pair is tied and the AUCs above are exact; a "
-            "retrain that saturates a leaf would need this re-checked rather than assumed."),
-    }
+    # step has seen. Fitting and scoring on the same rows is what would flatter it. `on_logit=True`
+    # fits the map on logit(s): Round 49 measured that a map fitted on the probability itself returned
+    # one constant across nine of ten deciles (references/finance-calibration-isotonic-vs-platt.md).
+    # Every figure the record states about the map, isotonic regression beside it, and the ranking is
+    # measured in this run by `teacher_calibration`; until Round 86 three of them were Round 49's text.
+    teacher_metrics["calibration"] = teacher_calibration(
+        teacher.predict_proba(Xval)[:, 1], yval, proba[:, 1], yte,
+        fitted_by="scripts/train/finance_aml.py, in the run that fitted the teacher")
     _c = teacher_metrics["calibration"]
     print("\n  calibration (Platt, fitted on val, scored on test)")
     print(f"    Brier     {_c['brier_raw']:.6f} -> {_c['brier_calibrated']:.6f}")
@@ -659,7 +621,7 @@ def main() -> int:
     # Persist it. Until Round 19 the student was fit, measured and discarded -- so the one model
     # that actually runs under CKKS was the one model nobody could obtain or check.
     student_export = distil.save_student(
-        student, Path("models/finance_aml_student"), n_features=len(FEATURES),
+        student, Path("models/finance_aml_student"), n_features=len(feature_names),
         teacher_key="finance_aml.gbm", student_key="finance_aml.student",
         scaler=(None if args.student_degree > 1 else scaler),
         fixtures=(Xte[:64] if args.student_degree > 1 else None))
@@ -685,7 +647,7 @@ def main() -> int:
     fixtures = Xte[np.random.default_rng(args.seed).choice(len(Xte), size=min(512, len(Xte)),
                                                            replace=False)]
     report = export.verify_and_quantize(teacher, fixtures, out, kind="xgboost",
-                                        n_features=len(FEATURES))
+                                        n_features=len(feature_names))
     if report.int8_skipped_reason:
         print(f"\n  ONNX fp32 {report.fp32_bytes/1e6:.2f} MB "
               f"(int8 skipped: {report.int8_skipped_reason})")
@@ -694,9 +656,11 @@ def main() -> int:
               f"({report.compression:.1f}x), int8 agreement {report.int8_agreement:.4f}")
 
     (out / "feature_spec.json").write_text(json.dumps({
-        "features": FEATURES,
+        "features": feature_names,
         "decision_threshold": float(thr),
-        "notes": "Graph aggregates are fitted on the training window only; unseen accounts score 0.",
+        "batch_reach_minutes": reach,
+        "notes": ("The first 32 are per-account aggregates, fitted on the training window only, where unseen accounts score 0; the rest are per-transaction "
+                  "window features and pair counts up to the end of the transaction's batch of 2,048, at most batch_reach_minutes past it."),
     }, indent=2) + "\n")
 
     train.record_metrics("finance_aml.gbm", {
@@ -705,31 +669,8 @@ def main() -> int:
         "n_train": int(len(tr)), "n_test": int(len(te)),
         "positive_rate": round(float(n_pos / len(df)), 8),
         "split": "temporal, inductive",
-        "baseline_gap_note": (
-            "This reaches minority-class F1 well below the published 0.6323 (GFP+XGBoost, AMLworld "
-            "HI-Small, NeurIPS 2023 D&B). The cause is a feature ARCHITECTURE difference, not a "
-            "tuning one: the gap is unreachable at any threshold, because measured AUPRC is far "
-            "below what that F1 requires. IBM's Graph Feature Preprocessor computes per-transaction "
-            "subgraph patterns over a dynamically updated graph; this project computes per-account "
-            "scalar aggregates. A degree is one number per account, whereas a GFP feature is a "
-            "pattern match in that transaction's own neighbourhood at the moment it arrives. GFP "
-            "ships in `snapml` under a Proprietary licence and is excluded by this project's "
-            "commercial-OK-only rule, but the licence is not itself the cause - the architecture is, "
-            "and it is reimplementable without `snapml`, simply at more cost than renaming "
-            f"aggregates. Reachability is computed to {MAX_CYCLE_HOPS} hops against injected CYCLE "
-            "attempts of up to 10; that was previously recorded as a main cause and is NOT one - the "
-            "GFP paper (arXiv:2402.08593) decomposes its own contribution, and its Table 5 "
-            "(HI-Small, XGBoost, batch 128) gives fan-in/fan-out, which this project approximates "
-            "with per-account aggregates, 37 "
-            "F1 points (19.75 to 56.88) and multi-hop cycle and scatter-gather patterns 1.7 more "
-            "(to 58.60; 'up to 4%' in its text is F1 points, not a relative gain). The evaluation "
-            "is strictly inductive and "
-            "temporally split. Per-account aggregates are causal (each row sees only edges strictly "
-            "before it); the structural block - cycle closure, scatter-gather, bank diversity, burst "
-            "degree - is still fitted on the training window, because recomputing sparse "
-            "reachability at every timestep is not tractable here. Reported as measured; not "
-            "adjusted to close the gap. Full workings: references/finance-gap-investigation.md."
-        ),
+        "n_features": len(feature_names), "batch_reach_minutes": reach,
+        "baseline_gap_note": teacher_gap_note(len(feature_names), teacher_metrics["minority_class_f1"], reach),
         "git_sha": train.git_sha(),
         "data_digest": train.digest_array(Xtr[:10000], ytr[:10000]),
         # Mirror telecom_ids: when int8 is skipped there is no agreement to report, so record the
@@ -758,7 +699,39 @@ def _est(student):
     return student[-1] if hasattr(student, "steps") else student
 
 
-def student_calibration(logit_val, y_val, logit_te, y_te, *, fitted_by: str) -> dict:
+_STUDENT_ARGUMENT = (r"the student's P(laundering), $q = \sigma(w^\top z + c)$, where $w^\top z + c$ is the "
+                     "decision logit the encrypted path decrypts, $z$ the z-scored features and $c$ the student's "
+                     "intercept (`b` in its weights file). The tuned threshold is folded into $c$, so the operating "
+                     "point is $q = 0.5$, a logit of 0")
+_STUDENT_RAW_IS = ("the student's own probability, sigmoid of the decision logit. The folded threshold puts 0.5 at the "
+                   "operating point, so it is not a risk.")
+_STUDENT_WHY_TAIL = ("and it is the teacher's method, so the page's two decision curves differ by the "
+                     "model and not by the map. scripts/measure_decision_curve.py records the student's window curve under both "
+                     "maps.")
+
+
+def network_calibration(logits_val, y_val, logits_te, y_te, *, fitted_by: str, model: str, platt=None) -> dict:
+    """The finance MLP's or GNN's Platt map, by `student_calibration` itself, so the four finance records compare models and not maps (Round 86).
+
+    Each network ends in two logits with the tuned threshold folded into the last bias, so P(laundering) is the softmax of
+    the two, the sigmoid of their difference, and it is 0.5 at the operating point: not a risk, the `raw` arm. Trained with
+    class weights, both put that raw probability well above the base rate on average, which the map fitted on validation
+    corrects. The pages show the logits and the decision, not this probability.
+    """
+    lv, lt = np.asarray(logits_val, dtype=np.float64), np.asarray(logits_te, dtype=np.float64)
+    return {"page_reads_this_map": False, **student_calibration(
+        lv[:, 1] - lv[:, 0], y_val, lt[:, 1] - lt[:, 0], y_te, fitted_by=fitted_by,
+        argument=(rf"the {model}'s P(laundering), $q = \sigma(z_1 - z_0)$, the softmax of its two logits $z_0, z_1$. The "
+                  "tuned threshold is folded into the last layer's bias, so the operating point is $q = 0.5$"),
+        raw_is=(f"the {model}'s own softmax probability. The folded threshold puts 0.5 at the operating point and the "
+                "class weights of its training raise it, so it is not a risk."),
+        why_tail=("and it is the method of the teacher's and the student's records, so the four finance records differ by "
+                  "the model and not by the map."), noun=model, platt=platt)}
+
+
+def student_calibration(logit_val, y_val, logit_te, y_te, *, fitted_by: str, argument: str = _STUDENT_ARGUMENT,
+                        raw_is: str = _STUDENT_RAW_IS, why_tail: str = _STUDENT_WHY_TAIL, noun: str = "student",
+                        platt=None) -> dict:
     """The CKKS student's Platt map, fitted over validation and scored on test (Round 86).
 
     The page draws a decision curve from the student's DECRYPTED logits, and a decision curve reads a risk against a
@@ -775,7 +748,8 @@ def student_calibration(logit_val, y_val, logit_te, y_te, *, fitted_by: str) -> 
 
     Isotonic regression is measured beside it on the same windows rather than argued against. The teacher's comparison
     (Round 49) measured a different model, and its text, which `Platt.as_dict()` publishes, is replaced here so the
-    student's record states nothing measured on the teacher.
+    student's record states nothing measured on the teacher. `noun` names the model in that sentence: the MLP and the GNN
+    are distilled from IBM's Multi-PNA+EU, so "this student's ... not carried from the teacher" would name the wrong one.
 
     Called by `main()` in the run that fits the student, and by `scripts/finance_student_calibration.py` on the published
     weights. A record written without it would carry a previous student's map forward onto new weights.
@@ -787,7 +761,10 @@ def student_calibration(logit_val, y_val, logit_te, y_te, *, fitted_by: str) -> 
     lv, lt = np.asarray(logit_val, dtype=np.float64), np.asarray(logit_te, dtype=np.float64)
     yv, yt = np.asarray(y_val).astype(int), np.asarray(y_te).astype(int)
     pv, p_raw = 1.0 / (1.0 + np.exp(-lv)), 1.0 / (1.0 + np.exp(-lt))
-    platt = cal.fit_platt(pv, yv, on_logit=True)
+    # None in a training run, which fits the map; a script rewriting a record from published weights passes the published
+    # map, so the record keeps the floats the page applies (a refit moves them in the eighth digit).
+    if platt is None:
+        platt = cal.fit_platt(pv, yv, on_logit=True)
     p_cal = platt.apply(p_raw)
     # Isotonic depends on the order of its argument alone, so the logit and the probability fit the same map.
     p_iso = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip").fit(lv, yv).predict(lt)
@@ -799,7 +776,7 @@ def student_calibration(logit_val, y_val, logit_te, y_te, *, fitted_by: str) -> 
     brier_cal, ll_cal = cal.brier(p_cal, yt), cal.log_loss(p_cal, yt)
     brier_iso, ll_iso = cal.brier(p_iso, yt), cal.log_loss(p_iso, yt)
     auprc = {k: metrics.auprc(yt, p) for k, p in (("raw", p_raw), ("calibrated", p_cal), ("isotonic", p_iso))}
-    record = {k: v for k, v in platt.as_dict().items() if k != "why_not_isotonic"}
+    record = platt.as_dict()
 
     def _vs(iso: float, platt_: float) -> str:
         """Isotonic against Platt in words, from the numbers, so the sentence is true of whatever run wrote it."""
@@ -809,15 +786,11 @@ def student_calibration(logit_val, y_val, logit_te, y_te, *, fitted_by: str) -> 
     return {
         **record,
         # The student's intercept is c here, not the weights file's `b`: the card prints this beside Platt's own b.
-        "argument": (r"the student's P(laundering), $q = \sigma(w^\top z + c)$, where $w^\top z + c$ is the "
-                     "decision logit the encrypted path decrypts, $z$ the z-scored features and $c$ the student's "
-                     "intercept (`b` in its weights file). The tuned threshold is folded into $c$, so the operating "
-                     "point is $q = 0.5$, a logit of 0"),
+        "argument": argument,
         "test_rows_clipped_by_logit": clipped,
         "fitted_on": "validation split; scored on the held-out test split",
         "fitted_by": fitted_by,
-        "raw_is": ("the student's own probability, sigmoid of the decision logit. The folded threshold puts 0.5 at the "
-                   "operating point, so it is not a risk."),
+        "raw_is": raw_is,
         "brier_raw": round(cal.brier(p_raw, yt), 8),
         "brier_calibrated": round(brier_cal, 8),
         "log_loss_raw": round(cal.log_loss(p_raw, yt), 8),
@@ -831,16 +804,142 @@ def student_calibration(logit_val, y_val, logit_te, y_te, *, fitted_by: str) -> 
             "distinct_outputs": distinct, "rows_at_zero": zeros,
         },
         "why_not_isotonic": (
-            f"Measured on this student's windows, not carried from the teacher. Isotonic's Brier {brier_iso:.8f} is "
+            f"Measured on this {noun}'s windows, not carried from the gradient-boosting teacher's record. Isotonic's Brier {brier_iso:.8f} is "
             f"{_vs(brier_iso, brier_cal)} Platt's {brier_cal:.8f} and its log-loss {ll_iso:.8f} is {_vs(ll_iso, ll_cal)} "
             f"{ll_cal:.8f}; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly "
             "monotone, so the curve ranks rows as the student does (AUPRC "
             f"{auprc['calibrated']:.8f} against the raw {auprc['raw']:.8f}"
             + (f", with {clipped:,} test rows tied at the logit clip" if clipped else ", no row tied at the logit clip")
             + f"; isotonic's {auprc['isotonic']:.8f} comes from the test window's scores tied at {distinct} values, "
-            f"{zeros:,} of them exactly zero), and it is the teacher's method, so the page's two decision curves differ by the "
-            "model and not by the map. scripts/measure_decision_curve.py records the student's window curve under both "
-            "maps."),
+            f"{zeros:,} of them exactly zero), " + why_tail),
+    }
+
+
+def teacher_gap_note(n_features: int, minority_f1: float, reach: int) -> str:
+    """The teacher card's "Gap to the published baseline", from its run's figures; `scripts/finance_gap_notes.py` rewrites a record with it.
+
+    0.6323 is GFP + XGBoost at a batch of 128 transactions; these features are computed in batches of 2,048, where the GFP
+    paper reports 64.77 (Blanusa et al., arXiv:2402.08593, Table 4), so the note names both (Round 86, read at the source).
+    """
+    return (
+        f"On this project's split, 56/14/30 by time with nothing read past a transaction's horizon, the {n_features} inputs reach minority-class "
+        f"F1 {minority_f1:.4f}, against the published 0.6323 for GFP + XGBoost on HI-Small (Altman et al., NeurIPS 2023 D&B), "
+        "measured on the paper's 60/20/20 split at a batch of 128 transactions; at the batch of 2,048 these features use, the GFP paper reports 64.77 "
+        "(Blanusa et al., arXiv:2402.08593, Table 4). The inputs are the 32 per-account aggregates, 79 per-transaction fan-in, fan-out, vertex-statistic and "
+        f"scatter-gather features in the Graph Feature Preprocessor's style, computed in batches of 2,048 and at most {reach} minutes past the transaction, "
+        "and 3 pair counts; there is no cycle enumeration. Until Round 86 the teacher read the 32 aggregates alone and reached 0.1519, the level of the "
+        "GFP paper's basic-features row (Table 5: 19.75). Full workings: references/finance-gap-investigation.md.")
+
+
+def teacher_calibration(p_val, y_val, p_te, y_te, *, fitted_by: str, platt=None) -> dict:
+    """The teacher's Platt map, with everything its record says about it measured on the windows it was fitted and scored on.
+
+    Fitted on validation, which also chose the threshold, and scored on test, which neither step saw. Until Round 86 the
+    record also carried three paragraphs of text: `Platt.as_dict()`'s isotonic comparison and two notes, on the ranking
+    and on the clip, all measured in Round 49 on a teacher that has since been retrained twice, and the Hub card printed
+    the first of them beside the current map's own Brier score. Each is a sentence about this run's numbers now.
+
+    `platt` is None in the trainer, which fits the map. `scripts/finance_teacher_calibration.py` passes the published map,
+    so a record rewritten from the published graph describes the map the page applies rather than a refit of it.
+    """
+    from sklearn.isotonic import IsotonicRegression
+    from sklearn.metrics import roc_auc_score
+
+    from qsh.models import calibration as cal
+
+    pv, pt = np.asarray(p_val, dtype=np.float64), np.asarray(p_te, dtype=np.float64)
+    yv, yt = np.asarray(y_val).astype(int), np.asarray(y_te).astype(int)
+    if platt is None:
+        platt = cal.fit_platt(pv, yv, on_logit=True)
+    p_cal = platt.apply(pt)
+    p_iso = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip").fit(pv, yv).predict(pt)
+    eps = platt.logit_clip_eps
+    outside = (pt < eps) | (pt > 1.0 - eps)
+    clipped = int(outside.sum())
+    # The clip ties rows only where the scores hold them apart: a float32 graph already emits exactly 0.0 for every
+    # probability below its resolution, so its clipped rows can sit at one value per side before the map sees them.
+    clipped_values = sorted({float(v) for v in pt[outside]})
+    sides = int((pt < eps).any()) + int((pt > 1.0 - eps).any())
+
+    def _r(d: dict) -> dict:
+        return {k: (round(v, 8) if isinstance(v, float) else v) for k, v in d.items()}
+
+    arms = {"raw": pt, "calibrated": p_cal, "isotonic": p_iso}
+    # The map is fitted on validation and scored on test, and the two windows need not share a laundering rate.
+    val_brier = {"raw": cal.brier(pv, yv), "calibrated": cal.brier(platt.apply(pv), yv)}
+    rate_val, rate_te = float(yv.mean()), float(yt.mean())
+    brier = {k: cal.brier(p, yt) for k, p in arms.items()}
+    loss = {k: cal.log_loss(p, yt) for k, p in arms.items()}
+    auprc = {k: metrics.auprc(yt, p) for k, p in arms.items()}
+    auroc = {k: float(roc_auc_score(yt, p)) for k, p in arms.items()}
+    distinct_raw, distinct_iso = int(np.unique(pt).size), int(np.unique(p_iso).size)
+    zeros, zero_events = int((p_iso == 0).sum()), int(((p_iso == 0) & (yt == 1)).sum())
+    events = int(yt.sum())
+
+    def _vs(a: float, b: float) -> str:
+        return "below" if a < b else "above" if a > b else "equal to"
+
+    def _moves(after: float, before: float) -> str:
+        return "lowers" if after < before else "raises" if after > before else "leaves"
+
+    ranks_kept = auroc["calibrated"] == auroc["raw"] and auprc["calibrated"] == auprc["raw"]
+    record = platt.as_dict()
+    return {
+        **record,
+        "fitted_on": "validation split; scored on the held-out test split",
+        "fitted_by": fitted_by,
+        "test_rows_clipped_by_logit": clipped,
+        "brier_raw": round(brier["raw"], 8),
+        "brier_calibrated": round(brier["calibrated"], 8),
+        "log_loss_raw": round(loss["raw"], 8),
+        "log_loss_calibrated": round(loss["calibrated"], 8),
+        "corp_raw": _r(cal.corp_decomposition(pt, yt)),
+        "corp_calibrated": _r(cal.corp_decomposition(p_cal, yt)),
+        "auprc_raw": round(auprc["raw"], 8),
+        "auprc_calibrated": round(auprc["calibrated"], 8),
+        "auroc_raw": round(auroc["raw"], 8),
+        "auroc_calibrated": round(auroc["calibrated"], 8),
+        "isotonic_measured": {
+            "brier": round(brier["isotonic"], 8), "log_loss": round(loss["isotonic"], 8),
+            "auprc": round(auprc["isotonic"], 8), "auroc": round(auroc["isotonic"], 8),
+            "distinct_outputs": distinct_iso, "rows_at_zero": zeros, "events_at_zero": zero_events,
+        },
+        "validation_brier": {"raw": round(val_brier["raw"], 8), "calibrated": round(val_brier["calibrated"], 8),
+                             "laundering_rate": round(rate_val, 8)},
+        "test_laundering_rate": round(rate_te, 8),
+        "reliability_diagram_defensible_here": (
+            f"{'YES' if min(events, len(yt) - events) >= 200 else 'NO'} on the test split, which carries {events:,} events "
+            f"and {len(yt) - events:,} non-events. Van Calster et "
+            "al. (J Clin Epidemiol 2016) ask for at least 200 of each before a flexible calibration curve, and Riley et al. "
+            "(Stat Med 2021) show that such rules of thumb can still be too few. NO on the browser's evaluation sample, "
+            "drawn from the same window with fewer than 200 events, which is why the page draws no curve there and says "
+            "so. The CORP terms are reported regardless, because pool-adjacent-violators picks no bin count, so they are "
+            "stable where a binned curve is not."),
+        "does_not_move_ranking": (
+            "Platt is strictly monotone, so it cannot reorder rows: on this test window AUROC "
+            f"{auroc['calibrated']:.8f} against the raw {auroc['raw']:.8f} and AUPRC {auprc['calibrated']:.8f} against "
+            f"{auprc['raw']:.8f}" + ("" if ranks_kept else ", which differ only where the map's float64 output ties")
+            + f". logit() clips at {eps:g}, so scores outside [{eps:g}, 1 - {eps:g}] would tie under the map: "
+            + (f"none exist here (the raw range is {pt.min():.3g} to {pt.max():.6f})." if not clipped
+               else f"{clipped:,} test rows are there, every one at exactly " + " or ".join(f"{v:g}" for v in clipped_values)
+                    + " in the scores, so they are tied before the map and the clip adds no tie." if len(clipped_values) == sides
+               else f"{clipped:,} test rows are there, at {len(clipped_values):,} distinct values in the scores, which the clip "
+                    "ties.")
+            + f" Isotonic regression is only weakly monotone, and on the same rows moves AUROC to {auroc['isotonic']:.8f} "
+            f"and AUPRC to {auprc['isotonic']:.8f}."),
+        "why_not_isotonic": (
+            f"Measured in the run that wrote this record, on the teacher's own windows. The map {_moves(brier['calibrated'], brier['raw'])} "
+            f"the Brier score from {brier['raw']:.8f} to {brier['calibrated']:.8f} and {_moves(loss['calibrated'], loss['raw'])} "
+            f"the log-loss from {loss['raw']:.8f} to {loss['calibrated']:.8f} on the test window, where {rate_te:.3%} of rows "
+            f"are laundering; on the validation rows it was fitted on, {rate_val:.3%} of them laundering, it "
+            f"{_moves(val_brier['calibrated'], val_brier['raw'])} the Brier score from {val_brier['raw']:.8f} to "
+            f"{val_brier['calibrated']:.8f}. Isotonic regression fitted on the same "
+            f"validation rows scores Brier {brier['isotonic']:.8f}, {_vs(brier['isotonic'], brier['calibrated'])} Platt's, and "
+            f"log-loss {loss['isotonic']:.8f}, {_vs(loss['isotonic'], loss['calibrated'])} Platt's; lower is better on both. "
+            "Platt is kept as a choice, not as the better score: it is strictly monotone and two floats the browser applies, "
+            f"while isotonic ties the test window's {distinct_raw:,} distinct scores at {distinct_iso} values, {zeros:,} rows at "
+            f"exactly zero, {zero_events} of them laundering, and it is the method of the student's and the networks' "
+            "records, so the finance records differ by the model and not by the map."),
     }
 
 

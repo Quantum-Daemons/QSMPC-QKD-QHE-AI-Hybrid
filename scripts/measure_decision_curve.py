@@ -19,9 +19,9 @@ Needs the AMLworld corpus (`qsh.models.datasets`, `$QSH_DATA_ROOT`) and the publ
 Hub's pinned revision by SHA-256 before anything is measured.
 
     .venv/bin/python scripts/measure_decision_curve.py --key finance_aml.gbm \
-        --out docs/measurements/finance-decision-curve-2026-11-06.json
+        --out docs/measurements/finance-decision-curve-2026-11-11.json
     .venv/bin/python scripts/measure_decision_curve.py --key finance_aml.student \
-        --out docs/measurements/finance-student-decision-curve-2026-11-06.json
+        --out docs/measurements/finance-student-decision-curve-2026-11-11.json
 """
 
 from __future__ import annotations
@@ -40,12 +40,11 @@ REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "scripts"))
 
-#: The graph the page downloads, pinned by the Hub's LFS digest at the record's revision (read 2026-11-06).
-GRAPH_SHA256 = "54511ef70652acb02be201cfed309ff1f95e03c55e9f2aa2b24e2b35a9c8996f"
-#: The student's weights as the Hub serves them at its record's revision (read 2026-11-06). The page's copy,
+#: The graph the page downloads, pinned by the Hub's LFS digest at the record's revision 6532ffa3 (read 2026-11-11, the retrain on the 114 inputs).
+GRAPH_SHA256 = "d69b65320c55496001d7b6b77ed2b9c4ee6d88495ab4e1e12f967903947db8a5"
+#: The student's weights as the Hub serves them at its record's revision f172f6b8 (read 2026-11-11). The page's copy,
 #: `web/public/data/finance/student_weights.json`, is the same bytes (`build_heldout_payloads.py`).
-#: Re-published 2026-11-08 with a rewritten `note` only: the weights, bias and scaler are those of sha256 c47afeadcc8816ce, which the 2026-11-06 measurements used.
-STUDENT_WEIGHTS_SHA256 = "d8823c8961bbc98699223bfa446cc3c5763701d2f363f8be23ee7851d1a420b2"
+STUDENT_WEIGHTS_SHA256 = "dd58191c8279e7f6d36522db5545e46e1a6dda135abffb741eaba545d6a66528"
 
 TEACHER, STUDENT = "finance_aml.gbm", "finance_aml.student"
 
@@ -151,7 +150,7 @@ def main() -> int:
     from qsh.config import get_config
     from qsh.models import metrics, registry
     from qsh.models.calibration import Platt
-    from train.finance_aml import causal_account_features, graph_features, load_sorted, temporal_windows  # type: ignore
+    from train.finance_aml import causal_account_features, load_sorted, model_inputs, temporal_windows  # type: ignore
 
     cfg = get_config().decision_curve
     entry = cfg.curves["finance_aml"]
@@ -170,7 +169,7 @@ def main() -> int:
     df = load_sorted()
     fit, val, te, tr = temporal_windows(df)
     cz = causal_account_features(df)
-    x_te = graph_features(te, fit_on=tr, causal=cz)
+    (_, x_val_all, x_te), _, _ = model_inputs(df, fit, val, te, tr, cz)
     y_te = te["label"].to_numpy().astype(int)
     feature_s = time.time() - t0
     m = (_teacher if key == TEACHER else _student)(key, rec, x_te, y_te)
@@ -188,7 +187,7 @@ def main() -> int:
     if key == STUDENT:
         from sklearn.isotonic import IsotonicRegression
 
-        x_val = graph_features(val, fit_on=fit, causal=cz)
+        x_val = x_val_all
         y_val = val["label"].to_numpy().astype(int)
         iso = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip").fit(m["score"](x_val), y_val)
         iso_window = iso.predict(s_window)

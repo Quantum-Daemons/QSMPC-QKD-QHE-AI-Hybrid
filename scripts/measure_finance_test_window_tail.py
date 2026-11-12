@@ -34,12 +34,11 @@ sys.path.insert(0, str(REPO / "scripts"))
 
 #: The first day after HI-Small's stated date range (IBM's card: "Sep 1-10" for the small datasets).
 TAIL_STARTS = "2022-09-11"
-#: `onnx/model.onnx` as the Hub serves it at the teacher's revision ca364923 (LFS sha256 read 2026-11-06), and at
-#: 536fbda and eb15e2a, the card-only republishes that pin it since: only README.md differs between them.
-TEACHER_ONNX_SHA256 = "54511ef70652acb02be201cfed309ff1f95e03c55e9f2aa2b24e2b35a9c8996f"
-#: `weights.json` of the student, as in scripts/finance_student_calibration.py.
-#: Re-published 2026-11-08 with a rewritten `note` only: the weights, bias and scaler are those of sha256 c47afeadcc8816ce, which the 2026-11-06 measurements used.
-STUDENT_WEIGHTS_SHA256 = "d8823c8961bbc98699223bfa446cc3c5763701d2f363f8be23ee7851d1a420b2"
+#: `onnx/model.onnx` as the Hub serves it at the teacher's revision 6532ffa3 (LFS sha256 read 2026-11-11), the retrain on the
+#: 114 inputs; `models/hub_file_hashes.json` pins the same digest.
+TEACHER_ONNX_SHA256 = "d69b65320c55496001d7b6b77ed2b9c4ee6d88495ab4e1e12f967903947db8a5"
+#: `weights.json` of the student, as in scripts/finance_student_calibration.py: revision f172f6b8 (2026-11-11), the retrain on the 114 inputs.
+STUDENT_WEIGHTS_SHA256 = "dd58191c8279e7f6d36522db5545e46e1a6dda135abffb741eaba545d6a66528"
 
 
 def _digest(path: Path, want: str) -> bytes:
@@ -78,8 +77,8 @@ def main() -> int:
     import onnxruntime as ort
     from train.finance_aml import (
         causal_account_features,
-        graph_features,
         load_sorted,
+        model_inputs,
         temporal_windows,
     )
 
@@ -93,7 +92,7 @@ def main() -> int:
 
     df = load_sorted()
     fit, val, te, tr = temporal_windows(df)
-    x_te = graph_features(te, fit_on=tr, causal=causal_account_features(df))
+    (_, _, x_te), _, _ = model_inputs(df, fit, val, te, tr, causal_account_features(df))
     y = te["label"].to_numpy().astype(int)
     if len(y) != rec_t["n_test"]:
         raise SystemExit(f"{len(y)} test rows; the teacher's record says {rec_t['n_test']}")
@@ -158,6 +157,19 @@ def main() -> int:
     }
     out_path = REPO / "docs" / "measurements" / f"finance-test-window-tail-{record['measured']}.json"
     out_path.write_text(json.dumps(record, indent=1) + "\n")
+    # The student's record carries the two flag counts its card prints beside the agreement (Round 86), so they come from
+    # this measurement and are rewritten with it, never carried from a previous student.
+    from qsh.models import train
+
+    payload = dict(registry.achieved("finance_aml.student"))
+    # Measured here, so no longer carried forward: the previous record's marker named exactly this field.
+    marker = payload.pop("carried_forward_not_remeasured", None)
+    if marker and set(marker.get("fields", [])) - {"flag_counts"}:
+        payload["carried_forward_not_remeasured"] = {**marker, "fields": sorted(set(marker["fields"]) - {"flag_counts"})}
+    payload["flag_counts"] = {"source": f"{out_path.relative_to(REPO)}, full_window",
+                              "teacher_flagged": record["full_window"]["teacher"]["flagged"],
+                              "student_flagged": record["full_window"]["student"]["flagged"]}
+    train.record_metrics("finance_aml.student", payload)
     fw, wt = record["full_window"], record["without_tail"]
     print(f"tail from {TAIL_STARTS}: {record['tail_only']['rows']:,} rows, {record['tail_only']['positives']:,} "
           f"positive = {record['tail_share_of_window_positives']:.1%} of the window's {fw['positives']:,}")

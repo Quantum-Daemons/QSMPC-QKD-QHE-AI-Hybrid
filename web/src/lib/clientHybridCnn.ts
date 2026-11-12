@@ -273,22 +273,30 @@ function addBatch(t: GcTotals, r: Pick<ReluBatchResult, "compileMs" | "mpcMs" | 
  * The output mask is `frac + maskBits` bits of fixed point, which stays below 2^53, so both shares are exact doubles.
  */
 export async function reluLayer(mpc: Mpc, y: ArrayLike<number>, r: ArrayLike<number>, maskBits: number, batch: number, gc: GcTotals,
-                         onBatch: () => void): Promise<{ client: Float64Array; server: Float64Array }> {
+                         onBatch: () => void, pool?: GcPool | null): Promise<{ client: Float64Array; server: Float64Array }> {
   const { frac_bits: frac, relu_ring_bits: ringBits } = hybridCnnCfg();
   const unit = 2 ** frac, ring = 2 ** ringBits, outBits = frac + maskBits, n = y.length;
   const Y = Uint32Array.from({ length: n }, (_, i) => toRing(y[i] * unit, ring));
   const R = Uint32Array.from({ length: n }, (_, i) => toRing(-r[i] * unit, ring));
   const S = uniformBits(n, outBits);
   const client = new Float64Array(n), server = new Float64Array(n);
-  for (let at = 0; at < n; at += batch) {
+  const one = async (at: number) => {
     const end = Math.min(n, at + batch);
-    const res = await mpc.secureReluBatch(Y.subarray(at, end), R.subarray(at, end),
-      BigUint64Array.from(S.subarray(at, end), (v) => BigInt(v)), ringBits, outBits);
+    const yBatch = Y.slice(at, end), rBatch = R.slice(at, end), sBatch = BigUint64Array.from(S.subarray(at, end), (v) => BigInt(v));
+    const res = await (pool ? pool.run(yBatch, rBatch, sBatch, ringBits, outBits) : mpc.secureReluBatch(yBatch, rBatch, sBatch, ringBits, outBits));
     addBatch(gc, res);
     res.out.forEach((o, i) => { client[at + i] = o / unit; server[at + i] = -S[at + i] / unit; });
     onBatch();
-  }
+  };
+  const starts = Array.from({ length: Math.ceil(n / batch) }, (_, k) => k * batch);
+  if (pool) await Promise.all(starts.map(one)); else for (const at of starts) await one(at);
   return { client, server };
+}
+
+/** Several workers for a layer's garbled batches. Each batch is independent, so they can run at once on their own wasm instances; absent, they run one after another. */
+export interface GcPool {
+  workers: number;
+  run(y: Uint32Array, r: Uint32Array, s: BigUint64Array, ringBits: number, outBits: number): Promise<ReluBatchResult>;
 }
 
 /** The im2col packing `clientFHE.encryptedConv2d` uses, so the two paths compute the same convolution. */

@@ -42,6 +42,8 @@ export interface DiagramConfig {
   mpcCnn?: boolean;
   /** The finance page's published MLP runs under MPC on this run. */
   mpcMlp?: boolean;
+  /** The finance page's compact GNN runs under MPC on this run. */
+  mpcGnn?: boolean;
   multiPsi?: boolean;
   /** The lending page: who holds the CKKS key. */
   custody?: string;
@@ -435,6 +437,12 @@ export const USECASE_SPECS: Record<string, Spec> = {
           : Number(m["mpc_mlp_ran"]) === 1
             ? `MLP under MPC · ${f(m, "mpc_mlp_relu_count")} ReLUs in garbled circuits · ${f(m, "mpc_mlp_gc_mb")} MB · class ${f(m, "mpc_mlp_class")}`
             : "MLP under MPC · did not finish" },
+      { stageId: "private_inference", kind: "mpc-bidir", hidden: (c) => !c.mpcGnn,
+        label: (m) => m["mpc_gnn_ran"] == null
+          ? "Compact GNN under MPC · a held-out transaction and its capped neighbourhood"
+          : Number(m["mpc_gnn_ran"]) === 1
+            ? `GNN under MPC · ${f(m, "mpc_gnn_relu_count")} ReLUs in garbled circuits · ${f(m, "mpc_gnn_gc_mb")} MB · class ${f(m, "mpc_gnn_class")}`
+            : "GNN under MPC · did not finish" },
       // Finance is in FEDERATED_USECASES, so `runClientPipeline` injects `federated_training` here -
       // before the first of private_inference/qml_ids/qsdc_telemetry/quantum_comparison. This spec
       // had no such step, and `OrchestrationGraph.FLOWS` had no finance key either, so the run

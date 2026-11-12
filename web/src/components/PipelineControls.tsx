@@ -14,7 +14,7 @@ export default function PipelineControls({ run }: { run: Run }) {
   // local secret-sharing), so the server-side backend selectors (TenSEAL/OpenFHE/MPyC/…) don't apply.
   const demo = isClientDemo();
   const { usecase, opts, kem, setKem, qkd, setQkd, fhe, setFhe, mpc, sig, setSig,
-    optiqkd, setOptiqkd, mpcCnn, setMpcCnn, mpcMlp, setMpcMlp, multiPsi, setMultiPsi, multiPsiParties, setMultiPsiParties, publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
+    optiqkd, setOptiqkd, mpcCnn, setMpcCnn, mpcMlp, setMpcMlp, mpcGnn, setMpcGnn, multiPsi, setMultiPsi, multiPsiParties, setMultiPsiParties, publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
     state, running, paused, inFlight, start, startStepwise, pause, resume, step, stop } = run;
   // Resolved once: whether WebGPU can be offered at all. Without a usable adapter the option is shown
   // disabled with the reason, rather than offered and then silently run on WASM.
@@ -49,7 +49,7 @@ export default function PipelineControls({ run }: { run: Run }) {
   //    asserts the render half rather than describing it in prose.)
   // Model size is gone. It selected between invented architectures -- a "tabular fraud MLP" at
   // 18/850/9,538 parameters and so on -- while the models that actually exist are an XGBoost
-  // teacher and a 33-parameter distilled student. The medical tier advertised 35,458 parameters
+  // teacher and a distilled linear student (33 parameters then, 115 on the 114 inputs since Round 86). The medical tier advertised 35,458 parameters
   // for a model whose real counterpart is 11,171,266, and genomics got an MLP for a method that is
   // a 77-weight linear score with no network in it at all. The benchmark now costs the real
   // student, which is trained, published and pinned.
@@ -228,6 +228,12 @@ export default function PipelineControls({ run }: { run: Run }) {
           <label className="muted" title="Runs one held-out row through the published MLP, its linear layers under CKKS and its ReLUs and argmax in garbled circuits, in a Web Worker so the page stays responsive. Its features see transactions up to the end of their batch of 2,048.">
             <input type="checkbox" id="chk-mpcmlp" checked={mpcMlp} onChange={(e) => setMpcMlp(e.target.checked)} />{" "}
             MLP under MPC (a few seconds)
+          </label>
+        )}
+        {demo && usecase === "finance_aml" && (
+          <label className="muted" title="Runs one held-out transaction and its capped neighbourhood through the compact GNN: its linear maps under CKKS, its ReLUs and argmax in garbled circuits, in Web Workers so the page stays responsive. Its neighbours see transactions up to the end of the transaction's batch of 2,048.">
+            <input type="checkbox" id="chk-mpcgnn" checked={mpcGnn} onChange={(e) => setMpcGnn(e.target.checked)} />{" "}
+            GNN under MPC (ten seconds or so)
           </label>
         )}
         {demo && usecase === "finance_aml" && (

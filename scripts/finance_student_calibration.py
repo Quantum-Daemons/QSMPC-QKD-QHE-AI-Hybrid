@@ -29,16 +29,15 @@ sys.path.insert(0, str(REPO / "scripts"))
 
 KEY = "finance_aml.student"
 
-#: `models/finance_aml_student/weights.json` as the Hub serves it at the record's revision 641566e (read 2026-11-06:
-#: git blob 0b0dcab90e88a38cb12387c6f69b1a5005f9af94, which is this file's).
-#: Re-published 2026-11-08 with a rewritten `note` only: the weights, bias and scaler are those of sha256 c47afeadcc8816ce, which the 2026-11-06 measurements used.
-WEIGHTS_SHA256 = "d8823c8961bbc98699223bfa446cc3c5763701d2f363f8be23ee7851d1a420b2"
+#: `models/finance_aml_student/weights.json` as the Hub serves it at the record's revision f172f6b8 (read 2026-11-11), the retrain
+#: on the 114 inputs, whose own run recorded the calibration this script would refit from the same weights.
+WEIGHTS_SHA256 = "dd58191c8279e7f6d36522db5545e46e1a6dda135abffb741eaba545d6a66528"
 
 
 def main() -> int:
     from qsh.models import metrics, registry, train
     from train.finance_aml import (  # type: ignore
-        causal_account_features, graph_features, load_sorted, student_calibration, temporal_windows)
+        causal_account_features, load_sorted, model_inputs, student_calibration, temporal_windows)
 
     path = REPO / registry.ARTIFACT_DIRS[KEY] / "weights.json"
     blob = path.read_bytes()
@@ -55,8 +54,7 @@ def main() -> int:
     df = load_sorted()
     fit, val, te, tr = temporal_windows(df)
     cz = causal_account_features(df)
-    x_val = graph_features(val, fit_on=fit, causal=cz)
-    x_te = graph_features(te, fit_on=tr, causal=cz)
+    (_, x_val, x_te), _, _ = model_inputs(df, fit, val, te, tr, cz)
     y_val = val["label"].to_numpy().astype(int)
     y_te = te["label"].to_numpy().astype(int)
 

@@ -180,6 +180,10 @@ step "11g/18 The finance MLPs under MPC"
 ( cd web && npm run --silent check:hybrid-mlp >/tmp/ci_hybrid_mlp.log 2>&1 ) \
   && ok "the finance MLPs under MPC match the logits their trainer recorded" || { bad "the finance MLPs under MPC"; tail -12 /tmp/ci_hybrid_mlp.log; }
 
+step "11i/18 The compact GNN under MPC"
+( cd web && npm run --silent check:hybrid-gnn >/tmp/ci_hybrid_gnn.log 2>&1 ) \
+  && ok "the compact GNN under MPC matches the logits its trainer recorded" || { bad "the compact GNN under MPC"; tail -12 /tmp/ci_hybrid_gnn.log; }
+
 step "11h/18 The trained QCNN under CKKS"
 ( cd web && npm run --silent check:qcnn-ckks >/tmp/ci_qcnn_ckks.log 2>&1 ) \
   && ok "the trained QCNN under CKKS matches the circuit in the clear" || { bad "the trained QCNN under CKKS"; tail -12 /tmp/ci_qcnn_ckks.log; }

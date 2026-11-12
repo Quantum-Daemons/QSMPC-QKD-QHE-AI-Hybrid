@@ -109,9 +109,11 @@ repository with no licence file grants no right to copy or reuse it, so those en
    bootstrapping on the GPU, and a stage on hpmpc, whose GPU code covers matrix multiplication and convolution (its non-linear layers stay on the CPU; measured in `models-and-benchmarks.md`).
 6. **Continuous PQC inventory** - scan dependencies/protocols for quantum-vulnerable
    crypto (a "crypto bill of materials") to drive migration priority.
-7. **Finance AML graph features** - per-transaction subgraph patterns, the architectural difference
-   behind the finance model's gap to its published baseline:
-   [`findings.md`](findings.md#finance-the-gap-to-the-published-baseline-is-architectural).
+7. **Finance AML graph features** - done in Round 86: per-transaction fan-in, fan-out, vertex-statistic and
+   scatter-gather features, the architectural difference behind the finance model's gap to its published
+   baseline, took the teacher from minority-class F1 0.1519 to 0.6161:
+   [`findings.md`](findings.md#finance-the-gap-to-the-published-baseline-was-architectural). Cycle
+   enumeration, the part of the preprocessor not implemented, is what remains.
 
 ## Timeline anchors
 

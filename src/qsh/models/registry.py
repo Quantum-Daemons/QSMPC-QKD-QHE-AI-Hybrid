@@ -14,7 +14,7 @@ Every use case has up to three model tiers, and the *relationship between them* 
                    **eight** NVIDIA RTX PRO 6000 GPUs. This project owns one of that GPU model and its
                    FHE default is TenSEAL on CPU, while the artifact that has to run is one
                    single-threaded WASM tab, so that result sits far outside this operating point;
-                   no measurement here puts a number on the gap. A 33-parameter logistic regression
+                   no measurement here puts a number on the gap. A 115-parameter logistic regression
                    is not a compromise here; it is the class of model that closes at this operating
                    point. State the operating point, not a prediction about the field - the scoped
                    claim is falsifiable and the unscoped one was already false.
@@ -249,9 +249,9 @@ DS_AMLWORLD = DatasetSpec(
         "rows dated September 11-18 are there, the dataset's creator explains, so that laundering patterns "
         "begun earlier can complete; 655 of them are laundering, 28.2% of the test window's 2,321 positives. "
         "Without them the window's rate is 0.109 percent rather than 0.152, the teacher's minority-class F1 "
-        "0.1387 rather than 0.1519 and its AUPRC 0.1030 rather than 0.1233, and the CKKS student's F1 "
-        "0.0473 rather than 0.0614. The published 60/20/20 split's test set carries the same 1,108 rows "
-        "(docs/measurements/finance-test-window-tail-2026-11-06.json)."
+        "0.5499 rather than 0.6161 and its AUPRC 0.5408 rather than 0.6428, and the CKKS student's F1 "
+        "0.2083 rather than 0.3088. The published 60/20/20 split's test set carries the same 1,108 rows "
+        "(docs/measurements/finance-test-window-tail-2026-11-11.json)."
     ),
 )
 DS_PAYSIM = DatasetSpec(
@@ -743,7 +743,9 @@ M_AML = MetricSpec(
     baseline_source=(
         "GFP+XGBoost, IBM AMLworld HI-Small, NeurIPS 2023 D&B (63.23 +/- 0.17). Same metric and "
         "corpus, different protocol: that figure uses a 60/20/20 split by transaction order and "
-        "IBM's Graph Feature Preprocessor updated over the test window; this project tests on the "
+        "IBM's Graph Feature Preprocessor updated over the test window in batches of 128 "
+        "transactions, where the GFP paper reports 64.77 +/- 0.47 at the batches of 2,048 this "
+        "project's features use (Blanusa et al., arXiv:2402.08593, Table 4); this project tests on the "
         "last 30 percent of transactions (fit 56, validation 14) with its own graph features, "
         "whose structural block is fitted on the training window."),
     # The best row of the published version's table, which is what `ceiling` means ("best credible
@@ -1040,11 +1042,13 @@ _SPECS: tuple[ModelSpec, ...] = (
         # was never trained, and `hf_repo_id` is surfaced by the CLI and by frontend_config.
         hf_repo=None,
         notes=(
-            "Reference architecture only - never trained or published here. Message passing needs "
-            "each account's graph neighbourhood at scoring time, which this demo's browser tier does "
-            "not hold, so every tier ships the gradient-boosting model, which scores one precomputed "
-            "feature row per transaction. That is a choice for this operating point, not an "
-            "impossibility: Bilgi et al. (arXiv:2610.18054v2, preprint) run an edge-centric GNN under CKKS "
+            "Reference architecture only, and no artifact of it is published. IBM's official Multi-PNA+EU "
+            "was run here on this project's windows as a teacher (`scripts/train/ibm_multignn/`; test F1 "
+            "0.6616 and 0.6878 in two runs of seed 1), and the compact GNN and the MLP are distilled from it. "
+            "The page's graph model is `finance_aml.gnn_compact`, which reads a capped neighbourhood of 16 "
+            "edges per transaction; message passing over the whole graph needs every account's "
+            "neighbourhood at scoring time, which the browser does not hold. That is a choice for this "
+            "operating point, not an impossibility: Bilgi et al. (arXiv:2610.18054v2, preprint) run an edge-centric GNN under CKKS "
             "on the IBM AML benchmark at 5.31 s per queried transaction (1.65 s amortized over a batch of 16) "
             "with HEonGPU on one RTX 5090, with the graph held in plaintext by the server - server-side "
             "evaluation only, since those figures exclude the client's encryption and decryption, key "
@@ -1099,8 +1103,8 @@ _SPECS: tuple[ModelSpec, ...] = (
         # `runs_encrypted=True` is true of the public page since Round 84, when its private-inference
         # figure moved to this student on held-out rows (`emitHeldOutAgreement` in clientCompute.ts).
         notes=("Encrypted on the public page since Round 84: its private-inference figure scores "
-               "this 33-parameter AMLworld student under CKKS on the 8,192 test-window rows of "
-               "finance_aml.gbm's sample (64 ciphertexts), against the same model in plaintext. The "
+               "this 115-parameter AMLworld student under CKKS on the 8,192 test-window rows of "
+               "finance_aml.gbm's sample (256 ciphertexts, 32 rows each), against the same model in plaintext. The "
                "page's one-row CKKS step, its MPC argmax, the reported class and the SHAP bars still "
                "use the four-feature linear model bundled with the PaySim sample (log amount, a "
                "TRANSFER or CASH_OUT flag, a night-hour flag and a first-seen-payee flag; no feature "
@@ -1117,7 +1121,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         tier="t1_crypto",
         key="finance_aml.mlp_large",
         label="MLP on per-transaction features, under CKKS and garbled circuits",
-        architecture="MLP [111, 128, 64, 2], ReLU: the 32 per-account AMLworld features plus 79 per-transaction window features, in batches of 2,048",
+        architecture="MLP [114, 128, 64, 2], ReLU: the 32 per-account AMLworld features plus 79 per-transaction window features and 3 pair features, in batches of 2,048",
         params=None,
         dataset=DS_AMLWORLD,
         metric=M_AML,
@@ -1125,10 +1129,30 @@ _SPECS: tuple[ModelSpec, ...] = (
         artifacts=_STUDENT_ARTIFACTS,
         hf_repo="qsh-finance-aml-mlp-large",
         eval_split=("the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, the last 30 percent of the "
-                    "transactions in time order, enriched to 2 percent laundering, with the 79 per-transaction features added"),
-        notes=("The finance page's non-linear model under encryption, the linear layers under CKKS and the ReLUs and argmax in garbled circuits. Trained on the fit window with class weights, on labels rather than distilled; "
+                    "transactions in time order, enriched to 2 percent laundering, with the same 114 inputs"),
+        notes=("The finance page's non-linear model under encryption, the linear layers under CKKS and the ReLUs and argmax in garbled circuits. Trained on the fit window with class weights, "
+               "distilled from IBM's Multi-PNA+EU run on the same windows (the target 0.7 times the label plus 0.3 times its probability, the weight chosen on validation); "
                "scaling and seed chosen on the validation window, every seed's figure in the record. Its features see transactions up to the end of their batch of 2,048, as the Graph Feature Preprocessor paper processes them. "
-               "Different from `finance_aml.gnn`, the never-trained Multi-PNA+EU card, which is a target architecture and not a model that runs here."),
+               "Different from `finance_aml.gnn`, the Multi-PNA+EU card, which is a target architecture: this project ran IBM's code as a teacher and ships no artifact of it."),
+    ),
+    ModelSpec(
+        usecase="finance_aml",
+        tier="t1_crypto",
+        key="finance_aml.gnn_compact",
+        label="Compact transaction GNN, under CKKS and garbled circuits",
+        architecture=("Message passing on a fixed tree: 2 endpoints and 4 neighbour slots per direction at each, a shared per-slot map with no bias and a sum per direction, "
+                      "a second layer per endpoint, beside the 114-feature MLP channel; 608 ReLUs"),
+        params=None,
+        dataset=DS_AMLWORLD,
+        metric=M_AML,
+        runs_encrypted=True,
+        artifacts=(ArtifactSpec("weights.json", "json", "fp32", "both"),),
+        hf_repo="qsh-finance-aml-gnn-compact",
+        eval_split=("the rows of the published MLP's fixtures, the held-out temporal test window, half of them laundering, each with its capped neighbourhood"),
+        notes=("The finance page's graph model under encryption. Trained on the same windows as the published MLP, with the shape, learning rate, endpoint scaling and seed chosen on validation, "
+               "and distilled from IBM's Multi-PNA+EU run on those windows (the target 0.7 times the label plus 0.3 times its probability, the weight chosen on validation; "
+               "`scripts/train/ibm_multignn/` reproduces the teacher). Its neighbours and features see transactions up to the end of their batch of 2,048. It reads 16 edges per transaction, "
+               "where the official Multi-GNN models read a sample of the whole test-window graph, so the two are different settings. It is not the `finance_aml.gnn` card, which is the official architecture's target."),
     ),
     ModelSpec(
         usecase="medical_fl",
@@ -1589,6 +1613,7 @@ def achieved(key: str) -> dict | None:
 ARTIFACT_DIRS: dict[str, str] = {
     "finance_aml.gbm": "models/finance_aml_gbm",
     "finance_aml.mlp_large": "models/finance_aml_mlp_large",
+    "finance_aml.gnn_compact": "models/finance_aml_gnn_compact",
     "medical_fl.resnet18": "models/medical_breastmnist_resnet18",
     "medical_fl.resnet50": "models/medical_breastmnist_resnet50",
     "genomics.prs": "models/genomics_prs",

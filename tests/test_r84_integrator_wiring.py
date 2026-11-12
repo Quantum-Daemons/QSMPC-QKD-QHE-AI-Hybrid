@@ -297,7 +297,7 @@ def test_a_sample_without_the_declared_space_is_refused_not_fed(browser) -> None
 
 
 @pytest.mark.parametrize("name, stage, model, rows, ciphertexts", [
-    ("finance", "private_inference", "finance_aml.student", 8192, 64),
+    ("finance", "private_inference", "finance_aml.student", 8192, 256),
     ("medical_qcnn", "private_inference", None, 171, 1),
     ("telecom_qcnn", "qml_ids", "telecom_ids.student", 600, 2),
 ])

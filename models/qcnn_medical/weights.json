@@ -160,7 +160,7 @@
   "best_epoch": 60,
   "best_val_score": 0.976471,
   "command": "python scripts/train/qcnn_variational.py --usecase medical --layers 3 --epochs 120 --seed 0 --threads 1 --qubits 8 --arch tree --encoding-scale 0.5",
-  "note": "--seed drives the numpy split permutation and torch parameter init. Re-running this command on a CUDA device regenerates theta, scale, bias and every metric bit for bit: five consecutive runs of each Round 47 artifact, and two independent runs of each Round 84 one (the pre-registered experiment and the retrain), max |diff| 0. That is true only since the multiclass readout stopped using index_add_, whose CUDA atomicAdd made the same seeded command land on macro F1 0.809846 or 0.807781 depending on the run. On a CPU it is not guaranteed: CPU and CUDA kernels differ in float rounding, and a long multiclass run amplifies that."
+  "note": "--seed drives the numpy split permutation and torch parameter init. Re-running this command on a CUDA device regenerates theta, scale, bias and every metric bit for bit: five consecutive runs of each Round 47 artifact, and two independent runs of each Round 84 one (for medical and telecom the pre-registered experiment and the retrain, for finance the four-column retrain and a repeat of it), max |diff| 0. That is true only since the multiclass readout stopped using index_add_, whose CUDA atomicAdd made the same seeded command land on macro F1 0.809846 or 0.807781 depending on the run. On a CPU it is not guaranteed: CPU and CUDA kernels differ in float rounding, and a long multiclass run amplifies that."
  },
  "test_accuracy": 0.953488,
  "classical_lr_accuracy": 0.953488,

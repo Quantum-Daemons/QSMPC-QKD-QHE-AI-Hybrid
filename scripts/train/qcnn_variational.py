@@ -1175,7 +1175,6 @@ def main() -> int:
                               "and a long multiclass run amplifies that.")},
         "test_accuracy": round(qcnn_acc, 6),
         "classical_lr_accuracy": round(float(lr_acc), 6),
-        "classical_surrogate": classical_surrogate(Xs[:, :X.shape[1]], y, tr, te, c_enc, readout_q),
         "majority_baseline": round(float(major), 6),
         # Named for what was MEASURED, which is not the same metric in both regimes. On two
         # classes `f1_score(average="binary")` is the minority-class F1 and an all-positive
@@ -1223,6 +1222,10 @@ def main() -> int:
         # validation split exists precisely so checkpoint selection never touches the reported rows;
         # counting it as test undoes that separation in the record even though the code respected it.
         "n_train": int(cut), "n_val": int(vcut - cut), "n_test": int(n - vcut),
+        # Last before the note, where `qcnn_classical_surrogate.py` put it into the four shipped artifacts without
+        # retraining them. Written after `classical_lr_accuracy` until Round 86, the same values in another order,
+        # so the recorded command no longer regenerated the shipped file byte for byte.
+        "classical_surrogate": classical_surrogate(Xs[:, :X.shape[1]], y, tr, te, c_enc, readout_q),
         "note": ("Variational QCNN trained by backpropagation through a dense state vector. The "
                  "prediction path applies NO QOTP mask: undoing a Pauli frame through Clifford+T is "
                  "not implemented here (T X T-dagger is not Pauli), so hiding and prediction are "

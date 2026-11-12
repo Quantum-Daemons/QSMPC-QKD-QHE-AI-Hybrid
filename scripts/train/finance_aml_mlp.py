@@ -19,6 +19,7 @@ THE THRESHOLD. Tuned on validation and folded into the last bias, because the en
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 import time
@@ -33,14 +34,14 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(REPO / "src"), str(REPO / "scripts" / "train")]
 
 from finance_aml import (  # noqa: E402
-    FEATURES,
     _best_threshold,
     causal_account_features,
-    graph_features,
     load_sorted,
+    model_inputs,
+    network_calibration,
     temporal_windows,
 )
-from finance_aml_fan import BATCH_WINDOW, transaction_features  # noqa: E402
+from finance_aml_fan import BATCH_WINDOW  # noqa: E402
 
 from qsh.models import distil, export, metrics, registry, train  # noqa: E402
 
@@ -49,7 +50,10 @@ HIDDEN = [128, 64]
 SCALINGS = ("standard", "robust")
 SEEDS = (0, 1, 2, 3, 4)
 CLIP = 10.0
-EPOCHS, PATIENCE, BATCH, LR, WEIGHT_DECAY = 40, 6, 16_384, 1e-3, 1e-5
+EPOCHS, PATIENCE, BATCH, LR, WEIGHT_DECAY = 60, 8, 16_384, 3e-4, 1e-4
+FIXTURE_SEED = 2
+#: 32 per-account aggregates, 79 per-transaction window features and 3 pair features.
+N_FEATURES = 114
 N_FIXTURES = 16
 CDLA_SHARING_1 = "https://cdla.dev/sharing-1-0/"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -101,8 +105,9 @@ def _positive_scores(model: nn.Module, z: torch.Tensor) -> np.ndarray:
     return torch.cat(out).cpu().numpy()
 
 
-def fit_one(hidden: list[int], zf: torch.Tensor, yf: torch.Tensor, zv: torch.Tensor, yv: np.ndarray, seed: int) -> tuple[nn.Sequential, float, int]:
-    """Class-weighted cross-entropy with early stopping on validation AUPRC."""
+def fit_one(hidden: list[int], zf: torch.Tensor, yf: torch.Tensor, zv: torch.Tensor, yv: np.ndarray, seed: int,
+            target: torch.Tensor | None = None) -> tuple[nn.Sequential, float, int]:
+    """Class-weighted cross-entropy with early stopping on validation AUPRC; with `target`, against the distillation target, as the GNN's trainer does."""
     torch.manual_seed(seed)
     np.random.seed(seed)
     model = network(hidden, zf.shape[1]).to(DEVICE)
@@ -117,7 +122,13 @@ def fit_one(hidden: list[int], zf: torch.Tensor, yf: torch.Tensor, zv: torch.Ten
         for i in range(0, n, BATCH):
             b = order[i:i + BATCH]
             opt.zero_grad(set_to_none=True)
-            loss_fn(model(zf[b]), yf[b]).backward()
+            logits = model(zf[b])
+            if target is None:
+                loss = loss_fn(logits, yf[b])
+            else:
+                logp, cw = torch.log_softmax(logits, 1), w[yf[b]]
+                loss = -(cw * (target[b] * logp[:, 1] + (1 - target[b]) * logp[:, 0])).sum() / cw.sum()
+            loss.backward()
             opt.step()
         model.eval()
         score = float(average_precision_score(yv, _positive_scores(model, zv)))
@@ -161,32 +172,63 @@ def fixture_notices(key: str) -> dict:
     return {
         "licence": dataset.licence, "licence_url": CDLA_SHARING_1, "attribution": dataset.attribution,
         "modifications": (f"Not the published transaction rows: `fixtures.rows` is {N_FIXTURES} rows drawn from the held-out temporal test window, half of them laundering, "
-                          "each one 111 features computed from the transactions by the training script, stored as float32. `fixtures.logits` is what the exported graph gives them."),
+                          f"each one {N_FEATURES} features computed from the transactions by the training script, stored as float32. `fixtures.logits` is what the exported graph gives them."),
     }
+
+
+def mlp_gap_note(record: dict, teacher_record: dict, reach: int) -> str:
+    """The MLP card's "Gap to the published baseline", from its record; `scripts/finance_gap_notes.py` rewrites a record with it.
+
+    Until Round 86 it called the published teacher "on the 32 aggregates" after the teacher had moved to the same 114 inputs, and it
+    gave GFP + XGBoost at a batch of 128 only, where these features use 2,048.
+    """
+    return (
+        "On HI-Small the published figures are 63.23 for GFP + XGBoost, 62.86 for GFP + LightGBM and 56.77 for PNA (Altman et al., NeurIPS 2023, Table 2), "
+        "the two GFP figures at a batch of 128 transactions; at the batch of 2,048 these features use, GFP + XGBoost reaches 64.77 (Blanusa et al., ICAIF 2024, Table 4). "
+        "Graph models reach 68.16 for Multi-PNA+EU (Egressy et al., AAAI 2024) and 63.72 for a GNN "
+        "also evaluated under CKKS (Bilgi et al., arXiv:2610.18054). The Graph Feature Preprocessor paper's own decomposition (Table 5) puts basic features at 19.75 and fan-in and fan-out at 56.88 to 59.71 for XGBoost. "
+        f"These {N_FEATURES} features are the 32 per-account aggregates plus 3 pair features and per-transaction fan-in and fan-out, vertex statistics and scatter-gather in time windows, in batches of {BATCH_WINDOW} reaching at most {reach} minutes past the transaction, with no cycle enumeration, on a 56/14/30 temporal split rather than the papers' 60/20/20. "
+        f"The comparison that means most here is with the booster on the same features: AUPRC {record['auprc']:.4f} against {record['xgboost_same_features']['auprc']:.4f}. "
+        f"This project's published teacher, XGBoost with its own settings on the same {N_FEATURES} inputs, has AUPRC {float(teacher_record['auprc']):.4f}. AMLworld is synthetic by IBM's own statement.")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.parse_args()
+    ap.add_argument("--teacher-probs", type=Path, default=None,
+                    help="train.npz from scripts/train/ibm_multignn/dump_logits.py: edge ids and Multi-PNA+EU probabilities on the fit window")
+    ap.add_argument("--alpha", type=float, default=0.3, help="weight of the teacher's probability in the target")
+    args = ap.parse_args()
     started = time.time()
     print("loading AMLworld HI-Small ...", flush=True)
     df = load_sorted()
     fit, val, te, tr = temporal_windows(df)
-    causal = causal_account_features(df)
-    base_fit, base_val, base_te = graph_features(fit, causal=causal), graph_features(val, fit_on=fit, causal=causal), graph_features(te, fit_on=tr, causal=causal)
     y_fit, y_val, y_te = (d["label"].to_numpy(dtype=np.int8) for d in (fit, val, te))
-    print(f"  computing per-transaction features in batches of {BATCH_WINDOW} ...", flush=True)
-    extra, extra_names = transaction_features(df)
-    n_fit, n_val = len(y_fit), len(y_val)
-    x_fit = np.hstack([base_fit, extra[:n_fit]])
-    x_val = np.hstack([base_val, extra[n_fit:n_fit + n_val]])
-    x_te = np.hstack([base_te, extra[n_fit + n_val:]])
-    features = list(FEATURES) + extra_names
-    if x_fit.shape[1] != 111:
-        raise SystemExit(f"expected 111 features, got {x_fit.shape[1]}")
-    teacher = teacher_decisions(base_te)
+    print(f"  the shared inputs, in batches of {BATCH_WINDOW} ...", flush=True)
+    (x_fit, x_val, x_te), features, reach = model_inputs(df, fit, val, te, tr, causal_account_features(df))
+    if x_fit.shape[1] != N_FEATURES:
+        raise SystemExit(f"expected {N_FEATURES} features, got {x_fit.shape[1]}")
+    teacher = teacher_decisions(x_te)
     print(f"  windows: fit {len(y_fit):,} ({int(y_fit.sum())} pos), val {len(y_val):,} ({int(y_val.sum())}), test {len(y_te):,} ({int(y_te.sum())})", flush=True)
     labels = torch.tensor(y_fit, dtype=torch.long, device=DEVICE)
+    # Distillation from IBM's Multi-PNA+EU, as the GNN's trainer does it (`finance_aml_gnn.py`, Round 86).
+    target, distillation = None, None
+    if args.teacher_probs is not None:
+        blob = args.teacher_probs.read_bytes()
+        pna = np.load(args.teacher_probs)
+        ids, probs, tlab = pna["ids"], pna["probs"], pna["labels"]
+        if ids.min() < 0 or ids.max() >= len(y_fit) or not np.array_equal(tlab, y_fit[ids]):
+            raise SystemExit(f"{args.teacher_probs}: its edge ids or labels are not this fit window's rows")
+        soft = y_fit.astype(np.float32)
+        soft[ids] = (1 - args.alpha) * soft[ids] + args.alpha * probs.astype(np.float32)
+        target = torch.tensor(soft, device=DEVICE)
+        distillation = {
+            "teacher": ("IBM Multi-PNA+EU, the official code IBM/Multi-GNN at 252b0252afca109d1d216c411c59ff70753b25fc with "
+                        "scripts/train/ibm_multignn/project_split.patch, on this project's windows, seed 1, the checkpoint of its best validation F1"),
+            "alpha": args.alpha, "teacher_probs_sha256": hashlib.sha256(blob).hexdigest(),
+            "fit_edges_scored_by_the_teacher": int(len(ids)), "fit_edges": int(len(y_fit)),
+            "method": "generalised distillation, Lopez-Paz, Bottou, Schoelkopf and Vapnik, ICLR 2016, arXiv:1511.03643",
+        }
+        print(f"  distilling from {args.teacher_probs} at alpha {args.alpha}", flush=True)
 
     best: tuple | None = None
     all_runs: list[dict] = []
@@ -196,7 +238,7 @@ def main() -> int:
         clipped = float((np.abs((x_fit - centre) / scale) > CLIP).mean())
         runs, kept = [], None
         for seed in SEEDS:
-            model, val_auprc, epoch = fit_one(HIDDEN, zf, labels, zv, y_val, seed)
+            model, val_auprc, epoch = fit_one(HIDDEN, zf, labels, zv, y_val, seed, target)
             s_val, s_te = _positive_scores(model, zv), _positive_scores(model, zt)
             thr = _best_threshold(y_val, s_val)
             pred = (s_te >= thr).astype(int)
@@ -217,6 +259,11 @@ def main() -> int:
     with torch.no_grad():
         pred = torch.cat([model(zt[i:i + 262_144]).argmax(1) for i in range(0, len(zt), 262_144)]).cpu().numpy()
     s_te = _positive_scores(model, zt)
+    # The folded network's Platt map, fitted on validation and scored on test, as the teacher's and the student's records carry one.
+    zv = _scaled(x_val, centre, scale)
+    with torch.no_grad():
+        logits_val, logits_te = (torch.cat([model(z[i:i + 262_144]) for i in range(0, len(z), 262_144)]).cpu().numpy() for z in (zv, zt))
+    calibration = network_calibration(logits_val, y_val, logits_te, y_te, fitted_by=f"scripts/train/finance_aml_mlp.py at git {train.git_sha()}, in the run that trained these weights", model="MLP")
     f1s = sorted(r["test_minority_f1"] for r in runs)
     n_params = sum(p.numel() for p in model.parameters())
     tp = int(((pred == 1) & (y_te == 1)).sum())
@@ -239,23 +286,22 @@ def main() -> int:
         "auprc": round(float(average_precision_score(y_te, s_te)), 6), "auprc_baseline": round(float(y_te.mean()), 8),
         "auroc": round(float(roc_auc_score(y_te, s_te)), 6), "accuracy": round(float((pred == y_te).mean()), 6),
         "precision": round(tp / max(int(pred.sum()), 1), 6), "recall": round(tp / max(int(y_te.sum()), 1), 6),
-        "teacher_agreement": round(float((pred == teacher).mean()), 6), "n_parameters": int(n_params), "n_features": len(features), "batch_window": BATCH_WINDOW,
+        "teacher_agreement": round(float((pred == teacher).mean()), 6), "n_parameters": int(n_params), "n_features": len(features), "batch_window": BATCH_WINDOW, "batch_reach_minutes": reach,
         "seed": int(seed), "selected_on": "validation AUPRC, over two scalings and five seeds each", "seeds": all_runs,
         "median_of_seeds_minority_f1": f1s[len(f1s) // 2], "min_of_seeds_minority_f1": f1s[0], "max_of_seeds_minority_f1": f1s[-1],
         "threshold_on_validation": round(float(thr), 6), "scaling": kind, "share_clipped_on_fit_window": round(clipped, 8),
         "xgboost_same_features": {"minority_class_f1": round(float(metrics.minority_class_f1(y_te, b_pred)), 6), "auprc": round(float(average_precision_score(y_te, b_score)), 6)},
+        "calibration": calibration,
+        **({"distillation": distillation} if distillation else {}),
         "git_sha": train.git_sha(), "data_digest": train.digest_array(x_fit[:10000], y_fit[:10000]), "wall_clock_s": round(time.time() - started, 1),
     }
     teacher_record = registry.achieved("finance_aml.gbm") or {}
-    record["baseline_gap_note"] = (
-        f"On HI-Small the published figures are 63.23 for GFP + XGBoost, 62.86 for GFP + LightGBM and 56.77 for PNA (Altman et al., NeurIPS 2023, Table 2), 68.16 for Multi-PNA+EU (Egressy et al., AAAI 2024), and 63.72 for a GNN "
-        f"also evaluated under CKKS (Bilgi et al., arXiv:2610.18054). The Graph Feature Preprocessor paper's own decomposition (Blanusa et al., ICAIF 2024, Table 5) puts basic features at 19.75 and fan-in and fan-out at 56.88 to 59.71 for XGBoost. "
-        f"These 111 features are the 32 per-account aggregates plus per-transaction fan-in and fan-out, vertex statistics and scatter-gather in time windows, in batches of {BATCH_WINDOW}, with no cycle enumeration, on a 56/14/30 temporal split rather than the papers' 60/20/20. "
-        f"The comparison that means most here is with the booster on the same features: AUPRC {record['auprc']:.4f} against {record['xgboost_same_features']['auprc']:.4f}. This project's published teacher, on the 32 aggregates, has AUPRC {float(teacher_record['auprc']):.4f}. AMLworld is synthetic by IBM's own statement.")
+    record["baseline_gap_note"] = mlp_gap_note(record, teacher_record, reach)
 
     out = REPO / registry.ARTIFACT_DIRS[KEY]
     wrapped = Scored(centre, scale, model.cpu()).eval()
-    rng = np.random.default_rng(seed)
+    # A fixed seed, so a retrain keeps the rows the page shows and the transaction-graph figure names.
+    rng = np.random.default_rng(FIXTURE_SEED)
     rows = x_te[rng.choice(len(x_te), size=512, replace=False)]
     report = export.verify_and_quantize(wrapped, rows, out, kind="torch", n_features=len(features), int8_required=False)
     # A graph this small gains nothing from int8, and the registry's student artifacts do not list one.
@@ -275,9 +321,9 @@ def main() -> int:
         "fixtures": {"rows": [[float(v) for v in r] for r in rows_f], "labels": [int(v) for v in y_te[fixture_index]], "logits": [[float(v) for v in r] for r in logits_f], "row_index_in_test_window": [int(v) for v in fixture_index]},
         **fixture_notices(KEY),
         "note": (f"Trained on labels with class weights, on the fit window; threshold tuned on the validation window and folded into the last bias, so argmax over the two logits is the decision. "
-                 f"Fixture rows are from the held-out test window, half of them laundering by construction. Features see transactions up to the end of their batch of {BATCH_WINDOW}, as the Graph Feature Preprocessor paper processes them."),
+                 f"Fixture rows are from the held-out test window, half of them laundering by construction. Features see transactions up to the end of their batch of {BATCH_WINDOW}, at most {reach} minutes past the transaction, as the Graph Feature Preprocessor paper processes them."),
     }, indent=None, separators=(",", ":")) + "\n")
-    (out / "feature_spec.json").write_text(json.dumps({"features": features, "batch_window": BATCH_WINDOW, "notes": "The first 32 are the per-account aggregates of finance_aml.py, and the rest are per-transaction window features from finance_aml_fan.py, log-compressed as that file says. The graph scales them itself."}, indent=2) + "\n")
+    (out / "feature_spec.json").write_text(json.dumps({"features": features, "batch_window": BATCH_WINDOW, "batch_reach_minutes": reach, "notes": "The first 32 are the per-account aggregates of finance_aml.py, and the rest are per-transaction window features from finance_aml_fan.py, log-compressed as that file says. The graph scales them itself."}, indent=2) + "\n")
     train.record_metrics(KEY, record)
     print(f"  {KEY}: F1 {record['minority_class_f1']} (median of seeds {record['median_of_seeds_minority_f1']}), AUPRC {record['auprc']}, booster on the same features F1 {record['xgboost_same_features']['minority_class_f1']}, {n_params} parameters, scaling {kind}", flush=True)
     print(f"done in {time.time() - started:.0f}s")

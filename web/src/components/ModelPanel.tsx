@@ -146,8 +146,8 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   const metricMismatch = recordedMetric != null && recordedMetric !== spec.metric.name;
   const headline = numeric.filter(([k]) => !isCompanion(k));
   const companion = numeric.filter(([k]) => isCompanion(k));
-  // Where the teacher flags almost nothing, agreement is high whatever the student does (Round 86): finance's teacher flags 759 of 1,523,504
-  // window rows, so a student that never flags would agree 0.9995, above this student's 0.9829. The counts are the measurement script's.
+  // Where the teacher flags almost nothing, agreement is high whatever the student does (Round 86): finance's teacher flags 1,117 of 1,523,504
+  // window rows, so a student that never flags would agree 0.9993, above this student's 0.9968. The counts are the measurement script's.
   const flags = rec.flag_counts as { teacher_flagged?: number; student_flagged?: number } | undefined;
   const nFlagged = rec.n_eval as number | undefined;
   const neverFlagsAgrees = flags?.teacher_flagged != null && nFlagged ? 1 - flags.teacher_flagged / nFlagged : null;
@@ -577,6 +577,9 @@ function AttributionRows({ achieved }: { achieved: Record<string, unknown> }) {
 }
 
 
+/** Published models the pipeline runs from their weights file rather than from an ONNX graph, under MPC. */
+const RUNS_FROM_WEIGHTS = new Set(["finance_aml.gnn_compact"]);
+
 /** Run one published model in the browser, or say precisely why it cannot be run.
  *
  * Every reason below is a different fact about the model and they must not be collapsed into a
@@ -601,10 +604,23 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
     : spec.hf_revision_stale && spec.pin_withdrawn_reason ? `its pin is withdrawn: ${spec.pin_withdrawn_reason}`
     : spec.hf_revision_stale ? "retrained since it was last published, so the pinned artefact no longer matches the metrics above and the pin was retired rather than pointed at stale weights"
     : !spec.hf_revision ? "published but not pinned to a commit, and the browser will not fetch an unpinned model"
-    : !fetchable ? "published, but it ships no browser-runnable ONNX graph at that revision"
+    : !fetchable && !RUNS_FROM_WEIGHTS.has(spec.key) ? "published, but it ships no browser-runnable ONNX graph at that revision"
     : null;
 
   if (blocked) return <p className="muted small"><em>Cannot be run here: {blocked}.</em></p>;
+
+  // The compact GNN (Round 86) has no graph a browser runtime loads: a GNN reads a transaction with its neighbourhood, and
+  // the pipeline run fetches its pinned weights file and runs one of its held-out transactions under MPC. Until this
+  // branch the panel told a page that runs it that it "cannot be run here".
+  if (RUNS_FROM_WEIGHTS.has(spec.key)) {
+    return <p className="muted small">
+      Verified during the pipeline run: press <strong>Start</strong> with <em>GNN under MPC</em> ticked, as it is by default,
+      and one of this model&apos;s held-out transactions
+      ({spec.eval_split ?? "split not declared"}) runs in this tab from its pinned weights file, the linear maps under CKKS
+      and the ReLUs and argmax in garbled circuits. The GNN panel then prints the logits it reconstructs beside the ones the
+      trainer recorded for that transaction.
+    </p>;
+  }
 
   // Published and runnable, but with nothing of its own to be re-scored on, by design. Until Round 71
   // this fell through to the sentence below and promised a re-score the run then said it could not do.

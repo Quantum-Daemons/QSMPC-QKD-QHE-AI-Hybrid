@@ -131,7 +131,11 @@ def main() -> int:
     print(f"\n  scorecard on test: minority-F1 {f1:.4f}  AUPRC {ap_:.4f}  cut {cut_star}")
     print(f"    net benefit at p={P_REPORT:g} (median of the fitted range): {nb_model:+.6f} "
           f"vs treat-all {nb_all:+.6f} -> margin {nb_model - max(nb_all, 0.0):+.6f}")
-    print("    comparators: CKKS student 0.0614, XGBoost teacher 0.1519, published 0.6323")
+    # From the records: these were the literals 0.0614 and 0.1519, which outlived the Round 86 retrain that moved both.
+    from qsh.models import registry
+    student, teacher = registry.achieved("finance_aml.student") or {}, registry.achieved("finance_aml.gbm") or {}
+    print(f"    comparators: CKKS student {student.get('student_metric', float('nan')):.4f}, XGBoost teacher "
+          f"{teacher.get('minority_class_f1', float('nan')):.4f}, published 0.6323")
 
     nz = np.flatnonzero(sc.w)
     print("\n  the card, which is the point of the form:")

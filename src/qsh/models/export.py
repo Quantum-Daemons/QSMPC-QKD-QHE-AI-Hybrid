@@ -214,7 +214,7 @@ def is_quantizable(fp32_path: Path) -> tuple[bool, str]:
     if ops & {"LinearClassifier", "LinearRegressor"}:
         # The same shape of problem, found the same way: skl2onnx puts the coefficients in node
         # attributes, so there is no weight tensor to act on and onnxruntime raises rather than
-        # no-opping. A 33-parameter distilled student has nothing to gain from int8 regardless.
+        # no-opping. A 115-parameter distilled student has nothing to gain from int8 regardless.
         return False, ("ai.onnx.ml linear model: coefficients live in node attributes, not weight "
                        "tensors, so dynamic int8 quantisation has nothing to quantise")
     if "" not in domains and "ai.onnx" not in domains:

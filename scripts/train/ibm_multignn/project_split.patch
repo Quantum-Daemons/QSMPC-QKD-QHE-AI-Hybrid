@@ -1,0 +1,39 @@
+diff --git a/data_loading.py b/data_loading.py
+index 850dc31..512fe7a 100644
+--- a/data_loading.py
++++ b/data_loading.py
+@@ -3,6 +3,7 @@ import numpy as np
+ import torch
+ import logging
+ import itertools
++import os
+ from data_util import GraphData, HeteroData, z_norm, create_hetero_obj
+ 
+ def get_data(args, data_config):
+@@ -85,6 +86,13 @@ def get_data(args, data_config):
+     val_inds = torch.cat(split_inds[1])
+     te_inds = torch.cat(split_inds[2])
+ 
++    # This project's temporal windows, for comparison with the models it trains: the file is in `load_sorted` order.
++    if os.environ.get("QSH_SPLIT") == "project":
++        n = y.shape[0]
++        cut = int(n * 0.7)
++        val_cut = int(cut * 0.8)
++        tr_inds, val_inds, te_inds = torch.arange(val_cut), torch.arange(val_cut, cut), torch.arange(cut, n)
++
+     logging.info(f"Total train samples: {tr_inds.shape[0] / y.shape[0] * 100 :.2f}% || IR: "
+             f"{y[tr_inds].float().mean() * 100 :.2f}% || Train days: {split[0][:5]}")
+     logging.info(f"Total val samples: {val_inds.shape[0] / y.shape[0] * 100 :.2f}% || IR: "
+diff --git a/train_util.py b/train_util.py
+index 42062b8..73d7caf 100644
+--- a/train_util.py
++++ b/train_util.py
+@@ -13,7 +13,7 @@ class AddEgoIds(BaseTransform):
+     def __init__(self):
+         pass
+ 
+-    def __call__(self, data: Union[Data, HeteroData]):
++    def forward(self, data: Union[Data, HeteroData]):
+         x = data.x if not isinstance(data, HeteroData) else data['node'].x
+         device = x.device
+         ids = torch.zeros((x.shape[0], 1), device=device)

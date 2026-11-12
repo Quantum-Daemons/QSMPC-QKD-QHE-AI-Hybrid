@@ -110,8 +110,12 @@
     "src_out_std_1440",
     "src_out_std_360",
     "src_out_std_4320",
-    "src_out_std_60"
+    "src_out_std_60",
+    "pair_log_same_direction",
+    "pair_log_reverse_direction",
+    "pair_first_contact"
   ],
   "batch_window": 2048,
+  "batch_reach_minutes": 17,
   "notes": "The first 32 are the per-account aggregates of finance_aml.py, and the rest are per-transaction window features from finance_aml_fan.py, log-compressed as that file says. The graph scales them itself."
 }
