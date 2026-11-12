@@ -82,7 +82,7 @@ fall short:
 
 | vertical | T2 model | data | measured | published baseline |
 |---|---|---|---|---|
-| **finance** | XGBoost over this project's own graph features (fan-in/fan-out and causal per-account aggregates over the transaction multigraph; IBM's Graph Feature Preprocessor is not used) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.1519**, AUPRC **0.1233** vs a 0.0015 prevalence baseline (the test window's positive rate; the corpus's is 1 in 981) | 0.632 (NeurIPS 2023 D&B) - see the gap note below |
+| **finance** | XGBoost over this project's own graph features: 32 causal per-account aggregates, 79 per-transaction fan-in, fan-out, vertex-statistic and scatter-gather features in the Graph Feature Preprocessor's style, and 3 pair counts (IBM's preprocessor itself is not used) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.6161**, AUPRC **0.6428** vs a 0.0015 prevalence baseline (the test window's positive rate; the corpus's is 1 in 981) | 0.6323, GFP + XGBoost (NeurIPS 2023 D&B), on another split - see the note below |
 | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC BY 4.0 **asserted by MedMNIST**; the BUSI authors **publish no licence** - see [DATA_LICENSES.md](../DATA_LICENSES.md)) | AUC **0.9147** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
 | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000072** (Graff et al. 2021, CC BY 4.0; 183 of its 187 variants scored) over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.637 - *external citation, not measurable here: a reference panel carries no phenotype. Fitted WITH covariates a dot product does not have, on 162 of the 187 variants and at 5 years, so it is a citation and not a target* |
 | **satellite** | **Telemanom** 2xLSTM(80), seq 250, a 10-step forecast served by its first step, non-parametric dynamic threshold + pruning, by ESA-ADB's Telemanom-ESA recipe | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | corrected event-wise F0.5 **0.950** over **29 anomalies** (tp=23 fp=0 fn=6); 0.968 with ESA-ADB's label-reading preparation and the paper's floor | 0.968 (ESA-ADB Supp. Table 9, anomalies only) |
@@ -90,17 +90,27 @@ fall short:
 
 Four of those deserve their caveat stated here rather than buried.
 
-### Finance: the gap to the published baseline is architectural
+### Finance: the gap to the published baseline was architectural
 
-The XGBoost model scores minority-class F1 0.1519 against the published 0.632, and the cause is the
-feature architecture, not the licence and not multi-hop reach. IBM's Graph Feature Preprocessor
-computes per-transaction subgraph patterns over a dynamically updated graph, where this project
-computes per-account scalar aggregates: a degree is one number per account, while the reference
+Until Round 86 the XGBoost model scored minority-class F1 0.1519 against the published 0.6323, and the
+cause was the feature architecture, not the licence and not multi-hop reach. IBM's Graph Feature
+Preprocessor computes per-transaction subgraph patterns over a dynamically updated graph, where this
+project computed per-account scalar aggregates: a degree is one number per account, while the reference
 feature is a pattern match in that transaction's own neighbourhood at the moment it arrives. The
 mechanism is derived in
 [`references/finance-gap-investigation.md`](../references/finance-gap-investigation.md), which also
-rules out the decision threshold and accounts unseen in training. It is implementable without
-`snapml`; it is simply a larger piece of work.
+rules out the decision threshold and accounts unseen in training.
+
+Round 86 implemented it without `snapml`: 79 per-transaction fan-in, fan-out, vertex-statistic and
+scatter-gather features in the preprocessor's style, computed in batches of 2,048 and at most 17
+minutes past the transaction, and 3 pair counts, beside the 32 aggregates. The same XGBoost then
+scores **0.6161** (AUPRC 0.6428) on this project's split, 56/14/30 by time. The published 0.6323 is
+measured on the paper's 60/20/20 split with the preprocessor updated over the test window, and at a
+batch size of 128; at the 2,048 these features use, the GFP paper reports $`64.77 \pm 0.47`$
+(Blanusa et al., arXiv:2402.08593, Table 4), 0.032 above this teacher. Neither difference is stated as
+a measured gap, since the protocols differ. On
+the same windows the compact GNN distilled from IBM's Multi-PNA+EU scores 0.6587
+([the finance models on 114 inputs](models-and-benchmarks.md#the-finance-models-on-114-inputs-and-the-compact-gnn)).
 
 Two causes recorded here earlier do not hold. The Proprietary `snapml` licence on the preprocessor
 is real, but it was never the mechanism. And 10-hop injected CYCLE patterns against 4-hop
@@ -197,12 +207,15 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
 - **Planned, not started: CKKS-friendly students (the owner's decision, 2026-11-02).** The Round 86
   review found the encrypted tier evaluating students that are weak or fed out of domain, and the
   owner chose to plan a replacement as research rather than retrain now. The facts the plan starts from:
-  - `finance_aml.student` (33 parameters) scores minority-class F1 0.0614 against its teacher's 0.1519
-    over the same test window. A quadratic feature map costs no multiplicative depth, only slots, and
-    it pays on OPS-SAT, whose 210-parameter student tracks its teacher (AUC-PR 0.968055 against
-    0.968107); on finance it was measured and rejected, raising fidelity and lowering F1 (the
-    trainer's `--student-degree` help records 0.0185 to 0.0115, on an earlier student). It also costs
-    the browser: 560 features take a 1,024-slot block, 4 rows a ciphertext where 32 features fit 128.
+  - `finance_aml.student` (115 parameters, on the teacher's 114 inputs since Round 86) scores
+    minority-class F1 0.3088 against its teacher's 0.6161 over the same test window; on the 32
+    aggregates it was 0.0614 against 0.1519. A quadratic feature map costs no multiplicative depth,
+    only slots, and it pays on OPS-SAT, whose 210-parameter student tracks its teacher (AUC-PR
+    0.968055 against 0.968107); on finance it was measured and rejected, raising fidelity and lowering
+    F1 (the trainer's `--student-degree` help records 0.0185 to 0.0115, on an earlier student). On 114
+    inputs it would also cost the browser more than a ciphertext holds: $`114 + 114 \cdot 115/2 = 6{,}669`$
+    features against the 4,096 slots of an $`N = 8192`$ ciphertext, where the 114 linear inputs take a
+    128-slot block, 32 rows to a ciphertext.
   - `medical_fl.student` decrypts after every layer for its ReLU and pooling, and its encrypted input is
     a tabular row tiled to fill the image (review PI-10, now stated on the page). A student that runs
     whole under CKKS needs a polynomial activation, and more rescales than the 60+40+40+60 chain's two;
@@ -253,20 +266,23 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
 - **Three of the four CKKS students can be re-scored in a browser.** The Models panel runs each
   student's ONNX graph in plaintext on its held-out sample; this checks the published graph, not the
   encrypted evaluation. Samples ship model-ready with `preprocessing: []`, because
-  the browser's `applyPreprocessing` is per-scalar and cannot apply a 32-length mean/scale vector or
+  the browser's `applyPreprocessing` is per-scalar and cannot apply a 114-length mean/scale vector or
   an area resize. Reproduced before publishing: medical accuracy 0.769231, OPS-SAT rare-class F1
-  0.904348, finance rare-class F1 0.313187 on its shipped rows. `satellite_comms.student` has
+  0.904348, and finance rare-class F1 0.614815 on its shipped rows (0.313187 for the student on 32
+  aggregates that it replaced in Round 86). `satellite_comms.student` has
   none, and the blocker is its METRIC, not a missing scaler: it is scored on event-wise F0.5, which
   is defined over contiguous runs of a timeline and cannot be computed from independent rows.
 
 - **The browser scores each student on the metric it was published with.** Three of the four record
   rare-class F1, and reporting accuracy for them would have confirmed a number nobody claimed - the
   finance student is about 99 percent accurate on a test window that is 0.15 percent positive. Its
-  F1 is 5.1x higher on the shipped rows (0.3132) than over the whole test window (0.0614), because
+  F1 is 2.0x higher on the shipped rows (0.6148) than over the whole test window (0.3088), because
   the 8,192 rows are enriched to 2.0 percent laundering; not even the ratio to the all-positive
-  baseline survives the change of prevalence (8.0x here against 20.2x on the whole window), so the
+  baseline survives the change of prevalence (15.7x here against 101.5x on the whole window), so the
   sample checks that the browser reproduces the graph, not how good the student is, and the page
-  says so beside the figure.
+  says so beside the figure. On those rows the student even scores above its teacher (0.6148
+  against 0.6043), and below it over the window (0.3088 against 0.6161): enrichment rewards the
+  model that flags more.
 
 - **Two new trained models, and one of them is a negative result.** `medical_fl.resnet50` exists to
   test a published claim rather than to win one: MedMNIST v2 reports ResNet-50 at AUC 0.857 against
@@ -328,11 +344,11 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   overhead of roughly 15,000x to 166,000x, is dated and no longer the reason.
 
 - **The models sized for encryption are published too.** Each use case has a teacher and a
-  distilled student sized for CKKS: 33 parameters for finance against a 141,154-parameter teacher,
+  distilled student sized for CKKS: 115 parameters for finance against a 123,956-parameter teacher,
   3,226 against 11,171,266 for medical, 294 against 84,860 for satellite. Which of them CKKS
   evaluates in the browser, page by page, is under
-  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All twelve repos are public, and
-  twelve are pinned. The evaluation sample
+  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All thirteen repos are public, and
+  thirteen are pinned. The evaluation sample
   for each lives in that model's own repo at the same revision as its weights. Since Round 86 that
   includes the satellite student's, which is a stretch of a timeline rather than independent rows,
   because its metric is defined over a timeline.

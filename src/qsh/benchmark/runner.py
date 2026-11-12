@@ -87,7 +87,7 @@ def usecase_arch_layers(usecase, model_size: str, *, workload: str = "linear", s
 def published_tier(usecase: str, model_size: str) -> dict | None:
     """The published trained model a use case's tier costs, with the held-out rows it runs on; None where there is none.
 
-    Finance has one trained MLP on AMLworld's 111 features (`scripts/train/finance_aml_mlp.py`), which both sizes price, so a run costs a model someone would run, on the corpus it was trained
+    Finance has one trained MLP on AMLworld's 114 features (`scripts/train/finance_aml_mlp.py`), which both sizes price, so a run costs a model someone would run, on the corpus it was trained
     on rather than the page's four-column PaySim row.
     """
     import json

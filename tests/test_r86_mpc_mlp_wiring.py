@@ -77,6 +77,6 @@ def test_both_ci_paths_run_the_check() -> None:
 def test_the_published_model_card_and_the_record_agree() -> None:
     rec = json.loads((REPO / "models/metrics.json").read_text())["finance_aml.mlp_large"]
     assert rec["hf_revision"], "pinned"
-    assert rec["n_features"] == 111 and rec["n_parameters"] == 22722
+    assert rec["n_features"] == 114 and rec["n_parameters"] == 23106
     card = (REPO / "models/finance_aml_mlp_large/README.md").read_text()
-    assert "2,048" in card and "22722" in card.replace(",", "")
+    assert "2,048" in card and "23106" in card.replace(",", "")

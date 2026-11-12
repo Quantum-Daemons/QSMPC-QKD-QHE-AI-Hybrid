@@ -684,12 +684,12 @@ class BenchmarkConfig:
     # 2^36 and 6.3e-4 at 2^40. (Round 75's scalar mask, slot 0 only: 5e-7, 8e-6 and 2e-4.)
     mpc_mask_bits: int = 30
     # Per-use-case shapes, and since Round 86 every finance and medical tier is a model that was trained: lightweight is the
-    # trained linear model, finance's medium and large are published MLPs on AMLworld's 32 features (their weights decide the
+    # trained linear model, finance's medium and large both price the one published MLP on AMLworld's 114 inputs (its weights decide the
     # row, `published_tier`), and medical's are trained in the run. Two hidden layers of 16-256 units are what the tabular
     # private-inference literature evaluates (references/REFERENCES.md). The hidden sizes here are the shapes those models have.
     tier_architectures: dict = field(default_factory=lambda: {
         # One trained MLP (Round 86): both sizes price it, so the CLI's --model-size cannot ask for a shape that was never trained.
-        "finance_aml": {"label": "MLP on AMLworld's 111 per-account and per-transaction features",
+        "finance_aml": {"label": "MLP on AMLworld's 114 per-account, per-transaction and pair features",
                         "hidden": {"lightweight": [], "medium": [128, 64], "large": [128, 64]}},
         # 41,090 parameters at [256, 128] would be more than 70 per row of the 569 in WDBC, past the top of what a November 2026
         # clinical benchmark searched (arXiv:2611.02856, [h, h/2] for h up to 128), and accuracy does not rise with width there.
@@ -1025,6 +1025,8 @@ class HybridCnnConfig:
     logit_mask_bits: int = 30
     # ReLUs per garbled circuit. Compiling 800 at once took 75 s and 4 GB natively, and 56 takes under a second, so 14 batches of one compiled circuit.
     conv_relu_batch: int = 56
+    # Workers for a layer's garbled batches, at most half the logical cores (`clientGcPool.ts`). Each batch depends only on its inputs, so they can run at once, on their own wasm instances.
+    gc_workers: int = 4
 
 
 @dataclass

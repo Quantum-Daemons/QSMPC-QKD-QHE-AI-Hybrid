@@ -66,15 +66,14 @@ MODELS = {
     "finance (AMLworld, GFP + XGBoost)": {
         "repo": f"{HF_NAMESPACE}/qsh-finance-aml-gbm",
         "file": "onnx/model.onnx",
-        # 32, not 26. The exported graph's input is [N, 32] (checked with onnx.load against
-        # models/finance_aml_gbm/onnx/model.onnx). A 26-length vector is rejected by the session, so
-        # this Space's finance model would have failed on its first real request.
-        "shape": [1, 32],
+        # 114 since Round 86, when the teacher gained the per-transaction and pair features, and 32 before (an
+        # older copy here said 26, which no exported graph took). The graph's input is [N, 114] (onnx.load on
+        # models/finance_aml_gbm/onnx/model.onnx); a vector of any other length is rejected by the session.
+        "shape": [1, 114],
         "classes": ["not laundering", "laundering"],
-        # 0.151948, not 0.081. This figure and the one in README.md were BOTH left on a
-        # pre-improvement retrain, so the Space published a stale number on two surfaces at once.
-        # Read from models/metrics.json (`finance_aml.gbm`, minority_class_f1) in Round 49.
-        "metric": "minority-class F1 0.151948 measured; 0.632 published (see the model card for why)",
+        # Read from models/metrics.json (`finance_aml.gbm`, minority_class_f1) after the Round 86 retrain. It
+        # was 0.081 until Round 49 and 0.151948 until Round 86, and each time this mirror lagged the record.
+        "metric": "minority-class F1 0.616056 measured; 0.6323 published on another split (see the model card)",
     },
 }
 
@@ -82,7 +81,10 @@ _sessions: dict[str, object] = {}
 
 
 def _session(key: str):
-    """Lazily fetch and open an ONNX session, pinned to the revision the registry recorded."""
+    """Lazily fetch and open an ONNX session from the repo's default branch.
+
+    This mirror records no revision, so it serves whatever the Hub's main branch holds; the pins the
+    demo uses are in models/metrics.json, and a deployment of this Space would need them added here."""
     import onnxruntime as ort
     from huggingface_hub import hf_hub_download
 

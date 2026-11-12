@@ -7,7 +7,8 @@ what the circuit computes, and more. That is the comparison Schreiber, Eisert an
 which the trainer already records, are its comparators.
 
 This adds `classical_surrogate` to each shipped artifact without retraining the circuit, on the identical split the trainer used (checked: the logistic regression it refits must reproduce the recorded
-figure to the last digit, or the script stops). The trainer writes the same key for a future retrain.
+figure to the last digit, or the script stops). The trainer writes the same key, in the same place, last before `note`, for a future
+retrain: until Round 86 it wrote it after `classical_lr_accuracy`, so a retrain could not reproduce a shipped file byte for byte.
 
     python scripts/train/qcnn_classical_surrogate.py
 """

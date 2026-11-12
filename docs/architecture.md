@@ -263,7 +263,7 @@ transport, because no quantum ratio can share a column with the CKKS byte ratio
 ([what ct/pt measures](models-and-benchmarks.md#what-ctpt-measures)). The pages' **lightweight / medium / large** model-size selector was removed, because it scaled
 invented MLPs rather than the models that exist; `tier_architectures` and `workload_multipliers` remain
 in the config for the CLI benchmark's `--model-size` and `--workload`. In the browser, the benchmark costs
-the encrypted student where a use case has one, and the full deployment's dense path on finance costs the one published MLP ([`models-and-benchmarks.md`](models-and-benchmarks.md#the-published-finance-mlp)).
+the encrypted student where a use case has one, and the full deployment's dense path on finance costs the one published MLP ([`models-and-benchmarks.md`](models-and-benchmarks.md#the-finance-models-on-114-inputs-and-the-compact-gnn)).
 
 ## SPA shape
 Overview, Introduction & Value, Validations, E2E Orchestration (generic "run any pipeline"), Use Cases
@@ -348,7 +348,7 @@ cost - genomics and the generic demo - and labels it so):
   ML-DSA-65 signature covers. Cancellation: none, since a session carries one request and its response.
   It serves `tools/call` only, so it is not a complete MCP implementation.
 - **Per-industry real data/models** - finance: an XGBoost teacher on AMLworld, distilled to a
-  33-parameter CKKS-linear student (the browser's CKKS step runs a linear surrogate over four columns
+  115-parameter CKKS-linear student on its 114 inputs (the browser's CKKS step runs a linear surrogate over four columns
   of the PaySim demo sample); medical: a MedMNIST CNN; **genomics: the PGS-Catalog polygenic risk score**
   PGS000072, whose full 183-variant dot product runs under CKKS in the browser and in the full
   deployment, against a 90th-percentile cut over the bundled panel; telecom: synthetic QKD-attack data,

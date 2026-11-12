@@ -50,7 +50,7 @@ KEYS = "models-and-benchmarks.md#the-qkd-key-blocks"
 CTPT = "models-and-benchmarks.md#what-ctpt-measures"
 QCNN = "use-cases.md#what-the-trained-qcnns-are"
 TELECOM = "findings.md#telecom-the-classical-forest-wins"
-FINANCE = "findings.md#finance-the-gap-to-the-published-baseline-is-architectural"
+FINANCE = "findings.md#finance-the-gap-to-the-published-baseline-was-architectural"
 ROADMAP = "pqc-roadmap.md#standards-alignment-done--in-progress"
 SCORE = "security-scoring-fact-check.md#why-the-existing-score-had-to-go"
 BADGE = "threat-model.md#what-a-results-provenance-badge-says"
@@ -175,7 +175,7 @@ def test_the_trained_qcnns_have_one_owner() -> None:
 def test_the_telecom_forest_and_the_finance_gap_have_one_owner() -> None:
     findings = _read("docs/findings.md")
     for heading in ("### Telecom: the classical forest wins",
-                    "### Finance: the gap to the published baseline is architectural"):
+                    "### Finance: the gap to the published baseline was architectural"):
         assert heading in findings, heading
     flat = re.sub(r"\s+", " ", findings)
     for fact in ("`quantum_beats_classical: false`", "of 200 trees", "1.45x AUPRC", "to 58.60",

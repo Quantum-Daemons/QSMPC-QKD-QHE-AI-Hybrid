@@ -12,7 +12,7 @@ WHAT THIS ASSERTS, BY RUNNING THE BROWSER'S OWN CODE
 
 The two modules are bundled with esbuild and run in node against the REAL node-seal CKKS the page
 uses, with `fetch` answering from web/public. Per use case: every held-out row is scored (8,192 on
-finance, which takes 64 ciphertexts; 171 on medical; 600 on telecom, two ciphertexts), the figure says
+finance, which takes 256 ciphertexts on its 114 inputs; 171 on medical; 600 on telecom, two ciphertexts), the figure says
 `heldOut` with a licence link, the plaintext reference reproduces the decisions the payload's builder
 computed in Python, and no row flips. Finance's PaySim fitting rows no longer reach the batch, and
 medical's corpus is the held-out side of its split.
@@ -118,7 +118,7 @@ def _payload(rel: str) -> dict:
 
 
 @pytest.mark.parametrize("usecase, rows, ciphertexts", [
-    ("finance_aml", 8192, 64), ("medical_fl", 171, 1), ("telecom_ids", 600, 2), ("satellite_comms", 529, 34)])
+    ("finance_aml", 8192, 256), ("medical_fl", 171, 1), ("telecom_ids", 600, 2), ("satellite_comms", 529, 34)])
 def test_every_held_out_row_is_scored(run: dict, usecase: str, rows: int, ciphertexts: int) -> None:
     r = run[usecase]
     assert r is not None, f"{usecase}: heldOutCorpus returned nothing"

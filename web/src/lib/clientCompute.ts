@@ -47,6 +47,7 @@ import type { MultiPsiResult } from "./clientMultiPsi";
 import { asJson, checkPinned, HubFileRefused } from "./pinnedFetch";
 import { loadQcnnHeldOut, rescoreQcnn, type QcnnRescore } from "./qcnnRescore";
 import type { MlpWeights } from "./clientHybridMlp";
+import type { GnnNeighbourEdge, GnnWeights, HybridGnnResult } from "./clientHybridGnn";
 import type { LendingMarketReport } from "./lending/report";
 import type { KeyholderSetup } from "./lending/privateCheck";
 import type { TaskInit } from "./lending/tasks";
@@ -1097,6 +1098,56 @@ async function runMlpUnderMpc(stage: string, seed: number, emit: (t: "log", s: s
   }
 }
 
+export interface MpcGnnReport {
+  key: string; result: HybridGnnResult & { ranIn: string }; ranIn: string; rowIndex: number; rowCount: number; rowLabel: number; expectedLogits: number[]; classes: Record<string, string>;
+  neighbourhood: GnnNeighbourEdge[]; perDirection: number; order: string[];
+}
+
+/** One held-out transaction through the compact GNN under CKKS and garbled circuits, off the page's thread, reported whichever way it ends. */
+async function runGnnUnderMpc(stage: string, seed: number, emit: (t: "log", s: string, m: string) => void,
+                              metric: (s: string, k: string, v: number | string) => void, artifacts: Record<string, unknown>): Promise<void> {
+  const key = "finance_aml.gnn_compact";
+  const spec = modelsFor("finance_aml").find((m) => m.key === key);
+  let weights: GnnWeights | null = null;
+  try {
+    if (!spec?.hf_repo_id || !spec.hf_revision) throw new Error("it is not pinned to a revision");
+    const res = await fetch(`https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/weights.json`, { mode: "cors", signal: AbortSignal.timeout(30_000) });
+    if (!res.ok) throw new Error(`the Hub answered HTTP ${res.status}`);
+    const bytes = await res.arrayBuffer();
+    await checkPinned(bytes, spec.file_sha256?.["weights.json"], `${key} weights.json`);
+    weights = asJson<GnnWeights>(bytes);
+  } catch (e) {
+    metric(stage, "mpc_gnn_ran", 0);
+    emit("log", stage, `The GNN under MPC did not run: ${key} could not be used (${(e as Error).message}).`);
+    return;
+  }
+  const n = weights.fixtures.labels.length, index = ((seed % n) + n) % n;
+  const { hybridGnnInferenceOffThread } = await import("./clientHybridGnn");
+  emit("log", stage, `The GNN under MPC: ${key}, held-out transaction ${index} of ${n}, in a Web Worker. CKKS for the linear maps, garbled circuits for the ReLUs and the argmax.`);
+  try {
+    const r = await hybridGnnInferenceOffThread(weights, index);
+    const expected = weights.fixtures.logits[index];
+    artifacts.mpc_gnn = { key, result: r, ranIn: r.ranIn, rowIndex: index, rowCount: n, rowLabel: weights.fixtures.labels[index], expectedLogits: expected, classes: weights.classes,
+      neighbourhood: weights.fixtures.neighbourhoods[index], perDirection: weights.slots.per_direction, order: weights.slots.order } satisfies MpcGnnReport;
+    metric(stage, "mpc_gnn_ran", 1);
+    metric(stage, "mpc_gnn_model", key);
+    metric(stage, "mpc_gnn_class", r.prediction);
+    metric(stage, "mpc_gnn_matches_clear", r.matchesClear ? 1 : 0);
+    metric(stage, "mpc_gnn_relu_count", r.reluCount);
+    metric(stage, "mpc_gnn_and_gates", r.andGates);
+    metric(stage, "mpc_gnn_gc_mb", r2(r.gcBytes / 1e6));
+    metric(stage, "mpc_gnn_gc_workers", r.gcWorkers);
+    metric(stage, "mpc_gnn_total_ms", r2(r.totalMs));
+    metric(stage, "mpc_gnn_statistical_distance_log2", r2(r.statisticalDistanceLog2));
+    metric(stage, "mpc_gnn_logit_max_abs_error", r.logitMaxAbsError);
+    emit("log", stage, `GNN under MPC: class ${r.prediction} from the 2PC argmax${r.matchesClear ? ", as the same network gives in the clear" : `, and the same network gives ${r.clearPrediction} in the clear`}; `
+      + `${r.reluCount} ReLUs in garbled circuits on ${r.gcWorkers} worker${r.gcWorkers === 1 ? "" : "s"}, ${r2(r.gcBytes / 1e6)} MB, ${r2(r.totalMs / 1000)} s in ${r.ranIn}. Both parties are in this tab, so the separation is notional.`);
+  } catch (e) {
+    metric(stage, "mpc_gnn_ran", 0);
+    emit("log", stage, `The GNN under MPC did not finish: ${(e as Error).message}`);
+  }
+}
+
 /** One held-out image through the student under CKKS and garbled circuits, off the page's thread, reported whichever way it ends. */
 async function runStudentUnderMpc(stage: string, usecase: string, seed: number, emit: (t: "log", s: string, m: string) => void,
                                   metric: (s: string, k: string, v: number | string) => void, artifacts: Record<string, unknown>): Promise<void> {
@@ -1736,7 +1787,7 @@ export function runClientPipeline(
   /** The private-inference figure for a page with held-out rows (Round 84, PI7-PI9).
    *
    * A PUBLISHED model on rows it was never fitted on, every row: finance's AMLworld student on its
-   * 8,192 test-window rows (64 ciphertexts), medical's WDBC regression on its 171 held-out rows,
+   * 8,192 test-window rows (256 ciphertexts), medical's WDBC regression on its 171 held-out rows,
    * telecom's student on its own 600-row held-out quarter. The figure used to call finance's and
    * medical's FITTING rows held-out, on finance for a PaySim surrogate the page does not name. */
   async function emitHeldOutAgreement(stage: string, held: HeldOutCorpus) {
@@ -3732,6 +3783,7 @@ export function runClientPipeline(
               + `against ${real.mpcClearIndex}. Treat this run's MPC result as unverified.`);
           if (usecase === "medical_fl" && config.mpc_cnn) await runStudentUnderMpc(stage, usecase, seed, emit, metric, artifacts);
           if (usecase === "finance_aml" && config.mpc_mlp) await runMlpUnderMpc(stage, seed, emit, metric, artifacts);
+          if (usecase === "finance_aml" && config.mpc_gnn) await runGnnUnderMpc(stage, seed, emit, metric, artifacts);
         } else {
           // Honest last resort, and it names the half that failed: node-seal not loading (no WASM,
           // say), or the garbled-circuit protocol not completing, which includes it ABORTING on a

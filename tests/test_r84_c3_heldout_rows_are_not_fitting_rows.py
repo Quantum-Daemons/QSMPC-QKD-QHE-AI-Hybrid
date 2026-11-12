@@ -22,6 +22,7 @@ telecom overlay draws 3,200 rows.
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -109,6 +110,20 @@ def test_medical_file_carries_the_licence_link_and_change_note() -> None:
 #  finance
 # --------------------------------------------------------------------------------------------- #
 
+def _overlay_rounds_to(v: float, o: float) -> bool:
+    """Is `o`, an overlay coordinate at 4 significant digits, the rounding of the row `v` the payload holds to 7?
+
+    Rounding the payload's value again can land on the other side of a tie: 0.11184996 is 0.1118 in the overlay and
+    0.11185 in the payload, which rounds to 0.1119. So `v` must lie within half a unit of `o`'s fourth digit, plus the
+    payload's own rounding, rather than re-round to `o`.
+    """
+    if float(f"{v:.4g}") == o:
+        return True
+    if o == 0:
+        return abs(v) < 1e-12
+    return abs(v - o) <= 0.5 * 10 ** (math.floor(math.log10(abs(o))) - 3) + 5e-7 * abs(v)
+
+
 def test_finance_held_out_rows_are_the_overlays_rows_through_the_published_student() -> None:
     ho = _load("finance/student_heldout.json")
     overlay = _load("finance/real_2d.json")
@@ -121,8 +136,7 @@ def test_finance_held_out_rows_are_the_overlays_rows_through_the_published_stude
     assert len(ho["samples"]) == len(overlay["points"]) == 8192
     for row, label, (ox, oy, oc) in zip(ho["samples"], ho["labels"], overlay["points"], strict=True):
         assert label == oc
-        assert abs(float(f"{row[xi]:.4g}") - ox) <= 1e-9 * max(1, abs(ox)) and \
-            abs(float(f"{row[yi]:.4g}") - oy) <= 1e-9 * max(1, abs(oy))
+        assert _overlay_rounds_to(row[xi], ox) and _overlay_rounds_to(row[yi], oy), (row[xi], ox, row[yi], oy)
     # The published student's own preprocessing, on these rows, reproduces its published z-scores.
     w = json.loads(weights.read_text())
     assert w["input"]["preprocessing"] == ["subtract mean", "divide by scale"]

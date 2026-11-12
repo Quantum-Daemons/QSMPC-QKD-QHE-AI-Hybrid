@@ -4143,3 +4143,75 @@ node-exporter) started from this branch, then one finance run and one benchmark,
 
 A compose project keeps the bind mounts of the checkout it was first started from: rebuilding only the API from another
 checkout left Grafana on the first checkout's dashboard. Start every service from one checkout before reading a panel.
+
+### PR #32 on the deployed site (2026-11-10)
+
+Deployed from merged `main`, bundle `index-BXeYuQrU.js`, read in Chrome.
+
+| where | read |
+|---|---|
+| the circuit card's `Re-score on the held-out rows` | telecom macro F1 0.9444 over 480 rows in 147 ms, medical accuracy 0.9535 over 86 rows in 9 ms, finance minority-class F1 0.2286 over 600 rows in 7 ms; each `the value the weights file records` |
+| telecom, 7 wires, `QCNN (trained, under CKKS)` | the log: the circuit's figure re-scored in this tab, 0.9679, the value the weights file records, and logistic regression's recorded at training time; `qcnn_rescored_rows` 480, `qcnn_rescored_headline` 0.967932, `qcnn_rescore_matches_record` 1; the CKKS panel's row the same |
+| requests | `qcnn_heldout.json` and the weights from the site itself, by GET; no console error |
+
+### The four finance models republished (2026-11-11)
+
+The four AMLworld models went to the Hub on 2026-11-11 and were read back there; a second publish the same day carried
+what the first had left stale, with the weights and graphs unchanged (each digest equal to the first's).
+
+| model | revision | what changed | read back |
+|---|---|---|---|
+| `finance_aml.gbm` | `3393a270` | the card's calibration notes, until then Round 49's text about an earlier teacher, measured on the published graph | graph SHA-256 `d69b6532...` as before; the card holds the new notes and no Round 49 figure |
+| `finance_aml.student` | `1bae2180` | the card: 115 parameters and 256 ciphertexts of 32 rows, not 33 and 64 | weights `dd58191c...` as before |
+| `finance_aml.mlp_large` | `65283a88` | the card, and the sample's split, which still said "with the 79 per-transaction features added" | weights and graph as before; the sample states the registry's split |
+| `finance_aml.gnn_compact` | `1cd8f653` | the card, which named `transformers` as its library, and a new `eval_sample.json`: the 16 rows its weights carry as fixtures | weights as before; the sample's logits reproduced from the weights in Python to 9.5e-7, and through the browser's MPC path to 4.5e-5 |
+
+Three things the second pass found. The teacher's Platt map lowers the Brier score on the validation rows it was fitted
+on and raises it on the test window, whose laundering rate is 0.152 percent against 0.113; the record now says so.
+The published graph emits exactly 0.0 on 63,274 test rows, 2 of them laundering, so its raw log-loss is 0.00475425 where
+the training run's booster scored 0.00473171; both are in the record. And the cards had counted the student's
+parameters from a literal in the registry's notes, which had outlived the retrain on the 114 inputs.
+
+A third, card-only publish on 2026-11-12, with the owner's approval, after the fact-check below: every card names GFP + XGBoost's
+batch of 128 and the paper's $`64.77 \pm 0.47`$ at the batch of 2,048 these features use; the MLP's note says the teacher
+reads the same 114 inputs, where it had said "on the 32 aggregates"; and the MLP's and GNN's calibration notes name their
+model, re-measured with the published maps passed in, so `a` and `b` are unchanged. Every other file at the new revision
+equals the previous pin's bytes, and each served card equals the local one.
+
+| model | revision |
+|---|---|
+| `finance_aml.gbm` | `f3373960` |
+| `finance_aml.student` | `67cdb41e` |
+| `finance_aml.mlp_large` | `2733e357` |
+| `finance_aml.gnn_compact` | `006a55c6` |
+
+### The QCNN artifacts regenerate byte for byte (2026-11-11)
+
+Run on the CUDA machine, each artifact's recorded `training.command` into a fresh directory, compared with `cmp`:
+
+| artifact | before | after |
+|---|---|---|
+| `models/qcnn_finance/weights.json` | same values, `classical_surrogate` in another place | byte-identical |
+| `models/qcnn_medical/weights.json`, `qcnn_telecom`, `qcnn_telecom_q7` | the same, and a `training.note` older than the trainer's | byte-identical |
+
+`qcnn_classical_surrogate.py` had put `classical_surrogate` last before `note`, without retraining, while the trainer wrote
+it after `classical_lr_accuracy`; the trainer now writes it where the files hold it. The three non-finance artifacts also
+carried the note from before the trainer reworded it on 2026-11-01 for the finance retrain; that one string is updated in
+them and their browser copies. No weight or metric changed. `tests/test_r86_qcnn_artifact_key_order.py` holds the order
+without a training run, since CI does not run the slow regeneration test; it fails on all four against the old trainer.
+
+### The finance figures the cards and docs quote, read at their sources (2026-11-11)
+
+Read from each paper's own HTML or record, the tables by their captions; the dataset card and the TMLR record in Chrome.
+
+| claim | source | read |
+|---|---|---|
+| GFP + XGBoost on HI-Small, $`63.23 \pm 0.17`$ minority-class F1 | Altman et al., arXiv:2306.16424, Table 2 | as quoted |
+| fan-in and fan-out take XGBoost from 19.75 to 56.88, multi-hop patterns to 58.60, at batch size 128 | Blanusa et al., arXiv:2402.08593, Table 5 | as quoted; at batch 2,048 the column reads 19.75, 59.71, 61.01 |
+| GFP + XGBoost at batch size 2,048 | the same paper, Table 4 | $`64.77 \pm 0.47`$, not quoted before: these features use batches of 2,048, so the docs now name it beside 0.6323 |
+| Multi-GIN+EU $`64.79 \pm 1.22`$, Multi-PNA+EU $`68.16 \pm 2.65`$ on AML Small HI | Egressy et al., arXiv:2306.11586, AML results table | as quoted |
+| Multi-FraudGT 75.81, MEGA-PNA 74.01, MEGA-GenAgg 74.48, Multi-PNA 67.35, TMLR 08/2026 | Bilgi and Atasu, arXiv:2412.00241v3, Table 16; OpenReview: accepted by TMLR, published 29 Aug 2026 | as quoted |
+| HI-Small: September 1-10, 2022, 515K accounts, 5M transactions, 5.1K laundering, 1 in 981 | IBM's dataset card | as quoted; the raw file has 5,078,345 rows and 5,177 laundering |
+| the rows after September 10 | the dataset card says they "are all laundering" | the raw file has 1,108 such rows and 655 laundering, as the cards say; the card's sentence overstates it |
+| an edge-centric GNN under CKKS: F1 $`63.72 \pm 1.86`$, 5.31 s per query, 1.65 s amortised at batch 16, 99.25% agreement, HEonGPU on an RTX 5090, timings excluding the client's encryption, decryption, key generation and network | Bilgi et al., arXiv:2610.18054v2 | as quoted |
+| Pfeiffer and Gail, Biometrical Journal 62(3):764-776; Van Calster et al., J Clin Epidemiol 74:167-176 (2016); Riley et al., Stat Med 40(19):4230-4251 (2021); Dimitriadis, Gneiting and Jordan, PNAS 118(8) e2016191118 | Crossref | as cited |

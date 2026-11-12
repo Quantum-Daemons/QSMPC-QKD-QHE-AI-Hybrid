@@ -32,13 +32,15 @@ rather than weight tensors. This Space is the third tier: models too large for e
 ## Honest scope
 
 Metrics are what the project measured, shown with the published baseline - including where the
-measurement falls short of it. The finance model reaches minority-class F1 0.151948 against a
-published 0.632; the model card explains why (a feature-architecture difference: the published baseline's
-Graph Feature Preprocessor computes per-transaction subgraph patterns, this project computes per-account aggregates; the licence is not itself the cause).
+measurement falls short of it. The finance model reaches minority-class F1 0.616056 against a
+published 0.6323 for GFP + XGBoost, which is measured on another split; the model card says how the two protocols differ.
+Until Round 86 it read 0.151948, on 32 per-account aggregates alone, where the published baseline's
+Graph Feature Preprocessor computes per-transaction subgraph patterns; the per-transaction features it reads now close most of that gap.
 
 This read 0.081 until Round 49, in BOTH this file and `app.py` - a pre-improvement figure left behind
-by a retrain, on the one surface in this project that is published outside the repository. The
-current value is what `models/metrics.json` records for `finance_aml.gbm`.
+by a retrain, on a surface meant to be published outside the repository - and 0.151948 after Round 86's
+retrain until a later pass caught it here again. The current value is what `models/metrics.json` records for
+`finance_aml.gbm`, and this Space is not deployed: the Hub has no Space under this name.
 
 ## Quota
 

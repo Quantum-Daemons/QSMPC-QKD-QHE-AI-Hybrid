@@ -20,6 +20,7 @@ export default function MpcMlpPanel({ report }: { report: MpcMlpReport }) {
     const v = a?.xgboost_same_features?.minority_class_f1;
     return typeof v === "number" ? v.toFixed(3) : "-";
   };
+  const reach = (models.find((m) => m.key === report.key)?.achieved as { batch_reach_minutes?: number } | null | undefined)?.batch_reach_minutes ?? "-";
   const rows: [string, string][] = [
     ["ReLUs in garbled circuits", `${r.reluCount}, in ${r.batches} batches, ${r.andGates.toLocaleString()} AND gates with the argmax`],
     ["Garbled-circuit traffic", `${mb(r.gcBytes)} in ${r.gcMessages.toLocaleString()} messages between the two notional parties`],
@@ -29,7 +30,7 @@ export default function MpcMlpPanel({ report }: { report: MpcMlpReport }) {
     ["Statistical distance of everything masked, this run", `at most 2^${r.statisticalDistanceLog2.toFixed(1)}`],
     ["Largest error against the clear network's logits", r.logitMaxAbsError.toExponential(2)],
     ["Logits the trainer recorded for this row", `${report.expectedLogits.map((v) => v.toFixed(3)).join(", ")}; reconstructed here ${r.logits.map((v) => v.toFixed(3)).join(", ")}`],
-    ["Minority-class F1 over the whole held-out window", `this model ${f1(report.key)}; the same features through XGBoost ${f1b(report.key)}; on the 32 per-account features, the CKKS linear student ${f1("finance_aml.student")} and the gradient-boosting teacher ${f1("finance_aml.gbm")}`],
+    ["Minority-class F1 over the whole held-out window", `this model ${f1(report.key)}; the same features through XGBoost ${f1b(report.key)}; on the same 114 inputs, the CKKS linear student ${f1("finance_aml.student")} and the gradient-boosting teacher ${f1("finance_aml.gbm")}`],
   ];
   return (
     <div className="card" style={{ marginTop: 14 }} id="mpc-mlp">
@@ -37,7 +38,7 @@ export default function MpcMlpPanel({ report }: { report: MpcMlpReport }) {
       <p style={{ marginTop: 4 }}>
         <code>{report.key}</code> on one held-out row of AMLworld&apos;s test window, index {report.rowIndex} of {report.rowCount}, labelled <b>{name(report.rowLabel)}</b>, with no
         activation in either party&apos;s hands. The client scales the row in the clear and encrypts it. CKKS evaluates each dense layer and the server masks every slot before the client
-        decrypts; garbled circuits apply the ReLUs and the argmax on additive shares. The row&apos;s {r.reluCount ? report.nFeatures : ""} features include per-transaction windows that see transactions up to the end of its batch of 2,048, as the Graph Feature Preprocessor paper processes them.
+        decrypts; garbled circuits apply the ReLUs and the argmax on additive shares. The row&apos;s {r.reluCount ? report.nFeatures : ""} features include per-transaction windows that see transactions up to the end of its batch of 2,048, at most {reach} minutes past the transaction, as the Graph Feature Preprocessor paper processes them.
       </p>
       <p style={{ margin: "6px 0 10px" }}>
         Class from the 2PC argmax: <b>{name(r.prediction)}</b>.{" "}

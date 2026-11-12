@@ -9,7 +9,7 @@ CKKS linear layer and a garbled-circuit argmax stay tractable in a tab -- but th
 for that page was trained on a different corpus with a different input entirely:
 
     page        bundled pipeline sample              published model expects
-    finance     PaySim, 8 engineered features        AMLworld, 32 graph/temporal features
+    finance     PaySim, 8 engineered features        AMLworld, 114 graph/temporal features
     medical     Wisconsin WDBC, 8 tabular features   BreastMNIST, [1,1,28,28] images
     satellite   OPS-SAT-AD, 19 segment features      ESA-ADB ch 41-46, [1,250,6] windows
                 (NASA SMAP/MSL, 6ch x 8 steps, until Round 84: no data licence at any source)
@@ -263,13 +263,20 @@ MODIFICATIONS = {
     "finance_aml.gbm": (
         "Not the published transaction rows: 8,192 rows drawn from the held-out temporal test window "
         "(the last 30 percent of the transactions in time order) and enriched to 2 percent "
-        "laundering, each one 32 features computed from the transactions by the training script "
-        "(per-account aggregates over earlier transactions, structural features from the rows before "
-        "the window), rounded to 6 decimals."),
+        "laundering, each one the 114 inputs the training script computes from the transactions "
+        "(32 per-account aggregates over earlier transactions and structural features from the rows "
+        "before the window, 79 per-transaction window features and 3 pair features up to the end of "
+        "the transaction's batch), rounded to 6 decimals."),
     "finance_aml.mlp_large": (
-        "The rows of finance_aml.gbm's sample: its 32 features computed from the published transactions, enriched to 2 percent laundering, plus 79 per-transaction window features computed by the training script."),
+        "The rows of finance_aml.gbm's sample and the same 114 inputs: 32 per-account features, 79 per-transaction window features and 3 pair features computed from the published transactions by the training script, enriched to 2 percent laundering."),
+    "finance_aml.gnn_compact": (
+        "Not the published transaction rows: the 16 rows of the held-out temporal test window that the published "
+        "MLP's weights carry as fixtures, half of them laundering. Each is the transaction's 114 inputs, its 2 "
+        "endpoints' 16 statistics and its 16 neighbour slots of 13 values, computed from the published transactions by "
+        "the training scripts and stored as float32, with its neighbourhood naming the accounts by a letter in order "
+        "of appearance and giving each edge's amount, currency, format and minutes before the scored transaction."),
     "finance_aml.student": (
-        "The rows of finance_aml.gbm's sample (32 features computed from the published transactions, "
+        "The rows of finance_aml.gbm's sample (the 114 inputs computed from the published transactions, "
         "drawn from the held-out test window and enriched to 2 percent laundering), z-scored with the "
         "scaler published in this student's weights and rounded to 6 decimals."),
     "medical_fl.resnet18": (
@@ -408,6 +415,7 @@ _MODEL_KEY = {
     "opssat_student": "satellite_comms.opssat_student",
     "finance_student": "finance_aml.student",
     "finance_mlp_large": "finance_aml.mlp_large",
+    "finance_gnn_compact": "finance_aml.gnn_compact",
 }
 
 
@@ -546,21 +554,19 @@ def build_finance(rng: np.random.Generator) -> dict:
     # Reuse the training script's own loader, split and feature engineering rather than
     # reimplementing 32 columns -- a second implementation drifted from the model, as above.
     from train.finance_aml import (  # type: ignore
-        FEATURES,
         causal_account_features,
-        graph_features,
         load_sorted,
+        model_inputs,
         temporal_windows,
     )
 
     from qsh.models import metrics, registry
 
     df = load_sorted()
-    _, _, te, tr = temporal_windows(df)
-    # Exactly main()'s test features: one causal pass over the whole sorted frame (it leaks nothing,
-    # every value uses only strictly earlier rows), structural features from the rows before the test
-    # window.
-    x_te = graph_features(te, fit_on=tr, causal=causal_account_features(df))
+    fit, val, te, tr = temporal_windows(df)
+    # Exactly main()'s test inputs, from the trainer's own function: the per-account aggregates (one causal pass over the whole sorted
+    # frame, structural features from the rows before the test window), the per-transaction windows and the pair counts.
+    (_, _, x_te), feature_names, _ = model_inputs(df, fit, val, te, tr, causal_account_features(df))
     y_te = te["label"].to_numpy().astype(int)
 
     # CHECKED, NOT ASSUMED. The export gate saved 512 rows of the trainer's test features, drawn with
@@ -628,17 +634,18 @@ def build_finance(rng: np.random.Generator) -> dict:
             f"These are {want:,} rows of the held-out temporal test window, the last 30 percent of "
             f"the transactions in time order ({first:%Y-%m-%d %H:%M} to {last:%Y-%m-%d %H:%M}), "
             "which the model was "
-            "not fitted, tuned or calibrated on. Their 32 features are computed by the training "
+            "not fitted, tuned or calibrated on. Their 114 inputs are computed by the training "
             "script's own functions, exactly as it computes them for test rows: per-account "
-            "aggregates causal, so each row sees only earlier transactions, and structural features "
-            "from the rows before the test window. Checked when this file was built: the published "
+            "aggregates causal, so each row sees only earlier transactions, structural features "
+            "from the rows before the test window, and per-transaction windows and pair counts up to "
+            "the end of the transaction's batch, at most a fixed number of minutes past it. Checked when this file was built: the published "
             f"graph scores AUPRC {window_auprc:.4f} over all {len(y_te):,} rows of that window, the "
             "figure the registry records. Unlike the 8-feature PaySim sample this page uses for the "
             "FHE/MPC pipeline."
         ),
-        "input": {"shape": [1, len(FEATURES)], "dtype": "float32",
-                  "preprocessing": [], "layout": "samples[i] is one row of the 32 features below"},
-        "feature_names": list(FEATURES),
+        "input": {"shape": [1, len(feature_names)], "dtype": "float32",
+                  "preprocessing": [], "layout": f"samples[i] is one row of the {len(feature_names)} inputs below"},
+        "feature_names": feature_names,
         "samples": x.tolist(),                           # already rounded above
         "labels": y.astype(int).tolist(),
         "expected": {
@@ -1446,44 +1453,81 @@ def build_opssat_student(rng: np.random.Generator) -> dict:
 
 
 def _build_finance_mlp(key: str) -> dict:
-    """The finance teacher's own 8,192 rows with the per-transaction features added, raw: the graph scales its own input.
-
-    Drawn by the helper the teacher's sample uses, from the same seed, and refused unless the first 32 columns are that sample's rows.
-    """
-    from train.finance_aml import FEATURES, causal_account_features, graph_features, load_sorted, temporal_windows  # type: ignore
-    from train.finance_aml_fan import transaction_features  # type: ignore
-
+    """The finance teacher's own sample: the same 8,192 rows and the same 114 inputs, raw, since Round 86 every finance model reads them. The graph scales its own input."""
     from qsh.models import registry
 
     directory = Path(registry.ARTIFACT_DIRS[key]).name
     teacher = json.loads((REPO / "models" / "finance_aml_gbm" / "eval_sample.json").read_text())
-    df = load_sorted()
-    _, _, te, tr = temporal_windows(df)
-    base = graph_features(te, fit_on=tr, causal=causal_account_features(df))
-    y_te = te["label"].to_numpy().astype(int)
-    extra, names = transaction_features(df)
-    idx = _finance_sample_index(y_te, np.random.default_rng(17))
-    x = float32_shortest(np.hstack([base[idx], extra[-len(te):][idx]]))
-    y = y_te[idx]
-    # Within the teacher sample's own rounding: it is stored to 6 decimals, this at float32 precision.
-    if not np.isclose(x[:, :base.shape[1]], np.asarray(teacher["samples"], dtype=float), rtol=1e-6, atol=1e-5).all() or not np.array_equal(y, np.asarray(teacher["labels"], dtype=int)):
-        raise SystemExit("the rows drawn here are not the teacher sample's: refusing to write a sample that would compare different rows")
+    x = np.asarray(teacher["samples"], dtype=np.float32)
+    y = np.asarray(teacher["labels"], dtype=int)
+    names = list(teacher["feature_names"])
+    if x.shape[1] != 114 or len(names) != 114:
+        raise SystemExit(f"the teacher's sample has {x.shape[1]} inputs; the MLP reads 114")
     pred = _predict(directory, x)
     f1, all_pos, _ = _f1_over_baseline(y, pred)
     window = float((registry.achieved(key) or {})["minority_class_f1"])
     return {
         "task": "classification",
-        "provenance": teacher["provenance"] + " The identical rows the gradient-boosting teacher's sample ships, with the 79 per-transaction features added.",
+        "provenance": teacher["provenance"] + " The identical rows and inputs the gradient-boosting teacher's sample ships.",
         "input": {"shape": [1, x.shape[1]], "dtype": "float32", "preprocessing": [],
-                  "layout": "samples[i] is one transaction's 111 engineered features, raw: the graph scales them itself"},
-        "feature_names": list(FEATURES) + names,
-        "samples": x.tolist(),
+                  "layout": f"samples[i] is one transaction's {x.shape[1]} engineered features, raw: the graph scales them itself"},
+        "feature_names": names,
+        "samples": teacher["samples"],
         "labels": y.tolist(),
         "expected": {
             "graph": "model.onnx", "accuracy": float((pred == y).mean()), "majority_baseline": float(max(np.bincount(y)) / len(y)),
             **declared_metric_expectation(key, y, pred), "all_positive_f1": all_pos,
             "note": (f"On these rows, enriched to 2 percent laundering, minority-class F1 is {f1:.4f}. The record's {window:.4f} is over the whole "
                      f"test window at its real prevalence, so the two are not comparable, and this sample checks that the browser reproduces the graph."),
+        },
+    }
+
+
+def build_finance_gnn(rng: np.random.Generator) -> dict:
+    """The compact GNN's held-out rows: the 16 fixtures its weights file carries, in the layout every sample uses (Round 86).
+
+    A GNN reads a transaction with its neighbourhood, not a row, so the page runs one of these from the weights file
+    under CKKS and garbled circuits, and the record's figure is measured on the whole window by the trainer. This is the
+    copy a reader of the Hub repo finds where every other model keeps its sample, with the split the registry declares,
+    and it is built from the weights file alone, so the two cannot disagree. Sixteen rows, half of them laundering,
+    check that a reimplementation reproduces the logits; they say nothing about how good the model is.
+    """
+    from qsh.models import registry
+
+    key = "finance_aml.gnn_compact"
+    w = json.loads((REPO / registry.ARTIFACT_DIRS[key] / "weights.json").read_text())
+    f = w["fixtures"]
+    y = np.asarray(f["labels"], dtype=int)
+    logits = np.asarray(f["logits"], dtype=np.float64)
+    pred = logits.argmax(axis=1)
+    f1, all_pos, _ = _f1_over_baseline(y, pred)
+    rec = registry.achieved(key) or {}
+    window, n_window = float(rec["minority_class_f1"]), int(rec["n_test"])
+    return {
+        "task": "classification",
+        "provenance": (f"The {len(y)} fixtures of this repository's weights.json at the same revision: rows of the held-out "
+                       "temporal test window, the published MLP's fixture rows, each with its capped neighbourhood."),
+        "input": {
+            "shape": [1, len(f["x"][0])], "dtype": "float32", "preprocessing": [],
+            "layout": ("samples[i] is the scored transaction's 114 inputs, endpoints[i] its two endpoints' 16 statistics "
+                       "each, and slots[i] its 16 neighbour-slot vectors of 13 values in the order of weights.json's "
+                       "`slots.order`, all raw: the scalings in weights.json's `query`, `endpoints` and `slots` belong to "
+                       "the model. neighbourhoods[i] lists the edges in those slots, for a reader."),
+        },
+        "feature_names": list(w["query"]["features"]),
+        "samples": f["x"],
+        "endpoints": f["endpoints"],
+        "slots": f["slots"],
+        "neighbourhoods": f["neighbourhoods"],
+        "row_index_in_test_window": f["row_index_in_test_window"],
+        "labels": y.tolist(),
+        "expected": {
+            "weights": "weights.json", "logits": f["logits"], "accuracy": float((pred == y).mean()),
+            "majority_baseline": float(max(np.bincount(y)) / len(y)),
+            **declared_metric_expectation(key, y, pred), "all_positive_f1": all_pos,
+            "note": (f"On these {len(y)} rows, half of them laundering, minority-class F1 is {f1:.4f}. The record's "
+                     f"{window:.4f} is over all {n_window:,} rows of the test window at its real prevalence, so the two are "
+                     "not comparable: these rows check that a reimplementation reproduces the logits."),
         },
     }
 
@@ -1569,6 +1613,7 @@ BUILDERS = {"medical_fl": build_medical, "finance_aml": build_finance,
             "opssat_student": build_opssat_student,
             "finance_student": build_finance_student,
             "finance_mlp_large": lambda rng: _build_finance_mlp("finance_aml.mlp_large"),
+            "finance_gnn_compact": build_finance_gnn,
             "satellite_opssat": build_satellite_opssat,
             "telecom_ids": build_telecom,
             "telecom_nidd": build_telecom_nidd,

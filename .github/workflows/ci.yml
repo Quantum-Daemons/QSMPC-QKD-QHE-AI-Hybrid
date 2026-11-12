@@ -343,6 +343,11 @@ jobs:
         working-directory: web
         run: npm run check:hybrid-mlp
 
+      # The compact GNN under MPC: the module the page runs, against the logits the trainer recorded.
+      - name: The compact GNN under MPC
+        working-directory: web
+        run: npm run check:hybrid-gnn
+
       # The trained QCNN with its input under CKKS: the module the page runs, against the circuit in the clear.
       - name: The trained QCNN under CKKS
         working-directory: web

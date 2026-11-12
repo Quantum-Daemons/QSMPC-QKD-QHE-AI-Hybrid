@@ -20,9 +20,9 @@
  *
  * WHY THE SCORE IS CALIBRATED FIRST. t is a risk, so the number compared with it must be one. Each model's record
  * publishes a Platt map fitted on the validation window, which this applies to the score the map was fitted on. The
- * teacher's graph emits XGBoost's probability, fitted with scale_pos_weight: its operating point, 0.3869 on that
- * output, is a calibrated risk near 0.13. The student's score is its decision logit, whose bias carries the folded
- * threshold: its operating point is logit 0, a calibrated risk near 0.013.
+ * teacher's graph emits XGBoost's probability, fitted with scale_pos_weight: its operating point, 0.7451 on that
+ * output, is a calibrated risk near 0.31. The student's score is its decision logit, whose bias carries the folded
+ * threshold: its operating point is logit 0, a calibrated risk near 0.079 (the records of 2026-11-11).
  *
  * The interval is pointwise, from the two independent binomial proportions the sample estimates; the window's rate is
  * a count over the whole window and carries no sampling error of its own.

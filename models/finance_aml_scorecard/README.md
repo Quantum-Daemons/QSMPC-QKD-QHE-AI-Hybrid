@@ -90,9 +90,11 @@ declared range. Evaluating net benefit at 0.5 would price one false positive at 
 which at this base rate no model wins and which is not the exchange rate the scorecard was fitted
 for.
 
-**This loses, and the card says so plainly.** Minority-class F1 of 0.037211 sits below the CKKS
-linear student on the same use case (0.061394) and far below the XGBoost teacher (0.151948), which
-in turn is far below the published 0.6323 for GFP+XGBoost on this corpus. What the scorecard buys is
+**This loses, and the card says so plainly.** Minority-class F1 of 0.037211 sits far below the CKKS
+linear student on the same use case (0.308775) and the XGBoost teacher (0.616056), which read the
+114 per-account, per-transaction and pair inputs since Round 86 where this scorecard bins the 32
+per-account aggregates; the teacher is within 0.017 of the published 0.6323 for GFP+XGBoost on this
+corpus, measured on another split. On the 32 aggregates the two were 0.061394 and 0.151948. What the scorecard buys is
 not accuracy: it is a decision-theoretic fit, a model a human can read off twelve rows, and exact
 evaluation under BFV. The net-benefit comparison is the honest one for this form - it clears
 treat-everybody, which is negative at this threshold - and that is a much narrower claim than

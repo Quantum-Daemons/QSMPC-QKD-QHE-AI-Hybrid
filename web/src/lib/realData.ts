@@ -541,7 +541,7 @@ async function publishedStudentHeldOut(usecase: string, path: string): Promise<H
 /**
  * The private-inference figure's rows for a use case: a model and rows it was never fitted on.
  *
- *   finance_aml  the published 33-parameter AMLworld student (`finance_aml.student`) on the 8,192
+ *   finance_aml  the published 115-parameter AMLworld student (`finance_aml.student`) on the 8,192
  *                test-window rows `finance/real_2d.json` draws, through its own z-scoring.
  *   medical_fl   the page's bundled WDBC regression on the 171 rows held out from its fit.
  *   telecom_ids  the published 64-parameter student (`telecom_ids.student`) on the 600 rows of its

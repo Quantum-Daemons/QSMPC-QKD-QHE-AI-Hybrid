@@ -53,8 +53,10 @@ def token() -> str:
     return json.loads(path.read_text())["key"]
 
 
-#: Trained, not distilled, so a card must not call them distilled students.
+#: Not distilled from the page's teacher (since Round 86 distilled from IBM's Multi-PNA+EU), so a card must not call them its students.
 TIER_MODELS = {"finance_aml.mlp_large"}
+#: The finance page's graph model under encryption, trained the same way and with a paragraph of its own (Round 86).
+GRAPH_MODELS = {"finance_aml.gnn_compact"}
 
 
 def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
@@ -67,7 +69,9 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
     front = [
         "---",
         *_hub_licence(spec.dataset.licence),
-        "library_name: onnx" if "onnx" in tags else "library_name: transformers",
+        # A model with no ONNX graph is named by no library: the compact GNN's weights are a JSON file read by this
+        # project's own code, and "transformers" (the default until Round 86) pointed the Hub's loader at nothing.
+        *(["library_name: onnx"] if "onnx" in tags else []),
         f"pipeline_tag: {_pipeline_tag(spec)}",
         "tags:",
         *[f"  - {t}" for t in tags],
@@ -83,11 +87,23 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
         f"Part of [QSMPC-QKD-QHE-AI-Hybrid]({REPO_URL}),",
         "a quantum-safe orchestration demo."]
     if spec.key in TIER_MODELS:
-        # Trained on labels, not distilled, and costed as a CKKS and MPC hybrid: the student's paragraph below says neither.
-        body += [f"This is the **published non-linear model** the `{spec.usecase}` page runs under encryption: an MLP on the 32 per-account features of the teacher plus 79 per-transaction",
-                 "window features, trained on the labels with class weights rather than distilled. Its linear layers run under CKKS and its ReLUs and argmax in garbled circuits, and",
-                 "its features see transactions up to the end of their batch of 2,048, as the Graph Feature Preprocessor paper processes them. Its scaling and seed were chosen on the validation window,",
-                 "and the record below carries every seed's figure. `weights.json` also carries 16 held-out rows for checks, under the data's licence."]
+        # Trained on the labels and IBM's Multi-PNA+EU, not distilled from this page's teacher, and costed as a CKKS and MPC hybrid: the
+        # student's paragraph below says neither.
+        body += [f"This is the **published non-linear model** the `{spec.usecase}` page runs under encryption: an MLP on the page's gradient-boosting teacher's 114 inputs, 32 per-account features,",
+                 "79 per-transaction window features and 3 pair features, trained with class weights towards 0.7 times the label plus 0.3 times the probability IBM's",
+                 "Multi-PNA+EU gives the transaction on the same windows (generalised distillation, Lopez-Paz et al., ICLR 2016; the weight chosen on validation).",
+                 "Its linear layers run under CKKS and its ReLUs and argmax in garbled circuits, and its features see transactions up to the end of their batch of 2,048,",
+                 "as the Graph Feature Preprocessor paper processes them. Its scaling and seed were chosen on the validation window, and the record below carries every",
+                 "seed's figure. `weights.json` also carries 16 held-out rows for checks, under the data's licence."]
+    elif spec.key in GRAPH_MODELS:
+        body += [f"This is the **graph model** the `{spec.usecase}` page runs under encryption: message passing on a fixed, public tree of 16 neighbouring edges",
+                 "per transaction, its linear maps under CKKS and its 608 ReLUs and argmax in garbled circuits, beside an MLP channel over the same 114 inputs as the",
+                 "page's gradient-boosting teacher. Trained with class weights towards 0.7 times the label plus 0.3 times the probability IBM's Multi-PNA+EU gives the transaction on the same",
+                 "windows (generalised distillation, Lopez-Paz et al., ICLR 2016; the weight chosen on validation); PNA's neighbourhoods include later",
+                 "transactions of the training window, which reach this model only through its training targets. Its neighbours and features see transactions up to",
+                 "the end of their batch of 2,048. The endpoint scaling and seed were chosen on the validation window, and the record below carries every seed's figure.",
+                 "`weights.json` also carries 16 held-out rows with their neighbourhoods for checks, and `eval_sample.json` the same rows in the layout",
+                 "of the other models' evaluation samples, with their split and the logits to reproduce, both under the data's licence."]
     elif spec.runs_encrypted:
         # "and the demo runs it that way" was true of some students only. The public page encrypts the medical CNN
         # student and, on held-out rows, the finance, telecom and OPS-SAT students (finance since Round 84, when it
@@ -255,9 +271,12 @@ def _calibration_section(cal: dict | None) -> list[str]:
     lines = [
         "## Calibration map",
         "",
-        "The demo page reads this model's score $q$ as a risk through this map before it compares it with a "
-        "threshold probability, as its decision curve does. Fitted on the "
-        f"{cal['fitted_on'].replace('; ', ' and ')}.",
+        ("The demo page reads this model's score $q$ as a risk through this map before it compares it with a "
+         "threshold probability, as its decision curve does."
+         if cal.get("page_reads_this_map", True) else
+         "The demo page shows this model's logits and its decision, not a probability, and reads no score through this "
+         "map. It states what the score would mean as a risk, for a reader who needs one.")
+        + f" Fitted on the {cal['fitted_on'].replace('; ', ' and ')}.",
         "",
         # The map and its definitions in two blocks: on one line they set 736 px in the Hub's 589 px column, and the
         # display does not scroll, so the clip constant ran off the card (Round 86, measured on the published card).

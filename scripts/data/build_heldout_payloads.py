@@ -11,7 +11,7 @@ never saw but which are not the split it was evaluated on either. This script sh
 the rows the PUBLISHED model was never fitted on, in the form the browser needs to encrypt them:
 
   finance    the 8,192 rows of the AMLworld temporal test window that `finance/real_2d.json`
-             already draws, as the 32 raw graph features `finance_aml.student` takes, with a
+             already draws, as the 114 raw inputs `finance_aml.student` takes, with a
              byte-identical copy of that student's published `weights.json` (mean, scale, W, b).
   telecom    the 600 rows `telecom_ids.qml` and `telecom_ids.student` were evaluated on: the
              held-out quarter of `generate(n_per_class=300, seed=42)` under the trainer's own
@@ -123,8 +123,9 @@ def finance() -> None:
         "corpus": "IBM AMLworld HI-Small (synthetic, by IBM's own statement)",
         "provenance": ("The 8,192 rows finance/real_2d.json draws, in the same order: a draw from "
                        "the AMLworld temporal test window (the last 30 percent of transactions), "
-                       "enriched to 2 percent laundering, as the 32 graph features the published "
-                       "student takes before its own z-scoring."),
+                       "enriched to 2 percent laundering, as the 114 inputs the published student "
+                       "takes before its own z-scoring: 32 per-account aggregates, 79 per-transaction "
+                       "window features and 3 pair features."),
         # The registry's split, not the sample file's older wording ("of the timeline"): the window
         # is the last 30 percent of the TRANSACTIONS in time order, a different span of days.
         "split": get_spec(w["student_key"]).eval_split,
@@ -134,7 +135,7 @@ def finance() -> None:
         "licence": "CDLA-Sharing-1.0",
         "licence_url": CDLA_SHARING_1,
         "attribution": DS_AMLWORLD.attribution,
-        "modifications": ("Computed graph features (32 per transaction) of 8,192 test-window rows "
+        "modifications": ("The 114 computed inputs per transaction of 8,192 test-window rows "
                           "drawn with laundering enriched to 2 percent, rounded to 7 significant "
                           "figures. Enhanced Data shared under the same CDLA-Sharing-1.0."),
         "feature_names": names,

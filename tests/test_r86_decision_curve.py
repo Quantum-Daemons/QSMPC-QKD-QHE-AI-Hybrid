@@ -8,9 +8,10 @@ reaching the page. Round 86 draws it in the browser from the published evaluatio
 wrong without any figure looking odd:
 
 1. THE RATE. The sample is enriched to 164 laundering rows of 8,192 by drawing each class of the test window on its
-   own. Weighted by its own 2 percent, net benefit at t = 0.01 reads 95.4 per 10,000 transactions where all 1,523,504
-   rows of the window give 5.44 (docs/measurements/finance-decision-curve-2026-11-06.json). The estimator puts the
-   window's rate back (Pfeiffer and Gail, Biometrical Journal 62(3):764-776, 2020, eq. 11).
+   own. Weighted by its own 2 percent, net benefit at t = 0.01 reads 148.5 per 10,000 transactions where all 1,523,504
+   rows of the window give 10.9 (docs/measurements/finance-decision-curve-2026-11-11.json; 95.4 against 5.44 for the
+   teacher before its retrain on the 114 inputs). The estimator puts the window's rate back (Pfeiffer and Gail,
+   Biometrical Journal 62(3):764-776, 2020, eq. 11).
 2. TWO COPIES. `metrics.net_benefit_at_prevalence` and `web/src/lib/decisionCurve.ts` compute the same thing, and are
    asserted equal through esbuild, as the QSDC capacity is.
 3. TWO OWNERS OF ONE RANGE. The BFV scorecard is fitted over 0.002 to 0.05 and held the five thresholds as its own
@@ -43,8 +44,8 @@ from qsh.models.calibration import Platt
 REPO = Path(__file__).resolve().parents[1]
 WEB = REPO / "web"
 ESBUILD = WEB / "node_modules" / ".bin" / "esbuild"
-MEASURED = REPO / "docs" / "measurements" / "finance-decision-curve-2026-11-06.json"
-MEASURED_STUDENT = REPO / "docs" / "measurements" / "finance-student-decision-curve-2026-11-06.json"
+MEASURED = REPO / "docs" / "measurements" / "finance-decision-curve-2026-11-11.json"
+MEASURED_STUDENT = REPO / "docs" / "measurements" / "finance-student-decision-curve-2026-11-11.json"
 RECORDS = REPO / "models" / "metrics.json"
 
 
@@ -218,8 +219,8 @@ def test_every_curve_model_s_record_carries_a_map_on_its_probability():
 
 
 def test_the_student_s_record_states_nothing_measured_on_the_teacher():
-    """`Platt.as_dict()` publishes the teacher's Round 49 isotonic comparison as `why_not_isotonic`. The student's record
-    replaces it with its own measurement, so neither model's record carries the other's numbers."""
+    """`Platt.as_dict()` published the teacher's Round 49 isotonic comparison as `why_not_isotonic` until Round 86, and the
+    student's record carries its own measurement instead, so neither model's record carries the other's numbers."""
     cal = json.loads(RECORDS.read_text())["finance_aml.student"]["calibration"]
     assert "Round 49" not in cal["why_not_isotonic"] and "0.00142218" not in cal["why_not_isotonic"]
     iso = cal["isotonic_measured"]
@@ -259,10 +260,14 @@ def test_the_page_weights_by_the_window_s_rate_and_not_the_sample_s():
     """`publishedDecisionCurve` is what the page calls, with the spec the page reads. Fails if it computes the rate from
     the rows it is handed, which is the defect the estimator exists to avoid."""
     ys, ss, _ = _fixture()
+    # The teacher's published threshold, and the calibrated risk the measurement script computed there in Python.
+    threshold = json.loads((REPO / "models" / "finance_aml_gbm" / "feature_spec.json").read_text())["decision_threshold"]
+    operating = json.loads(MEASURED.read_text())["results"]["operating_threshold"]
+    assert operating["raw"] == threshold
     got = _browser(
         f"const p = {json.dumps(ss.tolist())}; const y = {json.dumps(ys.tolist())};\n"
         "const spec = m.modelsFor('finance_aml').find((s) => s.key === 'finance_aml.gbm');\n"
-        "const r = m.publishedDecisionCurve('finance_aml', spec, (i) => p[i], y, y.length, 0.38686859607696533);\n"
+        f"const r = m.publishedDecisionCurve('finance_aml', spec, (i) => p[i], y, y.length, {threshold!r});\n"
         "const none = m.publishedDecisionCurve('medical_fl', spec, (i) => p[i], y, y.length, null);\n"
         "console.log(JSON.stringify({ r, none }));")
     assert got["none"] is None, "a use case whose config declares no curve must draw none"
@@ -271,7 +276,7 @@ def test_the_page_weights_by_the_window_s_rate_and_not_the_sample_s():
     assert c["prevalence"] == 2321 / 1523504
     assert (c["events"], c["nonEvents"]) == (int(ys.sum()), int(len(ys) - ys.sum()))
     assert c["atMedian"]["t"] == 0.01 and c["atMedian"]["naive"] > 5 * c["atMedian"]["corrected"]
-    assert abs(c["operating"]["risk"] - 0.12883530613165148) < 1e-12
+    assert abs(c["operating"]["risk"] - operating["risk"]) < 1e-12
 
 
 def test_the_student_s_curve_reads_its_own_record():

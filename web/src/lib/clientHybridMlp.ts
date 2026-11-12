@@ -6,7 +6,7 @@
  * additive shares, and the last layer's shares go into the 2PC argmax. A layer wider than one ciphertext is split over several.
  */
 
-import { Arena, Client, type GcTotals, type HybridCnnProgress, type HybridCnnResult, type Mpc, reduceBlocks, relu, reluLayer, sealed, Server, sumAbs, toRing } from "./clientHybridCnn";
+import { Arena, Client, type GcTotals, type HybridCnnProgress, type HybridCnnResult, type Mpc, reduceBlocks, relu, reluLayer, type Sealed, sealed, Server, sumAbs, toRing } from "./clientHybridCnn";
 import { hybridCnnCfg } from "./config";
 
 export interface MlpLayer { in: number; out: number; weight: number[][]; bias: number[]; activation: "relu" | "none" }
@@ -17,7 +17,54 @@ export interface MlpWeights {
   fixtures: { rows: number[][]; labels: number[]; logits: number[][] };
 }
 
-const blockFor = (n: number) => 1 << Math.ceil(Math.log2(Math.max(n, 2)));
+export const blockFor = (n: number) => 1 << Math.ceil(Math.log2(Math.max(n, 2)));
+
+/** What each layer adds to the run's report. */
+export interface CkksTally { bytes: number; ms: number; statistical: number; maxLayerError: number; clientView: number[] }
+
+/**
+ * One dense layer under CKKS. The client's share is encrypted and the server adds its own, the server evaluates the rows and masks every slot, and the client decrypts. What comes back is the
+ * client's masked values, the server's masks, and the clear outputs, which exist only because both parties are in this tab and serve the bound and the self-test alone.
+ */
+export function denseUnderCkks(s: Sealed, client: Client, server: Server, arena: Arena, d: { in: number; out: number; weight: number[][]; bias: number[] },
+  clientShare: ArrayLike<number>, serverShare: ArrayLike<number>, clearVec: ArrayLike<number>, maskBits: number, tally: CkksTally): { y: Float64Array; r: Float64Array; out: Float64Array } {
+  const { slots } = s;
+  const b = blockFor(d.in);
+  const perCiphertext = Math.floor(slots / b);
+  if (perCiphertext < 1) throw new Error(`a layer of ${d.in} inputs does not fit the ring's ${slots} slots`);
+  const lay = (v: ArrayLike<number>) => {
+    const out = new Float64Array(slots);
+    for (let j = 0; j < perCiphertext; j++) for (let i = 0; i < d.in; i++) out[j * b + i] = v[i];
+    return out;
+  };
+  let t = performance.now();
+  const up = client.encrypt(lay(clientShare));
+  tally.bytes += up.length;
+  const ct = server.addShare(server.receive(up, arena), lay(serverShare), arena);
+  tally.ms += performance.now() - t;
+
+  const y = new Float64Array(d.out), r = new Float64Array(d.out), out = new Float64Array(d.out);
+  for (let at = 0; at < d.out; at += perCiphertext) {
+    t = performance.now();
+    const count = Math.min(perCiphertext, d.out - at);
+    const tile = new Float64Array(slots);
+    for (let j = 0; j < count; j++) for (let i = 0; i < d.in; i++) tile[j * b + i] = d.weight[at + j][i] ?? 0;
+    const { bytes, mask } = server.evaluate(ct, tile, b, count, (j) => d.bias[at + j] ?? 0, maskBits);
+    tally.bytes += bytes.length;
+    const decoded = client.decrypt(bytes);
+    tally.ms += performance.now() - t;
+    // The clear values, for the bound and the self-test only.
+    const clear = reduceBlocks(lay(clearVec).map((v, i) => v * tile[i]), b);
+    for (let j = 0; j < count; j++) clear[j * b] += d.bias[at + j] ?? 0;
+    tally.statistical += sumAbs(clear) / 2 ** (maskBits + 1);
+    for (let j = 0; j < count; j++) {
+      const n = at + j;
+      y[n] = decoded[j * b]; r[n] = mask[j * b]; out[n] = clear[j * b]; tally.clientView.push(Math.abs(y[n]));
+      tally.maxLayerError = Math.max(tally.maxLayerError, Math.abs(y[n] - r[n] - out[n]));
+    }
+  }
+  return { y, r, out };
+}
 
 /** The row as the graph sees it. This happens on the client, before anything is encrypted. */
 export function scaleRow(w: MlpWeights, row: number[]): number[] {
@@ -32,7 +79,6 @@ export async function hybridMlpInference(w: MlpWeights, row: number[], opts: { o
   const s = await sealed();
   const mpc: Mpc = await import("./clientMPC");
   await mpc.warmMPC();
-  const { slots } = s;
   const cfg = hybridCnnCfg();
   const say = (phase: HybridCnnProgress["phase"], done: number, total: number) => opts.onProgress?.({ phase, done, total });
   const widest = Math.max(...w.layers.map((d) => blockFor(d.in)));
@@ -43,8 +89,8 @@ export async function hybridMlpInference(w: MlpWeights, row: number[], opts: { o
   const client = new Client(s, steps);
   const server = new Server(s, client.publicKey, client.galoisKeys);
   const gc: GcTotals = { and: 0, batches: 0, bytes: 0, messages: 0, compileMs: 0, mpcMs: 0 };
-  let ckksBytes = 0, ckksMs = 0, statistical = 0, maxLayerError = 0, reluCount = 0;
-  const clientView: number[] = [];
+  const tally: CkksTally = { bytes: 0, ms: 0, statistical: 0, maxLayerError: 0, clientView: [] };
+  let reluCount = 0;
   const arena = new Arena();
   try {
     let clientShare: Float64Array<ArrayBufferLike> = Float64Array.from(scaleRow(w, row));
@@ -57,40 +103,7 @@ export async function hybridMlpInference(w: MlpWeights, row: number[], opts: { o
       if (clientShare.length !== d.in) throw new Error(`layer ${k} takes ${d.in} inputs and has ${clientShare.length}`);
       const last = k === w.layers.length - 1;
       const maskBits = last ? cfg.logit_mask_bits : cfg.dense_mask_bits;
-      const b = blockFor(d.in);
-      const perCiphertext = Math.floor(slots / b);
-      if (perCiphertext < 1) throw new Error(`layer ${k} takes ${d.in} inputs and the ring has ${slots} slots`);
-      const lay = (v: ArrayLike<number>) => {
-        const out = new Float64Array(slots);
-        for (let j = 0; j < perCiphertext; j++) for (let i = 0; i < d.in; i++) out[j * b + i] = v[i];
-        return out;
-      };
-      let t = performance.now();
-      const up = client.encrypt(lay(clientShare));
-      ckksBytes += up.length;
-      const ct = server.addShare(server.receive(up, arena), lay(serverShare), arena);
-      ckksMs += performance.now() - t;
-
-      const y = new Float64Array(d.out), r = new Float64Array(d.out), out = new Float64Array(d.out);
-      for (let at = 0; at < d.out; at += perCiphertext) {
-        t = performance.now();
-        const count = Math.min(perCiphertext, d.out - at);
-        const tile = new Float64Array(slots);
-        for (let j = 0; j < count; j++) for (let i = 0; i < d.in; i++) tile[j * b + i] = d.weight[at + j][i] ?? 0;
-        const { bytes, mask } = server.evaluate(ct, tile, b, count, (j) => d.bias[at + j] ?? 0, maskBits);
-        ckksBytes += bytes.length;
-        const decoded = client.decrypt(bytes);
-        ckksMs += performance.now() - t;
-        // The clear values, for the bound and the self-test only.
-        const clear = reduceBlocks(lay(clearVec).map((v, i) => v * tile[i]), b);
-        for (let j = 0; j < count; j++) clear[j * b] += d.bias[at + j] ?? 0;
-        statistical += sumAbs(clear) / 2 ** (maskBits + 1);
-        for (let j = 0; j < count; j++) {
-          const n = at + j;
-          y[n] = decoded[j * b]; r[n] = mask[j * b]; out[n] = clear[j * b]; clientView.push(Math.abs(y[n]));
-          maxLayerError = Math.max(maxLayerError, Math.abs(y[n] - r[n] - out[n]));
-        }
-      }
+      const { y, r, out } = denseUnderCkks(s, client, server, arena, d, clientShare, serverShare, clearVec, maskBits, tally);
       say("dense", k + 1, w.layers.length);
       if (last) { yLast = y; rLast = r; clearVec = out; break; }
       if (d.activation !== "relu") throw new Error(`the hybrid path expects a ReLU after layer ${k}, and the file says ${d.activation}`);
@@ -98,7 +111,7 @@ export async function hybridMlpInference(w: MlpWeights, row: number[], opts: { o
       let done = 0;
       const batch = Math.min(d.out, cfg.conv_relu_batch);
       const shared = await reluLayer(mpc, y, r, cfg.dense_mask_bits, batch, gc, () => say("relu", (done += batch), d.out));
-      for (let j = 0; j < d.out; j++) statistical += relu(out[j]) / 2 ** cfg.dense_mask_bits;
+      for (let j = 0; j < d.out; j++) tally.statistical += relu(out[j]) / 2 ** cfg.dense_mask_bits;
       clientShare = shared.client; serverShare = shared.server;
       clearVec = out.map(relu);
     }
@@ -118,11 +131,11 @@ export async function hybridMlpInference(w: MlpWeights, row: number[], opts: { o
       prediction: arg.arg, clearPrediction, matchesClear: arg.arg === clearPrediction,
       logits, logitMaxAbsError: Math.max(...logits.map((v, k) => Math.abs(v - clearVec[k]))),
       reluCount, andGates: gc.and, batches: gc.batches, gcBytes: gc.bytes, gcMessages: gc.messages,
-      gcCompileMs: gc.compileMs, gcMs: gc.mpcMs, ckksBytes, keyBytes: client.publicKey.length + client.galoisKeys.length, ckksMs,
+      gcCompileMs: gc.compileMs, gcMs: gc.mpcMs, ckksBytes: tally.bytes, keyBytes: client.publicKey.length + client.galoisKeys.length, ckksMs: tally.ms,
       rotations: server.rotations, conjugations: server.conjugations, totalMs: performance.now() - t0,
       maskBits: { conv: cfg.dense_mask_bits, dense: cfg.dense_mask_bits, logit: cfg.logit_mask_bits },
-      statisticalDistance: statistical, statisticalDistanceLog2: Math.log2(statistical), maxLayerError,
-      clientViewMedianAbs: clientView.sort((x, y) => x - y)[clientView.length >> 1],
+      statisticalDistance: tally.statistical, statisticalDistanceLog2: Math.log2(tally.statistical), maxLayerError: tally.maxLayerError,
+      clientViewMedianAbs: tally.clientView.sort((x, y) => x - y)[tally.clientView.length >> 1],
     };
   } finally {
     arena.close(); server.close(); client.close();

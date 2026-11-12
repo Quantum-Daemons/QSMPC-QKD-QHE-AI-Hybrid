@@ -234,3 +234,35 @@ membership - does this specific transaction participate in a detected scatter-ga
 pattern within its own neighbourhood - rather than an account-level statistic evaluated over any
 window. That is a materially larger piece of work than re-aggregating existing quantities, and this
 result is evidence that the cheaper interpretation has been exhausted.
+
+## Per-transaction features close most of the gap (Round 86, 2026-11-10 and 11)
+
+The reading left untested above was implemented in Round 86, in the Graph Feature Preprocessor's own
+style rather than as motif membership: 79 per-transaction features (fan-in, fan-out, vertex statistics
+and scatter-gather counts in time windows), computed in batches of 2,048 transactions and so at most 17
+minutes past the transaction scored, as the GFP paper processes them, and 3 pair counts, beside the 32
+causal aggregates. There is no cycle enumeration. On this project's split, 56/14/30 by time:
+
+| model | inputs | minority-class F1 | AUPRC |
+|---|---|---|---|
+| XGBoost teacher, `finance_aml.gbm`, until Round 86 | 32 | 0.1519 | 0.1233 |
+| XGBoost teacher, `finance_aml.gbm` | 114 | **0.6161** | **0.6428** |
+| CKKS-linear student, `finance_aml.student` | 114 | 0.3088 | - |
+| MLP, `finance_aml.mlp_large`, distilled from Multi-PNA+EU | 114 | 0.5953 | 0.6436 |
+| compact GNN, `finance_aml.gnn_compact`, distilled from Multi-PNA+EU | 114 and 16 edges | 0.6587 | 0.6676 |
+| IBM Multi-GIN+EU, official code on these windows, seed 1 | its own graph | 0.6024 | - |
+| IBM Multi-PNA+EU, official code on these windows, seed 1 | its own graph | 0.6616 | 0.6415 |
+
+The published 0.6323 for GFP + XGBoost is measured on the paper's 60/20/20 split with the preprocessor
+updated over the test window, at a batch size of 128; at the 2,048 these features use the same paper
+reports $`64.77 \pm 0.47`$ (Table 4). So the teacher is 0.016 and 0.032 below the two, and neither is a
+measured gap. The GFP
+paper's own decomposition (arXiv:2402.08593, Table 5) put fan-in and fan-out at about 37 F1 points of
+its 58.60 and cycles and scatter-gather at 1.7 more; the jump here, from the basic-features level to
+the published one, is of the same order.
+
+The window's last 1,108 rows (September 11 to 18, after the ten days HI-Small covers) hold 655 of its
+2,321 positives. Without them the teacher scores 0.5499 and the student 0.2083
+(`docs/measurements/finance-test-window-tail-2026-11-11.json`); the published split carries the same
+rows. Workings for the two IBM runs and the distillation: `scripts/train/ibm_multignn/README.md` and
+`docs/models-and-benchmarks.md`.
