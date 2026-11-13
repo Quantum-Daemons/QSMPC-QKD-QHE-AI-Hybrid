@@ -191,6 +191,96 @@ pub async fn secure_argmax(a: Vec<u32>, b: Vec<u32>) -> Result<JsValue, JsValue>
     Ok(o.into())
 }
 
+/// Garble source for the sign of a value shared modulo an odd `t` (Round 86, the DeFi committee): party 0 holds `a`,
+/// party 1 holds `b`, both in `[0, t)`, and the output is true when `(a + b) mod t`, read in `(-t/2, t/2)`, is negative.
+/// `s = a + b` is below `2t`, so no reduction is needed: the value is negative when `s` lies in `((t-1)/2, t)` or above
+/// `t + (t-1)/2`. Comparisons only, so no branch can underflow, and Garble's panics on overflow cannot fire.
+pub fn sign_mod_source(t: u64) -> String {
+    let h = (t - 1) / 2;
+    format!(
+        "pub fn main(a: u64, b: u64) -> bool {{\n    let s: u64 = a + b;\n    ((s > {h}u64) & (s < {t}u64)) | (s > {h2}u64)\n}}\n",
+        h2 = t + h
+    )
+}
+
+/// Largest modulus the sign circuit takes: `a + b` must fit in 64 bits.
+pub const SIGN_MOD_MAX: u64 = 1 << 62;
+
+/// One sign: the bit both parties receive, and what it cost.
+#[derive(Debug, Clone, Copy)]
+pub struct SignOutcome {
+    pub negative: bool,
+    pub compile_ms: f64,
+    pub mpc_ms: f64,
+    pub bytes: u64,
+    pub messages: u64,
+    pub and_ops: u64,
+}
+
+thread_local! {
+    static SIGN_PROGRAMS: RefCell<HashMap<u64, Rc<GarbleProgram>>> = RefCell::new(HashMap::new());
+}
+
+/// The sign of `(a + b) mod t` under Polytune, with party 0 holding `a` and party 1 holding `b`; both receive it.
+pub async fn secure_sign_mod_shares(a: u64, b: u64, t: u64) -> Result<SignOutcome, String> {
+    if t < 3 || t % 2 == 0 || t >= SIGN_MOD_MAX {
+        return Err(format!("the modulus must be odd, at least 3 and below 2^62, got {t}"));
+    }
+    if a >= t || b >= t {
+        return Err("a share is not below the modulus".into());
+    }
+    let mut compile_ms = 0.0;
+    let prg = match SIGN_PROGRAMS.with(|m| m.borrow().get(&t).cloned()) {
+        Some(p) => p,
+        None => {
+            let code = sign_mod_source(t);
+            let t0 = Instant::now();
+            let prg = compile_with_options(&code, CompileOptions { circuit_kind: CircuitKind::Register, ..Default::default() })
+                .map_err(|e| e.prettify(&code))?;
+            compile_ms = t0.elapsed().as_secs_f64() * 1e3;
+            let prg = Rc::new(prg);
+            SIGN_PROGRAMS.with(|m| m.borrow_mut().insert(t, prg.clone()));
+            prg
+        }
+    };
+    let circuit = prg.circuit.unwrap_register_ref();
+    let in0 = prg.literal_arg(0, Literal::NumUnsigned(a, UnsignedNumType::U64)).map_err(|e| format!("party 0 input: {e}"))?.as_bits();
+    let in1 = prg.literal_arg(1, Literal::NumUnsigned(b, UnsignedNumType::U64)).map_err(|e| format!("party 1 input: {e}"))?.as_bits();
+    let (ch0, ch1, sent, msgs) = MemChannel::pair();
+    let p_out = [0usize, 1usize];
+    let t1 = Instant::now();
+    let (o0, o1) = join(mpc(&ch0, circuit, &in0, 0, 0, &p_out, None), mpc(&ch1, circuit, &in1, 0, 1, &p_out, None)).await;
+    let mpc_ms = t1.elapsed().as_secs_f64() * 1e3;
+    let (o0, o1) = (o0.map_err(|e| format!("party 0: {e}"))?, o1.map_err(|e| format!("party 1: {e}"))?);
+    if o0 != o1 {
+        return Err("the two parties disagree on the output".into());
+    }
+    let negative = match prg.parse_output(&o0).map_err(|e| format!("output: {e}"))? {
+        Literal::True => true,
+        Literal::False => false,
+        other => return Err(format!("expected a bool, got {other}")),
+    };
+    Ok(SignOutcome { negative, compile_ms, mpc_ms, bytes: sent.get(), messages: msgs.get(), and_ops: circuit.and_ops as u64 })
+}
+
+/// Browser entry for one sign. The shares and the modulus arrive as BigInt.
+#[wasm_bindgen]
+pub async fn secure_sign_mod(a: u64, b: u64, t: u64) -> Result<JsValue, JsValue> {
+    let r = secure_sign_mod_shares(a, b, t).await.map_err(|e| JsValue::from_str(&e))?;
+    let o = js_sys::Object::new();
+    js_sys::Reflect::set(&o, &JsValue::from_str("negative"), &JsValue::from_bool(r.negative))?;
+    for (k, v) in [
+        ("compileMs", r.compile_ms),
+        ("mpcMs", r.mpc_ms),
+        ("bytes", r.bytes as f64),
+        ("messages", r.messages as f64),
+        ("andOps", r.and_ops as f64),
+    ] {
+        js_sys::Reflect::set(&o, &JsValue::from_str(k), &JsValue::from_f64(v))?;
+    }
+    Ok(o.into())
+}
+
 /// Garble source for a batch of `n` ReLUs, bit by bit, so an adder costs one AND gate per bit where Garble's own `+` costs three.
 ///
 /// Party 0 holds `y[i]`, party 1 holds `r[i]` and `s[i]`, all least significant bit first. `x = y + r mod 2^l`, read as signed; `z` is `x` where
@@ -595,6 +685,45 @@ mod tests {
         assert!(futures::executor::block_on(secure_psi_ids(&[vec![1, 2], vec![3]])).is_err(), "unequal sets");
         assert!(futures::executor::block_on(secure_psi_ids(&[vec![1, 0], vec![3, 4]])).is_err(), "an ID of 0");
         assert!(futures::executor::block_on(secure_psi_ids(&[vec![1; 17], vec![2; 17]])).is_err(), "too many IDs");
+    }
+
+    /// The committee's t (a 50-bit prime, 1 mod 2^15) and a small one; margins at zero, at +-1, at the edges of
+    /// (-t/2, t/2) and scattered, under masks across [0, t), so most a + b exceed t.
+    #[test]
+    fn sign_mod_matches_the_plaintext() {
+        let mut g = XorShift(0xD1B5_4A32_D192_ED03);
+        for t in [1_125_899_908_022_273u64, 97] {
+            let h = ((t - 1) / 2) as i128;
+            let mut margins: Vec<i128> = vec![0, 1, -1, h, -h, h - 1, -(h - 1)];
+            for _ in 0..6 {
+                margins.push((g.next() % t) as i128 - h);
+            }
+            for m in margins {
+                let r = g.next() % t;
+                let a = ((m + r as i128).rem_euclid(t as i128)) as u64;
+                let b = (t - r) % t;
+                let o = futures::executor::block_on(secure_sign_mod_shares(a, b, t)).expect("mpc runs");
+                assert_eq!(o.negative, m < 0, "t = {t}, m = {m}, r = {r}");
+            }
+        }
+    }
+
+    #[test]
+    fn sign_mod_refuses_what_it_cannot_take() {
+        let run = |a: u64, b: u64, t: u64| futures::executor::block_on(secure_sign_mod_shares(a, b, t));
+        assert!(run(97, 0, 97).is_err(), "a share at t");
+        assert!(run(0, 98, 97).is_err(), "a share above t");
+        assert!(run(0, 0, 96).is_err(), "an even modulus");
+        assert!(run(0, 0, 1).is_err(), "a modulus below 3");
+        assert!(run(0, 0, SIGN_MOD_MAX + 1).is_err(), "a modulus past 2^62");
+    }
+
+    /// One 64-bit addition and three comparisons with constants: 648 AND gates at the committee's t, which the lending page's check pins too.
+    #[test]
+    fn sign_mod_costs_what_the_design_says() {
+        let o = futures::executor::block_on(secure_sign_mod_shares(5, 7, 1_125_899_908_022_273)).expect("mpc runs");
+        assert_eq!(o.and_ops, 648, "and_ops = {}", o.and_ops);
+        assert!(o.bytes > 0 && o.messages > 0);
     }
 
     /// The circuit size and traffic the register records, at the demo's 2 classes and at 10. Not part
