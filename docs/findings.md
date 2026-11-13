@@ -612,6 +612,18 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   inside its 411, and a 50-bit $`t`$ keeps every value the page handles below $`2^{53}`$. A uniform mask modulo $`t`$
   hides the margin perfectly, where the CKKS arrangements' bounded real mask hides it statistically; the price is fixed
   point, a few hundredths of a stable unit.
+- **A chest X-ray federation, and the view in its scores (2026-11-14).** The owner's item (3): Effusion on NIH
+  ChestX-ray14, a ResNet-18 from scratch at 224 px, four simulated hospitals taking the official training patients with AP
+  shares from 11.9% to 77.4%, three training seeds, the official test split once duplicates are dropped. FedAvg reaches
+  0.805 against 0.812 pooled, above every hospital alone (0.765 to 0.795). The view alone
+  predicts Effusion with AUROC 0.534, yet among the true negatives the score tells AP from PA with AUROC
+  0.623 to 0.635, so one threshold at sensitivity 0.80 passes 66.5% of PA negatives and 49.6% of AP
+  ones; trained on PA alone, the model matches the pooled one on PA and loses 0.050 on AP. A linear probe reads
+  the view at AUROC 0.99 from an untrained network's features as much as from a trained one's, so it says nothing about
+  reliance. The class activation maps point inside NIH's 153 Effusion boxes 13.9% (pooled) and 20.5% (federated) of
+  the time, against 7.1% for a uniform map and 2.6% for the centre: weak localisation. ConvNeXt-atto, once under the
+  ResNet's 12-epoch recipe, reached 0.732. The labels are text-mined, with 70 to 74% of Effusion labels holding on image
+  review ([`references/chest-xray-fl-prior-work.md`](../references/chest-xray-fl-prior-work.md)).
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training
