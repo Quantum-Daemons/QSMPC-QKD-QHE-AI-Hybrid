@@ -4582,3 +4582,17 @@ metrics, 205 log events, the four-hospital, DP and verification cards, a 3,309-b
 named like a secret. No console error. The walk found the comparison table's "this run" cell giving the sample's
 accuracy, unnamed, beside an AUC row; it now names the metric and says when it is not the row's.
 
+### PR #42: the threshold flooding drawn by the module, from a worst-case bound (2026-11-13)
+
+`wasm/qsh-fedthresh/agg/agg.go` now leaves Lattigo's key-switching noise at its fresh level and adds, to every
+coefficient of every share, an integer uniform on $`[-F, F]`$ with $`F = 2^f - 1`$, from `crypto/rand`, reduced into
+every limb. $`f`$ is the least with $`NB/(2F+1) \le 2^{-\lambda}`$ over a whole share, for
+$`B = k(2Nkb + b)`$, the worst case of $`k`$ fresh encryptions summed under the collective key with error bound
+$`b = 19.2`$. The Go tests hold the bound at $`4(2 \cdot 8192 \cdot 4 \cdot 19.2 + 19.2)`$, the least $`f`$ for two,
+four and five parties in every setting, and the draws' range, parity and size. `npm run check:fed-agg` on the rebuilt
+module, seed 1: $`f`$ = 51, 75 and 163; errors $`3.6 \times 10^{-7}`$ and $`5.8 \times 10^{-6}`$ for the CKKS rows,
+BGV equal to the masks to the bit; 12.09, 36.09 and 124.09 bits over the run's 15 decryptions under one key, 122.36 for
+the DP row's 50; the genomics sum for five parties at $`f = 163`$ against $`B = 2^{22.91}`$. BGV moved to
+$`Q = 60+60+60+20`$ bits, inside the HE standard's post-quantum 202 at $`N = 8192`$, where the four bounded floods
+stay below $`Q/(2t)`$ and the decryption cannot fail; a BGV share is now 393 kB, the ciphertext 393 kB.
+

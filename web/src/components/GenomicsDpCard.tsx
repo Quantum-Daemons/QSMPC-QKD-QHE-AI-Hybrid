@@ -89,7 +89,8 @@ function ThresholdBgv({ dp }: { dp: GenomicsDpArtifact }) {
             <tr><th scope="row" style={{ textAlign: "left" }}>The masked secure sum&apos;s integer, from the same contributions</th>
               <td>{viaMasks} against {r.sum}: {r.sum === viaMasks ? "the same, to the bit" : "DIFFERENT"}</td></tr>
             <tr><th scope="row" style={{ textAlign: "left" }}>Statistical security of the decryption shares</th>
-              <td>{r.statSecBits} bits</td></tr>
+              <td>{r.statSecBits} bits over each whole share (one decryption under a fresh key); flooding uniform on
+                [-(2^{r.floodBits} - 1), 2^{r.floodBits} - 1] for a worst-case noise bound of 2^{r.noiseBoundLog2.toFixed(2)}</td></tr>
             <tr><th scope="row" style={{ textAlign: "left" }}>Sent per cohort</th>
               <td>{(r.ciphertextBytes / 1000).toFixed(0)} kB ciphertext, {(r.decryptShareBytes / 1000).toFixed(0)} kB decryption share</td></tr>
             <tr><th scope="row" style={{ textAlign: "left" }}>Time</th>

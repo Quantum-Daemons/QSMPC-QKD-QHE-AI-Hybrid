@@ -87,12 +87,25 @@ export { genomicsDp } from ${JSON.stringify(join(WEB, "src/lib/clientDp"))};`, r
   check(by.masks.statSecBits === null && by["ckks-shared-key"].statSecBits === null
     && by["ckks-demo"].statSecBits === 16 && by["ckks-l40"].statSecBits === 40 && by["bgv-128"].statSecBits === 128,
     "statistical security stated: none, none, 16, 40, 128 bits");
+  // The module's own flooding (2026-11-13): uniform, sized from the analytic worst case of four fresh encryptions summed,
+  // 4 (2 * 8192 * 4 * 19.2 + 19.2) = 2^22.26, over a whole share; and the per-key figure after 15 decryptions.
+  const fb = { "ckks-demo": 51, "ckks-l40": 75, "bgv-128": 163 };
+  for (const [kind, f] of Object.entries(fb)) {
+    const d = by[kind];
+    check(d.flooding?.floodBits === f && Math.abs(d.flooding.noiseBoundLog2 - Math.log2(4 * (2 * 8192 * 4 * 19.2 + 19.2))) < 1e-9,
+      `${kind}: flooding uniform on [-(2^${d.flooding?.floodBits} - 1), ...] for a bound of 2^${d.flooding?.noiseBoundLog2?.toFixed(2)}`);
+    check(Math.abs(d.statSecBitsPerKey - (d.statSecBits - Math.log2(15))) < 1e-9 && d.flooding.decryptions === 15,
+      `${kind}: ${d.statSecBitsPerKey?.toFixed(2)} bits over the run's 15 decryptions under one key`);
+    check(d.scheme.includes(`2^${f} - 1`) && !/sigma/.test(d.scheme), `${kind}: the scheme line is the module's (${d.scheme})`);
+  }
   check(by.masks.bytesPerHospitalPerRound === 56, `a masked share is 56 bytes (${by.masks.bytesPerHospitalPerRound})`);
   check(r.designs.filter((d) => d.kind !== "masks").every((d) => d.bytesPerHospitalPerRound >= 100_000),
     "every encrypted design sends at least a 100 kB ciphertext per hospital per round");
   const dpRow = by["bgv-128-dp"];
   check(dpRow.dp?.steps === 50 && dpRow.dp.stepsEqual === 50 && dpRow.identicalToMasks === true,
     `the DP row: ${dpRow.dp?.stepsEqual} of ${dpRow.dp?.steps} steps' BGV sums equal the masks' sums of the same noisy vectors`);
+  check(Math.abs(dpRow.statSecBitsPerKey - (128 - Math.log2(50))) < 1e-9 && dpRow.flooding.decryptions === 50,
+    `the DP row: ${dpRow.statSecBitsPerKey?.toFixed(2)} bits over its 50 decryptions under one key`);
   check(dpRow.maxDiffFromExact === null && dpRow.statSecBits === 128 && dpRow.dp.epsilonAchieved <= 1 && dpRow.dp.rho > 0,
     `the DP row is not compared with FedAvg, states 128 bits and meets epsilon 1 (${dpRow.dp?.epsilonAchieved.toFixed(4)})`);
   check(dpRow.mean > 0.55 && dpRow.mean < 0.85, `the DP row's accuracy is plausible for epsilon 1 (${dpRow.mean.toFixed(4)})`);
@@ -103,6 +116,8 @@ export { genomicsDp } from ${JSON.stringify(join(WEB, "src/lib/clientDp"))};`, r
   const values = [...g.contributions, -37];
   const s = m.sumUnderThresholdBgv(api, values, new TextEncoder().encode("qsh/fedthresh/crs/v1/check"));
   const plain = values.reduce((a, b) => a + b, 0);
+  check(s.floodBits === 163 && Math.abs(s.noiseBoundLog2 - Math.log2(5 * (2 * 8192 * 5 * 19.2 + 19.2))) < 1e-9,
+    `the genomics threshold sum's flooding for 5 parties: 2^${s.floodBits} - 1 for a bound of 2^${s.noiseBoundLog2.toFixed(2)}`);
   check(s.sum === plain && s.parties === values.length && s.statSecBits === 128,
     `the genomics threshold sum equals the plain sum, signed (${s.sum} = ${plain}, ${s.parties} parties)`);
   let refused = false;

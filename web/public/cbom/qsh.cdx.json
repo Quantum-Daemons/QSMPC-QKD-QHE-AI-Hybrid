@@ -1,7 +1,7 @@
 {
  "bomFormat": "CycloneDX",
  "specVersion": "1.7",
- "serialNumber": "urn:uuid:d900fae7-640d-5ebf-9c1a-f82fbfe92440",
+ "serialNumber": "urn:uuid:1ebb2cf6-1bc9-502b-8189-921222eeb185",
  "version": 1,
  "metadata": {
   "component": {
@@ -758,7 +758,7 @@
       "encrypt",
       "decrypt"
      ],
-     "parameterSetIdentifier": "N = 8192, Q 2 x 60 bits; scale 2^60 with smudging sigma 2^30 (16 bits), or scale 2^80 with sigma 2^54 (40 bits)",
+     "parameterSetIdentifier": "N = 8192, Q 2 x 60 bits; each share flooded with noise uniform on [-(2^f - 1), 2^f - 1] for the analytic worst-case bound 2^22.26: scale 2^80 with f = 51 (16 bits a share), or scale 2^100 with f = 75 (40 bits)",
      "classicalSecurityLevel": 128
     }
    },
@@ -795,7 +795,7 @@
       "encrypt",
       "decrypt"
      ],
-     "parameterSetIdentifier": "N = 8192, Q 3 x 60 bits, a 33-bit plaintext modulus, smudging sigma 2^142 (128 bits)",
+     "parameterSetIdentifier": "N = 8192, Q 60+60+60+20 bits (inside the HE standard's post-quantum 202 at N = 8192), a 33-bit plaintext modulus, each share flooded uniformly with f = 163 (128 bits a share)",
      "classicalSecurityLevel": 128
     }
    },

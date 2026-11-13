@@ -77,8 +77,9 @@ trained federated offline; a 2D U-Net on breast ultrasound; FLARE, FeTS-style an
   browser clients and implements multiparty CKKS). Decryption shares need smudging noise, and at a security parameter
   of 128 bits that noise swamps a scale of $`2^{40}`$, so the page measures the settings side by side. Measured: CKKS
   cannot reach 128 bits within Lattigo's scale cap of $`2^{128}`$ (error about $`2.8 \times 10^{6}`$ there), so the
-  page shows threshold CKKS at 16 bits (Lattigo's examples' $`\sigma = 2^{30}`$, a demonstration) and 40 bits, and
-  threshold BGV at 128 bits, which is exact and equals the masks to the bit. A ring of 16,384 does not help: the
+  page shows threshold CKKS at 16 bits (a demonstration) and 40 bits, and threshold BGV at 128 bits, which is exact and
+  equals the masks to the bit. Since 2026-11-13 each share's flooding is uniform and sized from the analytic worst case
+  of the aggregate's noise ([`threshold-noise-flooding.md`](threshold-noise-flooding.md)). A ring of 16,384 does not help: the
   requirement is on the scale against the deviation, not on the ring.
 
 ## Offline experiments planned for the development GPU

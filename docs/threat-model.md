@@ -338,15 +338,27 @@ separation below is notional, and none of the designs authenticates a party or s
 | threshold CKKS or BGV (Lattigo, 4-out-of-4) | nobody alone: decrypting needs all four hospitals' shares | the sum, which it combines from the four decryption shares |
 
 **The decryption shares carry flooding noise, and its size is the security.** A share reveals its party's secret-key
-share masked only by noise, so each is flooded with a Gaussian whose deviation is $`2^{\lambda}`$ times the sum's noise
-bound for $`\lambda`$ bits of statistical security; the bound used is $`2^{14}`$, above the $`2^{12.3}`$ to $`2^{12.8}`$
-measured on four fresh encryptions summed. The page shows three settings: $`\lambda = 16`$ ($`\sigma = 2^{30}`$, the
-deviation Lattigo's multiparty examples use: a demonstration), $`\lambda = 40`$ and $`\lambda = 128`$. CKKS cannot
-reach 128 bits here: the decoded error is about $`\sigma\sqrt{N}/\Delta`$, so a usable aggregate needs a scale near
-$`2^{168}`$, and Lattigo caps the scale at $`2^{128}`$, where the measured error was about $`2.8 \times 10^{6}`$.
-BGV decrypts exactly whenever the noise stays below $`Q/(2t)`$, so it carries the 128-bit flooding in a 180-bit
-modulus, inside the 218 bits the HomomorphicEncryption.org standard allows at $`N = 8192`$: with a 33-bit $`t`$,
-$`Q/(2t)`$ is $`2^{146}`$, eight standard deviations of the four shares' summed flooding noise ($`2^{143}`$).
+share masked only by noise. Since 2026-11-13 the module draws that noise itself: in every coefficient an integer
+uniform on $`[-F, F]`$ with $`F = 2^f - 1`$, from the platform CSPRNG, reduced exactly into every limb, while
+Lattigo's own noise in a share stays at its fresh level. Uniform is the distribution the smudging lemma is stated for
+(Asharov et al., ePrint 2011/613, Lemma 2.1; per ring element, Colin de Verdiere, Passelegue and Stehle, ePrint
+2026/031, Lemma 2.1): a shift by $`x`$ moves it by exactly $`\|x\|_1/(2F+1)`$ in statistical distance, so over the
+$`N`$ coefficients of a share the distance is at most $`N B/(2F+1)`$, and $`f`$ is the least with that at most
+$`2^{-\lambda}`$. $`B`$ is the analytic worst case of the summed ciphertexts' noise, not a measurement, because shared
+decryptions need worst-case estimates (Guo, Nabokov, Suvanto and Johansson, USENIX Security 2024): one encryption
+under the collective key decrypts with noise $`u e_{pk} + e_0 + e_1 s`$, at most $`2 N k b + b`$ a coefficient for
+$`k`$ parties and error bound $`b = 19.2`$ (Mouchet et al., ePrint 2020/304, eq. 8), so four encryptions summed give
+$`B = 4 (2 \cdot 8192 \cdot 4 \cdot 19.2 + 19.2) \approx 2^{22.26}`$. The figures before 2026-11-13 sized a Gaussian
+against $`2^{14}`$, the measured $`2^{12.3}`$ to $`2^{12.8}`$ plus a margin, and per coefficient; against the worst
+case over a whole share the same deviations, even sampled exactly, give about 2, 26 and 114 bits instead of 16, 40
+and 128, and the old BGV setting failed to decrypt with probability about $`2^{-36}`$, a Gaussian's tail past
+$`Q/(2t)`$. The page shows $`\lambda = 16`$ (a demonstration: $`f = 51`$, scale $`2^{80}`$, error $`3.6 \times 10^{-7}`$),
+$`\lambda = 40`$ ($`f = 75`$, scale $`2^{100}`$, $`5.8 \times 10^{-6}`$) and BGV at $`\lambda = 128`$ ($`f = 163`$,
+exact, and certain to decrypt: $`Q/(2t) \approx 2^{166}`$ exceeds the four floods' largest sum, $`4F < 2^{165}`$, in
+a 200-bit $`Q`$ inside the 202 bits the HomomorphicEncryption.org standard's post-quantum table allows at
+$`N = 8192`$). CKKS cannot reach 128 bits here: the decoded error is about $`F\sqrt{N}/\Delta`$, and Lattigo caps
+the scale at $`2^{128}`$. Shares released under one key add up, so a run of $`r`$ decryptions under one key keeps
+$`\lambda - \log_2 r`$ bits over its lifetime, which the page prints beside each row.
 
 **A share is never made twice for the same ciphertext.** Lattigo's SECURITY.md says repeating a multiparty protocol must
 be considered insecure, since a second share of the same ciphertext under the same key share leaks; each round here
