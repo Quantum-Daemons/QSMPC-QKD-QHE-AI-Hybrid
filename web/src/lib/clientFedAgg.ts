@@ -10,9 +10,9 @@
  *   ckks-shared-key  NVIDIA FLARE's design (its TenSEAL settings: CKKS, N 8192, moduli [60, 40, 40], scale 2^40):
  *                    every hospital holds the one secret key, the aggregator adds ciphertexts. Here on node-seal.
  *   ckks-demo        threshold CKKS on Lattigo v6.2.0 (wasm/qsh-fedthresh): no party holds the key; each round's sum
- *                    is decrypted once by all four hospitals' shares, each flooded with noise of sigma 2^30, the value
- *                    Lattigo's multiparty examples use. That is about 16 bits of statistical security: a demonstration.
- *   ckks-l40         the same with 40 bits of statistical security (sigma 2^54, scale 2^80).
+ *                    is decrypted once by all four hospitals' shares, each flooded with noise the module draws, uniform
+ *                    and sized for 16 bits of statistical security over a whole share: a demonstration.
+ *   ckks-l40         the same at 40 bits (scale 2^100).
  *   bgv-128          threshold BGV, exact, with 128 bits; it encrypts the masks' own fixed-point integers, so its
  *                    decrypted sum is the masks' sum bit for bit, and so is the model it trains.
  *   bgv-128-dp       a sixth row, not FedAvg: the page's record-level DP arm (clientFedHeart.trainFedHeartDp) at
@@ -54,8 +54,15 @@ export interface AggregationDesign {
   /** Who can read one hospital's update. */
   whoDecrypts: string;
   aggregatorSees: string;
-  /** log2(smudging sigma / the aggregate's noise bound), for a threshold decryption; null where there is none. */
+  /** For a threshold decryption: the statistical distance between one decryption share and its simulation, as
+   *  -log2, over all N coefficients, for one decryption; null where there is none. The module sizes its uniform
+   *  flooding for it from the analytic worst case of the aggregate's noise (wasm/qsh-fedthresh/agg). */
   statSecBits: number | null;
+  /** The same over every decryption this run made under one key: shares under one key add up, so it is
+   *  statSecBits - log2(decryptions). */
+  statSecBitsPerKey?: number | null;
+  /** The module's flooding: log2 of the noise bound B, and f with each share's noise uniform on [-(2^f - 1), 2^f - 1]. */
+  flooding?: { noiseBoundLog2: number; floodBits: number; decryptions: number };
   federated: number[];
   mean: number;
   /** Largest |aggregate - exact float64 FedAvg of the same round's updates|, over every round and coordinate; null
@@ -174,8 +181,24 @@ function threshold(api: FedThreshApi, kind: "ckks-demo" | "ckks-l40" | "bgv-128"
     return kind === "bgv-128" ? out.map((x) => x / QFL_FIXED_POINT) : out;
   };
   return { aggregate, keySetupMs: o.keyGenMs ?? 0, statSecBits: Number(setting.statSecBits), bytes: () => bytes,
-           close: () => api.close(id) };
+           close: () => api.close(id), setting: setting as ModuleSetting };
 }
+
+/** The module's setting as `open` returns it (agg.Setting). */
+export interface ModuleSetting {
+  kind: string; scheme: string; logN: number; logQ: number[]; logScale?: number; statSecBits: number;
+  noiseBoundLog2: number; floodBits: number; plaintextModulus?: number;
+}
+
+/** The scheme line a threshold row prints, from the module's own setting, so the page cannot describe another. */
+export function thresholdScheme(s: ModuleSetting): string {
+  const q = s.logQ.join("+");
+  const msg = s.scheme === "BGV" ? `t a ${Math.round(Math.log2(s.plaintextModulus ?? 2))}-bit prime` : `scale 2^${s.logScale}`;
+  return `Lattigo v6.2.0, N ${2 ** s.logN}, Q ${q} bits, ${msg}; flooding uniform on [-(2^${s.floodBits} - 1), 2^${s.floodBits} - 1] `
+    + `a coefficient, for a noise bound of 2^${s.noiseBoundLog2.toFixed(2)}`;
+}
+
+const perKey = (bits: number, decryptions: number) => bits - Math.log2(Math.max(1, decryptions));
 
 const TEXT: Record<AggregationKind, Pick<AggregationDesign, "label" | "scheme" | "whoDecrypts" | "aggregatorSees">> = {
   masks: {
@@ -191,20 +214,20 @@ const TEXT: Record<AggregationKind, Pick<AggregationDesign, "label" | "scheme" |
     aggregatorSees: "ciphertexts only; a hospital decrypts the sum, and the aggregator with any one hospital reads every update",
   },
   "ckks-demo": {
-    label: "Threshold CKKS, demonstration smudging",
-    scheme: "Lattigo v6.2.0, N 8192, Q 2x60 bits, scale 2^60, sigma 2^30",
+    label: "Threshold CKKS, 16-bit smudging (a demonstration)",
+    scheme: "set from the module's setting at run time",
     whoDecrypts: "no single party: all four hospitals' decryption shares are needed",
     aggregatorSees: "ciphertexts, then four decryption shares, from which it combines the sum",
   },
   "ckks-l40": {
     label: "Threshold CKKS, 40-bit smudging",
-    scheme: "Lattigo v6.2.0, N 8192, Q 2x60 bits, scale 2^80, sigma 2^54",
+    scheme: "set from the module's setting at run time",
     whoDecrypts: "no single party: all four hospitals' decryption shares are needed",
     aggregatorSees: "ciphertexts, then four decryption shares, from which it combines the sum",
   },
   "bgv-128": {
     label: "Threshold BGV, 128-bit smudging, exact",
-    scheme: "Lattigo v6.2.0, N 8192, Q 3x60 bits, t a 33-bit prime, sigma 2^142",
+    scheme: "set from the module's setting at run time",
     whoDecrypts: "no single party: all four hospitals' decryption shares are needed",
     aggregatorSees: "ciphertexts, then four decryption shares, from which it combines the sum",
   },
@@ -233,6 +256,7 @@ async function dpUnderThresholdBgv(sites: HeartSites, seed: number, api: FedThre
   const o = api.open("bgv-128", K, crs);
   if (o.error || o.id == null) throw new Error(`qsh-fedthresh: ${o.error ?? "no session"}`);
   const id = o.id;
+  const setting = JSON.parse(o.setting ?? "{}") as ModuleSetting;
   const keySetupMs = performance.now() - tk;
   let stepsEqual = 0, bytes = 0;
   const t0 = performance.now();
@@ -256,7 +280,10 @@ async function dpUnderThresholdBgv(sites: HeartSites, seed: number, api: FedThre
   const msPerRound = (performance.now() - t0) / rounds;
   const federated = sites.centres.map((c) => accuracy(theta, c.test.X, c.test.y));
   return {
-    kind: "bgv-128-dp", ...TEXT["bgv-128-dp"], statSecBits: 128, federated, mean: mean(federated), maxDiffFromExact: null,
+    kind: "bgv-128-dp", ...TEXT["bgv-128-dp"], statSecBits: setting.statSecBits,
+    statSecBitsPerKey: perKey(setting.statSecBits, rounds),
+    flooding: { noiseBoundLog2: setting.noiseBoundLog2, floodBits: setting.floodBits, decryptions: rounds },
+    federated, mean: mean(federated), maxDiffFromExact: null,
     identicalToMasks: stepsEqual === rounds, bytesPerHospitalPerRound: bytes, keySetupMs, msPerRound,
     dp: { epsilon: DP_ROW_EPSILON, epsilonAchieved: epsilonOf(V, rounds, sensitivity, K, dim, delta), delta,
           rho: rhoOf(V, rounds, sensitivity, K, dim), stepsEqual, steps: rounds },
@@ -281,6 +308,7 @@ export async function runAggregationComparison(
   for (const [i, kind] of order.entries()) {
     onProgress?.(kind, i, order.length + 1);
     let agg: Aggregator, keySetupMs = 0, statSecBits: number | null = null, bytes = () => 0, close = () => {};
+    let setting: ModuleSetting | null = null;
     if (kind === "masks") {
       const tk = performance.now();
       const keyPairs = secaggKeyPairs(K);
@@ -294,13 +322,15 @@ export async function runAggregationComparison(
       ({ aggregate: agg, keySetupMs, bytes, close } = s);
     } else {
       const s = threshold(fedThresh, kind, K, crs);
-      ({ aggregate: agg, keySetupMs, statSecBits, bytes, close } = s);
+      ({ aggregate: agg, keySetupMs, statSecBits, bytes, close, setting } = s);
     }
     const r = await federate(sites, seed, agg);
     close();
     if (kind === "masks") masksAggregates = r.aggregates;
     designs.push({
-      kind, ...TEXT[kind], statSecBits, federated: r.federated, mean: r.mean, maxDiffFromExact: r.maxDiff,
+      kind, ...TEXT[kind], ...(setting ? { scheme: thresholdScheme(setting), statSecBitsPerKey: perKey(setting.statSecBits, FED_HEART.rounds),
+        flooding: { noiseBoundLog2: setting.noiseBoundLog2, floodBits: setting.floodBits, decryptions: FED_HEART.rounds } } : {}),
+      statSecBits, federated: r.federated, mean: r.mean, maxDiffFromExact: r.maxDiff,
       identicalToMasks: kind === "masks" ? null
         : r.aggregates.every((a, j) => a.every((x, c) => x === masksAggregates[j][c])),
       bytesPerHospitalPerRound: bytes(), keySetupMs, msPerRound: r.ms / FED_HEART.rounds,
@@ -314,7 +344,7 @@ export async function runAggregationComparison(
 
 /** One sum of integers, one per party, under threshold BGV: what the genomics page's button reports. */
 export interface ThresholdSum {
-  sum: number; parties: number; statSecBits: number; plaintextModulus: number;
+  sum: number; parties: number; statSecBits: number; plaintextModulus: number; noiseBoundLog2: number; floodBits: number;
   keyGenMs: number; roundMs: number; ciphertextBytes: number; decryptShareBytes: number;
 }
 
@@ -340,6 +370,7 @@ export function sumUnderThresholdBgv(api: FedThreshApi, values: readonly number[
     if (res.error || !res.aggregate) throw new Error(`qsh-fedthresh round: ${res.error ?? "no aggregate"}`);
     const stats = JSON.parse(res.stats ?? "{}");
     return { sum: asF64(res.aggregate)[0], parties: K, statSecBits: Number(setting.statSecBits), plaintextModulus: t,
+             noiseBoundLog2: Number(setting.noiseBoundLog2), floodBits: Number(setting.floodBits),
              keyGenMs: o.keyGenMs ?? 0, roundMs, ciphertextBytes: stats.ciphertextBytes ?? 0,
              decryptShareBytes: stats.decryptShareBytes ?? 0 };
   } finally {

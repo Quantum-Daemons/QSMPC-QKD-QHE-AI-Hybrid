@@ -588,6 +588,17 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   says nothing about the XOR of the two, and only collusion recovers it. Writing it found that both controllers summed
   an application's backing budgets, harmless with one link and double-counting with two; an XOR's budget is now the
   smaller path's, in `allocate` and in the key count.
+- **The threshold rows' flooding is now uniform and sized from a worst case (2026-11-13).** The medical page's
+  threshold CKKS and BGV rows sized a Gaussian flooding against $`2^{14}`$, the noise measured on four fresh encryptions
+  plus a margin, and stated its bits per coefficient. Shared decryptions need a worst-case bound (Guo et al., USENIX
+  Security 2024), and the analytic worst case of four encryptions summed is $`2^{22.26}`$ (Mouchet et al., ePrint
+  2020/304, eq. 8); counted over a whole share against it, the same deviations give about 2, 26 and 114 bits, not 16,
+  40 and 128, and the old BGV setting could fail to decrypt with probability about $`2^{-36}`$. The module now draws
+  each share's flooding itself, uniform on $`[-F, F]`$, the form the smudging lemma is stated in (Asharov et al.,
+  ePrint 2011/613), with $`F`$ the least that meets the target over a whole share: 16, 40 and 128 bits hold as
+  printed, the CKKS errors are $`3.6 \times 10^{-7}`$ and $`5.8 \times 10^{-6}`$, and BGV, in a 200-bit $`Q`$ within the
+  HE standard's post-quantum 202, cannot fail to decrypt. Each row also prints its bits over the run's decryptions under
+  one key ([`references/threshold-noise-flooding.md`](../references/threshold-noise-flooding.md)).
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training

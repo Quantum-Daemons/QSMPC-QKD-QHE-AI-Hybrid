@@ -166,7 +166,9 @@ function EncryptedAggregation({ seed, dp }: { seed: number; dp: FedHeartDpResult
                   <th scope="row" style={{ textAlign: "left", fontWeight: 500 }}>{d.label}<br />
                     <span className="muted small">{d.scheme}</span></th>
                   <td style={{ textAlign: "left" }}>{d.whoDecrypts}</td>
-                  <td>{d.statSecBits == null ? "no decryption share" : `${d.statSecBits} bits`}</td>
+                  <td>{d.statSecBits == null ? "no decryption share"
+                    : `${d.statSecBits} bits a decryption${d.statSecBitsPerKey != null && d.flooding
+                      ? `; ${d.statSecBitsPerKey.toFixed(1)} over this run's ${d.flooding.decryptions} under one key` : ""}`}</td>
                   <td>{d.maxDiffFromExact == null ? "not FedAvg" : d.maxDiffFromExact.toExponential(1)}</td>
                   <td>{d.mean.toFixed(4)}</td>
                   <td>{d.dp ? `${d.dp.stepsEqual} of ${d.dp.steps} steps' sums equal the masks', to the bit`
@@ -182,12 +184,15 @@ function EncryptedAggregation({ seed, dp }: { seed: number; dp: FedHeartDpResult
               rows={aggregationRows(res)} json={res} />
           </div>
           <p className="muted small" style={{ marginTop: 8 }}>
-            The 16-bit row is a demonstration: its decryption shares carry noise only 2^16 times the sum&apos;s noise
-            bound, the deviation Lattigo&apos;s multiparty examples use; a deployment chooses between the 40- and
-            128-bit rows. Each hospital makes one decryption share per sum and never a second for the same ciphertext,
-            which <a href="https://github.com/tuneinsight/lattigo/blob/main/SECURITY.md">Lattigo&apos;s security notes</a> say must be considered insecure. Every prime of the modulus stays above
-            six times the noise deviation, below which Lattigo v6.2.0&apos;s Gaussian sampler corrupts the shares
-            (reported as <a href="https://github.com/tuneinsight/lattigo/issues/596">tuneinsight/lattigo#596</a>). With one shared key, an aggregator that colludes with any one hospital
+            Each hospital floods its decryption share with noise drawn here, uniform on [-F, F] in every coefficient,
+            the form the smudging lemma states (Asharov et al., ePrint 2011/613, Lemma 2.1), with F sized from the
+            analytic worst case of the summed ciphertexts&apos; noise (Mouchet et al., ePrint 2020/304, eq. 8) rather
+            than a measurement, as shared decryptions need (Guo et al., USENIX Security 2024). The bits are the
+            statistical distance between a share and its simulation over all of its coefficients; shares under one key
+            add up, so a run&apos;s rounds cost log2 of their number. The 16-bit row is a demonstration; a deployment
+            chooses between the 40- and 128-bit rows. Each hospital makes one decryption share per sum and never a
+            second for the same ciphertext, which <a href="https://github.com/tuneinsight/lattigo/blob/main/SECURITY.md">Lattigo&apos;s security notes</a> say must be considered insecure.
+            Lattigo&apos;s own noise in a share stays at its fresh level, so <a href="https://github.com/tuneinsight/lattigo/issues/596">tuneinsight/lattigo#596</a> does not reach these settings. With one shared key, an aggregator that colludes with any one hospital
             reads every update. The masks and BGV differ from the exact FedAvg by their 2^20 fixed point, and BGV encrypts
             the masks&apos; own integers, so its sum is theirs; CKKS differs by its encoding and the smudging. All parties
             run in this tab, so every separation is notional, and no design here survives a dropout or authenticates a
