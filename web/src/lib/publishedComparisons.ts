@@ -54,10 +54,15 @@ export const MODEL_RELATION: Record<string, Relation> = {
 const f4 = (x: number) => x.toFixed(4);
 const signed = (x: number) => (x >= 0 ? `+${x.toFixed(4)}` : x.toFixed(4));
 
-function thisRunOf(v: VerificationSummary | undefined): string {
+/** This run's re-scoring of the model, NAMING its metric: a sample is scored on the metric it was published with, which
+ *  need not be the row's (BreastMNIST's samples record accuracy beside an AUC row), and an unnamed 0.8590 beside a
+ *  published AUC of 0.901 reads as the AUC (seen on the deployed medical page, 2026-11-13). */
+function thisRunOf(v: VerificationSummary | undefined, rowMetric: string): string {
   if (!v) return "not run in this tab";
   if (v.outcome === "PASS" || v.outcome === "FAIL") {
-    return `${v.outcome}: ${f4(v.score!)} on ${v.n} rows of its sample (${v.split ?? "split not declared"}), recorded ${f4(v.expected!)}`;
+    const other = v.metric && v.metric !== rowMetric ? ", not this row's metric" : "";
+    return `${v.outcome}: ${v.metric ?? "metric"} ${f4(v.score!)} on ${v.n} rows of its sample (${v.split ?? "split not declared"}), `
+      + `recorded ${f4(v.expected!)}${other}`;
   }
   if (v.outcome === "no-sample") return `no evaluation sample${v.noSampleReason ? `: ${v.noSampleReason}` : ""}`;
   return `could not run: ${v.error ?? "unknown"}`;
@@ -76,7 +81,7 @@ export function modelRows(models: ModelSpec[], verifications: VerificationSummar
       source: m.metric?.baseline_source ? m.metric.baseline_source.split(". ")[0] : "-",
       published: published == null ? "none" : f4(published),
       offline: offlineValue == null ? "not measured here" : f4(offlineValue),
-      thisRun: thisRunOf(v),
+      thisRun: thisRunOf(v, name),
     };
     if (published == null) {
       return { ...base, verdict: "not comparable" as Verdict, why: m.metric?.baseline_source || "no published figure" };

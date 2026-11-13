@@ -4565,3 +4565,20 @@ and a 197 kB decryption share per cohort, and a second press gave the same; the 
 0.7005 and the DP row at 0.7164 with 50 of 50 steps' BGV sums equal to the masks', its note giving epsilon 9.63 with
 the table's rows. No console error.
 
+### PR #40 on the deployed site (2026-11-13)
+
+Merged as `b7430a6` and deployed: `index-CGv08KFf.js`, the same name in the deploy log and on the public page, and the
+same SHA-256 there as from a local `VITE_CLIENT_ONLY=1` build. In Chrome, on every use-case page, the Models section is
+a tablist (finance: Overview and five models; medical three; genomics one; telecom four; satellite four, beside its
+own Downlink and Network tabs), the arrow keys move between tabs, and the hidden panels keep their model blocks. The
+comparison table is on all six pages; before a run its "this run" column says so. After a medical run (seed 1):
+ResNet-18 reproduced, ResNet-50 a reference, the CKKS student not comparable, FLamby's four hospitals and pooled model
+"no spread", FedAvg 0.7005 reproduced against $`0.685 \pm 0.028`$, FedYogi not run; finance's five models one not
+comparable and four references; telecom's four not comparable under its note; satellite's Telemanom "no spread" and
+three references; DeFi its note and no table. The verification table listed all three medical models, each PASS on
+156 of 156 rows. Each download button carries its own name ("Download the four-hospital matrix as CSV"). The results
+file, read in the tab without saving it: `medical_fl-results.json`, 86 kB, `build` equal to the served bundle, 159
+metrics, 205 log events, the four-hospital, DP and verification cards, a 3,309-byte ML-DSA-65 signature, and no key
+named like a secret. No console error. The walk found the comparison table's "this run" cell giving the sample's
+accuracy, unnamed, beside an AUC row; it now names the metric and says when it is not the row's.
+
