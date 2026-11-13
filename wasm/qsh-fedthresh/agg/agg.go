@@ -120,11 +120,7 @@ func Open(kind string, parties int, crsSeed []byte) (*Session, error) {
 	// F from the analytic bound and the target, over all N coefficients of a share: N B/(2F+1) <= 2^-bits, with
 	// F = 2^f - 1 so that a draw is f+1 random bits rejected only when all are ones.
 	B := NoiseBound(s.params, parties)
-	nb := math.Log2(float64(s.params.N()) * B)
-	f := int(math.Ceil(st.StatSecBits+nb)) - 1 // the least f with 2^(f+1) - 1 >= 2^bits N B
-	if nb-math.Log2(math.Exp2(float64(f+1))-1) > -st.StatSecBits {
-		f++
-	}
+	f := leastFloodBits(st.StatSecBits, s.params.N(), B)
 	s.Setting.NoiseBoundLog2, s.Setting.FloodBits = math.Log2(B), f
 	s.flood = new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), uint(f)), big.NewInt(1))
 	// The aggregate must still decrypt with the K floods in it: below Q/(2t) for BGV, below Q/2 less the message
@@ -322,17 +318,21 @@ func (s *Session) aggregateAndDecrypt(cts []*rlwe.Ciphertext, st *RoundStats) (*
 	return ks, nil
 }
 
-// addFlood adds to p, a share at levelQ, an integer uniform on [-F, F] in every coefficient, F = 2^f - 1: f+1 bits
-// from crypto/rand, rejected when all are ones, so each of the 2F+1 values is equally likely, then reduced into every
-// limb with Go's Euclidean modulus. The share is in the NTT domain when the ciphertext is, and the noise follows it.
+// addFlood adds to p, a share at levelQ, the session's flooding (addUniformFlood).
 func (s *Session) addFlood(p ring.Poly, levelQ int, isNTT bool) error {
-	rq := s.params.RingQ().AtLevel(levelQ)
-	f := s.Setting.FloodBits
+	return addUniformFlood(s.params.RingQ().AtLevel(levelQ), p, s.Setting.FloodBits, isNTT)
+}
+
+// addUniformFlood adds to p an integer uniform on [-F, F] in every coefficient, F = 2^f - 1: f+1 bits from
+// crypto/rand, rejected when all are ones, so each of the 2F+1 values is equally likely, then reduced into every limb
+// with Go's Euclidean modulus. A share is in the NTT domain when its ciphertext is, and the noise follows it.
+func addUniformFlood(rq *ring.Ring, p ring.Poly, f int, isNTT bool) error {
+	flood := new(big.Int).Sub(new(big.Int).Lsh(big.NewInt(1), uint(f)), big.NewInt(1))
 	nb := (f + 1 + 7) / 8
 	top := byte(0xff >> uint(8*nb-(f+1)))
 	all := new(big.Int).Lsh(big.NewInt(1), uint(f+1))
 	all.Sub(all, big.NewInt(1))
-	moduli := rq.ModuliChain()[:levelQ+1]
+	moduli := rq.ModuliChain()[:rq.Level()+1]
 	qs := make([]*big.Int, len(moduli))
 	for j, q := range moduli {
 		qs[j] = new(big.Int).SetUint64(q)
@@ -351,7 +351,7 @@ func (s *Session) addFlood(p ring.Poly, levelQ int, isNTT bool) error {
 				break
 			}
 		}
-		x.Sub(r, s.flood)
+		x.Sub(r, flood)
 		for j := range moduli {
 			noise.Coeffs[j][i] = m.Mod(x, qs[j]).Uint64()
 		}
@@ -361,5 +361,16 @@ func (s *Session) addFlood(p ring.Poly, levelQ int, isNTT bool) error {
 	}
 	rq.Add(p, noise, p)
 	return nil
+}
+
+// leastFloodBits is the least f with 2^(f+1) - 1 >= 2^bits * n * b: uniform flooding on [-(2^f - 1), 2^f - 1] keeps a
+// share of n coefficients within statistical distance 2^-bits of its simulation when every shift is at most b.
+func leastFloodBits(bits float64, n int, b float64) int {
+	nb := math.Log2(float64(n) * b)
+	f := int(math.Ceil(bits+nb)) - 1
+	if nb-math.Log2(math.Exp2(float64(f+1))-1) > -bits {
+		f++
+	}
+	return f
 }
 
