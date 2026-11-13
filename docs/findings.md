@@ -522,6 +522,17 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   and its description says so; the full deployment's tabular federation still shards WDBC. The published cases
   this was weighed against, and the plan for the rest, are in
   [`references/medical-fl-prior-work.md`](../references/medical-fl-prior-work.md).
+- **The medical page aggregates its federation five ways, on request (2026-11-13).** The same 15 rounds, from the page's
+  seed, under the pairwise masks, CKKS with one shared key as NVIDIA FLARE does it (node-seal), and threshold CKKS at
+  16 and 40 bits of statistical security and threshold BGV at 128 (Lattigo v6.2.0, compiled to WebAssembly and run in a
+  Web Worker). Seed 1, measured in Node: every design trains to the same accuracy, 0.7005; threshold BGV's every
+  aggregate equals the masks', to the bit, because it encrypts their own fixed-point integers; the largest distance
+  from the exact FedAvg is $`1.4 \times 10^{-6}`$ for the masks and BGV, $`1.5 \times 10^{-8}`$ for the shared-key
+  CKKS, $`3.4 \times 10^{-7}`$ and $`4.7 \times 10^{-6}`$ for the threshold CKKS settings; a hospital sends 56 bytes a
+  round under the masks and 262 to 590 kB under encryption. Threshold CKKS cannot reach 128 bits: the scale it would
+  need, near $`2^{168}`$, is above Lattigo's cap of $`2^{128}`$. Building it found a defect in Lattigo's Gaussian
+  sampler, which corrupts a decryption share whenever six times the flooding deviation reaches a prime of the modulus;
+  it is reported upstream as tuneinsight/lattigo#596 and avoided here.
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training

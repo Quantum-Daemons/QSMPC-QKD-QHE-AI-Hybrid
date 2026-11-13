@@ -1,7 +1,7 @@
 {
  "bomFormat": "CycloneDX",
  "specVersion": "1.7",
- "serialNumber": "urn:uuid:27082790-7ca4-5771-a2cc-1234d2501cda",
+ "serialNumber": "urn:uuid:d900fae7-640d-5ebf-9c1a-f82fbfe92440",
  "version": 1,
  "metadata": {
   "component": {
@@ -709,7 +709,7 @@
       "encrypt",
       "decrypt"
      ],
-     "parameterSetIdentifier": "browser: N = 8192, coefficient moduli {60, 40, 40, 60} bits, scale 2^40",
+     "parameterSetIdentifier": "browser: N = 8192, coefficient moduli {60, 40, 40, 60} bits, scale 2^40; the medical page's shared-key aggregation {60, 40, 40} bits, NVIDIA FLARE's",
      "classicalSecurityLevel": 128
     }
    },
@@ -736,6 +736,83 @@
      },
      {
       "location": "src/qsh/qhe/qcnn_pauli.py"
+     },
+     {
+      "location": "web/src/lib/clientFedAgg.ts"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/ckks-threshold",
+   "name": "Threshold CKKS",
+   "description": "The medical page's encrypted-aggregation comparison: four hospitals' collective key, their FedAvg updates summed under it, and each sum decrypted once by all four noise-flooded shares, on Lattigo v6.2.0 compiled to WebAssembly",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "other",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "encrypt",
+      "decrypt"
+     ],
+     "parameterSetIdentifier": "N = 8192, Q 2 x 60 bits; scale 2^60 with smudging sigma 2^30 (16 bits), or scale 2^80 with sigma 2^54 (40 bits)",
+     "classicalSecurityLevel": 128
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "Mouchet, Troncoso-Pastoriza, Bossuat and Hubaux, PETS 2021 (multiparty RLWE); Cheon, Kim, Kim and Song, ASIACRYPT 2017"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "wasm/qsh-fedthresh/agg/agg.go"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
+   "bom-ref": "crypto/bgv-threshold",
+   "name": "Threshold BGV",
+   "description": "The same comparison's exact row: the masks' own fixed-point integers encrypted under the four hospitals' collective key and each sum decrypted once by their shares, on Lattigo v6.2.0",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "other",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "encrypt",
+      "decrypt"
+     ],
+     "parameterSetIdentifier": "N = 8192, Q 3 x 60 bits, a 33-bit plaintext modulus, smudging sigma 2^142 (128 bits)",
+     "classicalSecurityLevel": 128
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "Brakerski, Gentry and Vaikuntanathan, ITCS 2012; Mouchet et al., PETS 2021"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "wasm/qsh-fedthresh/agg/agg.go"
      }
     ]
    }
@@ -869,6 +946,8 @@
     "crypto/blake2s-256",
     "crypto/oprf-ristretto255",
     "crypto/ckks",
+    "crypto/ckks-threshold",
+    "crypto/bgv-threshold",
     "crypto/wrk17b",
     "crypto/shamir",
     "crypto/csprng"

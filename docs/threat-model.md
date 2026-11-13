@@ -314,6 +314,36 @@ do not address timing, which stays out of scope here.
 testing or conformance clause and names CKKS with others as schemes that "are not described in this standard"; ISO/IEC 28033 is not published, and the part that matters here is **Part 3** - mechanisms for arithmetic on approximate numbers, i.e. CKKS - which is at its FDIS ballot, **stage 50.20** since 2026-09-23, closing around 2026-11-18, so it may publish soon (read at iso.org on 2026-11-03). The other parts, same reading: Part 1 general DIS 40.60 (2025-12-11), Part 2 DIS 40.60 (2026-04-25), Part 4 FDIS 50.20 (2026-09-08), Part 5 WD 20.60 (2025-08-16). Part 1 scopes correctness out. Naming "Parts 1-4 at DIS" was imprecise in both directions: Part 3 is further along than DIS and is the CKKS part, so this claim has a shelf life of months and carries a date for that reason. Checked 2026-08-10. So this section is a
 statement of known limitations, not a conformance gap against any published requirement.
 
+## The medical page's federation, aggregated five ways
+
+`web/src/lib/clientFedAgg.ts` reruns the four-hospital federation from the page's seed and changes only how each
+round's size-weighted FedAvg is aggregated. What each design hides, and from whom (all parties run in one tab, so every
+separation below is notional, and none of the designs authenticates a party or survives a dropout):
+
+| design | who can read one hospital's update | what the aggregator learns |
+|---|---|---|
+| pairwise masks | nobody alone: a share is masked until all four are summed | the sum, in the clear |
+| CKKS, one shared key (NVIDIA FLARE's design) | every hospital, since all four hold the one secret key | nothing; but with any one hospital it reads every update |
+| threshold CKKS or BGV (Lattigo, 4-out-of-4) | nobody alone: decrypting needs all four hospitals' shares | the sum, which it combines from the four decryption shares |
+
+**The decryption shares carry flooding noise, and its size is the security.** A share reveals its party's secret-key
+share masked only by noise, so each is flooded with a Gaussian whose deviation is $`2^{\lambda}`$ times the sum's noise
+bound for $`\lambda`$ bits of statistical security; the bound used is $`2^{14}`$, above the $`2^{12.3}`$ to $`2^{12.8}`$
+measured on four fresh encryptions summed. The page shows three settings: $`\lambda = 16`$ ($`\sigma = 2^{30}`$, the
+deviation Lattigo's multiparty examples use: a demonstration), $`\lambda = 40`$ and $`\lambda = 128`$. CKKS cannot
+reach 128 bits here: the decoded error is about $`\sigma\sqrt{N}/\Delta`$, so a usable aggregate needs a scale near
+$`2^{168}`$, and Lattigo caps the scale at $`2^{128}`$, where the measured error was about $`2.8 	imes 10^{6}`$.
+BGV decrypts exactly whenever the noise stays below $`Q/(2t)`$, so it carries the 128-bit flooding in a 180-bit
+modulus, inside the 218 bits the HomomorphicEncryption.org standard allows at $`N = 8192`$: with a 33-bit $`t`$,
+$`Q/(2t)`$ is $`2^{146}`$, eight standard deviations of the four shares' summed flooding noise ($`2^{143}`$).
+
+**A share is never made twice for the same ciphertext.** Lattigo's SECURITY.md says repeating a multiparty protocol must
+be considered insecure, since a second share of the same ciphertext under the same key share leaks; each round here
+encrypts fresh updates and decrypts their sum once, and the aggregate ciphertext never leaves the function that
+decrypts it. **Every prime of the modulus stays above six times the flooding deviation**: below that, Lattigo
+v6.2.0's Gaussian sampler writes unreduced residues and the decryption fails (reported as tuneinsight/lattigo#596), and
+`wasm/qsh-fedthresh/agg/agg_test.go` holds every setting to it.
+
 ## The medical CNN under MPC
 
 `web/src/lib/clientHybridCnn.ts` runs one held-out image through the published student without either party holding an activation, in the shape of Gazelle (USENIX Security 2018). A client holds

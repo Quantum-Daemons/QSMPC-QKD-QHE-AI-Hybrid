@@ -233,6 +233,12 @@ jobs:
         with:
           node-version: "22"
 
+      # The threshold-aggregation module's SBOM lists the Go modules `go list` compiles into it (Round 86).
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.27.4"
+          cache: false
+
       - name: Install the generators
         run: |
           python -m pip install --quiet "cyclonedx-bom==8.0.1" "jsonschema==4.26.0"
@@ -242,7 +248,7 @@ jobs:
         run: bash scripts/generate_sbom.sh sbom-out
 
       - name: Validate them and the CBOM against the vendored CycloneDX 1.7 schema
-        run: python scripts/validate_cyclonedx.py sbom-out/python.cdx.json sbom-out/web.cdx.json sbom-out/wasm.cdx.json web/public/cbom/qsh.cdx.json
+        run: python scripts/validate_cyclonedx.py sbom-out/python.cdx.json sbom-out/web.cdx.json sbom-out/wasm.cdx.json sbom-out/fedthresh.cdx.json web/public/cbom/qsh.cdx.json
 
       - uses: actions/upload-artifact@v4
         with:
@@ -266,7 +272,7 @@ jobs:
       # docker/Dockerfile.web the demo image runs - including its `cargo test` and the third-party
       # notices - so CI type-checks and builds against the module that ships. Four jobs here; the
       # shared demo host builds with two.
-      - name: Build the MPC wasm (Rust stage of the web image, cargo test included)
+      - name: Build the MPC and threshold-aggregation wasm (the web image's Rust and Go stages, their tests included)
         run: CARGO_JOBS=4 bash scripts/build_wasm.sh
 
       - name: Install
@@ -331,6 +337,13 @@ jobs:
       - name: Federated secure aggregation
         working-directory: web
         run: npm run check:qfl
+
+      # The four hospitals' aggregation, five ways (Round 86): the medical page's worker module with the real node-seal and
+      # the real Lattigo wasm built above. The masks row is the page's federation, threshold BGV equals it to the bit, and
+      # every CKKS design stays within its bound of the exact FedAvg.
+      - name: The four hospitals' aggregation, five ways
+        working-directory: web
+        run: npm run check:fed-agg
 
       # The medical CNN student under MPC: a held-out image through CKKS and the garbled circuits, against the clear network. The
       # same circuit and masks the page runs, and the only check that sees the two halves and the shares between them together.

@@ -46,13 +46,18 @@ def test_nothing_under_web_refers_to_a_prototype() -> None:
 def test_the_web_image_does_not_build_prototypes() -> None:
     # Until Round 65 this also forbade any Rust toolchain in the image. Round 65 adopted Polytune and
     # gave the image a Rust stage on purpose - for wasm/qsh-mpc, the production crate, and nothing
-    # else. So the rule is now about WHAT it builds: never anything under prototypes/.
+    # else. So the rule is now about WHAT it builds: never anything under prototypes/. Round 86 added a
+    # Go stage for wasm/qsh-fedthresh, the medical page's threshold-aggregation module, also production;
+    # it copies the module's go.mod and go.sum first (so the download layer is cached), then the module.
     dockerfile = (REPO / "docker" / "Dockerfile.web").read_text()
     assert "prototypes" not in dockerfile, "docker/Dockerfile.web copies or builds prototypes/"
     copies = re.findall(r"^COPY\s+(?!--from)(\S+)", dockerfile, re.M)
-    rust_sources = [c for c in copies if c.startswith("wasm/")]
-    assert rust_sources == ["wasm/qsh-mpc/"], (
-        f"the image's Rust stage copies {rust_sources}; it builds the production crate wasm/qsh-mpc only")
+    wasm_sources = [c for c in copies if c.startswith("wasm/")]
+    production = {"wasm/qsh-mpc/", "wasm/qsh-fedthresh/go.mod", "wasm/qsh-fedthresh/"}
+    assert wasm_sources and set(wasm_sources) <= production, (
+        f"the image copies {wasm_sources} from wasm/; it builds the production modules wasm/qsh-mpc and "
+        "wasm/qsh-fedthresh only")
+    assert all((REPO / c).exists() for c in wasm_sources), "the image copies a wasm/ path that does not exist"
 
 
 def test_prototype_build_outputs_are_ignored() -> None:

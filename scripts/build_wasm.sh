@@ -18,4 +18,10 @@ rm -rf web/src/wasm/qsh_mpc
 mkdir -p web/src/wasm web/public/licenses
 cp -r "$out/qsh_mpc" web/src/wasm/qsh_mpc
 cp "$out/qsh-mpc-notices.txt" web/public/licenses/qsh-mpc.txt
+# Round 86: the threshold-aggregation tier (wasm/qsh-fedthresh), served as static files beside the bundle.
+rm -rf web/public/wasm/qsh_fedthresh
+mkdir -p web/public/wasm
+cp -r "$out/qsh_fedthresh" web/public/wasm/qsh_fedthresh
+cp "$out/qsh-fedthresh-notices.txt" web/public/licenses/qsh-fedthresh.txt
 echo "wasm: web/src/wasm/qsh_mpc ($(du -sh web/src/wasm/qsh_mpc | cut -f1)); notices: web/public/licenses/qsh-mpc.txt ($(grep -c '^== ' web/public/licenses/qsh-mpc.txt) crates)"
+echo "wasm: web/public/wasm/qsh_fedthresh ($(du -sh web/public/wasm/qsh_fedthresh | cut -f1)); notices: web/public/licenses/qsh-fedthresh.txt ($(grep -c '^== ' web/public/licenses/qsh-fedthresh.txt) sections)"

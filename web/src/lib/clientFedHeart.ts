@@ -33,6 +33,8 @@ export interface HeartSites {
   feature_names: string[]; label: string; split: string; centres: HeartCentre[];
 }
 export interface FedHeartResult {
+  /** The run's seed: the encrypted-aggregation comparison reruns this federation from it (clientFedAgg.ts). */
+  seed: number;
   centres: string[];
   /** alone[k][j]: hospital k's model, trained on its own rows only, on hospital j's test rows. */
   alone: number[][];
@@ -188,7 +190,7 @@ export async function fedHeart(sites: HeartSites, seed = 0,
   const federated = tests.map((t) => accuracy(glob, t.X, t.y));
   const pairs = (K * (K - 1)) / 2;
   return {
-    centres: cs.map((c) => c.name), alone, federated, pooled, initial,
+    seed, centres: cs.map((c) => c.name), alone, federated, pooled, initial,
     mean: { alone: alone.map(mean), federated: mean(federated), pooled: mean(pooled), initial: mean(initial) },
     rounds: FED_HEART.rounds, roundMean, testRows: tests.map((t) => t.y.length), trainRows: sizes,
     aggregation: `size-weighted FedAvg + ${pairs} pairwise masks from X25519-agreed pair seeds, fixed-point mod 2^32`,

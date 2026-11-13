@@ -197,6 +197,9 @@ prototypes/*/.cargo-home/
 # Rust stage), never committed; the crate's own build state stays local too.
 web/src/wasm/
 web/public/licenses/qsh-mpc.txt
+# Round 86: the threshold-aggregation tier, built the same way (scripts/build_wasm.sh).
+web/public/wasm/qsh_fedthresh/
+web/public/licenses/qsh-fedthresh.txt
 wasm/qsh-mpc/target/
 wasm/qsh-mpc/.cargo-home/
 

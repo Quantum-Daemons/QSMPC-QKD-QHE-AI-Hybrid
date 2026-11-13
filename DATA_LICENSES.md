@@ -374,6 +374,11 @@ and notices of what they link.
   loopback in one tab, compiled from `wasm/qsh-mpc` with 69 Rust crates whose licences are all permissive;
   their own licence files are collected at build time into `/licenses/qsh-mpc.txt`, which ships with the
   demo. `mpc-framework` + `emp-wasm-engine` + `summon-ts` filled this role until Round 65.
+- **Lattigo** v6.2.0 (Tune Insight SA, Apache-2.0, with a NOTICE file) - threshold CKKS and BGV for the medical page's
+  encrypted-aggregation comparison (Round 86), compiled from `wasm/qsh-fedthresh` to WebAssembly with Go 1.27.4
+  (BSD-3-Clause, whose `wasm_exec.js` ships beside the module). Its non-test packages import testify and go-cmp, so
+  ten modules in all are compiled in, every one Apache-2.0, BSD, ISC or MIT; their own licence and notice files are
+  collected at build time into `/licenses/qsh-fedthresh.txt`, which ships with the demo.
 - **onnxruntime-web** (MIT) - runs the published industry models in the browser.
 - **@huggingface/transformers** and **@mlc-ai/web-llm** (both Apache-2.0) - the Agentic AI panel's two engines. Their
   models and the libraries this project builds for one of them: section 5b.
