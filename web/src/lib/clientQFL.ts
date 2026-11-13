@@ -220,22 +220,34 @@ export function secaggMaskWords(seed: Uint8Array, round: number, P: number): num
  * factor and they would not cancel - the weighted mean is recovered by having each client scale its
  * own contribution.
  */
-export function maskedShare(
-  u: number, update: number[], weight: number, ownSeeds: readonly (Uint8Array | null)[], round: number,
-): number[] {
-  const K = ownSeeds.length;
-  const P = update.length;
+/** The masks' fixed point, 2^20, for an aggregation beside them that must agree to the bit (Round 86). */
+export const QFL_FIXED_POINT = QFL_SCALE;
+
+/**
+ * Client u's weighted update in the masks' fixed point, the integers its masked share hides. Split out of
+ * `maskedShare` in Round 86 so the threshold-BGV aggregation (clientFedAgg.ts) encrypts exactly these integers:
+ * its decrypted sum is then the masks' sum, bit for bit, which `npm run check:fed-agg` asserts.
+ */
+export function qflQuantise(u: number, update: readonly number[], weight: number, K: number): number[] {
   const maxShare = qflMaxShare(K);
-  const share = new Array<number>(P);
-  for (let k = 0; k < P; k++) {
-    const q = Math.round(update[k] * weight * QFL_SCALE);
+  return update.map((x, k) => {
+    const q = Math.round(x * weight * QFL_SCALE);
     if (!Number.isFinite(q) || Math.abs(q) > maxShare) {
       // Loud rather than silent: past this magnitude the ring wraps into the wrong half and the
       // recovered mean is garbage that still looks like a number.
       throw new Error(`QFL share out of ring range: client ${u}, coord ${k}, q=${q}`);
     }
-    share[k] = (q | 0) >>> 0;      // two's complement, i.e. reduction mod 2^32
-  }
+    return q;
+  });
+}
+
+export function maskedShare(
+  u: number, update: number[], weight: number, ownSeeds: readonly (Uint8Array | null)[], round: number,
+): number[] {
+  const K = ownSeeds.length;
+  const P = update.length;
+  const q = qflQuantise(u, update, weight, K);
+  const share = q.map((v) => (v | 0) >>> 0);      // two's complement, i.e. reduction mod 2^32
   for (let v = 0; v < K; v++) {
     if (v === u) continue;
     const seed = ownSeeds[v];

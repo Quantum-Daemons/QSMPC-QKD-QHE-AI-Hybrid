@@ -94,7 +94,7 @@ step "8/18 web typecheck, build and text layout"
 # which also runs the crate's `cargo test` and writes the third-party notices. Docker layer caching makes
 # this seconds when wasm/qsh-mpc has not changed. Without it tsc cannot resolve clientMPC.ts's import.
 bash scripts/build_wasm.sh >/tmp/ci_wasm.log 2>&1 \
-  && ok "MPC wasm built; its cargo test passed; notices written" || { bad "MPC wasm build (scripts/build_wasm.sh)"; tail -15 /tmp/ci_wasm.log; }
+  && ok "MPC and threshold-aggregation wasm built; cargo and go tests passed; notices written" || { bad "wasm build (scripts/build_wasm.sh)"; tail -15 /tmp/ci_wasm.log; }
 ( cd web && npx tsc --noEmit >/tmp/ci_tsc.log 2>&1 ) \
   && ok "tsc --noEmit" || { bad "tsc --noEmit"; tail -15 /tmp/ci_tsc.log; }
 # Round 74: JSX drops a line break where it meets a value, and a caption read "0.644against".
@@ -171,6 +171,9 @@ step "11/18 Federated secure aggregation"
 # fresh per round, cancelling to a bit-identical weighted mean, and no plaintext path to fall back into.
 ( cd web && npm run --silent check:qfl >/tmp/ci_qfl.log 2>&1 ) \
   && ok "federated secure aggregation" || { bad "federated secure aggregation"; tail -12 /tmp/ci_qfl.log; }
+# Round 86: the four hospitals' aggregation, five ways, on the Lattigo wasm built in step 3 and the real node-seal.
+( cd web && npm run --silent check:fed-agg >/tmp/ci_fed_agg.log 2>&1 ) \
+  && ok "the four hospitals' aggregation, five ways: BGV equals the masks to the bit, CKKS within its bounds" || { bad "the five-way aggregation"; tail -12 /tmp/ci_fed_agg.log; }
 
 step "11b/18 The CNN student under MPC"
 ( cd web && npm run --silent check:hybrid-cnn >/tmp/ci_hybrid_cnn.log 2>&1 ) \

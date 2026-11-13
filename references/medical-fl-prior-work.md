@@ -14,7 +14,8 @@ a licence opinion: where a dataset's own pages disagree, the disagreement is the
 | full deployment, `{"dataset": "medmnist", "model": "cnn"}` | FedAvg of a 3,226-parameter CNN over 409 BreastMNIST images of 14x14 in four label-skewed hospitals | until 2026-11-13 one class for every image (0.7282, the majority); class-weighted Adam now, seed 0: balanced accuracy 0.619, AUC 0.685 |
 | published models | ResNet-18, ResNet-50 and the CKKS student on BreastMNIST | trained centrally |
 
-Planned, in the owner's order of 2026-11-13: CKKS-encrypted aggregation and threshold CKKS beside the masks; chest
+Built since: CKKS-encrypted aggregation and threshold CKKS and BGV beside the masks, run on request (2026-11-13).
+Planned, in the owner's order of 2026-11-13: differential privacy for the federation and the genomics counts; chest
 X-ray federation on NIH ChestX-ray14 with a view-position bias analysis and CAM; EfficientNet-B0, DeiT-Tiny and VGG-11
 trained federated offline; a 2D U-Net on breast ultrasound; FLARE, FeTS-style and federated-LoRA experiments offline.
 
@@ -66,12 +67,15 @@ trained federated offline; a 2D U-Net on breast ultrasound; FLARE, FeTS-style an
   0.1.27 (18 Oct 2026, MIT) calls itself early. Models of a few thousand parameters train with hand-written
   backpropagation; EfficientNet-B0 (5.3M parameters), VGG-11 and DeiT-Tiny train federated offline, without ImageNet
   weights, and the page verifies them as it verifies the other published models.
-- **Encryption beside FedAvg.** The pairwise masks are exact and let the aggregator read the sum. CKKS aggregation as
+- **Encryption beside FedAvg (built 2026-11-13; `web/src/lib/clientFedAgg.ts`, `wasm/qsh-fedthresh`).** The pairwise masks are exact and let the aggregator read the sum. CKKS aggregation as
   FLARE does it is the second design: the clients hold the key and the aggregator only adds ciphertexts. Threshold
   CKKS, in which no party holds the whole key, is the third (Lattigo v6, Apache-2.0, which states WASM builds for
   browser clients and implements multiparty CKKS). Decryption shares need smudging noise, and at a security parameter
-  of 128 bits that noise swamps a scale of $`2^{40}`$ (agent's calculation), so the page will measure two settings side by
-  side: demonstration smudging, and 128-bit smudging with a larger scale or a ring of 16,384.
+  of 128 bits that noise swamps a scale of $`2^{40}`$, so the page measures the settings side by side. Measured: CKKS
+  cannot reach 128 bits within Lattigo's scale cap of $`2^{128}`$ (error about $`2.8 \times 10^{6}`$ there), so the
+  page shows threshold CKKS at 16 bits (Lattigo's examples' $`\sigma = 2^{30}`$, a demonstration) and 40 bits, and
+  threshold BGV at 128 bits, which is exact and equals the masks to the bit. A ring of 16,384 does not help: the
+  requirement is on the scale against the deviation, not on the ring.
 
 ## Offline experiments planned for the development GPU
 

@@ -4409,3 +4409,57 @@ of 156 and matched its label. One display defect found: the model-backend contro
 from the first render until the adapter probe resolves, so a visitor who looks first is told something not yet known; on
 this machine the probe then found the Blackwell adapter and enabled the option. Fixed in #36: the option reads "checking"
 until the probe answers.
+
+### PR #36 on the deployed site (2026-11-13)
+
+Merged as `a853fff` and deployed from `main`; the bundle `index-B5Vs94nf.js` is the same name and the same SHA-256 in the
+deploy log, on the public page and in a local `VITE_CLIENT_ONLY=1` build of `a853fff`. One medical run in Chrome, at
+the page's default seed 1 (the seed field starts at 1 because quantumSim's generator maps 0 and 1 to one stream): the
+card is the six-by-five matrix, the four own-test cells underlined; federated 0.7005, pooled 0.7132, the hospitals
+alone 0.6534 on average, the twin's figures for seed 1 to the last digit; the counts read above 3 of the 4 alone, below
+pooled, the own model above the federated one at 4 of the 4 and a floor of 0.348; the canvas label and the log line as
+written; no console error. The model-backend option read `WebGPU (checking for an adapter)` at load and `WebGPU` two
+seconds later. The checklist's seed-0 expectation was rewritten to the page's seed.
+
+### The medical page aggregates its federation five ways (2026-11-13)
+
+The owner chose to put every design on the page and to run them on a button in a Web Worker. `clientFedAgg.ts` reruns
+the four-hospital federation from the run's seed and swaps only the aggregation; the threshold designs run on Lattigo
+v6.2.0 compiled to WebAssembly from `wasm/qsh-fedthresh` (Go 1.27.4, the image's new Go stage, `go test` first). Seed
+1, 15 rounds, in Node (`npm run check:fed-agg`, which asserts the rows):
+
+| design | accuracy | distance from exact FedAvg | sent per hospital per round | time per round |
+|---|---|---|---|---|
+| pairwise masks | 0.7005 | $`1.4 \times 10^{-6}`$ | 56 B | 1.3 ms |
+| CKKS, one shared key (node-seal, FLARE's settings) | 0.7005 | $`1.5 \times 10^{-8}`$ | 262 kB | 14 ms |
+| threshold CKKS, 16 bits ($`\sigma = 2^{30}`$, scale $`2^{60}`$) | 0.7005 | $`3.4 \times 10^{-7}`$ | 394 kB | 219 ms |
+| threshold CKKS, 40 bits ($`\sigma = 2^{54}`$, scale $`2^{80}`$) | 0.7005 | $`4.7 \times 10^{-6}`$ | 394 kB | 280 ms |
+| threshold BGV, 128 bits ($`\sigma = 2^{142}`$, exact) | 0.7005 | $`1.4 \times 10^{-6}`$, the masks' own | 590 kB | 134 ms |
+
+Threshold BGV encrypts the masks' fixed-point integers (`qflQuantise`, split out of `maskedShare` for it), so every
+round's decrypted sum equals the masks' to the bit and so does the model. The statistical security is
+$`\log_2(\sigma / 2^{14})`$, against a noise bound of $`2^{14}`$ for the sum of four fresh encryptions, measured at
+$`2^{12.3}`$ to $`2^{12.8}`$.
+
+What was measured before choosing the settings, natively, four parties, 14 values: at the project's scale $`2^{40}`$
+the $`\sigma = 2^{30}`$ that Lattigo's multiparty examples use gives an error of 0.28, enough to break FedAvg, and
+$`2^{60}`$ brings it to $`1.7 \times 10^{-7}`$; for 128 bits CKKS would need a scale near $`2^{168}`$, above
+Lattigo's cap of $`2^{128}`$, where the error was $`2.8 \times 10^{6}`$; BGV at 128 bits decrypted all values exactly,
+with $`Q/(2t) = 2^{146}`$ eight standard deviations above the summed flooding noise.
+
+**A defect in Lattigo's Gaussian sampler, found while choosing the 40-bit setting.** With $`\sigma = 2^{53}`$ the
+decryption was wrong by $`3.4 \times 10^{16}`$ over primes of 60, 60 and 30 bits at scale $`2^{100}`$, and by
+$`5.7 \times 10^{6}`$ over 60 and 40 bits at $`2^{80}`$, while scale $`2^{80}`$ over two 60-bit primes decrypts to
+within $`10^{-15}`$ without the flooding. The integer branch of
+`GaussianSampler.read` (taken unless $`\sigma > 2^{53}`$ and the bound exceeds $`2^{64} - 1`$) writes each sample into
+every RNS limb without reducing it modulo the limb's prime: a positive sample above the prime stays unreduced, a
+negative one wraps modulo $`2^{64}`$. A self-contained reproducer: at $`\sigma = 2^{41}`$ over 60- and 40-bit primes,
+5069 residues at or above their prime and 2517 of 8192 coefficients outside the bound, and a two-party key switch off by
+$`1.35 \times 10^{8}`$, against $`3.3 \times 10^{-12}`$ at $`\sigma = 2^{35}`$. `ring/sampler_gaussian.go` is the same
+on `main`; no issue described it. Reported with the owner's approval as
+[tuneinsight/lattigo#596](https://github.com/tuneinsight/lattigo/issues/596) (2026-11-13). Every setting here keeps the
+primes above six times the deviation, `Open` refuses one that does not, and `agg_test.go` holds the settings to it.
+
+The module is 12.6 MB uncompressed. Its notices list Go and ten modules: Lattigo's non-test packages import testify
+and go-cmp, so go-spew (ISC), go-difflib and yaml.v3 are compiled in too. The SBOM job now writes
+`fedthresh.cdx.json` from the same `go list` reading, and the CBOM gains threshold CKKS and threshold BGV, 23 entries.
