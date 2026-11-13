@@ -96,7 +96,7 @@ flowchart TB
 | Use case | Industry | Its own stages |
 |---|---|---|
 | `finance_aml` | finance, AML | PSI over cross-bank blacklists, federated training, FHE fraud inference |
-| `medical_fl` | healthcare | federated training with pairwise masks whose seeds each pair of hospitals agrees by X25519 (no dropout recovery, no public-key authentication), private diagnosis: the encrypted CNN reads a tabular (WDBC) row tiled to the image size in the browser, and MedMNIST images only in the full deployment |
+| `medical_fl` | healthcare | federated training across four real hospitals (UCI Heart Disease, FLamby's benchmark: each alone, federated, pooled) with pairwise masks whose seeds each pair of hospitals agrees by X25519 (no dropout recovery, no public-key authentication); private inference: the encrypted CNN reads a held-out BreastMNIST image in the browser |
 | `genomics` | genomics | secure summation of pooled allele counts, FHE |
 | `telecom_ids` | telecom, defence | simulated QKD with an optional eavesdropper, a QML intrusion detector |
 | `satellite_comms` | satellite | simulated free-space QKD over a model of the Micius downlink, a two-way QSDC feasibility check with an inline eavesdrop check, and one-way quasi-QSDC under a pre-shared key where that check cannot close |
@@ -156,7 +156,7 @@ flowchart TB
   Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
-  FL["Federated training: 4 hospitals, 6 rounds of FedAvg, pairwise masks"]
+  FL["Federated training: 4 real hospitals (UCI Heart Disease), 15 rounds of FedAvg, pairwise masks; each alone and pooled beside it"]
   I["Private inference: CKKS linear layer and an encrypted 4x14x14 CNN (node-seal), garbled-circuit argmax"]
   X["Explainability: exact linear SHAP, signed"]
   M["Published model: medical_fl.resnet18 on a BreastMNIST image, ONNX Runtime Web"]

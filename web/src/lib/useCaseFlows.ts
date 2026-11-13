@@ -357,9 +357,15 @@ const FEDERATED_STEP: Step = {
   // 80-row held-out split, and the denominator still says how much a score rests on.
   // "untrained" is w = 0, which predicts class 0 for every row (sigmoid(0) = 0.5 is not above 0.5):
   // the all-class-0 rate, not the majority rate, and the label says which.
-  label: (m) => `federated train · ${f(m, "qfl_aggregation")} · acc `
-    + `${f(m, "federated_baseline_accuracy")} untrained (every row class 0) -> ${f(m, "federated_accuracy")} `
-    + `on ${f(m, "federated_eval_rows")} held-out rows${m?.federated_rows_class_balanced ? " of a 50/50 draw" : ""}`,
+  // The medical page federates four real hospitals since Round 86 (clientFedHeart.ts), and says so: FLamby's metric,
+  // each hospital alone against federated against pooled, the comparison the published cases make.
+  label: (m) => m?.federated_hospitals
+    ? `federated train · ${f(m, "federated_hospitals")} real hospitals (UCI Heart Disease) · ${f(m, "qfl_aggregation")} `
+      + `· FLamby's metric: the hospitals alone ${f(m, "federated_alone_accuracy")} on average, federated `
+      + `${f(m, "federated_accuracy")}, pooled ${f(m, "federated_pooled_accuracy")}`
+    : `federated train · ${f(m, "qfl_aggregation")} · acc `
+      + `${f(m, "federated_baseline_accuracy")} untrained (every row class 0) -> ${f(m, "federated_accuracy")} `
+      + `on ${f(m, "federated_eval_rows")} held-out rows${m?.federated_rows_class_balanced ? " of a 50/50 draw" : ""}`,
 };
 
 /** The caption's first sentence for parties that compute together over a network.

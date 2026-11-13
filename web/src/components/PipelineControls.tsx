@@ -18,7 +18,10 @@ export default function PipelineControls({ run }: { run: Run }) {
     state, running, paused, inFlight, start, startStepwise, pause, resume, step, stop } = run;
   // Resolved once: whether WebGPU can be offered at all. Without a usable adapter the option is shown
   // disabled with the reason, rather than offered and then silently run on WASM.
-  const [gpuUsable, setGpuUsable] = useState(false);
+  // null while the probe runs. It started false, so the option read "no usable adapter" from the first render until
+  // the probe answered: on a machine with an adapter, a visitor who looked first was told something not yet known
+  // (seen on the deployed site, 2026-11-13).
+  const [gpuUsable, setGpuUsable] = useState<boolean | null>(null);
   useEffect(() => { hasWebGPU().then(setGpuUsable); }, []);
 
   // The published models this use case can actually fetch and run, in registry order. Rendered only
@@ -179,8 +182,8 @@ export default function PipelineControls({ run }: { run: Run }) {
                 + "stays selectable to try."}
               onChange={(e) => setOnnxBackend(e.target.value === "webgpu" ? "webgpu" : "")}>
               <option value="">WASM (default)</option>
-              <option value="webgpu" disabled={!gpuUsable}>
-                {gpuUsable ? "WebGPU" : "WebGPU (no usable adapter)"}
+              <option value="webgpu" disabled={gpuUsable !== true}>
+                {gpuUsable === true ? "WebGPU" : gpuUsable === null ? "WebGPU (checking for an adapter)" : "WebGPU (no usable adapter)"}
               </option>
             </select>
           </>
