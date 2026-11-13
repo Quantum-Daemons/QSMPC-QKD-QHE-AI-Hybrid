@@ -13,7 +13,8 @@
 import { useState } from "react";
 import StageBadge from "./StageBadge";
 import { type FedHeartDpResult, fedHeartComparisons, type FedHeartResult } from "../lib/clientFedHeart";
-import type { AggregationComparison } from "../lib/clientFedAgg";
+import { composedEpsilon } from "../lib/clientDp";
+import { type AggregationComparison, DP_ROW_EPSILON } from "../lib/clientFedAgg";
 import { compareAggregationsInWorker } from "../lib/clientFedAggRun";
 
 export interface FedHeartSitesMeta {
@@ -92,7 +93,7 @@ export default function FedHeartPanel({ result, sites, dp }: { result: FedHeartR
         </p>
       )}
       {dp && <DpTable dp={dp} />}
-      <EncryptedAggregation seed={r.seed} />
+      <EncryptedAggregation seed={r.seed} dp={dp ?? null} />
     </div>
   );
 }
@@ -100,10 +101,11 @@ export default function FedHeartPanel({ result, sites, dp }: { result: FedHeartR
 const kb = (n: number) => (n < 1000 ? `${n} B` : `${(n / 1000).toFixed(0)} kB`);
 
 /**
- * The same federation aggregated five ways (clientFedAgg.ts), on request: the Lattigo module is about 3 MB compressed
- * and the five runs take seconds, so it runs in a Web Worker when the button is pressed, never on its own.
+ * The same federation aggregated five ways, and the DP arm once more under threshold BGV (clientFedAgg.ts), on
+ * request: the Lattigo module is about 3 MB compressed and the six runs take seconds, so it runs in a Web Worker when
+ * the button is pressed, never on its own.
  */
-function EncryptedAggregation({ seed }: { seed: number }) {
+function EncryptedAggregation({ seed, dp }: { seed: number; dp: FedHeartDpResult | null }) {
   const [state, setState] = useState<{ status: "idle" | "running" | "done" | "error"; progress?: string;
                                        result?: AggregationComparison; error?: string }>({ status: "idle" });
   const run = () => {
@@ -116,12 +118,15 @@ function EncryptedAggregation({ seed }: { seed: number }) {
   const res = state.result;
   return (
     <div style={{ marginTop: 14 }} id="fed-heart-aggregation">
-      <h4>The same federation, aggregated five ways</h4>
+      <h4>The same federation, aggregated five ways, and once with differential privacy</h4>
       <p className="small" style={{ marginTop: 4 }}>
         Each design reruns this federation from the same seed and changes only how each round&apos;s FedAvg is
         aggregated: the pairwise masks above; CKKS with one key every hospital holds, as NVIDIA FLARE does it; and
         threshold CKKS and BGV on Lattigo, where no party holds the key and all four hospitals&apos; shares decrypt each
-        round&apos;s sum once. It runs in a Web Worker and loads a 12.6 MB WebAssembly module (Lattigo v6.2.0, Apache-2.0;
+        round&apos;s sum once. The sixth row is the differential-privacy arm above at epsilon {DP_ROW_EPSILON}, run once
+        more: each step&apos;s four noisy vectors are summed under threshold BGV, so the noise is inside the encrypted
+        sum and the model trains on what the four shares decrypt, and under the masks beside it, to compare the two sums
+        step by step. It runs in a Web Worker and loads a 12.6 MB WebAssembly module (Lattigo v6.2.0, Apache-2.0;
         {" "}<a href="/licenses/qsh-fedthresh.txt" target="_blank" rel="noopener noreferrer">its notices</a>).
       </p>
       <button className="btn" disabled={state.status === "running"} onClick={run}>
@@ -133,7 +138,9 @@ function EncryptedAggregation({ seed }: { seed: number }) {
           <table className="table" style={{ marginTop: 10 }}>
             <caption className="small" style={{ captionSide: "top", textAlign: "left" }}>
               {res.rounds} rounds, {res.hospitals} hospitals, seed {res.seed}. Distance: the largest gap, over every round
-              and coordinate, between a design&apos;s aggregate and the exact FedAvg of the same round&apos;s updates.
+              and coordinate, between a design&apos;s aggregate and the exact FedAvg of the same round&apos;s updates. The
+              DP row trains differently (full-batch steps with noise) and is compared with the masks&apos; sums of its own
+              noisy vectors instead.
             </caption>
             <thead>
               <tr>
@@ -154,9 +161,10 @@ function EncryptedAggregation({ seed }: { seed: number }) {
                     <span className="muted small">{d.scheme}</span></th>
                   <td style={{ textAlign: "left" }}>{d.whoDecrypts}</td>
                   <td>{d.statSecBits == null ? "no decryption share" : `${d.statSecBits} bits`}</td>
-                  <td>{d.maxDiffFromExact.toExponential(1)}</td>
+                  <td>{d.maxDiffFromExact == null ? "not FedAvg" : d.maxDiffFromExact.toExponential(1)}</td>
                   <td>{d.mean.toFixed(4)}</td>
-                  <td>{d.identicalToMasks == null ? "-" : d.identicalToMasks ? "yes, to the bit" : "no"}</td>
+                  <td>{d.dp ? `${d.dp.stepsEqual} of ${d.dp.steps} steps' sums equal the masks', to the bit`
+                    : d.identicalToMasks == null ? "-" : d.identicalToMasks ? "yes, to the bit" : "no"}</td>
                   <td>{kb(d.bytesPerHospitalPerRound)}</td>
                   <td>{d.msPerRound < 10 ? d.msPerRound.toFixed(1) : d.msPerRound.toFixed(0)} ms</td>
                 </tr>
@@ -175,6 +183,18 @@ function EncryptedAggregation({ seed }: { seed: number }) {
             run in this tab, so every separation is notional, and no design here survives a dropout or authenticates a
             party.
           </p>
+          {res.designs.filter((d) => d.dp).map((d) => (
+            <p className="muted small" style={{ marginTop: 6 }} key="dp-row">
+              The DP row draws fresh noise, so its accuracy differs from the epsilon {DP_ROW_EPSILON} row of the table
+              above by the noise alone; its accountant gives epsilon {d.dp!.epsilonAchieved.toFixed(2)} at delta
+              {" "}{d.dp!.delta}. It is one more release from the same patients{dp
+                ? `: with that table's ${dp.rows.filter((x) => Number.isFinite(x.epsilon)).length} noised rows, published together, epsilon ${
+                  composedEpsilon([...dp.rows.filter((x) => Number.isFinite(x.epsilon)).map((x) => x.rho), d.dp!.rho], dp.delta).toFixed(2)}`
+                : ""}. Because BGV is exact, the decrypted sum is the masks&apos; integer sum, so the encryption costs this
+              row no accuracy; what it changes is who could read one hospital&apos;s noisy vector, and that
+              hospital&apos;s share of the noise alone is too little to protect its patients.
+            </p>
+          ))}
         </>
       )}
     </div>
@@ -226,6 +246,9 @@ function DpTable({ dp }: { dp: FedHeartDpResult }) {
         alone. The noise is in gradient units against a sum of up to 486 clipped gradients a step. Each epsilon counts the
         noise of the hospitals that add theirs; the second column is the guarantee if one of the four adds none. The
         sampler is exact (Canonne, Kamath and Steinke, 2020), because floating-point noise leaks through its low bits.
+        Each noised row is its own release from the same patients, and concentrated DP adds across releases (Bun and
+        Steinke, 2016): published together, the {dp.rows.filter((x) => Number.isFinite(x.epsilon)).length} rows are
+        epsilon {dp.epsilonAllRows.toFixed(2)} at the same delta, not the largest of them.
       </p>
     </div>
   );

@@ -545,6 +545,22 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   they carry none. The sampler is exact and the accountant has a Python twin held to the same draws
   ([`references/differential-privacy.md`](../references/differential-privacy.md)). Writing this also found the
   medical page's key points still describing the WDBC federation PR #36 replaced; corrected.
+- **The DP noise inside threshold BGV, a published count on finance, and what the rows add up to (2026-11-13).** The
+  medical page's encrypted-aggregation button now runs the record-level arm once more at $`\epsilon = 1`$ with every
+  step's four noisy vectors summed under threshold BGV, and all 50 steps' sums equal the masks' sums of the same
+  vectors (seed 1 in `npm run check:fed-agg`: accuracy 0.7216); the genomics card sums its cohorts' noisy
+  contributions under threshold BGV, equal to the masked integer. BGV is exact, so the encryption costs no accuracy;
+  what it changes is who could read one party's noisy vector. Finance releases the count of shared accounts as it
+  would be published, one party adding discrete Gaussian noise once ($`\epsilon = 1`$, $`\delta = 10^{-8}`$, a
+  standard deviation of 6.2 accounts); the PSI's answer to the banks stays exact, since it is the PSI's purpose.
+  Writing it found a gap in the medical table: its four noised rows are four releases from the same patients, and
+  together they are $`\epsilon = 9.56`$, not 8 (concentrated DP adds $`\rho`$; Bun and Steinke, TCC 2016); the page
+  now prints that figure. A search of 2026 work recommends DP for none of the telecom, satellite, DeFi and PQC-QKD
+  stages, and of further cryptography a threshold committee for the DeFi key holder and a two-path key split for the
+  QKD relay, both to be built ([`references/differential-privacy.md`](../references/differential-privacy.md), "The
+  other pages"). Two LaTeX commands on main had lost their backslash to a string escape, `\times` in the threat
+  model's aggregation section and `\tau_0` in the benchmark notes, each rendering as a gap and a stray word; both are
+  repaired and a house-style test now fails on any control character inside a math span.
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training
@@ -702,3 +718,20 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
 - **Future tracks** - see [`docs/pqc-roadmap.md`](pqc-roadmap.md): a NIST-aligned IDS
   against HNDL/Q-Day, hardware QKD field test, malicious-secure MPC, and the GPU FHE-at-scale
   path (batching and bootstrapping on HEonGPU; hpmpc's GPU code covers matrix multiplication and convolution, so its non-linear layers stay on the CPU).
+
+## Declined, and what would reopen each
+
+Recorded on 2026-11-13 at the owner's choice; each was proposed in a plan and left without a decision until now.
+
+| proposal | decision and reason | what would reopen it |
+|---|---|---|
+| UMAP or t-SNE views of the 2D plots (plan 30) | Declined: a linear model's decision boundary cannot be drawn honestly in a non-linear embedding. | Never for a boundary view; an embedding of the data alone would use PCA. |
+| Recomputing a metric inside `VerificationChart.tsx` (plan 30) | Declined: the chart's stated invariant is that it recomputes and re-fetches nothing. The planned table of published figures against this project's is a separate component and leaves the invariant as it is. | A chart that is meant to compute, built as its own component. |
+| A provenance chip on every number, C2PA-style L1 to L3 with a `LITERATURE` chip (plan 19) | Not adopted per number: results carry the provenance badge and each stage its stage badge, and the planned table gives every literature figure its source in a column of its own. | A page where, after that table, a reader still cannot tell a measured figure from a cited one. |
+| Quantum random forest and the VAE filter (plans 1 and 11) | Not built: the owner's rule for quantum ML on the finance and medical pages is to introduce nothing whose value has not been shown, and none has been shown here. | A published result on one of these corpora above its classical baseline at a matching protocol. |
+| One-vs-rest QCNN readouts (plan 32) | Not needed: the native readout predicts all eight telecom classes, macro F1 0.968 against 0.976 for logistic regression on the same split (`models/qcnn_telecom_q7`). | A native readout that misses a class. |
+| XGBoost 3.4.0 for its GPU SHAP fix on SM120 (plan 27) | Unreachable here: no source file calls TreeSHAP or `pred_contribs`, and the page's attributions are exact linear SHAP over the distilled students, so the fix cannot change a figure. The lock pins 3.4.1 while the development environment runs 3.3.0, and the GBM's card does not state which trained it: an open record item. | A tree-SHAP view of the GBM. |
+| LightGBM and CatBoost on the GPU (plan 27) | Neither is a dependency, so the private checklist's claims about their GPU builds were removed rather than re-verified. The finance card's GFP + LightGBM figure, 62.86, is a published one (Altman et al., NeurIPS 2023, Table 2) and stays. | Either package becoming a dependency. |
+
+Two items listed as open in the same plans have since been built: a PSI among three to five banks under MPC on the
+finance page (`npm run check:multi-psi`) and a WebM export of each page's animation.

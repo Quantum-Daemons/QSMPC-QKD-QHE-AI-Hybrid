@@ -171,9 +171,10 @@ step "11/18 Federated secure aggregation"
 # fresh per round, cancelling to a bit-identical weighted mean, and no plaintext path to fall back into.
 ( cd web && npm run --silent check:qfl >/tmp/ci_qfl.log 2>&1 ) \
   && ok "federated secure aggregation" || { bad "federated secure aggregation"; tail -12 /tmp/ci_qfl.log; }
-# Round 86: the four hospitals' aggregation, five ways, on the Lattigo wasm built in step 3 and the real node-seal.
+# Round 86: the four hospitals' aggregation, five ways and a DP row, on the Lattigo wasm built in step 3 and the real
+# node-seal; and the genomics page's threshold sum.
 ( cd web && npm run --silent check:fed-agg >/tmp/ci_fed_agg.log 2>&1 ) \
-  && ok "the four hospitals' aggregation, five ways: BGV equals the masks to the bit, CKKS within its bounds" || { bad "the five-way aggregation"; tail -12 /tmp/ci_fed_agg.log; }
+  && ok "the four hospitals' aggregation, five ways and a DP row: BGV equals the masks to the bit, CKKS within its bounds" || { bad "the encrypted aggregation"; tail -12 /tmp/ci_fed_agg.log; }
 
 step "11b/18 The CNN student under MPC"
 ( cd web && npm run --silent check:hybrid-cnn >/tmp/ci_hybrid_cnn.log 2>&1 ) \

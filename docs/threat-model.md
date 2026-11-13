@@ -314,7 +314,7 @@ do not address timing, which stays out of scope here.
 testing or conformance clause and names CKKS with others as schemes that "are not described in this standard"; ISO/IEC 28033 is not published, and the part that matters here is **Part 3** - mechanisms for arithmetic on approximate numbers, i.e. CKKS - which is at its FDIS ballot, **stage 50.20** since 2026-09-23, closing around 2026-11-18, so it may publish soon (read at iso.org on 2026-11-03). The other parts, same reading: Part 1 general DIS 40.60 (2025-12-11), Part 2 DIS 40.60 (2026-04-25), Part 4 FDIS 50.20 (2026-09-08), Part 5 WD 20.60 (2025-08-16). Part 1 scopes correctness out. Naming "Parts 1-4 at DIS" was imprecise in both directions: Part 3 is further along than DIS and is the CKKS part, so this claim has a shelf life of months and carries a date for that reason. Checked 2026-08-10. So this section is a
 statement of known limitations, not a conformance gap against any published requirement.
 
-## The medical page's federation, aggregated five ways
+## The medical page's federation, aggregated five ways, and its DP arm under threshold BGV
 
 `web/src/lib/clientFedAgg.ts` reruns the four-hospital federation from the page's seed and changes only how each
 round's size-weighted FedAvg is aggregated. What each design hides, and from whom (all parties run in one tab, so every
@@ -332,7 +332,7 @@ bound for $`\lambda`$ bits of statistical security; the bound used is $`2^{14}`$
 measured on four fresh encryptions summed. The page shows three settings: $`\lambda = 16`$ ($`\sigma = 2^{30}`$, the
 deviation Lattigo's multiparty examples use: a demonstration), $`\lambda = 40`$ and $`\lambda = 128`$. CKKS cannot
 reach 128 bits here: the decoded error is about $`\sigma\sqrt{N}/\Delta`$, so a usable aggregate needs a scale near
-$`2^{168}`$, and Lattigo caps the scale at $`2^{128}`$, where the measured error was about $`2.8 	imes 10^{6}`$.
+$`2^{168}`$, and Lattigo caps the scale at $`2^{128}`$, where the measured error was about $`2.8 \times 10^{6}`$.
 BGV decrypts exactly whenever the noise stays below $`Q/(2t)`$, so it carries the 128-bit flooding in a 180-bit
 modulus, inside the 218 bits the HomomorphicEncryption.org standard allows at $`N = 8192`$: with a 33-bit $`t`$,
 $`Q/(2t)`$ is $`2^{146}`$, eight standard deviations of the four shares' summed flooding noise ($`2^{143}`$).
@@ -343,6 +343,13 @@ encrypts fresh updates and decrypts their sum once, and the aggregate ciphertext
 decrypts it. **Every prime of the modulus stays above six times the flooding deviation**: below that, Lattigo
 v6.2.0's Gaussian sampler writes unreduced residues and the decryption fails (reported as tuneinsight/lattigo#596), and
 `wasm/qsh-fedthresh/agg/agg_test.go` holds every setting to it.
+
+**A sixth row, and the genomics count, with the DP noise inside.** The same button runs the record-level DP arm once
+more at $`\epsilon = 1`$ and sums each of its 50 steps' noisy vectors under threshold BGV, the model training on what
+the shares decrypt, beside the masks' sum of the same vectors; the genomics card's button sums its cohorts' noisy
+contributions under threshold BGV with a key made for that press. `npm run check:fed-agg` holds every DP step's two
+sums equal and the genomics sum equal to the plain one, a negative contribution among them. What it adds over the
+masks is who could read one party's noisy vector (see "Differential privacy" below).
 
 ## The medical CNN under MPC
 
@@ -690,13 +697,14 @@ release, and any release of many variants, remain open.
 
 ## Differential privacy
 
-Since 2026-11-13 two releases on the browser demo carry a stated guarantee, and every other page says on the page why
+Since 2026-11-13 three releases on the browser demo carry a stated guarantee, and every other page says on the page why
 it carries none.
 
 | page | released | unit | mechanism | parameters |
 |---|---|---|---|---|
 | medical | the model of the record-level arm, beside FedAvg's | one patient, added or removed | full-batch gradient descent; each patient's gradient clipped to L2 norm 1, each hospital's sum rounded to $`2^{-16}`$ with its share of discrete Gaussian noise added, inside fresh pairwise masks | 50 steps; $`\epsilon`$ = 8, 4, 2, 1; $`\delta = 10^{-6}`$ |
 | genomics | the pooled allele count at one variant | one person, who moves it by at most 2 | each cohort's count in the fixed point $`1/16`$ plus its share of the noise, inside the secure sum | $`\epsilon`$ chosen on the page from 0.5 to 8; $`\delta = 10^{-5}`$ |
+| finance | the count of accounts the two banks share, as it would be published | one account, which moves it by at most 1 | one party adds $`\mathcal{N}_{\mathbb{Z}}(0, V)`$ to the count once, clamped at 0 | $`\epsilon = 1`$; $`\delta = 10^{-8}`$; $`V = 38`$ |
 
 **The accountant.** Kairouz, Liu and Steinke (ICML 2021), Theorem 1: with $`n`$ honest parties each adding
 $`\mathcal{N}_{\mathbb{Z}}(0, V)`$ to an integer vector of dimension $`d`$ and $`L_2`$ sensitivity $`\Delta_2`$, the
@@ -716,17 +724,36 @@ Steinke's exact sampler, in integers, because floating-point samplers leak throu
 2012) and NIST SP 800-226 lists floating-point arithmetic as a privacy hazard. A seeded source exists for the twin
 tests and no page calls it. Every party runs in one tab.
 
+**Composition.** A release is not the only one about the same people: the medical table's four noised rows are four
+models from the same 486 patients, and zero-concentrated DP adds across releases (Bun and Steinke, TCC 2016), so
+published together they are $`\epsilon = \rho + 2\sqrt{\rho \log(1/\delta)}`$ with $`\rho = \sum_i \rho_i`$:
+9.56 at the four targets, not 8. The page computes it from the run and prints it under the table, and the
+encrypted-aggregation row at $`\epsilon = 1`$ adds its own $`\rho`$. On the genomics and finance pages each run
+draws fresh noise, so $`k`$ runs of the same count are $`k`$ times one run's $`\rho`$; averaging enough runs recovers
+the count, which is what the guarantee allows for and why a deployment releases once.
+
+**Inside the encryption.** The medical page's encrypted-aggregation button runs the record-level arm once more at
+$`\epsilon = 1`$ with each step's four noisy vectors summed under threshold BGV (Lattigo v6.2.0, 128-bit smudging),
+the model training on what the four decryption shares open, and compares every step's sum with the masks' sum of the
+same vectors; the genomics card's button sums the same noisy contributions under threshold BGV. BGV is exact, so in
+both the decrypted integer is the masks' integer and the encryption costs no accuracy; it changes who could read one
+party's noisy vector, which alone carries too little noise to protect that party's people.
+
 **The choice of $`\delta`$.** NIST SP 800-226 (2025) recommends $`\delta \le 1/n^2`$ when converting a guarantee, says
 that rule does not suit small $`n`$, and calls values above $`10^{-5}`$ suspicious. The medical page has 486 patients,
 so $`1/n^2 = 4.2 \times 10^{-6}`$ and $`\delta = 10^{-6}`$; the genomics page has 30, so $`1/n^2`$ would be about
-$`10^{-3}`$ and $`\delta = 10^{-5}`$ instead.
+$`10^{-3}`$ and $`\delta = 10^{-5}`$ instead; the finance lists hold at most 4,600 accounts together, so
+$`1/n^2 = 4.7 \times 10^{-8}`$ and $`\delta = 10^{-8}`$.
 
 **What it costs.** Medical, seed 1, 20 draws of the noise in Python: 0.721 with no noise (clipping and full-batch steps
 alone), $`0.724 \pm 0.004`$ at $`\epsilon = 8`$, $`0.727 \pm 0.007`$ at 4, $`0.726 \pm 0.015`$ at 2 and
 $`0.706 \pm 0.032`$ at 1, against 0.7005 for FedAvg without DP. Genomics: the released count's noise has a standard
 deviation of 19.4, 9.8, 5.0, 2.6 and 1.4 alleles at $`\epsilon`$ = 0.5, 1, 2, 4 and 8, on a count of at most 60.
+Finance: a standard deviation of 6.2 accounts, on a count of 60 at the default volume (two lists of 260).
 
 **What it does not cover.** The FedAvg model, the private-inference models (trained centrally on public data), the
 full deployment's federated path and secure summation, and the person's own polygenic score, which goes back to that
-person. The finance, telecom, satellite and DeFi pages carry none, each for the reason it states: the PSI's answer is
-its purpose, the IDS data are synthetic, spacecraft telemetry describes no person, and the DeFi bit is the decision.
+person; on finance, the PSI's answer to the banks, which is its purpose. The telecom, satellite and DeFi pages carry
+none, each for the reason it states: the IDS data are synthetic, spacecraft telemetry describes no person, and the DeFi
+bit is the decision. A search of 2026 work found no reason to change that, or to add DP to the PQC-QKD stages
+(`references/differential-privacy.md`, "The other pages").

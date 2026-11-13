@@ -1260,6 +1260,11 @@ which is exactly the review's point: the property had nothing enforcing it.
 
 ---
 
+## Round 43
+
+Round 43's own records are the pointer section directly below and its sub-block on the rounds it
+reconstructed; this heading exists so that a search for the round finds them (added 2026-11-13).
+
 ## Rounds 39-42, added in Round 43 - and this is a POINTER, not four entries
 
 **This file's last round section was Round 38.** Rounds 39, 40, 41 and 42 have no entry, which is the
@@ -4493,3 +4498,52 @@ on the selector, and a chi-square of 60,000 draws at variance 9 against the disc
 Writing the medical page's key points against the change found two sentences PR #36 left behind: the federation still
 described as FedAvg "over the page's own bundled Wisconsin sample", and "no differential-privacy budget is applied
 here". Both now say what runs.
+
+### PR #24, a pointer (merged 2026-11-09)
+
+PR #24 merged the audit's remaining items as `38b9e76` on 2026-11-09: labelled rows on the model cards, the QCNN's tree
+property as a test, a watch on Polytune upstream (`.github/workflows/audit.yml`), the GPU lock, a matched local liboqs
+and the last plain-text formulas. Its record is the register's row #24 and the tests it added; this log had no entry
+for it, which this pointer closes.
+
+### PR #37 on the deployed site (2026-11-13)
+
+Merged as `52baf07` and deployed; the bundle `index-fDVB_zFP.js` has the same name and SHA-256 in the deploy log, on the
+public page and in a local `VITE_CLIENT_ONLY=1` build. The image's new Go stage ran on the demo host. In Chrome, after
+a medical run (seed 1), `Compare encrypted aggregation` showed its progress and then all five rows: the masks 1.4e-6 from
+the exact FedAvg, 56 bytes and 0.7 ms a round; the shared-key CKKS 1.1e-8, 262 kB, 14 ms; threshold CKKS 3.9e-7 and
+6.9e-6, 394 kB, 211 and 263 ms; threshold BGV 1.4e-6, "yes, to the bit", 590 kB, 154 ms; every design at 0.7005. No
+console error. `qsh_fedthresh.wasm` is served 200 as `application/wasm`, gzip-encoded, with the cross-origin
+isolation headers; `/licenses/qsh-fedthresh.txt` is served with its ten sections. The extension's network log does not
+record a worker's fetches, so that an ordinary run never loads the module rests on the code path: only the button
+creates the worker, and only the worker fetches the module.
+
+### PR #39: the DP noise inside threshold BGV, a published count on finance (2026-11-13)
+
+The owner chose three additions after PR #38: the genomics sum under threshold BGV with the DP noise inside, a DP row in
+the medical page's aggregation table, and a DP-noised count on finance. `clientFedHeart.trainFedHeartDp` now takes the
+aggregation as a function, so the record-level arm's 50 steps can be summed by more than one design without a second
+copy of the loop; `fedHeartDp` passes the masks and its rows are unchanged, which `tests/test_r86_dp_twin.py` holds
+against `qsh.ai.fed_heart.run_dp` row for row. The comparison's sixth row sums each step's four noisy vectors under
+threshold BGV, trains on what the shares decrypt, and compares the masks' sum of the same vectors. `npm run
+check:fed-agg`, seed 1: all 50 steps' sums equal, epsilon 1.0000 at delta 1e-6, accuracy 0.7216, 590 kB a hospital a
+step, 135 ms a step; the five FedAvg rows as before (0.7005). The genomics card's button calls
+`clientFedAgg.sumUnderThresholdBgv` in the worker with a fresh key per press; the check sums a seeded draw at
+epsilon 0.5 with a negative contribution added and gets the plain sum, 717, and refuses a value that is not a whole
+number.
+
+Finance: `clientDp.dpCount` adds one discrete Gaussian to the two banks' count; at epsilon 1 and delta 1e-8 the
+least variance is 38 (standard deviation 6.2 accounts; the accountant gives 0.998), Python's `dp_count` draws the same
+values on the seeded source, and a negative draw is published as zero. The banks' own answer stays exact.
+
+Writing the medical table's note found that its four noised rows are separate releases from the same 486 patients:
+published together they are epsilon 9.56, from rho 0.910, 0.254, 0.068 and 0.017 summed, where the table had let the
+largest row's 8 stand for the page. `fedHeartDp` returns the composed figure and the table prints it; the twin
+test holds it to Python's and to the closed form. The research behind the other pages' DP lines is in
+`references/differential-privacy.md`, "The other pages".
+
+Two math spans on main had a TAB where a backslash command began: `\times` in the threat model's aggregation section
+and `\tau_0` in `docs/models-and-benchmarks.md`, each a string escape in the edit that wrote it. Both are repaired, and
+`tests/test_markdown_math_uses_the_house_style.py` now fails on any control character inside a math span; run on
+main's threat model, the new test fires.
+

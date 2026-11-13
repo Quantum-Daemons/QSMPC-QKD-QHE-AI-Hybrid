@@ -14,6 +14,7 @@ import MpcCnnPanel from "../components/MpcCnnPanel";
 import FedHeartPanel, { type FedHeartSitesMeta } from "../components/FedHeartPanel";
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
+import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCard";
 import MpcGnnPanel from "../components/MpcGnnPanel";
 import { ConfusionCard, PrsLocusCard } from "../components/ModelExplanations";
 import MpcMlpPanel from "../components/MpcMlpPanel";
@@ -371,6 +372,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "finance_aml" && artifacts?.mpc_mlp ? <MpcMlpPanel report={artifacts.mpc_mlp as MpcMlpReport} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_gnn ? <MpcGnnPanel report={artifacts.mpc_gnn as MpcGnnReport} /> : null}
       {usecase === "finance_aml" && <TransactionGraphCard scoredRow={artifacts?.mpc_mlp ? (artifacts.mpc_mlp as MpcMlpReport).rowIndex : null} />}
+      {usecase === "finance_aml" && artifacts?.financeDp ? <FinanceDpCard dp={artifacts.financeDp as FinanceDpArtifact} /> : null}
       {usecase === "finance_aml" && artifacts?.multi_party_psi ? <MultiPsiPanel report={artifacts.multi_party_psi as MultiPsiReport} /> : null}
 
       {!lending && <h2 className="sr-only">Benchmark</h2>}
@@ -406,7 +408,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           {/* 167 words became four points; the history of the removed selector moved into a fold. */}
           <KeyPoints items={[
             "Federated learning runs on every run here, with no toggle: FedAvg across four real hospitals (UCI Heart Disease, as FLamby's Fed-Heart-Disease prepares it), each alone and all pooled beside it. The private-inference models below read other corpora.",
-            "Federated averaging is not a privacy guarantee by itself: the pairwise masks hide each hospital's update from the aggregator, but the trained model can still leak its training data (gradient inversion and similar attacks). The FedAvg model carries no differential-privacy budget; the record-level arm in the four-hospital card is the one that does (epsilon 8 down to 1, delta 1e-6).",
+            "Federated averaging is not a privacy guarantee by itself: the pairwise masks hide each hospital's update from the aggregator, but the trained model can still leak its training data (gradient inversion and similar attacks). The FedAvg model carries no differential-privacy budget; the record-level arm in the four-hospital card is the one that does (epsilon 8 down to 1, delta 1e-6; the rows together spend more than any one of them, as the card states).",
             <><b>The encrypted path evaluates the published student itself</b>: all 3,226 parameters, from its pinned Hugging Face revision. CKKS evaluates the convolution and both dense layers, each layer&apos;s bias added under encryption and every slot but its outputs masked and flooded, so the client decrypts each layer&apos;s outputs and nothing else; it decrypts after every layer, applies ReLU and average pooling in plaintext, and takes the CNN&apos;s argmax in the clear. The garbled-circuit argmax runs on the bundled Wisconsin logistic regression, not on the CNN, over logits the client has already decrypted, so in this tab it hides nothing from the key holder. &quot;The CNN student under MPC&quot;, below, is the path that does not decrypt an activation.</>,
             "The run reports the total rotations it performed, because key-switching - one per rotation - is what dominates CKKS inference cost.",
             "Nothing is multiplied by a cost model; if the weights cannot be fetched, the run says so rather than substituting invented ones.",

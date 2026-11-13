@@ -750,13 +750,13 @@ export const visibleSteps = (usecase: string, c: DiagramConfig): Step[] =>
 /** A step's drawing kind under this configuration. */
 export const kindOf = (s: Step, c: DiagramConfig): Kind => (typeof s.kind === "function" ? s.kind(c) : s.kind);
 
-/** Whether a step reads the PQC session key. The OPRF PSI is the only reader of `_sessionKey` in
- *  clientCompute: it derives the two keys its three messages are sealed under (oprfPsi.ts,
- *  `psiTranscriptKeys`), so the canvas's key bus runs to it. The federated masks take their seeds
+/** Whether a step reads the PQC session key. Two stages in clientCompute read `_sessionKey`: the
+ *  OPRF PSI derives the two keys its three messages are sealed under (oprfPsi.ts,
+ *  `psiTranscriptKeys`), and the DeFi lending check seals its two CKKS messages under keys derived
+ *  from it (lending/privateCheck.ts), so the canvas's key bus runs to both. The federated masks take their seeds
  *  from an X25519 agreement per pair of clients (clientQFL.ts), and the secure sum reads no key. */
 export const consumesSessionKey = (step: Step, row: CanvasRow): boolean =>
   (step.stageId === "qsmpc_compute" && row.channel === "classical")
-  // The lending check seals both of its CKKS messages under keys derived from the session (lending/privateCheck.ts).
   || (step.stageId === "private_liquidation" && row.channel === "fhe");
 
 /** The kinds of lane a run with this configuration draws, and whether it draws the key bus: what the

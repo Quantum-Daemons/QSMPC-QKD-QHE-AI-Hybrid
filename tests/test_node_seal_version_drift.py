@@ -48,7 +48,7 @@ _PKG = Path(__file__).resolve().parents[1] / "web" / "package.json"
 _DECLARED_RANGE = "^7.0.0"
 _BUNDLED_SEAL = "4.1.2"
 #: Newest upstream SEAL at the time of writing, and the first release that is a security update.
-_UPSTREAM_LATEST = "4.4.3"
+_UPSTREAM_LATEST = "4.7.2"   # v4.7.2, 2026-10-28, read on github.com/microsoft/SEAL on 2026-11-13 (was 4.4.3)
 _UPSTREAM_SECURITY = "4.4.0"
 
 

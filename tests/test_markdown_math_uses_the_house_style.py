@@ -180,3 +180,17 @@ def test_markdown_carries_no_special_symbols() -> None:
         + "\n  ".join(f"{f}: {ch!r} (U+{ord(ch):04X}) x{n}" for (f, ch), n in sorted(bad.items())))
     stale = [k for k in ALLOWED_NON_ASCII if k not in found]
     assert not stale, f"allowed cases that no longer occur; remove them from ALLOWED_NON_ASCII: {stale}"
+
+
+def test_no_math_span_holds_a_control_character() -> None:
+    # A backslash command written through a Python string without an r prefix loses its backslash to an escape:
+    # "\times" became a TAB and "imes", "\tau_0" a TAB and "au_0". Both reached main (threat-model.md, from the
+    # aggregation write-up of 2026-11-13, and models-and-benchmarks.md) and rendered as a gap and a stray word, because
+    # nothing looked inside a math span for a character no formula contains. Found and repaired on 2026-11-13.
+    bad = []
+    for f in _markdown():
+        for n, line in enumerate((REPO / f).read_text(errors="replace").splitlines(), 1):
+            for span in _MATH_SPAN.findall(line):
+                if any(ord(ch) < 32 for ch in span):
+                    bad.append(f"{f}:{n}: {span!r}")
+    assert not bad, "math spans holding a control character (a lost backslash escape?):\n  " + "\n  ".join(bad)
