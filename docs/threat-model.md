@@ -415,7 +415,7 @@ The finance page's main PSI is two-party, RFC 9497's OPRF. Beside it, when ticke
 
 ## The private liquidation check (DeFi lending page)
 
-Implemented in `web/src/lib/lending/privateCheck.ts`, in two arrangements. The sources behind the choice are in [`references/defi-lending-key-custody.md`](../references/defi-lending-key-custody.md).
+Implemented in `web/src/lib/lending/privateCheck.ts` and `web/src/lib/lending/committee.ts`, in three arrangements. The sources behind the choice are in [`references/defi-lending-key-custody.md`](../references/defi-lending-key-custody.md).
 
 **Carol holds the key (the default).** Prices, thresholds and the interest index are public, as on a real market, and Carol stands in for the threshold committees confidential-DeFi systems use.
 
@@ -426,7 +426,20 @@ Implemented in `web/src/lib/lending/privateCheck.ts`, in two arrangements. The s
 
 - **What each side learns.** The pool: Bob's ciphertext and the bit. Carol: the masked margin and the bit. Bob needs to be online only for his one submission.
 - **What it depends on.** The pool and Carol must not collude: together they see everything. Carol must never hold Bob's ciphertext unmasked. Here only the pool keeps it; a deployment enforces that with access control, as Zama's does.
-- **A single Carol.** node-seal has no threshold CKKS, so she is one party. A deployment splits her across a committee.
+- **A single Carol.** node-seal has no threshold CKKS, so she is one party. The committee arrangement below splits the key, on threshold BGV instead.
+
+**A committee holds the key (threshold BGV).** No one holds the key; prices, thresholds and the index are public. On Lattigo v6.2.0 in `wasm/qsh-fedthresh/agg/committee.go`.
+
+1. Three members generate a collective BGV key with Lattigo's multiparty key generation, each holding a Shamir share of its secret with threshold 2, at $`N = 2^{14}`$, a 260-bit $`Q`$ and a 50-bit prime $`t \equiv 1 \pmod{2N}`$. Carol has a BGV key pair of her own.
+2. Bob encrypts each quantised balance, $`x_i = \mathrm{round}(2^{20} [c_1, c_2, \tilde d / 1000]_i)`$, in slot 0 of its own ciphertext under the collective public key, signs and seals them to the pool, and takes no further part.
+3. At each check the pool computes $`\sum_i W_i (\mathrm{ct}_i - s_i) + (r, 0, \ldots, 0) + \mathrm{Enc}(0)`$, with $`W_i = \mathrm{round}(2^{19} w_i)`$ for the weights $`w`$ above, $`s_i`$ what has been settled, and $`r`$ uniform modulo $`t`$. The mask goes in slot 0 alone: added as a scalar it would land in every slot, and a slot holding only $`r`$ would give it away.
+4. Two members, a different pair at each check, re-encrypt that ciphertext to Carol's key with Lattigo's public-key switch. Each adds to its share an integer uniform on $`[-F, F]`$ in every coefficient, $`F = 2^{189} - 1`$, from `crypto/rand`: 128 bits of statistical distance over the whole share against the analytic worst case of the evaluated noise, $`(\sum_i |W_i| + 1)(2Nnb + b) \le 2^{47.85}`$ for $`\sum_i |W_i| \le 2^{27}`$, $`n = 3`$ and $`b = 19.2`$. Their sum stays far below $`Q/(2t)`$, so the result always decrypts.
+5. The pool combines the shares and seals the result to Carol, who decrypts $`(M + r) \bmod t`$ while the pool holds $`t - r`$. A garbled circuit of 648 AND gates gives both of them whether $`(a + b) \bmod t`$, read in $`(-t/2, t/2)`$, is negative, and Carol signs the bit.
+
+- **What each side learns.** The pool: Bob's ciphertexts and the bit. Each active member: one ciphertext's second component per check. Carol: $`(M + r) \bmod t`$, uniform whatever $`M`$ is, and the bit.
+- **What it depends on.** The pool and any two members together could decrypt Bob's ciphertexts, and the pool and Carol together hold both shares of $`M`$. Lattigo's multiparty protocols are secure against members who follow them, and are not robust: a member who withholds its share stops the check, and nothing proves a share was computed correctly.
+- **One share per ciphertext.** Lattigo's `SECURITY.md` says a member must never share twice for the same input, whatever the active set, citing Okada et al. (ePrint 2025/409) and Colin de Verdiere et al. (ePrint 2026/031). A share depends only on the ciphertext's second component, and two hours at the same prices would give the same one, so the pool adds a fresh encryption of zero to every evaluated ciphertext and the members refuse a second component they have shared for, by its SHA-256.
+- **Fixed point.** Rounding the balances and the weights leaves a few hundredths of a stable unit of error in $`M`$, which the run reports; $`t/2`$ holds margins up to about a million stable units.
 
 **Bob holds the key (the bilateral mode).** The pool's thresholds are its own. Bob encrypts afresh at each check, the pool evaluates and masks, Bob decrypts $`M + r`$, and the two run the circuit.
 
@@ -434,11 +447,11 @@ Implemented in `web/src/lib/lending/privateCheck.ts`, in two arrangements. The s
 - **Bob has to answer.** He holds the key and he loses by a liquidation, so he could refuse or go offline. A deployment would need a rule that no answer counts as a default.
 - **Probing.** A malicious Bob could probe the thresholds with crafted ciphertexts, the shape of MUSE (Lehmkuhl et al., USENIX Security 2021), and repeated bits narrow them down.
 
-**In both.**
+**In all three.**
 
-- **Semi-honest only.** Nothing proves Bob encrypted his real balances; commitments and zero-knowledge proofs would be needed. Every party runs in one tab, so the separation is notional, and Carol's key crosses to each worker for that reason.
-- **The mask is statistical.** For $`r`$ uniform on $`[-R, R)`$, $`\mathrm{SD}(x + r, x' + r) = |x - x'| / (2R)`$, and the run reports the sum over the slots it masks. At double precision the width is capped by the decode error, which is why a margin within a few hundredths of a stable unit of zero can come out either way.
-- **Post-quantum status.** ML-KEM (with X25519 as a hedge), ML-DSA and CKKS rest on lattice assumptions. The garbled circuit's oblivious transfers rest on discrete logs: a deployment's sealed session would keep them from outsiders, but a counterparty that records them could open them with a future quantum computer.
+- **Semi-honest only.** Nothing proves Bob encrypted his real balances; commitments and zero-knowledge proofs would be needed. Every party runs in one tab, so the separation is notional: Carol's key crosses to each worker for that reason, and the committee's keys are one instance of the threshold module, so its checks run in order on one worker.
+- **The CKKS mask is statistical.** For $`r`$ uniform on $`[-R, R)`$, $`\mathrm{SD}(x + r, x' + r) = |x - x'| / (2R)`$, and the run reports the sum over the slots it masks. At double precision the width is capped by the decode error, which is why a margin within a few hundredths of a stable unit of zero can come out either way. The committee's mask is uniform modulo $`t`$ and hides $`M`$ perfectly; its error is the fixed point's.
+- **Post-quantum status.** ML-KEM (with X25519 as a hedge), ML-DSA, CKKS and BGV rest on lattice assumptions; the committee's 260-bit $`Q`$ at $`N = 16384`$ is inside the 411 bits the HomomorphicEncryption.org standard's post-quantum table allows there for ternary secrets. The garbled circuit's oblivious transfers rest on discrete logs: a deployment's sealed session would keep them from outsiders, but a counterparty that records them could open them with a future quantum computer.
 - **No chain.** There is no contract, no oracle and no real price. Aave V4's target health factor and auction-style bonus are not modelled. The closest published design found is Martinico, Calabrese, Rubin and Ciampi (ACNS 2026), which proves a stronger notion against a corrupted decryptor in the UC model; this page gives no such guarantee.
 
 ## One-way quasi-QSDC on the satellite page

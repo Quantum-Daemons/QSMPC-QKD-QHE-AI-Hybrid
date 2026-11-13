@@ -599,6 +599,19 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   printed, the CKKS errors are $`3.6 \times 10^{-7}`$ and $`5.8 \times 10^{-6}`$, and BGV, in a 200-bit $`Q`$ within the
   HE standard's post-quantum 202, cannot fail to decrypt. Each row also prints its bits over the run's decryptions under
   one key ([`references/threshold-noise-flooding.md`](../references/threshold-noise-flooding.md)).
+- **The DeFi page's committee, and a repeated share it had to close (2026-11-13).** The owner chose to add, as an
+  option beside Carol, a committee that runs the threshold the page says she stands in for: three members hold Shamir
+  shares of a collective BGV key on Lattigo v6.2.0, and any two re-encrypt each masked margin to Carol by a public-key
+  switch, each share flooded as the medical rows' are. Writing it found that a member's share depends only on the
+  ciphertext's second component, which is a linear function of Bob's stored ciphertexts and the hour's weights, so two
+  hours at the same prices would have asked the members to share twice for one input, which Lattigo's `SECURITY.md`
+  forbids whatever the active set (Okada et al., ePrint 2025/409). The pool now adds a fresh encryption of zero to
+  every evaluated ciphertext, and the members refuse a second component they have shared for. The parameters follow
+  from the flooding: $`f = 189`$ against a worst case of $`2^{47.85}`$ needs more than 241 bits of $`Q`$, past the 202
+  the HE standard's post-quantum table allows at $`N = 8192`$, so the committee runs at $`N = 16384`$ with 260 bits,
+  inside its 411, and a 50-bit $`t`$ keeps every value the page handles below $`2^{53}`$. A uniform mask modulo $`t`$
+  hides the margin perfectly, where the CKKS arrangements' bounded real mask hides it statistically; the price is fixed
+  point, a few hundredths of a stable unit.
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training

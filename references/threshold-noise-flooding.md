@@ -1,7 +1,7 @@
 # Noise flooding in threshold decryption: what was read, and what the module does
 
 Read on 2026-11-13 for the medical page's threshold CKKS and BGV rows, the genomics card's threshold sum and the DeFi
-committee to come, all on Lattigo v6.2.0 in `wasm/qsh-fedthresh`. A research agent read the papers (several from
+page's committee, all on Lattigo v6.2.0 in `wasm/qsh-fedthresh`. A research agent read the papers (several from
 archived copies of the ePrint PDFs, which returned 403 directly) and the libraries' source at the versions named;
 "read here" marks what was read again for this file, and the rest is agent-read. Arithmetic marked [calc] is this
 project's, for N = 8192, four parties, error deviation 3.2 and bound 19.2, ternary secrets.
@@ -55,6 +55,14 @@ $`2^{100}`$; the BGV row in a 200-bit $`Q`$, inside the 202 bits of the Homomorp
 post-quantum table at $`N = 8192`$, where the four bounded floods cannot exceed $`Q/(2t)`$, so it cannot fail to
 decrypt. Shares under one key add up: a run of $`r`$ decryptions keeps $`\lambda - \log_2 r`$ bits over the key's
 lifetime, printed on the page.
+
+The DeFi page's committee (`agg/committee.go`) floods the same way, for its own worst case: one fresh encryption under
+three members' key per balance, multiplied by the pool's weights, plus the encryption of zero the pool adds to make
+every ciphertext's second component fresh, $`(\sum_i |W_i| + 1)(2Nnb + b) \le 2^{47.85}`$ for
+$`\sum_i |W_i| \le 2^{27}`$ at $`N = 16384`$, so $`f = 189`$ for 128 bits over a share. At $`N = 8192`$ the floods
+would need a $`Q`$ of more than 241 bits, past the 202 the standard's post-quantum table allows there; at $`N = 16384`$ it
+allows 411 for ternary secrets (HomomorphicEncryption.org standard v1.1, read here, the post-quantum table) and $`Q`$
+is 260 bits. Each member shares once per second component, as `SECURITY.md` requires (above).
 
 ## Not used, and why
 
