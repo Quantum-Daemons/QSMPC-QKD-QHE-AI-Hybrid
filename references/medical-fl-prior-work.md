@@ -6,6 +6,9 @@ foundation models), and how each could be reproduced faithfully in a browser. "A
 agent read and this document did not read again; every other figure was read here at the source named. Nothing below is
 a licence opinion: where a dataset's own pages disagree, the disagreement is the finding.
 
+Heart sounds with ECG (the NEJM AI auscultation study and the public data that copy its design) and ConvNeXt trained
+from scratch are in [heart-sound-and-ecg-prior-work.md](heart-sound-and-ecg-prior-work.md).
+
 ## What the project runs
 
 | where | what | measured |

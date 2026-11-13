@@ -578,7 +578,9 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   project's six seeds (0.8905, 0.0198). Telemanom on ESA-ADB's like-for-like row is 0.0181 below the published 0.968
   with no spread on either side. The run also re-scores every published model and, until now, showed only the
   selected one; the others reached the log alone. They now have a table, and each card's rows, and the whole run,
-  download as CSV and JSON. The Models section is in tabs, an overview first.
+  download as CSV and JSON. The Models section is in tabs, an overview first. The owner's question about AI
+  auscultation and ConvNeXt was read for the medical page at the same time
+  ([`references/heart-sound-and-ecg-prior-work.md`](../references/heart-sound-and-ecg-prior-work.md)).
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training
