@@ -2,7 +2,7 @@
 import type { LendingCfg } from "../config";
 import type { LendingRun } from "./model";
 import type { PoolRun } from "./pool";
-import type { Custody, KeyholderSetup, PrivateCheckOutcome } from "./privateCheck";
+import type { CommitteeSummary, Custody, KeyholderSetup, PrivateCheckOutcome } from "./privateCheck";
 
 export interface PoolSummary { workers: number; ranIn: string; logicalCores: number; wallMs: number; speedUp: number; utilisation: number; busyMs: number[] }
 
@@ -26,18 +26,21 @@ export interface LendingSweepReport { rows: SweepRow[]; seeds: number; pool: Poo
 export interface LendingPrivateReport {
   custody: Custody;
   outcomes: PrivateCheckOutcome[];
-  /** How many times Bob had to send anything: once under Carol's custody, once per check under his own. */
+  /** How many times Bob had to send anything: once under Carol's or the committee's custody, once per check under his own. */
   bobSubmissions: number;
-  /** Carol's custody only. */
+  /** Carol's and the committee's custody. */
   setup: { submissionBytes: number; keygenMs: number; encryptMs: number; linkAgreed: boolean } | null;
-  /** Carol's custody only: every signed bit checked against her public key. */
+  /** Carol's and the committee's custody: every signed bit checked against her public key. */
   bitSignaturesVerified: boolean | null;
+  /** The committee's custody only: its parameters, once. */
+  committee: CommitteeSummary | null;
   allAgree: boolean;
   flagged: number;
   /** In thousands of stable units. */
   maxAbsError: number;
   statisticalDistance: number;
-  statisticalDistanceLog2: number;
+  /** null when the distance is zero: the committee's mask is uniform modulo t and hides the margin perfectly. */
+  statisticalDistanceLog2: number | null;
   maskBits: number;
   ckksBytes: number;
   keyBytes: number;
@@ -80,12 +83,16 @@ export function summariseChecks(pool: PoolRun, signature: string, maskBits: numb
   const outcomes = checks.map((c) => c.outcome).sort((a, b) => a.hour - b.hour);
   const sum = (f: (o: PrivateCheckOutcome) => number) => outcomes.reduce((s, o) => s + f(o), 0);
   const statisticalDistance = sum((o) => o.statisticalDistance);
+  const committee = checks[0]?.committee ?? null;
+  const once = custody === "keyholder" || custody === "committee";
   return {
-    custody, bobSubmissions: custody === "keyholder" ? 1 : outcomes.length,
-    setup: setup ? { submissionBytes: setup.submission.length, keygenMs: setup.keygenMs, encryptMs: setup.encryptMs, linkAgreed: setup.linkAgreed } : null,
-    bitSignaturesVerified: custody === "keyholder" ? outcomes.every((o) => o.bitSignatureVerified === true) : null,
+    custody, bobSubmissions: once ? 1 : outcomes.length,
+    setup: setup ? { submissionBytes: setup.submission.length, keygenMs: setup.keygenMs, encryptMs: setup.encryptMs, linkAgreed: setup.linkAgreed }
+      : committee ? { submissionBytes: committee.submissionBytes, keygenMs: committee.keyGenMs, encryptMs: committee.encryptMs, linkAgreed: committee.linkAgreed } : null,
+    bitSignaturesVerified: once ? outcomes.every((o) => o.bitSignatureVerified === true) : null,
+    committee,
     outcomes, allAgree: outcomes.every((o) => o.agrees), flagged: outcomes.filter((o) => o.flag).length,
-    maxAbsError: Math.max(...outcomes.map((o) => o.absError)), statisticalDistance, statisticalDistanceLog2: Math.log2(statisticalDistance), maskBits,
+    maxAbsError: Math.max(...outcomes.map((o) => o.absError)), statisticalDistance, statisticalDistanceLog2: statisticalDistance > 0 ? Math.log2(statisticalDistance) : null, maskBits,
     ckksBytes: sum((o) => o.ckksBytes), keyBytes: checks[0]?.keyBytes ?? 0, gcBytes: sum((o) => o.gcBytes), gcMessages: sum((o) => o.gcMessages), andGates: sum((o) => o.andGates),
     signature, signatureBytes: checks[0]?.signatureBytes ?? 0, keygenMs: Math.max(...checks.map((c) => c.keygenMs)),
     ckksMs: sum((o) => o.encryptMs + o.evaluateMs + o.decryptMs), gcMs: sum((o) => o.gcMs), pqcMs: sum((o) => o.signMs + o.verifyMs + o.sealMs),

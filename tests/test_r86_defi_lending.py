@@ -7,7 +7,8 @@ assembled, so this holds:
 - a page with no quantum channel offers no control that needs one, and signs "pqc-only";
 - the page states the condition its privacy depends on: with public thresholds the check protects nothing;
 - the close factor's boundary is the one in Aave's contract;
-- it is offered only by the build that can run it.
+- it is offered only by the build that can run it;
+- the committee's arrangement states what it rests on, shares once per ciphertext, and its circuit is pinned in both places that run it.
 """
 
 from __future__ import annotations
@@ -65,16 +66,20 @@ def test_both_arrangements_say_what_they_depend_on() -> None:
     assert "Two parties must not collude" in panels, "Carol's custody has to state its non-collusion assumption"
     assert "no answer counts as a default" in panels, "the bilateral mode has to say Bob can refuse"
     assert "no primary source for a confidential liquidation running in production" in panels
-    assert re.search(r"held === \"borrower\" \? BILATERAL_LIMITS : KEYHOLDER_LIMITS", panels), "the limits have to follow the run's own arrangement"
+    assert re.search(r"held === \"borrower\" \? BILATERAL_LIMITS : held === \"committee\" \? COMMITTEE_LIMITS : KEYHOLDER_LIMITS", panels), \
+        "the limits have to follow the run's own arrangement"
+    assert "Who must not collude" in panels and "The pool and any two members together could decrypt" in panels, "the committee has to state its non-collusion assumption"
+    assert "Passive members, and no robustness" in panels, "the committee has to say its members are assumed to follow the protocol"
 
 
 def test_carol_is_the_default_and_the_control_reaches_the_run() -> None:
     defaults = (REPO / "src" / "qsh" / "config" / "defaults.py").read_text()
     assert 'custody: str = "keyholder"' in defaults
     panel = _read("components/ParameterPanel.tsx")
-    assert 'id="pp-custody"' in panel and 'value="keyholder"' in panel and 'value="borrower"' in panel
+    assert 'id="pp-custody"' in panel and 'value="keyholder"' in panel and 'value="borrower"' in panel and 'value="committee"' in panel
     model = _read("lib/lending/model.ts")
     assert "p.lending_custody" in model, "the control has to reach the simulation's configuration"
+    assert 'p.lending_custody === "committee"' in model, "the committee's value has to reach the run too"
     assert "parties: (c) => bilateral(c)" in _read("lib/useCaseFlows.ts"), "the canvas has to name who holds the key in this run"
 
 
@@ -89,3 +94,21 @@ def test_it_is_offered_only_by_the_build_that_can_run_it() -> None:
     assert "clientOnly: true" in entry
     assert "ALL_USECASES.filter((u) => !u.clientOnly || isClientDemo())" in cases
     assert "defi_lending" not in (REPO / "api" / "run_manager.py").read_text(), "the server has no such pipeline"
+
+
+def test_the_committee_shares_once_per_ciphertext() -> None:
+    """Lattigo's SECURITY.md: a member must not share twice for the same input, whatever the active set (Okada et al., ePrint 2025/409)."""
+    go = (REPO / "wasm" / "qsh-fedthresh" / "agg" / "committee.go").read_text()
+    assert "c.used[digest]" in go and "sha256.Sum256(c1)" in go, "the members have to refuse a c1 they have shared for"
+    assert "a fresh encryption of zero" in go, "the pool has to re-randomise every evaluated ciphertext, or two hours at the same prices give the same c1"
+    assert "addUniformFlood(" in go and "leastFloodBits(CommitteeBits" in go, "each share has to be flooded, sized for the committee's own worst case"
+    tests = (REPO / "wasm" / "qsh-fedthresh" / "agg" / "committee_test.go").read_text()
+    assert "TestCommitteeRefusesASecondShareForTheSameCiphertext" in tests
+
+
+def test_the_sign_circuit_is_pinned_where_it_runs() -> None:
+    rust = (REPO / "wasm" / "qsh-mpc" / "src" / "lib.rs").read_text()
+    harness = (REPO / "web" / "scripts" / "check_lending_private.mjs").read_text()
+    pinned = re.search(r"assert_eq!\(o\.and_ops, (\d+),", rust)
+    assert pinned, "the crate's test has to pin the sign circuit's size"
+    assert f"o.andGates === {pinned.group(1)}" in harness, "the page's check and the crate's test have to pin the same circuit"

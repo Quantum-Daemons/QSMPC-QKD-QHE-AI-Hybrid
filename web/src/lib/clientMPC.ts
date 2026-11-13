@@ -120,6 +120,13 @@ export async function secureMultiPartyPsi(sets: Uint32Array[]): Promise<MultiPar
   return { ...o, ids: Array.from(o.ids) };
 }
 
+/** The sign of a value shared modulo an odd t below 2^53 (the lending committee's): true when (a + b) mod t, read in (-t/2, t/2), is negative. */
+export async function secureSignMod(a: number, b: number, t: number): Promise<{ negative: boolean; compileMs: number; mpcMs: number; bytes: number; messages: number; andOps: number }> {
+  for (const v of [a, b, t]) if (!Number.isSafeInteger(v) || v < 0) throw new Error(`secureSignMod: ${v} is not a non-negative integer below 2^53`);
+  const m = await getModule();
+  return await m.secure_sign_mod(BigInt(a), BigInt(b), BigInt(t)) as { negative: boolean; compileMs: number; mpcMs: number; bytes: number; messages: number; andOps: number };
+}
+
 /** The secure argmax over shares the caller already holds: q_k = a_k + b_k mod 2^32. */
 export async function secureArgmaxShares(a: Uint32Array, b: Uint32Array): Promise<{ arg: number; mpcMs: number; bytes: number; messages: number; andOps: number }> {
   const m = await getModule();

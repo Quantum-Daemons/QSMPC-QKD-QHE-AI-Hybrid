@@ -4,7 +4,7 @@
  */
 
 import type { LendingCfg } from "../config";
-import type { CheckSession, Custody, KeyholderSetup, PrivateCheckOutcome } from "./privateCheck";
+import type { CheckSession, CommitteeSummary, Custody, KeyholderSetup, PrivateCheckOutcome } from "./privateCheck";
 import { simulate, type LendingCheckpoint } from "./model";
 
 export interface SweepOutcome {
@@ -23,7 +23,7 @@ export type LendingTask =
 
 export type LendingTaskResult =
   | { kind: "setup"; setup: KeyholderSetup }
-  | { kind: "check"; outcome: PrivateCheckOutcome; keyBytes: number; signatureBytes: number; keygenMs: number }
+  | { kind: "check"; outcome: PrivateCheckOutcome; keyBytes: number; signatureBytes: number; keygenMs: number; committee?: CommitteeSummary }
   | { kind: "sweep"; outcome: SweepOutcome };
 
 /** The check's keys and the circuit's parameters. Absent for a pool that only sweeps. */
@@ -36,6 +36,9 @@ export interface TaskInit {
   kem?: string;
   /** Carol's setup, for her checks. */
   keyholder?: KeyholderSetup;
+  /** The committee's checks: the position Bob encrypts once, and where the threshold module is served. */
+  first?: LendingCheckpoint;
+  fedThreshBase?: string;
 }
 
 /** One volatility level: every seed, with the volatility scaled and no scripted shock, so that the only thing changing along the curve is volatility. */
@@ -67,8 +70,9 @@ export async function executeTask(task: LendingTask, init: TaskInit): Promise<Le
     const { setupKeyholder } = await import("./privateCheck");
     return { kind: "setup", setup: await setupKeyholder({ sessionKey: init.sessionKey, sig: init.sig, kem: init.kem ?? "ml-kem-768" }, task.input) };
   }
-  const opts = { sessionKey: init.sessionKey, sig: init.sig, cfg: init.cfg, custody: init.custody ?? "borrower" as const, keyholder: init.keyholder };
+  const opts = { sessionKey: init.sessionKey, sig: init.sig, cfg: init.cfg, custody: init.custody ?? "borrower" as const, keyholder: init.keyholder,
+                 kem: init.kem, first: init.first, fedThreshBase: init.fedThreshBase };
   session ??= import("./privateCheck").then((m) => m.openCheckSession(opts));
   const s = await session;
-  return { kind: "check", outcome: await s.check(task.input), keyBytes: s.keyBytes, signatureBytes: s.signatureBytes, keygenMs: s.keygenMs };
+  return { kind: "check", outcome: await s.check(task.input), keyBytes: s.keyBytes, signatureBytes: s.signatureBytes, keygenMs: s.keygenMs, committee: s.committee };
 }

@@ -4596,3 +4596,37 @@ the DP row's 50; the genomics sum for five parties at $`f = 163`$ against $`B = 
 $`Q = 60+60+60+20`$ bits, inside the HE standard's post-quantum 202 at $`N = 8192`$, where the four bounded floods
 stay below $`Q/(2t)`$ and the decryption cannot fail; a BGV share is now 393 kB, the ciphertext 393 kB.
 
+### PR #42 on the deployed site (2026-11-14)
+
+Deployed from `main` at 4c8c6d0 by `scripts/deploy_demo.sh --return-to-main`: the box is on `main` and serves
+`index-veWbIFx8.js`, whose SHA-256 (`4c59d231...253f`) is the same in the deploy log's bundle name, on the public page and
+in a local `VITE_CLIENT_ONLY=1` build of `main`. Walked in Chrome: the medical page's encrypted-aggregation comparison
+prints each threshold row's flooding, uniform on $`\pm(2^{51} - 1)`$, $`\pm(2^{75} - 1)`$ and $`\pm(2^{163} - 1)`$ for
+a noise bound of $`2^{22.26}`$, with its bits per decryption and over the run's decryptions under one key: 16 and 12.1,
+40 and 36.1, 128 and 124.1, and 128 and 122.4 for the DP row's 50; BGV equal to the masks to the bit. The CKKS errors on
+this run were $`3.8 \times 10^{-7}`$ and $`8.7 \times 10^{-6}`$; they move with each run's flooding draw. The genomics
+card's threshold sum for four cohorts: 825 against the masks' 825, with $`f = 163`$ for the bound $`2^{22.26}`$. No
+console errors.
+
+### PR #43: the DeFi committee on threshold BGV (2026-11-13)
+
+`wasm/qsh-fedthresh/agg/committee.go` opens a committee of $`n`$ members with threshold $`t`$ on Lattigo v6.2.0 at
+$`N = 16384`$, a 260-bit $`Q`$ and a 50-bit prime plaintext modulus; the borrower encrypts each balance in slot 0 of
+its own ciphertext; the pool multiplies by integer weights, subtracts the settled amounts and adds a mask uniform
+modulo $`t`$ and a fresh encryption of zero in slot 0; $`t`$ members re-encrypt to Carol's key by the public-key
+switch, each share flooded uniformly with $`f`$ from `leastFloodBits`, and refuse a second component they have shared
+for. The Go tests, on this machine: the two shares give the margin to the bit for positive, negative and zero margins
+under four active sets; a second share for the same ciphertext is refused under another active set, and the next
+evaluation at the same weights has a different second component and is accepted; the evaluated noise is
+$`2^{35.25}`$ against the bound $`2^{44.56}`$ for the weights used, and after the switch the noise under Carol's key
+is $`2^{190.00}`$, the two floods' $`f + 1`$, below the decryption limit $`2^{209.13}`$; $`f`$ = 189, 190 and 191 for
+2 of 3, 3 of 5 and 4 of 7, each the least that meets 128 bits over a share; the ciphertexts survive the wire, and a cut,
+an extra byte, the wrong count or a lower level is refused. The crate's tests hold the sign circuit modulo $`t`$ to the
+plaintext sign at the committee's $`t`$ and at 97, with masks across $`[0, t)`$, and pin it at 648 AND gates.
+`npm run check:lending-private`, seed 3: 9 checks, every bit the clear answer, the worst margin error 0.079 stable
+units, every pair of members taking a turn, every other slot zero, every bit's signature verifying, and the settled
+checks still exact; margins of plus and minus one stable unit get their bits. In the browser (a local preview of this
+branch, the default run of five checks): all five match, the worst difference 0.045 stable units, 5.24 MB of
+threshold-BGV traffic and 648 AND gates per check, 2,007 ms on one worker, of which the members' flooding was 505 ms of
+the 741 ms of BGV; Carol's custody and the bilateral mode unchanged (367 AND gates, the same messages).
+

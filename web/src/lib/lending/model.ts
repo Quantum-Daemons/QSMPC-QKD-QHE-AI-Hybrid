@@ -54,7 +54,7 @@ export function withRunParams(c: LendingCfg, p: Record<string, unknown>): Lendin
     shock_fraction: num(p.lending_shock_pct, c.shock_fraction * 100) / 100,
     annual_vol: c.annual_vol.map((v) => v * volatility),
     check_points: num(p.lending_checks, c.check_points),
-    custody: p.lending_custody === "borrower" || p.lending_custody === "keyholder" ? p.lending_custody : c.custody,
+    custody: p.lending_custody === "borrower" || p.lending_custody === "keyholder" || p.lending_custody === "committee" ? p.lending_custody : c.custody,
   };
 }
 

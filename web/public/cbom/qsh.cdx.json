@@ -1,7 +1,7 @@
 {
  "bomFormat": "CycloneDX",
  "specVersion": "1.7",
- "serialNumber": "urn:uuid:1ebb2cf6-1bc9-502b-8189-921222eeb185",
+ "serialNumber": "urn:uuid:349316e1-3d05-5cd7-8321-f327cd7c11c9",
  "version": 1,
  "metadata": {
   "component": {
@@ -819,9 +819,46 @@
   },
   {
    "type": "cryptographic-asset",
+   "bom-ref": "crypto/bgv-threshold-committee",
+   "name": "Threshold BGV, 2 of 3",
+   "description": "The DeFi page's committee: three members' collective key, each holding a Shamir share of its secret, the borrower's balances encrypted under it, and each masked margin re-encrypted to the circuit's party by two members' flooded public-key-switch shares, once per ciphertext, on Lattigo v6.2.0",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "other",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "cryptoFunctions": [
+      "encrypt",
+      "decrypt"
+     ],
+     "parameterSetIdentifier": "N = 16384, Q 60+60+60+60+20 bits (inside the HE standard's post-quantum 411 at N = 16384), a 50-bit plaintext modulus, 2 of 3 members, each share flooded uniformly with f = 189 (128 bits a share)",
+     "classicalSecurityLevel": 128
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "Brakerski, Gentry and Vaikuntanathan, ITCS 2012; Mouchet et al., PETS 2021 (public-key switch); Mouchet, Bertrand and Hubaux, ePrint 2022/780 (t-out-of-N)"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "wasm/qsh-fedthresh/agg/committee.go"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
    "bom-ref": "crypto/wrk17b",
    "name": "WRK17b authenticated garbling",
-   "description": "The argmax, the CNN's ReLUs and the PSI among banks, on Polytune. Its oblivious transfers rest on a discrete-log assumption",
+   "description": "The argmax, the CNN's ReLUs, the PSI among banks and the sign of the lending committee's margin modulo t, on Polytune. Its oblivious transfers rest on a discrete-log assumption",
    "cryptoProperties": {
     "assetType": "algorithm",
     "algorithmProperties": {
@@ -948,6 +985,7 @@
     "crypto/ckks",
     "crypto/ckks-threshold",
     "crypto/bgv-threshold",
+    "crypto/bgv-threshold-committee",
     "crypto/wrk17b",
     "crypto/shamir",
     "crypto/csprng"

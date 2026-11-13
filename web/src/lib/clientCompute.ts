@@ -4245,10 +4245,24 @@ export function runClientPipeline(
           init = { ...init, keyholder: setup };
           emit("log", stage, `Carol generated the CKKS keys; Bob encrypted his balances once under her public key and signed them (${(setup.submission.length / 1e6).toFixed(2)} MB, sealed to the pool), and takes no further part.`);
         }
-        emit("log", stage, `checking Bob's position at ${inputs.length} hours: the margin under CKKS, its sign in a garbled circuit, off the page's thread. `
-          + (custody === "keyholder" ? "Carol holds the key, and prices and thresholds are public." : "Bob holds the key, and the pool's thresholds are its own."));
-        const pool = await runLendingTasks(inputs.map((input) => ({ kind: "check" as const, input })), init, market.cfg.max_workers);
+        if (custody === "committee") {
+          // The committee's keys and Bob's ciphertexts live in one instance of the threshold module, so its checks run in order on one worker,
+          // which makes the keys, takes Bob's one submission and then checks.
+          init = { ...init, first: inputs[0], fedThreshBase: new URL(`${import.meta.env.BASE_URL}wasm/qsh_fedthresh/`, location.href).href };
+        }
+        emit("log", stage, `checking Bob's position at ${inputs.length} hours: `
+          + (custody === "committee"
+            ? "the margin under threshold BGV, re-encrypted to Carol by two of three committee members, its sign in a garbled circuit, in order on one worker. No one holds the key, and prices and thresholds are public."
+            : "the margin under CKKS, its sign in a garbled circuit, off the page's thread. "
+              + (custody === "keyholder" ? "Carol holds the key, and prices and thresholds are public." : "Bob holds the key, and the pool's thresholds are its own.")));
+        const pool = await runLendingTasks(inputs.map((input) => ({ kind: "check" as const, input })), init, custody === "committee" ? 1 : market.cfg.max_workers);
         const report = summariseChecks(pool, sigImpl(sig).name, market.cfg.margin_mask_bits, custody, setup);
+        if (report.committee) {
+          const c = report.committee;
+          emit("log", stage, `the committee: ${c.members} members, any ${c.threshold} of whom re-encrypt; a collective BGV key at N = ${2 ** c.logN} and a ${c.logQ.toFixed(0)}-bit Q, `
+            + `made in ${c.keyGenMs.toFixed(0)} ms. Bob encrypted his balances once under it and signed them (${(c.submissionBytes / 1e6).toFixed(2)} MB, sealed to the pool). `
+            + `Each member floods its share with ${c.floodBits}-bit uniform noise, for ${c.statSecBits} bits over the share against a worst-case noise of 2^${c.noiseBoundLog2.toFixed(1)}.`);
+        }
         artifacts.lending_private = report;
         metric(stage, "lending_custody", custody);
         metric(stage, "lending_bob_submissions", report.bobSubmissions);
@@ -4258,8 +4272,13 @@ export function runClientPipeline(
         metric(stage, "lending_checks_agree", report.allAgree ? 1 : 0);
         metric(stage, "lending_flagged", report.flagged);
         metric(stage, "lending_margin_max_error", report.maxAbsError * 1000);
-        metric(stage, "lending_statistical_distance_log2", report.statisticalDistanceLog2);
-        metric(stage, "lending_ckks_mb", +(report.ckksBytes / 1e6).toFixed(2));
+        if (report.statisticalDistanceLog2 != null) metric(stage, "lending_statistical_distance_log2", report.statisticalDistanceLog2);
+        metric(stage, report.committee ? "lending_bgv_mb" : "lending_ckks_mb", +(report.ckksBytes / 1e6).toFixed(2));
+        if (report.committee) {
+          metric(stage, "lending_committee_members", report.committee.members);
+          metric(stage, "lending_committee_threshold", report.committee.threshold);
+          metric(stage, "lending_committee_flood_bits", report.committee.floodBits);
+        }
         metric(stage, "lending_key_mb", +(report.keyBytes / 1e6).toFixed(2));
         metric(stage, "lending_gc_mb", +(report.gcBytes / 1e6).toFixed(2));
         metric(stage, "lending_and_gates", report.andGates);

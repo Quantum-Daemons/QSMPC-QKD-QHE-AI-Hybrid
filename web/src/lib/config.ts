@@ -84,7 +84,7 @@ export interface LendingCfg {
   base_rate: number; optimal_utilisation: number; slope1: number; slope2: number; reserve_factor: number;
   annual_vol: number[]; price_correlation: number; jumps_per_year: number; jump_mean: number; jump_sd: number;
   shock_hour: number; shock_fraction: number; adjust_probability: number; adjust_fraction: number;
-  check_points: number; margin_scale_bits: number; margin_mask_bits: number; custody: "keyholder" | "borrower";
+  check_points: number; margin_scale_bits: number; margin_mask_bits: number; custody: "keyholder" | "borrower" | "committee";
   max_workers: number; sweep_multipliers: number[]; sweep_seeds: number;
 }
 export const webCfg = () => CONFIG.web;
