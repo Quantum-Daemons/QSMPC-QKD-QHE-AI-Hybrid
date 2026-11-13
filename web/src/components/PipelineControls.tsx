@@ -2,6 +2,7 @@
 // Shared by the generic Orchestration page and every per-use-case page (driven by usePipelineRun).
 import { useEffect, useState } from "react";
 import { runsAnyQkd, type usePipelineRun } from "../lib/usePipelineRun";
+import { GENOMICS_DP } from "../lib/clientDp";
 import { browserModels, hasWebGPU } from "../lib/onnxInference";
 import { isClientDemo } from "../lib/demoMode";
 import ParameterPanel from "./ParameterPanel";
@@ -185,6 +186,19 @@ export default function PipelineControls({ run }: { run: Run }) {
               <option value="webgpu" disabled={gpuUsable !== true}>
                 {gpuUsable === true ? "WebGPU" : gpuUsable === null ? "WebGPU (checking for an adapter)" : "WebGPU (no usable adapter)"}
               </option>
+            </select>
+          </>
+        )}
+        {usecase === "genomics" && (
+          <>
+            <label className="muted" htmlFor="sel-dp-epsilon">DP epsilon</label>
+            <select id="sel-dp-epsilon" name="genomics_dp_epsilon" aria-label="Differential privacy epsilon for the pooled count"
+              value={String(run.params.genomics_dp_epsilon)} disabled={inFlight}
+              title={"The privacy of the pooled allele count each run releases: the cohorts add exact discrete Gaussian "
+                + "noise inside the secure sum, at delta 1e-5. Smaller is more private and noisier; a study NIST SP 800-226 "
+                + "cites calls epsilon below 1 reasonable and 0.1 strong."}
+              onChange={(e) => run.setParams({ ...run.params, genomics_dp_epsilon: Number(e.target.value) })}>
+              {GENOMICS_DP.epsilons.map((x) => <option key={x} value={String(x)}>{x}</option>)}
             </select>
           </>
         )}

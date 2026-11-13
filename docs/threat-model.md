@@ -464,7 +464,10 @@ Where two-way QSDC cannot close, the page sends its telemetry by STIKE (Pan et a
   a complete protocol would not bound what the trained model itself leaks: gradient inversion
   against a shared model is an established
   attack. A formal claim would require a stated DP-SGD budget, which this path does not provide, so
-  none is made.
+  none is made. Since 2026-11-13 the medical page runs, beside FedAvg, a record-level arm that has one: full-batch
+  gradient descent with the distributed discrete Gaussian added in shares inside the masks (Kairouz, Liu and Steinke,
+  ICML 2021), at $`\epsilon`$ from 8 to 1 and $`\delta = 10^{-6}`$ (section "Differential privacy" below). The FedAvg
+  model and the full deployment's federated path still carry none.
 - **Not everything the demo displays was computed.** **One** thing cannot be done in a browser at all
   and is labelled `SIMULATED` rather than quietly approximated: QKD has no browser API and cannot have
   one, so every QKD figure comes from an analytic channel model. *This bullet used to list three.* The
@@ -659,7 +662,8 @@ ancestries are at greater risk, because GWAS panels are less diverse.
 Encryption of the computation is **orthogonal** to this threat. The secure summation is not
 weakened by any of the above; it simply addresses a different adversary. The exposure is the
 released aggregate, and the mitigation for that is **output perturbation** - differential privacy on
-the published counts - which this project does **not** implement.
+the published counts. Since 2026-11-13 the browser's genomics page applies it to the one count it releases
+(section "Differential privacy" below); the full deployment's Python secure summation still releases the exact count.
 
 Nor does anyone else in deployed crypto-genomics: SF-GWAS (Nature Genetics, Feb 2025), PP-GWAS,
 SECRET-GWAS, privateQTL and the CKKS polygenic-score system HEPRS (Cell Reports Methods, Jan 2026)
@@ -680,4 +684,49 @@ publish. It does not, and the literature is unambiguous.
 Closing this properly means adding calibrated noise to the released aggregate with a stated $`\epsilon`$,
 and reporting the utility cost - a UK Biobank study (DOI 10.1093/jamia/ocaf090, Jun 2025) found odds
 ratios destabilising below $`\epsilon \approx \ln 2`$, with some reversing sign. That is a design decision
-with a real accuracy price, and it is recorded here as open rather than silently absent.
+with a real accuracy price. The browser now pays it for its one count, and with 30 people the price is plain: at
+$`\epsilon = 1`$ the noise has a standard deviation of 9.8 alleles on a count of at most 60. The full deployment's
+release, and any release of many variants, remain open.
+
+## Differential privacy
+
+Since 2026-11-13 two releases on the browser demo carry a stated guarantee, and every other page says on the page why
+it carries none.
+
+| page | released | unit | mechanism | parameters |
+|---|---|---|---|---|
+| medical | the model of the record-level arm, beside FedAvg's | one patient, added or removed | full-batch gradient descent; each patient's gradient clipped to L2 norm 1, each hospital's sum rounded to $`2^{-16}`$ with its share of discrete Gaussian noise added, inside fresh pairwise masks | 50 steps; $`\epsilon`$ = 8, 4, 2, 1; $`\delta = 10^{-6}`$ |
+| genomics | the pooled allele count at one variant | one person, who moves it by at most 2 | each cohort's count in the fixed point $`1/16`$ plus its share of the noise, inside the secure sum | $`\epsilon`$ chosen on the page from 0.5 to 8; $`\delta = 10^{-5}`$ |
+
+**The accountant.** Kairouz, Liu and Steinke (ICML 2021), Theorem 1: with $`n`$ honest parties each adding
+$`\mathcal{N}_{\mathbb{Z}}(0, V)`$ to an integer vector of dimension $`d`$ and $`L_2`$ sensitivity $`\Delta_2`$, the
+sum is $`\tfrac{1}{2}e^2`$-concentrated DP with
+$`e = \min\left(\sqrt{\Delta_2^2/(nV) + 2\tau d},\ \Delta_2/\sqrt{nV} + \tau\sqrt{d}\right)`$ and
+$`\tau = 10\sum_{k=1}^{n-1} e^{-2\pi^2 V k/(k+1)}`$; $`T`$ releases compose to $`\rho = T e^2/2`$, and
+$`\rho`$-concentrated DP is $`(\epsilon, \delta)`$-DP with $`\epsilon \le \rho + 2\sqrt{\rho \log(1/\delta)}`$
+(Canonne, Kamath and Steinke, NeurIPS 2020). On the medical page $`\Delta_2 = 2^{16} + \sqrt{14}`$: one patient moves a
+hospital's clipped sum by at most 1 before rounding, and rounding adds at most 1 a coordinate. The per-party variance is
+the least integer that meets the target, found the same way in `web/src/lib/clientDp.ts` and `qsh.ai.dp`, and
+`tests/test_r86_dp_twin.py` holds the two to the same variances, epsilons and draws.
+
+**What it assumes.** That every party adds its noise: each page also prints the $`\epsilon`$ of the same noise counted
+from one party fewer. That the secure aggregation reveals only the sum, which the masks give against an aggregator that
+follows the protocol. That the noise is unpredictable: it comes from the platform CSPRNG through Canonne, Kamath and
+Steinke's exact sampler, in integers, because floating-point samplers leak through their low-order bits (Mironov, CCS
+2012) and NIST SP 800-226 lists floating-point arithmetic as a privacy hazard. A seeded source exists for the twin
+tests and no page calls it. Every party runs in one tab.
+
+**The choice of $`\delta`$.** NIST SP 800-226 (2025) recommends $`\delta \le 1/n^2`$ when converting a guarantee, says
+that rule does not suit small $`n`$, and calls values above $`10^{-5}`$ suspicious. The medical page has 486 patients,
+so $`1/n^2 = 4.2 \times 10^{-6}`$ and $`\delta = 10^{-6}`$; the genomics page has 30, so $`1/n^2`$ would be about
+$`10^{-3}`$ and $`\delta = 10^{-5}`$ instead.
+
+**What it costs.** Medical, seed 1, 20 draws of the noise in Python: 0.721 with no noise (clipping and full-batch steps
+alone), $`0.724 \pm 0.004`$ at $`\epsilon = 8`$, $`0.727 \pm 0.007`$ at 4, $`0.726 \pm 0.015`$ at 2 and
+$`0.706 \pm 0.032`$ at 1, against 0.7005 for FedAvg without DP. Genomics: the released count's noise has a standard
+deviation of 19.4, 9.8, 5.0, 2.6 and 1.4 alleles at $`\epsilon`$ = 0.5, 1, 2, 4 and 8, on a count of at most 60.
+
+**What it does not cover.** The FedAvg model, the private-inference models (trained centrally on public data), the
+full deployment's federated path and secure summation, and the person's own polygenic score, which goes back to that
+person. The finance, telecom, satellite and DeFi pages carry none, each for the reason it states: the PSI's answer is
+its purpose, the IDS data are synthetic, spacecraft telemetry describes no person, and the DeFi bit is the decision.

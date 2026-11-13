@@ -96,8 +96,8 @@ flowchart TB
 | Use case | Industry | Its own stages |
 |---|---|---|
 | `finance_aml` | finance, AML | PSI over cross-bank blacklists, federated training, FHE fraud inference |
-| `medical_fl` | healthcare | federated training across four real hospitals (UCI Heart Disease, FLamby's benchmark: each alone, federated, pooled) with pairwise masks whose seeds each pair of hospitals agrees by X25519 (no dropout recovery, no public-key authentication), and on request the same federation aggregated under CKKS with one shared key (NVIDIA FLARE's design) and under threshold CKKS and BGV (Lattigo, compiled to WebAssembly), side by side; private inference: the encrypted CNN reads a held-out BreastMNIST image in the browser |
-| `genomics` | genomics | secure summation of pooled allele counts, FHE |
+| `medical_fl` | healthcare | federated training across four real hospitals (UCI Heart Disease, FLamby's benchmark: each alone, federated, pooled) with pairwise masks whose seeds each pair of hospitals agrees by X25519 (no dropout recovery, no public-key authentication), and on request the same federation aggregated under CKKS with one shared key (NVIDIA FLARE's design) and under threshold CKKS and BGV (Lattigo, compiled to WebAssembly), side by side, and a record-level differential-privacy arm (distributed discrete Gaussian inside the masks, epsilon 8 to 1); private inference: the encrypted CNN reads a held-out BreastMNIST image in the browser |
+| `genomics` | genomics | secure summation of pooled allele counts, released with differential privacy at an epsilon chosen on the page (the cohorts' exact discrete Gaussian noise inside the sum), FHE |
 | `telecom_ids` | telecom, defence | simulated QKD with an optional eavesdropper, a QML intrusion detector |
 | `satellite_comms` | satellite | simulated free-space QKD over a model of the Micius downlink, a two-way QSDC feasibility check with an inline eavesdrop check, and one-way quasi-QSDC under a pre-shared key where that check cannot close |
 

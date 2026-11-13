@@ -17,6 +17,8 @@ export interface UseCaseMeta {
   agenticTool: string;     // the MCP tool this industry's request is named after; the browser calls nothing
   agenticPrompt: string;   // the default in-browser-agent prompt for this industry
   clientOnly?: boolean;    // runs only in the browser build: the full deployment's pipelines have no such stages
+  // Round 86 (the owner's choice of 2026-11-13): whether this page applies differential privacy, and why or why not.
+  privacy: string;
 }
 
 const ALL_USECASES: UseCaseMeta[] = [
@@ -30,6 +32,7 @@ const ALL_USECASES: UseCaseMeta[] = [
     // the OPRF PSI hides different things from each bank: Bank A learns the shared accounts and the
     // size of Bank B's list, Bank B only the size of Bank A's.
     agenticPrompt: "In one sentence, when two banks' agents match flagged accounts with an OPRF-based PSI over a quantum-safe MCP channel, what is hidden, and from whom?",
+    privacy: "not applied. Which flagged accounts the banks share is what the PSI exists to answer, and noise would add false matches and misses to that answer. A published count of the shared accounts could carry it; this page publishes none.",
   },
   {
     id: "medical_fl", title: "Medical — federated learning + private inference", nav: "Medical — FL", industry: "healthcare",
@@ -45,6 +48,7 @@ const ALL_USECASES: UseCaseMeta[] = [
     // requirement, so the question asked the in-browser model to explain an obligation that does not
     // exist - and the model answers what it is asked.
     agenticPrompt: "In one sentence, what does a quantum-safe channel add when a clinician's agent queries a federated diagnostic model over MCP?",
+    privacy: "applied to the federation, per patient: beside FedAvg, a record-level arm in which each hospital adds its share of exact discrete Gaussian noise inside the masks, at epsilon 8 down to 1 and delta 1e-6, in the four-hospital card. Not to the private-inference models, which are trained centrally on public data.",
   },
   {
     id: "genomics", title: "Genomics — confidential analysis", nav: "Genomics", industry: "genomics",
@@ -57,6 +61,7 @@ const ALL_USECASES: UseCaseMeta[] = [
     // Neutral (Round 84): the old question asked why the quantum secure sum "is safer", a property
     // this page does not claim, and the model answers what it is asked.
     agenticPrompt: "In one sentence, what does a secure sum of per-cohort allele counts hide, and from whom?",
+    privacy: "applied to the pooled allele count each run releases, per person, at the epsilon chosen in the controls and delta 1e-5: the cohorts add exact discrete Gaussian noise inside the secure sum. Not to the person's own score, which goes back to that person.",
   },
   {
     id: "telecom_ids", title: "Telecom / Defense — QKD + IDS", nav: "Telecom / Defense", industry: "telecom",
@@ -64,6 +69,7 @@ const ALL_USECASES: UseCaseMeta[] = [
     inference: false,
     agenticTool: "inspect_qkd_telemetry",
     agenticPrompt: "In one sentence, how does a rising QBER in the QKD telemetry let an IDS agent detect an eavesdropper on the link?",
+    privacy: "not applied: the detector is trained and scored on synthetic telemetry this tab generates, which describes no person.",
   },
   {
     id: "satellite_comms", title: "Satellite — free-space QKD + QSDC", nav: "Satellite", industry: "satellite",
@@ -74,6 +80,7 @@ const ALL_USECASES: UseCaseMeta[] = [
     // page's own finding is that QSDC cannot close over this LEO downlink at any range it offers, so
     // the old question asked the model to argue against the page.
     agenticPrompt: "In one sentence, what limits Quantum Secure Direct Communication over a LEO free-space downlink compared with QKD plus classical encryption?",
+    privacy: "not applied: spacecraft telemetry (ESA-ADB, OPS-SAT) describes no person, and both datasets are public.",
   },
   {
     id: "defi_lending", title: "DeFi — private liquidation check", nav: "DeFi lending", industry: "defi",
@@ -81,6 +88,7 @@ const ALL_USECASES: UseCaseMeta[] = [
     inference: false,
     agenticTool: "check_position_health",
     agenticPrompt: "In one sentence, what does a lending pool learn when a borrower's margin is computed under CKKS and its sign in a garbled circuit?",
+    privacy: "not applied: the pool learns one bit, whether Bob can be liquidated, and that bit is the decision. Noise would make it wrong on purpose (randomized response at epsilon ln 3 answers wrongly one time in four), so what repeated checks reveal is limited by how often they run, not by noise.",
     clientOnly: true,
   },
 ];

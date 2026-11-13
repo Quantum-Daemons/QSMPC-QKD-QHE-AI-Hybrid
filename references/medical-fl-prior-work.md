@@ -15,7 +15,8 @@ a licence opinion: where a dataset's own pages disagree, the disagreement is the
 | published models | ResNet-18, ResNet-50 and the CKKS student on BreastMNIST | trained centrally |
 
 Built since: CKKS-encrypted aggregation and threshold CKKS and BGV beside the masks, run on request (2026-11-13).
-Planned, in the owner's order of 2026-11-13: differential privacy for the federation and the genomics counts; chest
+Built since: record-level differential privacy beside the federation (2026-11-13; `references/differential-privacy.md`).
+Planned, in the owner's order of 2026-11-13: chest
 X-ray federation on NIH ChestX-ray14 with a view-position bias analysis and CAM; EfficientNet-B0, DeiT-Tiny and VGG-11
 trained federated offline; a 2D U-Net on breast ultrasound; FLARE, FeTS-style and federated-LoRA experiments offline.
 

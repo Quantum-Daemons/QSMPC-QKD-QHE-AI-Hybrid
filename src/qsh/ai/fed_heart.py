@@ -187,3 +187,69 @@ def run(sample: dict | None = None, seed: int = 0) -> FedHeartResult:
         glob = dequantise((acc % (1 << 32)).astype(np.uint32)).tolist()
     res.federated = [accuracy(glob, X, y) for X, y in tests]
     return res
+
+
+DP_ROUNDS, DP_LR, DP_CLIP, DP_FIXED_POINT_BITS, DP_DELTA = 50, 2.0, 1.0, 16, 1e-6
+DP_EPSILONS = (math.inf, 8.0, 4.0, 2.0, 1.0)
+
+
+def clipped_gradient_sum(theta: list[float], X: list[list[float]], y: list[int], clip: float) -> list[float]:
+    """`clippedGradientSum` in clientFedHeart.ts: per-patient logistic-loss gradients, each clipped to `clip`, summed."""
+    d = len(theta) - 1
+    total = [0.0] * len(theta)
+    for xi, yi in zip(X, y, strict=True):
+        z = theta[d]
+        for k in range(d):
+            z += theta[k] * xi[k]
+        r = _sigmoid(z) - yi
+        g = [r * xi[k] for k in range(d)] + [r]
+        norm2 = 0.0
+        for k in range(d):
+            norm2 += g[k] * g[k]
+        norm2 += r * r
+        scale = 1.0 if norm2 == 0 else min(1.0, clip / math.sqrt(norm2))
+        for k in range(d + 1):
+            total[k] += g[k] * scale
+    return total
+
+
+@dataclass
+class FedHeartDpRow:
+    epsilon: float
+    epsilon_achieved: float
+    epsilon_one_dishonest: float
+    variance_per_hospital: int
+    federated: list[float]
+
+
+def run_dp(sample: dict | None = None, seed: int = 0, rb=None) -> list[FedHeartDpRow]:
+    """`fedHeartDp`: record-level DP full-batch gradient descent with the noise in shares inside the secure sum. The masks
+    cancel exactly, so the twin sums the integers directly. `rb` is the noise source: `dp.seeded_rand_below(label)` in
+    tests (NOT private), `dp.crypto_rand_below` otherwise."""
+    from . import dp
+
+    s = sample or json.loads(SAMPLE.read_text())
+    cs = s["centres"]
+    K = len(cs)
+    dim = len(s["feature_names"]) + 1
+    unit = 2 ** DP_FIXED_POINT_BITS
+    sensitivity = DP_CLIP * unit + math.sqrt(dim)
+    total = sum(len(c["train"]["y"]) for c in cs)
+    rb = rb or dp.crypto_rand_below
+    rows = []
+    for eps in DP_EPSILONS:
+        V = dp.variance_for(eps, DP_ROUNDS, sensitivity, K, dim, DP_DELTA)
+        theta = init_theta(seed, dim - 1)
+        for _ in range(DP_ROUNDS):
+            sums = [0] * dim
+            for c in cs:
+                g = clipped_gradient_sum(theta, c["train"]["X"], c["train"]["y"], DP_CLIP)
+                for j, x in enumerate(g):
+                    sums[j] += math.floor(x * unit + 0.5) + dp.discrete_gaussian(V, rb)   # Math.round's half-up
+            theta = [t - DP_LR * (sums[j] / unit) / total for j, t in enumerate(theta)]
+        rows.append(FedHeartDpRow(
+            epsilon=eps, epsilon_achieved=dp.epsilon_of(V, DP_ROUNDS, sensitivity, K, dim, DP_DELTA),
+            epsilon_one_dishonest=dp.epsilon_of(V, DP_ROUNDS, sensitivity, K - 1, dim, DP_DELTA),
+            variance_per_hospital=V,
+            federated=[accuracy(theta, c["test"]["X"], c["test"]["y"]) for c in cs]))
+    return rows

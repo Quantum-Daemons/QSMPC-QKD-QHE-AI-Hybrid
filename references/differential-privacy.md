@@ -1,0 +1,67 @@
+# Differential privacy on the demo: what was read, and what each source supports
+
+Read at the sources on 2026-11-13 for the owner's question of whether differential privacy is recommended for each use
+case and, where it is, how to implement it faithfully in a browser. "Agent-read" marks a figure a research agent read
+and this document did not read again; every other statement was read here at the source named.
+
+## Guidance
+
+- **NIST SP 800-226, "Guidelines for Evaluating Differential Privacy Guarantees"**, final, 6 March 2025; the page lists no
+  later revision (https://csrc.nist.gov/pubs/sp/800/226/final). Read in the PDF: a study it cites finds
+  $`\epsilon = 0.1`$ strong and values below 1 reasonable, deployments have used $`1 < \epsilon \le 20`$, and larger
+  values call for an assessment of the release's risk; for $`\delta`$ the common recommendation is $`\delta \le 1/n^2`$,
+  its key takeaway repeats that rule for conversions, it says neither that rule nor $`1/(n \log n)`$ suits small
+  $`n`$, and it calls values above $`10^{-5}`$ suspicious unless carefully justified; floating-point arithmetic is
+  listed as a privacy hazard of implementations.
+
+## Mechanisms and accounting
+
+- **Kairouz, Liu and Steinke, "The Distributed Discrete Gaussian Mechanism for Federated Learning with Secure
+  Aggregation"**, ICML 2021 (arXiv:2102.06387). Read in the PDF: Theorem 1 and Proposition 14 bound the sum of $`n`$
+  parties' discrete Gaussians as $`\tfrac{1}{2}e^2`$-concentrated DP with the two-term minimum and the $`\tau`$
+  correction that `web/src/lib/clientDp.ts` implements; the guarantee is for addition or removal of one individual,
+  with $`n`$ the number of trustworthy clients, and assumes the secure aggregation reveals only the sum; concentrated
+  DP converts to $`(\epsilon, \delta)`$-DP as in Canonne, Kamath and Steinke, with the bound
+  $`\epsilon \le \rho + 2\sqrt{\rho \log(1/\delta)}`$ used here.
+- **Canonne, Kamath and Steinke, "The Discrete Gaussian for Differential Privacy"**, NeurIPS 2020 (arXiv:2004.00010):
+  Algorithms 1 to 3, exact sampling of Bernoulli$`(e^{-\gamma})`$, the discrete Laplace and the discrete Gaussian from
+  uniform integers in rational arithmetic, which the page implements in BigInt and Python in integers.
+- **Mironov, "On Significance of the Least Significant Bits for Differential Privacy"**, CCS 2012: textbook
+  floating-point Laplace noise leaks the value it hides through the low-order bits; the reason the page samples in
+  integers.
+- **Libraries, versions read on PyPI on 2026-11-13**: Opacus 1.6.0 (5 May 2026, Apache-2.0), dp-accounting 0.7.0
+  (10 November 2026, Apache-2.0), OpenDP 0.16.0 (6 October 2026, MIT; Rust with Python and R bindings, no JavaScript).
+  No maintained JavaScript library was found (agent-read), so the page has its own sampler and accountant, held to a
+  Python twin.
+
+## Federated learning
+
+- **Record level, not hospital level.** With four hospitals, a guarantee per hospital would need noise as large as a
+  hospital's whole update; DP-FedAvg's client-level guarantee was demonstrated over 763,430 users (McMahan et al.,
+  arXiv:1710.06963; agent-read). The page's unit is one patient.
+- **FedAvg's local steps.** FedAvg's 100 local SGD steps a round have no ready per-patient bound (agent's reading), so
+  the private arm takes one full-batch step per secure aggregation; its no-noise row isolates what the noise costs.
+- **FLamby's own DP results on Fed-Heart-Disease** (du Terrail et al., NeurIPS 2022, appendix; read off its plots by
+  the agent): about 0.71 without DP, about 0.685 at $`\epsilon = 1`$ and about 0.61 at 0.1 ($`\delta = 10^{-4}`$),
+  with per-hospital DP-SGD through Opacus. The page's arm differs in design (distributed noise in the secure sum,
+  full-batch steps), so the figures are context, not a reproduction.
+
+## Measured here
+
+- Medical, seed 1, 20 draws of private noise (`qsh.ai.fed_heart.run_dp`): 0.721 with no noise; $`0.724 \pm 0.004`$
+  at $`\epsilon = 8`$, $`0.727 \pm 0.007`$ at 4, $`0.726 \pm 0.015`$ at 2, $`0.706 \pm 0.032`$ at 1 (range 0.651 to
+  0.751); FedAvg without DP 0.7005. Total noise standard deviation in gradient units: 5.2, 9.9, 19.2 and 37.8.
+- Genomics, one count of at most 60 alleles over 30 people, four cohorts: total noise standard deviation 19.4, 9.8, 5.0,
+  2.6 and 1.4 alleles at $`\epsilon`$ = 0.5, 1, 2, 4 and 8 ($`\delta = 10^{-5}`$).
+
+## Where it does not apply
+
+- **Finance (the PSI).** Which flagged accounts the banks share is the answer the PSI exists to give; noise would add
+  false matches and misses (a DP intersection is a different protocol, for non-sensitive intersections; agent-read). A
+  published count could carry it; none is published.
+- **Telecom.** The detector's data are synthetic, generated in the tab; they describe no person.
+- **Satellite.** Spacecraft telemetry (ESA-ADB, OPS-SAT) describes no person, and both are public.
+- **DeFi.** The released bit is the decision itself; randomized response at $`\epsilon = \ln 3`$ answers wrongly one
+  time in four (Dwork and Roth, "The Algorithmic Foundations of Differential Privacy", 2014).
+- **The genomics page's own polygenic score.** It goes back to the person it describes; DP protects people inside a
+  released dataset.

@@ -17,7 +17,8 @@
  * and the bias corrections as running products rather than powers, so `tests/test_r86_fed_heart_twin.py` can hold the
  * page's figures to Python's.
  */
-import { secaggClientSeeds, secaggKeyPairs, secureAggregate } from "./clientQFL";
+import { cryptoRandBelow, discreteGaussian, epsilonOf, seededRandBelow, varianceFor } from "./clientDp";
+import { maskIntegers, secaggClientSeeds, secaggKeyPairs, secureAggregate, sumMaskedIntegers } from "./clientQFL";
 import { rng } from "./quantumSim";
 
 export const FED_HEART = { lr: 1e-3, beta1: 0.9, beta2: 0.999, eps: 1e-8, batch: 4, epochs: 50, rounds: 15, localSteps: 100 };
@@ -197,4 +198,96 @@ export async function fedHeart(sites: HeartSites, seed = 0,
     pairs, keyAgreementMs, ms: performance.now() - t0,
     publicKeys: publicKeys.map((pk) => Array.from(pk, (b) => b.toString(16).padStart(2, "0")).join("")),
   };
+}
+
+/**
+ * Record-level differential privacy for the same four hospitals (Round 86, the owner's choice of 2026-11-13).
+ *
+ * Full-batch gradient descent, one secure aggregation per step: each hospital clips every patient's logistic-loss
+ * gradient to L2 norm `clip`, sums them, rounds the sum to the fixed point 2^-16, adds its share of the noise - an exact
+ * discrete Gaussian of variance V in those units (clientDp.ts) - and masks the result with the page's pairwise masks;
+ * the aggregator recovers only the noisy sum. One patient added or removed moves one hospital's rounded sum by at most
+ * clip * 2^16 + sqrt(14) in L2 (the rounding adds at most 1 a coordinate), the sensitivity Kairouz, Liu and Steinke's
+ * Theorem 1 takes with four honest hospitals; 50 steps compose. FedAvg's 100 local steps a round have no record-level
+ * bound that is ready to use, so the private arm takes one step a round, and its epsilon = infinity row (clipping, no
+ * noise) is the comparison that isolates what the noise costs.
+ */
+export const FED_HEART_DP = {
+  rounds: 50, lr: 2, clip: 1, fixedPointBits: 16, delta: 1e-6, epsilons: [Infinity, 8, 4, 2, 1] as const,
+};
+
+export interface FedHeartDpRow {
+  epsilon: number;                 // the target; Infinity is clipping with no noise
+  epsilonAchieved: number;         // the accountant's figure for the variance chosen
+  epsilonOneDishonest: number;     // the same noise counted from three hospitals, as if one added none
+  variancePerHospital: number;     // V, in units of 2^-16 squared
+  sdPerHospital: number;           // in gradient units
+  sdTotal: number;
+  federated: number[];
+  mean: number;
+}
+
+export interface FedHeartDpResult {
+  rows: FedHeartDpRow[]; rounds: number; delta: number; clip: number; lr: number; sensitivity: number;
+  /** "crypto" on the page; "seeded" only in tests, where the noise is NOT private. */
+  source: "crypto" | "seeded"; ms: number;
+}
+
+/** Per-patient logistic-loss gradients at theta, each clipped to `clip`, summed: one hospital's contribution. */
+export function clippedGradientSum(theta: number[], X: number[][], y: number[], clip: number): number[] {
+  const d = theta.length - 1;
+  const sum = new Array<number>(theta.length).fill(0);
+  const g = new Array<number>(theta.length);
+  for (let i = 0; i < y.length; i++) {
+    let z = theta[d];
+    for (let k = 0; k < d; k++) z += theta[k] * X[i][k];
+    const r = sigmoid(z) - y[i];
+    let norm2 = 0;
+    for (let k = 0; k < d; k++) { g[k] = r * X[i][k]; norm2 += g[k] * g[k]; }
+    g[d] = r; norm2 += r * r;
+    const scale = Math.min(1, clip / Math.sqrt(norm2));
+    for (let k = 0; k <= d; k++) sum[k] += g[k] * scale;
+  }
+  return sum;
+}
+
+/** `seededLabel` is for the twin tests only: it replaces the CSPRNG with a public stream, so that run is NOT private. */
+export async function fedHeartDp(sites: HeartSites, seed = 0,
+                                 opts?: { seededLabel?: string; privateKeys?: readonly Uint8Array[] }): Promise<FedHeartDpResult> {
+  const t0 = performance.now();
+  const { rounds, lr, clip, fixedPointBits, delta, epsilons } = FED_HEART_DP;
+  const cs = sites.centres;
+  const K = cs.length;
+  const dim = sites.feature_names.length + 1;
+  const unit = 2 ** fixedPointBits;
+  const sensitivity = clip * unit + Math.sqrt(dim);
+  const total = cs.reduce((a, c) => a + c.train.y.length, 0);
+  const rb = opts?.seededLabel != null ? seededRandBelow(opts.seededLabel) : cryptoRandBelow;
+  const tests = cs.map((c) => c.test);
+  const rows: FedHeartDpRow[] = [];
+  for (const epsilon of epsilons) {
+    const V = varianceFor(epsilon, rounds, sensitivity, K, dim, delta);
+    // Fresh pairwise seeds for each setting: masks reused across two messages would let the aggregator subtract them.
+    const keyPairs = secaggKeyPairs(K, opts?.privateKeys);
+    const publicKeys = keyPairs.map((kp) => kp.publicKey);
+    const pairSeeds = await Promise.all(keyPairs.map((kp, c) => secaggClientSeeds(c, kp.privateKey, publicKeys)));
+    let theta = initTheta(seed, dim - 1);
+    for (let r = 0; r < rounds; r++) {
+      const shares = cs.map((c, k) => {
+        const g = clippedGradientSum(theta, c.train.X, c.train.y, clip);
+        const q = g.map((x) => Math.round(x * unit) + discreteGaussian(V, rb));
+        return maskIntegers(k, q, pairSeeds[k], r);
+      });
+      const sum = sumMaskedIntegers(shares);
+      theta = theta.map((t, j) => t - lr * (sum[j] / unit) / total);
+    }
+    const federated = tests.map((t) => accuracy(theta, t.X, t.y));
+    rows.push({
+      epsilon, epsilonAchieved: epsilonOf(V, rounds, sensitivity, K, dim, delta),
+      epsilonOneDishonest: epsilonOf(V, rounds, sensitivity, K - 1, dim, delta),
+      variancePerHospital: V, sdPerHospital: Math.sqrt(V) / unit, sdTotal: Math.sqrt(K * V) / unit,
+      federated, mean: mean(federated),
+    });
+  }
+  return { rows, rounds, delta, clip, lr, sensitivity, source: opts?.seededLabel != null ? "seeded" : "crypto", ms: performance.now() - t0 };
 }

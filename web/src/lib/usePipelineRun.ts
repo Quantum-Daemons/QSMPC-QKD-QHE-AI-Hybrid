@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { api, type PipelineEvent, streamRun } from "./api";
 import { multiPartyPsiCfg, benchCfg, dataCfg, idsCfg, lendingCfg, qkdCfg, qrngCfg, webCfg } from "./config";
 import { FREE_SPACE } from "./quantumSim";
+import { GENOMICS_DP } from "./clientDp";
 import { assembleBenchmark, clientFlow, type PipelineControl, runClientPipeline } from "./clientCompute";
 import { isClientDemo } from "./demoMode";
 import { setRunStatus } from "./runStatus";
@@ -184,6 +185,8 @@ export const makeDefaultParams = () => ({
   lending_shock_pct: lendingCfg().shock_fraction * 100,
   lending_vol_mult: 1,
   lending_checks: lendingCfg().check_points,
+  // Round 86: the genomics page's differential privacy, epsilon for the pooled count it releases (clientDp.ts).
+  genomics_dp_epsilon: GENOMICS_DP.defaultEpsilon,
   lending_custody: lendingCfg().custody as string,   // "keyholder" | "borrower"
   qubits: benchCfg().quantum_qubits,
   qrng_eps_log2: qrngCfg().security_epsilon_log2,   // LHL extractor security 2^this (toeplitz/seedless)
@@ -366,7 +369,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const buildConfig = () => {
     // spread every numeric/editable param into the run config; the backend + demo read the keys they
     // know (ctx.config.get(key, <config default>)), so a Parameters-panel edit overrides the default.
-    const { qsmpc_op, inference, prime, ...nums } = params;
+    const { qsmpc_op, inference, prime, genomics_dp_epsilon, ...nums } = params;
     // `usecase` is READ by the run - `clientCompute`'s security facts pick the free-space channel
     // model with `config.usecase === "satellite_comms"` - and was never emitted here, so the key was
     // permanently `undefined` and the ternary permanently took the fibre branch. The satellite page
@@ -387,6 +390,8 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     // the control was on screen and the branch existed. Three gates in series, each invisible alone.
     if (readsInferenceBackend(usecase) && inference) c.inference = inference;
     if (runsQsmpc(usecase) && prime > 0) c.prime = prime;
+    // Read only on genomics, so sent only there: a run elsewhere never claims a privacy setting it does not use.
+    if (usecase === "genomics") c.genomics_dp_epsilon = genomics_dp_epsilon;
     // Only when a choice was made. Absent, runPublishedModel falls to browserModel(usecase), so the
     // key never appears in a signed payload claiming a selection the visitor did not make.
     if (publishedModel) c.published_model = publishedModel;
