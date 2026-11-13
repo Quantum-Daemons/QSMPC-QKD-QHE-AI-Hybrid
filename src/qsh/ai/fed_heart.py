@@ -220,6 +220,7 @@ class FedHeartDpRow:
     epsilon_one_dishonest: float
     variance_per_hospital: int
     federated: list[float]
+    rho: float = math.inf   # zero-concentrated DP; releases about the same patients add it
 
 
 def run_dp(sample: dict | None = None, seed: int = 0, rb=None) -> list[FedHeartDpRow]:
@@ -251,5 +252,13 @@ def run_dp(sample: dict | None = None, seed: int = 0, rb=None) -> list[FedHeartD
             epsilon=eps, epsilon_achieved=dp.epsilon_of(V, DP_ROUNDS, sensitivity, K, dim, DP_DELTA),
             epsilon_one_dishonest=dp.epsilon_of(V, DP_ROUNDS, sensitivity, K - 1, dim, DP_DELTA),
             variance_per_hospital=V,
-            federated=[accuracy(theta, c["test"]["X"], c["test"]["y"]) for c in cs]))
+            federated=[accuracy(theta, c["test"]["X"], c["test"]["y"]) for c in cs],
+            rho=dp.rho_of(V, DP_ROUNDS, sensitivity, K, dim)))
     return rows
+
+
+def epsilon_all_rows(rows: list[FedHeartDpRow]) -> float:
+    """`epsilonAllRows`: the noised rows published together, their rho added (Bun and Steinke, TCC 2016)."""
+    from . import dp
+
+    return dp.composed_epsilon([r.rho for r in rows if math.isfinite(r.epsilon)], DP_DELTA)

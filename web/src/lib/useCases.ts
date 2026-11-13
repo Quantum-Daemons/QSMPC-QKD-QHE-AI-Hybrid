@@ -32,7 +32,7 @@ const ALL_USECASES: UseCaseMeta[] = [
     // the OPRF PSI hides different things from each bank: Bank A learns the shared accounts and the
     // size of Bank B's list, Bank B only the size of Bank A's.
     agenticPrompt: "In one sentence, when two banks' agents match flagged accounts with an OPRF-based PSI over a quantum-safe MCP channel, what is hidden, and from whom?",
-    privacy: "not applied. Which flagged accounts the banks share is what the PSI exists to answer, and noise would add false matches and misses to that answer. A published count of the shared accounts could carry it; this page publishes none.",
+    privacy: "applied to the count of shared accounts as it would be published, per account, at epsilon 1 and delta 1e-8: one party adds exact discrete Gaussian noise to the count once. Not to the PSI's answer to the banks, which is what the PSI exists to give them; noise there would add false matches and misses.",
   },
   {
     id: "medical_fl", title: "Medical — federated learning + private inference", nav: "Medical — FL", industry: "healthcare",
@@ -48,7 +48,7 @@ const ALL_USECASES: UseCaseMeta[] = [
     // requirement, so the question asked the in-browser model to explain an obligation that does not
     // exist - and the model answers what it is asked.
     agenticPrompt: "In one sentence, what does a quantum-safe channel add when a clinician's agent queries a federated diagnostic model over MCP?",
-    privacy: "applied to the federation, per patient: beside FedAvg, a record-level arm in which each hospital adds its share of exact discrete Gaussian noise inside the masks, at epsilon 8 down to 1 and delta 1e-6, in the four-hospital card. Not to the private-inference models, which are trained centrally on public data.",
+    privacy: "applied to the federation, per patient: beside FedAvg, a record-level arm in which each hospital adds its share of exact discrete Gaussian noise inside the masks, at epsilon 8 down to 1 and delta 1e-6, in the four-hospital card, and once more inside threshold BGV on its encrypted-aggregation button. Not to the private-inference models, which are trained centrally on public data.",
   },
   {
     id: "genomics", title: "Genomics — confidential analysis", nav: "Genomics", industry: "genomics",
@@ -61,7 +61,7 @@ const ALL_USECASES: UseCaseMeta[] = [
     // Neutral (Round 84): the old question asked why the quantum secure sum "is safer", a property
     // this page does not claim, and the model answers what it is asked.
     agenticPrompt: "In one sentence, what does a secure sum of per-cohort allele counts hide, and from whom?",
-    privacy: "applied to the pooled allele count each run releases, per person, at the epsilon chosen in the controls and delta 1e-5: the cohorts add exact discrete Gaussian noise inside the secure sum. Not to the person's own score, which goes back to that person.",
+    privacy: "applied to the pooled allele count each run releases, per person, at the epsilon chosen in the controls and delta 1e-5: the cohorts add exact discrete Gaussian noise inside the secure sum, and a button sums the same noisy contributions under threshold BGV. Not to the person's own score, which goes back to that person.",
   },
   {
     id: "telecom_ids", title: "Telecom / Defense — QKD + IDS", nav: "Telecom / Defense", industry: "telecom",

@@ -39,7 +39,7 @@ import {
   runPublishedModel,
 } from "./onnxInference";
 import { FED_HEART, fedHeart, fedHeartComparisons, fedHeartDp, loadHeartSites } from "./clientFedHeart";
-import { GENOMICS_DP, genomicsDp } from "./clientDp";
+import { dpCount, GENOMICS_DP, genomicsDp } from "./clientDp";
 import { heldOutCorpus, realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
   type HeldOutCorpus, type RealInput, realAlleleCounts } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
@@ -3122,6 +3122,21 @@ export function runClientPipeline(
             + `by the ${psi.protocol}. ${psiLearnedSummary(psi, pa, pb)}. Its messages are sealed under the PQC `
             + `session key; ${pa} and ${pb} run in this tab (notional parties), and the OPRF rests on a `
             + "discrete-log assumption, so it is not post-quantum");
+          if (usecase === "finance_aml") {
+            // The count as it would leave the banks (Round 86, the owner's choice of 2026-11-13): the banks learn the
+            // shared accounts themselves, so the noise protects only the published count; one account moves it by 1.
+            const fd = dpCount(psi.intersection_size);
+            artifacts.financeDp = { ...fd, exact: psi.intersection_size, sizeA: psi.size_a, sizeB: psi.size_b };
+            metric(stage, "dp_released_shared_accounts", fd.released);
+            metric(stage, "dp_epsilon", Math.round(fd.epsilonAchieved * 100) / 100);
+            metric(stage, "dp_delta", fd.delta);
+            metric(stage, "dp_noise_sd", Math.round(fd.sd * 100) / 100);
+            emit("log", stage, `differential privacy: the count of shared accounts released as ${fd.released} (epsilon `
+              + `${Math.round(fd.epsilonAchieved * 100) / 100}, delta ${fd.delta}, one account moving it by at most 1; noise of `
+              + `standard deviation ${Math.round(fd.sd * 100) / 100} accounts). The banks themselves hold the ${psi.intersection_size} `
+              + "shared accounts: that is the PSI's purpose, so the noise protects the count once it is published, not "
+              + "anything between them. The account IDs here are stand-ins drawn from the run's seed");
+          }
           if (usecase === "finance_aml" && Number(config.multi_party_psi) >= 3) {
             await runMultiPartyPsi(stage, Number(config.multi_party_psi), seed, emit, metric, artifacts);
           }

@@ -114,11 +114,25 @@ def cdp_to_dp(rho: float, delta: float) -> float:
     return rho + 2 * math.sqrt(rho * math.log(1 / delta))
 
 
-def epsilon_of(variance: int, releases: int, d2: float, n: int, d: int, delta: float) -> float:
+def rho_of(variance: int, releases: int, d2: float, n: int, d: int) -> float:
     if variance == 0:
         return math.inf
     e = ddg_epsilon(d2, n, variance, d)
-    return cdp_to_dp(releases * e * e / 2, delta)
+    return releases * e * e / 2
+
+
+def epsilon_of(variance: int, releases: int, d2: float, n: int, d: int, delta: float) -> float:
+    if variance == 0:
+        return math.inf
+    return cdp_to_dp(rho_of(variance, releases, d2, n, d), delta)
+
+
+def composed_epsilon(rhos, delta: float) -> float:
+    """Releases about the same people published together: zero-concentrated DP adds rho (Bun and Steinke, TCC 2016)."""
+    rho = 0.0
+    for r in rhos:
+        rho += r
+    return cdp_to_dp(rho, delta) if math.isfinite(rho) else math.inf
 
 
 def variance_for(target: float, releases: int, d2: float, n: int, d: int, delta: float) -> int:
@@ -152,4 +166,19 @@ def genomics_dp(counts: list[int], epsilon: float, rb: RandBelow = crypto_rand_b
         "epsilon_achieved": epsilon_of(V, 1, d2, n, 1, GENOMICS_DELTA),
         "epsilon_one_dishonest": epsilon_of(V, 1, d2, n - 1, 1, GENOMICS_DELTA),
         "variance_per_cohort": V,
+    }
+
+
+FINANCE_EPSILON, FINANCE_DELTA, FINANCE_SENSITIVITY = 1.0, 1e-8, 1
+
+
+def dp_count(count: int, rb: RandBelow = crypto_rand_below, epsilon: float = FINANCE_EPSILON) -> dict:
+    """`dpCount` in clientDp.ts: one party's discrete Gaussian on a count of accounts, clamped at 0."""
+    if int(count) != count or count < 0:
+        raise ValueError(f"a count is a whole number >= 0, got {count}")
+    V = variance_for(epsilon, 1, FINANCE_SENSITIVITY, 1, 1, FINANCE_DELTA)
+    return {
+        "released": max(0, int(count) + discrete_gaussian(V, rb)),
+        "epsilon_achieved": epsilon_of(V, 1, FINANCE_SENSITIVITY, 1, 1, FINANCE_DELTA),
+        "variance": V,
     }

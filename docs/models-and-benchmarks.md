@@ -468,7 +468,7 @@ satellite, ground station or quantum channel is involved.
 - **The bounds** follow their sources: Lim et al. (Phys. Rev. A 89, 022307, 2014) for a signal, a
   weak decoy and the vacuum, as Micius sent, and Rusca et al. 2018 for one decoy, each as printed -
   $`21^2`$ where Lim et al.'s Eq. (5) and Rusca et al.'s (A21) print it, the vacuum bounded by the
-  decoy's errors, which are tighter than the signal's, and $`	au_0`$ on the error term of (A16) only.
+  decoy's errors, which are tighter than the signal's, and $`\tau_0`$ on the error term of (A16) only.
   The three transcription errors found while checking them against the papers are recorded with the
   Rusca et al. entry in [`references/REFERENCES.md`](../references/REFERENCES.md). The shipped fibre
   needs 5.35e6 pulses before any key under Hoeffding, and 3.60e6 under the default statistics.

@@ -12,7 +12,11 @@ seeded source both languages share - which is NOT private, and exists for these 
 3. every row of the medical DP run - variance, epsilons, accuracies - is the same in both languages, and the row
    without noise draws nothing from the source;
 4. the genomics contributions and variances are the same for every epsilon on the page's selector;
-5. no page code calls the seeded source: outside its definition it appears only behind the `seededLabel` option.
+5. no page code calls the seeded source: outside its definition it appears only behind the `seededLabel` option;
+6. the medical table's noised rows compose to the same epsilon in both languages (rho added, Bun and Steinke), larger
+   than any one row's and equal to the closed form from the four rhos;
+7. the finance count's release (`dpCount` / `dp_count`) is the same draw for draw, at variance 38 for epsilon 1 and
+   delta 1e-8, and never below zero.
 """
 
 from __future__ import annotations
@@ -51,6 +55,10 @@ out.fed = r.rows.map((x) => ({ epsilon: x.epsilon === Infinity ? "inf" : x.epsil
   ea: x.epsilonAchieved === Infinity ? "inf" : x.epsilonAchieved, e3: x.epsilonOneDishonest === Infinity ? "inf" : x.epsilonOneDishonest,
   federated: x.federated }));
 out.fedSource = r.source;
+out.fedAll = r.epsilonAllRows;
+out.fedRho = r.rows.map((x) => (Number.isFinite(x.rho) ? x.rho : "inf"));
+out.fin = [0, 1, 5, 60, 600].map((c) => { const f = m.dpCount(c, { seededLabel: %(label)s + ":f" + c });
+  return [f.released, f.variance, f.epsilonAchieved, f.sd]; });
 for (const e of m.GENOMICS_DP.epsilons) {
   const g = m.genomicsDp(%(counts)s, e, { seededLabel: %(label)s + ":g" + e });
   out.genomics[e] = [g.contributions, g.variancePerCohort, g.epsilonAchieved, g.epsilonOneDishonest];
@@ -149,3 +157,23 @@ def test_no_page_code_calls_the_seeded_source() -> None:
     assert not re.search(r"seededLabel\s*:", "\n".join(p.read_text() for p in (WEB / "src").rglob("*.ts*")
                                                        if p.name not in {"clientDp.ts", "clientFedHeart.ts"})), \
         "a page module passes a seededLabel"
+
+
+def test_the_noised_rows_compose_the_same_in_both_languages(browser) -> None:
+    rows = fed_heart.run_dp(seed=1, rb=dp.seeded_rand_below(LABEL))
+    py = fed_heart.epsilon_all_rows(rows)
+    assert browser["fedRho"] == ["inf" if math.isinf(r.rho) else r.rho for r in rows]
+    assert browser["fedAll"] == py
+    finite = [r for r in rows if math.isfinite(r.epsilon)]
+    rho = sum(r.rho for r in finite)
+    assert py == pytest.approx(rho + 2 * math.sqrt(rho * math.log(1 / fed_heart.DP_DELTA)), rel=1e-12)
+    assert py > max(r.epsilon_achieved for r in finite)
+
+
+def test_the_finance_count_release_is_pythons_draw_for_draw(browser) -> None:
+    for c, js in zip([0, 1, 5, 60, 600], browser["fin"], strict=True):
+        f = dp.dp_count(c, dp.seeded_rand_below(f"{LABEL}:f{c}"))
+        assert js[:3] == [f["released"], f["variance"], f["epsilon_achieved"]], c
+        assert f["variance"] == 38 and f["epsilon_achieved"] <= dp.FINANCE_EPSILON and f["released"] >= 0
+        assert js[3] == pytest.approx(math.sqrt(38), rel=1e-15)
+

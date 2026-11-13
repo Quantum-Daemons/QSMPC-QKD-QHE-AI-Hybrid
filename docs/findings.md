@@ -545,6 +545,22 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   they carry none. The sampler is exact and the accountant has a Python twin held to the same draws
   ([`references/differential-privacy.md`](../references/differential-privacy.md)). Writing this also found the
   medical page's key points still describing the WDBC federation PR #36 replaced; corrected.
+- **The DP noise inside threshold BGV, a published count on finance, and what the rows add up to (2026-11-13).** The
+  medical page's encrypted-aggregation button now runs the record-level arm once more at $`\epsilon = 1`$ with every
+  step's four noisy vectors summed under threshold BGV, and all 50 steps' sums equal the masks' sums of the same
+  vectors (seed 1 in `npm run check:fed-agg`: accuracy 0.7216); the genomics card sums its cohorts' noisy
+  contributions under threshold BGV, equal to the masked integer. BGV is exact, so the encryption costs no accuracy;
+  what it changes is who could read one party's noisy vector. Finance releases the count of shared accounts as it
+  would be published, one party adding discrete Gaussian noise once ($`\epsilon = 1`$, $`\delta = 10^{-8}`$, a
+  standard deviation of 6.2 accounts); the PSI's answer to the banks stays exact, since it is the PSI's purpose.
+  Writing it found a gap in the medical table: its four noised rows are four releases from the same patients, and
+  together they are $`\epsilon = 9.56`$, not 8 (concentrated DP adds $`\rho`$; Bun and Steinke, TCC 2016); the page
+  now prints that figure. A search of 2026 work recommends DP for none of the telecom, satellite, DeFi and PQC-QKD
+  stages, and of further cryptography a threshold committee for the DeFi key holder and a two-path key split for the
+  QKD relay, both to be built ([`references/differential-privacy.md`](../references/differential-privacy.md), "The
+  other pages"). Two LaTeX commands on main had lost their backslash to a string escape, `\times` in the threat
+  model's aggregation section and `\tau_0` in the benchmark notes, each rendering as a gap and a stray word; both are
+  repaired and a house-style test now fails on any control character inside a math span.
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training

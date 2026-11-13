@@ -338,10 +338,11 @@ jobs:
         working-directory: web
         run: npm run check:qfl
 
-      # The four hospitals' aggregation, five ways (Round 86): the medical page's worker module with the real node-seal and
-      # the real Lattigo wasm built above. The masks row is the page's federation, threshold BGV equals it to the bit, and
-      # every CKKS design stays within its bound of the exact FedAvg.
-      - name: The four hospitals' aggregation, five ways
+      # The four hospitals' aggregation, five ways and a DP row (Round 86): the medical page's worker module with the real
+      # node-seal and the real Lattigo wasm built above. The masks row is the page's federation, threshold BGV equals it
+      # to the bit, every CKKS design stays within its bound of the exact FedAvg, the DP row's every step under BGV equals
+      # the masks' sum of the same noisy vectors, and the genomics page's threshold sum equals the plain one.
+      - name: The four hospitals' aggregation, five ways and a DP row
         working-directory: web
         run: npm run check:fed-agg
 

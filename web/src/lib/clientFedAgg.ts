@@ -1,5 +1,6 @@
 /**
- * The four-hospital federation's aggregation, five ways side by side (Round 86, the owner's choice of 2026-11-13).
+ * The four-hospital federation's aggregation, five ways side by side, and its DP arm under threshold BGV (Round 86,
+ * the owner's choices of 2026-11-13).
  *
  * The medical page's federation (clientFedHeart.ts) aggregates under pairwise masks. This module reruns the same
  * federation - the same initial model, the same local SGD streams, the same 15 rounds - and changes only how each
@@ -14,6 +15,9 @@
  *   ckks-l40         the same with 40 bits of statistical security (sigma 2^54, scale 2^80).
  *   bgv-128          threshold BGV, exact, with 128 bits; it encrypts the masks' own fixed-point integers, so its
  *                    decrypted sum is the masks' sum bit for bit, and so is the model it trains.
+ *   bgv-128-dp       a sixth row, not FedAvg: the page's record-level DP arm (clientFedHeart.trainFedHeartDp) at
+ *                    epsilon 1, run once more with each step's four noisy vectors summed under threshold BGV, the
+ *                    noise inside the encryption, and under the masks beside it, so every step's two sums are compared.
  *
  * What a design changes is who can read one hospital's update, what the aggregator sees, the bytes a hospital sends,
  * the time, and how far each round's aggregate is from the exact FedAvg of that round's updates in float64. Every
@@ -22,8 +26,10 @@
  * Worker, and only when asked (clientFedAgg.worker.ts).
  */
 import sealWasmUrl from "/node_modules/node-seal/dist/seal_throws.wasm?url";
-import { accuracy, FED_HEART, type HeartSites, initTheta, trainSgdSteps } from "./clientFedHeart";
-import { QFL_FIXED_POINT, qflQuantise, secaggClientSeeds, secaggKeyPairs, secureAggregate } from "./clientQFL";
+import { cryptoRandBelow, epsilonOf, rhoOf, varianceFor } from "./clientDp";
+import { accuracy, FED_HEART, FED_HEART_DP, type HeartSites, initTheta, trainFedHeartDp, trainSgdSteps } from "./clientFedHeart";
+import { maskIntegers, QFL_FIXED_POINT, qflQuantise, secaggClientSeeds, secaggKeyPairs, secureAggregate,
+         sumMaskedIntegers } from "./clientQFL";
 import { rng } from "./quantumSim";
 
 /** globalThis.qshFedThresh, as wasm/qsh-fedthresh/cmd/wasm installs it. */
@@ -36,7 +42,10 @@ export interface FedThreshApi {
   close(id: number): void;
 }
 
-export type AggregationKind = "masks" | "ckks-shared-key" | "ckks-demo" | "ckks-l40" | "bgv-128";
+export type AggregationKind = "masks" | "ckks-shared-key" | "ckks-demo" | "ckks-l40" | "bgv-128" | "bgv-128-dp";
+
+/** The DP row's target: the strongest setting in the record-level arm's table. */
+export const DP_ROW_EPSILON = 1;
 
 export interface AggregationDesign {
   kind: AggregationKind;
@@ -49,10 +58,14 @@ export interface AggregationDesign {
   statSecBits: number | null;
   federated: number[];
   mean: number;
-  /** Largest |aggregate - exact float64 FedAvg of the same round's updates|, over every round and coordinate. */
-  maxDiffFromExact: number;
-  /** Every round's aggregate equal to the masks' run's, to the bit (null for the masks themselves). */
+  /** Largest |aggregate - exact float64 FedAvg of the same round's updates|, over every round and coordinate; null
+   *  for the DP row, which is not FedAvg. */
+  maxDiffFromExact: number | null;
+  /** Every round's aggregate equal to the masks' run's, to the bit (null for the masks themselves); for the DP row,
+   *  every step's sum under BGV equal to the masks' sum of the same noisy vectors. */
   identicalToMasks: boolean | null;
+  /** The DP row only. */
+  dp?: { epsilon: number; epsilonAchieved: number; delta: number; rho: number; stepsEqual: number; steps: number };
   /** What one hospital sends in one round: its masked share, or its ciphertext (and decryption share). */
   bytesPerHospitalPerRound: number;
   keySetupMs: number;
@@ -195,7 +208,60 @@ const TEXT: Record<AggregationKind, Pick<AggregationDesign, "label" | "scheme" |
     whoDecrypts: "no single party: all four hospitals' decryption shares are needed",
     aggregatorSees: "ciphertexts, then four decryption shares, from which it combines the sum",
   },
+  "bgv-128-dp": {
+    label: `Threshold BGV with DP noise inside, epsilon ${DP_ROW_EPSILON}`,
+    scheme: "the record-level DP arm's 50 clipped full-batch steps; Lattigo v6.2.0 as the row above",
+    whoDecrypts: "no single party, and the sum the four shares decrypt already carries the DP noise",
+    aggregatorSees: "ciphertexts, then four decryption shares, from which it combines a noisy sum",
+  },
 };
+
+/**
+ * The DP row: one more record-level DP run at DP_ROW_EPSILON, from this tab's CSPRNG, whose every step is summed under
+ * threshold BGV - the model trains on those sums - and, from the same noisy vectors, under fresh pairwise masks.
+ */
+async function dpUnderThresholdBgv(sites: HeartSites, seed: number, api: FedThreshApi, crs: Uint8Array): Promise<AggregationDesign> {
+  const { rounds, clip, fixedPointBits, delta } = FED_HEART_DP;
+  const K = sites.centres.length;
+  const dim = sites.feature_names.length + 1;
+  const sensitivity = clip * 2 ** fixedPointBits + Math.sqrt(dim);
+  const V = varianceFor(DP_ROW_EPSILON, rounds, sensitivity, K, dim, delta);
+  const tk = performance.now();
+  const keyPairs = secaggKeyPairs(K);
+  const pairSeeds = await Promise.all(keyPairs.map((kp, c) => secaggClientSeeds(c, kp.privateKey,
+    keyPairs.map((p) => p.publicKey))));
+  const o = api.open("bgv-128", K, crs);
+  if (o.error || o.id == null) throw new Error(`qsh-fedthresh: ${o.error ?? "no session"}`);
+  const id = o.id;
+  const keySetupMs = performance.now() - tk;
+  let stepsEqual = 0, bytes = 0;
+  const t0 = performance.now();
+  let theta: number[];
+  try {
+    theta = await trainFedHeartDp(sites, seed, V, cryptoRandBelow, (noisy, r) => {
+      const masked = sumMaskedIntegers(noisy.map((q, k) => maskIntegers(k, q, pairSeeds[k], r)));
+      const flat = new Float64Array(K * dim);
+      noisy.forEach((q, k) => flat.set(q, k * dim));
+      const res = api.round(id, asBytes(flat), K, dim);
+      if (res.error || !res.aggregate) throw new Error(`qsh-fedthresh round: ${res.error ?? "no aggregate"}`);
+      const stats = JSON.parse(res.stats ?? "{}");
+      bytes = (stats.ciphertextBytes ?? 0) + (stats.decryptShareBytes ?? 0);
+      const sum = Array.from(asF64(res.aggregate));
+      if (sum.every((x, j) => x === masked[j])) stepsEqual++;
+      return sum;
+    });
+  } finally {
+    api.close(id);
+  }
+  const msPerRound = (performance.now() - t0) / rounds;
+  const federated = sites.centres.map((c) => accuracy(theta, c.test.X, c.test.y));
+  return {
+    kind: "bgv-128-dp", ...TEXT["bgv-128-dp"], statSecBits: 128, federated, mean: mean(federated), maxDiffFromExact: null,
+    identicalToMasks: stepsEqual === rounds, bytesPerHospitalPerRound: bytes, keySetupMs, msPerRound,
+    dp: { epsilon: DP_ROW_EPSILON, epsilonAchieved: epsilonOf(V, rounds, sensitivity, K, dim, delta), delta,
+          rho: rhoOf(V, rounds, sensitivity, K, dim), stepsEqual, steps: rounds },
+  };
+}
 
 /**
  * Runs the federation once per design and reports each. `fedThresh` is the loaded wasm module; the page's worker
@@ -207,13 +273,13 @@ export async function runAggregationComparison(
 ): Promise<AggregationComparison> {
   const t0 = performance.now();
   const K = sites.centres.length;
-  const order: AggregationKind[] = ["masks", "ckks-shared-key", "ckks-demo", "ckks-l40", "bgv-128"];
+  const order: Exclude<AggregationKind, "bgv-128-dp">[] = ["masks", "ckks-shared-key", "ckks-demo", "ckks-l40", "bgv-128"];
   const designs: AggregationDesign[] = [];
   let masksAggregates: number[][] = [];
   // The crs is public: every hospital derives the same common reference polynomials from it.
   const crs = new TextEncoder().encode(`qsh/fedthresh/crs/v1/seed-${seed}`);
   for (const [i, kind] of order.entries()) {
-    onProgress?.(kind, i, order.length);
+    onProgress?.(kind, i, order.length + 1);
     let agg: Aggregator, keySetupMs = 0, statSecBits: number | null = null, bytes = () => 0, close = () => {};
     if (kind === "masks") {
       const tk = performance.now();
@@ -240,8 +306,45 @@ export async function runAggregationComparison(
       bytesPerHospitalPerRound: bytes(), keySetupMs, msPerRound: r.ms / FED_HEART.rounds,
     });
   }
-  onProgress?.("bgv-128", order.length, order.length);
+  onProgress?.("bgv-128-dp", order.length, order.length + 1);
+  designs.push(await dpUnderThresholdBgv(sites, seed, fedThresh, crs));
+  onProgress?.("bgv-128-dp", order.length + 1, order.length + 1);
   return { seed, rounds: FED_HEART.rounds, hospitals: K, designs, ms: performance.now() - t0 };
+}
+
+/** One sum of integers, one per party, under threshold BGV: what the genomics page's button reports. */
+export interface ThresholdSum {
+  sum: number; parties: number; statSecBits: number; plaintextModulus: number;
+  keyGenMs: number; roundMs: number; ciphertextBytes: number; decryptShareBytes: number;
+}
+
+/**
+ * The genomics page's noisy cohort contributions summed under threshold BGV (Round 86, the owner's choice of
+ * 2026-11-13): each cohort encrypts its count in the fixed point 1/16 plus its share of the DP noise under the cohorts'
+ * collective key, the sum is decrypted once by all of their shares, and the result is the same integer the masked
+ * secure sum gave. A fresh key per call, so no cohort ever makes a second decryption share for a ciphertext.
+ */
+export function sumUnderThresholdBgv(api: FedThreshApi, values: readonly number[], crs: Uint8Array): ThresholdSum {
+  const K = values.length;
+  if (K < 2 || !values.every(Number.isSafeInteger)) throw new Error("threshold BGV sums two or more whole numbers");
+  const o = api.open("bgv-128", K, crs);
+  if (o.error || o.id == null) throw new Error(`qsh-fedthresh: ${o.error ?? "no session"}`);
+  const id = o.id;
+  try {
+    const setting = JSON.parse(o.setting ?? "{}");
+    const t = Number(setting.plaintextModulus);
+    if (!(values.reduce((a, v) => a + Math.abs(v), 0) < t / 2)) throw new Error(`the sum could wrap the plaintext modulus ${t}`);
+    const t0 = performance.now();
+    const res = api.round(id, asBytes(Float64Array.from(values)), K, 1);
+    const roundMs = performance.now() - t0;
+    if (res.error || !res.aggregate) throw new Error(`qsh-fedthresh round: ${res.error ?? "no aggregate"}`);
+    const stats = JSON.parse(res.stats ?? "{}");
+    return { sum: asF64(res.aggregate)[0], parties: K, statSecBits: Number(setting.statSecBits), plaintextModulus: t,
+             keyGenMs: o.keyGenMs ?? 0, roundMs, ciphertextBytes: stats.ciphertextBytes ?? 0,
+             decryptShareBytes: stats.decryptShareBytes ?? 0 };
+  } finally {
+    api.close(id);
+  }
 }
 
 /** Loads Go's wasm_exec.js and the module from `base` (a URL prefix ending in "/") into this realm. */

@@ -17,7 +17,8 @@
  * and the bias corrections as running products rather than powers, so `tests/test_r86_fed_heart_twin.py` can hold the
  * page's figures to Python's.
  */
-import { cryptoRandBelow, discreteGaussian, epsilonOf, seededRandBelow, varianceFor } from "./clientDp";
+import { composedEpsilon, cryptoRandBelow, discreteGaussian, epsilonOf, type RandBelow, rhoOf, seededRandBelow,
+         varianceFor } from "./clientDp";
 import { maskIntegers, secaggClientSeeds, secaggKeyPairs, secureAggregate, sumMaskedIntegers } from "./clientQFL";
 import { rng } from "./quantumSim";
 
@@ -223,12 +224,16 @@ export interface FedHeartDpRow {
   variancePerHospital: number;     // V, in units of 2^-16 squared
   sdPerHospital: number;           // in gradient units
   sdTotal: number;
+  /** The row's zero-concentrated DP parameter, which adds across releases. */
+  rho: number;
   federated: number[];
   mean: number;
 }
 
 export interface FedHeartDpResult {
   rows: FedHeartDpRow[]; rounds: number; delta: number; clip: number; lr: number; sensitivity: number;
+  /** The noised rows are separate releases from the same patients: published together, their rho adds. */
+  epsilonAllRows: number;
   /** "crypto" on the page; "seeded" only in tests, where the noise is NOT private. */
   source: "crypto" | "seeded"; ms: number;
 }
@@ -251,6 +256,31 @@ export function clippedGradientSum(theta: number[], X: number[][], y: number[], 
   return sum;
 }
 
+/** Sums the hospitals' noisy fixed-point gradient sums for one step: masks on the page, threshold BGV beside them. */
+export type DpAggregator = (noisy: number[][], step: number) => number[] | Promise<number[]>;
+
+/**
+ * One record-level DP run at per-hospital variance V: full-batch gradient descent on the per-patient gradients, each
+ * clipped; each hospital rounds its sum to 2^-16 and adds its share of the noise, and `aggregate` returns the sum of
+ * the four noisy vectors. fedHeartDp sums them under pairwise masks; the encrypted-aggregation comparison
+ * (clientFedAgg.ts) sums the same vectors under threshold BGV as well.
+ */
+export async function trainFedHeartDp(sites: HeartSites, seed: number, variance: number, rb: RandBelow,
+                                      aggregate: DpAggregator): Promise<number[]> {
+  const { rounds, lr, clip, fixedPointBits } = FED_HEART_DP;
+  const cs = sites.centres;
+  const unit = 2 ** fixedPointBits;
+  const total = cs.reduce((a, c) => a + c.train.y.length, 0);
+  let theta = initTheta(seed, sites.feature_names.length);
+  for (let r = 0; r < rounds; r++) {
+    const noisy = cs.map((c) => clippedGradientSum(theta, c.train.X, c.train.y, clip)
+      .map((x) => Math.round(x * unit) + discreteGaussian(variance, rb)));
+    const sum = await aggregate(noisy, r);
+    theta = theta.map((t, j) => t - lr * (sum[j] / unit) / total);
+  }
+  return theta;
+}
+
 /** `seededLabel` is for the twin tests only: it replaces the CSPRNG with a public stream, so that run is NOT private. */
 export async function fedHeartDp(sites: HeartSites, seed = 0,
                                  opts?: { seededLabel?: string; privateKeys?: readonly Uint8Array[] }): Promise<FedHeartDpResult> {
@@ -261,7 +291,6 @@ export async function fedHeartDp(sites: HeartSites, seed = 0,
   const dim = sites.feature_names.length + 1;
   const unit = 2 ** fixedPointBits;
   const sensitivity = clip * unit + Math.sqrt(dim);
-  const total = cs.reduce((a, c) => a + c.train.y.length, 0);
   const rb = opts?.seededLabel != null ? seededRandBelow(opts.seededLabel) : cryptoRandBelow;
   const tests = cs.map((c) => c.test);
   const rows: FedHeartDpRow[] = [];
@@ -271,23 +300,17 @@ export async function fedHeartDp(sites: HeartSites, seed = 0,
     const keyPairs = secaggKeyPairs(K, opts?.privateKeys);
     const publicKeys = keyPairs.map((kp) => kp.publicKey);
     const pairSeeds = await Promise.all(keyPairs.map((kp, c) => secaggClientSeeds(c, kp.privateKey, publicKeys)));
-    let theta = initTheta(seed, dim - 1);
-    for (let r = 0; r < rounds; r++) {
-      const shares = cs.map((c, k) => {
-        const g = clippedGradientSum(theta, c.train.X, c.train.y, clip);
-        const q = g.map((x) => Math.round(x * unit) + discreteGaussian(V, rb));
-        return maskIntegers(k, q, pairSeeds[k], r);
-      });
-      const sum = sumMaskedIntegers(shares);
-      theta = theta.map((t, j) => t - lr * (sum[j] / unit) / total);
-    }
+    const theta = await trainFedHeartDp(sites, seed, V, rb,
+      (noisy, r) => sumMaskedIntegers(noisy.map((q, k) => maskIntegers(k, q, pairSeeds[k], r))));
     const federated = tests.map((t) => accuracy(theta, t.X, t.y));
     rows.push({
       epsilon, epsilonAchieved: epsilonOf(V, rounds, sensitivity, K, dim, delta),
       epsilonOneDishonest: epsilonOf(V, rounds, sensitivity, K - 1, dim, delta),
       variancePerHospital: V, sdPerHospital: Math.sqrt(V) / unit, sdTotal: Math.sqrt(K * V) / unit,
-      federated, mean: mean(federated),
+      rho: rhoOf(V, rounds, sensitivity, K, dim), federated, mean: mean(federated),
     });
   }
-  return { rows, rounds, delta, clip, lr, sensitivity, source: opts?.seededLabel != null ? "seeded" : "crypto", ms: performance.now() - t0 };
+  const epsilonAllRows = composedEpsilon(rows.filter((r) => Number.isFinite(r.epsilon)).map((r) => r.rho), delta);
+  return { rows, rounds, delta, clip, lr, sensitivity, epsilonAllRows,
+           source: opts?.seededLabel != null ? "seeded" : "crypto", ms: performance.now() - t0 };
 }

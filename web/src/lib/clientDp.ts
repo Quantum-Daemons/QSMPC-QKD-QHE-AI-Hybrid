@@ -123,11 +123,26 @@ export function cdpToDp(rho: number, delta: number): number {
   return rho + 2 * Math.sqrt(rho * Math.log(1 / delta));
 }
 
+/** The concentrated-DP rho of T releases, each the sum of n parties' noise of variance V: T e^2 / 2. */
+export function rhoOf(variance: number, releases: number, d2: number, n: number, d: number): number {
+  if (variance === 0) return Infinity;
+  const e = ddgEpsilon(d2, n, variance, d);
+  return releases * e * e / 2;
+}
+
 /** The (eps, delta)-DP of T releases, each the sum of n parties' noise of variance V. */
 export function epsilonOf(variance: number, releases: number, d2: number, n: number, d: number, delta: number): number {
   if (variance === 0) return Infinity;
-  const e = ddgEpsilon(d2, n, variance, d);
-  return cdpToDp(releases * e * e / 2, delta);
+  return cdpToDp(rhoOf(variance, releases, d2, n, d), delta);
+}
+
+/**
+ * Several releases about the same people, published together: zero-concentrated DP composes by adding rho (Bun and
+ * Steinke, TCC 2016), and the total converts once.
+ */
+export function composedEpsilon(rhos: readonly number[], delta: number): number {
+  const rho = rhos.reduce((a, b) => a + b, 0);
+  return Number.isFinite(rho) ? cdpToDp(rho, delta) : Infinity;
 }
 
 /** The least integer per-party variance whose T releases are (target, delta)-DP; 0 for an infinite target. */
@@ -175,5 +190,34 @@ export function genomicsDp(counts: number[], epsilon: number, opts?: { seededLab
     contributions: counts.map((c) => c * scale + discreteGaussian(V, rb)),
     epsilon, epsilonAchieved: epsilonOf(V, 1, d2, n, 1, delta), epsilonOneDishonest: epsilonOf(V, 1, d2, n - 1, 1, delta),
     delta, variancePerCohort: V, scale, sdTotal: Math.sqrt(n * V) / scale,
+  };
+}
+
+/**
+ * The finance page's count of shared accounts as it would leave the banks (Round 86, the owner's choice of
+ * 2026-11-13). The banks themselves learn the shared accounts - that is what the PSI is for - so noise among them
+ * protects nothing; it protects the count once it is published, for instance in a supervisor's statistics. The unit is
+ * one account, which moves the count by at most 1. One party adds the noise, so this is the plain discrete Gaussian:
+ * with n = 1 the distributed bound above has tau = 0 and gives rho = 1 / (2 V), Canonne, Kamath and Steinke's.
+ * Delta is 1e-8, below 1/n^2 for the at most 4,600 accounts the two banks hold together (NIST SP 800-226).
+ */
+export const FINANCE_DP = { epsilon: 1, delta: 1e-8, sensitivity: 1 };
+
+export interface CountRelease {
+  /** The noisy count, clamped at 0 (post-processing, which costs no privacy). */
+  released: number;
+  epsilon: number; epsilonAchieved: number; delta: number; variance: number; sd: number;
+}
+
+/** `seededLabel` is for the twin tests only: that run is NOT private. */
+export function dpCount(count: number, opts?: { seededLabel?: string; epsilon?: number }): CountRelease {
+  if (!Number.isSafeInteger(count) || count < 0) throw new RangeError(`a count is a whole number >= 0, got ${count}`);
+  const { delta, sensitivity } = FINANCE_DP;
+  const epsilon = opts?.epsilon ?? FINANCE_DP.epsilon;
+  const rb = opts?.seededLabel != null ? seededRandBelow(opts.seededLabel) : cryptoRandBelow;
+  const V = varianceFor(epsilon, 1, sensitivity, 1, 1, delta);
+  return {
+    released: Math.max(0, count + discreteGaussian(V, rb)),
+    epsilon, epsilonAchieved: epsilonOf(V, 1, sensitivity, 1, 1, delta), delta, variance: V, sd: Math.sqrt(V),
   };
 }

@@ -26,6 +26,9 @@ and this document did not read again; every other statement was read here at the
 - **Canonne, Kamath and Steinke, "The Discrete Gaussian for Differential Privacy"**, NeurIPS 2020 (arXiv:2004.00010):
   Algorithms 1 to 3, exact sampling of Bernoulli$`(e^{-\gamma})`$, the discrete Laplace and the discrete Gaussian from
   uniform integers in rational arithmetic, which the page implements in BigInt and Python in integers.
+- **Bun and Steinke, "Concentrated Differential Privacy: Simplifications, Extensions, and Lower Bounds"**, TCC 2016
+  (arXiv:1605.02065): zero-concentrated DP composes by adding $`\rho`$, which is how the pages count several releases
+  about the same people.
 - **Mironov, "On Significance of the Least Significant Bits for Differential Privacy"**, CCS 2012: textbook
   floating-point Laplace noise leaks the value it hides through the low-order bits; the reason the page samples in
   integers.
@@ -53,15 +56,45 @@ and this document did not read again; every other statement was read here at the
   0.751); FedAvg without DP 0.7005. Total noise standard deviation in gradient units: 5.2, 9.9, 19.2 and 37.8.
 - Genomics, one count of at most 60 alleles over 30 people, four cohorts: total noise standard deviation 19.4, 9.8, 5.0,
   2.6 and 1.4 alleles at $`\epsilon`$ = 0.5, 1, 2, 4 and 8 ($`\delta = 10^{-5}`$).
+- Finance (from 2026-11-13), the count of shared accounts as it would be published: one party, sensitivity 1,
+  $`\epsilon = 1`$, $`\delta = 10^{-8}`$, so $`V = 38`$ and a standard deviation of 6.2 accounts (the accountant
+  gives $`\epsilon = 0.998`$), on a count of 60 at the default volume.
+- Composition: the medical table's four noised rows published together are $`\epsilon = 9.56`$ at
+  $`\delta = 10^{-6}`$ ($`\rho`$ = 0.910, 0.254, 0.068 and 0.017, summed), not 8; the page prints the figure from
+  the run.
 
 ## Where it does not apply
 
-- **Finance (the PSI).** Which flagged accounts the banks share is the answer the PSI exists to give; noise would add
-  false matches and misses (a DP intersection is a different protocol, for non-sensitive intersections; agent-read). A
-  published count could carry it; none is published.
+- **Finance (the PSI's answer).** Which flagged accounts the banks share is the answer the PSI exists to give; noise
+  would add false matches and misses (a DP intersection is a different protocol, for non-sensitive intersections;
+  agent-read). Since 2026-11-13 the count, as it would be published, carries DP (above); the answer to the banks does
+  not.
 - **Telecom.** The detector's data are synthetic, generated in the tab; they describe no person.
 - **Satellite.** Spacecraft telemetry (ESA-ADB, OPS-SAT) describes no person, and both are public.
 - **DeFi.** The released bit is the decision itself; randomized response at $`\epsilon = \ln 3`$ answers wrongly one
   time in four (Dwork and Roth, "The Algorithmic Foundations of Differential Privacy", 2014).
 - **The genomics page's own polygenic score.** It goes back to the person it describes; DP protects people inside a
   released dataset.
+
+## The other pages: DP and threshold cryptography, checked 2026-11-13
+
+The owner asked whether DP or further cryptography has research value for the telecom/defense, satellite, DeFi and
+PQC-QKD use cases, and to leave the pages as they are where it is not recommended. A research agent read the sources;
+the rows marked "read here" were read again at the source for this file, the rest are agent-read.
+
+| page | candidate | evidence | verdict |
+|---|---|---|---|
+| telecom | DP on the detector or its published models | the tab's data are synthetic; 5G-NIDD's benign flows come from real devices but are published (arXiv:2212.01298, section III-B) | not recommended: it would protect no one whose data are not already public |
+| telecom | federated IDS across operators with record-level DP | Tory, Ali, Layek and Hasan, arXiv:2609.03420 (v1, 3 Sep 2026; no venue on arXiv; read here, abstract): DP-SGD with coordinate-wise median on UNSW-NB15, rare-attack detection degraded; the PDF's F1 0.954 without DP and 0.738 at $`\epsilon = 1`$, Worms 20 percent and Shellcode 52.5 percent, are agent-read. 3GPP TS 23.288 V18.5.0, clause 5.3, names neither secure aggregation nor DP for federated learning among NWDAFs (agent-read) | not recommended: simulation only, the rare attacks degrade most, and the page has no federation |
+| telecom | DP synthesis of network traces | NetDPSyn, IMC 2024 (arXiv:2409.05249; agent-read) | not applicable: the page releases no traces |
+| satellite | DP on telemetry | ESA-ADB and OPS-SAT describe no person | not recommended |
+| satellite | MPC conjunction screening across operators | ShareSat, an ESA prototype on Sharemind with three servers, about 7 minutes a conjunction (agent-read, from a 2026 Tartu thesis citing project documents) | not for this page: a different computation, so a different use case |
+| DeFi | DP on the bit | the bit is the decision | not recommended |
+| DeFi | a t-of-n threshold CKKS committee in place of the one key holder | Zama's KMS documentation (read here): 13 MPC nodes run by different organisations, robust while at most a third act maliciously, every decryption output signed by each node, user decryption re-encrypted for the user. Lattigo v6.2.0 (read here, in the module cache): `Thresholdizer`, `Combiner` and `PublicKeySwitchProtocol` exist; the protocols are secure against passive adversaries only, and a party must not make a second share for the same ciphertext (`SECURITY.md`, "On the insecurity of retries") | implement as an option, the default key holder unchanged (the owner's choice of 2026-11-13) |
+| DeFi | threshold ML-DSA for the key holder's signature | NIST's threshold call (read here; updated 2026-11-05): full packages expected 2027-03-01 and not before | not recommended: not standardised; separate per-member signatures match Zama's practice |
+| PQC-QKD | threshold ML-DSA or ML-KEM | the same call names threshold ML-DSA schemes and no ML-KEM; the page makes a fresh ML-DSA key each run, so there is no long-lived key to split | not recommended |
+| PQC-QKD | the key split over node-disjoint relay paths | Clermont, Gansel and Struck, "Key Transport over Untrusted QKD Relay Networks", ePrint 2026/1095 (read here, abstract; "Major revision. SCN 2026", so acceptance is not confirmed): proactive secret sharing with one-time pads over pairwise QKD links, information-theoretically secure against a semi-honest adversary corrupting up to $`t-1`$ nodes in any one layer, and a cross-layer attack on a prior construction. A routing study at OFC 2025 (W1J.6) and an expired individual IETF draft (draft-li-ipsecme-qkd-multipath-secret-sharing) are agent-read; no deployment was found | add, as a two-path XOR split in the SDN panel (the owner's choice of 2026-11-13): the only candidate that weakens an assumption the page states, that the relay sees the key |
+
+What rests on searches rather than proof: that no cross-operator DP IDS, no DP for QKD-network monitoring or lending,
+and no fielded multipath relay was found.
+
