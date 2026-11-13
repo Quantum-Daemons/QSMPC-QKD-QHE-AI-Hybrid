@@ -123,7 +123,7 @@ QCNN or student weights are a model fitted on one.
 | `web/public/data/medical/qcnn_heldout.json` (Round 86) | **CC BY 4.0** | The 86 test rows of the medical QCNN's trainer split (seed 0, the last 15 percent), the 8 WDBC features it reads in their original units, with their labels: what the page runs the circuit over to re-score its recorded accuracy. Written by `scripts/data/build_qcnn_heldout.py` only after the trainer's circuit reproduces every recorded figure from them. Its `licence`, `licence_url` and `attribution` fields carry UCI's credit. |
 | `web/public/data/finance/qcnn_heldout.json` (Round 86) | **CC BY-SA 4.0 (ShareAlike)** | The 600 test rows of the finance QCNN's trainer split (seed 0), the four PaySim columns it reads, from this repository's `data/finance/paysim_sample.tsv`: an adaptation of PaySim, so released under the same licence. Same builder and the same condition as the medical file; its fields carry the licence, the link and the PaySim credit. |
 | `web/public/data/telecom/qcnn_heldout.json` (Round 86) | **Apache-2.0** (generated here; see the note below) | The 480 test rows of the telecom QCNN's trainer split (seed 0) of `generate(n_per_class=400, seed=0)`, all 7 features, read by both the 8-wire and the 7-wire artifact. Same builder and the same condition. |
-| `web/public/data/telecom/student_weights.json` (identical to `models/telecom_ids_student/weights.json`) | **Apache-2.0** (generated here; see the note below) | The 64-parameter telecom CKKS student (8 class scores over 7 features), distilled from `telecom_ids.qml` on the same synthetic telemetry. Its `licence` field states it. |
+| `web/public/data/telecom/student_weights.json` (identical to `models/telecom_ids_student/weights.json`) | **Apache-2.0** (generated here; see the note below) | The 64-parameter telecom CKKS student (8 class scores over 7 features), distilled from `telecom_ids.qml` on the same synthetic telemetry. Its `licence` field states it. Published since 2026-11-13 as `qsh-telecom-ids-ckks-student` with a graph built from this file and the 600 held-out rows as its sample, under the same licence; a test holds this copy byte-identical to the pinned file. |
 | `web/public/data/telecom/real_2d.json` | **Apache-2.0** (generated here; see the note below) | The 600 rows held out from `generate(n_per_class=300, seed=42)` by the telecom trainer's stratified split - the rows `telecom_ids.qml` and `telecom_ids.student` were scored on and never fitted on - not the 3,200-row seed-0 corpus a QCNN trains on. Its `licence` and `licence_url` fields state the licence. |
 | `web/public/data/telecom/student_heldout.json` (Round 84) | **Apache-2.0** (generated here; see the note below) | The same 600 held-out rows with all 7 features, rounded to 7 significant figures: what the browser encrypts `telecom_ids.student` on. Regenerated from the repository's own generator and checked against `models/telecom_qml_ids/eval_sample.json` by `scripts/data/build_heldout_payloads.py`. |
 
@@ -131,7 +131,7 @@ QCNN or student weights are a model fitted on one.
 > third-party terms attach to the rows `qsh.qml_ids.attacks` writes or to the weights fitted on them,
 > and the repository grants them under its own licence: the registry records the synthetic telemetry
 > as `Apache-2.0`, each file above states it (a `licence` field with its link, or the weights'
-> `provenance`), and the `qsh-telecom-qml-ids` Hub card names it as `license: apache-2.0`.
+> `provenance`), and the `qsh-telecom-qml-ids` and `qsh-telecom-ids-ckks-student` Hub cards name it as `license: apache-2.0`.
 
 > **The finance QCNN is trained on PaySim, which section 2 says the published models are not - and
 > that is a real tension, recorded rather than smoothed over.** The rule above exists because
@@ -323,7 +323,7 @@ this as synthetic; it is never presented as measured on real traffic.
 The published models' graphs live on the Hugging Face Hub (repo ids in `src/qsh/models/registry.py`),
 pinned by 40-character commit sha, and never in git (`.gitignore` excludes `*.onnx`, `*.safetensors`,
 `*.pt`, `*.npy`; CI fails the build if one is staged). Small JSON weight files are a different matter and are tracked in
-git: the QCNN angles and the telecom student (section 2b), the four Hub students', the finance MLP's and the compact GNN's `weights.json`, the
+git: the QCNN angles, the five Hub students' (the telecom student's also in section 2b), the finance MLP's and the compact GNN's `weights.json`, the
 finance scorecard, and the PGS000072 effect weights the page scores (183 of them in
 `models/genomics_prs/weights.json` and in the browser payload
 `web/public/data/genomics/pgs000072_breast_cancer.json`; all 187 in the bundled scoring file). Those

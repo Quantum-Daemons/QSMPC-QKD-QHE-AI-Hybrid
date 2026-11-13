@@ -529,8 +529,9 @@ async function publishedStudentHeldOut(usecase: string, path: string): Promise<H
     ? { W: [new Array(W[0].length).fill(0), W[0]], b: [0, b[0] ?? 0] }
     : { W, b };
   const modelKey = String(ds.model_key ?? w.student_key ?? "");
-  // "Published" only where the registry names a Hub repo: telecom's student ships with the page and has none
-  // (`hf_repo=None`), and the label called it published until Round 86.
+  // "Published" only where the registry names a Hub repo. Telecom's student had none until 2026-11-13 and the label
+  // called it published regardless; it is published and pinned now, and the copy read here is held to the pinned file
+  // by tests/test_r86_bundled_students_are_the_pinned_ones.py.
   const onHub = modelsFor(usecase).some((m) => m.key === modelKey && !!m.hf_repo_id);
   return {
     usecase, modelKey,
@@ -549,8 +550,8 @@ async function publishedStudentHeldOut(usecase: string, path: string): Promise<H
  *   finance_aml  the published 115-parameter AMLworld student (`finance_aml.student`) on the 8,192
  *                test-window rows `finance/real_2d.json` draws, through its own z-scoring.
  *   medical_fl   the page's bundled WDBC regression on the 171 rows held out from its fit.
- *   telecom_ids  the bundled 64-parameter student (`telecom_ids.student`, not on the Hub) on the 600 rows
- *                of its own held-out quarter.
+ *   telecom_ids  the published 64-parameter student (`telecom_ids.student`, pinned since 2026-11-13, read from
+ *                its bundled copy) on the 600 rows of its own held-out quarter.
  *   satellite_comms  the published 210-parameter student (`satellite_comms.opssat_student`) on the
  *                529 segments of the benchmark's test partition, through its quadratic expansion and
  *                the scaler its ONNX graph applies.

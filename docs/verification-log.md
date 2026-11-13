@@ -4296,3 +4296,62 @@ BreastMNIST, measured on MedMNIST's splits: one test image byte-identical to a t
 24 of 156 test images within 3/255 mean absolute difference per pixel of a training image, as within the training split
 (91 of 546), consistent with the 155 duplicates Pawlowska et al. found in BUSI (Data in Brief 48:109247, 2023). The
 served ResNet-18: AUC 0.9146 on all 156, 0.9281 without those 24, 0.9107 without the 43 within 5/255.
+
+### PR #34 on the deployed site (2026-11-13)
+
+Deployed from merged `main` (65faffd) with `scripts/deploy_demo.sh --return-to-main`; the box, the public URL and the
+browser all serve `index-MC40jGBa.js`, which carries the three new pins and none of the old ones. Read in Chrome:
+
+| where | read |
+|---|---|
+| medical, a default run | `fhe_student_input` "held-out image 1 of 156, the official BreastMNIST test split at 14x14", true class 1, the CKKS student's class 1, logits within 1.34e-9 of plaintext; the CNN under MPC on the same image, class 1, as the clear network; `medical_fl.resnet18` re-scored PASS, its graph fetched at `638b7a4a` |
+| telecom | `telecom_ids.qml` fetched at `ce545929`, graph SHA-256 `505c91b8...` as recorded, re-scored PASS on 600 rows; the student's 600 held-out rows under CKKS, 0 mismatches |
+| finance | the compact GNN's weights fetched at `10104e89`, GNN under MPC class 1 as the clear network, 608 ReLUs, largest logit error 1.6e-4; `finance_aml.gbm` and `finance_aml.student` re-scored PASS; the `finance_aml.gnn` entry reads "no trained artifact in this build" |
+
+No console error on any of the three pages.
+
+### Every published sample carries a per-row record, and the page compares every row (2026-11-13)
+
+The owner chose exact per-row verification, with every sample republished, over the aggregate tolerance of 0.05 the
+page had applied. The records were added to the PUBLISHED samples, not regenerated ones: each file, without its record,
+was checked byte for byte against its pinned digest before anything was written, and the metric each record implies was
+checked against the one the file already stated (accuracy and F1 to 1e-12, MAE to 1e-6) before it was written
+(`scripts/add_per_row_records.py`). At each new revision only `eval_sample.json` changed, and each served file equals
+the local one. The page's own `evaluatePublishedModel`, run in node with ONNX Runtime Web's WASM build on one thread
+against the pinned bytes (`tests/test_r86_published_rescore.py`):
+
+| model | revision | rows | decided as recorded | largest margin difference |
+|---|---|---|---|---|
+| `finance_aml.gbm` | `b74d16f3` | 8,192 | all | 4.8e-7 |
+| `finance_aml.student` | `c305a104` | 8,192 | all | 3.1e-6 |
+| `finance_aml.mlp_large` | `65926d2e` | 8,192 | all | 5.3e-6 |
+| `medical_fl.resnet18` | `b24642c6` | 156 | all | 1.1e-6 |
+| `medical_fl.resnet50` | `d11ec391` | 156 | all | 5.7e-5 |
+| `medical_fl.student` | `1de47e04` | 156 | all | 1.1e-6 |
+| `satellite_comms.telemanom` | `6fbeb225` | 128 windows | (forecast values) | 6.9e-7 |
+| `satellite_comms.opssat` | `95955c8d` | 529 | all | 4.7e-7 |
+| `satellite_comms.opssat_student` | `9175fa16` | 529 | all | 1.1e-6 |
+| `telecom_ids.qml` | `cd149476` | 600 | all | 4.6e-7 |
+| `telecom_ids.nidd` | `9fb901e3` | 16,379 | all (one row within 1e-3 of the boundary) | 1.6e-6 |
+| `telecom_ids.student` | `c351a335` (new) | 600 | all | 2.5e-6 |
+
+The tolerance is 1e-3: seventeen times the largest difference measured, for the page's threaded and WebGPU runs, and far
+below what a different graph or preprocessing moves. Seeded on the telecom QML sample as served: one decision flipped
+fails the verification, and one margin moved by 0.01 fails it. The compact GNN and the forecaster student already carried
+row-level records (logits, and a digest of the flags), so every published model is now verified row by row.
+
+Also in the republish:
+
+- **`telecom_ids.student` published** as `Daemons-Q/qsh-telecom-ids-ckks-student` (Apache-2.0): its graph is built from its
+  weights file (`qsh.models.linear_onnx`, 566 bytes, the same bytes on every build), its sample is the QML forest's 600
+  held-out rows read from that sample, and the card says the argmax is taken in the clear after decryption. Its four
+  files on the Hub equal the local ones; macro F1 0.988329 on the 600 rows.
+- **Four change notices corrected.** `finance_aml.gbm`, `satellite_comms.opssat`, `satellite_comms.opssat_student` and
+  `telecom_ids.qml` said their values were "rounded to 6 decimals" while their builders have written each value as the
+  shortest decimal that reads back as the same float32 since Round 86 (checked on the files: no sample of the four holds
+  6-decimal values). Only the `modifications` field changed in each.
+- **The CKKS tier's bundled student copies were checked against nothing.** Finance's and telecom's are byte-identical to
+  their pinned `weights.json`; satellite's is a derived form with the scaler its graph applies moved into `input`.
+  `tests/test_r86_bundled_students_are_the_pinned_ones.py` now holds each to its pinned file.
+- **The finance decision curves re-measured at `b74d16f3` and `c305a104`:** the same figures; the records' revisions and
+  sample blobs moved with the pins.

@@ -1540,9 +1540,12 @@ _SPECS: tuple[ModelSpec, ...] = (
     #: to judge here, and `references/model-choice-vs-2026-practice.md` answered a model-quality
     #: question in its place.
     #:
-    #: `hf_repo=None` and the weights are BUNDLED, following `genomics.prs` - the other CKKS tier
-    #: with no Hub repo. 64 parameters do not need a pinned revision, and bundling means the
-    #: encrypted tier works on a fresh clone with no network.
+    #: PUBLISHED SINCE ROUND 86, on the owner's decision of 2026-11-13. Until then `hf_repo=None` and the weights
+    #: were only bundled, following `genomics.prs`, on the reasoning that 64 parameters need no pinned revision;
+    #: it left the one student the page could not re-score from a pinned graph. Its graph is built from its own
+    #: weights.json (`qsh.models.linear_onnx`), not refitted, and the page re-scores it on the 600 held-out rows like
+    #: every other student. The encrypted tier still reads the bundled copy of weights.json, which
+    #: `tests/test_r86_linear_student_graph.py` holds byte-identical to the published file.
     #:
     #: `runs_encrypted=True` is true of the MODEL: `clientCompute.runEncryptedTelecomStudent`
     #: evaluates these 8 dot products under real CKKS in the tab. It does NOT claim the argmax is
@@ -1562,15 +1565,22 @@ _SPECS: tuple[ModelSpec, ...] = (
         dataset=DS_QKD_ATTACK_SYNTH,
         metric=M_QML_IDS,
         runs_encrypted=True,
-        artifacts=(),
-        hf_repo=None,
+        artifacts=_STUDENT_ARTIFACTS,
+        hf_repo="qsh-telecom-ids-ckks-student",
+        eval_split="the held-out quarter of the seed-42 stratified split, whole",
         notes=(
             "Distilled from the random forest published as telecom_ids.qml, from its PROBABILITIES, "
             "not its argmax: on 8 classes the argmax "
             "discards exactly the minority-class signal macro F1 is computed from, and hard-label "
             "distillation is a defect this project has already made once. Read n_classes_predicted "
             "before macro_f1 - a linear student that stops emitting a class scores 0 on it by "
-            "construction, which reads as poor discrimination rather than an absent output."),
+            "construction, which reads as poor discrimination rather than an absent output. "
+            "Under CKKS the page evaluates the 8 dot products on the encrypted row, then decrypts all 8 scores and "
+            "takes the argmax in the clear, since CKKS has no native comparison; with these public weights that "
+            "exposes nothing, but a private linear model's raw scores would let the key holder recover it with "
+            "about as many queries as it has parameters per class (Tramer et al., USENIX Security 2016). The ONNX "
+            "graph is built from weights.json (qsh.models.linear_onnx), not refitted, so the page's plaintext "
+            "re-score and its encrypted tier evaluate the same model."),
     ),
 )
 
@@ -1638,6 +1648,7 @@ ARTIFACT_DIRS: dict[str, str] = {
     "satellite_comms.opssat_student": "models/satellite_opssat_student",
     "telecom_ids.qml": "models/telecom_qml_ids",
     "telecom_ids.nidd": "models/telecom_nidd",
+    "telecom_ids.student": "models/telecom_ids_student",
     "finance_aml.student": "models/finance_aml_student",
     "medical_fl.student": "models/medical_breastmnist_student",   # already on disk from training
     "satellite_comms.student": "models/satellite_telemanom_student",

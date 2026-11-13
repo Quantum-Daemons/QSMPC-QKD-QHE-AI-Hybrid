@@ -528,11 +528,71 @@ export interface ModelInputFile {
      *  a threshold the model is never operated at. Its student needs none: its cut is in its
      *  intercept. */
     decision_threshold?: number;
+    /** Each row's decision and its margin to the decision boundary (classification), or each window's forecast
+     *  (forecast), computed by `qsh.models.sample_per_row` with this rule in Python (Round 86). With it the page
+     *  compares every row instead of one aggregate figure within 0.05. */
+    per_row?: PerRowRecord;
   };
   classes?: Record<string, string>;
   feature_names?: string[];
   channels?: string[];
 }
+
+/** `expected.per_row`: what `scripts/add_per_row_records.py` writes. */
+export interface PerRowRecord {
+  rows: number; read_from: string; tolerance: number; graph: string; note?: string;
+  predicted?: number[]; margin?: number[]; margin_is?: string;
+  values?: number[][];
+}
+
+/** How this run compares with the per-row record, row by row. */
+export interface PerRowComparison {
+  rows: number;
+  /** Rows whose class differs from the record while the recorded margin is beyond the tolerance: a failure. */
+  mismatches: number;
+  /** Rows whose class differs while the recorded margin is within the tolerance: a near tie two runtimes may break
+   *  differently, reported rather than failed. */
+  nearTies: number;
+  /** The largest |margin| (or |forecast value|) difference from the record. */
+  maxDiff: number;
+  tolerance: number;
+  /** Whatever stopped the comparison: a record of another graph, another row count or another output. */
+  refused?: string;
+}
+
+/** Compare this run with the per-row record (Round 86). `margin(i)` and `pred(i)` follow the record's own rule. */
+export function comparePerRow(rec: PerRowRecord, n: number, readFrom: string, fetchedGraph: string,
+                              pred: ((i: number) => number) | null, margin: ((i: number) => number) | null,
+                              values: ((i: number) => ArrayLike<number>) | null): PerRowComparison {
+  const out: PerRowComparison = { rows: n, mismatches: 0, nearTies: 0, maxDiff: 0, tolerance: rec.tolerance };
+  if (rec.rows !== n) return { ...out, refused: `the record has ${rec.rows} rows and the sample ${n}` };
+  if (rec.graph && fetchedGraph && rec.graph !== fetchedGraph) {
+    return { ...out, refused: `the record was computed on ${rec.graph} and this browser ran ${fetchedGraph}` };
+  }
+  if (rec.read_from !== readFrom) {
+    return { ...out, refused: `the record reads output "${rec.read_from}" and this graph's score output is "${readFrom}"` };
+  }
+  if (rec.values && values) {
+    for (let i = 0; i < n; i++) {
+      const got = values(i), want = rec.values[i] ?? [];
+      if (want.length !== got.length) return { ...out, refused: `window ${i} has ${got.length} values, the record ${want.length}` };
+      for (let c = 0; c < want.length; c++) out.maxDiff = Math.max(out.maxDiff, Math.abs(got[c] - want[c]));
+    }
+    return out;
+  }
+  if (!rec.predicted || !rec.margin || !pred || !margin) return { ...out, refused: "the record holds no decisions" };
+  for (let i = 0; i < n; i++) {
+    out.maxDiff = Math.max(out.maxDiff, Math.abs(margin(i) - rec.margin[i]));
+    if (pred(i) !== rec.predicted[i]) {
+      if (Math.abs(rec.margin[i]) <= rec.tolerance) out.nearTies++;
+      else out.mismatches++;
+    }
+  }
+  return out;
+}
+
+/** True when a per-row comparison found every decision and every margin as recorded. */
+export const perRowPasses = (c: PerRowComparison) => !c.refused && c.mismatches === 0 && c.maxDiff <= c.tolerance;
 
 export interface ModelEvalResult {
   ran: boolean;
@@ -562,6 +622,9 @@ export interface ModelEvalResult {
   /** The satellite forecaster student scored end to end on its stretch (Round 86): the flags against the recorded
    *  digest, the event scores, and every row's forecast under CKKS with the events the decrypted forecast gives. */
   studentDetail?: StudentEvaluation;
+  /** Every row against the sample's per-row record, when it carries one (Round 86). With a record, `matchesExpected`
+   *  is this comparison passing and the metric equalling the record; without one, the aggregate within `tolerance`. */
+  perRow?: PerRowComparison;
   /** |measured - expected| within tolerance. False means the browser must NOT present the number. */
   matchesExpected: boolean;
   backend: string;
@@ -851,13 +914,20 @@ export async function evaluatePublishedModel(
       const series = Array.from({ length: Math.min(n, 240) }, (_, i) => ({
         i, actual: (file.targets?.[i] ?? [])[0] ?? 0, predicted: data[i * width] ?? 0,
       }));
+      // Every window's forecast against the record, when there is one (Round 86).
+      const rec = file.expected.per_row;
+      const perRow = rec ? comparePerRow(rec, n, scoresName, fetchedGraph, null, null,
+                                          (i) => data.subarray(i * width, (i + 1) * width)) : undefined;
       return {
         ran: true, task, metricName: "mae", n, score: mae, expected: exp,
         baseline: file.expected.persistence_mae ?? persistenceMae,
         beatsBaseline: mae < (file.expected.persistence_mae ?? persistenceMae),
         forecastDetail: { medianAe: median(absModel), persistenceMedianAe: median(absPersist), windowsBetter,
                           windows: n },
-        matchesExpected: exp == null ? false : Math.abs(mae - exp) <= Math.max(tolerance, exp * 0.1),
+        perRow,
+        matchesExpected: exp == null ? false
+          : perRow ? perRowPasses(perRow) && Math.abs(mae - exp) <= perRow.tolerance
+          : Math.abs(mae - exp) <= Math.max(tolerance, exp * 0.1),
         backend: opened.status.backend, bytes: opened.status.bytes, provenance: file.provenance, split,
         decisionThreshold: thr,
         note: file.expected.note ?? null, error: null,
@@ -892,6 +962,27 @@ export async function evaluatePublishedModel(
       else if (pred === 1) fp++;
       else if (labels[i] === 1) fn++;
     }
+    // Every row against the record, when the sample carries one (Round 86): each decision, and its margin to the
+    // boundary by the rule `qsh.models.sample_per_row` writes - the threshold's, the argmax's, or 0.5's.
+    const rec = file.expected.per_row;
+    const marginOf = (i: number): number => {
+      if (thr != null && width === 2) return prob![i * 2 + 1] - thr;
+      if (width > 1) {
+        let top = -Infinity, second = -Infinity;
+        for (let c = 0; c < width; c++) {
+          const v = data[i * width + c];
+          if (v > top) { second = top; top = v; } else if (v > second) second = v;
+        }
+        return top - second;
+      }
+      return (prob ? prob[i] : data[i]) - (thr ?? 0.5);
+    };
+    const perRow = rec ? comparePerRow(rec, n, scoresName, fetchedGraph, (i) => preds[i], marginOf, null) : undefined;
+    // With a record: every decision as recorded, every margin within its tolerance, and the figure itself (a near tie
+    // may move it, and is reported). Without one: the aggregate within `tolerance`, as before.
+    const agrees = (score: number, exp: number) => perRow
+      ? perRowPasses(perRow) && (perRow.nearTies > 0 || Math.abs(score - exp) <= 1e-9)
+      : Math.abs(score - exp) <= tolerance;
 
     // ---- plot data, computed once, from the arrays already here --------------------------------
     const positiveScore = (i: number) =>
@@ -1000,7 +1091,7 @@ export async function evaluatePublishedModel(
         ran: true, task, metricName: "minority_class_f1", n, score: f1, expected: exp,
         baseline: allPositive,
         beatsBaseline: f1 > allPositive,
-        matchesExpected: Math.abs(f1 - exp) <= tolerance,
+        perRow, matchesExpected: agrees(f1, exp),
         backend: opened.status.backend, bytes: opened.status.bytes, provenance: file.provenance, split,
         decisionThreshold: thr,
         note: file.expected.note ?? null, error: null, plot,
@@ -1032,7 +1123,7 @@ export async function evaluatePublishedModel(
         ran: true, task, metricName: "macro_f1", n, score: macro, expected: exp,
         baseline: chance,
         beatsBaseline: macro > chance,
-        matchesExpected: Math.abs(macro - exp) <= tolerance,
+        perRow, matchesExpected: agrees(macro, exp),
         backend: opened.status.backend, bytes: opened.status.bytes, provenance: file.provenance, split,
         decisionThreshold: thr,
         note: file.expected.note ?? null, error: null, plot,
@@ -1045,7 +1136,7 @@ export async function evaluatePublishedModel(
     return {
       ran: true, task, metricName: "accuracy", n, score: accuracy, expected: exp, baseline: majority,
       beatsBaseline: majority == null ? true : accuracy > majority,
-      matchesExpected: exp == null ? false : Math.abs(accuracy - exp) <= tolerance,
+      perRow, matchesExpected: exp == null ? false : agrees(accuracy, exp),
       backend: opened.status.backend, bytes: opened.status.bytes, provenance: file.provenance, split,
       decisionThreshold: thr,
       note: file.expected.note ?? null, error: null, plot,

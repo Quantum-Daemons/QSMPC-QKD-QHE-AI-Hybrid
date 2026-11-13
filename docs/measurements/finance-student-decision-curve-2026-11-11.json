@@ -1,8 +1,8 @@
 {
  "machine": {
   "cpu": "x86_64",
-  "date": "2026-11-12",
-  "feature_seconds": 168.5
+  "date": "2026-11-13",
+  "feature_seconds": 175.9
  },
  "versions": {
   "onnxruntime": "1.31.1",
@@ -11,7 +11,7 @@
  },
  "inputs": {
   "model_key": "finance_aml.student",
-  "hf_revision": "67cdb41efc8fd9b8aeaca720732bb1397d33ac00",
+  "hf_revision": "c305a104be537e93612d3556fbc0c36f637e45e9",
   "weights_sha256": "dd58191c8279e7f6d36522db5545e46e1a6dda135abffb741eaba545d6a66528",
   "page_rows_git_blob": "cc108298864690145ef24b1be5016aadd4fbaaa8",
   "calibration": {

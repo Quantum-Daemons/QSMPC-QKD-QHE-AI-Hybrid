@@ -1,111 +1,60 @@
-# CKKS-linear intrusion-detection student - telecom
+---
+license: apache-2.0
+library_name: onnx
+pipeline_tag: tabular-classification
+tags:
+  - quantum-safe
+  - privacy-preserving
+  - telecom-ids
+  - onnx
+  - onnxruntime-web
+---
 
-> **Nothing in this repository reads this file.** It is written by
-> `scripts/train/telecom_ids.py::distil_linear_student`, and the same function writes the identical
-> byte string to `web/public/data/telecom/student_weights.json`, which is the copy the browser
-> actually fetches. Searched across `src/`, `web/src/`, `api/`, `scripts/` and the generated config:
-> the only path that opens a student weight file at run time is
-> `web/src/lib/clientCompute.ts::runEncryptedTelecomStudent`, and it fetches the `web/public` copy.
-> This directory is the archival copy of a served artifact, not the served artifact. That is worth
-> knowing before anyone edits it and expects the demo to change.
+# CKKS-linear IDS student (8 classes)
 
-NOT PUBLISHED TO HUGGING FACE. `telecom_ids.student` carries no `hf_repo` and no pinned revision:
-64 floats do not need a pinned download, and bundling them means the encrypted tier works on a fresh
-clone with no network. The registry entry exists (`ModelSpec` key `telecom_ids.student`) and a
-`models/metrics.json` record exists, but this directory is **not** in `registry.ARTIFACT_DIRS`, so
-nothing resolves the key to this path either.
+multinomial logistic regression, 8x7 + 8, distilled from the forest on soft targets
 
-## What it is
+Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid),
+a quantum-safe orchestration demo.
+This is the **encrypted-tier** model for the `telecom_ids` use case: a
+distilled student small enough to evaluate under CKKS. Whether the public demo
+encrypts THIS model differs by use case; the notes below say what actually runs.
+It is not the plaintext teacher, and its numbers should be read against that
+teacher rather than against the published literature. Its agreement with the
+teacher was measured offline, in plaintext.
 
-The T1 student for the `telecom_ids` use case, distilled from the plaintext RandomForest teacher
-(`telecom_ids.qml`, in `models/telecom_qml_ids`) so that this vertical has an encrypted tier at all.
-`kind` is `logistic-linear-multiclass`: what runs under CKKS is 8 dot products over 7 standardised
-features, `W` being 8 rows of 7 and `b` being 8.
+## Measured performance
 
-**Distilled from the teacher's PROBABILITIES, not its argmax.** On 8 classes the argmax throws away
-exactly the minority-class signal that a macro F1 is computed from, so the soft targets are what the
-student is fitted to.
-
-**The argmax is NOT encrypted, and the card says so because the artifact does.** CKKS has no native
-comparison. The client decrypts all 8 class scores and takes the maximum in the clear. That is the
-mainstream construction and it is honest in a single-tab demo where the client is the user, but it
-must never be described as deciding the class under encryption.
-
-Preprocessing ships with the weights, in the same file: subtract `input.mean`, divide by
-`input.scale`. Both were fitted on the training split and are published rather than left for a
-caller to guess, which is the same discipline the other students follow.
-
-## What this file records
-
-| quantity | value |
+| metric | value |
 |---|---|
-| `n_features` | 7 |
+| `aggregate_accuracy` | 0.988333 |
+| `agreement` | 0.995 |
+| `macro_f1` | 0.988329 |
+| `n_classes` | 8 |
+| `n_classes_predicted` | 8 |
+| `n_eval` | 600 |
 | `n_parameters` | 64 |
-| entries in `input.mean`, and in `input.scale` | 7 |
 
-`n_parameters` = 64 is `W` (8 classes x 7 features) plus `b` (8 intercepts). The eight class names
-are carried in `classes`, in the row order of `W`, and the seven feature names in `features`, in the
-column order of `W` and of the two standardisation vectors - so a caller can align both axes without
-guessing. `teacher_key` and `student_key` name the pair this artifact belongs to.
+## Published baselines this is measured against
 
-**There are no metrics in this file.** It records the model, not its evaluation. Any figure below
-that is not in the table above came from `models/metrics.json`, and is labelled as such.
+- **Target metric**: macro F1 (synthetic QKD-attack telemetry)
+- **Baseline**: Architecture showcase, not a performance claim. On THIS project's synthetic telemetry neither quantum model beats the classical random forest (RF macro F1 0.987 vs variational QNN 0.467). Published results are MIXED, not uniformly below a random forest -- an earlier revision of this note claimed they were, and the very paper cited here contradicts it: Al-Kuwari et al. (arXiv:2509.14282) Table VIII reports a hybrid QLSTM at 94.7% accuracy / 94.7% F1 against their own random-forest baseline on the same generated data, at 81.5 to 82.6% accuracy by tree count (read at the source, 2026-11-12). This project's forest reaches macro F1 0.987 on its own generator; the metrics and the simulations differ, so the figures rank nothing, but this generator's classes separate more easily than theirs. What remains well-founded is caution about evaluation quality rather than a universal ranking: arXiv:2512.05069 was withdrawn by its own authors for evaluation that was 'insufficient to fully support the conclusions'. That single withdrawal is thin support for a field-wide claim, so the anchor is now a survey: Kaissar, Bou Nassif & Bouridane, Future Internet 18(5):234 (2026-04-27, CC BY 4.0, DOI 10.3390/fi18050234), systematic to January 2026, finds that 'most current approaches rely on simulated quantum environments and legacy datasets, while evaluation practices remain inconsistent across studies' - active but methodologically early, which is a different and better-founded statement than 'worse than a random forest'. The Al-Kuwari paper is now peer-reviewed: IET Quantum Communication 7(1), DOI 10.1049/qtc2.70028 (2026-02-23). And the nearest strong 2026 result is CLASSICAL, which corroborates the framing here - but it is a DIFFERENT problem and Round 46 stopped calling it the same one. IACR ePrint 2026/1282 reaches 96.9% recall / 97.6% precision with physics-aware temporal features plus XGBoost against 17.3% for static QBER thresholding - but its abstract, read at source, is entanglement-based BBM92, a 24-dimensional feature space over 30-second sliding windows, binary detection of blended sub-threshold attacks on simulated FSO telemetry. This model classifies 8 BB84 attack TYPES from per-session physical observables. Neither the protocol, the label space nor the feature space matches, so it is an anchor, not a baseline.
 
-## Evaluation figures, which live in models/metrics.json and not here
+## Training data
 
-Recorded under the key `telecom_ids.student` by the same training run, on a held-out split of 600
-rows over 8 balanced classes:
+- **Dataset**: QKD attack telemetry (synthetic, signatures of this project's own design)
+- **Licence**: Apache-2.0
+- **Source**: https://arxiv.org/abs/2509.14282 (licence read 2026-11-01)
 
-| figure | value |
-|---|---|
-| macro F1 (the headline) | 0.988329 |
-| aggregate accuracy (companion) | 0.988333 |
-| agreement with the teacher | 0.995 |
-| classes predicted, of 8 | 8 |
-| rows evaluated | 600 |
+8 classes = 7 attack types + normal, per Al-Kuwari et al. (IET Quantum Communication 7(1), e70028, 2026). The class list follows the paper; the 7 features and their signature values are this project's own design: illustrative, not fitted to any measurement. No public real QKD-attack capture was found (arXiv:2508.12749 reports anomalies recorded on an experimental QKD receiver and states no data release); this is labelled synthetic everywhere it is reported. The rows are written by this repository's generator (qsh.qml_ids.attacks), and they and the weights trained on them are released under the repository's licence, Apache-2.0.
 
-Per class, from the same record: `combined`, `detector_blinding`, `normal` and
-`photon_number_splitting` at 1.0; `intercept_resend` 0.986842; `rng_manipulation` 0.986486;
-`trojan_horse` 0.96732; `wavelength_trojan` 0.965986.
+## Notes and limitations
 
-**Read the predicted-class count before reading the macro F1.** A linear student that stops emitting
-a class scores 0 on it by construction, and the macro average then absorbs a zero that looks like
-poor discrimination rather than an absent output. This repository's own variational QNN carries
-exactly that defect on this use case and is documented as doing so, so the check is not
-hypothetical. All 8 classes are predicted here.
+Distilled from the random forest published as telecom_ids.qml, from its PROBABILITIES, not its argmax: on 8 classes the argmax discards exactly the minority-class signal macro F1 is computed from, and hard-label distillation is a defect this project has already made once. Read n_classes_predicted before macro_f1 - a linear student that stops emitting a class scores 0 on it by construction, which reads as poor discrimination rather than an absent output. Under CKKS the page evaluates the 8 dot products on the encrypted row, then decrypts all 8 scores and takes the argmax in the clear, since CKKS has no native comparison; with these public weights that exposes nothing, but a private linear model's raw scores would let the key holder recover it with about as many queries as it has parameters per class (Tramer et al., USENIX Security 2016). The ONNX graph is built from weights.json (qsh.models.linear_onnx), not refitted, so the page's plaintext re-score and its encrypted tier evaluate the same model.
 
-**Agreement is not evidence that the minority classes survived.** Agreement on the finance student
-rose from 0.884 to 0.947 across a change that left minority-class F1 unmoved. Per-class F1 is the
-headline; the aggregate is a companion.
+## Honest scope
 
-## Where the classical baseline sits
-
-The teacher is a RandomForest, not a quantum model, and it is the number to beat on this corpus:
-macro F1 0.986629 on its own split, recorded in `models/metrics.json` under `telecom_ids.qml`. On the
-same use case the variational quantum models lose to it - the quantum-kernel SVC at 0.831611 macro F1
-and the variational QNN at 0.466667 - and logistic regression is ahead of the QCNN circuits in
-`models/qcnn_telecom` by a wide margin. Nothing here is a claim of quantum advantage; this student
-exists to make the encrypted tier real, not to win a benchmark. Those figures are the teacher's
-record, not this artifact's, which is why they are under this heading rather than in the table above.
-
-## Reproducibility
-
-    python scripts/train/telecom_ids.py
-
-This rewrites `weights.json` here, `web/public/data/telecom/student_weights.json`, and the
-`telecom_ids.student` record in `models/metrics.json`. The two weight files are written from ONE
-serialised string, so they cannot drift from each other.
-
-## Data and licence
-
-**SYNTHETIC.** QKD-attack telemetry generated by `qsh.qml_ids.attacks`: 8 classes = 7 attack types
-plus normal traffic, with the class structure following Al-Kuwari et al. (arXiv:2509.14282; now
-peer-reviewed as IET Quantum Communication 7(1), e70028, 2026). No commercial-OK corpus of real QKD
-attack captures exists, which is why this is generated rather than collected. Generated by this
-repository - no third-party terms attach.
-
-## Scope
-
-A research proof of concept, not a production intrusion detector. The figures above are what this
-repository measured on the split described, with the code in `scripts/train/`. The encrypted
-evaluation is real CKKS on 64 parameters; the class decision is taken in plaintext on the client.
+This model is published as part of a research proof of concept, not as a production system.
+Numbers above are what this repository measured on the split described, with the code in
+`scripts/train/`. Where a figure is carried from the literature rather than measured here,
+it is labelled as such.

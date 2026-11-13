@@ -265,15 +265,27 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   published ONNX models run on WASM by default, and on WebGPU only when the visitor selects it; other
   GPUs and browsers were not measured.
 
-- **Three of the four CKKS students can be re-scored in a browser.** The Models panel runs each
+- **Four of the five CKKS students can be re-scored in a browser.** The Models panel runs each
   student's ONNX graph in plaintext on its held-out sample; this checks the published graph, not the
   encrypted evaluation. Samples ship model-ready with `preprocessing: []`, because
   the browser's `applyPreprocessing` is per-scalar and cannot apply a 114-length mean/scale vector or
   an area resize. Reproduced before publishing: medical accuracy 0.769231, OPS-SAT rare-class F1
-  0.904348, and finance rare-class F1 0.614815 on its shipped rows (0.313187 for the student on 32
-  aggregates that it replaced in Round 86). `satellite_comms.student` has
+  0.904348, finance rare-class F1 0.614815 on its shipped rows (0.313187 for the student on 32
+  aggregates that it replaced in Round 86), and telecom macro F1 0.988329, published on 2026-11-13 with a
+  graph built from its weights file (`qsh.models.linear_onnx`). `satellite_comms.student` has
   none, and the blocker is its METRIC, not a missing scaler: it is scored on event-wise F0.5, which
   is defined over contiguous runs of a timeline and cannot be computed from independent rows.
+- **The page compares every row of every published sample, not one figure within 0.05 (2026-11-13).**
+  Each sample carries `expected.per_row`: each row's class by the page's own rule and its margin to the
+  decision boundary, or each window's forecast, written by a Python twin of that rule
+  (`qsh.models.sample_per_row`) and checked, before it is written, against the figure the sample already
+  stated. The page fails a run on any row decided differently beyond a near tie, or on any margin more than
+  1e-3 from the record. Run in node with ONNX Runtime Web on all twelve graphs, every row was decided as
+  recorded and the largest margin difference was 5.7e-5 (ResNet-50); the aggregate tolerance it replaced
+  would have passed a graph four points worse. The compact GNN and the forecaster student already carried
+  row-level records (logits, and a digest of flags). Two things the republish also fixed: four samples' change
+  notices said "rounded to 6 decimals" over values written at float32 precision since Round 86, and the
+  CKKS tier's bundled student copies were checked against nothing; a test now holds each to its pinned file.
 
 - **The browser scores each student on the metric it was published with.** Three of the four record
   rare-class F1, and reporting accuracy for them would have confirmed a number nobody claimed - the
@@ -349,8 +361,8 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   distilled student sized for CKKS: 115 parameters for finance against a 123,956-parameter teacher,
   3,226 against 11,171,266 for medical, 294 against 84,860 for satellite. Which of them CKKS
   evaluates in the browser, page by page, is under
-  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All thirteen repos are public, and
-  thirteen are pinned. The evaluation sample
+  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All fourteen repos are public, and
+  fourteen are pinned. The evaluation sample
   for each lives in that model's own repo at the same revision as its weights. Since Round 86 that
   includes the satellite student's, which is a stretch of a timeline rather than independent rows,
   because its metric is defined over a timeline.

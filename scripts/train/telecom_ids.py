@@ -415,11 +415,15 @@ def distil_linear_student(teacher, Xtr, ytr, Xte, yte, out: Path, *, seed: int) 
         "licence": "Apache-2.0",
     }, indent=2) + "\n"
     (out / "weights.json").write_text(payload)
+    # The graph the student is published with (Round 86): built from this same file, not refitted, so the page can
+    # re-score the published student in plaintext like every other one.
+    from qsh.models.linear_onnx import write_linear_student_graph
 
-    # The browser copy is BUNDLED rather than fetched from the Hub, following `genomics.prs` - the
-    # other tier that runs under CKKS with `hf_repo=None`. 64 floats do not need a pinned revision,
-    # and bundling means the encrypted tier works on a fresh clone with no network. Written from the
-    # same `payload` string, so the two cannot drift: one serialisation, two destinations.
+    write_linear_student_graph(json.loads(payload), out / "onnx" / "model.onnx")
+
+    # The CKKS tier reads a BUNDLED copy, written from the same `payload` string so the two cannot drift: one
+    # serialisation, two destinations. Since Round 86 the model is also published to the Hub, pinned, and the
+    # page re-scores the published graph; tests/test_r86_linear_student_graph.py holds the copy to the file.
     web = Path("web/public/data/telecom")
     web.mkdir(parents=True, exist_ok=True)
     (web / "student_weights.json").write_text(payload)
