@@ -187,7 +187,7 @@ export const makeDefaultParams = () => ({
   lending_checks: lendingCfg().check_points,
   // Round 86: the genomics page's differential privacy, epsilon for the pooled count it releases (clientDp.ts).
   genomics_dp_epsilon: GENOMICS_DP.defaultEpsilon,
-  lending_custody: lendingCfg().custody as string,   // "keyholder" | "borrower"
+  lending_custody: lendingCfg().custody as string,   // "keyholder" | "borrower" | "committee"
   qubits: benchCfg().quantum_qubits,
   qrng_eps_log2: qrngCfg().security_epsilon_log2,   // LHL extractor security 2^this (toeplitz/seedless)
   qsmpc_op: "",          // "" = the use case's default, which ParameterPanel names

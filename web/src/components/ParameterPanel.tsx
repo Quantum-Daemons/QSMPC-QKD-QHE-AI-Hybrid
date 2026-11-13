@@ -148,13 +148,14 @@ export default function ParameterPanel({ run }: { run: Run }) {
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
           {fieldset("Market", market.map(numField))}
-          {fieldset("Who holds the CKKS key", (
+          {fieldset("Who holds the key", (
             <div style={{ minWidth: 220, flex: "1 1 220px" }}>
               <label className="muted" htmlFor="pp-custody" style={{ fontSize: 12 }}
-                title="Carol is a separate key holder, standing in for the threshold committees confidential-DeFi systems use: Bob encrypts once and can go offline, and thresholds are public. With Bob, a bilateral lender's arrangement, he answers every check and the pool's thresholds are its own.">Key holder</label>
+                title="Carol is a separate key holder, standing in for the threshold committees confidential-DeFi systems use: Bob encrypts once and can go offline, and thresholds are public. The committee runs such a threshold: no one holds the key, and any 2 of 3 members re-encrypt each masked margin to Carol, on threshold BGV. With Bob, a bilateral lender's arrangement, he answers every check and the pool's thresholds are its own.">Key holder</label>
               <select id="pp-custody" name="lending_custody" value={String(p.lending_custody)} style={{ width: "100%" }}
                 onChange={(e) => setParams({ ...params, lending_custody: e.target.value })}>
                 <option value="keyholder">Carol, a separate key holder (thresholds public)</option>
+                <option value="committee">A 2-of-3 committee, re-encrypting to Carol (threshold BGV)</option>
                 <option value="borrower">Bob, bilateral (thresholds the pool's own)</option>
               </select>
             </div>

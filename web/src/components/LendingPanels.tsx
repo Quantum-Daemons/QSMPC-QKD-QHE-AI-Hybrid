@@ -35,6 +35,18 @@ const KEYHOLDER_LIMITS = [
   <><b>What leaks by design.</b> The bit is published and signed, and a liquidation is settled in the open. In production so far, confidential lending hides deposits (Zama, Morpho and Steakhouse, June 2026), and this project found no primary source for a confidential liquidation running in production.</>,
 ];
 
+const COMMITTEE_LIMITS = [
+  <><b>Why a committee.</b> Liquidations are carried out by third parties, so a check cannot wait on the borrower, and here no single party holds the key either. Three members make a collective BGV key on Lattigo v6.2.0, each holding a Shamir share of its secret, and any two re-encrypt each masked margin to Carol with Lattigo&apos;s public-key switch. Zama&apos;s KMS runs 13 MPC nodes and, in its documentation&apos;s example, needs 9 of them; three and two keep this tab&apos;s run short.</>,
+  <><b>Who must not collude.</b> The pool and any two members together could decrypt Bob&apos;s ciphertexts, and the pool and Carol together hold both shares of the margin. A deployment would keep them apart and enforce that only masked margins are re-encrypted.</>,
+  <><b>Passive members, and no robustness.</b> Lattigo&apos;s multiparty protocols are secure against members who follow them: nothing proves a share was computed correctly, and a member who withholds its share stops the check. Each member shares once per ciphertext, as Lattigo&apos;s SECURITY.md requires after the attacks it cites on repeated shares: the pool adds a fresh encryption of zero to every margin, and the members refuse a ciphertext they have already shared for.</>,
+  <><b>Semi-honest.</b> Nothing proves that Bob encrypted his real balances, which takes commitments and zero-knowledge proofs.</>,
+  <><b>A perfect mask.</b> The mask is uniform modulo the plaintext modulus, so what Carol decrypts is uniform whatever the margin, unlike the bounded real mask of the CKKS arrangements. The price is fixed point: balances at 2<sup>-20</sup> of a unit and weights at 2<sup>-19</sup>, so the margin carries a rounding error, reported below.</>,
+  <><b>What is post-quantum.</b> ML-KEM (with X25519 alongside as a hedge), ML-DSA and BGV rest on lattice assumptions; the committee&apos;s 260-bit modulus at N = 16384 is inside the HomomorphicEncryption.org standard&apos;s post-quantum bound of 411 bits. The garbled circuit&apos;s oblivious transfers rest on discrete logs, as in the other arrangements.</>,
+  COMMON_LIMITS[2],
+  <><b>All in this tab.</b> The members, Carol and the pool are one tab, and the committee&apos;s keys are one instance of the threshold module, so the checks run in order on one worker.</>,
+  <><b>What leaks by design.</b> The bit is published and signed, and a liquidation is settled in the open.</>,
+];
+
 const BILATERAL_LIMITS = [
   <><b>Why the thresholds are the pool's secret here.</b> On a public chain they are public, and then Bob can compute his margin himself: the mask and the circuit would hide nothing from anyone. This check suits a lender whose thresholds are its own, and a Bob who should learn no more than the answer.</>,
   <><b>Bob has to answer.</b> He holds the key, so every check waits on him, and he is the party who loses by a liquidation. He could refuse or go offline, so a deployment would need a rule that no answer counts as a default.</>,
@@ -57,7 +69,7 @@ export default function LendingPanels({ market, sweep, check, ran, state, custod
       {sweep ? <Sweep report={sweep} /> : null}
       {market ? <WhereItRan market={market} sweep={sweep} check={check} /> : null}
       <div className="note" style={{ marginTop: 14, fontSize: 12 }}>
-        <KeyPoints title="What this page does and does not show" items={held === "borrower" ? BILATERAL_LIMITS : KEYHOLDER_LIMITS} />
+        <KeyPoints title="What this page does and does not show" items={held === "borrower" ? BILATERAL_LIMITS : held === "committee" ? COMMITTEE_LIMITS : KEYHOLDER_LIMITS} />
       </div>
     </>
   );
@@ -184,21 +196,27 @@ function PrivateCheck({ report: r }: { report: LendingPrivateReport }) {
   const pad = (hi - lo) * 0.05 || 1;
   const bilateral = r.custody === "borrower";
   const held = bilateral ? "Bob" : "Carol";
-  const costs: [string, string][] = [
+  const c = r.committee;
+  const costs: [string, string][] = c ? committeeCosts(r, c) : [
     ["Per check", `${mb(r.ckksBytes / n)} of sealed CKKS traffic${bilateral ? `, ${r.signatureBytes.toLocaleString("en-US")} B of it Bob's ${r.signature} signature` : ""}; ${(r.andGates / n).toLocaleString("en-US")} AND gates and ${mb(r.gcBytes / n)} of garbled-circuit traffic in ${Math.round(r.gcMessages / n).toLocaleString("en-US")} messages${bilateral ? "" : `; ${r.signatureBytes.toLocaleString("en-US")} B for Carol's ${r.signature} signature on the bit`}`],
     ["Keys", bilateral
       ? `${mb(r.keyBytes)} of public and rotation keys, once per key pair; ${r.pool.workers === 1 ? "one key pair" : `${r.pool.workers} key pairs here, one per worker`}, ${ms(r.keygenMs)} to set up the slowest`
       : `${mb(r.keyBytes)} of Carol's public and rotation keys, sent once. Her one key pair is loaded on ${r.pool.workers === 1 ? "the worker" : `each of the ${r.pool.workers} workers`}, ${ms(r.keygenMs)} for the slowest, which only a tab holding every party can do`],
     ["Time, summed over the checks", `CKKS ${ms(r.ckksMs)}, the circuits ${ms(r.gcMs)}, ML-DSA and sealing ${ms(r.pqcMs)}`],
     ["Wall-clock", `${ms(r.pool.wallMs)} in ${r.pool.ranIn}`],
-    ["The mask", `uniform on [-2^${r.maskBits}, 2^${r.maskBits}), on every slot; this run's bound on the statistical distance from any margin of no larger magnitude, summed over all the slots it masks, is 2^${r.statisticalDistanceLog2.toFixed(1)}`],
+    ["The mask", `uniform on [-2^${r.maskBits}, 2^${r.maskBits}), on every slot; this run's bound on the statistical distance from any margin of no larger magnitude, summed over all the slots it masks, is 2^${(r.statisticalDistanceLog2 ?? -Infinity).toFixed(1)}`],
     ["Noise floor", `the shares and the clear margin differ by at most ${(r.maxAbsError * 1000).toFixed(3)} stable units. A margin closer to zero than that can come out either way`],
   ];
   return (
     <div className="card" id="lending-private-check" style={{ marginTop: 14 }}>
       <h3>Private liquidation check <StageBadge kind="notional" /></h3>
       <p className="small" style={{ marginTop: 4 }}>
-        {bilateral ? (
+        {c ? (
+          <>Bob encrypted his two collateral amounts and his scaled debt once, each in its own ciphertext under the committee&apos;s collective BGV key, which no one holds, signed them and sent them to the pool over their sealed session. After that he took no part.
+          At each checked hour the pool applied what had been settled in the open, multiplied by the public weights, each asset&apos;s price times its liquidation threshold and the interest index, and added a mask it kept and a fresh encryption of zero.
+          Two of the {c.members} members, a different pair at each check, re-encrypted that ciphertext to Carol&apos;s own key, each flooding its share; the pool combined the shares and sealed the result to Carol.
+          Carol decrypted only the masked margin, the pool and Carol put their shares into a garbled circuit, which told both whether the margin is negative, a health factor below 1, and Carol signed that bit.</>
+        ) : bilateral ? (
           <>At each checked hour Bob encrypted his two collateral amounts and his scaled debt under his own CKKS key, signed the ciphertext and sent it over the session sealed under the PQC key.
           The pool applied its weights, each asset&apos;s public price times its private liquidation threshold and the public interest index, and added a mask it kept.
           Bob decrypted the masked margin, and the two of them put their shares into a garbled circuit, which told both whether the margin is negative: a health factor below 1.</>
@@ -229,7 +247,9 @@ function PrivateCheck({ report: r }: { report: LendingPrivateReport }) {
         </table>
       </div>
       <p className="muted small" style={{ margin: "6px 0 10px" }}>
-        In stable units. The clear columns and the sum of the shares are a self-test, possible only because both parties are in this tab. In a deployment neither party would see them: {held} sees the masked margin, about 2^{r.maskBits - 1} in size at every slot, and the pool sees ciphertext; each receives the one bit.
+        In stable units. The clear columns and the sum of the shares are a self-test, possible only because both parties are in this tab. In a deployment neither party would see them: {c
+          ? <>Carol sees the margin plus a mask uniform modulo a {Math.round(Math.log2(c.plainModulus))}-bit prime, in one slot, every other slot zero; the members and the pool see ciphertext; the pool and Carol each receive the one bit.</>
+          : <>{held} sees the masked margin, about 2^{r.maskBits - 1} in size at every slot, and the pool sees ciphertext; each receives the one bit.</>}
       </p>
       <figure className="chart-figure">
         <figcaption id={captionId} className="small muted"><b>The margin from both shares against the margin in the clear,</b> in thousands of stable units, one point per check. A point on the diagonal is a check that came out the same; a cross is one the circuit answered &quot;can be liquidated&quot;.</figcaption>
@@ -264,15 +284,44 @@ function PrivateCheck({ report: r }: { report: LendingPrivateReport }) {
   );
 }
 
-/** The run's own messages, grouped: every row is read from what the checks reported. */
+/** The committee's rows of the costs table, read from the run. */
+function committeeCosts(r: LendingPrivateReport, c: NonNullable<LendingPrivateReport["committee"]>): [string, string][] {
+  const n = r.outcomes.length;
+  const per = (f: (o: LendingPrivateReport["outcomes"][number]) => number) => r.outcomes.reduce((s, o) => s + f(o), 0) / n;
+  const pairs = [...new Set(r.outcomes.map((o) => (o.committee?.active ?? []).join(" and ")))];
+  return [
+    ["Per check", `${mb(r.ckksBytes / n)} of threshold-BGV traffic: the evaluated ciphertext's second half to each of the two members (${mb(per((o) => o.committee?.c1Bytes ?? 0))} each), their flooded shares back (${mb(per((o) => o.committee?.shareBytes ?? 0))} each) and the re-encrypted margin sealed to Carol; ${(r.andGates / n).toLocaleString("en-US")} AND gates and ${mb(r.gcBytes / n)} of garbled-circuit traffic in ${Math.round(r.gcMessages / n).toLocaleString("en-US")} messages; ${r.signatureBytes.toLocaleString("en-US")} B for Carol's ${r.signature} signature on the bit`],
+    ["The committee", `${c.members} members, any ${c.threshold} of whom re-encrypt; the pairs this run: ${pairs.join(", ")}. BGV at N = ${(2 ** c.logN).toLocaleString("en-US")}, a ${c.logQ.toFixed(0)}-bit Q and a ${Math.round(Math.log2(c.plainModulus))}-bit prime t`],
+    ["The flooding", `each member adds ${c.floodBits}-bit uniform noise to its share, from the browser's CSPRNG: ${c.statSecBits} bits of statistical distance over the whole share, against the analytic worst case of the evaluated noise, 2^${c.noiseBoundLog2.toFixed(1)}`],
+    ["Keys", `${mb(c.publicKeyBytes)} for the committee's collective public key and ${mb(c.carolPublicKeyBytes)} for Carol's, made in ${ms(c.keyGenMs + c.carolKeyGenMs)}; each member's Shamir share stays with it, which only a tab holding every party can show`],
+    ["Time, summed over the checks", `threshold BGV ${ms(r.ckksMs)} (of it the members' flooding ${ms(r.outcomes.reduce((s, o) => s + c.threshold * (o.committee?.floodMs ?? 0), 0))}), the circuits ${ms(r.gcMs)}, ML-DSA and sealing ${ms(r.pqcMs)}`],
+    ["Wall-clock", `${ms(r.pool.wallMs)} in ${r.pool.ranIn}: the committee's keys are one instance of the threshold module`],
+    ["The mask", `uniform modulo t, in slot 0 only, so what Carol decrypts is uniform whatever the margin; every other slot decrypted to zero at ${r.outcomes.filter((o) => o.committee?.restZero).length} of ${n} checks`],
+    ["Noise floor", `fixed point, balances at 2^-${c.balanceBits} of a unit and weights at 2^-${c.weightBits}: the shares and the clear margin differ by at most ${(r.maxAbsError * 1000).toFixed(3)} stable units. A margin closer to zero than that can come out either way`],
+  ];
+}
+
+/** The run's own messages, grouped: every row is read from what the checks reported. A committee's members are grouped as "each active member", since the pair changes. */
 function whoSentWhat(r: LendingPrivateReport): [string, string, string, string][] {
   const n = r.outcomes.length;
   const rows: [string, string, string, string][] = [];
-  if (r.setup) rows.push(["Bob to the pool", "his ciphertext, signed and sealed", "once, at the start", mb(r.setup.submissionBytes)]);
-  const first = r.outcomes[0];
-  for (const m of first?.messages ?? []) {
-    const total = r.outcomes.reduce((s, o) => s + (o.messages.find((x) => x.what === m.what)?.bytes ?? 0), 0);
-    rows.push([`${m.from} to ${m.to}`, m.what, `each of the ${n} checks`, total / n >= 1e5 ? mb(total / n) : `${Math.round(total / n).toLocaleString("en-US")} B`]);
+  if (r.setup) rows.push(["Bob to the pool", r.committee ? "his ciphertexts, signed and sealed" : "his ciphertext, signed and sealed", "once, at the start", mb(r.setup.submissionBytes)]);
+  const party = (p: string) => (p.startsWith("member ") ? "each active member" : p);
+  const order: string[] = [];
+  const sized = new Map<string, { route: string; bytes: number; count: number }>();
+  for (const o of r.outcomes) {
+    for (const m of o.messages) {
+      const key = m.what;
+      if (!sized.has(key)) { order.push(key); sized.set(key, { route: `${party(m.from)} to ${party(m.to)}`, bytes: 0, count: 0 }); }
+      const e = sized.get(key)!;
+      e.bytes += m.bytes;
+      e.count += 1;
+    }
+  }
+  for (const what of order) {
+    const e = sized.get(what)!;
+    const each = e.bytes / e.count;
+    rows.push([e.route, what, `each of the ${n} checks`, each >= 1e5 ? mb(each) : `${Math.round(each).toLocaleString("en-US")} B`]);
   }
   rows.push([r.custody === "borrower" ? "the pool and Bob" : "the pool and Carol", "the garbled circuit's messages", `each of the ${n} checks`, mb(r.gcBytes / n)]);
   return rows;
@@ -313,9 +362,11 @@ function WhereItRan({ market, sweep, check }: { market: LendingMarketReport; swe
   const worker = (name: string, q: NonNullable<typeof p>) => `${name} in ${q.ranIn}: ${q.speedUp.toFixed(1)} cores' worth of work at once, ${(100 * q.utilisation).toFixed(0)}% busy, of ${q.logicalCores} logical cores`;
   const rows: [string, string][] = [
     ["Web Workers", [c && worker("the private checks", c), p && worker("the sweep", p)].filter(Boolean).join("; ") + ". The pool takes at most half the logical cores"],
-    ["WebAssembly, from C++", check ? "SEAL for CKKS (node-seal 7.0.0): one instance per worker. Its wasm build has one thread, so each check runs on one core and the speed-up comes from the pool" : "the private check did not run"],
+    ...(check?.committee
+      ? [["WebAssembly, from Go", "Lattigo v6.2.0 for threshold BGV: the committee's keys, Bob's encryption, the pool's evaluation, the members' re-encryption and Carol's decryption, in one instance on one worker"] as [string, string]]
+      : [["WebAssembly, from C++", check ? "SEAL for CKKS (node-seal 7.0.0): one instance per worker. Its wasm build has one thread, so each check runs on one core and the speed-up comes from the pool" : "the private check did not run"] as [string, string]]),
     ["WebAssembly, from Rust", check ? "Polytune for the garbled circuit: one instance per worker, with both parties on that worker's thread" : "the private check did not run"],
-    ["WebGPU", "not used. Neither SEAL nor Polytune has a GPU path, and the market is a few milliseconds of arithmetic"],
+    ["WebGPU", `not used. Neither ${check?.committee ? "Lattigo's wasm build" : "SEAL"} nor Polytune has a GPU path, and the market is a few milliseconds of arithmetic`],
     ["The page's thread", `the market (${market.simulateMs.toFixed(1)} ms), the handshake, the signature on the record and the charts`],
   ];
   return (

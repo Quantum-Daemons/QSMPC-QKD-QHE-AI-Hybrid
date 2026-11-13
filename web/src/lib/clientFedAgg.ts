@@ -32,15 +32,9 @@ import { maskIntegers, QFL_FIXED_POINT, qflQuantise, secaggClientSeeds, secaggKe
          sumMaskedIntegers } from "./clientQFL";
 import { rng } from "./quantumSim";
 
-/** globalThis.qshFedThresh, as wasm/qsh-fedthresh/cmd/wasm installs it. */
-export interface FedThreshApi {
-  settings(): string;
-  open(kind: string, parties: number, crs: Uint8Array): { id?: number; setting?: string; keyShareBytes?: number;
-    keyGenMs?: number; error?: string };
-  round(id: number, flat: Uint8Array, parties: number, n: number): { aggregate?: Uint8Array; stats?: string;
-    error?: string };
-  close(id: number): void;
-}
+import { loadFedThresh, type FedThreshApi } from "./fedThresh";
+
+export { loadFedThresh, type FedThreshApi };
 
 export type AggregationKind = "masks" | "ckks-shared-key" | "ckks-demo" | "ckks-l40" | "bgv-128" | "bgv-128-dp";
 
@@ -378,18 +372,3 @@ export function sumUnderThresholdBgv(api: FedThreshApi, values: readonly number[
   }
 }
 
-/** Loads Go's wasm_exec.js and the module from `base` (a URL prefix ending in "/") into this realm. */
-export async function loadFedThresh(base: string): Promise<FedThreshApi> {
-  const g = globalThis as unknown as { Go?: new () => { importObject: WebAssembly.Imports; run(i: WebAssembly.Instance): void };
-                                       qshFedThresh?: FedThreshApi };
-  if (!g.qshFedThresh) {
-    if (!g.Go) await import(/* @vite-ignore */ `${base}wasm_exec.js`);
-    const go = new g.Go!();
-    const res = await fetch(`${base}qsh_fedthresh.wasm`);
-    if (!res.ok) throw new Error(`qsh_fedthresh.wasm: HTTP ${res.status}`);
-    const { instance } = await WebAssembly.instantiate(await res.arrayBuffer(), go.importObject);
-    void go.run(instance);   // installs globalThis.qshFedThresh, then waits on its exported functions
-  }
-  if (!g.qshFedThresh) throw new Error("qsh_fedthresh.wasm did not install qshFedThresh");
-  return g.qshFedThresh;
-}

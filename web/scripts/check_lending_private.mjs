@@ -11,7 +11,9 @@
  *   - the circuit is the size the existing argmax has, and every check cancelled the imaginary half and used the two rotations the design says;
  *   - under Carol's custody Bob sends nothing during a check, only masked margins reach her, each settled liquidation is applied to his ciphertext, and her signature binds the hour, the ciphertext and the bit;
  *   - the sealing is real: a changed byte, a different key or a signature from another key is refused;
- *   - the class holding the weights has no decryptor, which the medical check asserts of the same class.
+ *   - the class holding the weights has no decryptor, which the medical check asserts of the same class;
+ *   - under a 2-of-3 committee on threshold BGV no one holds the key: two distinct members re-encrypt each masked margin to Carol, all three pairs take a turn, only
+ *     slot 0 carries anything, the mask is uniform modulo t, the bits match the clear answer at one stable unit either side of zero, and Carol signs every bit.
  *
  * Run: npm run check:lending-private (about 10 s)
  */
@@ -25,6 +27,7 @@ const WEB = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const { build } = createRequire(join(WEB, "package.json"))("esbuild");
 const sealWasm = join(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
 const mpcWasm = join(WEB, "src/wasm/qsh_mpc/qsh_mpc_bg.wasm");
+const fedDir = join(WEB, "public/wasm/qsh_fedthresh");
 
 const tmp = mkdtempSync(join(tmpdir(), "qsh-lending-private-"));
 let failed = 0;
@@ -50,6 +53,7 @@ try {
   });
   globalThis.fetch = async (url) => {
     if (String(url).endsWith("qsh_mpc_bg.wasm")) return new Response(readFileSync(mpcWasm), { headers: { "Content-Type": "application/wasm" } });
+    if (String(url).endsWith("qsh_fedthresh.wasm")) return new Response(readFileSync(join(fedDir, "qsh_fedthresh.wasm")), { headers: { "Content-Type": "application/wasm" } });
     throw new Error(`unexpected fetch of ${url}`);
   };
   const m = await import(pathToFileURL(join(tmp, "b.mjs")).href);
@@ -182,6 +186,58 @@ try {
   const viaTasks = await m.runLendingTasks(run.checkpoints.map((input) => ({ kind: "check", input })), { ...init, keyholder: first.results[0].setup }, cfg.max_workers);
   check(viaTasks.results.every((r) => r.outcome.agrees && r.outcome.bitSignatureVerified === true), `the task path runs Carol's custody (${viaTasks.results.length} checks)`);
   m.closeTaskSession();
+
+  // ---- a 2-of-3 committee: no one holds the key, and two members re-encrypt each masked margin to Carol on threshold BGV. Seed 3 again, for the settlements.
+  const fedThreshBase = pathToFileURL(fedDir).href + "/";
+  const cInit = { sessionKey, sig: "ml-dsa-65", cfg, custody: "committee", kem: "ml-kem-768+x25519", first: partial.checkpoints[0], fedThreshBase };
+  const cSession = await m.openCheckSession(cInit);
+  const cs = cSession.committee;
+  check(cs?.members === 3 && cs.threshold === 2 && cs.statSecBits === 128 && cs.logN === 14 && Math.abs(cs.logQ - 260) < 1,
+    `the committee: 3 members, any 2 re-encrypt, N = 2^${cs?.logN}, a ${cs?.logQ.toFixed(1)}-bit Q, t ${cs?.plainModulus}`);
+  check(cs.floodBits === 189 && Math.abs(cs.noiseBoundLog2 - 47.85) < 0.01 && cs.plainModulus < 2 ** 53 && cs.plainModulus % 32768 === 1,
+    `each share is flooded with ${cs.floodBits}-bit uniform noise against a worst case of 2^${cs.noiseBoundLog2.toFixed(2)}; t is 1 mod 2N and below 2^53`);
+  check(cs.linkAgreed && cs.submissionBytes > 3e6, `Bob's one submission reached the pool sealed (${(cs.submissionBytes / 1e6).toFixed(2)} MB), and the pool and Carol's handshake agrees`);
+  const cOut = [];
+  for (const c of partial.checkpoints) cOut.push(await cSession.check(c));
+  const cWorst = Math.max(...cOut.map((o) => o.absError));
+  check(cOut.every((o) => o.agrees), `the committee: every checkpoint's bit is the clear answer (${cOut.length} checks, ${cOut.filter((o) => o.flag).length} liquidatable)`);
+  check(cWorst < 1e-3, `the committee: the margin from the shares is within 1 stable unit of the clear margin (worst ${(cWorst * 1000).toExponential(2)} stable units)`);
+  check(cOut.every((o) => o.committee.restZero), "the committee: every slot but the first decrypted to zero, at every check");
+  check(cOut.every((o) => o.statisticalDistance === 0 && o.rotations === 0 && o.conjugations === 0), "the committee: a mask uniform modulo t, and no rotation or conjugation");
+  check(cOut.every((o) => Math.abs(o.keyHolderViewMedianAbs - Math.abs(o.reconstructedMargin)) > 1e-3),
+    `the committee: what Carol decrypted is never the margin itself (smallest |value| ${Math.min(...cOut.map((o) => o.keyHolderViewMedianAbs)).toFixed(1)} thousand, margins up to ${Math.max(...cOut.map((o) => Math.abs(o.clearMargin))).toFixed(1)})`);
+  const pairs = cOut.map((o) => o.committee.active.join(" and "));
+  check(cOut.every((o) => o.committee.active.length === 2 && new Set(o.committee.active).size === 2 && o.committee.active.every((i) => i >= 1 && i <= 3)) && new Set(pairs).size === 3,
+    `the committee: two distinct members at each check, and every pair takes a turn (${[...new Set(pairs)].join("; ")})`);
+  check(cOut.every((o) => o.messages.every((x) => x.from !== "Bob") && o.messages.filter((x) => x.to === "Carol").every((x) => x.what === "the re-encrypted masked margin, sealed")),
+    "the committee: Bob sends nothing during any check, and only the re-encrypted masked margin reaches Carol");
+  check(cOut.every((o) => o.messages.filter((x) => x.from.startsWith("member ")).length === 2 && o.messages.filter((x) => x.to.startsWith("member ")).length === 2),
+    "the committee: each check sends c1 to the two active members and takes one share back from each");
+  check(cOut.every((o) => o.bitSignatureVerified === true), "the committee: every signed bit verifies against Carol's public key");
+  const signGates = cOut[0].andGates;
+  check(cOut.every((o) => o.andGates === 648), `the committee: the sign circuit modulo t is ${signGates} AND gates at every check, as the crate's test pins`);
+  const cMoved = cOut.filter((o) => partial.checkpoints.find((c) => c.hour === o.hour).settled.scaledRepaid > 0);
+  check(cMoved.length >= 1 && cMoved.every((o) => o.agrees && o.absError < 1e-3), `the committee: after a settlement the pool's ciphertexts still give the clear margin (${cMoved.length} checks)`);
+  cSession.close();
+  for (const margin of [1, -1]) {
+    const prices = cfg.initial_prices, thresholds = cfg.liquidation_thresholds, amounts = [10, 0.5];
+    const collateral = amounts[0] * prices[0] * thresholds[0] + amounts[1] * prices[1] * thresholds[1];
+    const debtValue = collateral - margin;
+    const input = { hour: 200000 + margin, amounts, scaledDebt: debtValue, settled: { seized: [0, 0], scaledRepaid: 0 }, prices, thresholds, index: 1, debtValue, margin, healthFactor: collateral / debtValue };
+    const one = await m.openCheckSession({ ...cInit, first: input });
+    const o = await one.check(input);
+    check(o.agrees && o.flag === (margin < 0), `the committee: a margin of ${margin} stable unit gets the bit ${margin < 0 ? "liquidatable" : "safe"} (reconstructed ${(o.reconstructedMargin * 1000).toFixed(3)})`);
+    one.close();
+  }
+  const viaCommittee = await m.runLendingTasks(partial.checkpoints.slice(0, 3).map((input) => ({ kind: "check", input })), cInit, 1);
+  check(viaCommittee.results.every((r) => r.outcome.agrees && r.outcome.bitSignatureVerified === true && r.committee?.members === 3),
+    `the task path runs the committee's custody on one worker (${viaCommittee.results.length} checks)`);
+  m.closeTaskSession();
+
+  const csrc = readFileSync(join(WEB, "src/lib/lending/committee.ts"), "utf8");
+  const bobC = csrc.slice(csrc.indexOf("// Bob, with the committee's public key only"), csrc.indexOf("// The pool: opens it"));
+  check(bobC.length > 100 && !/committeeDecrypt|committeeCheck|secretKey(?!\))/.test(bobC.replace(/bob\.secretKey/g, "")), "Bob's part encrypts under the committee's key and calls nothing that decrypts");
+  check((csrc.match(/committeeDecrypt\(/g) ?? []).length === 1 && /committeeDecrypt\(id, openedCt\)/.test(csrc), "Carol decrypts exactly one record, the one the pool sealed to her");
 
   const src = readFileSync(join(WEB, "src/lib/lending/privateCheck.ts"), "utf8");
   check(/M < 0/.test(src) && /public, and then Bob can compute M himself/.test(src), "the module states when the bilateral check protects nothing");

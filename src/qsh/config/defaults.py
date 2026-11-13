@@ -980,7 +980,7 @@ class LendingConfig:
     check_points: int = 8               # hours at which Bob's position is checked under encryption, plus the first hour it can be liquidated
     margin_scale_bits: int = 16         # fixed-point bits of the margin entering the garbled circuit, in thousands of stable units
     margin_mask_bits: int = 36          # log2 of the mask's half-width on the decrypted margin
-    custody: str = "keyholder"          # who holds the CKKS key: "keyholder" (Carol, thresholds public) or "borrower" (Bob, thresholds the pool's own)
+    custody: str = "keyholder"          # who holds the key: "keyholder" (Carol, CKKS, thresholds public), "borrower" (Bob, CKKS, thresholds the pool's own) or "committee" (2 of 3, threshold BGV, re-encrypting to Carol)
     max_workers: int = 4                # the Web Workers a run may use, and never more than half the logical cores
     sweep_multipliers: tuple = (0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 6.0)   # volatility multiples of the sweep, each run with no scripted shock
     sweep_seeds: int = 24               # price paths per multiple

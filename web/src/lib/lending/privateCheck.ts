@@ -50,7 +50,10 @@ const INFO_LINK_MASKED = enc.encode("qsh/lending/private-check/pool-to-carol");
 export type Custody = LendingCfg["custody"];
 
 /** One message of the protocol: who sent what to whom, and how long it was on the wire. */
-export interface CheckMessage { from: "Bob" | "the pool" | "Carol"; to: "Bob" | "the pool" | "Carol" | "anyone"; what: string; bytes: number }
+/** A party to the check. The committee's members are numbered from 1. */
+export type CheckParty = "Bob" | "the pool" | "Carol" | "anyone" | `member ${number}`;
+
+export interface CheckMessage { from: CheckParty; to: CheckParty; what: string; bytes: number }
 
 export interface PrivateCheckOutcome {
   hour: number;
@@ -70,8 +73,10 @@ export interface PrivateCheckOutcome {
   statisticalDistance: number;
   /** Everything this check put on the wire, in order. */
   messages: CheckMessage[];
-  /** Key-holder custody only: Carol's signature over the hour, a digest of what she decrypted and the bit, checked against her public key. */
+  /** Key-holder and committee custody: Carol's signature over the hour, a digest of what she decrypted and the bit, checked against her public key. */
   bitSignatureVerified: boolean | null;
+  /** Committee custody only: which members re-encrypted this check's margin, and what that cost. */
+  committee?: CommitteeCheckStats;
   ckksBytes: number;
   gcBytes: number;
   gcMessages: number;
@@ -105,8 +110,48 @@ export interface KeyholderSetup {
   linkAgreed: boolean;
 }
 
+/** What one committee check reports beyond the common outcome (lending/committee.ts). */
+export interface CommitteeCheckStats {
+  /** The members who re-encrypted, numbered from 1. */
+  active: number[];
+  /** Every slot but the first decrypted to zero, as it must: only slot 0 carries anything. */
+  restZero: boolean;
+  shareBytes: number;
+  c1Bytes: number;
+  c0Bytes: number;
+  shareMs: number;
+  floodMs: number;
+  combineMs: number;
+  evaluatedBytes: number;
+}
+
+/** What a committee run reports once (lending/committee.ts). */
+export interface CommitteeSummary {
+  members: number;
+  threshold: number;
+  logN: number;
+  logQ: number;
+  plainModulus: number;
+  maxWeights: number;
+  noiseBoundLog2: number;
+  floodBits: number;
+  statSecBits: number;
+  publicKeyBytes: number;
+  carolPublicKeyBytes: number;
+  keyGenMs: number;
+  carolKeyGenMs: number;
+  /** Bob's one message: his signature and his ciphertexts, sealed to the pool. */
+  submissionBytes: number;
+  encryptMs: number;
+  linkAgreed: boolean;
+  balanceBits: number;
+  weightBits: number;
+}
+
 export interface CheckSession {
   check(input: LendingCheckpoint): Promise<PrivateCheckOutcome>;
+  /** Committee custody only. */
+  committee?: CommitteeSummary;
   /** The public and Galois keys the evaluator receives, once per key pair. */
   keyBytes: number;
   signatureBytes: number;
@@ -120,6 +165,12 @@ export interface CheckSessionOptions {
   cfg: Pick<LendingCfg, "margin_scale_bits" | "margin_mask_bits">;
   custody: Custody;
   keyholder?: KeyholderSetup;
+  /** Committee custody: the KEM for the pool and Carol's handshake. */
+  kem?: string;
+  /** Committee custody: the position as it stands at the first check, which Bob encrypts once. */
+  first?: LendingCheckpoint;
+  /** Committee custody: where the threshold tier's wasm is served, a URL prefix ending in "/". */
+  fedThreshBase?: string;
 }
 
 const concat = (...parts: Uint8Array[]): Uint8Array => {
@@ -128,7 +179,7 @@ const concat = (...parts: Uint8Array[]): Uint8Array => {
   for (const p of parts) { out.set(p, at); at += p.length; }
   return out;
 };
-const dsaOf = (sig: string) => (sig.includes("87") ? ml_dsa87 : ml_dsa65);
+export const dsaOf = (sig: string) => (sig.includes("87") ? ml_dsa87 : ml_dsa65);
 const rotationSteps = () => { const steps = [0]; for (let step = 1; step < BLOCK; step <<= 1) steps.push(step); return steps; };
 
 /** What Bob's signature covers: which hour his submission answers and a digest of his ciphertext. */
@@ -161,7 +212,10 @@ export function establishLink(kem: string): { key: Uint8Array; agreed: boolean }
 }
 
 const submissionAad = (hour: number) => enc.encode(`qsh-lending/submission/${hour}`);
-const maskedAad = (hour: number) => enc.encode(`qsh-lending/masked-margin/${hour}`);
+export const maskedAad = (hour: number) => enc.encode(`qsh-lending/masked-margin/${hour}`);
+
+/** The key the pool seals Carol's records under, from the pool and Carol's own handshake. */
+export const linkMaskedKey = (linkKey: Uint8Array): Uint8Array => hkdf(sha256, linkKey, undefined, INFO_LINK_MASKED, 32);
 
 /** Bob's message to the pool: his signature, then his ciphertext, sealed under the session. */
 export const sealSubmission = (key: Uint8Array, hour: number, signature: Uint8Array, ciphertext: Uint8Array): Promise<Uint8Array> =>
@@ -199,7 +253,7 @@ export function maskedPartials(x: number[], w: number[]): number[] {
   return out;
 }
 
-type Mpc = typeof import("../clientMPC");
+export type Mpc = typeof import("../clientMPC");
 
 /** The two parties' shares of M into the existing argmax: index 1 wins only when offset > M + offset, that is when M < 0. `held` is the key holder's value, M + r. */
 async function signOfMargin(mpc: Mpc, held: number, r: number, cfg: CheckSessionOptions["cfg"]) {
@@ -365,7 +419,7 @@ async function openKeyholderSession(o: CheckSessionOptions, s: Sealed, mpc: Mpc,
   const carol = new KeyHolderDecryptor(s, k.secretKey);
   const dsa = dsaOf(o.sig);
   const keys = checkKeys(o.sessionKey);
-  const linkMaskedKey = hkdf(sha256, k.linkKey, undefined, INFO_LINK_MASKED, 32);
+  const linkKey = linkMaskedKey(k.linkKey);
   // Opened and checked once per worker, as a pool would on receipt.
   const received = await openSubmission(keys.submission, k.submission, k.submissionHour, k.bobSignatureBytes,
     (sig, message) => dsa.verify(sig, message, k.bobPublicKey));
@@ -388,12 +442,12 @@ async function openKeyholderSession(o: CheckSessionOptions, s: Sealed, mpc: Mpc,
         const masked = pool.evaluate(updated, pad(w), BLOCK, 1, () => 0, o.cfg.margin_mask_bits);
         const evaluateMs = performance.now() - t;
         t = performance.now();
-        const toCarol = await sealRecord(linkMaskedKey, masked.bytes, maskedAad(input.hour), input.hour);
+        const toCarol = await sealRecord(linkKey, masked.bytes, maskedAad(input.hour), input.hour);
         let sealMs = performance.now() - t;
 
         // Carol: only this reaches her.
         t = performance.now();
-        const opened = await openRecord(linkMaskedKey, toCarol, maskedAad(input.hour));
+        const opened = await openRecord(linkKey, toCarol, maskedAad(input.hour));
         sealMs += performance.now() - t;
         t = performance.now();
         const decoded = carol.decryptMasked(opened);
@@ -432,7 +486,9 @@ async function openKeyholderSession(o: CheckSessionOptions, s: Sealed, mpc: Mpc,
 /** One key pair for each thread that runs checks, or, in Carol's custody, her one key pair loaded on each thread. */
 export async function openCheckSession(o: CheckSessionOptions): Promise<CheckSession> {
   const t0 = performance.now();
-  const s = await sealed();
   const mpc: Mpc = await import("../clientMPC");
+  // The committee runs on threshold BGV in the Go module, and needs no SEAL.
+  if (o.custody === "committee") return (await import("./committee")).openCommitteeSession(o, mpc, t0);
+  const s = await sealed();
   return o.custody === "keyholder" ? openKeyholderSession(o, s, mpc, t0) : openBorrowerSession(o, s, mpc, t0);
 }
