@@ -361,11 +361,11 @@ const SIM_MAX_KEY_PER_REQUEST = 8;
 /** GS QKD 014 V1.1.1 Status data format - the only published edition; ed2 is still a draft. */
 export function kmeStatus(topo: SdnTopology, slaveSaeId = "sae-party-b"): Record<string, unknown> {
   const link = topo.links[topo.links.length - 1];
-  // The keys the SAE can still be given: under an XOR split, the smaller of its two paths' budgets.
+  // The links the SAE's keys come from: under an XOR split both paths, and every key bit spends a bit of each, so the
+  // count is the smaller path's budget; otherwise the one association.
   const app = topo.apps[0];
-  const left = app?.qsh_key_combination === "xor"
-    ? Math.min(...topo.links.filter((l) => app.backing_qkdl_id.includes(l.qkdl_id)).map((l) => l.key_budget_bits))
-    : (link?.key_budget_bits ?? 0);
+  const backing = app?.qsh_key_combination === "xor"
+    ? topo.links.filter((l) => app.backing_qkdl_id.includes(l.qkdl_id)) : link ? [link] : [];
   return {
     source_KME_ID: "kme-a", target_KME_ID: "kme-b",
     master_SAE_ID: topo.apps[0]?.app_id ?? "sae-mcp-agent", slave_SAE_ID: slaveSaeId,
@@ -374,7 +374,7 @@ export function kmeStatus(topo: SdnTopology, slaveSaeId = "sae-party-b"): Record
     // set `eskr` to null the `?? 0` turned an absence into a measurement: the table advertised zero
     // stored keys on every run for two rounds and nothing failed. A key COUNT is bits divided by a
     // key size; `key_budget_bits` is the bits this run actually has left to give out.
-    stored_key_count: Math.floor(left / QKD014_KEY_SIZE_BITS),
+    stored_key_count: Math.floor((backing.length ? Math.min(...backing.map((l) => l.key_budget_bits)) : 0) / QKD014_KEY_SIZE_BITS),
     max_key_per_request: SIM_MAX_KEY_PER_REQUEST,
     status_extension: {
       spec: "ETSI GS QKD 014 V1.1.1 (2019-02)",
