@@ -4630,3 +4630,21 @@ branch, the default run of five checks): all five match, the worst difference 0.
 threshold-BGV traffic and 648 AND gates per check, 2,007 ms on one worker, of which the members' flooding was 505 ms of
 the 741 ms of BGV; Carol's custody and the bilateral mode unchanged (367 AND gates, the same messages).
 
+### PR #44: the chest X-ray federation on NIH ChestX-ray14 (2026-11-14)
+
+`scripts/data/prepare_nih_cxr.py` read the twelve NIH archives in memory into a 224 px grey memmap (112,120 images), an
+index and 25 groups of pixel-identical images, three of them across the official split; all ten pairs NIH's change log
+lists are among them. `scripts/train/medical_cxr_fl.py` drops 26 duplicates (a train_val copy where a group crosses the
+split), places the train_val patients in four hospitals by how well each patient's AP share matches a hospital's target,
+sharpened until the realised shares came closest (k = 4.0: 11.9%, 21.1%, 51.6%, 77.4%), and trains on the GPU with the
+whole set resident: 12 epochs or FedAvg rounds of one local epoch, AdamW at $`10^{-3}`$, batch 128, seeds 1 to 3, the
+split fixed. On NVIDIA RTX PRO 6000 Blackwell Workstation Edition, driver 620.70.06, PyTorch 2.13.0+cu130 (CUDA 13.0,
+cuBLAS 12.9.3 as loaded), kernel 5.14.0-687.66.1.el9_8.x86_64: pooled 0.812 (PA 0.849, AP 0.781),
+FedAvg 0.805, the hospitals alone 0.765 to 0.795, PA only 0.787 (PA 0.849, AP 0.732), ConvNeXt-atto
+under FedAvg 0.732 (3,373,561 parameters, one seed); the seeds' standard deviations at most 0.006. A rescoring of
+the saved models' maps by the final scoring code gave the recorded hit rates again; the untrained baselines and the centre
+baseline were added the same way. `scripts/data/build_cxr_fl_summary.py` wrote `docs/measurements/cxr-fl-2026-11-14.json`
+and the card's `web/public/data/medical/cxr_fl.json`, aggregate figures only, with no local path. Tests: the preparation on
+a synthetic NIH folder (`tests/test_r86_cxr_prepare.py`) and the analysis's arithmetic (`tests/test_r86_cxr_fl.py`). A
+local preview of the branch drew the card from the file with no console error and no table wider than its box.
+

@@ -7,14 +7,17 @@
  * over an in-memory transport in one tab. "simulated" means an analytic or state-vector model stands in
  * for hardware (QKD, QSDC, the quantum comparison). "seeded" is the quantum one-time pad: a real mask
  * from a seeded, non-cryptographic generator, so its structure is measured and its secrecy is not.
+ * "offline" (Round 86) is a figure trained and measured on this project's GPU and recorded: the page shows the record, and
+ * nothing behind it ran in the visitor's tab.
  */
-export type StageKind = "real" | "notional" | "simulated" | "seeded";
+export type StageKind = "real" | "notional" | "simulated" | "seeded" | "offline";
 
 const LABEL: Record<StageKind, string> = {
   real: "real, in your tab",
   notional: "real protocol, notional parties",
   simulated: "simulated",
   seeded: "simulated, seeded pad",
+  offline: "measured offline",
 };
 
 const TITLE: Record<StageKind, string> = {
@@ -25,6 +28,8 @@ const TITLE: Record<StageKind, string> = {
     + "quantum computer exists in this project.",
   seeded: "The one-time-pad mask is real but drawn from a seeded, non-cryptographic generator, so its "
     + "structure and cost are measured and its secrecy is not.",
+  offline: "Trained and measured on this project's GPU, and recorded with its environment; the page shows the "
+    + "recorded figures, and nothing behind them ran in your tab.",
 };
 
 export default function StageBadge({ kind, label }: { kind: StageKind; label?: string }) {

@@ -368,6 +368,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 .stage-badge.notional { color: var(--accent); border-color: var(--accent); }
 .stage-badge.simulated { color: var(--quantum); border-color: var(--quantum); }
 .stage-badge.seeded { color: var(--warn); border-color: var(--warn); }
+.stage-badge.offline { color: var(--muted); border-color: var(--muted); }
 /* A wide table may narrow its cells with --cell-pad-x (Round 80: the QCNN table's nine columns, the
    benchmark's eleven). */
 .facts-table th, .facts-table td { padding: 7px var(--cell-pad-x, 8px); vertical-align: top; }
