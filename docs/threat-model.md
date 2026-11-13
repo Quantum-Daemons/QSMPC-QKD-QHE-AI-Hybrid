@@ -143,6 +143,17 @@ which no cryptography in this repository provides. The controller is built to su
 than smooth it over: `trust_note()` names every intermediate node, and the browser panel prints it.
 ANSSI and BSI both press on exactly this point, and it is the honest limit of trusted-node QKD.
 
+**Since 2026-11-13 the panel can split the key over two node-disjoint relay paths.** Its Relay paths control
+builds two relays, one per path, two VIRT associations, and an application whose key is the XOR of one key from each
+(`qsh_key_combination`, not a GS QKD 015 field). Each relay still holds its own path's key in plaintext, but that key
+alone is uniform and independent of the end-to-end key, so one relay learns nothing about it; the two together learn
+all of it. The assumption moves from "no relay is read" to "the relays do not collude", which is the one-layer case of
+the key transport Clermont, Gansel and Struck prove information-theoretically secure against a semi-honest adversary
+holding at most $`t-1`$ nodes of any layer (ePrint 2026/1095, under revision for SCN 2026). The combined key spends a
+bit of each path per bit, so its budget is the smaller path's: `allocate` in both controllers and the GS QKD 014 key
+count use the minimum, `tests/test_r86_qkd_two_path_split.py` holds them to it, and a sum would have granted twice what
+the paths can make together. No deployment of a split relay was found, and the paths here are simulated.
+
 ## What CKKS does and does not promise here
 
 The product's headline is privacy-preserving inference under CKKS, so the security notion CKKS

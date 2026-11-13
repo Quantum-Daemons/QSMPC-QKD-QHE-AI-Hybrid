@@ -581,6 +581,13 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   download as CSV and JSON. The Models section is in tabs, an overview first. The owner's question about AI
   auscultation and ConvNeXt was read for the medical page at the same time
   ([`references/heart-sound-and-ecg-prior-work.md`](../references/heart-sound-and-ecg-prior-work.md)).
+- **A relayed QKD key no longer has to trust its relay (2026-11-13).** The control-plane panel built one trusted relay
+  whenever a span exceeded 80 km of fibre and said, correctly, that it sees the key. Of the further cryptography the
+  2026 search weighed for the PQC-QKD page, splitting the key over node-disjoint relay paths was the only option that
+  weakens an assumption the page states, and the owner chose it: with two paths, each relay holds a key that alone
+  says nothing about the XOR of the two, and only collusion recovers it. Writing it found that both controllers summed
+  an application's backing budgets, harmless with one link and double-counting with two; an XOR's budget is now the
+  smaller path's, in `allocate` and in the key count.
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training

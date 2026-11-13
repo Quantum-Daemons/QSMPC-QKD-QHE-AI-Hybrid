@@ -4,7 +4,7 @@
 // out of scope." So the MCP agent above is a SAE - an application-plane key consumer - and the
 // controller is a separate, deterministic element. Showing them as one box would be the same class
 // of error this project keeps finding: a label asserting something the architecture does not do.
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   allocate, buildTopology, kmeStatus, linkEskr, linkExpectedConsumption, linkTrustNote, SAE_DEMO_ALLOCATION_FRACTION,
   type SdnTopology,
@@ -86,9 +86,12 @@ export default function SdnControlPlanePanel({
   // at render because a served /api/config replaces the baked one after load; the named default
   // covers a served config that predates the key. One value feeds the allocation and the sentence.
   const allocationFraction = webCfg().sdn_sae_allocation_fraction ?? SAE_DEMO_ALLOCATION_FRACTION;
+  // One trusted relay, or the key split over two node-disjoint relays (Round 86): offered only where a relay is needed.
+  const [relayPaths, setRelayPaths] = useState<1 | 2>(1);
+  const relayed = qkdEnabled && distanceKm > (maxSpanKm ?? 80);
   const topo: SdnTopology = useMemo(() => {
     const t = buildTopology({ usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
-                              secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds, channelLossDb });
+                              secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds, channelLossDb, relayPaths });
     // Draw down a FIXED slice, `allocationFraction` of the budget - an illustrative allocation to
     // the MCP agent, not a measured demand - so the remaining budget is visibly finite. The note
     // under the link table prints the fraction and the arithmetic from the same value, because the
@@ -100,7 +103,7 @@ export default function SdnControlPlanePanel({
     // the dependency-array class the DAG's node labels already hit: threaded in, used, and
     // omitted here, so React never rebuilt and the label stayed frozen.
   }, [usecase, distanceKm, keyBudgetBits, qkdEnabled, maxSpanKm,
-      secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds, channelLossDb, allocationFraction]);
+      secretKeyRatePerPulse, sourceRateHz, pulses, channelSeconds, channelLossDb, allocationFraction, relayPaths]);
   const allocatedBits = topo.apps[0]?.consumed_bits ?? 0;
   const allocationPct = `${Math.round(allocationFraction * 100)}%`;
   const satellite = usecase === "satellite_comms";
@@ -119,6 +122,16 @@ export default function SdnControlPlanePanel({
   return (
     <div className="card" style={{ marginTop: 16 }}>
       <h3>QKD control plane · ETSI GS QKD 015 V2.1.1</h3>
+      {relayed && (
+        <p className="small" style={{ marginTop: 0 }}>
+          <label htmlFor="sel-relay-paths">Relay paths</label>{" "}
+          <select id="sel-relay-paths" name="sel-relay-paths" value={relayPaths}
+            onChange={(e) => setRelayPaths(Number(e.target.value) === 2 ? 2 : 1)}>
+            <option value={1}>1: one trusted relay, which sees the key</option>
+            <option value={2}>2: the key split over two disjoint relays (XOR)</option>
+          </select>
+        </p>
+      )}
       {/* THE ASSUMPTION, ADJACENT TO THE NUMBERS IT GOVERNS. A bit/s figure invites a comparison
           with published systems whether or not one is offered, and the nearest measured figure this
           repository cites belongs to a different channel. Saying so beside the table is cheaper than
@@ -255,7 +268,7 @@ export default function SdnControlPlanePanel({
                   {consumption == null ? <span className="muted">n/a</span> : (Math.round(consumption * 10) / 10).toLocaleString()}
                 </td>
                 <td className="num">{l.key_budget_bits.toLocaleString()} bit</td>
-                <td className="muted small">{linkTrustNote(l)}</td>
+                <td className="muted small">{linkTrustNote(l, topo)}</td>
               </tr>);
             })}
           </tbody>
@@ -276,15 +289,25 @@ export default function SdnControlPlanePanel({
         </>
       )}
 
-      {topo.links.some((l) => l.qkdl_type === "VIRT") && (
+      {topo.links.some((l) => l.qkdl_type === "VIRT") && (topo.apps[0]?.qsh_key_combination === "xor" ? (
+        <div className="note" style={{ marginTop: 10, borderColor: "var(--warn)", color: "var(--warn)" }}>
+          The key is <b>split over two node-disjoint relay paths</b>: each path delivers its own key, and the endpoints
+          use the XOR of the two, so each relay holds a share that on its own is uniformly random and says nothing about
+          the key. The two relays together hold all of it, so the assumption becomes that they do not collude, not that
+          neither is read. This is the one-layer case of the key transport Clermont, Gansel and Struck prove
+          information-theoretically secure against a semi-honest adversary in at most one node a layer (ePrint 2026/1095,
+          under revision for SCN 2026); no deployment of it was found, and the paths here are simulated, like the rest
+          of the quantum layer.
+        </div>
+      ) : (
         <div className="note" style={{ marginTop: 10, borderColor: "var(--warn)", color: "var(--warn)" }}>
           This association is relayed through a <b>trusted node</b>, which holds the key in
           plaintext. End-to-end secrecy therefore rests on that node's physical security, not on
           the quantum channel. This is the standing critique of trusted-relay QKD networks
           (ANSSI/BSI joint position paper; QCNC 2026, arXiv:2604.05599) and it is drawn here rather
-          than hidden.
+          than hidden. The Relay paths control above splits the key over two relays instead.
         </div>
-      )}
+      ))}
 
       <h4 style={{ marginTop: 18, marginBottom: 6, fontSize: 13 }}>
         Key delivery <span className="muted" style={{ fontWeight: 400 }}>(GS QKD 014 V1.1.1)</span>
