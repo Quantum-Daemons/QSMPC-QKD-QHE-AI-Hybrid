@@ -479,6 +479,25 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   BreastMNIST, and so are the benchmark's encrypted CNN and, since then, the full deployment's medical
   pipeline, which reads `benchmark.medical_cnn` and runs its CNN path from the page. Until then that
   pipeline defaulted to PneumoniaMNIST, a different MedMNIST v2 subset, and the page never reached it.
+- **The full deployment's federated CNN answered one class until 2026-11-13, and its log printed that as a
+  result.** On `{"dataset": "medmnist", "model": "cnn"}` - 409 BreastMNIST training images of 14x14 split
+  across four hospitals by label, two of them holding one class each - plain SGD at 0.05 ended at 0.7282 on
+  seeds 0, 1 and 2, which is the 103 evaluation rows' majority class, and the log read "global model accuracy =
+  0.728". Each hospital's own inverse-frequency class weights with Adam at 0.01 move it off that, weakly: on
+  seed 0 a balanced accuracy of 0.619 and an AUC of 0.685, against 0.564 and 0.638 for the four hospitals
+  trained alone; on seed 1 it still answers one class, with an AUC of 0.656. No optimiser setting tried (SGD
+  or Adam at three rates, with and without class weights, one or three local epochs, 6 or 20 rounds, IID or
+  not) passed an AUC of 0.72 on these rows: the data, not the optimiser, bounds it. The log now prints the
+  majority, the balanced accuracy, the AUC and every hospital trained alone, and says when the model answers
+  one class (`tests/test_r86_federated_reports_its_baseline.py`). The browser's federated stage is the tabular
+  one and is unaffected.
+- **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
+  (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
+  in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training
+  image with the other label, and 24 of the 156 test images lie within a mean absolute difference of 3/255 per
+  pixel of a training image, the same rate as within the training split (91 of 546). They do not carry the
+  published AUC: the served ResNet-18 scores 0.9146 on all 156, 0.9281 without those 24 and 0.9107 without the 43
+  within 5/255.
 - **`results/` retention.** It had none for three rounds and grew 953 -> 1133 -> 1421 files;
   `docker/docker-compose.yml` bind-mounts it, so a long-lived deployment grew without bound.
   `orchestration.keep_runs` (default 200, 0 disables) now prunes on persist, grouped by run stem

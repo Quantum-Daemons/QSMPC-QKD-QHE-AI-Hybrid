@@ -5,8 +5,9 @@ Several hospitals jointly train a diagnostic model without sharing patient data
 private inference that never exposes the patient's record to the server.
 
 Each pair of hospitals agrees its mask seed by X25519 for the run, so an aggregator holding only the
-public keys and the masked updates cannot remove a mask; the masks are reals added in float64 and
-hide an update only partially, every hospital runs in this process, and there is no dropout
+public keys and the masked updates cannot remove a mask; the masks are SHAKE-256 words added to the
+fixed-point update modulo 2^32, so they cancel exactly (until Round 85 they were reals added in float64,
+which hid an update only partially). Every hospital runs in this process, and there is no dropout
 recovery or key authentication (see :mod:`qsh.ai.federated`).
 Where the CNN variant runs the masked FHE-to-MPC
 conversion, every CKKS slot the client can decode is masked since Round 84 (independent masks in
@@ -67,8 +68,16 @@ class FederatedTrainingStage(Stage):
             mk = {"in_ch": int(img.shape[0]), "img_size": int(img.shape[1]),
                   "channels": (first, 2 * first) if two_blocks else (first,), "hidden": 16,
                   "one_block": not two_blocks, "pool": "avg"}
+            # CLASS-WEIGHTED ADAM, AND EACH HOSPITAL ALONE BESIDE IT (Round 86). Plain SGD at 0.05 on the
+            # label-skewed split ended at the evaluation rows' majority, 0.7282, on seeds 0, 1 and 2: one
+            # class for every image, and the log printed that accuracy as the result. Each hospital's own
+            # inverse-frequency weights and Adam at 0.01 move it off that (AUC about 0.64 against 0.57,
+            # measured on those seeds), which is still weak: 409 images of 14x14 across four skewed
+            # hospitals. The log now prints the majority, the balanced accuracy, the AUC and every
+            # hospital trained alone, so a weak or one-class model reads as one.
             res, model = federated_train(
-                parts, kind="cnn", rounds=rounds, local_epochs=1, lr=0.05,
+                parts, kind="cnn", rounds=rounds, local_epochs=1, lr=0.01, optimizer="adam",
+                class_weighted=True, local_baseline=True,
                 eval_data=(X[cut:], y[cut:]), secure_aggregation=True, model_kwargs=mk,
                 seed=ctx.config.get("seed", 0), return_model=True,
             )
@@ -94,8 +103,32 @@ class FederatedTrainingStage(Stage):
         ctx.artifacts["federated_round_acc"] = [round(a, 4) for a in res.round_acc]
         bus.metric("federated_accuracy", round(res.global_acc, 4), self.name)
         bus.metric("hospitals", n_hosp, self.name)
-        bus.log(f"global model accuracy = {res.global_acc:.3f} "
-                f"(no raw patient data shared)", self.name)
+        r4 = lambda v: None if v is None else round(float(v), 4)  # noqa: E731
+        for key, value in (("federated_majority_baseline", res.majority_baseline),
+                           ("federated_balanced_accuracy", res.balanced_acc), ("federated_auc", res.auc)):
+            if value is not None:
+                ctx.artifacts[key] = r4(value)
+                bus.metric(key, r4(value), self.name)
+        # What the accuracy is set against, in the sentence that prints it: a model answering one class scores the
+        # majority rate and a balanced accuracy of 0.5, and "0.728" said neither.
+        against = (f" against the evaluation rows' majority class {res.majority_baseline:.3f}, balanced accuracy "
+                   f"{res.balanced_acc:.3f}" + (f", AUC {res.auc:.3f}" if res.auc is not None else "")
+                   if res.majority_baseline is not None else "")
+        one_class = res.balanced_acc is not None and res.balanced_acc <= 0.5 + 1e-9
+        bus.log(f"global model accuracy = {res.global_acc:.3f}{against} (no raw patient data shared)"
+                + ("; the model answers one class for every evaluation row" if one_class else ""), self.name)
+        if res.local_only:
+            ctx.artifacts["federated_local_only"] = [
+                {k: (r4(v) if isinstance(v, float) else v) for k, v in s.items()} for s in res.local_only]
+            aucs = [s["auc"] for s in res.local_only if s["auc"] is not None]
+            bals = [s["balanced_accuracy"] for s in res.local_only]
+            bus.metric("local_only_balanced_accuracy_mean", r4(float(np.mean(bals))), self.name)
+            if aucs:
+                bus.metric("local_only_auc_mean", r4(float(np.mean(aucs))), self.name)
+            bus.log("each hospital trained alone for the same epochs, on the same evaluation rows: "
+                    + "; ".join(f"hospital {s['client']} ({s['rows']} images, labels {s['labels']}) balanced accuracy "
+                                f"{s['balanced_accuracy']:.3f}" + (f", AUC {s['auc']:.3f}" if s["auc"] is not None else "")
+                                for s in res.local_only), self.name)
 
 
 def _data(config: dict) -> tuple[np.ndarray, np.ndarray, object, np.ndarray, int]:

@@ -4269,3 +4269,30 @@ evaluation sample, the one the CNN-under-MPC card takes for the same seed, and n
 the student does not run, as without its weights. On a local client-only build of the branch: image 1 of 156, true class 1,
 the CKKS student's class 1 and the MPC card's class 1, no console error. Telecom's student reads weights bundled with the page, not fetched from
 a pin; that and the other gate gaps of the audit are the next PR's.
+
+### The medical federated stage and BreastMNIST's duplicates, from the full deployment (2026-11-13)
+
+Asked by the owner whether the medical page's federated learning matches the published cases (COVID-19 chest X-ray
+CNNs across hospitals, FeTS, NVIDIA FLARE, federated fine-tuning of foundation models), the stage was run in Python and
+its log read. The browser's federated stage is tabular (WDBC, four hospitals, six rounds, a logistic head on three
+closed-form features). The full deployment's CNN path, `{"dataset": "medmnist", "model": "cnn"}`:
+
+| run | before | after |
+|---|---|---|
+| seeds 0, 1 and 2 | 0.7282 every time, the 103 evaluation rows' majority class: one class for every image; logged as "global model accuracy = 0.728" | seed 0: 0.738 against a majority of 0.728, balanced accuracy 0.619, AUC 0.685; each hospital alone 0.500, 0.500, 0.620, 0.638 (AUC 0.641, 0.500, 0.695, 0.717). Seed 1: still one class, balanced accuracy 0.500, AUC 0.656, and the log says so |
+| default tabular run | "global model accuracy = 0.956" | the same, against a majority of 0.772, balanced accuracy 0.944, AUC 0.979 |
+
+Settings tried on seeds 0 to 2 before choosing: SGD at 0.05 and 0.01, Adam at 0.05, 0.01 and 0.003, with and without
+each hospital's own class weights, one or three local epochs, 6 or 20 rounds, IID or label-skewed. SGD without
+weights never left the majority; no setting passed an AUC of 0.72. The cases the owner named, read at their sources the
+same day: Dayan et al. (Nature Medicine 2021, EXAM), 20 institutes and 16,148 cases, local-test AUC 0.795 to 0.920 and
+generalisability 0.667 to 0.920 at 24 hours; Diniz et al. (npj Digital Medicine, 14 February 2026), 160 articles and
+8,149 comparisons, decentralised learning above local in 82 percent of AUROC comparisons and centralised above
+decentralised in 51 percent of AUROC and 78 percent of accuracy and Dice comparisons. On PneumoniaMNIST (Kermany et al.'s
+chest X-rays, CC BY 4.0 at Mendeley), with the CKKS student's shape and the same aggregation, three seeds outside the
+repository: AUC 0.911 for each hospital alone, 0.917 federated, 0.939 pooled.
+
+BreastMNIST, measured on MedMNIST's splits: one test image byte-identical to a training image with the other label;
+24 of 156 test images within 3/255 mean absolute difference per pixel of a training image, as within the training split
+(91 of 546), consistent with the 155 duplicates Pawlowska et al. found in BUSI (Data in Brief 48:109247, 2023). The
+served ResNet-18: AUC 0.9146 on all 156, 0.9281 without those 24, 0.9107 without the 43 within 5/255.
