@@ -590,10 +590,11 @@ const RUNS_FROM_WEIGHTS = new Set(["finance_aml.gnn_compact"]);
 function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
 
   const fetchable = browserModels(usecase).some((m) => m.spec.key === spec.key);
-  // Shipped with the page rather than from the Hub (PGS000072's weights, telecom's student), and
-  // scored under CKKS by the page's own pipeline run. Until Round 86 these fell into "Cannot be run
-  // here: not published on Hugging Face ... telecom's student instead ships bundled", which named
-  // telecom on every page and told the genomics page that the score it runs could not be run.
+  // Shipped with the page rather than from the Hub (PGS000072's weights), and scored under CKKS by the
+  // page's own pipeline run. Until Round 86 these fell into "Cannot be run here: not published on
+  // Hugging Face ... telecom's student instead ships bundled", which named telecom on every page and
+  // told the genomics page that the score it runs could not be run. Telecom's student is published
+  // and pinned since 2026-11-13, so it takes the published path below.
   if (spec.achieved && !spec.hf_repo_id && spec.runs_encrypted) {
     return <p className="muted small"><em>Not run from this panel: it ships with the page rather than
       from Hugging Face, and the page&apos;s pipeline run scores it under CKKS.</em></p>;

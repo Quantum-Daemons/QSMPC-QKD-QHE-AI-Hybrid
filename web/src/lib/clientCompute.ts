@@ -2100,6 +2100,12 @@ export function runClientPipeline(
             metric(stage, "verified_expected", r4(v.expected));
             metric(stage, "verified_n", v.n);
             metric(stage, "verification", v.matchesExpected ? "PASS" : "FAIL");
+            // Row by row since Round 86, where the sample carries a per-row record.
+            if (v.perRow && !v.perRow.refused) {
+              metric(stage, "verified_rows_agreeing", v.perRow.rows - v.perRow.mismatches - v.perRow.nearTies);
+              metric(stage, "verified_rows_near_tie", v.perRow.nearTies);
+              metric(stage, "verified_max_margin_difference", v.perRow.maxDiff);
+            }
             // Carried as an artifact so the page can DRAW what was measured. A single number is the
             // right thing to gate on and the wrong thing to reason from: "minority-class F1 0.51"
             // does not say whether the classes separate or the threshold sat somewhere lucky.
@@ -2113,15 +2119,26 @@ export function runClientPipeline(
           const where = `${v.n} rows of its published evaluation sample (${v.split ?? "split not declared"})`
             + (v.decisionThreshold != null
               ? `, classified at its decision threshold ${v.decisionThreshold.toFixed(4)}` : "");
+          // Row by row where the sample carries a per-row record (Round 86); the aggregate within 0.05 otherwise.
+          const pr = v.perRow;
+          const rowWise = !pr ? ""
+            : pr.refused ? ` The per-row record could not be compared: ${pr.refused}.`
+            : v.task === "forecast"
+              ? ` Every one of the ${pr.rows} windows' forecasts is within ${pr.maxDiff.toExponential(2)} of the `
+                + `record (tolerance ${pr.tolerance.toExponential(0)}).`
+              : ` Row by row against the sample's record: ${pr.rows - pr.mismatches - pr.nearTies} of ${pr.rows} `
+                + `decisions as recorded${pr.nearTies ? `, ${pr.nearTies} near tie(s) within ${pr.tolerance.toExponential(0)} of the boundary` : ""}`
+                + `${pr.mismatches ? `, ${pr.mismatches} DIFFERENT` : ""}; the largest margin difference `
+                + `${pr.maxDiff.toExponential(2)} (tolerance ${pr.tolerance.toExponential(0)}).`;
           emit("log", stage, v.matchesExpected
             ? `verification PASS ${key}${tag}: re-scored all ${where} in this `
               + `tab and got ${v.metricName} ${r2(v.score)} against the ${r2(v.expected)} recorded with `
               + `that sample (|delta| ${delta.toExponential(2)}): the published graph's own figure, `
-              + `reproduced here rather than asserted. A model card's headline computed on another form `
+              + `reproduced here rather than asserted.${rowWise} A model card's headline computed on another form `
               + `of the model (for example before ONNX conversion) can differ from it.`
             : `verification FAIL ${key}${tag}: re-scoring ${where} gave ${v.metricName} `
-              + `${r2(v.score)} but the recorded figure is ${r2(v.expected)} (|delta| `
-              + `${delta.toExponential(2)}, tolerance 0.05). Treat every number on this page for `
+              + `${r2(v.score)} against the recorded ${r2(v.expected)} (|delta| ${delta.toExponential(2)}`
+              + `${pr ? "" : ", tolerance 0.05"}).${rowWise} Treat every number on this page for `
               + `${key} as unverified until this is explained.`);
           // The forecaster student (Round 86): what encryption did to its forecast and to the events it gives.
           const sd = v.studentDetail;

@@ -1114,7 +1114,7 @@
             "opset": null
           },
           "git_sha": "0a5ed44-dirty",
-          "hf_revision": "f3373960a97bdebfc72751269e54cf7bd0686942",
+          "hf_revision": "b74d16f36b5658b86df5f0ca67ef16b26e13b5c9",
           "minority_class_f1": 0.6160558464223386,
           "n_features": 114,
           "n_test": 1523504,
@@ -1158,12 +1158,12 @@
         "eval_sample_reason": null,
         "eval_split": "a draw from the held-out temporal test window, the last 30 percent of the transactions in time order, enriched to 2 percent laundering",
         "file_sha256": {
-          "eval_sample.json": "e010ce15d0901e0640950f86d542bdad5aaefb927715bcf42ec2f55540fa910b",
+          "eval_sample.json": "45c0ae610de8f6920980687f36101a9cd22a089c6c547c6e4f1cda4292731b4b",
           "feature_spec.json": "38deeb419fc9863735bdc68db1f6580f55c19347e606679cbade02fbb4ddd3e8",
           "onnx/model.onnx": "d69b65320c55496001d7b6b77ed2b9c4ee6d88495ab4e1e12f967903947db8a5"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "f3373960a97bdebfc72751269e54cf7bd0686942",
+        "hf_revision": "b74d16f36b5658b86df5f0ca67ef16b26e13b5c9",
         "hf_revision_stale": null,
         "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "finance_aml.gbm",
@@ -1250,7 +1250,7 @@
             "student_flagged": 5497,
             "teacher_flagged": 1117
           },
-          "hf_revision": "67cdb41efc8fd9b8aeaca720732bb1397d33ac00",
+          "hf_revision": "c305a104be537e93612d3556fbc0c36f637e45e9",
           "metric_delta": 0.307281,
           "metric_delta_pp": 30.7281,
           "metric_name": "minority_class_f1",
@@ -1293,12 +1293,12 @@
         "eval_sample_reason": null,
         "eval_split": "the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, the last 30 percent of the transactions in time order, enriched to 2 percent laundering",
         "file_sha256": {
-          "eval_sample.json": "f435f1268f54c9ebaebe81f611246b4e2943907f03326f9871c616d1bbcceb7a",
+          "eval_sample.json": "51519076f2598890cf325a14ae17d5f8ea38a9685f50cc9599d3df7ac7e6604b",
           "onnx/model.onnx": "bb9216552451632aac9acf9e42cd38f16cc2583e23cd4afe411df86cbbca3fd7",
           "weights.json": "dd58191c8279e7f6d36522db5545e46e1a6dda135abffb741eaba545d6a66528"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": "67cdb41efc8fd9b8aeaca720732bb1397d33ac00",
+        "hf_revision": "c305a104be537e93612d3556fbc0c36f637e45e9",
         "hf_revision_stale": null,
         "int8_withheld_reason": "ai.onnx.ml linear model: coefficients live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "finance_aml.student",
@@ -1401,7 +1401,7 @@
             "opset": 17
           },
           "git_sha": "db4e8fe-dirty",
-          "hf_revision": "2733e357f8ef0ef0767971ac4cd254b8ebcae202",
+          "hf_revision": "65926d2e55c36400752783f0b71b7bac4904d773",
           "max_of_seeds_minority_f1": 0.635851,
           "median_of_seeds_minority_f1": 0.598592,
           "min_of_seeds_minority_f1": 0.595308,
@@ -1536,12 +1536,12 @@
         "eval_sample_reason": null,
         "eval_split": "the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, the last 30 percent of the transactions in time order, enriched to 2 percent laundering, with the same 114 inputs",
         "file_sha256": {
-          "eval_sample.json": "8575b159a01f4568ad5a11645513533f7aa656810b8309ec8a48647c1eaaadbc",
+          "eval_sample.json": "9b3f6c6ebe23f0508e0a08235ae3059b56b349a6734d5f0d804536e44077b325",
           "onnx/model.onnx": "bbf146eabf645adfb5224f7678aca327d0db6b7326b28833300f6c18f7c66c47",
           "weights.json": "0f37e5d2701510c2a9732606ff846a9e5bf92edb6fdf798bd1dabfe067bce954"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-mlp-large",
-        "hf_revision": "2733e357f8ef0ef0767971ac4cd254b8ebcae202",
+        "hf_revision": "65926d2e55c36400752783f0b71b7bac4904d773",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "finance_aml.mlp_large",
@@ -1926,7 +1926,7 @@
             "opset": 18
           },
           "git_sha": "61b855e-dirty",
-          "hf_revision": "638b7a4aab7a3d140d1b392ae2875b2409ec46d0",
+          "hf_revision": "b24642c6ef106a1b8ad15e4e5013de649aa6eec3",
           "macro_f1": 0.8249158249158248,
           "n_parameters": 11171266,
           "resolution": 28,
@@ -1983,13 +1983,13 @@
         "eval_sample_reason": null,
         "eval_split": "the official BreastMNIST test split, whole",
         "file_sha256": {
-          "eval_sample.json": "c663a0ba2c44a58cb09bd0d7c1462d246eb7a01f2cc45892c6cf2180c21ba4d9",
+          "eval_sample.json": "e9eaaef46f473ca632a49a5563ce3d662f1e5383ba45763aacf3cdc242d69e5c",
           "feature_spec.json": "5c76de07d5f288193cdb887b802ae52c4a85ed213d466426829412490f95dca1",
           "onnx/model.onnx": "f48cd2e00defb158151574ce4d75a9da460b613e03e4cc696c10a726ed6d0eb6",
           "onnx/model_int8.onnx": "ad9ba2a8f235994f67706947ce3c9a361b7782b33fcf651570b46f32eb6b08d1"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
-        "hf_revision": "638b7a4aab7a3d140d1b392ae2875b2409ec46d0",
+        "hf_revision": "b24642c6ef106a1b8ad15e4e5013de649aa6eec3",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "medical_fl.resnet18",
@@ -2034,7 +2034,7 @@
             "opset": 18
           },
           "git_sha": "85209a9-dirty",
-          "hf_revision": "cb700cfa0c26a61a57f7824e071f22c37684ae55",
+          "hf_revision": "d11ec391da3b664d31ba55733bdbbefc01e12fef",
           "macro_f1": 0.6492063492063492,
           "n_parameters": 23505858,
           "resolution": 28,
@@ -2076,12 +2076,12 @@
         "eval_sample_reason": null,
         "eval_split": "the official BreastMNIST test split, whole, the same rows as medical_fl.resnet18",
         "file_sha256": {
-          "eval_sample.json": "9e3bc8a7ef362c4ad5eeddff5daff4b2f15f03898d2d2b1a3e329c638b81646a",
+          "eval_sample.json": "429a145f676138693a6c4e313fed3ea5254828d3e93512bf86f0b4c16f6f9d99",
           "feature_spec.json": "5c76de07d5f288193cdb887b802ae52c4a85ed213d466426829412490f95dca1",
           "onnx/model.onnx": "e9f9c576e5a80c5af8aa4c4905059fe9d8549d0ad3056fe4c68168204e1ea08e"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet50",
-        "hf_revision": "cb700cfa0c26a61a57f7824e071f22c37684ae55",
+        "hf_revision": "d11ec391da3b664d31ba55733bdbbefc01e12fef",
         "hf_revision_stale": null,
         "int8_withheld_reason": "int8 built and measured, then withheld: confident agreement 0.9865 is below the 0.99 gate (0.9615 over all fixtures). Serving fp32 only.",
         "key": "medical_fl.resnet50",
@@ -2120,7 +2120,7 @@
           "baseline_gap_note": "This scores far below the 0.901 ResNet-18 baseline. The reason is representational rather than cryptographic: 3,226 parameters over a 14x14 input is a REPRESENTATION choice, not a feasibility limit - and this note said 'a CKKS-feasibility budget' until Round 32, which overstated how forced it was. Kim et al. (arXiv:2506.15258) do HE chest-X-ray inference on a VQGAN latent at downsampling factor 8 rather than on pixels, so the alternative to downsampling 28->14 is re-representing the input. The browser already runs onnxruntime-web, so such an encoder would run locally in plaintext with no privacy loss. Recorded as the sixth falsifiable trigger in the additional-model decision in docs/deliverable-verification.md, not acted on - and note that f=8 on a 28x28 input gives 3.5x3.5, so the transfer is the open measurement rather than a citation. This sentence claimed the trigger existed for two rounds while the table held five rows and none of them was this one; the trigger was written, and the decision moved to a tracked file so the claim can be checked. Round 24 found it had been WORSE than that - a constant predictor, emitting one class for all 156 test images, with accuracy 0.730769 exactly equal to the majority-class rate and AUC 0.354, below random. It was invisible because the registry declared `auc` while the record stored `accuracy`, and because this student had neither protection its teacher already had: class-weighted loss and AUC-based model selection. Both were added. Read `n_classes_predicted` and `majority_class_rate` beside the score - an accuracy equal to the majority rate is the signature of a model that learned nothing. Workings: references/medical-student-collapse-investigation.md.",
           "both_scored_zero": false,
           "disagreement_on_positives": 0.149123,
-          "hf_revision": "b582844a2805e5be14fcc5499938ce692057d130",
+          "hf_revision": "1de47e045918bdff706943a9d2ee26db788c48b9",
           "majority_class_rate": 0.730769,
           "metric_delta": 0.096154,
           "metric_delta_pp": 9.6154,
@@ -2173,12 +2173,12 @@
         "eval_sample_reason": null,
         "eval_split": "the official BreastMNIST test split, whole, at 14x14",
         "file_sha256": {
-          "eval_sample.json": "1ce6f2e62d72d04a812c216187c52c73e033f076c053177a70fe16d2cedca9cb",
+          "eval_sample.json": "3ede61f812699634845ce0496542f91a39823b16ef086d8d03347e471dbda5e1",
           "onnx/model.onnx": "3550db7b5ff71393b7c0382224c42c8f9ad51ed8b5857603a3921c12f517ddbc",
           "weights.json": "7b4ab81a951cd65b10301d34badc73f3e641a06ab8e5ceec413c19bba3ec090f"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-ckks-student",
-        "hf_revision": "b582844a2805e5be14fcc5499938ce692057d130",
+        "hf_revision": "1de47e045918bdff706943a9d2ee26db788c48b9",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "medical_fl.student",
@@ -3093,7 +3093,7 @@
             "opset": 17
           },
           "git_sha": "52cc358-dirty",
-          "hf_revision": "c41a6551838555edddd1500ec7407d21502de6a8",
+          "hf_revision": "6fbeb2250f5ac3b65ce5a0af91022de4bd7d3537",
           "metric_note": "ESA-ADB's event-wise F0.5 for anomalies alone, scored by a reimplementation of its ESAScores: an anomaly is detected when any flagged event intersects it, and a flagged event is a false positive only when it intersects no annotated event of any category. corrected_event_wise_f0_5 multiplies event precision by the time-level true-negative rate, as ESA-ADB reports it; event_wise_f0_5 does not. Telemanom's paper prints 0.71 under F0.5 in its Table 2, though its own precision and recall there (87.5% and 80.0% overall) give 0.86. point_adjusted_f1 is shown only to expose how much point adjustment inflates: Kim et al. (AAAI 2022) show that under point adjustment even a random anomaly score can reach state-of-the-art. Only labels whose ESA-ADB Category is 'Anomaly' count as positives; the 63 rare nominal events annotated on these six channels do not.",
           "n_anomaly_events_timeline": 51,
           "n_anomaly_intervals": 320,
@@ -3171,13 +3171,13 @@
         "eval_sample_reason": null,
         "eval_split": "windows drawn at random from the held-out test half's windows that touch no label, ESA-ADB's own Mission1 split from 2007-01-01",
         "file_sha256": {
-          "eval_sample.json": "77486ed34e541f5f4d97b8702f00a08478ce6dc389dea3b99261d7075db35677",
+          "eval_sample.json": "9eaab12a5bec72be6d6d8320eded23cc367639bbc1ea95f9fa015aff1b2ada4b",
           "feature_spec.json": "fb3286fe42ac3c6f377658af9a801c9ca4b7730d505aa970644cfdee41e03040",
           "onnx/model.onnx": "09e3fa74c3cf38d58df07728a5ab3d3b7fd1a662d4127a76bd1a711233849045",
           "onnx/model_int8.onnx": "01ca9c6381fe0c49d5cdcdab11d0038279fb33b874165b7470b9d612125f1230"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-telemanom-esa",
-        "hf_revision": "c41a6551838555edddd1500ec7407d21502de6a8",
+        "hf_revision": "6fbeb2250f5ac3b65ce5a0af91022de4bd7d3537",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "satellite_comms.telemanom",
@@ -3391,7 +3391,7 @@
           },
           "f1": 0.918918918918919,
           "git_sha": "f78e9e9-dirty",
-          "hf_revision": "6c601bed2b7d22af3497d8f13ff60fe2b23ed1e8",
+          "hf_revision": "95955c8d184e52ecabd5f3c468dc7e88c32fa1b5",
           "n_features": 19,
           "n_test_segments": 529,
           "n_train_segments": 1594,
@@ -3433,12 +3433,12 @@
         "eval_sample_reason": null,
         "eval_split": "the benchmark's own test partition, whole: a stratified random split, not a temporal one",
         "file_sha256": {
-          "eval_sample.json": "130cdeb1033497f30a1c4f7df710b0baddf5f64ec4090c9f5b2f6ceb1f64fe8f",
+          "eval_sample.json": "3f95c5b70d95890c9506ce79a34b2c5a1a546a2f4776902cd01716e9b5b7664a",
           "feature_spec.json": "c4a56d4151889c52d5892ee6e54d0201f3bf80bd35dfdc02a4f6404792ea8c37",
           "onnx/model.onnx": "3ddae79e9ac46a86a0b75dee3f819149127bd07792bf407a40fc4b64b5e561b4"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ad",
-        "hf_revision": "6c601bed2b7d22af3497d8f13ff60fe2b23ed1e8",
+        "hf_revision": "95955c8d184e52ecabd5f3c468dc7e88c32fa1b5",
         "hf_revision_stale": null,
         "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "satellite_comms.opssat",
@@ -3468,7 +3468,7 @@
           "auc_pr": 0.968055,
           "both_scored_zero": false,
           "disagreement_on_positives": 0.070796,
-          "hf_revision": "58450bb47601850f3620d83d1e9b3122306a2ae0",
+          "hf_revision": "9175fa16575707dd3b70999e3c98da24d4ef3a38",
           "metric_delta": 0.014571,
           "metric_delta_pp": 1.4571,
           "metric_name": "minority_class_f1",
@@ -3513,12 +3513,12 @@
         "eval_sample_reason": null,
         "eval_split": "the benchmark's own test partition, whole: a stratified random split, not a temporal one",
         "file_sha256": {
-          "eval_sample.json": "99c34cc3841e923bc418bdc06611c60c7c675cbe164fb55e5801cd4d4591af37",
+          "eval_sample.json": "0a8cdfad8bf0a5dd01cfac50bc4820b188be8872eb6b3bdb8ffed6678ba260d4",
           "onnx/model.onnx": "008ce438f1b9a9364c2e0b919f206ccb488bb5ee5b8b57540ad631896226454d",
           "weights.json": "970794d7066226866d7965fa4ab06bc09eea83a2224208c44ebe3e0cdb927d0a"
         },
         "hf_repo_id": "Daemons-Q/qsh-satellite-opssat-ckks-student",
-        "hf_revision": "58450bb47601850f3620d83d1e9b3122306a2ae0",
+        "hf_revision": "9175fa16575707dd3b70999e3c98da24d4ef3a38",
         "hf_revision_stale": null,
         "int8_withheld_reason": "ai.onnx.ml linear model: coefficients live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "satellite_comms.opssat_student",
@@ -3663,7 +3663,7 @@
           },
           "framing": "Architecture comparison, not a performance claim. The published model is the random forest; the quantum-kernel SVC and the variational QNN are recorded beside it and not published. The data is synthetic because no commercial-OK real QKD-attack corpus exists. Published QML-IDS results are mixed rather than uniformly below a random forest: Al-Kuwari et al. (arXiv:2509.14282) report a hybrid QLSTM at 94.7% against their own random forest, while arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
           "git_sha": "67dcd50-dirty",
-          "hf_revision": "ce54592913f24a69fc893ed828dfa663bf415289",
+          "hf_revision": "cd149476c61b845ace7d037e16812b969447f84e",
           "n_classes": 8,
           "n_samples": 2400,
           "quantum_beats_classical": false,
@@ -3720,12 +3720,12 @@
         "eval_sample_reason": null,
         "eval_split": "the held-out quarter of the seed-42 stratified split, whole",
         "file_sha256": {
-          "eval_sample.json": "89f69af86c64fcc8cf44a45083a136927456ccad8fc5c160a8371d5c22209814",
+          "eval_sample.json": "d95a442a144fed1e9a16ec9ded99fc60449260ebaeffcc70831318a021e6d39f",
           "feature_spec.json": "b82fbe1101293f6841f00dcfac7e1866e68d6a2511abbb0499149a6c49b2cdb8",
           "onnx/model.onnx": "505c91b833b850f5ac88a8531fc87cc923a7789faca2ad871ca3fdc1732b0834"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-qml-ids",
-        "hf_revision": "ce54592913f24a69fc893ed828dfa663bf415289",
+        "hf_revision": "cd149476c61b845ace7d037e16812b969447f84e",
         "hf_revision_stale": null,
         "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "telecom_ids.qml",
@@ -3966,7 +3966,7 @@
           },
           "framing": "Real 5G network traffic, 9 attack classes, 46 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. TWO CORRECTIONS MADE IN ROUND 86 EXPLAIN THE NUMBERS. The published file holds one attacker's UDP flood twice, the same 281,529 flows labelled Benign in one base station's file and UDPFlood in the other's; the Benign copies are removed, leaving 934,361 flows. And the model no longer reads `IdleTime`, which names the attack-session file a flow came from. Accuracy is 0.9979 and macro F1 0.9972. On the rows as published the same fit scores accuracy 0.7616, and no model reading these columns could pass 0.7685 there (`contradictory_copies`). `file_label_counterfactual` and `leak_counterfactual_accuracy` restore bookkeeping columns and reach about 1.0000, which is not a better model but a leak. `cross_base_station` trains on one base station and tests on the other: accuracy 0.9973 and 0.9877, against 0.4199 and 0.6059 on the rows as published. Two weak spots remain. Trained on the second base station, SYNFlood on the first scores F1 0.22. And without the TTL and hop columns, UDPScan across base stations falls to F1 0.05 (`without_ttl_and_hops`).",
           "git_sha": "9377d27-dirty",
-          "hf_revision": "5852153ee4115e6636a10f95f18e4936f904c623",
+          "hf_revision": "9fb901e3f4fa685c2e6dd5cd431f68f8c82b372e",
           "leak_counterfactual_accuracy": 0.999987,
           "leak_counterfactual_accuracy_gain": 0.002055,
           "leak_counterfactual_features": [
@@ -4256,12 +4256,12 @@
         "eval_sample_reason": null,
         "eval_split": "a per-class-floored draw from the held-out quarter of the seed-42 stratified split",
         "file_sha256": {
-          "eval_sample.json": "b092f69d4e4e8f39723ee4018a7002fa6f69338d6a1fe55ede0fedd88777da6a",
+          "eval_sample.json": "85ee29d34a4f592d135457aba0785965b2d573bca4f102fb6c28d2abf49de305",
           "feature_spec.json": "584a6dd4ce618af8adf2544de61f7f5a15017f7cc3cad02a7275b56e302d6831",
           "onnx/model.onnx": "de6444c2af766a45a354f0e839f64db904fcbc6eb854a585ce6685ab6ec51213"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-gbm",
-        "hf_revision": "5852153ee4115e6636a10f95f18e4936f904c623",
+        "hf_revision": "9fb901e3f4fa685c2e6dd5cd431f68f8c82b372e",
         "hf_revision_stale": null,
         "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "telecom_ids.nidd",
@@ -4291,6 +4291,7 @@
           "agreement": 0.995,
           "argmax_location": "client, in plaintext, after decrypting all 8 class scores",
           "distilled_on": "teacher predict_proba (soft targets), weighted one-copy-per-class",
+          "hf_revision": "c351a335e59a68e3bb12f3011046ff2db5ec5ab7",
           "macro_f1": 0.988329,
           "metric_note": "Read `n_classes_predicted` before `macro_f1`. A linear student that stops predicting a class scores 0 on it by construction, and macro F1 then averages in a zero that looks like poor discrimination rather than an absent output - this repo's own QNN carries exactly that defect and is documented as doing so, so the check is not hypothetical. `agreement` is recorded but is NOT evidence the minority classes survived: agreement on the finance student rose from 0.884 to 0.947 across a change that left minority-class F1 unmoved, which is why per-class F1 is the headline here and the aggregate is a companion.",
           "n_classes": 8,
@@ -4309,7 +4310,22 @@
           }
         },
         "architecture": "multinomial logistic regression, 8x7 + 8, distilled from the forest on soft targets",
-        "artifacts": [],
+        "artifacts": [
+          {
+            "browser_runnable": false,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "json",
+            "path": "weights.json",
+            "precision": "fp32",
+            "serves": "both"
+          }
+        ],
         "browser_runnable": false,
         "dataset": {
           "attribution": "",
@@ -4319,10 +4335,14 @@
           "url": "https://arxiv.org/abs/2509.14282"
         },
         "eval_sample_reason": null,
-        "eval_split": null,
-        "file_sha256": {},
-        "hf_repo_id": null,
-        "hf_revision": null,
+        "eval_split": "the held-out quarter of the seed-42 stratified split, whole",
+        "file_sha256": {
+          "eval_sample.json": "ecb7f98d2fe853c0dcbf3849a8d3db2aa3f325745187b45db8875bed8839446b",
+          "onnx/model.onnx": "416fb8420048ac6cb139bf2eb0be5f39fe6c38abed3ecb3ecd2ec7c8deb59891",
+          "weights.json": "da3a4dae31afaf6d42057197befd843143d6c9a8ca59f022a31349c21020bacd"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-telecom-ids-ckks-student",
+        "hf_revision": "c351a335e59a68e3bb12f3011046ff2db5ec5ab7",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "telecom_ids.student",
@@ -4337,7 +4357,7 @@
           "display": "macro F1 (synthetic QKD-attack telemetry)",
           "name": "macro_f1"
         },
-        "notes": "Distilled from the random forest published as telecom_ids.qml, from its PROBABILITIES, not its argmax: on 8 classes the argmax discards exactly the minority-class signal macro F1 is computed from, and hard-label distillation is a defect this project has already made once. Read n_classes_predicted before macro_f1 - a linear student that stops emitting a class scores 0 on it by construction, which reads as poor discrimination rather than an absent output.",
+        "notes": "Distilled from the random forest published as telecom_ids.qml, from its PROBABILITIES, not its argmax: on 8 classes the argmax discards exactly the minority-class signal macro F1 is computed from, and hard-label distillation is a defect this project has already made once. Read n_classes_predicted before macro_f1 - a linear student that stops emitting a class scores 0 on it by construction, which reads as poor discrimination rather than an absent output. Under CKKS the page evaluates the 8 dot products on the encrypted row, then decrypts all 8 scores and takes the argmax in the clear, since CKKS has no native comparison; with these public weights that exposes nothing, but a private linear model's raw scores would let the key holder recover it with about as many queries as it has parameters per class (Tramer et al., USENIX Security 2016). The ONNX graph is built from weights.json (qsh.models.linear_onnx), not refitted, so the page's plaintext re-score and its encrypted tier evaluate the same model.",
         "onnx_domains": [],
         "params": 64,
         "pin_withdrawn_reason": null,
