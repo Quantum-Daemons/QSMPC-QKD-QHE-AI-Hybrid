@@ -561,6 +561,24 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   other pages"). Two LaTeX commands on main had lost their backslash to a string escape, `\times` in the threat
   model's aggregation section and `\tau_0` in the benchmark notes, each rendering as a gap and a stray word; both are
   repaired and a house-style test now fails on any control character inside a math span.
+- **The signed run record could not be checked by anyone but the tab (2026-11-13).** Every run signs a record of its
+  page, configuration, metrics and explanation with ML-DSA, and since an earlier round it kept the public key and the
+  payload, a comment saying "so a reader can re-check it". It kept the signature's first 12 bytes and no more, so
+  there was nothing to check the payload against. It now keeps all 3,309 bytes, and the run's results file carries
+  them: `tests/test_r86_results_bundle.py` verifies the record from the file alone after a JSON round trip, and a
+  changed metric fails it. A per-run key shows the record is unchanged since signing, not who signed it.
+- **Published figures beside this computation, on every page, with the rule for each verdict (2026-11-13).** Each
+  use-case page now has one table: the figure as its source publishes it, this project's offline figure, this run,
+  and a verdict from `web/src/lib/publishedComparisons.ts`. Reproduced and differs are for the same method on the
+  same data and need a spread to judge by; where neither side published one the difference is shown as "no spread";
+  a different method or protocol on the same data is a reference, never a reproduction; and the rest say why they
+  are not comparable. On the medical page the federation is FLamby's benchmark run in the tab: seed 1's FedAvg,
+  0.7005, is +0.0155 from FLamby's 0.685, inside two of its seed standard deviations (0.028). ResNet-18 on
+  BreastMNIST is the same method as MedMNIST v2's, whose 0.901 lies inside one standard deviation of this
+  project's six seeds (0.8905, 0.0198). Telemanom on ESA-ADB's like-for-like row is 0.0181 below the published 0.968
+  with no spread on either side. The run also re-scores every published model and, until now, showed only the
+  selected one; the others reached the log alone. They now have a table, and each card's rows, and the whole run,
+  download as CSV and JSON. The Models section is in tabs, an overview first.
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training

@@ -3,9 +3,11 @@
 // request, the same noisy contributions are summed once more under threshold BGV (clientFedAgg.sumUnderThresholdBgv,
 // in a Web Worker), which must give the masked sum's integer exactly.
 import { useState } from "react";
-import type { GenomicsDp } from "../lib/clientDp";
+import { formatDelta, type GenomicsDp } from "../lib/clientDp";
 import type { ThresholdSum } from "../lib/clientFedAgg";
 import { sumUnderThresholdBgvInWorker } from "../lib/clientFedAggRun";
+import { genomicsDpRows } from "../lib/cardRows";
+import CardExport from "./CardExport";
 
 export interface GenomicsDpArtifact extends GenomicsDp {
   released: number; exact: number; variant: string; individuals: number; cohorts: number;
@@ -26,7 +28,7 @@ export default function GenomicsDpCard({ dp }: { dp: GenomicsDpArtifact }) {
         <tbody>
           <tr><th scope="row" style={{ textAlign: "left" }}>Released count</th><td><b>{f2(dp.released)}</b></td></tr>
           <tr><th scope="row" style={{ textAlign: "left" }}>Epsilon (the selector above), delta</th>
-            <td>{f2(dp.epsilonAchieved)} (asked {dp.epsilon}), {dp.delta}</td></tr>
+            <td>{f2(dp.epsilonAchieved)} (asked {dp.epsilon}), {formatDelta(dp.delta)}</td></tr>
           <tr><th scope="row" style={{ textAlign: "left" }}>Noise standard deviation, all cohorts</th>
             <td>{f2(dp.sdTotal)} alleles</td></tr>
           <tr><th scope="row" style={{ textAlign: "left" }}>Epsilon if one cohort adds no noise</th>
@@ -35,6 +37,9 @@ export default function GenomicsDpCard({ dp }: { dp: GenomicsDpArtifact }) {
             <td>{dp.exact} of at most {2 * dp.individuals}</td></tr>
         </tbody>
       </table>
+      <div style={{ marginTop: 6 }}>
+        <CardExport name="genomics-differential-privacy" label="the released count" rows={genomicsDpRows(dp)} />
+      </div>
       <p className="muted small" style={{ marginTop: 8 }}>
         With {dp.individuals} people the noise a strong guarantee needs is large next to the count: DP is built for
         releases about many people, and a study NIST SP 800-226 cites calls epsilon below 1 reasonable. Delta is 1e-5, the

@@ -101,6 +101,13 @@ flowchart TB
 | `telecom_ids` | telecom, defence | simulated QKD with an optional eavesdropper, a QML intrusion detector |
 | `satellite_comms` | satellite | simulated free-space QKD over a model of the Micius downlink, a two-way QSDC feasibility check with an inline eavesdrop check, and one-way quasi-QSDC under a pre-shared key where that check cannot close |
 
+Each use-case page also sets its published figures beside this project's offline measurement and the run, with a
+verdict whose rule is written in `web/src/lib/publishedComparisons.ts` (reproduced, differs, no spread, a reference
+of another method, or not comparable, with the reason), and shows every published model's re-scoring in the tab, not
+only the selected one's. Each card's rows download as CSV and JSON, and a run downloads as one results file whose
+ML-DSA-signed record verifies from the file alone (`tests/test_r86_results_bundle.py`); no key, no mask seed and no
+party's own contribution is in it. The Models section is in tabs, an overview first.
+
 Each use case's implementation, stage by stage: what runs it in the browser, and where the full
 deployment differs. Open a section to see its flowchart.
 

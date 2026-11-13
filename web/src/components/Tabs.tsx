@@ -6,13 +6,16 @@ import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "rea
  * Added in Round 77 for the satellite card, whose Downlink and Network views no longer fit one panel.
  * Inactive panels are not rendered, so a heavy view (a 3D scene, a pass integration) costs nothing
  * until its tab is opened. `onChange` tells the page which tab is shown: the E2E page's export button
- * names the figure it will save (Round 81).
+ * names the figure it will save (Round 81). `keepMounted` renders every panel and hides the inactive
+ * ones instead (Round 86, the Models section): its panels are static text and tables, light to keep,
+ * and a model's Run button keeps its state when another model's tab is opened.
  */
-export default function Tabs({ tabs, label, initial = 0, onChange }: {
+export default function Tabs({ tabs, label, initial = 0, onChange, keepMounted = false }: {
   tabs: { id: string; title: string; content: () => ReactNode }[];
   label: string;
   initial?: number;
   onChange?: (id: string) => void;
+  keepMounted?: boolean;
 }) {
   const [active, setActive] = useState(initial);
   const base = useId();
@@ -47,7 +50,7 @@ export default function Tabs({ tabs, label, initial = 0, onChange }: {
       {tabs.map((t, i) => (
         <div key={t.id} role="tabpanel" id={`${base}-panel-${t.id}`} aria-labelledby={`${base}-tab-${t.id}`}
           hidden={i !== active} className="tab-panel">
-          {i === active ? t.content() : null}
+          {i === active || keepMounted ? t.content() : null}
         </div>
       ))}
     </div>
