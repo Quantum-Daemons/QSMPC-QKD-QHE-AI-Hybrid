@@ -93,6 +93,10 @@ export interface QkdApplication {
   client_app_id: string[];
   backing_qkdl_id: string[];
   consumed_bits: number;
+  /** How the application's key is made from its backing links. NOT a GS QKD 015 field, and named so: the
+   *  spec relays through trusted nodes and stops there (Round 86). "xor": one key from each of two node-disjoint
+   *  relay paths, combined bit by bit, so every key bit spends one bit of each path. Absent: one link. */
+  qsh_key_combination?: "xor";
 }
 
 export interface SdnTopology {
@@ -123,11 +127,15 @@ export interface SdnTopology {
  */
 export const SAE_DEMO_ALLOCATION_FRACTION = 0.25;
 
-const trustNote = (l: QkdLink): string =>
-  l.qkdl_type === "VIRT" && l.virt_next_hop.length
-    ? `relayed through ${l.virt_next_hop.length} trusted node(s) [${l.virt_next_hop.join(", ")}] - `
-      + "each sees the key in the clear"
-    : "direct quantum channel - no intermediate node handles the key";
+const trustNote = (l: QkdLink, topo?: SdnTopology): string => {
+  if (!(l.qkdl_type === "VIRT" && l.virt_next_hop.length)) return "direct quantum channel - no intermediate node handles the key";
+  const split = topo?.apps.some((a) => a.qsh_key_combination === "xor" && a.backing_qkdl_id.includes(l.qkdl_id));
+  return split
+    ? `relayed through ${l.virt_next_hop.join(", ")}, which sees this path's key in the clear; the end-to-end key is `
+      + "its XOR with the other path's, so this relay alone learns nothing about it, and both relays together learn all of it"
+    : `relayed through ${l.virt_next_hop.length} trusted node(s) [${l.virt_next_hop.join(", ")}] - `
+      + "each sees the key in the clear";
+};
 
 export const linkTrustNote = trustNote;
 
@@ -202,6 +210,11 @@ export function buildTopology(opts: {
    *  them. A relay's hops each take half, which holds because only fibre relays and its loss is linear
    *  in length. Absent, the fibre law at 0.2 dB/km. */
   channelLossDb?: number | null;
+  /** Relay paths when the span needs a relay (Round 86, the owner's choice of 2026-11-13): 1, one trusted relay that
+   *  sees the key; 2, two node-disjoint relay paths whose keys are XORed, so neither relay alone learns the key
+   *  (Clermont, Gansel and Struck, ePrint 2026/1095, with one layer of relays). Both paths here are the same length,
+   *  so each carries the run's rate and budget. Ignored on a single span. */
+  relayPaths?: 1 | 2;
 }): SdnTopology {
   const { usecase, distanceKm, keyBudgetBits, qkdEnabled, secretKeyRatePerPulse } = opts;
   const sourceRateHz = Number(opts.sourceRateHz ?? 0);
@@ -241,7 +254,27 @@ export function buildTopology(opts: {
       channel_seconds: null, source_rate_hz: null, simulated: true };
   }
 
-  if (distanceKm > maxSpan) {
+  if (distanceKm > maxSpan && opts.relayPaths === 2) {
+    const half = distanceKm / 2;
+    const hop = (id: string, from: string, to: string): QkdLink => ({ qkdl_id: id, qkdl_type: "PHYS",
+      qkdl_local_qkdn_id: from, qkdl_remote_qkdn_id: to, virt_next_hop: [], phys_channel_att: attenuation(half, 0.5),
+      skr, consumed_bits: 0, key_budget_bits: keyBudgetBits, qkdl_applications: [] });
+    for (const k of [1, 2]) {
+      nodes.splice(k, 0, { qkdn_id: `qkdn-relay-${k}`, qkdn_location_id: `trusted relay · path ${k}, mid-span`,
+                           qkdn_status: "OPERATING", key_relay_mode_enable: true });
+    }
+    links.push(hop("qkdl-a-r1", "qkdn-a", "qkdn-relay-1"), hop("qkdl-r1-b", "qkdn-relay-1", "qkdn-b"),
+               hop("qkdl-a-r2", "qkdn-a", "qkdn-relay-2"), hop("qkdl-r2-b", "qkdn-relay-2", "qkdn-b"));
+    for (const k of [1, 2]) {
+      links.push({ qkdl_id: `qkdl-a-b-${k}`, qkdl_type: "VIRT", qkdl_local_qkdn_id: "qkdn-a", qkdl_remote_qkdn_id: "qkdn-b",
+                   virt_next_hop: [`qkdn-relay-${k}`], phys_channel_att: null, skr, consumed_bits: 0,
+                   key_budget_bits: keyBudgetBits, qkdl_applications: [saeId] });
+    }
+    notifications.push(`${distanceKm} km exceeds the ${maxSpan} km single-span limit, so the controller created two `
+      + "VIRT key associations over node-disjoint relay paths (clause 5.4 for each). Each relay sees its own path's key "
+      + "in the clear; the endpoints use the XOR of the two keys, so either relay alone learns nothing about it. Both "
+      + "relays together learn all of it, and the combined key runs at the slower path's rate.");
+  } else if (distanceKm > maxSpan) {
     const relay: SdQkdNode = { qkdn_id: "qkdn-relay", qkdn_location_id: "trusted relay · mid-span",
       qkdn_status: "OPERATING", key_relay_mode_enable: true };
     nodes.splice(1, 0, relay);
@@ -269,12 +302,15 @@ export function buildTopology(opts: {
       + "no intermediate node handles the key.");
   }
 
+  const split = distanceKm > maxSpan && opts.relayPaths === 2;
   const apps: QkdApplication[] = [{
     app_id: saeId, server_app_id: "qsh-orchestrator", client_app_id: ["browser-agent"],
-    backing_qkdl_id: [links[links.length - 1].qkdl_id], consumed_bits: 0,
+    backing_qkdl_id: split ? ["qkdl-a-b-1", "qkdl-a-b-2"] : [links[links.length - 1].qkdl_id], consumed_bits: 0,
+    ...(split ? { qsh_key_combination: "xor" as const } : {}),
   }];
-  notifications.push(`SAE ${saeId} registered against ${apps[0].backing_qkdl_id[0]} (clause 5.2). `
-    + "It requests keys and issues intents; it does not control the quantum layer.");
+  notifications.push(`SAE ${saeId} registered against ${apps[0].backing_qkdl_id.join(" and ")} (clause 5.2)`
+    + (split ? ", its key the XOR of the two paths' keys" : "")
+    + ". It requests keys and issues intents; it does not control the quantum layer.");
 
   return { spec: "ETSI GS QKD 015 V2.1.1 (2022-04)", nodes, links, apps, notifications,
     channel_seconds: channelSeconds, source_rate_hz: sourceRateHz > 0 ? sourceRateHz : null, simulated: true };
@@ -292,8 +328,11 @@ export function allocate(topo: SdnTopology, appId: string, bits: number): number
   // Denominated in BITS, which is what an allocation is. This drew down `eskr` until Round 42 -
   // the ETSI rate field was doubling as the budget ledger, which is why a session total ended up
   // in it in the first place. Subtracting granted bits from a bit/s field is the dimensional error
-  // one layer below the one the panel displayed.
-  const budget = backing.reduce((s, l) => s + l.key_budget_bits, 0);
+  // one layer below the one the panel displayed. An XORed key spends one bit of EACH path per bit, so its budget
+  // is the smaller path's; a sum would grant twice what the two paths can make together.
+  const budget = app.qsh_key_combination === "xor"
+    ? Math.min(...backing.map((l) => l.key_budget_bits))
+    : backing.reduce((s, l) => s + l.key_budget_bits, 0);
   const granted = Math.max(0, Math.floor(Math.min(bits, budget)));
   app.consumed_bits += granted;
   for (const l of backing) {
@@ -322,6 +361,11 @@ const SIM_MAX_KEY_PER_REQUEST = 8;
 /** GS QKD 014 V1.1.1 Status data format - the only published edition; ed2 is still a draft. */
 export function kmeStatus(topo: SdnTopology, slaveSaeId = "sae-party-b"): Record<string, unknown> {
   const link = topo.links[topo.links.length - 1];
+  // The links the SAE's keys come from: under an XOR split both paths, and every key bit spends a bit of each, so the
+  // count is the smaller path's budget; otherwise the one association.
+  const app = topo.apps[0];
+  const backing = app?.qsh_key_combination === "xor"
+    ? topo.links.filter((l) => app.backing_qkdl_id.includes(l.qkdl_id)) : link ? [link] : [];
   return {
     source_KME_ID: "kme-a", target_KME_ID: "kme-b",
     master_SAE_ID: topo.apps[0]?.app_id ?? "sae-mcp-agent", slave_SAE_ID: slaveSaeId,
@@ -330,7 +374,7 @@ export function kmeStatus(topo: SdnTopology, slaveSaeId = "sae-party-b"): Record
     // set `eskr` to null the `?? 0` turned an absence into a measurement: the table advertised zero
     // stored keys on every run for two rounds and nothing failed. A key COUNT is bits divided by a
     // key size; `key_budget_bits` is the bits this run actually has left to give out.
-    stored_key_count: Math.floor((link?.key_budget_bits ?? 0) / QKD014_KEY_SIZE_BITS),
+    stored_key_count: Math.floor((backing.length ? Math.min(...backing.map((l) => l.key_budget_bits)) : 0) / QKD014_KEY_SIZE_BITS),
     max_key_per_request: SIM_MAX_KEY_PER_REQUEST,
     status_extension: {
       spec: "ETSI GS QKD 014 V1.1.1 (2019-02)",

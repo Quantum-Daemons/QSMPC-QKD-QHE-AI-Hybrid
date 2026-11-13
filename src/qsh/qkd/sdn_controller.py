@@ -173,6 +173,9 @@ class QkdApplication:
     remote_qkdn_id: str = ""
     #: ``backing_qkdl_id`` -- the key association(s) serving this application.
     backing_qkdl_id: list[str] = field(default_factory=list)
+    #: NOT a GS QKD 015 field (Round 86): ``"xor"`` when the key is one key from each of two node-disjoint relay
+    #: paths combined bit by bit, so each key bit spends a bit of every path; ``None`` for one association.
+    qsh_key_combination: str | None = None
     #: ``app_qos``
     max_bandwidth: float | None = None
     min_bandwidth: float | None = None
@@ -279,7 +282,12 @@ class SdnController:
         # BITS against BITS. This budgeted against `eskr`, a bit/s field, so a count was compared
         # with a rate and the difference written back into the rate - the browser's exact defect,
         # left standing here when Round 42 fixed only TypeScript.
-        budget = sum(self.links[q].key_budget_bits for q in app.backing_qkdl_id)
+        # An XORed key spends one bit of EACH path per bit, so its budget is the smaller path's (Round 86); summing would
+        # grant twice what the two paths can make together. The browser's `allocate` is the same rule.
+        if app.qsh_key_combination == "xor":
+            budget = min(self.links[q].key_budget_bits for q in app.backing_qkdl_id)
+        else:
+            budget = sum(self.links[q].key_budget_bits for q in app.backing_qkdl_id)
         granted = int(min(bits, budget))
         app.consumed_bits += granted
         for q in app.backing_qkdl_id:
@@ -343,3 +351,20 @@ class SdnController:
 
     def _notify(self, message: str) -> None:
         self._notifications.append(message)
+
+
+def xor_split_key(path_keys: list[bytes]) -> bytes:
+    """The end-to-end key of an XOR split (Round 86): the bytewise XOR of one key from each node-disjoint relay path.
+
+    Each relay sees only its own path's key, which is uniform and independent of the result when the other path's key
+    is unknown to it, so one relay alone learns nothing about the key and every relay together learns all of it: the
+    one-layer case of Clermont, Gansel and Struck's key transport over untrusted relays (ePrint 2026/1095).
+    """
+    if len(path_keys) < 2 or len({len(k) for k in path_keys}) != 1:
+        raise ValueError("an XOR split needs two or more path keys of one length")
+    out = bytearray(path_keys[0])
+    for k in path_keys[1:]:
+        for i, b in enumerate(k):
+            out[i] ^= b
+    return bytes(out)
+

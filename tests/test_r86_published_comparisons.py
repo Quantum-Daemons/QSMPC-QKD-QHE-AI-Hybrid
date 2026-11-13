@@ -40,6 +40,7 @@ for (const [uc, models] of Object.entries(cfg.models)) {
     score: 0.5, expected: 0.5, n: 10, split: "test" }));
   out.rows[uc] = m.modelRows(models, verifications).map((r) => [r.figure.split(":")[0], r.verdict, r.thisRun]);
 }
+out.otherMetric = m.modelRows([cfg.models.medical_fl[0]], [{ modelKey: cfg.models.medical_fl[0].key, selected: true, outcome: "PASS", metric: "accuracy", score: 0.859, expected: 0.859, n: 156, split: "test" }])[0].thisRun;
 out.fedAt7005 = m.flambyRows(fake(0.7005)).map((r) => [r.figure, r.verdict]);
 out.fedAt785 = m.flambyRows(fake(0.785)).map((r) => [r.figure, r.verdict]);
 console.log(JSON.stringify(out));
@@ -102,7 +103,11 @@ def test_the_verdicts_follow_their_rules(run) -> None:
     assert dict(run["fedAt785"])["FedAvg, 15 rounds, FLamby's metric"] == "differs"   # +0.100, beyond 2 x 0.028
 
 
-def test_this_run_reports_the_models_own_rescoring(run) -> None:
+def test_this_run_reports_the_models_own_rescoring_and_names_its_metric(run) -> None:
+    # The fake re-scoring carries each model's own metric, so no row should add "not this row's metric"; the
+    # deployed medical page showed an unnamed accuracy beside an AUC row until this was named.
     for rows in run["rows"].values():
         for _, _, this_run in rows:
-            assert this_run.startswith("PASS: 0.5000 on 10 rows of its sample (test)"), this_run
+            assert this_run.startswith("PASS: ") and " 0.5000 on 10 rows of its sample (test)" in this_run, this_run
+            assert "not this row's metric" not in this_run, this_run
+    assert run["otherMetric"].endswith(", not this row's metric"), run["otherMetric"]
