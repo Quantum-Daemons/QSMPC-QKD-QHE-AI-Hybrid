@@ -258,9 +258,24 @@ def _unflatten(model: nn.Module, vec: np.ndarray) -> None:
         off += n
 
 
-def _local_train(model: nn.Module, X, y, epochs, lr, dev, batch_size=32) -> np.ndarray:
-    opt = torch.optim.SGD(model.parameters(), lr=lr)
-    loss_fn = nn.CrossEntropyLoss()
+def _class_weights(y: np.ndarray, n_classes: int, dev) -> torch.Tensor:
+    """Inverse-frequency weights from a client's OWN labels, 0 for a class it does not hold.
+
+    Computed per client because a federated client sees only its own rows: no party knows the global
+    class balance without a protocol to sum it. A client holding one class therefore trains as it did.
+    """
+    counts = np.bincount(np.asarray(y, dtype=np.int64), minlength=n_classes).astype(float)
+    w = np.where(counts > 0, counts.sum() / (n_classes * np.maximum(counts, 1.0)), 0.0)
+    return torch.tensor(w, dtype=torch.float32, device=dev)
+
+
+def _local_train(model: nn.Module, X, y, epochs, lr, dev, batch_size=32, *, optimizer: str = "sgd",
+                 class_weighted: bool = False, n_classes: int = 2) -> np.ndarray:
+    if optimizer not in ("sgd", "adam"):
+        raise ValueError(f"optimizer must be 'sgd' or 'adam', not {optimizer!r}")
+    opt = (torch.optim.Adam(model.parameters(), lr=lr) if optimizer == "adam"
+           else torch.optim.SGD(model.parameters(), lr=lr))
+    loss_fn = nn.CrossEntropyLoss(weight=_class_weights(y, n_classes, dev) if class_weighted else None)
     loader = DataLoader(
         TensorDataset(torch.tensor(X, dtype=torch.float32), torch.tensor(y, dtype=torch.long)),
         batch_size=batch_size, shuffle=True,
@@ -281,6 +296,17 @@ class FederatedResult:
     round_acc: list[float]
     n_clients: int
     secure_aggregation: bool
+    #: What always predicting the evaluation rows' most common class scores (Round 86). Accuracy alone read
+    #: "0.728" for a CNN that answered one class on every row, which is exactly this figure.
+    majority_baseline: float | None = None
+    #: Mean per-class recall: 0.5 for a two-class model that answers one class, whatever the class balance.
+    balanced_acc: float | None = None
+    #: ROC AUC of class 1's probability, for a two-class task; None otherwise.
+    auc: float | None = None
+    #: Each client trained ALONE for the same number of epochs as the federation's rounds x local epochs,
+    #: scored on the same evaluation rows, when ``local_baseline=True``: the comparison federated learning
+    #: is published against (Dayan et al., Nature Medicine 2021). One dict per client.
+    local_only: list[dict] = field(default_factory=list)
 
 
 def federated_train(
@@ -297,6 +323,9 @@ def federated_train(
     seed: int = 0,
     return_model: bool = False,
     secagg_private_keys: Sequence[bytes] | None = None,
+    optimizer: str = "sgd",
+    class_weighted: bool = False,
+    local_baseline: bool = False,
 ) -> FederatedResult:
     """Run FedAvg across ``parts`` with optional pairwise masking, each pair's mask seed agreed by
     X25519 (see the module docstring for what that does and does not hide).
@@ -306,6 +335,10 @@ def federated_train(
 
     With ``return_model=True`` returns ``(FederatedResult, global_model)`` so callers (e.g. the
     medical CNN use case) can run a genuine private inference with the federated-trained weights.
+
+    ``optimizer`` ("sgd" or "adam") and ``class_weighted`` (each client's own inverse-frequency class
+    weights) apply to every client's local step; the defaults keep the tabular and QFL paths as they were.
+    ``local_baseline=True`` also trains each client alone and records it in ``FederatedResult.local_only``.
     """
     torch.manual_seed(seed)
     # The QFL hybrid runs its VQC on PennyLane's default.qubit (CPU); keep the whole net on CPU so the
@@ -320,6 +353,7 @@ def federated_train(
 
     global_model = build_model(kind, **model_kwargs).to(dev)
     global_vec = _flatten(global_model)
+    init_vec = global_vec.copy()                            # each client alone starts here too
     agg = (SecureAggregator(n_clients, private_keys=secagg_private_keys)
            if secure_aggregation else None)
     sizes = np.array([len(p[0]) for p in parts], dtype=float)
@@ -331,7 +365,8 @@ def federated_train(
         for c, (Xc, yc) in enumerate(parts):
             local = build_model(kind, **model_kwargs).to(dev)
             _unflatten(local, global_vec)
-            vec = _local_train(local, Xc, yc, local_epochs, lr, dev, batch_size)
+            vec = _local_train(local, Xc, yc, local_epochs, lr, dev, batch_size, optimizer=optimizer,
+                               class_weighted=class_weighted, n_classes=classes)
             weighted = vec * weights[c]                  # FedAvg weighting
             # `rnd` is what makes the mask fresh. This loop is where the reuse actually lived: the
             # index was discarded as `_` for the whole life of the function.
@@ -345,6 +380,22 @@ def federated_train(
     final = round_acc[-1] if round_acc else (
         _eval(global_model, *eval_data, dev) if eval_data else float("nan"))
     result = FederatedResult(final, round_acc, n_clients, secure_aggregation)
+    if eval_data is not None:
+        _, result.balanced_acc, result.auc = _eval_detail(global_model, *eval_data, dev)
+        y_eval = np.asarray(eval_data[1])
+        result.majority_baseline = float(max(np.mean(y_eval == c) for c in np.unique(y_eval)))
+        if local_baseline:
+            # The same epochs each client's data saw inside the federation, from the same initial weights.
+            for c, (Xc, yc) in enumerate(parts):
+                alone = build_model(kind, **model_kwargs).to(dev)
+                _unflatten(alone, init_vec)
+                torch.manual_seed(seed + 1 + c)
+                _local_train(alone, Xc, yc, rounds * local_epochs, lr, dev, batch_size, optimizer=optimizer,
+                             class_weighted=class_weighted, n_classes=classes)
+                acc, bal, auc = _eval_detail(alone, *eval_data, dev)
+                result.local_only.append({"client": c, "rows": int(len(yc)),
+                                          "labels": np.bincount(np.asarray(yc), minlength=classes).tolist(),
+                                          "accuracy": acc, "balanced_accuracy": bal, "auc": auc})
     if return_model:
         return result, global_model.eval()
     return result
@@ -355,3 +406,18 @@ def _eval(model: nn.Module, X, y, dev) -> float:
     model.eval()
     pred = model(torch.tensor(X, dtype=torch.float32).to(dev)).argmax(1).cpu().numpy()
     return float((pred == y).mean())
+
+
+@torch.no_grad()
+def _eval_detail(model: nn.Module, X, y, dev) -> tuple[float, float, float | None]:
+    """Accuracy, balanced accuracy, and ROC AUC of class 1's probability where there are two classes."""
+    from sklearn.metrics import balanced_accuracy_score, roc_auc_score
+
+    model.eval()
+    logits = model(torch.tensor(X, dtype=torch.float32).to(dev))
+    prob = torch.softmax(logits, 1).cpu().numpy()
+    pred = prob.argmax(1)
+    y = np.asarray(y)
+    auc = (float(roc_auc_score(y, prob[:, 1]))
+           if prob.shape[1] == 2 and len(np.unique(y)) == 2 else None)
+    return float((pred == y).mean()), float(balanced_accuracy_score(y, pred)), auc

@@ -42,6 +42,7 @@ REPO = Path(__file__).resolve().parents[1]
 WEB = REPO / "web"
 ESBUILD = WEB / "node_modules" / ".bin" / "esbuild"
 STUDENT = REPO / "models" / "medical_breastmnist_student" / "weights.json"
+SAMPLE = REPO / "models" / "medical_breastmnist_student" / "eval_sample.json"
 
 HARNESS = r"""
 import { createRequire } from "node:module";
@@ -52,6 +53,7 @@ import { pathToFileURL } from "node:url";
 const WEB = process.argv[2];
 const RUNS = JSON.parse(readFileSync(process.argv[3], "utf8"));
 const STUDENT = process.argv[4];
+const SAMPLE = process.argv[5];
 const { build } = createRequire(WEB + "/package.json")("esbuild");
 const dir = mkdtempSync(join(tmpdir(), "qsh-r84-medtel-"));
 const out = join(dir, "bundle.mjs");
@@ -92,6 +94,9 @@ globalThis.fetch = async (url) => {
     if (serveStudent && /qsh-medical-breastmnist-ckks-student\/resolve\/[0-9a-f]{40}\/weights\.json$/.test(p)) {
       return ok(readFileSync(STUDENT, "utf8"));
     }
+    if (serveStudent === true && /qsh-medical-breastmnist-ckks-student\/resolve\/[0-9a-f]{40}\/eval_sample\.json$/.test(p)) {
+      return ok(readFileSync(SAMPLE, "utf8"));
+    }
     return miss;
   }
   try { return ok(readFileSync(join(WEB, "public", p.replace(/^\/+/, "")), "utf8")); } catch { return miss; }
@@ -100,7 +105,7 @@ const m = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 const result = {};
 for (const run of RUNS) {
-  serveStudent = !!run.serveStudent;
+  serveStudent = run.serveStudent ?? false;
   const logs = [], metrics = {}, seen = [];
   await new Promise((done) => {
     let ctl = null, finished = false;
@@ -151,6 +156,9 @@ GROUPS = {
                  "stopAfter": "private_inference"}],
     "weights": [{"name": "medical_weights", "usecase": "medical_fl", "config": {},
                  "stopAfter": "private_inference", "serveStudent": True}],
+    # The weights and no held-out images: the student must not run on a stand-in input.
+    "weights_only": [{"name": "medical_weights_only", "usecase": "medical_fl", "config": {},
+                      "stopAfter": "private_inference", "serveStudent": "weights"}],
     "optiqkd": [{"name": "telecom_optiqkd", "usecase": "telecom_ids", "config": {"qkd_optimize": True},
                  "stopAfter": "qkd_key_agreement"}],
 }
@@ -177,7 +185,7 @@ def browser(tmp_path_factory) -> dict:
     for group, runs in GROUPS.items():
         spec = tmp / f"{group}.json"
         spec.write_text(json.dumps(runs))
-        proc = subprocess.run(["node", str(script), str(WEB), str(spec), str(STUDENT)], cwd=WEB,
+        proc = subprocess.run(["node", str(script), str(WEB), str(spec), str(STUDENT), str(SAMPLE)], cwd=WEB,
                               capture_output=True, text=True, timeout=900)
         assert proc.returncode == 0, f"the browser pipeline did not run ({group}):\n{proc.stderr[-3000:]}"
         res = json.loads(proc.stdout.strip().splitlines()[-1])
@@ -197,7 +205,8 @@ def test_without_its_weights_the_student_does_not_run_and_the_run_says_so(browse
         f"fhe_weights = {m.get('fhe_weights')!r}: a stand-in kernel ran in place of the published weights")
     for key in ("fhe_conv_rotations", "fhe_conv_ms", "fhe_total_rotations", "fhe_student_class"):
         assert key not in m, f"{key} was reported for a student that did not run"
-    assert any("encrypted inference did NOT run" in x and "No kernel pattern stands in" in x for x in logs), logs
+    assert any("encrypted inference did NOT run" in x and "Nothing stands in for its weights or its image" in x
+               for x in logs), logs
     assert not any("none were invented" in x or "stated kernel pattern" in x for x in logs)
     # The page's own regression still ran under CKKS, and nothing wrote a key twice.
     assert m.get("encrypted_tier_measured_ms", 0) > 0
@@ -214,6 +223,28 @@ def test_with_its_weights_the_student_runs_and_the_log_says_what_the_client_decr
     assert "bias added under encryption" in line and "outputs and nothing else" in line, line
     assert "decrypts after every layer" in line and "ReLU and average pooling in plaintext" in line, line
     assert "metric_overwritten" not in m, m.get("metric_overwritten")
+
+
+def test_the_encrypted_student_reads_a_held_out_image_and_names_its_true_class(browser) -> None:
+    """Until Round 86 its input was the page's tabular row tiled to fill the image (review PI-10)."""
+    m, logs = _stage(browser["medical_weights"], "private_inference")
+    sample = json.loads(SAMPLE.read_text())
+    n, label = len(sample["samples"]), sample["labels"][0]          # the harness runs seed 0
+    assert m["fhe_student_input"] == f"held-out image 0 of {n}, the official BreastMNIST test split at 14x14"
+    assert m["fhe_student_true_class"] == label
+    assert m["fhe_student_matches_label"] == int(m["fhe_student_class"] == label)
+    line = next(x for x in logs if x.startswith("private inference (real in-browser CKKS, leveled with no bootstrapping, the PUBLISHED"))
+    assert f"on held-out image 0 of {n}" in line and f"whose true class is {label}" in line, line
+    assert "a demonstration on a public test image, not a diagnosis" in line, line
+    assert "tiled" not in line, line
+
+
+def test_without_its_held_out_images_the_student_does_not_run(browser) -> None:
+    m, logs = _stage(browser["medical_weights_only"], "private_inference")
+    assert m.get("fhe_weights") == "not fetched: the encrypted student did not run", m.get("fhe_weights")
+    for key in ("fhe_student_class", "fhe_student_input", "fhe_total_rotations"):
+        assert key not in m, f"{key} was reported for a student that did not run"
+    assert any("held-out images could not be read" in x for x in logs), logs
 
 
 def test_optiqkd_says_it_scores_the_runs_own_bound_and_applies_nothing(browser) -> None:

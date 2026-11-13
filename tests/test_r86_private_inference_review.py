@@ -376,10 +376,13 @@ def test_the_genomics_log_no_longer_says_the_partial_sums_are_readable() -> None
     assert "flooded (+/-2^${CKKS_FLOOD_BITS}) before decryption" in compute
 
 
-def test_the_medical_cnn_says_its_input_is_not_an_image() -> None:
+def test_the_medical_cnn_reads_a_held_out_image() -> None:
+    """PI-10 said the CNN's input was the page's tabular row tiled to fill the image; it now reads a held-out image of its
+    published evaluation sample, and says which, with its true class. The pipeline test runs it."""
     compute = _read(LIB / "clientCompute.ts")
-    assert 'metric(stage, "fhe_student_input", "this page\'s tabular row tiled to fill the image; not an image")' in compute
-    assert "the image, not an image, so the CNN's class is not a diagnosis." in compute
+    assert "features[(y * size + x) % features.length]" not in compute, "the tabular row is tiled into the image again"
+    assert 'metric(stage, "fhe_student_input", `held-out image ${si.index} of ${si.count}, the official BreastMNIST' in compute
+    assert "a demonstration on a public test image, not a diagnosis." in compute
 
 
 def test_the_two_party_demo_names_what_its_inference_phase_runs() -> None:

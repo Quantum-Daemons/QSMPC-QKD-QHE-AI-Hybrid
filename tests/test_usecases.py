@@ -102,8 +102,9 @@ def test_satellite_clean_downlink_yields_key_but_qsdc_cannot_close():
     These previously asserted `telemetry_delivered is True`, which was asserting the permissive
     bug: the abort was a fixed QBER of 0.11, the LOSS-FREE root of the secrecy-capacity
     expression. With the loss term restored (g = 10^(loss_dB/10), Qi et al. 2019) a 24.5 dB
-    downlink needs QBER below ~3e-4 and the misalignment floor alone is 0.025, so Cs is negative
-    by ~51 bit/carrier. The delivery those assertions protected was never physical.
+    downlink needed QBER below ~3e-4 and the misalignment floor alone is 0.025, so Cs was negative
+    by ~51 bit/carrier. The delivery those assertions protected was never physical. (The link budget
+    now reads 32.21 dB at the default 800 km, and the page reports the Eq. 8 bound instead.)
     """
     r = satellite_comms.run_demo({"seed": 1})
     assert r["secure_key_bits"] >= 256          # free-space BB84 still yields a usable key

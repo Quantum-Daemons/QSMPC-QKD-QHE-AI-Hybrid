@@ -29,8 +29,9 @@ repository ships:
   console, about a placement the page already states.
 
 The stand-in's scores are constant, so verification FAILS here by design; what is under test is how
-often a session is created, not what it computes. tests/test_r84_finance_browser_run.py checks the
-numbers against the real runtime.
+often a session is created, not what it computes. No test runs the real runtime on a published graph:
+the deployed page re-scores each published sample in the tab (checklist HF15 and PI9), and
+tests/test_r84_finance_browser_run.py runs the finance pipeline in node with stand-ins for the runtime.
 
 On the base commit (6bb8657) the first assertion fails: the three runs open six sessions.
 """

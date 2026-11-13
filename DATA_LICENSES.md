@@ -213,7 +213,7 @@ this as synthetic; it is never presented as measured on real traffic.
   full corpora are **not** redistributed and are not in this repository.
 
 - **The encrypted-tier students are published too.** `finance_aml.student` (115 params),
-  `medical_fl.student` (3226), `satellite_comms.student` (49) and `satellite_comms.opssat_student`
+  `medical_fl.student` (3226), `satellite_comms.student` (294) and `satellite_comms.opssat_student`
   (210) are the models sized for CKKS. They are distilled from the teachers on the same corpora and
   inherit the same licences, and their small `weights.json` files are also tracked in git. Which of
   them CKKS evaluates in the browser is in

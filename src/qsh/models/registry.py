@@ -786,6 +786,11 @@ M_BREASTMNIST = MetricSpec(
     ceiling_source="Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
     companion="accuracy",
 )
+#: ResNet-18's own copy (Round 86, the owner's choice): the published 0.901 is a multi-trial mean, the card's headline one run.
+#: Kept off `M_BREASTMNIST`, which the student's metric copies, so the student's published card does not change.
+M_BREASTMNIST_RESNET18 = replace(M_BREASTMNIST, baseline_source=(
+    M_BREASTMNIST.baseline_source + ". That baseline is \"the mean value of at least 3 trials\" (Yang et al.); this "
+    "card's 0.9147 is one run, and its six seeds average 0.8905 +/- 0.0198 (the record's seed_spread), below 0.901"))
 #: The CKKS student against the same baseline (Round 86). The bars share the metric and the test split, not the input:
 #: the chart said "Both bars are the same metric on the same axis" over a 14 x 14 single-convolution student and a
 #: 28 x 28 ResNet-18. The card does not print this field, so the student's card is unchanged.
@@ -906,7 +911,10 @@ M_QML_IDS = MetricSpec(
         "Published results are MIXED, not uniformly below a random forest -- an earlier revision of this "
         "note claimed they were, and the very paper cited here contradicts it: Al-Kuwari et al. "
         "(arXiv:2509.14282) Table VIII reports a hybrid QLSTM at 94.7% accuracy / 94.7% F1 against their "
-        "own random-forest baseline on the same generated data. What remains well-founded is caution "
+        "own random-forest baseline on the same generated data, at 81.5 to 82.6% accuracy by tree count "
+        "(read at the source, 2026-11-12). This project's forest reaches macro F1 0.987 on its own generator; "
+        "the metrics and the simulations differ, so the figures rank nothing, but this generator's classes "
+        "separate more easily than theirs. What remains well-founded is caution "
         "about evaluation quality rather than a universal ranking: arXiv:2512.05069 was withdrawn by "
         "its own authors for evaluation that was 'insufficient to fully support the conclusions'. That "
         "single withdrawal is thin support for a field-wide claim, so the anchor is now a survey: "
@@ -1144,7 +1152,15 @@ _SPECS: tuple[ModelSpec, ...] = (
                       "a second layer per endpoint, beside the 114-feature MLP channel; 608 ReLUs"),
         params=None,
         dataset=DS_AMLWORLD,
-        metric=M_AML,
+        # A graph model's comparator (Round 86, the owner's choice): under M_AML its card named GFP+XGBoost's 63.23, the
+        # gradient booster's baseline, which this file's own `finance_aml.gnn` card says does not belong to a GNN.
+        metric=replace(M_AML, baseline=0.6816, baseline_source=(
+            "Multi-PNA+EU on AML Small HI: 68.16 +/- 2.65 minority-class F1, five runs (Egressy et al., 'Provably Powerful "
+            "Graph Neural Networks for Directed Multigraphs', AAAI 2024, arXiv:2306.11586, Table 2), the architecture this "
+            "model is distilled from; run here on this project's windows it scored 0.6616 and 0.6878 in two runs of seed 1 "
+            "(scripts/train/ibm_multignn/). Different setting: this model reads a capped neighbourhood of 16 edges per "
+            "transaction, where Multi-PNA+EU reads a sample of the whole test-window graph. GFP+XGBoost's 63.23 is the "
+            "gradient booster's baseline, not a graph model's.")),
         runs_encrypted=True,
         artifacts=(ArtifactSpec("weights.json", "json", "fp32", "both"),),
         hf_repo="qsh-finance-aml-gnn-compact",
@@ -1162,7 +1178,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         architecture="ResNet-18 @28px",
         params=None,
         dataset=DS_BREASTMNIST,
-        metric=M_BREASTMNIST,
+        metric=M_BREASTMNIST_RESNET18,
         artifacts=_ONNX_PAIR,
         hf_repo="qsh-medical-breastmnist-resnet18",
         eval_split="the official BreastMNIST test split, whole",

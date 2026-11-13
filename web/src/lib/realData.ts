@@ -23,6 +23,7 @@
 // above feed the page's one-row explanation and the federated demo. What the private-inference figure
 // encrypts is a published model on rows it was never fitted on, each with its own payload naming the
 // split, the licence and its link.
+import { modelsFor } from "./config";
 
 /** One row in every space the payload declares, keyed by that space's own name.
  *
@@ -527,9 +528,13 @@ async function publishedStudentHeldOut(usecase: string, path: string): Promise<H
   const model = W.length === 1
     ? { W: [new Array(W[0].length).fill(0), W[0]], b: [0, b[0] ?? 0] }
     : { W, b };
+  const modelKey = String(ds.model_key ?? w.student_key ?? "");
+  // "Published" only where the registry names a Hub repo: telecom's student ships with the page and has none
+  // (`hf_repo=None`), and the label called it published until Round 86.
+  const onHub = modelsFor(usecase).some((m) => m.key === modelKey && !!m.hf_repo_id);
   return {
-    usecase, modelKey: String(ds.model_key ?? w.student_key ?? ""),
-    modelLabel: `the published ${w.n_parameters}-parameter CKKS-linear student`,
+    usecase, modelKey,
+    modelLabel: `the ${onHub ? "published" : "bundled"} ${w.n_parameters}-parameter CKKS-linear student`,
     model, rows, labels: (ds.labels as number[]).map((v) => Number(v) | 0),
     classNames: (ds.class_names as string[]) ?? model.W.map((_, j) => `class ${j}`),
     plane: ds.plane ? planeFromColumns(raw, names, ds.plane) : null,
@@ -544,8 +549,8 @@ async function publishedStudentHeldOut(usecase: string, path: string): Promise<H
  *   finance_aml  the published 115-parameter AMLworld student (`finance_aml.student`) on the 8,192
  *                test-window rows `finance/real_2d.json` draws, through its own z-scoring.
  *   medical_fl   the page's bundled WDBC regression on the 171 rows held out from its fit.
- *   telecom_ids  the published 64-parameter student (`telecom_ids.student`) on the 600 rows of its
- *                own held-out quarter.
+ *   telecom_ids  the bundled 64-parameter student (`telecom_ids.student`, not on the Hub) on the 600 rows
+ *                of its own held-out quarter.
  *   satellite_comms  the published 210-parameter student (`satellite_comms.opssat_student`) on the
  *                529 segments of the benchmark's test partition, through its quadratic expansion and
  *                the scaler its ONNX graph applies.

@@ -12,7 +12,7 @@
    "eval_sample.json": "8108208cd274d1e5958d85793e16ea2012d06c1359527e11fd25fa81e1ac1a4b",
    "weights.json": "f06f88a326aa0d06a9d1f625a10895e42f08d4a1bbbf439c202677377b28fe75"
   },
-  "revision": "006a55c6c8892accc40366e1989577bcc7087dbd"
+  "revision": "10104e89a99b21bede9fa760374ec2787c723f7c"
  },
  "finance_aml.mlp_large": {
   "files": {
@@ -37,7 +37,7 @@
    "onnx/model.onnx": "f48cd2e00defb158151574ce4d75a9da460b613e03e4cc696c10a726ed6d0eb6",
    "onnx/model_int8.onnx": "ad9ba2a8f235994f67706947ce3c9a361b7782b33fcf651570b46f32eb6b08d1"
   },
-  "revision": "5bb4e4f0989cb28f1dde6cdee6bc70ed3eea854f"
+  "revision": "638b7a4aab7a3d140d1b392ae2875b2409ec46d0"
  },
  "medical_fl.resnet50": {
   "files": {
@@ -102,6 +102,6 @@
    "feature_spec.json": "b82fbe1101293f6841f00dcfac7e1866e68d6a2511abbb0499149a6c49b2cdb8",
    "onnx/model.onnx": "505c91b833b850f5ac88a8531fc87cc923a7789faca2ad871ca3fdc1732b0834"
   },
-  "revision": "78ef41898e3d14eb8a4209bddd628f58bd2adfe1"
+  "revision": "ce54592913f24a69fc893ed828dfa663bf415289"
  }
 }

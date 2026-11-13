@@ -9036,6 +9036,7 @@ recorded separately, and nothing here changes the published model.
 | #31 | The full deployment's Grafana dashboard reads what ran: millisecond latency buckets, the first run drawn, QBER empty until a QKD stage reports, the benchmark per backend and measured rows only |
 | #32 | The trained QCNN's held-out figure is re-scored in the tab over its trainer's own test rows, in a run and from a button on the circuit card, and equals the record on every page |
 | #33 | The finance teacher and student on 114 inputs, a compact GNN under CKKS and garbled circuits distilled from IBM's Multi-PNA+EU on the same windows, the four models published with every card, sample and calibration note read against its own model |
+| #34 | The medical page's encrypted CNN student reads a held-out image; three cards name the baselines they compete with; the full deployment's federated CNN leaves its one-class answer and its log sets accuracy against the majority, the balanced accuracy, the AUC and each hospital alone; BreastMNIST's duplicates measured |
 
 Findings worth keeping from those:
 
@@ -9087,7 +9088,7 @@ Left for the owner, each named where it is decided: republishing the two student
 
 **Checks.** `web/scripts/check_hybrid_cnn.mjs` runs a held-out image through the real node-seal and Polytune, in CI and in `scripts/ci_local.sh`, and asserts the class against the clear network, the size of the circuits, the bound, the client's view being masked, and the weight-holding class having no decryptor. Seen to fail with the mask left off, with the server keeping its share, and with the conjugation uncounted. The crate's own tests hold the circuit to the plaintext ReLU over the integers. `tests/test_r86_cnn_student_note.py` holds the student's note to its generator.
 
-**Left for the owner.** The Hub's copy of the student's note and card still describes the layer-by-layer path alone, until the owner approves a republish.
+**Left for the owner.** The Hub's copy of the student's note and card still describes the layer-by-layer path alone, until the owner approves a republish. (Settled since: on 2026-11-12 every pinned card on the Hub, this student's included, equals what the registry generates, and every local file the pins record matches its digest.)
 
 
 ### Round 86, 2026-11-08: the remaining fact-checks, read at source, and the last open rows
@@ -9116,7 +9117,7 @@ Twelve further sources entered `references/REFERENCES.md`, each with what was an
 
 **Reviewed and kept.** The phrase "the last 30 percent of the transactions in time order" appears 12 times on the finance page after a run. Each instance describes a different model's sample or an event-log line, and it is part of `eval_split`, which the Hub samples carry, so shortening it would change published files for no gain in accuracy. The repeated blocks the fact-check found on the telecom and medical pages are gone: a sentence-level scan of each page after a run finds only short repeats (a model's citation on two cards, one caption pair).
 
-The text of four Hub repositories changed locally and has not been republished: `models/finance_aml_gbm/README.md`, `models/telecom_nidd/README.md`, and `models/telecom_qml_ids/{README.md,eval_sample.json}` (the sample's provenance sentence).
+The text of four Hub repositories changed locally and has not been republished: `models/finance_aml_gbm/README.md`, `models/telecom_nidd/README.md`, and `models/telecom_qml_ids/{README.md,eval_sample.json}` (the sample's provenance sentence). (Settled since: on 2026-11-12 each of them equals its pinned copy on the Hub, the gbm's after its republishes of 2026-11-11 and 12.)
 
 ### Round 86, 2026-11-08: planned items the audit found unbuilt, settled
 

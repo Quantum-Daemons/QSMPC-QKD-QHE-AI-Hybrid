@@ -184,9 +184,11 @@ def test_the_shipped_copy_agrees_with_the_trained_artifact(usecase: str) -> None
 #: the third option, which is what a card silently does by default: print a figure and say nothing,
 #: so a single draw reads as a settled result.
 #:
-#: The medical card is why this matters and not a formality. Its seed 0 is the WORST of five on
-#: minority-class F1 - 0.622951 against a median of 0.8710 - so a reader comparing it against the
-#: classical baseline was comparing against the low end of a wide spread and had no way to know.
+#: The medical card is why this matters and not a formality. On the circuit it shipped before Round 84
+#: its seed 0 was the WORST of five on minority-class F1 - 0.622951 against a median of 0.8710 - so a
+#: reader comparing it against the classical baseline was comparing against the low end of a wide
+#: spread and had no way to know. On the retrained circuit seed 0 is the second highest of five
+#: (`models/qcnn_medical/README.md`): the same rule, from the other side.
 #:
 #: A MARKER, NOT A PROSE MATCH - AND THE PROSE VERSION FAILED ITS OWN NEGATIVE CONTROL. The first
 #: version searched for the phrasings the cards happened to use: "worst of five", "lands exactly on

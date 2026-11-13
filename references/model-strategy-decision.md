@@ -7,7 +7,8 @@ records the answer per option, with what was measured rather than assumed.
 
 ## The constraint, stated precisely
 
-The encrypted tier evaluates 20-3,226 parameters. That is not a preference: CKKS at
+The encrypted tier evaluates 20-3,226 parameters (Round 24d; since Round 86 the CKKS-only students span
+64 to 3,226, and two finance models of 23,106 and 34,962 pair CKKS with garbled circuits, below). That is not a preference: CKKS at
 `poly_modulus_degree` 8192 gives 4096 slots, and a ciphertext-plaintext dot product is one
 multiplicative level. Anything deeper needs bootstrapping, which this project does not do in a
 browser tab.
@@ -26,6 +27,9 @@ down anyway, which is what already happens. Downloading would not close the gaps
 since those gaps come from protocols and data as much as from size: of the teachers, only resnet18 clears its
 baseline (0.9147 vs 0.901), while opssat (0.9681 vs 0.979), resnet50 (0.7988 vs 0.857), the finance gradient-boosting
 model (0.1519 vs 0.6323) and telemanom (0.0 vs 0.968) sit below theirs, each for the reasons its card states.
+(Round 86: the finance model scores 0.6161 against 0.6323, which is GFP + XGBoost at a batch of 128, and 64.77
+at the batch of 2,048 its features use; telemanom scores 0.950 against 0.968 by ESA-ADB's own recipe; and
+resnet18's 0.9147 is one run, whose six seeds average 0.8905, below MedMNIST's multi-trial 0.901.)
 
 ## Option 2: reinforcement learning - NO, and it is a category error at this scale
 
@@ -148,3 +152,24 @@ independent BFV context alongside CKKS, with no scheme conversion anywhere.
 
 **So there is no genuinely open option left on this list.** If a later round wants one, it has to be
 found rather than inherited from this paragraph.
+
+## Round 86 addendum: an option this list did not have - change the protocol, not the model size
+
+The constraint above binds a model evaluated under CKKS alone. Splitting the work between two protocols
+removes it for the non-linear layers: the linear maps run under CKKS, the server masks each result, and
+the ReLUs and the argmax run in garbled circuits on the masked shares, so depth costs garbled gates and
+no bootstrapping. Two finance models run this way in the browser, both trained here on AMLworld:
+
+| model | parameters | ReLUs in garbled circuits | minority-class F1 over the test window |
+|---|---|---|---|
+| `finance_aml.mlp_large`, MLP [114, 128, 64, 2] | 23,106 | 192 | 0.5953 |
+| `finance_aml.gnn_compact`, 2 endpoints and 16 neighbour slots | 34,962 | 608 | 0.6587 |
+| `finance_aml.student`, the CKKS-only linear student, for comparison | 115 | 0 | 0.3088 |
+
+Both networks are distilled from IBM's Multi-PNA+EU, run on this project's windows from IBM's code
+(`scripts/train/ibm_multignn/`), with the target $`0.7\,y + 0.3\,p_{\text{PNA}}`$, the weight chosen on
+validation (generalised distillation, Lopez-Paz, Bottou, Schoelkopf and Vapnik, ICLR 2016,
+arXiv:1511.03643). Option 1's answer stands: the teacher is not downloaded but run and distilled. What
+changed is that the student no longer has to fit one multiplicative level. The costs are measured on the
+finance page and in `npm run check:hybrid-mlp` and `check:hybrid-gnn`: garbled-circuit traffic, AND
+gates (52,655 for the GNN's 608 ReLUs and argmax) and wall clock.

@@ -83,7 +83,7 @@ fall short:
 | vertical | T2 model | data | measured | published baseline |
 |---|---|---|---|---|
 | **finance** | XGBoost over this project's own graph features: 32 causal per-account aggregates, 79 per-transaction fan-in, fan-out, vertex-statistic and scatter-gather features in the Graph Feature Preprocessor's style, and 3 pair counts (IBM's preprocessor itself is not used) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.6161**, AUPRC **0.6428** vs a 0.0015 prevalence baseline (the test window's positive rate; the corpus's is 1 in 981) | 0.6323, GFP + XGBoost (NeurIPS 2023 D&B), on another split - see the note below |
-| **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC BY 4.0 **asserted by MedMNIST**; the BUSI authors **publish no licence** - see [DATA_LICENSES.md](../DATA_LICENSES.md)) | AUC **0.9147** | 0.901 (Yang et al., Scientific Data 10:41, 2023) |
+| **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC BY 4.0 **asserted by MedMNIST**; the BUSI authors **publish no licence** - see [DATA_LICENSES.md](../DATA_LICENSES.md)) | AUC **0.9147** from one run (DeLong 95% 0.858 to 0.971); six seeds average $`0.8905 \pm 0.0198`$ | 0.901 (Yang et al., Scientific Data 10:41, 2023), the mean of at least three trials, so the comparable figure is the six-seed mean, below it |
 | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000072** (Graff et al. 2021, CC BY 4.0; 183 of its 187 variants scored) over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.637 - *external citation, not measurable here: a reference panel carries no phenotype. Fitted WITH covariates a dot product does not have, on 162 of the 187 variants and at 5 years, so it is a citation and not a target* |
 | **satellite** | **Telemanom** 2xLSTM(80), seq 250, a 10-step forecast served by its first step, non-parametric dynamic threshold + pruning, by ESA-ADB's Telemanom-ESA recipe | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | corrected event-wise F0.5 **0.950** over **29 anomalies** (tp=23 fp=0 fn=6); 0.968 with ESA-ADB's label-reading preparation and the paper's floor | 0.968 (ESA-ADB Supp. Table 9, anomalies only) |
 | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 - **RF 0.987**, quantum-kernel SVC **0.832**, variational QNN **0.467** | no trustworthy single number exists - see below |
@@ -216,8 +216,10 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
     inputs it would also cost the browser more than a ciphertext holds: $`114 + 114 \cdot 115/2 = 6{,}669`$
     features against the 4,096 slots of an $`N = 8192`$ ciphertext, where the 114 linear inputs take a
     128-slot block, 32 rows to a ciphertext.
-  - `medical_fl.student` decrypts after every layer for its ReLU and pooling, and its encrypted input is
-    a tabular row tiled to fill the image (review PI-10, now stated on the page). A student that runs
+  - `medical_fl.student` decrypts after every layer for its ReLU and pooling. Its encrypted input is a
+    held-out image of its published evaluation sample, the one the CNN-under-MPC card takes for the same
+    seed, named with its true class; until 2026-11-13 it was a tabular row tiled to fill the image
+    (review PI-10, which the page stated). A student that runs
     whole under CKKS needs a polynomial activation, and more rescales than the 60+40+40+60 chain's two;
     a longer chain needs $`N = 16384`$, which Round 38 measured at about twice the cost of every FHE
     figure, so the plan must show what the depth buys before it pays for it.
@@ -477,6 +479,25 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   BreastMNIST, and so are the benchmark's encrypted CNN and, since then, the full deployment's medical
   pipeline, which reads `benchmark.medical_cnn` and runs its CNN path from the page. Until then that
   pipeline defaulted to PneumoniaMNIST, a different MedMNIST v2 subset, and the page never reached it.
+- **The full deployment's federated CNN answered one class until 2026-11-13, and its log printed that as a
+  result.** On `{"dataset": "medmnist", "model": "cnn"}` - 409 BreastMNIST training images of 14x14 split
+  across four hospitals by label, two of them holding one class each - plain SGD at 0.05 ended at 0.7282 on
+  seeds 0, 1 and 2, which is the 103 evaluation rows' majority class, and the log read "global model accuracy =
+  0.728". Each hospital's own inverse-frequency class weights with Adam at 0.01 move it off that, weakly: on
+  seed 0 a balanced accuracy of 0.619 and an AUC of 0.685, against 0.564 and 0.638 for the four hospitals
+  trained alone; on seed 1 it still answers one class, with an AUC of 0.656. No optimiser setting tried (SGD
+  or Adam at three rates, with and without class weights, one or three local epochs, 6 or 20 rounds, IID or
+  not) passed an AUC of 0.72 on these rows: the data, not the optimiser, bounds it. The log now prints the
+  majority, the balanced accuracy, the AUC and every hospital trained alone, and says when the model answers
+  one class (`tests/test_r86_federated_reports_its_baseline.py`). The browser's federated stage is the tabular
+  one and is unaffected.
+- **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
+  (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
+  in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training
+  image with the other label, and 24 of the 156 test images lie within a mean absolute difference of 3/255 per
+  pixel of a training image, the same rate as within the training split (91 of 546). They do not carry the
+  published AUC: the served ResNet-18 scores 0.9146 on all 156, 0.9281 without those 24 and 0.9107 without the 43
+  within 5/255.
 - **`results/` retention.** It had none for three rounds and grew 953 -> 1133 -> 1421 files;
   `docker/docker-compose.yml` bind-mounts it, so a long-lived deployment grew without bound.
   `orchestration.keep_runs` (default 200, 0 disables) now prunes on persist, grouped by run stem
