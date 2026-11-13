@@ -4596,6 +4596,18 @@ the DP row's 50; the genomics sum for five parties at $`f = 163`$ against $`B = 
 $`Q = 60+60+60+20`$ bits, inside the HE standard's post-quantum 202 at $`N = 8192`$, where the four bounded floods
 stay below $`Q/(2t)`$ and the decryption cannot fail; a BGV share is now 393 kB, the ciphertext 393 kB.
 
+### PR #42 on the deployed site (2026-11-14)
+
+Deployed from `main` at 4c8c6d0 by `scripts/deploy_demo.sh --return-to-main`: the box is on `main` and serves
+`index-veWbIFx8.js`, whose SHA-256 (`4c59d231...253f`) is the same in the deploy log's bundle name, on the public page and
+in a local `VITE_CLIENT_ONLY=1` build of `main`. Walked in Chrome: the medical page's encrypted-aggregation comparison
+prints each threshold row's flooding, uniform on $`\pm(2^{51} - 1)`$, $`\pm(2^{75} - 1)`$ and $`\pm(2^{163} - 1)`$ for
+a noise bound of $`2^{22.26}`$, with its bits per decryption and over the run's decryptions under one key: 16 and 12.1,
+40 and 36.1, 128 and 124.1, and 128 and 122.4 for the DP row's 50; BGV equal to the masks to the bit. The CKKS errors on
+this run were $`3.8 \times 10^{-7}`$ and $`8.7 \times 10^{-6}`$; they move with each run's flooding draw. The genomics
+card's threshold sum for four cohorts: 825 against the masks' 825, with $`f = 163`$ for the bound $`2^{22.26}`$. No
+console errors.
+
 ### PR #43: the DeFi committee on threshold BGV (2026-11-13)
 
 `wasm/qsh-fedthresh/agg/committee.go` opens a committee of $`n`$ members with threshold $`t`$ on Lattigo v6.2.0 at
