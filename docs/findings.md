@@ -503,6 +503,25 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   majority, the balanced accuracy, the AUC and every hospital trained alone, and says when the model answers
   one class (`tests/test_r86_federated_reports_its_baseline.py`). The browser's federated stage is the tabular
   one and is unaffected.
+- **The medical page federates four real hospitals (2026-11-13).** It federated round-robin shards of the WDBC sample,
+  so its four "hospitals" shared one distribution. It now runs FLamby's Fed-Heart-Disease benchmark (du Terrail et al.,
+  NeurIPS 2022 Datasets and Benchmarks) on the UCI Heart Disease records of the Cleveland Clinic, the Hungarian
+  Institute of Cardiology, the University Hospitals of Zurich and Basel and the VA in Long Beach (CC BY 4.0), prepared
+  as FLamby prepares them: each hospital alone, FedAvg for 15 rounds of 100 local steps under the page's pairwise
+  masks, and all four pooled, scored by FLamby's metric (accuracy at 0.5 on each hospital's test rows, averaged).
+  Over five seeds, each hospital alone 0.735, 0.636, 0.601 and 0.644, federated $`0.712 \pm 0.017`$, pooled 0.715;
+  FLamby's own five seeds, averaged from its published result files: 0.722, 0.629, 0.567 and 0.637 alone, FedAvg
+  $`0.685 \pm 0.028`$, pooled 0.735 (sample standard deviations): the federation above three of the four hospitals
+  alone and not above pooled, the usual order in published comparisons (Diniz et al., npj Digital Medicine, 2026:
+  decentralised above local in 83 percent of accuracy comparisons, centralised above decentralised in 78 percent).
+  On its own test rows, though, a hospital's own model scores above the federated one at three or four of the four
+  hospitals in every seed: the federation's gain is on the other hospitals' patients. The page shows the whole
+  matrix, models by test sets, so both comparisons are on it. The page's figures are
+  the Python twin's to the last digit (`qsh.ai.fed_heart`, `tests/test_r86_fed_heart_twin.py`). The private-inference
+  stage keeps its WDBC regression and the BreastMNIST student, so the page's two halves now read different corpora,
+  and its description says so; the full deployment's tabular federation still shards WDBC. The published cases
+  this was weighed against, and the plan for the rest, are in
+  [`references/medical-fl-prior-work.md`](../references/medical-fl-prior-work.md).
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training

@@ -38,6 +38,7 @@ import {
   browserModels, DEFAULT_ONNX_BACKEND, evaluatePublishedModel, type OnnxBackend, onnxStatus,
   runPublishedModel,
 } from "./onnxInference";
+import { FED_HEART, fedHeart, fedHeartComparisons, loadHeartSites } from "./clientFedHeart";
 import { heldOutCorpus, realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
   type HeldOutCorpus, type RealInput, realAlleleCounts } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
@@ -3116,6 +3117,58 @@ export function runClientPipeline(
         // still told the visitor to "toggle Federated (QFL)", a checkbox removed in Round 18. A
         // flow that declares this stage should run it; the guard added nothing but an unreachable
         // second answer to "what is federated_accuracy?".
+        // FOUR REAL HOSPITALS ON THE MEDICAL PAGE (Round 86, the owner's choice of 2026-11-13): FLamby's
+        // Fed-Heart-Disease benchmark, each hospital alone, FedAvg under the same pairwise masks, and all four pooled
+        // (clientFedHeart.ts, twinned in Python by qsh.ai.fed_heart). Until then this page federated round-robin shards of
+        // the WDBC sample, so its "hospitals" shared one distribution and no hospital was in it.
+        if (usecase === "medical_fl") {
+          const sites = await loadHeartSites();
+          if (sites) {
+            const h = await fedHeart(sites, seed);
+            const r4 = (x: number) => Math.round(x * 10000) / 10000;
+            metric(stage, "federated_accuracy", r4(h.mean.federated));
+            metric(stage, "federated_alone_accuracy", r4(h.mean.alone.reduce((a, b) => a + b, 0) / h.mean.alone.length));
+            metric(stage, "federated_pooled_accuracy", r4(h.mean.pooled));
+            metric(stage, "federated_initial_accuracy", r4(h.mean.initial));
+            metric(stage, "federated_hospitals", h.centres.length);
+            metric(stage, "qfl_rounds", h.rounds);
+            metric(stage, "qfl_clients", h.centres.length);
+            metric(stage, "qfl_mask_pairs", h.pairs);
+            metric(stage, "federated_eval_rows", h.testRows.reduce((a, b) => a + b, 0));
+            metric(stage, "qfl_aggregation", h.aggregation);
+            metric(stage, "federated_accuracy_source",
+              `UCI Heart Disease, ${h.centres.length} real hospitals as FLamby's Fed-Heart-Disease prepares them (${sites.licence})`);
+            artifacts.fedHeart = h;
+            artifacts.fedHeartSites = { corpus: sites.corpus, provenance: sites.provenance, licence: sites.licence,
+              licence_url: sites.licence_url, attribution: sites.attribution, modifications: sites.modifications,
+              label: sites.label, split: sites.split, feature_names: sites.feature_names };
+            const pct = (x: number) => x.toFixed(3);
+            // The second sentence counts both comparisons from this run (FedHeartPanel's matrix shows them): by FLamby's
+            // metric the federation is above most hospitals alone, while on its own test rows a hospital's own model is
+            // above the federated one at most hospitals here. A first version stated only the first.
+            const ownAbove = fedHeartComparisons(h).ownBeatsFederated;
+            emit("log", stage, `Federated learning across ${h.centres.length} real hospitals (${h.centres.join("; ")}): `
+              + `FLamby's Fed-Heart-Disease baseline, logistic regression on ${sites.feature_names.length} features. `
+              + `FLamby's metric, one model's accuracy at 0.5 on each hospital's test rows averaged over the `
+              + `${h.centres.length}: ${pct(h.mean.initial)} before training; each hospital alone `
+              + `${h.mean.alone.map(pct).join(", ")}; federated ${pct(h.mean.federated)} after ${h.rounds} rounds of `
+              + `${FED_HEART.localSteps} local steps (${h.aggregation}); all four pooled ${pct(h.mean.pooled)}, which no `
+              + `hospital could do without sharing its rows. On its own test rows a hospital's own model scores above the `
+              + `federated one at ${ownAbove} of the ${h.centres.length} hospitals: the federation's gain is on the other `
+              + `hospitals' patients. A review of 160 articles found decentralised learning above local training in 83 `
+              + `percent of accuracy comparisons and centralised above decentralised in 78 percent (Diniz et al., npj `
+              + `Digital Medicine, 2026).`);
+            emit("log", stage, `Secure aggregation: each of the ${h.centres.length} hospitals drew an X25519 key pair for this `
+              + `run and each of the ${h.pairs} pairs derived its mask seed from their shared secret by HKDF-SHA256 `
+              + `(Bonawitz et al., CCS 2017), in ${h.keyAgreementMs.toFixed(1)} ms; the aggregator received only the public `
+              + "keys and the masked updates, and the PQC session key seeds no mask. All hospitals run in this tab, which "
+              + "holds every private key; there is no dropout recovery, no malicious security and no authentication of the "
+              + "public keys.");
+            break;
+          }
+          emit("log", stage, "the four-hospital sample (data/medical/heart_disease_sites.json) could not be read, so this run "
+            + "federates the bundled WDBC sample's shards as before");
+        }
         const qflData = await realFederatedSet(usecase);
         // No session key: the clients agree each pair's mask seed among themselves by X25519 at the
         // start of the run (clientQFL.ts), and the aggregator receives only their public keys and

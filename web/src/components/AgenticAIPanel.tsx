@@ -79,7 +79,9 @@ export default function AgenticAIPanel({
   const [generatedAt, setGeneratedAt] = useState<string | null>(null);   // when the model finished
   const [saved, setSaved] = useState<{ name: string; check: ProvenanceCheck } | null>(null);
   const [combiner, setCombiner] = useState<string>(cryptoCfg().hybrid_combiner_mode ?? "hkdf");   // PQC+QKD key combiner
-  const [gpu, setGpu] = useState(false);                 // genuine WebGPU (adapter obtainable), resolved async
+  // Genuine WebGPU (adapter obtainable), resolved async; null while the probe runs, so neither the notice below nor the
+  // option labels say "no adapter" before the probe has answered (they did, from the first render, until 2026-11-13).
+  const [gpu, setGpu] = useState<boolean | null>(null);
   // "absent" and "software" are different facts and the note below used to call both of them
   // "not detected". Since hasWebGPU() began declining software rasterisers - they run this class of
   // model about 300x slower than the wasm build - that wording would have been actively wrong on a
@@ -209,7 +211,7 @@ export default function AgenticAIPanel({
         the quantum-safe MCP channel, not as analysis to rely on. Disclosure under Article 50(1) of
         the EU AI Act, applicable since 2 August 2026.
       </div>
-      {!gpu && (
+      {gpu === false && (
         <div className="note" style={{ marginBottom: 12 }}>
           {gpuKind === "software" ? (
             <>
@@ -235,7 +237,7 @@ export default function AgenticAIPanel({
           <label className="muted" htmlFor={`ai-engine-${usecase ?? "std"}`}>Engine</label>
           <select id={`ai-engine-${usecase ?? "std"}`} value={engine} onChange={(e) => onEngine(e.target.value as Engine)}>
             <option value="transformers">Transformers.js (ONNX · WebGPU/WASM)</option>
-            <option value="webllm" disabled={!gpu}>WebLLM (chat LLM · WebGPU)</option>
+            <option value="webllm" disabled={gpu !== true}>WebLLM (chat LLM · WebGPU)</option>
           </select>
           {engine === "transformers" && (
             <>
@@ -246,7 +248,7 @@ export default function AgenticAIPanel({
                   + "times slower per token than WASM and downloads larger fp32 weights; other GPUs and "
                   + "browsers were not measured, so WebGPU stays selectable to try on this one."}>
                 <option value="wasm">WASM (default)</option>
-                <option value="webgpu" disabled={!gpu}>WebGPU{gpu ? "" : " (no usable adapter)"}</option>
+                <option value="webgpu" disabled={gpu !== true}>WebGPU{gpu === true ? "" : gpu === null ? " (checking for an adapter)" : " (no usable adapter)"}</option>
               </select>
             </>
           )}

@@ -356,9 +356,16 @@ def test_every_qcnn_implementation_is_pinned_to_another() -> None:
         "web/src/lib/quantumSim.ts": "test_the_browser_and_the_trainer_compute_the_same_circuit",
         "src/qsh/qhe/qcnn_trained.py": "test_the_numpy_inference_path_computes_the_same_circuit",
     }
+    #: files the pattern matches that are not this circuit: what each is, and what pins it (Round 86).
+    NOT_THE_QCNN = {
+        "src/qsh/ai/fed_heart.py": "logistic regression's theta, beside 'pooled' training; the Python half of the "
+                                   "four-hospital twin, pinned to the page by tests/test_r86_fed_heart_twin.py",
+        "web/src/lib/clientFedHeart.ts": "the browser half of the same twin",
+    }
+    assert all(f in tracked for f in NOT_THE_QCNN), "an exemption names a file that is gone; remove it"
     unpinned = []
     for rel in tracked:
-        if rel.startswith("tests/"):
+        if rel.startswith("tests/") or rel in NOT_THE_QCNN:
             continue
         src = (REPO / rel).read_text(errors="ignore")
         # Unpacks a flat parameter vector AND builds a pooling register: that is this circuit.

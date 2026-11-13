@@ -4355,3 +4355,57 @@ Also in the republish:
   `tests/test_r86_bundled_students_are_the_pinned_ones.py` now holds each to its pinned file.
 - **The finance decision curves re-measured at `b74d16f3` and `c305a104`:** the same figures; the records' revisions and
   sample blobs moved with the pins.
+
+### The medical page federates four real hospitals (2026-11-13)
+
+The owner chose, among the published medical cases, to federate real hospitals on the tabular side first. FLamby's
+Fed-Heart-Disease was read at its source (`dataset.py`, `common.py`, `metric.py`, the benchmark configuration and its
+five result files) and reproduced:
+
+| step | read | here |
+|---|---|---|
+| data | four UCI files, the MD5s FLamby's download script checks | the same MD5s; 303, 294, 123 and 200 raw rows |
+| preparation | slope, ca and thal dropped, missing rows removed, columns 2 and 6 dummy-coded with the first level dropped, the label binarised, a 66/34 split per centre at random_state 43 (stratified where each class has more than two rows), per-centre standardisation on training rows with the sample standard deviation | the same; 199/104, 172/89, 30/16 and 85/45 rows, FLamby's counts; 13 features |
+| training | `nn.Linear(13, 1)`; Adam at 0.001, batches of 4, 50 epochs for pooled; FedAvg with SGD at 0.001, 15 rounds of 100 local steps | the same; each hospital alone with the pooled settings |
+| metric | accuracy at 0.5, averaged over the four test sets; AUC is commented out, FLamby's comment says because centre 2 (Switzerland) has only y = 1 | the same; of the 46 complete Swiss rows one has no disease (raw file: 8 of 123), and it falls in the test split, so the 30 Swiss training rows hold one class |
+| results, five seeds (sample standard deviation) | FLamby, seeds 42 to 46, the four client test sets (each file also scores a pooled test set, left out): alone 0.722, 0.629, 0.567, 0.637; FedAvg $`0.685 \pm 0.028`$; FedYogi $`0.731 \pm 0.013`$; pooled 0.735 | seeds 0 to 4: alone 0.735, 0.636, 0.601, 0.644; FedAvg $`0.712 \pm 0.017`$; pooled 0.715 |
+
+The browser module and its Python twin agree on every figure of every arm for seeds 0 to 2, and on mulberry32's
+stream, value for value (`tests/test_r86_fed_heart_twin.py`); the page's federated stage, run in node through
+`runClientPipeline`, reports the twin's figures for its seed (`tests/test_r84_pairwise_masks.py`). The UCI files are
+CC BY 4.0; the payload carries the credit, the DOI and the list of changes, and `DATA_LICENSES.md` has its row.
+
+FLamby's metric scores one model over the four hospitals' test rows. On its own test rows the comparison runs the other
+way: in each of the five seeds a hospital's own model scores above the federated one at three or four of the four
+hospitals, with no ties (means over the seeds, own model against federated: 0.750 against 0.717 at Cleveland, 0.751
+against 0.735 at Budapest, 0.863 against 0.738 at Zurich and Basel, 0.711 against 0.658 at Long Beach). The Swiss model
+trains on 30 rows that all have disease and scores 15 of 16 by calling every patient diseased; the federated model's
+gain is on the other hospitals' patients, where a model trained at one hospital falls to 0.337 in seed 0. The panel's
+first draft, never committed, put each hospital's own-test figure in an "Alone" column beside the federated model and
+averaged that column under FLamby's name, so the table showed the federation losing in every row while its caption
+said it won. The committed panel is the whole matrix, models by test sets, the own-test cells underlined, and its
+caption and the run's log count both comparisons from the run instead of asserting either. Diniz et al. was read
+again for the figures the page quotes: decentralised learning (federated in 557 of its 710 models) above local in 83
+percent of accuracy comparisons and 82 percent of AUROC ones, centralised above decentralised in 78 percent of
+accuracy comparisons and 51 percent of AUROC ones.
+
+### PR #35 on the deployed site (2026-11-13)
+
+Merged as `eb53b00` and deployed from `main`; the bundle `index-C8kQEvZF.js` is the same name and the same SHA-256 in the
+deploy log, on the public page and in a local build of `eb53b00` with `VITE_CLIENT_ONLY=1`. The served bundle carries
+all fourteen pins of `config.defaults.json` and none of the three it replaced. Walked in Chrome, one run per page:
+
+| page | models re-scored | rows, as recorded | largest difference |
+|---|---|---|---|
+| telecom | the QML forest, 5G-NIDD, the CKKS student (now in the model selector) | 600, 16,379, 600 | 3.25e-7, 7.16e-7, 2.50e-6 |
+| medical, WASM | ResNet-18, ResNet-50, the CKKS student | 156 each | 1.14e-6, 5.68e-5, 1.06e-6 |
+| medical, WebGPU (`onnx-webgpu`, an NVIDIA Blackwell adapter) | the same | 156 each | 1.14e-6, 6.51e-5, 2.37e-6 |
+| finance | the GBM, the student, the large MLP | 8,192 each | 3.58e-7, 3.13e-6, 5.26e-6 |
+| satellite | Telemanom (each of 128 forecasts), OPS-SAT, its student; the forecaster student by its flag digest | 128, 529, 529; 8,640 flags | 6.89e-7, 4.65e-7, 1.08e-6 |
+
+Every verification PASS, no console error on any page. The telecom page's encrypted tier now names its model,
+`telecom_ids.student`, with 0 of 600 top-1 mismatches against plaintext; the medical CKKS student read held-out image 1
+of 156 and matched its label. One display defect found: the model-backend control reads "WebGPU (no usable adapter)"
+from the first render until the adapter probe resolves, so a visitor who looks first is told something not yet known; on
+this machine the probe then found the Blackwell adapter and enabled the option. Fixed in #36: the option reads "checking"
+until the probe answers.

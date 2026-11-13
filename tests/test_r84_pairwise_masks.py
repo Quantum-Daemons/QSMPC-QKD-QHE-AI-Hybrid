@@ -483,7 +483,8 @@ for (const [name, usecase] of [["medical", "medical_fl"], ["medical2", "medical_
   });
   const sk = config._sessionKey;
   result[name] = { state: end?.state ?? null, logs, metrics: metrics.federated_training ?? null,
-                   qfl: end?.artifacts?.qfl ?? null, sessionKey: sk ? Buffer.from(sk).toString("hex") : null };
+                   qfl: end?.artifacts?.qfl ?? null, fedHeart: end?.artifacts?.fedHeart ?? null,
+                   sessionKey: sk ? Buffer.from(sk).toString("hex") : null };
 }
 console.log(JSON.stringify(result));
 process.exit(0);
@@ -505,11 +506,22 @@ def pipeline(tmp_path_factory) -> dict:
 def test_the_pipeline_federates_on_agreed_seeds_with_the_base_figures(pipeline, name, usecase) -> None:
     run = pipeline[name]
     assert run["state"] == "done"
-    q, met = run["qfl"], run["metrics"]
-    for k, v in BASE_FIGURES[usecase].items():
-        assert q[k] == v, f"{usecase}: {k} is {q[k]}, the base reported {v}; the masks must not move a figure"
-    assert met["federated_accuracy"] == BASE_FIGURES[usecase]["finalAcc"]
-    assert met["federated_baseline_accuracy"] == BASE_FIGURES[usecase]["baselineAcc"]
+    met = run["metrics"]
+    if usecase == "medical_fl":
+        # Since Round 86 the medical page federates four real hospitals (clientFedHeart.ts): its figures are the Python
+        # twin's for the run's seed, which is what the masks must not move.
+        from qsh.ai import fed_heart
+
+        q, py = run["fedHeart"], fed_heart.run(seed=0)
+        assert q["federated"] == py.federated and q["alone"] == py.alone and q["pooled"] == py.pooled
+        assert met["federated_accuracy"] == round(sum(py.federated) / 4, 4)
+        assert met["federated_hospitals"] == 4 and met["qfl_rounds"] == fed_heart.ROUNDS
+    else:
+        q = run["qfl"]
+        for k, v in BASE_FIGURES[usecase].items():
+            assert q[k] == v, f"{usecase}: {k} is {q[k]}, the base reported {v}; the masks must not move a figure"
+        assert met["federated_accuracy"] == BASE_FIGURES[usecase]["finalAcc"]
+        assert met["federated_baseline_accuracy"] == BASE_FIGURES[usecase]["baselineAcc"]
     assert met["qfl_aggregation"] == "size-weighted FedAvg + 6 pairwise masks from X25519-agreed pair seeds, fixed-point mod 2^32"
     assert "session key" not in met["qfl_aggregation"]
     assert any("X25519 key pair for this run" in line and "Bonawitz et al., CCS 2017" in line
@@ -521,7 +533,8 @@ def test_the_pipeline_federates_on_agreed_seeds_with_the_base_figures(pipeline, 
 
 
 def test_every_pipeline_run_draws_fresh_key_pairs(pipeline) -> None:
-    keys = [set(pipeline[n]["qfl"]["publicKeys"]) for n in ("medical", "medical2", "finance")]
+    # The medical runs federate the four hospitals (clientFedHeart.ts), which publish their keys the same way.
+    keys = [set((pipeline[n]["fedHeart"] or pipeline[n]["qfl"])["publicKeys"]) for n in ("medical", "medical2", "finance")]
     assert keys[0].isdisjoint(keys[1]) and keys[0].isdisjoint(keys[2]) and keys[1].isdisjoint(keys[2])
     assert pipeline["medical"]["sessionKey"] != pipeline["medical2"]["sessionKey"]
 

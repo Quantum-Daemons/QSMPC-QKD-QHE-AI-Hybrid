@@ -9038,6 +9038,7 @@ recorded separately, and nothing here changes the published model.
 | #33 | The finance teacher and student on 114 inputs, a compact GNN under CKKS and garbled circuits distilled from IBM's Multi-PNA+EU on the same windows, the four models published with every card, sample and calibration note read against its own model |
 | #34 | The medical page's encrypted CNN student reads a held-out image; three cards name the baselines they compete with; the full deployment's federated CNN leaves its one-class answer and its log sets accuracy against the majority, the balanced accuracy, the AUC and each hospital alone; BreastMNIST's duplicates measured |
 | #35 | Every published evaluation sample carries a per-row record and the page compares every row; the telecom CKKS student published with a graph built from its weights; four change notices corrected; the bundled student copies held to their pinned files |
+| #36 | The medical page federates four real hospitals, FLamby's Fed-Heart-Disease on UCI Heart Disease: each alone, FedAvg under the pairwise masks and pooled, twinned in Python to the last digit, shown as the whole matrix with both comparisons counted; the published medical cases and the plan recorded; PR #35 walked on the deployed site; a WebGPU option says "checking" until its probe answers |
 
 Findings worth keeping from those:
 
