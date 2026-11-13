@@ -9041,6 +9041,7 @@ recorded separately, and nothing here changes the published model.
 | #36 | The medical page federates four real hospitals, FLamby's Fed-Heart-Disease on UCI Heart Disease: each alone, FedAvg under the pairwise masks and pooled, twinned in Python to the last digit, shown as the whole matrix with both comparisons counted; the published medical cases and the plan recorded; PR #35 walked on the deployed site; a WebGPU option says "checking" until its probe answers |
 | #37 | The medical page aggregates its federation five ways on request, in a Web Worker: the masks, CKKS with one shared key as NVIDIA FLARE does it, and threshold CKKS at 16 and 40 bits and threshold BGV at 128 on Lattigo compiled to WebAssembly; BGV equals the masks to the bit; a defect in Lattigo's sampler found, avoided and reported as tuneinsight/lattigo#596; PR #36 walked on the deployed site |
 | #38 | Differential privacy where NIST SP 800-226 and the literature say it fits: the medical federation per patient (a record-level arm, distributed discrete Gaussian inside the masks, epsilon 8 to 1, delta 1e-6) and the genomics pooled count per person (epsilon chosen on the page, delta 1e-5); an exact sampler with a Python twin; each other page states why it has none; the medical key points corrected to the four-hospital federation |
+| #39 | Small fixes and records: SEAL's newest release in the node-seal drift note (4.7.2), iDASH 2026 held rather than scheduled, the declines recorded with what would reopen each, a Round 43 heading and a PR #24 pointer in the log, HF2's condition in this register, PR #37 walked on the deployed site |
 
 Findings worth keeping from those:
 
@@ -9276,3 +9277,8 @@ The owner asked that the pages explain their models the way a reviewer expects, 
 ### Round 86, 2026-11-10: what closed disclosures had hidden from the layout scan
 
 A walk of the deployed pages at 1280 px with every `<details>` opened, each SVG label's box compared with the others and with its container, found the finance transaction graphs' edge numbers overprinted at hubs, the genomics locus plot's names overlapping and one past the plot, the telecom confusion matrix's counts at 1.08:1 contrast, the circuit card's top and longest labels clipped by a pixel, and corner ticks meeting on the private-against-plaintext scatter and two lending charts. `web/scripts/check_text_overlap.mjs` had never opened a disclosure, so the first four had never been measured. It now opens every one before it scrolls and measures; run on a build from before the fixes it fails on the locus plot and the confusion matrix, and on the fixed build it passes in both fonts. The deployed read after the fix is clean at 1280 px and in a 375 px frame (`docs/verification-log.md`).
+
+**HF2, a standing condition (moved here from the private checklist, 2026-11-13).** Every repository under the
+`Daemons-Q` Hugging Face account is referenced by a registry entry's `hf_repo`, and every `hf_repo` exists on the Hub;
+an orphan is either registered or deleted by the owner. Checked on 2026-11-13 against the Hub's public API: 14
+repositories on the Hub, the same 14 in the registry, no datasets.

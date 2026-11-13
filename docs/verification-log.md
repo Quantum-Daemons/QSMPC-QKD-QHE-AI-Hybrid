@@ -1260,6 +1260,11 @@ which is exactly the review's point: the property had nothing enforcing it.
 
 ---
 
+## Round 43
+
+Round 43's own records are the pointer section directly below and its sub-block on the rounds it
+reconstructed; this heading exists so that a search for the round finds them (added 2026-11-13).
+
 ## Rounds 39-42, added in Round 43 - and this is a POINTER, not four entries
 
 **This file's last round section was Round 38.** Rounds 39, 40, 41 and 42 have no entry, which is the
@@ -4493,3 +4498,22 @@ on the selector, and a chi-square of 60,000 draws at variance 9 against the disc
 Writing the medical page's key points against the change found two sentences PR #36 left behind: the federation still
 described as FedAvg "over the page's own bundled Wisconsin sample", and "no differential-privacy budget is applied
 here". Both now say what runs.
+
+### PR #24, a pointer (merged 2026-11-09)
+
+PR #24 merged the audit's remaining items as `38b9e76` on 2026-11-09: labelled rows on the model cards, the QCNN's tree
+property as a test, a watch on Polytune upstream (`.github/workflows/audit.yml`), the GPU lock, a matched local liboqs
+and the last plain-text formulas. Its record is the register's row #24 and the tests it added; this log had no entry
+for it, which this pointer closes.
+
+### PR #37 on the deployed site (2026-11-13)
+
+Merged as `52baf07` and deployed; the bundle `index-fDVB_zFP.js` has the same name and SHA-256 in the deploy log, on the
+public page and in a local `VITE_CLIENT_ONLY=1` build. The image's new Go stage ran on the demo host. In Chrome, after
+a medical run (seed 1), `Compare encrypted aggregation` showed its progress and then all five rows: the masks 1.4e-6 from
+the exact FedAvg, 56 bytes and 0.7 ms a round; the shared-key CKKS 1.1e-8, 262 kB, 14 ms; threshold CKKS 3.9e-7 and
+6.9e-6, 394 kB, 211 and 263 ms; threshold BGV 1.4e-6, "yes, to the bit", 590 kB, 154 ms; every design at 0.7005. No
+console error. `qsh_fedthresh.wasm` is served 200 as `application/wasm`, gzip-encoded, with the cross-origin
+isolation headers; `/licenses/qsh-fedthresh.txt` is served with its ten sections. The extension's network log does not
+record a worker's fetches, so that an ordinary run never loads the module rests on the code path: only the button
+creates the worker, and only the worker fetches the module.
