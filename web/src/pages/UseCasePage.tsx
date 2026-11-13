@@ -12,7 +12,8 @@ import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
 import MpcCnnPanel from "../components/MpcCnnPanel";
 import FedHeartPanel, { type FedHeartSitesMeta } from "../components/FedHeartPanel";
-import type { FedHeartResult } from "../lib/clientFedHeart";
+import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
+import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
 import MpcGnnPanel from "../components/MpcGnnPanel";
 import { ConfusionCard, PrsLocusCard } from "../components/ModelExplanations";
 import MpcMlpPanel from "../components/MpcMlpPanel";
@@ -83,6 +84,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
     <div>
       <h1 className="page-title">{meta.title}</h1>
       <p className="page-sub">{meta.blurb}</p>
+      <p className="muted small" style={{ marginTop: -4 }}><b>Differential privacy:</b> {meta.privacy}</p>
       <div className="pill-row" style={{ marginBottom: 10 }}>
         <span className="tag">{meta.industry}</span>
       </div>
@@ -363,7 +365,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
       ) : null}
 
       {usecase === "medical_fl" && artifacts?.mpc_cnn ? <MpcCnnPanel report={artifacts.mpc_cnn as MpcCnnReport} /> : null}
-      {usecase === "medical_fl" && artifacts?.fedHeart ? <FedHeartPanel result={artifacts.fedHeart as FedHeartResult} sites={(artifacts.fedHeartSites as FedHeartSitesMeta | undefined) ?? null} /> : null}
+      {usecase === "medical_fl" && artifacts?.fedHeart ? <FedHeartPanel result={artifacts.fedHeart as FedHeartResult} sites={(artifacts.fedHeartSites as FedHeartSitesMeta | undefined) ?? null} dp={(artifacts.fedHeartDp as FedHeartDpResult | undefined) ?? null} /> : null}
+      {usecase === "genomics" && artifacts?.genomicsDp ? <GenomicsDpCard dp={artifacts.genomicsDp as GenomicsDpArtifact} /> : null}
       {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} rescore={(artifacts.qcnn_rescore as QcnnRescore | undefined) ?? null} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_mlp ? <MpcMlpPanel report={artifacts.mpc_mlp as MpcMlpReport} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_gnn ? <MpcGnnPanel report={artifacts.mpc_gnn as MpcGnnReport} /> : null}
@@ -402,8 +405,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
         <div className="note" style={{ marginTop: 12, fontSize: 12 }}>
           {/* 167 words became four points; the history of the removed selector moved into a fold. */}
           <KeyPoints items={[
-            "Federated learning runs on every run here - a real client-side FedAvg over the page's own bundled Wisconsin sample, with no toggle.",
-            "Federated averaging is not a privacy guarantee by itself: the pairwise masks hide each hospital's update from the aggregator, but the trained model can still leak its training data (gradient inversion and similar attacks), and no differential-privacy budget is applied here.",
+            "Federated learning runs on every run here, with no toggle: FedAvg across four real hospitals (UCI Heart Disease, as FLamby's Fed-Heart-Disease prepares it), each alone and all pooled beside it. The private-inference models below read other corpora.",
+            "Federated averaging is not a privacy guarantee by itself: the pairwise masks hide each hospital's update from the aggregator, but the trained model can still leak its training data (gradient inversion and similar attacks). The FedAvg model carries no differential-privacy budget; the record-level arm in the four-hospital card is the one that does (epsilon 8 down to 1, delta 1e-6).",
             <><b>The encrypted path evaluates the published student itself</b>: all 3,226 parameters, from its pinned Hugging Face revision. CKKS evaluates the convolution and both dense layers, each layer&apos;s bias added under encryption and every slot but its outputs masked and flooded, so the client decrypts each layer&apos;s outputs and nothing else; it decrypts after every layer, applies ReLU and average pooling in plaintext, and takes the CNN&apos;s argmax in the clear. The garbled-circuit argmax runs on the bundled Wisconsin logistic regression, not on the CNN, over logits the client has already decrypted, so in this tab it hides nothing from the key holder. &quot;The CNN student under MPC&quot;, below, is the path that does not decrypt an activation.</>,
             "The run reports the total rotations it performed, because key-switching - one per rotation - is what dominates CKKS inference cost.",
             "Nothing is multiplied by a cost model; if the weights cannot be fetched, the run says so rather than substituting invented ones.",

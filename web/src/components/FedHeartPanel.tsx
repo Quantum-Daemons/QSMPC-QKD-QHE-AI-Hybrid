@@ -12,7 +12,7 @@
 // this run instead of asserting either.
 import { useState } from "react";
 import StageBadge from "./StageBadge";
-import { fedHeartComparisons, type FedHeartResult } from "../lib/clientFedHeart";
+import { type FedHeartDpResult, fedHeartComparisons, type FedHeartResult } from "../lib/clientFedHeart";
 import type { AggregationComparison } from "../lib/clientFedAgg";
 import { compareAggregationsInWorker } from "../lib/clientFedAggRun";
 
@@ -23,7 +23,8 @@ export interface FedHeartSitesMeta {
 
 const p = (x: number) => x.toFixed(3);
 
-export default function FedHeartPanel({ result, sites }: { result: FedHeartResult; sites: FedHeartSitesMeta | null }) {
+export default function FedHeartPanel({ result, sites, dp }: { result: FedHeartResult; sites: FedHeartSitesMeta | null;
+                                        dp?: FedHeartDpResult | null }) {
   const r = result;
   const K = r.centres.length;
   const c = fedHeartComparisons(r);
@@ -90,6 +91,7 @@ export default function FedHeartPanel({ result, sites }: { result: FedHeartResul
           it: {sites.modifications}
         </p>
       )}
+      {dp && <DpTable dp={dp} />}
       <EncryptedAggregation seed={r.seed} />
     </div>
   );
@@ -175,6 +177,56 @@ function EncryptedAggregation({ seed }: { seed: number }) {
           </p>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * Record-level differential privacy beside the federation (fedHeartDp in clientFedHeart.ts): the epsilon, what it would
+ * be with one hospital adding no noise, the noise, and the accuracy. The noise comes from the tab's CSPRNG, so a reload
+ * shows other figures; the caption says so rather than presenting one draw as the result.
+ */
+function DpTable({ dp }: { dp: FedHeartDpResult }) {
+  return (
+    <div style={{ marginTop: 14 }} id="fed-heart-dp">
+      <h4>With record-level differential privacy</h4>
+      <p className="small" style={{ marginTop: 4 }}>
+        The same four hospitals and initial model, trained by {dp.rounds} full-batch gradient steps instead of
+        FedAvg&apos;s local steps, which have no ready per-patient bound: each hospital clips every patient&apos;s
+        gradient to norm {dp.clip}, adds its share of exact discrete Gaussian noise, and the pairwise masks reveal only the
+        noisy sum (the distributed discrete Gaussian of Kairouz, Liu and Steinke, ICML 2021). The unit is one patient,
+        added or removed; delta is {dp.delta}, below 1/n^2 for these 486 patients, as NIST SP 800-226 advises.
+      </p>
+      <table className="table">
+        <caption className="small" style={{ captionSide: "top", textAlign: "left" }}>
+          This run&apos;s figures: the noise is drawn from this tab&apos;s CSPRNG, so each run differs.
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col" style={{ textAlign: "left" }}>Privacy</th>
+            <th scope="col">Epsilon if one hospital adds no noise</th>
+            <th scope="col">Noise standard deviation, all four</th>
+            <th scope="col">Accuracy (FLamby&apos;s metric)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {dp.rows.map((x) => (
+            <tr key={String(x.epsilon)}>
+              <th scope="row" style={{ textAlign: "left", fontWeight: 500 }}>
+                {Number.isFinite(x.epsilon) ? `epsilon ${x.epsilon}` : "no noise (clipping only)"}</th>
+              <td>{Number.isFinite(x.epsilonOneDishonest) ? x.epsilonOneDishonest.toFixed(2) : "-"}</td>
+              <td>{x.sdTotal === 0 ? "0" : x.sdTotal.toFixed(1)}</td>
+              <td>{x.mean.toFixed(3)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="muted small" style={{ marginTop: 8 }}>
+        The no-noise row is the comparison that isolates the noise: it shows what clipping and full-batch steps cost
+        alone. The noise is in gradient units against a sum of up to 486 clipped gradients a step. Each epsilon counts the
+        noise of the hospitals that add theirs; the second column is the guarantee if one of the four adds none. The
+        sampler is exact (Canonne, Kamath and Steinke, 2020), because floating-point noise leaks through its low bits.
+      </p>
     </div>
   );
 }

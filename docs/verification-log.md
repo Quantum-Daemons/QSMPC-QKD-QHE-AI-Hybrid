@@ -4463,3 +4463,33 @@ primes above six times the deviation, `Open` refuses one that does not, and `agg
 The module is 12.6 MB uncompressed. Its notices list Go and ten modules: Lattigo's non-test packages import testify
 and go-cmp, so go-spew (ISC), go-difflib and yaml.v3 are compiled in too. The SBOM job now writes
 `fedthresh.cdx.json` from the same `go list` reading, and the CBOM gains threshold CKKS and threshold BGV, 23 entries.
+
+### Differential privacy on the medical and genomics pages (2026-11-13)
+
+The owner asked whether differential privacy is recommended for each use case and, where it is, for an implementation
+on the public pages. Read at the sources (`references/differential-privacy.md`): NIST SP 800-226 (final, 6 March
+2025) for the unit, $`\epsilon`$ and $`\delta`$; Kairouz, Liu and Steinke's distributed discrete Gaussian (ICML 2021,
+Theorem 1 read in the PDF) for noise added in shares inside a secure sum; Canonne, Kamath and Steinke's exact sampler
+(NeurIPS 2020). It fits the medical federation, per patient, and the genomics page's pooled count, per person; the other
+four pages state on the page why it does not fit.
+
+| page | design | $`\delta`$ | per-party variance | measured |
+|---|---|---|---|---|
+| medical | 50 full-batch steps, each patient's gradient clipped to norm 1, sums at $`2^{-16}`$, noise in shares inside fresh masks | $`10^{-6}`$ | $`\epsilon = 1`$: 1,536,822,783,572 (sd 18.9 a hospital, 37.8 in all, in gradient units) | seed 1, 20 draws: 0.721 no noise, $`0.724 \pm 0.004`$ (8), $`0.727 \pm 0.007`$ (4), $`0.726 \pm 0.015`$ (2), $`0.706 \pm 0.032`$ (1) |
+| genomics | each cohort's count at $`1/16`$ plus its share, inside the secure sum over $`2^{31} - 1`$ | $`10^{-5}`$ | $`\epsilon = 1`$: 6,148 (in sixteenths) | noise sd 19.4, 9.8, 5.0, 2.6, 1.4 alleles at 0.5, 1, 2, 4, 8 |
+
+The fixed point on the genomics count exists because in whole alleles the least variance the sampler can take, 1 per
+cohort, is already $`\epsilon = 5.3`$, so the selector's 8 was unreachable. The private arm takes one full-batch step
+per secure aggregation because FedAvg's local steps have no ready per-patient bound; its no-noise row (0.721, against
+FedAvg's 0.7005) isolates the noise's cost. Each setting agrees fresh pair seeds, since one seed masking two messages
+in a round would let the aggregator subtract them. `qflQuantise` and the new `maskIntegers` and `sumMaskedIntegers`
+split the masks' arithmetic so the DP arm masks integers that already carry noise.
+
+`tests/test_r86_dp_twin.py` holds the browser modules, bundled and run in node, to `qsh.ai.dp` and
+`qsh.ai.fed_heart.run_dp` on a seeded source that is not private and that no page calls: 800 draws equal, the variances
+and epsilons equal, every row of the medical run equal for seed 1, the genomics contributions equal for every epsilon
+on the selector, and a chi-square of 60,000 draws at variance 9 against the discrete Gaussian's pmf.
+
+Writing the medical page's key points against the change found two sentences PR #36 left behind: the federation still
+described as FedAvg "over the page's own bundled Wisconsin sample", and "no differential-privacy budget is applied
+here". Both now say what runs.

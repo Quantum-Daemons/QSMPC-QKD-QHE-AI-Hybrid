@@ -38,7 +38,8 @@ import {
   browserModels, DEFAULT_ONNX_BACKEND, evaluatePublishedModel, type OnnxBackend, onnxStatus,
   runPublishedModel,
 } from "./onnxInference";
-import { FED_HEART, fedHeart, fedHeartComparisons, loadHeartSites } from "./clientFedHeart";
+import { FED_HEART, fedHeart, fedHeartComparisons, fedHeartDp, loadHeartSites } from "./clientFedHeart";
+import { GENOMICS_DP, genomicsDp } from "./clientDp";
 import { heldOutCorpus, realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
   type HeldOutCorpus, type RealInput, realAlleleCounts } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
@@ -3032,6 +3033,32 @@ export function runClientPipeline(
           if (alleles) {
             metric(stage, "pooled_allele_count", total);
             metric(stage, "qsms_variant", alleles.variant);
+            // The count released with differential privacy (Round 86): each cohort adds its share of exact discrete
+            // Gaussian noise to its count in the fixed point 1/16 (clientDp.genomicsDp) and secret-shares the sum over
+            // 2^31 - 1, a prime whose signed half holds any noisy total; the exact total above is what a release WITHOUT
+            // the noise would publish, kept so the page can show what the noise costs.
+            const askedEps = Number(config.genomics_dp_epsilon);
+            const eps = GENOMICS_DP.epsilons.includes(askedEps) ? askedEps : GENOMICS_DP.defaultEpsilon;
+            const g = genomicsDp(alleles.counts, eps);
+            const pDp = 2147483647;
+            let dpTotal = g.contributions
+              .map((c) => { const mask = randomBelow(pDp); return [((c - mask) % pDp + pDp) % pDp, mask]; })
+              .reduce((acc, [s0, s1]) => (acc + s0 + s1) % pDp, 0);
+            if (dpTotal > (pDp - 1) / 2) dpTotal -= pDp;
+            const released = dpTotal / g.scale;
+            const r2 = (x: number) => Math.round(x * 100) / 100;
+            metric(stage, "dp_released_allele_count", r2(released));
+            metric(stage, "dp_epsilon", r2(g.epsilonAchieved));
+            metric(stage, "dp_delta", g.delta);
+            metric(stage, "dp_noise_sd", r2(g.sdTotal));
+            metric(stage, "dp_epsilon_one_dishonest", r2(g.epsilonOneDishonest));
+            artifacts.genomicsDp = { ...g, released, exact: total, variant: alleles.variant, individuals: alleles.individuals,
+                                     cohorts: nParties };
+            emit("log", stage, `differential privacy: the pooled count released as ${r2(released)} (epsilon ${r2(g.epsilonAchieved)}, `
+              + `delta ${g.delta}, one person moving it by at most 2 alleles); the ${nParties} cohorts each added exact discrete `
+              + `Gaussian noise inside the secure sum, ${r2(g.sdTotal)} alleles of standard deviation in all. With one cohort `
+              + `adding none, the same noise is epsilon ${r2(g.epsilonOneDishonest)}. With ${alleles.individuals} people, the `
+              + "noise a strong guarantee needs is large next to a count of at most twice that.");
           }
           // Named for what the BROWSER does, and the backend for what IT does. This tab adds two
           // additive shares per party mod p in one step. The Python backend runs Sutradhar's Shamir +
@@ -3164,6 +3191,25 @@ export function runClientPipeline(
               + "keys and the masked updates, and the PQC session key seeds no mask. All hospitals run in this tab, which "
               + "holds every private key; there is no dropout recovery, no malicious security and no authentication of the "
               + "public keys.");
+            // Record-level differential privacy for the same four hospitals (Round 86, the owner's choice of 2026-11-13):
+            // fedHeartDp, full-batch gradient descent with the hospitals' exact discrete Gaussian noise added in shares
+            // inside fresh pairwise masks. The noise comes from this tab's CSPRNG, so these figures change run to run.
+            const dpRun = await fedHeartDp(sites, seed);
+            artifacts.fedHeartDp = dpRun;
+            const dp1 = dpRun.rows.find((x) => x.epsilon === 1);
+            if (dp1) {
+              metric(stage, "dp_epsilon", 1);
+              metric(stage, "dp_delta", dpRun.delta);
+              metric(stage, "dp_federated_accuracy", r4(dp1.mean));
+              metric(stage, "dp_noise_sd_total", r4(dp1.sdTotal));
+              metric(stage, "dp_epsilon_one_dishonest", r4(dp1.epsilonOneDishonest));
+            }
+            emit("log", stage, `Record-level differential privacy (delta ${dpRun.delta}), beside the federation: `
+              + `${dpRun.rounds} full-batch gradient steps, each patient's gradient clipped to norm ${dpRun.clip}, the four `
+              + "hospitals adding exact discrete Gaussian noise in shares inside fresh pairwise masks (Kairouz, Liu and "
+              + "Steinke, ICML 2021). FLamby's metric: "
+              + dpRun.rows.map((x) => `${Number.isFinite(x.epsilon) ? `epsilon ${x.epsilon}` : "no noise"} ${pct(x.mean)}`).join(", ")
+              + ". The noise is drawn from this tab's CSPRNG, so these figures change from run to run.");
             break;
           }
           emit("log", stage, "the four-hospital sample (data/medical/heart_disease_sites.json) could not be read, so this run "

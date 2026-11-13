@@ -244,10 +244,27 @@ export function qflQuantise(u: number, update: readonly number[], weight: number
 export function maskedShare(
   u: number, update: number[], weight: number, ownSeeds: readonly (Uint8Array | null)[], round: number,
 ): number[] {
+  return maskIntegers(u, qflQuantise(u, update, weight, ownSeeds.length), ownSeeds, round);
+}
+
+/**
+ * Client u's integers (each within the ring's signed half, as qflQuantise keeps them), masked with its pair masks for
+ * `round`. Split out of `maskedShare` in Round 86 so the record-level DP arm (clientFedHeart.ts) can mask integers
+ * that already carry its noise share; `sumMaskedIntegers` is the aggregator's half. A pair's seed must not mask two
+ * messages in the same round: the DP arm agrees fresh seeds for each of its settings.
+ */
+export function maskIntegers(
+  u: number, q: readonly number[], ownSeeds: readonly (Uint8Array | null)[], round: number,
+): number[] {
   const K = ownSeeds.length;
-  const P = update.length;
-  const q = qflQuantise(u, update, weight, K);
-  const share = q.map((v) => (v | 0) >>> 0);      // two's complement, i.e. reduction mod 2^32
+  const P = q.length;
+  const maxShare = qflMaxShare(K);
+  const share = q.map((v, k) => {
+    if (!Number.isSafeInteger(v) || Math.abs(v) > maxShare) {
+      throw new Error(`QFL share out of ring range: client ${u}, coord ${k}, q=${v}`);
+    }
+    return (v | 0) >>> 0;      // two's complement, i.e. reduction mod 2^32
+  });
   for (let v = 0; v < K; v++) {
     if (v === u) continue;
     const seed = ownSeeds[v];
@@ -260,20 +277,25 @@ export function maskedShare(
   return share;
 }
 
+/** The aggregator's half for integers: the masked shares' sum mod 2^32, read through the signed half (Round 86). */
+export function sumMaskedIntegers(maskedShares: readonly number[][]): number[] {
+  const P = maskedShares[0]?.length ?? 0;
+  const sum = new Array<number>(P).fill(0);
+  for (let k = 0; k < P; k++) {
+    let acc = 0;
+    for (const share of maskedShares) acc = (acc + share[k]) >>> 0;
+    sum[k] = acc >= QFL_RING / 2 ? acc - QFL_RING : acc;
+  }
+  return sum;
+}
+
 /**
  * The aggregator's whole computation: the sum of the masked shares modulo 2^32, mapped back through
  * the signed half. It is handed the masked shares and nothing else - no private key, no seed, no
  * session key - and the pair masks cancel in the sum, leaving the weighted mean.
  */
 export function aggregateMaskedShares(maskedShares: readonly number[][]): number[] {
-  const P = maskedShares[0]?.length ?? 0;
-  const aggregate = new Array<number>(P).fill(0);
-  for (let k = 0; k < P; k++) {
-    let acc = 0;
-    for (const share of maskedShares) acc = (acc + share[k]) >>> 0;
-    aggregate[k] = (acc >= QFL_RING / 2 ? acc - QFL_RING : acc) / QFL_SCALE;
-  }
-  return aggregate;
+  return sumMaskedIntegers(maskedShares).map((s) => s / QFL_SCALE);
 }
 
 /**
