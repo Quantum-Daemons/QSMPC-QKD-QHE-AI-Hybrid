@@ -35,7 +35,7 @@ import { bb84, channelLossDb, e91, FIBER, fibreIntensities, h2, inView, intrinsi
   type QcnnWeights } from "./quantumSim";
 import { type Provenance } from "../components/ProvenanceBadge";
 import {
-  browserModels, DEFAULT_ONNX_BACKEND, evaluatePublishedModel, type OnnxBackend, onnxStatus,
+  browserModels, DEFAULT_ONNX_BACKEND, evaluatePublishedModel, type ModelEvalResult, type OnnxBackend, onnxStatus,
   runPublishedModel,
 } from "./onnxInference";
 import { FED_HEART, fedHeart, fedHeartComparisons, fedHeartDp, loadHeartSites } from "./clientFedHeart";
@@ -928,6 +928,31 @@ async function publishedStudentSample(usecase: string): Promise<{ samples: numbe
   }
   _studentSampleCache.set(usecase, out);
   return out;
+}
+
+/** One published model's re-scoring in this tab, as the page's table and the downloads show it (Round 86). */
+export interface VerificationSummary {
+  modelKey: string; selected: boolean;
+  outcome: "PASS" | "FAIL" | "no-sample" | "error";
+  metric?: string; score?: number; expected?: number; n?: number; split?: string | null;
+  decisionThreshold?: number | null; backend?: string;
+  rows?: number; rowsAsRecorded?: number; nearTies?: number; mismatches?: number; maxMarginDifference?: number;
+  tolerance?: number; perRowRefused?: string; error?: string; noSampleReason?: string;
+}
+
+export function verificationSummary(key: string, selected: boolean, v: ModelEvalResult | null): VerificationSummary {
+  if (v && v.ran && v.score != null && v.expected != null) {
+    const pr = v.perRow;
+    return {
+      modelKey: key, selected, outcome: v.matchesExpected ? "PASS" : "FAIL", metric: v.metricName, score: v.score,
+      expected: v.expected, n: v.n, split: v.split ?? null, decisionThreshold: v.decisionThreshold ?? null, backend: v.backend,
+      ...(pr && !pr.refused ? { rows: pr.rows, rowsAsRecorded: pr.rows - pr.mismatches - pr.nearTies, nearTies: pr.nearTies,
+                               mismatches: pr.mismatches, maxMarginDifference: pr.maxDiff, tolerance: pr.tolerance }
+        : pr?.refused ? { perRowRefused: pr.refused } : {}),
+    };
+  }
+  if (v && v.error) return { modelKey: key, selected, outcome: "error", error: v.error };
+  return { modelKey: key, selected, outcome: "no-sample", ...(v?.noSampleReason ? { noSampleReason: v.noSampleReason } : {}) };
 }
 
 /** The PSI among three to five banks under MPC, as one run reports it (Round 86): the card reads this. */
@@ -2086,11 +2111,16 @@ export function runClientPipeline(
     // three and satellite four; verifying just the selected one left the others asserted-but-never-
     // checked, and the standalone "run this model" button that used to cover them was removed in
     // favour of this. A visitor should not have to know which control re-checks which model.
+    // Every model's outcome, for the page's table and the downloads (Round 86): until then only the selected model's
+    // reached the page, and the others' row-by-row checks only the log.
+    const verifications: VerificationSummary[] = [];
+    artifacts.verifications = verifications;
     for (const target of browserModels(usecase)) {
       const key = target.spec.key;
       const isSelected = pub.kind === "ran" && pub.run.modelKey === key;
       try {
         const v = await evaluatePublishedModel(usecase, 0.05, key, onnxBackendChoice);
+        verifications.push(verificationSummary(key, isSelected, v));
         if (v && v.ran && v.score != null && v.expected != null) {
           // Only the selected model's numbers become run metrics; the rest are logged. Otherwise
           // four models would overwrite each other's `verified_score` and the panel would show
@@ -2179,6 +2209,7 @@ export function runClientPipeline(
         }
       } catch (e) {
         if (isSelected) metric(stage, "verification", "ERROR");
+        verifications.push({ modelKey: key, selected: isSelected, outcome: "error", error: (e as Error).message });
         emit("log", stage, `verification threw for ${key}: ${(e as Error).message}`);
       }
     }
@@ -4338,6 +4369,9 @@ export function runClientPipeline(
         artifacts.result_signature = {
           algorithm: dsa.name, signature_bytes: sig.length,
           signature_hex_prefix: [...sig.slice(0, 12)].map((b) => b.toString(16).padStart(2, "0")).join(""),
+          // The whole signature (Round 86). Until then only its first 12 bytes were kept, so the public key and the
+          // payload below, recorded "so a reader can re-check it", could not be checked against anything.
+          signature_hex: [...sig].map((b) => b.toString(16).padStart(2, "0")).join(""),
           // Without the public key and the exact payload, nobody but this tab can re-check the
           // signature -- the keypair is generated per run and discarded. Both are recorded now so a
           // reader can re-check it. A per-run key shows the payload is unchanged since signing, not who signed it.

@@ -67,13 +67,9 @@ rmSync(dir, { recursive: true, force: true });
 
 const text = (html) => html.replace(/<[^>]+>/g, " ").replace(/&#x27;|&apos;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ");
 const panel = (usecase) => m.renderToStaticMarkup(m.createElement(m.ModelPanel, { usecase }));
-/** One model's block of a rendered panel, by its label. */
-const block = (html, label) => {
-  const at = html.indexOf(label);
-  if (at < 0) return "";
-  const next = html.indexOf('class="model-block"', at);
-  return html.slice(at, next < 0 ? undefined : next);
-};
+/** One model's block of a rendered panel, by its label. Since the Models section became tabs (Round 86) a label's first
+ *  occurrence can be its tab or the overview's row, so the block is found among the blocks themselves. */
+const block = (html, label) => html.split('class="model-block"').slice(1).find((p) => p.includes(label)) ?? "";
 
 // 1. The measured row carries the baseline; only an unmeasured metric says so.
 {

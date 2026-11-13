@@ -118,6 +118,10 @@ export function ddgEpsilon(d2: number, n: number, variance: number, d: number): 
   return Math.min(Math.sqrt(d2 * d2 / (n * variance) + 2 * tau * d), d2 / Math.sqrt(n * variance) + tau * Math.sqrt(d));
 }
 
+/** A delta as the pages write it, "1e-6": JavaScript prints 1e-6 as "0.000001" and 1e-8 as "1e-8", so two cards on one
+ *  site wrote the same kind of number two ways (found on the deployed medical page, 2026-11-13). */
+export const formatDelta = (d: number) => d.toExponential(0);
+
 /** rho-concentrated DP to (eps, delta)-DP: eps <= rho + 2 sqrt(rho log(1/delta)). */
 export function cdpToDp(rho: number, delta: number): number {
   return rho + 2 * Math.sqrt(rho * Math.log(1 / delta));

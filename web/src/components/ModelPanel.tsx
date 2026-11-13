@@ -16,6 +16,7 @@ import { useState } from "react";
 import { browserModels, evaluatePublishedModel, type ModelEvalResult } from "../lib/onnxInference";
 import { AncestryStrataChart, RealDataScatter } from "./VerificationChart";
 import RegistryNote from "./RegistryNote";
+import Tabs from "./Tabs";
 
 const TIER_LABEL: Record<string, string> = {
   t1_crypto: "encrypted (FHE/MPC-feasible)",
@@ -758,6 +759,57 @@ function EsaScoresRows({ spec }: { spec: ModelSpec }) {
   );
 }
 
+/** Tab titles (Round 86, the owner's choice of 2026-11-13): a model's label runs to 80 characters, too long for a tab. A
+ *  model missing here falls back to its label, cut, so a new model still gets a tab. */
+const SHORT_TITLE: Record<string, string> = {
+  "finance_aml.gnn": "Multi-PNA+EU GNN", "finance_aml.gbm": "Gradient boosting", "finance_aml.student": "CKKS student",
+  "finance_aml.mlp_large": "MLP (CKKS and MPC)", "finance_aml.gnn_compact": "Compact GNN (CKKS and MPC)",
+  "genomics.prs": "Polygenic risk score",
+  "medical_fl.resnet18": "ResNet-18", "medical_fl.resnet50": "ResNet-50", "medical_fl.student": "CKKS student",
+  "satellite_comms.telemanom": "Telemanom LSTM", "satellite_comms.student": "Forecaster student",
+  "satellite_comms.opssat": "OPS-SAT detector", "satellite_comms.opssat_student": "OPS-SAT student",
+  "telecom_ids.transformer": "Transformer IDS", "telecom_ids.qml": "Random forest (QKD attacks)",
+  "telecom_ids.nidd": "5G-NIDD classifier", "telecom_ids.student": "CKKS student",
+};
+export const shortTitle = (spec: ModelSpec) => SHORT_TITLE[spec.key] ?? (spec.label.length > 32 ? `${spec.label.slice(0, 31)}...` : spec.label);
+
+/** The Models section's first tab: every model on one row, so the page can be read before any tab is opened. */
+function ModelOverview({ specs }: { specs: ModelSpec[] }) {
+  const measured = (s: ModelSpec) => {
+    const v = s.achieved?.[s.metric?.name ?? ""];
+    return typeof v === "number" ? fmt(v) : "not measured here";
+  };
+  return (
+    <table className="mini-table">
+      <caption className="small" style={{ captionSide: "top", textAlign: "left" }}>
+        Each model&apos;s own tab holds its full record, its notes and its Run button.
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col" style={{ textAlign: "left" }}>Model</th>
+          <th scope="col">Tier</th>
+          <th scope="col">Metric</th>
+          <th scope="col">This project</th>
+          <th scope="col">Published</th>
+          <th scope="col">Weights</th>
+        </tr>
+      </thead>
+      <tbody>
+        {specs.map((s) => (
+          <tr key={s.key}>
+            <th scope="row" style={{ textAlign: "left", fontWeight: 500 }}>{shortTitle(s)}</th>
+            <td>{TIER_LABEL[s.tier] ?? s.tier}{s.runs_encrypted ? ", CKKS-evaluable" : ""}</td>
+            <td>{s.metric?.display ?? s.metric?.name ?? "-"}</td>
+            <td>{measured(s)}</td>
+            <td>{s.metric?.baseline == null ? "none" : fmt(s.metric.baseline)}</td>
+            <td>{s.hf_repo_id ? (s.hf_revision ? "on the Hub, pinned" : "on the Hub, not pinned") : "not on the Hub"}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
 export function ModelPanel({ usecase }: { usecase: string }) {
   const specs = modelsFor(usecase);
   if (specs.length === 0) return null;
@@ -777,7 +829,12 @@ export function ModelPanel({ usecase }: { usecase: string }) {
         here, not asserted.
       </p>
 
-      {specs.map((spec) => (
+      {/* Tabs since Round 86 (the owner's choice of 2026-11-13): five models stacked made the finance section about 2,300
+          words before its first fold. Every panel stays mounted (`keepMounted`), so each model's block is still in the
+          page and a Run button keeps its result when another tab is opened. */}
+      <Tabs label="Models" keepMounted tabs={[
+        { id: "overview", title: "Overview", content: () => <ModelOverview specs={specs} /> },
+        ...specs.map((spec) => ({ id: spec.key, title: shortTitle(spec), content: () => (
         <div key={spec.key} className="model-block">
           <div className="model-head">
             <strong>{spec.label}</strong>
@@ -881,7 +938,8 @@ export function ModelPanel({ usecase }: { usecase: string }) {
             </p>
           )}
         </div>
-      ))}
+        ) })),
+      ]} />
 
       {/* Once per use case, not once per model: this is the corpus, not any model's output. It
           answers the question a lone score cannot - whether the classes were separable at all. */}

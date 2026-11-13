@@ -1,5 +1,6 @@
 import { EncryptedAgreementChart, MeasuredAgainstPublished, NoEncryptedComparison, VerificationChart } from "../components/VerificationChart";
-import { webmType } from "../lib/export";
+import { downloadJSON, webmType } from "../lib/export";
+import { buildResultsBundle, loadedBundleAsset } from "../lib/resultsBundle";
 import type { EncryptedAgreementPlot } from "../components/VerificationChart";
 import { useRef } from "react";
 import { Link, useParams } from "react-router";
@@ -15,6 +16,9 @@ import FedHeartPanel, { type FedHeartSitesMeta } from "../components/FedHeartPan
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
 import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCard";
+import VerificationsCard from "../components/VerificationsCard";
+import PublishedComparisonCard from "../components/PublishedComparisonCard";
+import { flambyRows, modelRows, PAGE_NOTES } from "../lib/publishedComparisons";
 import MpcGnnPanel from "../components/MpcGnnPanel";
 import { ConfusionCard, PrsLocusCard } from "../components/ModelExplanations";
 import MpcMlpPanel from "../components/MpcMlpPanel";
@@ -25,7 +29,7 @@ import MultiPsiPanel from "../components/MultiPsiPanel";
 import LendingPanels from "../components/LendingPanels";
 import QsdcLinkPanel from "../components/QsdcLinkPanel";
 import type { LendingMarketReport, LendingPrivateReport, LendingSweepReport } from "../lib/lending/report";
-import type { MpcCnnReport, MpcGnnReport, MpcMlpReport, MultiPsiReport, QcnnCkksReport } from "../lib/clientCompute";
+import type { MpcCnnReport, MpcGnnReport, MpcMlpReport, MultiPsiReport, QcnnCkksReport, VerificationSummary } from "../lib/clientCompute";
 import type { QcnnRescore } from "../lib/qcnnRescore";
 import ShapPanel from "../components/ShapPanel";
 import UseCaseCanvas from "../components/UseCaseCanvas";
@@ -142,6 +146,11 @@ function UseCaseView({ usecase }: { usecase: string }) {
           disabled={!hasRun} title={hasRun ? undefined : "Run the simulator first"}>⬇ Events (JSON)</button>
         <button className="btn ghost" onClick={() => downloadMetricsCsv(`${usecase}-metrics.csv`)}
           disabled={!hasRun} title={hasRun ? undefined : "Run the simulator first"}>⬇ Metrics (CSV)</button>
+        <button className="btn ghost" onClick={() => downloadJSON(buildResultsBundle({ usecase, params: run.params,
+            metrics, artifacts: artifacts ?? {}, events, bundleAsset: loadedBundleAsset() }), `${usecase}-results.json`)}
+          disabled={!hasRun}
+          title={hasRun ? "This run's parameters, metrics, log, every card's rows, every model's re-scoring and the signed record"
+            : "Run the simulator first"}>⬇ Results (JSON)</button>
         <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}>
           ▶ Start plays the protocol · Pause/Step advance it · ↻ Restart replays
         </span>
@@ -346,6 +355,12 @@ function UseCaseView({ usecase }: { usecase: string }) {
           ) : null}
         </div>
       ) : null}
+      {Array.isArray(artifacts?.verifications) && artifacts.verifications.length > 0
+        ? <VerificationsCard usecase={usecase} list={artifacts.verifications as VerificationSummary[]} /> : null}
+      <PublishedComparisonCard usecase={usecase} note={PAGE_NOTES[usecase]} rows={[
+        ...modelRows(modelsFor(usecase), artifacts?.verifications as VerificationSummary[] | undefined),
+        ...(usecase === "medical_fl" && artifacts?.fedHeart ? flambyRows(artifacts.fedHeart as FedHeartResult) : []),
+      ]} />
 
       {/* `surfacedBackend` is the backend that RAN, not the control that was set. Passing
           `run.params.inference` here made the panel assert "the class comes from the quantum circuit"

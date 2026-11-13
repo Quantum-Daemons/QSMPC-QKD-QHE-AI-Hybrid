@@ -4547,3 +4547,21 @@ and `\tau_0` in `docs/models-and-benchmarks.md`, each a string escape in the edi
 `tests/test_markdown_math_uses_the_house_style.py` now fails on any control character inside a math span; run on
 main's threat model, the new test fires.
 
+### PRs #38 and #39 on the deployed site (2026-11-13)
+
+PR #38 merged as `cb4d2fa` and deployed: `index-b1ejB7U1.js`, with the same name and SHA-256 in the deploy log, on the
+public page and in a local `VITE_CLIENT_ONLY=1` build. In Chrome, a medical run (seed 1) showed the DP table under
+the matrix: no noise 0.721; epsilon 8, 4, 2 and 1 with the one-hospital-short epsilons 9.40, 4.66, 2.32 and 1.16, total
+noise 5.2, 9.9, 19.2 and 37.8 in gradient units, and accuracies 0.727, 0.710, 0.726 and 0.731 from that run's draws.
+The genomics selector offered 0.5 to 8; at 0.5 the card released 41.81 against an exact 42 of at most 60, with noise of
+standard deviation 19.40. All six pages showed their `Differential privacy:` line. No console error. The walk found
+delta printed as `0.000001`, JavaScript's form, which PR #40 writes as `1e-6`.
+
+PR #39 merged as `7e780c0` and deployed: `index-Bo5Ln4ci.js`, the same three ways. In Chrome: the finance card
+published 55 against an exact 60 from lists of 260 (epsilon 1.00, delta 1e-8, standard deviation 6.16 accounts); the
+genomics button decrypted 968 from the BGV sum, the masked sum's integer, 60.50 released, with 394 kB of ciphertext
+and a 197 kB decryption share per cohort, and a second press gave the same; the medical DP table's note gave epsilon
+9.56 for its four rows together; and `Compare encrypted aggregation` gave six rows in 20 s, the five FedAvg designs at
+0.7005 and the DP row at 0.7164 with 50 of 50 steps' BGV sums equal to the masks', its note giving epsilon 9.63 with
+the table's rows. No console error.
+

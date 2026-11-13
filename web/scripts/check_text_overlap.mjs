@@ -49,6 +49,12 @@ const PAGES = [
   { path: "/usecase/genomics", run: true }, { path: "/usecase/telecom_ids", run: true },
   { path: "/usecase/satellite_comms", run: true },
   { path: "/usecase/satellite_comms", tab: "Network" },
+  // Each model's tab in the Models section (Round 86): an inactive panel is hidden, so it is measured only when opened.
+  ...[["finance_aml", ["Multi-PNA+EU GNN", "Gradient boosting", "CKKS student", "MLP (CKKS and MPC)", "Compact GNN (CKKS and MPC)"]],
+      ["medical_fl", ["ResNet-18", "ResNet-50", "CKKS student"]], ["genomics", ["Polygenic risk score"]],
+      ["telecom_ids", ["Transformer IDS", "Random forest (QKD attacks)", "5G-NIDD classifier", "CKKS student"]],
+      ["satellite_comms", ["Telemanom LSTM", "Forecaster student", "OPS-SAT detector", "OPS-SAT student"]]]
+    .flatMap(([uc, tabs]) => tabs.map((tab) => ({ path: `/usecase/${uc}`, tab }))),
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));

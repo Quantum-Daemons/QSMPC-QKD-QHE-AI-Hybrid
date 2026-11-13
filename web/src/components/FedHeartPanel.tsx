@@ -13,9 +13,11 @@
 import { useState } from "react";
 import StageBadge from "./StageBadge";
 import { type FedHeartDpResult, fedHeartComparisons, type FedHeartResult } from "../lib/clientFedHeart";
-import { composedEpsilon } from "../lib/clientDp";
+import { composedEpsilon, formatDelta } from "../lib/clientDp";
 import { type AggregationComparison, DP_ROW_EPSILON } from "../lib/clientFedAgg";
 import { compareAggregationsInWorker } from "../lib/clientFedAggRun";
+import { aggregationRows, fedHeartDpRows, fedHeartMatrixRows } from "../lib/cardRows";
+import CardExport from "./CardExport";
 
 export interface FedHeartSitesMeta {
   corpus: string; provenance: string; licence: string; licence_url: string; attribution: string; modifications: string;
@@ -67,6 +69,10 @@ export default function FedHeartPanel({ result, sites, dp }: { result: FedHeartR
           {row(`Pooled in one place (${trainTotal})`, r.pooled, r.mean.pooled)}
         </tbody>
       </table>
+      <div style={{ marginTop: 6 }}>
+        <CardExport name="medical_fl-four-hospitals" label="the four-hospital matrix" rows={fedHeartMatrixRows(r)}
+          json={r} />
+      </div>
       <p className="small" style={{ marginTop: 8 }}>
         By FLamby&apos;s metric the federated model is above {c.aboveAlone} of the {K} hospitals&apos; models alone and
         {c.abovePooled ? " above" : " below"} the pooled one in this run. On its own test rows, though, a hospital&apos;s own
@@ -171,6 +177,10 @@ function EncryptedAggregation({ seed, dp }: { seed: number; dp: FedHeartDpResult
               ))}
             </tbody>
           </table>
+          <div style={{ marginTop: 6 }}>
+            <CardExport name="medical_fl-encrypted-aggregation" label="the encrypted-aggregation comparison"
+              rows={aggregationRows(res)} json={res} />
+          </div>
           <p className="muted small" style={{ marginTop: 8 }}>
             The 16-bit row is a demonstration: its decryption shares carry noise only 2^16 times the sum&apos;s noise
             bound, the deviation Lattigo&apos;s multiparty examples use; a deployment chooses between the 40- and
@@ -187,7 +197,7 @@ function EncryptedAggregation({ seed, dp }: { seed: number; dp: FedHeartDpResult
             <p className="muted small" style={{ marginTop: 6 }} key="dp-row">
               The DP row draws fresh noise, so its accuracy differs from the epsilon {DP_ROW_EPSILON} row of the table
               above by the noise alone; its accountant gives epsilon {d.dp!.epsilonAchieved.toFixed(2)} at delta
-              {" "}{d.dp!.delta}. It is one more release from the same patients{dp
+              {" "}{formatDelta(d.dp!.delta)}. It is one more release from the same patients{dp
                 ? `: with that table's ${dp.rows.filter((x) => Number.isFinite(x.epsilon)).length} noised rows, published together, epsilon ${
                   composedEpsilon([...dp.rows.filter((x) => Number.isFinite(x.epsilon)).map((x) => x.rho), d.dp!.rho], dp.delta).toFixed(2)}`
                 : ""}. Because BGV is exact, the decrypted sum is the masks&apos; integer sum, so the encryption costs this
@@ -215,7 +225,7 @@ function DpTable({ dp }: { dp: FedHeartDpResult }) {
         FedAvg&apos;s local steps, which have no ready per-patient bound: each hospital clips every patient&apos;s
         gradient to norm {dp.clip}, adds its share of exact discrete Gaussian noise, and the pairwise masks reveal only the
         noisy sum (the distributed discrete Gaussian of Kairouz, Liu and Steinke, ICML 2021). The unit is one patient,
-        added or removed; delta is {dp.delta}, below 1/n^2 for these 486 patients, as NIST SP 800-226 advises.
+        added or removed; delta is {formatDelta(dp.delta)}, below 1/n^2 for these 486 patients, as NIST SP 800-226 advises.
       </p>
       <table className="table">
         <caption className="small" style={{ captionSide: "top", textAlign: "left" }}>
@@ -241,6 +251,10 @@ function DpTable({ dp }: { dp: FedHeartDpResult }) {
           ))}
         </tbody>
       </table>
+      <div style={{ marginTop: 6 }}>
+        <CardExport name="medical_fl-differential-privacy" label="the differential-privacy table" rows={fedHeartDpRows(dp)}
+          json={dp} />
+      </div>
       <p className="muted small" style={{ marginTop: 8 }}>
         The no-noise row is the comparison that isolates the noise: it shows what clipping and full-batch steps cost
         alone. The noise is in gradient units against a sum of up to 486 clipped gradients a step. Each epsilon counts the

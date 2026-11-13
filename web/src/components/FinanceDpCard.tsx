@@ -1,6 +1,8 @@
 // The finance page's count of shared accounts, as it would be published (Round 86, the owner's choice of 2026-11-13).
 // Every figure is this run's (clientDp.dpCount, applied in clientCompute.ts after the two banks' PSI).
-import type { CountRelease } from "../lib/clientDp";
+import { type CountRelease, formatDelta } from "../lib/clientDp";
+import { financeDpRows } from "../lib/cardRows";
+import CardExport from "./CardExport";
 
 export interface FinanceDpArtifact extends CountRelease { exact: number; sizeA: number; sizeB: number }
 
@@ -18,12 +20,15 @@ export default function FinanceDpCard({ dp }: { dp: FinanceDpArtifact }) {
         <tbody>
           <tr><th scope="row" style={{ textAlign: "left" }}>Published count</th><td><b>{dp.released}</b></td></tr>
           <tr><th scope="row" style={{ textAlign: "left" }}>Epsilon, delta</th>
-            <td>{dp.epsilonAchieved.toFixed(2)} (asked {dp.epsilon}), {dp.delta}</td></tr>
+            <td>{dp.epsilonAchieved.toFixed(2)} (asked {dp.epsilon}), {formatDelta(dp.delta)}</td></tr>
           <tr><th scope="row" style={{ textAlign: "left" }}>Noise standard deviation</th><td>{dp.sd.toFixed(2)} accounts</td></tr>
           <tr><th scope="row" style={{ textAlign: "left" }}>The exact count, which the banks hold and would not publish</th>
             <td>{dp.exact}, from lists of {dp.sizeA} and {dp.sizeB}</td></tr>
         </tbody>
       </table>
+      <div style={{ marginTop: 6 }}>
+        <CardExport name="finance_aml-differential-privacy" label="the published count" rows={financeDpRows(dp)} />
+      </div>
       <p className="muted small" style={{ marginTop: 8 }}>
         Delta is 1e-8, below 1/n^2 for the at most 4,600 accounts the two lists hold together (NIST SP 800-226). A noisy
         count below zero is published as zero, which is post-processing and costs no privacy. Each run draws fresh noise
