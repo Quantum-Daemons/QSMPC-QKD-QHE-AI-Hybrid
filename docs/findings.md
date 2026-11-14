@@ -639,6 +639,20 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   FedAvg, up on c and d and down on b, e and f, with e still below 0.5. Two other remedies were tried only in a scratch
   copy of the script, not in the record: balancing each source and label in the batches (0.541 pooled) and a random
   spectral tilt on top of balancing and band means (0.606 pooled, two seeds); neither did better.
+- **Private murmur detection keeps its ranking with public features and public tuning (2026-11-14).** On CirCor's public
+  training set, 816 people once the 70 who came to both campaigns under two patient IDs are joined (a first, scratch run
+  split by ID came out about 0.04 higher), a logistic head on frozen PANNs CNN14 features (AudioSet, CC BY 4.0) reaches
+  0.852 without noise and, under central DP-SGD with person-level clipping, 0.835, 0.812, 0.802 and 0.777 at
+  $`\epsilon`$ = 8, 4, 2 and 1 ($`\delta = 10^{-5}`$), with learning rates and thresholds chosen on a PhysioNet 2016
+  stand-in so that epsilon covers everything that touched CirCor. Choosing the rates on CirCor's own validation people
+  gives the same figures but leaves the choice out of epsilon; a stand-in drawn from the databases the heart-sound
+  card's CNN was trained on failed (0.633 to 0.635 at every epsilon); Papernot and Steinke's accounted search over three
+  public-chosen rates gives 0.789 to 0.685, and objective perturbation, which needs no rate, 0.750 to 0.729. Four sites
+  adding shares of a discrete Gaussian match the central full-batch Gaussian (0.822 against 0.836 at $`\epsilon = 8`$).
+  Under DP the logit-0 threshold calls 3 to 4 percent of records positive against 19 percent true; a threshold from the
+  stand-in lifts balanced accuracy from about 0.58 to 0.63 to 0.70 and still calls too few. In scratch runs not in the
+  record, the CNN trained end to end fell to about 0.6 under DP and a head on log-mel statistics stayed near 0.5, as
+  Tramer and Boneh's argument predicts ([`references/differential-privacy.md`](../references/differential-privacy.md)).
 - **The same epsilon with less noise (2026-11-14).** The medical, genomics and finance rows turned concentrated DP into
   $`(\epsilon, \delta)`$ with the simple bound $`\rho + 2\sqrt{\rho \log(1/\delta)}`$. A literature check for the
   murmur study (the owner's choice) found it loose by 7 to 18 percent of noise against Canonne, Kamath and Steinke's

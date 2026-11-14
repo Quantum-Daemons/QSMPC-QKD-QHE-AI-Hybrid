@@ -4720,3 +4720,28 @@ noise in alleles 19.4 to 15.3 at epsilon 0.5 down to 1.4 to 1.3 at 8. Measured o
 medical rows 0.724, 0.725, 0.723 and 0.718 at epsilon 8, 4, 2 and 1 (standard deviations 0.008 to 0.024); the four
 rows together epsilon 9.75 (9.56 before). Tests: `tests/test_r86_dp_conversion.py` and `tests/test_r86_dp_twin.py`
 (variances and draws equal between the languages, epsilons equal to 1e-12).
+
+### PR #47 on the deployed site (2026-11-14)
+
+Merged as dd16204 with the owner's approval after the local CI (all gates; the checklist gate's twelve tests run on
+this machine) and GitHub's eight checks, and deployed from the main checkout: the box is on main at dd16204 and serves
+`index-CNYcZDfX.js`, the bundle a local `VITE_CLIENT_ONLY=1` build of main produces, SHA-256 `3229681f...faba` on both
+sides. In Chrome after a run of each pipeline: the finance count released at epsilon 0.98 with a noise standard
+deviation of 5.48 accounts (the square root of 30); the genomics card at epsilon 1 with 8.09 alleles and 1.17 if one
+cohort adds none; the medical table's noise 4.9, 9.0, 16.8 and 32.0 at epsilon 8 to 1, epsilon 9.47 to 1.17 counted
+from one hospital fewer, and the four rows together epsilon 9.75; both notes name the Renyi conversion. No console
+error; no sideways overflow at 1,280 px.
+
+### PR #48: murmur detection on CirCor under differential privacy (2026-11-14)
+
+`scripts/data/prepare_circor.py` read the 1.0.3 zip in memory: 3,163 recordings of 942 patient IDs, 874 labelled, 816
+people once the 140 IDs naming each other through Additional ID are joined. Every route ran from the PR's scripts on
+NVIDIA RTX PRO 6000 Blackwell Workstation Edition, driver 620.70.06, PyTorch 2.13.0+cu130, with the PANNs embeddings of
+125,634 windows computed once and the public CNN trained once (seed 1): the PhysioNet 2016 stand-in (databases a, b and
+f, its CNN trained on c, d and e), CirCor validation, the stand-in from the CNN's own databases (head on the
+heart-sound CNN's features only), the accounted search for each head and objective perturbation. Test AUROC, PANNs
+head, central DP-SGD, stand-in route: 0.852 without noise, 0.835, 0.812, 0.802 and 0.777 at epsilon 8, 4, 2 and 1; the
+same as the earlier scratch runs to every printed digit. The PCA's SVD drew torch's warning that cuSOLVER's default
+driver did not converge and that it fell back to its more accurate method. `scripts/data/build_murmur_dp_summary.py`
+wrote `docs/measurements/murmur-dp-2026-11-14.json` and `web/public/data/medical/murmur_dp.json`, aggregate figures
+only, without the search's K or its losing candidates. Tests: `tests/test_r86_murmur_dp.py`.

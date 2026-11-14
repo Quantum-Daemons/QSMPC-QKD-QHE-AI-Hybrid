@@ -15,6 +15,7 @@ import MpcCnnPanel from "../components/MpcCnnPanel";
 import FedHeartPanel, { type FedHeartSitesMeta } from "../components/FedHeartPanel";
 import CxrFlCard from "../components/CxrFlCard";
 import PcgFlCard from "../components/PcgFlCard";
+import MurmurDpCard from "../components/MurmurDpCard";
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
 import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCard";
@@ -386,6 +387,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && artifacts?.fedHeart ? <FedHeartPanel result={artifacts.fedHeart as FedHeartResult} sites={(artifacts.fedHeartSites as FedHeartSitesMeta | undefined) ?? null} dp={(artifacts.fedHeartDp as FedHeartDpResult | undefined) ?? null} /> : null}
       {usecase === "medical_fl" && <CxrFlCard />}
       {usecase === "medical_fl" && <PcgFlCard />}
+      {usecase === "medical_fl" && <MurmurDpCard />}
       {usecase === "genomics" && artifacts?.genomicsDp ? <GenomicsDpCard dp={artifacts.genomicsDp as GenomicsDpArtifact} /> : null}
       {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} rescore={(artifacts.qcnn_rescore as QcnnRescore | undefined) ?? null} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_mlp ? <MpcMlpPanel report={artifacts.mpc_mlp as MpcMlpReport} /> : null}
