@@ -10,9 +10,12 @@
  *     e = min( sqrt(D2^2 / (n V) + 2 tau d),  D2 / sqrt(n V) + tau sqrt(d) ),
  *     tau = 10 * sum_{k=1}^{n-1} exp(-2 pi^2 V k / (k + 1)),
  *
- * T releases compose to rho = T e^2 / 2, and rho-concentrated DP gives (eps, delta)-DP with
- * eps <= rho + 2 sqrt(rho log(1/delta)) (Canonne, Kamath and Steinke, NeurIPS 2020). The unit is one person's row,
- * added or removed. The guarantee counts only parties that add their noise; the page also states it for one fewer.
+ * T releases compose to rho = T e^2 / 2. rho-concentrated DP is (a, a rho)-Renyi DP at every order a, and the
+ * conversion of Canonne, Kamath and Steinke (NeurIPS 2020, arXiv:2004.00010, Proposition 12, as Google's dp_accounting
+ * applies it) gives eps = min over a > 1 of a rho + log(1 - 1/a) - (log(delta) + log(a)) / (a - 1), never more than the
+ * simpler rho + 2 sqrt(rho log(1/delta)) (Bun and Steinke, TCC 2016) the pages used until 2026-11-14. The unit is one
+ * person's row, added or removed. The guarantee counts only parties that add their noise; the page also states it for
+ * one fewer.
  *
  * THE NOISE IS EXACT. Floating-point Laplace and Gaussian samplers leak through their low bits (Mironov, CCS 2012), so
  * the sampler is Canonne, Kamath and Steinke's Algorithms 1 to 3, in integers and BigInt rationals, fed by the platform
@@ -122,9 +125,45 @@ export function ddgEpsilon(d2: number, n: number, variance: number, d: number): 
  *  site wrote the same kind of number two ways (found on the deployed medical page, 2026-11-13). */
 export const formatDelta = (d: number) => d.toExponential(0);
 
-/** rho-concentrated DP to (eps, delta)-DP: eps <= rho + 2 sqrt(rho log(1/delta)). */
-export function cdpToDp(rho: number, delta: number): number {
+/** The bound the pages used until 2026-11-14 (Bun and Steinke, TCC 2016, Proposition 1.3); kept as a cap. */
+export function cdpToDpSimple(rho: number, delta: number): number {
   return rho + 2 * Math.sqrt(rho * Math.log(1 / delta));
+}
+
+const GOLDEN = (Math.sqrt(5) - 1) / 2;
+/** log(a - 1) from -12 to 16, 120 golden-section steps: the same as `CONVERSION_SEARCH` in qsh.ai.dp. */
+export const CONVERSION_SEARCH = [-12.0, 16.0, 120] as const;
+
+function conversionAt(u: number, rho: number, delta: number): number {
+  const a = 1 + Math.exp(u);
+  return a * rho + Math.log1p(-1 / a) - (Math.log(delta) + Math.log(a)) / (a - 1);
+}
+
+/**
+ * rho-concentrated DP to (eps, delta)-DP by the conversion in the header, minimised over the order by golden-section
+ * search on log(a - 1); every order gives a valid bound, so the search only needs to land near the minimum, and the
+ * result is capped by the simpler bound. Twin of `cdp_to_dp` in qsh.ai.dp, step for step.
+ */
+export function cdpToDp(rho: number, delta: number): number {
+  if (rho === 0) return 0;
+  if (!Number.isFinite(rho)) return Infinity;
+  let [lo, hi] = [CONVERSION_SEARCH[0], CONVERSION_SEARCH[1]];
+  let c = hi - GOLDEN * (hi - lo);
+  let d = lo + GOLDEN * (hi - lo);
+  let fc = conversionAt(c, rho, delta);
+  let fd = conversionAt(d, rho, delta);
+  for (let i = 0; i < CONVERSION_SEARCH[2]; i++) {
+    if (fc < fd) {
+      hi = d; d = c; fd = fc;
+      c = hi - GOLDEN * (hi - lo);
+      fc = conversionAt(c, rho, delta);
+    } else {
+      lo = c; c = d; fc = fd;
+      d = lo + GOLDEN * (hi - lo);
+      fd = conversionAt(d, rho, delta);
+    }
+  }
+  return Math.min(fc, fd, cdpToDpSimple(rho, delta));
 }
 
 /** The concentrated-DP rho of T releases, each the sum of n parties' noise of variance V: T e^2 / 2. */

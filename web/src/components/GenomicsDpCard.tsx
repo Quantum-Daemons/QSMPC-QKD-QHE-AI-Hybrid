@@ -46,7 +46,8 @@ export default function GenomicsDpCard({ dp }: { dp: GenomicsDpArtifact }) {
         largest value NIST does not call suspicious; 1/n^2 would be larger than that for so few people, and NIST says that rule does not
         suit small n. The exact count is shown only to measure the noise. The person&apos;s own score below is not noised:
         it goes back to that person, and DP protects people inside a released dataset. The noise is drawn from this
-        tab&apos;s CSPRNG with an exact sampler (Canonne, Kamath and Steinke, 2020), and every 1000 Genomes individual
+        tab&apos;s CSPRNG with an exact sampler (Canonne, Kamath and Steinke, 2020), whose Renyi conversion turns the
+        concentrated DP into epsilon, and every 1000 Genomes individual
         here is public. Each run draws fresh noise, so each run is its own release: k runs of the same count together
         are k times the rho of one.
       </p>
