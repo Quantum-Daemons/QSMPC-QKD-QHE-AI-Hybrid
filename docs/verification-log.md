@@ -4920,3 +4920,22 @@ The same PR records, in `docs/development.md`, SEAL's source on the 4.7.2 sampli
 and v4.7.2 drops the `- 1`, so one residue loses one of its preimages, about $`2^{-64}`$ in statistical distance per
 coefficient by this project's reading.
 
+### PR #53: evidence under the private-inference scatter, and the medical DP card's spread (2026-11-14)
+
+The owner's third choice of the day. Under every encrypted-agreement scatter, `web/src/lib/agreementStats.ts` draws the
+same pairs two more ways: Bland and Altman's difference against mean (Lancet 1986), with the bias and the limits of
+agreement at 1.96 standard deviations, and each row's precision in bits as Lattigo's `GetPrecisionStats` defines it,
+$`-\log_2`$ of the absolute error, binned in whole bits, exact pairs counted apart. On the genomics page in Chrome the 30
+rows gave a bias of $`-3.73 \times 10^{-10}`$, limits $`-6.11 \times 10^{-9}`$ and $`5.36 \times 10^{-9}`$, 28 of 30
+within them, and a median precision of 28.7 bits, lowest 27.3; a second run, whose CKKS noise differs, gave 30 of 30 and
+29.0 bits. At 375 px the panels stack and nothing is clipped. `tests/test_r86_agreement_evidence.py` holds the module to
+numpy on built pairs: the bias, the sample standard deviation, the limits, the count within, the bins, the median, the
+lowest, the exact pairs, and inputs with one pair, none, or one that is not a number.
+
+On the medical page the DP table gains a privacy-utility chart. `scripts/measure_fedheart_dp_sweep.py` runs the page's own
+`fedHeartDp` 20 times at the page's seed with seeded noise (not private; it exists for the record): no noise 0.721 every
+draw; $`\epsilon = 8`$ $`0.724 \pm 0.006`$, 4 $`0.722 \pm 0.011`$, 2 $`0.723 \pm 0.020`$, 1 $`0.712 \pm 0.031`$ (10th to 90th
+percentile 0.674 to 0.746). The chart draws that band and median and marks the run's own row; in Chrome 4 of the run's 5
+values sat inside the band. `tests/test_r86_fedheart_dp_sweep.py` reruns two of the recorded draws and gets the same
+numbers to the last digit, and checks the card's file against the record.
+
