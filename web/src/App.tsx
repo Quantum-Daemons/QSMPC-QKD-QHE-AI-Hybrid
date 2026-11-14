@@ -112,7 +112,9 @@ export default function App() {
         <div style={{ marginTop: 28, fontSize: 12 }} className="muted sidebar-note">
           PQC-first hybrid · NIST FIPS 203/204<br />
           {/* Was "CNSA 2.0 · HNDL / Q-Day aware", which reads as a compliance badge. */}
-          Tracks CNSA 2.0 (no configuration here is CNSA 2.0) - HNDL aware
+          Tracks CNSA 2.0 (no configuration here is CNSA 2.0) - HNDL aware<br />
+          {/* The npm packages' notices, written at build time from the bundle's own modules (Round 86). */}
+          <a href={`${import.meta.env.BASE_URL}licenses/js-bundle.txt`} target="_blank" rel="noopener noreferrer">Open-source notices</a>
         </div>
       </aside>
       {/* `tabIndex={-1}` so the skip link can actually MOVE focus here. Without it the browser

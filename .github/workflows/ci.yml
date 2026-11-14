@@ -304,6 +304,13 @@ jobs:
         working-directory: web
         run: npm run check:source-maps
 
+      # MIT, ISC, BSD and Apache-2.0 ask that their notice travel with the code, and minification keeps only React's,
+      # Three.js's and ONNX Runtime's. vite.config.ts writes licenses/js-bundle.txt from the modules the bundle
+      # contains; this reads the built file. Round 86.
+      - name: The bundle's npm packages each carry their notice
+        working-directory: web
+        run: npm run check:js-notices
+
       # FIPS 203 section 7.2 negative vectors (2,595 malformed encapsulation keys) plus FIPS 204
       # sizes and a sign/verify round trip. Reads the vendored CC0 snapshot in web/scripts/vectors,
       # so it needs no network -- which is the only reason it can gate. It was defined in
