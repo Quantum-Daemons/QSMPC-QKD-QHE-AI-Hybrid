@@ -1,0 +1,4039 @@
+{
+ "_about": "What the medical page's murmur card shows; written by scripts/data/build_murmur_dp_summary.py from docs/measurements/murmur-dp-2026-11-14.json. Aggregate figures only.",
+ "attribution": {
+  "circor": {
+   "provider": "PhysioNet",
+   "dataset": "The CirCor DigiScope Phonocardiogram Dataset, version 1.0.3",
+   "download": "https://physionet.org/content/circor-heart-sound/1.0.3/",
+   "dataset_doi": "10.13026/tshs-mw03",
+   "citation": "Oliveira J, Renna F, Costa P, Nogueira D, Oliveira C, Ferreira C, Jorge A, Mattos S, Hatem T, Tavares T, Elola A, Rad A, Sameni R, Clifford GD, Coimbra MT. The CirCor DigiScope Dataset: From Murmur Detection to Murmur Classification. IEEE Journal of Biomedical and Health Informatics. doi:10.1109/JBHI.2021.3137048",
+   "licence": "Open Data Commons Attribution License v1.0",
+   "licence_url": "https://opendatacommons.org/licenses/by/1-0/"
+  },
+  "physionet_2016": {
+   "dataset": "Classification of Heart Sound Recordings: the PhysioNet/Computing in Cardiology Challenge 2016, version 1.0.0",
+   "download": "https://physionet.org/content/challenge-2016/1.0.0/",
+   "citation": "Liu C, Springer D, Li Q, Moody B, Juan RA, et al. An open access database for the evaluation of heart sound algorithms. Physiol Meas. 2016;37(12):2181-2213. doi:10.1088/0967-3334/37/12/2181",
+   "licence": "Open Data Commons Attribution License v1.0"
+  },
+  "panns": {
+   "model": "PANNs CNN14 (Cnn14_mAP=0.431.pth), trained on AudioSet",
+   "download": "https://zenodo.org/records/3987831",
+   "citation": "Kong Q, Cao Y, Iqbal T, Wang Y, Wang W, Plumbley MD. PANNs: Large-Scale Pretrained Audio Neural Networks for Audio Pattern Recognition. IEEE/ACM Transactions on Audio, Speech, and Language Processing 28 (2020). Weights doi:10.5281/zenodo.3987831",
+   "licence": "Creative Commons Attribution 4.0 International",
+   "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+   "use": "frozen feature extractor, offline; the weights are not redistributed"
+  },
+  "platform_citation": "Pollard T, Moody BE, Lehman L, Gow B, Fernandes C, Xie C, Johnson A, Mark RG, Heldt T. PhysioNet as a global platform for biomedical research. Nature Health. 2026;1(8):792-795. doi:10.1038/s44360-026-00096-z"
+ },
+ "data": {
+  "records_labelled": 874,
+  "people": 816,
+  "people_with_two_records": 58,
+  "train_people": 653,
+  "test_people": 163,
+  "test_records": 170,
+  "test_records_present": 33,
+  "fit_people": 524,
+  "val_people": 129
+ },
+ "recipe": {
+  "delta": 1e-05,
+  "clip": 1.0,
+  "windows_per_record": 4,
+  "pos_weight": 4.0,
+  "expected_batch": 64,
+  "epochs": 30,
+  "sites": 4,
+  "scale_bits": 14,
+  "params": {
+   "cnn": 97521,
+   "head-public": 129,
+   "head-logmel": 81,
+   "head-panns": 129
+  },
+  "public_cnn": {
+   "recordings": 3240,
+   "epochs": 12,
+   "lr": 0.001,
+   "batch": 64,
+   "seed": 1,
+   "public_windows": 64381,
+   "circor_windows": 61253,
+   "panns": {
+    "weights": "Cnn14_mAP=0.431.pth",
+    "embedding": 2048,
+    "pca_dims": 128,
+    "pca_fitted_on": "public windows"
+   }
+  },
+  "stand_in": {
+   "recordings": 653,
+   "positives": 129,
+   "cnn_recordings": 2227,
+   "seed": 11,
+   "drawn_from": "abf",
+   "cnn_disjoint": true,
+   "sources": {
+    "a": 193,
+    "b": 375,
+    "c": 0,
+    "d": 0,
+    "e": 0,
+    "f": 85
+   },
+   "kind": "public",
+   "fit": 524,
+   "val": 129,
+   "positive_share": 0.19754977524280548
+  }
+ },
+ "routes": {
+  "search": {
+   "eta": 0.0,
+   "expected_k": 5.0,
+   "score_sensitivity": 0.07407407407407407,
+   "val_records": [
+    29,
+    123
+   ]
+  },
+  "objpert": {
+   "lambda": 10.0,
+   "tau": 0.01,
+   "sigma_out": 0.15,
+   "beta": 0.25,
+   "C": 1.0
+  }
+ },
+ "summary": {
+  "public": [
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "non-private",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8518,
+     "sd": 0.01529
+    },
+    "lr": 0.003,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 0.3586,
+     "balanced": -0.3683,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.7589,
+       "sd": 0.02428
+      },
+      "share_predicted_positive": {
+       "mean": 0.2129,
+       "sd": 0.08467
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7099,
+       "sd": 0.05018
+      },
+      "share_predicted_positive": {
+       "mean": 0.1224,
+       "sd": 0.0344
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.746,
+       "sd": 0.04578
+      },
+      "share_predicted_positive": {
+       "mean": 0.4035,
+       "sd": 0.1685
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "clip only",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8355,
+     "sd": 0.004253
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -2.424,
+     "balanced": -3.506,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5909,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.03529,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6683,
+       "sd": 0.01001
+      },
+      "share_predicted_positive": {
+       "mean": 0.07412,
+       "sd": 0.01147
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7006,
+       "sd": 0.02134
+      },
+      "share_predicted_positive": {
+       "mean": 0.1494,
+       "sd": 0.01695
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8352,
+     "sd": 0.0128
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -2.334,
+     "balanced": -3.467,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5939,
+       "sd": 0.006776
+      },
+      "share_predicted_positive": {
+       "mean": 0.03647,
+       "sd": 0.002631
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6584,
+       "sd": 0.01641
+      },
+      "share_predicted_positive": {
+       "mean": 0.06588,
+       "sd": 0.008725
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.701,
+       "sd": 0.01288
+      },
+      "share_predicted_positive": {
+       "mean": 0.1306,
+       "sd": 0.01735
+      }
+     }
+    },
+    "sigma": 1.363,
+    "epsilon_accounted": 8.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8125,
+     "sd": 0.009443
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -1.806,
+     "balanced": -3.015,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5788,
+       "sd": 0.006776
+      },
+      "share_predicted_positive": {
+       "mean": 0.03059,
+       "sd": 0.002631
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6152,
+       "sd": 0.008299
+      },
+      "share_predicted_positive": {
+       "mean": 0.04471,
+       "sd": 0.003222
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6779,
+       "sd": 0.008287
+      },
+      "share_predicted_positive": {
+       "mean": 0.1012,
+       "sd": 0.01632
+      }
+     }
+    },
+    "sigma": 2.191,
+    "epsilon_accounted": 4.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8019,
+     "sd": 0.01245
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -1.816,
+     "balanced": -3.212,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5758,
+       "sd": 0.01071
+      },
+      "share_predicted_positive": {
+       "mean": 0.02941,
+       "sd": 0.004159
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6121,
+       "sd": 0.02033
+      },
+      "share_predicted_positive": {
+       "mean": 0.04353,
+       "sd": 0.007892
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6742,
+       "sd": 0.01418
+      },
+      "share_predicted_positive": {
+       "mean": 0.1071,
+       "sd": 0.02012
+      }
+     }
+    },
+    "sigma": 3.847,
+    "epsilon_accounted": 2.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7773,
+     "sd": 0.0169
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -1.653,
+     "balanced": -2.815,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5758,
+       "sd": 0.01071
+      },
+      "share_predicted_positive": {
+       "mean": 0.02941,
+       "sd": 0.004159
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6,
+       "sd": 0.02298
+      },
+      "share_predicted_positive": {
+       "mean": 0.03882,
+       "sd": 0.008921
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6275,
+       "sd": 0.03009
+      },
+      "share_predicted_positive": {
+       "mean": 0.06118,
+       "sd": 0.0122
+      }
+     }
+    },
+    "sigma": 7.073,
+    "epsilon_accounted": 1.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "central-full",
+    "kind": "non-private",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.851,
+     "sd": 0.002639
+    },
+    "lr": 0.003,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 0.2534,
+     "balanced": -0.316,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.7793,
+       "sd": 0.00692
+      },
+      "share_predicted_positive": {
+       "mean": 0.1741,
+       "sd": 0.006707
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7135,
+       "sd": 0.006233
+      },
+      "share_predicted_positive": {
+       "mean": 0.1165,
+       "sd": 0.004922
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7718,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.2588,
+       "sd": 0.0
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central-full",
+    "kind": "clip only",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8348,
+     "sd": 0.001428
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -2.428,
+     "balanced": -3.514,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5909,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.03529,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6667,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.06471,
+       "sd": 0.0
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6837,
+       "sd": 0.001632
+      },
+      "share_predicted_positive": {
+       "mean": 0.1282,
+       "sd": 0.002631
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central-full",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8361,
+     "sd": 0.01274
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -2.271,
+     "balanced": -3.791,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5909,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.03529,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6485,
+       "sd": 0.01268
+      },
+      "share_predicted_positive": {
+       "mean": 0.05765,
+       "sd": 0.004922
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7203,
+       "sd": 0.01863
+      },
+      "share_predicted_positive": {
+       "mean": 0.16,
+       "sd": 0.00767
+      }
+     }
+    },
+    "sigma": 10.5,
+    "epsilon_accounted": 8.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "central-full",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8295,
+     "sd": 0.02226
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -2.344,
+     "balanced": -3.462,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5909,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.03529,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6591,
+       "sd": 0.007124
+      },
+      "share_predicted_positive": {
+       "mean": 0.06471,
+       "sd": 0.005882
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6888,
+       "sd": 0.01167
+      },
+      "share_predicted_positive": {
+       "mean": 0.12,
+       "sd": 0.0122
+      }
+     }
+    },
+    "sigma": 18.91,
+    "epsilon_accounted": 4.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "central-full",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8028,
+     "sd": 0.01236
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -1.844,
+     "balanced": -3.135,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5758,
+       "sd": 0.01071
+      },
+      "share_predicted_positive": {
+       "mean": 0.02941,
+       "sd": 0.004159
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6121,
+       "sd": 0.01728
+      },
+      "share_predicted_positive": {
+       "mean": 0.04353,
+       "sd": 0.006707
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6772,
+       "sd": 0.01257
+      },
+      "share_predicted_positive": {
+       "mean": 0.1024,
+       "sd": 0.01534
+      }
+     }
+    },
+    "sigma": 34.88,
+    "epsilon_accounted": 2.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "central-full",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7815,
+     "sd": 0.01652
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -1.676,
+     "balanced": -3.081,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5788,
+       "sd": 0.01268
+      },
+      "share_predicted_positive": {
+       "mean": 0.03059,
+       "sd": 0.004922
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.603,
+       "sd": 0.01976
+      },
+      "share_predicted_positive": {
+       "mean": 0.04,
+       "sd": 0.00767
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6465,
+       "sd": 0.01543
+      },
+      "share_predicted_positive": {
+       "mean": 0.07294,
+       "sd": 0.01643
+      }
+     }
+    },
+    "sigma": 65.26,
+    "epsilon_accounted": 1.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "federated",
+    "kind": "non-private",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8511,
+     "sd": 0.007591
+    },
+    "lr": 0.1,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 0.4313,
+     "balanced": -0.5149,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.7612,
+       "sd": 0.037
+      },
+      "share_predicted_positive": {
+       "mean": 0.1729,
+       "sd": 0.05559
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6791,
+       "sd": 0.02193
+      },
+      "share_predicted_positive": {
+       "mean": 0.08706,
+       "sd": 0.02544
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7693,
+       "sd": 0.0297
+      },
+      "share_predicted_positive": {
+       "mean": 0.3235,
+       "sd": 0.1226
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "federated",
+    "kind": "clip only",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8345,
+     "sd": 0.001677
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -2.413,
+     "balanced": -3.573,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5909,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.03529,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6636,
+       "sd": 0.006776
+      },
+      "share_predicted_positive": {
+       "mean": 0.06353,
+       "sd": 0.002631
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6952,
+       "sd": 0.001632
+      },
+      "share_predicted_positive": {
+       "mean": 0.14,
+       "sd": 0.002631
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "federated",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.822,
+     "sd": 0.01377
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -2.496,
+     "balanced": -3.575,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5909,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.03529,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6508,
+       "sd": 0.01612
+      },
+      "share_predicted_positive": {
+       "mean": 0.06,
+       "sd": 0.004922
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6903,
+       "sd": 0.01225
+      },
+      "share_predicted_positive": {
+       "mean": 0.1235,
+       "sd": 0.01019
+      }
+     }
+    },
+    "variance_per_site": 8361206220,
+    "noise_sd_over_gamma_c": 11.16,
+    "epsilon_accounted": 8.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "federated",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8036,
+     "sd": 0.02156
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -2.407,
+     "balanced": -3.81,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5879,
+       "sd": 0.006776
+      },
+      "share_predicted_positive": {
+       "mean": 0.03412,
+       "sd": 0.002631
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6417,
+       "sd": 0.01843
+      },
+      "share_predicted_positive": {
+       "mean": 0.05647,
+       "sd": 0.005261
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6957,
+       "sd": 0.004987
+      },
+      "share_predicted_positive": {
+       "mean": 0.1271,
+       "sd": 0.01589
+      }
+     }
+    },
+    "variance_per_site": 27554770319,
+    "noise_sd_over_gamma_c": 20.26,
+    "epsilon_accounted": 4.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "federated",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7811,
+     "sd": 0.0251
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -1.849,
+     "balanced": -2.861,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5818,
+       "sd": 0.008299
+      },
+      "share_predicted_positive": {
+       "mean": 0.03176,
+       "sd": 0.003222
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.603,
+       "sd": 0.01268
+      },
+      "share_predicted_positive": {
+       "mean": 0.04,
+       "sd": 0.004922
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6562,
+       "sd": 0.01507
+      },
+      "share_predicted_positive": {
+       "mean": 0.06941,
+       "sd": 0.01275
+      }
+     }
+    },
+    "variance_per_site": 94977296281,
+    "noise_sd_over_gamma_c": 37.62,
+    "epsilon_accounted": 2.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "federated",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7523,
+     "sd": 0.03596
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -1.879,
+     "balanced": -3.228,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5788,
+       "sd": 0.01268
+      },
+      "share_predicted_positive": {
+       "mean": 0.03059,
+       "sd": 0.004922
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6,
+       "sd": 0.02033
+      },
+      "share_predicted_positive": {
+       "mean": 0.03882,
+       "sd": 0.007892
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6428,
+       "sd": 0.03083
+      },
+      "share_predicted_positive": {
+       "mean": 0.07294,
+       "sd": 0.01933
+      }
+     }
+    },
+    "variance_per_site": 336486989948,
+    "noise_sd_over_gamma_c": 70.81,
+    "epsilon_accounted": 1.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "non-private",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8514,
+     "sd": 0.05495
+    },
+    "lr": 3.0,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 95.22,
+     "balanced": 7.068,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.7199,
+       "sd": 0.09033
+      },
+      "share_predicted_positive": {
+       "mean": 0.2576,
+       "sd": 0.2185
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6326,
+       "sd": 0.06529
+      },
+      "share_predicted_positive": {
+       "mean": 0.05294,
+       "sd": 0.02598
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.738,
+       "sd": 0.1036
+      },
+      "share_predicted_positive": {
+       "mean": 0.2165,
+       "sd": 0.1786
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "clip only",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8432,
+     "sd": 0.02126
+    },
+    "lr": 1.0,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -2.509,
+     "balanced": -4.034,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.6909,
+       "sd": 0.04094
+      },
+      "share_predicted_positive": {
+       "mean": 0.07412,
+       "sd": 0.01589
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7662,
+       "sd": 0.03527
+      },
+      "share_predicted_positive": {
+       "mean": 0.1165,
+       "sd": 0.02368
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7699,
+       "sd": 0.01718
+      },
+      "share_predicted_positive": {
+       "mean": 0.2376,
+       "sd": 0.1095
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7647,
+     "sd": 0.005166
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.742,
+     "balanced": -3.778,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.6,
+       "sd": 0.02298
+      },
+      "share_predicted_positive": {
+       "mean": 0.03882,
+       "sd": 0.008921
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6995,
+       "sd": 0.0318
+      },
+      "share_predicted_positive": {
+       "mean": 0.3329,
+       "sd": 0.08731
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7081,
+       "sd": 0.029
+      },
+      "share_predicted_positive": {
+       "mean": 0.3494,
+       "sd": 0.08581
+      }
+     }
+    },
+    "sigma": 1.363,
+    "epsilon_accounted": 8.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7624,
+     "sd": 0.008201
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.778,
+     "balanced": -3.881,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.597,
+       "sd": 0.02298
+      },
+      "share_predicted_positive": {
+       "mean": 0.03765,
+       "sd": 0.008921
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.697,
+       "sd": 0.03409
+      },
+      "share_predicted_positive": {
+       "mean": 0.3188,
+       "sd": 0.1023
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6967,
+       "sd": 0.03318
+      },
+      "share_predicted_positive": {
+       "mean": 0.38,
+       "sd": 0.1181
+      }
+     }
+    },
+    "sigma": 2.191,
+    "epsilon_accounted": 4.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7555,
+     "sd": 0.01319
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.828,
+     "balanced": -4.201,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5909,
+       "sd": 0.0303
+      },
+      "share_predicted_positive": {
+       "mean": 0.03529,
+       "sd": 0.01176
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6952,
+       "sd": 0.02501
+      },
+      "share_predicted_positive": {
+       "mean": 0.3035,
+       "sd": 0.1308
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6691,
+       "sd": 0.05603
+      },
+      "share_predicted_positive": {
+       "mean": 0.4365,
+       "sd": 0.1634
+      }
+     }
+    },
+    "sigma": 3.847,
+    "epsilon_accounted": 2.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7397,
+     "sd": 0.02345
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.858,
+     "balanced": -4.784,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5848,
+       "sd": 0.03142
+      },
+      "share_predicted_positive": {
+       "mean": 0.03294,
+       "sd": 0.0122
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6924,
+       "sd": 0.01827
+      },
+      "share_predicted_positive": {
+       "mean": 0.2353,
+       "sd": 0.1204
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6406,
+       "sd": 0.05773
+      },
+      "share_predicted_positive": {
+       "mean": 0.4765,
+       "sd": 0.2128
+      }
+     }
+    },
+    "sigma": 7.073,
+    "epsilon_accounted": 1.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central-full",
+    "kind": "non-private",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8864,
+     "sd": 0.003386
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 0.2154,
+     "balanced": -0.1357,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.7917,
+       "sd": 0.008375
+      },
+      "share_predicted_positive": {
+       "mean": 0.1965,
+       "sd": 0.008921
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7961,
+       "sd": 0.01008
+      },
+      "share_predicted_positive": {
+       "mean": 0.1471,
+       "sd": 0.01556
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7936,
+       "sd": 0.005264
+      },
+      "share_predicted_positive": {
+       "mean": 0.2176,
+       "sd": 0.01248
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central-full",
+    "kind": "clip only",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7209,
+     "sd": 0.0006995
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.759,
+     "balanced": -3.863,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5152,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.005882,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6922,
+       "sd": 0.006776
+      },
+      "share_predicted_positive": {
+       "mean": 0.3812,
+       "sd": 0.002631
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6948,
+       "sd": 0.001999
+      },
+      "share_predicted_positive": {
+       "mean": 0.4435,
+       "sd": 0.003222
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central-full",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7192,
+     "sd": 0.003534
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.778,
+     "balanced": -3.861,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5182,
+       "sd": 0.006776
+      },
+      "share_predicted_positive": {
+       "mean": 0.007059,
+       "sd": 0.002631
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.677,
+       "sd": 0.01651
+      },
+      "share_predicted_positive": {
+       "mean": 0.3753,
+       "sd": 0.02708
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6789,
+       "sd": 0.01014
+      },
+      "share_predicted_positive": {
+       "mean": 0.4329,
+       "sd": 0.01977
+      }
+     }
+    },
+    "sigma": 10.5,
+    "epsilon_accounted": 8.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central-full",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7608,
+     "sd": 0.007849
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.796,
+     "balanced": -3.97,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.597,
+       "sd": 0.01355
+      },
+      "share_predicted_positive": {
+       "mean": 0.03765,
+       "sd": 0.005261
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7228,
+       "sd": 0.02242
+      },
+      "share_predicted_positive": {
+       "mean": 0.2894,
+       "sd": 0.03068
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7001,
+       "sd": 0.009768
+      },
+      "share_predicted_positive": {
+       "mean": 0.3624,
+       "sd": 0.03959
+      }
+     }
+    },
+    "sigma": 18.91,
+    "epsilon_accounted": 4.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central-full",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7125,
+     "sd": 0.01091
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.722,
+     "balanced": -4.066,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5121,
+       "sd": 0.01268
+      },
+      "share_predicted_positive": {
+       "mean": 0.004706,
+       "sd": 0.004922
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6649,
+       "sd": 0.02138
+      },
+      "share_predicted_positive": {
+       "mean": 0.3282,
+       "sd": 0.05152
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.637,
+       "sd": 0.03245
+      },
+      "share_predicted_positive": {
+       "mean": 0.5247,
+       "sd": 0.08375
+      }
+     }
+    },
+    "sigma": 34.88,
+    "epsilon_accounted": 2.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central-full",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7421,
+     "sd": 0.02124
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -4.033,
+     "balanced": -5.145,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5818,
+       "sd": 0.02752
+      },
+      "share_predicted_positive": {
+       "mean": 0.03176,
+       "sd": 0.01069
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6986,
+       "sd": 0.005899
+      },
+      "share_predicted_positive": {
+       "mean": 0.2435,
+       "sd": 0.1033
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6171,
+       "sd": 0.03045
+      },
+      "share_predicted_positive": {
+       "mean": 0.5871,
+       "sd": 0.1513
+      }
+     }
+    },
+    "sigma": 65.26,
+    "epsilon_accounted": 1.0
+   },
+   {
+    "model": "head-public",
+    "arm": "federated",
+    "kind": "non-private",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8659,
+     "sd": 0.05474
+    },
+    "lr": 1.0,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 61.31,
+     "balanced": 33.79,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.6629,
+       "sd": 0.1409
+      },
+      "share_predicted_positive": {
+       "mean": 0.5859,
+       "sd": 0.3896
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.5942,
+       "sd": 0.09722
+      },
+      "share_predicted_positive": {
+       "mean": 0.09059,
+       "sd": 0.157
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.63,
+       "sd": 0.05813
+      },
+      "share_predicted_positive": {
+       "mean": 0.2329,
+       "sd": 0.3771
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "federated",
+    "kind": "clip only",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7213,
+     "sd": 0.0003281
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.762,
+     "balanced": -3.865,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5152,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.005882,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6945,
+       "sd": 0.001632
+      },
+      "share_predicted_positive": {
+       "mean": 0.3835,
+       "sd": 0.002631
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6941,
+       "sd": 0.001999
+      },
+      "share_predicted_positive": {
+       "mean": 0.4447,
+       "sd": 0.003222
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "federated",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7218,
+     "sd": 0.001774
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.751,
+     "balanced": -4.134,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5152,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.005882,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6858,
+       "sd": 0.02384
+      },
+      "share_predicted_positive": {
+       "mean": 0.3612,
+       "sd": 0.01476
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.5986,
+       "sd": 0.01032
+      },
+      "share_predicted_positive": {
+       "mean": 0.6047,
+       "sd": 0.01052
+      }
+     }
+    },
+    "variance_per_site": 8361206220,
+    "noise_sd_over_gamma_c": 11.16,
+    "epsilon_accounted": 8.0
+   },
+   {
+    "model": "head-public",
+    "arm": "federated",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7208,
+     "sd": 0.001545
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.72,
+     "balanced": -4.033,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5182,
+       "sd": 0.01268
+      },
+      "share_predicted_positive": {
+       "mean": 0.007059,
+       "sd": 0.004922
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6853,
+       "sd": 0.01362
+      },
+      "share_predicted_positive": {
+       "mean": 0.3376,
+       "sd": 0.02516
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6233,
+       "sd": 0.006828
+      },
+      "share_predicted_positive": {
+       "mean": 0.5588,
+       "sd": 0.011
+      }
+     }
+    },
+    "variance_per_site": 27554770319,
+    "noise_sd_over_gamma_c": 20.26,
+    "epsilon_accounted": 4.0
+   },
+   {
+    "model": "head-public",
+    "arm": "federated",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7182,
+     "sd": 0.002881
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.653,
+     "balanced": -3.936,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5182,
+       "sd": 0.01268
+      },
+      "share_predicted_positive": {
+       "mean": 0.007059,
+       "sd": 0.004922
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.665,
+       "sd": 0.02022
+      },
+      "share_predicted_positive": {
+       "mean": 0.2976,
+       "sd": 0.01745
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6631,
+       "sd": 0.02337
+      },
+      "share_predicted_positive": {
+       "mean": 0.4765,
+       "sd": 0.03085
+      }
+     }
+    },
+    "variance_per_site": 94977296281,
+    "noise_sd_over_gamma_c": 37.62,
+    "epsilon_accounted": 2.0
+   },
+   {
+    "model": "head-public",
+    "arm": "federated",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7155,
+     "sd": 0.008965
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.566,
+     "balanced": -4.078,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5242,
+       "sd": 0.01728
+      },
+      "share_predicted_positive": {
+       "mean": 0.009412,
+       "sd": 0.006707
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6611,
+       "sd": 0.01774
+      },
+      "share_predicted_positive": {
+       "mean": 0.2494,
+       "sd": 0.01354
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6423,
+       "sd": 0.02759
+      },
+      "share_predicted_positive": {
+       "mean": 0.5282,
+       "sd": 0.06865
+      }
+     }
+    },
+    "variance_per_site": 336486989948,
+    "noise_sd_over_gamma_c": 70.81,
+    "epsilon_accounted": 1.0
+   }
+  ],
+  "circor": [
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "non-private",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.843,
+     "sd": 0.01876
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 0.1366,
+     "balanced": -0.2917,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.7386,
+       "sd": 0.02793
+      },
+      "share_predicted_positive": {
+       "mean": 0.2882,
+       "sd": 0.1419
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.761,
+       "sd": 0.03263
+      },
+      "share_predicted_positive": {
+       "mean": 0.24,
+       "sd": 0.1018
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7208,
+       "sd": 0.04114
+      },
+      "share_predicted_positive": {
+       "mean": 0.4259,
+       "sd": 0.2154
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "clip only",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8442,
+     "sd": 0.01577
+    },
+    "lr": 0.3,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.773,
+     "balanced": -3.907,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.6,
+       "sd": 0.008299
+      },
+      "share_predicted_positive": {
+       "mean": 0.03882,
+       "sd": 0.003222
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7587,
+       "sd": 0.02828
+      },
+      "share_predicted_positive": {
+       "mean": 0.2012,
+       "sd": 0.06542
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7488,
+       "sd": 0.02691
+      },
+      "share_predicted_positive": {
+       "mean": 0.2353,
+       "sd": 0.08969
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.835,
+     "sd": 0.02745
+    },
+    "lr": 0.1,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -4.008,
+     "balanced": -4.946,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5939,
+       "sd": 0.006776
+      },
+      "share_predicted_positive": {
+       "mean": 0.03647,
+       "sd": 0.002631
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.704,
+       "sd": 0.009861
+      },
+      "share_predicted_positive": {
+       "mean": 0.1318,
+       "sd": 0.01695
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.75,
+       "sd": 0.003371
+      },
+      "share_predicted_positive": {
+       "mean": 0.2576,
+       "sd": 0.0475
+      }
+     }
+    },
+    "sigma": 1.363,
+    "epsilon_accounted": 8.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.821,
+     "sd": 0.02752
+    },
+    "lr": 0.1,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -5.26,
+     "balanced": -6.775,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.6152,
+       "sd": 0.02298
+      },
+      "share_predicted_positive": {
+       "mean": 0.04471,
+       "sd": 0.008921
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7227,
+       "sd": 0.03102
+      },
+      "share_predicted_positive": {
+       "mean": 0.2047,
+       "sd": 0.05694
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7107,
+       "sd": 0.02444
+      },
+      "share_predicted_positive": {
+       "mean": 0.4482,
+       "sd": 0.1001
+      }
+     }
+    },
+    "sigma": 2.191,
+    "epsilon_accounted": 4.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8074,
+     "sd": 0.02745
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -4.84,
+     "balanced": -5.717,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.6,
+       "sd": 0.01355
+      },
+      "share_predicted_positive": {
+       "mean": 0.03882,
+       "sd": 0.005261
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7025,
+       "sd": 0.01316
+      },
+      "share_predicted_positive": {
+       "mean": 0.2129,
+       "sd": 0.06776
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.716,
+       "sd": 0.03563
+      },
+      "share_predicted_positive": {
+       "mean": 0.3671,
+       "sd": 0.109
+      }
+     }
+    },
+    "sigma": 3.847,
+    "epsilon_accounted": 2.0
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7773,
+     "sd": 0.0169
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -4.53,
+     "balanced": -4.646,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5758,
+       "sd": 0.01071
+      },
+      "share_predicted_positive": {
+       "mean": 0.02941,
+       "sd": 0.004159
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6675,
+       "sd": 0.02163
+      },
+      "share_predicted_positive": {
+       "mean": 0.1906,
+       "sd": 0.05188
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6734,
+       "sd": 0.01419
+      },
+      "share_predicted_positive": {
+       "mean": 0.2235,
+       "sd": 0.07264
+      }
+     }
+    },
+    "sigma": 7.073,
+    "epsilon_accounted": 1.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "non-private",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8582,
+     "sd": 0.009797
+    },
+    "lr": 0.01,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 0.02398,
+     "balanced": -0.3359,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.7623,
+       "sd": 0.03096
+      },
+      "share_predicted_positive": {
+       "mean": 0.3529,
+       "sd": 0.09657
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7711,
+       "sd": 0.03268
+      },
+      "share_predicted_positive": {
+       "mean": 0.3388,
+       "sd": 0.09536
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6793,
+       "sd": 0.04471
+      },
+      "share_predicted_positive": {
+       "mean": 0.5776,
+       "sd": 0.1296
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "clip only",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.8328,
+     "sd": 0.01631
+    },
+    "lr": 0.3,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.412,
+     "balanced": -3.718,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.6788,
+       "sd": 0.0249
+      },
+      "share_predicted_positive": {
+       "mean": 0.06941,
+       "sd": 0.009666
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7875,
+       "sd": 0.02069
+      },
+      "share_predicted_positive": {
+       "mean": 0.2094,
+       "sd": 0.0548
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7764,
+       "sd": 0.02008
+      },
+      "share_predicted_positive": {
+       "mean": 0.2635,
+       "sd": 0.09696
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7919,
+     "sd": 0.01781
+    },
+    "lr": 0.1,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.605,
+     "balanced": -3.563,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.6212,
+       "sd": 0.01071
+      },
+      "share_predicted_positive": {
+       "mean": 0.04706,
+       "sd": 0.004159
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7614,
+       "sd": 0.01298
+      },
+      "share_predicted_positive": {
+       "mean": 0.1847,
+       "sd": 0.04254
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7643,
+       "sd": 0.01104
+      },
+      "share_predicted_positive": {
+       "mean": 0.18,
+       "sd": 0.04109
+      }
+     }
+    },
+    "sigma": 1.363,
+    "epsilon_accounted": 8.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7867,
+     "sd": 0.01846
+    },
+    "lr": 0.1,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.832,
+     "balanced": -3.896,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.6182,
+       "sd": 0.01268
+      },
+      "share_predicted_positive": {
+       "mean": 0.04588,
+       "sd": 0.004922
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7645,
+       "sd": 0.01197
+      },
+      "share_predicted_positive": {
+       "mean": 0.1859,
+       "sd": 0.03664
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7654,
+       "sd": 0.0157
+      },
+      "share_predicted_positive": {
+       "mean": 0.1965,
+       "sd": 0.0413
+      }
+     }
+    },
+    "sigma": 2.191,
+    "epsilon_accounted": 4.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7735,
+     "sd": 0.01728
+    },
+    "lr": 0.1,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -4.305,
+     "balanced": -4.639,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.6152,
+       "sd": 0.008299
+      },
+      "share_predicted_positive": {
+       "mean": 0.04471,
+       "sd": 0.003222
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7559,
+       "sd": 0.02687
+      },
+      "share_predicted_positive": {
+       "mean": 0.1694,
+       "sd": 0.05446
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7438,
+       "sd": 0.02014
+      },
+      "share_predicted_positive": {
+       "mean": 0.2071,
+       "sd": 0.06802
+      }
+     }
+    },
+    "sigma": 3.847,
+    "epsilon_accounted": 2.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7397,
+     "sd": 0.02345
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -3.364,
+     "balanced": -3.329,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5848,
+       "sd": 0.03142
+      },
+      "share_predicted_positive": {
+       "mean": 0.03294,
+       "sd": 0.0122
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7053,
+       "sd": 0.04114
+      },
+      "share_predicted_positive": {
+       "mean": 0.16,
+       "sd": 0.06903
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7075,
+       "sd": 0.04292
+      },
+      "share_predicted_positive": {
+       "mean": 0.1565,
+       "sd": 0.06637
+      }
+     }
+    },
+    "sigma": 7.073,
+    "epsilon_accounted": 1.0
+   }
+  ],
+  "naive": [
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "non-private",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.867,
+     "sd": 0.01785
+    },
+    "lr": 0.03,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 0.7591,
+     "balanced": 0.4084,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.7413,
+       "sd": 0.03994
+      },
+      "share_predicted_positive": {
+       "mean": 0.2353,
+       "sd": 0.2071
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.7279,
+       "sd": 0.06586
+      },
+      "share_predicted_positive": {
+       "mean": 0.1235,
+       "sd": 0.07429
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.7354,
+       "sd": 0.05611
+      },
+      "share_predicted_positive": {
+       "mean": 0.16,
+       "sd": 0.1188
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "clip only",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.79,
+     "sd": 0.0362
+    },
+    "lr": 3.0,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": -2.153,
+     "balanced": -6.718,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.6737,
+       "sd": 0.1143
+      },
+      "share_predicted_positive": {
+       "mean": 0.07765,
+       "sd": 0.05784
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.689,
+       "sd": 0.09496
+      },
+      "share_predicted_positive": {
+       "mean": 0.1318,
+       "sd": 0.1093
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6742,
+       "sd": 0.1113
+      },
+      "share_predicted_positive": {
+       "mean": 0.3071,
+       "sd": 0.3102
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.6326,
+     "sd": 0.003762
+    },
+    "lr": 0.003,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 2.356,
+     "balanced": 0.6139,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     }
+    },
+    "sigma": 1.363,
+    "epsilon_accounted": 8.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.6331,
+     "sd": 0.004932
+    },
+    "lr": 0.003,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 2.358,
+     "balanced": 0.567,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     }
+    },
+    "sigma": 2.191,
+    "epsilon_accounted": 4.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.6348,
+     "sd": 0.007652
+    },
+    "lr": 0.003,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 2.347,
+     "balanced": 0.5436,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     }
+    },
+    "sigma": 3.847,
+    "epsilon_accounted": 2.0
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.6349,
+     "sd": 0.01247
+    },
+    "lr": 0.003,
+    "lr_grid": [
+     0.003,
+     0.01,
+     0.03,
+     0.1,
+     0.3,
+     1.0,
+     3.0
+    ],
+    "thresholds_from": {
+     "prevalence": 2.321,
+     "balanced": 0.7962,
+     "zero": 0.0
+    },
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     }
+    },
+    "sigma": 7.073,
+    "epsilon_accounted": 1.0
+   }
+  ],
+  "search": [
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "searches": 5,
+    "auroc": {
+     "mean": 0.7478,
+     "sd": 0.03909
+    },
+    "grid": [
+     0.01,
+     0.03,
+     0.1
+    ],
+    "noise": 1.891,
+    "score_sigma": 0.06745,
+    "epsilon_accounted": 8.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5667,
+       "sd": 0.05526
+      },
+      "share_predicted_positive": {
+       "mean": 0.02588,
+       "sd": 0.02145
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "searches": 5,
+    "auroc": {
+     "mean": 0.7707,
+     "sd": 0.04203
+    },
+    "grid": [
+     0.01,
+     0.03,
+     0.1
+    ],
+    "noise": 3.453,
+    "score_sigma": 0.1294,
+    "epsilon_accounted": 4.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5879,
+       "sd": 0.04204
+      },
+      "share_predicted_positive": {
+       "mean": 0.03412,
+       "sd": 0.01632
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "searches": 5,
+    "auroc": {
+     "mean": 0.7486,
+     "sd": 0.05096
+    },
+    "grid": [
+     0.01,
+     0.03,
+     0.1
+    ],
+    "noise": 6.569,
+    "score_sigma": 0.2499,
+    "epsilon_accounted": 2.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.6144,
+       "sd": 0.03975
+      },
+      "share_predicted_positive": {
+       "mean": 0.04588,
+       "sd": 0.01523
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "searches": 5,
+    "auroc": {
+     "mean": 0.7358,
+     "sd": 0.01133
+    },
+    "grid": [
+     0.01,
+     0.03,
+     0.1
+    ],
+    "noise": 12.7,
+    "score_sigma": 0.485,
+    "epsilon_accounted": 1.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5909,
+       "sd": 0.03214
+      },
+      "share_predicted_positive": {
+       "mean": 0.03529,
+       "sd": 0.01248
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "searches": 5,
+    "auroc": {
+     "mean": 0.7892,
+     "sd": 0.03485
+    },
+    "grid": [
+     0.003,
+     0.01,
+     0.03
+    ],
+    "noise": 1.891,
+    "score_sigma": 0.06745,
+    "epsilon_accounted": 8.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5667,
+       "sd": 0.03488
+      },
+      "share_predicted_positive": {
+       "mean": 0.02588,
+       "sd": 0.01354
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "searches": 5,
+    "auroc": {
+     "mean": 0.7809,
+     "sd": 0.01509
+    },
+    "grid": [
+     0.003,
+     0.01,
+     0.03
+    ],
+    "noise": 3.453,
+    "score_sigma": 0.1294,
+    "epsilon_accounted": 4.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5667,
+       "sd": 0.03803
+      },
+      "share_predicted_positive": {
+       "mean": 0.02588,
+       "sd": 0.01476
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "searches": 5,
+    "auroc": {
+     "mean": 0.7498,
+     "sd": 0.0197
+    },
+    "grid": [
+     0.003,
+     0.01,
+     0.03
+    ],
+    "noise": 6.569,
+    "score_sigma": 0.2499,
+    "epsilon_accounted": 2.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5788,
+       "sd": 0.006776
+      },
+      "share_predicted_positive": {
+       "mean": 0.03059,
+       "sd": 0.002631
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "searches": 5,
+    "auroc": {
+     "mean": 0.685,
+     "sd": 0.03702
+    },
+    "grid": [
+     0.003,
+     0.01,
+     0.03
+    ],
+    "noise": 12.7,
+    "score_sigma": 0.485,
+    "epsilon_accounted": 1.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5599,
+       "sd": 0.03478
+      },
+      "share_predicted_positive": {
+       "mean": 0.02471,
+       "sd": 0.01523
+      }
+     }
+    }
+   }
+  ],
+  "objpert": [
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "non-private",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7498,
+     "sd": 0.0
+    },
+    "sigma": 0.0,
+    "epsilon_accounted": null,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6683,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.1529,
+       "sd": 0.0
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.684,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.1882,
+       "sd": 0.0
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7503,
+     "sd": 0.02242
+    },
+    "sigma": 0.6554,
+    "epsilon_accounted": 8.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5212,
+       "sd": 0.0332
+      },
+      "share_predicted_positive": {
+       "mean": 0.008235,
+       "sd": 0.01289
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6734,
+       "sd": 0.02505
+      },
+      "share_predicted_positive": {
+       "mean": 0.1812,
+       "sd": 0.08102
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6688,
+       "sd": 0.04956
+      },
+      "share_predicted_positive": {
+       "mean": 0.2976,
+       "sd": 0.1543
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7498,
+     "sd": 0.02478
+    },
+    "sigma": 1.203,
+    "epsilon_accounted": 4.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5273,
+       "sd": 0.03773
+      },
+      "share_predicted_positive": {
+       "mean": 0.01059,
+       "sd": 0.01465
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6741,
+       "sd": 0.02213
+      },
+      "share_predicted_positive": {
+       "mean": 0.18,
+       "sd": 0.07744
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6754,
+       "sd": 0.02626
+      },
+      "share_predicted_positive": {
+       "mean": 0.2871,
+       "sd": 0.1087
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7431,
+     "sd": 0.03361
+    },
+    "sigma": 2.248,
+    "epsilon_accounted": 2.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5303,
+       "sd": 0.04149
+      },
+      "share_predicted_positive": {
+       "mean": 0.01176,
+       "sd": 0.01611
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6665,
+       "sd": 0.0204
+      },
+      "share_predicted_positive": {
+       "mean": 0.1741,
+       "sd": 0.08263
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6705,
+       "sd": 0.02983
+      },
+      "share_predicted_positive": {
+       "mean": 0.3071,
+       "sd": 0.1233
+      }
+     }
+    }
+   },
+   {
+    "model": "head-panns",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7286,
+     "sd": 0.04609
+    },
+    "sigma": 4.305,
+    "epsilon_accounted": 1.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5303,
+       "sd": 0.04149
+      },
+      "share_predicted_positive": {
+       "mean": 0.01176,
+       "sd": 0.01611
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6476,
+       "sd": 0.02411
+      },
+      "share_predicted_positive": {
+       "mean": 0.1682,
+       "sd": 0.095
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6489,
+       "sd": 0.04141
+      },
+      "share_predicted_positive": {
+       "mean": 0.3176,
+       "sd": 0.1725
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "non-private",
+    "epsilon": null,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.739,
+     "sd": 0.0
+    },
+    "sigma": 0.0,
+    "epsilon_accounted": null,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6276,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.1882,
+       "sd": 0.0
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6506,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.2118,
+       "sd": 0.0
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 8.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7391,
+     "sd": 0.01848
+    },
+    "sigma": 0.6554,
+    "epsilon_accounted": 8.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6239,
+       "sd": 0.03459
+      },
+      "share_predicted_positive": {
+       "mean": 0.3518,
+       "sd": 0.2624
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.6063,
+       "sd": 0.05005
+      },
+      "share_predicted_positive": {
+       "mean": 0.5318,
+       "sd": 0.3581
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 4.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.736,
+     "sd": 0.01457
+    },
+    "sigma": 1.203,
+    "epsilon_accounted": 4.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.624,
+       "sd": 0.0327
+      },
+      "share_predicted_positive": {
+       "mean": 0.3576,
+       "sd": 0.2648
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.579,
+       "sd": 0.05182
+      },
+      "share_predicted_positive": {
+       "mean": 0.6,
+       "sd": 0.4084
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 2.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7267,
+     "sd": 0.01641
+    },
+    "sigma": 2.248,
+    "epsilon_accounted": 2.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6092,
+       "sd": 0.03098
+      },
+      "share_predicted_positive": {
+       "mean": 0.3694,
+       "sd": 0.2699
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.5813,
+       "sd": 0.06334
+      },
+      "share_predicted_positive": {
+       "mean": 0.6447,
+       "sd": 0.3921
+      }
+     }
+    }
+   },
+   {
+    "model": "head-public",
+    "arm": "central",
+    "kind": "DP",
+    "epsilon": 1.0,
+    "seeds": 5,
+    "auroc": {
+     "mean": 0.7082,
+     "sd": 0.01893
+    },
+    "sigma": 4.305,
+    "epsilon_accounted": 1.0,
+    "at_thresholds": {
+     "zero": {
+      "balanced_accuracy": {
+       "mean": 0.5,
+       "sd": 0.0
+      },
+      "share_predicted_positive": {
+       "mean": 0.0,
+       "sd": 0.0
+      }
+     },
+     "prevalence": {
+      "balanced_accuracy": {
+       "mean": 0.6027,
+       "sd": 0.02585
+      },
+      "share_predicted_positive": {
+       "mean": 0.3435,
+       "sd": 0.2474
+      }
+     },
+     "balanced": {
+      "balanced_accuracy": {
+       "mean": 0.5775,
+       "sd": 0.04461
+      },
+      "share_predicted_positive": {
+       "mean": 0.6447,
+       "sd": 0.356
+      }
+     }
+    }
+   }
+  ]
+ },
+ "environment": {
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+  "driver": "620.70.06",
+  "torch": "2.13.0+cu130",
+  "torch_cuda": "13.0",
+  "cublas_version": "12.9.3",
+  "kernel": "5.14.0-687.66.1.el9_8.x86_64"
+ }
+}
