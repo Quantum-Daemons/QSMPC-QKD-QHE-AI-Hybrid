@@ -145,8 +145,12 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
   // against a 0.901 AUC.
   const recordedMetric = rec.metric_name as string | undefined;
   const metricMismatch = recordedMetric != null && recordedMetric !== spec.metric.name;
-  const headline = numeric.filter(([k]) => !isCompanion(k));
-  const companion = numeric.filter(([k]) => isCompanion(k));
+  // The registry's declared metric is the headline by definition, whatever its name (Round 86): the chest X-ray model is
+  // judged on `auroc`, which the companion list carries as the aggregate beside AUC-PR, and its row fell into the
+  // companion block with no baseline and the caption "the same run reported on a different metric".
+  const companionHere = (k: string) => k !== spec.metric.name && isCompanion(k);
+  const headline = numeric.filter(([k]) => !companionHere(k));
+  const companion = numeric.filter(([k]) => companionHere(k));
   // Where the teacher flags almost nothing, agreement is high whatever the student does (Round 86): finance's teacher flags 1,117 of 1,523,504
   // window rows, so a student that never flags would agree 0.9993, above this student's 0.9968. The counts are the measurement script's.
   const flags = rec.flag_counts as { teacher_flagged?: number; student_flagged?: number } | undefined;
