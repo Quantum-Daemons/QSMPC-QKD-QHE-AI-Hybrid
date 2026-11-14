@@ -4647,4 +4647,26 @@ baseline were added the same way. `scripts/data/build_cxr_fl_summary.py` wrote `
 and the card's `web/public/data/medical/cxr_fl.json`, aggregate figures only, with no local path. Tests: the preparation on
 a synthetic NIH folder (`tests/test_r86_cxr_prepare.py`) and the analysis's arithmetic (`tests/test_r86_cxr_fl.py`). A
 local preview of the branch drew the card from the file with no console error and no table wider than its box.
+### PR #43 on the deployed site (2026-11-14)
+
+Merged as `f7e69fc` and deployed by `scripts/deploy_demo.sh --return-to-main`: the box is on `main` and serves
+`index-BmeXKk2o.js`, whose SHA-256 (`29fd89ed...cc96`) is the same in the deploy log, on the public page and in a local
+`VITE_CLIENT_ONLY=1` build of `main` with the wasm rebuilt by `scripts/build_wasm.sh`. The image's Go and Rust stages ran
+their tests on the demo host. Walked in Chrome on the DeFi page with "A 2-of-3 committee, re-encrypting to Carol
+(threshold BGV)" chosen: five checks, one liquidatable, all five matching the clear check and every bit's signature
+verifying; 5.24 MB of threshold-BGV traffic and 648 AND gates per check; the pairs 1 and 2, 2 and 3, 3 and 1; 189-bit
+uniform flooding against a worst case of $`2^{47.8}`$; every other slot zero at five of five checks; the committee's limits
+and the canvas's "Carol, with a 2-of-3 committee". Carol's custody on the same page: five of five, 367 AND gates, 0.39 MB of
+sealed CKKS traffic. No console error.
+
+### PR #44 on the deployed site (2026-11-14)
+
+Merged as `2799d79` and deployed: the box is on `main` and serves `index-CfC7X8aP.js`, whose SHA-256 (`d89f1eef...a51d`) is
+the same in the deploy log, on the public page and in a local `VITE_CLIENT_ONLY=1` build of `main`; the served
+`data/medical/cxr_fl.json` is byte for byte the file on `main`. In Chrome the medical page draws "Chest X-ray federation,
+four hospitals by view" with the badge "measured offline": the four hospitals (AP 11.9% to 77.4%), the eight arms (pooled
+$`0.812 \pm 0.001`$, FedAvg $`0.805 \pm 0.002`$), the view in the scores, the probe against an untrained network, the maps
+against the boxes (13.9% pooled and 20.5% federated against 7.1% for a uniform map and 2.6% for the centre), NIH's credit
+line and the card's CSV and JSON buttons, each with its own accessible name; no table wider than its box. No console
+error.
 
