@@ -4939,10 +4939,12 @@ The owner's read-only audit of 2026-11-13 listed eleven points on the deployed p
 
 Checked rather than changed: the Hub's API on 2026-11-15 gives all fifteen repositories public, and the six whose
 licence is `other` (the three BreastMNIST models, the two telemanom models and the chest X-ray model) each carry
-`license_name` and `license_link`, as `publish_hf.py` writes them. Left for the owner: the footer with the repository,
-licence, version and business page, whose drafted text carries an AI-use line; the finance page's untrained GNN tab;
-and the telecom model's key name beside its label. The student's sample fetched twice in one run (item 9) is fixed in
-PR #55, which routes it through `publishedSampleOf`.
+`license_name` and `license_link`, as `publish_hf.py` writes them. The live `/walkthrough/` serves the marimo notebook
+"Check it yourself: the flows 5G-NIDD holds twice", Python on Pyodide from the site's own origin, not the app's 404
+(item 8, read in Chrome on 2026-11-15). Left for the owner: the footer with the repository, licence, version and
+business page, whose drafted text carries an AI-use line; the finance page's untrained GNN tab; and the telecom
+model's key name beside its label. The student's sample fetched twice in one run (item 9) is fixed in PR #55, which
+routes it through `publishedSampleOf`.
 
 The fourth: the audit asked for the regulatory clock's dated sentence on the FAR to be re-checked before post F. The
 Federal Register's API on 2026-11-15: since the order of 2026-06-22, the FAR's proposed rules are the Revolutionary
