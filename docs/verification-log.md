@@ -4997,3 +4997,31 @@ keep a rollback broken in that browser. A real Caddy (caddy:2-alpine) serving th
 exactly that for ten paths, with COOP and COEP unchanged; `caddy validate` passes for both files.
 `tests/test_r86_caching_headers.py` holds both rules, the matchers' root against the file server's, and the hash in
 Vite's asset names, and fails when the file matcher is removed.
+
+### PRs #49 to #54 on the deployed site (2026-11-15)
+
+Merged with a merge commit each, on green CI: #49 (`8d1aea5`), #50 (`f8a2a5d`), #51 (`7c8cb5e`), #52 (`8569760`), #53
+(`5f1e19b`) and #54 (`a9cc2f3`). One deploy of `a9cc2f3` with `--return-to-main`: the box is on `main` at `a9cc2f3` and
+serves `/assets/index-J8JJSd0J.js`, public URL 200. The bundle agrees three ways: the deploy's report, the live
+`index.html`, and a local client-only build of `a9cc2f3`, the live file and the local one with SHA-256
+`042f66732ec32eb1b91913a2dc5a86cf71d5252cf269e77098eecedb62c5e529`.
+
+Walked in Chrome on the deployed site, each path loaded fresh (see the caching finding in PR #56's entry):
+
+- **Every page.** `/`, `/usecases`, `/orchestration`, `/validations` and `/value` on the new bundle, with the same
+  headings and buttons as before the deploy, each 20 characters longer for the sidebar's new "Open-source notices"
+  link; no console error and no horizontal overflow on any. `/agentic-ai` sends the client-only build to the use cases,
+  as designed. `/walkthrough/` serves the marimo notebook. `/licenses/js-bundle.txt` serves the notices of 51 packages.
+- **Medical.** A run with the CNN under MPC: 9 of 9 stages. All four published models re-scored and PASS, the chest
+  X-ray model's row "PASS, accuracy 0.6250 against 0.6250, 16 of 16", the MPC argmax class 1 as in the clear. Under
+  the scatter, Bland and Altman's plot over the run's 171 rows and the precision in bits. The DP card's chart from 20
+  recorded draws, the run marked. The timeline bar replays the log: back from event 227 of 234 (`sign_result`) to event
+  84 (`federated_training`, 1.252 s), the ledger shrinking from 16 rows to 10. The sequence diagram has 16 messages,
+  with its SVG and Mermaid downloads.
+- **Satellite.** The VUS-PR card (0.556 at TSB-AD's buffer, 97 steps; point-wise AP 0.904), its "events count, not
+  steps" and "a figure free of its grid" notes, and the OPS-SAT boundary card. A run: 6 of 6 stages, four models PASS.
+- **Finance, telecom, genomics, DeFi.** 12, 6, 8 and 6 of their stages. Finance's three ONNX models PASS, with the
+  GNN checked inside the run. Telecom's three PASS. Genomics publishes no model. On DeFi, the ledger and the sequence
+  diagram appear. Bland and Altman's plot appears on finance and telecom.
+
+The checklist's PI43 to PI49 rows record the live readings.
