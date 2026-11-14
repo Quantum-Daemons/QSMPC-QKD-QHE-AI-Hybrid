@@ -4937,10 +4937,12 @@ The owner's read-only audit of 2026-11-13 listed eleven points on the deployed p
 - **The clock's source links are 24 px targets.** They are a list of links, not a sentence, and wrapped in a narrow
   column, their 24 px circles met. Each link is an inline block of at least 24 px: 26 px for one line at 390 px.
 
-Left for the owner: the footer with the repository, licence, version and business page, whose drafted text carries an
-AI-use line, the finance page's untrained GNN tab, the telecom model's key name beside its label, and the Hub cards'
-licence fields, which `publish_hf.py` already writes as `license_name` and `license_link`. The student's sample fetched
-twice in one run is a cache hit; it waits for the split-inference PR's `publishedSampleOf`, which the student can share.
+Checked rather than changed: the Hub's API on 2026-11-15 gives all fifteen repositories public, and the six whose
+licence is `other` (the three BreastMNIST models, the two telemanom models and the chest X-ray model) each carry
+`license_name` and `license_link`, as `publish_hf.py` writes them. Left for the owner: the footer with the repository,
+licence, version and business page, whose drafted text carries an AI-use line; the finance page's untrained GNN tab;
+and the telecom model's key name beside its label. The student's sample fetched twice in one run is a cache hit; it
+waits for the split-inference PR's `publishedSampleOf`, which the student can share.
 
 The fourth: the audit asked for the regulatory clock's dated sentence on the FAR to be re-checked before post F. The
 Federal Register's API on 2026-11-15: since the order of 2026-06-22, the FAR's proposed rules are the Revolutionary
