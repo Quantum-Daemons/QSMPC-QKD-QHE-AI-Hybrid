@@ -13,6 +13,7 @@ import { setRunStatus } from "./runStatus";
 
 import { downloadCSV, downloadJSON, downloadNodePNG, FrameRecorder } from "./export";
 import type { DiagramConfig } from "./useCaseFlows";
+import { foldRun, stageMarks } from "./runTimeline";
 
 /**
  * Whether a use case runs the stage that reads a given control.
@@ -299,6 +300,9 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   const [signature, setSignature] = useState<any>(null);
   const [artifacts, setArtifacts] = useState<Record<string, any>>({});
   const [benchmark, setBenchmark] = useState<any>(null);   // unified: assembled from the live run
+  // THE TIMELINE (Round 86, the owner's choice of 2026-11-14): a position in the recorded log, as a count of events.
+  // null follows the run; a number shows the canvas, the log and the metrics as they stood after that many events.
+  const [cursor, setCursor] = useState<number | null>(null);
   const [gifBusy, setGifBusy] = useState(false);
   const [webmBusy, setWebmBusy] = useState(false);
 
@@ -425,7 +429,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
    */
   const reset = () => {
     setEvents([]); setActive(null); setDone(new Set()); setMetrics({}); setSignature(null);
-    setArtifacts({}); setBenchmark(null); setState("idle"); setRunId(null);
+    setArtifacts({}); setBenchmark(null); setState("idle"); setRunId(null); setCursor(null);
     stageStartRef.current = {}; stageMsRef.current = {};
     recorderRef.current = new FrameRecorder(() => recordRef.current);
   };
@@ -518,16 +522,32 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     if (runId) { setState("stopping"); await api.stop(runId); }
   };
 
+  // The animation of a finished run is drawn by replaying its log (Round 86, the timeline): the figure is set to each
+  // stage boundary in turn and captured once React has committed and painted it, so every frame shows its own moment
+  // and the last one the finished run. The live recorder captures inside `handleEvent`, before React commits, so a
+  // frame could show the moment before, and nothing captured after the run's last metrics. It is kept for an export
+  // made while a run is still going.
+  const nextPaint = () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  const replayFrames = async (): Promise<FrameRecorder> => {
+    const rec = new FrameRecorder(() => recordRef.current);
+    const back = cursor;
+    try {
+      for (const at of stageMarks(events)) { setCursor(at); await nextPaint(); await rec.capture(); }
+    } finally { setCursor(back); }
+    return rec;
+  };
+  const framesForExport = async (): Promise<FrameRecorder | null> =>
+    (inFlight ? recorderRef.current : events.length > 0 ? await replayFrames() : null);
   const downloadGif = async (filename: string) => {
-    if (!recorderRef.current || recorderRef.current.count === 0) return;
+    if (events.length === 0) return;
     setGifBusy(true);
-    try { await recorderRef.current.encodeGIF(filename); }
+    try { const rec = await framesForExport(); if (rec && rec.count > 0) await rec.encodeGIF(filename); }
     finally { setGifBusy(false); }
   };
   const downloadWebm = async (filename: string) => {
-    if (!recorderRef.current || recorderRef.current.count === 0) return;
+    if (events.length === 0) return;
     setWebmBusy(true);
-    try { await recorderRef.current.encodeWebM(filename); }
+    try { const rec = await framesForExport(); if (rec && rec.count > 0) await rec.encodeWebM(filename); }
     finally { setWebmBusy(false); }
   };
   const downloadPng = async (filename: string) => {
@@ -542,6 +562,15 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   // run. Published here, once, so neither page can forget it; every in-flight state is shown,
   // "pausing" and "stopping" included, which the chip's exact-match test left out.
   const inFlight = !["idle", "done", "stopped", "error"].includes(state);
+
+  // What the canvas, the log and the metrics table show: the run as it stands, or as it stood at the cursor. The cards
+  // built from a run's artifacts are not replayed: they arrive whole at the end of the run.
+  const marks = useMemo(() => stageMarks(events), [events]);
+  const view = useMemo(() => {
+    if (cursor == null || cursor >= events.length) return { active, done, metrics, events, at: events.length };
+    return { ...foldRun(events, cursor), events: events.slice(0, cursor), at: cursor };
+  }, [cursor, events, active, done, metrics]);
+  useEffect(() => { logRef.current?.scrollTo(0, logRef.current.scrollHeight); }, [view.events.length]);
 
   // What the run's figures draw from: the crypto-agility selections, and the Parameters-panel
   // choices that change what crosses a lane. One object for both pages' canvases (Round 81): the
@@ -565,6 +594,7 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
     publishedModel, setPublishedModel, onnxBackend, setOnnxBackend,
     params, setParams, resetParams,
     runId, state, events, active, done, metrics, signature, artifacts, benchmark, diagramConfig,
+    cursor, setCursor, marks, view,
     gifBusy, webmBusy, logRef, captureFrame,
     start, startStepwise, pause, resume, step, stop,
     downloadGif, downloadWebm, downloadPng, downloadEvents, downloadMetricsCsv,

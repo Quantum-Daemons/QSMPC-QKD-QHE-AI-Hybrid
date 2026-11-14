@@ -45,6 +45,8 @@ import { heldOutCorpus, realInput, realInputCorpus, realSatelliteAnomaly, realFe
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
 import { isClientDemo } from "./demoMode";
 import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
+import { hexPrefix, sideName, type HoldsData, type MessageData, type Side } from "./runTimeline";
+import { USECASE_SPECS } from "./useCaseFlows";
 import type { MultiPsiResult } from "./clientMultiPsi";
 import { asJson, checkPinned, HubFileRefused } from "./pinnedFetch";
 import { loadQcnnHeldOut, rescoreQcnn, type QcnnRescore } from "./qcnnRescore";
@@ -1811,6 +1813,20 @@ export function runClientPipeline(
     metrics[name] = value;
     emit("metric", stage, "", { name, value });
   };
+  // What crosses between the parties and what each holds (Round 86, the timeline): the per-party panel and the sequence
+  // view read these from the log. `runTimeline.ts` says what may go in them: sizes the run measured, and hex only of bytes
+  // that cross in the clear, never a key, a seed, a share or a set member.
+  const partyName = (s: Side) => sideName(usecase, s, { custody: String(config.lending_custody ?? "") });
+  const message = (stage: string, d: MessageData) =>
+    emit("message", stage, `${partyName(d.from)} -> ${partyName(d.to)}: ${d.what}`
+      + (d.bytes != null ? `, ${d.bytes.toLocaleString("en-US")} B` : ", size not measured")
+      + (d.count != null && d.count > 1 ? ` in ${d.count.toLocaleString("en-US")} messages` : "")
+      + ` (${d.protection})`, { ...d });
+  const holds = (stage: string, d: HoldsData) =>
+    emit("holds", stage, `${partyName(d.party)} ${d.kept ? "keeps" : "now holds"} ${d.what}`, { ...d });
+  // The side whose input the private inference protects (it encrypts and decrypts) and the side that evaluates.
+  const inferClient: Side = USECASE_SPECS[usecase]?.inferenceClient ?? "a";
+  const inferServer: Side = inferClient === "a" ? "b" : "a";
 
   /**
    * Run this use case's PUBLISHED model here, on a row of its own corpus, and report what happened.
@@ -2313,6 +2329,17 @@ export function runClientPipeline(
           // and it printed a separator the run had not used - it omitted the length tag the
           // backend applies. A run log that states what the run did has to read it.
           + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="${new TextDecoder().decode(hybridCombinerInfo(kemLabel, 32)).replace(/\|$/, "")}" then transcript c1||c2||ek1||ek2: a NIST SP 800-227 s4.6.2 two-step combiner over the s4.6.3 transcript — byte-identical to the backend, asserted by check:combiner`);
+        // The handshake's two messages, both safe in the clear, and what each side keeps. The responder (side B) made
+        // its key pairs in this tab for the run; the session key never leaves either side.
+        message(stage, { from: "b", to: "a", what: `its ${kemLabel} encapsulation key and an X25519 public key`,
+          bytes: bob.publicKey.length + bobXPub.length, protection: "public", hex: hexPrefix(bob.publicKey) });
+        message(stage, { from: "a", to: "b", what: `the ${kemLabel} ciphertext and its own X25519 public key`,
+          bytes: e.cipherText.length + aliceXPub.length, protection: "public", hex: hexPrefix(e.cipherText) });
+        holds(stage, { party: "b", what: `its ${kemLabel} decapsulation key and X25519 secret`, kept: true });
+        holds(stage, { party: "a", what: "its X25519 secret", kept: true });
+        for (const side of ["a", "b"]) {
+          holds(stage, { party: side, what: `the ${sessA.length * 8}-bit session key${ok ? "" : ", which the other side did not derive"}`, kept: true });
+        }
         // Quantum entropy source (simulated state-vector measurement, not hardware) — measured health + throughput.
         const qr = generateQuantumBits(Number(config.qrng_bits ?? qrngCfg().bits),
           { source: "sim", postProcessing: String(config.qrng_post ?? qrngCfg().post_processing),
@@ -2488,6 +2515,15 @@ export function runClientPipeline(
         // which is a shot-noise draw rounded to two places: at 1 km with no misalignment it shows
         // 0.02 while e0 is 0.0150, so 2 sqrt(2)(1 - 2 x 0.02) = 2.72 against the S of 2.74 shown.
         if (eRes) metric(stage, "e91_model_qber", Math.round(eRes.e0 * 1e4) / 1e4);
+        message(stage, { from: "a", to: "b", what: `${pulses.toLocaleString("en-US")} pulses, ${eRes ? "one photon of each entangled pair" : "BB84 states, signal and decoy"}`,
+          bytes: null, protection: "photons (simulated)" });
+        message(stage, { from: "b", to: "a", what: `which ${res.siftedBits.toLocaleString("en-US")} detections to keep, and in which bases`,
+          bytes: null, protection: "classical (simulated)" });
+        message(stage, { from: "a", to: "b", what: "the bases that match, a sample for the error rate, error correction and privacy amplification",
+          bytes: null, protection: "classical (simulated)" });
+        for (const side of ["a", "b"]) {
+          holds(stage, { party: side, what: `${res.secureKeyBits.toLocaleString("en-US")} secure key bits from the quantum channel`, kept: true });
+        }
         emit("log", stage, eRes
           // "simulated" in the line itself: /orchestration shows these figures with no other label in
           // a full deployment (the banner that says so renders only in the public demo).
@@ -2669,6 +2705,15 @@ export function runClientPipeline(
         // The satellite twin of the fibre stage's `e91_model_qber` - same reason, same precision.
         if (satERes) metric(stage, "e91_model_qber", Math.round(satERes.e0 * 1e4) / 1e4);
         (config as any)._satQber = res.qber;
+        message(stage, { from: "b", to: "a", what: `${satPulses.toLocaleString("en-US")} pulses down the free-space link, ${satERes ? "one photon of each entangled pair" : "BB84 states, signal and decoy"}`,
+          bytes: null, protection: "photons (simulated)" });
+        message(stage, { from: "a", to: "b", what: `which ${res.siftedBits.toLocaleString("en-US")} detections to keep, and in which bases`,
+          bytes: null, protection: "classical (simulated)" });
+        message(stage, { from: "b", to: "a", what: "the bases that match, a sample for the error rate, error correction and privacy amplification",
+          bytes: null, protection: "classical (simulated)" });
+        for (const side of ["a", "b"]) {
+          holds(stage, { party: side, what: `${satKeyBits.toLocaleString("en-US")} secure key bits from the downlink`, kept: true });
+        }
         emit("log", stage, satERes
           ? `free-space E91 (simulated, CHSH S=${r2(satERes.chshS)}): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${satKeyBits} bits ${satBlockNote}`
           : `free-space BB84 (simulated): ${res.channelLossDb}dB loss, QBER=${res.qber.toFixed(4)}, ${satKeyBits} bits ${satBlockNote}`);
@@ -2874,6 +2919,12 @@ export function runClientPipeline(
         }
         // What became of the telemetry, for the verdict below: a run that sent it one way must not also say it fell back.
         const quasiSent = quasi?.status === "delivered";
+        if (!abort || quasiSent) {
+          message(stage, { from: "b", to: "a", what: `${webCfg().demo_sat_telemetry_bytes} bytes of telemetry, `
+            + (quasiSent ? "one-time padded from the pre-shared key pool (one-way quasi-QSDC)" : "encoded on the quantum channel (two-way QSDC)"),
+            bytes: null, protection: "photons (simulated)" });
+          holds(stage, { party: "a", what: `the ${webCfg().demo_sat_telemetry_bytes}-byte telemetry`, kept: true });
+        }
         const afterAbort = quasiSent ? "One-way quasi-QSDC carries the telemetry instead, as the next line says." : "Telemetry falls back to the PQC session key.";
         const quasiLog = quasi == null ? null
           : quasi.status === "delivered"
@@ -3061,6 +3112,10 @@ export function runClientPipeline(
           // is a property of the protocol and the bound, not of having read the answer.
           metric(stage, "qsms_inputs", alleles ? "allele_counts" : "stand_ins");
           metric(stage, "qsms_matches_plain_total", total === rawTotal ? 1 : 0);
+          holds(stage, { party: "many", what: alleles ? "its own allele count" : "its own value", kept: true });
+          message(stage, { from: "many", to: "b", what: `two shares of its ${alleles ? "count" : "value"} mod ${p}, ${nParties} parties in all`,
+            bytes: null, count: nParties, protection: "additive shares" });
+          holds(stage, { party: "b", what: `the pooled total (${total}), and no party's own ${alleles ? "count" : "value"}`, kept: false });
           if (alleles) {
             metric(stage, "pooled_allele_count", total);
             metric(stage, "qsms_variant", alleles.variant);
@@ -3144,6 +3199,12 @@ export function runClientPipeline(
           // wherever else the PSI runs (the generic demo, or another use case set to PSI).
           const [pa, pb] = usecase === "finance_aml" ? ["Bank A", "Bank B"] : ["Party A", "Party B"];
           artifacts.psi_intersection = psi.intersection;
+          message(stage, { from: "a", to: "b", what: `${psi.blind_evaluations.toLocaleString("en-US")} blinded IDs`,
+            bytes: psi.transcript_bytes.bank_a_to_bank_b, protection: "session key" });
+          message(stage, { from: "b", to: "a", what: "the blinded IDs evaluated under its key, and the PRF values of its own IDs, shuffled",
+            bytes: psi.transcript_bytes.bank_b_to_bank_a, count: 2, protection: "session key" });
+          holds(stage, { party: "a", what: `the intersection: ${psi.intersection_size} shared IDs, and the size of the other set (${psi.size_b})`, kept: true });
+          holds(stage, { party: "b", what: `the size of the other set (${psi.size_a}), from the blinded IDs it evaluated, and nothing else about them`, kept: true });
           metric(stage, "psi_intersection_size", psi.intersection_size);
           metric(stage, "psi_set_size_a", psi.size_a);
           metric(stage, "psi_set_size_b", psi.size_b);
@@ -3231,6 +3292,17 @@ export function runClientPipeline(
               + `hospitals' patients. A review of 160 articles found decentralised learning above local training in 83 `
               + `percent of accuracy comparisons and centralised above decentralised in 78 percent (Diniz et al., npj `
               + `Digital Medicine, 2026).`);
+            {
+              const keyBytes = h.publicKeys.reduce((n, k) => n + k.length / 2, 0);
+              holds(stage, { party: "many", what: "its patients' records, which never leave it", kept: true });
+              message(stage, { from: "many", to: "b", what: "its X25519 public key, for the pairwise mask seeds",
+                bytes: keyBytes, count: h.centres.length, protection: "public" });
+              message(stage, { from: "b", to: "many", what: "every hospital's public key, relayed before the first round",
+                bytes: null, count: h.centres.length, protection: "public" });
+              message(stage, { from: "many", to: "b", what: "its update under the pairwise masks, every round",
+                bytes: null, count: h.centres.length * h.rounds, protection: "pairwise masks" });
+              holds(stage, { party: "b", what: "the federated model, from the masked updates' sum, and no hospital's own update", kept: false });
+            }
             emit("log", stage, `Secure aggregation: each of the ${h.centres.length} hospitals drew an X25519 key pair for this `
               + `run and each of the ${h.pairs} pairs derived its mask seed from their shared secret by HKDF-SHA256 `
               + `(Bonawitz et al., CCS 2017), in ${h.keyAgreementMs.toFixed(1)} ms; the aggregator received only the public `
@@ -3242,6 +3314,8 @@ export function runClientPipeline(
             // inside fresh pairwise masks. The noise comes from this tab's CSPRNG, so these figures change run to run.
             const dpRun = await fedHeartDp(sites, seed);
             artifacts.fedHeartDp = dpRun;
+            message(stage, { from: "many", to: "b", what: "its clipped gradient sum with its share of the noise, under fresh pairwise masks, every step",
+              bytes: null, count: h.centres.length * dpRun.rounds * dpRun.rows.length, protection: "pairwise masks" });
             const dp1 = dpRun.rows.find((x) => x.epsilon === 1);
             if (dp1) {
               metric(stage, "dp_epsilon", 1);
@@ -3301,6 +3375,16 @@ export function runClientPipeline(
           + `${q.roundAcc[0].toFixed(2)} after round 1, ${q.finalAcc.toFixed(2)} after round ${q.rounds}`
           + (balanced ? "; the rows are a class-balanced draw, half of them positive, so no accuracy here "
             + "estimates performance at the corpus's own rate" : ""));
+        holds(stage, { party: "many", what: "its rows, which never leave it", kept: true });
+        if (q.pairs > 0) {
+          message(stage, { from: "many", to: "b", what: "its X25519 public key, for the pairwise mask seeds",
+            bytes: q.publicKeys.reduce((n, k) => n + k.length / 2, 0), count: q.clients, protection: "public" });
+          message(stage, { from: "b", to: "many", what: "every client's public key, relayed before the first round",
+            bytes: null, count: q.clients, protection: "public" });
+        }
+        message(stage, { from: "many", to: "b", what: q.pairs > 0 ? "its update under the pairwise masks, every round" : "its update, every round",
+          bytes: null, count: q.clients * q.rounds, protection: q.pairs > 0 ? "pairwise masks" : "public" });
+        holds(stage, { party: "b", what: "the federated model, and no client's own update", kept: false });
         if (q.pairs > 0) {
           emit("log", stage, `Secure aggregation: each of the ${q.clients} clients drew an X25519 key pair for this run `
             + `and each of the ${q.pairs} pairs derived its mask seed from their shared secret by HKDF-SHA256 `
@@ -3692,6 +3776,15 @@ export function runClientPipeline(
           const ho = held ? await emitHeldOutAgreement(stage, held) : null;
           artifacts._measured_hybrid = { fheMs: real.fheMs, mpcMs: real.mpcMs, commBytes: real.commBytes,
             ctBytes: real.ctBytes, featDim: real.featDim, conv: real.conv, dense: real.dense };
+          message(stage, { from: inferClient, to: inferServer, what: "its input, encrypted under its own CKKS key",
+            bytes: real.ctBytes, protection: "CKKS" });
+          message(stage, { from: inferServer, to: inferClient, what: "the scores, still encrypted, every slot but the scores masked and flooded",
+            bytes: null, protection: "CKKS" });
+          // A garbled circuit is never zero bytes: 0 is a run that did not measure it, said as "not measured".
+          message(stage, { from: inferClient, to: inferServer, what: "the argmax in a garbled circuit, both ways",
+            bytes: real.commBytes > 0 ? real.commBytes : null, protection: "garbled circuit" });
+          holds(stage, { party: inferClient, what: "the class the model gives its input", kept: true });
+          holds(stage, { party: inferServer, what: "its model, and of the input only ciphertexts", kept: true });
           metric(stage, "fhe_max_abs_error", r2(real.maxAbsError) || real.maxAbsError);
           // The encrypted-verification figures, on the same footing telecom got in Round 33 - where
           // they existed at exactly ONE call site and the other four use cases reported only a raw
@@ -3975,6 +4068,16 @@ export function runClientPipeline(
           if (usecase === "medical_fl" && config.mpc_cnn) await runStudentUnderMpc(stage, usecase, seed, emit, metric, artifacts);
           if (usecase === "finance_aml" && config.mpc_mlp) await runMlpUnderMpc(stage, seed, emit, metric, artifacts);
           if (usecase === "finance_aml" && config.mpc_gnn) await runGnnUnderMpc(stage, seed, emit, metric, artifacts);
+          for (const [key, label] of [["mpc_cnn", "the CNN student"], ["mpc_mlp", "the MLP"], ["mpc_gnn", "the GNN"]] as const) {
+            const r = (artifacts[key] as { result?: { keyBytes?: number; ckksBytes?: number; gcBytes?: number; gcMessages?: number } } | undefined)?.result;
+            if (!r) continue;
+            message(stage, { from: inferClient, to: inferServer, what: `${label} under MPC: its CKKS public and Galois keys`,
+              bytes: r.keyBytes || null, protection: "public" });
+            message(stage, { from: inferClient, to: inferServer, what: `${label} under MPC: CKKS ciphertexts both ways, layer by layer`,
+              bytes: r.ckksBytes || null, protection: "CKKS" });
+            message(stage, { from: inferClient, to: inferServer, what: `${label} under MPC: the ReLUs and the argmax in garbled circuits, both ways`,
+              bytes: r.gcBytes || null, count: r.gcMessages, protection: "garbled circuit" });
+          }
         } else {
           // Honest last resort, and it names the half that failed: node-seal not loading (no WASM,
           // say), or the garbled-circuit protocol not completing, which includes it ABORTING on a
@@ -4074,6 +4177,17 @@ export function runClientPipeline(
             if (!(inferBackend === "qcnn-ckks" && await surfaceQcnnUnderCkks(stage, usecase, w, qcnnFeats.slice(0, w.n_qubits), emit, metric, artifacts))) {
               metric(stage, "primary_inference_class", qc.cls);
               metric(stage, "primary_inference_backend", "qcnn-trained");
+            } else {
+              // The QCNN's readout under CKKS: what `clientQcnnCkks` measured on the wire (Round 86, the timeline).
+              const qr = (artifacts.qcnn_ckks as { result?: { keyBytes: number; upBytes: number; downBytes: number; nCiphertexts: number } } | undefined)?.result;
+              if (qr) {
+                message(stage, { from: inferClient, to: inferServer, what: "the QCNN under CKKS: its CKKS public and Galois keys",
+                  bytes: qr.keyBytes, protection: "public" });
+                message(stage, { from: inferClient, to: inferServer, what: "the QCNN under CKKS: its features, encrypted",
+                  bytes: qr.upBytes, count: qr.nCiphertexts, protection: "CKKS" });
+                message(stage, { from: inferServer, to: inferClient, what: "the QCNN under CKKS: the readout, encrypted",
+                  bytes: qr.downBytes, protection: "CKKS" });
+              }
             }
             metric(stage, "qcnn_expectation_z0", r2(qc.expectation));
             metric(stage, "qcnn_inference_ms", r2(qcnnMs));
@@ -4257,6 +4371,32 @@ export function runClientPipeline(
               + (custody === "keyholder" ? "Carol holds the key, and prices and thresholds are public." : "Bob holds the key, and the pool's thresholds are its own.")));
         const pool = await runLendingTasks(inputs.map((input) => ({ kind: "check" as const, input })), init, custody === "committee" ? 1 : market.cfg.max_workers);
         const report = summariseChecks(pool, sigImpl(sig).name, market.cfg.margin_mask_bits, custody, setup);
+        {
+          // The checks' messages, grouped by what they carry, as the lending panel's "Who sent what" groups them. The
+          // pool is side A and the key holder (Bob when he holds it) side B; Bob, a member or "anyone" otherwise.
+          const sideOf = (party: string): Side => party === "the pool" ? "a"
+            : party === (custody === "borrower" ? "Bob" : "Carol") ? "b"
+            : party.startsWith("member ") ? "each active member" : party;
+          if (report.setup) {
+            message(stage, { from: sideOf("Bob"), to: "a", what: report.committee ? "his ciphertexts, signed and sealed, once" : "his ciphertext, signed and sealed, once",
+              bytes: report.setup.submissionBytes, protection: "session key" });
+          }
+          const grouped = new Map<string, { from: Side; to: Side; bytes: number; count: number }>();
+          for (const o of report.outcomes) {
+            for (const m of o.messages) {
+              const g = grouped.get(m.what) ?? { from: sideOf(m.from), to: sideOf(m.to), bytes: 0, count: 0 };
+              g.bytes += m.bytes; g.count += 1;
+              grouped.set(m.what, g);
+            }
+          }
+          for (const [what, g] of grouped) {
+            message(stage, { from: g.from, to: g.to, what: `${what}, each check`, bytes: g.bytes, count: g.count,
+              protection: g.to === "anyone" ? "public" : report.committee ? "BGV" : "session key" });
+          }
+          message(stage, { from: "a", to: "b", what: "the margin's sign in a garbled circuit, both ways, each check",
+            bytes: report.gcBytes, count: report.gcMessages, protection: "garbled circuit" });
+          holds(stage, { party: "a", what: `whether the position can be liquidated, at each of ${report.outcomes.length} hours, and no balance`, kept: false });
+        }
         if (report.committee) {
           const c = report.committee;
           emit("log", stage, `the committee: ${c.members} members, any ${c.threshold} of whom re-encrypt; a collective BGV key at N = ${2 ** c.logN} and a ${c.logQ.toFixed(0)}-bit Q, `
@@ -4401,6 +4541,10 @@ export function runClientPipeline(
         };
         metric(stage, "signature_verified", ok ? 1 : 0);
         metric(stage, "signature_bytes", sig.length);
+        message(stage, { from: "a", to: "b", what: `the run record, its ${dsa.name} signature and the public key made for this run`,
+          bytes: msg.length + sig.length + sk.publicKey.length, protection: "public", hex: hexPrefix(sig) });
+        holds(stage, { party: "a", what: `the ${dsa.name} secret key made for this run`, kept: true });
+        holds(stage, { party: "b", what: `a record that ${ok ? "verifies" : "does NOT verify"} under the run's public key`, kept: false });
         emit("log", stage, `run summary signed with ${dsa.name} (${sig.length} B, verified=${ok})`);
         break;
       }
