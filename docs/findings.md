@@ -624,6 +624,14 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   the time, against 7.1% for a uniform map and 2.6% for the centre: weak localisation. ConvNeXt-atto, once under the
   ResNet's 12-epoch recipe, reached 0.732. The labels are text-mined, with 70 to 74% of Effusion labels holding on image
   review ([`references/chest-xray-fl-prior-work.md`](../references/chest-xray-fl-prior-work.md)).
+- **Heart sounds from a new source turn the score round (2026-11-14).** The PhysioNet/CinC Challenge 2016 recordings,
+  six databases from different teams with abnormal shares from 9% to 77%, each held out in turn from a small CNN on
+  log-mel windows: with the recordings split at random the network reaches AUROC 0.961, while held out it reaches
+  0.321 to 0.728 pooled and 0.242 to 0.740 under FedAvg, and on b, c, d, e it falls below 0.5 in every seed: the
+  abnormal recordings of the held-out source score lower than its normal ones. The random split lets one patient's
+  recordings fall on both sides (the data name no patients); the held-out sources are the honest figure, and they agree
+  with the Challenge's own leave-one-database-out baseline, a mean of sensitivity and specificity of $`0.59 \pm 0.15`$. FedAvg
+  was below pooled training on 4 of 6 sources: averaging sites does not undo a shift between them.
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training

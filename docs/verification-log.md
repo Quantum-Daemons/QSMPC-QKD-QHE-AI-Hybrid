@@ -4670,3 +4670,17 @@ against the boxes (13.9% pooled and 20.5% federated against 7.1% for a uniform m
 line and the card's CSV and JSON buttons, each with its own accessible name; no table wider than its box. No console
 error.
 
+### PR #46: the heart-sound federation on the PhysioNet/CinC Challenge 2016 data (2026-11-14)
+
+`scripts/data/prepare_physionet2016.py` read the released zip in memory, only the members each source's
+`REFERENCE-SQI.csv` names: 3,240 recordings of training-a to training-f, 20.22 hours at 2 kHz, 665 abnormal, band-passed
+25 to 400 Hz and standardised. `scripts/train/medical_pcg_fl.py` holds each source out in turn and trains a
+97,521-parameter CNN on 4-second log-mel windows (40 bands, 25 to 500 Hz) on the other five, pooled and under FedAvg,
+12 epochs or rounds, seeds 1 to 3, on NVIDIA RTX PRO 6000 Blackwell Workstation Edition, driver 620.70.06, PyTorch 2.13.0+cu130 (CUDA 13.0, cuBLAS
+12.9.3 as loaded), kernel 5.14.0-687.66.1.el9_8.x86_64. A recording's score is the mean of its windows' logits. AUROC, pooled
+and FedAvg: a 0.728 and 0.678; b 0.625 and 0.462; c 0.623 and 0.387; d 0.443 and 0.242; e 0.321 and 0.353; f 0.582 and 0.740; with the recordings split at random,
+0.961. The seeds' standard deviations are at most 0.049. `scripts/data/build_pcg_fl_summary.py` wrote
+`docs/measurements/pcg-fl-2026-11-14.json` and the card's `web/public/data/medical/pcg_fl.json`, aggregate figures only.
+Tests: `tests/test_r86_pcg_fl.py` (the preparation on a synthetic zip, the filterbank, the windows, the per-recording
+score, the metrics and the card's data).
+
