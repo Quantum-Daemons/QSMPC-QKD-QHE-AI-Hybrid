@@ -378,6 +378,32 @@ DS_BREASTMNIST = DatasetSpec(
         "28:104863 (2020)."
     ),
 )
+#: NIH ChestX-ray14 (Round 86): the medical page's chest X-ray federation, and its FedAvg ResNet-18 prepared for the Hub.
+#: Every figure in the notes is this project's (`docs/measurements/cxr-fl-2026-11-14.json`) or read in full at the source
+#: (`references/chest-xray-fl-prior-work.md`).
+DS_NIH_CXR14 = DatasetSpec(
+    name="NIH ChestX-ray14",
+    licence="NIH ChestX-ray14 terms; no restrictions on use, attribution requested",
+    url="https://nihcc.app.box.com/v/ChestXray-NIHCC",
+    licence_checked="2026-11-14",
+    publishable=True,
+    notes=(
+        "112,120 frontal chest radiographs of 30,805 patients from the NIH Clinical Center, as 1024 px PNGs, with 14 "
+        "findings mined from the radiology reports by natural-language processing (Wang et al., CVPR 2017). NIH's FAQ, "
+        "question 4, read in the Box viewer on 2026-11-14: the usage of the data set is unrestricted, and a link to the "
+        "download site, an acknowledgement of the NIH Clinical Center and a citation of the CVPR 2017 paper are asked; "
+        "the README asks for the citation. The optional MAPLEZ labels in the same folder are CC BY-NC 4.0 and are not used. LABELS: mined from the "
+        "reports, not read from the images; a radiologist re-reading 50 images per finding put Effusion's positive "
+        "predictive value at 70 to 74% (Oakden-Rayner, Academic Radiology 27:106, 2020). DUPLICATES: 25 groups of "
+        "pixel-identical images, three of them across the official split, among them the ten pairs NIH's change log of "
+        "2026-10-09 lists; training drops 26 images. VIEW: AP films, typically taken at the bedside, carry more effusion "
+        "than PA films, and the test split more than train_val (AP 20.0% and PA 15.8% against 12.6% and 8.6%)."),
+    attribution=(
+        "NIH Clinical Center, ChestX-ray14, https://nihcc.app.box.com/v/ChestXray-NIHCC. Wang X, Peng Y, Lu L, Lu Z, "
+        "Bagheri M, Summers RM. ChestX-ray8: Hospital-scale Chest X-ray Database and Benchmarks on Weakly-Supervised "
+        "Classification and Localization of Common Thorax Diseases. CVPR 2017. The data is provided by the NIH Clinical "
+        "Center."),
+)
 DS_PGS_CATALOG = DatasetSpec(
     name="PGS Catalog score PGS000072",
     licence=("CC-BY-4.0 (the score's source publication, Graff et al. 2021); the PGS Catalog record "
@@ -799,6 +825,20 @@ M_BREASTMNIST_STUDENT = replace(M_BREASTMNIST, comparison_caveat=(
     "reads 14 x 14 images, downsampled from the 28 x 28 the baseline's ResNet-18 reads, and it is a single-convolution "
     "CNN distilled for CKKS, not a ResNet. The gap is what the encrypted tier's size costs, not two methods compared "
     "on one input."))
+#: The chest X-ray model's metric (Round 86). The baseline was read in full (`references/chest-xray-fl-prior-work.md`).
+M_CXR_EFFUSION = MetricSpec(
+    name="auroc",
+    display="AUROC, Effusion, official test split",
+    baseline=0.7585,
+    baseline_source=("Wang et al., ChestX-ray8, CVPR 2017 (arXiv:1705.02315 v5, Table 17): Effusion AUROC 0.7585 on the "
+                     "published split, a ResNet-50 from ImageNet with only its last layers trained, for all 14 findings"),
+    companion="auroc_ap",
+    companion_note=("the AUROC on AP films alone, the view the model does worse on, shown beside the overall figure "
+                    "because the test split holds a larger share of AP films than training did"),
+    comparison_caveat=("Both bars are Effusion AUROC on ChestX-ray14's official test split, and there the agreement "
+                       "stops: the published figure is a 14-finding ResNet-50 from ImageNet with its last layers trained, "
+                       "this model a one-finding ResNet-18 from random initialisation, trained under FedAvg at 224 px."),
+)
 M_PRS = MetricSpec(
     name="auroc_eur",
     display="AUROC (European ancestry)",
@@ -1253,6 +1293,52 @@ _SPECS: tuple[ModelSpec, ...] = (
                "MedMNIST states that its dataset is NOT intended for clinical use, and neither "
                "is this model."),
     ),
+    # The chest X-ray federation's FedAvg ResNet-18 (Round 86). Exported by `scripts/train/export_cxr_fedavg.py` and checked
+    # by `scripts/data/check_cxr_preupload.py` before any upload, as the owner asks. Uploaded to a private repository for the
+    # owner's review (2026-11-14); it names none here until the public flip, since the page's fetch cannot read a private one.
+    ModelSpec(
+        usecase="medical_fl",
+        tier="t2_industry",
+        key="medical_fl.cxr_fedavg",
+        label="ResNet-18 on NIH ChestX-ray14, Effusion, FedAvg over four simulated hospitals",
+        architecture="ResNet-18 @224px, 1-channel stem, one logit, trained from random initialisation",
+        params=None,
+        dataset=DS_NIH_CXR14,
+        metric=M_CXR_EFFUSION,
+        # The classifier pair first, so a lookup by precision finds the classifier; then the same network up to its pooled
+        # features, for a head trained in the browser or one evaluated under CKKS, with its own checks.
+        artifacts=_ONNX_PAIR + (
+            ArtifactSpec("onnx/features.onnx", "onnx", "fp32", "browser"),
+            ArtifactSpec("onnx/features_int8.onnx", "onnx", "int8", "browser"),
+            ArtifactSpec("features_report.json", "json", "none", "both"),
+        ),
+        eval_split="the official ChestX-ray14 test split, 16 films, four for each class and view",
+        notes=("The medical page's chest X-ray federation, recorded offline (`scripts/train/medical_cxr_fl.py`): NIH's "
+               "train_val patients placed in four simulated hospitals by how well each patient's AP share matches a "
+               "hospital's target (realised AP shares 11.9% to 77.4%), then 12 FedAvg rounds of one local epoch, AdamW at "
+               "1e-3, batch 128, at 224 px from random initialisation. This is the first of three seeds, fixed before "
+               "training; the three score 0.803 to 0.806 on the official test split. The hospitals are simulated from one "
+               "archive, so the federation shows what a split by view does, not what four institutions would. What it "
+               "learned besides effusion: among films without effusion its score runs higher on AP films (the score alone "
+               "tells the views apart with AUROC 0.64), and a linear probe on its pooled features tells AP from PA with "
+               "AUROC 0.991, though an untrained network's features already reach 0.990: the view is in any such network's "
+               "features, not something this training added. Its class-activation maps put their maximum inside NIH's 153 "
+               "Effusion boxes 22% of the time, against 3% for a map that always points at the centre. Inputs must be "
+               "prepared as the set was: the 1024 px PNG resized to 224 px by Pillow's bilinear filter, then pixel/255 "
+               "(the graph normalises). With Pillow's five other filters, or bilinear sampling without a low-pass (what "
+               "PyTorch's interpolate without antialias, or a GPU texture lookup without mipmaps, computes), the test AUROC "
+               "stays between 0.805 and 0.806, but 182 to "
+               "620 of the 25,589 decisions at the operating point change (the repository's "
+               "`docs/measurements/cxr-preupload-2026-11-14.json`). The operating point is the logit at which the "
+               "hospitals' validation images first reach a sensitivity of 0.80. The labels were mined from reports (Effusion's positive predictive value 70 to 74% on a radiologist's re-read). "
+               "`onnx/features.onnx` and its int8 twin are the same network up to its 512 pooled features, for a head "
+               "trained in a browser or one evaluated under encryption; the network's own last layer on the int8 "
+               "features scores AUROC 0.806 on the test split (`features_report.json`). `eval_sample.json` holds 16 "
+               "films of the official test split at 224 px, four for each class and view, from distinct patients, "
+               "under NIH's terms with its credit; the int8 graph classifies 10 of them correctly at the operating "
+               "point, which shows the model running and not how well it ranks. For research "
+               "and demonstration only: not for clinical use, and not a medical device."),
+    ),
     # ---------------- genomics ----------------
     ModelSpec(
         usecase="genomics",
@@ -1651,6 +1737,7 @@ ARTIFACT_DIRS: dict[str, str] = {
     "telecom_ids.student": "models/telecom_ids_student",
     "finance_aml.student": "models/finance_aml_student",
     "medical_fl.student": "models/medical_breastmnist_student",   # already on disk from training
+    "medical_fl.cxr_fedavg": "models/medical_cxr14_fedavg_resnet18",
     "satellite_comms.student": "models/satellite_telemanom_student",
 }
 

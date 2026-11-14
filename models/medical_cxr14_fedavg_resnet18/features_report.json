@@ -1,0 +1,16 @@
+{
+  "fp32_path": "onnx/features.onnx",
+  "int8_path": "onnx/features_int8.onnx",
+  "output": "features",
+  "dimension": 512,
+  "fp32_bytes": 44762896,
+  "int8_bytes": 11258274,
+  "opset": 18,
+  "n_fixtures": 128,
+  "fp32_max_abs_error_vs_torch": 2.1457672119140625e-06,
+  "int8_max_abs_error_vs_fp32": 0.045274972915649414,
+  "int8_min_cosine_vs_fp32": 0.9996955938803483,
+  "head_auroc_on_int8_features_test": 0.8062589191862829,
+  "head": "the network's own last layer (fc), applied to the graph's features in float64",
+  "use": "features for a head trained in the browser, or encrypted for a head under CKKS; the network's own head on these features is the classifier graph's z"
+}

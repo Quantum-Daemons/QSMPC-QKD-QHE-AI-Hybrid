@@ -1,0 +1,47 @@
+{
+  "key": "medical_fl.cxr_fedavg",
+  "seed": 1,
+  "split_seed": 1,
+  "dataset": "NIH ChestX-ray14",
+  "label": "Effusion",
+  "architecture": "resnet18",
+  "resolution": 224,
+  "pretrained": "none",
+  "adaptation": "1-channel 7x7 stem and one logit, built so; no weights from elsewhere",
+  "federation": {
+    "hospitals": 4,
+    "rounds": 12,
+    "local_epochs": 1,
+    "aggregation": "FedAvg, weighted by images",
+    "hospital_ap_targets": [
+      0.05,
+      0.25,
+      0.5,
+      0.85
+    ]
+  },
+  "hyperparameters": {
+    "batch_size": 128,
+    "lr": 0.001,
+    "optimiser": "AdamW, weight decay 1e-4",
+    "schedule": "cosine over the rounds, constant within one",
+    "precision": "bfloat16 autocast"
+  },
+  "normalisation": {
+    "mean": 0.5041685700416565,
+    "std": 0.2501467168331146,
+    "measured_on": "2,000 training images"
+  },
+  "trained_with": {
+    "torch": "2.13.0+cu130",
+    "torch_cuda": "13.0",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+    "driver": "620.70.06",
+    "cublas_version": "12.9.3",
+    "kernel": "5.14.0-687.66.1.el9_8.x86_64"
+  },
+  "source_checkpoint_sha256": "d4203752eebc01ff7ab2f08bae4e0c7a24e32d726ab41caf0fb57b1c0621a616",
+  "checkpoint": "model.safetensors",
+  "training_script": "scripts/train/medical_cxr_fl.py",
+  "export_script": "scripts/train/export_cxr_fedavg.py"
+}
