@@ -4996,6 +4996,13 @@ run with the CNN under MPC fetched the student's sample once, all four verificat
 held-out image 1 of 156, and the MPC argmax gave class 1, as in the clear. The checked-fetch count in
 `clientCompute.ts` is three.
 
+Two copies of the published-model count had gone stale: the README's models row said "thirteen published models" and
+`DATA_LICENSES.md` "all thirteen repos ship one", with fifteen published since the telecom student (PR #35) and the
+chest X-ray model (PR #54). Only `docs/findings.md`'s copy had a gate. Both now say fifteen (thirteen run with ONNX
+Runtime in the browser, two from their weights files), the README's private-inference row names the split, and
+`tests/test_an_evaluation_sample_says_which_split_it_is.py` holds both copies to the registry, failing when the README
+says fourteen.
+
 The same PR re-checks NIST's post-quantum project page for `references/REFERENCES.md`: updated 2026-10-27, it still
 has no initial public draft of FIPS 206 (FN-DSA) or of HQC, and CSRC News from August to November 2026 lists IR 8547
 and nothing on either, so `docs/pqc-roadmap.md` holds.
