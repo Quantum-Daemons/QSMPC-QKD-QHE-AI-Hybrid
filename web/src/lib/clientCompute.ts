@@ -36,7 +36,7 @@ import { bb84, channelLossDb, e91, FIBER, fibreIntensities, h2, inView, intrinsi
 import { type Provenance } from "../components/ProvenanceBadge";
 import {
   browserModels, DEFAULT_ONNX_BACKEND, evaluatePublishedModel, type ModelEvalResult, type OnnxBackend, onnxStatus,
-  runPublishedModel,
+  publishedSampleOf, runPublishedModel,
 } from "./onnxInference";
 import { FED_HEART, fedHeart, fedHeartComparisons, fedHeartDp, loadHeartSites } from "./clientFedHeart";
 import { dpCount, GENOMICS_DP, genomicsDp } from "./clientDp";
@@ -908,28 +908,16 @@ export interface MpcCnnReport {
   result: Omit<HybridCnnResult, never>; ranIn: string; imageIndex: number; imageCount: number; imageLabel: number; classes: Record<string, string> | null; explanation?: OcclusionMap;
 }
 
-/** The published student's held-out images, at the pin its weights come from. */
-const _studentSampleCache = new Map<string, { samples: number[][]; labels: number[]; classes: Record<string, string> | null } | null>();
+/** The published student's held-out images, at the pin its weights come from. Through `publishedSampleOf`, so this run's
+ *  verification of the same model reads the same fetch: the page had fetched the sample twice in one run (the owner's
+ *  audit of 2026-11-13). A failed fetch is not kept, so the next run asks again; the verification row says why it failed. */
 async function publishedStudentSample(usecase: string): Promise<{ samples: number[][]; labels: number[]; classes: Record<string, string> | null } | null> {
-  if (_studentSampleCache.has(usecase)) return _studentSampleCache.get(usecase) ?? null;
-  let out: { samples: number[][]; labels: number[]; classes: Record<string, string> | null } | null = null;
-  try {
-    const spec = studentModel(usecase);
-    if (spec?.hf_repo_id && spec.hf_revision) {
-      const res = await fetch(`https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/eval_sample.json`, { mode: "cors", signal: AbortSignal.timeout(30_000) });
-      if (res.ok) {
-        const bytes = await res.arrayBuffer();
-        await checkPinned(bytes, spec.file_sha256?.["eval_sample.json"], `${spec.key} eval_sample.json`);
-        const j = asJson<{ samples?: number[][]; labels?: number[]; classes?: Record<string, string> | null }>(bytes);
-        if (Array.isArray(j?.samples) && Array.isArray(j?.labels)) out = { samples: j.samples, labels: j.labels, classes: j.classes ?? null };
-      }
-    }
-  } catch (e) {
-    if (e instanceof HubFileRefused) console.error(e.message);
-    out = null;
-  }
-  _studentSampleCache.set(usecase, out);
-  return out;
+  const spec = studentModel(usecase);
+  if (!spec?.hf_repo_id || !spec.hf_revision) return null;
+  const got = await publishedSampleOf(spec);
+  if (got.kind !== "ok") return null;
+  const j = got.file as unknown as { samples?: number[][]; labels?: number[]; classes?: Record<string, string> | null };
+  return Array.isArray(j?.samples) && Array.isArray(j?.labels) ? { samples: j.samples, labels: j.labels, classes: j.classes ?? null } : null;
 }
 
 /** One published model's re-scoring in this tab, as the page's table and the downloads show it (Round 86). */

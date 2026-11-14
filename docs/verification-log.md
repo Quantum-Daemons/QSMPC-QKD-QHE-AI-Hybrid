@@ -4917,6 +4917,14 @@ under CKKS on them, and nothing else of it encrypted. A test ties the page's mod
 for a private repository keeps the plain sentence, since the page cannot fetch the model then. The Hub's copy changes
 only when the card is republished, with the owner's approval.
 
+The same PR fixes item 9 of the owner's audit of 2026-11-13: one medical run fetched the CKKS student's evaluation
+sample twice, once for the student's CKKS and MPC stages and once for its verification, each with its own cache. The
+student's reader now goes through `publishedSampleOf`, the cache the verification reads, which also drops a failed
+fetch so the next run asks again where the old cache kept the failure for the tab. On a local client-only build, one
+run with the CNN under MPC fetched the student's sample once, all four verifications passed, the CKKS student read
+held-out image 1 of 156, and the MPC argmax gave class 1, as in the clear. The checked-fetch count in
+`clientCompute.ts` is three.
+
 The same PR re-checks NIST's post-quantum project page for `references/REFERENCES.md`: updated 2026-10-27, it still
 has no initial public draft of FIPS 206 (FN-DSA) or of HQC, and CSRC News from August to November 2026 lists IR 8547
 and nothing on either, so `docs/pqc-roadmap.md` holds.
