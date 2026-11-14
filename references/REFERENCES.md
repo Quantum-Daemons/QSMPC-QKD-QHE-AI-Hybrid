@@ -1167,13 +1167,15 @@ belongs in this file rather than only in a comment.
 > sentences are about a random and an untrained SCORE, so any rewrite that keeps the "beats six real
 > detectors" gloss reintroduces the fabrication.
 >
-> **TSB-AD recommends VUS-PR and this repository does not use it.** The same abstract identifies
-> **VUS-PR as the most reliable measure**. Since TSB-AD is cited here as the authority for rejecting
-> point-adjusted F1, not adopting the measure it actually recommends needs a stated reason rather than
-> silence: event-wise F-beta is what the satellite baselines this project is scored against are
-> computed with (ESA-ADB Supplementary Table 9), so switching measures would break comparability with
-> the published number on the page. That is a defensible choice made AGAINST the recommendation of the
-> cited source, and a reviewer will ask - so it is recorded here as an open trade-off, not as agreement.
+> **TSB-AD recommends VUS-PR, and since Round 86 the satellite page reports it beside the event-wise
+> F0.5.** The same abstract identifies **VUS-PR as the most reliable measure**. The headline stays the
+> event-wise F-beta, because that is what the satellite baselines this project is scored against are
+> computed with (ESA-ADB Supplementary Table 9), and switching measures would break comparability with
+> the published number on the page. VUS-PR is computed beside it, offline, with TSB-AD 1.5's own code
+> (`scripts/measure_satellite_vus_pr.py`, `docs/measurements/satellite-vus-pr-2026-11-14.json`) on the
+> published forecaster's continuous scores: the threshold-free question the F0.5 does not ask. No
+> published VUS-PR exists for ESA-ADB Mission1's lightweight channels (search of 2026-11-14), so the
+> figure stands against shuffled and random-walk scores only, never against another detector.
 
 - **Kim, Choi, Choi, Lee and Yoon, "Towards a Rigorous Evaluation of Time-series Anomaly Detection",
   AAAI 2022.** arXiv:2109.05257 `[link]`
@@ -2769,6 +2771,15 @@ The owner's choice of that day: explain a run rather than add cryptography. The 
 - **Hohman, Conlen, Heer and Chau, *Communicating with Interactive Articles*, Distill, 2020**
   (https://distill.pub/2020/communicating-with-interactive-articles/; read: html). Details on demand, in "Reducing
   Cognitive Load": inspect a part while the overview stays in view.
+
+## Evidence plots under the private-inference scatter and on the medical DP card (Round 86), read at primary source 2026-11-14
+
+The note is `references/evidence-plots.md`.
+
+- **Bland and Altman, Lancet 327(8476):307-310, 1986, doi:10.1016/S0140-6736(86)90837-8.** The difference against the
+  mean, the bias and the limits of agreement at 1.96 standard deviations: the panel under every encrypted-agreement scatter.
+- **Lattigo, `schemes/ckks/precision.go`, `GetPrecisionStats`** (read: code). Precision as $`-\log_2`$ of the absolute
+  error, the definition the histogram beside it bins in whole bits.
 
 ## Split inference on a chest X-ray (Round 86), read at primary source 2026-11-15
 

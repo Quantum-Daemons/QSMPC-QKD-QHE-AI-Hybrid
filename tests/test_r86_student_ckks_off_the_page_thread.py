@@ -44,7 +44,9 @@ def test_the_worker_runs_the_same_function_and_vite_can_bundle_it() -> None:
     # Vite recognises a worker only in this exact form, and the worker reaches a dynamic import (node-seal), which the
     # default IIFE worker format cannot split.
     assert 'new Worker(new URL("./forecastStudent.worker.ts", import.meta.url), { type: "module" })' in _off_thread_body()
-    assert re.search(r'worker:\s*\{\s*format:\s*"es"\s*\}', VITE.read_text()), "the worker would not bundle"
+    # ES workers, whatever else the worker build is given (Round 86: a plugin that traces the workers' packages for the
+    # notices file).
+    assert re.search(r'worker:\s*\{\s*format:\s*"es"\s*[,}]', VITE.read_text()), "the worker would not bundle"
 
 
 def test_a_failed_worker_is_reported_not_retried_on_the_page_thread() -> None:

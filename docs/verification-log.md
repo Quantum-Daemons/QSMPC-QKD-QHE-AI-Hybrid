@@ -4868,6 +4868,77 @@ Chrome; `tests/test_r86_run_timeline.py` holds it to the ledger (one numbered ar
 party, closed blocks, dotted only for a simulated channel, no character Mermaid reads as syntax, and the text follows the
 timeline's position).
 
+### PR #51: VUS-PR beside the event-wise F0.5, and the segment classifier's boundary as one slice (2026-11-14)
+
+The owner chose TSB-AD 1.5 for VUS-PR (the one download approved: the 179.4 kB wheel, installed with `--no-deps`, its
+SHA-256 equal to PyPI's) and a decision boundary that is a slice of the real classifier or nothing.
+
+`scripts/measure_satellite_vus_pr.py` checks the published forecaster's graph against its pinned Hub hash and against the
+weights it was exported from (1.4e-6 at most over 2,048 test windows), scores ESA-ADB Mission1's test half with
+Telemanom's smoothed one-step errors, the maximum over channels 41 to 46 of each channel's error z-scored on its
+smoothed validation errors, and labels the 29 anomalies that start and end inside it (66,892 of 7,364,160 steps on the
+30 s grid). The buffer comes from TSB-AD's own rule, the autocorrelation period of the first channel, computed with
+numpy's FFT because statsmodels is not installed; `tests/test_r86_satellite_vus_pr.py` holds it to the direct sum. With
+TSB-AD's code (250 thresholds, version 'opt'): VUS-PR 0.556 at 97 steps, VUS-ROC 0.969, point-wise average precision
+0.904; no buffer 0.292, 100 steps 0.556, 194 steps 0.564, 97 steps at 1,000 thresholds 0.622; five shuffles of the
+score 0.0092 to 0.0093 and five random walks 0.0063 to 0.0107 (Lyu's strongest no-skill adversary). TSB-AD's thresholds
+sit evenly through the ranking (`np.linspace` over the sorted scores), about 29,600 steps apart here, which is why the
+finer grid moves the figure; the card reports the default and says so. No published VUS-PR for these channels was found.
+The run took 3 h 53 min on a machine shared with the chest X-ray export.
+
+`scripts/measure_satellite_boundary.py` follows the rule fixed before any figure was seen: a slice of the published
+OPS-SAT-AD graph (pinned revision) through the test partition's medoid, kept only if at least 20 test segments lie near
+it and the full classifier gives 90% of them the slice's class. It passed: 85 segments within one standard deviation of
+the medoid on each of the 17 held features, 9 of them anomalous, and the classifier agrees with the slice on 83
+(97.6%), and with their true class on all 85. The two-feature surrogate also reached 92.6% on the test partition
+($`R^2`$ 0.648 on the probabilities) and was not used, since the rule takes the slice first. The grid spans the near points
+widened by a quarter of their range, never below the data's minimum, because a grid over every outlier drew mostly
+extrapolation. `tests/test_r86_satellite_boundary.py` holds the medoid, the near rule, the surrogate's terms and the
+grid's span.
+
+On a local client-only build in Chrome both cards render on the satellite page with every figure from their records,
+the dataset credit from the registry, and nothing overflowing.
+
+### PR #52: the npm packages' notices travel with the page (2026-11-14)
+
+Adding a diagram library to the timeline (PR #50) raised the question for every library already in the page. MIT, ISC,
+BSD and Apache-2.0 ask that their notice travel with copies of the code, and minification keeps only the comments a
+package marks for it: a client-only build carried React's `@license` comments, Three.js's and ONNX Runtime's copyright
+lines and nothing else, while the wasm crates and the WebLLM libraries had notice files. `web/vite.config.ts` now traces
+every module Rollup puts in a chunk, the workers' chunks included, to its package under `node_modules`, and writes each
+package's name, version, declared licence and licence file to `licenses/js-bundle.txt`, linked from the sidebar: 51
+packages on the client-only build. Four ship no licence file in their npm package (gif.js 0.2.0, onnxruntime-common and
+onnxruntime-web 1.31.1, victory-vendor 36.9.2, all MIT); their notices were read at their repositories on 2026-11-14
+(Johan Nordberg 2013-2018; Microsoft Corporation; Nearform 2015-2026 with further notices) and the file says where each
+came from and that a repository's file may be newer than the version bundled. `web/scripts/check_js_notices.mjs` reads
+the built file in both pipelines and fails on a missing file, fewer than 40 packages, an entry with no declared licence
+or no licence text, or a package the page plainly ships and the file omits; `tests/test_r86_js_notices.py` passes it a
+complete file and three faulty ones.
+
+The same PR records, in `docs/development.md`, SEAL's source on the 4.7.2 sampling fix: v4.1.2, the version node-seal
+7.0.0 bundles, bounds `util::sample_poly_uniform`'s rejection at `max_random - barrett_reduce_64(max_random, modulus) - 1`
+and v4.7.2 drops the `- 1`, so one residue loses one of its preimages, about $`2^{-64}`$ in statistical distance per
+coefficient by this project's reading.
+
+### PR #53: evidence under the private-inference scatter, and the medical DP card's spread (2026-11-14)
+
+The owner's third choice of the day. Under every encrypted-agreement scatter, `web/src/lib/agreementStats.ts` draws the
+same pairs two more ways: Bland and Altman's difference against mean (Lancet 1986), with the bias and the limits of
+agreement at 1.96 standard deviations, and each row's precision in bits as Lattigo's `GetPrecisionStats` defines it,
+$`-\log_2`$ of the absolute error, binned in whole bits, exact pairs counted apart. On the genomics page in Chrome the 30
+rows gave a bias of $`-3.73 \times 10^{-10}`$, limits $`-6.11 \times 10^{-9}`$ and $`5.36 \times 10^{-9}`$, 28 of 30
+within them, and a median precision of 28.7 bits, lowest 27.3; a second run, whose CKKS noise differs, gave 30 of 30 and
+29.0 bits. At 375 px the panels stack and nothing is clipped. `tests/test_r86_agreement_evidence.py` holds the module to
+numpy on built pairs: the bias, the sample standard deviation, the limits, the count within, the bins, the median, the
+lowest, the exact pairs, and inputs with one pair, none, or one that is not a number.
+
+On the medical page the DP table gains a privacy-utility chart. `scripts/measure_fedheart_dp_sweep.py` runs the page's own
+`fedHeartDp` 20 times at the page's seed with seeded noise (not private; it exists for the record): no noise 0.721 every
+draw; $`\epsilon = 8`$ $`0.724 \pm 0.006`$, 4 $`0.722 \pm 0.011`$, 2 $`0.723 \pm 0.020`$, 1 $`0.712 \pm 0.031`$ (10th to 90th
+percentile 0.674 to 0.746). The chart draws that band and median and marks the run's own row; in Chrome 4 of the run's 5
+values sat inside the band. `tests/test_r86_fedheart_dp_sweep.py` reruns two of the recorded draws and gets the same
+numbers to the last digit, and checks the card's file against the record.
+
 ### PR #54: the chest X-ray model public on the Hub, pinned (2026-11-15)
 
 With the owner's approval, `scripts/publish_hf.py --key medical_fl.cxr_fedavg --public` made

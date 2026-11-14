@@ -27,6 +27,7 @@
     "check:jsx-spaces": "node scripts/check_jsx_text_spaces.mjs",
     "check:calibration": "node scripts/check_calibration.mjs",
     "check:source-maps": "node scripts/check_no_dangling_source_maps.mjs",
+    "check:js-notices": "node scripts/check_js_notices.mjs",
     "check:text-layout": "node scripts/check_text_overlap.mjs",
     "check:sample-fetch": "node scripts/check_sample_fetch.mjs",
     "check:readme-mermaid": "node scripts/check_readme_mermaid.mjs",
