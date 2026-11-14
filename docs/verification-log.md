@@ -4697,3 +4697,26 @@ spectral tilt ran in a scratch copy only (0.541 and 0.606 pooled) and are not in
 held-out database with spectrogram standardisation, and Humayun et al. 2020 found domain-balanced batches did not help
 on an unseen domain.
 
+
+### PR #46 on the deployed site (2026-11-14)
+
+Merged as 8187e1b with the owner's approval and deployed from the main checkout: the box is on main at 8187e1b and serves
+`index-CZHHL0Fi.js`, the bundle a local `VITE_CLIENT_ONLY=1` build of main produces, SHA-256 `a8cf2eb1...aecf` on both
+sides; the served `data/medical/pcg_fl.json` equals main's (SHA-256 `dab8dda7...`). In Chrome the medical page shows the
+heart-sound card with its six held-out sources, the band-mean key point (0.554 to 0.599 pooled, 0.477 to 0.530 under
+FedAvg, up on c and d, down on b, e and f, within 0.01 on a, e still below 0.5, Koike et al. EMBC 2021) and the
+explanation of the inverted e from Liu et al. 2016, section 2.6. No console error after a reload; no sideways overflow
+at 1,280 px on the live site or at 375 px in a local build.
+
+### PR #47: the Renyi conversion for the DP rows (2026-11-14)
+
+`qsh.ai.dp.cdp_to_dp` and `cdpToDp` in `web/src/lib/clientDp.ts` now convert rho-zCDP by Canonne, Kamath and Steinke's
+Proposition 12 on the Renyi curve, minimised over the order by the same 120 golden-section steps on log(a - 1) in both
+languages and capped by the simple bound. Checked: the search reaches a dense grid's minimum for 154 random (rho, delta)
+pairs with rho from 1e-7 to 1e3 and delta from 1e-14 to 1e-2; rho 1.0491 at delta 1e-5 gives 7.2804 (8.00 by the
+simple bound), the figure the murmur study's separate accountant gave. With the targets unchanged the variances fall:
+finance 38 to 30; medical noise in gradient units 5.2, 9.9, 19.2 and 37.8 to 4.87, 8.97, 16.84 and 32.04; genomics
+noise in alleles 19.4 to 15.3 at epsilon 0.5 down to 1.4 to 1.3 at 8. Measured over 20 private draws (seed 1): the
+medical rows 0.724, 0.725, 0.723 and 0.718 at epsilon 8, 4, 2 and 1 (standard deviations 0.008 to 0.024); the four
+rows together epsilon 9.75 (9.56 before). Tests: `tests/test_r86_dp_conversion.py` and `tests/test_r86_dp_twin.py`
+(variances and draws equal between the languages, epsilons equal to 1e-12).
