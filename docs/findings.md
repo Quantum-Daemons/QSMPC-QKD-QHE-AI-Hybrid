@@ -624,6 +624,18 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   the time, against 7.1% for a uniform map and 2.6% for the centre: weak localisation. ConvNeXt-atto, once under the
   ResNet's 12-epoch recipe, reached 0.732. The labels are text-mined, with 70 to 74% of Effusion labels holding on image
   review ([`references/chest-xray-fl-prior-work.md`](../references/chest-xray-fl-prior-work.md)).
+- **The chest X-ray model before the Hub: what six checks found (2026-11-14).** The FedAvg ResNet-18 above, checked as
+  the owner asks before any upload (`docs/measurements/cxr-preupload-2026-11-14.json`). The download matches its
+  manifest and every PNG decodes, but NIH had resized every film to a 1024 px square, 64% of them from more than 10% off
+  square, and 186 correlate negatively with their view's mean film, 29 below -0.5, as an inverted film does; leaving the
+  121 flagged test images out moves the AUROC from 0.80645 to 0.80658. The official test split is a different population
+  from training (effusion 18.2% against 10.0%, AP films 57% against 35%), yet the scores stay calibrated in the large: a
+  mean risk of 18.4% against 18.2% observed, ECE 0.019, 0.013 after a Platt map fitted on validation. How a client
+  resizes matters more to decisions than to ranking: Pillow's other filters, or bilinear sampling without a low-pass,
+  keep the AUROC within 0.8051 to 0.8063 and change 182 to 620 of the 25,589 decisions at the operating point. A
+  logistic head refitted on the frozen features scores 0.802, four hospitals' heads averaged 0.803, against the network's
+  0.806, so a browser could train the head alone on this backbone; heads for cardiomegaly and atelectasis on the same
+  features reach 0.782 and 0.680. The int8 graph (11.3 MB against 44.8 MB) scores 0.8063 and changes 134 decisions.
 - **Heart sounds from a new source turn the score round (2026-11-14).** The PhysioNet/CinC Challenge 2016 recordings,
   six databases from different teams with abnormal shares from 9% to 77%, each held out in turn from a small CNN on
   log-mel windows: with the recordings split at random the network reaches AUROC 0.961, while held out it reaches
