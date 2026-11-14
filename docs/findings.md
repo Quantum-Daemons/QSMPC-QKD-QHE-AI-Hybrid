@@ -361,8 +361,8 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   distilled student sized for CKKS: 115 parameters for finance against a 123,956-parameter teacher,
   3,226 against 11,171,266 for medical, 294 against 84,860 for satellite. Which of them CKKS
   evaluates in the browser, page by page, is under
-  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All fourteen repos are public, and
-  fourteen are pinned. The evaluation sample
+  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All fifteen repos are public, and
+  fifteen are pinned, the chest X-ray model's among them since 2026-11-15. The evaluation sample
   for each lives in that model's own repo at the same revision as its weights. Since Round 86 that
   includes the satellite student's, which is a stretch of a timeline rather than independent rows,
   because its metric is defined over a timeline.

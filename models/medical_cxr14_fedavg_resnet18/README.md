@@ -54,7 +54,7 @@ is stated in the notes below.
 
 ## Calibration map
 
-The demo page does not run this model, whose weights are not on the Hub. The map states what its score would mean as a risk, for a reader who needs one. Fitted on the four hospitals' validation images and scored on the official test split.
+The demo page shows this model's logits and its decision, not a probability, and reads no score through this map. It states what the score would mean as a risk, for a reader who needs one. Fitted on the four hospitals' validation images and scored on the official test split.
 
 $$p = \frac{1}{1 + \exp\!\big(a\,\operatorname{logit}\big(\operatorname{clip}(q,\ \varepsilon,\ 1-\varepsilon)\big) + b\big)}$$
 
