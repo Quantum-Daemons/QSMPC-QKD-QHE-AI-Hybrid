@@ -4951,3 +4951,14 @@ Federal Register's API on 2026-11-15: since the order of 2026-06-22, the FAR's p
 FAR Overhaul's parts of 2026-06-23 and 2026-09-18; a full-text search for "post-quantum" among proposed rules finds an
 FCC rule only, and one for "quantum" with "Federal Acquisition Regulation" finds the order itself. The clock and
 `docs/pqc-roadmap.md` now say "as of 2026-11-15". The order's 180 days end about 2026-12-19, when it is read again.
+
+**Found on the way: neither Caddyfile sent Cache-Control.** After the deploy of PR #54, Chrome kept the app shell it
+had fetched an hour earlier, by its heuristic of a tenth of the time since Last-Modified, and ran the previous bundle
+from its cache; the new image no longer served that bundle, and `index-PNyoH7-C.js` answered 404. A visitor with the
+old shell and no copy of the old bundle would get a blank page. Both Caddyfiles now give a file under `/assets/` that
+exists "public, max-age=31536000, immutable" (Vite names each by its content hash) and everything else "no-cache": the
+shell, the routes, the data and licence files, and a 404 for a hash the image lacks, which cached for a year would
+keep a rollback broken in that browser. A real Caddy (caddy:2-alpine) serving the client-only build of `a9cc2f3` gave
+exactly that for ten paths, with COOP and COEP unchanged; `caddy validate` passes for both files.
+`tests/test_r86_caching_headers.py` holds both rules, the matchers' root against the file server's, and the hash in
+Vite's asset names, and fails when the file matcher is removed.
