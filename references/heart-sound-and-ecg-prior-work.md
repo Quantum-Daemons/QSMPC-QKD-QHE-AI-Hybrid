@@ -67,3 +67,39 @@ ECG from 2022 to 2026 was found.
   label with per-patient DP, are the variants public data support; the HFrEF set would follow the NEJM AI design and
   could never be compared with 0.904. All after the chest X-ray work, in the owner's order, and each download needs
   the owner's approval first.
+
+## The federation on the Challenge 2016 data (2026-11-14)
+
+- Clifford, Liu, Moody, Springer, Silva, Li and Mark, *Classification of Normal/Abnormal Heart Sound Recordings: the
+  PhysioNet/Computing in Cardiology Challenge 2016* (read here, the paper in the released zip): eight databases from
+  seven teams in seven countries; normal recordings from healthy subjects and abnormal ones mostly from patients with
+  heart valve defects or coronary artery disease; recordings resampled to 2,000 Hz; signal quality hand-corrected, the
+  poor ones labelled unsure. Their example algorithm, scored leaving one training database out, ranged from 0.47 on b to
+  0.86 on c in the mean of sensitivity and specificity, $`0.59 \pm 0.15`$ across the databases.
+- The training-recording count differs by where it is read: 3,240 in the released REFERENCE files, which this project
+  used; 3,126 in the PhysioNet page's introduction and 3,125 in its announcement; 3,153 in the CinC paper's Table 1, which
+  also gives the patients per database (121 for a's 409 recordings, 356 for e's 2,054). PhysioNet asks for Liu et al.,
+  Physiol Meas 37(12):2181-2213, 2016, doi:10.1088/0967-3334/37/12/2181, and its platform citation, Pollard et al.,
+  Nature Health, 2026 (read here, the PhysioNet page). The files are under ODC-By 1.0.
+- This project's federation (`scripts/train/medical_pcg_fl.py`, three seeds): with the recordings split at random, the
+  network reaches AUROC 0.961; held out source by source it reaches 0.321 to 0.728 pooled and 0.242 to 0.740 under
+  FedAvg, below 0.5 on some sources in every seed. The data name no patients, so within-source splits cannot be made
+  patient-disjoint, which is why the held-out sources are the honest figure.
+- Liu et al. 2016, section 2.6 (read here, the author version at riunet.upv.es, handle 10251/84129): database e's 174
+  healthy volunteers (172 male, aged $`25 \pm 3`$) were recorded with an MLT201 microphone or a piezoelectric sensor in
+  the Biomedical Engineering Lab at Dalian University of Technology, its 335 patients with coronary artery disease
+  ($`60 \pm 12`$ years) in the Second Hospital of Dalian Medical University with a 3M Littmann electronic stethoscope
+  at the mitral position. Sensor, setting and age go with the label inside e, which no normalisation undoes.
+- Koike, Qian, Schuller and Yamamoto, EMBC 2021, doi:10.1109/EMBC46164.2021.9629714 (read in full by an agent; Table II
+  checked here): leaving each database out with a PANNs CNN14 pretrained on AudioSet, standardising the spectrogram raised
+  the unweighted average recall on all six databases (the mean from 56.0 to 59.3; e 49.3 to 55.8), frequency masking to
+  a mean of 60.4. This project's baseline already masks frequency and standardises each window; removing each band's
+  mean as well raised its average but not every source.
+- Humayun et al., IEEE JBHI 24(8):2189-2198, 2020 (read in full by an agent): batches balanced over domain and class
+  helped on the databases seen in training and not on an unseen one (mean of sensitivity and specificity 46.37 to
+  47.95). Azam et al., arXiv:2106.01865 (read in full by an agent): a stethoscope's response is additive in the log
+  filterbank domain and mean normalisation removes it, the reasoning behind `--band-mean`.
+- Kutlu and Colak, J Clin Med 15(20):8058, 2026 (read by an agent): models trained on CirCor and tested on the Challenge
+  2016 recordings reached AUROC 0.31 to 0.74, two classical models below 0.5; label shift (the Challenge's abnormal
+  includes conditions without a murmur) as well as the change of device.
+
