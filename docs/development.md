@@ -286,7 +286,10 @@ hardened untrusted deserialization and fixed native memory-safety and concurrenc
 ciphertext evaluation; 4.4.3 fixes null-output-pointer dereferences and C++ exceptions leaking across
 the **C API** boundary (issues #753-#755); 4.4.4 adds input validation to several evaluator
 functions; and 4.7.2 fixes an off-by-one in the rejection sampling of `util::sample_poly_uniform`,
-which made its output very slightly non-uniform. The C-API items do not reach a WASM build, but
+which made its output very slightly non-uniform. Read in SEAL's source on 2026-11-14: v4.1.2, the version node-seal 7.0.0
+bundles, bounds the draw at `max_random - barrett_reduce_64(max_random, modulus) - 1`, and v4.7.2 drops the `- 1`, so
+each draw rejects one 64-bit value more than it needs to; by this project's reading one residue loses one of its
+preimages, a statistical distance from uniform of about $`2^{-64}`$ per coefficient, far below any security margin. The C-API items do not reach a WASM build, but
 deserialization, ciphertext evaluation and sampling are core C++, so 4.4.0's two most serious items
 and 4.7.2's sampling fix **do**. Full
 analysis and what it means for this demo: [`docs/deliverable-verification.md`](deliverable-verification.md)
@@ -294,7 +297,7 @@ and [`docs/threat-model.md`](threat-model.md). **No CVE and no GHSA advisory
 exists for SEAL**, so the version is recorded as a fact and no vulnerability is claimed
 (SEAL -> WASM CKKS, MIT) +
 `polytune` with `garble_lang` (sine-fdn, garbled-circuit 2PC, MIT; built from `wasm/qsh-mpc`, its
-third-party notices served at `/licenses/qsh-mpc.txt`) for the demo's real in-browser FHE/MPC; Lattigo v6.2.0 (Tune Insight, Apache-2.0; built from `wasm/qsh-fedthresh`, its notices served at `/licenses/qsh-fedthresh.txt`) for threshold CKKS and BGV in the medical page's aggregation comparison; `onnxruntime-web` (MIT) for the published industry models; `@huggingface/transformers` +
+third-party notices served at `/licenses/qsh-mpc.txt`) for the demo's real in-browser FHE/MPC; Lattigo v6.2.0 (Tune Insight, Apache-2.0; built from `wasm/qsh-fedthresh`, its notices served at `/licenses/qsh-fedthresh.txt`) for threshold CKKS and BGV in the medical page's aggregation comparison; `onnxruntime-web` (MIT) for the published industry models (the notices of every npm package in the page's JavaScript, the workers' included, are written at build time to `/licenses/js-bundle.txt` and linked from the sidebar); `@huggingface/transformers` +
 `@mlc-ai/web-llm` (Apache-2.0) for in-browser AI; `mcp` Python SDK (MIT) + the official
 `@modelcontextprotocol/server-filesystem` (MIT and Apache-2.0, moving from one to the other) for the real MCP server (full deployment). Full table
 + dataset licenses in [`DATA_LICENSES.md`](../DATA_LICENSES.md).

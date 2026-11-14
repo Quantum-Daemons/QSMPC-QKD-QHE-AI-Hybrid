@@ -105,6 +105,9 @@ bash scripts/build_wasm.sh >/tmp/ci_wasm.log 2>&1 \
 # Round 74: a copied worker named a source map the build did not ship.
 ( cd web && npm run --silent check:source-maps >/tmp/ci_srcmap.log 2>&1 ) \
   && ok "no dangling source-map references in the build" || { bad "a built file names a source map that is not shipped"; tail -6 /tmp/ci_srcmap.log; }
+# Round 86: the npm packages' notices travel with the bundle (licenses/js-bundle.txt, written by vite.config.ts).
+( cd web && npm run --silent check:js-notices >/tmp/ci_jsnotices.log 2>&1 ) \
+  && ok "the bundle's npm packages each carry their notice" || { bad "a bundled npm package has no notice"; tail -8 /tmp/ci_jsnotices.log; }
 # Round 80: text drawn over text, out of the box it labels, or clipped by its chart, and HTML tables
 # wider than their box, on every page after a run. The user found labels overflowing and overlapping
 # in the run diagrams, and looking further found an axis title over its ticks, a class name cut off

@@ -4745,3 +4745,25 @@ same as the earlier scratch runs to every printed digit. The PCA's SVD drew torc
 driver did not converge and that it fell back to its more accurate method. `scripts/data/build_murmur_dp_summary.py`
 wrote `docs/measurements/murmur-dp-2026-11-14.json` and `web/public/data/medical/murmur_dp.json`, aggregate figures
 only, without the search's K or its losing candidates. Tests: `tests/test_r86_murmur_dp.py`.
+
+### PR #52: the npm packages' notices travel with the page (2026-11-14)
+
+Adding a diagram library to the timeline (PR #50) raised the question for every library already in the page. MIT, ISC,
+BSD and Apache-2.0 ask that their notice travel with copies of the code, and minification keeps only the comments a
+package marks for it: a client-only build carried React's `@license` comments, Three.js's and ONNX Runtime's copyright
+lines and nothing else, while the wasm crates and the WebLLM libraries had notice files. `web/vite.config.ts` now traces
+every module Rollup puts in a chunk, the workers' chunks included, to its package under `node_modules`, and writes each
+package's name, version, declared licence and licence file to `licenses/js-bundle.txt`, linked from the sidebar: 51
+packages on the client-only build. Four ship no licence file in their npm package (gif.js 0.2.0, onnxruntime-common and
+onnxruntime-web 1.31.1, victory-vendor 36.9.2, all MIT); their notices were read at their repositories on 2026-11-14
+(Johan Nordberg 2013-2018; Microsoft Corporation; Nearform 2015-2026 with further notices) and the file says where each
+came from and that a repository's file may be newer than the version bundled. `web/scripts/check_js_notices.mjs` reads
+the built file in both pipelines and fails on a missing file, fewer than 40 packages, an entry with no declared licence
+or no licence text, or a package the page plainly ships and the file omits; `tests/test_r86_js_notices.py` passes it a
+complete file and three faulty ones.
+
+The same PR records, in `docs/development.md`, SEAL's source on the 4.7.2 sampling fix: v4.1.2, the version node-seal
+7.0.0 bundles, bounds `util::sample_poly_uniform`'s rejection at `max_random - barrett_reduce_64(max_random, modulus) - 1`
+and v4.7.2 drops the `- 1`, so one residue loses one of its preimages, about $`2^{-64}`$ in statistical distance per
+coefficient by this project's reading.
+
