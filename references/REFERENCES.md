@@ -625,7 +625,10 @@ reporting only the absence would be the omission this file exists to prevent.
   extraction is not a harm - but it is the paper a reviewer will raise, and the threat model
   should name it. **Metadata verified via the OpenAlex record for that DOI; the full text was not
   retrieved (ACM DL refuses automated fetches), so nothing beyond title, authors, venue and date
-  is asserted here.** Added: 2026-08-11.
+  is asserted here.** Added: 2026-08-11. [Re-checked 2026-11-15: Crossref gives pp. 2812-2823 and
+  publication on 2026-04-12, and the abstract, read through Semantic Scholar's API, says browser deployment
+  "exposes model code and parameters to untrusted environments", the point the value page makes; the page now
+  links the DOI.]
 
 **The negative results, stated as findings rather than left as absence.** No peer-reviewed 2025-2026
 paper was located that performs CKKS homomorphic *evaluation* of a neural network inside a browser

@@ -4955,3 +4955,73 @@ The medical page re-scores every published model's evaluation sample on each run
 URLs the browser caches) and runs them in the tab, and the comparison table's row for it gains this run's figure. Measured
 on the deployed site after the merge, in the log's entry for the deploy.
 
+### PR #56: four items of the owner's list of 2026-11-13 (2026-11-15)
+
+The owner's read-only audit of 2026-11-13 listed eleven points on the deployed pages. Four are dealt with here.
+
+- **The WAMO paper is linked.** The value page cited "WWW 2026's WAMO paper" with no link, and the audit's search had
+  not found it. `references/REFERENCES.md` already held it (Wang, Yu, Han, Gu, Xu and Huang, Proceedings of the ACM
+  Web Conference 2026, doi:10.1145/3774904.3792297). Crossref gives pp. 2812-2823 and publication on 2026-04-12, and
+  the abstract, read through Semantic Scholar's API, says browser deployment "exposes model code and parameters to
+  untrusted environments". The sentence now names the authors and the venue, links the DOI, and paraphrases that
+  clause.
+- **Folded rows are 24 px targets.** A `<summary>` row ("About this model, continued" and the others) stood 19 px tall
+  at 390 px. It is a target of its own, not text in a sentence, so WCAG 2.2 SC 2.5.8's inline exception does not
+  cover it. `.details > summary` and the sequence view's summary now have `min-height: 24px` with 3 px of padding:
+  25 px at 390 px on the value and finance pages, and no visible summary under 24 px.
+- **The clock's source links are 24 px targets.** They are a list of links, not a sentence, and wrapped in a narrow
+  column, their 24 px circles met. Each link is an inline block of at least 24 px: 26 px for one line at 390 px.
+
+Checked rather than changed: the Hub's API on 2026-11-15 gives all fifteen repositories public, and the six whose
+licence is `other` (the three BreastMNIST models, the two telemanom models and the chest X-ray model) each carry
+`license_name` and `license_link`, as `publish_hf.py` writes them. The live `/walkthrough/` serves the marimo notebook
+"Check it yourself: the flows 5G-NIDD holds twice", Python on Pyodide from the site's own origin, not the app's 404
+(item 8, read in Chrome on 2026-11-15). Left for the owner: the footer with the repository, licence, version and
+business page, whose drafted text carries an AI-use line; the finance page's untrained GNN tab; and the telecom
+model's key name beside its label. The student's sample fetched twice in one run (item 9) is fixed in PR #55, which
+routes it through `publishedSampleOf`.
+
+The fourth: the audit asked for the regulatory clock's dated sentence on the FAR to be re-checked before post F. The
+Federal Register's API on 2026-11-15: since the order of 2026-06-22, the FAR's proposed rules are the Revolutionary
+FAR Overhaul's parts of 2026-06-23 and 2026-09-18; a full-text search for "post-quantum" among proposed rules finds an
+FCC rule only, and one for "quantum" with "Federal Acquisition Regulation" finds the order itself. The clock and
+`docs/pqc-roadmap.md` now say "as of 2026-11-15". The order's 180 days end about 2026-12-19, when it is read again.
+
+**Found on the way: neither Caddyfile sent Cache-Control.** After the deploy of PR #54, Chrome kept the app shell it
+had fetched an hour earlier, by its heuristic of a tenth of the time since Last-Modified, and ran the previous bundle
+from its cache; the new image no longer served that bundle, and `index-PNyoH7-C.js` answered 404. A visitor with the
+old shell and no copy of the old bundle would get a blank page. Both Caddyfiles now give a file under `/assets/` that
+exists "public, max-age=31536000, immutable" (Vite names each by its content hash) and everything else "no-cache": the
+shell, the routes, the data and licence files, and a 404 for a hash the image lacks, which cached for a year would
+keep a rollback broken in that browser. A real Caddy (caddy:2-alpine) serving the client-only build of `a9cc2f3` gave
+exactly that for ten paths, with COOP and COEP unchanged; `caddy validate` passes for both files.
+`tests/test_r86_caching_headers.py` holds both rules, the matchers' root against the file server's, and the hash in
+Vite's asset names, and fails when the file matcher is removed.
+
+### PRs #49 to #54 on the deployed site (2026-11-15)
+
+Merged with a merge commit each, on green CI: #49 (`8d1aea5`), #50 (`f8a2a5d`), #51 (`7c8cb5e`), #52 (`8569760`), #53
+(`5f1e19b`) and #54 (`a9cc2f3`). One deploy of `a9cc2f3` with `--return-to-main`: the box is on `main` at `a9cc2f3` and
+serves `/assets/index-J8JJSd0J.js`, public URL 200. The bundle agrees three ways: the deploy's report, the live
+`index.html`, and a local client-only build of `a9cc2f3`, the live file and the local one with SHA-256
+`042f66732ec32eb1b91913a2dc5a86cf71d5252cf269e77098eecedb62c5e529`.
+
+Walked in Chrome on the deployed site, each path loaded fresh (see the caching finding in PR #56's entry):
+
+- **Every page.** `/`, `/usecases`, `/orchestration`, `/validations` and `/value` on the new bundle, with the same
+  headings and buttons as before the deploy, each 20 characters longer for the sidebar's new "Open-source notices"
+  link; no console error and no horizontal overflow on any. `/agentic-ai` sends the client-only build to the use cases,
+  as designed. `/walkthrough/` serves the marimo notebook. `/licenses/js-bundle.txt` serves the notices of 51 packages.
+- **Medical.** A run with the CNN under MPC: 9 of 9 stages. All four published models re-scored and PASS, the chest
+  X-ray model's row "PASS, accuracy 0.6250 against 0.6250, 16 of 16", the MPC argmax class 1 as in the clear. Under
+  the scatter, Bland and Altman's plot over the run's 171 rows and the precision in bits. The DP card's chart from 20
+  recorded draws, the run marked. The timeline bar replays the log: back from event 227 of 234 (`sign_result`) to event
+  84 (`federated_training`, 1.252 s), the ledger shrinking from 16 rows to 10. The sequence diagram has 16 messages,
+  with its SVG and Mermaid downloads.
+- **Satellite.** The VUS-PR card (0.556 at TSB-AD's buffer, 97 steps; point-wise AP 0.904), its "events count, not
+  steps" and "a figure free of its grid" notes, and the OPS-SAT boundary card. A run: 6 of 6 stages, four models PASS.
+- **Finance, telecom, genomics, DeFi.** 12, 6, 8 and 6 of their stages. Finance's three ONNX models PASS, with the
+  GNN checked inside the run. Telecom's three PASS. Genomics publishes no model. On DeFi, the ledger and the sequence
+  diagram appear. Bland and Altman's plot appears on finance and telecom.
+
+The checklist's PI43 to PI49 rows record the live readings.
