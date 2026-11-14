@@ -4825,3 +4825,20 @@ repository private. `fixtures.npy` stays local, as the deny list says. The card 
 model because its repository is private. The registry entry, `models/metrics.json` and the card in `models/` were then
 restored to this branch's state, so main names no repository and pins no revision until the public flip, which renders
 the card again.
+
+### PR #54: the chest X-ray model public on the Hub, pinned (2026-11-15)
+
+With the owner's approval, `scripts/publish_hf.py --key medical_fl.cxr_fedavg --public` made
+`Daemons-Q/qsh-medical-cxr14-fedavg-resnet18` public. The card is rendered again at publication, and its calibration
+paragraph now says the page shows the model's logits and its decision, which is true once the page fetches it, so the
+upload made a new revision, c4287b8bdee3da7c85d3676d67e53156571c5843, beside the private one (def2d36). The Hub's API
+reports it public with 12 files. `scripts/pin_hub_hashes.py` pinned seven of them, each equal to the local file by
+SHA-256 (the four graphs, the evaluation sample, the feature spec and the features report): 15 models and 50 files in
+all. The registry names the repository; `models/metrics.json` records the revision; `docs/findings.md` counts fifteen
+public, pinned repos; `DATA_LICENSES.md` says the model is public with NIH's credit.
+
+The medical page re-scores every published model's evaluation sample on each run (`clientCompute.ts`, the
+`verifications` loop), so a run now also fetches this model's int8 graph (11.3 MB) and its 16 films (3.7 MB, pinned
+URLs the browser caches) and runs them in the tab, and the comparison table's row for it gains this run's figure. Measured
+on the deployed site after the merge, in the log's entry for the deploy.
+
