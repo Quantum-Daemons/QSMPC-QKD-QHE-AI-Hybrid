@@ -4826,6 +4826,48 @@ model because its repository is private. The registry entry, `models/metrics.jso
 restored to this branch's state, so main names no repository and pins no revision until the public flip, which renders
 the card again.
 
+### PR #50: a run's timeline, and who holds what (2026-11-14)
+
+The owner chose, among four ways to explain a run, a timeline with a view per party first. The page already kept every
+event of a run in order, for the live log and the Events (JSON) export; `web/src/lib/runTimeline.ts` folds that log to a
+position with the rules `usePipelineRun`'s handler applies live, and `TimelineBar` steps it back and forward a stage
+boundary at a time or scrubs it event by event. The canvas, the stage-order graph, the log and the metrics table follow
+the position; the cards built from a run's artifacts arrive whole at its end and are not replayed. Nothing runs again.
+
+Each stage now logs what crossed between the sides (`message`: from, to, what, the size it measured or none,
+what protects it, and for bytes sent in the clear their first eight in hex) and what each side holds (`holds`), and
+`PartyLedger` draws them at the position under the canvas's own party names. The handshake reports its two messages,
+1,216 and 1,120 bytes at ML-KEM-768 (the 1,184-byte key or 1,088-byte ciphertext with 32 bytes of X25519); the OPRF PSI
+its sealed transcript each way; the CKKS input ciphertext, 393,329 bytes on the genomics run in Chrome (2 x 8,192 x 3
+primes x 8 bytes and a 113-byte header); the garbled circuit's traffic; the lending checks' own ledger, grouped as the
+lending panel groups it; the signed record. The federated updates and the simulated channel's classical messages are
+"not measured", which is what the run knows of them.
+
+The GIF and WebM of a finished run are drawn by replaying the log to each stage boundary and capturing the figure after
+it has been painted. They were captured inside the event handler, before the page had drawn the event, so a frame could
+show the moment before and nothing captured the run's final state. In Chrome on a local client-only build, the genomics
+run's GIF replayed all 17 boundaries, came back to the finished run and encoded in about 40 seconds (the download was
+intercepted in the page; nothing was saved).
+
+`tests/test_r86_run_timeline.py` runs finance, genomics and the satellite page in node: the log folded to its end gives
+every stage done and exactly the metrics the run ended with; each boundary replays its stage; every message names two
+parties, a protection from the vocabulary and a whole number of bytes or none, with hex only for what is public; no key
+named like a secret is in an event; the session key is in no event, in hex or as numbers, which fails when a leak of its
+first eight bytes is seeded into the handshake's message; the sizes are the run's own. In Chrome the lending page's
+ledger showed Bob's one sealed submission (396,666 bytes), the five masked margins to Carol (1.97 MB), the five signed
+bits (16,550 bytes) and the garbled circuit (4.72 MB in 345 messages); at 375 px nothing overflowed the page.
+
+The same messages as a sequence diagram, the owner's fourth choice, sit under the ledger in a closed section: the page
+draws them as SVG (one participant per party, the messages numbered with their sizes, each stage a shaded block, dotted
+arrows for the simulated channels, notes for what a party keeps), following the timeline, and offers the diagram as SVG
+and as Mermaid text. A lazy import of Mermaid 12.2.0 was tried first and dropped: it added 57 chunk files, 5.1 MB, to
+the client-only build, every diagram type with them and the ELK layout (elkjs, EPL-2.0 or GPL-3.0) among them, where the
+page's own drawing adds a few kB (103,762,172 bytes against 103,755,505 for the commit before it). The generated text of
+the finance, genomics and satellite runs renders with Mermaid 12.2.0 in `web/scripts/check_readme_mermaid.mjs`'s headless
+Chrome; `tests/test_r86_run_timeline.py` holds it to the ledger (one numbered arrow per message, a participant per
+party, closed blocks, dotted only for a simulated channel, no character Mermaid reads as syntax, and the text follows the
+timeline's position).
+
 ### PR #52: the npm packages' notices travel with the page (2026-11-14)
 
 Adding a diagram library to the timeline (PR #50) raised the question for every library already in the page. MIT, ISC,
