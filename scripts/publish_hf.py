@@ -57,6 +57,10 @@ def token() -> str:
 TIER_MODELS = {"finance_aml.mlp_large"}
 #: The finance page's graph model under encryption, trained the same way and with a paragraph of its own (Round 86).
 GRAPH_MODELS = {"finance_aml.gnn_compact"}
+#: Plaintext models whose own last layer a page also evaluates under CKKS, on features computed in the clear, with the
+#: features the layer reads (Round 86, the medical page's split inference). Without this the card said "No code path
+#: evaluates this model under encryption", which stopped being true when the page began to.
+SPLIT_MODELS = {"medical_fl.cxr_fedavg": "its 512 pooled features"}
 
 
 def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool = False) -> str:
@@ -104,6 +108,11 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool
                  "the end of their batch of 2,048. The endpoint scaling and seed were chosen on the validation window, and the record below carries every seed's figure.",
                  "`weights.json` also carries 16 held-out rows with their neighbourhoods for checks, and `eval_sample.json` the same rows in the layout",
                  "of the other models' evaluation samples, with their split and the logits to reproduce, both under the data's licence."]
+    elif spec.key in SPLIT_MODELS and not private:
+        body += [f"This is the **plaintext** model for the `{spec.usecase}` use case, and its page also runs it split: the",
+                 f"network up to {SPLIT_MODELS[spec.key]} in the clear on the data owner's side (the visitor's tab), and",
+                 "its own last layer under CKKS on those features, encrypted. Nothing else of it is evaluated under",
+                 "encryption; what each use case encrypts, if anything, is stated in the notes below."]
     elif spec.runs_encrypted:
         # "and the demo runs it that way" was true of some students only. The public page encrypts the medical CNN
         # student and, on held-out rows, the finance, telecom and OPS-SAT students (finance since Round 84, when it

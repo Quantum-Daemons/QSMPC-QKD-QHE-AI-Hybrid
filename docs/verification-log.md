@@ -4910,6 +4910,13 @@ on encrypted DINOv2 features; Galanopoulos et al., arXiv:2609.16211, the provide
 nonlinear steps) and says what it does not protect: a secret last layer would follow from the owner's decrypted logits
 for 513 feature vectors, which the card now says.
 
+The model's Hub card said "No code path evaluates this model under encryption", which this card makes false.
+`scripts/publish_hf.py` now renders, for a model whose page runs its own last layer under CKKS (`SPLIT_MODELS`), a
+paragraph saying so: the network up to its 512 pooled features in the clear on the data owner's side, the last layer
+under CKKS on them, and nothing else of it encrypted. A test ties the page's model key to that set. A card rendered
+for a private repository keeps the plain sentence, since the page cannot fetch the model then. The Hub's copy changes
+only when the card is republished, with the owner's approval.
+
 The same PR re-checks NIST's post-quantum project page for `references/REFERENCES.md`: updated 2026-10-27, it still
 has no initial public draft of FIPS 206 (FN-DSA) or of HQC, and CSRC News from August to November 2026 lists IR 8547
 and nothing on either, so `docs/pqc-roadmap.md` holds.

@@ -111,3 +111,21 @@ def test_the_medical_page_mounts_the_card_and_the_card_reads_its_files() -> None
     card = (WEB / "src" / "components" / "CxrSplitInference.tsx").read_text()
     assert "data/medical/cxr_head.json" in card and "openPinnedGraph(spec, head.features_graph)" in card
     assert "publishedSampleOf(spec)" in card and 'import("../lib/clientFHE")' in card
+
+
+def test_the_card_says_the_page_runs_the_last_layer_encrypted() -> None:
+    """The card said "No code path evaluates this model under encryption", false once the medical page runs the split."""
+    import importlib.util
+    import re
+
+    from qsh.models import registry
+
+    loader = importlib.util.spec_from_file_location("publish_hf_split", REPO / "scripts" / "publish_hf.py")
+    publish_hf = importlib.util.module_from_spec(loader)
+    loader.loader.exec_module(publish_hf)
+    card_key = re.search(r'const KEY = "([^"]+)"', (WEB / "src" / "components" / "CxrSplitInference.tsx").read_text()).group(1)
+    assert card_key in publish_hf.SPLIT_MODELS, "the page runs a split the card does not mention"
+    spec = registry.get(card_key)
+    card = publish_hf.model_card(spec, registry.achieved(spec.key))
+    assert "No code path" not in card and "its own last layer under CKKS" in card and "512 pooled features" in card
+    assert "runs it split" not in publish_hf.model_card(spec, registry.achieved(spec.key), private=True)
