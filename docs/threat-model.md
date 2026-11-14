@@ -747,8 +747,10 @@ $`\mathcal{N}_{\mathbb{Z}}(0, V)`$ to an integer vector of dimension $`d`$ and $
 sum is $`\tfrac{1}{2}e^2`$-concentrated DP with
 $`e = \min\left(\sqrt{\Delta_2^2/(nV) + 2\tau d},\ \Delta_2/\sqrt{nV} + \tau\sqrt{d}\right)`$ and
 $`\tau = 10\sum_{k=1}^{n-1} e^{-2\pi^2 V k/(k+1)}`$; $`T`$ releases compose to $`\rho = T e^2/2`$, and
-$`\rho`$-concentrated DP is $`(\epsilon, \delta)`$-DP with $`\epsilon \le \rho + 2\sqrt{\rho \log(1/\delta)}`$
-(Canonne, Kamath and Steinke, NeurIPS 2020). On the medical page $`\Delta_2 = 2^{16} + \sqrt{14}`$: one patient moves a
+$`\rho`$-concentrated DP is $`(\epsilon, \delta)`$-DP with
+$`\epsilon = \min_{a>1}\, a\rho + \log(1 - 1/a) - \frac{\log\delta + \log a}{a-1}`$ (Canonne, Kamath and
+Steinke, NeurIPS 2020, Proposition 12, on the Renyi curve $`a\rho`$; from 2026-11-14, before which the pages used the
+simpler $`\epsilon \le \rho + 2\sqrt{\rho \log(1/\delta)}`$ of Bun and Steinke, TCC 2016). On the medical page $`\Delta_2 = 2^{16} + \sqrt{14}`$: one patient moves a
 hospital's clipped sum by at most 1 before rounding, and rounding adds at most 1 a coordinate. The per-party variance is
 the least integer that meets the target, found the same way in `web/src/lib/clientDp.ts` and `qsh.ai.dp`, and
 `tests/test_r86_dp_twin.py` holds the two to the same variances, epsilons and draws.
@@ -762,8 +764,8 @@ tests and no page calls it. Every party runs in one tab.
 
 **Composition.** A release is not the only one about the same people: the medical table's four noised rows are four
 models from the same 486 patients, and zero-concentrated DP adds across releases (Bun and Steinke, TCC 2016), so
-published together they are $`\epsilon = \rho + 2\sqrt{\rho \log(1/\delta)}`$ with $`\rho = \sum_i \rho_i`$:
-9.56 at the four targets, not 8. The page computes it from the run and prints it under the table, and the
+published together they are the conversion of $`\rho = \sum_i \rho_i`$: 9.75 at the four targets, not 8 (9.56
+under the simpler bound, when each row carried less $`\rho`$ for more noise). The page computes it from the run and prints it under the table, and the
 encrypted-aggregation row at $`\epsilon = 1`$ adds its own $`\rho`$. On the genomics and finance pages each run
 draws fresh noise, so $`k`$ runs of the same count are $`k`$ times one run's $`\rho`$; averaging enough runs recovers
 the count, which is what the guarantee allows for and why a deployment releases once.

@@ -555,7 +555,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   standard deviation of 6.2 accounts); the PSI's answer to the banks stays exact, since it is the PSI's purpose.
   Writing it found a gap in the medical table: its four noised rows are four releases from the same patients, and
   together they are $`\epsilon = 9.56`$, not 8 (concentrated DP adds $`\rho`$; Bun and Steinke, TCC 2016); the page
-  now prints that figure. A search of 2026 work recommends DP for none of the telecom, satellite, DeFi and PQC-QKD
+  now prints that figure (9.75 from 2026-11-14, under the tighter conversion). A search of 2026 work recommends DP for none of the telecom, satellite, DeFi and PQC-QKD
   stages, and of further cryptography a threshold committee for the DeFi key holder and a two-path key split for the
   QKD relay, both to be built ([`references/differential-privacy.md`](../references/differential-privacy.md), "The
   other pages"). Two LaTeX commands on main had lost their backslash to a string escape, `\times` in the threat
@@ -639,6 +639,14 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   FedAvg, up on c and d and down on b, e and f, with e still below 0.5. Two other remedies were tried only in a scratch
   copy of the script, not in the record: balancing each source and label in the batches (0.541 pooled) and a random
   spectral tilt on top of balancing and band means (0.606 pooled, two seeds); neither did better.
+- **The same epsilon with less noise (2026-11-14).** The medical, genomics and finance rows turned concentrated DP into
+  $`(\epsilon, \delta)`$ with the simple bound $`\rho + 2\sqrt{\rho \log(1/\delta)}`$. A literature check for the
+  murmur study (the owner's choice) found it loose by 7 to 18 percent of noise against Canonne, Kamath and Steinke's
+  Renyi conversion, which `qsh.ai.dp` and `clientDp.ts` now minimise over the order by the same golden-section steps,
+  capped by the old bound. Each row keeps its epsilon with less noise: the medical row at $`\epsilon = 1`$ goes from
+  37.8 to 32.0 gradient units and from $`0.706 \pm 0.032`$ to $`0.718 \pm 0.024`$ over 20 draws, the finance count
+  from variance 38 to 30. The four medical rows published together rise from 9.56 to 9.75, because each now carries
+  more $`\rho`$ ([`references/differential-privacy.md`](../references/differential-privacy.md)).
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training
