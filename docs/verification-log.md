@@ -4745,3 +4745,60 @@ same as the earlier scratch runs to every printed digit. The PCA's SVD drew torc
 driver did not converge and that it fell back to its more accurate method. `scripts/data/build_murmur_dp_summary.py`
 wrote `docs/measurements/murmur-dp-2026-11-14.json` and `web/public/data/medical/murmur_dp.json`, aggregate figures
 only, without the search's K or its losing candidates. Tests: `tests/test_r86_murmur_dp.py`.
+
+### PR #48 on the deployed site (2026-11-14)
+
+Merged as cdc6d94 with the owner's approval after the local CI (all blocking gates) and GitHub's eight checks, and deployed
+from the main checkout: the box is on main at cdc6d94 and serves `index-PNyoH7-C.js`, the bundle a local
+`VITE_CLIENT_ONLY=1` build of main produces, SHA-256 `e1ea86cd...5aef` on both sides; the served
+`data/medical/murmur_dp.json` is byte for byte the file on main. In Chrome the medical page draws "Murmur detection under
+differential privacy, the person as the unit" with the badge "measured offline": the three arms at epsilon 8 to 1
+(central DP-SGD 0.835 to 0.777, every person every step 0.836 to 0.781, four sites 0.822 to 0.752), the five routes (the
+stand-in from the heart-sound CNN's own databases 0.633, the accounted search 0.789 and 0.685, objective perturbation 0.750
+and 0.729), the sites' 6% more noise under the concentrated-DP accounting, the threshold's collapse (3% called positive at
+epsilon 1 against 19%), and the CirCor, PhysioNet and PANNs credits with their licence links. No console error after a
+reload; no sideways overflow in a 375 px frame.
+
+### PR #49: the chest X-ray model, checked and exported for the Hub (2026-11-14)
+
+The owner's rule is that no model goes to Hugging Face before its data's collection, cleansing, EDA, scaling,
+calibration and feature extraction are checked on this machine. `scripts/data/check_cxr_preupload.py` did so for the
+FedAvg ResNet-18 of PR #44, on NVIDIA RTX PRO 6000 Blackwell Workstation Edition, driver 620.70.06, PyTorch 2.13.0+cu130
+with TF32 off, Pillow 13.0.0 and scikit-learn 1.9.0, and wrote `docs/measurements/cxr-preupload-2026-11-14.json`:
+
+- Collection: the twelve archives and five files match the download's `MANIFEST.tsv` by size and SHA-256, recomputed in
+  the pass that decodes them (45.1 GB); 112,120 unique images of 30,805 patients, every one in exactly one official
+  list, no patient in both; all 112,120 PNGs decode at 1024 px (519 RGBA, made grey). 64% of the original films were more
+  than 10% off square before NIH resized them to 1024 px.
+- Cleansing: the 25 pixel-identical groups and the 26 images training drops, as recorded; 5 images near uniform; 186
+  images correlate negatively with their view's mean film, 29 of them below -0.5, as an inverted film does. They stay in:
+  with the 121 flagged test images left out the test AUROC is 0.80658 against 0.80645. Ages 0 to 95, none above 100. The four hospitals rebuild from
+  the split seed exactly as trained, with no patient in two of them or in training and test.
+- EDA: the official test split is not the training population (effusion 18.2% against 10.0%, AP films 57% against 35%,
+  a median follow-up of 12 against 2); effusion rises with age in training, from 6.6% under 18 to 16.1% over 80; 70% of
+  effusion images carry another finding, infiltration (30%) and atelectasis (25%) the commonest.
+- Scaling: normalisation constants from all training images instead of the 2,000 sampled give 0.80644 against 0.80645,
+  and the sampled ones rounded to two decimals 0.80646; float32 against the recorded bfloat16, 0.8065 against 0.8064, with
+  92 of 25,589 decisions changed at the operating point. Each
+  test image resized again from its PNG by Pillow's bilinear filter equals the prepared set to the pixel; the five other
+  Pillow filters and bilinear sampling without a low-pass give 0.8051 to 0.8063, with 182 to 620 decisions changed.
+- Calibration: on test the mean risk is 18.4% against 18.2% observed, ECE 0.019 over 15 equal-count bins (0.020 and 0.023
+  for seeds 2 and 3), recalibration slope 0.83; a Platt map fitted on the hospitals' validation images brings ECE to 0.013.
+- Features: no unit of the 512 is dead; a logistic head refitted on the frozen features scores 0.802, the four hospitals'
+  heads averaged by size 0.803, each alone 0.784 to 0.795, against the network's 0.806; heads for cardiomegaly and
+  atelectasis on the same features score 0.782 and 0.680. The first principal component (76% of the variance) separates
+  effusion (0.790) more than view (0.661).
+
+`scripts/train/export_cxr_fedavg.py` wraps seed 1's network so the graph takes pixels scaled to [0, 1], normalises them
+itself and returns [0, z]. The shared export gate passed: float32 within 2.6e-6 of PyTorch on 128 held-out films, the int8
+graph agreeing on all 128; over the whole test split ONNX Runtime gives 0.8065 (PA 0.843, AP 0.774; within 1.2e-5 of
+PyTorch in the logit) for the 44.8 MB float32 graph and 0.8063 for the 11.3 MB int8 one, with 134 decisions changed at the
+operating point (validation sensitivity 0.80: test sensitivity 0.883, specificity 0.549). The registry entry
+`medical_fl.cxr_fedavg` names no Hub repository: the card is the owner's to approve. Reading NIH's Box folder for the card
+found the terms in `FAQ_CHESTXRAY.pdf`, question 4, where `DATA_LICENSES.md` said the Box README had not been opened and
+cited Google Cloud's copy; both now name NIH's own page. A local client-only build of the branch drew the entry in the
+medical page's model list as "not on the Hub", and showed a defect in the panel: `auroc`, which the panel's companion list
+carries as the aggregate shown beside AUC-PR, filed this model's declared metric under "companion", with no baseline on
+its row and the caption "the same run reported on a different metric". The panel now never treats the registry's declared
+metric as a companion; no other model's declared metric is on that list, and the three other medical panels render as
+before. Tests: `tests/test_r86_cxr_preupload.py`.
