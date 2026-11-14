@@ -4920,9 +4920,9 @@ The same PR records, in `docs/development.md`, SEAL's source on the 4.7.2 sampli
 and v4.7.2 drops the `- 1`, so one residue loses one of its preimages, about $`2^{-64}`$ in statistical distance per
 coefficient by this project's reading.
 
-### PR #56: three items of the owner's list of 2026-11-13 (2026-11-15)
+### PR #56: four items of the owner's list of 2026-11-13 (2026-11-15)
 
-The owner's read-only audit of 2026-11-13 listed eleven points on the deployed pages. Three are fixed here.
+The owner's read-only audit of 2026-11-13 listed eleven points on the deployed pages. Four are dealt with here.
 
 - **The WAMO paper is linked.** The value page cited "WWW 2026's WAMO paper" with no link, and the audit's search had
   not found it. `references/REFERENCES.md` already held it (Wang, Yu, Han, Gu, Xu and Huang, Proceedings of the ACM
@@ -4942,8 +4942,8 @@ AI-use line, the finance page's untrained GNN tab, the telecom model's key name 
 licence fields, which `publish_hf.py` already writes as `license_name` and `license_link`. The student's sample fetched
 twice in one run is a cache hit; it waits for the split-inference PR's `publishedSampleOf`, which the student can share.
 
-The audit also asked for the regulatory clock's dated sentence on the FAR to be re-checked before post F. The Federal
-Register's API on 2026-11-15: since the order of 2026-06-22, the FAR's proposed rules are the Revolutionary FAR
-Overhaul's parts of 2026-06-23 and 2026-09-18; a full-text search for "post-quantum" among proposed rules finds an FCC
-rule only, and one for "quantum" with "Federal Acquisition Regulation" finds the order itself. The clock and
+The fourth: the audit asked for the regulatory clock's dated sentence on the FAR to be re-checked before post F. The
+Federal Register's API on 2026-11-15: since the order of 2026-06-22, the FAR's proposed rules are the Revolutionary
+FAR Overhaul's parts of 2026-06-23 and 2026-09-18; a full-text search for "post-quantum" among proposed rules finds an
+FCC rule only, and one for "quantum" with "Federal Acquisition Regulation" finds the order itself. The clock and
 `docs/pqc-roadmap.md` now say "as of 2026-11-15". The order's 180 days end about 2026-12-19, when it is read again.
