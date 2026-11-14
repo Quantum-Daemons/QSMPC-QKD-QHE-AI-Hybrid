@@ -133,7 +133,9 @@ export default function CxrSplitInference() {
             The last layer is the network&apos;s own (fc), read from the published weights by <code>scripts/export_cxr_head.py</code>,
             which checks that on all {head?.check.films ?? 16} films the features graph followed by it gives the classifier
             graph&apos;s logit to {head ? head.check.max_abs_logit_difference_float32.toExponential(1) : "-"} in float32 and the
-            same decisions in int8. For research and demonstration only: not for clinical use, and not a medical device.
+            same decisions in int8. Were the last layer a secret, this split would not keep it from the data owner: the
+            decrypted logits for 513 feature vectors of the owner&apos;s choosing determine its 512 weights and its bias.
+            For research and demonstration only: not for clinical use, and not a medical device.
             Films: NIH Clinical Center, ChestX-ray14 (Wang et al., CVPR 2017), <a href="https://nihcc.app.box.com/v/ChestXray-NIHCC"
             target="_blank" rel="noreferrer">nihcc.app.box.com/v/ChestXray-NIHCC</a>.
           </p>

@@ -2768,3 +2768,23 @@ The owner's choice of that day: explain a run rather than add cryptography. The 
   (https://distill.pub/2020/communicating-with-interactive-articles/; read: html). Details on demand, in "Reducing
   Cognitive Load": inspect a part while the overview stays in view.
 
+## Split inference on a chest X-ray (Round 86), read at primary source 2026-11-15
+
+The owner's fourth choice of 2026-11-14: the published chest X-ray model's backbone in the tab, its own last layer under
+CKKS. The note is `references/cxr-split-inference.md`.
+
+- **Kim, Jo, Ra and Park, MICCAI 2025**, LNCS 15973, pp. 485-495, doi:10.1007/978-3-032-05185-1_47; arXiv:2506.15258v2
+  (read: html). A VQGAN latent encrypted under CKKS (TenSEAL), a whole CNN with polynomial activations on the server,
+  encrypted logits back; CheXpert ResNet20 micro AUROC 0.918 in the clear and 0.912 encrypted (Table 3).
+- **Li, Wu and Miao, arXiv:2605.22237v2, May 2026** (read: html). A frozen extractor on the client (DINOv2, Qwen3
+  embeddings), a one-hidden-layer MLP head under leveled CKKS (SEAL 4.1) with a quadratic in place of ReLU.
+- **Galanopoulos, Provatas and Georgakopoulos-Soares, arXiv:2609.16211v1, 14 September 2026** (read: html, the
+  abstract). The provider evaluates the linear algebra on ciphertexts and the key holder the nonlinear steps; 6,683 s
+  for one input on one accelerator.
+- **Pereteanu, Alansary and Passerat-Palmbach, Split HE, PPAI'22, arXiv:2202.13351** (read: html, the abstract). Part of
+  the weights in the clear on the client, as in SplitNN, the rest under HE.
+- **Lee, Lee, Kim, Shin and Lee, HETAL, ICML 2023, PMLR 202:19010-19035** (read: html, the abstract). Classification
+  layers on a pretrained model fine-tuned under CKKS on encrypted client data.
+- **Tramer, Zhang, Juels, Reiter and Ristenpart, USENIX Security 2016, pp. 601-618** (read: html, the abstract).
+  Extraction with near-perfect fidelity where confidence values are returned; why the card says a secret last layer
+  would not survive the owner's queries.
