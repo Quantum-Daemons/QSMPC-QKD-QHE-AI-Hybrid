@@ -631,7 +631,14 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   abnormal recordings of the held-out source score lower than its normal ones. The random split lets one patient's
   recordings fall on both sides (the data name no patients); the held-out sources are the honest figure, and they agree
   with the Challenge's own leave-one-database-out baseline, a mean of sensitivity and specificity of $`0.59 \pm 0.15`$. FedAvg
-  was below pooled training on 4 of 6 sources: averaging sites does not undo a shift between them.
+  was below pooled training on 4 of 6 sources: averaging sites does not undo a shift between them. The lowest source, e,
+  has a reason in its collection: its healthy volunteers were recorded in a laboratory with a microphone or a
+  piezoelectric sensor, its patients with coronary artery disease in hospital with a Littmann stethoscope (Liu et al.
+  2016, section 2.6), so inside e the setting goes with the label. Removing each mel band's mean over the window
+  (`--band-mean`, three seeds) moved the mean held-out AUROC from 0.554 to 0.599 pooled and from 0.477 to 0.530 under
+  FedAvg, up on c and d and down on b, e and f, with e still below 0.5. Two other remedies were tried only in a scratch
+  copy of the script, not in the record: balancing each source and label in the batches (0.541 pooled) and a random
+  spectral tilt on top of balancing and band means (0.606 pooled, two seeds); neither did better.
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training

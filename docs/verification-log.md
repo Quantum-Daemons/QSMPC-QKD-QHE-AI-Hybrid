@@ -4684,3 +4684,16 @@ and FedAvg: a 0.728 and 0.678; b 0.625 and 0.462; c 0.623 and 0.387; d 0.443 and
 Tests: `tests/test_r86_pcg_fl.py` (the preparation on a synthetic zip, the filterbank, the windows, the per-recording
 score, the metrics and the card's data).
 
+Held for generalisation (the owner's choice), then the same study with `--band-mean`, which removes each mel band's mean
+over the window before the window is standardised: seeds 1 to 3, same GPU, driver and PyTorch. Mean held-out AUROC 0.554
+to 0.599 pooled and 0.477 to 0.530 under FedAvg; pooled, c 0.623 to 0.802 and d 0.443 to 0.659, b 0.625 to 0.602, e
+0.321 to 0.252, f 0.582 to 0.551, a within 0.01; the random split 0.961 to 0.958. The builder now takes the run with
+`--band-mean <dir>`: the record and the card keep it under `band_mean`, the main run's figures unchanged (checked
+equal). The card names it as one remedy that helped on average, not everywhere, and its explanation of the inverted e
+now follows Liu et al. 2016, section 2.6 (read here in the author version): healthy volunteers in a laboratory with a
+microphone or piezoelectric sensor, patients in hospital with a Littmann. Balancing each source and label and a random
+spectral tilt ran in a scratch copy only (0.541 and 0.606 pooled) and are not in the record. A literature check
+(`references/heart-sound-and-ecg-prior-work.md`) found the same pattern elsewhere: Koike et al. 2021 raised every
+held-out database with spectrogram standardisation, and Humayun et al. 2020 found domain-balanced batches did not help
+on an unseen domain.
+
