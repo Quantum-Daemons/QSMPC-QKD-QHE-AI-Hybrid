@@ -4910,3 +4910,7 @@ on encrypted DINOv2 features; Galanopoulos et al., arXiv:2609.16211, the provide
 nonlinear steps) and says what it does not protect: a secret last layer would follow from the owner's decrypted logits
 for 513 feature vectors, which the card now says.
 
+The same PR re-checks NIST's post-quantum project page for `references/REFERENCES.md`: updated 2026-10-27, it still
+has no initial public draft of FIPS 206 (FN-DSA) or of HQC, and CSRC News from August to November 2026 lists IR 8547
+and nothing on either, so `docs/pqc-roadmap.md` holds.
+

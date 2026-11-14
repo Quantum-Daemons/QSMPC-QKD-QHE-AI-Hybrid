@@ -2393,7 +2393,9 @@ so each one names what was checked and where it stopped.
 
 - **FIPS 206 (FN-DSA) and an HQC draft: still none.** The NIST PQC project page (last modified
   2026-08-05) lists Falcon as "selected for ongoing standardization; that process is underway" and
-  HQC as selected, with no initial public draft of either. `docs/pqc-roadmap.md` holds.
+  HQC as selected, with no initial public draft of either. `docs/pqc-roadmap.md` holds. [Re-checked 2026-11-15: the
+  page, updated 2026-10-27, still says of both "that process is underway", and CSRC News from August to November
+  2026 lists IR 8547 (2026-10-27) and nothing on either.]
 - **ETSI QKD.** GS QKD 014 V1.1.1 is still the only edition, GS QKD 015 is V2.1.1 and GS QKD 020 is
   V1.1.1 (2026-06), as the August fact-check recorded. GR QKD 007 V1.2.1 (2026-01, vocabulary) is a
   group report and changes no interface this project models.
