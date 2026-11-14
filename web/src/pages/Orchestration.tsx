@@ -5,6 +5,8 @@ import KeyPoints from "../components/KeyPoints";
 import OrchestrationGraph from "../components/OrchestrationGraph";
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
+import PartyLedger from "../components/PartyLedger";
+import TimelineBar from "../components/TimelineBar";
 import Tabs from "../components/Tabs";
 import UseCaseCanvas from "../components/UseCaseCanvas";
 import { EncryptedAgreementChart, NoEncryptedComparison, RealDataScatter } from "../components/VerificationChart";
@@ -125,7 +127,7 @@ export default function Orchestration() {
             // The look of `.card` and its horizontal scroll, as on the use-case pages (see the
             // comment there): below the canvas's smallest scale the frame scrolls.
             <div ref={graphRef} style={{ background: "var(--panel)", borderRadius: 10, padding: 8, overflowX: "auto" }}>
-              <UseCaseCanvas usecase={usecase} activeStage={active} doneStages={done} metrics={metrics}
+              <UseCaseCanvas usecase={usecase} activeStage={run.view.active} doneStages={run.view.done} metrics={run.view.metrics}
                 config={run.diagramConfig} />
             </div>
           ) },
@@ -133,15 +135,17 @@ export default function Orchestration() {
             <div ref={graphRef}>
               {/* metrics, so the inference node names the published model that ran. Without it this
                   graph described the same run differently from the diagram on the use-case pages. */}
-              <OrchestrationGraph usecase={usecase} activeStage={active} doneStages={done}
-                metrics={metrics} config={run.diagramConfig} />
+              <OrchestrationGraph usecase={usecase} activeStage={run.view.active} doneStages={run.view.done}
+                metrics={run.view.metrics} config={run.diagramConfig} />
             </div>
           ) },
         ]} />
       </div>
+      <TimelineBar events={events} cursor={run.cursor} setCursor={run.setCursor} marks={run.marks} inFlight={inFlight} />
 
       <h2 className="sr-only">Results of this run</h2>
-      <RunMonitor events={events} metrics={metrics} signature={signature} logRef={logRef} />
+      <PartyLedger usecase={usecase} events={run.view.events} config={run.diagramConfig} />
+      <RunMonitor events={run.view.events} metrics={run.view.metrics} signature={signature} logRef={logRef} />
 
       {/* The standing requirement is a 2D plot OF PRIVATE INFERENCE against the plaintext reference.
           It rendered on the use-case pages and not here, on the page that actually runs the
