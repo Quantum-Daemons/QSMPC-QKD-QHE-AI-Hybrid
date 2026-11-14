@@ -1,0 +1,58 @@
+{
+ "_about": "A decision boundary for the satellite segment classifier on the overlay's plane (Round 86): the slice through the medoid, the two-feature surrogate, and which one passed. Written by scripts/measure_satellite_boundary.py; aggregate figures only.",
+ "model": "satellite_comms.opssat",
+ "hf_revision": "95955c8d184e52ecabd5f3c468dc7e88c32fa1b5",
+ "graph_sha256": "3ddae79e9ac46a86a0b75dee3f819149127bd07792bf407a40fc4b64b5e561b4",
+ "graph_outputs": [
+  "label",
+  "probabilities"
+ ],
+ "plane": [
+  "n_peaks",
+  "diff2_peaks"
+ ],
+ "partitions": {
+  "train": 1594,
+  "test": 529,
+  "test_anomalous": 113
+ },
+ "model_test_auc_pr": 0.9681071056846158,
+ "slice": {
+  "anchor": "the test partition's medoid in z-space (train mean and SD)",
+  "held_values": {
+   "sampling": 5.0,
+   "duration": 240.0,
+   "len": 49.0,
+   "mean": 1.892446734693877e-06,
+   "var": 3.1058357384247507e-10,
+   "std": 1.762338145312854e-05,
+   "kurtosis": -1.4351218835613058,
+   "skew": -0.0514709892548752,
+   "smooth10_n_peaks": 1.0,
+   "smooth20_n_peaks": 1.0,
+   "diff_peaks": 9.0,
+   "diff_var": 5.515267310874827e-12,
+   "diff2_var": 1.3196443729243101e-12,
+   "gaps_squared": 1200.0,
+   "len_weighted": 245.0,
+   "var_div_duration": 1.2940982243436462e-12,
+   "var_div_len": 6.338440282499491e-12
+  },
+  "near": 85,
+  "near_rule": "every held feature within 1 SD of the medoid's",
+  "agreement": 0.9764705882352941,
+  "passes": true
+ },
+ "surrogate": {
+  "form": "logistic regression on n_peaks, diff2_peaks, their squares and product, standardised, fitted to the published graph's probabilities on the train partition",
+  "test_agreement_at_0.5": 0.9262759924385633,
+  "test_r2_of_probabilities": 0.6484332481339785,
+  "test_auc_pr": 0.7898854247662969,
+  "passes": true
+ },
+ "rules": {
+  "min_near": 20,
+  "min_agreement": 0.9
+ },
+ "chosen": "slice"
+}
