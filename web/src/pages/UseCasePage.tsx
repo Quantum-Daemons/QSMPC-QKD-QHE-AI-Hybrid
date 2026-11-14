@@ -16,6 +16,7 @@ import TimelineBar from "../components/TimelineBar";
 import MpcCnnPanel from "../components/MpcCnnPanel";
 import FedHeartPanel, { type FedHeartSitesMeta } from "../components/FedHeartPanel";
 import CxrFlCard from "../components/CxrFlCard";
+import CxrSplitInference from "../components/CxrSplitInference";
 import PcgFlCard from "../components/PcgFlCard";
 import MurmurDpCard from "../components/MurmurDpCard";
 import SatBoundaryCard from "../components/SatBoundaryCard";
@@ -393,6 +394,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && artifacts?.mpc_cnn ? <MpcCnnPanel report={artifacts.mpc_cnn as MpcCnnReport} /> : null}
       {usecase === "medical_fl" && artifacts?.fedHeart ? <FedHeartPanel result={artifacts.fedHeart as FedHeartResult} sites={(artifacts.fedHeartSites as FedHeartSitesMeta | undefined) ?? null} dp={(artifacts.fedHeartDp as FedHeartDpResult | undefined) ?? null} /> : null}
       {usecase === "medical_fl" && <CxrFlCard />}
+      {usecase === "medical_fl" && <CxrSplitInference />}
       {usecase === "medical_fl" && <PcgFlCard />}
       {usecase === "medical_fl" && <MurmurDpCard />}
       {usecase === "satellite_comms" && <SatVusPrCard />}

@@ -54,8 +54,11 @@ def _strip_comments(text: str) -> str:
     return re.sub(r"/\*.*?\*/|(?<!:)//[^\n]*", "", text, flags=re.S)
 
 
-# clientCompute.ts: a student's evaluation sample and its weights file, and the finance MLP's and compact GNN's weights (Round 86).
-@pytest.mark.parametrize(("name", "calls"), [("onnxInference.ts", 2), ("forecastStudent.ts", 1), ("clientCompute.ts", 4)])
+# clientCompute.ts: a student's weights file, and the finance MLP's and compact GNN's weights (Round 86); since Round 86 a
+# student's evaluation sample comes through onnxInference.ts's `publishedSampleOf`, the cache its verification reads.
+# onnxInference.ts: a model's graph, its evaluation sample, and since Round 86 any other pinned graph of a published model
+# (`openPinnedGraph`, the chest X-ray model's features graph for the medical page's split inference).
+@pytest.mark.parametrize(("name", "calls"), [("onnxInference.ts", 3), ("forecastStudent.ts", 1), ("clientCompute.ts", 3)])
 def test_each_hub_fetch_is_checked_before_it_is_read(name: str, calls: int) -> None:
     source = _strip_comments((WEB / "src" / "lib" / name).read_text(encoding="utf-8"))
     assert source.count("checkPinned(") == calls

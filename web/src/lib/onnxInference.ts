@@ -693,7 +693,7 @@ export interface ModelEvalResult {
  *  Until Round 80 both were `null`. An unreachable Hub therefore made the page state that the
  *  published model "ships no eval_sample.json at that revision", and the cached null kept saying it
  *  for the rest of the session. Found by scanning the pages with the network cut. */
-type SampleFetch =
+export type SampleFetch =
   | { kind: "ok"; file: ModelInputFile }
   | { kind: "absent" }
   | { kind: "error"; reason: string };
@@ -751,6 +751,49 @@ function evalSample(modelUrl: string, expectedSha256: string | undefined): Promi
     })();
     _sampleCache.set(url, hit);
     void hit.then((r) => { if (r.kind === "error") _sampleCache.delete(url); });
+  }
+  return hit;
+}
+
+/** A published model's own evaluation sample, from the same per-tab cache the page's re-scoring uses and checked against
+ *  its pin (Round 86: the medical page's split inference shows the chest X-ray model's 16 films). */
+export function publishedSampleOf(spec: ModelSpec): Promise<SampleFetch> {
+  if (!spec.hf_repo_id || !spec.hf_revision) {
+    return Promise.resolve({ kind: "error", reason: `${spec.key} is not published and pinned` });
+  }
+  return evalSample(`https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/onnx/model.onnx`,
+                    spec.file_sha256?.["eval_sample.json"]);
+}
+
+/**
+ * Any pinned graph of a published model as its own session (Round 86, split inference). `loadModel` opens the one graph a
+ * model is scored by; the chest X-ray model also publishes the same network up to its pooled features, which the medical
+ * page runs on a film before encrypting the features. Fetched with the same timeout, checked against its pin, created on
+ * the WASM build with the same threads and logging as `loadModel`, and cached per URL for the tab.
+ */
+const graphSessions = new Map<string, Promise<{ session: OrtTypes.InferenceSession; bytes: number; loadMs: number }>>();
+export function openPinnedGraph(spec: ModelSpec, path: string):
+    Promise<{ session: OrtTypes.InferenceSession; bytes: number; loadMs: number }> {
+  if (!spec.hf_repo_id || !spec.hf_revision) return Promise.reject(new Error(`${spec.key} is not published and pinned`));
+  const url = `https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/${path}`;
+  let hit = graphSessions.get(url);
+  if (!hit) {
+    hit = (async () => {
+      const started = performance.now();
+      const ort = await loadOrt(false);
+      ort.env.wasm.numThreads = resolveThreads();
+      ort.env.wasm.proxy = false;
+      const res = await fetch(url, { mode: "cors", signal: AbortSignal.timeout(HF_FETCH_TIMEOUT_MS) });
+      if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
+      const buf = new Uint8Array(await res.arrayBuffer());
+      await checkPinned(buf, spec.file_sha256?.[path], `${spec.key} ${path}`);
+      const session = await withTimeout(
+        ort.InferenceSession.create(buf, { executionProviders: ["wasm"], logSeverityLevel: 3 }),
+        SESSION_CREATE_TIMEOUT_MS, `ONNX session creation for ${path} exceeded ${SESSION_CREATE_TIMEOUT_MS / 1000}s`);
+      return { session, bytes: buf.byteLength, loadMs: performance.now() - started };
+    })();
+    graphSessions.set(url, hit);
+    void hit.catch(() => graphSessions.delete(url));
   }
   return hit;
 }

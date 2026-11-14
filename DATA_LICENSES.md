@@ -205,7 +205,7 @@ this as synthetic; it is never presented as measured on real traffic.
 - **Published evaluation samples (`models/*/eval_sample.json`), committed and redistributed.** Each
   model's held-out sample ships inside that model's own Hugging Face repo at the same pinned
   revision as the weights, so a sample can never be paired with a different revision of the model it
-  scores; all thirteen repos ship one, the satellite student's a stretch of a timeline and the compact GNN's the
+  scores; all fifteen repos ship one, the satellite student's a stretch of a timeline and the compact GNN's the
   16 rows its weights carry. They carry their source
   corpus's licence: AMLworld under CDLA-Sharing-1.0, BreastMNIST
   under CC BY 4.0 **as asserted by MedMNIST, the BUSI authors publishing no licence of their own** (see the
