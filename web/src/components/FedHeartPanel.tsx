@@ -13,6 +13,7 @@
 import { useState } from "react";
 import StageBadge from "./StageBadge";
 import { type FedHeartDpResult, fedHeartComparisons, type FedHeartResult } from "../lib/clientFedHeart";
+import DpPrivacyUtility from "./DpPrivacyUtility";
 import { composedEpsilon, formatDelta } from "../lib/clientDp";
 import { type AggregationComparison, DP_ROW_EPSILON } from "../lib/clientFedAgg";
 import { compareAggregationsInWorker } from "../lib/clientFedAggRun";
@@ -256,6 +257,7 @@ function DpTable({ dp }: { dp: FedHeartDpResult }) {
           ))}
         </tbody>
       </table>
+      <DpPrivacyUtility dp={dp} />
       <div style={{ marginTop: 6 }}>
         <CardExport name="medical_fl-differential-privacy" label="the differential-privacy table" rows={fedHeartDpRows(dp)}
           json={dp} />
