@@ -45,6 +45,7 @@ export const MODEL_RELATION: Record<string, Relation> = {
   "medical_fl.resnet18": { relation: "same", why: "ResNet-18 at 28 px on BreastMNIST's official split, as in MedMNIST v2" },
   "medical_fl.resnet50": { relation: "reference", why: "ResNet-50 at 28 px under a training regime that differs from the benchmark table's" },
   "medical_fl.student": { relation: "citation", why: "a single-convolution CNN reading 14 x 14 images, distilled for CKKS, beside the benchmark's ResNet-18 at 28 x 28" },
+  "medical_fl.cxr_fedavg": { relation: "reference", why: "a one-finding ResNet-18 from random initialisation, trained under FedAvg at 224 px, beside the dataset paper's 14-finding ResNet-50 from ImageNet with its last layers trained, on the same official test split" },
   "satellite_comms.telemanom": { relation: "same", why: "Telemanom on ESA-ADB's Mission1 lightweight channels 41 to 46, anomalies alone: the like-for-like row of the benchmark" },
   "satellite_comms.student": { relation: "reference", why: "a linear forecaster distilled from Telemanom, beside Telemanom's benchmark row" },
   "satellite_comms.opssat": { relation: "reference", why: "gradient-boosted trees over the published features, beside the FCNN, the best of 30 algorithms benchmarked" },

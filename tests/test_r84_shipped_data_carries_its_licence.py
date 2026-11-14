@@ -45,6 +45,10 @@ LINKS = {
     "CDLA-Sharing-1.0": "https://cdla.dev/sharing-1-0/",
     "CC0-1.0": "https://creativecommons.org/publicdomain/zero/1.0/",
     "Apache-2.0": "https://www.apache.org/licenses/LICENSE-2.0",
+    # NIH's own terms for ChestX-ray14 (Round 86): unrestricted use, with a link to NIH's download site, an acknowledgement
+    # of the NIH Clinical Center and a citation of the CVPR 2017 paper asked (FAQ_CHESTXRAY.pdf, question 4, in NIH's Box
+    # folder). The chest X-ray model's 16-film evaluation sample is the first shipped file under them.
+    "NIH ChestX-ray14 terms": "https://nihcc.app.box.com/v/ChestXray-NIHCC",
 }
 NO_CREDIT_REQUIRED = ("Apache-2.0", "CC0-1.0")
 

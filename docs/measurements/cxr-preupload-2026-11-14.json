@@ -1,0 +1,1271 @@
+{
+ "_about": "The chest X-ray FedAvg ResNet-18's checks before a Hub upload (Round 86): collection, cleansing, EDA, scaling, calibration and features. Written by scripts/data/check_cxr_preupload.py; aggregate figures only.",
+ "published_seed": 1,
+ "seeds": [
+  1,
+  2,
+  3
+ ],
+ "environment": {
+  "kernel": "5.14.0-687.66.1.el9_8.x86_64",
+  "python": "3.12.15",
+  "torch": "2.13.0+cu130",
+  "torch_cuda": "13.0",
+  "cudnn": 92000,
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+  "driver": "620.70.06",
+  "cublas_loaded": [
+   "libcublas.so.12",
+   "libcublas.so.13.10.0.20"
+  ],
+  "cublas_version": "12.9.3",
+  "pillow": "13.0.0",
+  "scikit_learn": "1.9.0",
+  "numpy": "2.5.1"
+ },
+ "collection": {
+  "manifest": {
+   "files": 17,
+   "bytes": 45091088030,
+   "matching": 17,
+   "differing_or_missing": []
+  },
+  "entries": {
+   "images": 112120,
+   "unique_names": 112120,
+   "patients": 30805,
+   "views": {
+    "PA": 67310,
+    "AP": 44810
+   },
+   "train_val_list": 86524,
+   "test_list": 25596,
+   "lists_overlap": 0,
+   "in_no_list": 0,
+   "listed_not_indexed": 0,
+   "patients_in_both_lists": 0,
+   "original_size": {
+    "square": 4440,
+    "aspect_quantiles_w_over_h": {
+     "q00": 0.5421,
+     "q01": 0.8192,
+     "q50": 1.0739,
+     "q99": 1.2207,
+     "q100": 1.79306
+    },
+    "aspect_off_by_more_than_10pct": 71731,
+    "smaller_than_1024_either_side": 4,
+    "pixel_spacing_mm_quantiles": {
+     "q00": 0.115,
+     "q01": 0.139,
+     "q50": 0.143,
+     "q99": 0.194311,
+     "q100": 0.1988
+    }
+   }
+  },
+  "decoded": {
+   "pngs": 112120,
+   "colour_modes": {
+    "L": 111601,
+    "RGBA": 519
+   },
+   "sizes": {
+    "1024x1024": 112120
+   },
+   "test_images_resampled": 25596,
+   "reference_filter_differs_from_prepared_set": 0
+  },
+  "labels": {
+   "file": "Data_Entry_2017_v2020.csv",
+   "findings": {
+    "No Finding": 60361,
+    "Infiltration": 19894,
+    "Effusion": 13317,
+    "Atelectasis": 11559,
+    "Nodule": 6331,
+    "Mass": 5782,
+    "Pneumothorax": 5302,
+    "Consolidation": 4667,
+    "Pleural_Thickening": 3385,
+    "Cardiomegaly": 2776,
+    "Emphysema": 2516,
+    "Edema": 2303,
+    "Fibrosis": 1686,
+    "Pneumonia": 1431,
+    "Hernia": 227
+   }
+  }
+ },
+ "cleansing": {
+  "duplicates": {
+   "groups": 25,
+   "across_split": 3,
+   "dropped_by_training": 26
+  },
+  "pixels_224": {
+   "near_uniform": 5,
+   "very_dark": 0,
+   "very_bright": 0,
+   "correlation_below_0.2": 639,
+   "correlation_negative": 186,
+   "correlation_below_minus_0.5": 29,
+   "correlation_quantiles": {
+    "q00": -0.874365,
+    "q01": 0.290323,
+    "q50": 0.770885,
+    "q99": 0.918048,
+    "q100": 0.953401
+   },
+   "mean_quantiles": {
+    "q00": 24.7535,
+    "q01": 82.8377,
+    "q50": 122.066,
+    "q99": 178.197,
+    "q100": 229.261
+   },
+   "sd_quantiles": {
+    "q00": 1.60922,
+    "q01": 30.3518,
+    "q50": 59.8934,
+    "q99": 77.681,
+    "q100": 103.391
+   },
+   "flagged_in_test": 121,
+   "flagged_in_training": 481,
+   "test_without_flagged": {
+    "images": 25468,
+    "flagged_effusion_share": 0.123967,
+    "auroc_all": 0.806452,
+    "auroc_without_flagged": 0.806576
+   }
+  },
+  "ages": {
+   "min": 0,
+   "max": 95,
+   "over_100": 0,
+   "under_1": 14
+  },
+  "sexes": {
+   "M": 63340,
+   "F": 48780
+  },
+  "hospitals_rebuilt": {
+   "split_seed": 1,
+   "sharpness": 4.0,
+   "equal_to_record": true,
+   "patients_in_two_hospitals": 0,
+   "patients_in_training_and_test": 0
+  }
+ },
+ "eda": {
+  "train_val_kept": {
+   "images": 86505,
+   "patients": 28008,
+   "ap_share": 0.350234,
+   "effusion": 0.100098,
+   "by_view": {
+    "AP": {
+     "images": 30297,
+     "effusion": 0.126283
+    },
+    "PA": {
+     "images": 56208,
+     "effusion": 0.0859842
+    }
+   },
+   "female_share": 0.439905,
+   "by_sex": {
+    "F": {
+     "images": 38054,
+     "effusion": 0.104089
+    },
+    "M": {
+     "images": 48451,
+     "effusion": 0.0969639
+    }
+   },
+   "age_quantiles": {
+    "q25": 34.0,
+    "q50": 48.0,
+    "q75": 59.0
+   },
+   "by_age_band": {
+    "0-17": {
+     "images": 4332,
+     "effusion": 0.0657895
+    },
+    "18-39": {
+     "images": 23692,
+     "effusion": 0.0819686
+    },
+    "40-59": {
+     "images": 38009,
+     "effusion": 0.0995554
+    },
+    "60-79": {
+     "images": 19676,
+     "effusion": 0.128075
+    },
+    "80+": {
+     "images": 796,
+     "effusion": 0.160804
+    }
+   },
+   "follow_up_median": 2.0,
+   "images_per_patient": {
+    "median": 1.0,
+    "max": 109
+   }
+  },
+  "test": {
+   "images": 25589,
+   "patients": 2797,
+   "ap_share": 0.566454,
+   "effusion": 0.181953,
+   "by_view": {
+    "AP": {
+     "images": 14495,
+     "effusion": 0.200069
+    },
+    "PA": {
+     "images": 11094,
+     "effusion": 0.158284
+    }
+   },
+   "female_share": 0.418539,
+   "by_sex": {
+    "F": {
+     "images": 10710,
+     "effusion": 0.179178
+    },
+    "M": {
+     "images": 14879,
+     "effusion": 0.183951
+    }
+   },
+   "age_quantiles": {
+    "q25": 34.0,
+    "q50": 49.0,
+    "q75": 59.0
+   },
+   "by_age_band": {
+    "0-17": {
+     "images": 1069,
+     "effusion": 0.162769
+    },
+    "18-39": {
+     "images": 7340,
+     "effusion": 0.158174
+    },
+    "40-59": {
+     "images": 11219,
+     "effusion": 0.187717
+    },
+    "60-79": {
+     "images": 5738,
+     "effusion": 0.204949
+    },
+    "80+": {
+     "images": 223,
+     "effusion": 0.174888
+    }
+   },
+   "follow_up_median": 12.0,
+   "images_per_patient": {
+    "median": 2.0,
+    "max": 184
+   }
+  },
+  "hospitals": [
+   {
+    "hospital": 1,
+    "images": 35348,
+    "patients": 15472,
+    "ap_share": 0.118083,
+    "effusion": 0.0803723,
+    "by_view": {
+     "AP": {
+      "images": 4174,
+      "effusion": 0.110925
+     },
+     "PA": {
+      "images": 31174,
+      "effusion": 0.0762815
+     }
+    },
+    "female_share": 0.452331,
+    "by_sex": {
+     "F": {
+      "images": 15989,
+      "effusion": 0.0862468
+     },
+     "M": {
+      "images": 19359,
+      "effusion": 0.0755204
+     }
+    },
+    "age_quantiles": {
+     "q25": 36.0,
+     "q50": 49.0,
+     "q75": 59.0
+    },
+    "by_age_band": {
+     "0-17": {
+      "images": 1492,
+      "effusion": 0.0408847
+     },
+     "18-39": {
+      "images": 9227,
+      "effusion": 0.0570066
+     },
+     "40-59": {
+      "images": 16229,
+      "effusion": 0.0789328
+     },
+     "60-79": {
+      "images": 8043,
+      "effusion": 0.114012
+     },
+     "80+": {
+      "images": 357,
+      "effusion": 0.156863
+     }
+    },
+    "follow_up_median": 1.0,
+    "images_per_patient": {
+     "median": 1.0,
+     "max": 59
+    }
+   },
+   {
+    "hospital": 2,
+    "images": 18532,
+    "patients": 6773,
+    "ap_share": 0.210285,
+    "effusion": 0.0843946,
+    "by_view": {
+     "AP": {
+      "images": 3897,
+      "effusion": 0.0990506
+     },
+     "PA": {
+      "images": 14635,
+      "effusion": 0.080492
+     }
+    },
+    "female_share": 0.448845,
+    "by_sex": {
+     "F": {
+      "images": 8318,
+      "effusion": 0.0900457
+     },
+     "M": {
+      "images": 10214,
+      "effusion": 0.0797924
+     }
+    },
+    "age_quantiles": {
+     "q25": 35.0,
+     "q50": 49.0,
+     "q75": 59.0
+    },
+    "by_age_band": {
+     "0-17": {
+      "images": 817,
+      "effusion": 0.0477356
+     },
+     "18-39": {
+      "images": 5123,
+      "effusion": 0.0657818
+     },
+     "40-59": {
+      "images": 8019,
+      "effusion": 0.0877915
+     },
+     "60-79": {
+      "images": 4419,
+      "effusion": 0.106359
+     },
+     "80+": {
+      "images": 154,
+      "effusion": 0.0909091
+     }
+    },
+    "follow_up_median": 1.0,
+    "images_per_patient": {
+     "median": 1.0,
+     "max": 70
+    }
+   },
+   {
+    "hospital": 3,
+    "images": 12047,
+    "patients": 2438,
+    "ap_share": 0.519714,
+    "effusion": 0.115547,
+    "by_view": {
+     "AP": {
+      "images": 6261,
+      "effusion": 0.124581
+     },
+     "PA": {
+      "images": 5786,
+      "effusion": 0.105773
+     }
+    },
+    "female_share": 0.440359,
+    "by_sex": {
+     "F": {
+      "images": 5305,
+      "effusion": 0.107257
+     },
+     "M": {
+      "images": 6742,
+      "effusion": 0.122071
+     }
+    },
+    "age_quantiles": {
+     "q25": 35.0,
+     "q50": 48.0,
+     "q75": 59.0
+    },
+    "by_age_band": {
+     "0-17": {
+      "images": 628,
+      "effusion": 0.0843949
+     },
+     "18-39": {
+      "images": 3392,
+      "effusion": 0.1023
+     },
+     "40-59": {
+      "images": 5147,
+      "effusion": 0.11191
+     },
+     "60-79": {
+      "images": 2782,
+      "effusion": 0.145219
+     },
+     "80+": {
+      "images": 98,
+      "effusion": 0.122449
+     }
+    },
+    "follow_up_median": 3.0,
+    "images_per_patient": {
+     "median": 2.0,
+     "max": 108
+    }
+   },
+   {
+    "hospital": 4,
+    "images": 20578,
+    "patients": 3325,
+    "ap_share": 0.775829,
+    "effusion": 0.139081,
+    "by_view": {
+     "AP": {
+      "images": 15965,
+      "effusion": 0.137614
+     },
+     "PA": {
+      "images": 4613,
+      "effusion": 0.144158
+     }
+    },
+    "female_share": 0.410244,
+    "by_sex": {
+     "F": {
+      "images": 8442,
+      "effusion": 0.149728
+     },
+     "M": {
+      "images": 12136,
+      "effusion": 0.131674
+     }
+    },
+    "age_quantiles": {
+     "q25": 32.0,
+     "q50": 47.0,
+     "q75": 58.0
+    },
+    "by_age_band": {
+     "0-17": {
+      "images": 1395,
+      "effusion": 0.0946237
+     },
+     "18-39": {
+      "images": 5950,
+      "effusion": 0.123025
+     },
+     "40-59": {
+      "images": 8614,
+      "effusion": 0.141978
+     },
+     "60-79": {
+      "images": 4432,
+      "effusion": 0.164486
+     },
+     "80+": {
+      "images": 187,
+      "effusion": 0.245989
+     }
+    },
+    "follow_up_median": 4.0,
+    "images_per_patient": {
+     "median": 3.0,
+     "max": 109
+    }
+   }
+  ],
+  "effusion_recorded_with": {
+   "images": 13317,
+   "alone": 3955,
+   "top": [
+    {
+     "finding": "Infiltration",
+     "share": 0.300368
+    },
+    {
+     "finding": "Atelectasis",
+     "share": 0.245926
+    },
+    {
+     "finding": "Consolidation",
+     "share": 0.0966434
+    },
+    {
+     "finding": "Mass",
+     "share": 0.0941654
+    },
+    {
+     "finding": "Cardiomegaly",
+     "share": 0.0798228
+    },
+    {
+     "finding": "Pneumothorax",
+     "share": 0.0747916
+    }
+   ]
+  }
+ },
+ "scaling": {
+  "normalisation": {
+   "sample_of_2000": {
+    "mean": 0.504169,
+    "std": 0.250147
+   },
+   "all_training_images": {
+    "mean": 0.505886,
+    "std": 0.250769
+   },
+   "test_auroc": {
+    "sample_constants": 0.806452,
+    "all_training_constants": 0.806441,
+    "rounded_to_2_decimals": 0.80646
+   },
+   "max_abs_logit_change": {
+    "all_training_constants": 0.0261173,
+    "rounded_to_2_decimals": 0.0775628
+   }
+  },
+  "precision": {
+   "test_auroc_bfloat16": 0.806363,
+   "test_auroc_float32": 0.806452,
+   "max_abs_logit_difference": 0.254112,
+   "mean_abs_logit_difference": 0.0167672,
+   "decisions_differing_at_the_operating_point": 92,
+   "tf32": "off in this check (cuDNN and matmul), so float32 here is float32"
+  },
+  "resampler": {
+   "reference": "bilinear",
+   "reference_equals_prepared_pixels": true,
+   "images": 25589,
+   "operating_point_logit": -2.28499,
+   "filters": {
+    "nearest": {
+     "test_auroc": 0.805086,
+     "mean_abs_pixel_vs_reference": 1.76632,
+     "max_abs_logit_vs_reference": 1.27394,
+     "mean_abs_logit_vs_reference": 0.125243,
+     "decisions_differing_at_the_operating_point": 620
+    },
+    "box": {
+     "test_auroc": 0.806149,
+     "mean_abs_pixel_vs_reference": 0.537878,
+     "max_abs_logit_vs_reference": 0.388868,
+     "mean_abs_logit_vs_reference": 0.0429825,
+     "decisions_differing_at_the_operating_point": 221
+    },
+    "bilinear": {
+     "test_auroc": 0.806452,
+     "mean_abs_pixel_vs_reference": 0.0,
+     "max_abs_logit_vs_reference": 0.0,
+     "mean_abs_logit_vs_reference": 0.0,
+     "decisions_differing_at_the_operating_point": 0
+    },
+    "hamming": {
+     "test_auroc": 0.80628,
+     "mean_abs_pixel_vs_reference": 0.35849,
+     "max_abs_logit_vs_reference": 0.376548,
+     "mean_abs_logit_vs_reference": 0.0330832,
+     "decisions_differing_at_the_operating_point": 182
+    },
+    "bicubic": {
+     "test_auroc": 0.806167,
+     "mean_abs_pixel_vs_reference": 0.424341,
+     "max_abs_logit_vs_reference": 0.483309,
+     "mean_abs_logit_vs_reference": 0.0459698,
+     "decisions_differing_at_the_operating_point": 221
+    },
+    "lanczos": {
+     "test_auroc": 0.806142,
+     "mean_abs_pixel_vs_reference": 0.644242,
+     "max_abs_logit_vs_reference": 0.746836,
+     "mean_abs_logit_vs_reference": 0.0602551,
+     "decisions_differing_at_the_operating_point": 297
+    },
+    "bilinear, no low-pass": {
+     "test_auroc": 0.805506,
+     "mean_abs_pixel_vs_reference": 1.45149,
+     "max_abs_logit_vs_reference": 1.08377,
+     "mean_abs_logit_vs_reference": 0.101995,
+     "decisions_differing_at_the_operating_point": 500
+    }
+   }
+  }
+ },
+ "calibration": [
+  {
+   "seed": 1,
+   "test_auroc_float32": 0.806452,
+   "test_auroc_interval": {
+    "auroc": 0.806452,
+    "lo": 0.795123,
+    "hi": 0.817806
+   },
+   "validation": {
+    "n": 8710,
+    "positives": 841,
+    "prevalence": 0.0965557,
+    "mean_p": 0.091854,
+    "ece": 0.00723101,
+    "brier": 0.0642117,
+    "log_loss": 0.221817,
+    "corp": {
+     "mcb": 0.000941451,
+     "dsc": 0.0239624,
+     "unc": 0.0872327
+    }
+   },
+   "test": {
+    "n": 25589,
+    "positives": 4656,
+    "prevalence": 0.181953,
+    "mean_p": 0.183725,
+    "ece": 0.0193171,
+    "brier": 0.120466,
+    "log_loss": 0.381644,
+    "corp": {
+     "mcb": 0.00100401,
+     "dsc": 0.0293842,
+     "unc": 0.148846
+    }
+   },
+   "test_by_view": {
+    "AP": {
+     "n": 14495,
+     "positives": 2900,
+     "prevalence": 0.200069,
+     "mean_p": 0.201316,
+     "ece": 0.0189562,
+     "brier": 0.135317,
+     "log_loss": 0.422709,
+     "corp": {
+      "mcb": 0.00127605,
+      "dsc": 0.0260008,
+      "unc": 0.160041
+     }
+    },
+    "PA": {
+     "n": 11094,
+     "positives": 1756,
+     "prevalence": 0.158284,
+     "mean_p": 0.160741,
+     "ece": 0.019627,
+     "brier": 0.101063,
+     "log_loss": 0.327991,
+     "corp": {
+      "mcb": 0.00151351,
+      "dsc": 0.0336807,
+      "unc": 0.13323
+     }
+    }
+   },
+   "recalibration_line_validation": {
+    "slope": 0.916822,
+    "intercept": -0.0493039
+   },
+   "recalibration_line_test": {
+    "slope": 0.826193,
+    "intercept": -0.193731
+   },
+   "temperature": 1.07204,
+   "test_after_temperature": {
+    "n": 25589,
+    "positives": 4656,
+    "prevalence": 0.181953,
+    "mean_p": 0.191579,
+    "ece": 0.0170501,
+    "brier": 0.120414,
+    "log_loss": 0.380445,
+    "corp": {
+     "mcb": 0.000952119,
+     "dsc": 0.0293842,
+     "unc": 0.148846
+    }
+   },
+   "platt": {
+    "method": "platt",
+    "a": -0.915056,
+    "b": 0.0524827,
+    "on_logit": true,
+    "logit_clip_eps": 1e-12,
+    "formula": "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), logit(q) = log(q / (1 - q))",
+    "n_calibration": 8710,
+    "positives_calibration": 841
+   },
+   "test_after_platt": {
+    "n": 25589,
+    "positives": 4656,
+    "prevalence": 0.181953,
+    "mean_p": 0.187546,
+    "ece": 0.0130982,
+    "brier": 0.120174,
+    "log_loss": 0.379885,
+    "corp": {
+     "mcb": 0.000711767,
+     "dsc": 0.0293842,
+     "unc": 0.148846
+    }
+   },
+   "reliability_test": [
+    {
+     "n": 1706,
+     "mean_p": 0.00480234,
+     "frequency": 0.0117233
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.00930326,
+     "frequency": 0.0169988
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.015013,
+     "frequency": 0.0252052
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.023144,
+     "frequency": 0.038687
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.0350212,
+     "frequency": 0.0509965
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.0519461,
+     "frequency": 0.0715123
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.0760632,
+     "frequency": 0.0978898
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.108556,
+     "frequency": 0.128957
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.148509,
+     "frequency": 0.16061
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.194966,
+     "frequency": 0.195193
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.249155,
+     "frequency": 0.250293
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.314202,
+     "frequency": 0.28898
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.389412,
+     "frequency": 0.350528
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.486272,
+     "frequency": 0.439625
+    },
+    {
+     "n": 1705,
+     "mean_p": 0.649778,
+     "frequency": 0.602346
+    }
+   ]
+  },
+  {
+   "seed": 2,
+   "test_auroc_float32": 0.805069,
+   "test_auroc_interval": {
+    "auroc": 0.805069,
+    "lo": 0.793085,
+    "hi": 0.817374
+   },
+   "validation": {
+    "n": 8710,
+    "positives": 841,
+    "prevalence": 0.0965557,
+    "mean_p": 0.0941649,
+    "ece": 0.00645318,
+    "brier": 0.0634357,
+    "log_loss": 0.219551,
+    "corp": {
+     "mcb": 0.000818633,
+     "dsc": 0.0246156,
+     "unc": 0.0872327
+    }
+   },
+   "test": {
+    "n": 25589,
+    "positives": 4656,
+    "prevalence": 0.181953,
+    "mean_p": 0.186291,
+    "ece": 0.0196931,
+    "brier": 0.121149,
+    "log_loss": 0.382646,
+    "corp": {
+     "mcb": 0.0011616,
+     "dsc": 0.0288592,
+     "unc": 0.148846
+    }
+   },
+   "test_by_view": {
+    "AP": {
+     "n": 14495,
+     "positives": 2900,
+     "prevalence": 0.200069,
+     "mean_p": 0.202612,
+     "ece": 0.0217859,
+     "brier": 0.136267,
+     "log_loss": 0.424672,
+     "corp": {
+      "mcb": 0.00131638,
+      "dsc": 0.0250908,
+      "unc": 0.160041
+     }
+    },
+    "PA": {
+     "n": 11094,
+     "positives": 1756,
+     "prevalence": 0.158284,
+     "mean_p": 0.164966,
+     "ece": 0.0229759,
+     "brier": 0.101396,
+     "log_loss": 0.327736,
+     "corp": {
+      "mcb": 0.00173698,
+      "dsc": 0.0335714,
+      "unc": 0.13323
+     }
+    }
+   },
+   "recalibration_line_validation": {
+    "slope": 0.932429,
+    "intercept": -0.0615938
+   },
+   "recalibration_line_test": {
+    "slope": 0.82223,
+    "intercept": -0.217085
+   },
+   "temperature": 1.04964,
+   "test_after_temperature": {
+    "n": 25589,
+    "positives": 4656,
+    "prevalence": 0.181953,
+    "mean_p": 0.19172,
+    "ece": 0.0193658,
+    "brier": 0.121097,
+    "log_loss": 0.381773,
+    "corp": {
+     "mcb": 0.00111011,
+     "dsc": 0.0288592,
+     "unc": 0.148846
+    }
+   },
+   "platt": {
+    "method": "platt",
+    "a": -0.930337,
+    "b": 0.0647858,
+    "on_logit": true,
+    "logit_clip_eps": 1e-12,
+    "formula": "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), logit(q) = log(q / (1 - q))",
+    "n_calibration": 8710,
+    "positives_calibration": 841
+   },
+   "test_after_platt": {
+    "n": 25589,
+    "positives": 4656,
+    "prevalence": 0.181953,
+    "mean_p": 0.186744,
+    "ece": 0.0145519,
+    "brier": 0.120773,
+    "log_loss": 0.381014,
+    "corp": {
+     "mcb": 0.000785473,
+     "dsc": 0.0288592,
+     "unc": 0.148846
+    }
+   },
+   "reliability_test": [
+    {
+     "n": 1706,
+     "mean_p": 0.00432578,
+     "frequency": 0.00996483
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.0089119,
+     "frequency": 0.010551
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.0148292,
+     "frequency": 0.0269637
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.0236873,
+     "frequency": 0.03517
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.0364927,
+     "frequency": 0.0679953
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.0543763,
+     "frequency": 0.0638921
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.0798298,
+     "frequency": 0.10551
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.113056,
+     "frequency": 0.130129
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.152494,
+     "frequency": 0.152989
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.200541,
+     "frequency": 0.198124
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.256203,
+     "frequency": 0.250293
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.318215,
+     "frequency": 0.304807
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.390363,
+     "frequency": 0.344666
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.485728,
+     "frequency": 0.43728
+    },
+    {
+     "n": 1705,
+     "mean_p": 0.655584,
+     "frequency": 0.591202
+    }
+   ]
+  },
+  {
+   "seed": 3,
+   "test_auroc_float32": 0.80254,
+   "test_auroc_interval": {
+    "auroc": 0.80254,
+    "lo": 0.790985,
+    "hi": 0.814471
+   },
+   "validation": {
+    "n": 8710,
+    "positives": 841,
+    "prevalence": 0.0965557,
+    "mean_p": 0.0979315,
+    "ece": 0.00857272,
+    "brier": 0.0644801,
+    "log_loss": 0.22284,
+    "corp": {
+     "mcb": 0.000880526,
+     "dsc": 0.0236331,
+     "unc": 0.0872327
+    }
+   },
+   "test": {
+    "n": 25589,
+    "positives": 4656,
+    "prevalence": 0.181953,
+    "mean_p": 0.190254,
+    "ece": 0.0225722,
+    "brier": 0.121694,
+    "log_loss": 0.384289,
+    "corp": {
+     "mcb": 0.00143889,
+     "dsc": 0.0285913,
+     "unc": 0.148846
+    }
+   },
+   "test_by_view": {
+    "AP": {
+     "n": 14495,
+     "positives": 2900,
+     "prevalence": 0.200069,
+     "mean_p": 0.206284,
+     "ece": 0.0217984,
+     "brier": 0.137156,
+     "log_loss": 0.426966,
+     "corp": {
+      "mcb": 0.00150936,
+      "dsc": 0.0243947,
+      "unc": 0.160041
+     }
+    },
+    "PA": {
+     "n": 11094,
+     "positives": 1756,
+     "prevalence": 0.158284,
+     "mean_p": 0.169309,
+     "ece": 0.0237725,
+     "brier": 0.101491,
+     "log_loss": 0.32853,
+     "corp": {
+      "mcb": 0.00202078,
+      "dsc": 0.0337594,
+      "unc": 0.13323
+     }
+    }
+   },
+   "recalibration_line_validation": {
+    "slope": 0.907102,
+    "intercept": -0.156583
+   },
+   "recalibration_line_test": {
+    "slope": 0.82007,
+    "intercept": -0.250002
+   },
+   "temperature": 1.04349,
+   "test_after_temperature": {
+    "n": 25589,
+    "positives": 4656,
+    "prevalence": 0.181953,
+    "mean_p": 0.19504,
+    "ece": 0.0210927,
+    "brier": 0.12167,
+    "log_loss": 0.383634,
+    "corp": {
+     "mcb": 0.00141506,
+     "dsc": 0.0285913,
+     "unc": 0.148846
+    }
+   },
+   "platt": {
+    "method": "platt",
+    "a": -0.905188,
+    "b": 0.159742,
+    "on_logit": true,
+    "logit_clip_eps": 1e-12,
+    "formula": "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), logit(q) = log(q / (1 - q))",
+    "n_calibration": 8710,
+    "positives_calibration": 841
+   },
+   "test_after_platt": {
+    "n": 25589,
+    "positives": 4656,
+    "prevalence": 0.181953,
+    "mean_p": 0.182353,
+    "ece": 0.0102239,
+    "brier": 0.120916,
+    "log_loss": 0.381909,
+    "corp": {
+     "mcb": 0.000661098,
+     "dsc": 0.0285913,
+     "unc": 0.148846
+    }
+   },
+   "reliability_test": [
+    {
+     "n": 1706,
+     "mean_p": 0.00490558,
+     "frequency": 0.0087925
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.00969752,
+     "frequency": 0.0158265
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.015878,
+     "frequency": 0.0269637
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.025101,
+     "frequency": 0.0427902
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.0387014,
+     "frequency": 0.0550996
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.0579218,
+     "frequency": 0.0750293
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.0839563,
+     "frequency": 0.0996483
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.117972,
+     "frequency": 0.12544
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.159584,
+     "frequency": 0.171161
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.206741,
+     "frequency": 0.194607
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.261453,
+     "frequency": 0.250293
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.322677,
+     "frequency": 0.299531
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.395261,
+     "frequency": 0.354045
+    },
+    {
+     "n": 1706,
+     "mean_p": 0.488972,
+     "frequency": 0.410903
+    },
+    {
+     "n": 1705,
+     "mean_p": 0.665265,
+     "frequency": 0.599413
+    }
+   ]
+  }
+ ],
+ "features": {
+  "dimension": 512,
+  "units_never_firing_on_test": 0,
+  "units_never_firing_on_training": 0,
+  "network_test_auroc_float32": 0.806452,
+  "frozen_head": {
+   "pooled_training": 0.802313,
+   "each_hospital_alone": [
+    {
+     "hospital": 1,
+     "test_auroc": 0.794381
+    },
+    {
+     "hospital": 2,
+     "test_auroc": 0.786797
+    },
+    {
+     "hospital": 3,
+     "test_auroc": 0.784486
+    },
+    {
+     "hospital": 4,
+     "test_auroc": 0.795457
+    }
+   ],
+   "four_heads_averaged_by_size": 0.803062,
+   "other_findings": {
+    "Cardiomegaly": {
+     "test_auroc": 0.781978,
+     "test_prevalence": 0.0417758
+    },
+    "Atelectasis": {
+     "test_auroc": 0.679894,
+     "test_prevalence": 0.128102
+    }
+   }
+  },
+  "principal_components": {
+   "explained_variance_ratio": [
+    0.761446,
+    0.0749249
+   ],
+   "separation_of_view": [
+    0.660952,
+    0.639804
+   ],
+   "separation_of_effusion": [
+    0.789958,
+    0.635601
+   ]
+  },
+  "view_probe_recorded": {
+   "published_seed": 0.990833,
+   "untrained_network": 0.989986
+  }
+ },
+ "wall_clock_s": 565.607
+}

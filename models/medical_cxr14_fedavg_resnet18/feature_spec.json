@@ -1,0 +1,25 @@
+{
+  "input": {
+    "shape": [
+      1,
+      1,
+      224,
+      224
+    ],
+    "dtype": "float32",
+    "preprocessing": "the 1024 px PNG converted to grey and resized to 224 x 224 with Pillow's bilinear filter, then pixel/255; the graph subtracts the training mean and divides by the training standard deviation itself",
+    "normalisation_in_graph": {
+      "mean": 0.5041685700416565,
+      "std": 0.2501467168331146
+    }
+  },
+  "output": "two logits [0, z]; z is the effusion logit, softmax gives its probability",
+  "classes": [
+    "no effusion",
+    "effusion"
+  ],
+  "operating_point": {
+    "logit": -2.2849953174591064,
+    "chosen_on": "the four hospitals' validation images, sensitivity 0.80"
+  }
+}
