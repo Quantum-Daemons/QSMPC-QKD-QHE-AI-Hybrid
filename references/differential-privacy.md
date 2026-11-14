@@ -108,3 +108,40 @@ the rows marked "read here" were read again at the source for this file, the res
 What rests on searches rather than proof: that no cross-operator DP IDS, no DP for QKD-network monitoring or lending,
 and no fielded multipath relay was found.
 
+## The murmur study (2026-11-14)
+
+Read for the CirCor murmur study (`scripts/train/medical_murmur_dp.py`), by two literature agents and checked here where
+marked; the study's own figures are in `docs/measurements/murmur-dp-2026-11-14.json`.
+
+- **Abadi et al., "Deep Learning with Differential Privacy"**, CCS 2016 (arXiv:1607.00133; read here in the PDF text):
+  for CIFAR-10 they trained the convolutions on CIFAR-100 as public data and trained only the fully connected layers
+  privately, about 80 percent without DP and 67, 70 and 73 percent at $`\epsilon`$ = 2, 4 and 8 ($`\delta = 10^{-5}`$).
+  The study's heads follow that recipe with audio features.
+- **Tramer and Boneh, "Differentially Private Learning Needs Better Features (or Much More Data)"**, ICLR 2021
+  (arXiv:2011.11660; abstract read here): at moderate budgets, linear models on handcrafted features beat end-to-end
+  networks, and beating them takes much more private data or features learned on public data.
+- **Papernot and Steinke, "Hyperparameter Tuning with Renyi Differential Privacy"**, ICLR 2022 (arXiv:2110.03620 v2;
+  agent-read in full): releasing the best of $`K`$ runs with $`K`$ from a truncated negative binomial (Theorem 2) or a
+  Poisson distribution (Theorem 6); the quality score must be private; a fixed number of runs is in the worst case no
+  better than composing them all (Proposition 17). `medical_murmur_dp_search.py` implements Theorem 2 with $`\eta = 0`$,
+  $`E[K] = 5`$, checked term by term in `tests/test_r86_murmur_dp.py`.
+- **Ponomareva et al., "How to DP-fy ML"**, JAIR 77 (2023) (agent-read): tune on a public proxy first; otherwise say
+  what the guarantee covers. Unaccounted tuning on 7 rates and a retrain amounts, by plain composition, to about 3.1 to
+  3.4 times the stated $`\epsilon`$ for this study's settings (the agent's computation).
+- **Redberg, Koskela and Wang, "Improving the Privacy and Practicality of Objective Perturbation for Differentially
+  Private Linear Learners"**, NeurIPS 2023 (arXiv:2401.00583; Algorithm 1 and Theorem 4.1 read here on arxiv.org/html):
+  the guarantee does not depend on the optimiser, so nothing is tuned on the private data; `medical_murmur_dp_objpert.py`.
+- **Kairouz, Liu and Steinke**, ICML 2021 (above): the distributed discrete Gaussian matches central DP with enough bits;
+  the study's four sites, quantised to $`2^{14}`$ a clip, match its central full-batch arm.
+- **Balle and Wang**, ICML 2018, and **Dong, Roth and Su**, JRSS-B 2022: the exact $`(\epsilon, \delta)`$ curve of
+  Gaussian noise, $`\delta(\epsilon) = \Phi(-\epsilon/\mu + \mu/2) - e^{\epsilon}\Phi(-\epsilon/\mu - \mu/2)`$, used
+  for the study's central full-batch arm.
+- **Wen et al., "Private Speech Classification without Collapse"**, arXiv:2605.02718 (2026; abstract agent-read): DP
+  training on imbalanced tasks can collapse toward one class, which accuracy hides; report balanced accuracy too. The
+  study found exactly that at the logit-0 threshold.
+- **No DP study of heart sounds** was found: a 2026 scoping review of 74 DP medical studies (Mohammadi et al., npj
+  Digital Medicine 9:93, 2026; agent-read) lists only pathological speech among audio, and Tayebi Arasteh et al.
+  (npj AI 1:37, 2025) report AUROC 83.3 to 73.3 at $`\epsilon = 7.42`$ on 100 speakers.
+- **Google dp-accounting 0.7.0** (10 November 2026, Apache-2.0; source read by an agent) implements Papernot and
+  Steinke's search as `RepeatAndSelectDpEvent`; its PLD accountant would save about 6 percent of DP-SGD's noise against
+  integer-order RDP (agent's computation), not adopted here.

@@ -103,3 +103,18 @@ ECG from 2022 to 2026 was found.
   2016 recordings reached AUROC 0.31 to 0.74, two classical models below 0.5; label shift (the Challenge's abnormal
   includes conditions without a murmur) as well as the change of device.
 
+## Murmur detection on CirCor (2026-11-14)
+
+- **Oliveira et al., "The CirCor DigiScope Dataset: From Murmur Detection to Murmur Classification"**, IEEE JBHI
+  (doi:10.1109/JBHI.2021.3137048), and its PhysioNet page, version 1.0.3 (read here): 5,272 recordings of 1,568 subjects
+  aged 0 to 21 in two screening campaigns in north-eastern Brazil; 60 percent public as the 2022 Challenge's training set
+  (942 patient IDs, 3,163 recordings, here counted from the files: 179 present, 695 absent, 68 unknown). The table's
+  Additional ID links the two IDs of a person seen in both campaigns: 140 public IDs, 70 people, both IDs public in every
+  case (counted here from `training_data.csv`), so a split by ID can put one person on both sides.
+- **The George B. Moody PhysioNet Challenge 2022** (Reyna et al., PLOS Digital Health 2(9):e0000324, 2023; agent-read):
+  murmur scored by weighted accuracy with weights 5, 3 and 1 for present, unknown and absent; the best hidden-test score
+  0.780. The study's binary AUROC on the public set's held-out people is not comparable with it.
+- **Audio features**: Koike et al., EMBC 2020 (doi:10.1109/EMBC44109.2020.9175450; abstract agent-read) found
+  AudioSet-pretrained PANNs better than image-pretrained models for heart sounds; Niizumi et al. (EMBC 2025,
+  arXiv:2504.18004; agent-read) found frozen general-purpose audio models behind fine-tuned ones on CirCor. AuscultaBase
+  (arXiv:2411.07547) was pretrained on CirCor and cannot be used for it.
