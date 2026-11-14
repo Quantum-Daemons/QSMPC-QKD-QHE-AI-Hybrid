@@ -65,6 +65,27 @@ export default function SequenceView({ usecase, events, config }: {
   const width = LEFT * 2 + COL * sides.length;
   const x = (s: string) => LEFT + COL * sides.indexOf(s) + COL / 2;
   const name = (s: string) => sideName(usecase, s, config);
+  // Where a lifeline must not run: through a note on it, or behind the labels of a message that skips its column, whose
+  // labels are centred over it (the page's text-layout gate measures a line through text, whatever is painted over it).
+  const gaps = new Map<string, [number, number][]>(sides.map((s) => [s, []]));
+  for (const r of rows) {
+    if (r.kind === "note") gaps.get(r.d.party)!.push([r.y, r.y + NOTE]);
+    if (r.kind === "msg") {
+      const [i, j] = [sides.indexOf(r.d.from), sides.indexOf(r.d.to)].sort((a, b) => a - b);
+      for (let k = i + 1; k < j; k++) gaps.get(sides[k])!.push([r.y, r.y + MSG]);
+    }
+  }
+  /** A lifeline from the heads to the bottom, in segments around its gaps. */
+  const segments = (s: string): [number, number][] => {
+    const out: [number, number][] = [];
+    let y = HEAD;
+    for (const [a, b] of [...(gaps.get(s) ?? [])].sort((p, q) => p[0] - q[0])) {
+      if (a > y) out.push([y, a]);
+      y = Math.max(y, b);
+    }
+    if (y < height - 6) out.push([y, height - 6]);
+    return out;
+  };
   // Stage blocks: from each stage's heading to the next one's.
   const stageRows = rows.filter((r): r is Extract<Row, { kind: "stage" }> => r.kind === "stage");
   // The page's colours are CSS variables, which a file opened on its own cannot resolve, so they are written in.
@@ -107,7 +128,9 @@ export default function SequenceView({ usecase, events, config }: {
           })}
           {sides.map((s) => (
             <g key={s}>
-              <line x1={x(s)} y1={HEAD} x2={x(s)} y2={height - 6} stroke="var(--border)" strokeDasharray="3 4" />
+              {segments(s).map(([y1, y2], k) => (
+                <line key={k} x1={x(s)} y1={y1} x2={x(s)} y2={y2} stroke="var(--border)" strokeDasharray="3 4" />
+              ))}
               <rect x={x(s) - COL / 2 + 8} y={6} width={COL - 16} height={HEAD - 14} rx={6} fill="var(--bg-2)" stroke="var(--border)" />
               <text x={x(s)} y={6 + (HEAD - 14) / 2 + 4} fontSize={12} textAnchor="middle" fill="var(--text)">
                 <title>{name(s)}</title>{cut(name(s), 30)}
