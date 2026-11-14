@@ -1167,13 +1167,15 @@ belongs in this file rather than only in a comment.
 > sentences are about a random and an untrained SCORE, so any rewrite that keeps the "beats six real
 > detectors" gloss reintroduces the fabrication.
 >
-> **TSB-AD recommends VUS-PR and this repository does not use it.** The same abstract identifies
-> **VUS-PR as the most reliable measure**. Since TSB-AD is cited here as the authority for rejecting
-> point-adjusted F1, not adopting the measure it actually recommends needs a stated reason rather than
-> silence: event-wise F-beta is what the satellite baselines this project is scored against are
-> computed with (ESA-ADB Supplementary Table 9), so switching measures would break comparability with
-> the published number on the page. That is a defensible choice made AGAINST the recommendation of the
-> cited source, and a reviewer will ask - so it is recorded here as an open trade-off, not as agreement.
+> **TSB-AD recommends VUS-PR, and since Round 86 the satellite page reports it beside the event-wise
+> F0.5.** The same abstract identifies **VUS-PR as the most reliable measure**. The headline stays the
+> event-wise F-beta, because that is what the satellite baselines this project is scored against are
+> computed with (ESA-ADB Supplementary Table 9), and switching measures would break comparability with
+> the published number on the page. VUS-PR is computed beside it, offline, with TSB-AD 1.5's own code
+> (`scripts/measure_satellite_vus_pr.py`, `docs/measurements/satellite-vus-pr-2026-11-14.json`) on the
+> published forecaster's continuous scores: the threshold-free question the F0.5 does not ask. No
+> published VUS-PR exists for ESA-ADB Mission1's lightweight channels (search of 2026-11-14), so the
+> figure stands against shuffled and random-walk scores only, never against another detector.
 
 - **Kim, Choi, Choi, Lee and Yoon, "Towards a Rigorous Evaluation of Time-series Anomaly Detection",
   AAAI 2022.** arXiv:2109.05257 `[link]`

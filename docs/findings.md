@@ -661,6 +661,15 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   37.8 to 32.0 gradient units and from $`0.706 \pm 0.032`$ to $`0.718 \pm 0.024`$ over 20 draws, the finance count
   from variance 38 to 30. The four medical rows published together rise from 9.56 to 9.75, because each now carries
   more $`\rho`$ ([`references/differential-privacy.md`](../references/differential-privacy.md)).
+- **The satellite forecaster ranks steps better than it ranks events (2026-11-14).** VUS-PR, computed with TSB-AD
+  1.5's own code on the published forecaster's scores over ESA-ADB Mission1's test half (channels 41 to 46, 29
+  anomalies over 66,892 of 7,364,160 steps), is 0.556 at the buffer TSB-AD's own rule sets (97 steps, about 24 minutes
+  each side), against 0.0093 for the same scores shuffled and 0.0078 for a random walk. The point-wise average precision
+  of the same scores is 0.904 and VUS-PR with no buffer 0.292: the first counts steps, so long anomalies weigh by their
+  length, and the second multiplies recall by the share of the 29 anomalies reached at each threshold. The event-wise
+  F0.5 at Telemanom's thresholds is 0.950. The figure also moves with TSB-AD's threshold grid: its 250 thresholds sit
+  evenly through the ranking, about 29,600 steps apart here, and 1,000 give 0.622; the page reports the default
+  ([`references/satellite-vus-pr-and-boundary.md`](../references/satellite-vus-pr-and-boundary.md)).
 - **BreastMNIST carries its source's duplicates.** BUSI, from which it is derived, holds 155 duplicate images
   (about 19 percent), some across classes, and 70 of the axilla rather than the breast (Pawlowska et al., Data
   in Brief 48:109247, 2023). Measured on MedMNIST's own splits: one test image is byte-identical to a training
