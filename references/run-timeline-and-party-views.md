@@ -39,6 +39,11 @@ HTML page and read for the point named; nothing was downloaded.
   panels) arrive whole at the end of the run and are not replayed. All parties run in the visitor's tab, so the
   separation the ledger draws is notional, as its badge says. The full deployment's backend does not emit the per-party
   events, so over it the timeline replays stages and metrics and the ledger stays empty.
-- **Next, from the same log.** A message-sequence view per run (Mermaid's `sequenceDiagram`: participants, numbered
-  messages, notes; https://mermaid.js.org/syntax/sequenceDiagram.html, read: html) is the owner's fourth choice of the
-  same day and reads the same `message` events.
+- **The same messages as a sequence.** The owner's fourth choice of the same day: one participant per party, the
+  messages numbered in order with their sizes, each stage a shaded block, a dotted arrow for a simulated channel, and a
+  note for what a party keeps, as Mermaid's `sequenceDiagram` draws them (participants, `autonumber`, `rect` blocks,
+  notes; https://mermaid.js.org/syntax/sequenceDiagram.html, read: html). The page draws it itself as SVG and offers the
+  same diagram as Mermaid text to copy or download. Mermaid is not loaded on the page: a lazy import of Mermaid 12.2.0
+  added 57 chunk files, 5.1 MB, to the client-only build (103.8 MB to 108.8 MB, measured 2026-11-14), every diagram type
+  among them, the ELK layout (elkjs, EPL-2.0 or GPL-3.0) included, for one diagram the page can draw in a few kB. The
+  generated text of three runs renders with Mermaid 12.2.0 in the repository's own headless check.

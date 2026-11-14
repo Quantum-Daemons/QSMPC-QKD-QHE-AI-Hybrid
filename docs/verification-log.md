@@ -4776,3 +4776,14 @@ named like a secret is in an event; the session key is in no event, in hex or as
 first eight bytes is seeded into the handshake's message; the sizes are the run's own. In Chrome the lending page's
 ledger showed Bob's one sealed submission (396,666 bytes), the five masked margins to Carol (1.97 MB), the five signed
 bits (16,550 bytes) and the garbled circuit (4.72 MB in 345 messages); at 375 px nothing overflowed the page.
+
+The same messages as a sequence diagram, the owner's fourth choice, sit under the ledger in a closed section: the page
+draws them as SVG (one participant per party, the messages numbered with their sizes, each stage a shaded block, dotted
+arrows for the simulated channels, notes for what a party keeps), following the timeline, and offers the diagram as SVG
+and as Mermaid text. A lazy import of Mermaid 12.2.0 was tried first and dropped: it added 57 chunk files, 5.1 MB, to
+the client-only build, every diagram type with them and the ELK layout (elkjs, EPL-2.0 or GPL-3.0) among them, where the
+page's own drawing adds a few kB (103,762,172 bytes against 103,755,505 for the commit before it). The generated text of
+the finance, genomics and satellite runs renders with Mermaid 12.2.0 in `web/scripts/check_readme_mermaid.mjs`'s headless
+Chrome; `tests/test_r86_run_timeline.py` holds it to the ledger (one numbered arrow per message, a participant per
+party, closed blocks, dotted only for a simulated channel, no character Mermaid reads as syntax, and the text follows the
+timeline's position).

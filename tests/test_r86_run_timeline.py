@@ -44,7 +44,8 @@ const out = join(dir, "bundle.mjs");
 const sealWasm = resolve(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
 await build({
   stdin: { contents: `export { runClientPipeline } from ${JSON.stringify(resolve(WEB, "src/lib/clientCompute"))};
-export { foldRun, stageMarks, prevMark, nextMark, stageAt, ledgerAt, hexPrefix } from ${JSON.stringify(resolve(WEB, "src/lib/runTimeline"))};`,
+export { foldRun, stageMarks, prevMark, nextMark, stageAt, ledgerAt, hexPrefix } from ${JSON.stringify(resolve(WEB, "src/lib/runTimeline"))};
+export { toMermaidSequence, mermaidText } from ${JSON.stringify(resolve(WEB, "src/lib/sequenceDiagram"))};`,
            resolveDir: WEB, loader: "ts" },
   bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error",
   define: { "import.meta.env": '{"BASE_URL":"/","VITE_CLIENT_ONLY":"1"}', "process.env.NODE_ENV": '"production"' },
@@ -100,6 +101,8 @@ for (const usecase of ["finance_aml", "genomics", "satellite_comms"]) {
     messages: ledger.messages, holdings: ledger.holdings,
     perParty: events.filter((e) => e.type === "message" || e.type === "holds"),
     logText: JSON.stringify(events),
+    mermaid: m.toMermaidSequence(usecase, events, {}),
+    mermaidHalf: m.toMermaidSequence(usecase, events, {}, Math.floor(events.length / 2)),
     sessionHex: session ? toHex(session) : null,
     sessionCsv: session ? [...session].join(",") : null,
   };
@@ -120,6 +123,7 @@ result.hand = {
   at5: (() => { const f = m.foldRun(hand, 5); return { active: f.active, done: [...f.done], x: f.metrics.x }; })(),
   stageAt0: m.stageAt(hand, 0), stageAt4: m.stageAt(hand, 4),
   hex: m.hexPrefix(Uint8Array.from([0, 1, 2, 255, 16, 32, 64, 128, 7]), 8), hexShort: m.hexPrefix(Uint8Array.from([10, 11]), 8),
+  mtext: m.mermaidText("a; b # c <d> {e} [f] g: h"),
 };
 writeFileSync(process.argv[3], JSON.stringify(result));
 process.exit(0);
@@ -244,3 +248,30 @@ def test_the_helpers_on_a_log_written_by_hand(result) -> None:
     assert h["at5"] == {"active": "s2", "done": ["s1"], "x": 2}
     assert (h["stageAt0"], h["stageAt4"]) == (None, "s2")
     assert h["hex"] == "000102ff10204080..." and h["hexShort"] == "0a0b"
+
+
+@pytest.mark.parametrize("usecase", ["finance_aml", "genomics", "satellite_comms"])
+def test_the_sequence_text_is_the_ledger_as_mermaid(result, usecase) -> None:
+    """One numbered arrow per message, one participant per party, each stage a closed block, a dotted arrow for a
+    simulated channel only, and no character Mermaid reads as syntax inside a label."""
+    r = result["runs"][usecase]
+    lines = r["mermaid"].splitlines()
+    assert lines[:2] == ["sequenceDiagram", "  autonumber"], lines[:2]
+    parties = {p for m in r["messages"] for p in (m["from"], m["to"])} | set(r["holdings"])
+    participants = [ln for ln in lines if ln.startswith("  participant P")]
+    assert len(participants) == len(parties), (participants, parties)
+    arrows = [ln for ln in lines if "->>" in ln]
+    assert len(arrows) == len(r["messages"])
+    simulated = {"photons (simulated)", "classical (simulated)"}
+    for ln, msg in zip(arrows, r["messages"], strict=True):
+        assert ("-->>" in ln) == (msg["protection"] in simulated), (ln, msg["protection"])
+        label = ln.split(": ", 1)[1]
+        assert not any(c in label for c in ";#<>{}"), ln
+    assert sum(ln.strip().startswith("rect ") for ln in lines) == sum(ln.strip() == "end" for ln in lines) >= 3
+    half = r["mermaidHalf"].splitlines()
+    assert len([ln for ln in half if "->>" in ln]) < len(arrows), "the text does not follow the timeline's position"
+
+
+def test_mermaid_text_drops_what_mermaid_reads_as_syntax(result) -> None:
+    assert result["hand"]["mtext"] == "a, b , c d e f g - h"
+

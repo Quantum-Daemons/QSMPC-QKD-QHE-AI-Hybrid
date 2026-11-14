@@ -5,6 +5,7 @@ import { useMemo } from "react";
 import type { PipelineEvent } from "../lib/api";
 import { ledgerAt, PROTECTION_NOTE, sideName, type Protection } from "../lib/runTimeline";
 import type { DiagramConfig } from "../lib/useCaseFlows";
+import SequenceView from "./SequenceView";
 import StageBadge from "./StageBadge";
 
 const size = (b: number | null, count?: number) =>
@@ -60,6 +61,7 @@ export default function PartyLedger({ usecase, events, config }: {
           {used.map((pr) => <li key={pr}><b>{pr}</b>: {PROTECTION_NOTE[pr] ?? pr}</li>)}
         </ul>
       )}
+      {messages.length > 0 && <SequenceView usecase={usecase} events={events} config={config} />}
     </div>
   );
 }
