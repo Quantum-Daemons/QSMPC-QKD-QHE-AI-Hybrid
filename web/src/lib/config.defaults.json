@@ -2248,7 +2248,6 @@
             "fitted_by": "scripts/train/export_cxr_fedavg.py",
             "fitted_on": "four hospitals' validation images; scored on the official test split",
             "formula": "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), logit(q) = log(q / (1 - q))",
-            "lead": "The demo page does not run this model. The map states what its score would mean as a risk, for a reader who needs one.",
             "log_loss_calibrated": 0.3798849,
             "log_loss_raw": 0.38164418,
             "logit_clip_eps": 1e-12,
@@ -2266,7 +2265,8 @@
             "int8_bytes": 11269764,
             "opset": 18
           },
-          "git_sha": "cdc6d94-dirty",
+          "features_int8_head_auroc": 0.8062589191862829,
+          "git_sha": "914a39a-dirty",
           "int8_decisions_differing_at_operating_point": 134,
           "n_parameters": 11170753,
           "n_test_images": 25589,
@@ -2285,7 +2285,7 @@
           "specificity_at_operating_point": 0.5492762623608656,
           "test_positives": 4656,
           "transfer_learning": "none: trained from random initialisation, so the weights carry no ImageNet terms (DATA_LICENSES.md)",
-          "wall_clock_s": 608.2
+          "wall_clock_s": 7513.3
         },
         "architecture": "ResNet-18 @224px, 1-channel stem, one logit, trained from random initialisation",
         "artifacts": [
@@ -2316,6 +2316,27 @@
             "path": "feature_spec.json",
             "precision": "none",
             "serves": "both"
+          },
+          {
+            "browser_runnable": true,
+            "fmt": "onnx",
+            "path": "onnx/features.onnx",
+            "precision": "fp32",
+            "serves": "browser"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "onnx",
+            "path": "onnx/features_int8.onnx",
+            "precision": "int8",
+            "serves": "browser"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "json",
+            "path": "features_report.json",
+            "precision": "none",
+            "serves": "both"
           }
         ],
         "browser_runnable": true,
@@ -2326,8 +2347,8 @@
           "publishable": true,
           "url": "https://nihcc.app.box.com/v/ChestXray-NIHCC"
         },
-        "eval_sample_reason": "No evaluation sample is published with this model: its rows would be NIH test radiographs, and the medical page does not run this model.",
-        "eval_split": "the official ChestX-ray14 test split, 25,589 images of 2,797 patients once pixel-identical copies are dropped",
+        "eval_sample_reason": null,
+        "eval_split": "the official ChestX-ray14 test split, 16 films, four for each class and view",
         "file_sha256": {},
         "hf_repo_id": null,
         "hf_revision": null,
@@ -2345,7 +2366,7 @@
           "display": "AUROC, Effusion, official test split",
           "name": "auroc"
         },
-        "notes": "The medical page's chest X-ray federation, recorded offline (`scripts/train/medical_cxr_fl.py`): NIH's train_val patients placed in four simulated hospitals by how well each patient's AP share matches a hospital's target (realised AP shares 11.9% to 77.4%), then 12 FedAvg rounds of one local epoch, AdamW at 1e-3, batch 128, at 224 px from random initialisation. This is the first of three seeds, fixed before training; the three score 0.803 to 0.806 on the official test split. The hospitals are simulated from one archive, so the federation shows what a split by view does, not what four institutions would. What it learned besides effusion: among films without effusion its score runs higher on AP films (the score alone tells the views apart with AUROC 0.64), and a linear probe on its pooled features tells AP from PA with AUROC 0.991, though an untrained network's features already reach 0.990: the view is in any such network's features, not something this training added. Its class-activation maps put their maximum inside NIH's 153 Effusion boxes 22% of the time, against 3% for a map that always points at the centre. Inputs must be prepared as the set was: the 1024 px PNG resized to 224 px by Pillow's bilinear filter, then pixel/255 (the graph normalises). With Pillow's five other filters, or bilinear sampling without a low-pass (what PyTorch's interpolate without antialias, or a GPU texture lookup without mipmaps, computes), the test AUROC stays between 0.805 and 0.806, but 182 to 620 of the 25,589 decisions at the operating point change (the repository's `docs/measurements/cxr-preupload-2026-11-14.json`). The operating point is the logit at which the hospitals' validation images first reach a sensitivity of 0.80. The labels were mined from reports (Effusion's positive predictive value 70 to 74% on a radiologist's re-read). For research and demonstration only: not for clinical use, and not a medical device.",
+        "notes": "The medical page's chest X-ray federation, recorded offline (`scripts/train/medical_cxr_fl.py`): NIH's train_val patients placed in four simulated hospitals by how well each patient's AP share matches a hospital's target (realised AP shares 11.9% to 77.4%), then 12 FedAvg rounds of one local epoch, AdamW at 1e-3, batch 128, at 224 px from random initialisation. This is the first of three seeds, fixed before training; the three score 0.803 to 0.806 on the official test split. The hospitals are simulated from one archive, so the federation shows what a split by view does, not what four institutions would. What it learned besides effusion: among films without effusion its score runs higher on AP films (the score alone tells the views apart with AUROC 0.64), and a linear probe on its pooled features tells AP from PA with AUROC 0.991, though an untrained network's features already reach 0.990: the view is in any such network's features, not something this training added. Its class-activation maps put their maximum inside NIH's 153 Effusion boxes 22% of the time, against 3% for a map that always points at the centre. Inputs must be prepared as the set was: the 1024 px PNG resized to 224 px by Pillow's bilinear filter, then pixel/255 (the graph normalises). With Pillow's five other filters, or bilinear sampling without a low-pass (what PyTorch's interpolate without antialias, or a GPU texture lookup without mipmaps, computes), the test AUROC stays between 0.805 and 0.806, but 182 to 620 of the 25,589 decisions at the operating point change (the repository's `docs/measurements/cxr-preupload-2026-11-14.json`). The operating point is the logit at which the hospitals' validation images first reach a sensitivity of 0.80. The labels were mined from reports (Effusion's positive predictive value 70 to 74% on a radiologist's re-read). `onnx/features.onnx` and its int8 twin are the same network up to its 512 pooled features, for a head trained in a browser or one evaluated under encryption; the network's own last layer on the int8 features scores AUROC 0.806 on the test split (`features_report.json`). `eval_sample.json` holds 16 films of the official test split at 224 px, four for each class and view, from distinct patients, under NIH's terms with its credit; the int8 graph classifies 10 of them correctly at the operating point, which shows the model running and not how well it ranks. For research and demonstration only: not for clinical use, and not a medical device.",
         "onnx_domains": [
           "ai.onnx"
         ],

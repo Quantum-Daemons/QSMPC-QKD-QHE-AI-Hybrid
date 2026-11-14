@@ -59,7 +59,7 @@ TIER_MODELS = {"finance_aml.mlp_large"}
 GRAPH_MODELS = {"finance_aml.gnn_compact"}
 
 
-def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
+def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool = False) -> str:
     """A model card built from the registry, so the card cannot drift from what the code believes."""
     m = spec.metric
     tags = ["quantum-safe", "privacy-preserving", spec.usecase.replace("_", "-")]
@@ -161,7 +161,8 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None) -> str:
     if achieved and achieved.get("baseline_gap_note"):
         body += ["### Gap to the published baseline", "", achieved["baseline_gap_note"], ""]
 
-    body += _calibration_section((achieved or {}).get("calibration"))
+    body += _calibration_section((achieved or {}).get("calibration"),
+                                 on_page=bool(spec.hf_repo) and not private, private=private)
     body += _esa_scores_section((achieved or {}).get("esa_scores"), m.baseline,
                                 (achieved or {}).get("published_lightweight_f0_5"))
 
@@ -253,7 +254,7 @@ def _esa_scores_section(esa: dict | None, published: float | None, published_all
             f"| published Telemanom-ESA-Pruned (not measured here) | 0.05/7 | {pub} | | {pub_all} |", ""]
 
 
-def _calibration_section(cal: dict | None) -> list[str]:
+def _calibration_section(cal: dict | None, *, on_page: bool = True, private: bool = False) -> list[str]:
     """The record's Platt map, as the page applies it before it reads a score against a threshold (Round 86).
 
     The finance page draws decision curves through these maps, and until Round 86 no card printed one: a Hub reader had
@@ -271,10 +272,15 @@ def _calibration_section(cal: dict | None) -> list[str]:
     lines = [
         "## Calibration map",
         "",
-        # A record's own opening, where neither sentence below is true of its model: the chest X-ray card's page does not
-        # run the model at all (Round 86).
+        # A record's own opening, where no sentence below is true of its model. Where the page cannot run the model, the
+        # card says so rather than describe a page it is not on: the chest X-ray card was written before its repository was
+        # public (Round 86), and a private repository is one the page's unauthenticated fetch cannot read.
         (cal.get("lead") or
-         ("The demo page reads this model's score $q$ as a risk through this map before it compares it with a "
+         (("The demo page does not run this model: its Hub repository is private, and the page reads public ones only. "
+           if private else "The demo page does not run this model, whose weights are not on the Hub. ")
+          + "The map states what its score would mean as a risk, for a reader who needs one."
+          if not on_page else
+          "The demo page reads this model's score $q$ as a risk through this map before it compares it with a "
           "threshold probability, as its decision curve does."
           if cal.get("page_reads_this_map", True) else
           "The demo page shows this model's logits and its decision, not a probability, and reads no score through this "
@@ -400,7 +406,7 @@ def publish(spec: registry.ModelSpec, *, private: bool, dry_run: bool, api,
         )
 
     achieved = registry.achieved(spec.key)
-    card = model_card(spec, achieved)
+    card = model_card(spec, achieved, private=private)
     (local / "README.md").write_text(card)
 
     # List exactly what upload_folder will send. Printing the whole directory and relying on

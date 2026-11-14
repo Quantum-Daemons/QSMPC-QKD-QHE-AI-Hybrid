@@ -4802,3 +4802,17 @@ carries as the aggregate shown beside AUC-PR, filed this model's declared metric
 its row and the caption "the same run reported on a different metric". The panel now never treats the registry's declared
 metric as a companion; no other model's declared metric is on that list, and the three other medical panels render as
 before. Tests: `tests/test_r86_cxr_preupload.py`.
+
+With the owner's choice of a features graph and an evaluation sample, the export also writes `onnx/features.onnx` and
+`onnx/features_int8.onnx`, the same network up to its 512 pooled features (44.8 MB and 11.3 MB), and
+`features_report.json`: float32 within 2.1e-6 of PyTorch on the 128 films, int8 within 0.045 of float32 with a cosine
+similarity no lower than 0.99969, and the network's own last layer on the int8 features over the whole test split
+0.8063, the int8 classifier's figure. `eval_sample.json` holds 16 films of the official test split, four for each class
+and view and one per patient, drawn once with seed 2026 among films the exposure checks above would not flag (pixel SD at
+least 10, mean between 15 and 240); the draw reads no model output. They are resized as the set was and stored as
+integers from 0 to 255, with NIH's credit and the CVPR 2017 citation in the file. The int8 graph classifies 10 of them at
+the operating point (6 of the 8 with effusion, 4 of the 8 without), none within 0.001 of the threshold, and the file
+records each film's class and margin for the page to compare. As JSON the file is 3.7 MB, 0.68 MB gzipped; the 0.8 MB the
+owner's panel gave is its pixels. The card's calibration paragraph began by saying the demo page shows this model's
+logits, which the page does not while the model is off the Hub: `scripts/publish_hf.py` now says that the page does not
+run a model whose repository is not public, which changes no other card.

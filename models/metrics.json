@@ -663,7 +663,6 @@
       "fitted_by": "scripts/train/export_cxr_fedavg.py",
       "fitted_on": "four hospitals' validation images; scored on the official test split",
       "formula": "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), logit(q) = log(q / (1 - q))",
-      "lead": "The demo page does not run this model. The map states what its score would mean as a risk, for a reader who needs one.",
       "log_loss_calibrated": 0.3798849,
       "log_loss_raw": 0.38164418,
       "logit_clip_eps": 1e-12,
@@ -681,7 +680,8 @@
       "int8_bytes": 11269764,
       "opset": 18
     },
-    "git_sha": "cdc6d94-dirty",
+    "features_int8_head_auroc": 0.8062589191862829,
+    "git_sha": "914a39a-dirty",
     "int8_decisions_differing_at_operating_point": 134,
     "n_parameters": 11170753,
     "n_test_images": 25589,
@@ -700,7 +700,7 @@
     "specificity_at_operating_point": 0.5492762623608656,
     "test_positives": 4656,
     "transfer_learning": "none: trained from random initialisation, so the weights carry no ImageNet terms (DATA_LICENSES.md)",
-    "wall_clock_s": 608.2
+    "wall_clock_s": 7513.3
   },
   "medical_fl.resnet18": {
     "accuracy": 0.8653846153846154,

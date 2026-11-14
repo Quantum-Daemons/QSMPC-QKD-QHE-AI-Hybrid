@@ -1305,10 +1305,14 @@ _SPECS: tuple[ModelSpec, ...] = (
         params=None,
         dataset=DS_NIH_CXR14,
         metric=M_CXR_EFFUSION,
-        artifacts=_ONNX_PAIR,
-        eval_sample_reason=("No evaluation sample is published with this model: its rows would be NIH test radiographs, "
-                            "and the medical page does not run this model."),
-        eval_split="the official ChestX-ray14 test split, 25,589 images of 2,797 patients once pixel-identical copies are dropped",
+        # The classifier pair first, so a lookup by precision finds the classifier; then the same network up to its pooled
+        # features, for a head trained in the browser or one evaluated under CKKS, with its own checks.
+        artifacts=_ONNX_PAIR + (
+            ArtifactSpec("onnx/features.onnx", "onnx", "fp32", "browser"),
+            ArtifactSpec("onnx/features_int8.onnx", "onnx", "int8", "browser"),
+            ArtifactSpec("features_report.json", "json", "none", "both"),
+        ),
+        eval_split="the official ChestX-ray14 test split, 16 films, four for each class and view",
         notes=("The medical page's chest X-ray federation, recorded offline (`scripts/train/medical_cxr_fl.py`): NIH's "
                "train_val patients placed in four simulated hospitals by how well each patient's AP share matches a "
                "hospital's target (realised AP shares 11.9% to 77.4%), then 12 FedAvg rounds of one local epoch, AdamW at "
@@ -1326,7 +1330,13 @@ _SPECS: tuple[ModelSpec, ...] = (
                "stays between 0.805 and 0.806, but 182 to "
                "620 of the 25,589 decisions at the operating point change (the repository's "
                "`docs/measurements/cxr-preupload-2026-11-14.json`). The operating point is the logit at which the "
-               "hospitals' validation images first reach a sensitivity of 0.80. The labels were mined from reports (Effusion's positive predictive value 70 to 74% on a radiologist's re-read). For research "
+               "hospitals' validation images first reach a sensitivity of 0.80. The labels were mined from reports (Effusion's positive predictive value 70 to 74% on a radiologist's re-read). "
+               "`onnx/features.onnx` and its int8 twin are the same network up to its 512 pooled features, for a head "
+               "trained in a browser or one evaluated under encryption; the network's own last layer on the int8 "
+               "features scores AUROC 0.806 on the test split (`features_report.json`). `eval_sample.json` holds 16 "
+               "films of the official test split at 224 px, four for each class and view, from distinct patients, "
+               "under NIH's terms with its credit; the int8 graph classifies 10 of them correctly at the operating "
+               "point, which shows the model running and not how well it ranks. For research "
                "and demonstration only: not for clinical use, and not a medical device."),
     ),
     # ---------------- genomics ----------------
