@@ -484,3 +484,14 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
    (4.5:1, SC 1.4.3): "true class 0 (solid)" was #717d92 on the card, 4.09:1. The swatch beside each
    label keeps the series colour and shape, so nothing is lost by the text. */
 .recharts-legend-item-text { color: var(--text) !important; }
+
+/* The run's timeline (Round 86): replay controls under the canvas, wrapping at narrow widths. */
+.timeline-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.timeline-bar input[type="range"] { flex: 1 1 220px; min-width: 160px; accent-color: var(--accent); }
+.timeline-bar .timeline-where { flex-basis: 100%; }
+.ledger-party ul { margin: 6px 0 0; padding-left: 18px; }
+.ledger-party li { margin: 3px 0; }
+.sequence-view { margin-top: 10px; }
+.sequence-view summary { cursor: pointer; }
+.sequence-svg { overflow-x: auto; margin-top: 6px; }
+.sequence-svg svg { max-width: none; display: block; }
