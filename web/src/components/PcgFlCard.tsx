@@ -6,7 +6,7 @@ import CardExport from "./CardExport";
 import KeyPoints from "./KeyPoints";
 import StageBadge from "./StageBadge";
 import type { Stat } from "../lib/cxrFl";
-import { PCG_RANDOM, PCG_SOURCES, pcgFlRows, type PcgFl } from "../lib/pcgFl";
+import { heldOutShift, PCG_RANDOM, PCG_SOURCES, pcgFlRows, type PcgFl } from "../lib/pcgFl";
 
 const f3 = (v: number) => v.toFixed(3);
 const pct = (v: number) => `${(100 * v).toFixed(0)}%`;
@@ -39,6 +39,10 @@ export default function PcgFlCard() {
   const n = c.training_recording_counts;
   const below = held.filter((s) => (c.summary[s].pooled?.auroc.mean ?? 1) < 0.5 || (c.summary[s].fedavg?.auroc.mean ?? 1) < 0.5);
   const worst = held.reduce((w, s) => ((c.summary[s].pooled?.auroc.mean ?? 1) < (c.summary[w].pooled?.auroc.mean ?? 1) ? s : w), held[0]);
+  const band = c.band_mean?.summary;
+  const bandPooled = band ? heldOutShift(c.summary, band, "pooled") : null;
+  const bandFed = band ? heldOutShift(c.summary, band, "fedavg") : null;
+  const bandBelow = band ? held.filter((s) => (band[s]?.pooled?.auroc.mean ?? 1) < 0.5) : [];
   return (
     <div className="card" id="pcg-fl" style={{ marginTop: 14 }}>
       <h3>Heart-sound federation, each source held out <StageBadge kind="offline" /></h3>
@@ -72,8 +76,12 @@ export default function PcgFlCard() {
       </p>
       <KeyPoints title="What it shows" items={[
         <><b>A new source is hard.</b> Held out, the sources average {f3(pooledMean)} pooled and {f3(fedMean)} federated. With the recordings split at random instead, so that one patient&apos;s recordings can fall on both sides, the same network reaches {f3(random?.auroc.mean ?? NaN)}: most of that gap is the change of source, not the model.</>,
-        <><b>On some sources the score turns round.</b> Below 0.5, a held-out source&apos;s abnormal recordings score lower than its normal ones: so it went on {below.join(", ")}, in every seed. The lowest pooled figure is {worst}, {f3(c.summary[worst].pooled?.auroc.mean ?? NaN)}, on {c.sources[worst].recordings.toLocaleString("en-US")} recordings with {pct(c.sources[worst].abnormal / c.sources[worst].recordings)} abnormal: what the network took from the other sources, whose abnormal shares differ, does not carry over and here points the other way.</>,
+        <><b>On some sources the score turns round.</b> Below 0.5, a held-out source&apos;s abnormal recordings score lower than its normal ones: so it went on {below.join(", ")}, in every seed. The lowest pooled figure is {worst}, {f3(c.summary[worst].pooled?.auroc.mean ?? NaN)}, on {c.sources[worst].recordings.toLocaleString("en-US")} recordings with {pct(c.sources[worst].abnormal / c.sources[worst].recordings)} abnormal.{" "}
+          {worst === "e"
+            ? <>Its collectors recorded the healthy volunteers in a laboratory with a microphone or a piezoelectric sensor and the patients with coronary artery disease in hospital with a Littmann stethoscope (Liu et al., Physiological Measurement 2016), so inside e the recording setting goes with the label, and what separates the classes in the other sources does not carry over.</>
+            : <>What the network took from the other sources does not carry over to it.</>}</>,
         <><b>The Challenge saw the same.</b> Its example algorithm, scored leaving one database out, ranged from 0.47 to 0.86 in this mean of sensitivity and specificity, 0.59 ± 0.15 on average (Clifford et al., Computing in Cardiology 2016).</>,
+        ...(bandPooled && bandFed ? [<><b>One remedy helped on average, not everywhere.</b> Removing each mel band&apos;s mean over the window before it is standardised, which takes out a stethoscope&apos;s or a room&apos;s constant colouring (the reasoning of cepstral mean normalisation), moved the mean held-out AUROC from {f3(bandPooled.before)} to {f3(bandPooled.after)} pooled and from {f3(bandFed.before)} to {f3(bandFed.after)} under FedAvg. Pooled, it rose on {bandPooled.rose.join(", ")} and fell on {bandPooled.fell.join(", ")}{bandPooled.same.length ? <>, and moved less than {bandPooled.within} on {bandPooled.same.join(", ")}</> : null}; {bandBelow.length ? <>{bandBelow.join(", ")} stayed below 0.5</> : <>no source stayed below 0.5</>}. Koike et al. (EMBC 2021) found that standardising the spectrogram raised the recall on all six held-out databases; here the gain is not on every source.</>] : []),
         <><b>Federation is not a cure for a source shift.</b> FedAvg was below pooled training on {held.filter((s) => (c.summary[s].fedavg?.auroc.mean ?? 0) < (c.summary[s].pooled?.auroc.mean ?? 0)).length} of {held.length} held-out sources. It weights each site by its size, so the largest database dominates the average, and a site whose abnormal share differs from the rest pulls the model its own way.</>,
       ]} />
       <div className="note" style={{ marginTop: 10, fontSize: 12 }}>

@@ -23,7 +23,22 @@ export interface PcgFl {
   training_recording_counts: { released_zip: number; physionet_page_introduction: number; physionet_page_announcement: number; cinc_2016_paper_table_1: number };
   recipe: { epochs: number; batch: number; lr: number; window_s: number; params: number; seeds: number[] };
   summary: Record<string, { pooled?: PcgArm; fedavg?: PcgArm }>;
+  /** The same study with each mel band's mean removed over the window (`--band-mean`). */
+  band_mean?: { recipe: { seeds: number[] }; summary: Record<string, { pooled?: PcgArm; fedavg?: PcgArm }> };
   environment: Record<string, string | null>;
+}
+
+/** Mean over the held-out sources of one arm's mean AUROC before and after, and the sources whose mean rose or fell by
+ * more than `within` (the rest moved less than that, inside the seeds' spread). */
+export function heldOutShift(base: PcgFl["summary"], other: PcgFl["summary"], arm: "pooled" | "fedavg", within = 0.01) {
+  const held = PCG_SOURCES.filter((s) => base[s]?.[arm] && other[s]?.[arm]);
+  const mean = (sm: PcgFl["summary"]) => held.reduce((a, s) => a + (sm[s][arm]?.auroc.mean ?? 0), 0) / held.length;
+  const delta = (s: string) => (other[s][arm]?.auroc.mean ?? 0) - (base[s][arm]?.auroc.mean ?? 0);
+  return {
+    before: mean(base), after: mean(other), within,
+    rose: held.filter((s) => delta(s) > within), fell: held.filter((s) => delta(s) < -within),
+    same: held.filter((s) => Math.abs(delta(s)) <= within),
+  };
 }
 
 /** One row per held-out source, as the card's table draws it, for its CSV. */

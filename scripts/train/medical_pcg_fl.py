@@ -7,7 +7,12 @@ on the other five, pooled and under FedAvg with each source as a site, and score
 recording (the mean of its windows' logits). Three training seeds. The Challenge's own example algorithm, scored the same
 way by database, ranged from 0.47 to 0.86 in its mean of sensitivity and specificity (Clifford et al., CinC 2016).
 
-Usage: python -I scripts/train/medical_pcg_fl.py --prep <prepared dir> --out <dir> [--seeds 1,2,3] [--epochs 12]
+Usage: python -I scripts/train/medical_pcg_fl.py --prep <prepared dir> --out <dir> [--seeds 1,2,3] [--epochs 12] [--band-mean]
+
+--band-mean removes each mel band's mean over the window before the window is standardised: a stethoscope's and a room's
+stationary colouring is a constant offset per band in the log domain, so this takes it out, the reasoning of cepstral
+mean normalisation (Azam et al., arXiv:2106.01865, for heart sounds) and close to the spectrogram standardisation that
+raised every held-out database in Koike et al. (EMBC 2021).
 
 The prepared dir is what scripts/data/prepare_physionet2016.py writes. The run needs a CUDA GPU; the functions the tests
 exercise (the mel filterbank, the windows, the per-recording scores, the AUROC and its interval, the balanced accuracy)
@@ -93,16 +98,20 @@ def mel_filterbank(n_fft: int = N_FFT, n_mels: int = N_MELS, rate: int = RATE, f
 
 
 class Features(nn.Module):
-    """Log-mel of each window, standardised within the window, so the sources' different gains do not reach the model."""
+    """Log-mel of each window, standardised within the window, so the sources' different gains do not reach the model;
+    with band_mean, each band's mean over the window is removed first (--band-mean)."""
 
-    def __init__(self):
+    def __init__(self, band_mean: bool = False):
         super().__init__()
+        self.band_mean = band_mean
         self.register_buffer("fb", torch.tensor(mel_filterbank(), dtype=torch.float32))
         self.register_buffer("win", torch.hann_window(N_FFT))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         spec = torch.stft(x, N_FFT, STFT_HOP, window=self.win, return_complex=True).abs().pow(2)
         m = torch.log(torch.einsum("mf,bft->bmt", self.fb, spec) + 1e-6)
+        if self.band_mean:
+            m = m - m.mean(dim=2, keepdim=True)
         m = (m - m.mean(dim=(1, 2), keepdim=True)) / (m.std(dim=(1, 2), keepdim=True) + 1e-5)
         return m.unsqueeze(1)
 
@@ -280,16 +289,18 @@ def main() -> None:
     ap.add_argument("--epochs", type=int, default=12)
     ap.add_argument("--bs", type=int, default=64)
     ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--band-mean", action="store_true", help="remove each mel band's mean over the window (see the docstring)")
     a = ap.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     torch.backends.cudnn.benchmark = True
     t0 = time.time()
     d = load(a.prep)
     sig = torch.from_numpy(np.load(a.prep / "signals.npy")).to(DEV)
-    feats = Features().to(DEV)
+    feats = Features(band_mean=a.band_mean).to(DEV)
     sources = {s: np.flatnonzero(d["source"] == s) for s in SOURCES}
     report = {"environment": environment(), "epochs": a.epochs, "batch": a.bs, "lr": a.lr,
-              "window_s": WINDOW / RATE, "features": {"n_fft": N_FFT, "hop": STFT_HOP, "n_mels": N_MELS, "f_min": F_MIN, "f_max": F_MAX},
+              "window_s": WINDOW / RATE, "features": {"n_fft": N_FFT, "hop": STFT_HOP, "n_mels": N_MELS, "f_min": F_MIN, "f_max": F_MAX,
+                                                       "band_mean_removed": a.band_mean},
               "sources": {s: {"recordings": int(len(r)), "abnormal": int(d["y"][r].sum()), "good_quality": int(d["good"][r].sum()),
                               "hours": float(d["length"][r].sum() / RATE / 3600)} for s, r in sources.items()},
               "params": int(sum(p.numel() for p in SmallCnn().parameters())), "runs": []}

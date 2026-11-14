@@ -105,6 +105,20 @@ def test_the_mel_filters_are_triangles_inside_the_band(pcg) -> None:
     assert (np.diff(peaks) >= 0).all(), "the filters rise in frequency"
 
 
+def test_band_mean_removal_leaves_each_band_centred(pcg) -> None:
+    import torch
+    g = torch.Generator().manual_seed(0)
+    x = torch.randn(3, pcg.WINDOW, generator=g) * torch.linspace(0.5, 2.0, pcg.WINDOW)
+    plain = pcg.Features().to("cpu")
+    plain.fb, plain.win = plain.fb.cpu(), plain.win.cpu()
+    centred = pcg.Features(band_mean=True)
+    m0, m1 = plain(x), centred(x)
+    assert m1.shape == m0.shape
+    assert m1.mean(dim=3).abs().max() < 1e-4, "each band's mean over the window is removed"
+    assert m0.mean(dim=3).abs().max() > 0.05, "without the option the bands keep their levels"
+    assert abs(float(m1.std(dim=(1, 2, 3)).mean()) - 1) < 1e-3, "the window is still standardised"
+
+
 def test_the_windows_cover_the_recording(pcg) -> None:
     assert pcg.window_starts(100, 400, 50).tolist() == [0]
     assert pcg.window_starts(1000, 400, 200).tolist() == [0, 200, 400, 600]
@@ -137,3 +151,7 @@ def test_the_card_shows_the_record_and_credits_physionet() -> None:
     assert "/home/" not in text and "/home/" not in json.dumps(record), "a local path reached a shipped file"
     assert set(card["summary"]) == set("abcdef") | {"random 20% of recordings"}
     assert card["training_recording_counts"]["released_zip"] == 3240
+    band = record["band_mean"]
+    assert card["band_mean"] == {"recipe": band["recipe"], "summary": band["summary"]}, "the card's band-mean figures are the record's"
+    assert band["recipe"]["features"]["band_mean_removed"] is True and not record["recipe"]["features"].get("band_mean_removed")
+    assert {r["seed"] for r in band["runs"]} == {1, 2, 3} and set(band["summary"]) == set(card["summary"])
