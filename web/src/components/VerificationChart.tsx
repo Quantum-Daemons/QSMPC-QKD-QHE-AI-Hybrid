@@ -22,6 +22,7 @@ import {
   ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis,
 } from "recharts";
 
+import { agreementStats } from "../lib/agreementStats";
 import type { DecisionCurve } from "../lib/decisionCurve";
 import type { ModelEvalResult } from "../lib/onnxInference";
 import { modelsFor } from "../lib/config";
@@ -467,6 +468,7 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         </ResponsiveContainer>
         </MarksHidden>
       </ChartReadout>
+      <AgreementEvidence plot={plot} />
       {plot.plane ? <DecisionPlane plot={plot} plane={plot.plane} /> : null}
       {plot.decisionCurve ? (
         <DecisionCurveChart curve={plot.decisionCurve} modelKey={plot.modelKey ?? "the model"} n={plot.rows}
@@ -475,6 +477,74 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
         <p className="muted small">No decision curve: {plot.decisionCurveWithheld}.</p>
       ) : null}
     </figure>
+  );
+}
+
+/**
+ * Two readings of the scatter's pairs (Round 86, the owner's choice of 2026-11-14: the evidence plots). Left, Bland
+ * and Altman's difference against mean, with the bias and the limits of agreement; right, each row's precision in bits
+ * as Lattigo counts it. Computed by `lib/agreementStats.ts` from the same points the scatter draws, one per row. The
+ * reference lines carry no label on the chart, where a label would sit on its line; the caption names them.
+ */
+function AgreementEvidence({ plot }: { plot: EncryptedAgreementPlot }) {
+  const captionId = useId();
+  const st = useMemo(() => agreementStats(plot.points ?? []), [plot]);
+  const marks = useMemo<MarkSeries[]>(() => (st ? [{ name: "a row (circle)", fill: MARK_BLUE, shape: "circle", points: st.points }] : []), [st]);
+  if (!st || st.n < 2) return null;
+  let xlo = Infinity, xhi = -Infinity, ylo = Math.min(st.limits[0], 0), yhi = Math.max(st.limits[1], 0);
+  for (const q of st.points) { xlo = Math.min(xlo, q.x); xhi = Math.max(xhi, q.x); ylo = Math.min(ylo, q.y); yhi = Math.max(yhi, q.y); }
+  const pad = (yhi - ylo) * 0.08 || 1e-12;
+  const logit = plot.scoreKind === "logit";
+  const e = (v: number) => v.toExponential(2);
+  const bars = st.bits.map((b) => ({ bits: String(b.bits), count: b.count }));
+  return (
+    <div className="agreement-evidence" style={{ marginTop: 10 }}>
+      <div className="grid cols-2" style={{ gap: 10 }}>
+        <ChartReadout hint={HINT_POINTER}>
+          <MarksHidden>
+            <ResponsiveContainer width="100%" height={210}>
+              <ScatterChart role="img" title={`Bland-Altman: encrypted minus plaintext against their mean, ${st.n} rows`}
+                            aria-describedby={captionId} margin={{ top: 6, right: 10, bottom: 14, left: 4 }}>
+                <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+                <XAxis type="number" dataKey="x" domain={[xlo, xhi]} tick={AXIS} tickFormatter={(v: number) => v.toFixed(2)}
+                       label={{ value: "mean", position: "insideBottom",
+                                offset: -10, fill: "#8a94a6", fontSize: 12 }} />
+                <YAxis type="number" dataKey="y" domain={[ylo - pad, yhi + pad]} tick={AXIS} width={Y_AXIS_W}
+                       tickFormatter={(v: number) => v.toExponential(1)} label={yAxisTitle("encrypted minus plaintext", 14)} />
+                <ReferenceLine y={st.bias} stroke="#e6edf6" strokeWidth={1.2} ifOverflow="extendDomain" />
+                <ReferenceLine y={st.limits[0]} stroke="#8a94a6" strokeDasharray="5 4" ifOverflow="extendDomain" />
+                <ReferenceLine y={st.limits[1]} stroke="#8a94a6" strokeDasharray="5 4" ifOverflow="extendDomain" />
+                <Scatter name="a row (circle)" data={NO_POINTS} fill={MARK_BLUE} shape="circle" isAnimationActive={false} />
+                <Customized component={<CanvasMarks series={marks} xName="mean" yName="difference"
+                                                    format={(v: number) => v.toExponential(3)} />} />
+              </ScatterChart>
+            </ResponsiveContainer>
+          </MarksHidden>
+        </ChartReadout>
+        <ResponsiveContainer width="100%" height={210}>
+          <BarChart data={bars} accessibilityLayer title={`Precision of the ${st.n - st.exact} rows with a difference, in bits`}
+                    aria-describedby={captionId} margin={{ top: 6, right: 10, bottom: 14, left: 4 }}>
+            <CartesianGrid stroke={GRID} strokeDasharray="2 4" />
+            <XAxis dataKey="bits" tick={AXIS} label={{ value: "precision, bits", position: "insideBottom",
+                                                       offset: -10, fill: "#8a94a6", fontSize: 12 }} />
+            <YAxis allowDecimals={false} tick={AXIS} width={Y_AXIS_W} label={yAxisTitle("rows", 14)} />
+            <Bar dataKey="count" fill={MARK_BLUE} isAnimationActive={false} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <p id={captionId} className="muted small" style={{ marginTop: 4 }}>
+        <strong>The same pairs, two more ways.</strong> Left, Bland and Altman&apos;s plot (Lancet, 1986): each of the {st.n} rows&apos;
+        difference, encrypted minus plaintext, against the mean of the two {logit ? "logits" : "scores"}. The solid line is the mean difference, the bias, {e(st.bias)};
+        the dashed lines are the limits of agreement, the bias plus and minus 1.96 standard deviations of the differences,{" "}
+        {e(st.limits[0])} and {e(st.limits[1])}, and {st.within} of the {st.n} rows lie between them. The two methods are one
+        model in the clear and under CKKS, so the bias says whether the encryption shifts the scores and the limits how far a
+        row&apos;s score moves. Right, each row&apos;s precision, -log2 |encrypted - plaintext|, as Lattigo&apos;s GetPrecisionStats
+        counts it, in bins of whole bits{st.medianBits != null && st.minBits != null ? <>: median {st.medianBits.toFixed(1)} bits, lowest {st.minBits.toFixed(1)}</> : null}
+        {st.exact > 0 ? <>; {st.exact} {st.exact === 1 ? "row came" : "rows came"} back exactly equal and {st.exact === 1 ? "is" : "are"} not binned</> : null}.
+        One point per row, the class the scatter plots, so these are over {st.n} scores rather than every class score CKKS
+        evaluated.
+      </p>
+    </div>
   );
 }
 

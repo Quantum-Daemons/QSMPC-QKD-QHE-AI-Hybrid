@@ -30,6 +30,18 @@
   },
   "revision": "c305a104be537e93612d3556fbc0c36f637e45e9"
  },
+ "medical_fl.cxr_fedavg": {
+  "files": {
+   "eval_sample.json": "be95f1932e591d6d49a6f2887c625d0b0b89df27a3bde78de746929b9574ce74",
+   "feature_spec.json": "12c9fb24e32a86b3506e268fdb38d09771f192a426d7ef0a2e9c318d20d45b77",
+   "features_report.json": "942414a1dcab766bf1a16f5398b382cc410a234072642ec411221b93ff8a5f9a",
+   "onnx/features.onnx": "e2157d024ac7aa94ce288646fabf0d1c9ac8da0075e8d9b370d003435afc6f14",
+   "onnx/features_int8.onnx": "8e8e4c4c9414152ed70fb3c8558ca59b2a57f77cb2ad3aa07aa0fa470206c4b2",
+   "onnx/model.onnx": "1c19d143a1eaf6d1f242b9bb7083cc40c5aea95454a7a7d6452e592dbec2f2aa",
+   "onnx/model_int8.onnx": "7b7bd213b42da1f70e4567ad1e51760a830050be73d81d5864cbbb10f05b72a2"
+  },
+  "revision": "c4287b8bdee3da7c85d3676d67e53156571c5843"
+ },
  "medical_fl.resnet18": {
   "files": {
    "eval_sample.json": "e9eaaef46f473ca632a49a5563ce3d662f1e5383ba45763aacf3cdc242d69e5c",

@@ -1295,11 +1295,12 @@ _SPECS: tuple[ModelSpec, ...] = (
     ),
     # The chest X-ray federation's FedAvg ResNet-18 (Round 86). Exported by `scripts/train/export_cxr_fedavg.py` and checked
     # by `scripts/data/check_cxr_preupload.py` before any upload, as the owner asks. Uploaded to a private repository for the
-    # owner's review (2026-11-14); it names none here until the public flip, since the page's fetch cannot read a private one.
+    # owner's review (2026-11-14) and made public with the owner's approval on 2026-11-15.
     ModelSpec(
         usecase="medical_fl",
         tier="t2_industry",
         key="medical_fl.cxr_fedavg",
+        hf_repo="qsh-medical-cxr14-fedavg-resnet18",
         label="ResNet-18 on NIH ChestX-ray14, Effusion, FedAvg over four simulated hospitals",
         architecture="ResNet-18 @224px, 1-channel stem, one logit, trained from random initialisation",
         params=None,

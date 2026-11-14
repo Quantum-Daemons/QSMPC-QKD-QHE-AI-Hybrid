@@ -682,6 +682,7 @@
     },
     "features_int8_head_auroc": 0.8062589191862829,
     "git_sha": "914a39a-dirty",
+    "hf_revision": "c4287b8bdee3da7c85d3676d67e53156571c5843",
     "int8_decisions_differing_at_operating_point": 134,
     "n_parameters": 11170753,
     "n_test_images": 25589,

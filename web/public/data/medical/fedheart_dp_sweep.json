@@ -1,0 +1,71 @@
+{
+ "seed": 0,
+ "draws": 20,
+ "delta": 1e-06,
+ "rounds": 50,
+ "clip": 1,
+ "metric": "FLamby's metric: accuracy at 0.5 on each hospital's own test rows, averaged over the four",
+ "rows": [
+  {
+   "epsilon": null,
+   "draws": 20,
+   "mean": 0.721224,
+   "sd": 0.0,
+   "p10": 0.721224,
+   "p50": 0.721224,
+   "p90": 0.721224,
+   "min": 0.721224,
+   "max": 0.721224,
+   "noise_sd_total": 0
+  },
+  {
+   "epsilon": 8,
+   "draws": 20,
+   "mean": 0.723793,
+   "sd": 0.005612,
+   "p10": 0.718168,
+   "p50": 0.722738,
+   "p90": 0.731908,
+   "min": 0.71395,
+   "max": 0.732335,
+   "noise_sd_total": 4.874309
+  },
+  {
+   "epsilon": 4,
+   "draws": 20,
+   "mean": 0.722489,
+   "sd": 0.01055,
+   "p10": 0.712986,
+   "p50": 0.723394,
+   "p90": 0.734739,
+   "min": 0.696892,
+   "max": 0.737548,
+   "noise_sd_total": 8.965391
+  },
+  {
+   "epsilon": 2,
+   "draws": 20,
+   "mean": 0.723413,
+   "sd": 0.019729,
+   "p10": 0.695846,
+   "p50": 0.722137,
+   "p90": 0.747815,
+   "min": 0.688416,
+   "max": 0.761399,
+   "noise_sd_total": 16.841355
+  },
+  {
+   "epsilon": 1,
+   "draws": 20,
+   "mean": 0.712477,
+   "sd": 0.031271,
+   "p10": 0.673503,
+   "p50": 0.718101,
+   "p90": 0.745737,
+   "min": 0.651597,
+   "max": 0.754936,
+   "noise_sd_total": 32.039969
+  }
+ ],
+ "_about": "The medical DP card's band; written by scripts/measure_fedheart_dp_sweep.py."
+}

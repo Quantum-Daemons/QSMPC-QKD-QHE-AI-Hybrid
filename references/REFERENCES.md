@@ -2773,3 +2773,12 @@ The owner's choice of that day: explain a run rather than add cryptography. The 
   (https://distill.pub/2020/communicating-with-interactive-articles/; read: html). Details on demand, in "Reducing
   Cognitive Load": inspect a part while the overview stays in view.
 
+## Evidence plots under the private-inference scatter and on the medical DP card (Round 86), read at primary source 2026-11-14
+
+The note is `references/evidence-plots.md`.
+
+- **Bland and Altman, Lancet 327(8476):307-310, 1986, doi:10.1016/S0140-6736(86)90837-8.** The difference against the
+  mean, the bias and the limits of agreement at 1.96 standard deviations: the panel under every encrypted-agreement scatter.
+- **Lattigo, `schemes/ckks/precision.go`, `GetPrecisionStats`** (read: code). Precision as $`-\log_2`$ of the absolute
+  error, the definition the histogram beside it bins in whole bits.
+
