@@ -4816,3 +4816,12 @@ records each film's class and margin for the page to compare. As JSON the file i
 owner's panel gave is its pixels. The card's calibration paragraph began by saying the demo page shows this model's
 logits, which the page does not while the model is off the Hub: `scripts/publish_hf.py` now says that the page does not
 run a model whose repository is not public, which changes no other card.
+
+With the owner's choice of a private repository first, `scripts/publish_hf.py` uploaded the model to
+`Daemons-Q/qsh-medical-cxr14-fedavg-resnet18` as a private repository, revision
+def2d3670320f876d24ace5906b948baf7b53bab, from a tree whose registry entry named the repository for that run only: 11
+files, 160.47 MB, each equal to the local file by SHA-256 when read back through the Hub's API, and the Hub reports the
+repository private. `fixtures.npy` stays local, as the deny list says. The card it carries says the page does not run the
+model because its repository is private. The registry entry, `models/metrics.json` and the card in `models/` were then
+restored to this branch's state, so main names no repository and pins no revision until the public flip, which renders
+the card again.

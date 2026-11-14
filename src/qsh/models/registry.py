@@ -1294,8 +1294,8 @@ _SPECS: tuple[ModelSpec, ...] = (
                "is this model."),
     ),
     # The chest X-ray federation's FedAvg ResNet-18 (Round 86). Exported by `scripts/train/export_cxr_fedavg.py` and checked
-    # by `scripts/data/check_cxr_preupload.py` before any upload, as the owner asks; not on the Hub until the owner approves
-    # its card, so it names no repository yet.
+    # by `scripts/data/check_cxr_preupload.py` before any upload, as the owner asks. Uploaded to a private repository for the
+    # owner's review (2026-11-14); it names none here until the public flip, since the page's fetch cannot read a private one.
     ModelSpec(
         usecase="medical_fl",
         tier="t2_industry",
