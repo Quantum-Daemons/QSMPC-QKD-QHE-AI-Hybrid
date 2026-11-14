@@ -271,11 +271,14 @@ def _calibration_section(cal: dict | None) -> list[str]:
     lines = [
         "## Calibration map",
         "",
-        ("The demo page reads this model's score $q$ as a risk through this map before it compares it with a "
-         "threshold probability, as its decision curve does."
-         if cal.get("page_reads_this_map", True) else
-         "The demo page shows this model's logits and its decision, not a probability, and reads no score through this "
-         "map. It states what the score would mean as a risk, for a reader who needs one.")
+        # A record's own opening, where neither sentence below is true of its model: the chest X-ray card's page does not
+        # run the model at all (Round 86).
+        (cal.get("lead") or
+         ("The demo page reads this model's score $q$ as a risk through this map before it compares it with a "
+          "threshold probability, as its decision curve does."
+          if cal.get("page_reads_this_map", True) else
+          "The demo page shows this model's logits and its decision, not a probability, and reads no score through this "
+          "map. It states what the score would mean as a risk, for a reader who needs one."))
         + f" Fitted on the {cal['fitted_on'].replace('; ', ' and ')}.",
         "",
         # The map and its definitions in two blocks: on one line they set 736 px in the Hub's 589 px column, and the
@@ -333,6 +336,8 @@ _HUB_LICENCE_IDS = {"CDLA-Sharing-1.0": "cdla-sharing-1.0", "CC-BY-4.0": "cc-by-
 _LICENCE_LINKS = {
     "CC-BY-3.0-IGO": "https://creativecommons.org/licenses/by/3.0/igo/",
     "CC-BY-4.0 asserted by MedMNIST": "https://creativecommons.org/licenses/by/4.0/",
+    # NIH states its terms in the dataset's own folder (FAQ_CHESTXRAY.pdf, question 4), not on a licence page.
+    "NIH ChestX-ray14 terms": "https://nihcc.app.box.com/v/ChestXray-NIHCC",
 }
 
 
