@@ -147,7 +147,8 @@ function conversionAt(u: number, rho: number, delta: number): number {
 export function cdpToDp(rho: number, delta: number): number {
   if (rho === 0) return 0;
   if (!Number.isFinite(rho)) return Infinity;
-  let [lo, hi] = [CONVERSION_SEARCH[0], CONVERSION_SEARCH[1]];
+  let lo: number = CONVERSION_SEARCH[0];
+  let hi: number = CONVERSION_SEARCH[1];
   let c = hi - GOLDEN * (hi - lo);
   let d = lo + GOLDEN * (hi - lo);
   let fc = conversionAt(c, rho, delta);
