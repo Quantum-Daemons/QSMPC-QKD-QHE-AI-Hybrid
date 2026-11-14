@@ -43,7 +43,8 @@ export default function MurmurDpCard() {
       <p className="small" style={{ marginTop: 4 }}>
         Present against absent on the CirCor DigiScope recordings ({d.people.toLocaleString("en-US")} people, {d.records_labelled.toLocaleString("en-US")} labelled
         records), scored on {d.test_people} held-out people ({d.test_records} records, {d.test_records_present} with a murmur). {d.people_with_two_records} people
-        came to both screening campaigns under two patient IDs, so the person, not the ID, is the unit of the split and of privacy. A logistic head is trained
+        have labelled records under two patient IDs, from coming to both screening campaigns, so the person, not the ID, is the unit of the split and of
+        privacy. A logistic head is trained
         privately on frozen features of an audio network trained on AudioSet (PANNs CNN14), the recipe Abadi et al. used for CIFAR-10: features learned on public
         data, only the last layer private. Learning rates and decision thresholds are chosen on a stand-in of the same size from the PhysioNet/CinC 2016 recordings,
         so epsilon covers everything that touched CirCor. Delta {c.recipe.delta.toExponential(0)}. Trained on this project&apos;s GPU and recorded: nothing here ran in
@@ -88,13 +89,15 @@ export default function MurmurDpCard() {
           {stat(cen(1)?.auroc)} at ε 1, with {c.recipe.params[HEAD]} weights to learn under noise. With a few hundred people, private learning needs features learned on
           public data or far more data (Tramèr and Boneh, ICLR 2021); the same head on the heart-sound card&apos;s CNN features, which come from a single database,
           keeps less ({stat(cen(8, "DP", "public", "head-public")?.auroc)} at ε 8).</>,
-        <><b>Tuning on public data cost almost nothing here.</b> Choosing the rates on CirCor&apos;s own validation people gives {stat(val8?.auroc)} at ε 8 and{" "}
+        <><b>For this head, tuning on public data cost almost nothing.</b> Choosing the rates on CirCor&apos;s own validation people gives {stat(val8?.auroc)} at ε 8 and{" "}
           {stat(val1?.auroc)} at ε 1, but that epsilon leaves the choice out (Papernot and Steinke, ICLR 2022). The stand-in has to be new to the feature network: drawn
           from the databases the heart-sound card&apos;s CNN was trained on, its validation was too easy and the rates it chose gave {stat(naive8?.auroc)} at ε 8. An
           accounted search over three public-chosen rates gives {stat(search8?.auroc)} and {stat(search1?.auroc)}; objective perturbation (Redberg, Koskela and
           Wang, NeurIPS 2023), which needs no rate at all, {stat(op8?.auroc)} and {stat(op1?.auroc)}.</>,
-        <><b>The distributed noise costs nothing extra.</b> At ε 8 the four sites&apos; discrete Gaussian gives {stat(fed8?.auroc)}, the central full-batch Gaussian
-          {" "}{stat(full8?.auroc)}: the same noise once quantised to 2^14 a clip, as Kairouz, Liu and Steinke (ICML 2021) report.</>,
+        <><b>Distributing the noise costs little.</b> At ε 8 the four sites&apos; discrete Gaussian gives {stat(fed8?.auroc)}, the central full-batch Gaussian{" "}
+          {stat(full8?.auroc)}. The sites add {pct((fed8?.noise_sd_over_gamma_c ?? NaN) / (full8?.sigma ?? NaN) - 1)} more noise, and not for the quantisation to
+          2^14 a clip, which costs under 0.1%: the sum of discrete Gaussians is accounted through concentrated DP (Kairouz, Liu and Steinke, ICML 2021), the
+          continuous Gaussian by its exact curve.</>,
         <><b>The ranking survives, the threshold does not.</b> At logit 0 the private head calls {pct(bal(1)?.zero?.share_predicted_positive.mean ?? NaN)} of records
           positive at ε 1, against {pct(d.test_records_present / d.test_records)} that are, so its balanced accuracy is {f2(bal(1)?.zero?.balanced_accuracy.mean ?? NaN)}.
           A threshold chosen on the stand-in raises it to {f2(bal(8)?.balanced?.balanced_accuracy.mean ?? NaN)} at ε 8 and{" "}
