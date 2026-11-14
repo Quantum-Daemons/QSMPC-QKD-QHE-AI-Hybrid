@@ -11,6 +11,8 @@ import { ModelPanel } from "../components/ModelPanel";
 import { ProvenanceBadge, type Provenance } from "../components/ProvenanceBadge";
 import PipelineControls from "../components/PipelineControls";
 import RunMonitor from "../components/RunMonitor";
+import PartyLedger from "../components/PartyLedger";
+import TimelineBar from "../components/TimelineBar";
 import MpcCnnPanel from "../components/MpcCnnPanel";
 import FedHeartPanel, { type FedHeartSitesMeta } from "../components/FedHeartPanel";
 import CxrFlCard from "../components/CxrFlCard";
@@ -119,9 +121,11 @@ function UseCaseView({ usecase }: { usecase: string }) {
       <div ref={diagramRef} style={{ marginTop: 16, background: "var(--panel)", borderRadius: 10,
                                      padding: 8, overflowX: "auto" }}>
         {/* The run's own config object (usePipelineRun), the one the E2E page's canvas reads too. */}
-        <UseCaseCanvas usecase={usecase} activeStage={active} doneStages={done} metrics={metrics}
+        {/* The run as it stands, or as it stood at the timeline's position (Round 86). */}
+        <UseCaseCanvas usecase={usecase} activeStage={run.view.active} doneStages={run.view.done} metrics={run.view.metrics}
           config={run.diagramConfig} />
       </div>
+      <TimelineBar events={events} cursor={run.cursor} setCursor={run.setCursor} marks={run.marks} inFlight={run.inFlight} />
       {/* THE REASON, VISIBLE - the same fix as `Orchestration.tsx`'s export row and for the same
           reason. `disabled` removes a button from the tab order, so a reason living only in `title`
           is reachable by hovering a mouse and by nothing else. Both pages were swept together
@@ -159,7 +163,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
         </span>
       </div>
 
-      <RunMonitor events={events} metrics={metrics} signature={signature} logRef={logRef} />
+      <PartyLedger usecase={usecase} events={run.view.events} config={run.diagramConfig} />
+      <RunMonitor events={run.view.events} metrics={run.view.metrics} signature={signature} logRef={logRef} />
 
       {/* The simulated channel across its whole range, beside the single run above. Computed from the
           same model functions the run calls, at this page's own parameter values. Round 58. */}
