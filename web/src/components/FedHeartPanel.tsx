@@ -264,7 +264,8 @@ function DpTable({ dp }: { dp: FedHeartDpResult }) {
         The no-noise row is the comparison that isolates the noise: it shows what clipping and full-batch steps cost
         alone. The noise is in gradient units against a sum of up to 486 clipped gradients a step. Each epsilon counts the
         noise of the hospitals that add theirs; the second column is the guarantee if one of the four adds none. The
-        sampler is exact (Canonne, Kamath and Steinke, 2020), because floating-point noise leaks through its low bits.
+        sampler is exact (Canonne, Kamath and Steinke, 2020), because floating-point noise leaks through its low bits, and
+        concentrated DP becomes epsilon by their Renyi conversion, searched over the order.
         Each noised row is its own release from the same patients, and concentrated DP adds across releases (Bun and
         Steinke, 2016): published together, the {dp.rows.filter((x) => Number.isFinite(x.epsilon)).length} rows are
         epsilon {dp.epsilonAllRows.toFixed(2)} at the same delta, not the largest of them.

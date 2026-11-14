@@ -172,6 +172,7 @@ def test_each_page_carries_its_cards(runs) -> None:
     assert {"differential_privacy", "verifications"} <= set(runs["finance_aml"]["cards"]), runs["finance_aml"]["cards"]
     assert "differential_privacy" in runs["genomics"]["cards"], runs["genomics"]["cards"]
     fin = json.loads(runs["finance_aml"]["text"])["cards"]["differential_privacy"]["rows"][0]
-    assert fin["epsilon_asked"] == 1 and fin["delta"] == 1e-8 and fin["variance"] == 38
+    # 30 under the Renyi conversion of 2026-11-14 (38 under the simpler bound before it); `tests/test_r86_dp_twin.py`
+    assert fin["epsilon_asked"] == 1 and fin["delta"] == 1e-8 and fin["variance"] == 30
     gen = json.loads(runs["genomics"]["text"])["cards"]["differential_privacy"]["rows"][0]
     assert gen["released_count"] is not None and "contributions" not in gen

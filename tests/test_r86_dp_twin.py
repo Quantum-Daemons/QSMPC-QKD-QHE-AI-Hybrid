@@ -15,8 +15,12 @@ seeded source both languages share - which is NOT private, and exists for these 
 5. no page code calls the seeded source: outside its definition it appears only behind the `seededLabel` option;
 6. the medical table's noised rows compose to the same epsilon in both languages (rho added, Bun and Steinke), larger
    than any one row's and equal to the closed form from the four rhos;
-7. the finance count's release (`dpCount` / `dp_count`) is the same draw for draw, at variance 38 for epsilon 1 and
-   delta 1e-8, and never below zero.
+7. the finance count's release (`dpCount` / `dp_count`) is the same draw for draw, at variance 30 for epsilon 1 and
+   delta 1e-8 (38 under the simpler conversion used until 2026-11-14), and never below zero.
+
+The variances and the draws must be equal; the epsilons, which the conversion finds by a golden-section search through
+exp and log, must agree to 1e-12 relative, because V8 and CPython may round a transcendental function differently in its
+last bit.
 """
 
 from __future__ import annotations
@@ -33,6 +37,14 @@ from pathlib import Path
 import pytest
 
 from qsh.ai import dp, fed_heart
+
+REL = 1e-12
+
+
+def _same(a, b) -> bool:
+    if a == "inf" or b == "inf" or (isinstance(a, float) and math.isinf(a)):
+        return str(a) in ("inf", "Infinity") and str(b) in ("inf", "Infinity") or a == b
+    return a == pytest.approx(b, rel=REL)
 
 REPO = Path(__file__).resolve().parents[1]
 WEB = REPO / "web"
@@ -116,7 +128,8 @@ def test_the_accountant_agrees_and_meets_each_target(browser) -> None:
         v = dp.variance_for(*a)
         e4 = dp.epsilon_of(v, a[1], a[2], a[3], a[4], a[5])
         e3 = dp.epsilon_of(v, a[1], a[2], a[3] - 1, a[4], a[5])
-        assert browser["accounting"][name] == [v, e4, e3], name
+        js = browser["accounting"][name]
+        assert js[0] == v and _same(js[1], e4) and _same(js[2], e3), name
         assert e4 <= a[0] < dp.epsilon_of(v - 1, a[1], a[2], a[3], a[4], a[5]), name   # the least variance that meets it
         assert e3 > e4, name
 
@@ -131,14 +144,16 @@ def test_the_medical_dp_run_is_pythons_row_for_row(browser) -> None:
         if math.isinf(py.epsilon):
             assert js["V"] == 0 and js["ea"] == "inf"
         else:
-            assert js["ea"] == py.epsilon_achieved <= py.epsilon and js["e3"] == py.epsilon_one_dishonest
+            assert _same(js["ea"], py.epsilon_achieved) and py.epsilon_achieved <= py.epsilon
+            assert _same(js["e3"], py.epsilon_one_dishonest)
 
 
 def test_the_genomics_release_is_pythons_for_every_epsilon(browser) -> None:
     for e in dp.GENOMICS_EPSILONS:
         g = dp.genomics_dp(COUNTS, e, dp.seeded_rand_below(f"{LABEL}:g{e if e != int(e) else int(e)}"))
         js = browser["genomics"][str(e if e != int(e) else int(e))]
-        assert js == [g["contributions"], g["variance_per_cohort"], g["epsilon_achieved"], g["epsilon_one_dishonest"]], e
+        assert js[:2] == [g["contributions"], g["variance_per_cohort"]], e
+        assert _same(js[2], g["epsilon_achieved"]) and _same(js[3], g["epsilon_one_dishonest"]), e
         assert g["epsilon_achieved"] <= e
 
 
@@ -162,18 +177,19 @@ def test_no_page_code_calls_the_seeded_source() -> None:
 def test_the_noised_rows_compose_the_same_in_both_languages(browser) -> None:
     rows = fed_heart.run_dp(seed=1, rb=dp.seeded_rand_below(LABEL))
     py = fed_heart.epsilon_all_rows(rows)
-    assert browser["fedRho"] == ["inf" if math.isinf(r.rho) else r.rho for r in rows]
-    assert browser["fedAll"] == py
+    assert all(_same(js, "inf" if math.isinf(r.rho) else r.rho) for js, r in zip(browser["fedRho"], rows, strict=True))
+    assert _same(browser["fedAll"], py)
     finite = [r for r in rows if math.isfinite(r.epsilon)]
     rho = sum(r.rho for r in finite)
-    assert py == pytest.approx(rho + 2 * math.sqrt(rho * math.log(1 / fed_heart.DP_DELTA)), rel=1e-12)
+    assert py == pytest.approx(dp.cdp_to_dp(rho, fed_heart.DP_DELTA), rel=1e-12)
+    assert py <= dp.cdp_to_dp_simple(rho, fed_heart.DP_DELTA)
     assert py > max(r.epsilon_achieved for r in finite)
 
 
 def test_the_finance_count_release_is_pythons_draw_for_draw(browser) -> None:
     for c, js in zip([0, 1, 5, 60, 600], browser["fin"], strict=True):
         f = dp.dp_count(c, dp.seeded_rand_below(f"{LABEL}:f{c}"))
-        assert js[:3] == [f["released"], f["variance"], f["epsilon_achieved"]], c
-        assert f["variance"] == 38 and f["epsilon_achieved"] <= dp.FINANCE_EPSILON and f["released"] >= 0
-        assert js[3] == pytest.approx(math.sqrt(38), rel=1e-15)
+        assert js[:2] == [f["released"], f["variance"]] and _same(js[2], f["epsilon_achieved"]), c
+        assert f["variance"] == 30 and f["epsilon_achieved"] <= dp.FINANCE_EPSILON and f["released"] >= 0
+        assert js[3] == pytest.approx(math.sqrt(30), rel=1e-15)
 

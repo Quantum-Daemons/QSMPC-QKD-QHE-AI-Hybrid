@@ -21,8 +21,15 @@ and this document did not read again; every other statement was read here at the
   parties' discrete Gaussians as $`\tfrac{1}{2}e^2`$-concentrated DP with the two-term minimum and the $`\tau`$
   correction that `web/src/lib/clientDp.ts` implements; the guarantee is for addition or removal of one individual,
   with $`n`$ the number of trustworthy clients, and assumes the secure aggregation reveals only the sum; concentrated
-  DP converts to $`(\epsilon, \delta)`$-DP as in Canonne, Kamath and Steinke, with the bound
-  $`\epsilon \le \rho + 2\sqrt{\rho \log(1/\delta)}`$ used here.
+  DP converts to $`(\epsilon, \delta)`$-DP as in Canonne, Kamath and Steinke (below).
+- **The conversion (from 2026-11-14).** $`\rho`$-zCDP is $`(a, a\rho)`$-Renyi DP at every order $`a > 1`$, and
+  Canonne, Kamath and Steinke's Proposition 12 (arXiv:2004.00010, the form Google's dp-accounting 0.7.0 applies)
+  gives $`\epsilon = \min_{a>1}\, a\rho + \log(1 - 1/a) - \frac{\log\delta + \log a}{a-1}`$, which the pages
+  minimise by golden-section search on $`\log(a-1)`$, capped by the simpler
+  $`\epsilon \le \rho + 2\sqrt{\rho \log(1/\delta)}`$ (Bun and Steinke, TCC 2016, Proposition 1.3) they used
+  until then. At the same $`\epsilon`$ the noise is 7 to 18 percent smaller; $`\rho = 1.0491`$ at
+  $`\delta = 10^{-5}`$ is 7.28 rather than 8, the figure a separate numpy and scipy accountant gave for the murmur
+  study.
 - **Canonne, Kamath and Steinke, "The Discrete Gaussian for Differential Privacy"**, NeurIPS 2020 (arXiv:2004.00010):
   Algorithms 1 to 3, exact sampling of Bernoulli$`(e^{-\gamma})`$, the discrete Laplace and the discrete Gaussian from
   uniform integers in rational arithmetic, which the page implements in BigInt and Python in integers.
@@ -51,17 +58,20 @@ and this document did not read again; every other statement was read here at the
 
 ## Measured here
 
-- Medical, seed 1, 20 draws of private noise (`qsh.ai.fed_heart.run_dp`): 0.721 with no noise; $`0.724 \pm 0.004`$
-  at $`\epsilon = 8`$, $`0.727 \pm 0.007`$ at 4, $`0.726 \pm 0.015`$ at 2, $`0.706 \pm 0.032`$ at 1 (range 0.651 to
-  0.751); FedAvg without DP 0.7005. Total noise standard deviation in gradient units: 5.2, 9.9, 19.2 and 37.8.
-- Genomics, one count of at most 60 alleles over 30 people, four cohorts: total noise standard deviation 19.4, 9.8, 5.0,
-  2.6 and 1.4 alleles at $`\epsilon`$ = 0.5, 1, 2, 4 and 8 ($`\delta = 10^{-5}`$).
+- Medical, seed 1, 20 draws of private noise (`qsh.ai.fed_heart.run_dp`), with the conversion of 2026-11-14: 0.721
+  with no noise; $`0.724 \pm 0.008`$ at $`\epsilon = 8`$, $`0.725 \pm 0.010`$ at 4, $`0.723 \pm 0.017`$ at 2,
+  $`0.718 \pm 0.024`$ at 1 (range 0.667 to 0.767); FedAvg without DP 0.7005. Total noise standard deviation in
+  gradient units: 4.87, 8.97, 16.84 and 32.04 (5.2, 9.9, 19.2 and 37.8 under the simpler bound, when $`\epsilon = 1`$
+  gave $`0.706 \pm 0.032`$).
+- Genomics, one count of at most 60 alleles over 30 people, four cohorts: total noise standard deviation 15.3, 8.1, 4.3,
+  2.3 and 1.3 alleles at $`\epsilon`$ = 0.5, 1, 2, 4 and 8 ($`\delta = 10^{-5}`$; 19.4, 9.8, 5.0, 2.6 and 1.4 before).
 - Finance (from 2026-11-13), the count of shared accounts as it would be published: one party, sensitivity 1,
-  $`\epsilon = 1`$, $`\delta = 10^{-8}`$, so $`V = 38`$ and a standard deviation of 6.2 accounts (the accountant
-  gives $`\epsilon = 0.998`$), on a count of 60 at the default volume.
-- Composition: the medical table's four noised rows published together are $`\epsilon = 9.56`$ at
-  $`\delta = 10^{-6}`$ ($`\rho`$ = 0.910, 0.254, 0.068 and 0.017, summed), not 8; the page prints the figure from
-  the run.
+  $`\epsilon = 1`$, $`\delta = 10^{-8}`$, so $`V = 30`$ and a standard deviation of 5.5 accounts (the accountant
+  gives $`\epsilon = 0.983`$; $`V = 38`$ and 6.2 before), on a count of 60 at the default volume.
+- Composition: the medical table's four noised rows published together are $`\epsilon = 9.75`$ at
+  $`\delta = 10^{-6}`$ ($`\rho`$ = 1.052, 0.311, 0.088 and 0.024, summed), not 8; the page prints the figure from
+  the run. It was 9.56 under the simpler bound: each row now meets its own target with less noise, so carries more
+  $`\rho`$, and the sum converts to a slightly larger total.
 
 ## Where it does not apply
 
