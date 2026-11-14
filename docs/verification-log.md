@@ -4920,3 +4920,24 @@ The same PR records, in `docs/development.md`, SEAL's source on the 4.7.2 sampli
 and v4.7.2 drops the `- 1`, so one residue loses one of its preimages, about $`2^{-64}`$ in statistical distance per
 coefficient by this project's reading.
 
+### PR #56: three items of the owner's list of 2026-11-13 (2026-11-15)
+
+The owner's read-only audit of 2026-11-13 listed eleven points on the deployed pages. Three are fixed here.
+
+- **The WAMO paper is linked.** The value page cited "WWW 2026's WAMO paper" with no link, and the audit's search had
+  not found it. `references/REFERENCES.md` already held it (Wang, Yu, Han, Gu, Xu and Huang, Proceedings of the ACM
+  Web Conference 2026, doi:10.1145/3774904.3792297). Crossref gives pp. 2812-2823 and publication on 2026-04-12, and
+  the abstract, read through Semantic Scholar's API, says browser deployment "exposes model code and parameters to
+  untrusted environments". The sentence now names the authors and the venue, links the DOI, and paraphrases that
+  clause.
+- **Folded rows are 24 px targets.** A `<summary>` row ("About this model, continued" and the others) stood 19 px tall
+  at 390 px. It is a target of its own, not text in a sentence, so WCAG 2.2 SC 2.5.8's inline exception does not
+  cover it. `.details > summary` and the sequence view's summary now have `min-height: 24px` with 3 px of padding:
+  25 px at 390 px on the value and finance pages, and no visible summary under 24 px.
+- **The clock's source links are 24 px targets.** They are a list of links, not a sentence, and wrapped in a narrow
+  column, their 24 px circles met. Each link is an inline block of at least 24 px: 26 px for one line at 390 px.
+
+Left for the owner: the footer with the repository, licence, version and business page, whose drafted text carries an
+AI-use line, the finance page's untrained GNN tab, the telecom model's key name beside its label, and the Hub cards'
+licence fields, which `publish_hf.py` already writes as `license_name` and `license_link`. The student's sample fetched
+twice in one run is a cache hit; it waits for the split-inference PR's `publishedSampleOf`, which the student can share.

@@ -45,8 +45,10 @@ export default function Value() {
         A search for an integrated browser system doing all of that returned nothing. Two honest caveats travel with it: the two MPC parties are notional, running over an
         in-memory transport in a single tab (the protocol, bytes and wall-clock are real, the party
         separation is not), and the quantum channel is simulated - there is no browser API for QKD and
-        there will not be one. Client-side is also not automatically private: WWW&nbsp;2026's{" "}
-        <b>WAMO</b> paper argues that browser deployment moves a model into a hostile environment,
+        there will not be one. Client-side is also not automatically private: the <b>WAMO</b> paper (Wang et al.,
+        The Web Conference 2026,{" "}
+        <a href="https://doi.org/10.1145/3774904.3792297" target="_blank" rel="noopener noreferrer">doi:10.1145/3774904.3792297</a>)
+        argues that a model deployed in the browser exposes its code and parameters to an untrusted environment,
         which is why the models here are public on Hugging Face rather than treated as secrets.
       </p>
       <div className="card" style={{ marginTop: 12 }}>
