@@ -5121,3 +5121,13 @@ The README's twelve images are retaken from a client-only build of this branch, 
 each was opened and read for text over lines, unthemed controls, irregular axes and empty cards (checklist DC22): none
 found. Every image changed by SHA-256; the finance and E2E pages now show the banks, every page the sidebar's
 "Open-source notices" link, and the value page the WAMO DOI.
+
+### PR #57 on the deployed site (2026-11-15)
+
+Deployed from `main` at `a3db039` (bundle `index-NTqXpn5h.js`) and re-read in Chrome that evening, after a reload. No
+console error appeared on load or during the run.
+- **Before a run.** The finance canvas draws the PSI step as `bank 1` to `bank 3` (the control's default), with "one
+  garbled circuit: only the accounts all hold leave it" and "each bank: brings its account list into the circuit". No
+  party lane is drawn.
+- **After a run.** The run finished all 12 stages in 36 s and read "PSI among 3 banks, 3 accounts held by all,
+  30.53 MB", the figure the local build gave, over the same three lanes.
