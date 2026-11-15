@@ -5240,3 +5240,10 @@ So the row's "FAR proposal due" holds; its 180 days end about 2026-12-19.
 - The NSA's Director issues the requirement for National Security Systems, and OMB's Director for other systems.
 
 The row's date, scope and instruments match.
+
+**The FIPS 140-2 row on `/value`**, re-read at NIST's CMVP page on 2026-11-15.
+- The page gives the FIPS 140-2 sunset as 2026-09-21: "After this date, FIPS 140-2 validation certificates will be
+  moved to the Historical List". The page was last updated 2026-08-21.
+- The row's dates match: active until 2026-09-21, Historical from 2026-09-22.
+- Whether the move has been carried out could not be read from the CMVP search, whose form ignores parameters in the
+  URL.
