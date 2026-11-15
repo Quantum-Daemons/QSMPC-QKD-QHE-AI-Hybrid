@@ -5232,3 +5232,11 @@ So the row's "FAR proposal due" holds; its 180 days end about 2026-12-19.
   post-quantum authentication".
 - Google's post of 2026-03-25 (Adkins and Schmieg): "We're setting a timeline for post-quantum cryptography migration
   to 2029".
+
+**The TLS 1.3 row on `/value`**, re-read at EO 14306 (2025-06-06) on 2026-11-15. Its section 2(d) replaces section
+4(f) of EO 14144:
+- Agencies support "not later than January 2, 2030, Transport Layer Security protocol version 1.3 or a successor
+  version".
+- The NSA's Director issues the requirement for National Security Systems, and OMB's Director for other systems.
+
+The row's date, scope and instruments match.
