@@ -2395,7 +2395,9 @@ so each one names what was checked and where it stopped.
 
 - **FIPS 206 (FN-DSA) and an HQC draft: still none.** The NIST PQC project page (last modified
   2026-08-05) lists Falcon as "selected for ongoing standardization; that process is underway" and
-  HQC as selected, with no initial public draft of either. `docs/pqc-roadmap.md` holds.
+  HQC as selected, with no initial public draft of either. `docs/pqc-roadmap.md` holds. [Re-checked 2026-11-15: the
+  page, updated 2026-10-27, still says of both "that process is underway", and CSRC News from August to November
+  2026 lists IR 8547 (2026-10-27) and nothing on either.]
 - **ETSI QKD.** GS QKD 014 V1.1.1 is still the only edition, GS QKD 015 is V2.1.1 and GS QKD 020 is
   V1.1.1 (2026-06), as the August fact-check recorded. GR QKD 007 V1.2.1 (2026-01, vocabulary) is a
   group report and changes no interface this project models.
@@ -2779,3 +2781,23 @@ The note is `references/evidence-plots.md`.
 - **Lattigo, `schemes/ckks/precision.go`, `GetPrecisionStats`** (read: code). Precision as $`-\log_2`$ of the absolute
   error, the definition the histogram beside it bins in whole bits.
 
+## Split inference on a chest X-ray (Round 86), read at primary source 2026-11-15
+
+The owner's fourth choice of 2026-11-14: the published chest X-ray model's backbone in the tab, its own last layer under
+CKKS. The note is `references/cxr-split-inference.md`.
+
+- **Kim, Jo, Ra and Park, MICCAI 2025**, LNCS 15973, pp. 485-495, doi:10.1007/978-3-032-05185-1_47; arXiv:2506.15258v2
+  (read: html). A VQGAN latent encrypted under CKKS (TenSEAL), a whole CNN with polynomial activations on the server,
+  encrypted logits back; CheXpert ResNet20 micro AUROC 0.918 in the clear and 0.912 encrypted (Table 3).
+- **Li, Wu and Miao, arXiv:2605.22237v2, May 2026** (read: html). A frozen extractor on the client (DINOv2, Qwen3
+  embeddings), a one-hidden-layer MLP head under leveled CKKS (SEAL 4.1) with a quadratic in place of ReLU.
+- **Galanopoulos, Provatas and Georgakopoulos-Soares, arXiv:2609.16211v1, 14 September 2026** (read: html, the
+  abstract). The provider evaluates the linear algebra on ciphertexts and the key holder the nonlinear steps; 6,683 s
+  for one input on one accelerator.
+- **Pereteanu, Alansary and Passerat-Palmbach, Split HE, PPAI'22, arXiv:2202.13351** (read: html, the abstract). Part of
+  the weights in the clear on the client, as in SplitNN, the rest under HE.
+- **Lee, Lee, Kim, Shin and Lee, HETAL, ICML 2023, PMLR 202:19010-19035** (read: html, the abstract). Classification
+  layers on a pretrained model fine-tuned under CKKS on encrypted client data.
+- **Tramer, Zhang, Juels, Reiter and Ristenpart, USENIX Security 2016, pp. 601-618** (read: html, the abstract).
+  Extraction with near-perfect fidelity where confidence values are returned; why the card says a secret last layer
+  would not survive the owner's queries.

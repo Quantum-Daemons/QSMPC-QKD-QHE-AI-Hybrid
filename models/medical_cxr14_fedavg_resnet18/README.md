@@ -18,9 +18,10 @@ ResNet-18 @224px, 1-channel stem, one logit, trained from random initialisation
 
 Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid),
 a quantum-safe orchestration demo.
-This is the **plaintext** model for the `medical_fl` use case. No code path
-evaluates this model under encryption; what each use case encrypts, if anything,
-is stated in the notes below.
+This is the **plaintext** model for the `medical_fl` use case, and its page also runs it split: the
+network up to its 512 pooled features in the clear on the data owner's side (the visitor's tab), and
+its own last layer under CKKS on those features, encrypted. Nothing else of it is evaluated under
+encryption; what each use case encrypts, if anything, is stated in the notes below.
 
 ## Measured performance
 

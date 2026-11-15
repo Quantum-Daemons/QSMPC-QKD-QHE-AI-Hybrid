@@ -4955,3 +4955,61 @@ The medical page re-scores every published model's evaluation sample on each run
 URLs the browser caches) and runs them in the tab, and the comparison table's row for it gains this run's figure. Measured
 on the deployed site after the merge, in the log's entry for the deploy.
 
+### PR #55: split inference on a chest X-ray (2026-11-15)
+
+The owner's fourth choice of 2026-11-14, built on the public chest X-ray model of PR #54. On the medical page a new card
+loads the model's 16 published films from its pinned evaluation sample, draws them, and on the chosen film runs the
+published network up to its 512 pooled features (`onnx/features_int8.onnx`, fetched once and checked against its pin)
+in the tab. Only those 512 numbers are encrypted: the network's own last layer is evaluated on the ciphertext with
+`encryptedLinear` from `clientFHE.ts`, unchanged under the poster freeze, and the decrypted logit gives the decision at
+the model's operating point. Both parties run in the tab and the last layer is published, so the card says the
+separation is notional and that what it shows is the split, its cost and its precision.
+
+`scripts/export_cxr_head.py` reads the last layer (`fc.weight`, 1 x 512, and `fc.bias`) from the published
+`model.safetensors` and writes it only after checking it against the pinned graphs on all 16 films: the float32 features
+graph followed by it gives the float32 classifier's logit to $`1.23 \times 10^{-6}`$, and the int8 features graph
+followed by it gives the int8 classifier's decision on all 16 (logits within 0.0032). In Chrome on a local client-only
+build, film 9 (effusion by NIH's label, PA): the graph, 11.3 MB, fetched and checked in 2.0 s; the film to 512 features
+in 192 ms; one CKKS ciphertext of 393,329 bytes; the last layer in 52 ms with 9 rotations, $`\log_2 512`$; the decrypted
+logit 0.334259 against 0.334259 in the clear, $`1.23 \times 10^{-9}`$ apart; effusion at the operating point, as NIH's
+label and the full int8 model's recorded decision say. `tests/test_r86_cxr_split.py` holds the head file to the pin and
+the published sample, runs the page's CKKS layer with this head in node (three feature vectors, the logits within
+$`10^{-5}`$ and the same decisions, 9 rotations), and checks the film helpers and the card's wiring; the shipped-data
+licence test now also holds `cxr_head.json`. `references/cxr-split-inference.md` places the split among published ones
+(Kim et al., MICCAI 2025, a CNN under CKKS on an encrypted VQGAN latent; Li, Wu and Miao, arXiv:2605.22237, an MLP head
+on encrypted DINOv2 features; Galanopoulos et al., arXiv:2609.16211, the provider's linear algebra and the owner's
+nonlinear steps) and says what it does not protect: a secret last layer would follow from the owner's decrypted logits
+for 513 feature vectors, which the card now says.
+
+The model's Hub card said "No code path evaluates this model under encryption", which this card makes false.
+`scripts/publish_hf.py` now renders, for a model whose page runs its own last layer under CKKS (`SPLIT_MODELS`), a
+paragraph saying so: the network up to its 512 pooled features in the clear on the data owner's side, the last layer
+under CKKS on them, and nothing else of it encrypted. A test ties the page's model key to that set. A card rendered
+for a private repository keeps the plain sentence, since the page cannot fetch the model then. With the owner's
+approval of 2026-11-15, `scripts/publish_hf.py --key medical_fl.cxr_fedavg --public` republished it as revision
+88f4f9661582f012e5356555b0bba5a6493f74db: the same eleven files, of which only the card changed. The publisher had
+first refused from a worktree whose `onnx/` was a link it does not follow, since the Hub held graphs the folder no
+longer produced; it ran from the folder that holds them. `scripts/pin_hub_hashes.py` pinned the revision with the
+seven fetched files' digests unchanged, `scripts/export_config.py` carried it to the page, and
+`scripts/export_cxr_head.py` wrote the head for it with the same check. The Hub's API reports the revision public with
+12 files, and its card carries the split paragraph.
+
+The same PR fixes item 9 of the owner's audit of 2026-11-13: one medical run fetched the CKKS student's evaluation
+sample twice, once for the student's CKKS and MPC stages and once for its verification, each with its own cache. The
+student's reader now goes through `publishedSampleOf`, the cache the verification reads, which also drops a failed
+fetch so the next run asks again where the old cache kept the failure for the tab. On a local client-only build, one
+run with the CNN under MPC fetched the student's sample once, all four verifications passed, the CKKS student read
+held-out image 1 of 156, and the MPC argmax gave class 1, as in the clear. The checked-fetch count in
+`clientCompute.ts` is three.
+
+Two copies of the published-model count had gone stale: the README's models row said "thirteen published models" and
+`DATA_LICENSES.md` "all thirteen repos ship one", with fifteen published since the telecom student (PR #35) and the
+chest X-ray model (PR #54). Only `docs/findings.md`'s copy had a gate. Both now say fifteen (thirteen run with ONNX
+Runtime in the browser, two from their weights files), the README's private-inference row names the split, and
+`tests/test_an_evaluation_sample_says_which_split_it_is.py` holds both copies to the registry, failing when the README
+says fourteen.
+
+The same PR re-checks NIST's post-quantum project page for `references/REFERENCES.md`: updated 2026-10-27, it still
+has no initial public draft of FIPS 206 (FN-DSA) or of HQC, and CSRC News from August to November 2026 lists IR 8547
+and nothing on either, so `docs/pqc-roadmap.md` holds.
+
