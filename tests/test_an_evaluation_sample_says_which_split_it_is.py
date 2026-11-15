@@ -238,6 +238,21 @@ def test_the_readme_counts_the_published_repos_and_their_one_exception() -> None
         f"the README's account of samples no longer matches the registry's: {no_sample}")
 
 
+def test_the_other_copies_of_the_count_follow_the_registry() -> None:
+    """The README's models row said "thirteen published models" and DATA_LICENSES.md "all thirteen repos ship one" with
+    fifteen published (Round 86, found 2026-11-15): only docs/findings.md's copy had a gate."""
+    words = {"thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18}
+    n = len(_published())
+    row = re.search(r"\| Models \| (\w+) published models: (\w+) run with ONNX Runtime in the browser, (\w+) from their "
+                    r"weights files", (REPO / "README.md").read_text())
+    assert row, "README's models row moved; update this gate with it"
+    assert words.get(row.group(1)) == n, f"README's models row says {row.group(1)}, the registry publishes {n}"
+    words.update({"one": 1, "two": 2, "three": 3, "eleven": 11, "twelve": 12})
+    assert words.get(row.group(2), -1) + words.get(row.group(3), -1) == n, row.groups()
+    m = re.search(r"all (\w+) repos ship one", " ".join((REPO / "DATA_LICENSES.md").read_text().split()))
+    assert m and words.get(m.group(1)) == n, f"DATA_LICENSES.md says {m and m.group(1)} repos ship a sample, of {n}"
+
+
 def test_the_forecaster_sample_states_its_errors_beyond_the_mean() -> None:
     """Round 86: two windows of the 128 held an unlabelled level shift where no change is exact, and their misses
     lifted the forecaster's mean above persistence's while it was the better predictor on most windows. The sample

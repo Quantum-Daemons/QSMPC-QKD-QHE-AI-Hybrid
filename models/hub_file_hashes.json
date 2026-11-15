@@ -40,7 +40,7 @@
    "onnx/model.onnx": "1c19d143a1eaf6d1f242b9bb7083cc40c5aea95454a7a7d6452e592dbec2f2aa",
    "onnx/model_int8.onnx": "7b7bd213b42da1f70e4567ad1e51760a830050be73d81d5864cbbb10f05b72a2"
   },
-  "revision": "c4287b8bdee3da7c85d3676d67e53156571c5843"
+  "revision": "88f4f9661582f012e5356555b0bba5a6493f74db"
  },
  "medical_fl.resnet18": {
   "files": {
