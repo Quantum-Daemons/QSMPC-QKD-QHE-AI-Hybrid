@@ -9,6 +9,8 @@ vendoring it.
 | `format_amlworld.py` | Writes IBM's `formatted_transactions.csv` from this repository's AMLworld loader, with the official encodings and the rows in `load_sorted()` order |
 | `project_split.patch` | Two changes to IBM's code at commit `252b0252afca109d1d216c411c59ff70753b25fc`: with `QSH_SPLIT=project` the fit, validation and test windows are this project's 56 / 14 / 30 percent by position, and `AddEgoIds` defines `forward`, which PyTorch Geometric 2.8 requires of a transform |
 | `dump_logits.py` | Loads a saved checkpoint and writes the laundering probability of every edge of the three windows, keyed by edge id, and counts the seed edges the neighbour sampling never returned |
+| `causal.patch` | On top of `project_split.patch`, the causal protocol under `QSH_CAUSAL=1` (Round 86, the owner's choice of 2026-11-15): each mini-batch is one batch of 2,048 transactions in time order, sampled with IBM's own shared sampler, with every sampled edge later than that batch dropped, and every window scaled by the training window's statistics; with `QSH_PATIENCE=n` training stops after n epochs without a better validation F1, and `QSH_LOADER_WORKERS=n` samples in n processes |
+| `export_for_browser.py` | Exports a checkpoint as one ONNX file at opset 18 (by `torch.export`; ONNX Runtime within $`10^{-4}`$ of PyTorch on the seeds) and writes the 16 held-out transactions the published finance MLP and compact GNN are checked on, with the neighbourhood the protocol samples for them, for the finance page to re-score |
 
 ## Steps
 
@@ -40,3 +42,26 @@ dumped probabilities of the saved run: the test window's 2,321 laundering edges 
 never returned (0.06 percent) are all legitimate, so IBM's evaluation, which drops unsampled seed edges on HI-Small, scores the same
 F1 as the whole window would; at a threshold tuned on the validation window, as this project's models are, the test F1 is 0.6782.
 The test graph holds every edge of the test window, so these models' neighbourhoods include transactions later than the one scored.
+
+## The causal protocol (Round 86)
+
+IBM's test graph holds every transaction of the test window, so the neighbourhood its loader samples for a transaction
+includes later ones; the page's own models see transactions up to the end of their batch of 2,048 in time order. The
+owner asked for both: IBM's protocol, labelled, and a causal one comparable with the page's models.
+
+PyG's own temporal sampling (`time_attr`, `edge_label_time`) was tried first and set aside. It samples each seed in its
+own subgraph, and for a link it grows one tree from each end, so the seed transaction appears as two copies, each joining
+one endpoint to a copy of the other, and no edge joins the two endpoints IBM's model scores; at a fan-out of 10, five of
+128 seeds were not sampled in their own subgraph at all. `causal.patch` keeps IBM's shared sampler and makes each
+mini-batch one batch of 2,048 seeds, so a single cut serves the whole mini-batch, then drops the sampled edges later than
+it. A node with more than the fan-out of edges keeps the earlier ones among those sampled from all of its edges, so its
+causal neighbourhood can be smaller than a sampler restricted to earlier edges would draw; below the fan-out it is exact.
+IBM's port numbers rank a node's neighbours by their first transaction, so they do not depend on later transactions. IBM
+scales each window by its own statistics, the test window's including later transactions; the causal protocol scales all
+three by the training window's.
+
+Measured on this machine's GPU (96 GB): one IBM run holds 42 to 58 GB and samples about 2.1M edges per batch of 8,192
+seeds; per-seed subgraphs would sample about 6.6M at that batch size. The causal runs use batches of 2,048 (one time
+batch), early stopping after 20 epochs without a better validation F1, and four loader processes, all stated on the
+model's card. The queue (`run_pna_seeds.sh` and `run_queue_after_pna.sh` in the working folder) trains five seeds of each
+model under each protocol, one run at a time.

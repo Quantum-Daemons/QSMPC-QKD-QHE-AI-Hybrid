@@ -1,0 +1,208 @@
+diff --git a/data_loading.py b/data_loading.py
+index 512fe7a..dac65a8 100644
+--- a/data_loading.py
++++ b/data_loading.py
+@@ -129,7 +129,14 @@ def get_data(args, data_config):
+     
+     #Normalize data
+     tr_data.x = val_data.x = te_data.x = z_norm(tr_data.x)
+-    if not args.model == 'rgcn':
++    if os.environ.get("QSH_CAUSAL") == "1" and not args.model == 'rgcn':
++        # Causal (this project's patch): every window is scaled by the training window's statistics, as IBM scales
++        # each window by its own, which for the test window includes transactions later than the one scored.
++        mu = tr_data.edge_attr.mean(0, keepdim=True)
++        sd = tr_data.edge_attr.std(0, keepdim=True)
++        sd = torch.where(sd == 0, torch.ones_like(sd), sd)
++        tr_data.edge_attr, val_data.edge_attr, te_data.edge_attr = [(d.edge_attr - mu) / sd for d in (tr_data, val_data, te_data)]
++    elif not args.model == 'rgcn':
+         tr_data.edge_attr, val_data.edge_attr, te_data.edge_attr = z_norm(tr_data.edge_attr), z_norm(val_data.edge_attr), z_norm(te_data.edge_attr)
+     else:
+         tr_data.edge_attr[:, :-1], val_data.edge_attr[:, :-1], te_data.edge_attr[:, :-1] = z_norm(tr_data.edge_attr[:, :-1]), z_norm(val_data.edge_attr[:, :-1]), z_norm(te_data.edge_attr[:, :-1])
+@@ -141,6 +148,22 @@ def get_data(args, data_config):
+         val_data = create_hetero_obj(val_data.x,  val_data.y,  val_data.edge_index,  val_data.edge_attr, val_data.timestamps, args)
+         te_data = create_hetero_obj(te_data.x,  te_data.y,  te_data.edge_index,  te_data.edge_attr, te_data.timestamps, args)
+     
++    # Causal neighbourhoods (this project, QSH_CAUSAL=1): every edge carries the index of its batch of 2,048 in time order,
++    # and the loaders sample only neighbours from that batch or earlier ones, as the page's own models see transactions.
++    # The project split makes each graph a prefix of the time-ordered file, so an edge's position is its global row.
++    if os.environ.get("QSH_CAUSAL") == "1":
++        assert os.environ.get("QSH_SPLIT") == "project", "causal neighbourhoods need the project split's prefixes"
++        for d in (tr_data, val_data, te_data):
++            et = ('node', 'to', 'node')
++            n_e = d[et].edge_index.shape[1] if isinstance(d, HeteroData) else d.edge_index.shape[1]
++            t = torch.div(torch.arange(n_e), 2048, rounding_mode='floor')
++            if isinstance(d, HeteroData):
++                d[et].edge_time = t
++                d['node', 'rev_to', 'node'].edge_time = t.clone()
++            else:
++                d.edge_time = t
++        logging.info("Causal: one batch of 2,048 per mini-batch, later edges dropped, the training window's scaling")
++
+     logging.info(f'train data object: {tr_data}')
+     logging.info(f'validation data object: {val_data}')
+     logging.info(f'test data object: {te_data}')
+diff --git a/train_util.py b/train_util.py
+index 73d7caf..5e779c2 100644
+--- a/train_util.py
++++ b/train_util.py
+@@ -1,3 +1,4 @@
++import os
+ import torch
+ import tqdm
+ from torch_geometric.transforms import BaseTransform
+@@ -61,6 +62,72 @@ def add_arange_ids(data_list):
+         else:
+             data.edge_attr = torch.cat([torch.arange(data.edge_attr.shape[0]).view(-1, 1), data.edge_attr], dim=1)
+ 
++def _workers():
++    '''Loader processes for QSH_LOADER_WORKERS=n (this project's patch): sampling, not the model, bounds an epoch.'''
++    n = int(os.environ.get('QSH_LOADER_WORKERS', '0'))
++    return dict(num_workers=n, persistent_workers=True) if n > 0 else {}
++
++def seed_mask(batch, seed_ids):
++    '''The seed edges of a batch. IBM's rule is every copy of a seed's id. The causal sampler draws one subgraph per seed
++    (disjoint), where a seed can also be sampled as another seed's neighbour, so under QSH_CAUSAL=1 only the copy in the
++    seed's own subgraph is kept (this project's patch); otherwise a seed would count once for each copy.'''
++    et = ('node', 'to', 'node')
++    ids = batch[et].edge_attr[:, 0].detach().cpu()
++    mask = torch.isin(ids, seed_ids)
++    if not hasattr(batch['node'], 'batch'):
++        return mask
++    owner = batch['node'].batch.detach().cpu()[batch[et].edge_index[0].detach().cpu()]
++    order = torch.argsort(seed_ids)
++    sorted_ids = seed_ids[order]
++    at = torch.searchsorted(sorted_ids, ids).clamp(max=len(sorted_ids) - 1)
++    return mask & (order[at] == owner)
++
++class _TimeBatches(torch.utils.data.Sampler):
++    '''Mini-batches of the seeds that share one batch of 2,048 in time order (this project's causal patch, QSH_CAUSAL=1),
++    the batches in random order when training, in time order otherwise.'''
++    def __init__(self, seed_time, shuffle):
++        order = torch.argsort(seed_time, stable=True)
++        _, counts = torch.unique_consecutive(seed_time[order], return_counts=True)
++        self.groups = list(torch.split(order, counts.tolist()))
++        self.shuffle = shuffle
++
++    def __iter__(self):
++        idx = torch.randperm(len(self.groups)) if self.shuffle else torch.arange(len(self.groups))
++        for i in idx.tolist():
++            yield self.groups[i].tolist()
++
++    def __len__(self):
++        return len(self.groups)
++
++class _DropLater:
++    '''Drops every sampled edge later than the seeds' batch of 2,048 (this project's causal patch): the neighbours are
++    sampled as IBM's loader samples them, up to the fan-out from the whole graph, and only the earlier ones are kept.'''
++    EDGE_KEYS = ('edge_attr', 'y', 'timestamps', 'edge_time', 'e_id')
++
++    def __init__(self, seed_time, then=None):
++        self.seed_time, self.then = seed_time, then
++
++    def __call__(self, batch):
++        et = ('node', 'to', 'node')
++        cut = int(self.seed_time[batch[et].input_id].max())
++        for t in batch.edge_types:
++            store = batch[t]
++            keep = store.edge_time <= cut
++            n = store.edge_index.shape[1]
++            store.edge_index = store.edge_index[:, keep]
++            for key in self.EDGE_KEYS:
++                if key in store and getattr(store, key) is not None and getattr(store, key).shape[0] == n:
++                    setattr(store, key, getattr(store, key)[keep])
++        return self.then(batch) if self.then is not None else batch
++
++def _causal(data, idx, transform, shuffle):
++    '''Loader arguments for QSH_CAUSAL=1: one batch of 2,048 per mini-batch, later edges dropped; IBM's otherwise.'''
++    if os.environ.get('QSH_CAUSAL') != '1':
++        return None
++    t = data[('node', 'to', 'node')].edge_time
++    seed_time = t if idx is None else t[idx]
++    return dict(batch_sampler=_TimeBatches(seed_time, shuffle), transform=_DropLater(seed_time, transform))
++
+ def get_loaders(tr_data, val_data, te_data, tr_inds, val_inds, te_inds, transform, args):
+     if isinstance(tr_data, HeteroData):
+         tr_edge_label_index = tr_data['node', 'to', 'node'].edge_index
+@@ -69,7 +136,7 @@ def get_loaders(tr_data, val_data, te_data, tr_inds, val_inds, te_inds, transfor
+ 
+         tr_loader =  LinkNeighborLoader(tr_data, num_neighbors=args.num_neighs, 
+                                     edge_label_index=(('node', 'to', 'node'), tr_edge_label_index), 
+-                                    edge_label=tr_edge_label, batch_size=args.batch_size, shuffle=True, transform=transform)
++                                    edge_label=tr_edge_label, **(_causal(tr_data, None, transform, True) or dict(batch_size=args.batch_size, shuffle=True, transform=transform)), **_workers())
+         
+         val_edge_label_index = val_data['node', 'to', 'node'].edge_index[:,val_inds]
+         val_edge_label = val_data['node', 'to', 'node'].y[val_inds]
+@@ -77,7 +144,7 @@ def get_loaders(tr_data, val_data, te_data, tr_inds, val_inds, te_inds, transfor
+ 
+         val_loader =  LinkNeighborLoader(val_data, num_neighbors=args.num_neighs, 
+                                     edge_label_index=(('node', 'to', 'node'), val_edge_label_index), 
+-                                    edge_label=val_edge_label, batch_size=args.batch_size, shuffle=False, transform=transform)
++                                    edge_label=val_edge_label, **(_causal(val_data, val_inds, transform, False) or dict(batch_size=args.batch_size, shuffle=False, transform=transform)), **_workers())
+         
+         te_edge_label_index = te_data['node', 'to', 'node'].edge_index[:,te_inds]
+         te_edge_label = te_data['node', 'to', 'node'].y[te_inds]
+@@ -85,7 +152,7 @@ def get_loaders(tr_data, val_data, te_data, tr_inds, val_inds, te_inds, transfor
+ 
+         te_loader =  LinkNeighborLoader(te_data, num_neighbors=args.num_neighs, 
+                                     edge_label_index=(('node', 'to', 'node'), te_edge_label_index), 
+-                                    edge_label=te_edge_label, batch_size=args.batch_size, shuffle=False, transform=transform)
++                                    edge_label=te_edge_label, **(_causal(te_data, te_inds, transform, False) or dict(batch_size=args.batch_size, shuffle=False, transform=transform)), **_workers())
+     else:
+         tr_loader =  LinkNeighborLoader(tr_data, num_neighbors=args.num_neighs, batch_size=args.batch_size, shuffle=True, transform=transform)
+         val_loader = LinkNeighborLoader(val_data,num_neighbors=args.num_neighs, edge_label_index=val_data.edge_index[:, val_inds],
+@@ -151,7 +218,7 @@ def evaluate_hetero(loader, inds, model, data, device, args):
+         inds = inds.detach().cpu()
+         batch_edge_inds = inds[batch['node', 'to', 'node'].input_id.detach().cpu()]
+         batch_edge_ids = loader.data['node', 'to', 'node'].edge_attr.detach().cpu()[batch_edge_inds, 0]
+-        mask = torch.isin(batch['node', 'to', 'node'].edge_attr[:, 0].detach().cpu(), batch_edge_ids)
++        mask = seed_mask(batch, batch_edge_ids)
+ 
+         #add the seed edges that have not been sampled to the batch
+         missing = ~torch.isin(batch_edge_ids, batch['node', 'to', 'node'].edge_attr[:, 0].detach().cpu())
+diff --git a/training.py b/training.py
+index 797357c..a5e6350 100644
+--- a/training.py
++++ b/training.py
+@@ -1,7 +1,8 @@
++import os
+ import torch
+ import tqdm
+ from sklearn.metrics import f1_score
+-from train_util import AddEgoIds, extract_param, add_arange_ids, get_loaders, evaluate_homo, evaluate_hetero, save_model, load_model
++from train_util import seed_mask, AddEgoIds, extract_param, add_arange_ids, get_loaders, evaluate_homo, evaluate_hetero, save_model, load_model
+ from models import GINe, PNA, GATe, RGCN
+ from torch_geometric.data import Data, HeteroData
+ from torch_geometric.nn import to_hetero, summary
+@@ -69,6 +70,9 @@ def train_homo(tr_loader, val_loader, te_loader, tr_inds, val_inds, te_inds, mod
+ def train_hetero(tr_loader, val_loader, te_loader, tr_inds, val_inds, te_inds, model, optimizer, loss_fn, args, config, device, val_data, te_data, data_config):
+     #training
+     best_val_f1 = 0
++    best_epoch = 0
++    # Early stopping for QSH_PATIENCE=n (this project's patch): stop when validation F1 has not improved for n epochs.
++    patience = int(os.environ.get('QSH_PATIENCE', '0'))
+     for epoch in range(config.epochs):
+         total_loss = total_examples = 0
+         preds = []
+@@ -79,7 +83,7 @@ def train_hetero(tr_loader, val_loader, te_loader, tr_inds, val_inds, te_inds, m
+             inds = tr_inds.detach().cpu()
+             batch_edge_inds = inds[batch['node', 'to', 'node'].input_id.detach().cpu()]
+             batch_edge_ids = tr_loader.data['node', 'to', 'node'].edge_attr.detach().cpu()[batch_edge_inds, 0]
+-            mask = torch.isin(batch['node', 'to', 'node'].edge_attr[:, 0].detach().cpu(), batch_edge_ids)
++            mask = seed_mask(batch, batch_edge_ids)
+             
+             #remove the unique edge id from the edge features, as it's no longer needed
+             batch['node', 'to', 'node'].edge_attr = batch['node', 'to', 'node'].edge_attr[:, 1:]
+@@ -119,9 +123,13 @@ def train_hetero(tr_loader, val_loader, te_loader, tr_inds, val_inds, te_inds, m
+             wandb.log({"best_test_f1": te_f1}, step=epoch)
+         elif val_f1 > best_val_f1:
+             best_val_f1 = val_f1
++            best_epoch = epoch
+             wandb.log({"best_test_f1": te_f1}, step=epoch)
+             if args.save_model:
+                 save_model(model, optimizer, epoch, args, data_config)
++        if patience and epoch - best_epoch >= patience:
++            logging.info(f'Early stop: validation F1 has not improved since epoch {best_epoch}')
++            break
+         
+     return model
+ 
