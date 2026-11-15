@@ -134,7 +134,7 @@ between the two passes the textbook test while the model returns nothing.
 
 **The zero-key point is channel-dependent, and it is below 0.11.** Under the two-intensity decoy
 bound and the finite-key block, the QBER at which `secure_key_bits` reaches zero depends on the
-distance, the detector set (Rusca et al. 2018: efficiency 0.5, 1e-8 dark counts per gate, a 1 percent
+distance, the detector set (Rusca et al. 2018: efficiency 0.5, $`10^{-8}`$ dark counts per gate, a 1 percent
 error floor) and the intensities ($`\mu = 0.3416`$ / $`\nu = 0.1417`$), so no single threshold is quoted
 here; on this detector set the asymptotic bound reaches zero at 301.8 km. Two quantities must not
 share a name: `e_det` is the error on DETECTED SIGNAL photons and is what the bound takes as input,

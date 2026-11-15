@@ -60,7 +60,7 @@ Eight gates. Steps 1-3 and 5-8 are pass/fail; step 4 is a loop that runs until c
 1. **Static** - `pytest -m "not slow"`, `scripts/export_config.py --check` parity,
    `npx tsc --noEmit`, `npm run build`.
 2. **Artefact** - for anything published: the int8 graph must agree with fp32 on at least 0.99 of
-   the confident set and the fp32 graph must match its source model to 1e-4. A graph that misses the
+   the confident set and the fp32 graph must match its source model to $`10^{-4}`$. A graph that misses the
    bar is withheld, not shipped with a relaxed gate.
 3. **Environment** - `self.crossOriginIsolated === true` on the deployed page, or every timing the
    demo prints is coarsened and invalid. Zero `/api` calls in demo mode, verified in the network
@@ -167,8 +167,8 @@ plausible output rather than an error:
 
 - The exporter's first version inferred activations from layer types and dropped the ReLU between
   the conv and the pool. The result reproduced **every argmax** on the 156-image test split while
-  its logits were off by 1.5e-01. Activations are now read from the trained module order, and an
-  independent re-implementation built from the JSON alone agrees with torch to 4.4e-08.
+  its logits were off by $`1.5 \times 10^{-1}`$. Activations are now read from the trained module order, and an
+  independent re-implementation built from the JSON alone agrees with torch to $`4.4 \times 10^{-8}`$.
 - The linear students published coefficients but not the `StandardScaler` they were fit on, so
   their graphs accept raw features and answer confidently wrong. That is why they had no evaluation
   sample: generating one naively would have shipped the wrong number instead of an error.
@@ -2001,7 +2001,7 @@ spent. A comment asking nobody to spend a rate is weaker than removing the thing
 than a reversal. It surveyed three libraries and rejected them on three DIFFERENT grounds -
 per-pulse, GPL licence before the physics was examined, "would still require asserting a clock" -
 then generalised to *"No library supplies a repetition rate because none can."* Round 44's sweep
-found that **SeQUeNCe does model a source clock**, with a default of 8e7 Hz. A default is not a
+found that **SeQUeNCe does model a source clock**, with a default of $`8 \times 10^{7}`$ Hz. A default is not a
 measurement, so the operative conclusion survives; the sentence did not. The narrow claim is that a
 repetition rate is an INPUT to key-rate analysis, which is the argument for asking openly.
 
@@ -2030,7 +2030,7 @@ also fired on my own change, and its premise was restated rather than deleted; i
 said the same stale thing and was corrected in the same edit.
 
 **Verified on the deployed site**, which no source gate can do: `skr_per_pulse` 0.00958 x
-`source_rate_hz` 1e8 = `skr_bit_s` 957,659; `channel_time_s` 0.002 = 200,000 / 1e8;
+`source_rate_hz` $`10^{8}`$ = `skr_bit_s` 957,659; `channel_time_s` 0.002 = 200,000 / $`10^{8}`$;
 957,659 x 0.002 = 1915 = `secure_key_bits`; panel `skr` 958,000 and `eskr` 718,500 =
 958,000 - 479 bits / 0.002 s; `key budget` 1,436 bit; **`stored_key_count` 4 = floor(1436/352)**,
 restored from a permanent 0. No NaN, no Infinity.
@@ -2383,7 +2383,7 @@ PA block size is applied"*. A number was attributed to a paper that does not con
 citation is what stopped anyone checking.
 
 **The number.** `src/qsh/qkd/finite_key.py` now implements the paper's equations, and on this
-project's own 50 km channel they put the threshold at **~1e5 sifted bits, about 4e7 pulses** - an
+project's own 50 km channel they put the threshold at **~$`10^{5}`$ sifted bits, about $`4 \times 10^{7}`$ pulses** - an
 order of magnitude above the band that was published here. At the shipped 2,000,000 pulses the
 single-photon lower bound `s^l_{Z,1}` is **NEGATIVE**, so no composable key exists at that block size
 under any setting of the intensities, their probabilities or the basis bias; that was searched over
@@ -2417,12 +2417,12 @@ lowers the pulse count needed, and the margin in composable bits. What the page 
 still the ASYMPTOTIC decoy bound, labelled as one on every surface; the composable length is a second
 quantity shown beside it, not a relabelling of the first.
 
-**The honest residual, and it is bigger than Round 46 recorded:** at 10e6 the 800 km downlink yields
+**The honest residual, and it is bigger than Round 46 recorded:** at $`10 \times 10^{6}`$ the 800 km downlink yields
 **~2,440 sifted bits** - a 5-seed mean of 2,442, spread 2,397 to 2,470, measured at the intensities
 this round shipped ($`\mu = 0.3416`$, $`\nu = 0.1417`$). **This entry said ~3,660 for one round**, which is the
 figure at the retired $`\mu = 0.5`$ / $`\nu = 0.1`$ (5-seed mean 3,582); this subsection was rewritten in the
 same round that moved the intensities and the line was carried across without re-measurement. Round
-46 measured its own figure against the refuted band and concluded ~30e6 pulses and ~1.5 GB of Python
+46 measured its own figure against the refuted band and concluded ~$`30 \times 10^{6}`$ pulses and ~1.5 GB of Python
 array would clear it; both figures fall with the band, and the residual is larger still at the
 corrected intensities. Against the corrected fibre threshold the shortfall is well over an order of
 magnitude, and the free-space threshold itself is
@@ -2436,7 +2436,7 @@ than the fibre one.
 It read "roughly 1,900 sifted bits" - a figure matching no computed quantity anywhere; it is 1,244.
 And it called the result "a modelled upper bound, ~2.4x a real deployed link". Refuted: Li et al.,
 *Nat. Photon.* **17**, 416-421 (2023), arXiv:2307.02364, measured **$`22.2 \pm 0.8`$ Mb/s at 50 km** on a
-2.5 GHz clock = **8.88e-3 bit/pulse** with full composable finite-key security - **3.8x HIGHER per
+2.5 GHz clock = **$`8.88 \times 10^{-3}`$ bit/pulse** with full composable finite-key security - **3.8x HIGHER per
 pulse than this project's figure**. It is not an upper bound on real hardware; it is the N->infinity
 limit of a lower bound, and real hardware beats it.
 
@@ -2483,8 +2483,8 @@ after both retrains: 0.953488, 0.865672 and 0.976447 respectively.
 The claim that 8 and 9 qubits agree exactly SURVIVES both retrains and is now measured on three
 successive circuits - the two widths are **identical on every recorded metric** on both binary
 corpora. That phrasing is deliberate and replaces "byte-identical", which was wrong of the
-ARTIFACTS: the recorded metrics match exactly, but `theta` does not (max absolute difference 1.1e-05 on
-finance, 4.2e-06 on medical), `bias` differs on both and `scale` differs on finance. See the
+ARTIFACTS: the recorded metrics match exactly, but `theta` does not (max absolute difference $`1.1 \times 10^{-5}`$ on
+finance, $`4.2 \times 10^{-6}`$ on medical), `bias` differs on both and `scale` differs on finance. See the
 continuation section below, which states the same pair of facts. And the
 claim that telecom fell survives too, further than Round 46 knew: part of 0.614583 was the discarded
 wire's bit and was never the QCNN's to claim. The telecom-q7 figure has also crossed its 8-wire
@@ -2528,7 +2528,7 @@ sentence about case counts would repeat the same error in the other direction. C
 two places: the calibration set carries **801** events, not 2,321 (2,321 is the TEST split), and the
 shipped `fit_platt` WAS fed a probability rather than a log-odds, which MADE its map return one
 constant for nine of ten deciles - **FIXED LATER IN THE SAME ROUND**: `fit_platt` gained
-`on_logit=True`, which carries the transform, the 1e-12 clip and the published formula string with
+`on_logit=True`, which carries the transform, the $`10^{-12}`$ clip and the published formula string with
 the two floats; the teacher was retrained and the shipped map is now the logit arm
 (`a = -0.5853491088584304`, `b = 1.6417462922842536`, `on_logit: true`). Isotonic and a correctly-fed Platt score within noise. Result and
 recommendation: Round 49's section below, workings in
@@ -2630,15 +2630,15 @@ would leave the propagation unexplained. What this round BUILT, recorded here:
 - **It is checked against the paper's own Table I** - secret key rate at $`n_Z = 10^7`$ for 26 / 46 / 56 /
   64 dB - in `tests/test_finite_key_reproduces_the_published_table.py`. It comes out CONSERVATIVE by
   roughly 2-3x at moderate loss and more at high loss, so the threshold it computes is an upper bound
-  on what is required. It is therefore quoted everywhere as an order of magnitude, **~1e5 sifted
-  bits, about 4e7 pulses**, and never as the 1.436e5 / 3.84e7 the code returns.
+  on what is required. It is therefore quoted everywhere as an order of magnitude, **~$`10^{5}`$ sifted
+  bits, about $`4 \times 10^{7}`$ pulses**, and never as the $`1.436 \times 10^{5}`$ / $`3.84 \times 10^{7}`$ the code returns.
 - **The intensities moved to the finite-key optimum**, by differential evolution over exactly the
   variables the paper says it optimises:
 
 | | mu | nu | asymptotic bit/pulse | positive-key threshold |
 |---|---|---|---|---|
-| shipped until Round 47 (asymptotic optimum) | 0.5 | 0.1 | 0.002368 | 3.84e7 pulses, ~2.0 GB of array |
-| shipped now (intensities only, from the finite-key optimum) | **0.3416** | **0.1417** | **0.001977** | **1.41e7 pulses, ~0.74 GB** |
+| shipped until Round 47 (asymptotic optimum) | 0.5 | 0.1 | 0.002368 | $`3.84 \times 10^{7}`$ pulses, ~2.0 GB of array |
+| shipped now (intensities only, from the finite-key optimum) | **0.3416** | **0.1417** | **0.001977** | **$`1.41 \times 10^{7}`$ pulses, ~0.74 GB** |
 
   It COSTS 16.5% of the headline asymptotic rate and buys a **2.7x** smaller block. The two optima
   are in different places, which is the whole point: mu ~ 0.5 maximises a rate that assumes infinite
@@ -2646,19 +2646,19 @@ would leave the propagation unexplained. What this round BUILT, recorded here:
 
   **AND ONLY TWO OF THE FOUR OPTIMISED VARIABLES SHIPPED.** `optimise_parameters` searches mu, nu,
   `p_signal` and `p_z`, and its full solution also sets `p_signal` = 0.3764 and `p_z` = 0.5042, at
-  which the threshold is 1.31e7 pulses. Neither has a shipped counterpart - there is no `p_signal`
+  which the threshold is $`1.31 \times 10^{7}`$ pulses. Neither has a shipped counterpart - there is no `p_signal`
   config field and `QKDConfig.basis_prob` is 0.5 - so the threshold that applies to this build is the
   **14,055,773** pulses the gate's own `_threshold()` computes, and both rows of the table above are
-  at `p_signal` = `p_z` = 0.5 and therefore comparable. **This table said 1.31e7 / 2.9x for one
+  at `p_signal` = `p_z` = 0.5 and therefore comparable. **This table said $`1.31 \times 10^{7}`$ / 2.9x for one
   round**, which credited the config with two variables it does not carry;
   `src/qsh/config/defaults.py` records the same correction.
 
-- **`qkd.pulses` and `demo_alice_bob_pulses` are both 20,000,000**, past the 1.41e7 threshold with a
-  margin rather than at its edge: **1,626** bits of composable key, while 1.4e7 sits just BELOW the
+- **`qkd.pulses` and `demo_alice_bob_pulses` are both 20,000,000**, past the $`1.41 \times 10^{7}`$ threshold with a
+  margin rather than at its edge: **1,626** bits of composable key, while $`1.4 \times 10^{7}`$ sits just BELOW the
   threshold and yields **no composable key at all** (-12.0 bits). That is a factor of 1.42, which is
   thin given this implementation's own 2-3x uncertainty. (The "about 1,800 bits, against 217 at
   1.4e7" this bullet carried for one round are the optimiser's full-solution figures, not this
-  build's; at the shipped `p` the 1.4e7 comparison point has no key.)
+  build's; at the shipped `p` the $`1.4 \times 10^{7}`$ comparison point has no key.)
 - What the page publishes at 50 km is still the **asymptotic** decoy bound, labelled as one on every
   surface. The composable length is a second quantity shown beside it, not a relabelling of the
   first.
@@ -2774,7 +2774,7 @@ LAST gate before the readout and so commuted with the `<Z0>`. That argument was 
 THIS SAME ROUND, when the fc block was reordered to RZ-then-RY - see "Two classes of parameter were
 analytically dead" below - so there is no longer a trailing diagonal to commute. Measured against the
 trainer of the revision that carried the old form, on that revision's weights and the 24 rows the
-gate uses, the gap was **6.9e-07** on finance and **1.4e-06** on medical - float32 noise. Both
+gate uses, the gap was **$`6.9 \times 10^{-7}`$** on finance and **$`1.4 \times 10^{-6}`$** on medical - float32 noise. Both
 figures belong to that revision, not to the current tree.
 
 Correct by two coincidences rather than by construction, and one artifact away from breaking: at
@@ -2890,10 +2890,10 @@ RY angle - and take `max |delta|` of `circuit()`:
 
 | artifact | fc RZ, pre-fix order | fc RY, pre-fix order | fc RZ, shipped order |
 |---|---|---|---|
-| `qcnn_telecom` | **5.96e-08** | 1.77e-01 | 2.28e-01 |
-| `qcnn_telecom_q7` | **1.19e-07** | 3.64e-01 | 1.59e-01 |
-| `qcnn_finance` | **5.96e-08** | 9.89e-01 | 4.82e-02 |
-| `qcnn_medical` | **8.94e-08** | 5.12e-01 | 7.16e-02 |
+| `qcnn_telecom` | **$`5.96 \times 10^{-8}`$** | $`1.77 \times 10^{-1}`$ | $`2.28 \times 10^{-1}`$ |
+| `qcnn_telecom_q7` | **$`1.19 \times 10^{-7}`$** | $`3.64 \times 10^{-1}`$ | $`1.59 \times 10^{-1}`$ |
+| `qcnn_finance` | **$`5.96 \times 10^{-8}`$** | $`9.89 \times 10^{-1}`$ | $`4.82 \times 10^{-2}`$ |
+| `qcnn_medical` | **$`8.94 \times 10^{-8}`$** | $`5.12 \times 10^{-1}`$ | $`7.16 \times 10^{-2}`$ |
 
 The three pre-fix RZ figures are float32 ULPs - $`2^{-24}`$, $`2^{-23}`$ and $`1.5 \times 2^{-24}`$ - so the angles were
 inert rather than weak, which is the claim. `8.94e-08` belongs to MEDICAL under this recipe, not to
@@ -2909,7 +2909,7 @@ of 48 on telecom, **carried since Round 46**.
 **THE FIX WAS ORDERING, NOT DELETION.** RZ before RY in both places, so the phases RZ writes are
 mixed back into amplitudes by the RY that follows. No parameter was removed and no count changed;
 what changed is how many of them the readout can see. Measured on the same perturbation after the
-change, per artifact: **4.82e-02 to 2.28e-01** - the right-hand column of the table above. A single
+change, per artifact: **$`4.82 \times 10^{-2}`$ to $`2.28 \times 10^{-1}`$** - the right-hand column of the table above. A single
 `1.4e-01` was quoted here for one rewrite; it matches no artifact under the stated recipe and is
 withdrawn with the rest of that set.
 
@@ -3000,9 +3000,9 @@ this retires the published direction rather than settling the opposite one; `QC2
 **Pad-wire inertness holds on both binary corpora**: finance 8 against 9 wires and medical 8 against
 9 wires are identical on every recorded metric, for the third successive circuit. And the one place
 the widths did differ has closed. Before this fix, 4 of 77 trained angles differed between the widths
-by more than 1e-4 - exactly the four the `<Z0>` readout could not see, drifting on numerical noise
-because no gradient reached them. Now **zero of 77 differ by more than 1e-4**: the largest
-disagreement anywhere is 1.1e-05 on finance and 4.2e-06 on medical, with `scale` bit-identical
+by more than $`10^{-4}`$ - exactly the four the `<Z0>` readout could not see, drifting on numerical noise
+because no gradient reached them. Now **zero of 77 differ by more than $`10^{-4}`$**: the largest
+disagreement anywhere is $`1.1 \times 10^{-5}`$ on finance and $`4.2 \times 10^{-6}`$ on medical, with `scale` bit-identical
 between the medical widths.
 
 ### The browser published a full-strength key under a complete intercept-resend attack
@@ -3045,7 +3045,7 @@ surrogate-model baseline and was left on `intrinsicQber`.
 
 **Measured gap while it was behind**: 0.498% low on the 50 km fibre (0.001966695848615933 against
 `bb84()`'s 0.001976547318720314) and **13.664% low on the 800 km free-space downlink**
-(4.793756674e-5 against 5.552428392e-5). Both numbers are rendered in the SAME panel -
+($`4.793756674 \times 10^{-5}`$ against $`5.552428392 \times 10^{-5}`$). Both numbers are rendered in the SAME panel -
 `qkd_surrogate_skr_default` sits beside `skr_per_pulse` - so a visitor could read two figures for one
 channel and see them disagree. Now 0.000% on both.
 
@@ -3105,7 +3105,7 @@ round is named for, in the numbers rather than in the code.
 |---|---|---|
 | held-out sizes 171 / 1200 / 960 on the six cards | **86 / 600 / 480** | the trainer recorded validation PLUS test as `n_test`; the metrics were always on the smaller slice |
 | telecom "the missing 0.156" | **0.110876** | 0.5692 (the previous artifact's macro F1) minus 0.458324; 0.156259 subtracted a macro F1 from an ACCURACY |
-| "the two agree to 2.4e-07" (finance, medical cards) | **1.1e-06** finance, **4.7e-07** medical at 24 rows | the repo's own parity harness on the CURRENT weights; 2.4e-07 is the pre-Round-47 circuit |
+| "the two agree to 2.4e-07" (finance, medical cards) | **$`1.1 \times 10^{-6}`$** finance, **$`4.7 \times 10^{-7}`$** medical at 24 rows | the repo's own parity harness on the CURRENT weights; $`2.4 \times 10^{-7}`$ is the pre-Round-47 circuit |
 | "0.57% low on fibre, 18.9% low on the 800 km downlink" | **0.4984% / 13.6638% low** at the shipped intensities; 0.5673% / 15.9152% low at mu 0.5 / nu 0.1 | 18.9% is the RAISE convention, not "low by", at any pair |
 | "20 collected, 11 passed, 9 skipped" | **21 collected, 11 passed, 10 skipped** | fresh clone of the tip with no `web/node_modules` |
 | "0.2701 divergence at readout_qubits=2" | **0.0335** | the repo's own seeded gate for that claim, torch seed 1, 16 rows |
@@ -3116,13 +3116,13 @@ round is named for, in the numbers rather than in the code.
 | "at 40_000 the decoy bound yields 94 secure bits" | **79** | `run_bb84(40_000, 50 km)`; 94 is the mu 0.5 / nu 0.1 figure |
 | Round 45 note giving 0.500452 / 0.458324 as the corrected circuit's answer | **0.541894 / 0.510963** | `models/qcnn_telecom{,_q7}/weights.json`; the older pair is now marked superseded in place |
 | the dropped RZ "commutes with the `<Z0>`" | true of the RY-then-RZ ordering only | the fc block was reordered to RZ-then-RY later in the same round |
-| 8-vs-9 wires "byte-identical" | **identical on every recorded metric**; `theta` differs by 1.1e-05 / 4.2e-06 | key-by-key diff of the two artifacts |
-| dead-parameter figures 5.96e-08 / 8.94e-08 / 2.6e-01 / 5.9e-01 / 1.4e-01 | re-measured per artifact with the recipe stated - see the table in "Two classes of parameter were analytically dead" | pre-fix circuit from `8017538^`, shipped theta, torch seed 0 |
+| 8-vs-9 wires "byte-identical" | **identical on every recorded metric**; `theta` differs by $`1.1 \times 10^{-5}`$ / $`4.2 \times 10^{-6}`$ | key-by-key diff of the two artifacts |
+| dead-parameter figures $`5.96 \times 10^{-8}`$ / $`8.94 \times 10^{-8}`$ / $`2.6 \times 10^{-1}`$ / $`5.9 \times 10^{-1}`$ / $`1.4 \times 10^{-1}`$ | re-measured per artifact with the recipe stated - see the table in "Two classes of parameter were analytically dead" | pre-fix circuit from `8017538^`, shipped theta, torch seed 0 |
 | "the largest of the four effects" (+0.053, telecom card) | the largest of the three GAINS; the finance regression of -0.105286 is twice as large | the four before/after pairs read from the artifacts at each commit |
 | "the reversal holds and WIDENS" / "the gap GREW" | the gap **NARROWED**, 0.042128 -> 0.030931 | the two macro-F1 pairs the same sentences quote |
 | finance_q9 / medical_q9: "both of those figures belong to the Round 46 circuit" | only one does; 0.813559 / 0.813953 are the RETIRED ansatz's stored metrics | `git show e94ea90:models/qcnn_*_q9/weights.json` |
 | width ablation: Round 46's 0.976667 "made 0.84058" | an accuracy against a minority-class F1; finance ROSE on both metrics over that step | the artifacts at `4ee258e` and `3c63ea8` |
-| "1.31e7 threshold, ~1,800 bits at 2e7, 217 bits at 1.4e7" | **1.406e7**, **1,626** bits, and **no key at all** (-12.0 bits) at 1.4e7 | the shipped config ships two of the optimiser's four variables; `p_signal` and `p_z` are not config keys |
+| "1.31e7 threshold, ~1,800 bits at 2e7, 217 bits at 1.4e7" | **$`1.406 \times 10^{7}`$**, **1,626** bits, and **no key at all** (-12.0 bits) at $`1.4 \times 10^{7}`$ | the shipped config ships two of the optimiser's four variables; `p_signal` and `p_z` are not config keys |
 
 One correction in this pass was itself wrong, and it is recorded because that is the same failure
 one level up. The "0.45 max readout difference, argmax disagreeing on 39 of 64 telecom rows" in
@@ -3425,7 +3425,7 @@ array the artifact declares:
 
 | | fed `samples` (as deployed) | fed the declared space |
 |---|---|---|
-| wire 0 (`amount`) tanh sd | **3.3e-05** | **6.35e-01** |
+| wire 0 (`amount`) tanh sd | **$`3.3 \times 10^{-5}`$** | **$`6.35 \times 10^{-1}`$** |
 | range | [-0.99999992, -0.99982701] | [-0.99997923, 0.99150921] |
 | saturated `\|tanh\| > 0.999` | 556 of 3200 | - |
 | accuracy on the bundled labels | 0.8200 | 0.9125 |
@@ -3494,7 +3494,7 @@ inside bounded inputs. The conclusion survives; the recipe is now recorded besid
 - Its duplicate half was too weak on the first pass - it accepted a column merely being NAMED in
   `eda.columns`, which names every column by construction, so it could not have failed on anything.
   Recorded in the file rather than quietly tightened.
-- `amount_zscore` equals `amount` to 1.0e-05 and nothing declared it, while the SHAP panel split that
+- `amount_zscore` equals `amount` to $`1.0 \times 10^{-5}`$ and nothing declared it, while the SHAP panel split that
   feature's attribution across both bars. `_eda` now computes duplicate pairs.
 - The cross-language QCNN gate covered 4 of 6 artifacts from a hand-written list, on a branch named
   for file lists. Both omitted widths are visitor-selectable. Now globbed: ten comparisons.
@@ -3566,7 +3566,7 @@ The calibration set carries **801** positive events, not 2,321. 2,321 is the TES
 2,321. Correcting a wrong denominator with a wrong numerator is the same defect at one remove.
 
 And `fit_platt` is handed a **probability**, not a log-odds. Its map $`p = 1/(1 + e^{a s + b})`$ is linear
-in `s`; 90% of the teacher's scores are below 1e-4, so with `a = -7.8378` the map is constant to four
+in `s`; 90% of the teacher's scores are below $`10^{-4}`$, so with `a = -7.8378` the map is constant to four
 decimals across nine of ten deciles and returns **0.00090148** for all of them. Its entire output
 support is [0.00090148, 0.695715] - it cannot express a risk below 1 in 1,109 for any input, on a
 corpus whose base rate is 1 in 656. **That is where the +8.7% log-loss the record already reported
@@ -3588,7 +3588,7 @@ the held-out 1,523,504 / 2,321:
 | isotonic | 0.00142218 | 0.00820025 | 0.00077500 | **0.112125** |
 
 ICML 2005's sentence holds at 710,969 cases in the exact form it is written - **as good as**. The
-gap between isotonic and a correct Platt is 1.9e-07 of Brier. Note the column nobody predicted: the
+gap between isotonic and a correct Platt is $`1.9 \times 10^{-7}`$ of Brier. Note the column nobody predicted: the
 UNCALIBRATED score has the best ECE of the four, and no calibrator improves it.
 
 **Cases or events: the two sweeps disagree, and reporting only the one that answers cleanly would be
@@ -3738,7 +3738,7 @@ opssat_student, telecom qml and nidd. No `NaN`, no duplicate headings, no `[obje
 `encrypted_agreement` is 1 on finance (400/400) and medical, and **0.8 on genomics** - which is not a
 defect and the run log says why: five of thirty rows flip, seven of the thirty are scored IDENTICALLY
 across classes by the plaintext model, the widest plaintext margin among the flipped rows is
-**0.000e+0**, and over the 23 rows the model actually decides agreement is 1. Max CKKS error 8.277e-10.
+**$`0.000 \times 10^{0}`$**, and over the 23 rows the model actually decides agreement is 1. Max CKKS error $`8.277 \times 10^{-10}`$.
 The encryption broke ties; it did not disagree. **Recorded as still-open**: the metric row renders a
 bare 0.8 beside 1.0 elsewhere and the sentence that makes it readable lives in the log, which is the
 same defect class as `metric_note` rendering nowhere.
@@ -3875,7 +3875,7 @@ indistinguishable, so nothing looked wrong.
 **`FiniteKeyParams` still carried the retired intensities**, 0.5 / 0.1 against the shipped
 0.3416 / 0.1417 - the sibling of a fix `QKDParams` took in Round 47, unfollowed for four rounds. The
 reported downstream consequences were re-derived and **the repository was already right**: the
-positive-key threshold measures 3.84e7 pulses at the retired pair and 1.40e7 at the shipped one,
+positive-key threshold measures $`3.84 \times 10^{7}`$ pulses at the retired pair and $`1.40 \times 10^{7}`$ at the shipped one,
 matching what Round 47 recorded. The sweep's "42,448 against 143,645" is a sifted-bit figure, a
 different quantity from the pulse counts the docs quote. Nothing downstream needed changing, which is
 precisely why re-deriving before correcting is the rule - a plausible correction to a correct number
@@ -3884,7 +3884,7 @@ is still a regression.
 ### The pattern worth keeping: two gates with tolerances wider than the drift
 
 The refuted-band test constructs `FiniteKeyParams()` bare and asserts the positive-key threshold
-falls in 5e6 to 2e8. **Both intensity pairs land inside that band.** So the gate sitting exactly where
+falls in $`5 \times 10^{6}`$ to $`2 \times 10^{8}`$. **Both intensity pairs land inside that band.** So the gate sitting exactly where
 the drift happens was green on the defect and green on the fix alike. The replacement asserts the
 SOURCE of the default - an identity, with no tolerance to hide in - and checks `default_factory`
 rather than the value, so a literal that happens to equal the config today still fails.
@@ -3946,7 +3946,7 @@ Closing it needed one more decision. The browser SAMPLES its reported `qber` (`e
 while Python returns the analytic value, so comparing them is comparing two different quantities. At
 this demo's ~2,500 sifted pairs the shot noise is sigma ~ 0.0034 against a bug of 0.0074 - **a
 5-sigma statistical gate would have put the bug at -2.17 sigma and passed it.** So `e91()` now
-returns `e0`, the model error rate the bound already uses, and the gate asserts an identity at 1e-9
+returns `e0`, the model error rate the bound already uses, and the gate asserts an identity at $`10^{-9}`$
 with no statistical slack. Seeded by restoring the bug in both browser copies: it fires with the exact
 figures, 0.022372 against 0.029744.
 
@@ -4027,7 +4027,7 @@ checklist; every "verified" line names how it was checked.
 | The workflow loop: local -> push -> CI -> box pull -> Docker rebuild -> public URL -> repeat | **`RT0`-`RT9`**, an ORDERED loop; `RT9` is the branch back | `RT1` local gate before push, `RT3` CI green on the PUSHED head, `RT5` image REBUILT not reused, `RT6` bundle filename changed, `RT7` public URL with cache-bust |
 | Client-side-only inference | 17 `CS` rows | `CS1` zero `/api/` requests, `CS2` `/api/*` returns 404 `text/plain` (measured), `CS4` `crossOriginIsolated`, `CS12` zero POSTs on the wire, `CS15` npm crypto deps checked for archival |
 | 2D plots per vertical | 21 `RD` rows | all five payloads served, 8192/569/307/3200/529 points, each with licence, attribution, provenance and named axes |
-| QCNN | 36 `QC`/`QR` rows | cross-language parity to 2.4e-07; `QC18` carries the WDBC literature comparison |
+| QCNN | 36 `QC`/`QR` rows | cross-language parity to $`2.4 \times 10^{-7}`$; `QC18` carries the WDBC literature comparison |
 | Published HF models | 32 `HF`/`PM`/`MS` rows | `HF15` added this round: the DEPLOYED bundle must carry the new pins |
 | Page content, terminology, numbers, buttons, duplicates | 43 `RG`/`SW`/`UX`/`MN` rows | ten pages walked; zero bad tokens, zero duplicate headings, zero unnamed buttons, zero CJK |
 | Dataset licence and commercial use | 15 `L`/`DL`/`CP`/`T` rows | 7 tracked reference PDFs each with an explicit redistribution grant, adjudicated per file at primary source; 4 excluded and gitignored; gate derives its corpus from `git ls-files` |
@@ -5100,7 +5100,7 @@ verified between Rounds 47 and 58. This round walks them in that order, oldest f
 **What held, read at the source or run on the demo** (2026-10-25):
 - **OptiQKD.** arXiv:2603.04192 is still at v2 (AML-QKD, 2026-06-01, +14-25 percent), and the repo
   quotes it correctly. On the demo, two runs with the optimiser on return bit-identical results
-  (`OQ1`): surrogate SKR 1.98e-3 to 3.53e-3, +78.4 percent, 50 evaluations, converged in 22, within
+  (`OQ1`): surrogate SKR $`1.98 \times 10^{-3}`$ to $`3.53 \times 10^{-3}`$, +78.4 percent, 50 evaluations, converged in 22, within
   the `OQ3` ceiling of 2 + 8 x 6.
 - **Licences.** All eight corpora were re-read at their sources of record and are unchanged.
   `DATA_LICENSES.md` now carries the list and the date.
@@ -5730,7 +5730,7 @@ sourced Micius set, and make the MPC tier multi-party now, and then mask its con
   1.72 kbit/s, QBER 1.17 percent. Not fitted to it, the model gives a sifted 12.2 kbit/s at Micius's
   own $`\mu = 0.8`$ and 645 km, against Liao's ~12.
 - The QSDC gap leaves the station optics out, as Qi et al.'s did, and its thresholds are corrected to
-  0.0757 at 0 dB, 0.0286 at Qi's $`g = 2.57`$ and about 5.5e-6 on this downlink. The satellite stage now
+  0.0757 at 0 dB, 0.0286 at Qi's $`g = 2.57`$ and about $`5.5 \times 10^{-6}`$ on this downlink. The satellite stage now
   reads its channel from the config; it carried literal copies of three of the values.
 
 **The MPC tier: real parties, then real masking.**
@@ -5761,10 +5761,10 @@ sourced Micius set, and make the MPC tier multi-party now, and then mask its con
   The helper inputs nothing.
 - **The masks hide statistically, and each run says how well.** CKKS is approximate, so the masks
   are reals, uniform on $`\pm 2^{30}`$ from the OS CSPRNG. 30 bits is the most 64-bit fixed
-  point holds, and costs no precision measured through a CKKS round trip: 5e-7 at $`2^{30}`$, against 8e-6
-  at $`2^{36}`$ and 2e-4 at $`2^{40}`$ (Round 84, with every slot masked, 400 draws, worst case: 8.8e-7 at $`2^{30}`$,
-  3.8e-5 at $`2^{36}`$ and 6.3e-4 at $`2^{40}`$, so $`2^{30}`$ is the cheapest rather than free). A run reports the number of masked values, its largest, and the bound
-  $`n \times B / 2^{30}`$ on what the key holder's view gives away: 9e-8 or less on the benchmark rows, about 2e-7
+  point holds, and costs no precision measured through a CKKS round trip: $`5 \times 10^{-7}`$ at $`2^{30}`$, against $`8 \times 10^{-6}`$
+  at $`2^{36}`$ and $`2 \times 10^{-4}`$ at $`2^{40}`$ (Round 84, with every slot masked, 400 draws, worst case: $`8.8 \times 10^{-7}`$ at $`2^{30}`$,
+  $`3.8 \times 10^{-5}`$ at $`2^{36}`$ and $`6.3 \times 10^{-4}`$ at $`2^{40}`$, so $`2^{30}`$ is the cheapest rather than free). A run reports the number of masked values, its largest, and the bound
+  $`n \times B / 2^{30}`$ on what the key holder's view gives away: $`9 \times 10^{-8}`$ or less on the benchmark rows, about $`2 \times 10^{-7}`$
   on the test CNNs. Every decision tested matches plaintext, on TenSEAL and OpenFHE. Semi-honest, and
   a client and helper who pool their shares recover the server's masks; the architecture document
   says so, and `docs/threat-model.md` now lists the tier among its trust assumptions, which it did
@@ -5804,7 +5804,7 @@ instead, every convolution output's ReLU run under MPC and the masked path taken
 round.** The first deploy (892c43b) was walked too, and the page showed two defects; both are fixed
 in 2b70f2d and were re-walked.
 - **Found on the page: the satellite's per-pulse rate had lost its digits.** Six sites, in both
-  languages, emitted it at six decimals, which held the downlink's 1.723e-5 to two significant
+  languages, emitted it at six decimals, which held the downlink's $`1.723 \times 10^{-5}`$ to two significant
   figures, so the control-plane panel printed "1.700e-5" beside a measured 1723 bit/s. Nine decimals
   at every site now (the one-rounding gate holds them equal), and the display sites format to four
   significant figures.
@@ -5815,8 +5815,8 @@ in 2b70f2d and were re-walked.
   $`C_s = -3.70`$ and 0.65 dB; recomputed, they are 12.6, -1.01 and about 4.8 dB.
 - Telecom (fibre, 50 km): "secure fraction per pulse 1.952e-3 bit/pulse, this run's one-decoy bound",
   citing section 3.5, Eq. (41); the run's QBER 0.0160 and 39,033 secure bits; the local Python bound
-  gives 1.9517e-3 at E_mu 0.0161. `/validations` "Run BB84" reads 0.016, 0.001952 and 39,033.
-- Satellite (800 km): 1.723e-5 bit/pulse, 1723 bit/s, 344 secure bits, a sampled QBER of 0.0102
+  gives $`1.9517 \times 10^{-3}`$ at E_mu 0.0161. `/validations` "Run BB84" reads 0.016, 0.001952 and 39,033.
+- Satellite (800 km): $`1.723 \times 10^{-5}`$ bit/pulse, 1723 bit/s, 344 secure bits, a sampled QBER of 0.0102
   against the model's 0.0117; QSDC NOT AVAILABLE with $`C_s = -123.39`$ and no eavesdropper, the link budget
   named as the limit.
 - QRNG: "cutoffs at the assessed 0.9 bit/sample; this stream's estimate 0.97", repetition count 16 of
@@ -5840,19 +5840,19 @@ those rates now carry, and the seed of the QRNG's seeded Toeplitz extractor.
 config called "modelling choices", and the seeded extractor's seed, both carried from the Round 75
 review.
 
-**The old set matched no source, and leaned one way.** Efficiency 0.25, 1e-5 dark counts per gate, a
+**The old set matched no source, and leaned one way.** Efficiency 0.25, $`10^{-5}`$ dark counts per gate, a
 1.5 percent error floor, and a 100 MHz clock borrowed from a 2 km free-space paper. Against the 50 km
 experiment the config already cited for its block size (Lucamarini et al., Opt. Express 21, 24550
-(2013): 20.5 percent, 2.1e-5 per gate, QBER 4.26 percent, 1 GHz), the model detected 2.2x the paper's
+(2013): 20.5 percent, $`2.1 \times 10^{-5}`$ per gate, QBER 4.26 percent, 1 GHz), the model detected 2.2x the paper's
 counts and its per-pulse rate was 3.1x the paper's BB84 rate. Read for comparison and not adopted:
-Lucamarini (three intensities; under this project's 1-decoy finite-key analysis its noise needs 7e8
-to 2e9 pulses for any key), Boaron et al. 2018 (421 km, ultra-low-loss fibre), Grunenfelder et al.
+Lucamarini (three intensities; under this project's 1-decoy finite-key analysis its noise needs $`7 \times 10^{8}`$
+to $`2 \times 10^{9}`$ pulses for any key), Boaron et al. 2018 (421 km, ultra-low-loss fibre), Grunenfelder et al.
 2023 (64 Mbps at 2.5 GHz, which is the uncited "64 Mbps fibre demonstration" an old comment quoted)
 and Yuan et al. 2018 (InGaAs at 1 GHz).
 
 **By the user's decision the set is Rusca et al. 2018's**, the stated parameters of the paper whose
 1-decoy finite-key bound `qsh/qkd/finite_key.py` implements, and which a test already used to check
-it against that paper's Table I: efficiency 0.5, 1e-8 dark counts per gate, a 1 percent error floor,
+it against that paper's Table I: efficiency 0.5, $`10^{-8}`$ dark counts per gate, a 1 percent error floor,
 1 GHz, 0.2 dB/km. A simulation set (SNSPDs), not a measured link, and the page says so.
 `tests/test_the_fibre_set_is_rusca_2018.py` quotes the sentence beside each value.
 
@@ -5864,18 +5864,18 @@ Z-basis sum, because a detector is dead after any click; at this project's symme
 conservative side. On the 50 km default the factor is 0.625: 37 percent of the detections go. Both
 languages' BB84 runs, the E91 runs, the finite-key counts and the browser optimiser's surrogate charge
 it, so the optimiser no longer sees a brighter signal as free. The downlink keeps none: Liao et al.
-state no dead time, and at its 1.7e3 detections per second it would cost under 0.1 percent.
+state no dead time, and at its $`1.7 \times 10^{3}`$ detections per second it would cost under 0.1 percent.
 
-**What the fibre pages now show.** At 50 km: 2.853e-3 bit/pulse with the dead time (4.565e-3
-without), the QBER at the 1 percent floor, 57,068 secure bits in a 2e7-pulse block, 2.85 Mbit/s at
+**What the fibre pages now show.** At 50 km: $`2.853 \times 10^{-3}`$ bit/pulse with the dead time ($`4.565 \times 10^{-3}`$
+without), the QBER at the 1 percent floor, 57,068 secure bits in a $`2 \times 10^{7}`$-pulse block, 2.85 Mbit/s at
 1 GHz. The asymptotic bound reaches zero at 301.8 km (134.7 km on the old set). The finite-key
-threshold falls from 1.41e7 pulses to 5.88e6, so the shipped block clears it 3.4x, and Round 46's
+threshold falls from $`1.41 \times 10^{7}`$ pulses to $`5.88 \times 10^{6}`$, so the shipped block clears it 3.4x, and Round 46's
 two-million-pulse block still carries no composable key (the single-photon bound is now positive,
 about 225 counts, and the key about -607 bits). The intensities did not move: the shipped pair is
 within 0.6 percent of this channel's own finite-key optimum (0.319 / 0.129).
 
 **Found on the way: Python's channel kept its own copy of the old set.** `ChannelParams` carried the
-literals 0.25, 1e-5 and 0.015 as defaults, and the fibre stage of `orchestration/stages.py` builds its
+literals 0.25, $`10^{-5}`$ and 0.015 as defaults, and the fibre stage of `orchestration/stages.py` builds its
 channel from three config keys and lets the other two default. The browser reads config, so this
 round's change would have moved the browser and left the Python stage on the old detectors. The
 defaults are now read from the config, `FreeSpaceParams`' too, and a downlink built without a clock
@@ -5894,21 +5894,21 @@ The control-plane panel now names each link's own source.
 
 **Gates.** `tests/test_the_fibre_set_is_rusca_2018.py` (each value quoted; defaults from config; a
 downlink's own clock and dead time; the factor's form and its scaling with the clock; the rate the
-bound times the factor; the browser charging the same, to 1e-9). `tests/test_the_extractor_seed_is_its_own_stream.py`.
+bound times the factor; the browser charging the same, to $`10^{-9}`$). `tests/test_the_extractor_seed_is_its_own_stream.py`.
 Two tests that pinned the old channel's numbers are re-derived: the shipped-block claim and the
 distances at which the one-decoy bound falls below the known-Y0 estimate (now 200 to 280 km, where
-1e-8 dark counts start to matter).
+$`10^{-8}`$ dark counts start to matter).
 
 **Walked on the deploy (dd3ff5d, `index-CUM0_NPs.js`), in fresh tabs, after the two deploys of this
 round.**
-- Telecom, 50 km: QBER 0.0099, 57,068 secure bits, 2.853e-3 bit/pulse and 2,853,421 bit/s, the
+- Telecom, 50 km: QBER 0.0099, 57,068 secure bits, $`2.853 \times 10^{-3}`$ bit/pulse and 2,853,421 bit/s, the
   figures `run_bb84` gives locally; the clock row names Rusca et al.'s 1 GHz as a simulation set.
 - **Found on the page: the rate's sources named the bound alone.** The secret-key-rate fact and the
   control-plane panel cited Eq. (41) beside a figure that is that bound on dead-time-corrected gains.
   Both now say so on the fibre pages, with Eq. (B3); the downlink shows no such note.
-- The clock is part of the model now, and the page shows it: Source rate 100 MHz gives 4.307e-3
+- The clock is part of the model now, and the page shows it: Source rate 100 MHz gives $`4.307 \times 10^{-3}`$
   bit/pulse, 430,676 bit/s and 86,135 secure bits, the factor going from 0.625 to 0.943 as predicted.
-- Satellite: unchanged at 1.723e-5 bit/pulse, 1,723 bit/s and 344 bits, its clock credited to Liao.
+- Satellite: unchanged at $`1.723 \times 10^{-5}`$ bit/pulse, 1,723 bit/s and 344 bits, its clock credited to Liao.
 - E91 on `/orchestration`: S = 2.69 at a model QBER of 0.0247, $`2\sqrt{2}\,(1 - 2Q)`$; 91,303 secure bits.
 - Cross-origin isolated; console: no errors, only "Failed to create WebGPU Context Provider".
 
@@ -5964,8 +5964,8 @@ run out of view says why instead of printing an infinite loss, in both stages an
 now runs Liao's "mu_s=0.8, mu_1=0.1, mu_2=0" at 50 / 25 / 25. Because the vacuum state is sent its
 yield is measured, so the bound is Ma et al. 2005's Vacuum+Weak estimate (Eqs. 34 and 37) - the form
 this project used for every link until Round 75, right exactly when the vacuum is sent - and the
-one-decoy Eq. (41) remains for links that send none. At 800 km: 32.21 dB, 3.3559e-5 bit/pulse
-(one decoy: 3.3205e-5), 671 secure bits in the 2e7-pulse block (344 before).
+one-decoy Eq. (41) remains for links that send none. At 800 km: 32.21 dB, $`3.3559 \times 10^{-5}`$ bit/pulse
+(one decoy: $`3.3205 \times 10^{-5}`$), 671 secure bits in the $`2 \times 10^{7}`$-pulse block (344 before).
 
 **Every link is a template, by the user's request.** One JSON file per link under
 `src/qsh/config/profiles/` (`downlink/`, `isl/`), every value with the source's words or a stated
@@ -5995,7 +5995,7 @@ tab's rate keeps the project's asymptotic convention, every pulse at the signal 
 
 **Found on the way.**
 - A downlink built as `ChannelParams(distance_km=..., free_space=FreeSpaceParams())` took the FIBRE
-  detectors (1e-8 dark counts against Liao's 5e-8); three tests built one. The range and detectors
+  detectors ($`10^{-8}`$ dark counts against Liao's $`5 \times 10^{-8}`$); three tests built one. The range and detectors
   now resolve per link, as the clock and dead time already did.
 - The Python optimiser's baseline and the browser's both used the fibre's intensities on the
   satellite. Both now start from the link's own source and keep its vacuum flag.
@@ -6017,7 +6017,7 @@ building the same link and rate from every downlink profile),
 Vacuum+Weak rate rebuilt by hand. Full suite green; every web check and the build green.
 
 **Walked locally on a client-only build** (the deploy walk follows). Satellite at 800 km: 35.84
-degrees, 32.2 dB, 3.3559e-5 bit/pulse, 3,356 bit/s, 671 bits, the bound named as Vacuum+Weak; at
+degrees, 32.2 dB, $`3.3559 \times 10^{-5}`$ bit/pulse, 3,356 bit/s, 671 bits, the bound named as Vacuum+Weak; at
 1700 km: 9.89 degrees, no link, both stages explaining it and the tagged-fraction row withheld, no
 "Infinity" or "NaN" on the page; the Zvenigorod profile loads 0.88 / 0 / 20 into the controls and
 runs at 30.9 dB and 1,151 bits; the Network tab's tables match the model to the bit; the XOR demo
@@ -6038,7 +6038,7 @@ isolated, with WebGL, so the 3D views were seen drawn for the first time.
   against 300,939; the relay at 7,621 km, 493.7 kbit and 6.8 hours, two pass pairs for 100 kB; the
   XOR demo recovering K_B on fresh keys; the plane at 4,247 km, 164 km, 54.0 dB, 1.8 bit/s and 42.3
   kbit a day; the CubeSat terminals loading 0.0746 m and 8.63 urad and making no key.
-- Telecom unchanged: 2.853421e-3 bit/pulse, 57,068 bits, 2,853,421 bit/s. Console: no errors.
+- Telecom unchanged: $`2.853421 \times 10^{-3}`$ bit/pulse, 57,068 bits, 2,853,421 bit/s. Console: no errors.
 - **Found on the page: both 3D views were framed for a whole Earth.** The downlink's pass was a sliver
   at the top of the sphere, and the constellation's ring was seen edge-on with half of it behind the
   Earth, its shadow and visible arcs too dark to find. Both now have face-on cameras (the downlink
@@ -6066,14 +6066,14 @@ add each only if it holds up.
 half their pulses, so every rate read twice what such a source makes. Both languages' BB84 now
 multiply by the signal share and sift signal pulses only (as Liao et al. count theirs); the non-decoy
 counterfactual stays on the same pulse schedule, so it remains at or below the decoy bound. Fibre at
-50 km: 1.4267e-3 bit/pulse, 28,534 bits in the block, 1.43 Mbit/s at 1 GHz (2.853e-3 per signal
-pulse). Satellite at 800 km: 1.678e-5 bit/pulse, 335 bits. The Network tab's separate signal-share
+50 km: $`1.4267 \times 10^{-3}`$ bit/pulse, 28,534 bits in the block, 1.43 Mbit/s at 1 GHz ($`2.853 \times 10^{-3}`$ per signal
+pulse). Satellite at 800 km: $`1.678 \times 10^{-5}`$ bit/pulse, 335 bits. The Network tab's separate signal-share
 figure folded into the one convention. The 8 dB upper-value profile now makes 239 bits, below the 256
-a session key needs; the Jinan-1 profile 211 in the 2e7-pulse block, which is 32 ms at its 625 MHz.
+a session key needs; the Jinan-1 profile 211 in the $`2 \times 10^{7}`$-pulse block, which is 32 ms at its 625 MHz.
 
 **Found with it: the control-plane panel named the wrong bound.** It printed the one-decoy Eq. (41)
 on every run - the satellite's Vacuum+Weak runs since Round 77 and E91 runs, which have no decoy
-states - and its tooltip compared the run with Li et al.'s measured 8.88e-3 bit/pulse by a literal
+states - and its tooltip compared the run with Li et al.'s measured $`8.88 \times 10^{-3}`$ bit/pulse by a literal
 "3.8x" no run had matched since Round 76. Both QKD stages in both languages now report the decoy
 states they ran (`qkd_decoy_states`), and the panel names that bound and computes the ratio (6.2x on
 fibre at 50 km).
@@ -6138,7 +6138,7 @@ console clean.
 **Walked on the deploy (0544a16, `index-B_Yc3msc.js`), in Chrome.** Satellite at 800 km: 32.2 dB,
 335 bits, 1,678 bit/s, `qkd_decoy_states` "vacuum + one decoy", the facts row "per pulse sent" and the
 control plane naming the Vacuum+Weak bound with Eqs. (34) and (37); the Network tab's nights at -0.03
-dB and 2.4 dB, its other figures as before. Telecom at 50 km: 1.426711e-3 bit/pulse, 28,534 bits,
+dB and 2.4 dB, its other figures as before. Telecom at 50 km: $`1.426711 \times 10^{-3}`$ bit/pulse, 28,534 bits,
 1,426,711 bit/s, the one-decoy bound with the dead-time note, and the tooltip's ratio to Li et al.
 computed at 6.2x. E91: "none (entangled source)", the E91 fraction named, CHSH S 2.69. Console clean,
 no "Infinity" or "NaN". **Found on the page:** the E91 row still said "only the signal pulses carry
@@ -6151,13 +6151,13 @@ Qi, Zhao & Lo 2005) for it. It now says every pair counts and cites Ma, Fung & L
 
 **On main.** Rounds 65 to 78 (PRs #65 to #74) merged in order, each after its own CI passed, by the
 user's choice; the demo was returned to main (016d346, `index-Di40bz55.js`) and checked live: 335
-bits, 1.678e-5 per pulse sent and the Vacuum+Weak bound named on the satellite page. Two user choices
+bits, $`1.678 \times 10^{-5}`$ per pulse sent and the Vacuum+Weak bound named on the satellite page. Two user choices
 then: a finite-key length for the downlink with Lim et al.'s vacuum+weak analysis, validated against
 published figures and checked on Liao's pass without fitting; and a block chosen by the published
 practice between seconds at the page's range and a whole pass, with other options allowed.
 
 **The block, decided by the practice: one pass.** A research pass read the flown experiments. Each
-computes its finite key over one pass - Micius (Liao et al. 2017: 273 s, 300,939 bits at 1e-9; 2018,
+computes its finite key over one pass - Micius (Liao et al. 2017: 273 s, 300,939 bits at $`10^{-9}`$; 2018,
 each pass separately), Tiangong-2 (143 s, 13,119 bits), the Micius-Zvenigorod session (629,000 bits
 with Chernoff bounds) - or over fixed blocks inside one orbit summed per orbit (Jinan-1, Li et al.
 2025: 500-kbit privacy-amplification blocks). None computes one on seconds of a low-orbit pass. So the
@@ -6171,7 +6171,7 @@ its twin `finiteKey.ts` implement Eqs. (1) to (5) on COUNTS, so a pass whose los
 from its top to its edge is the sum of its seconds; `qkd/satellite_pass.py` is the browser's
 `simulatePass` step for step. A source without the vacuum keeps Rusca et al.'s 1-decoy bound. Checked
 against Rusca et al.'s Table I 2-decoy rows, optimised over the variables they optimise with mu3 =
-1e-6: 0.47 and 0.41 of the 26 and 46 dB rows at $`n_Z = 10^{7}`$, 0.49 and 0.44 at 1e9, always below; the
+$`10^{-6}`$: 0.47 and 0.41 of the 26 and 46 dB rows at $`n_Z = 10^{7}`$, 0.49 and 0.44 at $`10^{9}`$, always below; the
 ratio of the two protocols, which cancels the shared channel model, within 15 percent of the paper's
 at all four cells, the 1-decoy protocol winning as in the paper; and the optimum's vacuum share above
 the 11 percent Rusca et al. report.
@@ -6186,14 +6186,14 @@ the 11 percent Rusca et al. report.
   choice, so the concentration inequalities its budget counts are unchanged; the choice is an
   inference from that sentence, and recorded as one.
 - Together: the 1-decoy reproduction of Table I moved from 0.45 / 0.39 / 0.16 at 26 / 46 / 56 dB to
-  0.53 / 0.47 / 0.26; the shipped fibre's positive-key threshold from 5.88e6 pulses to 4.78e6, which
-  the 2e7 block clears 4.2x; the two-parameter optimum to mu 0.375, nu 0.129 at 4.64e6, with the
-  shipped pair within 3 percent, so the intensities stay; the full optimum to 3.10e6 at p_signal
-  0.168. The 2e6-pulse block still carries no key. A 60-case snapshot of the bound was identical
+  0.53 / 0.47 / 0.26; the shipped fibre's positive-key threshold from $`5.88 \times 10^{6}`$ pulses to $`4.78 \times 10^{6}`$, which
+  the $`2 \times 10^{7}`$ block clears 4.2x; the two-parameter optimum to mu 0.375, nu 0.129 at $`4.64 \times 10^{6}`$, with the
+  shipped pair within 3 percent, so the intensities stay; the full optimum to $`3.10 \times 10^{6}`$ at p_signal
+  0.168. The $`2 \times 10^{6}`$-pulse block still carries no key. A 60-case snapshot of the bound was identical
   before and after the refactor to counts.
 
 **Checked on flown passes, with nothing fitted.**
-- Liao's 19 December 2016 pass at 1e-9: 164,183 bits, 0.55 of the published 300,939. Liao et al. do
+- Liao's 19 December 2016 pass at $`10^{-9}`$: 164,183 bits, 0.55 of the published 300,939. Liao et al. do
   not name their analysis; they allow for intensity fluctuations below 5 percent and correct errors
   with a Hamming code, neither modelled.
 - Khmelev et al.'s Zvenigorod session: 354,672 bits, 0.56 of their 629,000 at f_EC 1.16, and 0.51 at
@@ -6228,7 +6228,7 @@ its asymptotic key and dims the block controls with the reason.
 
 **Gates.** `tests/test_the_vacuum_decoy_bound_is_lim_2014.py` (Table I's 2-decoy rows, the protocol
 ratio, the vacuum share, Liao's pass against both bounds, pooling, the 21 squared constant);
-`tests/test_the_satellite_block_is_a_pass.py` (both languages' block, bound and pass to 1e-9 over
+`tests/test_the_satellite_block_is_a_pass.py` (both languages' block, bound and pass to $`10^{-9}`$ over
 every profile, both decoy settings and every block kind; the stage's key; pooling; seconds; the
 abort; Khmelev's and Jinan-1's passes); the moved figures in
 `tests/test_finite_key_reproduces_the_published_table.py`. Full suite green.
@@ -6242,11 +6242,11 @@ profile's vacuum option disabled; console clean.
 **Walked on the deploy (c4ae533, `index-kIMQHozN.js`), in Chrome.** Satellite at 800 km: "not yet run"
 before the run; then 91,475 bits, "composable finite key over one pass peaking at 35.84 deg
 elevation, 408.5 s of link time: Lim et al. 2014 (vacuum + weak decoy), eps_sec 1e-9", the per-pulse
-rate unchanged at 1.678e-5, the control plane at 408.5 s of channel time with skr 1,678, eskr 1,622
-and a budget of 68,606 bits. The security parameter at 1e-10: 87,815 bits. Two pooled passes:
+rate unchanged at $`1.678 \times 10^{-5}`$, the control plane at 408.5 s of channel time with skr 1,678, eskr 1,622
+and a budget of 68,606 bits. The security parameter at $`10^{-10}`$: 87,815 bits. Two pooled passes:
 228,689 bits over 816.9 s. Ten seconds at the range: 0 bits and the 33 s warning. The Network tab:
 177.5 kbit for the pass from the mask, the Liao finite row at 164,183 (-45.4 percent); the one-decoy
-profile's vacuum option disabled. Telecom unchanged: 28,534 bits, 1.427e-3 per pulse sent, 20 ms,
+profile's vacuum option disabled. Telecom unchanged: 28,534 bits, $`1.427 \times 10^{-3}`$ per pulse sent, 20 ms,
 eskr 1,070,011. No "Infinity" or "NaN", console clean.
 
 
@@ -6262,15 +6262,15 @@ sends the vacuum - so the use-case pipelines, the two-party demo and its Validat
 Python API and the benchmark cannot report different quantities. The per-pulse rate stays asymptotic
 and says so; E91 keeps its asymptotic count, labelled.
 
-**The block, decided by the practice: 1e7 key-basis detections.** A research pass read the fibre
+**The block, decided by the practice: $`10^{7}`$ key-basis detections.** A research pass read the fibre
 experiments and deployed systems: they fix the block as a count of key-basis bits, the
 privacy-amplification input, and let the time follow from the distance - Rusca et al.'s Table I uses
-1e7, Boaron et al. 2018 8.2e6 (cut tenfold at 405 km to keep a block under a day), Grunenfelder et
-al. 2020 8,149,248, Li et al. 2023 1e8 - while a fixed time is the minority (Lucamarini et al.'s 20
+$`10^{7}`$, Boaron et al. 2018 $`8.2 \times 10^{6}`$ (cut tenfold at 405 km to keep a block under a day), Grunenfelder et
+al. 2020 8,149,248, Li et al. 2023 $`10^{8}`$ - while a fixed time is the minority (Lucamarini et al.'s 20
 min) and a pulse count mostly a theorist's convention. The default is $`n_Z = 10^{7}`$
 (`QKDConfig.finite_key_block*`), with seconds of link time and the run's own pulses offered, and
 controls on the page. On the shipped channel the block is 5.3 s at 50 km and 35 s at 100 km and
-carries about 5.1 Mbit at either, 0.68 of the asymptotic product. The old 2e7-pulse block, now an
+carries about 5.1 Mbit at either, 0.68 of the asymptotic product. The old $`2 \times 10^{7}`$-pulse block, now an
 option, carries 9,811 bits at 50 km and none at 100 km, where two such blocks would.
 
 **Found by checking the default: the factor of two was the test's.** The research's check for the
@@ -6278,7 +6278,7 @@ default was Table I's own block time. Ours came out 2.1 to 2.4 times the paper's
 detection rate was half the paper's. Rusca et al.'s attenuation is "global" - "the detector and the
 internal losses of Bob's apparatus are included" - and this repository's two Table I tests had
 applied a 50 percent detector on top of it, 3 dB too much. With it applied once:
-- the 1-decoy bound reads 1.03 / 1.04 of Table I at 26 dB (n_Z 1e7 / 1e9), 0.96 / 0.97 at 46 dB and
+- the 1-decoy bound reads 1.03 / 1.04 of Table I at 26 dB (n_Z $`10^{7}`$ / $`10^{9}`$), 0.96 / 0.97 at 46 dB and
   0.80 / 0.84 at 56 dB; under the paper's own dead-time convention (its Eq. B3 sums the Z-basis
   detections, where `dead_time_factor` charges each detector its own clicks) the 26 dB row is
   reproduced to a few parts in a thousand;
@@ -6291,8 +6291,8 @@ Round 79's "within a factor of 2.5" in the README and the report, are corrected;
 are tightened to match (1-decoy within 5 percent at 26 and 46 dB, 25 percent at 56 dB; 2-decoy within
 20 percent and never above). The 64 dB row is not asserted: the dark counts set it there.
 
-**The asymptotic path, checked at the research's request.** It read our 1.427e-3 bit per pulse sent
-as low for 13 dB. It is the shipped p_Z = p_signal = 0.5: at p_Z = 0.9 the same code gives 2.34e-3,
+**The asymptotic path, checked at the research's request.** It read our $`1.427 \times 10^{-3}`$ bit per pulse sent
+as low for 13 dB. It is the shipped p_Z = p_signal = 0.5: at p_Z = 0.9 the same code gives $`2.34 \times 10^{-3}`$,
 and Rusca et al. optimise both. Recorded in the config since Round 47; not a defect.
 
 **The page.** The key-material row names the block and the bound on both use-case pages; the
@@ -6312,9 +6312,9 @@ and all 18 local gates green.
 **Walked locally on a client-only build, then on the deploy (959ce41, `index-BksqMex-.js`), in
 Chrome.** Telecom at 50 km: "not yet run" before the run; then 5,184,652 bits, "composable finite key
 over a privacy-amplification block of 1e+7 key-basis detections: 5.33e+9 pulses, 5.334 s at the
-assumed clock: Rusca et al. 2018 (one decoy), eps_sec 1e-9", the rate unchanged at 1.427e-3 per pulse
+assumed clock: Rusca et al. 2018 (one decoy), eps_sec 1e-9", the rate unchanged at $`1.427 \times 10^{-3}`$ per pulse
 sent, the control plane at 5.3 s of channel time with eskr 1,183,712 and a budget of 3,888,489 bits.
-The run's own 2e7 pulses at 100 km (local build): 0 bits and "A block 2 times larger would carry
+The run's own $`2 \times 10^{7}`$ pulses at 100 km (local build): 0 bits and "A block 2 times larger would carry
 one". Validations: "secure key bits (composable finite key) 5,184,652 over a block of 5.33e+9
 pulses", the telecom run's count. The satellite unchanged: 91,475 bits over 408.5 s. No "Infinity" or
 "NaN", console clean.
@@ -6416,7 +6416,7 @@ three defects were measured before the fix:
   780-unit drawing, where it had been one line from -107 to 891. The key is 91,475 bits, unchanged;
   the Network tab opens on "One pass over one station".
 - Telecom: 5,184,652 bits over a block of 5,334,030,000 pulses, unchanged; Validations reads the same
-  count over 5.33e+9 pulses.
+  count over $`5.33 \times 10^{9}`$ pulses.
 - Finance and medical runs end "done" and PASS with plain log labels; the Overview, Value (the
   novelty sentence intact), Use cases and Genomics pages render. No page shows `NaN`, `undefined`,
   `Infinity` or `[object Object]`, and the console showed no error through a fresh load and a run.
@@ -7002,7 +7002,7 @@ user chose to test that.
 
   | Block | Hoeffding | Chernoff | Tighter (default) |
   |---|---|---|---|
-  | Fibre threshold (pulses) | 5.35e6 | 5.71e6 | 3.60e6 |
+  | Fibre threshold (pulses) | $`5.35 \times 10^{6}`$ | $`5.71 \times 10^{6}`$ | $`3.60 \times 10^{6}`$ |
   | Fibre key at the default $`n_Z = 10^{7}`$ (bits) | 5,174,318 | 5,189,863 | 5,214,327 |
   | Liao's pass, share of the published key | 0.546 | 0.751 | 0.751 |
   | Khmelev's session, share of the published key | 0.564 | 0.692 | 0.692 |
@@ -7025,7 +7025,7 @@ user chose to test that.
   scaled delta(n_Z) down by about a fifth: too small a vacuum bound, too large a single-photon
   bound, so the unsafe direction, unlike the two errors Round 79 found.
 - **What correcting it moved, under Hoeffding.**
-  - The fibre threshold: 4.78e6 to 5.35e6 pulses.
+  - The fibre threshold: $`4.78 \times 10^{6}`$ to $`5.35 \times 10^{6}`$ pulses.
   - The 1-decoy bound on Liao's pulses: 152,598 to 140,400 bits, so the vacuum adds 17 percent, not 8.
   - Rusca's Table I: the 26 dB row under the paper's dead time reads 1.5 percent below, where it
     matched to a few parts in a thousand; the 46 dB row at $`n_Z = 10^{7}`$ reads 5.5 percent below.
@@ -7037,9 +7037,9 @@ user chose to test that.
 
 **The intensities stayed.**
 - Under the default statistics, the shipped pair (0.3416, 0.1417) is 9 percent above the
-  two-parameter optimum: mu 0.399, nu 0.098, at 3.31e6.
+  two-parameter optimum: mu 0.399, nu 0.098, at $`3.31 \times 10^{6}`$.
 - Under Hoeffding it is 2.3 percent above.
-- The shipped 2e7 block clears either threshold, 5.6x and 3.7x. Moving the pair would move every
+- The shipped $`2 \times 10^{7}`$ block clears either threshold, 5.6x and 3.7x. Moving the pair would move every
   asymptotic figure the pages and documents quote, so it is recorded and offered, not done.
 
 **Where it shows.**
@@ -7064,7 +7064,7 @@ user chose to test that.
 - **Rusca's Table I and Lim's two-decoy rows** are checked under the Hoeffding statistics they were
   computed with.
 - **Liao, Khmelev, Jinan-1 and the held range** are checked under both statistics.
-- **The browser twin** agrees with Python to 1e-9 on every profile and block, under the default.
+- **The browser twin** agrees with Python to $`10^{-9}`$ on every profile and block, under the default.
 
 **CI green on 508447d (six checks), then deployed (`index-BwItQgIl.js`, the bundle a local
 client-only build of the same commit produced) and walked in the user's Chrome.**
@@ -7077,7 +7077,7 @@ client-only build of the same commit produced) and walked in the user's Chrome.*
     "Hoeffding, as published". The selection was then restored.
 - **The Network tab.** Liao's pass as one block is 241.1 kbit, named with its statistics, and the
   comparison row reads 226,056 against Liao's 300,939, -24.9 percent.
-- **Telecom.** 5,214,327 secure bits for the 1e7 block under the default.
+- **Telecom.** 5,214,327 secure bits for the $`10^{7}`$ block under the default.
 - **Storage, console and tab.** Nothing was stored, the console was clean, and the tab was closed.
 - **The page scan against the deploy.** All thirteen views passed in both fonts.
 
@@ -7241,7 +7241,7 @@ fixed in the repository two rounds ago and never republished).
     10 s; a 0.13 s run is below the window, not inside it.
   - Satellite event-wise F0.5 is 0 since the Round 71 retrain (tp 0, fp 2, fn 3); 0.714 and 0.455
     were the two leaky runs before it.
-  - The free-space QSDC threshold at 800 km is about 6.5e-5, with $`g = 532.66`$ from 27.26 dB: the
+  - The free-space QSDC threshold at 800 km is about $`6.5 \times 10^{-5}`$, with $`g = 532.66`$ from 27.26 dB: the
     channel's 32.21 dB less the station's 7.96 dB of optics, plus the detector's 3.01 dB, recomputed
     in `channel.py`. The 37.0 dB, g about 5,000 and 5.5e-6 the references still carried were Round
     75's.
@@ -7551,7 +7551,7 @@ validation-F1 checkpoint). Held-out minority-class F1 0.2286 against the logisti
 
 **Both intensity pairs are selectable, and one runtime for ONNX** (a517782).
 - The user's choice. The fibre source's pair is one of two, chosen on the Parameters panel or by a
-  run's `qkd_intensities`: the default 0.3416 / 0.1417 carries more key on the default 1e7-bit block
+  run's `qkd_intensities`: the default 0.3416 / 0.1417 carries more key on the default $`10^{7}`$-bit block
   (5,214,327 bits against 4,977,636 at 50 km), and 0.399 / 0.098 needs the fewest pulses before any
   key exists (3,312,035 against 3,595,158, under the default statistics). The pair reaches the block,
   the model, the bound, the security facts, the distance chart and OptiQKD's baseline in both
@@ -7673,8 +7673,8 @@ walked in Chrome 152.
   in Noto, had passed. Reproduced locally under DejaVu; the two charts' y-axes are now 72 px (512dcee),
   the scan passes on all 13 views in both fonts, and on the live page the ticks clear the title by
   7.8 px.
-- Finance: at the default intensity pair 5,214,327 bits on 5.33e9 pulses, and at the second pair
-  4,977,636 on 5.2467e9, with 0.399 / 0.098 in the metrics. The PSI reports RFC 9497's OPRF, 60 shared
+- Finance: at the default intensity pair 5,214,327 bits on $`5.33 \times 10^{9}`$ pulses, and at the second pair
+  4,977,636 on $`5.2467 \times 10^{9}`$, with 0.399 / 0.098 in the metrics. The PSI reports RFC 9497's OPRF, 60 shared
   accounts over 260 x 260 with 260 blind evaluations, and its log says what each bank learns. The masks
   come from 6 X25519-agreed pair seeds (key agreement 4.4 ms). CKKS agrees on every row at 4.138 ms per
   rotation, and the SHAP panel says its bars explain the reported class; with the trained QCNN selected
@@ -7685,7 +7685,7 @@ walked in Chrome 152.
   stage) and the whole student 28 in 124.85 ms; the three models load at their new pins, and the
   ResNet-18 runs on the 1.31.1 runtime in 11.62 ms and predicts the true class.
 - Genomics: 183 variants, the cut at the 90th percentile (22.06), the person's decrypted score within
-  1.5e-9 of plaintext, 3 of 30 flagged both ways, 8 rotations at 3.08 ms each.
+  $`1.5 \times 10^{-9}`$ of plaintext, 3 of 30 flagged both ways, 8 rotations at 3.08 ms each.
 - Satellite: the default pass 139,251 bits; Liao's pass 226,072 on one basis and 450,923 on both
   (+49.8% against 300,939); Khmelev's session 435,095 and 868,462 against 310,400.
 - Overview, Use cases, Orchestration, Value and Validations carry no keyed-hash, PGS000004 or SMAP/MSL
@@ -7997,8 +7997,8 @@ student rather than retrain. Branch `round86-private-inference`, from `main` at 
   two-party demo and `run_classical` call, was the twin it did not reach, while the threat model said
   every slot the key holder decodes is masked. Each logit now goes through `masked_decrypt`: the bias
   enters slot 0 under encryption and every other slot an independent $`2^{30}`$ mask. The logit's error
-  barely moves: over 200 queries a median of 6.3e-7 masked against 5.4e-7 unmasked, at most 1.2e-6
-  against 1.1e-6, since the dot product's rescale dominates it. Decoding every slot with the key holder's own key, no linear combination of the
+  barely moves: over 200 queries a median of $`6.3 \times 10^{-7}`$ masked against $`5.4 \times 10^{-7}`$ unmasked, at most $`1.2 \times 10^{-6}`$
+  against $`1.1 \times 10^{-6}`$, since the dot product's rescale dominates it. Decoding every slot with the key holder's own key, no linear combination of the
   other slots predicts any product over 240 queries, and the same detector recovers the products
   exactly from the unmasked reference path. It runs on OpenFHE too. An AST scan names every server CKKS
   decryption: the masked one and three exceptions, each with its reason (the two documented
@@ -8399,7 +8399,7 @@ the benchmark's test partition, the same check telecom runs, and draws the same 
 
 **What had to be exported.** A pipeline student publishes `mean` and `scale` as null, because its ONNX graph applies them, while
 a CKKS client must apply them before encrypting. They come from the graph's `Scaler` node. With them, the expansion and the weights
-outside the graph reproduce the graph's label on all 529 rows, and its probabilities to 6.5e-7. Plaintext figures from those
+outside the graph reproduce the graph's label on all 529 rows, and its probabilities to $`6.5 \times 10^{-7}`$. Plaintext figures from those
 rows: accuracy 0.958412, minority-class F1 0.904348, AUC-PR 0.968084, which is the model card's F1 and its teacher-tracking
 AUC-PR, on the rows the card names.
 
@@ -8410,7 +8410,7 @@ TypeScript of `realData.ts` and in scikit-learn in the builder, and one wrong te
 `tests/test_r84_c3_encrypted_heldout_in_node.py` holds the browser's flagged count to the builder's.
 
 **Measured in a real browser.** 529 rows in 34 ciphertexts of up to 16 rows, 1245 ms of encrypted work (36.6 ms per ciphertext, 3.07 ms per rotation), 0
-mismatches, worst deviation 2.72e-8 and median 5.75e-9, smallest plaintext margin 3.00e-2, so no decided row could have flipped. Accuracy against the labels is
+mismatches, worst deviation $`2.72 \times 10^{-8}`$ and median $`5.75 \times 10^{-9}`$, smallest plaintext margin $`3.00 \times 10^{-2}`$, so no decided row could have flipped. Accuracy against the labels is
 0.958412 against a majority baseline of 0.7864. Machine and browser as in `docs/development.md`.
 
 **One more defect from sampling.** distilGPT-2 is a completion model, and on the panel's prompt 2 of about 10 runs came back as nothing but newlines, with others
@@ -9040,16 +9040,16 @@ recorded separately, and nothing here changes the published model.
 | #35 | Every published evaluation sample carries a per-row record and the page compares every row; the telecom CKKS student published with a graph built from its weights; four change notices corrected; the bundled student copies held to their pinned files |
 | #36 | The medical page federates four real hospitals, FLamby's Fed-Heart-Disease on UCI Heart Disease: each alone, FedAvg under the pairwise masks and pooled, twinned in Python to the last digit, shown as the whole matrix with both comparisons counted; the published medical cases and the plan recorded; PR #35 walked on the deployed site; a WebGPU option says "checking" until its probe answers |
 | #37 | The medical page aggregates its federation five ways on request, in a Web Worker: the masks, CKKS with one shared key as NVIDIA FLARE does it, and threshold CKKS at 16 and 40 bits and threshold BGV at 128 on Lattigo compiled to WebAssembly; BGV equals the masks to the bit; a defect in Lattigo's sampler found, avoided and reported as tuneinsight/lattigo#596; PR #36 walked on the deployed site |
-| #38 | Differential privacy where NIST SP 800-226 and the literature say it fits: the medical federation per patient (a record-level arm, distributed discrete Gaussian inside the masks, epsilon 8 to 1, delta 1e-6) and the genomics pooled count per person (epsilon chosen on the page, delta 1e-5); an exact sampler with a Python twin; each other page states why it has none; the medical key points corrected to the four-hospital federation |
-| #39 | Small fixes and records: SEAL's newest release in the node-seal drift note (4.7.2), iDASH 2026 held rather than scheduled, the declines recorded with what would reopen each, a Round 43 heading and a PR #24 pointer in the log, HF2's condition in this register, PR #37 walked on the deployed site. Then DP inside threshold BGV: the medical comparison's sixth row (the record-level arm at epsilon 1, every step's sum under BGV equal to the masks', `npm run check:fed-agg`), the genomics card's threshold sum, the finance count as it would be published (epsilon 1, delta 1e-8), the medical rows' composed epsilon (9.56) on the page, twins in `tests/test_r86_dp_twin.py`, and two LaTeX commands repaired with a guard against control characters in math spans |
-| #40 | Published figures beside this computation on every use-case page, with a verdict rule for each row (`web/src/lib/publishedComparisons.ts`); every published model's re-scoring in a table, not only the selected one's; per-card CSV and JSON and one results file per run, from an allowlist, whose ML-DSA record verifies from the file (the record had kept 12 bytes of its signature); the Models section in tabs with an overview; deltas printed as 1e-6 |
+| #38 | Differential privacy where NIST SP 800-226 and the literature say it fits: the medical federation per patient (a record-level arm, distributed discrete Gaussian inside the masks, epsilon 8 to 1, delta $`10^{-6}`$) and the genomics pooled count per person (epsilon chosen on the page, delta $`10^{-5}`$); an exact sampler with a Python twin; each other page states why it has none; the medical key points corrected to the four-hospital federation |
+| #39 | Small fixes and records: SEAL's newest release in the node-seal drift note (4.7.2), iDASH 2026 held rather than scheduled, the declines recorded with what would reopen each, a Round 43 heading and a PR #24 pointer in the log, HF2's condition in this register, PR #37 walked on the deployed site. Then DP inside threshold BGV: the medical comparison's sixth row (the record-level arm at epsilon 1, every step's sum under BGV equal to the masks', `npm run check:fed-agg`), the genomics card's threshold sum, the finance count as it would be published (epsilon 1, delta $`10^{-8}`$), the medical rows' composed epsilon (9.56) on the page, twins in `tests/test_r86_dp_twin.py`, and two LaTeX commands repaired with a guard against control characters in math spans |
+| #40 | Published figures beside this computation on every use-case page, with a verdict rule for each row (`web/src/lib/publishedComparisons.ts`); every published model's re-scoring in a table, not only the selected one's; per-card CSV and JSON and one results file per run, from an allowlist, whose ML-DSA record verifies from the file (the record had kept 12 bytes of its signature); the Models section in tabs with an overview; deltas printed as $`10^{-6}`$ |
 | #41 | The QKD control plane splits a relayed key over two node-disjoint relay paths on request (two relays, two VIRT associations, the key their XOR), each relay seeing only its own path's key; an XOR's budget is the smaller path's in both controllers' `allocate` and the GS QKD 014 key count, where both summed; `tests/test_r86_qkd_two_path_split.py`. Also: the comparison table names the metric each re-scoring used (an unnamed accuracy sat beside an AUC row on the deployed page), and the log records PR #40 on the deployed site |
 | #42 | The threshold module draws each share's flooding itself, uniform on [-F, F], sized from the analytic worst case of the aggregate's noise ($`2^{22.26}`$ for four parties) over a whole share: 16, 40 and 128 bits hold as printed, with per-key figures beside them; BGV in a 200-bit Q within the HE standard's post-quantum table and certain to decrypt; Go tests for the bound, the sizing and the uniformity; `npm run check:fed-agg` for the figures; the CBOM's parameter sets |
 | #43 | The DeFi page's committee, an option beside Carol: three members with Shamir shares of a collective BGV key on Lattigo v6.2.0, any two of whom re-encrypt each masked margin to Carol by a flooded public-key switch ($`f = 189`$ for 128 bits a share), once per ciphertext, with the pool's fresh encryption of zero keeping each second component new; the sign of the margin modulo a 50-bit $`t`$ in a new 648-gate garbled circuit; the borrower's ciphertexts and Carol's record signed and sealed as in Carol's custody; Go and crate tests, `npm run check:lending-private`, the CBOM's parameter set |
 | #44 | The medical page's chest X-ray federation on NIH ChestX-ray14 (Effusion), trained offline: four simulated hospitals by AP share, FedAvg 0.805 against pooled 0.812 and each hospital alone, a PA-only model, ConvNeXt-atto once, the view in the scores among negatives, an untrained-network probe baseline, and the maps against NIH's 153 Effusion boxes with Zhang et al.'s baselines; the preparation and the analysis tested without the data; the card from a recorded file; NIH's attribution in DATA_LICENSES |
 | #45 | Records only: the log's entries for PRs #43 and #44 on the deployed site (each bundle checked three ways, the committee's run and Carol's custody on the DeFi page, the chest X-ray card on the medical page), and the development notes' CBOM count, 24 since PR #43 added the committee |
 | #46 | The medical page's heart-sound federation on the PhysioNet/CinC Challenge 2016 data, trained offline: each of six sources held out in turn, pooled and FedAvg, three seeds; held-out AUROC 0.321 to 0.728 pooled and 0.242 to 0.740 federated against 0.961 on a random split, below 0.5 on some sources; the preparation and the analysis tested without the data; the card from a recorded file; ODC-By 1.0 and the citations in DATA_LICENSES; then, held for generalisation, the same study with each mel band's mean removed (`--band-mean`): mean held-out AUROC 0.554 to 0.599 pooled and 0.477 to 0.530 under FedAvg, up on c and d, down on b, e and f, which the card names beside an explanation of the inverted e from its collection (Liu et al. 2016) |
-| #47 | The DP rows convert concentrated DP by Canonne, Kamath and Steinke's Renyi conversion, minimised over the order by the same golden-section steps in `qsh.ai.dp` and `clientDp.ts` and capped by the simple bound: the same epsilon with 7 to 18 percent less noise (finance variance 38 to 30; the medical row at epsilon 1 from 37.8 to 32.0 gradient units and 0.706 to 0.718 over 20 draws); the four medical rows together 9.56 to 9.75; the twin test keeps variances and draws equal and epsilons to 1e-12 |
+| #47 | The DP rows convert concentrated DP by Canonne, Kamath and Steinke's Renyi conversion, minimised over the order by the same golden-section steps in `qsh.ai.dp` and `clientDp.ts` and capped by the simple bound: the same epsilon with 7 to 18 percent less noise (finance variance 38 to 30; the medical row at epsilon 1 from 37.8 to 32.0 gradient units and 0.706 to 0.718 over 20 draws); the four medical rows together 9.56 to 9.75; the twin test keeps variances and draws equal and epsilons to $`10^{-12}`$ |
 | #48 | Murmur detection on CirCor under DP, the person as the unit (70 people under two patient IDs joined): logistic heads on frozen PANNs CNN14 or heart-sound-CNN features under central DP-SGD, a central full-batch Gaussian and four sites' distributed discrete Gaussian, rates and thresholds chosen on a PhysioNet 2016 stand-in (0.835 to 0.777 at epsilon 8 to 1, central, PANNs) beside CirCor-validation tuning, a failed stand-in, Papernot and Steinke's accounted search and objective perturbation; the threshold's collapse under DP stated; the card from a recorded file; CirCor and PANNs credited in DATA_LICENSES |
 | #49 | The chest X-ray FedAvg ResNet-18 checked and exported for the Hub, and uploaded to a private repository only: the owner's six pre-upload checks on this machine (`scripts/data/check_cxr_preupload.py`: the archives against their manifest, every PNG decoded, flagged and likely inverted films, the test split's shift, seven resamplers, calibration over three seeds, heads on the frozen features), the ONNX export through the shared gate (`scripts/train/export_cxr_fedavg.py`: float32 and int8, both scored over the whole test split), the registry entry the card is generated from, with no Hub repository until the owner approves the card; NIH's terms read at NIH's own folder (FAQ question 4) and `DATA_LICENSES.md` corrected; with the owner's choice, a features graph (the 512 pooled features, float32 and int8, `features_report.json`) and a 16-film evaluation sample of the test split, four per class and view, which the int8 graph classifies 10 of at the operating point; the card says the page does not run the model while its repository is not public |
 | #50 | A run's timeline and who holds what: the recorded log folded to a position (`runTimeline.ts`), back, forward and scrub under the canvas (`TimelineBar`), each stage's messages and holdings with the sizes it measured and hex only for what is public (`PartyLedger`), and a finished run's GIF and WebM drawn by replaying the log; the same messages as a sequence diagram drawn by the page (SVG) and offered as Mermaid text, Mermaid itself not loaded (5.1 MB of chunks, ELK among them); `tests/test_r86_run_timeline.py` holds the replay to the run's final metrics, the sequence text to the ledger, and keeps the session key out of the log |
@@ -9057,7 +9057,7 @@ recorded separately, and nothing here changes the published model.
 | #52 | The npm packages' notices travel with the page: `vite.config.ts` traces every bundled module, the workers' included, to its package and writes 51 packages' declared licence and licence text to `/licenses/js-bundle.txt` (four without a licence file take theirs from their repositories, said so), linked from the sidebar; `check_js_notices.mjs` in both pipelines; SEAL 4.1.2's sampling bound read in its source |
 | #53 | Evidence under every encrypted-agreement scatter: Bland and Altman's difference against mean with the bias and the 1.96 SD limits, and each row's precision in bits as Lattigo counts it (`agreementStats.ts`, held to numpy); the medical DP card's privacy-utility chart from a recorded 20-draw sweep of the page's own `fedHeartDp` (`scripts/measure_fedheart_dp_sweep.py`, two draws rerun exactly by its test), the run's own row marked against the band |
 | #54 | The chest X-ray model public on the Hub with the owner's approval: `Daemons-Q/qsh-medical-cxr14-fedavg-resnet18` at c4287b8 (the card re-rendered for a public page), seven files pinned by SHA-256 against the local ones, the registry naming the repository, the counts and the licence note updated; the medical page re-scores its 16 films on every run |
-| #55 | Split inference on a chest X-ray: the public model's features graph runs on one of its 16 published films in the tab, only the 512 features are encrypted, and the network's own last layer is evaluated on them under CKKS (`encryptedLinear`, unchanged); the layer exported from the published weights and checked against the pinned graphs on all 16 films (`scripts/export_cxr_head.py`); film 9 in Chrome: 192 ms backbone, 52 ms CKKS, logit within 1.2e-9; the card republished with its split paragraph as revision 88f4f96 on the owner's approval, the pins' digests unchanged |
+| #55 | Split inference on a chest X-ray: the public model's features graph runs on one of its 16 published films in the tab, only the 512 features are encrypted, and the network's own last layer is evaluated on them under CKKS (`encryptedLinear`, unchanged); the layer exported from the published weights and checked against the pinned graphs on all 16 films (`scripts/export_cxr_head.py`); film 9 in Chrome: 192 ms backbone, 52 ms CKKS, logit within $`1.2 \times 10^{-9}`$; the card republished with its split paragraph as revision 88f4f96 on the owner's approval, the pins' digests unchanged |
 | #56 | Records PRs #49 to #54 on the deployed site (bundle `index-J8JJSd0J.js` checked three ways, every page walked). Four items of the owner's list of 2026-11-13: the value page links the WAMO paper by its DOI (Wang et al., The Web Conference 2026; Crossref and the abstract re-read), and the folded rows and the regulatory clock's source links are at least 24 px tall (WCAG 2.2 SC 2.5.8), measured at 390 px; the clock's FAR row re-checked in the Federal Register, none as of 2026-11-15; both Caddyfiles send Cache-Control, an existing hashed asset kept a year and the shell, data and 404s revalidated, read from a real Caddy |
 | #57 | The finance canvas draws the PSI among banks under MPC as its banks (one lane per bank into one garbled circuit), not as the secure sum's seven parties, with the canvas gate holding the count; the README's twelve images retaken and read for faults; the deploy of #55 and #56 recorded (bundle `index-BngVCAF0.js` three ways, cache headers, split inference on four films, the medical re-scoring at 88f4f96) |
 
@@ -9253,7 +9253,7 @@ The page said the QCNN ran unencrypted, which it did, and which was the design s
 
 The circuit here is simulated classically, as it already was, so the private form is a classical HE problem. Every shipped circuit encodes a feature on its own wire as $`\mathrm{RY}(\theta)|0\rangle`$, so the readout is exactly a linear form in the $`3^n`$ products of sines and cosines of the encoded angles: $`\langle O\rangle = \sum_P c_P\phi_P(x)`$ with $`c_P = 2^{-n}\operatorname{Tr}(AP)`$ (Schuld, arXiv:2101.11020). The client encrypts the products and the server takes one inner product per readout, one multiplicative level at the frozen parameters, power-of-two rotation keys only.
 
-**Result.** `npm run check:qcnn-ckks`, in Node, on the module the page runs: the form differs from the circuit by at most 8e-15 on 200 rows of each artifact, the decrypted readout by at most 2e-9, and the class equals the clear circuit's on all 16 rows of each case. Medical (8 qubits, 6,561 terms, 2 ciphertexts) 0.15 s; telecom (7 features, 8 readouts) 0.5 s. The accuracy is the plaintext QCNN's.
+**Result.** `npm run check:qcnn-ckks`, in Node, on the module the page runs: the form differs from the circuit by at most $`8 \times 10^{-15}`$ on 200 rows of each artifact, the decrypted readout by at most $`2 \times 10^{-9}`$, and the class equals the clear circuit's on all 16 rows of each case. Medical (8 qubits, 6,561 terms, 2 ciphertexts) 0.15 s; telecom (7 features, 8 readouts) 0.5 s. The accuracy is the plaintext QCNN's.
 
 **Compared with classical models, on the circuit's own split.** `scripts/train/qcnn_classical_surrogate.py` refits logistic regression on the same inputs (reproducing the recorded figure, which is how it knows it has the trainer's split) and on the same $`3^n`$ products. Medical accuracy 0.9535 for the QCNN against 0.9535 and 0.9419; finance minority-class F1 0.2286 against 0.4390 and 0.4889; telecom macro F1 0.9444 against 0.9764 and 0.9723. The QCNN has no teacher, since it is trained on labels, so these are its comparators, as Schreiber et al. (PRL 131, 100803, 2023) and Bowles et al. (arXiv:2403.07059) advise, and none of them shows a quantum advantage.
 

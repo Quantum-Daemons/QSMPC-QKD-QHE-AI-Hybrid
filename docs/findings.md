@@ -280,8 +280,8 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   decision boundary, or each window's forecast, written by a Python twin of that rule
   (`qsh.models.sample_per_row`) and checked, before it is written, against the figure the sample already
   stated. The page fails a run on any row decided differently beyond a near tie, or on any margin more than
-  1e-3 from the record. Run in node with ONNX Runtime Web on all twelve graphs, every row was decided as
-  recorded and the largest margin difference was 5.7e-5 (ResNet-50); the aggregate tolerance it replaced
+  $`10^{-3}`$ from the record. Run in node with ONNX Runtime Web on all twelve graphs, every row was decided as
+  recorded and the largest margin difference was $`5.7 \times 10^{-5}`$ (ResNet-50); the aggregate tolerance it replaced
   would have passed a graph four points worse. The compact GNN and the forecaster student already carried
   row-level records (logits, and a digest of flags). Two things the republish also fixed: four samples' change
   notices said "rounded to 6 decimals" over values written at float32 precision since Round 86, and the
@@ -767,7 +767,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
 - **Demo vs full** - the public demo is **client-only** (zero `/api` compute) and ships **no backend
   image at all**: `docker/docker-compose.demo.yml` has no `api` service, and `/api/*` and `/metrics`
   return 404. Its FHE/MPC is **genuinely real and measured in the browser**: **node-seal CKKS**
-  (a real homomorphic linear layer, ~1e-9 error) + a real **Polytune garbled-circuit 2PC** for the
+  (a real homomorphic linear layer, ~$`10^{-9}`$ error) + a real **Polytune garbled-circuit 2PC** for the
   non-linear argmax, both parties loopback in one tab (zero VPS). In-browser federated learning runs
   on every run of the finance and medical pages, not behind a toggle: a real client-side FedAvg of
   a 4-weight logistic regression whose inputs are `qcnnExpectation`, a closed-form

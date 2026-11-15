@@ -133,7 +133,7 @@ and a helper. The conversions between the halves are masked, as Gazelle's and De
 finding no linear combination that predicts a product; until Round 84 one scalar mask left the bare
 mask in the zero-padded slots and partial sums of the products in the low ones, and one query
 recovered the unmasked output and the layer's weight row (confirmed with the TenSEAL backend: the
-output to 1.4e-6, the weights to 3.3e-6). What the masking now hides, and the OpenFHE exception, are
+output to $`1.4 \times 10^{-6}`$, the weights to $`3.3 \times 10^{-6}`$). What the masking now hides, and the OpenFHE exception, are
 in [the threat model's table](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment).
 
 **What the client decodes is statistically hidden, not perfectly.** CKKS is approximate, so the
@@ -141,10 +141,10 @@ masks are real numbers, uniform on $`[-2^{30}, 2^{30})`$ from the OS CSPRNG, whe
 mask exactly over a ring. Behind such a mask a value of size $`B`$ is $`B / 2^{30}`$ from any other
 in statistical distance, and every run reports two bounds. `mask_statistical_distance` covers the
 values that enter and leave the MPC through slot 0, the number of them times the largest over
-$`2^{30}`$ (about 2e-7 on the test CNNs and 1.4e-6 on the medical use case's 14x14 CNN, recorded
+$`2^{30}`$ (about $`2 \times 10^{-7}`$ on the test CNNs and $`1.4 \times 10^{-6}`$ on the medical use case's 14x14 CNN, recorded
 before Round 84). `view_statistical_distance` covers the client's whole view, every real and
 imaginary part of every slot it decrypts plus each value the MPC opens, each one's content over
-$`2^{30}`$: about 2e-7 on an 8-4-2 MLP, measured 2026-10-30. The masks on the other slots double as
+$`2^{30}`$: about $`2 \times 10^{-7}`$ on an 8-4-2 MLP, measured 2026-10-30. The masks on the other slots double as
 the noise flood over the CKKS error, and each run reports the flood's margin over the error it measured
 (`flood_margin_bits`, about 50). Two further limits are part of the claim. It is
 semi-honest with an honest majority: a client and helper who pool their Shamir shares recover the
@@ -194,7 +194,7 @@ rather than a stated preference.
 ### What the plaintext-versus-CKKS comparison proves, and what it does not
 
 The demo measures its CKKS result against a plaintext reference computed in the same tab
-(`web/src/lib/clientFHE.ts` returns `maxAbsError`, about 1e-9 on the linear path, and the convolution
+(`web/src/lib/clientFHE.ts` returns `maxAbsError`, about $`10^{-9}`$ on the linear path, and the convolution
 path computes its own against a plaintext reference). That comparison is worth having and it is easy to
 overstate, so the boundary is drawn here rather than left to a reader.
 
@@ -310,7 +310,7 @@ cost - genomics and the generic demo - and labels it so):
 - **FHE** - `web/src/lib/clientFHE.ts` runs **node-seal** (Microsoft SEAL -> WASM, MIT) **CKKS**: the
   feature vector is encrypted, the linear layer $`Wx + b`$ is evaluated homomorphically (multiply-plain +
   rotate-and-add slot sum), and only the decrypted logits leave encryption. Reported FHE-linear ms,
-  ciphertext bytes and the approx. 1e-9 approximation error are real `performance.now()` measurements.
+  ciphertext bytes and the approx. $`10^{-9}`$ approximation error are real `performance.now()` measurements.
 - **MPC** - `web/src/lib/clientMPC.ts` runs a real **garbled-circuit authenticated-garbling 2PC**
   (Polytune with a Garble-compiled circuit, MIT, built from `wasm/qsh-mpc` by the web image's Rust stage;
   `mpc-framework` + `emp-wasm-engine` + `summon-ts` until Round 65): the logits are additively

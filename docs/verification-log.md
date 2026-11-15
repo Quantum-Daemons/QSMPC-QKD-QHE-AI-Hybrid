@@ -588,7 +588,7 @@ trusting the container's own reported status.
 |---|---|
 | Telecom encrypted tier runs in the tab | `encrypted tier (REAL CKKS, 64 params, 8 dot products): class "intercept_resend" in 112.2 ms` |
 | Top-1 mismatch count (arXiv:2605.22237 convention) | **0 of 1** scored inputs |
-| Precision in bits (the OpenFHE and HElib unit) | max abs error **4.294e-9**, about **27 bits**, labelled MAX not mean |
+| Precision in bits (the OpenFHE and HElib unit) | max abs error **$`4.294 \times 10^{-9}`$**, about **27 bits**, labelled MAX not mean |
 | The argmax disclosure fires | `the ARGMAX is NOT encrypted: all 8 class scores are decrypted and the maximum taken in the clear` |
 | No silent fallback | no "skipped" or "weights unavailable" line present |
 | `crossOriginIsolated` | `true` |
@@ -841,7 +841,7 @@ the SHAP attribution and the CKKS evaluation both consume".
 |---|---|---|
 | `fhe_model` | absent | bundled real model |
 | `encrypted_scores_compared` | 2 (one row) | 400 rows scored |
-| `fhe_max_abs_error` | 6.20e-13 | 1.93e-9 |
+| `fhe_max_abs_error` | $`6.20 \times 10^{-13}`$ | $`1.93 \times 10^{-9}`$ |
 | `encrypted_precision_bits` | 40 | 28 |
 | `encrypted_agreement` | 1 over 1 row | 1 over 400 rows |
 
@@ -853,7 +853,7 @@ Genomics: 30 rows, `encrypted_agreement` ranging 0.83-0.97 across runs - and the
 vary. `realInputCorpus("genomics")` returns all 30 `dosage_samples` deterministically and the model
 is the fixed top-8 PGS weights, so the same page runs the same 30 rows against the same model every
 time. **Seven of those 30 individuals carry no effect allele at any of the eight loci**, so their
-plaintext score is exactly 0 on both classes and each flips on ~1e-9 of encryption noise,
+plaintext score is exactly 0 on both classes and each flips on ~$`10^{-9}`$ of encryption noise,
 independently, per run. The headline rate is therefore 23% coin toss. Counted from the shipped
 `pgs000004_prs313.json`, not inferred.
 
@@ -870,10 +870,10 @@ independently, per run. The headline rate is therefore 23% coin toss. Counted fr
   margin IS the polygenic score. `encrypted_flip_margin_max` measured **exactly 0** at the flipped
   rows: those samples carry no effect allele at any of the top-8 loci, so the plaintext model's own
   top-1 comes from argmax tie-breaking and any deviation flips it. "3 of 30 mismatches" beside a
-  7.2e-10 deviation reads as CKKS being unreliable, which is the opposite of the measurement.
+  $`7.2 \times 10^{-10}`$ deviation reads as CKKS being unreliable, which is the opposite of the measurement.
 - **A caption whose scope was narrower than its sentence.** "worst absolute deviation 1.80e-8"
   printed immediately after "(800 class scores)" was a maximum over the 400 plotted winning-class
-  scores; the metric row beside it read 2.47e-8 over all 800. Both correct, 37% apart.
+  scores; the metric row beside it read $`2.47 \times 10^{-8}`$ over all 800. Both correct, 37% apart.
 
 ### Per-rotation cost, which is the comparable axis, and the plan's error
 
@@ -1032,11 +1032,11 @@ exactly.
 **`fhe_conv_max_abs_error` was the student's final-logit error on the published path** and the conv
 block's on the synthetic path - one key, two meanings, decided by whether a Hub fetch succeeded, under
 a comment claiming the two errors were reported separately "so a regression in one cannot hide behind
-the other". Now 4.25e-9 for the convolution and 6.87e-9 for the student's logits, as two rows.
+the other". Now $`4.25 \times 10^{-9}`$ for the convolution and $`6.87 \times 10^{-9}`$ for the student's logits, as two rows.
 
 **The replacement tie test could not fail either.** `margin / scoreRange <= 1e-6` looked independent
 of the deviation and is not: a flip forces $`\text{margin} \le 2E`$, so $`\text{rel} \le 2E/\text{range}`$, and with $`E \sim 10^{-9}`$
-against a range of order 1 that is ~1e-9 - three orders below the threshold, on every run. It would
+against a range of order 1 that is ~$`10^{-9}`$ - three orders below the threshold, on every run. It would
 take a 500x precision collapse to reach the other branch, and that case is already reported by
 `encrypted_batch_precision_bits`. **And the experiment that "proved" it reachable forced
 `flipMarginRel` to a literal**, which exercised the rendering branch rather than the predicate - the
@@ -1057,8 +1057,8 @@ exactly. Log and table now answer the same question the same way.
 
 `encrypted_flips_are_ties` and `encrypted_flip_margin_relative` are gone from every page.
 
-**Splitting the error key showed something the single key hid**: `fhe_conv_max_abs_error` 4.65e-9
-against `fhe_student_logit_max_abs_error` 3.46e-9 - the convolution's error is LARGER than the
+**Splitting the error key showed something the single key hid**: `fhe_conv_max_abs_error` $`4.65 \times 10^{-9}`$
+against `fhe_student_logit_max_abs_error` $`3.46 \times 10^{-9}`$ - the convolution's error is LARGER than the
 student's final one. Average pooling over 2x2 divides the deviation by about two before the dense
 layers see it, so the end-to-end figure understates the convolution. Under one key the larger of the
 two was invisible, which is the concrete form of what that metric's own comment had claimed to
@@ -1134,7 +1134,7 @@ travels with the agreement rate and said nothing about any other field. `MS10` a
 form - no field the plot type declares may be set by a producer and rendered by nothing - and
 re-seeding the deletion makes it fail naming `rowsOffered` while `tsc` stays clean.
 
-An orphaned comment went out with the same commit: the three lines justifying the deleted 1e-6
+An orphaned comment went out with the same commit: the three lines justifying the deleted $`10^{-6}`$
 threshold survived into the middle of an object literal, arguing for a test the file retracts thirty
 lines above. Removed.
 
@@ -1331,7 +1331,7 @@ here.
 
 | Round | Where its deployed-site measurements live |
 |---|---|
-| 44 | `docs/deliverable-verification.md`, "Round 44" section - `skr_per_pulse` 0.00958 x `source_rate_hz` 1e8 = `skr_bit_s` 957,659; `channel_time_s` 0.002; `stored_key_count` 4 = floor(1436/352), restored from a permanent 0 |
+| 44 | `docs/deliverable-verification.md`, "Round 44" section - `skr_per_pulse` 0.00958 x `source_rate_hz` $`10^{8}`$ = `skr_bit_s` 957,659; `channel_time_s` 0.002; `stored_key_count` 4 = floor(1436/352), restored from a permanent 0 |
 
 **One line above is now known to be wrong, and it is left standing with this correction beside it.**
 The Round 43 entry records `skr (bit/s)` rendering `n/a` beside `key budget 1,436 bit`. It does not
@@ -1365,7 +1365,7 @@ not computed from the source.
 
 `0.002355 x 1e8 = 235,479`. `200,000 / 1e8 = 0.002 s`. `235,479 x 0.002 = 470.96`, floored to the
 **470** the page prints. The browser figure equals `src/qsh/qkd/bb84.py::_decoy_secure_fraction` to
-better than 1e-9, which is asserted by a gate rather than eyeballed here.
+better than $`10^{-9}`$, which is asserted by a gate rather than eyeballed here.
 
 **Before this round the same panel showed ~958,000 bit/s**, from the non-decoy GLLP fraction on the
 observed QBER, while three surfaces called it a decoy-state bound.
@@ -1639,20 +1639,20 @@ fix is a second, independent source: git merge subjects name `roundN-` branches.
    ROUND, on this branch.** This sentence first read "THE FIX IS NOT APPLIED - it retrains and
    rewrites `models/`, and this was scoped as a measurement", which was true when written and
    stopped being true without the paragraph changing - the defect class this log exists to catch.
-   What landed: `fit_platt` grew `on_logit=True`, carrying the log-odds transform, a 1e-12 clip and
+   What landed: `fit_platt` grew `on_logit=True`, carrying the log-odds transform, a $`10^{-12}`$ clip and
    the published formula string WITH the two floats rather than leaving the transform at the call
    site; `scripts/train/finance_aml.py` passes it; the teacher was retrained and
    `models/metrics.json` and `web/src/lib/config.defaults.json` regenerated from it. Verified
    against the prediction rather than assumed: `a = -0.5853491088584304`, `b = 1.6417462922842536`
    against the ablation's `-0.58535` / `1.64175`; Brier 0.00145433 -> **0.00142199**; log-loss
    0.01049835 -> **0.00818964** (the arm that had been shipping was WORSE than not calibrating at
-   all, 0.00965987); CORP MCB 4.412e-05 -> **1.178e-05**; AUROC and AUPRC bit-identical at
+   all, 0.00965987); CORP MCB $`4.412 \times 10^{-5}`$ -> **$`1.178 \times 10^{-5}`$**; AUROC and AUPRC bit-identical at
    0.9525582593503528 / 0.12334101789973353, which is this round's ranking claim measured from a
    second direction. Two things the fix needed beyond the one line, both of the "landed in one of
    three sites" class this round was already tracking: `web/src/components/ModelPanel.tsx` rendered
    $`p = 1/(1 + e^{a s + b})`$ unconditionally and would have printed a score-domain formula beside
    logit-fitted floats, and the `imbalanced` test fixture did not reproduce the defect it was written
-   for - it claimed a 1-in-650 base rate and 90% of scores below 1e-4 and delivered 1-in-16 and
+   for - it claimed a 1-in-650 base rate and 90% of scores below $`10^{-4}`$ and delivered 1-in-16 and
    34.8%, drawing its labels from the score itself - so the regression test would have been built on
    a fixture that could not fail. **A THIRD CONSEQUENCE, WHICH WAS NEARLY FILED AS A PRE-EXISTING
    FAILURE AND WAS NOT ONE.** The retrain moved `hf_revision` into
@@ -1704,9 +1704,9 @@ A walk of the deployed bundle is owed for Rounds 48 and 49 both.
 ### Round 49's own defect, found after the PR was opened: a docstring that asserted what the code did not do
 
 The `imbalanced` fixture added in `da7cd89` carried three figures in its docstring - a base rate near
-1 in 650, ninety percent of scores below 1e-4, and the claim that it reproduces the probability-fed
+1 in 650, ninety percent of scores below $`10^{-4}`$, and the claim that it reproduces the probability-fed
 collapse. **None of the three was measured, and all three were false.** Re-run on the committed
-draw: base rate **1 in 15.9**, **34.83%** of scores below 1e-4, and a probability-fed spread of
+draw: base rate **1 in 15.9**, **34.83%** of scores below $`10^{-4}`$, and a probability-fed spread of
 **2.48x** across the bottom nine deciles - so the fixture written to expose the collapse did not
 produce it. `y = uniform < s` draws the labels from the score itself, which makes the teacher
 perfectly calibrated by construction; the on-logit fit then comes back near the identity and there is
@@ -1725,7 +1725,7 @@ documents it names that is true - it was not true of the test fixture written al
 The replacement builds the score from a log-odds with a long left tail and the labels from a
 DIFFERENT map of that log-odds, so the teacher is miscalibrated the way a real booster is. Every
 figure in its docstring was re-measured against the committed draw and reproduces exactly: 34
-positives in 24,000 (1 in 705.9), 89.91% below 1e-4, span 6.975e-08 to 0.9998613, probability-fed
+positives in 24,000 (1 in 705.9), 89.91% below $`10^{-4}`$, span $`6.975 \times 10^{-8}`$ to 0.9998613, probability-fed
 spread 1.000399x against on-logit 90.6954x.
 
 It also carries the assertion the suite never had.
@@ -1794,7 +1794,7 @@ what Round 50 could not claim: it ran finance only and confirmed the other four 
 thirty rows flip, and the page reports that seven of the thirty are scored IDENTICALLY across classes
 by the plaintext model itself, so their outcome is decided by tie-breaking; over the 23 rows the model
 actually decides, agreement is 1. The widest plaintext margin among the five flipped rows is
-**0.000e+0** - they are exact ties - and max absolute CKKS error is 8.277e-10, about 30 bits. The
+**$`0.000 \times 10^{0}`$** - they are exact ties - and max absolute CKKS error is $`8.277 \times 10^{-10}`$, about 30 bits. The
 encryption did not disagree with anything; it broke ties differently.
 
 **But the metric row renders a bare 0.8** beside finance and medical at 1.0, and the sentence that
@@ -2100,7 +2100,7 @@ claim the data does not support.
 
 **Separately, Eq. (8) takes `h(e_x + e_z)` and this used a pooled rate.** The paper's own arithmetic
 settles it: `I(A:E) = g*Q_Bob*h(e_x+e_z) = 9.1e-4` at `g = 2.57`, `Q_Bob = 0.3%`, `e_x = e_z = 0.8%`,
-and only `h(0.016)` reproduces it at 9.1248e-4 against 4.08e-4 for the pooled `h(0.006)`. Pooling
+and only `h(0.016)` reproduces it at $`9.1248 \times 10^{-4}`$ against $`4.08 \times 10^{-4}`$ for the pooled `h(0.006)`. Pooling
 understates Eve by 2.24x and overstates the secrecy capacity by 26%. **That is the third permissive
 correction to one formula**, after the 0.11 threshold and the omitted detector efficiency, and all three
 erred in the same direction - a simplification that makes a demo work is not a neutral coin flip.
@@ -3793,8 +3793,8 @@ that variant as measured and rejected, and the OPS-SAT "before" figure is record
 trainer's withdrawn-claim note says. The plan carries the trainer's measurement, not the proposal.
 
 **An expected effect is a measurement not yet taken.** The masked logit's error was written down as
-about 2e-6 against 1e-7 unmasked, the masks' noise added on top; measured over 200 queries it is 6.3e-7
-against 5.4e-7, because the dot product's rescale dominates both. The sentence was corrected before it
+about $`2 \times 10^{-6}`$ against $`10^{-7}`$ unmasked, the masks' noise added on top; measured over 200 queries it is $`6.3 \times 10^{-7}`$
+against $`5.4 \times 10^{-7}`$, because the dot product's rescale dominates both. The sentence was corrected before it
 was committed.
 
 **A history rewrite is finished only when every copy of the old history is accounted for.** The new
@@ -4169,7 +4169,7 @@ what the first had left stale, with the weights and graphs unchanged (each diges
 | `finance_aml.gbm` | `3393a270` | the card's calibration notes, until then Round 49's text about an earlier teacher, measured on the published graph | graph SHA-256 `d69b6532...` as before; the card holds the new notes and no Round 49 figure |
 | `finance_aml.student` | `1bae2180` | the card: 115 parameters and 256 ciphertexts of 32 rows, not 33 and 64 | weights `dd58191c...` as before |
 | `finance_aml.mlp_large` | `65283a88` | the card, and the sample's split, which still said "with the 79 per-transaction features added" | weights and graph as before; the sample states the registry's split |
-| `finance_aml.gnn_compact` | `1cd8f653` | the card, which named `transformers` as its library, and a new `eval_sample.json`: the 16 rows its weights carry as fixtures | weights as before; the sample's logits reproduced from the weights in Python to 9.5e-7, and through the browser's MPC path to 4.5e-5 |
+| `finance_aml.gnn_compact` | `1cd8f653` | the card, which named `transformers` as its library, and a new `eval_sample.json`: the 16 rows its weights carry as fixtures | weights as before; the sample's logits reproduced from the weights in Python to $`9.5 \times 10^{-7}`$, and through the browser's MPC path to $`4.5 \times 10^{-5}`$ |
 
 Three things the second pass found. The teacher's Platt map lowers the Brier score on the validation rows it was fitted
 on and raises it on the test window, whose laundering rate is 0.152 percent against 0.113; the record now says so.
@@ -4231,7 +4231,7 @@ full finance runs of all 12 stages, the second after a reload with the console r
 |---|---|
 | requests | every Hub file at the new pins: gbm `f3373960`, student `67cdb41e`, MLP `2733e357`, GNN `006a55c6`; no console error or warning |
 | verification | PASS for `finance_aml.gbm` and `finance_aml.student`, each re-scored on all 8,192 rows of its sample |
-| the compact GNN under MPC | one held-out transaction, 16 of 16 slots filled; class laundering from the 2PC argmax, matching the clear network; 608 ReLUs in 13 batches, 52,655 AND gates; logits recorded -2.483, 0.722 and reconstructed the same, largest error 1.43e-4; 6.8 s in a Web Worker; the neighbourhood figure on its 720-wide canvas with no label past its edge |
+| the compact GNN under MPC | one held-out transaction, 16 of 16 slots filled; class laundering from the 2PC argmax, matching the clear network; 608 ReLUs in 13 batches, 52,655 AND gates; logits recorded -2.483, 0.722 and reconstructed the same, largest error $`1.43 \times 10^{-4}`$; 6.8 s in a Web Worker; the neighbourhood figure on its 720-wide canvas with no label past its edge |
 | the MLP under MPC | the class from the 2PC argmax matches the clear network; the 114 features and the batch of 2,048 named |
 | the CKKS student | 8,192 rows in 256 ciphertexts of up to 32 rows, 8,435 ms of encrypted work |
 | decision curves | student 9.65 per 10,000 at $`t = 0.01`$ (166 at the sample's rate), operating point a calibrated risk of 0.079; teacher 10.91 (148) and 0.309; both above treat-none at every threshold drawn |
@@ -4262,8 +4262,8 @@ console error on any page.
 
 | page | in plaintext, re-scored on the published sample | under encryption |
 |---|---|---|
-| medical | `resnet18`, `resnet50` and `student`: PASS on all 156 test images | the bundled WDBC regression on 171 held-out rows, 1 ciphertext, 0 top-1 mismatches; the published CNN student under CKKS, logits within 1.85e-9 of plaintext; with "CNN under MPC" ticked, as it is by default, held-out image 1 of 156 through CKKS and garbled circuits, 800 ReLUs, 69,167 AND gates, 174.38 MB, 16.6 s, class equal to the clear network's |
-| genomics | no trained model: PGS000072's published weights | the 183-variant score in one ciphertext, equal to plaintext within 5.7e-10; the 30-person panel in 2 ciphertexts, 0 mismatches; the garbled-circuit argmax |
+| medical | `resnet18`, `resnet50` and `student`: PASS on all 156 test images | the bundled WDBC regression on 171 held-out rows, 1 ciphertext, 0 top-1 mismatches; the published CNN student under CKKS, logits within $`1.85 \times 10^{-9}`$ of plaintext; with "CNN under MPC" ticked, as it is by default, held-out image 1 of 156 through CKKS and garbled circuits, 800 ReLUs, 69,167 AND gates, 174.38 MB, 16.6 s, class equal to the clear network's |
+| genomics | no trained model: PGS000072's published weights | the 183-variant score in one ciphertext, equal to plaintext within $`5.7 \times 10^{-10}`$; the 30-person panel in 2 ciphertexts, 0 mismatches; the garbled-circuit argmax |
 | telecom | `qml` PASS on 600 rows, `nidd` PASS on 16,379 | `telecom_ids.student`, 64 parameters, on 600 held-out rows in 2 ciphertexts, 0 mismatches, accuracy 0.988 against a majority baseline of 0.125; the argmax decrypted, as the page says |
 | satellite | `telemanom` PASS on 128 windows, `student` on 8,640, `opssat` and `opssat_student` on 529 | the ESA student's forecast on all 8,640 rows in 135 ciphertexts, 0 of 8,640 flags changed; the OPS-SAT student on 529 held-out rows in 34 ciphertexts, 0 mismatches; each decision read after decryption |
 | DeFi | no trained model | the margin under CKKS and its sign in a garbled circuit, 5 checks, each equal to the check in the clear, 1,835 AND gates |
@@ -4309,9 +4309,9 @@ browser all serve `index-MC40jGBa.js`, which carries the three new pins and none
 
 | where | read |
 |---|---|
-| medical, a default run | `fhe_student_input` "held-out image 1 of 156, the official BreastMNIST test split at 14x14", true class 1, the CKKS student's class 1, logits within 1.34e-9 of plaintext; the CNN under MPC on the same image, class 1, as the clear network; `medical_fl.resnet18` re-scored PASS, its graph fetched at `638b7a4a` |
+| medical, a default run | `fhe_student_input` "held-out image 1 of 156, the official BreastMNIST test split at 14x14", true class 1, the CKKS student's class 1, logits within $`1.34 \times 10^{-9}`$ of plaintext; the CNN under MPC on the same image, class 1, as the clear network; `medical_fl.resnet18` re-scored PASS, its graph fetched at `638b7a4a` |
 | telecom | `telecom_ids.qml` fetched at `ce545929`, graph SHA-256 `505c91b8...` as recorded, re-scored PASS on 600 rows; the student's 600 held-out rows under CKKS, 0 mismatches |
-| finance | the compact GNN's weights fetched at `10104e89`, GNN under MPC class 1 as the clear network, 608 ReLUs, largest logit error 1.6e-4; `finance_aml.gbm` and `finance_aml.student` re-scored PASS; the `finance_aml.gnn` entry reads "no trained artifact in this build" |
+| finance | the compact GNN's weights fetched at `10104e89`, GNN under MPC class 1 as the clear network, 608 ReLUs, largest logit error $`1.6 \times 10^{-4}`$; `finance_aml.gbm` and `finance_aml.student` re-scored PASS; the `finance_aml.gnn` entry reads "no trained artifact in this build" |
 
 No console error on any of the three pages.
 
@@ -4320,27 +4320,27 @@ No console error on any of the three pages.
 The owner chose exact per-row verification, with every sample republished, over the aggregate tolerance of 0.05 the
 page had applied. The records were added to the PUBLISHED samples, not regenerated ones: each file, without its record,
 was checked byte for byte against its pinned digest before anything was written, and the metric each record implies was
-checked against the one the file already stated (accuracy and F1 to 1e-12, MAE to 1e-6) before it was written
+checked against the one the file already stated (accuracy and F1 to $`10^{-12}`$, MAE to $`10^{-6}`$) before it was written
 (`scripts/add_per_row_records.py`). At each new revision only `eval_sample.json` changed, and each served file equals
 the local one. The page's own `evaluatePublishedModel`, run in node with ONNX Runtime Web's WASM build on one thread
 against the pinned bytes (`tests/test_r86_published_rescore.py`):
 
 | model | revision | rows | decided as recorded | largest margin difference |
 |---|---|---|---|---|
-| `finance_aml.gbm` | `b74d16f3` | 8,192 | all | 4.8e-7 |
-| `finance_aml.student` | `c305a104` | 8,192 | all | 3.1e-6 |
-| `finance_aml.mlp_large` | `65926d2e` | 8,192 | all | 5.3e-6 |
-| `medical_fl.resnet18` | `b24642c6` | 156 | all | 1.1e-6 |
-| `medical_fl.resnet50` | `d11ec391` | 156 | all | 5.7e-5 |
-| `medical_fl.student` | `1de47e04` | 156 | all | 1.1e-6 |
-| `satellite_comms.telemanom` | `6fbeb225` | 128 windows | (forecast values) | 6.9e-7 |
-| `satellite_comms.opssat` | `95955c8d` | 529 | all | 4.7e-7 |
-| `satellite_comms.opssat_student` | `9175fa16` | 529 | all | 1.1e-6 |
-| `telecom_ids.qml` | `cd149476` | 600 | all | 4.6e-7 |
-| `telecom_ids.nidd` | `9fb901e3` | 16,379 | all (one row within 1e-3 of the boundary) | 1.6e-6 |
-| `telecom_ids.student` | `c351a335` (new) | 600 | all | 2.5e-6 |
+| `finance_aml.gbm` | `b74d16f3` | 8,192 | all | $`4.8 \times 10^{-7}`$ |
+| `finance_aml.student` | `c305a104` | 8,192 | all | $`3.1 \times 10^{-6}`$ |
+| `finance_aml.mlp_large` | `65926d2e` | 8,192 | all | $`5.3 \times 10^{-6}`$ |
+| `medical_fl.resnet18` | `b24642c6` | 156 | all | $`1.1 \times 10^{-6}`$ |
+| `medical_fl.resnet50` | `d11ec391` | 156 | all | $`5.7 \times 10^{-5}`$ |
+| `medical_fl.student` | `1de47e04` | 156 | all | $`1.1 \times 10^{-6}`$ |
+| `satellite_comms.telemanom` | `6fbeb225` | 128 windows | (forecast values) | $`6.9 \times 10^{-7}`$ |
+| `satellite_comms.opssat` | `95955c8d` | 529 | all | $`4.7 \times 10^{-7}`$ |
+| `satellite_comms.opssat_student` | `9175fa16` | 529 | all | $`1.1 \times 10^{-6}`$ |
+| `telecom_ids.qml` | `cd149476` | 600 | all | $`4.6 \times 10^{-7}`$ |
+| `telecom_ids.nidd` | `9fb901e3` | 16,379 | all (one row within $`10^{-3}`$ of the boundary) | $`1.6 \times 10^{-6}`$ |
+| `telecom_ids.student` | `c351a335` (new) | 600 | all | $`2.5 \times 10^{-6}`$ |
 
-The tolerance is 1e-3: seventeen times the largest difference measured, for the page's threaded and WebGPU runs, and far
+The tolerance is $`10^{-3}`$: seventeen times the largest difference measured, for the page's threaded and WebGPU runs, and far
 below what a different graph or preprocessing moves. Seeded on the telecom QML sample as served: one decision flipped
 fails the verification, and one margin moved by 0.01 fails it. The compact GNN and the forecaster student already carried
 row-level records (logits, and a digest of the flags), so every published model is now verified row by row.
@@ -4402,11 +4402,11 @@ all fourteen pins of `config.defaults.json` and none of the three it replaced. W
 
 | page | models re-scored | rows, as recorded | largest difference |
 |---|---|---|---|
-| telecom | the QML forest, 5G-NIDD, the CKKS student (now in the model selector) | 600, 16,379, 600 | 3.25e-7, 7.16e-7, 2.50e-6 |
-| medical, WASM | ResNet-18, ResNet-50, the CKKS student | 156 each | 1.14e-6, 5.68e-5, 1.06e-6 |
-| medical, WebGPU (`onnx-webgpu`, an NVIDIA Blackwell adapter) | the same | 156 each | 1.14e-6, 6.51e-5, 2.37e-6 |
-| finance | the GBM, the student, the large MLP | 8,192 each | 3.58e-7, 3.13e-6, 5.26e-6 |
-| satellite | Telemanom (each of 128 forecasts), OPS-SAT, its student; the forecaster student by its flag digest | 128, 529, 529; 8,640 flags | 6.89e-7, 4.65e-7, 1.08e-6 |
+| telecom | the QML forest, 5G-NIDD, the CKKS student (now in the model selector) | 600, 16,379, 600 | $`3.25 \times 10^{-7}`$, $`7.16 \times 10^{-7}`$, $`2.50 \times 10^{-6}`$ |
+| medical, WASM | ResNet-18, ResNet-50, the CKKS student | 156 each | $`1.14 \times 10^{-6}`$, $`5.68 \times 10^{-5}`$, $`1.06 \times 10^{-6}`$ |
+| medical, WebGPU (`onnx-webgpu`, an NVIDIA Blackwell adapter) | the same | 156 each | $`1.14 \times 10^{-6}`$, $`6.51 \times 10^{-5}`$, $`2.37 \times 10^{-6}`$ |
+| finance | the GBM, the student, the large MLP | 8,192 each | $`3.58 \times 10^{-7}`$, $`3.13 \times 10^{-6}`$, $`5.26 \times 10^{-6}`$ |
+| satellite | Telemanom (each of 128 forecasts), OPS-SAT, its student; the forecaster student by its flag digest | 128, 529, 529; 8,640 flags | $`6.89 \times 10^{-7}`$, $`4.65 \times 10^{-7}`$, $`1.08 \times 10^{-6}`$ |
 
 Every verification PASS, no console error on any page. The telecom page's encrypted tier now names its model,
 `telecom_ids.student`, with 0 of 600 top-1 mismatches against plaintext; the medical CKKS student read held-out image 1
@@ -4510,9 +4510,9 @@ for it, which this pointer closes.
 
 Merged as `52baf07` and deployed; the bundle `index-fDVB_zFP.js` has the same name and SHA-256 in the deploy log, on the
 public page and in a local `VITE_CLIENT_ONLY=1` build. The image's new Go stage ran on the demo host. In Chrome, after
-a medical run (seed 1), `Compare encrypted aggregation` showed its progress and then all five rows: the masks 1.4e-6 from
-the exact FedAvg, 56 bytes and 0.7 ms a round; the shared-key CKKS 1.1e-8, 262 kB, 14 ms; threshold CKKS 3.9e-7 and
-6.9e-6, 394 kB, 211 and 263 ms; threshold BGV 1.4e-6, "yes, to the bit", 590 kB, 154 ms; every design at 0.7005. No
+a medical run (seed 1), `Compare encrypted aggregation` showed its progress and then all five rows: the masks $`1.4 \times 10^{-6}`$ from
+the exact FedAvg, 56 bytes and 0.7 ms a round; the shared-key CKKS $`1.1 \times 10^{-8}`$, 262 kB, 14 ms; threshold CKKS $`3.9 \times 10^{-7}`$ and
+$`6.9 \times 10^{-6}`$, 394 kB, 211 and 263 ms; threshold BGV $`1.4 \times 10^{-6}`$, "yes, to the bit", 590 kB, 154 ms; every design at 0.7005. No
 console error. `qsh_fedthresh.wasm` is served 200 as `application/wasm`, gzip-encoded, with the cross-origin
 isolation headers; `/licenses/qsh-fedthresh.txt` is served with its ten sections. The extension's network log does not
 record a worker's fetches, so that an ordinary run never loads the module rests on the code path: only the button
@@ -4526,13 +4526,13 @@ aggregation as a function, so the record-level arm's 50 steps can be summed by m
 copy of the loop; `fedHeartDp` passes the masks and its rows are unchanged, which `tests/test_r86_dp_twin.py` holds
 against `qsh.ai.fed_heart.run_dp` row for row. The comparison's sixth row sums each step's four noisy vectors under
 threshold BGV, trains on what the shares decrypt, and compares the masks' sum of the same vectors. `npm run
-check:fed-agg`, seed 1: all 50 steps' sums equal, epsilon 1.0000 at delta 1e-6, accuracy 0.7216, 590 kB a hospital a
+check:fed-agg`, seed 1: all 50 steps' sums equal, epsilon 1.0000 at delta $`10^{-6}`$, accuracy 0.7216, 590 kB a hospital a
 step, 135 ms a step; the five FedAvg rows as before (0.7005). The genomics card's button calls
 `clientFedAgg.sumUnderThresholdBgv` in the worker with a fresh key per press; the check sums a seeded draw at
 epsilon 0.5 with a negative contribution added and gets the plain sum, 717, and refuses a value that is not a whole
 number.
 
-Finance: `clientDp.dpCount` adds one discrete Gaussian to the two banks' count; at epsilon 1 and delta 1e-8 the
+Finance: `clientDp.dpCount` adds one discrete Gaussian to the two banks' count; at epsilon 1 and delta $`10^{-8}`$ the
 least variance is 38 (standard deviation 6.2 accounts; the accountant gives 0.998), Python's `dp_count` draws the same
 values on the seeded source, and a negative draw is published as zero. The banks' own answer stays exact.
 
@@ -4558,7 +4558,7 @@ standard deviation 19.40. All six pages showed their `Differential privacy:` lin
 delta printed as `0.000001`, JavaScript's form, which PR #40 writes as `1e-6`.
 
 PR #39 merged as `7e780c0` and deployed: `index-Bo5Ln4ci.js`, the same three ways. In Chrome: the finance card
-published 55 against an exact 60 from lists of 260 (epsilon 1.00, delta 1e-8, standard deviation 6.16 accounts); the
+published 55 against an exact 60 from lists of 260 (epsilon 1.00, delta $`10^{-8}`$, standard deviation 6.16 accounts); the
 genomics button decrypted 968 from the BGV sum, the masked sum's integer, 60.50 released, with 394 kB of ciphertext
 and a 197 kB decryption share per cohort, and a second press gave the same; the medical DP table's note gave epsilon
 9.56 for its four rows together; and `Compare encrypted aggregation` gave six rows in 20 s, the five FedAvg designs at
@@ -4713,13 +4713,13 @@ at 1,280 px on the live site or at 375 px in a local build.
 `qsh.ai.dp.cdp_to_dp` and `cdpToDp` in `web/src/lib/clientDp.ts` now convert rho-zCDP by Canonne, Kamath and Steinke's
 Proposition 12 on the Renyi curve, minimised over the order by the same 120 golden-section steps on log(a - 1) in both
 languages and capped by the simple bound. Checked: the search reaches a dense grid's minimum for 154 random (rho, delta)
-pairs with rho from 1e-7 to 1e3 and delta from 1e-14 to 1e-2; rho 1.0491 at delta 1e-5 gives 7.2804 (8.00 by the
+pairs with rho from $`10^{-7}`$ to $`10^{3}`$ and delta from $`10^{-14}`$ to $`10^{-2}`$; rho 1.0491 at delta $`10^{-5}`$ gives 7.2804 (8.00 by the
 simple bound), the figure the murmur study's separate accountant gave. With the targets unchanged the variances fall:
 finance 38 to 30; medical noise in gradient units 5.2, 9.9, 19.2 and 37.8 to 4.87, 8.97, 16.84 and 32.04; genomics
 noise in alleles 19.4 to 15.3 at epsilon 0.5 down to 1.4 to 1.3 at 8. Measured over 20 private draws (seed 1): the
 medical rows 0.724, 0.725, 0.723 and 0.718 at epsilon 8, 4, 2 and 1 (standard deviations 0.008 to 0.024); the four
 rows together epsilon 9.75 (9.56 before). Tests: `tests/test_r86_dp_conversion.py` and `tests/test_r86_dp_twin.py`
-(variances and draws equal between the languages, epsilons equal to 1e-12).
+(variances and draws equal between the languages, epsilons equal to $`10^{-12}`$).
 
 ### PR #47 on the deployed site (2026-11-14)
 
@@ -4790,8 +4790,8 @@ with TF32 off, Pillow 13.0.0 and scikit-learn 1.9.0, and wrote `docs/measurement
   effusion (0.790) more than view (0.661).
 
 `scripts/train/export_cxr_fedavg.py` wraps seed 1's network so the graph takes pixels scaled to [0, 1], normalises them
-itself and returns [0, z]. The shared export gate passed: float32 within 2.6e-6 of PyTorch on 128 held-out films, the int8
-graph agreeing on all 128; over the whole test split ONNX Runtime gives 0.8065 (PA 0.843, AP 0.774; within 1.2e-5 of
+itself and returns [0, z]. The shared export gate passed: float32 within $`2.6 \times 10^{-6}`$ of PyTorch on 128 held-out films, the int8
+graph agreeing on all 128; over the whole test split ONNX Runtime gives 0.8065 (PA 0.843, AP 0.774; within $`1.2 \times 10^{-5}`$ of
 PyTorch in the logit) for the 44.8 MB float32 graph and 0.8063 for the 11.3 MB int8 one, with 134 decisions changed at the
 operating point (validation sensitivity 0.80: test sensitivity 0.883, specificity 0.549). The registry entry
 `medical_fl.cxr_fedavg` names no Hub repository: the card is the owner's to approve. Reading NIH's Box folder for the card
@@ -4805,7 +4805,7 @@ before. Tests: `tests/test_r86_cxr_preupload.py`.
 
 With the owner's choice of a features graph and an evaluation sample, the export also writes `onnx/features.onnx` and
 `onnx/features_int8.onnx`, the same network up to its 512 pooled features (44.8 MB and 11.3 MB), and
-`features_report.json`: float32 within 2.1e-6 of PyTorch on the 128 films, int8 within 0.045 of float32 with a cosine
+`features_report.json`: float32 within $`2.1 \times 10^{-6}`$ of PyTorch on the 128 films, int8 within 0.045 of float32 with a cosine
 similarity no lower than 0.99969, and the network's own last layer on the int8 features over the whole test split
 0.8063, the int8 classifier's figure. `eval_sample.json` holds 16 films of the official test split, four for each class
 and view and one per patient, drawn once with seed 2026 among films the exposure checks above would not flag (pixel SD at
@@ -4874,7 +4874,7 @@ The owner chose TSB-AD 1.5 for VUS-PR (the one download approved: the 179.4 kB w
 SHA-256 equal to PyPI's) and a decision boundary that is a slice of the real classifier or nothing.
 
 `scripts/measure_satellite_vus_pr.py` checks the published forecaster's graph against its pinned Hub hash and against the
-weights it was exported from (1.4e-6 at most over 2,048 test windows), scores ESA-ADB Mission1's test half with
+weights it was exported from ($`1.4 \times 10^{-6}`$ at most over 2,048 test windows), scores ESA-ADB Mission1's test half with
 Telemanom's smoothed one-step errors, the maximum over channels 41 to 46 of each channel's error z-scored on its
 smoothed validation errors, and labels the 29 anomalies that start and end inside it (66,892 of 7,364,160 steps on the
 30 s grid). The buffer comes from TSB-AD's own rule, the autocorrelation period of the first channel, computed with

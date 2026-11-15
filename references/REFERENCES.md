@@ -97,7 +97,7 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   value by value: the 300 mm satellite telescope's "near-diffraction-limited far-field divergence of
   ~10 urad"; Xinglong's receiving telescope "with an aperture of 1 m"; "diffraction loss ... 22 dB at
   1200 km"; atmosphere "3 dB to 8 dB" and pointing "less than 3 dB" at 1200 km; detectors
-  "efficiency 50%, dark counts <25 Hz" with a "2-ns time window" (so 5e-8 per detector per pulse); an
+  "efficiency 50%, dark counts <25 Hz" with a "2-ns time window" (so $`5 \times 10^{-8}`$ per detector per pulse); an
   "overall optical efficiency including the receiving telescope and the fiber coupling ... ~16%"; a
   100 MHz source; QBER "with an average of 1.1%"; sifted rates "from ~12 kbit/s at 645 km to ~1
   kbit/s at 1200 km"; a final key of about 1.1 kbit/s with finite-key analysis. Micius ran THREE
@@ -140,9 +140,9 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   self-differencing InGaAs detectors: "detection efficiency of 20.5%, dark count probability per gate
   of $`2.1 \times 10^{-5}`$ and after pulse probability 5.25%", intensities 0.425 / 0.044 / 0.001 (two decoys),
   QBER 4.26% in Z, and secure rates of 1.09 Mbps (efficient BB84) and 0.63 Mbps (standard) at 50 km.
-  Cited in `QKDConfig` for its smallest positive-key sample (1.4e5 counts). In Round 76 it was the
+  Cited in `QKDConfig` for its smallest positive-key sample ($`1.4 \times 10^{5}`$ counts). In Round 76 it was the
   yardstick that showed the old fibre set was about 3x optimistic, and it was not adopted: it ran
-  three intensities, and under this project's 1-decoy finite-key analysis its noise needs 7e8 to 2e9
+  three intensities, and under this project's 1-decoy finite-key analysis its noise needs $`7 \times 10^{8}`$ to $`2 \times 10^{9}`$
   pulses for a key.
 
 - **Secure quantum key distribution over 421 km of optical fiber** - Boaron et al., *Phys. Rev. Lett.*
@@ -289,7 +289,7 @@ Two facts about what runs, checked 2026-10-30. The published `telecom_ids.qml` a
 the telecom page runs and verifies, is the RandomForest: a 200-tree ONNX tree ensemble with a 7-wide
 input. The quantum-kernel SVC and the QNN are trained offline and are not run by the page. And the
 SVC's fidelity kernel embeds one input and un-embeds the other with no entangling gate, so it equals
-the classical product kernel $`\prod_i \cos^2((x_i - x'_i)/2)`$ (to 2.2e-16 on 200 random pairs,
+the classical product kernel $`\prod_i \cos^2((x_i - x'_i)/2)`$ (to $`2.2 \times 10^{-16}`$ on 200 random pairs,
 PennyLane 0.45.1): its 0.8316 is the score of a kernel a laptop evaluates in closed form.
 
 That last sentence was briefly false. Round 33 re-ran `telecom_ids.py` **without** `--quantum` to
@@ -795,7 +795,7 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   classical data "appears to be an ill-motivated task" (read in the published PDF 2026-10-30). The
   finance and medical circuits here are moreover trees of two-qubit blocks on disjoint pairs, which a
   chain of small density-matrix maps reproduces exactly at any width (all six artefacts shipped
-  before Round 84 to 1.6e-6, checked 2026-10-30); telecom's circuit since Round 84 is Hur, Kim and
+  before Round 84 to $`1.6 \times 10^{-6}`$, checked 2026-10-30); telecom's circuit since Round 84 is Hur, Kim and
   Park's SU(4) block on every neighbouring pair, which is not a tree, and at 7 or 8 qubits the state
   vector is a few hundred amplitudes anyway.
   **The paper does not predict that logistic regression beats the circuit; that is measured here.**
@@ -2624,13 +2624,13 @@ Read 2026-10-28. The user chose a finite key at every fibre site and asked the p
 decide its block. What each source grounds is stated.
 
 - **Rusca et al. 2018** (arXiv:1801.03443), re-read for its channel and its blocks: $`n_Z`$, the Z-basis
-  detections, "defines the privacy amplification (PA) block size"; Table I's 1e7 and 1e9 rows with the
-  time each block takes (14 s at 26 dB, 20 min at 46 dB, for 1e7); and "the detector and the internal
+  detections, "defines the privacy amplification (PA) block size"; Table I's $`10^{7}`$ and $`10^{9}`$ rows with the
+  time each block takes (14 s at 26 dB, 20 min at 46 dB, for $`10^{7}`$); and "the detector and the internal
   losses of Bob's apparatus are included in the global attenuation". The last is the finding of the
   round: this repository's two Table I tests had applied a 50 percent detector on top of it.
 - **Boaron et al., "Secure quantum key distribution over 421 km of optical fiber"**, Phys. Rev. Lett.
   121, 190502 (2018). arXiv:1807.03222 `[link]` URL: https://arxiv.org/abs/1807.03222
-  VERIFIED in the arXiv text: privacy-amplification blocks of 8.2e6 bits to 302 km, and at 405 and
+  VERIFIED in the arXiv text: privacy-amplification blocks of $`8.2 \times 10^{6}`$ bits to 302 km, and at 405 and
   421 km reduced "by more than a factor of ten" to keep the acquisition "shorter than one day".
 - **Grunenfelder et al., "Performance and security of 5 GHz repetition rate polarization-based quantum
   key distribution"**, Appl. Phys. Lett. 117, 144003 (2020). arXiv:2007.15447 `[link]`
@@ -2643,15 +2643,15 @@ decide its block. What each source grounds is stated.
   ($`n_Z \le 10^8`$)", Rusca et al.'s bound, and a block time of 1.58 s at 50 km.
 - **Lucamarini et al.**, Opt. Express 21, 24550 (2013), arXiv:1310.0240, and IEEE JSTQE (2015),
   arXiv:1503.07335. READ by the round's research: a fixed 20 minute acquisition, the minority choice,
-  and the smallest positive samples (1.4e5 counts; 1.6e4 sifted bits).
+  and the smallest positive samples ($`1.4 \times 10^{5}`$ counts; $`1.6 \times 10^{4}`$ sifted bits).
 - **Yuan et al. (Toshiba)**, J. Lightwave Technol. 36, 3427 (2018), arXiv:1807.04484; **the Cambridge
   network** (npj Quantum Inf. 2019); **the Tokyo QKD Network** (arXiv:1103.3566); **SECOQC** (New J.
   Phys. 2009); **SwissQuantum** (arXiv:1203.4940). READ by the round's research: deployed systems fix
-  the block as bits (1e6 to 1e8) and let the time follow; none fixes it as a pulse count.
+  the block as bits ($`10^{6}`$ to $`10^{8}`$) and let the time follow; none fixes it as a pulse count.
 - **Lim et al. 2014** re-read: the "post-processing block size" is $`n_X`$, a count of key-basis
-  detections, evaluated at 1e4 to 1e9.
+  detections, evaluated at $`10^{4}`$ to $`10^{9}`$.
 - **ETSI GS QKD 005 (2010) and GS QKD 016 V2.1.1 (2024)**, read by the round's research: the block
-  size must be specified; neither gives a value. A search-engine summary claiming ETSI recommends 1e8
+  size must be specified; neither gives a value. A search-engine summary claiming ETSI recommends $`10^{8}`$
   or more is not supported by either document.
 
 ## Round 83 additions: sources cited without an entry, and the sources this round's corrections rest on
@@ -2727,7 +2727,7 @@ in the technical report.
 The page's trained QCNN ran on plaintext features and said so. These are the sources the private form rests on, and the search that found nothing nearer.
 
 - **Bermejo, Braccia, Rudolph, Holmes, Cincio and Cerezo, "Quantum Convolutional Neural Networks are Effectively Classically Simulable", PRX Quantum 7, 020304 (2026), doi:10.1103/8qt9-72ts, arXiv:2408.12739v2.** Sec. IV.B and Table I: classical data in a product (tensor-product) angle encoding needs no quantum resources; the paper calls QCNNs on classical data ill-motivated. This is why the circuit here is simulated classically and described as such.
-- **Schuld, "Supervised quantum machine learning models are kernel methods", arXiv:2101.11020.** A quantum model is linear in the encoded density matrix. For the product RY encoding used here that gives the form over the $`3^n`$ Pauli products: $`\langle O\rangle = \sum_P c_P\,\phi_P(x)`$, with $`c_P = 2^{-n}\operatorname{Tr}(A P)`$ and $`\phi_I = 1,\ \phi_X = \sin\theta,\ \phi_Z = \cos\theta`$ on each wire. `web/src/lib/qcnnPauli.ts` and `src/qsh/qhe/qcnn_pauli.py` compute it, and `npm run check:qcnn-ckks` holds the identity to rounding (at most 8e-15 on the shipped weights).
+- **Schuld, "Supervised quantum machine learning models are kernel methods", arXiv:2101.11020.** A quantum model is linear in the encoded density matrix. For the product RY encoding used here that gives the form over the $`3^n`$ Pauli products: $`\langle O\rangle = \sum_P c_P\,\phi_P(x)`$, with $`c_P = 2^{-n}\operatorname{Tr}(A P)`$ and $`\phi_I = 1,\ \phi_X = \sin\theta,\ \phi_Z = \cos\theta`$ on each wire. `web/src/lib/qcnnPauli.ts` and `src/qsh/qhe/qcnn_pauli.py` compute it, and `npm run check:qcnn-ckks` holds the identity to rounding (at most $`8 \times 10^{-15}`$ on the shipped weights).
 - **Schreiber, Eisert and Meyer, "Classical surrogates for quantum learning models", Phys. Rev. Lett. 131, 100803 (2023), arXiv:2206.11740,** and **Bowles, Ahmed and Schuld, "Better than classical? The subtle art of benchmarking quantum machine learning models", arXiv:2403.07059.** Why the QCNN's figures are read against a classical model on the same split: the raw-input logistic regression the trainer records, and logistic regression on the same Pauli products, which `scripts/train/qcnn_classical_surrogate.py` adds. The QCNN is trained on labels and has no teacher to compare with.
 - **Quantum routes, and why none runs in a browser.** Broadbent and Jeffery (CRYPTO 2015, arXiv:1412.8766) need EPR registers or auxiliary states per T gate; Dulek, Schaffner and Speelman (CRYPTO 2016, arXiv:1603.09717) put one EPR gadget per T gate in a quantum evaluation key. **Ortega and Martin-Delgado, arXiv:2602.12712 (v1, 13 Feb 2026, no journal reference)** is the only server-held-QCNN private inference found: simulation only, 8 qubits on MNIST at 16x16 with amplitude encoding, plaintext accuracy 0.967, the homomorphic evaluation run on five samples (Fig. 10), two ancilla qubits returned to the client per T gate, and no runtime, communication or concrete T-count reported; its Sec. VI.1 says algorithmic guarantees for the server's model cannot be given for all weights.
 - **Search negative, 2026-11-09.** Homomorphic encryption of the input to a simulated QNN or VQC, multi-party computation for QNN inference, and production use of private QNN inference: arXiv API on titles and abstracts, 17 web searches, GitHub. Nothing found. Semantic Scholar and DBLP rate-limited the search and ePrint PDFs were blocked, so absence here is not proof, and no claim of priority is made.
