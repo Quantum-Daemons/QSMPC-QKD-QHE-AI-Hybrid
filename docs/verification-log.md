@@ -4985,8 +4985,14 @@ The model's Hub card said "No code path evaluates this model under encryption", 
 `scripts/publish_hf.py` now renders, for a model whose page runs its own last layer under CKKS (`SPLIT_MODELS`), a
 paragraph saying so: the network up to its 512 pooled features in the clear on the data owner's side, the last layer
 under CKKS on them, and nothing else of it encrypted. A test ties the page's model key to that set. A card rendered
-for a private repository keeps the plain sentence, since the page cannot fetch the model then. The Hub's copy changes
-only when the card is republished, with the owner's approval.
+for a private repository keeps the plain sentence, since the page cannot fetch the model then. With the owner's
+approval of 2026-11-15, `scripts/publish_hf.py --key medical_fl.cxr_fedavg --public` republished it as revision
+88f4f9661582f012e5356555b0bba5a6493f74db: the same eleven files, of which only the card changed. The publisher had
+first refused from a worktree whose `onnx/` was a link it does not follow, since the Hub held graphs the folder no
+longer produced; it ran from the folder that holds them. `scripts/pin_hub_hashes.py` pinned the revision with the
+seven fetched files' digests unchanged, `scripts/export_config.py` carried it to the page, and
+`scripts/export_cxr_head.py` wrote the head for it with the same check. The Hub's API reports the revision public with
+12 files, and its card carries the split paragraph.
 
 The same PR fixes item 9 of the owner's audit of 2026-11-13: one medical run fetched the CKKS student's evaluation
 sample twice, once for the student's CKKS and MPC stages and once for its verification, each with its own cache. The

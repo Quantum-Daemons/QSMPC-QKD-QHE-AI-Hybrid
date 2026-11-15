@@ -1,7 +1,7 @@
 {
  "_about": "The chest X-ray model's last layer for the medical page's split inference; written by scripts/export_cxr_head.py from the published model.safetensors and checked against the published graphs.",
  "model": "medical_fl.cxr_fedavg",
- "hf_revision": "c4287b8bdee3da7c85d3676d67e53156571c5843",
+ "hf_revision": "88f4f9661582f012e5356555b0bba5a6493f74db",
  "check": {
   "films": 16,
   "max_abs_logit_difference_float32": 1.2305400947099088e-06,
