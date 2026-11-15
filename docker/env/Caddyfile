@@ -16,6 +16,29 @@
 	@wasm path *.wasm
 	header @wasm Content-Type application/wasm
 
+	# Caching (Round 86, 2026-11-15). Vite names every file under /assets/ by its content hash, so a name never
+	# changes meaning and is kept for a year. Everything else, the app shell above all, is revalidated on each load
+	# (ETag, a 304 when unchanged). With no header Chrome kept a shell by its heuristic, a tenth of the time since
+	# Last-Modified, and after a deploy loaded a bundle the new image no longer serves. Both Caddyfiles carry it.
+	# Only a file that exists: a 404 for a hash the image does not have must not be kept for a year, or a rollback
+	# to the image that has it would stay broken in that browser.
+	@hashed {
+		path /assets/*
+		file {
+			root /srv
+		}
+	}
+	header @hashed Cache-Control "public, max-age=31536000, immutable"
+	@unhashed {
+		not {
+			path /assets/*
+			file {
+				root /srv
+			}
+		}
+	}
+	header @unhashed Cache-Control "no-cache"
+
 	# API + WebSocket -> backend container (handled exclusively, before the SPA)
 	handle /api/* {
 		reverse_proxy api:8000

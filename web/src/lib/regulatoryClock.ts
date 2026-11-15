@@ -83,7 +83,7 @@ export const CLOCK: ClockRow[] = [
   { lane: "US federal", short: "agency plans due", when: "~2026-10-22", t: 2026.81, instrument: "OMB M-26-15", binds: "US federal agencies",
     what: "agency PQC migration plans due (120 days after 2026-06-24)", firmness: "passed", sources: [SOURCES.m2615] },
   { lane: "US federal", short: "FAR proposal due", when: "~2026-12-19", t: 2026.97, instrument: "EO 14412, sec. 6(c)", binds: "US federal contractors",
-    what: "FAR Council ordered to publish, within 180 days of the order, a proposed rule amending the FAR to require covered contractors to comply by 2030-12-31 with NIST's FIPS, including all applicable FIPS incorporating PQC algorithms; no such proposed rule in the Federal Register as of 2026-11-05", firmness: "ordered", sources: [SOURCES.eo14412] },
+    what: "FAR Council ordered to publish, within 180 days of the order, a proposed rule amending the FAR to require covered contractors to comply by 2030-12-31 with NIST's FIPS, including all applicable FIPS incorporating PQC algorithms; no such proposed rule in the Federal Register as of 2026-11-15", firmness: "ordered", sources: [SOURCES.eo14412] },
   { lane: "EU", short: "EU first steps", when: "2026-12-31", t: 2027.0, instrument: "EU NIS CG PQC roadmap v1.1", binds: "EU Member States",
     what: "first steps; national roadmaps; planning and pilots initiated for high- and medium-risk use cases", firmness: "target", sources: [SOURCES.nisRoadmap] },
   { lane: "US NSS", short: "new NSS acquisitions", when: "2027-01-01", t: 2027.0, instrument: "CNSSP 15 (CNSA 2.0)", binds: "US national security systems ONLY",
