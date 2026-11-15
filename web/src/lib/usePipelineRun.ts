@@ -577,12 +577,12 @@ export function usePipelineRun(usecase: string, recordRef: RefObject<HTMLElement
   // protocol and the QSMPC op live in params, not in the family selects, and passing only the family
   // is what once let an E91 run draw a BB84 arrow.
   const diagramConfig: DiagramConfig = useMemo(() => ({
-    kem, qkd: effectiveQkd, sig, optiqkd, workload, mpcCnn: mpcCnn && DEMO, mpcMlp: mpcMlp && DEMO, mpcGnn: mpcGnn && DEMO, multiPsi: multiPsi && DEMO,
+    kem, qkd: effectiveQkd, sig, optiqkd, workload, mpcCnn: mpcCnn && DEMO, mpcMlp: mpcMlp && DEMO, mpcGnn: mpcGnn && DEMO, multiPsi: multiPsi && DEMO, multiPsiParties,
     qkdProtocol: String(params.qkd_protocol ?? ""),
     qsmpcOp: String(params.qsmpc_op ?? ""),
     inference: String(params.inference ?? ""),
     custody: String(params.lending_custody ?? ""),
-  }), [kem, effectiveQkd, sig, optiqkd, workload, params, mpcCnn, mpcMlp, mpcGnn, multiPsi]);
+  }), [kem, effectiveQkd, sig, optiqkd, workload, params, mpcCnn, mpcMlp, mpcGnn, multiPsi, multiPsiParties]);
   useEffect(() => {
     setRunStatus(inFlight ? { state, active } : null);
   }, [inFlight, state, active]);

@@ -104,6 +104,16 @@ check("psi", !psi?.row.many && psi?.row.flow === "both" && psi?.row.channel === 
   && /OPRF client/.test(psi?.row.a ?? "") && /OPRF server/.test(psi?.row.b ?? ""),
   "finance's PSI is not drawn as the OPRF exchange between the two banks (Bank A the client, Bank B the server) under the session key");
 
+// The finance page's PSI among banks under MPC (Round 86): its banks, not the secure sum's configured parties.
+const banks = Number(cfg.multi_party_psi?.parties);
+const mpsi = find(rowsOf("finance_aml", { multiPsi: true }), "qsmpc_compute", (row) => row.many?.noun === "bank");
+check("parties", mpsi?.row.many?.count === banks && mpsi?.row.channel === "mpc" && /garbled circuit/.test(mpsi?.row.b ?? ""),
+  `finance's PSI under MPC draws ${mpsi?.row.many?.count} ${mpsi?.row.many?.noun ?? "parties"}; the control runs it among ${banks} banks in one garbled circuit`);
+const mpsi4 = find(rowsOf("finance_aml", { multiPsi: true, multiPsiParties: 3 }, { mpsi_parties: 4 }), "qsmpc_compute", (row) => row.many?.noun === "bank");
+check("parties", mpsi4?.row.many?.count === 4, `a PSI run reporting 4 banks draws ${mpsi4?.row.many?.count}`);
+const mpsi5 = find(rowsOf("finance_aml", { multiPsi: true, multiPsiParties: 5 }), "qsmpc_compute", (row) => row.many?.noun === "bank");
+check("parties", mpsi5?.row.many?.count === 5, `the control set to 5 banks draws ${mpsi5?.row.many?.count} before a run`);
+
 // 4. The inference's client.
 const clientOf = (usecase) => {
   const r = find(rowsOf(usecase), "private_inference", (row) => row.channel === "fhe")?.row;
