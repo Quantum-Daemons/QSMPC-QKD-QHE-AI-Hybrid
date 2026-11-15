@@ -15,6 +15,7 @@
     "check:hybrid-cnn": "node scripts/check_hybrid_cnn.mjs",
     "check:hybrid-mlp": "node scripts/check_hybrid_mlp.mjs",
     "check:hybrid-gnn": "node scripts/check_hybrid_gnn.mjs",
+    "check:graph-neighbourhood": "node scripts/check_graph_neighbourhood.mjs",
     "check:qcnn-ckks": "node scripts/check_qcnn_ckks.mjs",
     "check:qcnn-rescore": "node scripts/check_qcnn_rescore.mjs",
     "check:multi-psi": "node scripts/check_multi_psi.mjs",

@@ -19,7 +19,9 @@ What it writes, after checking each against the PyTorch model:
 - `onnx/model.onnx`: the hetero model, exported by `torch.export` at opset 18 and saved as one file (a browser cannot
   mount ONNX external data), its inputs the node features, both edge directions' indices and features;
 - `eval_sample.json`: the 16 transactions the published MLP and compact GNN are checked on, their sampled
-  neighbourhood (one batch, seeded), the seed edges' positions in it, their labels and the logits PyTorch gives;
+  neighbourhood (one batch, seeded), the seed edges' positions in it, their labels and the logits PyTorch gives, and
+  for the page's view each edge's row and time with the counts of `neighbourhood.py` (a causal sample that holds a
+  transfer beyond its seed's batch of 2,048 is refused);
 - `export_report.json`: ONNX Runtime against PyTorch on that neighbourhood, the decisions at the threshold tuned on
   the validation window, and the subgraph's size.
 """
@@ -105,7 +107,7 @@ def main() -> int:
                                         edge_label=labels[i:i + 1], batch_size=1, shuffle=False,
                                         transform=_DropLater(cut, transform))
             parts.append(([p], next(iter(loader))))
-    xs, eis, eas, ris, ras, seed_at = [], [], [], [], [], []
+    xs, eis, eas, ris, ras, seed_at, poss, secs = [], [], [], [], [], [], [], []
     off_n = off_e = 0
     for seeds_here, batch in parts:
         ids = batch[et].edge_attr[:, 0].long()
@@ -114,6 +116,8 @@ def main() -> int:
             if len(hits) != 1:
                 raise SystemExit(f"position {p} appears {len(hits)} times in its batch where it should appear once")
             seed_at.append(off_e + int(hits[0]))
+        poss.append(ids)
+        secs.append(batch[et].timestamps.double())
         xs.append(batch["node"].x.float())
         eis.append(batch[et].edge_index + off_n)
         ris.append(batch[rt].edge_index + off_n)
@@ -123,6 +127,15 @@ def main() -> int:
         off_e += batch[et].edge_index.shape[1]
     x, ei, ri = torch.cat(xs), torch.cat(eis, 1), torch.cat(ris, 1)
     ea, ra = torch.cat(eas), torch.cat(ras)
+    # The IBM tab's view (the owner's choice of 2026-11-15): each forward edge's row in the time-ordered file and its
+    # time, and per seed what the model read, counted by neighbourhood.py; the page re-derives the counts.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from neighbourhood import BATCH_ROWS, seed_fields
+    view_pos, view_sec = torch.cat(poss).numpy(), torch.cat(secs).numpy()
+    fields = seed_fields(ei.numpy(), view_pos, view_sec, seed_at)
+    if a.protocol == "causal" and any(f["beyond_batch"] for f in fields):
+        raise SystemExit("a causal neighbourhood holds a transfer beyond its seed's batch of 2,048")
+    whole = bool(np.all(view_sec == np.round(view_sec)))
 
     class Flat(torch.nn.Module):
         def __init__(self, m):
@@ -190,6 +203,12 @@ def main() -> int:
                    "rev_edge_index": ri.numpy().ravel().tolist(), "rev_edge_attr": ra.numpy().ravel().tolist(), "n_edges": int(ei.shape[1]),
                    "n_rev_edges": int(ri.shape[1])},
         "seeds": {"positions_in_batch": seed_at, "row_index_in_test_window": rows.tolist(), "labels": labels.tolist()},
+        "view": {"about": ("Each forward edge's row in the time-ordered file (its batch of 2,048 is the row divided by "
+                           "2,048) and its time in seconds from the corpus's first transfer, and per seed what the model "
+                           "read, as scripts/train/ibm_multignn/neighbourhood.py defines it."),
+                 "batch_rows": BATCH_ROWS, "edge_position": view_pos.tolist(),
+                 "edge_seconds": view_sec.astype(np.int64).tolist() if whole else view_sec.tolist(),
+                 "per_seed": fields},
         "expected": {"logits": ort_logits.tolist(), "logits_pytorch": seed_logits.tolist(), "decision_threshold": thr,
                      "decision_threshold_note": "the laundering probability at which F1 peaks on the validation window, from dump_logits.py",
                      "graph": "model.onnx", "accuracy": float((pred == labels.numpy()).mean()),

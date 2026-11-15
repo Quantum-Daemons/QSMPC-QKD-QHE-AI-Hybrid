@@ -70,7 +70,7 @@ export function layoutExemplar(g: Exemplar, w: number, base: number): { layout: 
 }
 
 /** The scored transaction's two accounts in the centre, their counterparties in staggered columns to the left and the right, and accounts that touch both above and below. */
-export function layoutScored(g: ScoredRow, w: number, base: number): { layout: Layout; h: number } {
+export function layoutScored(g: Pick<ScoredRow, "nodes" | "from" | "to"> & { edges: { from: string; to: string }[] }, w: number, base: number): { layout: Layout; h: number } {
   const margin = 22, touchesFrom = new Set<string>(), touchesTo = new Set<string>();
   for (const e of g.edges) {
     if (e.from === g.from || e.to === g.from) { touchesFrom.add(e.from); touchesFrom.add(e.to); }

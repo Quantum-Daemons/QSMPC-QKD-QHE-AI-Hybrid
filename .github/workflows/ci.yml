@@ -369,6 +369,11 @@ jobs:
         working-directory: web
         run: npm run check:hybrid-gnn
 
+      # What IBM's Multi-GNN read for each scored transfer: the IBM tab's counts against a hand-counted graph.
+      - name: The IBM tab's neighbourhood counts
+        working-directory: web
+        run: npm run check:graph-neighbourhood
+
       # The trained QCNN with its input under CKKS: the module the page runs, against the circuit in the clear.
       - name: The trained QCNN under CKKS
         working-directory: web
