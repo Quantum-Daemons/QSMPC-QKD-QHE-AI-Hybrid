@@ -94,10 +94,10 @@ count-weighted / event-weighted, equal-frequency:
 
 | bins | raw | `platt_prob` | `platt_logit` | isotonic |
 |---|---|---|---|---|
-| 10 | 6.484e-04 / 0.0036 | 1.832e-03 / 0.0091 | 7.837e-04 / 0.0053 | 7.746e-04 / 0.0053 |
-| 20 | 6.484e-04 / 0.0036 | 1.832e-03 / 0.0131 | 7.886e-04 / 0.0070 | 7.750e-04 / 0.0073 |
-| 50 | 7.054e-04 / 0.0030 | 1.835e-03 / 0.0195 | 7.911e-04 / 0.0095 | 7.786e-04 / 0.0106 |
-| 100 | 9.828e-04 / 0.0106 | 1.840e-03 / 0.0239 | 7.982e-04 / 0.0109 | 7.822e-04 / 0.0141 |
+| 10 | $`6.484 \times 10^{-4}`$ / 0.0036 | $`1.832 \times 10^{-3}`$ / 0.0091 | $`7.837 \times 10^{-4}`$ / 0.0053 | $`7.746 \times 10^{-4}`$ / 0.0053 |
+| 20 | $`6.484 \times 10^{-4}`$ / 0.0036 | $`1.832 \times 10^{-3}`$ / 0.0131 | $`7.886 \times 10^{-4}`$ / 0.0070 | $`7.750 \times 10^{-4}`$ / 0.0073 |
+| 50 | $`7.054 \times 10^{-4}`$ / 0.0030 | $`1.835 \times 10^{-3}`$ / 0.0195 | $`7.911 \times 10^{-4}`$ / 0.0095 | $`7.786 \times 10^{-4}`$ / 0.0106 |
+| 100 | $`9.828 \times 10^{-4}`$ / 0.0106 | $`1.840 \times 10^{-3}`$ / 0.0239 | $`7.982 \times 10^{-4}`$ / 0.0109 | $`7.822 \times 10^{-4}`$ / 0.0141 |
 
 The ORDERING is identical at every bin count. The event-weighted column climbs with bin count for
 every arm, which is what happens when 2,321 events are spread over more bins, and is a property of
@@ -107,14 +107,14 @@ the estimator rather than of any arm.
 
 | arm | MCB | DSC | UNC |
 |---|---|---|---|
-| raw | 9.2383e-05 | 1.1093e-04 | 1.5211e-03 |
-| `platt_prob` | 4.4116e-05 | 1.1093e-04 | 1.5211e-03 |
-| `platt_logit` | 1.1782e-05 | 1.1093e-04 | 1.5211e-03 |
-| isotonic | **9.3363e-06** | 1.0829e-04 | 1.5211e-03 |
+| raw | $`9.2383 \times 10^{-5}`$ | $`1.1093 \times 10^{-4}`$ | $`1.5211 \times 10^{-3}`$ |
+| `platt_prob` | $`4.4116 \times 10^{-5}`$ | $`1.1093 \times 10^{-4}`$ | $`1.5211 \times 10^{-3}`$ |
+| `platt_logit` | $`1.1782 \times 10^{-5}`$ | $`1.1093 \times 10^{-4}`$ | $`1.5211 \times 10^{-3}`$ |
+| isotonic | **$`9.3363 \times 10^{-6}`$** | $`1.0829 \times 10^{-4}`$ | $`1.5211 \times 10^{-3}`$ |
 
 MCB is the term calibration exists to move, and every arm moves it the right way. Isotonic moves it
 furthest, `platt_logit` is 1.26x isotonic's, and the shipped arm is **4.7x** isotonic's. Note
-isotonic's DSC: 1.0829e-04 against 1.1093e-04 for the other three. **Discrimination fell.** A
+isotonic's DSC: $`1.0829 \times 10^{-4}`$ against $`1.1093 \times 10^{-4}`$ for the other three. **Discrimination fell.** A
 monotone map is not supposed to be able to do that, which is section 3.
 
 ### Where the shipped map actually goes wrong: the reliability table
@@ -144,9 +144,9 @@ Its full output support is **[0.00090148, 0.695715]**: it cannot express a risk 
 any input whatsoever, on a corpus whose base rate is 1 in 656 and whose first decile's observed rate
 is 1 in 152,351. That is the mechanism, and it follows directly from the form of the map. Platt fits
 $`p = 1/(1 + e^{a s + b})`$, linear in $`s`$. With $`a = -7.8378`$, $`b = 7.0106`$ and $`s < 10^{-4}`$ across
-nine deciles, `a*s` is below 1e-3 and the map is a constant to four decimals. Fitted on `logit(s)`
+nine deciles, `a*s` is below $`10^{-3}`$ and the map is a constant to four decimals. Fitted on `logit(s)`
 instead, `a = -0.58535`, `b = 1.64175` and the same two floats spread deciles 1 to 9 over
-5.2e-06 to 4.4e-04.
+$`5.2 \times 10^{-6}`$ to $`4.4 \times 10^{-4}`$.
 
 **The unit tests could not have caught this.** `tests/test_calibration.py` names its fixture
 variable `logit` and builds it as `3.0 * (x - 0.5)`, so every test exercises `fit_platt` on a
@@ -181,15 +181,15 @@ of it is not a rounding difference.
 
 | arm | output support | distinct | rows at exactly 0 | true positives among them |
 |---|---|---|---|---|
-| raw | [4.407e-11, 0.999971] | 1,388,669 | 0 | 0 |
-| `platt_prob` | [9.015e-04, 0.695715] | 1,388,669 | 0 | 0 |
-| `platt_logit` | [1.680e-07, 0.988628] | 1,388,669 | 0 | 0 |
+| raw | [$`4.407 \times 10^{-11}`$, 0.999971] | 1,388,669 | 0 | 0 |
+| `platt_prob` | [$`9.015 \times 10^{-4}`$, 0.695715] | 1,388,669 | 0 | 0 |
+| `platt_logit` | [$`1.680 \times 10^{-7}`$, 0.988628] | 1,388,669 | 0 | 0 |
 | isotonic | [0, 1] | 138 | **464,176 (30.5%)** | **1** |
 
 Isotonic assigns probability exactly 0 to 464,176 test transactions and exactly 1 to 10. One real
-laundering transaction landed on an exact zero. `log_loss` clips at 1e-15, so the run scores; the
+laundering transaction landed on an exact zero. `log_loss` clips at $`10^{-15}`$, so the run scores; the
 scored value is a property of the clip, not of the model. Measured directly, that single row
-contributes 0.28% of isotonic's whole log loss (2.267e-05 of 0.00820025), and re-clipping at
+contributes 0.28% of isotonic's whole log loss ($`2.267 \times 10^{-5}`$ of 0.00820025), and re-clipping at
 $`1/(2n) = 7.033\times10^{-7}`$ moves the total only to 0.00818709. So the hazard is real and, on this draw,
 small. It is a hazard rather than a result because one event is one event.
 
@@ -208,23 +208,23 @@ and scored on the same untouched 1,523,504-row test split.
 Reported as **Platt minus isotonic** on the Brier score. Positive means isotonic is ahead.
 `sd` is the standard deviation across the 20 draws.
 
-### Sweep A: base rate pinned at 1.13e-03, cases and events scale together
+### Sweep A: base rate pinned at $`1.13 \times 10^{-3}`$, cases and events scale together
 
 | events | cases | isotonic Brier | `platt_prob` - iso | sd | `platt_logit` - iso | sd | isotonic AUPRC |
 |---|---|---|---|---|---|---|---|
-| 3 | 2,663 | 0.00149143 | +8.173e-06 | 4.2e-05 | -4.011e-05 | 6.5e-05 | 0.053950 |
-| 6 | 5,326 | 0.00145948 | +1.686e-05 | 3.4e-05 | -2.013e-05 | 3.4e-05 | 0.075536 |
-| 12 | 10,651 | 0.00145237 | +1.670e-05 | 2.1e-05 | -2.198e-05 | 2.4e-05 | 0.086150 |
-| 25 | 22,190 | 0.00143718 | +2.402e-05 | 9.2e-06 | -9.030e-06 | 1.3e-05 | 0.093290 |
-| 50 | 44,380 | 0.00143292 | +2.597e-05 | 8.4e-06 | -8.812e-06 | 8.5e-06 | 0.101354 |
-| 100 | 88,760 | 0.00142691 | +2.835e-05 | 2.6e-06 | -3.690e-06 | 3.0e-06 | 0.103640 |
-| 200 | 177,520 | 0.00142414 | +3.071e-05 | 2.0e-06 | -1.484e-06 | 1.3e-06 | 0.107924 |
-| 400 | 355,041 | 0.00142300 | +3.140e-05 | 9.8e-07 | -5.497e-07 | 7.1e-07 | 0.110532 |
-| 801 | 710,969 | 0.00142218 | +3.214e-05 | - | -1.919e-07 | - | 0.112125 |
+| 3 | 2,663 | 0.00149143 | $`+8.173 \times 10^{-6}`$ | $`4.2 \times 10^{-5}`$ | $`-4.011 \times 10^{-5}`$ | $`6.5 \times 10^{-5}`$ | 0.053950 |
+| 6 | 5,326 | 0.00145948 | $`+1.686 \times 10^{-5}`$ | $`3.4 \times 10^{-5}`$ | $`-2.013 \times 10^{-5}`$ | $`3.4 \times 10^{-5}`$ | 0.075536 |
+| 12 | 10,651 | 0.00145237 | $`+1.670 \times 10^{-5}`$ | $`2.1 \times 10^{-5}`$ | $`-2.198 \times 10^{-5}`$ | $`2.4 \times 10^{-5}`$ | 0.086150 |
+| 25 | 22,190 | 0.00143718 | $`+2.402 \times 10^{-5}`$ | $`9.2 \times 10^{-6}`$ | $`-9.030 \times 10^{-6}`$ | $`1.3 \times 10^{-5}`$ | 0.093290 |
+| 50 | 44,380 | 0.00143292 | $`+2.597 \times 10^{-5}`$ | $`8.4 \times 10^{-6}`$ | $`-8.812 \times 10^{-6}`$ | $`8.5 \times 10^{-6}`$ | 0.101354 |
+| 100 | 88,760 | 0.00142691 | $`+2.835 \times 10^{-5}`$ | $`2.6 \times 10^{-6}`$ | $`-3.690 \times 10^{-6}`$ | $`3.0 \times 10^{-6}`$ | 0.103640 |
+| 200 | 177,520 | 0.00142414 | $`+3.071 \times 10^{-5}`$ | $`2.0 \times 10^{-6}`$ | $`-1.484 \times 10^{-6}`$ | $`1.3 \times 10^{-6}`$ | 0.107924 |
+| 400 | 355,041 | 0.00142300 | $`+3.140 \times 10^{-5}`$ | $`9.8 \times 10^{-7}`$ | $`-5.497 \times 10^{-7}`$ | $`7.1 \times 10^{-7}`$ | 0.110532 |
+| 801 | 710,969 | 0.00142218 | $`+3.214 \times 10^{-5}`$ | - | $`-1.919 \times 10^{-7}`$ | - | 0.112125 |
 
 **No crossover anywhere.** Isotonic is ahead of the shipped Platt at every size down to 3 events and
 2,663 cases; below about 25 events the lead stops being separable from the draw-to-draw noise
-(+1.670e-05 against sd 2.1e-05 at 12 events) but it never reverses. `platt_logit` is nominally ahead
+($`+1.670 \times 10^{-5}`$ against sd $`2.1 \times 10^{-5}`$ at 12 events) but it never reverses. `platt_logit` is nominally ahead
 of isotonic at all nine sizes and never by as much as 1 sd; the evidence there is the consistency of
 the sign across nine independent grids, not any one cell.
 
@@ -237,23 +237,23 @@ and events cannot be separated at the small end at all - that is a limit of the 
 
 | events | cases | base rate | isotonic Brier | `platt_prob` - iso | sd | `platt_logit` - iso | sd |
 |---|---|---|---|---|---|---|---|
-| 3 | 710,171 | 4.22e-06 | 0.00152014 | +3.019e-06 | 3.4e-06 | -4.404e-05 | 3.3e-06 |
-| 6 | 710,174 | 8.45e-06 | 0.00151774 | +5.413e-06 | 4.5e-06 | -4.063e-05 | 4.5e-06 |
-| 12 | 710,180 | 1.69e-05 | 0.00151379 | +9.356e-06 | 4.8e-06 | -3.457e-05 | 4.3e-06 |
-| 25 | 710,193 | 3.52e-05 | 0.00150517 | +1.794e-05 | 5.4e-06 | -2.316e-05 | 5.9e-06 |
-| 50 | 710,218 | 7.04e-05 | 0.00149449 | +2.855e-05 | 5.5e-06 | -1.025e-05 | 6.2e-06 |
-| 100 | 710,268 | 1.41e-04 | 0.00147867 | +4.422e-05 | 6.3e-06 | -2.976e-06 | 8.8e-06 |
-| 200 | 710,368 | 2.82e-04 | 0.00145978 | +6.278e-05 | 3.2e-06 | **+5.069e-06** | 3.6e-06 |
-| 400 | 710,568 | 5.63e-04 | 0.00143907 | +1.759e-05 | 2.1e-06 | **+2.890e-06** | 2.9e-06 |
-| 801 | 710,969 | 1.13e-03 | 0.00142218 | +3.214e-05 | - | -1.919e-07 | - |
+| 3 | 710,171 | $`4.22 \times 10^{-6}`$ | 0.00152014 | $`+3.019 \times 10^{-6}`$ | $`3.4 \times 10^{-6}`$ | $`-4.404 \times 10^{-5}`$ | $`3.3 \times 10^{-6}`$ |
+| 6 | 710,174 | $`8.45 \times 10^{-6}`$ | 0.00151774 | $`+5.413 \times 10^{-6}`$ | $`4.5 \times 10^{-6}`$ | $`-4.063 \times 10^{-5}`$ | $`4.5 \times 10^{-6}`$ |
+| 12 | 710,180 | $`1.69 \times 10^{-5}`$ | 0.00151379 | $`+9.356 \times 10^{-6}`$ | $`4.8 \times 10^{-6}`$ | $`-3.457 \times 10^{-5}`$ | $`4.3 \times 10^{-6}`$ |
+| 25 | 710,193 | $`3.52 \times 10^{-5}`$ | 0.00150517 | $`+1.794 \times 10^{-5}`$ | $`5.4 \times 10^{-6}`$ | $`-2.316 \times 10^{-5}`$ | $`5.9 \times 10^{-6}`$ |
+| 50 | 710,218 | $`7.04 \times 10^{-5}`$ | 0.00149449 | $`+2.855 \times 10^{-5}`$ | $`5.5 \times 10^{-6}`$ | $`-1.025 \times 10^{-5}`$ | $`6.2 \times 10^{-6}`$ |
+| 100 | 710,268 | $`1.41 \times 10^{-4}`$ | 0.00147867 | $`+4.422 \times 10^{-5}`$ | $`6.3 \times 10^{-6}`$ | $`-2.976 \times 10^{-6}`$ | $`8.8 \times 10^{-6}`$ |
+| 200 | 710,368 | $`2.82 \times 10^{-4}`$ | 0.00145978 | $`+6.278 \times 10^{-5}`$ | $`3.2 \times 10^{-6}`$ | **$`+5.069 \times 10^{-6}`$** | $`3.6 \times 10^{-6}`$ |
+| 400 | 710,568 | $`5.63 \times 10^{-4}`$ | 0.00143907 | $`+1.759 \times 10^{-5}`$ | $`2.1 \times 10^{-6}`$ | **$`+2.890 \times 10^{-6}`$** | $`2.9 \times 10^{-6}`$ |
+| 801 | 710,969 | $`1.13 \times 10^{-3}`$ | 0.00142218 | $`+3.214 \times 10^{-5}`$ | - | $`-1.919 \times 10^{-7}`$ | - |
 
 Against the **shipped** Platt: no crossover. Cutting events by 267x, from 801 to 3, with the case
 count held at 710,969, never flips the sign.
 
 Against the **correct** Platt: there IS a crossover, and it is on the event axis. `platt_logit` beats
-isotonic by 13 sd at 3 events (-4.404e-05, sd 3.3e-06) and by 3.9 sd at 25 (-2.316e-05, sd 5.9e-06);
-the sign turns over at 200-400 events (+5.069e-06 at 1.4 sd, +2.890e-06 at 1.0 sd) and returns to a
-dead heat at 801 (-1.919e-07). So for a correctly applied Platt, the quantity that governs is the
+isotonic by 13 sd at 3 events ($`-4.404 \times 10^{-5}`$, sd $`3.3 \times 10^{-6}`$) and by 3.9 sd at 25 ($`-2.316 \times 10^{-5}`$, sd $`5.9 \times 10^{-6}`$);
+the sign turns over at 200-400 events ($`+5.069 \times 10^{-6}`$ at 1.4 sd, $`+2.890 \times 10^{-6}`$ at 1.0 sd) and returns to a
+dead heat at 801 ($`-1.919 \times 10^{-7}`$). So for a correctly applied Platt, the quantity that governs is the
 event count, and the threshold is roughly **100-200 events** - two orders of magnitude below the
 CASE thresholds the papers state, and already passed by this calibration set's 801.
 
@@ -261,23 +261,23 @@ CASE thresholds the papers state, and already passed by this calibration set's 8
 
 | events | cases | base rate | isotonic Brier | `platt_prob` - iso | sd | `platt_logit` - iso | sd |
 |---|---|---|---|---|---|---|---|
-| 100 | 500 | 2.00e-01 | 0.02279629 | **-5.935e-03** | 3.0e-03 | -2.129e-03 | 2.1e-03 |
-| 100 | 1,000 | 1.00e-01 | 0.01072297 | **-4.576e-03** | 1.7e-03 | -7.896e-04 | 8.6e-04 |
-| 100 | 3,000 | 3.33e-02 | 0.00373975 | **-1.298e-03** | 2.7e-04 | -1.485e-04 | 1.2e-04 |
-| 100 | 10,000 | 1.00e-02 | 0.00183834 | **-1.853e-04** | 6.0e-05 | -8.508e-05 | 5.2e-05 |
-| 100 | 30,000 | 3.33e-03 | 0.00146227 | +3.368e-05 | 1.3e-05 | -2.129e-05 | 2.0e-05 |
-| 100 | 100,000 | 1.00e-03 | 0.00142750 | +2.806e-05 | 3.6e-06 | -1.338e-06 | 1.5e-06 |
-| 100 | 300,000 | 3.33e-04 | 0.00145459 | +6.772e-05 | 3.8e-06 | +5.498e-06 | 4.4e-06 |
-| 100 | 710,268 | 1.41e-04 | 0.00147774 | +4.516e-05 | 5.3e-06 | -2.159e-06 | 7.3e-06 |
+| 100 | 500 | $`2.00 \times 10^{-1}`$ | 0.02279629 | **$`-5.935 \times 10^{-3}`$** | $`3.0 \times 10^{-3}`$ | $`-2.129 \times 10^{-3}`$ | $`2.1 \times 10^{-3}`$ |
+| 100 | 1,000 | $`1.00 \times 10^{-1}`$ | 0.01072297 | **$`-4.576 \times 10^{-3}`$** | $`1.7 \times 10^{-3}`$ | $`-7.896 \times 10^{-4}`$ | $`8.6 \times 10^{-4}`$ |
+| 100 | 3,000 | $`3.33 \times 10^{-2}`$ | 0.00373975 | **$`-1.298 \times 10^{-3}`$** | $`2.7 \times 10^{-4}`$ | $`-1.485 \times 10^{-4}`$ | $`1.2 \times 10^{-4}`$ |
+| 100 | 10,000 | $`1.00 \times 10^{-2}`$ | 0.00183834 | **$`-1.853 \times 10^{-4}`$** | $`6.0 \times 10^{-5}`$ | $`-8.508 \times 10^{-5}`$ | $`5.2 \times 10^{-5}`$ |
+| 100 | 30,000 | $`3.33 \times 10^{-3}`$ | 0.00146227 | $`+3.368 \times 10^{-5}`$ | $`1.3 \times 10^{-5}`$ | $`-2.129 \times 10^{-5}`$ | $`2.0 \times 10^{-5}`$ |
+| 100 | 100,000 | $`1.00 \times 10^{-3}`$ | 0.00142750 | $`+2.806 \times 10^{-5}`$ | $`3.6 \times 10^{-6}`$ | $`-1.338 \times 10^{-6}`$ | $`1.5 \times 10^{-6}`$ |
+| 100 | 300,000 | $`3.33 \times 10^{-4}`$ | 0.00145459 | $`+6.772 \times 10^{-5}`$ | $`3.8 \times 10^{-6}`$ | $`+5.498 \times 10^{-6}`$ | $`4.4 \times 10^{-6}`$ |
+| 100 | 710,268 | $`1.41 \times 10^{-4}`$ | 0.00147774 | $`+4.516 \times 10^{-5}`$ | $`5.3 \times 10^{-6}`$ | $`-2.159 \times 10^{-6}`$ | $`7.3 \times 10^{-6}`$ |
 
 **The sign flips between 10,000 and 30,000 cases**, at a fixed 100 events, and it flips by margins of
 3 sd and up. This is the only cut in which the shipped Platt ever beats isotonic.
 
 Read that with its confound stated: thinning negatives at fixed events also raises the base rate,
-from 1.41e-04 to 2.00e-01. At 500 cases the calibration set is 20% positive and the test split is
+from $`1.41 \times 10^{-4}`$ to $`2.00 \times 10^{-1}`$. At 500 cases the calibration set is 20% positive and the test split is
 0.15%, so both arms are badly mis-located and the smooth one degrades more gracefully. The isotonic
 Brier column is not monotone in cases for the same reason - it is best at 100,000 cases (base rate
-1.00e-03, nearest the test split's 1.52e-03) and worse on either side. That column is measuring base
+$`1.00 \times 10^{-3}`$, nearest the test split's $`1.52 \times 10^{-3}`$) and worse on either side. That column is measuring base
 rate mismatch, not sample size.
 
 ### The answer
@@ -296,7 +296,7 @@ calibration set's 801 is past it either way.
 **Both readings converge on the same instruction.** ICML 2005's sentence - "when there are 1000 or
 more points in the calibration set, isotonic yields performance as good as, or better than, Platt" -
 holds here, at 710,969 cases, in the exact form it is written: **as good as**. The measured gap
-between isotonic and a correct Platt at full size is 1.9e-07 of Brier, 1.06e-05 of log loss, and the
+between isotonic and a correct Platt at full size is $`1.9 \times 10^{-7}`$ of Brier, $`1.06 \times 10^{-5}`$ of log loss, and the
 tie-break is that isotonic costs 9.09% of AUPRC and Platt costs none.
 
 ## Supplementary: the only 2,321-event calibration set available
@@ -317,8 +317,8 @@ Calibration set 1,523,504 cases / 2,321 events; scored on 710,969 cases / 801 ev
 | `platt_logit` | 0.00100574 | **0.00587767** | 0.00108245 | 0.011028 | 0.783752 | 3.327292 | 0.95836322 | 0.197493 | 685,000 |
 | isotonic | **0.00100033** | 0.00604684 | 0.00113179 | 0.010824 | 0.793681 | **3.320963** | 0.95799723 | 0.186739 | **97** |
 
-At 2,321 events the two split the two proper scoring rules - isotonic takes Brier by 5.4e-06,
-`platt_logit` takes log loss by 1.7e-05 - and isotonic again costs AUPRC, 0.197493 to 0.186739
+At 2,321 events the two split the two proper scoring rules - isotonic takes Brier by $`5.4 \times 10^{-6}`$,
+`platt_logit` takes log loss by $`1.7 \times 10^{-5}`$ - and isotonic again costs AUPRC, 0.197493 to 0.186739
 (-5.45%). Tripling the events from 801 to 2,321 does not separate them.
 
 ## What this does NOT establish
@@ -353,7 +353,7 @@ artifact is a defect with a timer on it.
 | `models/metrics.json` -> `finance_aml.gbm.calibration.why_not_isotonic` | NOT hand-edited. REGENERATED SINCE, by the `scripts/train/finance_aml.py` run that applied the fix; the block now carries `on_logit: true`, `logit_clip_eps`, the log-odds `formula` string and the new `a`/`b` |
 | `web/src/lib/config.defaults.json` -> `models/finance_aml[1].achieved.calibration` | NOT hand-edited. Derived from `models/metrics.json` via `scripts/export_config.py`, re-run after the retrain. Checked: no allowlist sits between the two, so `on_logit` and `logit_clip_eps` do reach the browser |
 | `web/src/components/ModelPanel.tsx` map row | CORRECTED SINCE, and it was the one live "landed in one of three sites" defect: the row rendered `p = 1 / (1 + exp(a*s + b))` unconditionally, so after the retrain it would have printed a score-domain formula beside logit-fitted floats. It now branches on `on_logit` |
-| `tests/test_calibration.py` | CORRECTED SINCE. The `imbalanced` fixture claimed a 1-in-650 base rate and 90% of scores below 1e-4 and delivered 1-in-16 and 34.8%, drawing its labels from the score itself - so the defect was not reproduced and a shape assertion would have passed on the broken arm. Rebuilt, and the missing near-constant test added. A second test now pins the ARTIFACT (`on_logit`, the formula string, the clip, and that the map can express a risk an order of magnitude below the base rate), because nothing in CI read that field and a revert of the trainer's one argument left every gate green |
+| `tests/test_calibration.py` | CORRECTED SINCE. The `imbalanced` fixture claimed a 1-in-650 base rate and 90% of scores below $`10^{-4}`$ and delivered 1-in-16 and 34.8%, drawing its labels from the score itself - so the defect was not reproduced and a shape assertion would have passed on the broken arm. Rebuilt, and the missing near-constant test added. A second test now pins the ARTIFACT (`on_logit`, the formula string, the clip, and that the map can express a risk an order of magnitude below the base rate), because nothing in CI read that field and a revert of the trainer's one argument left every gate green |
 | the private verification checklist's calibration rule (not published; it requires a calibration to be reported with the metric it cost) | CORRECTED SINCE. Its worked example was "measured on finance: Brier and MCB improved while log-loss got WORSE", which the fix makes false. The rule is kept; the example is re-labelled as the pre-fix state |
 | `docs/deliverable-verification.md` Round 46 stamp | CORRECTED SINCE. Still asserted in the present tense that `fit_platt` "is fed a probability"; every sibling site had a supersession note and this one did not |
 | `report/technical-report.tex`, `README.md` pin counts | ADJACENT, corrected where measured. The retrain unpinned both finance models (`hf_revision` -> `hf_revision_invalidated_by_retrain`), emptying the finance browser tier until a re-publish; README's "10 of 13" was wrong before and after, and is now stated from the registry (11 of 11 published specs pinned, 4 of 15 not published) |

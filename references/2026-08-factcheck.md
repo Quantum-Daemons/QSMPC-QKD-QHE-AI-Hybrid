@@ -48,13 +48,13 @@ Also reported, NOT reproduced here: `health.py:171` uses `n` where SP 800-90B se
 0.3416 / 0.1417.
 
 The reported downstream figures were re-derived and the repository was ALREADY right about them: the
-positive-key threshold at 50 km measures **3.84e7 pulses** at the retired pair and **1.40e7** at the
-shipped one, which is what Round 47 recorded (3.84e7 / 1.41e7). The sweep's "42,448 against 143,645"
+positive-key threshold at 50 km measures **$`3.84 \times 10^{7}`$ pulses** at the retired pair and **$`1.40 \times 10^{7}`$** at the
+shipped one, which is what Round 47 recorded ($`3.84 \times 10^{7}`$ / $`1.41 \times 10^{7}`$). The sweep's "42,448 against 143,645"
 is a sifted-bit figure, a different quantity from the pulse counts the docs quote, so nothing
 downstream needed changing - which is why the rule is to re-derive before correcting.
 
 **Why nothing caught it, which is the part worth keeping.** The refuted-band test builds
-`FiniteKeyParams()` bare and asserts the threshold lands in 5e6 to 2e8. Both pairs sit inside that
+`FiniteKeyParams()` bare and asserts the threshold lands in $`5 \times 10^{6}`$ to $`2 \times 10^{8}`$. Both pairs sit inside that
 band, so it was green on the defect and on the fix alike - a gate positioned exactly where the drift
 happens, with a tolerance wider than the effect. `tests/test_intensity_defaults_come_from_config.py`
 asserts the SOURCE of the default instead, which has no tolerance to hide in, and checks
@@ -67,9 +67,9 @@ consecutive rounds. Round 49's plan listed it as a known gap and it is still ope
 
 Reported consequences, unreproduced: the positive-key threshold quoted as "~1e5 sifted bits" is
 **42,448** at the shipped pair rather than 143,645; the "order of magnitude" phrasing at
-`finite_key.py:55` is **3.86x** at shipped intensities; and Lucamarini's 1.4e5, described as agreeing
+`finite_key.py:55` is **3.86x** at shipped intensities; and Lucamarini's $`1.4 \times 10^{5}`$, described as agreeing
 "and always did", agrees at 0.97x on the retired pair and 3.30x on the shipped one. The
-refuted-band test calls with `params=None`, so it exercises the retired intensities and its 5e6-2e8
+refuted-band test calls with `params=None`, so it exercises the retired intensities and its $`5 \times 10^{6}`$ to $`2 \times 10^{8}`$
 band admits both - a gate that cannot see the drift it is positioned to catch.
 
 ### 3. "Two-intensity decoy-state bound" names a protocol the cited equations are not
@@ -117,8 +117,8 @@ Three possibilities and the record does not pretend to know which: the values we
 plotted curve and the curve is at q ~ 1 despite the caption; or they were read correctly and this
 model is 2x low with `q_sift=1.0` closing the gap by coincidence; or they came from this model and
 were then attributed to the paper. **Not resolved in Round 53; resolved 2026-11-08 by reading the rendered figure.** Figure 2's
-asymptotic curve starts near 2.5e-3 per pulse at 0 km and its caption gives 142.05 km; this model gives 2.56e-3 and 142.19 km at q = 1/2 (and
-5.1e-3 at q = 1), so the curve is at q = 1/2 and the model is right. R/eta of about 0.11 is the paper's closed form above its Eq. (12), which has no q
+asymptotic curve starts near $`2.5 \times 10^{-3}`$ per pulse at 0 km and its caption gives 142.05 km; this model gives $`2.56 \times 10^{-3}`$ and 142.19 km at q = 1/2 (and
+$`5.1 \times 10^{-3}`$ at q = 1), so the curve is at q = 1/2 and the model is right. R/eta of about 0.11 is the paper's closed form above its Eq. (12), which has no q
 (0.1124), and R/eta^2 of about 0.15 is this model's own output. `tests/test_decoy_reference.py` now says which is which.
 
 Reported, and both are quotation-level claims worth re-reading at source before acting:
@@ -211,7 +211,7 @@ strengthens rather than weakens `docs/pqc-roadmap.md:168`'s decision not to wire
 et al.; `eps_sec=1e-9`, `eps_cor=1e-15`, a=6, b=19 and Table I all transcribe correctly.
 
 **Ma et al. renumbering, GYS parameters, the QLHL `+2` term, and every internal re-derivation**
-checked exact: 0.002368 / 0.001977 bit/pulse, 38,410,230 -> 14,055,773, `s^l_{Z,1}` = -216.53 at 2e6,
+checked exact: 0.002368 / 0.001977 bit/pulse, 38,410,230 -> 14,055,773, `s^l_{Z,1}` = -216.53 at $`2 \times 10^{6}`$,
 QSDC 0.110028 / 0.048521 / 0.000267, downlink 24.478 dB, tagged fraction 1.0417.
 
 **`model-choice-vs-2026-practice.md`'s core conclusion holds.** ResNet is still the 2026
@@ -285,20 +285,20 @@ paragraph above is left as written, and this note corrects it.
 
 ## Round 76 (2026-10-27): the fibre detector set, sourced
 
-The figures above for the fibre channel (3.84e7 / 1.41e7 pulses, 0.002368 / 0.001977 bit/pulse, V = 0.97
-with e = 0.015200, `s^l_{Z,1}` = -216.53 at 2e6) describe the set shipped until Round 76: detector
-efficiency 0.25, 1e-5 dark counts per gate, a 1.5 percent error floor and a 100 MHz clock, which matched
+The figures above for the fibre channel ($`3.84 \times 10^{7}`$ / $`1.41 \times 10^{7}`$ pulses, 0.002368 / 0.001977 bit/pulse, V = 0.97
+with e = 0.015200, `s^l_{Z,1}` = -216.53 at $`2 \times 10^{6}`$) describe the set shipped until Round 76: detector
+efficiency 0.25, $`10^{-5}`$ dark counts per gate, a 1.5 percent error floor and a 100 MHz clock, which matched
 no published source. Checked against the 50 km experiment `QKDConfig` cites for its block size
 (Lucamarini et al., Opt. Express 21, 24550 (2013), arXiv:1310.0240: efficiency 20.5%, dark count
-2.1e-5 per gate, afterpulsing 5.25%, QBER 4.26% in Z, 0.63 Mbps BB84 and 1.09 Mbps for their efficient
+$`2.1 \times 10^{-5}`$ per gate, afterpulsing 5.25%, QBER 4.26% in Z, 0.63 Mbps BB84 and 1.09 Mbps for their efficient
 variant at 1 GHz), that set detected 2.2x the paper's counts and gave 3.1x its BB84 rate per pulse.
 
 By the user's decision the set is now Rusca et al.'s (Appl. Phys. Lett. 112, 171104 (2018),
 arXiv:1801.03443), read in the arXiv text: "a repetition rate of 1 GHz", SNSPDs with "a dead-time
 $`\tau_{DT}`$ = 100 ns, dark-count rate (DCR) of 10 Hz which correspond to $`p_{DC} = 10^{-8}`$ and
 an efficiency ($`\eta_{det}`$ around 50%)", and "a typical value $`p_{Err}`$ of 1%". Their Appendix B gives the dead-time correction,
-Eq. (B3), now modelled. At 50 km: 2.853e-3 bit/pulse with the dead time (4.565e-3 without), QBER 1.0%,
-the finite-key threshold 5.88e6 pulses. Also read and not adopted: Boaron et al., PRL 121, 190502
+Eq. (B3), now modelled. At 50 km: $`2.853 \times 10^{-3}`$ bit/pulse with the dead time ($`4.565 \times 10^{-3}`$ without), QBER 1.0%,
+the finite-key threshold $`5.88 \times 10^{6}`$ pulses. Also read and not adopted: Boaron et al., PRL 121, 190502
 (2018), arXiv:1807.03222 (SNSPDs at 40-60%, DCR 0.1 Hz, 0.16 dB/km ultra-low-loss fibre, 252-421 km);
 Grunenfelder et al., Nat. Photon. 17, 422 (2023), arXiv:2210.16126 (64 Mbps over 10.0 km at 2.5 GHz,
 64-85% SNSPDs); Yuan et al., J. Lightwave Technol. 36, 3427 (2018), arXiv:1807.04484 (InGaAs, 31%,

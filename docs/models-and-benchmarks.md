@@ -87,7 +87,7 @@ The pages show each network's logits and its decision, not a probability. Traine
 
 Finance, medical and telecom offer `QCNN (trained, under CKKS)` beside the plaintext `QCNN (trained, not encrypted)`. The readout is exactly $`\langle O\rangle = \sum_P c_P\,\phi_P(x)`$ over $`P \in \{I, X, Z\}^{\otimes n}`$, because the encoding is a product of real states ($`\phi_I = 1`$, $`\phi_X = \sin\theta`$, $`\phi_Z = \cos\theta`$ per wire, $`c_P = 2^{-n}\operatorname{Tr}(AP)`$ with $`A`$ the real part of $`U^\dagger O U`$ on the encoded basis states). So the client encrypts $`3^n`$ products and the server takes one inner product per readout: one multiplicative level at the frozen parameters, power-of-two rotation keys only, no relinearisation key.
 
-Measured in Node on the shipped weights (`npm run check:qcnn-ckks`, the module the page runs): the form differs from the circuit by at most 8e-15; the decrypted readout by at most 2e-9; the class equals the plaintext circuit's on every row checked. Finance (4 qubits, 81 terms) takes about 0.1 s, medical (8 qubits, 6,561 terms in 2 ciphertexts) 0.15 s, and telecom (7 features, 2,187 terms, 8 readouts) 0.5 s, of which most is building the form and the keys. The accuracy is the plaintext QCNN's, since the class is the same.
+Measured in Node on the shipped weights (`npm run check:qcnn-ckks`, the module the page runs): the form differs from the circuit by at most $`8 \times 10^{-15}`$; the decrypted readout by at most $`2 \times 10^{-9}`$; the class equals the plaintext circuit's on every row checked. Finance (4 qubits, 81 terms) takes about 0.1 s, medical (8 qubits, 6,561 terms in 2 ciphertexts) 0.15 s, and telecom (7 features, 2,187 terms, 8 readouts) 0.5 s, of which most is building the form and the keys. The accuracy is the plaintext QCNN's, since the class is the same.
 
 **Compared with classical models, on the circuit's own split** (`classical_surrogate` and `classical_lr_*` in each artifact; the surrogate refits the same estimator on the same Pauli products):
 
@@ -170,7 +170,7 @@ and the same on every run. "MPC-non-linear" is the protocol's time on the partie
 parties standing between requests would not, so that time is left out of the latency and reported as
 `mpc_session_overhead_ms`. Loopback has no network delay, so a LAN or WAN adds a round trip per
 communication round. Each row's `view_statistical_distance_max` bounds what the key holder's whole
-view of one inference gives away, and `mask_statistical_distance_max` (9e-8 or less in the rows
+view of one inference gives away, and `mask_statistical_distance_max` ($`9 \times 10^{-8}`$ or less in the rows
 recorded before Round 84) covers only the values that enter and leave the MPC through slot 0; what
 the masking hides is in [the threat model's table](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment),
 and what the bounds cover in [`architecture.md`](architecture.md#where-the-non-linear-half-goes-and-why-that-choice-is-a-security-decision).
@@ -446,7 +446,7 @@ satellite, ground station or quantum channel is involved.
 
 - **Fibre block** - the use-case pages, the two-party demo and Validations page, and the Python API
   report the same key, because the model (`run_bb84` / `bb84()`) computes it. By default the block is
-  a privacy-amplification block of 1e7 key-basis detections, the size Rusca et al.'s Table I uses and
+  a privacy-amplification block of $`10^{7}`$ key-basis detections, the size Rusca et al.'s Table I uses and
   the class the Geneva systems run (Boaron et al. 2018; Grunenfelder et al. 2020); the pulses and
   time follow from the distance - 5.3 s at 50 km and 35 s at 100 km, carrying 5,214,327 and
   5,156,039 bits, about 5.2 Mbit either way. Seconds of link time and the run's own pulses are
@@ -471,7 +471,7 @@ satellite, ground station or quantum channel is involved.
   decoy's errors, which are tighter than the signal's, and $`\tau_0`$ on the error term of (A16) only.
   The three transcription errors found while checking them against the papers are recorded with the
   Rusca et al. entry in [`references/REFERENCES.md`](../references/REFERENCES.md). The shipped fibre
-  needs 5.35e6 pulses before any key under Hoeffding, and 3.60e6 under the default statistics.
+  needs $`5.35 \times 10^{6}`$ pulses before any key under Hoeffding, and $`3.60 \times 10^{6}`$ under the default statistics.
 - **The statistics** - on the fibre each count's expectation is bounded by the tighter of Yin et al.
   2020's Chernoff-type bound (Sci. Rep. 10, 14312, Eqs. (9)-(10)) and the published Hoeffding
   deviation on the basis total, at half the failure probability each: a union bound, so the security

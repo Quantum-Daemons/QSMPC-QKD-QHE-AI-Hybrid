@@ -218,7 +218,7 @@ attacking themselves.
 belong in writing.** The demo does not merely decrypt a result, it reports the per-sample CKKS
 approximation error itself: `web/src/lib/clientFHE.ts` computes `maxAbsError` against a plaintext
 reference and `clientCompute.ts` emits it as the run metrics `fhe_max_abs_error` and
-`fhe_conv_max_abs_error` (about 1e-9), which the run panels render. By HElib's sentence above that
+`fhe_conv_max_abs_error` (about $`10^{-9}`$), which the run panels render. By HElib's sentence above that
 quantity - the error - IS
 the leaking object, so a reader who knows this literature is right to stop on it, and a document that
 listed only "decrypted results" would have skipped the sharpest case. It is nonetheless safe here, and
