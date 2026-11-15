@@ -1,11 +1,12 @@
 {
-  "_about": "A small graph with each case of the IBM tab's neighbourhood counts, counted by hand: the definition is in scripts/train/ibm_multignn/neighbourhood.py. Edge 0 (account 0 to 1, row 5,000 at 600 s, batch 2) and edge 3 (1 to 4, row 6,200, batch 3) are scored. Edge 6 repeats row 4,100, edge 7 is a self-transfer, edge 2 is later in edge 0's batch, edges 3 and 4 lie beyond it, edge 4 is two hops from edge 0 and edge 5 three.",
-  "edge_index": [[0, 2, 0, 1, 4, 5, 2, 0], [1, 0, 3, 4, 5, 6, 0, 0]],
-  "edge_position": [5000, 4100, 5001, 6200, 6300, 7000, 4100, 4090],
-  "edge_seconds": [600, 300, 660, 900, 960, 1200, 300, 240],
+  "_about": "A small graph with each case of the IBM tab's neighbourhood counts, counted by hand: the definition is in scripts/train/ibm_multignn/neighbourhood.py. Rows are in time order, as in the corpus, and the reach is 300 s. Edge 0 (account 0 to 1, row 5,000 at 600 s, batch 2) and edge 3 (1 to 4, row 6,200 at 1,080 s, batch 3) are scored. Edge 6 repeats row 4,100 and edge 7 is a self-transfer. For edge 0: edge 2 is later and within its horizon, edge 8 is in its batch but 360 s later, past the reach, and edges 3 and 4 lie in a later batch; edge 4 is two hops away and edge 5 three. For edge 3, edge 5 is exactly the reach later and so within its horizon.",
+  "reach_s": 300,
+  "edge_index": [[0, 2, 0, 1, 4, 5, 2, 0, 3], [1, 0, 3, 4, 5, 6, 0, 0, 0]],
+  "edge_position": [5000, 4100, 5001, 6200, 6300, 7000, 4100, 4090, 6000],
+  "edge_seconds": [600, 300, 660, 1080, 1140, 1380, 300, 240, 960],
   "seed_at": [0, 3],
   "expected": [
-    {"payer_out": 2, "payer_in": 2, "payee_out": 1, "payee_in": 0, "read": 5, "later_in_batch": 1, "beyond_batch": 2, "furthest_later_s": 360.0},
-    {"payer_out": 0, "payer_in": 1, "payee_out": 1, "payee_in": 0, "read": 6, "later_in_batch": 2, "beyond_batch": 0, "furthest_later_s": 300.0}
+    {"payer_out": 2, "payer_in": 3, "payee_out": 1, "payee_in": 0, "read": 6, "later_within_horizon": 1, "past_horizon": 3, "furthest_later_s": 540.0},
+    {"payer_out": 0, "payer_in": 1, "payee_out": 1, "payee_in": 0, "read": 7, "later_within_horizon": 2, "past_horizon": 0, "furthest_later_s": 300.0}
   ]
 }

@@ -1,16 +1,17 @@
 // What IBM's Multi-GNN read for each transfer it scored (Round 86): the counts that
 // scripts/train/ibm_multignn/neighbourhood.py writes into a graph sample, re-derived here from the sample's own arrays,
-// and the drawing of a scored transfer's two accounts. The definition is that file's docstring; check_graph_neighbourhood.mjs
-// holds this to the same hand-counted graph as its Python test.
+// and the drawing of a scored transfer's two accounts. A transfer's horizon is the finance page's own: the end of its
+// batch of 2,048 rows, and at most the reach after it (17 minutes on HI-Small). The definition is that file's docstring;
+// check_graph_neighbourhood.mjs holds this to the same hand-counted graph as its Python test.
 
 export interface SeedField {
   payer_out: number; payer_in: number; payee_out: number; payee_in: number;
-  read: number; later_in_batch: number; beyond_batch: number; furthest_later_s: number;
+  read: number; later_within_horizon: number; past_horizon: number; furthest_later_s: number;
 }
-export interface GraphView { batch_rows: number; edge_position: number[]; edge_seconds: number[]; per_seed: SeedField[] }
+export interface GraphView { batch_rows: number; reach_s: number; edge_position: number[]; edge_seconds: number[]; per_seed: SeedField[] }
 
 /** When a drawn transfer happened, against the scored one: the colour it is drawn in. */
-export type When = "scored" | "earlier" | "in-batch" | "beyond";
+export type When = "scored" | "earlier" | "within" | "past";
 export interface NeighbourEdge { from: string; to: string; minute: number; when: When }
 export interface NeighbourGraph { nodes: string[]; edges: NeighbourEdge[]; from: string; to: string; shown: number; at_accounts: number }
 
@@ -18,7 +19,7 @@ const NAMES = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 /** The counts for each seed. `edgeIndex` is the sample's forward edges as it stores them, the sources then the targets. */
 export function seedFields(edgeIndex: ArrayLike<number>, nEdges: number, view: GraphView, seedAt: number[]): SeedField[] {
-  const pos = view.edge_position, sec = view.edge_seconds, rows = view.batch_rows;
+  const pos = view.edge_position, sec = view.edge_seconds, rows = view.batch_rows, reach = view.reach_s;
   if (pos.length !== nEdges || sec.length !== nEdges || edgeIndex.length !== 2 * nEdges) throw new Error("every edge needs a position and a time");
   const src = (e: number) => edgeIndex[e], dst = (e: number) => edgeIndex[nEdges + e];
   return seedAt.map((s) => {
@@ -28,7 +29,7 @@ export function seedFields(edgeIndex: ArrayLike<number>, nEdges: number, view: G
       if (src(e) === u || src(e) === v || dst(e) === u || dst(e) === v) { hop1.add(src(e)); hop1.add(dst(e)); }
     }
     const payerOut = new Set<number>(), payerIn = new Set<number>(), payeeOut = new Set<number>(), payeeIn = new Set<number>();
-    const read = new Set<number>(), later = new Set<number>(), beyond = new Set<number>();
+    const read = new Set<number>(), within = new Set<number>(), past = new Set<number>();
     let furthest = 0;
     for (let e = 0; e < nEdges; e++) {
       const q = pos[e];
@@ -39,12 +40,12 @@ export function seedFields(edgeIndex: ArrayLike<number>, nEdges: number, view: G
       if (dst(e) === v) payeeIn.add(q);
       if (!hop1.has(src(e)) && !hop1.has(dst(e))) continue;
       read.add(q);
-      const batch = Math.floor(q / rows);
-      if (sec[e] > t) { furthest = Math.max(furthest, sec[e] - t); if (batch === b) later.add(q); }
-      if (batch > b) beyond.add(q);
+      if (sec[e] > t) furthest = Math.max(furthest, sec[e] - t);
+      if (Math.floor(q / rows) > b || sec[e] > t + reach) past.add(q);
+      else if (sec[e] > t) within.add(q);
     }
     return { payer_out: payerOut.size, payer_in: payerIn.size, payee_out: payeeOut.size, payee_in: payeeIn.size,
-             read: read.size, later_in_batch: later.size, beyond_batch: beyond.size, furthest_later_s: furthest };
+             read: read.size, later_within_horizon: within.size, past_horizon: past.size, furthest_later_s: furthest };
   });
 }
 
@@ -65,7 +66,7 @@ export function fieldsMismatch(derived: SeedField[], recorded: SeedField[]): str
  *  payer's, then the payee's), and any room one leaves goes to the other's next nearest; a hub's transfers would
  *  otherwise crowd out its counterpart's. Account A pays account B; the others are lettered in time order. */
 export function seedGraph(edgeIndex: ArrayLike<number>, nEdges: number, view: GraphView, seed: number, cap = 24): NeighbourGraph {
-  const pos = view.edge_position, sec = view.edge_seconds, rows = view.batch_rows;
+  const pos = view.edge_position, sec = view.edge_seconds, rows = view.batch_rows, reach = view.reach_s;
   const src = (e: number) => edgeIndex[e], dst = (e: number) => edgeIndex[nEdges + e];
   const u = src(seed), v = dst(seed), p = pos[seed], t = sec[seed], b = Math.floor(p / rows);
   const seen = new Set<number>([p]), atPayer: number[] = [], atPayee: number[] = [];
@@ -82,7 +83,7 @@ export function seedGraph(edgeIndex: ArrayLike<number>, nEdges: number, view: Gr
   const name = new Map<number, string>([[u, "A"]]);
   if (!name.has(v)) name.set(v, "B");
   for (const e of kept) for (const n of [src(e), dst(e)]) if (!name.has(n)) name.set(n, NAMES[name.size] ?? `${name.size + 1}`);
-  const when = (e: number): When => (Math.floor(pos[e] / rows) > b ? "beyond" : sec[e] > t ? "in-batch" : "earlier");
+  const when = (e: number): When => (Math.floor(pos[e] / rows) > b || sec[e] > t + reach ? "past" : sec[e] > t ? "within" : "earlier");
   const edges: NeighbourEdge[] = [{ from: name.get(u)!, to: name.get(v)!, minute: 0, when: "scored" },
     ...kept.map((e) => ({ from: name.get(src(e))!, to: name.get(dst(e))!, minute: (sec[e] - t) / 60, when: when(e) }))];
   return { nodes: [...name.values()], edges, from: name.get(u)!, to: name.get(v)!, shown: kept.length, at_accounts: at };

@@ -7,7 +7,9 @@ the finance page, under two neighbourhood protocols:
 
 - `ibm`: neighbours sampled from the whole test graph as IBM's loader draws them, so a transaction's neighbourhood
   includes later transactions; IBM's measured setting.
-- `causal`: neighbours only from the scored transaction's batch of 2,048 or earlier, the page's own convention.
+- `causal`: neighbours only from the scored transaction's batch or earlier ones, a batch being 2,048 rows split where it
+  spans more than 17 minutes, so nothing read lies past the horizon of the page's own models (the end of the
+  transaction's batch of 2,048, and at most 17 minutes after it; the owner's choice of 2026-11-15).
 
 Run from IBM's checkout (the one patched for the protocol), in its environment, with the CPU only:
 
@@ -20,8 +22,8 @@ What it writes, after checking each against the PyTorch model:
   mount ONNX external data), its inputs the node features, both edge directions' indices and features;
 - `eval_sample.json`: the 16 transactions the published MLP and compact GNN are checked on, their sampled
   neighbourhood (one batch, seeded), the seed edges' positions in it, their labels and the logits PyTorch gives, and
-  for the page's view each edge's row and time with the counts of `neighbourhood.py` (a causal sample that holds a
-  transfer beyond its seed's batch of 2,048 is refused);
+  for the page's view each edge's row and time, the reach, and the counts of `neighbourhood.py` (a causal sample that
+  reads a transfer past its seed's horizon is refused);
 - `export_report.json`: ONNX Runtime against PyTorch on that neighbourhood, the decisions at the threshold tuned on
   the validation window, and the subgraph's size.
 """
@@ -130,11 +132,16 @@ def main() -> int:
     # The IBM tab's view (the owner's choice of 2026-11-15): each forward edge's row in the time-ordered file and its
     # time, and per seed what the model read, counted by neighbourhood.py; the page re-derives the counts.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    from neighbourhood import BATCH_ROWS, seed_fields
+    from neighbourhood import BATCH_ROWS, fit_reach, seed_fields
+    reach = fit_reach(te[et].timestamps.double().numpy(), tr[et].edge_index.shape[1])
+    if a.protocol == "causal":
+        from data_loading import causal_batches
+        if causal_batches(te[et].timestamps.double().numpy(), tr[et].edge_index.shape[1])[1] != reach:
+            raise SystemExit("the causal patch's reach differs from neighbourhood.fit_reach")
     view_pos, view_sec = torch.cat(poss).numpy(), torch.cat(secs).numpy()
-    fields = seed_fields(ei.numpy(), view_pos, view_sec, seed_at)
-    if a.protocol == "causal" and any(f["beyond_batch"] for f in fields):
-        raise SystemExit("a causal neighbourhood holds a transfer beyond its seed's batch of 2,048")
+    fields = seed_fields(ei.numpy(), view_pos, view_sec, seed_at, reach)
+    if a.protocol == "causal" and any(f["past_horizon"] for f in fields):
+        raise SystemExit("a causal neighbourhood reads a transfer past its seed's horizon")
     whole = bool(np.all(view_sec == np.round(view_sec)))
 
     class Flat(torch.nn.Module):
@@ -196,17 +203,20 @@ def main() -> int:
         "kind": "graph", "protocol": a.protocol,
         "protocol_note": ("Neighbours sampled from the whole test graph, as IBM's loader draws them: a neighbourhood includes "
                           "transactions later than the one scored." if a.protocol == "ibm" else
-                          "Neighbours only from the scored transaction's batch of 2,048 or earlier, in time order, as this "
-                          "page's own models see transactions."),
+                          "Neighbours only from the scored transaction's batch or earlier ones, in time order, a batch being "
+                          f"2,048 rows split where it spans more than {reach // 60} minutes: nothing read lies past the "
+                          "horizon this page's own models give a transaction, the end of its batch of 2,048 and at most "
+                          f"{reach // 60} minutes after it."),
         "inputs": {"x": x.numpy().ravel().tolist(), "x_shape": list(x.shape),
                    "edge_index": ei.numpy().ravel().tolist(), "edge_attr": ea.numpy().ravel().tolist(), "edge_attr_dim": int(ea.shape[1]),
                    "rev_edge_index": ri.numpy().ravel().tolist(), "rev_edge_attr": ra.numpy().ravel().tolist(), "n_edges": int(ei.shape[1]),
                    "n_rev_edges": int(ri.shape[1])},
         "seeds": {"positions_in_batch": seed_at, "row_index_in_test_window": rows.tolist(), "labels": labels.tolist()},
         "view": {"about": ("Each forward edge's row in the time-ordered file (its batch of 2,048 is the row divided by "
-                           "2,048) and its time in seconds from the corpus's first transfer, and per seed what the model "
-                           "read, as scripts/train/ibm_multignn/neighbourhood.py defines it."),
-                 "batch_rows": BATCH_ROWS, "edge_position": view_pos.tolist(),
+                           "2,048) and its time in seconds from the corpus's first transfer, the reach (the furthest a "
+                           "fit-window row sees to the end of its batch), and per seed what the model read, as "
+                           "scripts/train/ibm_multignn/neighbourhood.py defines it."),
+                 "batch_rows": BATCH_ROWS, "reach_s": reach, "edge_position": view_pos.tolist(),
                  "edge_seconds": view_sec.astype(np.int64).tolist() if whole else view_sec.tolist(),
                  "per_seed": fields},
         "expected": {"logits": ort_logits.tolist(), "logits_pytorch": seed_logits.tolist(), "decision_threshold": thr,

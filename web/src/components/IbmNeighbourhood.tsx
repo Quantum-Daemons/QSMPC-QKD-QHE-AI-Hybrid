@@ -1,8 +1,9 @@
-// What IBM's Multi-GNN read for each transfer it scored (Round 86, the owner's choice of 2026-11-15). From the graph
+// What IBM's Multi-GNN read for each transfer it scored (Round 86, the owner's choices of 2026-11-15). From the graph
 // sample the IBM tab scores, the scored transfer's two accounts are drawn, and the transfers the model read are
-// counted, with how many came after the scored one: later in its batch of 2,048, which both protocols keep, or beyond
-// it, which the causal protocol drops and IBM's loader samples. The page derives the counts from the sample itself and
-// reports any difference from those the export recorded (lib/graphNeighbourhood.ts).
+// counted, with how many lie past the transfer's horizon, the horizon of this page's own models (the end of its batch
+// of 2,048 rows, and at most 17 minutes after it): the causal protocol reads none, IBM's loader samples them. The page
+// derives the counts from the sample itself and reports any difference from those the export recorded
+// (lib/graphNeighbourhood.ts).
 import { useId, useMemo, useState } from "react";
 import { fieldsMismatch, seedFields, seedGraph, type GraphView, type NeighbourEdge, type When } from "../lib/graphNeighbourhood";
 import { layoutScored } from "../lib/transactionGraph";
@@ -18,10 +19,10 @@ const NODE = 11, W = 720;
 const PAINT: Record<When, { colour: string; dash?: string; word: string }> = {
   scored: { colour: "var(--accent)", word: "the scored transfer" },
   earlier: { colour: "var(--muted)", word: "earlier, or in the same minute" },
-  "in-batch": { colour: "var(--warn)", word: "later, in its batch of 2,048" },
-  beyond: { colour: "var(--danger)", dash: "5 3", word: "later, beyond its batch" },
+  within: { colour: "var(--warn)", word: "later, within its horizon" },
+  past: { colour: "var(--danger)", dash: "5 3", word: "past its horizon" },
 };
-const RANK: Record<When, number> = { earlier: 0, "in-batch": 1, beyond: 2, scored: 3 };
+const RANK: Record<When, number> = { earlier: 0, within: 1, past: 2, scored: 3 };
 const halo = { paintOrder: "stroke", stroke: "var(--panel)", strokeWidth: 6 } as const;
 const ROW_BUTTON = { background: "none", border: 0, padding: "2px 0", minHeight: 24, color: "var(--accent)", textDecoration: "underline",
                      cursor: "pointer", font: "inherit", textAlign: "left" } as const;
@@ -29,7 +30,7 @@ const ROW_BUTTON = { background: "none", border: 0, padding: "2px 0", minHeight:
 /** A count with thousands separators. */
 const n = (x: number) => x.toLocaleString("en-US");
 /** A span of seconds in the unit that reads best. */
-export const span = (s: number) => (s <= 0 ? "none" : s < 5400 ? `${Math.round(s / 60)} min` : s < 172800 ? `${(s / 3600).toFixed(1)} h` : `${(s / 86400).toFixed(1)} days`);
+const span = (s: number) => (s <= 0 ? "none" : s < 5400 ? `${Math.round(s / 60)} min` : s < 172800 ? `${(s / 3600).toFixed(1)} h` : `${(s / 86400).toFixed(1)} days`);
 const minute = (m: number) => (m === 0 ? "the same minute" : `${Math.abs(m) < 90 ? `${Math.round(Math.abs(m))} min` : span(Math.abs(m) * 60)} ${m < 0 ? "before" : "after"}`);
 
 function Drawing({ edges, nodes, from, to, label }: { edges: NeighbourEdge[]; nodes: string[]; from: string; to: string; label: string }) {
@@ -40,7 +41,8 @@ function Drawing({ edges, nodes, from, to, label }: { edges: NeighbourEdge[]; no
   const degree: Record<string, number> = {};
   for (const k of groups.keys()) { const [a, b] = k.split(">"); if (a !== b) { degree[a] = (degree[a] ?? 0) + 1; degree[b] = (degree[b] ?? 0) + 1; } }
   return (
-    <svg role="img" aria-label={label} viewBox={`0 0 ${W} ${h}`} style={{ width: "100%", maxWidth: W, height: "auto", display: "block" }}>
+    <div style={{ overflowX: "auto", overflowY: "hidden" }}>
+    <svg role="img" aria-label={label} viewBox={`0 0 ${W} ${h}`} style={{ width: "100%", minWidth: 520, maxWidth: W, height: "auto", display: "block" }}>
       <defs>
         {(Object.keys(PAINT) as When[]).map((k) => (
           <marker key={k} id={`${marker}${k}`} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
@@ -71,6 +73,7 @@ function Drawing({ edges, nodes, from, to, label }: { edges: NeighbourEdge[]; no
         return <g key={n}><circle cx={q.x} cy={q.y} r={NODE} fill="var(--panel)" stroke="var(--border)" /><text x={q.x} y={q.y + 4} textAnchor="middle" fontSize={11} fill="var(--text)">{n}</text></g>;
       })}
     </svg>
+    </div>
   );
 }
 
@@ -82,7 +85,7 @@ export default function IbmNeighbourhood({ sample }: { sample: NeighbourhoodSamp
   const g = useMemo(() => (view ? seedGraph(sample.inputs.edge_index, sample.inputs.n_edges, view, seeds[k]) : null), [sample, view, seeds, k]);
   if (!view || !g) return null;
   const mismatch = fieldsMismatch(fields, view.per_seed);
-  const reaching = fields.filter((f) => f.beyond_batch > 0).length;
+  const reaching = fields.filter((f) => f.past_horizon > 0).length;
   const furthest = Math.max(0, ...fields.map((f) => f.furthest_later_s));
   const ibm = sample.protocol === "ibm";
   const word = (i: number) => (labels[i] === 1 ? "laundering" : "clean");
@@ -90,9 +93,11 @@ export default function IbmNeighbourhood({ sample }: { sample: NeighbourhoodSamp
     <figure style={{ margin: "12px 0 0" }}>
       <figcaption>
         <b>What the model read for each transfer it scored.</b>{" "}
+        A transfer&apos;s horizon is the one this page&apos;s own models use: the end of its batch of 2,048 rows, and at most{" "}
+        {span(view.reach_s)} after it.{" "}
         {ibm
-          ? `IBM's loader samples neighbours from the whole test graph: ${reaching} of the ${fields.length} transfers read at least one transfer beyond their batch of 2,048, the furthest ${span(furthest)} after the transfer scored.`
-          : `Neighbours come only from the scored transfer's batch of 2,048 or earlier ones: none of the ${fields.length} reads beyond its batch, and the latest transfer read is ${span(furthest)} after the one scored, inside its batch.`}
+          ? `IBM's loader samples neighbours from the whole test graph: ${reaching} of the ${fields.length} transfers read at least one transfer past their horizon, the latest ${span(furthest)} after the transfer scored.`
+          : `Here neighbours come only from the scored transfer's batch or earlier ones, the page's batches of 2,048 rows split where one spans more than ${span(view.reach_s)}: none of the ${fields.length} reads past its horizon, and the latest transfer read is ${span(furthest)} after the one scored.`}
       </figcaption>
       {mismatch && <p className="small" role="alert" style={{ color: "var(--danger)" }}>The counts this page derives from the sample differ from the ones the export recorded: {mismatch}.</p>}
       <p className="small" style={{ margin: "8px 0 4px" }}>
@@ -115,13 +120,13 @@ export default function IbmNeighbourhood({ sample }: { sample: NeighbourhoodSamp
           both directions take in. Each count is of distinct transfers in this sample, the scored one excluded.
         </caption>
         <thead>
-          <tr><th>Transfer</th><th>Read</th><th>Later, in its batch</th><th>Beyond its batch</th><th>Latest read</th><th>Payer out / in</th><th>Payee out / in</th></tr>
+          <tr><th>Transfer</th><th>Read</th><th>Later, within its horizon</th><th>Past its horizon</th><th>Latest read</th><th>Payer out / in</th><th>Payee out / in</th></tr>
         </thead>
         <tbody>
           {fields.map((f, i) => (
             <tr key={i} style={i === k ? { background: "var(--bg-2)" } : undefined}>
               <td><button type="button" style={ROW_BUTTON} aria-pressed={i === k} onClick={() => setK(i)}>{i + 1}, {word(i)}</button></td>
-              <td>{n(f.read)}</td><td>{n(f.later_in_batch)}</td><td>{n(f.beyond_batch)}</td><td>{f.furthest_later_s > 0 ? `${span(f.furthest_later_s)} after` : "none later"}</td>
+              <td>{n(f.read)}</td><td>{n(f.later_within_horizon)}</td><td>{n(f.past_horizon)}</td><td>{f.furthest_later_s > 0 ? `${span(f.furthest_later_s)} after` : "none later"}</td>
               <td>{n(f.payer_out)} / {n(f.payer_in)}</td><td>{n(f.payee_out)} / {n(f.payee_in)}</td>
             </tr>
           ))}

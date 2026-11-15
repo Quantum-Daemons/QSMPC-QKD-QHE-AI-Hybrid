@@ -9,7 +9,7 @@ vendoring it.
 | `format_amlworld.py` | Writes IBM's `formatted_transactions.csv` from this repository's AMLworld loader, with the official encodings and the rows in `load_sorted()` order |
 | `project_split.patch` | Two changes to IBM's code at commit `252b0252afca109d1d216c411c59ff70753b25fc`: with `QSH_SPLIT=project` the fit, validation and test windows are this project's 56 / 14 / 30 percent by position, and `AddEgoIds` defines `forward`, which PyTorch Geometric 2.8 requires of a transform |
 | `dump_logits.py` | Loads a saved checkpoint and writes the laundering probability of every edge of the three windows, keyed by edge id, and counts the seed edges the neighbour sampling never returned |
-| `causal.patch` | On top of `project_split.patch`, the causal protocol under `QSH_CAUSAL=1` (Round 86, the owner's choice of 2026-11-15): each mini-batch is one batch of 2,048 transactions in time order, sampled with IBM's own shared sampler, with every sampled edge later than that batch dropped, and every window scaled by the training window's statistics; with `QSH_PATIENCE=n` training stops after n epochs without a better validation F1, and `QSH_LOADER_WORKERS=n` samples in n processes |
+| `causal.patch` | On top of `project_split.patch`, the causal protocol under `QSH_CAUSAL=1` (Round 86, the owner's choices of 2026-11-15): each mini-batch is one batch of transactions in time order (2,048, split where it spans more than 17 minutes; `QSH_CAUSAL_CUT=batch` keeps the plain 2,048), sampled with IBM's own shared sampler, with every sampled edge later than that batch dropped, and every window scaled by the training window's statistics; with `QSH_PATIENCE=n` training stops after n epochs without a better validation F1, and `QSH_LOADER_WORKERS=n` samples in n processes |
 | `export_for_browser.py` | Exports a checkpoint as one ONNX file at opset 18 (by `torch.export`; ONNX Runtime within $`10^{-4}`$ of PyTorch on the seeds) and writes the 16 held-out transactions the published finance MLP and compact GNN are checked on, with the neighbourhood the protocol samples for them, for the finance page to re-score |
 | `neighbourhood.py` | What the model read for each of the 16 (the owner's choice of 2026-11-15): the transfers at the payer and the payee, those within two hops, and how many came after the scored one, in its batch of 2,048 or beyond it. The export writes these counts into the sample with each edge's row and time; the page derives them again and reports a difference (`web/src/lib/graphNeighbourhood.ts`, held with this file to one hand-counted graph by `web/scripts/check_graph_neighbourhood.mjs` and `tests/test_r86_ibm_neighbourhood.py`) |
 
@@ -47,15 +47,22 @@ The test graph holds every edge of the test window, so these models' neighbourho
 ## The causal protocol (Round 86)
 
 IBM's test graph holds every transaction of the test window, so the neighbourhood its loader samples for a transaction
-includes later ones; the page's own models see transactions up to the end of their batch of 2,048 in time order. The
-owner asked for both: IBM's protocol, labelled, and a causal one comparable with the page's models.
+includes later ones; the page's own models see a transaction's neighbours up to its horizon, the end of its batch of
+2,048 in time order and at most 17 minutes after it (`finance_aml_fan.batch_reach`, the furthest any fit-window row sees
+to the end of its batch). The owner asked for both: IBM's protocol, labelled, and a causal one comparable with the
+page's models.
 
 PyG's own temporal sampling (`time_attr`, `edge_label_time`) was tried first and set aside. It samples each seed in its
 own subgraph, and for a link it grows one tree from each end, so the seed transaction appears as two copies, each joining
 one endpoint to a copy of the other, and no edge joins the two endpoints IBM's model scores; at a fan-out of 10, five of
 128 seeds were not sampled in their own subgraph at all. `causal.patch` keeps IBM's shared sampler and makes each
-mini-batch one batch of 2,048 seeds, so a single cut serves the whole mini-batch, then drops the sampled edges later than
-it. A node with more than the fan-out of edges keeps the earlier ones among those sampled from all of its edges, so its
+mini-batch one batch of seeds, so a single cut serves the whole mini-batch, then drops the sampled edges later than it.
+A batch is 2,048 rows, split further where it spans more than 17 minutes (`causal_batches` in the patched
+`data_loading.py`), so no seed reads past its horizon. The split changes no fit or validation batch (1,389 and 348 on
+HI-Small) and only the test window's sparse last days (745 batches become 999): there a batch of 2,048 spans up to days,
+and without the split 654 of the 2,321 test laundering transactions (28%) could read transactions more than 17 minutes
+later, up to 7.7 days (measured 2026-11-15). The owner chose the split for the tab and the card, and the test F1 of the
+same checkpoints under the plain batches of 2,048 (`QSH_CAUSAL_CUT=batch`) recorded beside it. A node with more than the fan-out of edges keeps the earlier ones among those sampled from all of its edges, so its
 causal neighbourhood can be smaller than a sampler restricted to earlier edges would draw; below the fan-out it is exact.
 IBM's port numbers rank a node's neighbours by their first transaction, so they do not depend on later transactions. IBM
 scales each window by its own statistics, the test window's including later transactions; the causal protocol scales all
