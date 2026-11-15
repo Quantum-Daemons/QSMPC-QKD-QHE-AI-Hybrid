@@ -5201,3 +5201,14 @@ Two of these figures were re-read at their sources on 2026-11-15:
 
 **Hub cards.** For each of the 15 pinned models, the README the Hub serves at the pin is identical, line for line, to
 the card `scripts/publish_hf.py` generates from the registry today. No republish is owed.
+
+**Outbound links.** The 11 pages hold 44 distinct external links on 23 hosts. Each was requested from the development
+machine on 2026-11-15:
+- 40 returned 200 or 206.
+- The ACM DOI of WAMO and the NSA's CNSA 2.0 FAQ returned 403 to a script. In a browser, the DOI resolves to the
+  paper's page.
+- The two EUR-Lex links (Regulations 2024/1689 and 2026/1744) returned 202. In a browser they redirected to EUR-Lex's
+  Official Journal index, which that evening read "EUR-Lex is temporarily not fully available". Every EUR-Lex address
+  form tried did the same: the ELI, the `data.europa.eu` ELI and the CELEX query.
+
+So the links stay as they are, and the EUR-Lex pair is re-read once EUR-Lex is back.
