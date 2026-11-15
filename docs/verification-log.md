@@ -5226,3 +5226,9 @@ So the row's "FAR proposal due" holds; its 180 days end about 2026-12-19.
   on the NIS Cooperation Group's 2025 consultation (97 submissions) and links a separate FAQ, whose topics include
   hybrid schemes. It is not a revised roadmap.
 - So the row's June 2025 roadmap and its milestones stand. The FAQ is a PDF and was not opened.
+
+**The Companies row on `/value`**, re-read at both posts on 2026-11-15. Both name 2029, as the row does:
+- Cloudflare's post of 2026-04-07: "We now target 2029 to be fully post-quantum (PQ) secure including, crucially,
+  post-quantum authentication".
+- Google's post of 2026-03-25 (Adkins and Schmieg): "We're setting a timeline for post-quantum cryptography migration
+  to 2029".
