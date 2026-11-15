@@ -5212,3 +5212,11 @@ machine on 2026-11-15:
   form tried did the same: the ELI, the `data.europa.eu` ELI and the CELEX query.
 
 So the links stay as they are, and the EUR-Lex pair is re-read once EUR-Lex is back.
+
+**The FAR row on `/value`**, re-read at the Federal Register's API on the evening of 2026-11-15:
+- Nine proposed rules under 48 CFR have been published since EO 14412 (2026-06-25): the GSAR's implementations of EO
+  14275, four parts of the FAR overhaul and three DFARS cases.
+- None of them mentions cryptography, quantum or FIPS. (Filtering by the FAR's agency slug returns none at all, so
+  the check filters by CFR title instead.)
+
+So the row's "FAR proposal due" holds; its 180 days end about 2026-12-19.
