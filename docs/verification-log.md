@@ -5179,3 +5179,25 @@ F1 0.2286 over 600 rows, medical accuracy 0.9535 over 86 rows, telecom macro F1 
   shows its grace period to 2 December 2026.
 - `/walkthrough/`: cross-origin isolated, one host and no Python error. It renders the bound
   $`1 - 281{,}529 / 1{,}215{,}890 = 0.76846`$ and the 8 columns that differ across the 200 pairs.
+
+**Published figures beside the computation**, read on every use-case page after a run:
+
+| Page | Rows | What they read |
+|---|---|---|
+| Finance | 5 | GFP+XGBoost $`63.23 \pm 0.17`$ and Multi-PNA+EU $`68.16 \pm 2.65`$ as references. `finance_aml.gnn` reads "not comparable, not measured here" until the IBM tab lands. |
+| Medical | 11 | ResNet-18 is reproduced against MedMNIST v2's 0.901, and FLamby's FedAvg is reproduced (0.7005 for seed 1, against $`0.685 \pm 0.028`$). The other rows are reference, no spread or not comparable, each with its reason. |
+| Telecom | 4 | All not comparable, each with its reason. |
+| Satellite | 4 | No spread or reference, against ESA-ADB's Supplementary Table 9 and the OPS-SAT benchmark's FCNN. |
+| Genomics | 1 | Not comparable, against PGS Catalog PPM002038. |
+| DeFi | 0 | It publishes no model. |
+
+Two of these figures were re-read at their sources on 2026-11-15:
+- PGS Catalog's API gives PPM002038 an AUROC of 0.637 for PGS000072, on incident breast cancer and fitted with
+  covariates (Kachuri et al., 2020).
+- arXiv:1705.02315 v5, Table 17 gives Effusion 0.7585 in its ChestX-ray14 column and 0.7362 in its ChestX-ray8
+  column, for a ResNet-50 on the published split.
+
+`tests/test_r86_published_comparisons.py` passes.
+
+**Hub cards.** For each of the 15 pinned models, the README the Hub serves at the pin is identical, line for line, to
+the card `scripts/publish_hf.py` generates from the registry today. No republish is owed.
