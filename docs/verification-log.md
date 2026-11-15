@@ -5131,3 +5131,51 @@ console error appeared on load or during the run.
   party lane is drawn.
 - **After a run.** The run finished all 12 stages in 36 s and read "PSI among 3 banks, 3 accounts held by all,
   30.53 MB", the figure the local build gave, over the same three lanes.
+
+### The deployed site walked on every page (2026-11-15)
+
+`a3db039`, bundle `index-NTqXpn5h.js`, read in Chrome in one tab. No page logged a console error, and no run showed a
+FAIL, a "did not run" or an alert.
+
+**Use-case pages**, each run once with its defaults:
+
+| Page | Stages | Time | What was checked |
+|---|---|---|---|
+| Finance | 12 of 12 | 36 s | |
+| Medical | 9 of 9 | 30 s | The chest X-ray model scores 0.6250 against 0.6250, with 16 of 16 decisions as recorded |
+| Genomics | 8 of 8 | 3 s | |
+| Telecom | 6 of 6 | 6 s | 593 right, 7 wrong, 0 changed by encryption |
+| Satellite | 6 of 6 | 30 s | QSDC NOT AVAILABLE, with the Eq. 8 bound -80.82 at 32.2 dB and g 532.66, then one-way quasi-QSDC; "falls back" does not appear |
+| DeFi | 6 of 6 | 3 s | |
+
+**The E2E page.**
+- At defaults it ran all seven use cases: finance 12 of 12 stages, medical 9 of 9, genomics 8 of 8, telecom 6 of 6,
+  satellite 6 of 6, DeFi 6 of 6 and the generic demo 8 of 8.
+- Finance with ML-KEM-1024 + X25519, ML-DSA-87 and the quantum channel off ran 11 of 11 stages, and the labels
+  followed the choices.
+- Medical on WebGPU ran 9 of 9: `medical_fl.resnet18` at `b24642c6ef10` on `onnx-webgpu`, 88.23 ms.
+
+**Validations.**
+- ML-KEM-768 + X25519 agrees, with a 1,216 B public key and a 1,120 B ciphertext.
+- ML-DSA-65 has a 1,952 B public key and a 3,309 B signature; the signature is valid and a tampered message is
+  rejected.
+- The ACVP cases pass 10 of 10, at ACVP-Server `975de31`.
+- BB84 reads QBER 0.0098.
+- The agent call is authenticated under MCP revision 2026-07-28, the current revision on modelcontextprotocol.io (read
+  2026-11-15), and a tampered message is rejected.
+- The IKEv2 key schedules are computed per spec, and the PPK changes only SK_d, SK_pi and SK_pr.
+
+**The telecom page's QKD control plane**, after a run. The figures agree with each other:
+- $`1.427 \times 10^{-3}`$ bit per pulse at the assumed 1 GHz gives skr 1,426,711 bit/s.
+- The key budget, 3,910,745 bit, is the block's average rate less the expected consumption, times the block's time:
+  $`(977{,}564 - 244{,}391.1)`$ bit/s over the 5.3 s shown, to its rounding.
+- The KME holds 11,110 keys of 352 bits.
+
+**The QCNNs**, re-scored on their held-out rows. Each gives the value its weights file records: finance minority-class
+F1 0.2286 over 600 rows, medical accuracy 0.9535 over 86 rows, telecom macro F1 0.9444 over 480 rows.
+
+**Other pages.**
+- `/value`: both IR 8547 rows read "final, Oct 2026", the FAR row reads "proposal due" as of 2026-11-15, and Art. 50
+  shows its grace period to 2 December 2026.
+- `/walkthrough/`: cross-origin isolated, one host and no Python error. It renders the bound
+  $`1 - 281{,}529 / 1{,}215{,}890 = 0.76846`$ and the 8 columns that differ across the 200 pairs.
