@@ -45,6 +45,8 @@ export interface DiagramConfig {
   /** The finance page's compact GNN runs under MPC on this run. */
   mpcGnn?: boolean;
   multiPsi?: boolean;
+  /** How many banks the finance page's PSI under MPC runs among, as the control is set (Round 86). */
+  multiPsiParties?: number;
   /** The lending page: who holds the CKKS key. */
   custody?: string;
 }
@@ -70,6 +72,13 @@ export interface Step {
    * key. The colour and the missing tick stay; the word says what happened.
    */
   failWord?: string;
+  /**
+   * The step's own row on the canvas, where its stage id would draw another computation's (Round 86). The
+   * finance page's PSI among banks under MPC is a `qsmpc_compute` stage like genomics' secure sum, and was drawn
+   * as one: seven parties, the configured secure-sum count, splitting values into shares, beside a label saying
+   * three banks and one garbled circuit.
+   */
+  row?: (m: M, c: DiagramConfig) => CanvasRow;
 }
 /** What became of the telemetry once two-way QSDC would not carry it (Round 86). */
 const quasiTag = (m: M): string => {
@@ -443,6 +452,10 @@ export const USECASE_SPECS: Record<string, Spec> = {
       { stageId: "qkd_key_agreement", kind: "q-arrow", label: (m, c) => `${qkdName(c)} · QBER ${f(m, "qber")}${optiTag(m, c)}`, hidden: pqcOnly, ok: qkdOk, failWord: QKD_NO_KEY },
       { stageId: "qsmpc_compute", kind: qsmpcKind("psi"), label: qsmpcLabel("psi") },
       { stageId: "qsmpc_compute", kind: "mpc-bidir", hidden: (c) => !c.multiPsi,
+        // Every bank is a party to one garbled circuit (Polytune), whose only output is the accounts all of them hold.
+        row: (m, c) => ({ a: "brings its account list into the circuit", b: "one garbled circuit: only the accounts all hold leave it",
+                          flow: "ab", channel: "mpc",
+                          many: { noun: "bank", count: runCount(m, "mpsi_parties", Number(c.multiPsiParties ?? (appConfig() as any).multi_party_psi?.parties ?? 3)) } }),
         label: (m) => m["mpsi_ran"] == null
           ? "PSI among three to five banks · one garbled circuit"
           : Number(m["mpsi_ran"]) === 1
@@ -701,6 +714,7 @@ const runCount = (m: M, metric: string, configured: number): number => {
  */
 export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: DiagramConfig = {}): CanvasRow {
   if (kind === "local-wide" || kind === "compare") return { wide: true, channel: "none" };
+  if (step.row) return step.row(m, c);
   const client = USECASE_SPECS[usecase]?.inferenceClient ?? "a";
   const sides = (clientSide: string, serverSide: string) =>
     (client === "a" ? { a: clientSide, b: serverSide } : { a: serverSide, b: clientSide });

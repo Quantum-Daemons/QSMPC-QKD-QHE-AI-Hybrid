@@ -5083,3 +5083,41 @@ Walked in Chrome on the deployed site, each path loaded fresh (see the caching f
   diagram appear. Bland and Altman's plot appears on finance and telecom.
 
 The checklist's PI43 to PI49 rows record the live readings.
+
+### PRs #55 and #56 on the deployed site (2026-11-15)
+
+Merged on green CI with the owner's approval: #55 (`dbbb4ab`), after the chest X-ray card was republished as
+revision 88f4f96, and #56 (`15fb720`). One deploy of `15fb720` with `--return-to-main`: the box serves
+`/assets/index-BngVCAF0.js`, public URL 200, and the live file and a local client-only build of `15fb720` share the SHA-256
+`f27610f0f2c6d03d5ec9420a82540a1ee90d50939cd20d1e44941e599b8048ee`.
+
+- **The cache headers, read with `curl -I`.** `/`, `/usecase/medical_fl`, `/data/medical/cxr_head.json`,
+  `/licenses/js-bundle.txt` and `/walkthrough/` give `no-cache`; the current bundle gives `public, max-age=31536000,
+  immutable`; the previous bundle, `index-J8JJSd0J.js`, answers 404 with `no-cache`. COOP and COEP are unchanged. A tab
+  that held the old shell loaded the new bundle on `/value` with no cache-bust.
+- **Split inference, live.** The card loads the 16 films at 88f4f96 with NIH's labels and views and its caveat. On films
+  9 (effusion, PA), 1 (PA), 13 (effusion, AP) and 5 (AP): the features graph, 11.3 MB, fetched and checked in 2.4 s and
+  then cached; the film to 512 features in 146 to 226 ms; one ciphertext of 393,329 bytes; the last layer in 40 to 50 ms
+  with 9 rotations; the decrypted logit within $`3.8 \times 10^{-10}`$ of the clear one; and each decision the full int8
+  model's recorded one, effusion on all four at the operating point 0.0924 where NIH's labels say effusion on two.
+- **The medical run at the new pin.** 9 of 9 stages; the four re-scorings PASS, the chest X-ray model's graph fetched at
+  88f4f96 and its row PASS at 0.6250 against 0.6250 on 16 of 16; the student's sample fetched once.
+- **The value page.** The WAMO sentence links its DOI, the FAR row reads "as of 2026-11-15", folded rows are 25 px and
+  the clock's 26 source links 26 px; no console error.
+
+### PR #57: the PSI among banks drawn as its banks, and the README's images retaken (2026-11-15)
+
+Reading the retaken images found the finance canvas drawing the PSI among three banks under MPC as seven "party" lanes
+splitting values into shares mod p. The step is a `qsmpc_compute` stage, like genomics' secure sum, and `canvasRow`
+drew it as one, with the secure sum's configured seven parties; its label said three banks and one garbled circuit. A
+step may now draw its own row: this one draws one lane per bank, "brings its account list into the circuit", and "one
+garbled circuit: only the accounts all hold leave it", with the banks the run reports or, before a run, the control's
+count, which the diagram config now carries. `check_use_case_canvas.mjs` holds the bank count before a run, at the
+control's 5 and at a run's 4, and fails when the row is ignored. In a local client-only build: banks 1 to 3 before a
+run, 1 to 5 with the control at 5, and after a run of 12 of 12 stages "PSI among 3 banks, 3 accounts held by all,
+30.53 MB" over banks 1 to 3.
+
+The README's twelve images are retaken from a client-only build of this branch, since the fix is not yet deployed, and
+each was opened and read for text over lines, unthemed controls, irregular axes and empty cards (checklist DC22): none
+found. Every image changed by SHA-256; the finance and E2E pages now show the banks, every page the sidebar's
+"Open-source notices" link, and the value page the WAMO DOI.
