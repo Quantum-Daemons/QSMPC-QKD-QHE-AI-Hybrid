@@ -5247,3 +5247,19 @@ The row's date, scope and instruments match.
 - The row's dates match: active until 2026-09-21, Historical from 2026-09-22.
 - Whether the move has been carried out could not be read from the CMVP search, whose form ignores parameters in the
   URL.
+
+### PR #58: the documents' scientific-notation numbers as inline math (2026-11-15)
+
+The owner chose to convert every number in scientific notation, the verification records included. 492 numbers in 13
+GitHub-rendered documents became inline math in the house form.
+- Left as they were: code, quotations (including ones that run over several lines), blockquotes, URLs and the Hugging
+  Face cards.
+- An upper-case E is never read as an exponent, which keeps export-control numbers such as 9E515. The dry run had
+  converted them.
+- A range like 5e6-2e8 became "5 x 10^6 to 2 x 10^8" in math.
+- The dry run also found a sentence-final number the first pattern skipped. A second pass finds nothing left.
+
+The local gate passed all 18 blocking steps once the worktree linked the checklist and `.env.demo`; step 16 fails in a
+fresh worktree without the checklist. CI passed its 8 checks. It was merged as `5c0f642` (2026-11-15 14:40 UTC) on the
+owner's approval to merge when green. No deploy followed: no file under `web/` changed, so the served bundle is the
+same.
