@@ -199,6 +199,49 @@ non-interactive rather than inference (PoPETs 2026, 360x speedup for XGBoost tra
 proving training occurred (ZKBoost, IACR 2026/202, with JPMorgan AI Research - the author list spans CNRS/IRIF, JPMorgan and Arizona State, so "from" over-attributed it), and securing the
 preprocessing (ALIOTH). The model class is held fixed across all of them.
 
+### Re-check, 2026-11-15: the AML graph literature since August
+
+Three preprints on AMLworld HI-Small appeared between July and October 2026. Each abstract was read on
+arXiv on 2026-11-15, and the first paper's full text in its HTML version.
+
+- **Cross-bank context, priced** (Losavio, Fenoglio, Gjoreski and Langheinrich,
+  [arXiv:2610.35996](https://arxiv.org/abs/2610.35996), 26 October 2026). Each bank approximates a remote
+  account's state from the transactions it already records with that account. A "disclosure ladder" then
+  adds either two integers per remote account (its incoming and outgoing transaction counts, released at
+  three cumulative snapshots) or the counterparty's exact one-hop GNN state.
+  - Setup: HI-Small, six backbones (GIN, PNA, TransConv, SALT-Trans, SALT-GAT and FraudGT) and up to 32 silos.
+  - The observable baseline gives the largest gain, and the counts add a robust improvement.
+  - Exact remote states help only in some regimes.
+  - Gaussian noise that protects the shared states removes their detection value before it gives meaningful
+    privacy. The counts, in the abstract's words, stay useful "under strong protection": they are released
+    under a two-sided geometric mechanism, tested at $`\varepsilon = 0.1`$ and $`\varepsilon = 0.01`$ per
+    snapshot (Appendix E.4).
+  - The split is AMLworld's chronological, transductive one (Altman et al., 2023). The text bounds the counts
+    in time but describes no time bound on the neighbourhood at test time, and it mentions no code release.
+
+  It is the published study closest to the finance page's cross-bank setting: it measures what each level of
+  disclosure between banks is worth.
+- **Dense neighbourhoods** (Losavio, Sovrano, Fenoglio, Gjoreski and Langheinrich, SALT-GNN,
+  [arXiv:2607.10131](https://arxiv.org/abs/2607.10131), 11 July 2026). Evaluated by recipient degree, AML graph
+  models degrade on dense recipients. SALT-GNN adds degree-aware statistical aggregation to attention in every
+  layer. On HI-Small and HI-Medium it improves dense-context F1 by 3 to 6 points, with up to 77 percent fewer
+  parameters than the graph-transformer baselines. The abstract names no Multi-GNN baseline.
+
+  The IBM tab prints each scored transfer's payer and payee degrees, so the page could also report the
+  published models' F1 stratified by degree.
+- **Explainable GATv2** (Shahbazi et al., [arXiv:2609.37155](https://arxiv.org/abs/2609.37155),
+  29 September 2026). It reports AUPRC $`64.85`$ percent and best F1 $`68.42`$ percent on HI-Small, against
+  XGBoost at AUPRC $`38.46`$ percent. Its split is a "temporal, leakage-safe partitioning" whose ratios the
+  abstract does not give, and it makes no comparison with Egressy et al. With an unstated split and an F1
+  labelled "best", it is no evidence against Multi-PNA+EU's $`68.16 \pm 2.65`$ (Egressy et al., Table 2).
+
+None of the three changes a decision here:
+- Multi-PNA+EU stays the baseline the compact GNN is distilled from and compared with (HF30).
+- IBM's code at `252b025` is still the newest commit on its main branch (read 2026-11-15).
+- None of the three describes a time bound on its test-time neighbourhoods; the first says so in its full text,
+  the other two in their abstracts. That is the question the causal protocol answers for IBM's two models
+  (`scripts/train/ibm_multignn/README.md`).
+
 ---
 
 # The other four verticals
