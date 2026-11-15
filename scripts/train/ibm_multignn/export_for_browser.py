@@ -57,6 +57,7 @@ def main() -> int:
     import numpy as np
     import torch
     sys.path.insert(0, os.getcwd())
+    sys.path.insert(1, str(Path(__file__).resolve().parents[3] / "src"))  # qsh.models.sample_per_row
     sys.argv = [sys.argv[0], "--data", "Small_HI", "--model", a.model, "--emlps", "--reverse_mp", "--ego", "--ports", "--testing"]
     from util import create_parser
     from data_loading import get_data
@@ -168,8 +169,13 @@ def main() -> int:
     f1 = 2 * tp / (tp + fp + tp[-1])
     k = int(np.argmax(f1))
     thr = float(val["probs"][order][k])
-    prob = np.exp(seed_logits[:, 1]) / np.exp(seed_logits).sum(1)
-    pred = (prob >= thr).astype(int)
+    # The record the page compares with, from ONNX Runtime's own outputs by the page's rule (qsh.models.sample_per_row):
+    # a shifted softmax of the logits, laundering at or above the threshold, the margin p(laundering) - threshold.
+    ort_logits = np.asarray(o[seed_at], dtype=np.float64)
+    e = np.exp(ort_logits - ort_logits.max(axis=1, keepdims=True))
+    prob = e[:, 1] / e.sum(axis=1)
+    pred = (prob - thr >= 0).astype(int)
+    from qsh.models.sample_per_row import TOLERANCE
     sample = {
         "_about": ("IBM's Multi-PNA+EU on the 16 held-out transactions the published finance MLP and compact GNN are checked "
                    "on, with the neighbourhood its loader sampled for them, written by "
@@ -184,9 +190,15 @@ def main() -> int:
                    "rev_edge_index": ri.numpy().ravel().tolist(), "rev_edge_attr": ra.numpy().ravel().tolist(), "n_edges": int(ei.shape[1]),
                    "n_rev_edges": int(ri.shape[1])},
         "seeds": {"positions_in_batch": seed_at, "row_index_in_test_window": rows.tolist(), "labels": labels.tolist()},
-        "expected": {"logits": seed_logits.tolist(), "decision_threshold": thr,
+        "expected": {"logits": ort_logits.tolist(), "logits_pytorch": seed_logits.tolist(), "decision_threshold": thr,
                      "decision_threshold_note": "the laundering probability at which F1 peaks on the validation window, from dump_logits.py",
-                     "per_row": {"predicted": pred.tolist()}, "accuracy": float((pred == labels.numpy()).mean())},
+                     "graph": "model.onnx", "accuracy": float((pred == labels.numpy()).mean()),
+                     "note": "Accuracy on 16 rows, half of them laundering, at the validation-tuned threshold: it shows the model running "
+                             "on the record's inputs, not how well it ranks.",
+                     "per_row": {"rows": len(seed_at), "read_from": "logits", "tolerance": TOLERANCE, "graph": "model.onnx",
+                                 "predicted": pred.tolist(), "margin": [float(v) for v in prob - thr],
+                                 "margin_is": "p(class 1) minus the decision threshold; class 1 at or above 0",
+                                 "note": "From ONNX Runtime's outputs on this file's inputs, by the page's rule."}},
         "classes": {"0": "clean", "1": "laundering"},
         "licence": "CDLA-Sharing-1.0", "licence_url": "https://cdla.dev/sharing-1-0/",
         "attribution": ("IBM, Transactions for Anti Money Laundering (AML), HI-Small (Altman et al., NeurIPS 2023 Datasets "

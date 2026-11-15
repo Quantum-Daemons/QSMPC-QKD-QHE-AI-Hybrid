@@ -798,6 +798,63 @@ export function openPinnedGraph(spec: ModelSpec, path: string):
   return hit;
 }
 
+/** A graph model's evaluation sample (Round 86, IBM's Multi-GNN): one subgraph holding the 16 held-out transactions
+ *  the finance MLP and compact GNN are checked on, with the neighbourhood the protocol sampled, and where in it the 16
+ *  sit. Written by `scripts/train/ibm_multignn/export_for_browser.py`. */
+export interface GraphSampleFile {
+  kind: "graph"; protocol: string; protocol_note: string;
+  inputs: { x: number[]; x_shape: [number, number]; edge_index: number[]; edge_attr: number[]; edge_attr_dim: number;
+            rev_edge_index: number[]; rev_edge_attr: number[]; n_edges: number; n_rev_edges?: number };
+  seeds: { positions_in_batch: number[]; row_index_in_test_window: number[]; labels: number[] };
+  expected: { decision_threshold: number; accuracy: number; graph?: string; note?: string; per_row?: PerRowRecord };
+  provenance?: string;
+}
+
+/** Re-scores a graph sample: the whole subgraph through the published graph, then the 16 seeds' logits, each decision
+ *  at the published threshold and each margin against the record, as `evaluatePublishedModel` does for rows. */
+async function evaluateGraphSample(usecase: string, target: { url: string; spec: ModelSpec }, file: GraphSampleFile,
+                                   base: ModelEvalResult, backend: OnnxBackend): Promise<ModelEvalResult> {
+  const fetchedGraph = target.url.split("/").pop() ?? "";
+  if (file.expected.graph && fetchedGraph && file.expected.graph !== fetchedGraph) {
+    return { ...base, error: `graph mismatch: the record was measured on ${file.expected.graph} and this browser fetched ${fetchedGraph}` };
+  }
+  const opened = (await loadModel(usecase, target.spec.key, backend)) ? openSession(usecase, target.spec.key, backend) : null;
+  if (!opened) return { ...base, error: status.error ?? "the graph model could not be opened in this browser" };
+  try {
+    const i = file.inputs, d = i.edge_attr_dim, nr = i.n_rev_edges ?? i.n_edges;
+    const T = opened.ort.Tensor;
+    const out = await opened.session.run({
+      x: new T("float32", Float32Array.from(i.x), i.x_shape),
+      edge_index: new T("int64", BigInt64Array.from(i.edge_index, (v) => BigInt(v)), [2, i.n_edges]),
+      edge_attr: new T("float32", Float32Array.from(i.edge_attr), [i.n_edges, d]),
+      rev_edge_index: new T("int64", BigInt64Array.from(i.rev_edge_index, (v) => BigInt(v)), [2, nr]),
+      rev_edge_attr: new T("float32", Float32Array.from(i.rev_edge_attr), [nr, d]),
+    });
+    const name = opened.session.outputNames[0];
+    const data = out[name].data as Float32Array;
+    const seeds = file.seeds.positions_in_batch, n = seeds.length;
+    const logits = new Float32Array(n * 2);
+    seeds.forEach((p, k) => { logits[2 * k] = data[2 * p]; logits[2 * k + 1] = data[2 * p + 1]; });
+    const thr = file.expected.decision_threshold;
+    const kind = outputKind(name);
+    if (!kind) throw new Error(`the graph's output is named "${name}", neither probabilities nor logits`);
+    const prob = toProbabilities(logits, n, 2, kind);
+    const preds = Array.from({ length: n }, (_, k) => (prob[2 * k + 1] >= thr ? 1 : 0));
+    const labels = file.seeds.labels;
+    const score = preds.filter((v, k) => v === labels[k]).length / n;
+    const rec = file.expected.per_row;
+    const perRow = rec ? comparePerRow(rec, n, name, fetchedGraph, (k) => preds[k], (k) => prob[2 * k + 1] - thr, null) : undefined;
+    return {
+      ...base, ran: true, n, score, expected: file.expected.accuracy, decisionThreshold: thr, perRow,
+      matchesExpected: !!perRow && perRowPasses(perRow) && (perRow.nearTies > 0 || Math.abs(score - file.expected.accuracy) <= 1e-9),
+      backend: opened.status.backend, bytes: opened.status.bytes, provenance: file.provenance ?? file.protocol_note,
+      note: file.expected.note ?? file.protocol_note,
+    };
+  } catch (e) {
+    return { ...base, error: `the graph sample could not be scored: ${(e as Error)?.message ?? String(e)}` };
+  }
+}
+
 /** Said wherever a sample could not be fetched, so a failed request never reads as a fact about
  *  the model. */
 const notEvidence = "This says nothing about whether the model publishes one.";
@@ -853,6 +910,10 @@ export async function evaluatePublishedModel(
   }
   const file = got.file;
   const split = base.split;
+  // IBM's Multi-GNN (Round 86): 16 held-out transactions with the neighbourhood the protocol sampled for them, one graph.
+  if ((file as unknown as { kind?: string }).kind === "graph") {
+    return evaluateGraphSample(usecase, target, file as unknown as GraphSampleFile, base, backend);
+  }
   // The forecaster student's sample is a stretch of a timeline scored by events, not rows for a graph (Round 86).
   if ((file as unknown as { task?: string }).task === "forecast_events") {
     try {
