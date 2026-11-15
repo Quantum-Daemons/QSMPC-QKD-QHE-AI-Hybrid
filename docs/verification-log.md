@@ -5220,3 +5220,9 @@ So the links stay as they are, and the EUR-Lex pair is re-read once EUR-Lex is b
   the check filters by CFR title instead.)
 
 So the row's "FAR proposal due" holds; its 180 days end about 2026-12-19.
+
+**The EU row on `/value`**, re-read on the evening of 2026-11-15.
+- The Commission's "EU Roadmap on Post-Quantum Cryptography - Survey feedback" page (published 2026-09-02) reports
+  on the NIS Cooperation Group's 2025 consultation (97 submissions) and links a separate FAQ, whose topics include
+  hybrid schemes. It is not a revised roadmap.
+- So the row's June 2025 roadmap and its milestones stand. The FAQ is a PDF and was not opened.
