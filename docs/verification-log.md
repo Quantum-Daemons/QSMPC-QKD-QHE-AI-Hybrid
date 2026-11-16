@@ -5213,6 +5213,18 @@ machine on 2026-11-15:
 
 So the links stay as they are, and the EUR-Lex pair is re-read once EUR-Lex is back.
 
+**The EUR-Lex pair, re-read on 2026-11-16 at about 11:00 JST.** Both ELI links return 200 with no redirect, and each
+page is its act: "Regulation - EU - 2024/1689" and "Regulation - EU - 2026/1744" (the Official Journal L series of
+24.7.2026). Three statements the repository makes were re-read in the text of 2026/1744:
+- Article 4: it enters into force on the third day after its publication, so on 2026-07-27.
+- Article 113 point (c) as replaced: Chapter III Sections 1 to 3 apply from 2 December 2027 for Annex III systems and
+  from 2 August 2028 for Annex I systems.
+- The new Article 111(4): providers of systems generating synthetic content placed on the market before 2 August 2026
+  comply with Article 50(2) by 2 December 2026.
+
+All three match `docs/ai-act-art50-gap-analysis.md`, `docs/pqc-roadmap.md` and
+`references/2026-metric-practice-fact-check.md`. The links stay.
+
 **The FAR row on `/value`**, re-read at the Federal Register's API on the evening of 2026-11-15:
 - Nine proposed rules under 48 CFR have been published since EO 14412 (2026-06-25): the GSAR's implementations of EO
   14275, four parts of the FAR overhaul and three DFARS cases.
@@ -5256,7 +5268,7 @@ GitHub-rendered documents became inline math in the house form.
   Face cards.
 - An upper-case E is never read as an exponent, which keeps export-control numbers such as 9E515. The dry run had
   converted them.
-- A range like 5e6-2e8 became "5 x 10^6 to 2 x 10^8" in math.
+- A range like `5e6-2e8` became $`5 \times 10^{6}`$ to $`2 \times 10^{8}`$.
 - The dry run also found a sentence-final number the first pattern skipped. A second pass finds nothing left.
 
 The local gate passed all 18 blocking steps once the worktree linked the checklist and `.env.demo`; step 16 fails in a
