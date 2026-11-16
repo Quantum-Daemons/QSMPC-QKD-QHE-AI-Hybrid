@@ -176,6 +176,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--teacher-probs", type=Path, default=None,
                     help="train.npz from scripts/train/ibm_multignn/dump_logits.py: edge ids and Multi-PNA+EU probabilities on the fit window")
+    ap.add_argument("--teacher-seed", type=int, default=1, help="the IBM Multi-PNA+EU seed whose probabilities --teacher-probs holds")
     ap.add_argument("--alpha", type=float, default=0.3, help="weight of the teacher's probability in the target; chosen on validation")
     args = ap.parse_args()
     started = time.time()
@@ -207,6 +208,9 @@ def main() -> int:
     if args.teacher_probs is not None:
         blob = args.teacher_probs.read_bytes()
         teacher = np.load(args.teacher_probs)
+        fit_bn = "probs_saved_bn" in teacher.files
+        teacher_bn = ("with its BatchNorm statistics recomputed on the fit window (scripts/train/ibm_multignn/precise_bn.py)" if fit_bn
+                      else "with the BatchNorm statistics IBM's loop saved, set by its test pass")
         ids, probs, tlab = teacher["ids"], teacher["probs"], teacher["labels"]
         if ids.min() < 0 or ids.max() >= n_fit or not np.array_equal(tlab, y[ids]):
             raise SystemExit(f"{args.teacher_probs}: its edge ids or labels are not this fit window's rows")
@@ -215,7 +219,12 @@ def main() -> int:
         target = torch.tensor(soft, device=DEVICE)
         distillation = {
             "teacher": ("IBM Multi-PNA+EU, the official code IBM/Multi-GNN at 252b0252afca109d1d216c411c59ff70753b25fc with "
-                        "scripts/train/ibm_multignn/project_split.patch, on this project's windows, seed 1, the checkpoint of its best validation F1"),
+                        f"scripts/train/ibm_multignn/project_split.patch, on this project's windows, seed {args.teacher_seed}, the checkpoint "
+                        f"of its best validation F1, {teacher_bn}"),
+            # Round 86: IBM's loop never calls model.eval(), so a checkpoint it saves carries BatchNorm statistics set by its
+            # test pass; precise_bn.py's probabilities carry `probs_saved_bn` beside the recomputed ones.
+            "teacher_batchnorm": "recomputed on the fit window" if fit_bn else "as IBM's loop saved them, set by its test pass",
+            "teacher_seed": args.teacher_seed,
             "alpha": args.alpha, "teacher_probs_sha256": hashlib.sha256(blob).hexdigest(),
             "fit_edges_scored_by_the_teacher": int(len(ids)), "fit_edges": int(n_fit),
             "chosen_on": "validation AUPRC over alpha 0, 0.3, 0.5 and 0.7, three seeds each (0.5440, 0.5817, 0.5809, 0.5802)",

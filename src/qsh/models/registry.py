@@ -1221,9 +1221,9 @@ _SPECS: tuple[ModelSpec, ...] = (
         eval_split=("the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, the last 30 percent of the "
                     "transactions in time order, enriched to 2 percent laundering, with the same 114 inputs"),
         notes=("The finance page's non-linear model under encryption, the linear layers under CKKS and the ReLUs and argmax in garbled circuits. Trained on the fit window with class weights, "
-               "distilled from IBM's Multi-PNA+EU run on the same windows (the target 0.7 times the label plus 0.3 times its probability, the weight chosen on validation); "
+               "distilled from IBM's Multi-PNA+EU run on the same windows, seed 1 with its BatchNorm statistics recomputed on the fit window (the target 0.7 times the label plus 0.3 times its probability, the weight chosen on validation); "
                "scaling and seed chosen on the validation window, every seed's figure in the record. Its features see transactions up to the end of their batch of 2,048, as the Graph Feature Preprocessor paper processes them. "
-               "Different from `finance_aml.gnn`, the Multi-PNA+EU card, which is a target architecture: this project ran IBM's code as a teacher and ships no artifact of it."),
+               "Its teacher's family is `finance_aml.gnn`, IBM's Multi-PNA+EU trained here under IBM's protocol; the IBM tab runs that model's best seed on validation and draws this MLP against it."),
     ),
     ModelSpec(
         usecase="finance_aml",
@@ -1239,8 +1239,8 @@ _SPECS: tuple[ModelSpec, ...] = (
         metric=replace(M_AML, baseline=0.6816, baseline_source=(
             "Multi-PNA+EU on AML Small HI: 68.16 +/- 2.65 minority-class F1, five runs (Egressy et al., 'Provably Powerful "
             "Graph Neural Networks for Directed Multigraphs', AAAI 2024, arXiv:2306.11586, Table 2), the architecture this "
-            "model is distilled from; run here on this project's windows it scored 0.6616 and 0.6878 in two runs of seed 1 "
-            "(scripts/train/ibm_multignn/). Different setting: this model reads a capped neighbourhood of 16 edges per "
+            "model is distilled from, run here from IBM's code on this project's windows over five seeds (finance_aml.gnn, "
+            "scripts/train/ibm_multignn/). Different setting: this model reads a capped neighbourhood of 16 edges per "
             "transaction, where Multi-PNA+EU reads a sample of the whole test-window graph. GFP+XGBoost's 63.23 is the "
             "gradient booster's baseline, not a graph model's.")),
         runs_encrypted=True,
@@ -1248,9 +1248,9 @@ _SPECS: tuple[ModelSpec, ...] = (
         hf_repo="qsh-finance-aml-gnn-compact",
         eval_split=("the rows of the published MLP's fixtures, the held-out temporal test window, half of them laundering, each with its capped neighbourhood"),
         notes=("The finance page's graph model under encryption. Trained on the same windows as the published MLP, with the shape, learning rate, endpoint scaling and seed chosen on validation, "
-               "and distilled from IBM's Multi-PNA+EU run on those windows (the target 0.7 times the label plus 0.3 times its probability, the weight chosen on validation; "
+               "and distilled from IBM's Multi-PNA+EU run on those windows, seed 1 with its BatchNorm statistics recomputed on the fit window (the target 0.7 times the label plus 0.3 times its probability, the weight chosen on validation; "
                "`scripts/train/ibm_multignn/` reproduces the teacher). Its neighbours and features see transactions up to the end of their batch of 2,048. It reads 16 edges per transaction, "
-               "where the official Multi-GNN models read a sample of the whole test-window graph, so the two are different settings. It is not the `finance_aml.gnn` card, which is the official architecture's target."),
+               "where the official Multi-GNN models read a sample of the whole test-window graph, so the two are different settings. Its teacher's family is `finance_aml.gnn`, which the IBM tab runs and draws this model against."),
     ),
     ModelSpec(
         usecase="medical_fl",

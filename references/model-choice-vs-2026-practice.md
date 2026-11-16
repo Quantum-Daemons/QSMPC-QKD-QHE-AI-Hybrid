@@ -179,7 +179,7 @@ under CKKS on IBM AML: minority-class F1 $`63.72 \pm 1.86`$ on Small-HI, 5.31 s 
 amortised at a batch of 16 with HEonGPU on one RTX 5090, the server holding the graph and weights in
 plaintext, and the timings excluding the client's encryption, decryption, key generation and network (read
 at the source on 2026-11-11). This project's compact GNN runs in a browser tab under CKKS and garbled circuits
-on a capped 16-edge neighbourhood and scores 0.6587 over its test window. The protocols, threat models and
+on a capped 16-edge neighbourhood and scores 0.6585 over its test window. The protocols, threat models and
 splits differ, so the two are not ranked.
 
 ## What is genuinely absent, stated as a non-goal rather than a gap

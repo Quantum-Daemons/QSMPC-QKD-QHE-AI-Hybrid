@@ -953,6 +953,18 @@ function IbmTab({ usecase, specs, verifications, decrypted }:
   { usecase: string; specs: ModelSpec[]; verifications?: VerificationSummary[]; decrypted?: DecryptedRows }) {
   const of = (key: string) => verifications?.find((v) => v.modelKey === key);
   const t = of("finance_aml.gnn");
+  // Which seed taught each student, matched by the SHA-256 of the fit-window probabilities it was distilled toward
+  // against the ones each seed's record lists, so the view never names a teacher from text that could drift.
+  const ibmRec = specs.find((x) => x.key === "finance_aml.gnn")?.achieved as
+    { selected_seed?: number; seeds?: { seed: number; fit_window_probs_sha256?: string }[] } | undefined;
+  const taughtBy: Record<string, string> = {};
+  for (const key of ["finance_aml.gnn_compact", "finance_aml.mlp_large"]) {
+    const d = (modelsFor(usecase).find((x) => x.key === key)?.achieved as { distillation?: { teacher_probs_sha256?: string } } | undefined)?.distillation;
+    const seed = ibmRec?.seeds?.find((x) => x.fit_window_probs_sha256 && x.fit_window_probs_sha256 === d?.teacher_probs_sha256)?.seed;
+    taughtBy[key] = seed == null ? "distilled from a checkpoint this record does not list"
+      : seed === ibmRec?.selected_seed ? `distilled from seed ${seed}, the one this tab runs`
+      : `distilled from seed ${seed} of this model; this tab runs seed ${ibmRec?.selected_seed}, the best of five on validation`;
+  }
   const teacher = t?.graphRows && t.decisionThreshold != null ? { ...t.graphRows, threshold: t.decisionThreshold } : null;
   return (
     <div>
@@ -965,7 +977,7 @@ function IbmTab({ usecase, specs, verifications, decrypted }:
       {specs.some((s) => s.key === "finance_aml.gnn") && (
         <div className="model-block">
           <strong>What the distillation keeps</strong>
-          <TeacherStudentPlot teacher={teacher} teacherName="IBM Multi-PNA+EU" decrypted={decrypted} />
+          <TeacherStudentPlot teacher={teacher} teacherName="IBM Multi-PNA+EU" decrypted={decrypted} taughtBy={taughtBy} />
         </div>
       )}
     </div>

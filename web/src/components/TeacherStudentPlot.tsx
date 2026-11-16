@@ -41,8 +41,8 @@ async function studentRows(key: string): Promise<StudentRows> {
 /** Which of the 16 the run decrypted under MPC, per student, as the run reports it: an index into the student's fixtures. */
 export interface DecryptedRows { "finance_aml.gnn_compact"?: number; "finance_aml.mlp_large"?: number }
 
-export default function TeacherStudentPlot({ teacher, teacherName, decrypted }:
-  { teacher: TeacherRows | null; teacherName: string; decrypted?: DecryptedRows }) {
+export default function TeacherStudentPlot({ teacher, teacherName, decrypted, taughtBy }:
+  { teacher: TeacherRows | null; teacherName: string; decrypted?: DecryptedRows; taughtBy?: Record<string, string> }) {
   const captionId = useId();
   const [students, setStudents] = useState<Record<string, StudentRows | string>>({});
   useEffect(() => {
@@ -92,7 +92,7 @@ export default function TeacherStudentPlot({ teacher, teacherName, decrypted }:
             <b>{s.name}</b>: {p === "loading" ? "fetching its pinned weights..."
               : typeof p === "string" ? `not drawn (${p})`
               : p.refused ? `not drawn: ${p.refused}`
-              : `${p.agree} of ${p.n} decisions agree with ${teacherName}`}
+              : `${p.agree} of ${p.n} decisions agree with ${teacherName}`}{taughtBy?.[s.key] ? ` (${taughtBy[s.key]})` : ""}
           </span>
         ))}
       </p>

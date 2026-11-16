@@ -109,7 +109,7 @@ measured on the paper's 60/20/20 split with the preprocessor updated over the te
 batch size of 128; at the 2,048 these features use, the GFP paper reports $`64.77 \pm 0.47`$
 (Blanusa et al., arXiv:2402.08593, Table 4), 0.032 above this teacher. Neither difference is stated as
 a measured gap, since the protocols differ. On
-the same windows the compact GNN distilled from IBM's Multi-PNA+EU scores 0.6587
+the same windows the compact GNN distilled from IBM's Multi-PNA+EU scores 0.6585
 ([the finance models on 114 inputs](models-and-benchmarks.md#the-finance-models-on-114-inputs-and-the-compact-gnn)).
 
 Two causes recorded here earlier do not hold. The Proprietary `snapml` licence on the preprocessor

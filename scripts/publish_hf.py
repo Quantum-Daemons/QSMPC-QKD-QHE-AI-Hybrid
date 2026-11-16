@@ -98,14 +98,16 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool
         # student's paragraph below says neither.
         body += [f"This is the **published non-linear model** the `{spec.usecase}` page runs under encryption: an MLP on the page's gradient-boosting teacher's 114 inputs, 32 per-account features,",
                  "79 per-transaction window features and 3 pair features, trained with class weights towards 0.7 times the label plus 0.3 times the probability IBM's",
-                 "Multi-PNA+EU gives the transaction on the same windows (generalised distillation, Lopez-Paz et al., ICLR 2016; the weight chosen on validation).",
+                 f"Multi-PNA+EU{_teacher(achieved)} gives the transaction on the same windows (generalised distillation, Lopez-Paz et al., ICLR 2016;",
+                 "the weight chosen on validation).",
                  "Its linear layers run under CKKS and its ReLUs and argmax in garbled circuits, and its features see transactions up to the end of their batch of 2,048,",
                  "as the Graph Feature Preprocessor paper processes them. Its scaling and seed were chosen on the validation window, and the record below carries every",
                  "seed's figure. `weights.json` also carries 16 held-out rows for checks, under the data's licence."]
     elif spec.key in GRAPH_MODELS:
         body += [f"This is the **graph model** the `{spec.usecase}` page runs under encryption: message passing on a fixed, public tree of 16 neighbouring edges",
                  "per transaction, its linear maps under CKKS and its 608 ReLUs and argmax in garbled circuits, beside an MLP channel over the same 114 inputs as the",
-                 "page's gradient-boosting teacher. Trained with class weights towards 0.7 times the label plus 0.3 times the probability IBM's Multi-PNA+EU gives the transaction on the same",
+                 "page's gradient-boosting teacher. Trained with class weights towards 0.7 times the label plus 0.3 times the probability IBM's",
+                 f"Multi-PNA+EU{_teacher(achieved)} gives the transaction on the same",
                  "windows (generalised distillation, Lopez-Paz et al., ICLR 2016; the weight chosen on validation); PNA's neighbourhoods include later",
                  "transactions of the training window, which reach this model only through its training targets. Its neighbours and features see transactions up to",
                  "the end of their batch of 2,048. The endpoint scaling and seed were chosen on the validation window, and the record below carries every seed's figure.",
@@ -225,6 +227,13 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool
 
 #: An inline math span written the repository's way, `$...$`, outside any `$$` display block.
 _INLINE_MATH = re.compile(r"(?<![$\\])\$(?!\$)([^$\n]+?)(?<!\\)\$(?!\$)")
+
+
+def _teacher(achieved: dict | None) -> str:
+    """The distillation teacher as the record states it (Round 86): which seed, and where its BatchNorm statistics came from."""
+    d = (achieved or {}).get("distillation") or {}
+    seed, bn = d.get("teacher_seed"), d.get("teacher_batchnorm")
+    return f" (seed {seed}, its BatchNorm statistics {bn})" if seed is not None and bn else ""
 
 
 def _five_seeds_section(seeds: list | None, summary: dict | None) -> list[str]:

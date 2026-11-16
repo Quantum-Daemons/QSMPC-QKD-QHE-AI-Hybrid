@@ -248,8 +248,8 @@ causal aggregates. There is no cycle enumeration. On this project's split, 56/14
 | XGBoost teacher, `finance_aml.gbm`, until Round 86 | 32 | 0.1519 | 0.1233 |
 | XGBoost teacher, `finance_aml.gbm` | 114 | **0.6161** | **0.6428** |
 | CKKS-linear student, `finance_aml.student` | 114 | 0.3088 | - |
-| MLP, `finance_aml.mlp_large`, distilled from Multi-PNA+EU | 114 | 0.5953 | 0.6436 |
-| compact GNN, `finance_aml.gnn_compact`, distilled from Multi-PNA+EU | 114 and 16 edges | 0.6587 | 0.6676 |
+| MLP, `finance_aml.mlp_large`, distilled from Multi-PNA+EU | 114 | 0.6278 | 0.6432 |
+| compact GNN, `finance_aml.gnn_compact`, distilled from Multi-PNA+EU | 114 and 16 edges | 0.6585 | 0.6687 |
 | IBM Multi-GIN+EU, official code on these windows, seed 1 | its own graph | 0.6024 | - |
 | IBM Multi-PNA+EU, official code on these windows, seed 1 | its own graph | 0.6616 | 0.6415 |
 
