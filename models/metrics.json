@@ -95,6 +95,214 @@
     "split": "temporal, inductive",
     "wall_clock_s": 557.4
   },
+  "finance_aml.gnn": {
+    "accuracy": 0.999139,
+    "auprc": 0.631829,
+    "auprc_baseline": 0.00152434,
+    "auroc": 0.985447,
+    "batchnorm": {
+      "fit_batches": 348,
+      "saved_num_batches_tracked": [
+        20493
+      ],
+      "statistics": "recomputed on the fit window, a plain average over one pass of the protocol's fit-window loader",
+      "test_decisions_at_0_5_changed": 178,
+      "why": "IBM's loop never calls model.eval(), so the checkpoint it saves carries statistics last set by the test pass"
+    },
+    "code": {
+      "commit": "252b0252afca109d1d216c411c59ff70753b25fc",
+      "licence": "Apache-2.0",
+      "paper": "Egressy et al., 'Provably Powerful Graph Neural Networks for Directed Multigraphs', AAAI 2024, arXiv:2306.11586",
+      "patches": [
+        "scripts/train/ibm_multignn/project_split.patch"
+      ],
+      "repository": "https://github.com/IBM/Multi-GNN"
+    },
+    "dataset": "IBM AMLworld HI-Small",
+    "decision_threshold": 0.637421,
+    "export": {
+      "checkpoint_sha256": "13f53a735b43f5ac9429179f25ab4c4be0851dbb37e824d77ad467e543261525",
+      "fp32_bytes": 890992,
+      "int8_skipped_reason": "not quantised: the 16-transfer sample's graph is 0.9 MB in fp32, and no int8 build was checked against it",
+      "max_abs_logit_difference_onnx_vs_torch_on_seeds": 4.76837158203125e-06,
+      "opset": 18
+    },
+    "five_seeds": {
+      "logged_test_f1": {
+        "mean": 0.64872,
+        "n": 5,
+        "sample_sd": 0.020777
+      },
+      "test_auprc": {
+        "mean": 0.619727,
+        "n": 5,
+        "sample_sd": 0.030358
+      },
+      "test_minority_f1": {
+        "mean": 0.657676,
+        "n": 5,
+        "sample_sd": 0.022553
+      }
+    },
+    "git_sha": "f992073-dirty",
+    "kept_epoch": 33,
+    "logged_test_f1": 0.6751,
+    "logged_validation_f1": 0.6208,
+    "metric_note": "minority_class_f1, auprc and decision_threshold are the exported model's, scored in eval mode with the recomputed statistics at the threshold that maximises validation F1; logged_test_f1 is the figure IBM's own loop logs at the kept epoch, in training mode (dropout on, batch statistics), as the paper's figures are.",
+    "minority_class_f1": 0.682182,
+    "n_test": 1522629,
+    "n_validation": 710969,
+    "protocol": "ibm",
+    "seeds": [
+      {
+        "batchnorm": {
+          "fit_batches": 348,
+          "saved_num_batches_tracked": [
+            22356
+          ],
+          "test_decisions_at_0_5_changed": 285
+        },
+        "checkpoint_sha256": "207ed0c7dbcc1575c5dbf81cd8eff8dd4d7d773a2655fdd75f35c459882c5c2f",
+        "decision_threshold": 0.715978,
+        "epochs_run": 100,
+        "fit_window_probs_sha256": "b98191df888d4748b97fd87472b2bdfe0b8809b0fddf4431d54780b84fb4bdc6",
+        "kept_epoch": 36,
+        "logged_test_f1": 0.6616,
+        "logged_validation_f1": 0.6177,
+        "n_test_scored": 1522619,
+        "n_validation_scored": 710969,
+        "saved_bn_decision_threshold": 0.607298,
+        "saved_bn_test_auprc": 0.641177,
+        "saved_bn_test_minority_f1": 0.679319,
+        "seed": 1,
+        "source_checkpoint_sha256": "e5b6e568803d8cb8f887625a3f23538969b5370068908ca71c064757fde871a8",
+        "test_accuracy": 0.999113,
+        "test_auprc": 0.639675,
+        "test_auroc": 0.986617,
+        "test_minority_f1": 0.673119,
+        "test_positives_scored": 2321,
+        "validation_minority_f1": 0.635952
+      },
+      {
+        "batchnorm": {
+          "fit_batches": 348,
+          "saved_num_batches_tracked": [
+            23598
+          ],
+          "test_decisions_at_0_5_changed": 630
+        },
+        "checkpoint_sha256": "5fde2768e0bd78fb3acb45bdf74a9da19cfaa23942be58de62e4408f54378386",
+        "decision_threshold": 0.778155,
+        "epochs_run": 100,
+        "fit_window_probs_sha256": "cea6f56a0e8f1213b0f7f3400705562e45bb5367d710f7187695de29b29e19d6",
+        "kept_epoch": 38,
+        "logged_test_f1": 0.6506,
+        "logged_validation_f1": 0.6089,
+        "n_test_scored": 1522639,
+        "n_validation_scored": 710969,
+        "saved_bn_decision_threshold": 0.616381,
+        "saved_bn_test_auprc": 0.65072,
+        "saved_bn_test_minority_f1": 0.668809,
+        "seed": 2,
+        "source_checkpoint_sha256": "9ed3937103d9186e0768dc020a2398b1075477032f604942e17143571858a5bb",
+        "test_accuracy": 0.999018,
+        "test_auprc": 0.651,
+        "test_auroc": 0.988518,
+        "test_minority_f1": 0.664573,
+        "test_positives_scored": 2320,
+        "validation_minority_f1": 0.621201
+      },
+      {
+        "batchnorm": {
+          "fit_batches": 348,
+          "saved_num_batches_tracked": [
+            33534
+          ],
+          "test_decisions_at_0_5_changed": 256
+        },
+        "checkpoint_sha256": "cfaa7df47d42ecac30fa17ba021e92377cc88a55a1c06f062b4d8bff5ec7e98e",
+        "decision_threshold": 0.579118,
+        "epochs_run": 100,
+        "fit_window_probs_sha256": "7e1f8cdb71dccd72118d3ed77d28ad21b715c3bdcc86ea5bdbc0386afa38b28c",
+        "kept_epoch": 54,
+        "logged_test_f1": 0.6254,
+        "logged_validation_f1": 0.5928,
+        "n_test_scored": 1522633,
+        "n_validation_scored": 710969,
+        "saved_bn_decision_threshold": 0.53061,
+        "saved_bn_test_auprc": 0.602689,
+        "saved_bn_test_minority_f1": 0.641013,
+        "seed": 3,
+        "source_checkpoint_sha256": "dbad80940368057128b0c130ec3daa8e0501c035e38d20dca84e4dc25e4d83c4",
+        "test_accuracy": 0.999014,
+        "test_auprc": 0.596986,
+        "test_auroc": 0.985148,
+        "test_minority_f1": 0.639289,
+        "test_positives_scored": 2321,
+        "validation_minority_f1": 0.617602
+      },
+      {
+        "batchnorm": {
+          "fit_batches": 348,
+          "saved_num_batches_tracked": [
+            20493
+          ],
+          "test_decisions_at_0_5_changed": 178
+        },
+        "checkpoint_sha256": "13f53a735b43f5ac9429179f25ab4c4be0851dbb37e824d77ad467e543261525",
+        "decision_threshold": 0.637421,
+        "epochs_run": 100,
+        "fit_window_probs_sha256": "fd2b997bc4e86c074d7720c6e933b59ab796d63ba89c2a54c4250c936ed8b67f",
+        "kept_epoch": 33,
+        "logged_test_f1": 0.6751,
+        "logged_validation_f1": 0.6208,
+        "n_test_scored": 1522629,
+        "n_validation_scored": 710969,
+        "saved_bn_decision_threshold": 0.535918,
+        "saved_bn_test_auprc": 0.629947,
+        "saved_bn_test_minority_f1": 0.680382,
+        "seed": 4,
+        "source_checkpoint_sha256": "b9cd2a10eb1d9358c988245068c418cf057e488aa06da8be5cf79e5aea9c9041",
+        "test_accuracy": 0.999139,
+        "test_auprc": 0.631829,
+        "test_auroc": 0.985447,
+        "test_minority_f1": 0.682182,
+        "test_positives_scored": 2321,
+        "validation_minority_f1": 0.633782
+      },
+      {
+        "batchnorm": {
+          "fit_batches": 348,
+          "saved_num_batches_tracked": [
+            24219
+          ],
+          "test_decisions_at_0_5_changed": 261
+        },
+        "checkpoint_sha256": "128a2e8839dd07e1d9558eb05674434b26d9b50f55bc1ed1133e4a07873c450d",
+        "decision_threshold": 0.481617,
+        "epochs_run": 100,
+        "fit_window_probs_sha256": "7704b8b7100e091a12dcd672c4f6976ec8a1dd9a21081a745b7da2ba27c7ca3c",
+        "kept_epoch": 39,
+        "logged_test_f1": 0.6309,
+        "logged_validation_f1": 0.5732,
+        "n_test_scored": 1522639,
+        "n_validation_scored": 710969,
+        "saved_bn_decision_threshold": 0.430389,
+        "saved_bn_test_auprc": 0.575262,
+        "saved_bn_test_minority_f1": 0.629165,
+        "seed": 5,
+        "source_checkpoint_sha256": "2e4ae9eb82883730be2a5e2b0a10a7c187821fab0b44538c14b33b2ddacfe6c0",
+        "test_accuracy": 0.99899,
+        "test_auprc": 0.579145,
+        "test_auroc": 0.982936,
+        "test_minority_f1": 0.629219,
+        "test_positives_scored": 2320,
+        "validation_minority_f1": 0.595489
+      }
+    ],
+    "selected_seed": 4,
+    "split": "temporal, this project's windows by position (fit 56, validation 14, test 30 percent); IBM's loader samples each transfer's neighbours from its window's whole graph"
+  },
   "finance_aml.gnn_compact": {
     "accuracy": 0.99903,
     "auprc": 0.667649,

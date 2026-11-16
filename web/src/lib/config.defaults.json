@@ -989,9 +989,224 @@
   "models": {
     "finance_aml": [
       {
-        "achieved": null,
-        "architecture": "PNA with reverse message passing, multigraph port numbering, ego IDs, edge updates",
-        "artifacts": [],
+        "achieved": {
+          "accuracy": 0.999139,
+          "auprc": 0.631829,
+          "auprc_baseline": 0.00152434,
+          "auroc": 0.985447,
+          "batchnorm": {
+            "fit_batches": 348,
+            "saved_num_batches_tracked": [
+              20493
+            ],
+            "statistics": "recomputed on the fit window, a plain average over one pass of the protocol's fit-window loader",
+            "test_decisions_at_0_5_changed": 178,
+            "why": "IBM's loop never calls model.eval(), so the checkpoint it saves carries statistics last set by the test pass"
+          },
+          "code": {
+            "commit": "252b0252afca109d1d216c411c59ff70753b25fc",
+            "licence": "Apache-2.0",
+            "paper": "Egressy et al., 'Provably Powerful Graph Neural Networks for Directed Multigraphs', AAAI 2024, arXiv:2306.11586",
+            "patches": [
+              "scripts/train/ibm_multignn/project_split.patch"
+            ],
+            "repository": "https://github.com/IBM/Multi-GNN"
+          },
+          "dataset": "IBM AMLworld HI-Small",
+          "decision_threshold": 0.637421,
+          "export": {
+            "checkpoint_sha256": "13f53a735b43f5ac9429179f25ab4c4be0851dbb37e824d77ad467e543261525",
+            "fp32_bytes": 890992,
+            "int8_skipped_reason": "not quantised: the 16-transfer sample's graph is 0.9 MB in fp32, and no int8 build was checked against it",
+            "max_abs_logit_difference_onnx_vs_torch_on_seeds": 4.76837158203125e-06,
+            "opset": 18
+          },
+          "five_seeds": {
+            "logged_test_f1": {
+              "mean": 0.64872,
+              "n": 5,
+              "sample_sd": 0.020777
+            },
+            "test_auprc": {
+              "mean": 0.619727,
+              "n": 5,
+              "sample_sd": 0.030358
+            },
+            "test_minority_f1": {
+              "mean": 0.657676,
+              "n": 5,
+              "sample_sd": 0.022553
+            }
+          },
+          "git_sha": "f992073-dirty",
+          "kept_epoch": 33,
+          "logged_test_f1": 0.6751,
+          "logged_validation_f1": 0.6208,
+          "metric_note": "minority_class_f1, auprc and decision_threshold are the exported model's, scored in eval mode with the recomputed statistics at the threshold that maximises validation F1; logged_test_f1 is the figure IBM's own loop logs at the kept epoch, in training mode (dropout on, batch statistics), as the paper's figures are.",
+          "minority_class_f1": 0.682182,
+          "n_test": 1522629,
+          "n_validation": 710969,
+          "protocol": "ibm",
+          "seeds": [
+            {
+              "batchnorm": {
+                "fit_batches": 348,
+                "saved_num_batches_tracked": [
+                  22356
+                ],
+                "test_decisions_at_0_5_changed": 285
+              },
+              "checkpoint_sha256": "207ed0c7dbcc1575c5dbf81cd8eff8dd4d7d773a2655fdd75f35c459882c5c2f",
+              "decision_threshold": 0.715978,
+              "epochs_run": 100,
+              "fit_window_probs_sha256": "b98191df888d4748b97fd87472b2bdfe0b8809b0fddf4431d54780b84fb4bdc6",
+              "kept_epoch": 36,
+              "logged_test_f1": 0.6616,
+              "logged_validation_f1": 0.6177,
+              "n_test_scored": 1522619,
+              "n_validation_scored": 710969,
+              "saved_bn_decision_threshold": 0.607298,
+              "saved_bn_test_auprc": 0.641177,
+              "saved_bn_test_minority_f1": 0.679319,
+              "seed": 1,
+              "source_checkpoint_sha256": "e5b6e568803d8cb8f887625a3f23538969b5370068908ca71c064757fde871a8",
+              "test_accuracy": 0.999113,
+              "test_auprc": 0.639675,
+              "test_auroc": 0.986617,
+              "test_minority_f1": 0.673119,
+              "test_positives_scored": 2321,
+              "validation_minority_f1": 0.635952
+            },
+            {
+              "batchnorm": {
+                "fit_batches": 348,
+                "saved_num_batches_tracked": [
+                  23598
+                ],
+                "test_decisions_at_0_5_changed": 630
+              },
+              "checkpoint_sha256": "5fde2768e0bd78fb3acb45bdf74a9da19cfaa23942be58de62e4408f54378386",
+              "decision_threshold": 0.778155,
+              "epochs_run": 100,
+              "fit_window_probs_sha256": "cea6f56a0e8f1213b0f7f3400705562e45bb5367d710f7187695de29b29e19d6",
+              "kept_epoch": 38,
+              "logged_test_f1": 0.6506,
+              "logged_validation_f1": 0.6089,
+              "n_test_scored": 1522639,
+              "n_validation_scored": 710969,
+              "saved_bn_decision_threshold": 0.616381,
+              "saved_bn_test_auprc": 0.65072,
+              "saved_bn_test_minority_f1": 0.668809,
+              "seed": 2,
+              "source_checkpoint_sha256": "9ed3937103d9186e0768dc020a2398b1075477032f604942e17143571858a5bb",
+              "test_accuracy": 0.999018,
+              "test_auprc": 0.651,
+              "test_auroc": 0.988518,
+              "test_minority_f1": 0.664573,
+              "test_positives_scored": 2320,
+              "validation_minority_f1": 0.621201
+            },
+            {
+              "batchnorm": {
+                "fit_batches": 348,
+                "saved_num_batches_tracked": [
+                  33534
+                ],
+                "test_decisions_at_0_5_changed": 256
+              },
+              "checkpoint_sha256": "cfaa7df47d42ecac30fa17ba021e92377cc88a55a1c06f062b4d8bff5ec7e98e",
+              "decision_threshold": 0.579118,
+              "epochs_run": 100,
+              "fit_window_probs_sha256": "7e1f8cdb71dccd72118d3ed77d28ad21b715c3bdcc86ea5bdbc0386afa38b28c",
+              "kept_epoch": 54,
+              "logged_test_f1": 0.6254,
+              "logged_validation_f1": 0.5928,
+              "n_test_scored": 1522633,
+              "n_validation_scored": 710969,
+              "saved_bn_decision_threshold": 0.53061,
+              "saved_bn_test_auprc": 0.602689,
+              "saved_bn_test_minority_f1": 0.641013,
+              "seed": 3,
+              "source_checkpoint_sha256": "dbad80940368057128b0c130ec3daa8e0501c035e38d20dca84e4dc25e4d83c4",
+              "test_accuracy": 0.999014,
+              "test_auprc": 0.596986,
+              "test_auroc": 0.985148,
+              "test_minority_f1": 0.639289,
+              "test_positives_scored": 2321,
+              "validation_minority_f1": 0.617602
+            },
+            {
+              "batchnorm": {
+                "fit_batches": 348,
+                "saved_num_batches_tracked": [
+                  20493
+                ],
+                "test_decisions_at_0_5_changed": 178
+              },
+              "checkpoint_sha256": "13f53a735b43f5ac9429179f25ab4c4be0851dbb37e824d77ad467e543261525",
+              "decision_threshold": 0.637421,
+              "epochs_run": 100,
+              "fit_window_probs_sha256": "fd2b997bc4e86c074d7720c6e933b59ab796d63ba89c2a54c4250c936ed8b67f",
+              "kept_epoch": 33,
+              "logged_test_f1": 0.6751,
+              "logged_validation_f1": 0.6208,
+              "n_test_scored": 1522629,
+              "n_validation_scored": 710969,
+              "saved_bn_decision_threshold": 0.535918,
+              "saved_bn_test_auprc": 0.629947,
+              "saved_bn_test_minority_f1": 0.680382,
+              "seed": 4,
+              "source_checkpoint_sha256": "b9cd2a10eb1d9358c988245068c418cf057e488aa06da8be5cf79e5aea9c9041",
+              "test_accuracy": 0.999139,
+              "test_auprc": 0.631829,
+              "test_auroc": 0.985447,
+              "test_minority_f1": 0.682182,
+              "test_positives_scored": 2321,
+              "validation_minority_f1": 0.633782
+            },
+            {
+              "batchnorm": {
+                "fit_batches": 348,
+                "saved_num_batches_tracked": [
+                  24219
+                ],
+                "test_decisions_at_0_5_changed": 261
+              },
+              "checkpoint_sha256": "128a2e8839dd07e1d9558eb05674434b26d9b50f55bc1ed1133e4a07873c450d",
+              "decision_threshold": 0.481617,
+              "epochs_run": 100,
+              "fit_window_probs_sha256": "7704b8b7100e091a12dcd672c4f6976ec8a1dd9a21081a745b7da2ba27c7ca3c",
+              "kept_epoch": 39,
+              "logged_test_f1": 0.6309,
+              "logged_validation_f1": 0.5732,
+              "n_test_scored": 1522639,
+              "n_validation_scored": 710969,
+              "saved_bn_decision_threshold": 0.430389,
+              "saved_bn_test_auprc": 0.575262,
+              "saved_bn_test_minority_f1": 0.629165,
+              "seed": 5,
+              "source_checkpoint_sha256": "2e4ae9eb82883730be2a5e2b0a10a7c187821fab0b44538c14b33b2ddacfe6c0",
+              "test_accuracy": 0.99899,
+              "test_auprc": 0.579145,
+              "test_auroc": 0.982936,
+              "test_minority_f1": 0.629219,
+              "test_positives_scored": 2320,
+              "validation_minority_f1": 0.595489
+            }
+          ],
+          "selected_seed": 4,
+          "split": "temporal, this project's windows by position (fit 56, validation 14, test 30 percent); IBM's loader samples each transfer's neighbours from its window's whole graph"
+        },
+        "architecture": "PNA with reverse message passing, multigraph port numbering, ego IDs and edge updates (IBM/Multi-GNN at 252b025, Apache-2.0), 2 layers of width 20",
+        "artifacts": [
+          {
+            "browser_runnable": false,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "browser"
+          }
+        ],
         "browser_runnable": false,
         "dataset": {
           "attribution": "Altman et al., 'Realistic Synthetic Financial Transactions for Anti-Money Laundering Models', NeurIPS 2023 Datasets and Benchmarks. Data: IBM Transactions for Anti-Money Laundering (AML), CDLA-Sharing-1.0.",
@@ -1001,17 +1216,17 @@
           "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
         },
         "eval_sample_reason": null,
-        "eval_split": null,
+        "eval_split": "16 held-out transfers of the temporal test window, the published MLP's fixtures, half of them laundering, with the neighbourhood IBM's loader samples for them from the test window's whole graph",
         "file_sha256": {},
         "hf_repo_id": null,
         "hf_revision": null,
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "finance_aml.gnn",
-        "label": "Multi-PNA+EU transaction GNN",
+        "label": "IBM Multi-PNA+EU, IBM's protocol",
         "metric": {
           "baseline": 0.6816,
-          "baseline_source": "Multi-PNA+EU itself on AML Small HI: 68.16 +/- 2.65 minority-class F1, five runs (Egressy et al., 'Provably Powerful Graph Neural Networks for Directed Multigraphs', AAAI 2024, arXiv:2306.11586, Table 2). GFP+XGBoost's 63.23 is the baseline of the gradient-boosting model this demo ships, not of this architecture.",
+          "baseline_source": "Multi-PNA+EU itself on AML Small HI: 68.16 +/- 2.65 minority-class F1, five runs on the paper's own split (Egressy et al., 'Provably Powerful Graph Neural Networks for Directed Multigraphs', AAAI 2024, arXiv:2306.11586, Table 2). Run here from IBM's code on this project's windows over five seeds, each listed with the test F1 IBM's loop logs at its kept epoch, the paper's measure, beside the exported model's. GFP+XGBoost's 63.23 is the baseline of the gradient-boosting model this demo ships, not of this architecture.",
           "ceiling": 0.7581,
           "ceiling_source": "Multi-FraudGT, the best AML Small HI row of Table 16 ('Minority class F1 scores (%) for six AML datasets') in Bilgi and Atasu, 'MEGA: Message Passing Neural Networks for Multigraphs with EdGe Attributes', TMLR (08/2026), arXiv:2412.00241v3: 75.81 +/- 0.75. In the same column the paper's own MEGA-PNA scores 74.01 +/- 1.55 and MEGA-GenAgg 74.48 +/- 0.84, and Multi-PNA 67.35 +/- 2.89; Small HI is the one AML dataset of the six where Multi-FraudGT is ahead of MEGA-PNA.",
           "companion": "auprc",
@@ -1019,9 +1234,55 @@
           "display": "minority-class F1 (laundering)",
           "name": "minority_class_f1"
         },
-        "notes": "Reference architecture only, and no artifact of it is published. IBM's official Multi-PNA+EU was run here on this project's windows as a teacher (`scripts/train/ibm_multignn/`; test F1 0.6616 and 0.6878 in two runs of seed 1), and the compact GNN and the MLP are distilled from it. The page's graph model is `finance_aml.gnn_compact`, which reads a capped neighbourhood of 16 edges per transaction; message passing over the whole graph needs every account's neighbourhood at scoring time, which the browser does not hold. That is a choice for this operating point, not an impossibility: Bilgi et al. (arXiv:2610.18054v2, preprint) run an edge-centric GNN under CKKS on the IBM AML benchmark at 5.31 s per queried transaction (1.65 s amortized over a batch of 16) with HEonGPU on one RTX 5090, with the graph held in plaintext by the server - server-side evaluation only, since those figures exclude the client's encryption and decryption, key generation and network communication - and its encrypted and plaintext predictions agree on 99.25% of transactions. Kept as a spec for the architecture it names. It is not the best published figure on this split: the published version of MEGA (TMLR, see the ceiling) re-runs Multi-PNA at 67.35 +/- 2.89 on Small HI, below FraudGT, Multi-FraudGT and every MEGA variant in its table.",
+        "notes": "IBM's official Multi-PNA+EU, trained here from IBM's code (IBM/Multi-GNN at 252b025, Apache-2.0, with scripts/train/ibm_multignn/project_split.patch for this project's windows) for IBM's 100 epochs, five seeds. The kept epoch is IBM's own rule and the exported seed is the one with the best logged validation F1. IBM's loop never calls model.eval(), so a checkpoint it saves carries BatchNorm statistics last set by the test pass; the exported one has them recomputed on the fit window (precise_bn.py, the owner's choice of 2026-11-16), and its figures are scored in eval mode at the threshold tuned on validation. The page runs it in plaintext: onnxruntime-web scores its 16 held-out transfers with the neighbourhood IBM's loader sampled for them, and nothing of it runs under encryption. IBM's protocol reads each window's whole graph, so a transfer's neighbourhood can include later transfers, which the tab counts; its causal twin is finance_aml.gnn_causal. The compact GNN and the MLP are distilled from this model, seed 1. Message passing over the whole graph needs every account's neighbourhood at scoring time, which the browser holds here only for these 16 transfers. Bilgi et al. (arXiv:2610.18054v2, preprint) run an edge-centric GNN under CKKS on the IBM AML benchmark at 5.31 s per queried transaction (1.65 s amortized over a batch of 16) with HEonGPU on one RTX 5090, with the graph held in plaintext by the server - server-side evaluation only, since those figures exclude the client's encryption and decryption, key generation and network communication - and its encrypted and plaintext predictions agree on 99.25% of transactions. It is not the best published figure on this split: the published version of MEGA (TMLR, see the ceiling) re-runs Multi-PNA at 67.35 +/- 2.89 on Small HI, below FraudGT, Multi-FraudGT and every MEGA variant in its table.",
         "onnx_domains": [],
-        "params": null,
+        "params": 64374,
+        "pin_withdrawn_reason": null,
+        "runs_encrypted": false,
+        "tier": "t2_industry"
+      },
+      {
+        "achieved": null,
+        "architecture": "PNA with reverse message passing, multigraph port numbering, ego IDs and edge updates (IBM/Multi-GNN at 252b025, Apache-2.0), 2 layers of width 20",
+        "artifacts": [
+          {
+            "browser_runnable": false,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "browser"
+          }
+        ],
+        "browser_runnable": false,
+        "dataset": {
+          "attribution": "Altman et al., 'Realistic Synthetic Financial Transactions for Anti-Money Laundering Models', NeurIPS 2023 Datasets and Benchmarks. Data: IBM Transactions for Anti-Money Laundering (AML), CDLA-Sharing-1.0.",
+          "licence": "CDLA-Sharing-1.0",
+          "name": "IBM AMLworld HI-Small",
+          "publishable": true,
+          "url": "https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml"
+        },
+        "eval_sample_reason": null,
+        "eval_split": "16 held-out transfers of the temporal test window, the published MLP's fixtures, half of them laundering, each with the neighbourhood the causal protocol samples: its batch of 2,048 or earlier transfers, a batch split where it spans more than 17 minutes",
+        "file_sha256": {},
+        "hf_repo_id": null,
+        "hf_revision": null,
+        "hf_revision_stale": null,
+        "int8_withheld_reason": null,
+        "key": "finance_aml.gnn_causal",
+        "label": "IBM Multi-PNA+EU, causal protocol",
+        "metric": {
+          "baseline": 0.6816,
+          "baseline_source": "Multi-PNA+EU on AML Small HI: 68.16 +/- 2.65 minority-class F1, five runs on the paper's own split (Egressy et al., AAAI 2024, arXiv:2306.11586, Table 2), under IBM's protocol. This model reads less than that protocol does, nothing past a transfer's horizon, so the figure is a reference for it rather than a like-for-like comparison.",
+          "ceiling": 0.7581,
+          "ceiling_source": "Multi-FraudGT, the best AML Small HI row of Table 16 ('Minority class F1 scores (%) for six AML datasets') in Bilgi and Atasu, 'MEGA: Message Passing Neural Networks for Multigraphs with EdGe Attributes', TMLR (08/2026), arXiv:2412.00241v3: 75.81 +/- 0.75. In the same column the paper's own MEGA-PNA scores 74.01 +/- 1.55 and MEGA-GenAgg 74.48 +/- 0.84, and Multi-PNA 67.35 +/- 2.89; Small HI is the one AML dataset of the six where Multi-FraudGT is ahead of MEGA-PNA.",
+          "companion": "auprc",
+          "comparison_caveat": "",
+          "display": "minority-class F1 (laundering)",
+          "name": "minority_class_f1"
+        },
+        "notes": "IBM's Multi-PNA+EU under the causal protocol (scripts/train/ibm_multignn/causal.patch on top of the split patch, the owner's choices of 2026-11-15): each mini-batch is one batch of 2,048 transfers in time order, split where it spans more than 17 minutes, sampled with IBM's shared sampler, with every sampled transfer later than that batch dropped, and every window scaled by the fit window's statistics. Trained with early stopping after 20 epochs without a better validation F1 and four loader processes, five seeds; the kept epoch is IBM's rule and the exported seed the best logged validation F1. Nothing it reads lies past the horizon the page's own models give a transfer, the end of its batch of 2,048 and at most 17 minutes after it, and its BatchNorm statistics are recomputed on the fit window, so its normalisation does not read the test window either. The record also gives the same checkpoints' test F1 under the plain batches of 2,048. It runs in plaintext in this tab, beside its twin finance_aml.gnn. Message passing over the whole graph needs every account's neighbourhood at scoring time, which the browser holds here only for these 16 transfers. Bilgi et al. (arXiv:2610.18054v2, preprint) run an edge-centric GNN under CKKS on the IBM AML benchmark at 5.31 s per queried transaction (1.65 s amortized over a batch of 16) with HEonGPU on one RTX 5090, with the graph held in plaintext by the server - server-side evaluation only, since those figures exclude the client's encryption and decryption, key generation and network communication - and its encrypted and plaintext predictions agree on 99.25% of transactions. It is not the best published figure on this split: the published version of MEGA (TMLR, see the ceiling) re-runs Multi-PNA at 67.35 +/- 2.89 on Small HI, below FraudGT, Multi-FraudGT and every MEGA variant in its table.",
+        "onnx_domains": [],
+        "params": 64374,
         "pin_withdrawn_reason": null,
         "runs_encrypted": false,
         "tier": "t2_industry"

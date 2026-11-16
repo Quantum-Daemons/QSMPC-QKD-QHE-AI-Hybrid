@@ -57,6 +57,9 @@ def token() -> str:
 TIER_MODELS = {"finance_aml.mlp_large"}
 #: The finance page's graph model under encryption, trained the same way and with a paragraph of its own (Round 86).
 GRAPH_MODELS = {"finance_aml.gnn_compact"}
+#: IBM's official Multi-PNA+EU, trained here from IBM's code under each protocol (Round 86): the protocol each card names.
+IBM_MODELS = {"finance_aml.gnn": "IBM's protocol, which samples each transfer's neighbours from its window's whole graph",
+              "finance_aml.gnn_causal": "the causal protocol, which reads nothing past the horizon the page's own models give a transfer"}
 #: Plaintext models whose own last layer a page also evaluates under CKKS, on features computed in the clear, with the
 #: features the layer reads (Round 86, the medical page's split inference). Without this the card said "No code path
 #: evaluates this model under encryption", which stopped being true when the page began to.
@@ -108,6 +111,18 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool
                  "the end of their batch of 2,048. The endpoint scaling and seed were chosen on the validation window, and the record below carries every seed's figure.",
                  "`weights.json` also carries 16 held-out rows with their neighbourhoods for checks, and `eval_sample.json` the same rows in the layout",
                  "of the other models' evaluation samples, with their split and the logits to reproduce, both under the data's licence."]
+    elif spec.key in IBM_MODELS:
+        body += ["This is **IBM's official Multi-PNA+EU** (IBM/Multi-GNN at commit 252b025, Apache-2.0; Egressy et al., 'Provably Powerful",
+                 "Graph Neural Networks for Directed Multigraphs', AAAI 2024, arXiv:2306.11586), trained here from IBM's code on the",
+                 f"`{spec.usecase}` page's windows under {IBM_MODELS[spec.key]}, and exported to ONNX at opset 18. The page runs it in",
+                 "plaintext in onnxruntime-web on 16 held-out transfers with the neighbourhood its protocol sampled for them",
+                 "(`eval_sample.json`); nothing of it runs under encryption. This project's changes to IBM's code are the patches in",
+                 "`scripts/train/ibm_multignn/` of the repository, each stated in that folder's README as Apache-2.0 section 4 asks of",
+                 "modified files; IBM's repository ships a LICENSE and no NOTICE file, and its LICENSE is copied here as",
+                 "`LICENSE-IBM-Multi-GNN.txt`. IBM's loop never calls `model.eval()`, so a checkpoint it saves carries BatchNorm",
+                 "statistics last set by the test pass. This model's were recomputed on the fit window, and the table below is the",
+                 "exported model's, in eval mode at the threshold tuned on validation; `logged_test_f1` is the figure IBM's own loop",
+                 "logs at the epoch it keeps, in training mode, which is how the paper's figures are made."]
     elif spec.key in SPLIT_MODELS and not private:
         body += [f"This is the **plaintext** model for the `{spec.usecase}` use case, and its page also runs it split: the",
                  f"network up to {SPLIT_MODELS[spec.key]} in the clear on the data owner's side (the visitor's tab), and",
@@ -146,6 +161,8 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool
     else:
         body += ["Not yet trained. No metrics are reported, and none should be inferred from the",
                  "published baselines below.", ""]
+
+    body += _five_seeds_section((achieved or {}).get("seeds"), (achieved or {}).get("five_seeds"))
 
     body += [
         "## Published baselines this is measured against",
@@ -208,6 +225,29 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool
 
 #: An inline math span written the repository's way, `$...$`, outside any `$$` display block.
 _INLINE_MATH = re.compile(r"(?<![$\\])\$(?!\$)([^$\n]+?)(?<!\\)\$(?!\$)")
+
+
+def _five_seeds_section(seeds: list | None, summary: dict | None) -> list[str]:
+    """Every seed of a multi-seed record (Round 86, IBM's Multi-GNN): the selected one is the best logged validation F1."""
+    if not seeds or not summary:
+        return []
+    cut = all("plain_batches_of_2048" in s for s in seeds)
+    head = "| seed | kept epoch | logged validation F1 | logged test F1 | test F1, exported way | test AUPRC |" + (
+        " test F1, plain batches of 2,048 |" if cut else "")
+    rows = ["## Five seeds", "",
+            "IBM's loop keeps an epoch when its validation F1 beats every earlier epoch's; the logged figures are its own, in",
+            "training mode. The exported way is eval mode with the BatchNorm statistics recomputed on the fit window, at the",
+            "threshold that maximises validation F1. The seed exported is the one with the best logged validation F1.", "",
+            head, "|" + "---|" * (head.count("|") - 1)]
+    for s in seeds:
+        rows.append(f"| {s['seed']} | {s['kept_epoch']} | {s['logged_validation_f1']} | {s['logged_test_f1']} | "
+                    f"{s['test_minority_f1']} | {s['test_auprc']} |"
+                    + (f" {s['plain_batches_of_2048']['test_minority_f1']} |" if cut else ""))
+    def ms(d: dict) -> str:
+        return f"{d['mean']} (sample sd {d['sample_sd']})"
+    rows.append(f"| mean | | | {ms(summary['logged_test_f1'])} | {ms(summary['test_minority_f1'])} | {ms(summary['test_auprc'])} |"
+                + (f" {ms(summary['plain_batches_of_2048_test_minority_f1'])} |" if cut else ""))
+    return rows + [""]
 
 
 def _hub_inline_math(text: str) -> str:
