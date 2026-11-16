@@ -191,9 +191,13 @@ step "11i/18 The compact GNN under MPC"
 ( cd web && npm run --silent check:hybrid-gnn >/tmp/ci_hybrid_gnn.log 2>&1 ) \
   && ok "the compact GNN under MPC matches the logits its trainer recorded" || { bad "the compact GNN under MPC"; tail -12 /tmp/ci_hybrid_gnn.log; }
 
-step "11j/18 What IBM's Multi-GNN read for each scored transfer"
+step "11k/18 What IBM's Multi-GNN read for each scored transfer"
 ( cd web && npm run --silent check:graph-neighbourhood >/tmp/ci_graph_nb.log 2>&1 ) \
   && ok "the IBM tab's neighbourhood counts match the hand-counted graph" || { bad "the IBM tab's neighbourhood counts"; tail -12 /tmp/ci_graph_nb.log; }
+
+step "11l/18 IBM's Multi-PNA+EU against the two models distilled from it"
+( cd web && npm run --silent check:teacher-student >/tmp/ci_teacher_student.log 2>&1 ) \
+  && ok "the teacher-student view pairs the recorded rows and refuses the seeded faults" || { bad "the teacher-student view"; tail -12 /tmp/ci_teacher_student.log; }
 
 step "11h/18 The trained QCNN under CKKS"
 ( cd web && npm run --silent check:qcnn-ckks >/tmp/ci_qcnn_ckks.log 2>&1 ) \

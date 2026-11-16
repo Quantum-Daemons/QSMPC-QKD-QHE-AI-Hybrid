@@ -14,7 +14,7 @@ export interface MlpWeights {
   kind: "mlp"; key: string; n_features: number; features: string[];
   scaling: { kind: string; center: number[]; scale: number[]; clip: number };
   layers: MlpLayer[]; n_parameters: number; classes: Record<string, string>;
-  fixtures: { rows: number[][]; labels: number[]; logits: number[][] };
+  fixtures: { rows: number[][]; labels: number[]; logits: number[][]; row_index_in_test_window?: number[] };
 }
 
 export const blockFor = (n: number) => 1 << Math.ceil(Math.log2(Math.max(n, 2)));
@@ -70,6 +70,16 @@ export function denseUnderCkks(s: Sealed, client: Client, server: Server, arena:
 export function scaleRow(w: MlpWeights, row: number[]): number[] {
   const { center, scale, clip } = w.scaling;
   return row.map((v, i) => Math.min(clip, Math.max(-clip, (v - center[i]) / scale[i])));
+}
+
+/** The same network in the clear: what the fixture's logits should be (Round 86, the IBM tab's teacher-student view). */
+export function mlpForward(w: MlpWeights, row: number[]): number[] {
+  let x = scaleRow(w, row);
+  w.layers.forEach((d, k) => {
+    const y = d.weight.map((wr, j) => wr.reduce((s, v, i) => s + v * x[i], d.bias[j]));
+    x = k < w.layers.length - 1 && d.activation === "relu" ? y.map((v) => Math.max(0, v)) : y;
+  });
+  return x;
 }
 
 export async function hybridMlpInference(w: MlpWeights, row: number[], opts: { onProgress?: (p: HybridCnnProgress) => void } = {}): Promise<HybridCnnResult> {

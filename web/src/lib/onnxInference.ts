@@ -625,6 +625,9 @@ export interface ModelEvalResult {
   /** Every row against the sample's per-row record, when it carries one (Round 86). With a record, `matchesExpected`
    *  is this comparison passing and the metric equalling the record; without one, the aggregate within `tolerance`. */
   perRow?: PerRowComparison;
+  /** A graph sample's seeds as this run scored them (Round 86, IBM's Multi-GNN): each one's row in the test window, its
+   *  label and the two logits the published graph gave it here, for the IBM tab's teacher-student view. */
+  graphRows?: { rows: number[]; labels: number[]; logits: number[][] };
   /** |measured - expected| within tolerance. False means the browser must NOT present the number. */
   matchesExpected: boolean;
   backend: string;
@@ -846,6 +849,8 @@ async function evaluateGraphSample(usecase: string, target: { url: string; spec:
     const perRow = rec ? comparePerRow(rec, n, name, fetchedGraph, (k) => preds[k], (k) => prob[2 * k + 1] - thr, null) : undefined;
     return {
       ...base, ran: true, n, score, expected: file.expected.accuracy, decisionThreshold: thr, perRow,
+      graphRows: { rows: [...file.seeds.row_index_in_test_window], labels: [...labels],
+                   logits: seeds.map((_, k) => [logits[2 * k], logits[2 * k + 1]]) },
       matchesExpected: !!perRow && perRowPasses(perRow) && (perRow.nearTies > 0 || Math.abs(score - file.expected.accuracy) <= 1e-9),
       backend: opened.status.backend, bytes: opened.status.bytes, provenance: file.provenance ?? file.protocol_note,
       note: file.expected.note ?? file.protocol_note,

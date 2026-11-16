@@ -12,8 +12,11 @@
 //     aggregate number looks excellent while the class that matters is broken, so showing only the
 //     aggregate would be true and misleading at the same time.
 import { modelsFor, recordHasTreeAttribution, type ModelSpec } from "../lib/config";
-import { useState } from "react";
-import { browserModels, evaluatePublishedModel, type ModelEvalResult } from "../lib/onnxInference";
+import { type ReactNode, useEffect, useState } from "react";
+import type { VerificationSummary } from "../lib/clientCompute";
+import { browserModels, evaluatePublishedModel, type ModelEvalResult, publishedSampleOf } from "../lib/onnxInference";
+import IbmNeighbourhood, { type NeighbourhoodSample } from "./IbmNeighbourhood";
+import TeacherStudentPlot, { type DecryptedRows } from "./TeacherStudentPlot";
 import { AncestryStrataChart, RealDataScatter } from "./VerificationChart";
 import RegistryNote from "./RegistryNote";
 import Tabs from "./Tabs";
@@ -814,31 +817,9 @@ function ModelOverview({ specs }: { specs: ModelSpec[] }) {
   );
 }
 
-export function ModelPanel({ usecase }: { usecase: string }) {
-  const specs = modelsFor(usecase);
-  if (specs.length === 0) return null;
-
+/** One model's block in the panel: its metrics, notes and how this page verifies it. */
+function ModelBlock({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
   return (
-    <section className="card">
-      <h3>Models</h3>
-      {/* Scoped as `registry.py`'s opening note scopes it. The unscoped "what homomorphic
-          evaluation can actually carry" is false in 2026: an edge-centric GNN (Bilgi et al.,
-          arXiv:2610.18054, CKKS on one GPU), gradient-boosted forests (SilentWood, arXiv:2411.15494)
-          and an 8B language model (Park et al., arXiv:2601.18511, CKKS on eight GPUs) run encrypted. */}
-      <p className="muted small">
-        The industry model runs in plaintext; the encrypted model is what this page&apos;s CKKS tier
-        (node-seal, SEAL compiled to WebAssembly, one thread in your tab) can evaluate. That is a
-        limit of this operating point, not of homomorphic evaluation, which runs far larger models
-        on servers and GPUs. Where a page has both models trained, the gap between them is measured
-        here, not asserted.
-      </p>
-
-      {/* Tabs since Round 86 (the owner's choice of 2026-11-13): five models stacked made the finance section about 2,300
-          words before its first fold. Every panel stays mounted (`keepMounted`), so each model's block is still in the
-          page and a Run button keeps its result when another tab is opened. */}
-      <Tabs label="Models" keepMounted tabs={[
-        { id: "overview", title: "Overview", content: () => <ModelOverview specs={specs} /> },
-        ...specs.map((spec) => ({ id: spec.key, title: shortTitle(spec), content: () => (
         <div key={spec.key} className="model-block">
           <div className="model-head">
             <strong>{spec.label}</strong>
@@ -942,8 +923,90 @@ export function ModelPanel({ usecase }: { usecase: string }) {
             </p>
           )}
         </div>
-        ) })),
-      ]} />
+  );
+}
+
+/** IBM's Multi-PNA+EU under its two protocols (Round 86, the owner's choices of 2026-11-15 and 16): one tab with both. */
+const IBM_KEYS = ["finance_aml.gnn", "finance_aml.gnn_causal"];
+
+/** The neighbourhood a protocol sampled for its 16 transfers, drawn once the pipeline run has scored that sample: the
+ *  fetch then comes from the run's own cache, and a visitor who never presses Start downloads nothing for it. */
+function IbmSampleView({ spec, verified }: { spec: ModelSpec; verified: boolean }) {
+  const [sample, setSample] = useState<NeighbourhoodSample | string | null>(null);
+  useEffect(() => {
+    if (!verified) return;
+    let live = true;
+    publishedSampleOf(spec).then((r) => {
+      if (!live) return;
+      if (r.kind === "ok" && (r.file as unknown as { kind?: string }).kind === "graph") setSample(r.file as unknown as NeighbourhoodSample);
+      else setSample(r.kind === "error" ? r.reason : "the revision publishes no graph sample");
+    });
+    return () => { live = false; };
+  }, [spec, verified]);
+  if (!verified) return <p className="muted small">Press <strong>Start</strong>: the run scores this model on its 16 transfers, and what it read for each is then drawn here.</p>;
+  if (sample === null) return <p className="muted small">Reading the sample the run scored...</p>;
+  if (typeof sample === "string") return <p className="muted small">The neighbourhood view is not drawn: {sample}.</p>;
+  return <IbmNeighbourhood sample={sample} />;
+}
+
+function IbmTab({ usecase, specs, verifications, decrypted }:
+  { usecase: string; specs: ModelSpec[]; verifications?: VerificationSummary[]; decrypted?: DecryptedRows }) {
+  const of = (key: string) => verifications?.find((v) => v.modelKey === key);
+  const t = of("finance_aml.gnn");
+  const teacher = t?.graphRows && t.decisionThreshold != null ? { ...t.graphRows, threshold: t.decisionThreshold } : null;
+  return (
+    <div>
+      {specs.map((spec) => (
+        <div key={spec.key} style={{ marginBottom: 14 }}>
+          <ModelBlock usecase={usecase} spec={spec} />
+          <IbmSampleView spec={spec} verified={!!of(spec.key)?.graphRows} />
+        </div>
+      ))}
+      {specs.some((s) => s.key === "finance_aml.gnn") && (
+        <div className="model-block">
+          <strong>What the distillation keeps</strong>
+          <TeacherStudentPlot teacher={teacher} teacherName="IBM Multi-PNA+EU" decrypted={decrypted} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function ModelPanel({ usecase, verifications, decrypted }:
+  { usecase: string; verifications?: VerificationSummary[]; decrypted?: DecryptedRows }) {
+  const specs = modelsFor(usecase);
+  if (specs.length === 0) return null;
+  const ibm = specs.filter((s) => IBM_KEYS.includes(s.key));
+  const tabs: { id: string; title: string; content: () => ReactNode }[] = [
+    { id: "overview", title: "Overview", content: () => <ModelOverview specs={specs} /> }];
+  specs.forEach((spec) => {
+    if (!IBM_KEYS.includes(spec.key)) {
+      tabs.push({ id: spec.key, title: shortTitle(spec), content: () => <ModelBlock usecase={usecase} spec={spec} /> });
+    } else if (spec.key === ibm[0].key) {
+      tabs.push({ id: "ibm", title: "IBM Multi-PNA+EU",
+                  content: () => <IbmTab usecase={usecase} specs={ibm} verifications={verifications} decrypted={decrypted} /> });
+    }
+  });
+
+  return (
+    <section className="card">
+      <h3>Models</h3>
+      {/* Scoped as `registry.py`'s opening note scopes it. The unscoped "what homomorphic
+          evaluation can actually carry" is false in 2026: an edge-centric GNN (Bilgi et al.,
+          arXiv:2610.18054, CKKS on one GPU), gradient-boosted forests (SilentWood, arXiv:2411.15494)
+          and an 8B language model (Park et al., arXiv:2601.18511, CKKS on eight GPUs) run encrypted. */}
+      <p className="muted small">
+        The industry model runs in plaintext; the encrypted model is what this page&apos;s CKKS tier
+        (node-seal, SEAL compiled to WebAssembly, one thread in your tab) can evaluate. That is a
+        limit of this operating point, not of homomorphic evaluation, which runs far larger models
+        on servers and GPUs. Where a page has both models trained, the gap between them is measured
+        here, not asserted.
+      </p>
+
+      {/* Tabs since Round 86 (the owner's choice of 2026-11-13): five models stacked made the finance section about 2,300
+          words before its first fold. Every panel stays mounted (`keepMounted`), so each model's block is still in the
+          page and a Run button keeps its result when another tab is opened. */}
+      <Tabs label="Models" keepMounted tabs={tabs} />
 
       {/* Once per use case, not once per model: this is the corpus, not any model's output. It
           answers the question a lone score cannot - whether the classes were separable at all. */}

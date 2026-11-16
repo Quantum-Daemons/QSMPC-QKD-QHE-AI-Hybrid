@@ -928,6 +928,8 @@ export interface VerificationSummary {
   decisionThreshold?: number | null; backend?: string;
   rows?: number; rowsAsRecorded?: number; nearTies?: number; mismatches?: number; maxMarginDifference?: number;
   tolerance?: number; perRowRefused?: string; error?: string; noSampleReason?: string;
+  /** A graph sample's seeds as the run scored them (IBM's Multi-GNN), for the IBM tab's teacher-student view. */
+  graphRows?: { rows: number[]; labels: number[]; logits: number[][] };
 }
 
 export function verificationSummary(key: string, selected: boolean, v: ModelEvalResult | null): VerificationSummary {
@@ -939,6 +941,7 @@ export function verificationSummary(key: string, selected: boolean, v: ModelEval
       ...(pr && !pr.refused ? { rows: pr.rows, rowsAsRecorded: pr.rows - pr.mismatches - pr.nearTies, nearTies: pr.nearTies,
                                mismatches: pr.mismatches, maxMarginDifference: pr.maxDiff, tolerance: pr.tolerance }
         : pr?.refused ? { perRowRefused: pr.refused } : {}),
+      ...(v.graphRows ? { graphRows: v.graphRows } : {}),
     };
   }
   if (v && v.error) return { modelKey: key, selected, outcome: "error", error: v.error };
