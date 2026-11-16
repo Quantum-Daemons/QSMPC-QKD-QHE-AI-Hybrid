@@ -1,5 +1,6 @@
 {
  "protocol": "ibm",
+ "time_input": "absolute",
  "checkpoint_epoch": 33,
  "checkpoint_sha256": "13f53a735b43f5ac9429179f25ab4c4be0851dbb37e824d77ad467e543261525",
  "bn_statistics": "fit window: a plain average over 348 fit-window batches",
@@ -18,5 +19,5 @@
  "max_abs_logit_difference_onnx_vs_torch_on_seeds": 4.76837158203125e-06,
  "decision_threshold": 0.6374207139015198,
  "seed_accuracy_at_threshold": 0.875,
- "export_seconds": 5.8
+ "export_seconds": 4.4
 }
