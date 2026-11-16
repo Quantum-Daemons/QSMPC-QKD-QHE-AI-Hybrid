@@ -5275,3 +5275,41 @@ The local gate passed all 18 blocking steps once the worktree linked the checkli
 fresh worktree without the checklist. CI passed its 8 checks. It was merged as `5c0f642` (2026-11-15 14:40 UTC) on the
 owner's approval to merge when green. No deploy followed: no file under `web/` changed, so the served bundle is the
 same.
+
+### IBM's Multi-PNA+EU: five seeds, the evaluation mode, and what the published students were distilled from (2026-11-16)
+
+**Five seeds under IBM's protocol.** Seeds 1 to 5 trained IBM's 100 epochs on this project's windows (seeds 4 and 5 after
+the reboot into kernel 5.14.0-687.66.2). IBM's loop kept epochs 36, 38, 54, 33 and 39, and logged a test F1 there with
+mean $`0.6487`$ and sample standard deviation $`0.0208`$; the paper reports $`68.16 \pm 2.65`$ on its own split. Seed 4
+has the best logged validation F1 ($`0.6208`$) and is the one exported (`scripts/train/ibm_multignn/README.md`).
+
+**IBM's loop never switches to evaluation mode.** No `.py` file of IBM/Multi-GNN at `252b025` calls `model.eval()` or
+`model.train()`, so its validation and test passes run in training mode: the head's dropout is on, BatchNorm normalises
+each sampled subgraph by its own statistics, and each pass updates BatchNorm's running statistics. The checkpoint is
+saved after the test pass. Its `num_batches_tracked` says so exactly: 36 epochs times 348 fit, 87 validation and 186
+test batches is 22,356 for seed 1, and 33 times 621 is 20,493 for seed 4, where training alone would give 12,528 and
+11,484. Any eval-mode use of a saved checkpoint therefore normalises with statistics set by the end of the test window,
+which for the causal protocol would read past a transfer's horizon.
+- `precise_bn.py` recomputes the statistics as a plain average over one pass of the fit-window loader and scores the
+  windows with both on the same sampled batches. On seed 4 the test F1 at the validation-tuned threshold moves from
+  $`0.6804`$ to $`0.6822`$, the AUPRC from $`0.6299`$ to $`0.6318`$, and 178 of 1,522,629 decisions at 0.5 change.
+  Over five seeds the recomputed statistics give $`0.6577 \pm 0.0226`$ at the validation-tuned threshold and an AUPRC
+  of $`0.6197 \pm 0.0304`$.
+- The owner chose fit-window statistics for every exported checkpoint, under both protocols; `export_for_browser.py`
+  now refuses a checkpoint that does not carry them.
+- No issue on IBM/Multi-GNN mentions it (searched for six terms on 2026-11-16). The owner asked for the facts only, to
+  write an issue in their own words; nothing was posted.
+- IBM/Multi-GNN#10, the normalisation of the last edge column, concerns the RGCN branch only: PNA and GIN z-normalise
+  every edge column, the ports included.
+
+**The published students' teacher.** `finance_aml.gnn_compact` and `finance_aml.mlp_large` were distilled toward seed
+1's fit-window probabilities (`teacher_probs_sha256` `fb42c40a...`), dumped with that checkpoint's saved statistics.
+On the same sampled batches, the recomputed statistics change that probability by more than 0.1 on 554 of 2,843,044
+fit edges, 155 of them laundering, where two dumps with the saved statistics differ on 2. The training target
+$`0.7\,y + 0.3\,p`$ moves by up to 0.21. The owner chose to measure re-distillation from seed 1 and from seed 4, both
+with recomputed statistics, and to decide once every run is in; nothing has been republished.
+
+**One local hazard.** The main checkout's untracked `models/finance_aml_gbm/onnx/model.onnx` is the August model
+(sha256 `54511ef7...`), not the one pinned on the Hub (`d69b6532...`). `finance_aml_mlp.py` reads that file for the
+gradient booster's test decisions, so a run from the main checkout would compare against a stale teacher. The pinned
+file is in the `qsh-gnn` worktree and was copied, checked against the page's config, into the worktree the runs used.
