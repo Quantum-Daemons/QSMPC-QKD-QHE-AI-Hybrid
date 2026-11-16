@@ -5313,3 +5313,18 @@ with recomputed statistics, and to decide once every run is in; nothing has been
 (sha256 `54511ef7...`), not the one pinned on the Hub (`d69b6532...`). `finance_aml_mlp.py` reads that file for the
 gradient booster's test decisions, so a run from the main checkout would compare against a stale teacher. The pinned
 file is in the `qsh-gnn` worktree and was copied, checked against the page's config, into the worktree the runs used.
+
+**Republished: the compact GNN and the MLP, re-distilled (2026-11-16).** The owner chose the teacher once every run of
+three was in: seed 1 with its BatchNorm statistics recomputed on the fit window (sha256 `b98191df...`). Retrained on
+the IBM branch at the same $`\alpha = 0.3`$ and the same validation selection:
+
+| Model | Test F1 | AUPRC | Seeds' test F1 | Was (published 2026-11-13) |
+|---|---|---|---|---|
+| `finance_aml.gnn_compact` | 0.6585 | 0.6687 | 0.642 to 0.659, median 0.651 | 0.6587, 0.6676 |
+| `finance_aml.mlp_large` | 0.6278 | 0.6432 | 0.594 to 0.637, median 0.624 | 0.5953, 0.6436 |
+
+The MLP's trainer is deterministic: a rerun with the published teacher reproduced all ten of its runs to six
+decimals, so the MLP's change is the teacher's alone. The GNN's trainer varies by about 0.0004 F1 between runs. Both
+evaluation samples were rebuilt (only their expected blocks changed), and the owner approved both cards; they were
+published at `60642a20` and `69e4fb7c`, each card served by the Hub byte for byte as generated, and pinned with the
+other 13 models' 48 files.

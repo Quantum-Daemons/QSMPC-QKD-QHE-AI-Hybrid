@@ -66,10 +66,10 @@ Measured on the whole held-out window (1,523,504 rows, 2,321 of them laundering,
 | Model | Inputs | Minority-class F1 | AUPRC | Where it runs |
 |---|---|---|---|---|
 | CKKS linear student (`finance_aml.student`), 115 parameters | 114, distilled from the teacher | 0.3088 | - | the browser, under CKKS |
-| MLP (`finance_aml.mlp_large`), $`[114, 128, 64, 2]`$, 23,106 parameters, distilled | 114 | 0.6278 (seeds 0.594 to 0.637, median 0.627) | 0.6432 | the browser, CKKS and garbled circuits |
+| MLP (`finance_aml.mlp_large`), $`[114, 128, 64, 2]`$, 23,106 parameters, distilled | 114 | 0.6278 (seeds 0.594 to 0.637, median 0.624) | 0.6432 | the browser, CKKS and garbled circuits |
 | XGBoost on the same inputs | 114 | 0.6076 | 0.6368 | comparator |
 | Gradient-boosting teacher (`finance_aml.gbm`) | 114 | 0.6161 | 0.6428 | the full deployment |
-| **Compact GNN (`finance_aml.gnn_compact`)**, 34,962 parameters, distilled | 114, and 16 neighbouring edges | **0.6585** (seeds 0.642 to 0.663, median 0.653) | **0.6687** | the browser, CKKS and garbled circuits |
+| **Compact GNN (`finance_aml.gnn_compact`)**, 34,962 parameters, distilled | 114, and 16 neighbouring edges | **0.6585** (seeds 0.642 to 0.659, median 0.651) | **0.6687** | the browser, CKKS and garbled circuits |
 | IBM's Multi-GIN+EU, official code, this split, seed 1 | the raw edges; neighbours sampled from every edge of the test window | 0.6024 | - | a server GPU |
 | IBM's Multi-PNA+EU (`finance_aml.gnn`), official code, this split, five seeds, 64,374 parameters | the raw edges; neighbours sampled from every edge of the test window | logged by IBM's loop $`0.6487 \pm 0.0208`$; the exported seed 4, 0.6822 at a threshold tuned on validation | 0.6318 (five seeds $`0.6197 \pm 0.0304`$) | trained on a GPU; in the browser in plaintext on 16 held-out transfers (the IBM tab) |
 
