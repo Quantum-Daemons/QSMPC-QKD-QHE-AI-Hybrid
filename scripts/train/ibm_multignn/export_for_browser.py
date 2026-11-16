@@ -11,10 +11,12 @@ the finance page, under two neighbourhood protocols:
   spans more than 17 minutes, so nothing read lies past the horizon of the page's own models (the end of the
   transaction's batch of 2,048, and at most 17 minutes after it; the owner's choice of 2026-11-15).
 
-Run from IBM's checkout (the one patched for the protocol), in its environment, with the CPU only:
+Run from IBM's checkout (the one patched for the protocol), in its environment, with the CPU only, on the checkpoint
+`precise_bn.py` writes (BatchNorm statistics recomputed on the fit window, the owner's choice of 2026-11-16; a
+checkpoint as IBM's loop saved it is refused) and that script's validation probabilities:
 
     QSH_SPLIT=project [QSH_CAUSAL=1] python <this repository>/scripts/train/ibm_multignn/export_for_browser.py \\
-        --checkpoint <checkpoint .tar> --val-probs <dump_logits.py's val.npz> --protocol ibm|causal \\
+        --checkpoint <precise_bn.py's checkpoint_fit_bn.tar> --val-probs <precise_bn.py's val.npz> --protocol ibm|causal \\
         --fixtures <this repository>/models/finance_aml_mlp_large/weights.json --out <artifact dir>
 
 What it writes, after checking each against the PyTorch model:
@@ -47,7 +49,8 @@ TOL = 1e-4
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--checkpoint", required=True)
-    ap.add_argument("--val-probs", required=True, help="dump_logits.py's val.npz for this checkpoint")
+    ap.add_argument("--val-probs", required=True,
+                    help="precise_bn.py's val.npz for this checkpoint: probabilities with the recomputed statistics")
     ap.add_argument("--protocol", choices=("ibm", "causal"), required=True)
     ap.add_argument("--fixtures", required=True, help="the published finance MLP's weights.json")
     ap.add_argument("--out", required=True)
@@ -63,12 +66,12 @@ def main() -> int:
     sys.path.insert(0, os.getcwd())
     sys.path.insert(1, str(Path(__file__).resolve().parents[3] / "src"))  # qsh.models.sample_per_row
     sys.argv = [sys.argv[0], "--data", "Small_HI", "--model", a.model, "--emlps", "--reverse_mp", "--ego", "--ports", "--testing"]
-    from util import create_parser
     from data_loading import get_data
-    from train_util import AddEgoIds, add_arange_ids, get_loaders
-    from training import get_model
     from torch_geometric.loader import LinkNeighborLoader
     from torch_geometric.nn import to_hetero
+    from train_util import AddEgoIds, add_arange_ids, get_loaders
+    from training import get_model
+    from util import create_parser
 
     args = create_parser().parse_args()
     data_config = json.load(open("data_config.json"))
@@ -80,6 +83,11 @@ def main() -> int:
     tr_loader, _, _ = get_loaders(tr, va, te, tr_i, va_i, te_i, transform, args)
     model = to_hetero(get_model(next(iter(tr_loader)), config, args), te.metadata(), aggr="mean")
     ckpt = torch.load(a.checkpoint, weights_only=False, map_location="cpu")
+    # The owner's choice of 2026-11-16: IBM's loop never calls model.eval(), so a checkpoint it saves carries BatchNorm
+    # statistics last set by the test pass; only one whose statistics precise_bn.py recomputed on the fit window ships.
+    if not str(ckpt.get("bn_statistics", "")).startswith("fit window"):
+        raise SystemExit(f"{a.checkpoint}: its BatchNorm statistics are the ones IBM's loop saved, last set by the test "
+                         "pass; recompute them on the fit window with precise_bn.py and export its checkpoint_fit_bn.tar")
     model.load_state_dict(ckpt["model_state_dict"])
     model.eval()
 
@@ -162,6 +170,7 @@ def main() -> int:
     graph_path = out / "onnx" / "model.onnx"
     t0 = time.time()
     import tempfile
+
     import onnx
     import onnxruntime as ort
     # torch.export writes the weights beside the graph; a browser cannot mount that file, so the graph is re-saved whole.
@@ -183,6 +192,8 @@ def main() -> int:
         raise SystemExit(f"ONNX Runtime misses PyTorch on the seeds by {diff:.3g} (> {TOL})")
 
     val = np.load(a.val_probs)
+    if "probs_saved_bn" not in val.files:
+        raise SystemExit(f"{a.val_probs}: not precise_bn.py's output, so its probabilities may use the saved statistics")
     order = np.argsort(-val["probs"])
     tp = np.cumsum(val["labels"][order] == 1)
     fp = np.cumsum(val["labels"][order] == 0)
@@ -220,7 +231,8 @@ def main() -> int:
                  "edge_seconds": view_sec.astype(np.int64).tolist() if whole else view_sec.tolist(),
                  "per_seed": fields},
         "expected": {"logits": ort_logits.tolist(), "logits_pytorch": seed_logits.tolist(), "decision_threshold": thr,
-                     "decision_threshold_note": "the laundering probability at which F1 peaks on the validation window, from dump_logits.py",
+                     "decision_threshold_note": ("the laundering probability at which F1 peaks on the validation window, from "
+                                                 "precise_bn.py's probabilities (BatchNorm statistics recomputed on the fit window)"),
                      "graph": "model.onnx", "accuracy": float((pred == labels.numpy()).mean()),
                      "note": "Accuracy on 16 rows, half of them laundering, at the validation-tuned threshold: it shows the model running "
                              "on the record's inputs, not how well it ranks.",
@@ -238,6 +250,8 @@ def main() -> int:
     report = {
         "protocol": a.protocol, "checkpoint_epoch": int(ckpt.get("epoch", -1)),
         "checkpoint_sha256": hashlib.sha256(Path(a.checkpoint).read_bytes()).hexdigest(),
+        "bn_statistics": ckpt["bn_statistics"], "source_checkpoint_sha256": ckpt.get("source_checkpoint_sha256"),
+        "source_num_batches_tracked": ckpt.get("saved_num_batches_tracked"),
         "graph_bytes": graph_path.stat().st_size, "opset": 18,
         "subgraph": {"nodes": int(x.shape[0]), "edges": int(ei.shape[1]), "reverse_edges": int(ri.shape[1]), "parts": len(parts)},
         "max_abs_logit_difference_onnx_vs_torch_on_seeds": diff,

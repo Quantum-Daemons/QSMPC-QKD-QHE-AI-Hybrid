@@ -48,7 +48,7 @@ def seed_fields(edge_index, position, seconds, seed_at, reach_s: float, batch_ro
         u, v, p, t = int(src[s]), int(dst[s]), int(pos[s]), float(sec[s])
         other = pos != p
 
-        def count(mask: np.ndarray) -> int:
+        def count(mask: np.ndarray, other: np.ndarray = other) -> int:
             return int(np.unique(pos[mask & other]).size)
 
         near = np.isin(src, (u, v)) | np.isin(dst, (u, v))

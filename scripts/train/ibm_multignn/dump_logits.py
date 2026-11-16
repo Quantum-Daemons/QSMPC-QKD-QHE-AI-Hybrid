@@ -19,6 +19,7 @@ import torch
 import wandb
 from data_loading import get_data
 from torch_geometric.loader import LinkNeighborLoader
+
 try:  # the causal protocol's loaders (causal.patch)
     from train_util import _causal, _workers, seed_mask
 except ImportError:  # IBM's code with the split patch only
