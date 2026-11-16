@@ -44,6 +44,9 @@ from types import SimpleNamespace
 os.environ.setdefault("CUDA_VISIBLE_DEVICES", "")
 SAMPLE_SEED = 2026
 TOL = 1e-4
+#: The causal protocol's time input (QSH_CAUSAL_TIME, the owner's choice of 2026-11-16), as the change note states it.
+TIME_NOTE = {"absolute": "", "drop": "; the time input set to zero, so time only orders and cuts the batches",
+             "lag": "; the time input each transfer's time before its batch ends, over the fit window's span, in [-1, 0]"}
 
 
 def main() -> int:
@@ -60,6 +63,9 @@ def main() -> int:
         raise SystemExit("set QSH_SPLIT=project: the fixtures are positions in this project's test window")
     if (a.protocol == "causal") != (os.environ.get("QSH_CAUSAL") == "1"):
         raise SystemExit("QSH_CAUSAL=1 goes with --protocol causal, and only with it")
+    time_input = os.environ.get("QSH_CAUSAL_TIME", "absolute") if a.protocol == "causal" else "absolute"
+    if time_input not in TIME_NOTE:
+        raise SystemExit(f"QSH_CAUSAL_TIME is {time_input!r}: absolute, drop or lag")
 
     import numpy as np
     import torch
@@ -242,13 +248,23 @@ def main() -> int:
                                  "note": "From ONNX Runtime's outputs on this file's inputs, by the page's rule."}},
         "classes": {"0": "clean", "1": "laundering"},
         "licence": "CDLA-Sharing-1.0", "licence_url": "https://cdla.dev/sharing-1-0/",
+        "modifications": (
+            "Not the published transaction rows: the 16 rows of the held-out temporal test window that the published MLP's "
+            "weights carry as fixtures, half of them laundering, with the subgraph IBM's Multi-GNN loader samples around them "
+            "under this protocol. Re-encoded as IBM's format script encodes the corpus (scripts/train/ibm_multignn/"
+            "format_amlworld.py: integer account, currency and payment-format codes, seconds from the first day), with port "
+            "numbers and ego ids added and every edge feature scaled "
+            + ("by each window's own statistics, as IBM's loader scales them" if a.protocol == "ibm" else
+               "by the fit window's statistics" + TIME_NOTE[time_input])
+            + ", stored as float32."),
+        "time_input": time_input,
         "attribution": ("IBM, Transactions for Anti Money Laundering (AML), HI-Small (Altman et al., NeurIPS 2023 Datasets "
                         "and Benchmarks); model: IBM/Multi-GNN (Egressy et al., AAAI 2024), Apache-2.0"),
         "sample_seed": SAMPLE_SEED,
     }
     (out / "eval_sample.json").write_text(json.dumps(sample, separators=(",", ":")) + "\n")
     report = {
-        "protocol": a.protocol, "checkpoint_epoch": int(ckpt.get("epoch", -1)),
+        "protocol": a.protocol, "time_input": time_input, "checkpoint_epoch": int(ckpt.get("epoch", -1)),
         "checkpoint_sha256": hashlib.sha256(Path(a.checkpoint).read_bytes()).hexdigest(),
         "bn_statistics": ckpt["bn_statistics"], "source_checkpoint_sha256": ckpt.get("source_checkpoint_sha256"),
         "source_num_batches_tracked": ckpt.get("saved_num_batches_tracked"),

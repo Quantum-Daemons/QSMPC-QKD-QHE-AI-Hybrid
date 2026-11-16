@@ -33,9 +33,9 @@ const n = (x: number) => x.toLocaleString("en-US");
 const span = (s: number) => (s <= 0 ? "none" : s < 5400 ? `${Math.round(s / 60)} min` : s < 172800 ? `${(s / 3600).toFixed(1)} h` : `${(s / 86400).toFixed(1)} days`);
 const minute = (m: number) => (m === 0 ? "the same minute" : `${Math.abs(m) < 90 ? `${Math.round(Math.abs(m))} min` : span(Math.abs(m) * 60)} ${m < 0 ? "before" : "after"}`);
 
-function Drawing({ edges, nodes, from, to, label }: { edges: NeighbourEdge[]; nodes: string[]; from: string; to: string; label: string }) {
+function Drawing({ edges, nodes, payer, payee, label }: { edges: NeighbourEdge[]; nodes: string[]; payer: string; payee: string; label: string }) {
   const marker = useId().replace(/:/g, "");
-  const { layout, h } = layoutScored({ nodes, edges, from, to }, W, 240);
+  const { layout, h } = layoutScored({ nodes, edges, from: payer, to: payee }, W, 240);
   const groups = new Map<string, NeighbourEdge[]>();
   for (const e of edges) groups.set(`${e.from}>${e.to}`, [...(groups.get(`${e.from}>${e.to}`) ?? []), e]);
   const degree: Record<string, number> = {};
@@ -105,7 +105,7 @@ export default function IbmNeighbourhood({ sample }: { sample: NeighbourhoodSamp
         at its two accounts that the sample holds{g.shown === g.at_accounts ? "" : ", those nearest it in time, split between the two accounts"}.
         A pays B; the others are lettered in time order. Hover a line for when it happened.
       </p>
-      <Drawing edges={g.edges} nodes={g.nodes} from={g.from} to={g.to} label={`The two accounts of transfer ${k + 1} and their transfers in the sample`} />
+      <Drawing edges={g.edges} nodes={g.nodes} payer={g.from} payee={g.to} label={`The two accounts of transfer ${k + 1} and their transfers in the sample`} />
       <p className="small" style={{ margin: "4px 0 8px" }}>
         {(Object.keys(PAINT) as When[]).map((w, i) => (
           <span key={w} style={{ marginRight: 12, whiteSpace: "nowrap" }}>

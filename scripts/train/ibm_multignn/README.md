@@ -10,7 +10,7 @@ vendoring it.
 | `project_split.patch` | Two changes to IBM's code at commit `252b0252afca109d1d216c411c59ff70753b25fc`: with `QSH_SPLIT=project` the fit, validation and test windows are this project's 56 / 14 / 30 percent by position, and `AddEgoIds` defines `forward`, which PyTorch Geometric 2.8 requires of a transform |
 | `dump_logits.py` | Loads a saved checkpoint and writes the laundering probability of every edge of the three windows, keyed by edge id, and counts the seed edges the neighbour sampling never returned |
 | `precise_bn.py` | Recomputes a saved checkpoint's BatchNorm statistics on the fit window and writes that checkpoint, with the validation and test windows (and with `--with-train` the fit window) scored under both statistics on the same sampled batches; the export takes only its checkpoint (the owner's choice of 2026-11-16, below) |
-| `causal.patch` | On top of `project_split.patch`, the causal protocol under `QSH_CAUSAL=1` (Round 86, the owner's choices of 2026-11-15): each mini-batch is one batch of transactions in time order (2,048, split where it spans more than 17 minutes; `QSH_CAUSAL_CUT=batch` keeps the plain 2,048), sampled with IBM's own shared sampler, with every sampled edge later than that batch dropped, and every window scaled by the training window's statistics; with `QSH_PATIENCE=n` training stops after n epochs without a better validation F1, and `QSH_LOADER_WORKERS=n` samples in n processes |
+| `causal.patch` | On top of `project_split.patch`, the causal protocol under `QSH_CAUSAL=1` (Round 86, the owner's choices of 2026-11-15): each mini-batch is one batch of transactions in time order (2,048, split where it spans more than 17 minutes; `QSH_CAUSAL_CUT=batch` keeps the plain 2,048), sampled with IBM's own shared sampler, with every sampled edge later than that batch dropped, and every window scaled by the training window's statistics; with `QSH_PATIENCE=n` training stops after n epochs without a better validation F1, and `QSH_LOADER_WORKERS=n` samples in n processes; `QSH_CAUSAL_TIME=drop` or `lag` replaces the absolute time input (below; `absolute`, the default, keeps IBM's) |
 | `export_for_browser.py` | Exports a checkpoint as one ONNX file at opset 18 (by `torch.export`; ONNX Runtime within $`10^{-4}`$ of PyTorch on the seeds) and writes the 16 held-out transactions the published finance MLP and compact GNN are checked on, with the neighbourhood the protocol samples for them, for the finance page to re-score |
 | `neighbourhood.py` | What the model read for each of the 16 (the owner's choice of 2026-11-15): the transfers at the payer and the payee, those within two hops, and how many came after the scored one, in its batch of 2,048 or beyond it. The export writes these counts into the sample with each edge's row and time; the page derives them again and reports a difference (`web/src/lib/graphNeighbourhood.ts`, held with this file to one hand-counted graph by `web/scripts/check_graph_neighbourhood.mjs` and `tests/test_r86_ibm_neighbourhood.py`) |
 
@@ -131,3 +131,35 @@ batch), early stopping after 20 epochs without a better validation F1, and four 
 model's card. The queue (`run_pna_seeds.sh` and `run_queue_after_pna.sh` in the working folder) trains five seeds of each
 model under each protocol, one run at a time; each checkpoint then goes through `precise_bn.py` (its causal loader
 under `QSH_CAUSAL=1`) before an export.
+
+### The time input under the causal protocol (2026-11-16)
+
+IBM's model reads the transaction's absolute `Timestamp` as an edge feature. IBM scales each window by its own
+statistics, so every window's times span about the same range. Scaled by the fit window's statistics, as the causal
+protocol scales them, they do not: the fit window's times run from $`-1.14`$ to $`2.0`$ standard deviations, the
+validation window's from $`2.0`$ to $`2.9`$, and the test window's from $`2.9`$ to $`9.7`$ ($`5.0`$ to $`9.7`$ in its last
+1,108 rows). No other edge column moves outside the fit window's range (amount, currency, payment format and both
+ports; measured 2026-11-16). Three seeds trained that way kept validation F1 at $`0.62`$ and logged a test F1 of
+0.4125, 0.4307 and 0.5544, against $`0.6487 \pm 0.0208`$ under IBM's protocol; they were stopped and are kept here as
+the record of the defect, not used.
+
+Split at the test window's sparse last 1,108 rows (2022-09-11 to 18, 655 of the 2,321 laundering transfers), IBM's
+protocol scores 0.54 to 0.60 on the rest of the window and 0.81 to 0.86 there, where its neighbourhoods include the
+transfers that complete a pattern; the three causal seeds scored 0.35 to 0.51 and 0.37 to 0.77.
+
+`QSH_CAUSAL_TIME` (the owner's choice of 2026-11-16: five seeds of each, the export the better on validation) sets the
+input where the loader cuts each batch, `_DropLater` in the patched `train_util.py`:
+- `drop`: the time input is zero; time only orders and cuts the batches.
+- `lag`: each edge's time before its batch ends, divided by the fit window's span and clipped at it, so it lies in
+  $`[-1, 0]`$ in every window. Temporal graph networks encode time relative to the event in the same way (TGAT,
+  arXiv:2002.07962; GraphMixer, arXiv:2302.11636; DyGFormer, arXiv:2303.13047), and a linear encoder does as well as a
+  sinusoidal one (arXiv:2504.08129). A reverse edge, which carries no timestamp of its own, takes its forward edge's
+  by its id.
+
+### IBM's reverse edges share their forward edges' ports (2026-11-16)
+
+IBM's `create_hetero_obj` (`data_util.py` at `252b025`) assigns one tensor to both edge types' `edge_attr` and then
+swaps the last two columns, the in- and out-port, "for the reverse edges", in place. The swap reaches the forward
+edges through the shared tensor, so both directions carry the swapped pair: with ports $`(1, 2)`$ in, both read
+$`(2, 1)`$ (reproduced on a two-edge graph). It is part of IBM's protocol as the paper's code runs it, and this
+reproduction keeps it under both protocols.
