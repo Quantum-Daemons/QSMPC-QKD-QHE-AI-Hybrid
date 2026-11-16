@@ -768,6 +768,18 @@ export function publishedSampleOf(spec: ModelSpec): Promise<SampleFetch> {
                     spec.file_sha256?.["eval_sample.json"]);
 }
 
+/** A published model's pinned weights file, checked against the SHA-256 recorded for its revision before it is returned
+ *  (Round 86, the IBM tab's teacher-student view): the bytes are the checked ones, never the response read twice. */
+export async function publishedWeightsOf(spec: ModelSpec): Promise<ArrayBuffer> {
+  if (!spec.hf_repo_id || !spec.hf_revision) throw new Error(`${spec.key} is not published and pinned`);
+  const res = await fetch(`https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/weights.json`,
+                          { mode: "cors", signal: AbortSignal.timeout(30_000) });
+  if (!res.ok) throw new Error(`the Hub answered HTTP ${res.status} for ${spec.key}`);
+  const bytes = await res.arrayBuffer();
+  await checkPinned(bytes, spec.file_sha256?.["weights.json"], `${spec.key} weights.json`);
+  return bytes;
+}
+
 /**
  * Any pinned graph of a published model as its own session (Round 86, split inference). `loadModel` opens the one graph a
  * model is scored by; the chest X-ray model also publishes the same network up to its pooled features, which the medical

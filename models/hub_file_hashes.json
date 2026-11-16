@@ -9,18 +9,18 @@
  },
  "finance_aml.gnn_compact": {
   "files": {
-   "eval_sample.json": "8108208cd274d1e5958d85793e16ea2012d06c1359527e11fd25fa81e1ac1a4b",
-   "weights.json": "f06f88a326aa0d06a9d1f625a10895e42f08d4a1bbbf439c202677377b28fe75"
+   "eval_sample.json": "e90f12f13f6224b7a7c2c9d6e8bd03f6e6d56dc2c390a08d00d25af0ca35e5e4",
+   "weights.json": "fc086bd5269fde1db9c677c8fe558d312e61b0907ffe9f5ac355250491f894b3"
   },
-  "revision": "10104e89a99b21bede9fa760374ec2787c723f7c"
+  "revision": "60642a2009465836ef435d5ec2438f4211492578"
  },
  "finance_aml.mlp_large": {
   "files": {
-   "eval_sample.json": "9b3f6c6ebe23f0508e0a08235ae3059b56b349a6734d5f0d804536e44077b325",
-   "onnx/model.onnx": "bbf146eabf645adfb5224f7678aca327d0db6b7326b28833300f6c18f7c66c47",
-   "weights.json": "0f37e5d2701510c2a9732606ff846a9e5bf92edb6fdf798bd1dabfe067bce954"
+   "eval_sample.json": "0c75c56c19687ba2d46752171ca232fc845a18b02232cd315f2851295743880e",
+   "onnx/model.onnx": "e645f43bfee1bc1a8111f783b474858810ee928caaa550642303fa160e4e542c",
+   "weights.json": "a6d71112897b947045630682533bccfe14a1ac761ca04a257b675015363ca5c2"
   },
-  "revision": "65926d2e55c36400752783f0b71b7bac4904d773"
+  "revision": "69e4fb7ce933e15e8d82ec05a9f1dbd299749eb7"
  },
  "finance_aml.student": {
   "files": {

@@ -9,7 +9,8 @@ import { MarksHidden } from "./VerificationChart";
 import type { GnnWeights } from "../lib/clientHybridGnn";
 import type { MlpWeights } from "../lib/clientHybridMlp";
 import { modelsFor } from "../lib/config";
-import { asJson, checkPinned } from "../lib/pinnedFetch";
+import { publishedWeightsOf } from "../lib/onnxInference";
+import { asJson } from "../lib/pinnedFetch";
 import {
   clipLogOdds, gnnStudent, LOG_ODDS_CLIP, mlpStudent, type Pairing, pairUp, type StudentRows, type TeacherRows, thresholdLogOdds,
 } from "../lib/teacherStudent";
@@ -29,12 +30,8 @@ const f2 = (v: number) => v.toFixed(2);
 
 async function studentRows(key: string): Promise<StudentRows> {
   const spec = modelsFor("finance_aml").find((m) => m.key === key);
-  if (!spec?.hf_repo_id || !spec.hf_revision) throw new Error(`${key} is not pinned to a revision`);
-  const res = await fetch(`https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/weights.json`,
-                          { mode: "cors", signal: AbortSignal.timeout(30_000) });
-  if (!res.ok) throw new Error(`the Hub answered HTTP ${res.status} for ${key}`);
-  const bytes = await res.arrayBuffer();
-  await checkPinned(bytes, spec.file_sha256?.["weights.json"], `${key} weights.json`);
+  if (!spec) throw new Error(`${key} is not in this page's registry`);
+  const bytes = await publishedWeightsOf(spec);       // checked against its pin before it is read
   return key === "finance_aml.gnn_compact" ? gnnStudent(key, asJson<GnnWeights>(bytes)) : mlpStudent(key, asJson<MlpWeights>(bytes));
 }
 

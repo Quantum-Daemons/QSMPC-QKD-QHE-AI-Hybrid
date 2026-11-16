@@ -379,7 +379,7 @@
     },
     "endpoint_scaling": "standard",
     "git_sha": "2718809-dirty",
-    "hf_revision_invalidated_by_retrain": "10104e89a99b21bede9fa760374ec2787c723f7c",
+    "hf_revision": "60642a2009465836ef435d5ec2438f4211492578",
     "max_of_seeds_minority_f1": 0.658602,
     "median_of_seeds_minority_f1": 0.651029,
     "min_of_seeds_minority_f1": 0.64177,
@@ -561,7 +561,7 @@
       "opset": 17
     },
     "git_sha": "2718809-dirty",
-    "hf_revision_invalidated_by_retrain": "65926d2e55c36400752783f0b71b7bac4904d773",
+    "hf_revision": "69e4fb7ce933e15e8d82ec05a9f1dbd299749eb7",
     "max_of_seeds_minority_f1": 0.636814,
     "median_of_seeds_minority_f1": 0.623607,
     "min_of_seeds_minority_f1": 0.594431,
