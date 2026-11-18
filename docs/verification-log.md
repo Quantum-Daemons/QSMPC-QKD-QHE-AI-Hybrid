@@ -5398,3 +5398,60 @@ graph went from 0.87 MB to 0.34 MB.
   same build the medical page's four models re-verified against their new pins, PASS, and split inference on film 1
   fetched the 11.2 MB features graph against its pin, the decrypted logit within $`1.04 \times 10^{-9}`$ of the
   clear one.
+
+### PR #61 on the deployed site, on a temporary host (2026-11-19)
+
+**Why a temporary host.** The usual host's provider announced maintenance for 2026-11-19, 10:00 to 19:00 JST, each
+machine down for about 30 minutes, and on the evening of 11-18 the public names were moved to a temporary host holding
+copies of the same images. The QSH image there was PR #57's build, served from a copied `docker/` folder with no git
+checkout, so `scripts/deploy_demo.sh` could not reach it as it stood (checklist DP18, new).
+
+**The deploy.** On the owner's approval, after both PRs merged (#62 as 723a7c9, #61 as e8ea912): a fresh clone of the
+repository at a new path on the temporary host, then `scripts/deploy_demo.sh --return-to-main` against it from the
+main checkout, with that host's connection details in a private file outside the repository and the output redacted.
+It took 9 minutes and left the host on `main` at `e8ea912`, serving `index-DsXacjtg.js` on the shared proxy network
+(DP7). The bundle was the same through the public name and through a pinned resolve to the temporary host, and the
+name resolved there from the local resolver, 1.1.1.1, 8.8.8.8, 9.9.9.9 and the authoritative server. The served bundle
+carries every new pin (`b01fba64`, `d8b27ed2`, `60642a20`, `69e4fb7c`, `3ee6e722`, `0d682eda`, `dff90e80`) and no home
+path, and `cxr_head.json` is at `dff90e80`. Cache headers as DP17 asks: the shell and the data `no-cache`, the new
+bundle immutable, `index-NTqXpn5h.js` 404.
+
+**A browser held on to the old host.** Chrome on this machine went on loading the old host's bundle while every
+resolver gave the new address, because it reused an open HTTP/2 connection to the old one; after about seven minutes
+without a request it opened a new connection and loaded `index-DsXacjtg.js`. A host therefore keeps serving the
+browsers that hold a connection to it after the names move, which is why DP18 has the temporary host cleaned up once
+it stops receiving requests rather than at the DNS TTL.
+
+**The walk**, every page at 1280 px in Chrome on the public name, no console error on any:
+
+- `/`, `/value` (the WAMO paper's DOI link, the FAR row) and `/usecases` (the finance card's headline: graph-feature
+  gradient boosting, 0.6161 against the published 0.6323).
+- `/validations`: all eight Run buttons; ML-KEM, ML-DSA (the tampered message rejected), the hybrid handshake, BB84
+  (QBER 0.0098), the secure agent call, ACVP 10 of 10, the WireGuard handshake checks and the IKEv2 key schedule with
+  its CAVP row at 7 of 7, every check true.
+- `/orchestration`: the default run in 34 s, 242 events, the published-model stage on gradient boosting by default;
+  the Stage order view; `?usecase=demo` in 1.5 s.
+- Finance: the run in 34 s re-scores all five published samples at their pins, PASS (gradient boosting, the student
+  and the MLP 8,192 rows each, the two IBM models 16 each); the MLP and the GNN under MPC return the clear network's
+  class, the largest logit error $`1.06 \times 10^{-4}`$ and $`5.25 \times 10^{-5}`$. The overview names
+  "Multi-PNA+EU, IBM's protocol" and "Multi-PNA+EU, causal protocol". The IBM tab shows both records at `b01fba646aad`
+  and `d8b27ed281c8`; IBM's protocol reads past the horizon on 16 of 16 transfers (the latest 3.3 days after), the
+  causal one on none (the latest 3 min after); the teacher against both students, 16 of 16 decisions agreeing for each
+  and the row decrypted under MPC marked; the transfers' accounts on a fan, no line through an account it does not
+  join. With the causal model chosen, the published-model stage runs it on transfer 12 of its sample (28 s).
+- Medical: the run in 30 s re-scores the four models at their new pins (`3ee6e7224e2b`, `0d682eda4fcd`, `dff90e809f69`
+  and the student's `1de47e045918`), PASS. Split inference on films 1 and 5 (no effusion) and 9 and 13 (effusion): the
+  11.2 MB features graph checked against its pin in 1.4 s, then cached; one ciphertext of 393,329 bytes; the layer in
+  39 ms with 9 rotations; each decrypted logit within $`1.04 \times 10^{-9}`$ of the clear one, and each decision the
+  full int8 model's recorded one.
+- Genomics (the polygenic score's flags agree), telecom (three models PASS, the QKD control plane table), satellite
+  (four models PASS, the Network and Downlink tabs) and DeFi (1 of 5 borrowers can be liquidated): each run once,
+  every tab opened.
+- `/licenses/js-bundle.txt` served; `/walkthrough/` runs: 105 of 113 columns identical over the 200 pairs, the ceiling
+  0.7685, the slider changing the pair.
+- At 375 px, the finance page after a run with the IBM tab open, and the medical page with the chest X-ray tab and
+  split inference on film 9: no sideways scroll. The IBM drawings keep their 520 px minimum and scroll in their own
+  box; the scored transfer's drawing scales to the width.
+
+**Still owed.** The usual host gets the same deploy after its maintenance, read through a pinned resolve before the
+owner moves the names back; the owner then cleans up the temporary host.
