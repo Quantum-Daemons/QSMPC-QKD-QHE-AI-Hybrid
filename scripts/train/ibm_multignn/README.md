@@ -208,8 +208,9 @@ reproduction keeps it under both protocols.
 ## Multi-GIN+EU, five seeds under each protocol (2026-11-17 and 18)
 
 Not exported or published. Five seeds under IBM's protocol, each IBM's 100 epochs, and five under the causal protocol
-with `lag`, the time input PNA's runs chose; `drop` was not trained for GIN. From the same queue (2026-11-17 06:21 to
-2026-11-18 05:26 UTC, the same kernel and driver); GIN's head dropout is 0.105, PNA's 0.288 (`model_settings.json`).
+with each time input: `lag`, the one PNA's runs chose, from the same queue (2026-11-17 06:21 to 2026-11-18 05:26 UTC),
+then `drop` on the owner's choice of 2026-11-18 (`run_queue_gin_drop.sh`, 06:29 to 11:41 UTC), with the same kernel
+and driver. GIN's head dropout is 0.105, PNA's 0.288 (`model_settings.json`).
 
 | Protocol | Seed | Kept epoch of run | Logged validation F1 | Logged test F1 | Test F1, eval mode with the fit-window statistics | Test AUPRC | Test F1, the statistics IBM's loop saved | Test F1, plain batches |
 |---|---|---|---|---|---|---|---|---|
@@ -225,10 +226,17 @@ with `lag`, the time input PNA's runs chose; `drop` was not trained for GIN. Fro
 | causal, `lag` | 4 | 25 of 45 | 0.5710 | 0.4788 | 0.5005 | 0.4553 | 0.4619 | 0.3424 |
 | causal, `lag` | 5 | 11 of 31 | 0.4664 | 0.3843 | 0.5056 | 0.4232 | 0.1885 | 0.3433 |
 | causal, `lag`, mean | | | $`0.4879 \pm 0.0849`$ | $`0.4095 \pm 0.0563`$ | $`0.4560 \pm 0.0667`$ | $`0.4002 \pm 0.0806`$ | $`0.3501 \pm 0.1356`$ | $`0.3076 \pm 0.0500`$ |
+| causal, `drop` | 1 | 7 of 27 | 0.3420 | 0.3312 | 0.3462 | 0.2623 | 0.4062 | 0.3312 |
+| causal, `drop` | 2 | 4 of 24 | 0.2866 | 0.2699 | 0.3363 | 0.2751 | 0.3673 | 0.2874 |
+| causal, `drop` | 3 | 25 of 45 | 0.4316 | 0.3422 | 0.3941 | 0.2430 | 0.3267 | 0.3474 |
+| causal, `drop` | 4 | 9 of 29 | 0.3029 | 0.2967 | 0.2802 | 0.2041 | 0.3183 | 0.2564 |
+| causal, `drop` | 5 | 17 of 37 | 0.0099 | 0.0034 | 0.0576 | 0.0261 | 0.0560 | 0.0530 |
+| causal, `drop`, mean | | | $`0.2746 \pm 0.1583`$ | $`0.2487 \pm 0.1401`$ | $`0.2829 \pm 0.1323`$ | $`0.2021 \pm 0.1020`$ | $`0.2949 \pm 0.1381`$ | $`0.2551 \pm 0.1185`$ |
 
 Under IBM's protocol the logged test F1 is $`0.6018 \pm 0.0260`$, against the paper's $`64.79 \pm 1.22`$ on its own
 split. With the statistics recomputed on the fit window the exported way gives $`0.5737 \pm 0.0262`$, against
 $`0.5940 \pm 0.0292`$ with those IBM's loop saved; for PNA the two were $`0.6577`$ and $`0.6597`$. Under the causal
-protocol GIN logs a validation F1 of $`0.4879 \pm 0.0849`$, against PNA's $`0.6175 \pm 0.0053`$, and seeds 1, 3 and 5
-kept epochs 6, 16 and 11 and stopped 20 epochs later. A run took 3.3 hours under IBM's protocol and 0.7 to 1.7 hours
-of training under the causal one.
+protocol GIN logs a validation F1 of $`0.4879 \pm 0.0849`$ with `lag`, against PNA's $`0.6175 \pm 0.0053`$, and seeds
+1, 3 and 5 kept epochs 6, 16 and 11 and stopped 20 epochs later. With `drop` it logs $`0.2746 \pm 0.1583`$, below
+`lag` as for PNA, and its seed 5 never rose above 0.01. A run took 3.3 hours under IBM's protocol and 0.65 to 1.7
+hours of training under the causal one.

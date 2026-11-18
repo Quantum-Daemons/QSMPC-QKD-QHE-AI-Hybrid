@@ -5350,7 +5350,9 @@ within 0.021 and decide the same 16; under IBM's protocol, the 16 drawn together
 **Multi-GIN+EU, five seeds under each protocol (2026-11-17 and 18).** Not exported. Under IBM's protocol it logs
 $`0.6018 \pm 0.0260`$ (the paper, $`64.79 \pm 1.22`$ on its own split), and the fit-window statistics give
 $`0.5737 \pm 0.0262`$ the exported way against $`0.5940 \pm 0.0292`$ with the saved ones; under the causal protocol
-with `lag` it logs $`0.4095 \pm 0.0563`$, and three of its seeds kept an epoch before the 17th.
+with `lag` it logs $`0.4095 \pm 0.0563`$, and three of its seeds kept an epoch before the 17th. With `drop`, trained
+on the owner's choice the same day, its validation F1 is $`0.2746 \pm 0.1583`$, below `lag` as for PNA, and one seed
+never rose above 0.01.
 
 **File paths in exported ONNX graphs.** `torch.export` (torch 2.9 and later) writes each node's Python stack trace into
 the node's metadata, with the exporting machine's absolute file paths. Seven graphs on the Hub carried this machine's:
