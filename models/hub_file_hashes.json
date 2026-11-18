@@ -7,20 +7,34 @@
   },
   "revision": "b74d16f36b5658b86df5f0ca67ef16b26e13b5c9"
  },
+ "finance_aml.gnn": {
+  "files": {
+   "eval_sample.json": "4e66c824e0b78f690c4c6bc4fe0397672af54f8ebe839800dfea27c38ada7bf7",
+   "onnx/model.onnx": "c5bc68963c6deea0ad9ddf4e08f822faaf639eb8071ed47510de0e48840a51cd"
+  },
+  "revision": "b01fba646aad55b84c33429b1b1d091ae8b433ac"
+ },
+ "finance_aml.gnn_causal": {
+  "files": {
+   "eval_sample.json": "0c32a818927075dd83dc0f02f6715e976060498d24b1c9c8cbf3525f02748454",
+   "onnx/model.onnx": "7afd7339ce9a79e6db38c11dcb46f6c83be0c0e2f9779dd265e414fdddc61afa"
+  },
+  "revision": "d8b27ed281c86de4e8671b5f6b243be7c82f7242"
+ },
  "finance_aml.gnn_compact": {
   "files": {
-   "eval_sample.json": "8108208cd274d1e5958d85793e16ea2012d06c1359527e11fd25fa81e1ac1a4b",
-   "weights.json": "f06f88a326aa0d06a9d1f625a10895e42f08d4a1bbbf439c202677377b28fe75"
+   "eval_sample.json": "e90f12f13f6224b7a7c2c9d6e8bd03f6e6d56dc2c390a08d00d25af0ca35e5e4",
+   "weights.json": "fc086bd5269fde1db9c677c8fe558d312e61b0907ffe9f5ac355250491f894b3"
   },
-  "revision": "10104e89a99b21bede9fa760374ec2787c723f7c"
+  "revision": "60642a2009465836ef435d5ec2438f4211492578"
  },
  "finance_aml.mlp_large": {
   "files": {
-   "eval_sample.json": "9b3f6c6ebe23f0508e0a08235ae3059b56b349a6734d5f0d804536e44077b325",
-   "onnx/model.onnx": "bbf146eabf645adfb5224f7678aca327d0db6b7326b28833300f6c18f7c66c47",
-   "weights.json": "0f37e5d2701510c2a9732606ff846a9e5bf92edb6fdf798bd1dabfe067bce954"
+   "eval_sample.json": "0c75c56c19687ba2d46752171ca232fc845a18b02232cd315f2851295743880e",
+   "onnx/model.onnx": "e645f43bfee1bc1a8111f783b474858810ee928caaa550642303fa160e4e542c",
+   "weights.json": "a6d71112897b947045630682533bccfe14a1ac761ca04a257b675015363ca5c2"
   },
-  "revision": "65926d2e55c36400752783f0b71b7bac4904d773"
+  "revision": "69e4fb7ce933e15e8d82ec05a9f1dbd299749eb7"
  },
  "finance_aml.student": {
   "files": {
@@ -34,30 +48,30 @@
   "files": {
    "eval_sample.json": "be95f1932e591d6d49a6f2887c625d0b0b89df27a3bde78de746929b9574ce74",
    "feature_spec.json": "12c9fb24e32a86b3506e268fdb38d09771f192a426d7ef0a2e9c318d20d45b77",
-   "features_report.json": "942414a1dcab766bf1a16f5398b382cc410a234072642ec411221b93ff8a5f9a",
-   "onnx/features.onnx": "e2157d024ac7aa94ce288646fabf0d1c9ac8da0075e8d9b370d003435afc6f14",
-   "onnx/features_int8.onnx": "8e8e4c4c9414152ed70fb3c8558ca59b2a57f77cb2ad3aa07aa0fa470206c4b2",
-   "onnx/model.onnx": "1c19d143a1eaf6d1f242b9bb7083cc40c5aea95454a7a7d6452e592dbec2f2aa",
-   "onnx/model_int8.onnx": "7b7bd213b42da1f70e4567ad1e51760a830050be73d81d5864cbbb10f05b72a2"
+   "features_report.json": "e1a91424141bba31fc19d3deb4c05db8595cc3187a6e0e5295ae3417df58167f",
+   "onnx/features.onnx": "11eed50ed21ea0d1b858f7cba15e75b2e84112222afe3dc1e6fae41a1c9bae3c",
+   "onnx/features_int8.onnx": "f0f56f225080ade6f92ac640841ac637ece0e3f7017c659426151ac614ef99aa",
+   "onnx/model.onnx": "f7c410b0af54a7d5128beff1cc4d4558e0080c871fb270b8271d0c7cc06dd9de",
+   "onnx/model_int8.onnx": "b20dad2c613facdda1b4b43c8e0115470c5ade6bc12f4d6dba531b2dc99b452e"
   },
-  "revision": "88f4f9661582f012e5356555b0bba5a6493f74db"
+  "revision": "dff90e809f691ed2978953f5c16b279186ca02c7"
  },
  "medical_fl.resnet18": {
   "files": {
    "eval_sample.json": "e9eaaef46f473ca632a49a5563ce3d662f1e5383ba45763aacf3cdc242d69e5c",
    "feature_spec.json": "5c76de07d5f288193cdb887b802ae52c4a85ed213d466426829412490f95dca1",
-   "onnx/model.onnx": "f48cd2e00defb158151574ce4d75a9da460b613e03e4cc696c10a726ed6d0eb6",
-   "onnx/model_int8.onnx": "ad9ba2a8f235994f67706947ce3c9a361b7782b33fcf651570b46f32eb6b08d1"
+   "onnx/model.onnx": "e25b8dc2cba9294e2adfa81358627b2239208a7cf890820a323c6c8447bd169f",
+   "onnx/model_int8.onnx": "a1e5b6ce9cef59d06e3d6a48aa99444150523e8e4e00ac661a18348eb77de088"
   },
-  "revision": "b24642c6ef106a1b8ad15e4e5013de649aa6eec3"
+  "revision": "3ee6e7224e2b4a666a23213e8e7f597d92dc1af2"
  },
  "medical_fl.resnet50": {
   "files": {
    "eval_sample.json": "429a145f676138693a6c4e313fed3ea5254828d3e93512bf86f0b4c16f6f9d99",
    "feature_spec.json": "5c76de07d5f288193cdb887b802ae52c4a85ed213d466426829412490f95dca1",
-   "onnx/model.onnx": "e9f9c576e5a80c5af8aa4c4905059fe9d8549d0ad3056fe4c68168204e1ea08e"
+   "onnx/model.onnx": "44f10daaf4d24b8ed1130da25f5e033471bb35307328b91fdb99817907dab5bb"
   },
-  "revision": "d11ec391da3b664d31ba55733bdbbefc01e12fef"
+  "revision": "0d682eda4fcd794537dbb27faa7e7e0a7acc0624"
  },
  "medical_fl.student": {
   "files": {

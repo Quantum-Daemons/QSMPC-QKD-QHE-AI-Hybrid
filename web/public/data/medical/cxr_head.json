@@ -2,7 +2,7 @@
  "_about": "The chest X-ray model's last layer for the medical page's split inference; written by scripts/export_cxr_head.py from the published model.safetensors and checked against the published graphs.",
  "model": "medical_fl.cxr_fedavg",
  "hf_repo": "Daemons-Q/qsh-medical-cxr14-fedavg-resnet18",
- "hf_revision": "88f4f9661582f012e5356555b0bba5a6493f74db",
+ "hf_revision": "dff90e809f691ed2978953f5c16b279186ca02c7",
  "features_graph": "onnx/features_int8.onnx",
  "features": 512,
  "weights": [

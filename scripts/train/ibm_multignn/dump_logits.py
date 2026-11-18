@@ -19,6 +19,17 @@ import torch
 import wandb
 from data_loading import get_data
 from torch_geometric.loader import LinkNeighborLoader
+
+try:  # the causal protocol's loaders (causal.patch)
+    from train_util import _causal, _workers, seed_mask
+except ImportError:  # IBM's code with the split patch only
+    def _causal(*_args, **_kwargs):
+        return None
+
+    def _workers():
+        return {}
+
+    seed_mask = None
 from torch_geometric.nn import to_hetero
 from train_util import AddEgoIds, add_arange_ids, extract_param, get_loaders
 from training import get_model
@@ -56,7 +67,7 @@ logging.info(f"loaded checkpoint from epoch {ckpt['epoch']}")
 # The train edges in order: the training loader shuffles, and its seeds are every edge of the train graph.
 et = ("node", "to", "node")
 tr_ordered = LinkNeighborLoader(tr_data, num_neighbors=args.num_neighs, edge_label_index=(et, tr_data[et].edge_index),
-                                edge_label=tr_data[et].y, batch_size=args.batch_size, shuffle=False, transform=transform)
+                                edge_label=tr_data[et].y, **(_causal(tr_data, None, transform, False) or dict(batch_size=args.batch_size, shuffle=False, transform=transform)), **_workers())
 
 
 @torch.no_grad()
@@ -68,7 +79,7 @@ def dump(loader, inds):
         batch_edge_inds = inds[batch[et].input_id.detach().cpu()]
         batch_edge_ids = loader.data[et].edge_attr.detach().cpu()[batch_edge_inds, 0]
         edge_ids = batch[et].edge_attr[:, 0].detach().cpu()
-        mask = torch.isin(edge_ids, batch_edge_ids)
+        mask = seed_mask(batch, batch_edge_ids) if seed_mask else torch.isin(edge_ids, batch_edge_ids)
         missing_total += int((~torch.isin(batch_edge_ids, edge_ids)).sum())
         batch[et].edge_attr = batch[et].edge_attr[:, 1:]
         batch["node", "rev_to", "node"].edge_attr = batch["node", "rev_to", "node"].edge_attr[:, 1:]

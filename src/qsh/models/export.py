@@ -132,7 +132,43 @@ def export_torch(model, example: np.ndarray, path: Path, *,
     if sidecar.exists():
         onnx.save(onnx.load(str(path)), str(path), save_as_external_data=False)
         sidecar.unlink()
+    strip_node_metadata(path)
     return path
+
+
+def strip_node_metadata(path: str | Path) -> int:
+    """Drop every node's metadata and doc string from the ONNX file at ``path``; return how many entries went.
+
+    Round 86 (2026-11-18). torch>=2.9 exports through torch.export, which records on every node its FX node, its module
+    path and its Python stack trace, and the stack trace holds the exporting machine's absolute file paths, its home
+    directory among them: seven graphs this project had published on the Hub carried this machine's. ONNX Runtime does
+    not read these fields, so no output changes; without them a graph's bytes also stop depending on the line numbers
+    of the script that exported it. The file is rewritten only when something was dropped.
+    """
+    import onnx
+
+    path = Path(path)
+    model = onnx.load(str(path))
+
+    def graphs(g):
+        yield g
+        for node in g.node:
+            for attr in node.attribute:
+                if attr.type == onnx.AttributeProto.GRAPH:
+                    yield from graphs(attr.g)
+                elif attr.type == onnx.AttributeProto.GRAPHS:
+                    for sub in attr.graphs:
+                        yield from graphs(sub)
+
+    nodes = [n for g in graphs(model.graph) for n in g.node] + [n for f in model.functions for n in f.node]
+    dropped = 0
+    for node in nodes:
+        dropped += len(node.metadata_props) + bool(node.doc_string)
+        del node.metadata_props[:]
+        node.doc_string = ""
+    if dropped:
+        onnx.save(model, str(path), save_as_external_data=False)
+    return dropped
 
 
 def fixed_batch_outputs(path: str | Path) -> list[str]:
@@ -257,6 +293,8 @@ def quantize_int8(fp32_path: Path, int8_path: Path, *, per_channel: bool = True)
     finally:
         if cleaned is not None:
             cleaned.unlink(missing_ok=True)
+    # The quantiser copies each node's metadata from its source, local paths included (strip_node_metadata).
+    strip_node_metadata(int8_path)
     return int8_path
 
 
