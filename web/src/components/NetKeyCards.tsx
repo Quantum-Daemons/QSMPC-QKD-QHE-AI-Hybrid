@@ -146,7 +146,8 @@ export default function NetKeyCards() {
             </table>
             <table className="facts-table small">
               <tbody>
-                <tr><th scope="row">CAVP SP 800-135 cases</th><td>{ok(ike.cavp.allPassed)} - {ike.cavp.passed}/{ike.cavp.total}</td></tr>
+                {/* The CAVP cases alone: the RFC 5903 example is the next row, not a CAVP case. */}
+                <tr><th scope="row">CAVP SP 800-135 cases</th><td>{ok(ike.cavp.total > 0 && ike.cavp.passed === ike.cavp.total)} - {ike.cavp.passed}/{ike.cavp.total}</td></tr>
                 <tr><th scope="row">ECP-256 shared secret, RFC 5903 section 8.1</th><td>{ok(ike.sched.validation.rfc5903Passed)}</td></tr>
                 <tr><th scope="row">g^ir and the ML-KEM secret agree between peers</th><td>{ok(ike.sched.exchange.girAgrees && ike.sched.exchange.mlkemSecretAgrees)}</td></tr>
                 <tr><th scope="row">the PPK changes only SK_d, SK_pi and SK_pr</th><td>{ok(ike.sched.properties.ppkChangesOnlyDPiPr)}</td></tr>

@@ -4173,7 +4173,7 @@ All ten routes and both not-found paths were walked in a browser on the public d
 the architecture diagram, the novelty sentence at 248 px, the regulatory clock (18 rows), the use-case
 table, the E91 scenarios on `/orchestration` (0.03 / 2.66 / 0.007286 and e0 0.0297; Eve 1: 0.27 / 1.33 /
 0 and e0 0.2649; 0.02 / 2.74 / 0.09037 and e0 0.015), the three key-schedule cards (ACVP 10/10, the
-WireGuard checks, CAVP 7/7 and RFC 5903) with their chunks fetched only on click, the posture table and
+WireGuard checks, CAVP 7/7 and RFC 5903 [corrected 2026-11-18: the 7 counted the six CAVP cases and the RFC 5903 example, which has its own row; the CAVP row now reads 6/6]) with their chunks fetched only on click, the posture table and
 3D view on an inference page, the E91 caption under an eavesdropper, and the computed QSDC tooltips
 (+0.1150, -64.7390). At a 390 px emulated phone viewport every route measured zero horizontal page
 overflow. One defect was found and fixed in this PR: the diagram's QSDC label paired the 24.5 dB
@@ -9060,6 +9060,7 @@ recorded separately, and nothing here changes the published model.
 | #55 | Split inference on a chest X-ray: the public model's features graph runs on one of its 16 published films in the tab, only the 512 features are encrypted, and the network's own last layer is evaluated on them under CKKS (`encryptedLinear`, unchanged); the layer exported from the published weights and checked against the pinned graphs on all 16 films (`scripts/export_cxr_head.py`); film 9 in Chrome: 192 ms backbone, 52 ms CKKS, logit within $`1.2 \times 10^{-9}`$; the card republished with its split paragraph as revision 88f4f96 on the owner's approval, the pins' digests unchanged |
 | #56 | Records PRs #49 to #54 on the deployed site (bundle `index-J8JJSd0J.js` checked three ways, every page walked). Four items of the owner's list of 2026-11-13: the value page links the WAMO paper by its DOI (Wang et al., The Web Conference 2026; Crossref and the abstract re-read), and the folded rows and the regulatory clock's source links are at least 24 px tall (WCAG 2.2 SC 2.5.8), measured at 390 px; the clock's FAR row re-checked in the Federal Register, none as of 2026-11-15; both Caddyfiles send Cache-Control, an existing hashed asset kept a year and the shell, data and 404s revalidated, read from a real Caddy |
 | #57 | The finance canvas draws the PSI among banks under MPC as its banks (one lane per bank into one garbled circuit), not as the secure sum's seven parties, with the canvas gate holding the count; the README's twelve images retaken and read for faults; the deploy of #55 and #56 recorded (bundle `index-BngVCAF0.js` three ways, cache headers, split inference on four films, the medical re-scoring at 88f4f96) |
+| #60 | The validations page's IKEv2 card counts the CAVP cases alone in its "CAVP SP 800-135 cases" row: 6/6, where it read 7/7 by also counting RFC 5903 section 8.1's ECP-256 example, which has its own row; `allPassed` still requires both, and `check:netkeys` holds the runner's count to its own (on the old module it fails on that check alone: "runner 7/7, this script 6/6") |
 
 Findings worth keeping from those:
 

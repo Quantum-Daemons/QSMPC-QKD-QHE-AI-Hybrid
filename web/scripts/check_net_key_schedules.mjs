@@ -271,6 +271,7 @@ section("Noise", () => {
 // 3. IKEv2 KDF against NIST CAVP SP 800-135, and ECP-256 against RFC 5903 section 8.1.
 // ---------------------------------------------------------------------------------------------
 let cavpCases = 0;
+let cavpPassed = 0;
 let ikeOk = true;
 section("IKEv2 CAVP", () => {
   const f = files["ikev2_cavp.json"];
@@ -290,12 +291,14 @@ section("IKEv2 CAVP", () => {
       ["DKM(Child SA D-H)", ike.childSaKeymat(alg, skd, ni, nr, childLen, girNew), c["DKM(Child SA D-H)"]],
       ["SKEYSEED(Rekey)", ike.rekeySkeyseed(alg, skd, girNew, ni, nr), c["SKEYSEED(Rekey)"]],
     ];
+    let caseOk = true;
     for (const [name, got, want] of results) {
       const ok = same(got, want);
-      if (!ok) ikeOk = false;
+      if (!ok) { ikeOk = false; caseOk = false; }
       check(`IKEv2 ${c.id} ${name}`, ok, describe(got, want));
     }
     cavpCases += 1;
+    if (caseOk) cavpPassed += 1;
   }
   check("IKEv2 PRF coverage", ["HMAC-SHA-256", "HMAC-SHA-384", "HMAC-SHA-512"].every((p) => prfs.has(p)),
         `stored PRFs ${JSON.stringify([...prfs])}; every PRF ikev2.ts accepts needs a case`);
@@ -316,6 +319,13 @@ section("IKEv2 CAVP", () => {
   const run = ike.runIkev2Cavp(f);
   check("runIkev2Cavp verdict", run.cases.length === cavpCases && run.allPassed === ikeOk,
         `runner allPassed=${run.allPassed}, this script says ${ikeOk}`);
+  // The page prints run.passed / run.total in the row headed "CAVP SP 800-135 cases", so they count
+  // the CAVP cases alone; the RFC 5903 example has its own row. Until 2026-11-18 the runner counted
+  // the example too, and the row read 7/7 over six CAVP cases.
+  check("runIkev2Cavp counts the CAVP cases alone",
+        run.total === cavpCases && run.passed === cavpPassed && run.ecp256.cases.length === f.ecp256Rfc5903.cases.length,
+        `runner ${run.passed}/${run.total}, this script ${cavpPassed}/${cavpCases} CAVP cases`
+        + ` (and ${f.ecp256Rfc5903.cases.length} RFC 5903 example, counted apart)`);
   check("runIkev2Cavp says what it does not validate",
         run.notValidated.some((s) => s.includes("RFC 9370") && s.includes("no official test vectors"))
         && run.notValidated.some((s) => s.includes("RFC 8784") && s.includes("no official test vectors")),
