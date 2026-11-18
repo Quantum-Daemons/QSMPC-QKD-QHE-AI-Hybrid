@@ -140,11 +140,11 @@ bash scripts/audit_deps.sh
 
 - `web/`: `npm audit` at the lowest level, development tooling included. An advisory fails the check unless
   `scripts/npm_audit_ignore.json` lets it through with its reason, the packages it may be reported through, what
-  reopens it and a last day, which `scripts/npm_audit_filter.mjs` checks. One is let through, until 2026-12-18:
-  GHSA-fc5q-39xc-vjpf (CVE-2026-112366), a ReDoS in picomatch through 4.0.7 when the caller supplies the glob,
-  disputed and fixed in no release, which reaches this project only through vite's build tooling, on patterns
-  written here. It fails again once a newer picomatch is published, once it is reported through another package,
-  or after that day.
+  reopens it and a last day, which `scripts/npm_audit_filter.mjs` checks. None is let through now. The only entry so
+  far, GHSA-fc5q-39xc-vjpf (CVE-2026-112366), a disputed ReDoS in picomatch through 4.0.7 that reaches this project
+  only through vite's build tooling, was let through from 2026-11-18 and removed on 2026-11-19, after GitHub withdrew
+  the advisory on 2026-11-18; `npm audit` has reported nothing since. Were it published again, the audit would fail
+  until it is reviewed again.
 - `wasm/qsh-mpc/`: cargo-deny 0.20.2, run in the same pinned Rust image as the build. Every RustSec
   advisory fails the check (vulnerability, unsound, unmaintained or yanked) unless
   `wasm/qsh-mpc/deny.toml` ignores it with a reason. Only crates.io and the pinned Polytune repository

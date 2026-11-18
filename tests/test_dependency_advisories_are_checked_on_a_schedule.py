@@ -48,11 +48,10 @@ IGNORED = {
 }
 
 #: Each npm advisory scripts/npm_audit_ignore.json lets through, with what reopens it, as IGNORED is for deny.toml.
-NPM_IGNORED = {
-    "GHSA-fc5q-39xc-vjpf": "picomatch <= 4.0.7 (CVE-2026-112366), disputed and fixed in no release, reached only through "
-                           "vite's build tooling; reopen when a newer picomatch is published, when it is reported through "
-                           "another package, or after 2026-12-18",
-}
+#: None: GHSA-fc5q-39xc-vjpf (picomatch <= 4.0.7, CVE-2026-112366), let through from 2026-11-18, was removed on
+#: 2026-11-19 because GitHub withdrew the advisory on 2026-11-18. Its entry is kept below as _HISTORICAL, the
+#: fixture the filter's tests run on.
+NPM_IGNORED: dict[str, str] = {}
 NPM_IGNORE = REPO / "scripts" / "npm_audit_ignore.json"
 NPM_FILTER = REPO / "scripts" / "npm_audit_filter.mjs"
 
@@ -177,18 +176,33 @@ _REPORT = {
 }
 
 
-def _filter(report: object, today: str, latest: dict) -> subprocess.CompletedProcess:
+#: The entry scripts/npm_audit_ignore.json held from 2026-11-18 to 2026-11-19, as it stood.
+_HISTORICAL = {
+    "GHSA-fc5q-39xc-vjpf": {
+        "package": "picomatch", "through": ["fdir", "tinyglobby", "vite"], "until": "2026-12-18",
+        "reason": "CVE-2026-112366: a ReDoS in picomatch through 4.0.7, reached only through vite's build tooling.",
+        "reopen": "a newer picomatch is published, another package reports it, or the date passes.",
+    },
+}
+
+
+def _filter(report: object, today: str, latest: dict, ignore: Path | None = None) -> subprocess.CompletedProcess:
     env = {**os.environ, "AUDIT_TODAY": today, "NPM_LATEST": json.dumps(latest)}
+    env.pop("NPM_AUDIT_IGNORE", None)
+    if ignore is not None:
+        env["NPM_AUDIT_IGNORE"] = str(ignore)
     return subprocess.run(["node", str(NPM_FILTER), "web"], input=json.dumps(report), capture_output=True, text=True,
                           env=env, timeout=60)
 
 
-def test_the_npm_filter_lets_through_only_what_the_file_names_within_its_terms() -> None:
+def test_the_npm_filter_lets_through_only_what_the_file_names_within_its_terms(tmp_path: Path) -> None:
+    historical = tmp_path / "npm_audit_ignore.json"
+    historical.write_text(json.dumps(_HISTORICAL))
     now, unfixed = "2026-11-18", {"picomatch": "4.0.7"}
-    ok = _filter(_REPORT, now, unfixed)
+    ok = _filter(_REPORT, now, unfixed, historical)
     assert ok.returncode == 0, ok.stderr
     assert "GHSA-fc5q-39xc-vjpf" in ok.stdout and "let through until 2026-12-18" in ok.stdout
-    assert _filter({"auditReportVersion": 2, "vulnerabilities": {}}, now, unfixed).returncode == 0
+    assert _filter({"auditReportVersion": 2, "vulnerabilities": {}}, now, unfixed, historical).returncode == 0
 
     failures = {
         "after its date": (_REPORT, "2026-12-19", unfixed),
@@ -208,7 +222,17 @@ def test_the_npm_filter_lets_through_only_what_the_file_names_within_its_terms()
     reshaped["vulnerabilities"]["picomatch"]["via"][0]["range"] = ">=2.0.0 <=4.0.7"
     failures["a range it cannot read"] = (reshaped, now, unfixed)
     for why, (report, today, latest) in failures.items():
-        res = _filter(report, today, latest)
+        res = _filter(report, today, latest, historical)
         assert res.returncode == 1, f"{why}: the filter let it through ({res.stdout})"
         assert "not let through" in res.stderr, why
 
+
+def test_the_withdrawn_picomatch_advisory_would_fail_the_audit_again() -> None:
+    """The file as it stands lets nothing through: were GHSA-fc5q-39xc-vjpf published again, the audit fails until it
+    is reviewed again, and a clean report still passes."""
+    now, unfixed = "2026-11-19", {"picomatch": "4.0.7"}
+    again = _filter(_REPORT, now, unfixed)
+    assert again.returncode == 1, again.stdout
+    assert "GHSA-fc5q-39xc-vjpf" in again.stderr and "is not let through" in again.stderr
+    clean = _filter({"auditReportVersion": 2, "vulnerabilities": {}}, now, unfixed)
+    assert clean.returncode == 0 and "nothing reported" in clean.stdout, clean.stderr

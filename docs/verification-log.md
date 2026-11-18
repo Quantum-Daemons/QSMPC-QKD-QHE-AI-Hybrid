@@ -5455,3 +5455,17 @@ it stops receiving requests rather than at the DNS TTL.
 
 **Still owed.** The usual host gets the same deploy after its maintenance, read through a pinned resolve before the
 owner moves the names back; the owner then cleans up the temporary host.
+
+### PR #62's advisory withdrawn, and its exception removed (2026-11-19)
+
+GitHub withdrew GHSA-fc5q-39xc-vjpf on 2026-11-18 at 15:38 UTC (`withdrawn_at` in the advisory database's API), an
+hour after PR #62 let it through. On 2026-11-19 `npm audit --json` in `web/` reports no vulnerability at any level,
+and picomatch's newest release is still 4.0.7, so the advisory went away by its withdrawal, not by a fix. The entry's
+own reopening condition said that a withdrawal makes it unused and that it is to be removed then.
+
+**Changed.** `scripts/npm_audit_ignore.json` holds no entry, its note saying why. `scripts/npm_audit_filter.mjs` reads
+another ignore file when `NPM_AUDIT_IGNORE` names one, which only the test does: the filter's checks of every failure
+path (after the date, a fixed release, an unreadable version or range, another advisory, another package, not a
+report) now run on the historical entry as a fixture, and a new test checks that the file as it stands fails the audit
+on the same advisory, were it published again, and still passes a clean report. `docs/development.md` and
+`docs/threat-model.md` say what happened.
