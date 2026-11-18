@@ -5121,3 +5121,23 @@ The README's twelve images are retaken from a client-only build of this branch, 
 each was opened and read for text over lines, unthemed controls, irregular axes and empty cards (checklist DC22): none
 found. Every image changed by SHA-256; the finance and E2E pages now show the banks, every page the sidebar's
 "Open-source notices" link, and the value page the WAMO DOI.
+
+### PR #60: the IKEv2 card's CAVP row counts the CAVP cases alone (2026-11-18)
+
+The validations page's IKEv2 card printed `runIkev2Cavp()`'s `passed`/`total` in the row headed "CAVP SP 800-135 cases",
+and both counted RFC 5903 section 8.1's ECP-256 example with the six NIST CAVP cases: the row read 7/7, while the example
+also had its own row. The runner's `passed` and `total` now count the CAVP cases alone and the row's verdict is theirs;
+`allPassed` still requires the example as well, and `check:netkeys` still holds it to its own verdict.
+
+- **A check that sees the count.** `check:netkeys` counts the CAVP cases that pass on its own and requires the runner's
+  `passed` and `total` to equal them, with the example counted apart. With `main`'s `ikev2.ts` put back under the new
+  check, it fails on that check alone, "runner 7/7, this script 6/6 CAVP cases": nothing else in the check saw the
+  count. The `ikev2` and `rfc5903` negative controls still fail on their named cases and not on the count.
+- **On the page.** A client-only build of this branch, `/validations`, "Run the key schedule": the CAVP row reads
+  "true - 6/6" and the RFC 5903 row "true", read from the DOM; no console error.
+- **The gates.** `tsc --noEmit`, `check:jsx-spaces`, `check:netkeys` and `check:validations-download` pass. The suite
+  without the slow tests, with `QSH_REQUIRE_BROWSER_GATES=1`: 2157 passed, 39 skipped and one failure that `main` has
+  too, `tests/test_every_merged_pr_is_in_the_record.py`, which finds no register row for #58.
+- **No other record held 7/7.** The validations download carries `{kem, sig, pqc, qkd, mcp}`, not the IKEv2 run, and
+  the README's image of `/validations` does not open this card. Round 58's walk record that wrote "CAVP 7/7" is
+  annotated in place, and `references/net-key-schedules.md` states the count and adds the seeded case.
