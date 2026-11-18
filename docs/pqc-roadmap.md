@@ -236,7 +236,9 @@ document on 2026-08-15; `references/REFERENCES.md` records the two ways an earli
 ## Standards status re-checked 2026-10-27
 
 Read at NIST's PQC news page and the pqc-forum on 2026-10-27. IR 8547's final appeared on
-2026-10-27, after this table was read; its row was re-read at the CSRC page on 2026-10-30.
+2026-10-27, after this table was read; its row was re-read at the CSRC page on 2026-10-30. Re-read at
+CSRC on 2026-11-15: still no FIPS 206 or HQC draft. The PQC news page's newest item is IR 8547
+(2026-10-27), and CSRC has no initial-public-draft page for FIPS 206.
 
 | Document | Status | Why it matters here |
 |---|---|---|

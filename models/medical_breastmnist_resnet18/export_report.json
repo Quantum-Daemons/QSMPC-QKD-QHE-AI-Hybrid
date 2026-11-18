@@ -1,8 +1,8 @@
 {
   "fp32_path": "onnx/model.onnx",
   "int8_path": "onnx/model_int8.onnx",
-  "fp32_bytes": 44765598,
-  "int8_bytes": 11257533,
+  "fp32_bytes": 44687765,
+  "int8_bytes": 11219418,
   "opset": 18,
   "fp32_max_abs_error": 1.481175422668457e-05,
   "int8_agreement": 0.9935897435897436,

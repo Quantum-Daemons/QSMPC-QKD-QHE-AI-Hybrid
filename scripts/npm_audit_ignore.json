@@ -1,0 +1,10 @@
+{
+  "_about": "npm advisories scripts/audit_deps.sh lets through, each with the package it names, the packages it may be reported through, its reason, what reopens it and the last day it is let through. scripts/npm_audit_filter.mjs applies this file and tests/test_dependency_advisories_are_checked_on_a_schedule.py reviews it, so an entry cannot be added without its reopening condition being read there.",
+  "GHSA-fc5q-39xc-vjpf": {
+    "package": "picomatch",
+    "through": ["fdir", "tinyglobby", "vite"],
+    "until": "2026-12-18",
+    "reason": "CVE-2026-112366: picomatch through 4.0.7 compiles a crafted single-branch repeated extglob into a regular expression that backtracks without bound, so whoever supplies the pattern can block the process. Here picomatch runs only in vite's build tooling (fdir, tinyglobby and vite itself), on patterns written in this repository and vite's defaults; the deployed site is a static build served by Caddy (docker/Dockerfile.web) with no Node process. No picomatch release fixes it (4.0.7 is the newest), the advisory was reviewed on GitHub on 2026-11-17 and a withdrawal was requested from its CNA the same day, Snyk revoked its own entry as disputed by the maintainer, and vite closed its report (vitejs/vite#24131) as a false positive. npm's suggested fix, vite 6.2.7, falls in twelve advisories that name vite up to 6.4.3, two of them high.",
+    "reopen": "a picomatch newer than the advisory's range is published (then upgrade vite or override picomatch); the advisory is reported through any package not named here; or the date passes, which is when the vite upgrade after 2026-12-18 is planned. A withdrawal of the advisory makes this entry unused: remove it then."
+  }
+}

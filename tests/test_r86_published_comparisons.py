@@ -94,7 +94,10 @@ def test_the_verdicts_follow_their_rules(run) -> None:
     assert v["medical_fl"]["medical_fl.student"] == "not comparable"
     assert v["satellite_comms"]["satellite_comms.telemanom"] == "no spread"
     assert v["finance_aml"]["finance_aml.gbm"] == "reference"
-    assert v["finance_aml"]["finance_aml.gnn"] == "not comparable"   # Multi-PNA+EU itself, never measured here
+    # Multi-PNA+EU itself, measured here since Round 86 on this project's windows, not the paper's split: a reference,
+    # as the gradient booster is, under both protocols.
+    assert v["finance_aml"]["finance_aml.gnn"] == "reference"
+    assert v["finance_aml"]["finance_aml.gnn_causal"] == "reference"
     assert v["genomics"]["genomics.prs"] == "not comparable"
     assert all(x == "not comparable" for x in v["telecom_ids"].values()), v["telecom_ids"]
     fed = dict(run["fedAt7005"])

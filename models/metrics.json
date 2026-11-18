@@ -95,27 +95,845 @@
     "split": "temporal, inductive",
     "wall_clock_s": 557.4
   },
+  "finance_aml.gnn": {
+    "accuracy": 0.999139,
+    "auprc": 0.631829,
+    "auprc_baseline": 0.00152434,
+    "auroc": 0.985447,
+    "batchnorm": {
+      "fit_batches": 348,
+      "saved_num_batches_tracked": [
+        20493
+      ],
+      "statistics": "recomputed on the fit window, a plain average over one pass of the protocol's fit-window loader",
+      "test_decisions_at_0_5_changed": 178,
+      "why": "IBM's loop never calls model.eval(), so the checkpoint it saves carries statistics last set by the test pass"
+    },
+    "code": {
+      "commit": "252b0252afca109d1d216c411c59ff70753b25fc",
+      "licence": "Apache-2.0",
+      "paper": "Egressy et al., 'Provably Powerful Graph Neural Networks for Directed Multigraphs', AAAI 2024, arXiv:2306.11586",
+      "patches": [
+        "scripts/train/ibm_multignn/project_split.patch"
+      ],
+      "repository": "https://github.com/IBM/Multi-GNN"
+    },
+    "dataset": "IBM AMLworld HI-Small",
+    "decision_threshold": 0.637421,
+    "export": {
+      "against_the_recorded_scoring": {
+        "decisions_agree": 16,
+        "max_abs_probability_difference": 0.096598,
+        "note": "the recorded scoring samples each batch's neighbourhood once for all its seeds; the sample draws one for the 16, so the two differ as their draws do",
+        "of": 16
+      },
+      "checkpoint_sha256": "13f53a735b43f5ac9429179f25ab4c4be0851dbb37e824d77ad467e543261525",
+      "fp32_bytes": 336544,
+      "int8_skipped_reason": "not quantised: the 16-transfer sample's graph is 0.34 MB in fp32, and no int8 build was checked against it",
+      "max_abs_logit_difference_onnx_vs_torch_on_seeds": 4.76837158203125e-06,
+      "opset": 18,
+      "time_input_range": {
+        "all_edges": [
+          -1.377631,
+          3.50489
+        ],
+        "seed_edges": [
+          0.756805,
+          2.600201
+        ]
+      }
+    },
+    "five_seeds": {
+      "logged_test_f1": {
+        "mean": 0.64872,
+        "n": 5,
+        "sample_sd": 0.020777
+      },
+      "logged_validation_f1": {
+        "mean": 0.60268,
+        "n": 5,
+        "sample_sd": 0.019744
+      },
+      "test_auprc": {
+        "mean": 0.619727,
+        "n": 5,
+        "sample_sd": 0.030358
+      },
+      "test_minority_f1": {
+        "mean": 0.657676,
+        "n": 5,
+        "sample_sd": 0.022553
+      }
+    },
+    "git_sha": "a7ea883-dirty",
+    "hf_revision": "b01fba646aad55b84c33429b1b1d091ae8b433ac",
+    "kept_epoch": 33,
+    "logged_test_f1": 0.6751,
+    "logged_validation_f1": 0.6208,
+    "metric_note": "minority_class_f1, auprc and decision_threshold are the exported model's, scored in eval mode with the recomputed statistics at the threshold that maximises validation F1; logged_test_f1 is the figure IBM's own loop logs at the kept epoch, in training mode (dropout on, batch statistics), as the paper's figures are.",
+    "minority_class_f1": 0.682182,
+    "n_test": 1522629,
+    "n_validation": 710969,
+    "protocol": "ibm",
+    "seeds": [
+      {
+        "batchnorm": {
+          "fit_batches": 348,
+          "saved_num_batches_tracked": [
+            22356
+          ],
+          "test_decisions_at_0_5_changed": 285
+        },
+        "checkpoint_sha256": "207ed0c7dbcc1575c5dbf81cd8eff8dd4d7d773a2655fdd75f35c459882c5c2f",
+        "decision_threshold": 0.715978,
+        "epochs_run": 100,
+        "fit_window_probs_sha256": "b98191df888d4748b97fd87472b2bdfe0b8809b0fddf4431d54780b84fb4bdc6",
+        "kept_epoch": 36,
+        "logged_test_f1": 0.6616,
+        "logged_validation_f1": 0.6177,
+        "n_test_scored": 1522619,
+        "n_validation_scored": 710969,
+        "saved_bn_decision_threshold": 0.607298,
+        "saved_bn_test_auprc": 0.641177,
+        "saved_bn_test_minority_f1": 0.679319,
+        "seed": 1,
+        "source_checkpoint_sha256": "e5b6e568803d8cb8f887625a3f23538969b5370068908ca71c064757fde871a8",
+        "test_accuracy": 0.999113,
+        "test_auprc": 0.639675,
+        "test_auroc": 0.986617,
+        "test_minority_f1": 0.673119,
+        "test_positives_scored": 2321,
+        "validation_minority_f1": 0.635952
+      },
+      {
+        "batchnorm": {
+          "fit_batches": 348,
+          "saved_num_batches_tracked": [
+            23598
+          ],
+          "test_decisions_at_0_5_changed": 630
+        },
+        "checkpoint_sha256": "5fde2768e0bd78fb3acb45bdf74a9da19cfaa23942be58de62e4408f54378386",
+        "decision_threshold": 0.778155,
+        "epochs_run": 100,
+        "fit_window_probs_sha256": "cea6f56a0e8f1213b0f7f3400705562e45bb5367d710f7187695de29b29e19d6",
+        "kept_epoch": 38,
+        "logged_test_f1": 0.6506,
+        "logged_validation_f1": 0.6089,
+        "n_test_scored": 1522639,
+        "n_validation_scored": 710969,
+        "saved_bn_decision_threshold": 0.616381,
+        "saved_bn_test_auprc": 0.65072,
+        "saved_bn_test_minority_f1": 0.668809,
+        "seed": 2,
+        "source_checkpoint_sha256": "9ed3937103d9186e0768dc020a2398b1075477032f604942e17143571858a5bb",
+        "test_accuracy": 0.999018,
+        "test_auprc": 0.651,
+        "test_auroc": 0.988518,
+        "test_minority_f1": 0.664573,
+        "test_positives_scored": 2320,
+        "validation_minority_f1": 0.621201
+      },
+      {
+        "batchnorm": {
+          "fit_batches": 348,
+          "saved_num_batches_tracked": [
+            33534
+          ],
+          "test_decisions_at_0_5_changed": 256
+        },
+        "checkpoint_sha256": "cfaa7df47d42ecac30fa17ba021e92377cc88a55a1c06f062b4d8bff5ec7e98e",
+        "decision_threshold": 0.579118,
+        "epochs_run": 100,
+        "fit_window_probs_sha256": "7e1f8cdb71dccd72118d3ed77d28ad21b715c3bdcc86ea5bdbc0386afa38b28c",
+        "kept_epoch": 54,
+        "logged_test_f1": 0.6254,
+        "logged_validation_f1": 0.5928,
+        "n_test_scored": 1522633,
+        "n_validation_scored": 710969,
+        "saved_bn_decision_threshold": 0.53061,
+        "saved_bn_test_auprc": 0.602689,
+        "saved_bn_test_minority_f1": 0.641013,
+        "seed": 3,
+        "source_checkpoint_sha256": "dbad80940368057128b0c130ec3daa8e0501c035e38d20dca84e4dc25e4d83c4",
+        "test_accuracy": 0.999014,
+        "test_auprc": 0.596986,
+        "test_auroc": 0.985148,
+        "test_minority_f1": 0.639289,
+        "test_positives_scored": 2321,
+        "validation_minority_f1": 0.617602
+      },
+      {
+        "batchnorm": {
+          "fit_batches": 348,
+          "saved_num_batches_tracked": [
+            20493
+          ],
+          "test_decisions_at_0_5_changed": 178
+        },
+        "checkpoint_sha256": "13f53a735b43f5ac9429179f25ab4c4be0851dbb37e824d77ad467e543261525",
+        "decision_threshold": 0.637421,
+        "epochs_run": 100,
+        "fit_window_probs_sha256": "fd2b997bc4e86c074d7720c6e933b59ab796d63ba89c2a54c4250c936ed8b67f",
+        "kept_epoch": 33,
+        "logged_test_f1": 0.6751,
+        "logged_validation_f1": 0.6208,
+        "n_test_scored": 1522629,
+        "n_validation_scored": 710969,
+        "saved_bn_decision_threshold": 0.535918,
+        "saved_bn_test_auprc": 0.629947,
+        "saved_bn_test_minority_f1": 0.680382,
+        "seed": 4,
+        "source_checkpoint_sha256": "b9cd2a10eb1d9358c988245068c418cf057e488aa06da8be5cf79e5aea9c9041",
+        "test_accuracy": 0.999139,
+        "test_auprc": 0.631829,
+        "test_auroc": 0.985447,
+        "test_minority_f1": 0.682182,
+        "test_positives_scored": 2321,
+        "validation_minority_f1": 0.633782
+      },
+      {
+        "batchnorm": {
+          "fit_batches": 348,
+          "saved_num_batches_tracked": [
+            24219
+          ],
+          "test_decisions_at_0_5_changed": 261
+        },
+        "checkpoint_sha256": "128a2e8839dd07e1d9558eb05674434b26d9b50f55bc1ed1133e4a07873c450d",
+        "decision_threshold": 0.481617,
+        "epochs_run": 100,
+        "fit_window_probs_sha256": "7704b8b7100e091a12dcd672c4f6976ec8a1dd9a21081a745b7da2ba27c7ca3c",
+        "kept_epoch": 39,
+        "logged_test_f1": 0.6309,
+        "logged_validation_f1": 0.5732,
+        "n_test_scored": 1522639,
+        "n_validation_scored": 710969,
+        "saved_bn_decision_threshold": 0.430389,
+        "saved_bn_test_auprc": 0.575262,
+        "saved_bn_test_minority_f1": 0.629165,
+        "seed": 5,
+        "source_checkpoint_sha256": "2e4ae9eb82883730be2a5e2b0a10a7c187821fab0b44538c14b33b2ddacfe6c0",
+        "test_accuracy": 0.99899,
+        "test_auprc": 0.579145,
+        "test_auroc": 0.982936,
+        "test_minority_f1": 0.629219,
+        "test_positives_scored": 2320,
+        "validation_minority_f1": 0.595489
+      }
+    ],
+    "selected_seed": 4,
+    "split": "temporal, this project's windows by position (fit 56, validation 14, test 30 percent); IBM's loader samples each transfer's neighbours from its window's whole graph",
+    "time_input": "absolute"
+  },
+  "finance_aml.gnn_causal": {
+    "absolute_time_input": {
+      "seeds": [
+        {
+          "batchnorm": {
+            "fit_batches": 1389,
+            "saved_num_batches_tracked": [
+              54720
+            ],
+            "test_decisions_at_0_5_changed": 716
+          },
+          "checkpoint_sha256": "254acef97240c6a28129a9e8b6e14bd3a5dc9eea94dc4fd8efb9076e4c7f2ae2",
+          "decision_threshold": 0.442677,
+          "epochs_run": 40,
+          "fit_window_probs_sha256": "f5e70cdc7e4759d66cac7f99a403c0ce61a91ed52984be2cd11a3643b29524ca",
+          "kept_epoch": 20,
+          "logged_test_f1": 0.4125,
+          "logged_validation_f1": 0.6192,
+          "n_test_scored": 1522652,
+          "n_validation_scored": 710969,
+          "plain_batches_of_2048": {
+            "n_test_scored": 1522612,
+            "test_auprc": 0.282498,
+            "test_minority_f1": 0.351995
+          },
+          "saved_bn_decision_threshold": 0.149794,
+          "saved_bn_test_auprc": 0.101723,
+          "saved_bn_test_minority_f1": 0.175052,
+          "seed": 1,
+          "source_checkpoint_sha256": "e2ba45210cb84d1c35fa7cfe09bf8189db4759b2b7dbcd4c309c9b2fc71fc103",
+          "test_accuracy": 0.998778,
+          "test_auprc": 0.337865,
+          "test_auroc": 0.949497,
+          "test_minority_f1": 0.399484,
+          "test_positives_scored": 2321,
+          "validation_minority_f1": 0.584468
+        },
+        {
+          "batchnorm": {
+            "fit_batches": 1389,
+            "saved_num_batches_tracked": [
+              65664
+            ],
+            "test_decisions_at_0_5_changed": 443
+          },
+          "checkpoint_sha256": "8c1a5e4739c125668d98ddbc2a4727e50af9155adda41bb269fc4b05a59ee677",
+          "decision_threshold": 0.216867,
+          "epochs_run": 44,
+          "fit_window_probs_sha256": "f04636f3ffb23a2a29d7ee256356e96b8ec6311c6e2b446d58885a8fa560275b",
+          "kept_epoch": 24,
+          "logged_test_f1": 0.4307,
+          "logged_validation_f1": 0.6165,
+          "n_test_scored": 1522633,
+          "n_validation_scored": 710969,
+          "plain_batches_of_2048": {
+            "n_test_scored": 1522631,
+            "test_auprc": 0.213831,
+            "test_minority_f1": 0.299001
+          },
+          "saved_bn_decision_threshold": 0.298477,
+          "saved_bn_test_auprc": 0.206527,
+          "saved_bn_test_minority_f1": 0.231587,
+          "seed": 2,
+          "source_checkpoint_sha256": "0e65c5abd4b26f5baac6ffbda6e38bb314c7f03d93ef344af696f07f30a0e128",
+          "test_accuracy": 0.998719,
+          "test_auprc": 0.265073,
+          "test_auroc": 0.904555,
+          "test_minority_f1": 0.354615,
+          "test_positives_scored": 2321,
+          "validation_minority_f1": 0.535537
+        },
+        {
+          "batchnorm": {
+            "fit_batches": 1389,
+            "saved_num_batches_tracked": [
+              68400
+            ],
+            "test_decisions_at_0_5_changed": 441
+          },
+          "checkpoint_sha256": "0a7c08a1dbabd14f84865c722c180622c5d3aaf27205e269be6637490230b9a2",
+          "decision_threshold": 0.377623,
+          "epochs_run": 45,
+          "fit_window_probs_sha256": "7d3f7b9739194249c9a08d3d3ce37e94749e225d6866d7a741f543a8665fdff0",
+          "kept_epoch": 25,
+          "logged_test_f1": 0.5544,
+          "logged_validation_f1": 0.6155,
+          "n_test_scored": 1522650,
+          "n_validation_scored": 710969,
+          "plain_batches_of_2048": {
+            "n_test_scored": 1522631,
+            "test_auprc": 0.435236,
+            "test_minority_f1": 0.520668
+          },
+          "saved_bn_decision_threshold": 0.476727,
+          "saved_bn_test_auprc": 0.543121,
+          "saved_bn_test_minority_f1": 0.597899,
+          "seed": 3,
+          "source_checkpoint_sha256": "08debaf3834a3b6cd9297b877db886d3ce7d866ac8c1a8a24c66af78200e69cc",
+          "test_accuracy": 0.998964,
+          "test_auprc": 0.515613,
+          "test_auroc": 0.970685,
+          "test_minority_f1": 0.588787,
+          "test_positives_scored": 2321,
+          "validation_minority_f1": 0.603487
+        }
+      ],
+      "time_input_note": "IBM's absolute timestamp, scaled by the fit window's statistics",
+      "why_stopped": "stopped after these seeds, its test inputs lying outside every value training saw (the owner's choice of 2026-11-16)"
+    },
+    "accuracy": 0.998943,
+    "auprc": 0.578913,
+    "auprc_baseline": 0.00152435,
+    "auroc": 0.981609,
+    "batchnorm": {
+      "fit_batches": 1389,
+      "saved_num_batches_tracked": [
+        43776
+      ],
+      "statistics": "recomputed on the fit window, a plain average over one pass of the protocol's fit-window loader",
+      "test_decisions_at_0_5_changed": 821,
+      "why": "IBM's loop never calls model.eval(), so the checkpoint it saves carries statistics last set by the test pass"
+    },
+    "code": {
+      "commit": "252b0252afca109d1d216c411c59ff70753b25fc",
+      "licence": "Apache-2.0",
+      "paper": "Egressy et al., 'Provably Powerful Graph Neural Networks for Directed Multigraphs', AAAI 2024, arXiv:2306.11586",
+      "patches": [
+        "scripts/train/ibm_multignn/project_split.patch",
+        "scripts/train/ibm_multignn/causal.patch"
+      ],
+      "repository": "https://github.com/IBM/Multi-GNN"
+    },
+    "dataset": "IBM AMLworld HI-Small",
+    "decision_threshold": 0.431105,
+    "export": {
+      "against_the_recorded_scoring": {
+        "decisions_agree": 16,
+        "max_abs_probability_difference": 0.020463,
+        "note": "the recorded scoring samples each batch's neighbourhood once for all its seeds; the sample draws one per seed, so the two differ as their draws do",
+        "of": 16
+      },
+      "checkpoint_sha256": "e81284377192583fe98f3d5daa6947727e829a522bbc56272ff2499380dcf6ce",
+      "fp32_bytes": 336544,
+      "int8_skipped_reason": "not quantised: the 16-transfer sample's graph is 0.34 MB in fp32, and no int8 build was checked against it",
+      "max_abs_logit_difference_onnx_vs_torch_on_seeds": 1.9073486328125e-06,
+      "opset": 18,
+      "seconds_before_batch_end": {
+        "fit_window_max": 1020.0,
+        "fit_window_span_s": 443520.0,
+        "plain_batches_of_2048": {
+          "test_laundering_beyond_fit_max": 654,
+          "test_rows_beyond_fit_max": 1352,
+          "test_window_max": 663600.0
+        },
+        "protocol_batches": {
+          "test_laundering_beyond_fit_max": 0,
+          "test_rows_beyond_fit_max": 0,
+          "test_window_max": 1020.0
+        },
+        "test_laundering": 2321,
+        "test_rows": 1523504
+      },
+      "time_input_range": {
+        "all_edges": [
+          -1.0,
+          0.0
+        ],
+        "seed_edges": [
+          -0.001623,
+          0.0
+        ]
+      }
+    },
+    "five_seeds": {
+      "logged_test_f1": {
+        "mean": 0.56284,
+        "n": 5,
+        "sample_sd": 0.031421
+      },
+      "logged_validation_f1": {
+        "mean": 0.61748,
+        "n": 5,
+        "sample_sd": 0.005254
+      },
+      "plain_batches_of_2048_test_minority_f1": {
+        "mean": 0.436594,
+        "n": 5,
+        "sample_sd": 0.029416
+      },
+      "test_auprc": {
+        "mean": 0.555083,
+        "n": 5,
+        "sample_sd": 0.041644
+      },
+      "test_minority_f1": {
+        "mean": 0.620808,
+        "n": 5,
+        "sample_sd": 0.032962
+      }
+    },
+    "git_sha": "a7ea883-dirty",
+    "hf_revision": "d8b27ed281c86de4e8671b5f6b243be7c82f7242",
+    "kept_epoch": 16,
+    "logged_test_f1": 0.5474,
+    "logged_validation_f1": 0.6258,
+    "metric_note": "minority_class_f1, auprc and decision_threshold are the exported model's, scored in eval mode with the recomputed statistics at the threshold that maximises validation F1; logged_test_f1 is the figure IBM's own loop logs at the kept epoch, in training mode (dropout on, batch statistics), as the paper's figures are.",
+    "minority_class_f1": 0.625204,
+    "n_test": 1522612,
+    "n_validation": 710969,
+    "other_time_inputs": {
+      "drop": {
+        "five_seeds": {
+          "logged_test_f1": {
+            "mean": 0.5266,
+            "n": 5,
+            "sample_sd": 0.042268
+          },
+          "logged_validation_f1": {
+            "mean": 0.5977,
+            "n": 5,
+            "sample_sd": 0.010167
+          },
+          "plain_batches_of_2048_test_minority_f1": {
+            "mean": 0.501346,
+            "n": 5,
+            "sample_sd": 0.030916
+          },
+          "test_auprc": {
+            "mean": 0.540344,
+            "n": 5,
+            "sample_sd": 0.029088
+          },
+          "test_minority_f1": {
+            "mean": 0.56125,
+            "n": 5,
+            "sample_sd": 0.033764
+          }
+        },
+        "seeds": [
+          {
+            "batchnorm": {
+              "fit_batches": 1389,
+              "saved_num_batches_tracked": [
+                82080
+              ],
+              "test_decisions_at_0_5_changed": 2539
+            },
+            "checkpoint_sha256": "85d8695e3b36215ad8181ad6a20737f9483bfcab8329f427a2692c86ca50407c",
+            "decision_threshold": 0.678027,
+            "epochs_run": 50,
+            "kept_epoch": 30,
+            "logged_test_f1": 0.5403,
+            "logged_validation_f1": 0.5989,
+            "n_test_scored": 1522612,
+            "n_validation_scored": 710969,
+            "plain_batches_of_2048": {
+              "n_test_scored": 1522612,
+              "test_auprc": 0.475351,
+              "test_minority_f1": 0.487408
+            },
+            "saved_bn_decision_threshold": 0.236982,
+            "saved_bn_test_auprc": 0.388573,
+            "saved_bn_test_minority_f1": 0.452518,
+            "seed": 1,
+            "source_checkpoint_sha256": "c5418b982c52ce10b4188779d089b96da842e14abf46aba2e7469656cd5d6102",
+            "test_accuracy": 0.998374,
+            "test_auprc": 0.531327,
+            "test_auroc": 0.981299,
+            "test_minority_f1": 0.525489,
+            "test_positives_scored": 2321,
+            "validation_minority_f1": 0.549337
+          },
+          {
+            "batchnorm": {
+              "fit_batches": 1389,
+              "saved_num_batches_tracked": [
+                93024
+              ],
+              "test_decisions_at_0_5_changed": 1091
+            },
+            "checkpoint_sha256": "0dfc9e807b2669896744f86251895a56ad80eee26a5bd27cea99b3443e84cf4c",
+            "decision_threshold": 0.519323,
+            "epochs_run": 54,
+            "kept_epoch": 34,
+            "logged_test_f1": 0.593,
+            "logged_validation_f1": 0.6109,
+            "n_test_scored": 1522631,
+            "n_validation_scored": 710969,
+            "plain_batches_of_2048": {
+              "n_test_scored": 1522631,
+              "test_auprc": 0.510489,
+              "test_minority_f1": 0.546947
+            },
+            "saved_bn_decision_threshold": 0.150147,
+            "saved_bn_test_auprc": 0.498659,
+            "saved_bn_test_minority_f1": 0.56989,
+            "seed": 2,
+            "source_checkpoint_sha256": "fb72cf513dd914602708dbdd84e90da3c3bab6490e564a87e21d60246b411397",
+            "test_accuracy": 0.998895,
+            "test_auprc": 0.590427,
+            "test_auroc": 0.979406,
+            "test_minority_f1": 0.615631,
+            "test_positives_scored": 2321,
+            "validation_minority_f1": 0.559335
+          },
+          {
+            "batchnorm": {
+              "fit_batches": 1389,
+              "saved_num_batches_tracked": [
+                68400
+              ],
+              "test_decisions_at_0_5_changed": 1794
+            },
+            "checkpoint_sha256": "c81a9c167ab8e5724de077839950c03be3c2a0d8c91e469e13015647b9eb11fd",
+            "decision_threshold": 0.434073,
+            "epochs_run": 45,
+            "kept_epoch": 25,
+            "logged_test_f1": 0.5156,
+            "logged_validation_f1": 0.5842,
+            "n_test_scored": 1522631,
+            "n_validation_scored": 710969,
+            "plain_batches_of_2048": {
+              "n_test_scored": 1522631,
+              "test_auprc": 0.456962,
+              "test_minority_f1": 0.508799
+            },
+            "saved_bn_decision_threshold": 0.097633,
+            "saved_bn_test_auprc": 0.261392,
+            "saved_bn_test_minority_f1": 0.351359,
+            "seed": 3,
+            "source_checkpoint_sha256": "fdf7169be3f68d286705d3d43fe2674839e2d1995b7e4c2564f7df19ac1b1684",
+            "test_accuracy": 0.998633,
+            "test_auprc": 0.526011,
+            "test_auroc": 0.980168,
+            "test_minority_f1": 0.55168,
+            "test_positives_scored": 2321,
+            "validation_minority_f1": 0.532353
+          },
+          {
+            "batchnorm": {
+              "fit_batches": 1389,
+              "saved_num_batches_tracked": [
+                62928
+              ],
+              "test_decisions_at_0_5_changed": 1262
+            },
+            "checkpoint_sha256": "44fc93231f9ed5def747aa5564da73bc8508d06d80819f0040d742780957cf25",
+            "decision_threshold": 0.364205,
+            "epochs_run": 43,
+            "kept_epoch": 23,
+            "logged_test_f1": 0.4966,
+            "logged_validation_f1": 0.592,
+            "n_test_scored": 1522640,
+            "n_validation_scored": 710969,
+            "plain_batches_of_2048": {
+              "n_test_scored": 1522640,
+              "test_auprc": 0.427022,
+              "test_minority_f1": 0.462697
+            },
+            "saved_bn_decision_threshold": 0.069415,
+            "saved_bn_test_auprc": 0.31459,
+            "saved_bn_test_minority_f1": 0.4,
+            "seed": 4,
+            "source_checkpoint_sha256": "77364f397e1113a2251abff754f1226b097109ac9a59fa4508c39feeb22ddcce",
+            "test_accuracy": 0.998656,
+            "test_auprc": 0.53775,
+            "test_auroc": 0.977308,
+            "test_minority_f1": 0.546944,
+            "test_positives_scored": 2321,
+            "validation_minority_f1": 0.551343
+          },
+          {
+            "batchnorm": {
+              "fit_batches": 1389,
+              "saved_num_batches_tracked": [
+                125856
+              ],
+              "test_decisions_at_0_5_changed": 1570
+            },
+            "checkpoint_sha256": "f57e6c1c93cd82d3cc9423b53c19680eadc4f923d92255a3868e074e7511ff59",
+            "decision_threshold": 0.507013,
+            "epochs_run": 66,
+            "kept_epoch": 46,
+            "logged_test_f1": 0.4875,
+            "logged_validation_f1": 0.6025,
+            "n_test_scored": 1522645,
+            "n_validation_scored": 710969,
+            "plain_batches_of_2048": {
+              "n_test_scored": 1522645,
+              "test_auprc": 0.439281,
+              "test_minority_f1": 0.50088
+            },
+            "saved_bn_decision_threshold": 0.09682,
+            "saved_bn_test_auprc": 0.245407,
+            "saved_bn_test_minority_f1": 0.311922,
+            "seed": 5,
+            "source_checkpoint_sha256": "f235a812efa4d26572cf38e83ba87ce2d6d280bceb27829b0290a404768bb106",
+            "test_accuracy": 0.99881,
+            "test_auprc": 0.516206,
+            "test_auroc": 0.972472,
+            "test_minority_f1": 0.566507,
+            "test_positives_scored": 2321,
+            "validation_minority_f1": 0.5376
+          }
+        ],
+        "time_input_note": "the time input set to zero, so time only orders and cuts the batches"
+      }
+    },
+    "protocol": "causal",
+    "seeds": [
+      {
+        "batchnorm": {
+          "fit_batches": 1389,
+          "saved_num_batches_tracked": [
+            43776
+          ],
+          "test_decisions_at_0_5_changed": 821
+        },
+        "checkpoint_sha256": "e81284377192583fe98f3d5daa6947727e829a522bbc56272ff2499380dcf6ce",
+        "decision_threshold": 0.431105,
+        "epochs_run": 36,
+        "kept_epoch": 16,
+        "logged_test_f1": 0.5474,
+        "logged_validation_f1": 0.6258,
+        "n_test_scored": 1522612,
+        "n_validation_scored": 710969,
+        "plain_batches_of_2048": {
+          "n_test_scored": 1522612,
+          "test_auprc": 0.412364,
+          "test_minority_f1": 0.458121
+        },
+        "saved_bn_decision_threshold": 0.220811,
+        "saved_bn_test_auprc": 0.434726,
+        "saved_bn_test_minority_f1": 0.550444,
+        "seed": 1,
+        "source_checkpoint_sha256": "17cc1e46340dee8e3e46ee73110e4119a20b369af6e569e927b5839248894c4c",
+        "test_accuracy": 0.998943,
+        "test_auprc": 0.578913,
+        "test_auroc": 0.981609,
+        "test_minority_f1": 0.625204,
+        "test_positives_scored": 2321,
+        "validation_minority_f1": 0.607199
+      },
+      {
+        "batchnorm": {
+          "fit_batches": 1389,
+          "saved_num_batches_tracked": [
+            76608
+          ],
+          "test_decisions_at_0_5_changed": 397
+        },
+        "checkpoint_sha256": "67592c8234803e2e6961c20d53684e9e989e2aa45e2d5d1dea549a65ac63cfab",
+        "decision_threshold": 0.236724,
+        "epochs_run": 48,
+        "kept_epoch": 28,
+        "logged_test_f1": 0.6025,
+        "logged_validation_f1": 0.6178,
+        "n_test_scored": 1522631,
+        "n_validation_scored": 710969,
+        "plain_batches_of_2048": {
+          "n_test_scored": 1522631,
+          "test_auprc": 0.316624,
+          "test_minority_f1": 0.400265
+        },
+        "saved_bn_decision_threshold": 0.206005,
+        "saved_bn_test_auprc": 0.562883,
+        "saved_bn_test_minority_f1": 0.618713,
+        "seed": 2,
+        "source_checkpoint_sha256": "890f59d51205b392faaf45ec66e98da05dcf536aa4af73da9e69cb063550a6c9",
+        "test_accuracy": 0.999047,
+        "test_auprc": 0.498434,
+        "test_auroc": 0.964834,
+        "test_minority_f1": 0.578565,
+        "test_positives_scored": 2321,
+        "validation_minority_f1": 0.513397
+      },
+      {
+        "batchnorm": {
+          "fit_batches": 1389,
+          "saved_num_batches_tracked": [
+            93024
+          ],
+          "test_decisions_at_0_5_changed": 613
+        },
+        "checkpoint_sha256": "22274bb1d650007d50b8b3d9a1ef8b4c9ef381ac909758554ccf1b6a2c496f90",
+        "decision_threshold": 0.429433,
+        "epochs_run": 54,
+        "kept_epoch": 34,
+        "logged_test_f1": 0.5737,
+        "logged_validation_f1": 0.6171,
+        "n_test_scored": 1522631,
+        "n_validation_scored": 710969,
+        "plain_batches_of_2048": {
+          "n_test_scored": 1522631,
+          "test_auprc": 0.31488,
+          "test_minority_f1": 0.409632
+        },
+        "saved_bn_decision_threshold": 0.222404,
+        "saved_bn_test_auprc": 0.472978,
+        "saved_bn_test_minority_f1": 0.549231,
+        "seed": 3,
+        "source_checkpoint_sha256": "488728774ac8be6b450bde80ecb643a39da97812508002da20e0f47894b7318d",
+        "test_accuracy": 0.998947,
+        "test_auprc": 0.522967,
+        "test_auroc": 0.973351,
+        "test_minority_f1": 0.597337,
+        "test_positives_scored": 2321,
+        "validation_minority_f1": 0.551724
+      },
+      {
+        "batchnorm": {
+          "fit_batches": 1389,
+          "saved_num_batches_tracked": [
+            90288
+          ],
+          "test_decisions_at_0_5_changed": 531
+        },
+        "checkpoint_sha256": "012bf4f29e3a6df7c203bfd1261a138a4be12bcc669893201f727aad5de22284",
+        "decision_threshold": 0.198316,
+        "epochs_run": 53,
+        "kept_epoch": 33,
+        "logged_test_f1": 0.5718,
+        "logged_validation_f1": 0.6115,
+        "n_test_scored": 1522640,
+        "n_validation_scored": 710969,
+        "plain_batches_of_2048": {
+          "n_test_scored": 1522640,
+          "test_auprc": 0.389547,
+          "test_minority_f1": 0.463759
+        },
+        "saved_bn_decision_threshold": 0.097039,
+        "saved_bn_test_auprc": 0.512252,
+        "saved_bn_test_minority_f1": 0.576254,
+        "seed": 4,
+        "source_checkpoint_sha256": "e02c838c8bf20034281789867475bdce10278cb4fb7780696d8bd30150236faf",
+        "test_accuracy": 0.999131,
+        "test_auprc": 0.59071,
+        "test_auroc": 0.976264,
+        "test_minority_f1": 0.658933,
+        "test_positives_scored": 2321,
+        "validation_minority_f1": 0.581281
+      },
+      {
+        "batchnorm": {
+          "fit_batches": 1389,
+          "saved_num_batches_tracked": [
+            38304
+          ],
+          "test_decisions_at_0_5_changed": 1002
+        },
+        "checkpoint_sha256": "67b465ddcdf674b5ba9cb2aa5d15d0e6ea950d5b24d075806231efa83d2a7ce6",
+        "decision_threshold": 0.312634,
+        "epochs_run": 34,
+        "kept_epoch": 14,
+        "logged_test_f1": 0.5188,
+        "logged_validation_f1": 0.6152,
+        "n_test_scored": 1522645,
+        "n_validation_scored": 710969,
+        "plain_batches_of_2048": {
+          "n_test_scored": 1522645,
+          "test_auprc": 0.368727,
+          "test_minority_f1": 0.451194
+        },
+        "saved_bn_decision_threshold": 0.105887,
+        "saved_bn_test_auprc": 0.366134,
+        "saved_bn_test_minority_f1": 0.458262,
+        "seed": 5,
+        "source_checkpoint_sha256": "0709161afe13e7d1fa9867fae7aefa2f5c4d65a13a03459966ec7d938deba528",
+        "test_accuracy": 0.999079,
+        "test_auprc": 0.584393,
+        "test_auroc": 0.978336,
+        "test_minority_f1": 0.643999,
+        "test_positives_scored": 2321,
+        "validation_minority_f1": 0.580492
+      }
+    ],
+    "selected_seed": 1,
+    "split": "temporal, this project's windows by position (fit 56, validation 14, test 30 percent); each mini-batch one batch of 2,048 in time order, split where it spans more than 17 minutes, with every sampled transfer later than it dropped, and every window scaled by the fit window's statistics; the time input each transfer's time before the end of its batch, over the fit window's span (443,520 s), clipped to [-1, 0]",
+    "time_input": "lag",
+    "time_input_selection": {
+      "mean_logged_validation_f1": {
+        "drop": 0.5977,
+        "lag": 0.61748
+      },
+      "rule": "the time input whose five seeds have the best mean logged validation F1, then the seed with the best logged validation F1 among its five (the owner's choice of 2026-11-16)"
+    }
+  },
   "finance_aml.gnn_compact": {
-    "accuracy": 0.99903,
-    "auprc": 0.667649,
+    "accuracy": 0.999014,
+    "auprc": 0.668699,
     "auprc_baseline": 0.00152346,
-    "auroc": 0.989573,
+    "auroc": 0.989631,
     "batch_reach_minutes": 17,
     "batch_window": 2048,
     "calibration": {
-      "a": -2.193338071016361,
+      "a": -2.0734007532756435,
       "argument": "the GNN's P(laundering), $q = \\sigma(z_1 - z_0)$, the softmax of its two logits $z_0, z_1$. The tuned threshold is folded into the last layer's bias, so the operating point is $q = 0.5$",
-      "auprc_calibrated": 0.66764883,
-      "auprc_raw": 0.66764883,
-      "b": 0.776467242175192,
-      "brier_calibrated": 0.00077607,
-      "brier_raw": 0.00210277,
+      "auprc_calibrated": 0.66869868,
+      "auprc_raw": 0.66869868,
+      "b": 0.7289620159205462,
+      "brier_calibrated": 0.00079092,
+      "brier_raw": 0.00181364,
       "corp_calibrated": {
         "base_rate": 0.00152346,
-        "brier": 0.00077607,
-        "brier_recalibrated": 0.0007378,
-        "dsc": 0.00078334,
-        "mcb": 3.826e-05,
+        "brier": 0.00079092,
+        "brier_recalibrated": 0.00073823,
+        "dsc": 0.00078291,
+        "mcb": 5.269e-05,
         "method": "CORP (pool-adjacent-violators); no bin count is chosen",
         "n": 1523504,
         "positives": 2321,
@@ -124,28 +942,28 @@
       },
       "corp_raw": {
         "base_rate": 0.00152346,
-        "brier": 0.00210277,
-        "brier_recalibrated": 0.0007378,
-        "dsc": 0.00078334,
-        "mcb": 0.00136497,
+        "brier": 0.00181364,
+        "brier_recalibrated": 0.00073823,
+        "dsc": 0.00078291,
+        "mcb": 0.00107541,
         "method": "CORP (pool-adjacent-violators); no bin count is chosen",
         "n": 1523504,
         "positives": 2321,
         "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118",
         "unc": 0.00152114
       },
-      "fitted_by": "scripts/train/finance_aml_gnn.py at git db4e8fe-dirty, in the run that trained these weights; every figure beside the map rewritten by scripts/finance_network_calibration.py at git 3fff7a9-dirty from the trained weights and the published map, without retraining",
+      "fitted_by": "scripts/train/finance_aml_gnn.py at git 2718809-dirty, in the run that trained these weights",
       "fitted_on": "validation split; scored on the held-out test split",
       "formula": "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), logit(q) = log(q / (1 - q))",
       "isotonic_measured": {
-        "auprc": 0.6498691,
-        "brier": 0.00078341,
-        "distinct_outputs": 168,
-        "log_loss": 0.00397688,
-        "rows_at_zero": 1303483
+        "auprc": 0.64867001,
+        "brier": 0.00078309,
+        "distinct_outputs": 181,
+        "log_loss": 0.00395845,
+        "rows_at_zero": 1300859
       },
-      "log_loss_calibrated": 0.00388651,
-      "log_loss_raw": 0.01462592,
+      "log_loss_calibrated": 0.00392862,
+      "log_loss_raw": 0.01270609,
       "logit_clip_eps": 1e-12,
       "method": "platt",
       "n_calibration": 710969,
@@ -154,7 +972,7 @@
       "positives_calibration": 801,
       "raw_is": "the GNN's own softmax probability. The folded threshold puts 0.5 at the operating point and the class weights of its training raise it, so it is not a risk.",
       "test_rows_clipped_by_logit": 0,
-      "why_not_isotonic": "Measured on this GNN's windows, not carried from the gradient-boosting teacher's record. Isotonic's Brier 0.00078341 is above Platt's 0.00077607 and its log-loss 0.00397688 is above 0.00388651; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly monotone, so the curve ranks rows as the student does (AUPRC 0.66764883 against the raw 0.66764883, no row tied at the logit clip; isotonic's 0.64986910 comes from the test window's scores tied at 168 values, 1,303,483 of them exactly zero), and it is the method of the teacher's and the student's records, so the four finance records differ by the model and not by the map."
+      "why_not_isotonic": "Measured on this GNN's windows, not carried from the gradient-boosting teacher's record. Isotonic's Brier 0.00078309 is below Platt's 0.00079092 and its log-loss 0.00395845 is above 0.00392862; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly monotone, so the curve ranks rows as the student does (AUPRC 0.66869868 against the raw 0.66869868, no row tied at the logit clip; isotonic's 0.64867001 comes from the test window's scores tied at 181 values, 1,300,859 of them exactly zero), and it is the method of the teacher's and the student's records, so the four finance records differ by the model and not by the map."
     },
     "data_digest": "60192492ece6cbb6",
     "dataset": "IBM AMLworld HI-Small",
@@ -162,26 +980,28 @@
       "alpha": 0.3,
       "chosen_on": "validation AUPRC over alpha 0, 0.3, 0.5 and 0.7, three seeds each (0.5440, 0.5817, 0.5809, 0.5802)",
       "fit_edges": 2843872,
-      "fit_edges_scored_by_the_teacher": 2843223,
+      "fit_edges_scored_by_the_teacher": 2843180,
       "method": "generalised distillation, Lopez-Paz, Bottou, Schoelkopf and Vapnik, ICLR 2016, arXiv:1511.03643",
-      "teacher": "IBM Multi-PNA+EU, the official code IBM/Multi-GNN at 252b0252afca109d1d216c411c59ff70753b25fc with scripts/train/ibm_multignn/project_split.patch, on this project's windows, seed 1, the checkpoint of its best validation F1",
-      "teacher_probs_sha256": "fb42c40a8c3b6e187cb66c18c54d0d30361e712de61b0bd53c432c69cc9c30fd"
+      "teacher": "IBM Multi-PNA+EU, the official code IBM/Multi-GNN at 252b0252afca109d1d216c411c59ff70753b25fc with scripts/train/ibm_multignn/project_split.patch, on this project's windows, seed 1, the checkpoint of its best validation F1, with its BatchNorm statistics recomputed on the fit window (scripts/train/ibm_multignn/precise_bn.py)",
+      "teacher_batchnorm": "recomputed on the fit window",
+      "teacher_probs_sha256": "b98191df888d4748b97fd87472b2bdfe0b8809b0fddf4431d54780b84fb4bdc6",
+      "teacher_seed": 1
     },
     "endpoint_scaling": "standard",
-    "git_sha": "db4e8fe-dirty",
-    "hf_revision": "10104e89a99b21bede9fa760374ec2787c723f7c",
-    "max_of_seeds_minority_f1": 0.658661,
-    "median_of_seeds_minority_f1": 0.645966,
-    "min_of_seeds_minority_f1": 0.640242,
-    "minority_class_f1": 0.658661,
+    "git_sha": "2718809-dirty",
+    "hf_revision": "60642a2009465836ef435d5ec2438f4211492578",
+    "max_of_seeds_minority_f1": 0.658602,
+    "median_of_seeds_minority_f1": 0.651029,
+    "min_of_seeds_minority_f1": 0.64177,
+    "minority_class_f1": 0.658481,
     "n_features": 114,
     "n_parameters": 34962,
     "n_slots_per_direction": 4,
     "n_test": 1523504,
     "n_train": 2843872,
     "n_val": 710969,
-    "precision": 0.709806,
-    "recall": 0.61439,
+    "precision": 0.697159,
+    "recall": 0.623869,
     "relu_count": 608,
     "seed": 0,
     "seeds": [
@@ -189,110 +1009,110 @@
         "best_epoch": 6,
         "endpoint_scaling": "none",
         "seed": 0,
-        "test_auprc": 0.670326,
-        "test_minority_f1": 0.658658,
-        "val_auprc": 0.589389
+        "test_auprc": 0.670291,
+        "test_minority_f1": 0.662942,
+        "val_auprc": 0.589926
       },
       {
         "best_epoch": 7,
         "endpoint_scaling": "none",
         "seed": 1,
-        "test_auprc": 0.652705,
-        "test_minority_f1": 0.64304,
-        "val_auprc": 0.574259
+        "test_auprc": 0.655115,
+        "test_minority_f1": 0.648712,
+        "val_auprc": 0.575692
       },
       {
         "best_epoch": 7,
         "endpoint_scaling": "none",
         "seed": 2,
-        "test_auprc": 0.651125,
-        "test_minority_f1": 0.659502,
-        "val_auprc": 0.580329
+        "test_auprc": 0.6553,
+        "test_minority_f1": 0.662083,
+        "val_auprc": 0.581269
       },
       {
         "best_epoch": 12,
         "endpoint_scaling": "none",
         "seed": 3,
-        "test_auprc": 0.651863,
-        "test_minority_f1": 0.653773,
-        "val_auprc": 0.583564
+        "test_auprc": 0.65415,
+        "test_minority_f1": 0.652565,
+        "val_auprc": 0.587714
       },
       {
         "best_epoch": 4,
         "endpoint_scaling": "none",
         "seed": 4,
-        "test_auprc": 0.666331,
-        "test_minority_f1": 0.649825,
-        "val_auprc": 0.587532
+        "test_auprc": 0.669708,
+        "test_minority_f1": 0.653381,
+        "val_auprc": 0.589369
       },
       {
         "best_epoch": 6,
         "endpoint_scaling": "standard",
         "seed": 0,
-        "test_auprc": 0.667649,
-        "test_minority_f1": 0.658661,
-        "val_auprc": 0.59004
+        "test_auprc": 0.668699,
+        "test_minority_f1": 0.658481,
+        "val_auprc": 0.591588
       },
       {
         "best_epoch": 7,
         "endpoint_scaling": "standard",
         "seed": 1,
-        "test_auprc": 0.646193,
-        "test_minority_f1": 0.640242,
-        "val_auprc": 0.57469
+        "test_auprc": 0.648492,
+        "test_minority_f1": 0.642671,
+        "val_auprc": 0.576547
       },
       {
         "best_epoch": 7,
         "endpoint_scaling": "standard",
         "seed": 2,
-        "test_auprc": 0.650112,
-        "test_minority_f1": 0.656128,
-        "val_auprc": 0.578325
+        "test_auprc": 0.65658,
+        "test_minority_f1": 0.658602,
+        "val_auprc": 0.581125
       },
       {
         "best_epoch": 6,
         "endpoint_scaling": "standard",
         "seed": 3,
-        "test_auprc": 0.651632,
-        "test_minority_f1": 0.645966,
-        "val_auprc": 0.576735
+        "test_auprc": 0.653824,
+        "test_minority_f1": 0.651029,
+        "val_auprc": 0.577742
       },
       {
         "best_epoch": 4,
         "endpoint_scaling": "standard",
         "seed": 4,
-        "test_auprc": 0.660306,
-        "test_minority_f1": 0.643311,
-        "val_auprc": 0.580591
+        "test_auprc": 0.66269,
+        "test_minority_f1": 0.64177,
+        "val_auprc": 0.582622
       }
     ],
     "selected_on": "validation AUPRC, over two endpoint scalings and five seeds each",
     "split": "temporal, inductive, the published MLP's windows",
-    "threshold_on_validation": 0.919443,
-    "wall_clock_s": 242.8
+    "threshold_on_validation": 0.932849,
+    "wall_clock_s": 262.9
   },
   "finance_aml.mlp_large": {
-    "accuracy": 0.998652,
-    "auprc": 0.643563,
+    "accuracy": 0.998885,
+    "auprc": 0.643212,
     "auprc_baseline": 0.00152346,
-    "auroc": 0.988564,
-    "baseline_gap_note": "On HI-Small the published figures are 63.23 for GFP + XGBoost, 62.86 for GFP + LightGBM and 56.77 for PNA (Altman et al., NeurIPS 2023, Table 2), the two GFP figures at a batch of 128 transactions; at the batch of 2,048 these features use, GFP + XGBoost reaches 64.77 (Blanusa et al., ICAIF 2024, Table 4). Graph models reach 68.16 for Multi-PNA+EU (Egressy et al., AAAI 2024) and 63.72 for a GNN also evaluated under CKKS (Bilgi et al., arXiv:2610.18054). The Graph Feature Preprocessor paper's own decomposition (Table 5) puts basic features at 19.75 and fan-in and fan-out at 56.88 to 59.71 for XGBoost. These 114 features are the 32 per-account aggregates plus 3 pair features and per-transaction fan-in and fan-out, vertex statistics and scatter-gather in time windows, in batches of 2048 reaching at most 17 minutes past the transaction, with no cycle enumeration, on a 56/14/30 temporal split rather than the papers' 60/20/20. The comparison that means most here is with the booster on the same features: AUPRC 0.6436 against 0.6368. This project's published teacher, XGBoost with its own settings on the same 114 inputs, has AUPRC 0.6428. AMLworld is synthetic by IBM's own statement.",
+    "auroc": 0.988645,
+    "baseline_gap_note": "On HI-Small the published figures are 63.23 for GFP + XGBoost, 62.86 for GFP + LightGBM and 56.77 for PNA (Altman et al., NeurIPS 2023, Table 2), the two GFP figures at a batch of 128 transactions; at the batch of 2,048 these features use, GFP + XGBoost reaches 64.77 (Blanusa et al., ICAIF 2024, Table 4). Graph models reach 68.16 for Multi-PNA+EU (Egressy et al., AAAI 2024) and 63.72 for a GNN also evaluated under CKKS (Bilgi et al., arXiv:2610.18054). The Graph Feature Preprocessor paper's own decomposition (Table 5) puts basic features at 19.75 and fan-in and fan-out at 56.88 to 59.71 for XGBoost. These 114 features are the 32 per-account aggregates plus 3 pair features and per-transaction fan-in and fan-out, vertex statistics and scatter-gather in time windows, in batches of 2048 reaching at most 17 minutes past the transaction, with no cycle enumeration, on a 56/14/30 temporal split rather than the papers' 60/20/20. The comparison that means most here is with the booster on the same features: AUPRC 0.6432 against 0.6368. This project's published teacher, XGBoost with its own settings on the same 114 inputs, has AUPRC 0.6428. AMLworld is synthetic by IBM's own statement.",
     "batch_reach_minutes": 17,
     "batch_window": 2048,
     "calibration": {
-      "a": -2.0908748724881656,
+      "a": -1.9949184508670723,
       "argument": "the MLP's P(laundering), $q = \\sigma(z_1 - z_0)$, the softmax of its two logits $z_0, z_1$. The tuned threshold is folded into the last layer's bias, so the operating point is $q = 0.5$",
-      "auprc_calibrated": 0.64356317,
-      "auprc_raw": 0.64356317,
-      "b": 1.4390414513645886,
-      "brier_calibrated": 0.00081516,
-      "brier_raw": 0.00277745,
+      "auprc_calibrated": 0.64321152,
+      "auprc_raw": 0.64321152,
+      "b": 0.6542965503988198,
+      "brier_calibrated": 0.00085431,
+      "brier_raw": 0.00177218,
       "corp_calibrated": {
         "base_rate": 0.00152346,
-        "brier": 0.00081516,
-        "brier_recalibrated": 0.00077728,
-        "dsc": 0.00074387,
-        "mcb": 3.789e-05,
+        "brier": 0.00085431,
+        "brier_recalibrated": 0.00077985,
+        "dsc": 0.00074129,
+        "mcb": 7.445e-05,
         "method": "CORP (pool-adjacent-violators); no bin count is chosen",
         "n": 1523504,
         "positives": 2321,
@@ -301,28 +1121,28 @@
       },
       "corp_raw": {
         "base_rate": 0.00152346,
-        "brier": 0.00277745,
-        "brier_recalibrated": 0.00077728,
-        "dsc": 0.00074387,
-        "mcb": 0.00200017,
+        "brier": 0.00177218,
+        "brier_recalibrated": 0.00077985,
+        "dsc": 0.00074129,
+        "mcb": 0.00099233,
         "method": "CORP (pool-adjacent-violators); no bin count is chosen",
         "n": 1523504,
         "positives": 2321,
         "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118",
         "unc": 0.00152114
       },
-      "fitted_by": "scripts/train/finance_aml_mlp.py at git db4e8fe-dirty, in the run that trained these weights; every figure beside the map rewritten by scripts/finance_network_calibration.py at git 3fff7a9-dirty from the trained weights and the published map, without retraining",
+      "fitted_by": "scripts/train/finance_aml_mlp.py at git 2718809-dirty, in the run that trained these weights",
       "fitted_on": "validation split; scored on the held-out test split",
       "formula": "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), logit(q) = log(q / (1 - q))",
       "isotonic_measured": {
-        "auprc": 0.62678417,
-        "brier": 0.00082835,
-        "distinct_outputs": 245,
-        "log_loss": 0.00445331,
-        "rows_at_zero": 1225466
+        "auprc": 0.6261542,
+        "brier": 0.00082561,
+        "distinct_outputs": 154,
+        "log_loss": 0.00446098,
+        "rows_at_zero": 1227270
       },
-      "log_loss_calibrated": 0.00404743,
-      "log_loss_raw": 0.01759709,
+      "log_loss_calibrated": 0.00418619,
+      "log_loss_raw": 0.01250258,
       "logit_clip_eps": 1e-12,
       "method": "platt",
       "n_calibration": 710969,
@@ -331,36 +1151,38 @@
       "positives_calibration": 801,
       "raw_is": "the MLP's own softmax probability. The folded threshold puts 0.5 at the operating point and the class weights of its training raise it, so it is not a risk.",
       "test_rows_clipped_by_logit": 3,
-      "why_not_isotonic": "Measured on this MLP's windows, not carried from the gradient-boosting teacher's record. Isotonic's Brier 0.00082835 is above Platt's 0.00081516 and its log-loss 0.00445331 is above 0.00404743; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly monotone, so the curve ranks rows as the student does (AUPRC 0.64356317 against the raw 0.64356317, with 3 test rows tied at the logit clip; isotonic's 0.62678417 comes from the test window's scores tied at 245 values, 1,225,466 of them exactly zero), and it is the method of the teacher's and the student's records, so the four finance records differ by the model and not by the map."
+      "why_not_isotonic": "Measured on this MLP's windows, not carried from the gradient-boosting teacher's record. Isotonic's Brier 0.00082561 is below Platt's 0.00085431 and its log-loss 0.00446098 is above 0.00418619; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly monotone, so the curve ranks rows as the student does (AUPRC 0.64321152 against the raw 0.64321152, with 3 test rows tied at the logit clip; isotonic's 0.62615420 comes from the test window's scores tied at 154 values, 1,227,270 of them exactly zero), and it is the method of the teacher's and the student's records, so the four finance records differ by the model and not by the map."
     },
     "data_digest": "60192492ece6cbb6",
     "dataset": "IBM AMLworld HI-Small",
     "distillation": {
       "alpha": 0.3,
       "fit_edges": 2843872,
-      "fit_edges_scored_by_the_teacher": 2843223,
+      "fit_edges_scored_by_the_teacher": 2843180,
       "method": "generalised distillation, Lopez-Paz, Bottou, Schoelkopf and Vapnik, ICLR 2016, arXiv:1511.03643",
-      "teacher": "IBM Multi-PNA+EU, the official code IBM/Multi-GNN at 252b0252afca109d1d216c411c59ff70753b25fc with scripts/train/ibm_multignn/project_split.patch, on this project's windows, seed 1, the checkpoint of its best validation F1",
-      "teacher_probs_sha256": "fb42c40a8c3b6e187cb66c18c54d0d30361e712de61b0bd53c432c69cc9c30fd"
+      "teacher": "IBM Multi-PNA+EU, the official code IBM/Multi-GNN at 252b0252afca109d1d216c411c59ff70753b25fc with scripts/train/ibm_multignn/project_split.patch, on this project's windows, seed 1, the checkpoint of its best validation F1, with its BatchNorm statistics recomputed on the fit window (scripts/train/ibm_multignn/precise_bn.py)",
+      "teacher_batchnorm": "recomputed on the fit window",
+      "teacher_probs_sha256": "b98191df888d4748b97fd87472b2bdfe0b8809b0fddf4431d54780b84fb4bdc6",
+      "teacher_seed": 1
     },
     "export": {
       "fp32_bytes": 94899,
       "int8": "not shipped: the fp32 graph is already small",
       "opset": 17
     },
-    "git_sha": "db4e8fe-dirty",
-    "hf_revision": "65926d2e55c36400752783f0b71b7bac4904d773",
-    "max_of_seeds_minority_f1": 0.635851,
-    "median_of_seeds_minority_f1": 0.598592,
-    "min_of_seeds_minority_f1": 0.595308,
-    "minority_class_f1": 0.595308,
+    "git_sha": "2718809-dirty",
+    "hf_revision": "69e4fb7ce933e15e8d82ec05a9f1dbd299749eb7",
+    "max_of_seeds_minority_f1": 0.636814,
+    "median_of_seeds_minority_f1": 0.623607,
+    "min_of_seeds_minority_f1": 0.594431,
+    "minority_class_f1": 0.627795,
     "n_features": 114,
     "n_parameters": 23106,
     "n_test": 1523504,
     "n_train": 2843872,
     "n_val": 710969,
-    "precision": 0.548692,
-    "recall": 0.650582,
+    "precision": 0.639,
+    "recall": 0.616975,
     "scaling": "standard",
     "seed": 0,
     "seeds": [
@@ -368,89 +1190,89 @@
         "best_epoch": 12,
         "scaling": "standard",
         "seed": 0,
-        "test_auprc": 0.643563,
-        "test_minority_f1": 0.595308,
-        "val_auprc": 0.587211
+        "test_auprc": 0.643212,
+        "test_minority_f1": 0.627795,
+        "val_auprc": 0.589986
       },
       {
         "best_epoch": 13,
         "scaling": "standard",
         "seed": 1,
-        "test_auprc": 0.647144,
-        "test_minority_f1": 0.635851,
-        "val_auprc": 0.582354
+        "test_auprc": 0.647173,
+        "test_minority_f1": 0.636814,
+        "val_auprc": 0.584328
       },
       {
         "best_epoch": 11,
         "scaling": "standard",
         "seed": 2,
-        "test_auprc": 0.641725,
-        "test_minority_f1": 0.628492,
-        "val_auprc": 0.57963
+        "test_auprc": 0.642649,
+        "test_minority_f1": 0.623607,
+        "val_auprc": 0.581583
       },
       {
         "best_epoch": 12,
         "scaling": "standard",
         "seed": 3,
-        "test_auprc": 0.627512,
-        "test_minority_f1": 0.598592,
-        "val_auprc": 0.576775
+        "test_auprc": 0.628759,
+        "test_minority_f1": 0.619173,
+        "val_auprc": 0.577781
       },
       {
-        "best_epoch": 7,
+        "best_epoch": 11,
         "scaling": "standard",
         "seed": 4,
-        "test_auprc": 0.646247,
-        "test_minority_f1": 0.597333,
-        "val_auprc": 0.584604
+        "test_auprc": 0.649644,
+        "test_minority_f1": 0.594431,
+        "val_auprc": 0.584826
       },
       {
         "best_epoch": 16,
         "scaling": "robust",
         "seed": 0,
-        "test_auprc": 0.651872,
-        "test_minority_f1": 0.63015,
-        "val_auprc": 0.57684
+        "test_auprc": 0.6517,
+        "test_minority_f1": 0.636257,
+        "val_auprc": 0.575282
       },
       {
         "best_epoch": 22,
         "scaling": "robust",
         "seed": 1,
-        "test_auprc": 0.646096,
-        "test_minority_f1": 0.629486,
-        "val_auprc": 0.573602
+        "test_auprc": 0.645034,
+        "test_minority_f1": 0.626501,
+        "val_auprc": 0.573596
       },
       {
-        "best_epoch": 12,
+        "best_epoch": 22,
         "scaling": "robust",
         "seed": 2,
-        "test_auprc": 0.653002,
-        "test_minority_f1": 0.63045,
-        "val_auprc": 0.573505
+        "test_auprc": 0.647486,
+        "test_minority_f1": 0.632844,
+        "val_auprc": 0.578317
       },
       {
         "best_epoch": 21,
         "scaling": "robust",
         "seed": 3,
-        "test_auprc": 0.636732,
-        "test_minority_f1": 0.61059,
-        "val_auprc": 0.577305
+        "test_auprc": 0.637685,
+        "test_minority_f1": 0.626828,
+        "val_auprc": 0.579194
       },
       {
         "best_epoch": 15,
         "scaling": "robust",
         "seed": 4,
-        "test_auprc": 0.647087,
-        "test_minority_f1": 0.602297,
-        "val_auprc": 0.574686
+        "test_auprc": 0.650477,
+        "test_minority_f1": 0.617289,
+        "val_auprc": 0.57906
       }
     ],
     "selected_on": "validation AUPRC, over two scalings and five seeds each",
     "share_clipped_on_fit_window": 0.00013282,
     "split": "temporal, inductive",
-    "teacher_agreement": 0.998861,
-    "threshold_on_validation": 0.909758,
-    "wall_clock_s": 245.8,
+    "teacher_agreement": 0.999185,
+    "threshold_on_validation": 0.94103,
+    "wall_clock_s": 283.1,
     "xgboost_same_features": {
       "auprc": 0.636809,
       "minority_class_f1": 0.607617
@@ -675,14 +1497,26 @@
     },
     "dataset": "NIH ChestX-ray14",
     "export": {
-      "fp32_bytes": 44782314,
+      "fp32_bytes": 44688193,
       "int8_agreement": 1.0,
-      "int8_bytes": 11269764,
+      "int8_bytes": 11221094,
+      "node_metadata_dropped": {
+        "check": "ONNX Runtime outputs bit-identical on random inputs; the graph otherwise byte-identical",
+        "date": "2026-11-18",
+        "entries": {
+          "onnx/features.onnx": 280,
+          "onnx/features_int8.onnx": 160,
+          "onnx/model.onnx": 300,
+          "onnx/model_int8.onnx": 175
+        },
+        "git_sha": "a7ea883-dirty",
+        "why": "torch.export had written each node's stack trace, with the exporting machine's file paths"
+      },
       "opset": 18
     },
     "features_int8_head_auroc": 0.8062589191862829,
     "git_sha": "914a39a-dirty",
-    "hf_revision": "88f4f9661582f012e5356555b0bba5a6493f74db",
+    "hf_revision": "dff90e809f691ed2978953f5c16b279186ca02c7",
     "int8_decisions_differing_at_operating_point": 134,
     "n_parameters": 11170753,
     "n_test_images": 25589,
@@ -717,13 +1551,23 @@
     "best_val_auc": 0.955723,
     "dataset": "MedMNIST v2 BreastMNIST",
     "export": {
-      "fp32_bytes": 44765598,
+      "fp32_bytes": 44687765,
       "int8_agreement": 0.9935897435897436,
-      "int8_bytes": 11257533,
+      "int8_bytes": 11219418,
+      "node_metadata_dropped": {
+        "check": "ONNX Runtime outputs bit-identical on random inputs; the graph otherwise byte-identical",
+        "date": "2026-11-18",
+        "entries": {
+          "onnx/model.onnx": 275,
+          "onnx/model_int8.onnx": 150
+        },
+        "git_sha": "a7ea883-dirty",
+        "why": "torch.export had written each node's stack trace, with the exporting machine's file paths"
+      },
       "opset": 18
     },
     "git_sha": "61b855e-dirty",
-    "hf_revision": "b24642c6ef106a1b8ad15e4e5013de649aa6eec3",
+    "hf_revision": "3ee6e7224e2b4a666a23213e8e7f597d92dc1af2",
     "macro_f1": 0.8249158249158248,
     "n_parameters": 11171266,
     "resolution": 28,
@@ -752,13 +1596,22 @@
     "best_val_auc": 0.935673,
     "dataset": "MedMNIST v2 BreastMNIST",
     "export": {
-      "fp32_bytes": 94171000,
+      "fp32_bytes": 93971677,
       "int8_agreement": 0.9615384615384616,
       "int8_bytes": 0,
+      "node_metadata_dropped": {
+        "check": "ONNX Runtime outputs bit-identical on random inputs; the graph otherwise byte-identical",
+        "date": "2026-11-18",
+        "entries": {
+          "onnx/model.onnx": 673
+        },
+        "git_sha": "a7ea883-dirty",
+        "why": "torch.export had written each node's stack trace, with the exporting machine's file paths"
+      },
       "opset": 18
     },
     "git_sha": "85209a9-dirty",
-    "hf_revision": "d11ec391da3b664d31ba55733bdbbefc01e12fef",
+    "hf_revision": "0d682eda4fcd794537dbb27faa7e7e0a7acc0624",
     "macro_f1": 0.6492063492063492,
     "n_parameters": 23505858,
     "resolution": 28,

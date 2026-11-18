@@ -73,8 +73,8 @@ requires this:
 | TRIPOD+AI (2024) / CONSORT-AI / CLAIM | silent on training stochasticity |
 
 So the honest framing is voluntary good practice. Independent corroboration that it matters:
-**arXiv:2603.28040 (2026-03-30), Table 6, n=20 seeds** - ChestMNIST AUC .756+/-.011, RetinaMNIST
-.729+/-.016, i.e. ~1.1-1.6 AUC-point seed-to-seed sd on MedMNIST. This project measured ~2.0 points
+**arXiv:2603.28040 (2026-03-30), Table 6, n=20 seeds** - ChestMNIST AUC $`0.756 \pm 0.011`$, RetinaMNIST
+$`0.729 \pm 0.016`$, i.e. a seed-to-seed sd of about 1.1 to 1.6 AUC points on MedMNIST. This project measured ~2.0 points
 on BreastMNIST, the same order. **MedMNIST's own published tables report means with no sd.**
 
 ## 5. Degenerate-predictor checks: real tooling, no standard requires them

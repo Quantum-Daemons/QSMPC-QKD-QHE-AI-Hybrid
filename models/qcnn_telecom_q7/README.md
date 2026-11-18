@@ -81,7 +81,7 @@ Per class, from this run:
 
 **This model beats its floors and loses to logistic regression by 0.008515 of macro F1.** On this
 seed that gap is small: logistic regression is right where the circuit is wrong on 4 held-out rows
-and never the reverse, exact McNemar p = 0.12, so seed 0 alone does not separate the two. Five seeds
+and never the reverse, exact McNemar p = 0.125, so seed 0 alone does not separate the two. Five seeds
 do: logistic regression wins on all five, by 0.0075 on average, two-level bootstrap 95% interval
 [-0.0129, -0.0026] for the circuit minus LR. The LR figure equals the 8-wire run's because it never
 sees the circuit, a useful control that the data path did not move.

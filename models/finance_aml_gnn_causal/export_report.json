@@ -1,0 +1,55 @@
+{
+ "protocol": "causal",
+ "time_input": "lag",
+ "checkpoint_epoch": 16,
+ "checkpoint_sha256": "e81284377192583fe98f3d5daa6947727e829a522bbc56272ff2499380dcf6ce",
+ "bn_statistics": "fit window: a plain average over 1389 fit-window batches",
+ "source_checkpoint_sha256": "17cc1e46340dee8e3e46ee73110e4119a20b369af6e569e927b5839248894c4c",
+ "source_num_batches_tracked": [
+  43776
+ ],
+ "graph_bytes": 336544,
+ "opset": 18,
+ "subgraph": {
+  "nodes": 2427,
+  "edges": 6354,
+  "reverse_edges": 6280,
+  "parts": 16
+ },
+ "max_abs_logit_difference_onnx_vs_torch_on_seeds": 1.9073486328125e-06,
+ "decision_threshold": 0.4311048090457916,
+ "seed_accuracy_at_threshold": 0.8125,
+ "time_input_range": {
+  "seed_edges": [
+   -0.001623,
+   0.0
+  ],
+  "all_edges": [
+   -1.0,
+   0.0
+  ]
+ },
+ "against_the_recorded_scoring": {
+  "max_abs_probability_difference": 0.020463,
+  "decisions_agree": 16,
+  "of": 16,
+  "note": "the recorded scoring samples each batch's neighbourhood once for all its seeds; the sample draws one per seed, so the two differ as their draws do"
+ },
+ "seconds_before_batch_end": {
+  "fit_window_span_s": 443520.0,
+  "fit_window_max": 1020.0,
+  "test_rows": 1523504,
+  "test_laundering": 2321,
+  "protocol_batches": {
+   "test_window_max": 1020.0,
+   "test_rows_beyond_fit_max": 0,
+   "test_laundering_beyond_fit_max": 0
+  },
+  "plain_batches_of_2048": {
+   "test_window_max": 663600.0,
+   "test_rows_beyond_fit_max": 1352,
+   "test_laundering_beyond_fit_max": 654
+  }
+ },
+ "export_seconds": 5.7
+}
