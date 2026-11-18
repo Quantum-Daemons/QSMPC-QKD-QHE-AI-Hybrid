@@ -151,10 +151,10 @@ transfers that complete a pattern; the three causal seeds scored 0.35 to 0.51 an
 input where the loader cuts each batch, `_DropLater` in the patched `train_util.py`:
 - `drop`: the time input is zero; time only orders and cuts the batches.
 - `lag`: each edge's time before its batch ends, divided by the fit window's span and clipped at it, so it lies in
-  $`[-1, 0]`$ in every window. Temporal graph networks encode time relative to the event in the same way (TGAT,
-  arXiv:2002.07962; GraphMixer, arXiv:2302.11636; DyGFormer, arXiv:2303.13047), and a linear encoder does as well as a
-  sinusoidal one (arXiv:2504.08129). A reverse edge, which carries no timestamp of its own, takes its forward edge's
-  by its id.
+  $`[-1, 0]`$ in every window. Temporal graph networks likewise read time relative to the event, through an encoding of
+  the difference (TGAT, arXiv:2002.07962; GraphMixer, arXiv:2302.11636; DyGFormer, arXiv:2303.13047), and a linear
+  encoder of it improved TGAT and DyGFormer over a sinusoidal one in most cases on six datasets (Chung et al., TMLR
+  2025, arXiv:2504.08129). A reverse edge, which carries no timestamp of its own, takes its forward edge's by its id.
 
 #### The ten runs (2026-11-16 and 17)
 
@@ -203,7 +203,9 @@ IBM's `create_hetero_obj` (`data_util.py` at `252b025`) assigns one tensor to bo
 swaps the last two columns, the in- and out-port, "for the reverse edges", in place. The swap reaches the forward
 edges through the shared tensor, so both directions carry the swapped pair: with ports $`(1, 2)`$ in, both read
 $`(2, 1)`$ (reproduced on a two-edge graph). It is part of IBM's protocol as the paper's code runs it, and this
-reproduction keeps it under both protocols.
+reproduction keeps it under both protocols. An open pull request on IBM's repository, IBM/Multi-GNN#18 (2026-04-11,
+"Fixes #10"), assigns a copy of the tensor to each edge type, which removes the sharing, and also changes the edge
+updates' averaging; it is not merged at `252b025` (read 2026-11-18).
 
 ## Multi-GIN+EU, five seeds under each protocol (2026-11-17 and 18)
 
