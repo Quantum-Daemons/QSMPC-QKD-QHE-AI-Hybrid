@@ -12,7 +12,8 @@ features graph must give the float32 classifier graph's logit z to 1e-4, and the
 must give the same decision at the operating point as the int8 classifier graph, which the page's own re-scoring uses.
 The graphs must hash to their pins in `models/hub_file_hashes.json`.
 
-Writes web/public/data/medical/cxr_head.json and docs/measurements/cxr-head-2026-11-15.json.
+Writes web/public/data/medical/cxr_head.json and docs/measurements/cxr-head-2026-11-18.json, the record for the revision
+republished on 2026-11-18 with the graphs' node metadata dropped (cxr-head-2026-11-15.json is the one for 88f4f96).
 
 Usage: python -I scripts/export_cxr_head.py
 """
@@ -32,7 +33,7 @@ sys.path.insert(0, str(REPO / "src"))
 KEY = "medical_fl.cxr_fedavg"
 ART = REPO / "models" / "medical_cxr14_fedavg_resnet18"
 CARD = REPO / "web" / "public" / "data" / "medical" / "cxr_head.json"
-RECORD = REPO / "docs" / "measurements" / "cxr-head-2026-11-15.json"
+RECORD = REPO / "docs" / "measurements" / "cxr-head-2026-11-18.json"
 TOL = 1e-4
 
 
