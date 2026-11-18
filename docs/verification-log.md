@@ -5416,9 +5416,21 @@ also had its own row. The runner's `passed` and `total` now count the CAVP cases
   without the slow tests, with `QSH_REQUIRE_BROWSER_GATES=1`: 2157 passed, 39 skipped and one failure that `main` has
   too, `tests/test_every_merged_pr_is_in_the_record.py`, which found no register row for #58 (CI's shallow checkout
   skips it).
-- **#58's row, at the owner's request.** This PR adds the register row #58 never wrote, from its own description. With
-  it, the register test passes on this branch, and so do the other test files that read the register, the log or every
-  tracked Markdown file: 220 tests in 27 files, with `QSH_REQUIRE_BROWSER_GATES=1`.
+- **#58's row, at the owner's request.** This PR added the register row #58 never wrote, from its own description, and
+  with it the register test passed on this branch, as did the other test files that read the register, the log or every
+  tracked Markdown file: 220 tests in 27 files, with `QSH_REQUIRE_BROWSER_GATES=1`. PR #61 wrote a row for #58 too while
+  both were open, and merged first: taking `main` in kept #61's row and dropped this PR's, so the register has one row
+  for #58 and this PR no longer changes it.
 - **No other record held 7/7.** The validations download carries `{kem, sig, pqc, qkd, mcp}`, not the IKEv2 run, and
   the README's image of `/validations` does not open this card. Round 58's walk record that wrote "CAVP 7/7" is
   annotated in place, and `references/net-key-schedules.md` states the count and adds the seeded case.
+- **`main` taken in (2026-11-19).** PRs #61 and #62 merged while this PR was open. Only the register and this log
+  conflicted, both sides having added rows or sections at the same place: the register keeps `main`'s rows for #58 and
+  #62 with this PR's between them, and this log keeps `main`'s sections before this one. On the merge, `tsc --noEmit`,
+  `check:jsx-spaces` (2383 JSX text nodes), `check:netkeys` and `check:validations-download` pass. The suite without the
+  slow tests, as CI runs it (`QSH_REQUIRE_BROWSER_GATES=1`, `HF_HUB_OFFLINE=1`), ran before the resolution was staged:
+  2185 passed, 41 skipped and two failed. `test_document_basenames_are_unique` failed because `git ls-files` still
+  listed each conflicted document three times, once per conflict stage; once the resolution was staged, it passed. The
+  register test now finds no row for #61; `main` fails it the same way, since #61 is merged and not yet recorded. On
+  this text, 219 of the 220 tests in the 27 files that read the register, the log or every tracked Markdown file pass;
+  the one failure is the register test on #61.
