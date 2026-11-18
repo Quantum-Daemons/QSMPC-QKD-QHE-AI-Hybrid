@@ -5137,7 +5137,11 @@ also had its own row. The runner's `passed` and `total` now count the CAVP cases
   "true - 6/6" and the RFC 5903 row "true", read from the DOM; no console error.
 - **The gates.** `tsc --noEmit`, `check:jsx-spaces`, `check:netkeys` and `check:validations-download` pass. The suite
   without the slow tests, with `QSH_REQUIRE_BROWSER_GATES=1`: 2157 passed, 39 skipped and one failure that `main` has
-  too, `tests/test_every_merged_pr_is_in_the_record.py`, which finds no register row for #58.
+  too, `tests/test_every_merged_pr_is_in_the_record.py`, which found no register row for #58 (CI's shallow checkout
+  skips it).
+- **#58's row, at the owner's request.** This PR adds the register row #58 never wrote, from its own description. With
+  it, the register test passes on this branch, and so do the other test files that read the register, the log or every
+  tracked Markdown file: 220 tests in 27 files, with `QSH_REQUIRE_BROWSER_GATES=1`.
 - **No other record held 7/7.** The validations download carries `{kem, sig, pqc, qkd, mcp}`, not the IKEv2 run, and
   the README's image of `/validations` does not open this card. Round 58's walk record that wrote "CAVP 7/7" is
   annotated in place, and `references/net-key-schedules.md` states the count and adds the seeded case.
