@@ -40,21 +40,21 @@ def _graph_with_a_stack_trace(path: Path, where: str) -> Path:
 
 
 def test_strip_node_metadata_drops_what_torch_export_writes(tmp_path):
-    path = _graph_with_a_stack_trace(tmp_path / "m.onnx", "/home/someone/project")
+    path = _graph_with_a_stack_trace(tmp_path / "m.onnx", "/home/user/project")
     assert export.strip_node_metadata(path) == 3          # two metadata entries and the doc string
     assert export.strip_node_metadata(path) == 0          # nothing left, and the file is not rewritten
     model = onnx.load(str(path))
     assert [n.op_type for n in model.graph.node] == ["Relu"]
     assert not model.graph.node[0].metadata_props and not model.graph.node[0].doc_string
-    assert b"/home/someone" not in path.read_bytes()
+    assert b"/home/user" not in path.read_bytes()
 
 
 def test_the_publish_step_names_a_file_holding_the_home_directory(tmp_path):
-    held = _graph_with_a_stack_trace(tmp_path / "held.onnx", "/home/someone/project")
+    held = _graph_with_a_stack_trace(tmp_path / "held.onnx", "/home/user/project")
     clean = tmp_path / "eval_sample.json"
     clean.write_text('{"kind": "graph"}\n')
-    assert publish_hf.local_paths_in([held, clean], home="/home/someone") == [str(held)]
-    assert publish_hf.local_paths_in([held, clean], home="/home/another") == []
+    assert publish_hf.local_paths_in([held, clean], home="/home/user") == [str(held)]
+    assert publish_hf.local_paths_in([held, clean], home="/home/other") == []
     assert publish_hf.local_paths_in([held], home="/") == []    # no home directory to look for
 
 
