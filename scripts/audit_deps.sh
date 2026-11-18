@@ -25,9 +25,18 @@ PIP_AUDIT=2.10.1
 
 audit_npm() {
   # No --omit=dev: the dev server and the build tooling run on developer machines and in CI, and
-  # Round 59 counted them on purpose. info is the lowest level, so any advisory fails.
-  (cd "${AUDIT_WEB_DIR:-web}" && npm audit --audit-level=info)
-  (cd docker/mcp-fs && npm audit --audit-level=info)
+  # Round 59 counted them on purpose. info is the lowest level, so any advisory fails, unless
+  # scripts/npm_audit_ignore.json lets it through, within the terms scripts/npm_audit_filter.mjs checks
+  # (Round 86: one entry, the disputed picomatch advisory that no release fixes).
+  npm_audit "${AUDIT_WEB_DIR:-web}"
+  npm_audit docker/mcp-fs
+}
+
+npm_audit() {
+  report=$(cd "$1" && npm audit --audit-level=info --json) && return 0
+  printf '%s' "$report" | node scripts/npm_audit_filter.mjs "$1" && return 0
+  (cd "$1" && npm audit --audit-level=info) || true
+  return 1
 }
 
 audit_seal() {

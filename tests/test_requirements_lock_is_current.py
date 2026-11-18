@@ -116,7 +116,10 @@ def test_the_image_starts_the_locked_filesystem_server() -> None:
 
 def test_the_audit_reads_the_lock_and_runs_on_a_change_to_it() -> None:
     script = (REPO / "scripts/audit_deps.sh").read_text(encoding="utf-8")
-    assert "-r requirements.lock" in script and "cd docker/mcp-fs && npm audit" in script
+    # Since Round 86 (2026-11-18) both npm projects go through one function, npm_audit, which runs npm audit in its
+    # directory at the lowest level and applies scripts/npm_audit_ignore.json.
+    assert "-r requirements.lock" in script and "npm_audit docker/mcp-fs" in script
+    assert 'report=$(cd "$1" && npm audit --audit-level=info --json)' in script
     workflow = (REPO / ".github/workflows/audit.yml").read_text(encoding="utf-8")
     assert workflow.count('"requirements.lock"') == 2 and "audit_deps.sh python" in workflow
 

@@ -22,6 +22,8 @@ on:
       - "wasm/qsh-mpc/Cargo.lock"
       - "wasm/qsh-mpc/deny.toml"
       - "scripts/audit_deps.sh"
+      - "scripts/npm_audit_ignore.json"
+      - "scripts/npm_audit_filter.mjs"
       - ".github/workflows/audit.yml"
   pull_request:
     paths:
@@ -33,6 +35,8 @@ on:
       - "wasm/qsh-mpc/Cargo.lock"
       - "wasm/qsh-mpc/deny.toml"
       - "scripts/audit_deps.sh"
+      - "scripts/npm_audit_ignore.json"
+      - "scripts/npm_audit_filter.mjs"
       - ".github/workflows/audit.yml"
 
 permissions:
