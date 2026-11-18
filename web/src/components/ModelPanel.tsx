@@ -769,7 +769,8 @@ function EsaScoresRows({ spec }: { spec: ModelSpec }) {
 /** Tab titles (Round 86, the owner's choice of 2026-11-13): a model's label runs to 80 characters, too long for a tab. A
  *  model missing here falls back to its label, cut, so a new model still gets a tab. */
 const SHORT_TITLE: Record<string, string> = {
-  "finance_aml.gnn": "Multi-PNA+EU GNN", "finance_aml.gbm": "Gradient boosting", "finance_aml.student": "CKKS student",
+  "finance_aml.gnn": "Multi-PNA+EU, IBM's protocol", "finance_aml.gnn_causal": "Multi-PNA+EU, causal protocol",
+  "finance_aml.gbm": "Gradient boosting", "finance_aml.student": "CKKS student",
   "finance_aml.mlp_large": "MLP (CKKS and MPC)", "finance_aml.gnn_compact": "Compact GNN (CKKS and MPC)",
   "genomics.prs": "Polygenic risk score",
   "medical_fl.resnet18": "ResNet-18", "medical_fl.resnet50": "ResNet-50", "medical_fl.student": "CKKS student",

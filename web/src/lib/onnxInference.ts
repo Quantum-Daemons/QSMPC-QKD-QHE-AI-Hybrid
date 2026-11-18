@@ -822,7 +822,32 @@ export interface GraphSampleFile {
             rev_edge_index: number[]; rev_edge_attr: number[]; n_edges: number; n_rev_edges?: number };
   seeds: { positions_in_batch: number[]; row_index_in_test_window: number[]; labels: number[] };
   expected: { decision_threshold: number; accuracy: number; graph?: string; note?: string; per_row?: PerRowRecord };
+  classes?: Record<string, string>;
   provenance?: string;
+}
+
+/** One run of a graph sample through its published graph: the whole subgraph at once, then each seed transfer's two
+ *  logits in the sample's order (Round 86). Shared by the whole-sample check and the pipeline's published-model stage. */
+async function graphSeedLogits(opened: OpenSession, file: GraphSampleFile):
+  Promise<{ name: string; logits: Float32Array; latencyMs: number }> {
+  const i = file.inputs, d = i.edge_attr_dim, nr = i.n_rev_edges ?? i.n_edges;
+  const T = opened.ort.Tensor;
+  const feeds = {
+    x: new T("float32", Float32Array.from(i.x), i.x_shape),
+    edge_index: new T("int64", BigInt64Array.from(i.edge_index, (v) => BigInt(v)), [2, i.n_edges]),
+    edge_attr: new T("float32", Float32Array.from(i.edge_attr), [i.n_edges, d]),
+    rev_edge_index: new T("int64", BigInt64Array.from(i.rev_edge_index, (v) => BigInt(v)), [2, nr]),
+    rev_edge_attr: new T("float32", Float32Array.from(i.rev_edge_attr), [nr, d]),
+  };
+  const ran = performance.now();
+  const out = await opened.session.run(feeds);
+  const latencyMs = performance.now() - ran;
+  const name = opened.session.outputNames[0];
+  const data = out[name].data as Float32Array;
+  const seeds = file.seeds.positions_in_batch;
+  const logits = new Float32Array(seeds.length * 2);
+  seeds.forEach((p, k) => { logits[2 * k] = data[2 * p]; logits[2 * k + 1] = data[2 * p + 1]; });
+  return { name, logits, latencyMs };
 }
 
 /** Re-scores a graph sample: the whole subgraph through the published graph, then the 16 seeds' logits, each decision
@@ -836,20 +861,8 @@ async function evaluateGraphSample(usecase: string, target: { url: string; spec:
   const opened = (await loadModel(usecase, target.spec.key, backend)) ? openSession(usecase, target.spec.key, backend) : null;
   if (!opened) return { ...base, error: status.error ?? "the graph model could not be opened in this browser" };
   try {
-    const i = file.inputs, d = i.edge_attr_dim, nr = i.n_rev_edges ?? i.n_edges;
-    const T = opened.ort.Tensor;
-    const out = await opened.session.run({
-      x: new T("float32", Float32Array.from(i.x), i.x_shape),
-      edge_index: new T("int64", BigInt64Array.from(i.edge_index, (v) => BigInt(v)), [2, i.n_edges]),
-      edge_attr: new T("float32", Float32Array.from(i.edge_attr), [i.n_edges, d]),
-      rev_edge_index: new T("int64", BigInt64Array.from(i.rev_edge_index, (v) => BigInt(v)), [2, nr]),
-      rev_edge_attr: new T("float32", Float32Array.from(i.rev_edge_attr), [nr, d]),
-    });
-    const name = opened.session.outputNames[0];
-    const data = out[name].data as Float32Array;
+    const { name, logits } = await graphSeedLogits(opened, file);
     const seeds = file.seeds.positions_in_batch, n = seeds.length;
-    const logits = new Float32Array(n * 2);
-    seeds.forEach((p, k) => { logits[2 * k] = data[2 * p]; logits[2 * k + 1] = data[2 * p + 1]; });
     const thr = file.expected.decision_threshold;
     const kind = outputKind(name);
     if (!kind) throw new Error(`the graph's output is named "${name}", neither probabilities nor logits`);
@@ -1388,6 +1401,40 @@ export async function runPublishedModel(
     ? openSession(usecase, key, opts.backend ?? DEFAULT_ONNX_BACKEND) : null;
   if (!opened) {
     return { kind: "failed", modelKey: key, error: status.error ?? "session creation failed" };
+  }
+
+  // A graph model (IBM's Multi-PNA+EU, Round 86) has no row of its own to read: its 16 transfers are scored together,
+  // each in the neighbourhood its protocol sampled for it, so the stage runs that graph and reports one transfer. It
+  // used to read the sample as rows and fail on `input.shape`, which a graph sample does not have.
+  if ((file as unknown as { kind?: string }).kind === "graph") {
+    const g = file as unknown as GraphSampleFile;
+    try {
+      const n = g.seeds.positions_in_batch.length;
+      if (!n) throw new Error("the graph sample has no seed transfers");
+      const rowIndex = ((opts.rowIndex ?? 0) % n + n) % n;
+      const { name, logits, latencyMs } = await graphSeedLogits(opened, g);
+      const kind = outputKind(name);
+      if (!kind) throw new Error(`the graph's output is named "${name}", neither probabilities nor logits`);
+      const prob = toProbabilities(logits, n, 2, kind);
+      const predictedClass = prob[2 * rowIndex + 1] >= g.expected.decision_threshold ? 1 : 0;
+      const trueClass = g.seeds.labels[rowIndex] ?? null;
+      return {
+        kind: "ran",
+        run: {
+          modelKey: key, repoId: target.spec.hf_repo_id ?? "", revision: target.spec.hf_revision ?? "",
+          graph: fetchedGraph, backend: opened.status.backend, inputShape: [...g.inputs.x_shape], rowIndex,
+          task: "classification", logits: [logits[2 * rowIndex], logits[2 * rowIndex + 1]], predictedClass, rowMae: null,
+          className: g.classes?.[String(predictedClass)] ?? null, trueClass,
+          trueClassName: trueClass == null ? null : g.classes?.[String(trueClass)] ?? null,
+          latencyMs: Number(latencyMs.toFixed(2)), totalMs: Number((performance.now() - started).toFixed(2)),
+          provenance: g.provenance ?? g.protocol_note, split: target.spec.eval_split ?? null,
+        },
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn("[onnx] published graph-model run failed:", msg);
+      return { kind: "failed", modelKey: key, error: msg };
+    }
   }
 
   try {

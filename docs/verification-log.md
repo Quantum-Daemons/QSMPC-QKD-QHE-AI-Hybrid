@@ -5328,3 +5328,71 @@ decimals, so the MLP's change is the teacher's alone. The GNN's trainer varies b
 evaluation samples were rebuilt (only their expected blocks changed), and the owner approved both cards; they were
 published at `60642a20` and `69e4fb7c`, each card served by the Hub byte for byte as generated, and pinned with the
 other 13 models' 48 files.
+
+### IBM's Multi-PNA+EU under the causal protocol with both time inputs, Multi-GIN+EU, and file paths in exported graphs (2026-11-18)
+
+**The ten causal runs.** Five seeds of each time input, `drop` (the input set to zero) and `lag` (each transfer's time
+before its batch's end over the fit window's span, clipped to $`[-1, 0]`$), ran from 2026-11-16 09:37 to 11-17 06:21
+UTC, one line per run in the working folder's `logs/runs_20261116.jsonl` (checkpoint and sha256, figures, kernel and
+driver, seconds per stage) and all ten in the model's record. `lag` has the better mean logged validation F1,
+$`0.6175`$ against $`0.5977`$, and its seed 1 the best of its five, so that is the export (the owner's rule): test F1
+0.6252, AUPRC 0.5789, threshold 0.4311, in eval mode with the fit-window statistics. Over five seeds `lag` scores
+$`0.6208 \pm 0.0330`$ under the protocol's batches and $`0.4366 \pm 0.0294`$ under the plain batches of 2,048;
+`drop` $`0.5613 \pm 0.0338`$ and $`0.5013 \pm 0.0309`$. Measured on the export: under the protocol's batches every
+scored transfer lies at most 1,020 s before its batch's end, in every window; under the plain batches 1,352 test
+transfers, 654 of them laundering, lie further back, up to 663,600 s, where `lag` reads values training never gave.
+
+**The causal export, corrected before anything shipped.** It draws each of the 16 transfers alone, and it measured
+`lag` back from the transfer's own time, where the test loader measures it from the last time among the test-window
+rows of the batch; it now does the same. Against the recorded scoring of the same transfers, its probabilities lie
+within 0.021 and decide the same 16; under IBM's protocol, the 16 drawn together, within 0.097, the same 16.
+
+**Multi-GIN+EU, five seeds under each protocol (2026-11-17 and 18).** Not exported. Under IBM's protocol it logs
+$`0.6018 \pm 0.0260`$ (the paper, $`64.79 \pm 1.22`$ on its own split), and the fit-window statistics give
+$`0.5737 \pm 0.0262`$ the exported way against $`0.5940 \pm 0.0292`$ with the saved ones; under the causal protocol
+with `lag` it logs $`0.4095 \pm 0.0563`$, and three of its seeds kept an epoch before the 17th.
+
+**File paths in exported ONNX graphs.** `torch.export` (torch 2.9 and later) writes each node's Python stack trace into
+the node's metadata, with the exporting machine's absolute file paths. Seven graphs on the Hub carried this machine's:
+`medical_fl.resnet18` (fp32 and int8), `medical_fl.resnet50`, and `medical_fl.cxr_fedavg` (features and model, fp32
+and int8); no file in git does, and the two IBM graphs, not published, did too. `strip_node_metadata` in
+`qsh.models.export` now drops node metadata after every torch export and after int8 quantisation, the IBM export
+drops it and refuses a graph that still holds the home directory, and `scripts/publish_hf.py` refuses any such file
+before an upload, dry runs included (`tests/test_r86_no_local_paths_in_published_files.py`). On copies of the seven,
+dropping it removed the paths, the outputs stayed bit-identical and the graphs were otherwise byte-identical; the IBM
+graph went from 0.87 MB to 0.34 MB.
+- The owner chose to republish the three repositories with clean graphs and keep their history:
+  `scripts/strip_published_graphs.py` dropped the metadata in place after checking each graph against its original
+  (outputs bit-identical on random inputs, the graph otherwise byte-identical) and re-recorded the sizes in the
+  export reports and the records. `medical_fl.resnet18` is now at `3ee6e722`, `medical_fl.resnet50` at `0d682eda`
+  and `medical_fl.cxr_fedavg` at `dff90e80`; each served file equals its new pin, the cards and the other files are
+  unchanged, and the earlier revisions on the Hub still hold the paths. The chest X-ray head
+  (`web/public/data/medical/cxr_head.json`) was regenerated for the new revision and its check is the 11-15 one to
+  the last digit on all 16 films (`docs/measurements/cxr-head-2026-11-18.json`). Read afterwards, none of the 100
+  files at the heads of the 17 published repositories holds the home directory.
+- **The two IBM models published (2026-11-18).** On the owner's approval of both cards: `finance_aml.gnn` at
+  `154865bd` and `finance_aml.gnn_causal` at `d160b79b`. A repository test then found their samples without the
+  `split` field every other published sample states (the gate holds published files only, and it was not run with
+  the two marked published before the upload); on the owner's approval both were republished the same day with it, at
+  `b01fba64` and `d8b27ed2`, each sample otherwise byte-identical and each graph unchanged. Each card is served as
+  generated and each pinned file equals its pin.
+- **What publishing them changed on the page, found on a local client-only build and fixed before any merge.** The
+  browser takes a use case's first published model as the pipeline's default and its first industry model with a
+  record as the use-case card's headline, in registry order, where the IBM specs stood first: the finance page's
+  default became IBM's protocol model, and its published-model stage then failed ("Cannot read properties of
+  undefined (reading 'shape')"), reading a graph sample as rows; the card's headline had been IBM's since its record
+  was written. The IBM specs now follow the page's own models, so both are the gradient-boosting teacher's again, and
+  the stage scores a graph model's sample and reports one of its transfers (chosen in the selector: the causal model
+  ran on transfer 12 of its 16, and all five published finance models re-verified, PASS). The Overview names the two
+  `Multi-PNA+EU, IBM's protocol` and `Multi-PNA+EU, causal protocol`. The text-overlap scan clicked a tab named
+  `Multi-PNA+EU GNN`, which the single IBM tab had replaced, and an absent tab was skipped silently, so the IBM tab
+  was never measured; an absent tab now fails the scan, and the IBM tab is measured before and after a run. Measured,
+  it drew two lines through other accounts' letters: its layout, shared with the finance page's transaction graphs, put
+  the counterparties in staggered columns, an inner account 1.6 px from the line to an outer one. Every transfer drawn
+  touches the payer or the payee, so the counterparties now stand on a fan centred on their account, each line a ray
+  that passes no other, and an account paying itself has its counterparties on a ring round it. Over the page's 16
+  scored rows and the 32 transfers of the two IBM samples, lines within 13 px of an account they do not join went from
+  110 to none (`tests/test_r86_model_explanations.py`). On the
+  same build the medical page's four models re-verified against their new pins, PASS, and split inference on film 1
+  fetched the 11.2 MB features graph against its pin, the decrypted logit within $`1.04 \times 10^{-9}`$ of the
+  clear one.
