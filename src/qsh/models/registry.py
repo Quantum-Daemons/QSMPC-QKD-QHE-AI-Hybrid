@@ -1068,90 +1068,6 @@ _SPECS: tuple[ModelSpec, ...] = (
     ModelSpec(
         usecase="finance_aml",
         tier="t2_industry",
-        key="finance_aml.gnn",
-        label="IBM Multi-PNA+EU, IBM's protocol",
-        architecture=("PNA with reverse message passing, multigraph port numbering, ego IDs and edge updates (IBM/Multi-GNN at "
-                      "252b025, Apache-2.0), 2 layers of width 20"),
-        params=64374,         # trainable, counted in the exported checkpoint; BatchNorm statistics and degree buffers excluded
-        dataset=DS_AMLWORLD,
-        # Its own published figure is its target (Round 86). GFP+XGBoost's 63.23 belongs to the gradient booster.
-        metric=replace(M_AML, baseline=0.6816, baseline_source=(
-            "Multi-PNA+EU itself on AML Small HI: 68.16 +/- 2.65 minority-class F1, five runs on the paper's own split "
-            "(Egressy et al., 'Provably Powerful Graph Neural Networks for Directed Multigraphs', AAAI 2024, "
-            "arXiv:2306.11586, Table 2). Run here from IBM's code on this project's windows over five seeds, each listed "
-            "with the test F1 IBM's loop logs at its kept epoch, the paper's measure, beside the exported model's. "
-            "GFP+XGBoost's 63.23 is the baseline of the gradient-boosting model this demo ships, not of this architecture.")),
-        artifacts=(ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "browser"),),
-        # `hf_repo=None` is this file's convention for not published; it is set with the publish (Round 86).
-        hf_repo=None,
-        eval_split=("16 held-out transfers of the temporal test window, the published MLP's fixtures, half of them laundering, "
-                    "with the neighbourhood IBM's loader samples for them from the test window's whole graph"),
-        notes=(
-            "IBM's official Multi-PNA+EU, trained here from IBM's code (IBM/Multi-GNN at 252b025, Apache-2.0, with "
-            "scripts/train/ibm_multignn/project_split.patch for this project's windows) for IBM's 100 epochs, five seeds. "
-            "The kept epoch is IBM's own rule and the exported seed is the one with the best logged validation F1. IBM's "
-            "loop never calls model.eval(), so a checkpoint it saves carries BatchNorm statistics last set by the test "
-            "pass; the exported one has them recomputed on the fit window (precise_bn.py, the owner's choice of "
-            "2026-11-16), and its figures are scored in eval mode at the threshold tuned on validation. The page runs it "
-            "in plaintext: onnxruntime-web scores its 16 held-out transfers with the neighbourhood IBM's loader sampled "
-            "for them, and nothing of it runs under encryption. IBM's protocol reads each window's whole graph, so a "
-            "transfer's neighbourhood can include later transfers, which the tab counts; its causal twin is "
-            "finance_aml.gnn_causal. The compact GNN and the MLP are distilled from this model, seed 1. "
-            "Message passing over the whole graph needs every account's neighbourhood at scoring time, which the "
-            "browser holds here only for these 16 transfers. Bilgi et al. (arXiv:2610.18054v2, preprint) run an "
-            "edge-centric GNN under CKKS on the IBM AML benchmark at 5.31 s per queried transaction (1.65 s amortized "
-            "over a batch of 16) with HEonGPU on one RTX 5090, with the graph held in plaintext by the server - "
-            "server-side evaluation only, since those figures exclude the client's encryption and decryption, key "
-            "generation and network communication - and its encrypted and plaintext predictions agree on 99.25% of "
-            "transactions. It is not the best published figure on this split: the published version of MEGA (TMLR, "
-            "see the ceiling) re-runs Multi-PNA at 67.35 +/- 2.89 on Small HI, below FraudGT, Multi-FraudGT and every "
-            "MEGA variant in its table."
-        ),
-    ),
-    ModelSpec(
-        usecase="finance_aml",
-        tier="t2_industry",
-        key="finance_aml.gnn_causal",
-        label="IBM Multi-PNA+EU, causal protocol",
-        architecture=("PNA with reverse message passing, multigraph port numbering, ego IDs and edge updates (IBM/Multi-GNN at "
-                      "252b025, Apache-2.0), 2 layers of width 20"),
-        params=64374,         # the same network as finance_aml.gnn; only what it reads differs
-        dataset=DS_AMLWORLD,
-        metric=replace(M_AML, baseline=0.6816, baseline_source=(
-            "Multi-PNA+EU on AML Small HI: 68.16 +/- 2.65 minority-class F1, five runs on the paper's own split (Egressy "
-            "et al., AAAI 2024, arXiv:2306.11586, Table 2), under IBM's protocol. This model reads less than that protocol "
-            "does, nothing past a transfer's horizon, so the figure is a reference for it rather than a like-for-like "
-            "comparison.")),
-        artifacts=(ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "browser"),),
-        hf_repo=None,
-        eval_split=("16 held-out transfers of the temporal test window, the published MLP's fixtures, half of them laundering, "
-                    "each with the neighbourhood the causal protocol samples: its batch of 2,048 or earlier transfers, a batch "
-                    "split where it spans more than 17 minutes"),
-        notes=(
-            "IBM's Multi-PNA+EU under the causal protocol (scripts/train/ibm_multignn/causal.patch on top of the split "
-            "patch, the owner's choices of 2026-11-15): each mini-batch is one batch of 2,048 transfers in time order, split "
-            "where it spans more than 17 minutes, sampled with IBM's shared sampler, with every sampled transfer later than "
-            "that batch dropped, and every window scaled by the fit window's statistics. Trained with early stopping after "
-            "20 epochs without a better validation F1 and four loader processes, five seeds; the kept epoch is IBM's rule "
-            "and the exported seed the best logged validation F1. Nothing it reads lies past the horizon the page's own "
-            "models give a transfer, the end of its batch of 2,048 and at most 17 minutes after it, and its BatchNorm "
-            "statistics are recomputed on the fit window, so its normalisation does not read the test window either. The "
-            "record also gives the same checkpoints' test F1 under the plain batches of 2,048. It runs in plaintext in "
-            "this tab, beside its twin finance_aml.gnn. "
-            "Message passing over the whole graph needs every account's neighbourhood at scoring time, which the "
-            "browser holds here only for these 16 transfers. Bilgi et al. (arXiv:2610.18054v2, preprint) run an "
-            "edge-centric GNN under CKKS on the IBM AML benchmark at 5.31 s per queried transaction (1.65 s amortized "
-            "over a batch of 16) with HEonGPU on one RTX 5090, with the graph held in plaintext by the server - "
-            "server-side evaluation only, since those figures exclude the client's encryption and decryption, key "
-            "generation and network communication - and its encrypted and plaintext predictions agree on 99.25% of "
-            "transactions. It is not the best published figure on this split: the published version of MEGA (TMLR, "
-            "see the ceiling) re-runs Multi-PNA at 67.35 +/- 2.89 on Small HI, below FraudGT, Multi-FraudGT and every "
-            "MEGA variant in its table."
-        ),
-    ),
-    ModelSpec(
-        usecase="finance_aml",
-        tier="t2_industry",
         key="finance_aml.gbm",
         label="Graph-feature gradient boosting",
         # NOT IBM's Graph Feature Preprocessor (GFP): that ships in `snapml` under a proprietary
@@ -1251,6 +1167,98 @@ _SPECS: tuple[ModelSpec, ...] = (
                "and distilled from IBM's Multi-PNA+EU run on those windows, seed 1 with its BatchNorm statistics recomputed on the fit window (the target 0.7 times the label plus 0.3 times its probability, the weight chosen on validation; "
                "`scripts/train/ibm_multignn/` reproduces the teacher). Its neighbours and features see transactions up to the end of their batch of 2,048. It reads 16 edges per transaction, "
                "where the official Multi-GNN models read a sample of the whole test-window graph, so the two are different settings. Its teacher's family is `finance_aml.gnn`, which the IBM tab runs and draws this model against."),
+    ),
+    # IBM's two models after the page's own (Round 86, 2026-11-18): the browser takes the first published model as the
+    # pipeline's default (browserModels) and the first industry model with a record as the page's headline
+    # (teacherModel), and both are the gradient-boosting teacher's, as before IBM's models were trained and published.
+    ModelSpec(
+        usecase="finance_aml",
+        tier="t2_industry",
+        key="finance_aml.gnn",
+        label="IBM Multi-PNA+EU, IBM's protocol",
+        architecture=("PNA with reverse message passing, multigraph port numbering, ego IDs and edge updates (IBM/Multi-GNN at "
+                      "252b025, Apache-2.0), 2 layers of width 20"),
+        params=64374,         # trainable, counted in the exported checkpoint; BatchNorm statistics and degree buffers excluded
+        dataset=DS_AMLWORLD,
+        # Its own published figure is its target (Round 86). GFP+XGBoost's 63.23 belongs to the gradient booster.
+        metric=replace(M_AML, baseline=0.6816, baseline_source=(
+            "Multi-PNA+EU itself on AML Small HI: 68.16 +/- 2.65 minority-class F1, five runs on the paper's own split "
+            "(Egressy et al., 'Provably Powerful Graph Neural Networks for Directed Multigraphs', AAAI 2024, "
+            "arXiv:2306.11586, Table 2). Run here from IBM's code on this project's windows over five seeds, each listed "
+            "with the test F1 IBM's loop logs at its kept epoch, the paper's measure, beside the exported model's. "
+            "GFP+XGBoost's 63.23 is the baseline of the gradient-boosting model this demo ships, not of this architecture.")),
+        artifacts=(ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "browser"),),
+        # Published on the owner's approval of its card, 2026-11-18 (Round 86).
+        hf_repo="qsh-finance-aml-gnn",
+        eval_split=("16 held-out transfers of the temporal test window, the published MLP's fixtures, half of them laundering, "
+                    "with the neighbourhood IBM's loader samples for them from the test window's whole graph"),
+        notes=(
+            "IBM's official Multi-PNA+EU, trained here from IBM's code (IBM/Multi-GNN at 252b025, Apache-2.0, with "
+            "scripts/train/ibm_multignn/project_split.patch for this project's windows) for IBM's 100 epochs, five seeds. "
+            "The kept epoch is IBM's own rule and the exported seed is the one with the best logged validation F1. IBM's "
+            "loop never calls model.eval(), so a checkpoint it saves carries BatchNorm statistics last set by the test "
+            "pass; the exported one has them recomputed on the fit window (precise_bn.py, the owner's choice of "
+            "2026-11-16), and its figures are scored in eval mode at the threshold tuned on validation. The page runs it "
+            "in plaintext: onnxruntime-web scores its 16 held-out transfers with the neighbourhood IBM's loader sampled "
+            "for them, and nothing of it runs under encryption. IBM's protocol reads each window's whole graph, so a "
+            "transfer's neighbourhood can include later transfers, which the tab counts; its causal twin is "
+            "finance_aml.gnn_causal. The compact GNN and the MLP are distilled from this model, seed 1. "
+            "Message passing over the whole graph needs every account's neighbourhood at scoring time, which the "
+            "browser holds here only for these 16 transfers. Bilgi et al. (arXiv:2610.18054v2, preprint) run an "
+            "edge-centric GNN under CKKS on the IBM AML benchmark at 5.31 s per queried transaction (1.65 s amortized "
+            "over a batch of 16) with HEonGPU on one RTX 5090, with the graph held in plaintext by the server - "
+            "server-side evaluation only, since those figures exclude the client's encryption and decryption, key "
+            "generation and network communication - and its encrypted and plaintext predictions agree on 99.25% of "
+            "transactions. It is not the best published figure on this split: the published version of MEGA (TMLR, "
+            "see the ceiling) re-runs Multi-PNA at 67.35 +/- 2.89 on Small HI, below FraudGT, Multi-FraudGT and every "
+            "MEGA variant in its table."
+        ),
+    ),
+    ModelSpec(
+        usecase="finance_aml",
+        tier="t2_industry",
+        key="finance_aml.gnn_causal",
+        label="IBM Multi-PNA+EU, causal protocol",
+        architecture=("PNA with reverse message passing, multigraph port numbering, ego IDs and edge updates (IBM/Multi-GNN at "
+                      "252b025, Apache-2.0), 2 layers of width 20"),
+        params=64374,         # the same network as finance_aml.gnn; only what it reads differs
+        dataset=DS_AMLWORLD,
+        metric=replace(M_AML, baseline=0.6816, baseline_source=(
+            "Multi-PNA+EU on AML Small HI: 68.16 +/- 2.65 minority-class F1, five runs on the paper's own split (Egressy "
+            "et al., AAAI 2024, arXiv:2306.11586, Table 2), under IBM's protocol. This model reads less than that protocol "
+            "does, nothing past a transfer's horizon, so the figure is a reference for it rather than a like-for-like "
+            "comparison.")),
+        artifacts=(ArtifactSpec("onnx/model.onnx", "onnx", "fp32", "browser"),),
+        hf_repo="qsh-finance-aml-gnn-causal",   # published on the owner's approval of its card, 2026-11-18
+        eval_split=("16 held-out transfers of the temporal test window, the published MLP's fixtures, half of them laundering, "
+                    "each with the neighbourhood the causal protocol samples: its batch of 2,048 or earlier transfers, a batch "
+                    "split where it spans more than 17 minutes"),
+        notes=(
+            "IBM's Multi-PNA+EU under the causal protocol (scripts/train/ibm_multignn/causal.patch on top of the split "
+            "patch, the owner's choices of 2026-11-15): each mini-batch is one batch of 2,048 transfers in time order, split "
+            "where it spans more than 17 minutes, sampled with IBM's shared sampler, with every sampled transfer later than "
+            "that batch dropped, and every window scaled by the fit window's statistics. Scaled that way, IBM's absolute "
+            "timestamp input lay outside every value training saw on the test window, so this model reads in its place "
+            "each transfer's time before the end of its batch over the fit window's span, clipped to [-1, 0] "
+            "(QSH_CAUSAL_TIME=lag, the owner's choice of 2026-11-16); the input set to zero (drop) was trained the same "
+            "way, and lag has the better mean logged validation F1 over five seeds each. Trained with early stopping after "
+            "20 epochs without a better validation F1 and four loader processes; the kept epoch is IBM's rule and the "
+            "exported seed the best logged validation F1 of lag's five. Nothing it reads lies past the horizon the page's "
+            "own models give a transfer, the end of its batch of 2,048 and at most 17 minutes after it, and its BatchNorm "
+            "statistics are recomputed on the fit window, so its normalisation does not read the test window either. The "
+            "record also gives the same checkpoints' test F1 under the plain batches of 2,048, under which lag's input "
+            "lies outside the range training saw for part of the test window, as the card states. It runs in plaintext "
+            "in this tab, beside its twin finance_aml.gnn. "
+            "Message passing over the whole graph needs every account's neighbourhood at scoring time, which the "
+            "browser holds here only for these 16 transfers. Bilgi et al. (arXiv:2610.18054v2, preprint) run an "
+            "edge-centric GNN under CKKS on the IBM AML benchmark at 5.31 s per queried transaction (1.65 s amortized "
+            "over a batch of 16) with HEonGPU on one RTX 5090, with the graph held in plaintext by the server - "
+            "server-side evaluation only, since those figures exclude the client's encryption and decryption, key "
+            "generation and network communication - and its encrypted and plaintext predictions agree on 99.25% of "
+            "transactions. It is not the best published figure on this split: the published version of MEGA (TMLR, "
+            "see the ceiling) re-runs Multi-PNA at 67.35 +/- 2.89 on Small HI, below FraudGT, Multi-FraudGT and every "
+            "MEGA variant in its table."
+        ),
     ),
     ModelSpec(
         usecase="medical_fl",

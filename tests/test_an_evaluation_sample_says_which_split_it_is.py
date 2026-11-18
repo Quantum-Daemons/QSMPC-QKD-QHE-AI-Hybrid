@@ -218,7 +218,8 @@ def test_the_readme_counts_the_published_repos_and_their_one_exception() -> None
     """README's own sentence says it is "the second copy - and the second copy is the one that rots",
     and it rotted again: "All ten repos" with eleven published, and "the evaluation sample for each"
     with one published by design without one."""
-    words = {"nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15}
+    words = {"nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15,
+             "sixteen": 16, "seventeen": 17, "eighteen": 18}
     # The sentence moved from the README to docs/findings.md in Round 80, with the findings it
     # belongs to; the README now links there.
     readme = (REPO / "docs" / "findings.md").read_text()

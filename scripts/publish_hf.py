@@ -165,6 +165,7 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool
                  "published baselines below.", ""]
 
     body += _five_seeds_section((achieved or {}).get("seeds"), (achieved or {}).get("five_seeds"))
+    body += _ibm_time_input_section(achieved)
 
     body += [
         "## Published baselines this is measured against",
@@ -236,27 +237,100 @@ def _teacher(achieved: dict | None) -> str:
     return f" (seed {seed}, its BatchNorm statistics {bn})" if seed is not None and bn else ""
 
 
-def _five_seeds_section(seeds: list | None, summary: dict | None) -> list[str]:
-    """Every seed of a multi-seed record (Round 86, IBM's Multi-GNN): the selected one is the best logged validation F1."""
-    if not seeds or not summary:
+def _five_seeds_section(seeds: list | None, summary: dict | None, title: str = "## Five seeds",
+                        intro: list[str] | None = None, mean_row: bool = True) -> list[str]:
+    """Every seed of a multi-seed record (Round 86, IBM's Multi-GNN): the selected one is the best logged validation F1.
+
+    A record without the summary prints no table: the distilled students carry `seeds` of another shape. The causal
+    runs on the absolute timestamp, three seeds, are listed with `mean_row=False` and no summary."""
+    if not seeds or (mean_row and not summary):
         return []
     cut = all("plain_batches_of_2048" in s for s in seeds)
     head = "| seed | kept epoch | logged validation F1 | logged test F1 | test F1, exported way | test AUPRC |" + (
         " test F1, plain batches of 2,048 |" if cut else "")
-    rows = ["## Five seeds", "",
-            "IBM's loop keeps an epoch when its validation F1 beats every earlier epoch's; the logged figures are its own, in",
-            "training mode. The exported way is eval mode with the BatchNorm statistics recomputed on the fit window, at the",
-            "threshold that maximises validation F1. The seed exported is the one with the best logged validation F1.", "",
-            head, "|" + "---|" * (head.count("|") - 1)]
+    if intro is None:
+        intro = ["IBM's loop keeps an epoch when its validation F1 beats every earlier epoch's; the logged figures are its own, in",
+                 "training mode. The exported way is eval mode with the BatchNorm statistics recomputed on the fit window, at the",
+                 "threshold that maximises validation F1. The seed exported is the one with the best logged validation F1."]
+    rows = [title, "", *intro, "", head, "|" + "---|" * (head.count("|") - 1)]
     for s in seeds:
         rows.append(f"| {s['seed']} | {s['kept_epoch']} | {s['logged_validation_f1']} | {s['logged_test_f1']} | "
                     f"{s['test_minority_f1']} | {s['test_auprc']} |"
                     + (f" {s['plain_batches_of_2048']['test_minority_f1']} |" if cut else ""))
-    def ms(d: dict) -> str:
-        return f"{d['mean']} (sample sd {d['sample_sd']})"
-    rows.append(f"| mean | | | {ms(summary['logged_test_f1'])} | {ms(summary['test_minority_f1'])} | {ms(summary['test_auprc'])} |"
-                + (f" {ms(summary['plain_batches_of_2048_test_minority_f1'])} |" if cut else ""))
+
+    def ms(d: dict | None) -> str:
+        return f"{d['mean']} (sample sd {d['sample_sd']})" if d else ""
+    if mean_row:
+        rows.append(f"| mean | | {ms(summary.get('logged_validation_f1'))} | {ms(summary['logged_test_f1'])} | "
+                    f"{ms(summary['test_minority_f1'])} | {ms(summary['test_auprc'])} |"
+                    + (f" {ms(summary['plain_batches_of_2048_test_minority_f1'])} |" if cut else ""))
     return rows + [""]
+
+
+#: What replaced IBM's absolute timestamp under the causal protocol (QSH_CAUSAL_TIME, the owner's choice of 2026-11-16).
+_TIME_INPUT_TEXT = {
+    "lag": ["each transfer's time before the end of its batch, over the fit window's span $s${span}:",
+            "",
+            r"$$\ell = \max\left(-1,\ \frac{t - t_{\mathrm{end}}}{s}\right) \in [-1, 0],$$",
+            "",
+            r"where $t_{\mathrm{end}}$ is the latest time among the scored transfers of the batch. Temporal GNNs likewise read",
+            "time relative to the event rather than absolute, through an encoding of the difference (TGAT, arXiv:2002.07962;",
+            "GraphMixer, arXiv:2302.11636); this model reads the scaled difference itself."],
+    "drop": ["zero, so time only orders and cuts the batches."],
+}
+
+
+def _plain_batch_fall(rec: dict) -> str:
+    """How far the plain batches' mean test F1 lies below the exported way's, per time input, from the record."""
+    def fall(summary: dict | None) -> float | None:
+        if not summary or "plain_batches_of_2048_test_minority_f1" not in summary:
+            return None
+        return summary["test_minority_f1"]["mean"] - summary["plain_batches_of_2048_test_minority_f1"]["mean"]
+    falls = {rec["time_input"]: fall(rec.get("five_seeds"))}
+    falls.update({m: fall(o.get("five_seeds")) for m, o in (rec.get("other_time_inputs") or {}).items()})
+    shown = [f"{v:.3f} for `{m}`" for m, v in falls.items() if v is not None]
+    return (" Over five seeds the plain batches' mean test F1 lies below the exported way's by " + " and ".join(shown) + "."
+            if len(shown) > 1 else "")
+
+
+def _ibm_time_input_section(rec: dict | None) -> list[str]:
+    """The causal protocol's time input (Round 86, the owner's choice of 2026-11-16): what replaced IBM's absolute
+    timestamp and why, the rule that chose it, the other replacement's seeds and the runs on the absolute timestamp.
+    Every figure comes from the record: the means from `time_input_selection`, the batch reach from the export's
+    `seconds_before_batch_end`."""
+    if not rec or rec.get("time_input", "absolute") == "absolute":
+        return []
+    mode = rec["time_input"]
+    ref = (rec.get("export") or {}).get("seconds_before_batch_end") or {}
+    span = ref.get("fit_window_span_s")
+    what = [line.replace("{span}", f" ({span:,.0f} s)" if span else "") for line in _TIME_INPUT_TEXT[mode]]
+    lines = ["## The time input under the causal protocol", "",
+             "IBM's model reads each transfer's timestamp as an edge feature. Under this protocol every window is scaled by the",
+             "fit window's statistics, and the test window's timestamps then lay outside every value training saw ($z$ of 2.9",
+             f"to 9.7, against at most 2.0 on the fit window). This model's time input (`QSH_CAUSAL_TIME={mode}` in",
+             "`scripts/train/ibm_multignn/causal.patch`) is instead " + what[0], *what[1:], ""]
+    means = (rec.get("time_input_selection") or {}).get("mean_logged_validation_f1") or {}
+    if len(means) > 1:
+        rank = " against ".join(f"`{k}` {v}" for k, v in sorted(means.items(), key=lambda kv: -kv[1]))
+        lines += ["Both replacements were trained, five seeds each, and the one exported has the better mean logged validation",
+                  f"F1 ({rank}); the other's seeds are below, with the runs on the absolute timestamp before it was replaced.", ""]
+    pb, fit_max = ref.get("plain_batches_of_2048") or {}, ref.get("fit_window_max")
+    if mode == "lag" and pb and fit_max and span:
+        lines += [f"Under the protocol's batches every scored transfer lies at most {fit_max:,.0f} s before its batch's end, as in",
+                  rf"the fit window, so $\ell \ge {-fit_max / span:.4f}$ on every window. Under the plain batches of 2,048 of the",
+                  f"last column, {pb['test_rows_beyond_fit_max']:,} test transfers, {pb['test_laundering_beyond_fit_max']:,} of",
+                  f"them laundering (of the test window's {ref['test_laundering']:,}), lie further back than any fit-window",
+                  "transfer, down to the clip at $-1$." + _plain_batch_fall(rec), ""]
+    for m, o in sorted((rec.get("other_time_inputs") or {}).items()):
+        lines += _five_seeds_section(o.get("seeds"), o.get("five_seeds"), f"## Five seeds with the time input `{m}`",
+                                     [f"The same protocol and columns, with {o.get('time_input_note', m)}."])
+    ab = rec.get("absolute_time_input") or {}
+    if ab.get("seeds"):
+        note = ab.get("time_input_note", "IBM's absolute timestamp")
+        lines += _five_seeds_section(ab["seeds"], None, "## The absolute timestamp, before it was replaced",
+                                     [f"{note[:1].upper()}{note[1:]}; {ab.get('why_stopped', 'stopped early')}."],
+                                     mean_row=False)
+    return [_hub_inline_math(line) for line in lines]
 
 
 def _hub_inline_math(text: str) -> str:
@@ -433,6 +507,21 @@ def _pipeline_tag(spec: registry.ModelSpec) -> str:
     return "tabular-classification"
 
 
+def local_paths_in(files: list[Path], home: str | None = None) -> list[str]:
+    """The files that hold this machine's home directory, which a published file has no reason to (Round 86).
+
+    Found on 2026-11-18: torch.export writes every node's Python stack trace into an ONNX graph's metadata, with the
+    exporting machine's absolute file paths, and seven graphs already on the Hub carried this machine's. The exporter
+    now drops that metadata (`qsh.models.export.strip_node_metadata`); this check refuses any file that still holds the
+    path, whatever put it there. Checked before every upload, dry runs included.
+    """
+    home = os.path.expanduser("~") if home is None else home
+    if not home or home == os.sep:
+        return []
+    needle = home.encode()
+    return [str(p) for p in files if needle in p.read_bytes()]
+
+
 def stale_remote_files(remote: set[str], local: set[str]) -> list[str]:
     """Files at the repo head that this upload would leave behind: on the Hub, not in the folder.
 
@@ -483,6 +572,11 @@ def publish(spec: registry.ModelSpec, *, private: bool, dry_run: bool, api,
     for p in excluded:
         print(f"      [excluded] {p.relative_to(local)}  (matches the deny list; stays local)")
     print(f"      total to upload {total/1e6:.2f} MB")
+    leaks = local_paths_in(files)
+    if leaks:
+        raise SystemExit(f"refusing to publish {spec.key}: {leaks} hold this machine's home directory. An ONNX graph "
+                         "gets it from torch.export's node metadata: drop it with "
+                         "qsh.models.export.strip_node_metadata and check the graph's outputs again.")
 
     # Checked BEFORE any upload, dry runs included, so a stale file is reported rather than shipped.
     try:

@@ -27,7 +27,11 @@ What it writes, after checking each against the PyTorch model:
   for the page's view each edge's row and time, the reach, and the counts of `neighbourhood.py` (a causal sample that
   reads a transfer past its seed's horizon is refused);
 - `export_report.json`: ONNX Runtime against PyTorch on that neighbourhood, the decisions at the threshold tuned on
-  the validation window, and the subgraph's size.
+  the validation window, the subgraph's size, the range of the time input on it, and the 16 against the probabilities
+  the recorded scoring gave them (`precise_bn.py`'s test.npz, from another draw of the neighbourhoods).
+
+Under the causal protocol with `QSH_CAUSAL_TIME=lag`, a seed's time input is measured back from the last time among the
+test-window rows of its batch, as the test loader measures it, although the sample draws each seed's neighbourhood alone.
 """
 
 from __future__ import annotations
@@ -49,6 +53,35 @@ TIME_NOTE = {"absolute": "", "drop": "; the time input set to zero, so time only
              "lag": "; the time input each transfer's time before its batch ends, over the fit window's span, in [-1, 0]"}
 
 
+def seconds_before_batch_end(ts, n_fit: int, test_from: int, y, span: float, causal_batches) -> dict:
+    """How far before its batch's end each scored transfer lies, the reference of `QSH_CAUSAL_TIME=lag` (the owner's
+    choice of 2026-11-16): the most a fit-window transfer lies back under the protocol's batches, and how many test
+    transfers lie further back than that under the protocol's batches and under the plain batches of 2,048.
+
+    A loader's batch is the seeds of one window sharing a batch id, and the reference is the latest of their times; the
+    file is in time order, so that is the time of the batch's last row in the window."""
+    import numpy as np
+    if not np.all(np.diff(ts) >= 0):
+        raise SystemExit("the transactions are not in time order, so a batch's last row is not its latest")
+
+    def back(ids, lo: int, hi: int):
+        t, b = ts[lo:hi], ids[lo:hi]
+        change = b[1:] != b[:-1]
+        run = np.concatenate([[0], np.cumsum(change)])
+        return t[np.flatnonzero(np.r_[change, True])][run] - t
+
+    fit_max = float(back(causal_batches(ts, n_fit)[0], 0, n_fit).max())
+    y_test = np.asarray(y[test_from:])
+    out = {"fit_window_span_s": span, "fit_window_max": fit_max, "test_rows": int(len(y_test)),
+           "test_laundering": int(y_test.sum())}
+    for name, plain in (("protocol_batches", False), ("plain_batches_of_2048", True)):
+        tb = back(causal_batches(ts, n_fit, plain=plain)[0], test_from, len(ts))
+        beyond = tb > fit_max
+        out[name] = {"test_window_max": float(tb.max()), "test_rows_beyond_fit_max": int(beyond.sum()),
+                     "test_laundering_beyond_fit_max": int((beyond & (y_test == 1)).sum())}
+    return out
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--checkpoint", required=True)
@@ -66,6 +99,8 @@ def main() -> int:
     time_input = os.environ.get("QSH_CAUSAL_TIME", "absolute") if a.protocol == "causal" else "absolute"
     if time_input not in TIME_NOTE:
         raise SystemExit(f"QSH_CAUSAL_TIME is {time_input!r}: absolute, drop or lag")
+    if os.environ.get("QSH_CAUSAL_CUT"):
+        raise SystemExit("unset QSH_CAUSAL_CUT: the sample's note states the protocol's batches, split at the reach")
 
     import numpy as np
     import torch
@@ -115,13 +150,18 @@ def main() -> int:
         # The causal protocol cuts each seed at its own batch of 2,048, and the 16 lie in different batches, so each is
         # sampled alone, with the later edges dropped, and the subgraphs are joined without edges between them.
         from train_util import _DropLater
+        stamps, test_batch = te[et].timestamps, te[et].edge_time[te_i]
         parts = []
         for i, p in enumerate(pos.tolist()):
             torch.manual_seed(SAMPLE_SEED + i)
             cut = te[et].edge_time[torch.tensor([p])]
+            # The time input's reference under QSH_CAUSAL_TIME=lag, as the test loader sets it (train_util._DropLater over
+            # one batch's seeds): the latest time among the test-window rows of the seed's batch, not the seed's own.
+            end = stamps[te_i][test_batch == cut].max().reshape(1)
             loader = LinkNeighborLoader(te, num_neighbors=args.num_neighs, edge_label_index=(et, te[et].edge_index[:, [p]]),
                                         edge_label=labels[i:i + 1], batch_size=1, shuffle=False,
-                                        transform=_DropLater(cut, transform))
+                                        transform=_DropLater(cut, transform, seed_stamp=end, stamps=stamps,
+                                                             span=getattr(te, "fit_span", None)))
             parts.append(([p], next(iter(loader))))
     xs, eis, eas, ris, ras, seed_at, poss, secs = [], [], [], [], [], [], [], []
     off_n = off_e = 0
@@ -148,10 +188,13 @@ def main() -> int:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from neighbourhood import BATCH_ROWS, fit_reach, seed_fields
     reach = fit_reach(te[et].timestamps.double().numpy(), tr[et].edge_index.shape[1])
+    back = None
     if a.protocol == "causal":
         from data_loading import causal_batches
         if causal_batches(te[et].timestamps.double().numpy(), tr[et].edge_index.shape[1])[1] != reach:
             raise SystemExit("the causal patch's reach differs from neighbourhood.fit_reach")
+        back = seconds_before_batch_end(te[et].timestamps.double().numpy(), tr[et].edge_index.shape[1], int(te_i[0]),
+                                        te[et].y.numpy(), float(te.fit_span), causal_batches)
     view_pos, view_sec = torch.cat(poss).numpy(), torch.cat(secs).numpy()
     fields = seed_fields(ei.numpy(), view_pos, view_sec, seed_at, reach)
     if a.protocol == "causal" and any(f["past_horizon"] for f in fields):
@@ -189,6 +232,11 @@ def main() -> int:
                           dynamic_axes={"x": {0: "N"}, "edge_index": {1: "E"}, "edge_attr": {0: "E"},
                                         "rev_edge_index": {1: "Er"}, "rev_edge_attr": {0: "Er"}, "logits": {0: "E"}})
         onnx.save_model(onnx.load(str(tmp), load_external_data=True), str(graph_path), save_as_external_data=False)
+    # torch.export records every node's stack trace, with this machine's file paths, in its metadata (2026-11-18).
+    from qsh.models.export import strip_node_metadata
+    strip_node_metadata(graph_path)
+    if str(Path.home()).encode() in graph_path.read_bytes():
+        raise SystemExit(f"{graph_path} still holds this machine's home directory after its node metadata was dropped")
     onnx.checker.check_model(str(graph_path))
     s = ort.InferenceSession(str(graph_path), providers=["CPUExecutionProvider"])
     o = s.run(None, {"x": x.numpy(), "edge_index": ei.numpy(), "edge_attr": ea.numpy(),
@@ -212,7 +260,11 @@ def main() -> int:
     e = np.exp(ort_logits - ort_logits.max(axis=1, keepdims=True))
     prob = e[:, 1] / e.sum(axis=1)
     pred = (prob - thr >= 0).astype(int)
+    # The window the sample is drawn from, as the registry declares it, as every published sample states it (2026-11-18).
+    from qsh.models import registry
     from qsh.models.sample_per_row import TOLERANCE
+    split = registry.get({"ibm": "finance_aml.gnn", "causal": "finance_aml.gnn_causal"}[a.protocol]).eval_split \
+        if a.model == "pna" else None
     sample = {
         "_about": ("IBM's Multi-PNA+EU on the 16 held-out transactions the published finance MLP and compact GNN are checked "
                    "on, with the neighbourhood its loader sampled for them, written by "
@@ -224,6 +276,7 @@ def main() -> int:
                           f"2,048 rows split where it spans more than {reach // 60} minutes: nothing read lies past the "
                           "horizon this page's own models give a transaction, the end of its batch of 2,048 and at most "
                           f"{reach // 60} minutes after it."),
+        **({"split": split} if split else {}),
         "inputs": {"x": x.numpy().ravel().tolist(), "x_shape": list(x.shape),
                    "edge_index": ei.numpy().ravel().tolist(), "edge_attr": ea.numpy().ravel().tolist(), "edge_attr_dim": int(ea.shape[1]),
                    "rev_edge_index": ri.numpy().ravel().tolist(), "rev_edge_attr": ra.numpy().ravel().tolist(), "n_edges": int(ei.shape[1]),
@@ -263,6 +316,19 @@ def main() -> int:
         "sample_seed": SAMPLE_SEED,
     }
     (out / "eval_sample.json").write_text(json.dumps(sample, separators=(",", ":")) + "\n")
+    # The same 16 transfers as the recorded scoring scored them (precise_bn.py's test.npz beside the validation file). The
+    # sample is one draw of the protocol's neighbourhood, so the two agree only as far as the draws do.
+    recorded, against = Path(a.val_probs).with_name("test.npz"), None
+    if recorded.exists():
+        t = np.load(recorded)
+        at = {int(v): j for j, v in enumerate(t["ids"].tolist())}
+        p_rec = np.array([float(t["probs"][at[p]]) for p in pos.tolist()])
+        against = {"max_abs_probability_difference": round(float(np.abs(p_rec - prob).max()), 6),
+                   "decisions_agree": int(((p_rec >= thr) == (prob >= thr)).sum()), "of": len(p_rec),
+                   "note": ("the recorded scoring samples each batch's neighbourhood once for all its seeds; the sample draws "
+                            + ("one per seed" if a.protocol == "causal" else "one for the 16")
+                            + ", so the two differ as their draws do")}
+    tcol = ea[:, 0].numpy().astype(np.float64)   # the time input: the first edge feature after the id column
     report = {
         "protocol": a.protocol, "time_input": time_input, "checkpoint_epoch": int(ckpt.get("epoch", -1)),
         "checkpoint_sha256": hashlib.sha256(Path(a.checkpoint).read_bytes()).hexdigest(),
@@ -272,6 +338,10 @@ def main() -> int:
         "subgraph": {"nodes": int(x.shape[0]), "edges": int(ei.shape[1]), "reverse_edges": int(ri.shape[1]), "parts": len(parts)},
         "max_abs_logit_difference_onnx_vs_torch_on_seeds": diff,
         "decision_threshold": thr, "seed_accuracy_at_threshold": sample["expected"]["accuracy"],
+        "time_input_range": {"seed_edges": [round(float(tcol[seed_at].min()), 6), round(float(tcol[seed_at].max()), 6)],
+                             "all_edges": [round(float(tcol.min()), 6), round(float(tcol.max()), 6)]},
+        "against_the_recorded_scoring": against,
+        **({"seconds_before_batch_end": back} if back else {}),
         "export_seconds": round(time.time() - t0, 1),
     }
     (out / "export_report.json").write_text(json.dumps(report, indent=1) + "\n")

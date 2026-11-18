@@ -58,7 +58,7 @@ threshold that maximises validation F1. The seed exported is the one with the be
 | 3 | 54 | 0.5928 | 0.6254 | 0.639289 | 0.596986 |
 | 4 | 33 | 0.6208 | 0.6751 | 0.682182 | 0.631829 |
 | 5 | 39 | 0.5732 | 0.6309 | 0.629219 | 0.579145 |
-| mean | | | 0.64872 (sample sd 0.020777) | 0.657676 (sample sd 0.022553) | 0.619727 (sample sd 0.030358) |
+| mean | | 0.60268 (sample sd 0.019744) | 0.64872 (sample sd 0.020777) | 0.657676 (sample sd 0.022553) | 0.619727 (sample sd 0.030358) |
 
 ## Published baselines this is measured against
 

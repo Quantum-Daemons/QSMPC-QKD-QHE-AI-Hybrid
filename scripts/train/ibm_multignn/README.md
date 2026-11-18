@@ -11,7 +11,7 @@ vendoring it.
 | `dump_logits.py` | Loads a saved checkpoint and writes the laundering probability of every edge of the three windows, keyed by edge id, and counts the seed edges the neighbour sampling never returned |
 | `precise_bn.py` | Recomputes a saved checkpoint's BatchNorm statistics on the fit window and writes that checkpoint, with the validation and test windows (and with `--with-train` the fit window) scored under both statistics on the same sampled batches; the export takes only its checkpoint (the owner's choice of 2026-11-16, below) |
 | `causal.patch` | On top of `project_split.patch`, the causal protocol under `QSH_CAUSAL=1` (Round 86, the owner's choices of 2026-11-15): each mini-batch is one batch of transactions in time order (2,048, split where it spans more than 17 minutes; `QSH_CAUSAL_CUT=batch` keeps the plain 2,048), sampled with IBM's own shared sampler, with every sampled edge later than that batch dropped, and every window scaled by the training window's statistics; with `QSH_PATIENCE=n` training stops after n epochs without a better validation F1, and `QSH_LOADER_WORKERS=n` samples in n processes; `QSH_CAUSAL_TIME=drop` or `lag` replaces the absolute time input (below; `absolute`, the default, keeps IBM's) |
-| `export_for_browser.py` | Exports a checkpoint as one ONNX file at opset 18 (by `torch.export`; ONNX Runtime within $`10^{-4}`$ of PyTorch on the seeds) and writes the 16 held-out transactions the published finance MLP and compact GNN are checked on, with the neighbourhood the protocol samples for them, for the finance page to re-score |
+| `export_for_browser.py` | Exports a checkpoint as one ONNX file at opset 18 (by `torch.export`; ONNX Runtime within $`10^{-4}`$ of PyTorch on the seeds) and writes the 16 held-out transactions the published finance MLP and compact GNN are checked on, with the neighbourhood the protocol samples for them, for the finance page to re-score. Under `QSH_CAUSAL_TIME=lag` a seed's time input is measured from the end of its batch, as the test loader measures it; the report compares the 16 with the recorded scoring and gives how far each window's transfers lie before their batch's end. Every node's metadata is dropped from the graph, since `torch.export` writes each node's stack trace, with this machine's file paths, into it (2026-11-18), and a graph that still holds the home directory is refused |
 | `neighbourhood.py` | What the model read for each of the 16 (the owner's choice of 2026-11-15): the transfers at the payer and the payee, those within two hops, and how many came after the scored one, in its batch of 2,048 or beyond it. The export writes these counts into the sample with each edge's row and time; the page derives them again and reports a difference (`web/src/lib/graphNeighbourhood.ts`, held with this file to one hand-counted graph by `web/scripts/check_graph_neighbourhood.mjs` and `tests/test_r86_ibm_neighbourhood.py`) |
 
 ## Steps
@@ -156,6 +156,47 @@ input where the loader cuts each batch, `_DropLater` in the patched `train_util.
   sinusoidal one (arXiv:2504.08129). A reverse edge, which carries no timestamp of its own, takes its forward edge's
   by its id.
 
+#### The ten runs (2026-11-16 and 17)
+
+Five seeds of each time input, alternating seed by seed, from the queue `run_queue_time_modes.sh` in the working
+folder (2026-11-16 09:37 to 2026-11-17 06:21 UTC; kernel 5.14.0-687.66.2, driver 620.70.06). Each run is one line of
+`logs/runs_20261116.jsonl` there: its checkpoint and sha256, the figures, the kernel and driver, and the seconds spent
+training, in `precise_bn.py` and on the plain batches; the model's record in `models/metrics.json` carries all ten.
+The exported way is eval mode with the statistics recomputed on the fit window, at the threshold that maximises
+validation F1; the last column is the same checkpoint under the plain batches of 2,048 at that threshold.
+
+| Time input | Seed | Kept epoch | Logged validation F1 | Logged test F1 | Test F1, exported way | Test AUPRC | Test F1, plain batches |
+|---|---|---|---|---|---|---|---|
+| `lag` | 1 | 16 | 0.6258 | 0.5474 | 0.6252 | 0.5789 | 0.4581 |
+| `lag` | 2 | 28 | 0.6178 | 0.6025 | 0.5786 | 0.4984 | 0.4003 |
+| `lag` | 3 | 34 | 0.6171 | 0.5737 | 0.5973 | 0.5230 | 0.4096 |
+| `lag` | 4 | 33 | 0.6115 | 0.5718 | 0.6589 | 0.5907 | 0.4638 |
+| `lag` | 5 | 14 | 0.6152 | 0.5188 | 0.6440 | 0.5844 | 0.4512 |
+| `lag`, mean | | | $`0.6175 \pm 0.0053`$ | $`0.5628 \pm 0.0314`$ | $`0.6208 \pm 0.0330`$ | $`0.5551 \pm 0.0416`$ | $`0.4366 \pm 0.0294`$ |
+| `drop` | 1 | 30 | 0.5989 | 0.5403 | 0.5255 | 0.5313 | 0.4874 |
+| `drop` | 2 | 34 | 0.6109 | 0.5930 | 0.6156 | 0.5904 | 0.5469 |
+| `drop` | 3 | 25 | 0.5842 | 0.5156 | 0.5517 | 0.5260 | 0.5088 |
+| `drop` | 4 | 23 | 0.5920 | 0.4966 | 0.5469 | 0.5377 | 0.4627 |
+| `drop` | 5 | 46 | 0.6025 | 0.4875 | 0.5665 | 0.5162 | 0.5009 |
+| `drop`, mean | | | $`0.5977 \pm 0.0102`$ | $`0.5266 \pm 0.0423`$ | $`0.5613 \pm 0.0338`$ | $`0.5403 \pm 0.0291`$ | $`0.5013 \pm 0.0309`$ |
+|---|---|---|---|---|---|---|---|---|
+
+`lag` has the better mean logged validation F1, $`0.6175`$ against $`0.5977`$, and its seed 1 the best of its five,
+$`0.6258`$, so that is the export (the owner's rule): test F1 0.6252 and AUPRC 0.5789 the exported way, at a
+validation-tuned threshold of 0.4311. Over five seeds `lag` also scores higher under the protocol's batches and lower
+under the plain batches of 2,048. Under the protocol's batches every scored transfer lies at most 1,020 s before its
+batch's end, in every window. Under the plain batches 1,352 test transfers, 654 of them laundering (28% of the
+window's 2,321), lie further back, up to 663,600 s (7.7 days), so their `lag` input falls below anything training
+gave, down to the clip at $`-1`$ (`seconds_before_batch_end` in the export's report). The three runs on the absolute
+timestamp scored 0.3995, 0.3546 and 0.5888 the exported way, and 0.3520, 0.2990 and 0.5207 under the plain batches.
+A run took 1.3 to 2.6 hours of training and about 11 minutes in `precise_bn.py`, both batchings.
+
+The export samples each of the 16 transfers alone (they lie in different batches) but measures its `lag` input back
+from the last time among the test-window rows of its batch, as the test loader measures it. Its 16 probabilities lie
+within 0.021 of those the recorded scoring gave the same transfers and decide the same at the threshold
+(`against_the_recorded_scoring` in the report; under IBM's protocol, with the 16 drawn together, 0.097 and the same
+16 decisions).
+
 ### IBM's reverse edges share their forward edges' ports (2026-11-16)
 
 IBM's `create_hetero_obj` (`data_util.py` at `252b025`) assigns one tensor to both edge types' `edge_attr` and then
@@ -163,3 +204,31 @@ swaps the last two columns, the in- and out-port, "for the reverse edges", in pl
 edges through the shared tensor, so both directions carry the swapped pair: with ports $`(1, 2)`$ in, both read
 $`(2, 1)`$ (reproduced on a two-edge graph). It is part of IBM's protocol as the paper's code runs it, and this
 reproduction keeps it under both protocols.
+
+## Multi-GIN+EU, five seeds under each protocol (2026-11-17 and 18)
+
+Not exported or published. Five seeds under IBM's protocol, each IBM's 100 epochs, and five under the causal protocol
+with `lag`, the time input PNA's runs chose; `drop` was not trained for GIN. From the same queue (2026-11-17 06:21 to
+2026-11-18 05:26 UTC, the same kernel and driver); GIN's head dropout is 0.105, PNA's 0.288 (`model_settings.json`).
+
+| Protocol | Seed | Kept epoch of run | Logged validation F1 | Logged test F1 | Test F1, eval mode with the fit-window statistics | Test AUPRC | Test F1, the statistics IBM's loop saved | Test F1, plain batches |
+|---|---|---|---|---|---|---|---|---|
+| IBM's | 1 | 57 of 100 | 0.6083 | 0.6251 | 0.5848 | 0.5684 | 0.6369 | - |
+| IBM's | 2 | 14 of 100 | 0.5633 | 0.5633 | 0.5652 | 0.5808 | 0.5841 | - |
+| IBM's | 3 | 46 of 100 | 0.5682 | 0.5886 | 0.5709 | 0.6035 | 0.5587 | - |
+| IBM's | 4 | 91 of 100 | 0.6119 | 0.6094 | 0.5381 | 0.5609 | 0.6057 | - |
+| IBM's | 5 | 67 of 100 | 0.6139 | 0.6228 | 0.6093 | 0.6094 | 0.5846 | - |
+| IBM's, mean | | | $`0.5931 \pm 0.0251`$ | $`0.6018 \pm 0.0260`$ | $`0.5737 \pm 0.0262`$ | $`0.5846 \pm 0.0213`$ | $`0.5940 \pm 0.0292`$ | - |
+| causal, `lag` | 1 | 6 of 26 | 0.3771 | 0.3285 | 0.3547 | 0.2916 | 0.3780 | 0.2267 |
+| causal, `lag` | 2 | 50 of 70 | 0.5757 | 0.4298 | 0.4986 | 0.4867 | 0.2307 | 0.3343 |
+| causal, `lag` | 3 | 16 of 36 | 0.4494 | 0.4260 | 0.4205 | 0.3443 | 0.4913 | 0.2913 |
+| causal, `lag` | 4 | 25 of 45 | 0.5710 | 0.4788 | 0.5005 | 0.4553 | 0.4619 | 0.3424 |
+| causal, `lag` | 5 | 11 of 31 | 0.4664 | 0.3843 | 0.5056 | 0.4232 | 0.1885 | 0.3433 |
+| causal, `lag`, mean | | | $`0.4879 \pm 0.0849`$ | $`0.4095 \pm 0.0563`$ | $`0.4560 \pm 0.0667`$ | $`0.4002 \pm 0.0806`$ | $`0.3501 \pm 0.1356`$ | $`0.3076 \pm 0.0500`$ |
+
+Under IBM's protocol the logged test F1 is $`0.6018 \pm 0.0260`$, against the paper's $`64.79 \pm 1.22`$ on its own
+split. With the statistics recomputed on the fit window the exported way gives $`0.5737 \pm 0.0262`$, against
+$`0.5940 \pm 0.0292`$ with those IBM's loop saved; for PNA the two were $`0.6577`$ and $`0.6597`$. Under the causal
+protocol GIN logs a validation F1 of $`0.4879 \pm 0.0849`$, against PNA's $`0.6175 \pm 0.0053`$, and seeds 1, 3 and 5
+kept epochs 6, 16 and 11 and stopped 20 epochs later. A run took 3.3 hours under IBM's protocol and 0.7 to 1.7 hours
+of training under the causal one.

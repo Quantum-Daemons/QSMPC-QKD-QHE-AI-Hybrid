@@ -8,7 +8,7 @@
  "source_num_batches_tracked": [
   20493
  ],
- "graph_bytes": 890992,
+ "graph_bytes": 336544,
  "opset": 18,
  "subgraph": {
   "nodes": 1821,
@@ -19,5 +19,21 @@
  "max_abs_logit_difference_onnx_vs_torch_on_seeds": 4.76837158203125e-06,
  "decision_threshold": 0.6374207139015198,
  "seed_accuracy_at_threshold": 0.875,
- "export_seconds": 4.4
+ "time_input_range": {
+  "seed_edges": [
+   0.756805,
+   2.600201
+  ],
+  "all_edges": [
+   -1.377631,
+   3.50489
+  ]
+ },
+ "against_the_recorded_scoring": {
+  "max_abs_probability_difference": 0.096598,
+  "decisions_agree": 16,
+  "of": 16,
+  "note": "the recorded scoring samples each batch's neighbourhood once for all its seeds; the sample draws one for the 16, so the two differ as their draws do"
+ },
+ "export_seconds": 5.6
 }
