@@ -1346,7 +1346,7 @@ _SPECS: tuple[ModelSpec, ...] = (
     # The fully encrypted medical student (Round 86, 2026-11-19), the owner's choice of that day: pre-registered in
     # `references/medical-square-student-preregistration.md` and its addendum for parameter set A2, trained, run under CKKS
     # and exported by `scripts/train/medical_square_student.py`. After `medical_fl.student`, so neither the medical
-    # page's default model nor its headline moves. `hf_repo` is set only on the owner's approval of the card.
+    # page's default model nor its headline moves. Published on the owner's approval of the card, 2026-11-19.
     ModelSpec(
         usecase="medical_fl",
         tier="t1_crypto",
@@ -1358,7 +1358,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         metric=M_BREASTMNIST_STUDENT,
         runs_encrypted=True,
         artifacts=_STUDENT_ARTIFACTS_TORCH,
-        hf_repo=None,
+        hf_repo="qsh-medical-breastmnist-ckks-square-student",
         eval_split="the official BreastMNIST test split, whole, at 14x14",
         notes=("End to end under CKKS, with no layer decrypted in between: the client encrypts the image's nine "
                "convolution taps, the evaluator multiplies by the kernel taps, adds the bias, squares, and takes one "

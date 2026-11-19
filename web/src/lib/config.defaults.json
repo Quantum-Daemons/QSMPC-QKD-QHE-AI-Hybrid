@@ -3103,6 +3103,165 @@
       },
       {
         "achieved": {
+          "agreement": 0.75,
+          "auc": 0.819758,
+          "both_scored_zero": false,
+          "ckks": {
+            "A": {
+              "N": 8192,
+              "bits": [
+                50,
+                30,
+                30,
+                30,
+                50
+              ],
+              "criterion_3": false,
+              "decisions_differ": 0,
+              "input_bytes": 3062594,
+              "max_abs_logit_error": 0.008169292084093449,
+              "median_s": 0.06291752550168894,
+              "output_bytes": 235902,
+              "scale_bits": 30
+            },
+            "A2": {
+              "N": 8192,
+              "bits": [
+                48,
+                34,
+                34,
+                34,
+                52
+              ],
+              "criterion_3": true,
+              "decisions_differ": 0,
+              "input_bytes": 3306365,
+              "max_abs_logit_error": 0.00030554046701603,
+              "median_s": 0.06231442902935669,
+              "output_bytes": 224969,
+              "scale_bits": 34
+            },
+            "B": {
+              "N": 16384,
+              "bits": [
+                60,
+                40,
+                40,
+                40,
+                60
+              ],
+              "criterion_3": true,
+              "decisions_differ": 0,
+              "input_bytes": 7701218,
+              "max_abs_logit_error": 6.137514408344202e-05,
+              "median_s": 0.1308243709790986,
+              "output_bytes": 524582,
+              "scale_bits": 40
+            }
+          },
+          "disagreement_on_positives": 0.22807,
+          "export_seed": 2,
+          "five_seeds_test_auc": {
+            "control_mean": 0.81817,
+            "control_sd": 0.004539,
+            "mean": 0.843525,
+            "sd": 0.019752,
+            "seeds": {
+              "1": 0.83208,
+              "2": 0.819758,
+              "3": 0.857143,
+              "4": 0.869256,
+              "5": 0.83939
+            }
+          },
+          "hf_revision": "04189759cef06ab9f159b26b45c05122ab54a699",
+          "majority_class_rate": 0.730769,
+          "metric_delta": 0.160257,
+          "metric_delta_pp": 16.0257,
+          "metric_name": "accuracy",
+          "metric_note": "`auc` is the exported seed's test AUC on all 156 images (the registry's headline); `five_seeds_test_auc` is the pre-registered comparison with the published architecture trained by the same recipe. `student_metric`/`teacher_metric` are accuracy, because fidelity compares decisions.",
+          "n_classes_predicted": 2,
+          "n_eval": 156,
+          "n_scoring_units": null,
+          "preregistration": {
+            "file": "references/medical-square-student-preregistration.md",
+            "sha256": "c8a8b5d5427b42e0fde137177872d525d9773fa780dd9248e802cbb6489667b5"
+          },
+          "scoring_unit": "samples",
+          "student_key": "medical_fl.square_student",
+          "student_metric": 0.705128,
+          "student_params": 434,
+          "teacher_key": "medical_fl.resnet18",
+          "teacher_metric": 0.865385,
+          "teacher_params": 11171266,
+          "teacher_scored_zero": false
+        },
+        "architecture": "1 conv block (1->4ch, 3x3, batch norm folded), x^2, avg-pool, dense 196->2, 14x14 input",
+        "artifacts": [
+          {
+            "browser_runnable": true,
+            "fmt": "onnx",
+            "path": "onnx/model.onnx",
+            "precision": "fp32",
+            "serves": "both"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "json",
+            "path": "weights.json",
+            "precision": "none",
+            "serves": "browser"
+          },
+          {
+            "browser_runnable": false,
+            "fmt": "safetensors",
+            "path": "model.safetensors",
+            "precision": "fp32",
+            "serves": "server"
+          }
+        ],
+        "browser_runnable": true,
+        "dataset": {
+          "attribution": "Yang, Shi, Wei, Liu, Zhao, Ke, Pfister & Ni, 'MedMNIST v2 - A large-scale lightweight benchmark for 2D and 3D biomedical image classification', Scientific Data 10:41 (2023), and Yang, Shi & Ni, 'MedMNIST Classification Decathlon: A Lightweight AutoML Benchmark for Medical Image Analysis', IEEE ISBI 2021; CC BY 4.0. BreastMNIST is derived from Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of breast ultrasound images', Data in Brief 28:104863 (2020).",
+          "licence": "CC-BY-4.0 asserted by MedMNIST; the BUSI authors publish no licence",
+          "name": "MedMNIST v2 BreastMNIST",
+          "publishable": true,
+          "url": "https://medmnist.com/"
+        },
+        "eval_sample_reason": null,
+        "eval_split": "the official BreastMNIST test split, whole, at 14x14",
+        "file_sha256": {
+          "eval_sample.json": "c39992bbd44d8f4e3504fd12de70279e9a5d59efdf174412edde320ef9a9fbc6",
+          "onnx/model.onnx": "f41f50c6fc357859b037cf7298893fa12c69fa10a2876906b373938eeca61b88",
+          "weights.json": "fc984ae400a09e55569d230c8c431f1ddaea487d8516facc625f1d4d270bc27b"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-ckks-square-student",
+        "hf_revision": "04189759cef06ab9f159b26b45c05122ab54a699",
+        "hf_revision_stale": null,
+        "int8_withheld_reason": null,
+        "key": "medical_fl.square_student",
+        "label": "Fully encrypted BreastMNIST CNN student (square activation)",
+        "metric": {
+          "baseline": 0.901,
+          "baseline_source": "ResNet-18 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.901 / ACC 0.863)",
+          "ceiling": 0.919,
+          "ceiling_source": "Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
+          "companion": "accuracy",
+          "comparison_caveat": "Both bars are AUC on the official BreastMNIST test split, and that is where the agreement stops: this student reads 14 x 14 images, downsampled from the 28 x 28 the baseline's ResNet-18 reads, and it is a single-convolution CNN distilled for CKKS, not a ResNet. The gap is what the encrypted tier's size costs, not two methods compared on one input.",
+          "display": "AUC",
+          "name": "auc"
+        },
+        "notes": "End to end under CKKS, with no layer decrypted in between: the client encrypts the image's nine convolution taps, the evaluator multiplies by the kernel taps, adds the bias, squares, and takes one inner product per class with the dense weights averaged over each pooling window, and the client decrypts two logits. That is multiplicative depth 3, so it runs in its own CKKS context rather than the page's (60+40+40+60 allows two rescales): N=8192 with 48+34+34+34+52 bits (A2) or N=16384 with 60+40+40+40+60 (B), both within the HomomorphicEncryption.org standard's 128-bit post-quantum bound. Pre-registered criteria, five seeds: test AUC 0.8435 (sd 0.0198) against 0.8182 (sd 0.0045) for the published student's architecture trained by the same recipe; the exported seed, chosen by validation AUC, scores 0.8198. Under CKKS on all 156 test images the decrypted logits are within 3.1e-4 (A2) and 6.1e-5 (B) of the plaintext ones, with no decision changed; a first N=8192 set with a 30-bit scale missed the 1e-3 limit on every image and is not offered. Its operating point is the argmax, as pre-registered: it flags 66 of the 156 test images as malignant and catches 31 of the 42 malignant ones (recall 0.738, specificity 0.693), so its accuracy, 0.705, is below the 0.731 of always answering benign; the CKKS student's argmax flags 42 (recall 0.571, specificity 0.842). MedMNIST states that its dataset is NOT intended for clinical use, and neither is this model.",
+        "onnx_domains": [
+          "ai.onnx"
+        ],
+        "params": null,
+        "pin_withdrawn_reason": null,
+        "runs_encrypted": true,
+        "tier": "t1_crypto"
+      },
+      {
+        "achieved": {
           "auroc": 0.80645222636351,
           "auroc_ap": 0.774081931867184,
           "auroc_ci_95": {
