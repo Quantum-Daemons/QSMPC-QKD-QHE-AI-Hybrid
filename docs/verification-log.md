@@ -5491,3 +5491,11 @@ also had its own row. The runner's `passed` and `total` now count the CAVP cases
   register test now finds no row for #61; `main` fails it the same way, since #61 is merged and not yet recorded. On
   this text, 219 of the 220 tests in the 27 files that read the register, the log or every tracked Markdown file pass;
   the one failure is the register test on #61.
+- **`main` taken in again (2026-11-19).** PR #63 merged next, recording #61 on the deployed site, and wrote #61's
+  register row where this PR's #60 row stands. Again only the register and this log conflicted: the register now runs
+  #58, #60, #61, #62, and this log keeps #63's section before this one, both sides' changes to the two documents coming
+  through line for line. With the merge committed, `tsc --noEmit`, `check:jsx-spaces` (2383 JSX text nodes),
+  `check:netkeys` and `check:validations-download` pass, and the suite without the slow tests, as CI runs it, gives 2186
+  passed, 41 skipped and one failure: the register test, which finds #61's row now and none for #63, as on `main`. On
+  this text, 219 of the 220 tests in the 27 files that read the register, the log or every tracked Markdown file pass;
+  the one failure is the register test on #63.
