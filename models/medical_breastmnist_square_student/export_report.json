@@ -1,0 +1,19 @@
+{
+  "fp32_path": "onnx/model.onnx",
+  "int8_path": "onnx/model_int8.onnx",
+  "fp32_bytes": 3086,
+  "int8_bytes": 3217,
+  "opset": 17,
+  "fp32_max_abs_error": 1.7285346984863281e-06,
+  "int8_agreement": 0.9871794871794872,
+  "int8_max_abs_error": 0.13889837265014648,
+  "n_fixtures": 156,
+  "passed": true,
+  "int8_skipped_reason": "",
+  "int8_confident_agreement": 1.0,
+  "int8_margin_quantile": 0.05,
+  "onnx_domains": [
+    "ai.onnx"
+  ],
+  "browser_runnable": true
+}

@@ -398,11 +398,39 @@ computed in plaintext on a bundled OPS-SAT-AD segment; its check scores `satelli
 segments, with the same demo regression, under CKKS (TenSEAL), and reports how far the decrypted
 logits are from the plaintext ones. What CKKS evaluates in the browser: on the medical page the
 Wisconsin logistic regression, whose logits the 2PC argmax then compares, and the published medical
-student's convolution and both dense layers; the telecom student; the full 183-variant genomics
+student's convolution and both dense layers; the fully encrypted square student end to end, in its own
+CKKS context (below); the telecom student; the full 183-variant genomics
 score; and, on finance, a linear surrogate over four columns of the PaySim demo sample, while the
 115-parameter AMLworld student is encrypted on 8,192 held-out test-window rows for its agreement
 figure. What each step hides, in either tier, is in
 [the threat model's table](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment).
+
+#### The fully encrypted square student
+
+`medical_fl.square_student` (Round 86, 2026-11-19, the owner's choice) runs end to end under CKKS in the tab, with no
+layer decrypted in between: a convolution, a square, an average pool and a dense layer, multiplicative depth 3, so
+`web/src/lib/clientFHESquare.ts` builds its own node-seal context rather than use the page's (60+40+40+60 bits, two
+rescales), which the FHE.org poster describes. It was pre-registered (`references/medical-square-student-preregistration.md`
+and its addendum for set A2) and measured by `scripts/train/medical_square_student.py`
+(`docs/measurements/medical-square-student-2026-11-19.json`).
+
+| | test AUC, five seeds | exported seed |
+|---|---|---|
+| square student (conv, BN folded, $`x^2`$, pool, dense 196 -> 2) | $`0.8435 \pm 0.0198`$ | 0.8198 |
+| the published student's architecture, same recipe (control) | $`0.8182 \pm 0.0045`$ | - |
+
+| parameter set | $`N`$ | modulus bits | scale | largest logit error, 156 images (TenSEAL) | in node-seal, 8 images | offered |
+|---|---|---|---|---|---|---|
+| A | 8,192 | 50+30+30+30+50 (190) | $`2^{30}`$ | $`8.2 \times 10^{-3}`$ | - | no: over the pre-registered $`10^{-3}`$ |
+| A2 | 8,192 | 48+34+34+34+52 (202) | $`2^{34}`$ | $`3.1 \times 10^{-4}`$ | $`1.5 \times 10^{-5}`$ | yes |
+| B | 16,384 | 60+40+40+40+60 (240) | $`2^{40}`$ | $`6.1 \times 10^{-5}`$ | $`6.7 \times 10^{-7}`$ | yes |
+
+Both offered sets are within the HomomorphicEncryption.org standard's 128-bit post-quantum bound for a ternary secret
+(202 bits at $`N = 8192`$, 411 at $`N = 16384`$); no decision changed under any set. Every vector is tiled with period
+1,024, so the rotate-and-add leaves the logit in every slot and no partial sum (a weight times a pixel) is decrypted:
+the depth-3 chain has no level left for the 0/1 mask `clientFHE.ts` uses. At its argmax, the pre-registered operating
+point, it flags 66 of the 156 test images malignant (recall 0.738, specificity 0.693; accuracy 0.705, below the 0.731
+of always answering benign). `tests/test_r86_square_student_ckks_in_node.py` runs the module under the real node-seal.
 
 #### The PSI among banks under MPC
 

@@ -128,6 +128,12 @@ export interface EncryptedAgreementPlot {
   /** More than one when the split outgrew a ciphertext and the caller paid for every row. */
   ciphertexts?: number;
   rowsPerCiphertext?: number;
+  /** What the encrypted work was, in the producer's words, where the packing sentence below does not describe it: the
+   *  square student sends nine ciphertexts per image and gets two back (Round 86, 2026-11-19). */
+  workNote?: string;
+  /** What the encrypted arithmetic was, where "one linear layer, two plaintext multiplications, no rescale" does not
+   *  describe it. Absent, the caption keeps that sentence, which is right for every linear student. */
+  arithmeticNote?: string;
   fheMs?: number;
   msPerCiphertext?: number | null;
   /** Median deviation over the `noisyScores` class scores that were encrypted (a bias-only class is
@@ -306,7 +312,7 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
           : <>Both axes are the score of the class the encrypted model ranks first; the diagonal is
               exact agreement.</>}{" "}
         Top-1 mismatches: <strong>{mismatches}</strong> of {plot.rows}.{" "}
-        {plot.ciphertexts != null && plot.ciphertexts > 1 ? (
+        {plot.workNote != null ? <>{plot.workNote}</> : plot.ciphertexts != null && plot.ciphertexts > 1 ? (
           <>
             The rows travelled in <strong>{plot.ciphertexts} ciphertexts</strong> of up to{" "}
             {plot.rowsPerCiphertext ?? "?"} rows each{typeof plot.fheMs === "number"
@@ -412,10 +418,11 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
             two plaintext multiplications a layer makes here (the weights, then the 0/1 output mask). */}
         {" "}For scale only: a 20-layer ResNet under RNS-CKKS, with bootstrapping and approximated ReLU,
         reported 98.43% identical results to its plaintext model on CIFAR-10 (Lee et al., IEEE Access 10,
-        30039-30054, 2022; the 2021 preprint, arXiv:2106.07229, reported 98.67%). This model is one linear
+        30039-30054, 2022; the 2021 preprint, arXiv:2106.07229, reported 98.67%).{" "}
+        {plot.arithmeticNote != null ? <>{plot.arithmeticNote}</> : <>This model is one linear
         layer, two plaintext multiplications (the weights, then a 0/1 output mask) with no rescale, no
         bootstrapping and no approximated activation, so it does far less homomorphic arithmetic and should
-        agree more often. Neither figure ranks the other.
+        agree more often.</>} Neither figure ranks the other.
         {plot.licence ? <> Rows: <LicenceLine licence={plot.licence} /></> : null}
       </figcaption>
       {mismatches > 0 && typeof plot.flipMarginMax === "number" && plot.flipMarginMax > 0 ? (
