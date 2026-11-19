@@ -66,7 +66,11 @@ WORKDIR /w
 COPY walkthroughs/ ./walkthroughs/
 COPY scripts/build_walkthrough.py ./scripts/
 RUN pip install --no-cache-dir --require-hashes -r walkthroughs/requirements.lock
-RUN python scripts/build_walkthrough.py /out
+# marimo's export runs ruff through uv with a fixed 120 s timeout, and uv fetched it from PyPI at that moment, against
+# no hash: on 2026-11-19 a host whose IPv4 path to PyPI ran at about 70 kB/s failed here. The wheel is downloaded first,
+# against its recorded hashes and with no such limit, and the export runs uv offline from that folder.
+RUN pip download --no-cache-dir --require-hashes --no-deps --only-binary=:all: -d /wheels -r walkthroughs/ruff.lock
+RUN python scripts/build_walkthrough.py /out --ruff-wheels /wheels
 
 FROM caddy:2.11.8-alpine@sha256:f6228111e5fafa1a5238258d0858e103f10599b8d1659a146e7726681a002bb9
 # Two Caddyfiles: the full deployment proxies /api, the client-only demo has no backend to proxy to

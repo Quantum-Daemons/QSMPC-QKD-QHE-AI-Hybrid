@@ -5544,3 +5544,22 @@ plaintext and one ciphertext multiplication, three levels of rescaling, twenty r
 
 **Still owed.** The merge on the owner's approval, the deploy after the public names are back on the usual host, and
 the section read on the live site.
+
+### The walkthrough's export no longer downloads ruff itself (2026-11-19)
+
+**Found deploying `main` at 35eb8f1 to the host the demo is moving to.** The image build failed in the walkthrough
+stage. marimo 0.25.2's WebAssembly export finds the notebook's local imports by running
+`uv tool run --from ruff==0.15.18 ruff analyze graph`, under a fixed 120-second timeout (`_RUFF_REQUIREMENT` and
+`_RUFF_GRAPH_TIMEOUT_SECONDS` in `marimo/_export/local_modules.py`, read at the 0.25.2 tag), so uv downloaded ruff from
+PyPI at that moment, against no recorded hash. From that host PyPI's CDN answered over IPv4 at about 70 kB/s (87 MB/s
+over IPv6, which the build containers do not use; crates.io at 2.9 MB/s and jsDelivr at 19 to 34 MB/s over IPv4), so
+the 11.6 MB wheel could not arrive in time: `LocalWheelError: Failed to run uv while resolving local imports for
+html-wasm export.` The same stage passed on the earlier hosts only because their path to PyPI was fast.
+
+**Changed.** `walkthroughs/ruff.lock` pins ruff 0.15.18 with a sha256 for each of the 18 files PyPI lists for the
+release. The image downloads the wheel against it with pip, which has no such limit, before the export, and
+`scripts/build_walkthrough.py` runs the export with `UV_OFFLINE=1` and that folder as uv's only source, after checking
+that the installed marimo asks for the pinned ruff. `MARIMO_RUFF` records which ruff each pinned marimo runs, so
+`--check` fails on a marimo bump until it is read again. `tests/test_r86_walkthrough.py`: a different ruff, a lock
+without hashes and an unrecorded marimo are refused; the image downloads before it exports, and the export is offline.
+A local build of the walkthrough stage downloaded and checked the wheel, exported offline and wrote 47.3 MB in 24 s.
