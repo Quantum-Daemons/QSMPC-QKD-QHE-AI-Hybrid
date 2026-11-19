@@ -12,14 +12,18 @@ The sequence below is also a script, and the script is the preferred form becaus
 returning the demo host to `main` once the round's PR merges, comes due after the session that ran
 the deploy has ended, and as a manual step it was skipped for many rounds.
 
-    bash scripts/deploy_demo.sh <branch>          # deploy, then verify the PUBLIC url
+    bash scripts/deploy_demo.sh <branch>          # deploy, then verify the public name on this box
     bash scripts/deploy_demo.sh --return-to-main  # after the merge: return the demo host to main
 
 It asserts rather than assumes: the build's exit status is captured, the container's networks are
-checked against the shared-proxy requirement (the 502 trap below), the public URL must answer 200,
-and `--return-to-main` re-reads the branch afterwards rather than trusting the checkout. Connection
-details come from `QSH_DEMO_SSH`, `QSH_DEMO_KEY`, `QSH_DEMO_DIR` and `QSH_DEMO_URL` in the
-environment - the script is tracked, so it carries none of them.
+checked against the shared-proxy requirement (the 502 trap below), the public name must answer 200
+from the box itself, and `--return-to-main` re-reads the branch afterwards rather than trusting the
+checkout. The box is read through a resolve pinned to its own address (the one ssh connects to, or
+`QSH_DEMO_ADDRESS`), and the name as DNS resolves it is reported beside it, as a note when another
+machine answers it: during a move between hosts the name can reach a different machine, and a pass
+read through DNS alone would describe that machine (checklist DP18, 2026-11-19). Connection details
+come from `QSH_DEMO_SSH`, `QSH_DEMO_KEY`, `QSH_DEMO_DIR`, `QSH_DEMO_URL` and, optionally,
+`QSH_DEMO_ADDRESS` in the environment - the script is tracked, so it carries none of them.
 
 The steps below remain the reference for what the script does and why, and for what it does not cover
 (the clone-verify step is still a manual judgement call).
