@@ -6,9 +6,15 @@ this site, so everything the walkthrough runs is fetched here at build time, aga
 `walkthroughs/pyodide-sources.json`, and served from the walkthrough's own folder. marimo reads where to find it from two
 attributes on its root element.
 
-    python scripts/build_walkthrough.py OUT      build into OUT (needs marimo, see walkthroughs/requirements.lock)
+    python scripts/build_walkthrough.py OUT --ruff-wheels DIR   build into OUT (needs marimo, see walkthroughs/requirements.lock,
+                                                                and ruff's wheel in DIR, downloaded against walkthroughs/ruff.lock)
     python scripts/build_walkthrough.py --check  the recorded files are consistent; no network, no marimo
     python scripts/build_walkthrough.py --refresh  rebuild the record from marimo's lock file, for a version bump
+
+marimo's export also runs ruff, through `uv tool run --from ruff==<version>`, to find the notebook's local imports, with a
+fixed 120-second timeout. Left alone, uv downloads that ruff from PyPI at that moment, against no recorded hash; on
+2026-11-19 a deploy host whose IPv4 path to PyPI ran at about 70 kB/s failed the image build there. So the wheel is
+downloaded beforehand against `walkthroughs/ruff.lock`, and uv runs offline with that folder as its only source.
 
 See references/notebook-walkthroughs.md.
 """
@@ -18,6 +24,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -33,6 +40,10 @@ NOTEBOOK = HERE / "nidd_copies.py"
 LOCK = HERE / "pyodide-lock.json"
 SOURCES = HERE / "pyodide-sources.json"
 REQUIREMENTS = HERE / "requirements.lock"
+RUFF_LOCK = HERE / "ruff.lock"
+#: The ruff each pinned marimo asks uv for (`_RUFF_REQUIREMENT` in marimo/_export/local_modules.py, read at its tag). A marimo
+#: bump fails --check until this is re-read, and the build compares it with the installed marimo as well.
+MARIMO_RUFF = {"0.25.2": "0.15.18"}
 
 PYODIDE = "v314.0.0"
 BASE = f"https://cdn.jsdelivr.net/pyodide/{PYODIDE}/full/"
@@ -51,6 +62,11 @@ def _marimo_version() -> str:
     match = re.search(r"^marimo==([0-9.]+)", REQUIREMENTS.read_text(), re.M)
     assert match, f"{REQUIREMENTS} does not pin marimo"
     return match.group(1)
+
+
+def _ruff_version() -> str | None:
+    match = re.search(r"^ruff==([0-9.]+)", RUFF_LOCK.read_text(), re.M)
+    return match.group(1) if match else None
 
 
 def refresh() -> int:
@@ -114,6 +130,15 @@ def check() -> list[str]:
     for root in ROOTS:
         if root not in lock["packages"]:
             problems.append(f"{root} is not in the lock file")
+    wanted = MARIMO_RUFF.get(_marimo_version())
+    pinned = _ruff_version()
+    if wanted is None:
+        problems.append(f"which ruff marimo {_marimo_version()} runs is not recorded: read its _RUFF_REQUIREMENT into MARIMO_RUFF")
+    elif pinned != wanted:
+        problems.append(f"ruff.lock pins ruff {pinned} and marimo {_marimo_version()} runs ruff {wanted}")
+    hashes = re.findall(r"--hash=sha256:([0-9a-f]*)", RUFF_LOCK.read_text())
+    if not hashes or any(len(h) != 64 for h in hashes):
+        problems.append("ruff.lock must give a sha256 for every file of the release")
     return problems
 
 
@@ -135,12 +160,22 @@ def _third_party(pyodide_dir: Path) -> str:
     return "\n".join(lines) + "\n"
 
 
-def build(out: Path) -> int:
+def build(out: Path, ruff_wheels: Path) -> int:
     problems = check()
     assert not problems, problems
+    from marimo._export import local_modules  # the installed marimo, which is what will run
+
+    pinned = _ruff_version()
+    assert local_modules._RUFF_REQUIREMENT == f"ruff=={pinned}", (
+        f"the installed marimo runs {local_modules._RUFF_REQUIREMENT} and ruff.lock pins ruff {pinned}")
+    wheels = sorted(ruff_wheels.glob(f"ruff-{pinned}-*.whl"))
+    assert wheels, f"no ruff {pinned} wheel in {ruff_wheels}: download it against walkthroughs/ruff.lock first"
     if out.exists():
         shutil.rmtree(out)
-    subprocess.run([sys.executable, "-m", "marimo", "export", "html-wasm", str(NOTEBOOK), "-o", str(out), "--mode", "run", "--show-code"], check=True)
+    # Offline, with the downloaded wheel as uv's only source: the export can then not fetch anything itself.
+    env = {**os.environ, "UV_OFFLINE": "1", "UV_FIND_LINKS": str(ruff_wheels)}
+    subprocess.run([sys.executable, "-m", "marimo", "export", "html-wasm", str(NOTEBOOK), "-o", str(out), "--mode", "run", "--show-code"],
+                   check=True, env=env)
     (out / "CLAUDE.md").unlink(missing_ok=True)  # the export copies marimo's own development note
     pyodide = out / "pyodide"
     pyodide.mkdir()
@@ -165,6 +200,7 @@ def main() -> int:
     ap.add_argument("out", nargs="?", type=Path)
     ap.add_argument("--check", action="store_true")
     ap.add_argument("--refresh", action="store_true")
+    ap.add_argument("--ruff-wheels", type=Path, help="the folder holding ruff's wheel, downloaded against walkthroughs/ruff.lock")
     args = ap.parse_args()
     if args.refresh:
         return refresh()
@@ -176,7 +212,9 @@ def main() -> int:
         return 1 if problems else 0
     if not args.out:
         ap.error("give an output folder, --check or --refresh")
-    return build(args.out)
+    if not args.ruff_wheels:
+        ap.error("give --ruff-wheels: the folder holding ruff's wheel, downloaded against walkthroughs/ruff.lock")
+    return build(args.out, args.ruff_wheels)
 
 
 if __name__ == "__main__":
