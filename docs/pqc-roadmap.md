@@ -238,13 +238,15 @@ document on 2026-08-15; `references/REFERENCES.md` records the two ways an earli
 Read at NIST's PQC news page and the pqc-forum on 2026-10-27. IR 8547's final appeared on
 2026-10-27, after this table was read; its row was re-read at the CSRC page on 2026-10-30. Re-read at
 CSRC on 2026-11-15: still no FIPS 206 or HQC draft. The PQC news page's newest item is IR 8547
-(2026-10-27), and CSRC has no initial-public-draft page for FIPS 206.
+(2026-10-27), and CSRC has no initial-public-draft page for FIPS 206. Re-read on 2026-11-19: unchanged;
+the project page (updated 2026-10-27) still calls Falcon's and HQC's standardisation underway, and CSRC
+has no page for FIPS 206 or FIPS 207, draft or final.
 
 | Document | Status | Why it matters here |
 |---|---|---|
 | **NIST SP 800-227** - Recommendations for KEMs | **Final, 2025-09-18** | The combiner reference. This repository's HKDF combiner is a section 4.6.2 two-step KDF (equations 13-14) over the transcript section 4.6.3 binds; it is not that section's KeyCombineCCA_H. |
 | **FIPS 206** (FN-DSA) | **No draft.** 2026-09-28: NIST's FIPS 206 team posted a new plan to the pqc-forum - a single fixed-point signing procedure, validatable by known-answer tests | Nothing to wire yet; the signature registry stays ML-DSA. |
-| **HQC** (FIPS 207) | **No draft** as of 2026-10-27; liboqs 0.16.0, the image's pin, enables it by default (see above) | The backup KEM stays unregistered. |
+| **HQC** (FIPS 207) | **No draft** as of 2026-11-19; liboqs 0.16.0, the image's pin, enables it by default (see above) | The backup KEM stays unregistered. |
 | **NIST SP 800-230** (initial public draft) - additional SLH-DSA parameter sets for limited signature use | Released 2026-04-13, comments closed 2026-06-12 | Not used here; tracked because SLH-DSA is the hash-based fallback. |
 | **NIST SP 800-133 Rev. 3** (initial public draft) - key generation | Released 2026-04-17, comments closed 2026-06-16 | Governs how the demo's keys would have to be generated in an approved product. |
 | **NIST IR 8610** - additional signatures, round 2 status | 2026-05-14, nine candidates advanced to round 3 | The on-ramp; no algorithm to adopt yet. |

@@ -12,15 +12,17 @@
 // Any other advisory, and any report that is not a version 2 audit report, fails.
 //
 //   node scripts/npm_audit_filter.mjs <checked directory> < report.json
-// AUDIT_TODAY (YYYY-MM-DD) and NPM_LATEST (a JSON object of package to newest version) stand in for the date and for
-// `npm view`, which is how tests/test_dependency_advisories_are_checked_on_a_schedule.py checks every failure path.
+// AUDIT_TODAY (YYYY-MM-DD), NPM_LATEST (a JSON object of package to newest version) and NPM_AUDIT_IGNORE (the path of
+// another ignore file) stand in for the date, for `npm view` and for this repository's file, which is how
+// tests/test_dependency_advisories_are_checked_on_a_schedule.py checks every failure path with no entry in the file.
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const ignore = JSON.parse(readFileSync(join(here, "npm_audit_ignore.json"), "utf8"));
+const ignorePath = process.env.NPM_AUDIT_IGNORE ?? join(here, "npm_audit_ignore.json");
+const ignore = JSON.parse(readFileSync(ignorePath, "utf8"));
 const where = process.argv[2] ?? "the project";
 const today = process.env.AUDIT_TODAY ?? new Date().toISOString().slice(0, 10);
 const latestStub = process.env.NPM_LATEST ? JSON.parse(process.env.NPM_LATEST) : null;
