@@ -618,14 +618,15 @@ Where two-way QSDC cannot close, the page sends its telemetry by STIKE (Pan et a
       moves without this review being redone.
   Each result says whether it was measured or simulated, in
   [its provenance badge](#what-a-results-provenance-badge-says).
-- **A disputed picomatch advisory, let through until 2026-12-18 (2026-11-18).** GHSA-fc5q-39xc-vjpf
-  (CVE-2026-112366) reports a ReDoS in picomatch through 4.0.7 when the caller supplies a crafted extglob, and no
-  release fixes it. picomatch reaches this project only through vite's build tooling, which matches patterns
-  written in the repository and vite's defaults; the public demo's web image serves the static build with Caddy and
-  runs no Node process. Snyk revoked its entry as disputed by the maintainer, vite closed its report as a false
-  positive, and a withdrawal was requested from the CNA on 2026-11-17, while GitHub reviewed the advisory that day.
-  `scripts/npm_audit_ignore.json` lets it through on those packages only, and the audit fails again once a newer
-  picomatch is published or after 2026-12-18, when the vite upgrade is planned.
+- **A disputed picomatch advisory, let through for a day, then withdrawn (2026-11-18).** GHSA-fc5q-39xc-vjpf
+  (CVE-2026-112366) reported a ReDoS in picomatch through 4.0.7 when the caller supplies a crafted extglob, with no
+  release fixing it. picomatch reaches this project only through vite's build tooling, which matches patterns written
+  in the repository and vite's defaults; the public demo's web image serves the static build with Caddy and runs no
+  Node process. Snyk had revoked its entry as disputed by the maintainer, vite had closed its report as a false
+  positive, and a withdrawal was requested from the CNA on 2026-11-17, the day GitHub reviewed the advisory.
+  `scripts/npm_audit_ignore.json` let it through on those packages only, until 2026-12-18. GitHub withdrew the
+  advisory on 2026-11-18 at 15:38 UTC, `npm audit` has reported nothing since, and the entry was removed on
+  2026-11-19; the file stays, with no entry, and the advisory would fail the audit again if it were republished.
 - **Published metrics are what this repository measured, not what the papers report.** Where a figure
   is carried from the literature instead of reproduced - the breast-cancer PRS AUROC being the clearest
   case, since 1000 Genomes has no case/control status to compute one from - it is labelled as external.

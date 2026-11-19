@@ -165,8 +165,8 @@ OpenSSL 3.5 on: it implements ML-KEM, ML-DSA and SLH-DSA, and the hybrid TLS 1.3
 standardises. `oqs-provider` (Apache-2.0) is not a production counterpart: on OpenSSL 3.5 and later
 it disables every algorithm the default provider already implements, and its README calls it
 *"primarily meant as a vehicle to enable testing of experimental PQ crypto"* (0.12.0). It removed
-composite signatures in 0.10.0; composite ML-DSA for X.509 is an IETF LAMPS draft in the RFC Editor
-queue (draft-ietf-lamps-pq-composite-sigs).
+composite signatures in 0.10.0; composite ML-DSA for X.509 is RFC 10073 (Proposed Standard, November
+2026, from draft-ietf-lamps-pq-composite-sigs-19).
 
 ## Migration drill
 1. New algorithm lands -> `register("kem", "ml-kem-1024+x25519",...)`.
