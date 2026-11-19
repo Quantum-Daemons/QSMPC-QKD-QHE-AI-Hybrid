@@ -5525,15 +5525,14 @@ also had its own row. The runner's `passed` and `total` now count the CAVP cases
 - **No other record held 7/7.** The validations download carries `{kem, sig, pqc, qkd, mcp}`, not the IKEv2 run, and
   the README's image of `/validations` does not open this card. Round 58's walk record that wrote "CAVP 7/7" is
   annotated in place, and `references/net-key-schedules.md` states the count and adds the seeded case.
-- **`main` taken in (2026-11-19).** PRs #61 to #64 merged while this PR was open, and `main` was taken in after each of
-  #61, #63 and #64. Each time both sides had added a section at the end of this log, and the first two times a register
-  row at the same place: the register's rows run in number order, #58, #60, #61, #62, #63, this log keeps `main`'s
-  sections before this one, and both sides' changes to the two documents come through line for line. On the last merge,
-  committed before the checks ran, `tsc --noEmit`, `check:jsx-spaces` (2383 JSX text nodes), `check:netkeys` and
-  `check:validations-download` pass, and the suite without the slow tests, as CI runs it (`QSH_REQUIRE_BROWSER_GATES=1`,
-  `HF_HUB_OFFLINE=1`), gives 2188 passed and 41 skipped, with no failure. The register test passes only because it reads
-  the local `main` branch, still at #63's merge on this machine: read against `main` at #64's merge, the register has no
-  row for #64, on `main` as on this branch. On the first merge, a run before the resolution was staged also failed
+- **`main` taken in (2026-11-19).** PRs #61 to #65 merged while this PR was open, and `main` was taken in after each of
+  #61, #63, #64 and #65. Each time both sides had added a section at the end of this log, and the first two times a
+  register row at the same place: the register's rows run in number order, #58, #60, #61, #62, #63, #64, this log keeps
+  `main`'s sections before this one, and both sides' changes to the two documents come through line for line. On the
+  last merge, committed before the checks ran, `tsc --noEmit`, `check:jsx-spaces` (2383 JSX text nodes), `check:netkeys`
+  and `check:validations-download` pass, and the suite without the slow tests, as CI runs it
+  (`QSH_REQUIRE_BROWSER_GATES=1`, `HF_HUB_OFFLINE=1`), gives 2192 passed, 41 skipped and one failure: the register test,
+  which finds no row for #65, as on `main`. On the first merge, a run before the resolution was staged also failed
   `test_document_basenames_are_unique`, because `git ls-files` lists a conflicted file once per conflict stage; it
-  passes once the resolution is staged. On this text, all 220 tests in the 27 files that read the register, the log or
-  every tracked Markdown file pass, the register test on the same terms.
+  passes once the resolution is staged. On this text, 219 of the 220 tests in the 27 files that read the register, the
+  log or every tracked Markdown file pass; the one failure is the register test on #65.
