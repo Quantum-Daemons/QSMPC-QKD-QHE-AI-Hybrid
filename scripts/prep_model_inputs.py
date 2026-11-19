@@ -288,6 +288,9 @@ MODIFICATIONS = {
     "medical_fl.student": (
         "The official BreastMNIST test split, all 156 images, normalised and area-resized from 28x28 "
         "to 14x14 and rounded to 6 decimals, with the published labels."),
+    "medical_fl.square_student": (
+        "The official BreastMNIST test split, all 156 images, normalised and area-resized from 28x28 "
+        "to 14x14 and rounded to 6 decimals, with the published labels."),
     # Round 86: this described the Round 71 sample (300 s, forward-filled, the last 30 percent) for one regeneration
     # after the sample itself changed, so the change notice travelling with it named changes it no longer made.
     "satellite_comms.telemanom": (
@@ -430,6 +433,7 @@ _MODEL_KEY = {
     "telecom_student": "telecom_ids.student",
     "medical_resnet50": "medical_fl.resnet50",
     "medical_student": "medical_fl.student",
+    "medical_square_student": "medical_fl.square_student",
     "opssat_student": "satellite_comms.opssat_student",
     "finance_student": "finance_aml.student",
     "finance_mlp_large": "finance_aml.mlp_large",
@@ -1453,6 +1457,35 @@ def build_medical_student(rng: np.random.Generator) -> dict:
     }
 
 
+def build_medical_square_student(rng: np.random.Generator) -> dict:
+    """The same 156 rows as the CKKS student's sample, scored by the fully encrypted student's own graph.
+
+    The two students read the same 14x14 input, so their samples differ only in what they expect: this one is
+    verified against `medical_fl.square_student`'s fp32 graph (Round 86, 2026-11-19).
+    """
+    payload = build_medical_student(rng)
+    import os
+
+    from medmnist import BreastMNIST
+
+    root = os.path.join(os.environ["QSH_DATA_ROOT"], "raw", "medmnist")
+    y = BreastMNIST(split="test", download=False, root=root).labels.ravel().astype(int)
+    x14 = np.asarray(payload["samples"], dtype=float).reshape(len(y), 1, 14, 14)
+    pred = _predict("medical_breastmnist_square_student", x14)
+    payload["provenance"] = payload["provenance"].replace(
+        "the one its encrypted convolution runs on",
+        "the one this student runs end to end under CKKS on")
+    payload["expected"] = {
+        "graph": "model.onnx",
+        "accuracy": float((pred == y).mean()),
+        "majority_baseline": float(max(np.bincount(y)) / len(y)),
+        **declared_metric_expectation("medical_fl.square_student", y, pred),
+        "note": ("The whole official test split, the rows the pre-registered run measured this student's AUC and "
+                 "its CKKS fidelity on, so this reproduces those figures rather than resampling them."),
+    }
+    return payload
+
+
 def build_opssat_student(rng: np.random.Generator) -> dict:
     """OPS-SAT-AD test partition, z-scored by the published scaler.
 
@@ -1665,6 +1698,7 @@ def build_finance_student(rng: np.random.Generator) -> dict:
 
 BUILDERS = {"medical_fl": build_medical, "finance_aml": build_finance,
             "medical_student": build_medical_student,
+            "medical_square_student": build_medical_square_student,
             "opssat_student": build_opssat_student,
             "finance_student": build_finance_student,
             "finance_mlp_large": lambda rng: _build_finance_mlp("finance_aml.mlp_large"),

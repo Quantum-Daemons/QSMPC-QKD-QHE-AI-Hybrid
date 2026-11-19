@@ -164,10 +164,93 @@ def environment() -> dict:
     return env
 
 
+OUT_DIR = REPO / "models" / "medical_breastmnist_square_student"
+KEY = "medical_fl.square_student"
+
+
+def export_artifacts(work: Path, record: dict, x14te: np.ndarray, yte: np.ndarray, teacher_te: np.ndarray) -> None:
+    """The folder the Hub repository is published from, written as the published student's script writes its own."""
+    import shutil
+
+    import torch
+    from safetensors.torch import load_file
+
+    from qsh.models import distil, export, metrics, train
+
+    seed = int(record["criteria"]["export_seed"])
+    ckpt = work / f"square_seed{seed}" / "model.safetensors"
+    model = square_student()
+    model.load_state_dict(load_file(ckpt))
+    model.eval()
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    # The same gate every published graph passes: export, verify fp32 against the module, quantise, verify int8 (kept
+    # only if it passes), strip torch.export's node metadata. The browser fetches the fp32 graph to re-score the sample.
+    report = export.verify_and_quantize(model, x14te, OUT_DIR, kind="torch", int8_required=False)
+    shutil.copy(ckpt, OUT_DIR / "model.safetensors")
+    manifest = json.loads((work / f"square_seed{seed}" / "manifest.json").read_text())
+    manifest["key"] = KEY                                   # the registry's key, not the experiment run's
+    (OUT_DIR / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    w = folded(model)
+    weights = {
+        "kind": "cnn-1conv-square-1dense",
+        "note": ("The fully encrypted medical student, layer by layer, with its batch normalisation folded into the "
+                 "convolution (exact in evaluation mode). Evaluate strictly in this order: conv (valid convolution over "
+                 "the input zero-padded by `conv.padding`), the square, average pool by `pool.stride`, flatten "
+                 "channel-major, then the dense layer. The browser runs it end to end under CKKS: the client encrypts "
+                 "the image's nine convolution taps, each repeated for the four channels; the evaluator multiplies by "
+                 "the kernel taps, adds the bias, squares, and takes one inner product per class with the dense weights "
+                 "averaged over each pooling window; the client decrypts two logits. No layer is decrypted in between."),
+        "teacher_key": "medical_fl.resnet18", "student_key": KEY,
+        "input": {"shape": [1, 14, 14], "preprocessing": ["pixel / 255", "(x - 0.5) / 0.5", "area resize to 14x14"]},
+        "conv": {"in_ch": 1, "out_ch": 4, "kernel": 3, "padding": 1, "activation": "square",
+                 "batch_norm": "folded", "weight": w["conv_w"].reshape(4, 1, 3, 3).tolist(), "bias": w["conv_b"].tolist()},
+        "pool": {"type": "avg", "stride": 2},
+        "dense": [{"in": 196, "out": 2, "weight": w["fc_w"].tolist(), "bias": w["fc_b"].tolist(), "activation": "none"}],
+        "classes": ["malignant", "normal/benign"],
+        "n_parameters": int(w["conv_w"].size + w["conv_b"].size + w["fc_w"].size + w["fc_b"].size),
+        "ckks": {k: {"N": v["N"], "coeff_mod_bits": v["bits"], "scale_bits": v["scale_bits"]}
+                 for k, v in PARAMS.items() if record.get("criteria", {}).get("3_fidelity", {}).get(k)},
+    }
+    (OUT_DIR / "weights.json").write_text(json.dumps(weights) + "\n")
+
+    scores = train.predict_loader(model, torch.utils.data.DataLoader(
+        torch.utils.data.TensorDataset(torch.tensor(x14te), torch.tensor(yte)), batch_size=256))[1]
+    pred = np.asarray(scores).argmax(1)
+    fidelity = distil.measure_fidelity(
+        teacher_key="medical_fl.resnet18", student_key=KEY, teacher_pred=teacher_te, student_pred=pred, y_true=yte,
+        metric_fn=metrics.accuracy, metric_name="accuracy",
+        student_params=weights["n_parameters"], teacher_params=11171266)
+    sq = record["arms"]["square"]
+    train.record_metrics(KEY, {
+        **fidelity.as_metrics(),
+        "auc": round(float(metrics.auroc(yte, scores)), 6),
+        "n_classes_predicted": int(len(np.unique(pred))),
+        "majority_class_rate": round(float(max(np.mean(yte == 0), np.mean(yte == 1))), 6),
+        "five_seeds_test_auc": {"seeds": {s: r["test_auc"] for s, r in sq.items()},
+                                "mean": record["criteria"]["mean_test_auc"]["square"],
+                                "sd": record["criteria"]["sd_test_auc"]["square"],
+                                "control_mean": record["criteria"]["mean_test_auc"]["control"],
+                                "control_sd": record["criteria"]["sd_test_auc"]["control"]},
+        "export_seed": seed,
+        "ckks": {k: {kk: v[kk] for kk in ("N", "bits", "scale_bits", "max_abs_logit_error", "decisions_differ",
+                                           "median_s", "input_bytes", "output_bytes", "criterion_3")}
+                 for k, v in record["ckks"].items()},
+        "preregistration": record["preregistration"],
+        "metric_note": ("`auc` is the exported seed's test AUC on all 156 images (the registry's headline); "
+                        "`five_seeds_test_auc` is the pre-registered comparison with the published architecture "
+                        "trained by the same recipe. `student_metric`/`teacher_metric` are accuracy, because "
+                        "fidelity compares decisions."),
+    })
+    print(f"  exported seed {seed} to {OUT_DIR.relative_to(REPO)}: fp32 graph {report.fp32_bytes} bytes, "
+          f"{weights['n_parameters']} parameters after folding")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--work", type=Path, required=True, help="checkpoints and logs, outside the repository")
     ap.add_argument("--ckks-only", action="store_true", help="re-run the CKKS phase on the recorded export")
+    ap.add_argument("--export", action="store_true",
+                    help="write models/medical_breastmnist_square_student/ from the recorded export seed")
     ap.add_argument("--sets", nargs="+", choices=sorted(PARAMS), default=None,
                     help="with --ckks-only: run these parameter sets only and keep the others' recorded results")
     args = ap.parse_args()
@@ -189,6 +272,12 @@ def main() -> int:
     (xtr, ytr), (xva, yva), (xte, yte) = split("train"), split("val"), split("test")
     to14 = lambda x: np.asarray(downsample(x, 14), dtype=np.float32)            # noqa: E731
     x14tr, x14va, x14te = to14(xtr), to14(xva), to14(xte)
+
+    if args.export:
+        sess = ort.InferenceSession(str(TEACHER_ONNX), providers=["CPUExecutionProvider"])
+        export_artifacts(args.work, json.loads(RECORD.read_text()), x14te, yte,
+                         sess.run(None, {"input": xte})[0].argmax(1))
+        return 0
 
     record = json.loads(RECORD.read_text()) if args.ckks_only else {}
     if not args.ckks_only:

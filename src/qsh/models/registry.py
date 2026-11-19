@@ -1343,6 +1343,39 @@ _SPECS: tuple[ModelSpec, ...] = (
                "MedMNIST states that its dataset is NOT intended for clinical use, and neither "
                "is this model."),
     ),
+    # The fully encrypted medical student (Round 86, 2026-11-19), the owner's choice of that day: pre-registered in
+    # `references/medical-square-student-preregistration.md` and its addendum for parameter set A2, trained, run under CKKS
+    # and exported by `scripts/train/medical_square_student.py`. After `medical_fl.student`, so neither the medical
+    # page's default model nor its headline moves. `hf_repo` is set only on the owner's approval of the card.
+    ModelSpec(
+        usecase="medical_fl",
+        tier="t1_crypto",
+        key="medical_fl.square_student",
+        label="Fully encrypted BreastMNIST CNN student (square activation)",
+        architecture="1 conv block (1->4ch, 3x3, batch norm folded), x^2, avg-pool, dense 196->2, 14x14 input",
+        params=None,
+        dataset=DS_BREASTMNIST,
+        metric=M_BREASTMNIST_STUDENT,
+        runs_encrypted=True,
+        artifacts=_STUDENT_ARTIFACTS_TORCH,
+        hf_repo=None,
+        eval_split="the official BreastMNIST test split, whole, at 14x14",
+        notes=("End to end under CKKS, with no layer decrypted in between: the client encrypts the image's nine "
+               "convolution taps, the evaluator multiplies by the kernel taps, adds the bias, squares, and takes one "
+               "inner product per class with the dense weights averaged over each pooling window, and the client "
+               "decrypts two logits. That is multiplicative depth 3, so it runs in its own CKKS context rather than "
+               "the page's (60+40+40+60 allows two rescales): N=8192 with 48+34+34+34+52 bits (A2) or N=16384 with "
+               "60+40+40+40+60 (B), both within the HomomorphicEncryption.org standard's 128-bit post-quantum bound. "
+               "Pre-registered criteria, five seeds: test AUC 0.8435 (sd 0.0198) against 0.8182 (sd 0.0045) for the "
+               "published student's architecture trained by the same recipe; the exported seed, chosen by validation "
+               "AUC, scores 0.8198. Under CKKS on all 156 test images the decrypted logits are within 3.1e-4 (A2) "
+               "and 6.1e-5 (B) of the plaintext ones, with no decision changed; a first N=8192 set with a 30-bit "
+               "scale missed the 1e-3 limit on every image and is not offered. Its operating point is the argmax, as "
+               "pre-registered: it flags 66 of the 156 test images as malignant and catches 31 of the 42 malignant "
+               "ones (recall 0.738, specificity 0.693), so its accuracy, 0.705, is below the 0.731 of always "
+               "answering benign; the CKKS student's argmax flags 42 (recall 0.571, specificity 0.842). MedMNIST "
+               "states that its dataset is NOT intended for clinical use, and neither is this model."),
+    ),
     # The chest X-ray federation's FedAvg ResNet-18 (Round 86). Exported by `scripts/train/export_cxr_fedavg.py` and checked
     # by `scripts/data/check_cxr_preupload.py` before any upload, as the owner asks. Uploaded to a private repository for the
     # owner's review (2026-11-14) and made public with the owner's approval on 2026-11-15.
@@ -1790,6 +1823,7 @@ ARTIFACT_DIRS: dict[str, str] = {
     "telecom_ids.student": "models/telecom_ids_student",
     "finance_aml.student": "models/finance_aml_student",
     "medical_fl.student": "models/medical_breastmnist_student",   # already on disk from training
+    "medical_fl.square_student": "models/medical_breastmnist_square_student",
     "medical_fl.cxr_fedavg": "models/medical_cxr14_fedavg_resnet18",
     "satellite_comms.student": "models/satellite_telemanom_student",
 }
