@@ -5482,3 +5482,20 @@ npm, Python and Rust (pip-audit cannot audit the CPU builds of torch and torchvi
 of the 26 direct web dependencies are behind their newest release with no advisory against any; the majors (React 19,
 Vite 8, recharts 3, react-router 8, TypeScript 7) wait for the poster's notice on 2026-12-18, and the patch releases
 (vite 6.4.6 among them) for the next round's full gate.
+
+### The deploy script reads the box it deployed, not the name's current address (2026-11-19)
+
+**Found while planning the move back.** `scripts/deploy_demo.sh` read "200, serving <bundle>" through the public URL.
+On 2026-11-19 the public names pointed at the temporary host while the usual host was to be redeployed after its
+maintenance, so that deploy would have been verified against the temporary host: a pass describing another machine,
+the state DP18 exists to prevent. Read-only at 09:25 JST, through resolves pinned to each host: the temporary host
+served `index-DsXacjtg.js` and the usual host, before its maintenance, `index-NTqXpn5h.js`.
+
+**Changed.** Both halves of the script now read the public name through a resolve pinned to the box's own address, the
+one ssh connects to (from `ssh -G`, so an alias in the ssh config resolves as ssh would) or `QSH_DEMO_ADDRESS` where
+the box serves on another address; the script fails on that read, never prints the address, and reports the name as
+DNS resolves it beside it, as a note when another machine answers. `docs/deployment.md` says so.
+`tests/test_r86_deploy_reads_the_box_it_deployed.py` runs the script with `ssh` and `curl` replaced by stubs: a normal
+deploy passes with the pinned read; a name that reaches another build is a note, not a pass or a failure; a box
+answering 502 fails although the name answers 200 elsewhere, the case the old check could not see; an explicit address
+overrides ssh's; and neither address appears in the output.
