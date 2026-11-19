@@ -3107,33 +3107,8 @@
           "auc": 0.819758,
           "both_scored_zero": false,
           "ckks": {
-            "A": {
-              "N": 8192,
-              "bits": [
-                50,
-                30,
-                30,
-                30,
-                50
-              ],
-              "criterion_3": false,
-              "decisions_differ": 0,
-              "input_bytes": 3062594,
-              "max_abs_logit_error": 0.008169292084093449,
-              "median_s": 0.06291752550168894,
-              "output_bytes": 235902,
-              "scale_bits": 30
-            },
             "A2": {
               "N": 8192,
-              "bits": [
-                48,
-                34,
-                34,
-                34,
-                52
-              ],
-              "criterion_3": true,
               "decisions_differ": 0,
               "input_bytes": 3306365,
               "max_abs_logit_error": 0.00030554046701603,
@@ -3143,14 +3118,6 @@
             },
             "B": {
               "N": 16384,
-              "bits": [
-                60,
-                40,
-                40,
-                40,
-                60
-              ],
-              "criterion_3": true,
               "decisions_differ": 0,
               "input_bytes": 7701218,
               "max_abs_logit_error": 6.137514408344202e-05,
@@ -3158,6 +3125,9 @@
               "output_bytes": 524582,
               "scale_bits": 40
             }
+          },
+          "ckks_not_offered": {
+            "A": "N = 8192, 50+30+30+30+50 bits at scale 2^30: largest logit error 8.2e-03, over the pre-registered 1e-3; not offered"
           },
           "disagreement_on_positives": 0.22807,
           "export_seed": 2,

@@ -5499,3 +5499,48 @@ DNS resolves it beside it, as a note when another machine answers. `docs/deploym
 deploy passes with the pinned read; a name that reaches another build is a note, not a pass or a failure; a box
 answering 502 fails although the name answers 200 elsewhere, the case the old check could not see; an explicit address
 overrides ssh's; and neither address appears in the output.
+
+### The fully encrypted medical student: pre-registered, run, published, and on the medical page (2026-11-19)
+
+**The owner's choices, 2026-11-19.** The medical page's CKKS student decrypts between its layers. The owner chose to
+test a student that does not, offline first and then in the browser, under two parameter sets, in a module of its own
+(`clientFHE.ts` stays as the FHE.org poster describes it until the notice on 2026-12-18), and to publish it on
+approval of its card.
+
+**Pre-registered before any run.** `references/medical-square-student-preregistration.md`, committed at 09:55 JST
+(0100414) and corrected before any run to name the recipe's optimizer as AdamW (68f7dee; SHA-256 `c8a8b5d5...`): the
+control is the published student's architecture, the candidate a convolution, batch norm (folded), $`x^2`$, average
+pool and dense layer, multiplicative depth 3; five seeds each on the published ResNet-18 teacher's labels; criteria
+fixed in advance (mean test AUC at least the control's minus 0.05; no collapse; every decrypted logit within
+$`10^{-3}`$ of the plaintext one on all 156 test images, no decision changed, per parameter set). A first attempt
+stopped while loading the teacher's graph, before any training.
+
+**Results.** Control $`0.8182 \pm 0.0045`$, square $`0.8435 \pm 0.0198`$: criteria 1 and 2 pass. The exported seed (2,
+best validation AUC 0.9267) scores 0.8198. Under TenSEAL on all 156 images, set B ($`N = 16384`$, 60+40+40+40+60) is
+within $`6.1 \times 10^{-5}`$; set A ($`N = 8192`$, 50+30+30+30+50, scale $`2^{30}`$) reached $`8.2 \times 10^{-3}`$,
+over the limit on every image though no decision changed, and the smallest decision margin on the split is 0.0077. On
+the owner's choice an addendum pre-registered A2 before its run (48+34+34+34+52 bits, exactly the 202-bit post-quantum
+bound at $`N = 8192`$, scale $`2^{34}`$; 2ed2e4c, SHA-256 `858cfd4b...`): within $`3.1 \times 10^{-4}`$, no decision
+changed. Found after the run and corrected in the record with a note: its float64 AUC field had ranked by the raw
+class-1 logit (0.77193 for 0.819758). The argmax, the pre-registered operating point, flags 66 of 156 images
+malignant: recall 0.738 and specificity 0.693 against the CKKS student's 0.571 and 0.842, and accuracy 0.705, below
+the 0.731 of always answering benign; the card and the page say so.
+
+**Published and pinned.** On the owner's approval of the card: `Daemons-Q/qsh-medical-breastmnist-ckks-square-student`
+at `04189759`, every served file equal to the reviewed one and none holding a local path; 18 models and 57 files
+pinned. The record lists the offered sets (A2, B) under `ckks` and the rejected one apart, so the model's table cannot
+show it as offered.
+
+**In the browser.** `web/src/lib/clientFHESquare.ts` runs the pass in a Web Worker under each set the published
+weights list. Every vector is tiled with period 1,024, so the rotate-and-add leaves the logit in every slot and no
+partial sum is decrypted; the depth-3 chain has no level left for the mask `clientFHE.ts` uses. Under the real
+node-seal (`tests/test_r86_square_student_ckks_in_node.py`, eight images) A2 is within $`1.5 \times 10^{-5}`$ and B
+within $`6.7 \times 10^{-7}`$. On a local client-only build: A2 on eight images within $`1.0 \times 10^{-5}`$, 45 ms
+to encrypt and 39 ms to evaluate per image; B on all 156 within $`7.7 \times 10^{-6}`$, no decision changed, accuracy
+0.7051 decrypted and in the clear, 27.6 s with the keys; the pipeline's re-scoring stage includes the model, PASS. The
+shared agreement chart said every model was "one linear layer ... with no rescale" and that the rows travelled in one
+ciphertext; a producer can now describe its own work, and this one does (nine ciphertexts in, two back; eleven
+plaintext and one ciphertext multiplication, three levels of rescaling, twenty rotations).
+
+**Still owed.** The merge on the owner's approval, the deploy after the public names are back on the usual host, and
+the section read on the live site.

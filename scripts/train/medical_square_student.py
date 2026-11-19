@@ -168,6 +168,52 @@ OUT_DIR = REPO / "models" / "medical_breastmnist_square_student"
 KEY = "medical_fl.square_student"
 
 
+def record_square_metrics(model, record: dict, x14te: np.ndarray, yte: np.ndarray, teacher_te: np.ndarray, *,
+                          n_parameters: int, keep_revision: bool = False) -> None:
+    """The registry's record of the exported seed. Only the parameter sets that met criterion 3 are listed under `ckks`;
+    the one that did not is named under `ckks_not_offered`, so a flattened table cannot show it beside them as if offered.
+    `keep_revision` re-records an unchanged model without unpinning it: `record_metrics` reads a record with no
+    `hf_revision` as a retrain, which would invalidate the published pin."""
+    import torch
+
+    from qsh.models import distil, metrics, registry, train
+
+    seed = int(record["criteria"]["export_seed"])
+    scores = train.predict_loader(model, torch.utils.data.DataLoader(
+        torch.utils.data.TensorDataset(torch.tensor(x14te), torch.tensor(yte)), batch_size=256))[1]
+    pred = np.asarray(scores).argmax(1)
+    fidelity = distil.measure_fidelity(
+        teacher_key="medical_fl.resnet18", student_key=KEY, teacher_pred=teacher_te, student_pred=pred, y_true=yte,
+        metric_fn=metrics.accuracy, metric_name="accuracy",
+        student_params=n_parameters, teacher_params=11171266)
+    sq = record["arms"]["square"]
+    revision = (registry.achieved(KEY) or {}).get("hf_revision") if keep_revision else None
+    train.record_metrics(KEY, {
+        **({"hf_revision": revision} if revision else {}),
+        **fidelity.as_metrics(),
+        "auc": round(float(metrics.auroc(yte, scores)), 6),
+        "n_classes_predicted": int(len(np.unique(pred))),
+        "majority_class_rate": round(float(max(np.mean(yte == 0), np.mean(yte == 1))), 6),
+        "five_seeds_test_auc": {"seeds": {s: r["test_auc"] for s, r in sq.items()},
+                                "mean": record["criteria"]["mean_test_auc"]["square"],
+                                "sd": record["criteria"]["sd_test_auc"]["square"],
+                                "control_mean": record["criteria"]["mean_test_auc"]["control"],
+                                "control_sd": record["criteria"]["sd_test_auc"]["control"]},
+        "export_seed": seed,
+        "ckks": {k: {kk: v[kk] for kk in ("N", "scale_bits", "max_abs_logit_error", "decisions_differ", "median_s",
+                                           "input_bytes", "output_bytes")}
+                 for k, v in record["ckks"].items() if v["criterion_3"]},
+        "ckks_not_offered": {k: (f"N = {v['N']}, {'+'.join(map(str, v['bits']))} bits at scale 2^{v['scale_bits']}: largest "
+                                 f"logit error {v['max_abs_logit_error']:.1e}, over the pre-registered 1e-3; not offered")
+                             for k, v in record["ckks"].items() if not v["criterion_3"]},
+        "preregistration": record["preregistration"],
+        "metric_note": ("`auc` is the exported seed's test AUC on all 156 images (the registry's headline); "
+                        "`five_seeds_test_auc` is the pre-registered comparison with the published architecture "
+                        "trained by the same recipe. `student_metric`/`teacher_metric` are accuracy, because "
+                        "fidelity compares decisions."),
+    })
+
+
 def export_artifacts(work: Path, record: dict, x14te: np.ndarray, yte: np.ndarray, teacher_te: np.ndarray) -> None:
     """The folder the Hub repository is published from, written as the published student's script writes its own."""
     import shutil
@@ -213,34 +259,7 @@ def export_artifacts(work: Path, record: dict, x14te: np.ndarray, yte: np.ndarra
     }
     (OUT_DIR / "weights.json").write_text(json.dumps(weights) + "\n")
 
-    scores = train.predict_loader(model, torch.utils.data.DataLoader(
-        torch.utils.data.TensorDataset(torch.tensor(x14te), torch.tensor(yte)), batch_size=256))[1]
-    pred = np.asarray(scores).argmax(1)
-    fidelity = distil.measure_fidelity(
-        teacher_key="medical_fl.resnet18", student_key=KEY, teacher_pred=teacher_te, student_pred=pred, y_true=yte,
-        metric_fn=metrics.accuracy, metric_name="accuracy",
-        student_params=weights["n_parameters"], teacher_params=11171266)
-    sq = record["arms"]["square"]
-    train.record_metrics(KEY, {
-        **fidelity.as_metrics(),
-        "auc": round(float(metrics.auroc(yte, scores)), 6),
-        "n_classes_predicted": int(len(np.unique(pred))),
-        "majority_class_rate": round(float(max(np.mean(yte == 0), np.mean(yte == 1))), 6),
-        "five_seeds_test_auc": {"seeds": {s: r["test_auc"] for s, r in sq.items()},
-                                "mean": record["criteria"]["mean_test_auc"]["square"],
-                                "sd": record["criteria"]["sd_test_auc"]["square"],
-                                "control_mean": record["criteria"]["mean_test_auc"]["control"],
-                                "control_sd": record["criteria"]["sd_test_auc"]["control"]},
-        "export_seed": seed,
-        "ckks": {k: {kk: v[kk] for kk in ("N", "bits", "scale_bits", "max_abs_logit_error", "decisions_differ",
-                                           "median_s", "input_bytes", "output_bytes", "criterion_3")}
-                 for k, v in record["ckks"].items()},
-        "preregistration": record["preregistration"],
-        "metric_note": ("`auc` is the exported seed's test AUC on all 156 images (the registry's headline); "
-                        "`five_seeds_test_auc` is the pre-registered comparison with the published architecture "
-                        "trained by the same recipe. `student_metric`/`teacher_metric` are accuracy, because "
-                        "fidelity compares decisions."),
-    })
+    record_square_metrics(model, record, x14te, yte, teacher_te, n_parameters=weights["n_parameters"])
     print(f"  exported seed {seed} to {OUT_DIR.relative_to(REPO)}: fp32 graph {report.fp32_bytes} bytes, "
           f"{weights['n_parameters']} parameters after folding")
 
@@ -251,6 +270,8 @@ def main() -> int:
     ap.add_argument("--ckks-only", action="store_true", help="re-run the CKKS phase on the recorded export")
     ap.add_argument("--export", action="store_true",
                     help="write models/medical_breastmnist_square_student/ from the recorded export seed")
+    ap.add_argument("--record-only", action="store_true",
+                    help="re-record the exported seed's metrics, keeping its pin; the published files are not rewritten")
     ap.add_argument("--sets", nargs="+", choices=sorted(PARAMS), default=None,
                     help="with --ckks-only: run these parameter sets only and keep the others' recorded results")
     args = ap.parse_args()
@@ -272,6 +293,19 @@ def main() -> int:
     (xtr, ytr), (xva, yva), (xte, yte) = split("train"), split("val"), split("test")
     to14 = lambda x: np.asarray(downsample(x, 14), dtype=np.float32)            # noqa: E731
     x14tr, x14va, x14te = to14(xtr), to14(xva), to14(xte)
+
+    if args.record_only:
+        from safetensors.torch import load_file as _load
+
+        record = json.loads(RECORD.read_text())
+        model = square_student()
+        model.load_state_dict(_load(args.work / f"square_seed{record['criteria']['export_seed']}" / "model.safetensors"))
+        model.eval()
+        sess = ort.InferenceSession(str(TEACHER_ONNX), providers=["CPUExecutionProvider"])
+        record_square_metrics(model, record, x14te, yte, sess.run(None, {"input": xte})[0].argmax(1),
+                              n_parameters=json.loads((OUT_DIR / "weights.json").read_text())["n_parameters"],
+                              keep_revision=True)
+        return 0
 
     if args.export:
         sess = ort.InferenceSession(str(TEACHER_ONNX), providers=["CPUExecutionProvider"])
