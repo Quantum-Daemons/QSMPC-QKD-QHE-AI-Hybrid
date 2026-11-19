@@ -5470,7 +5470,7 @@ report) now run on the historical entry as a fixture, and a new test checks that
 on the same advisory, were it published again, and still passes a clean report. `docs/development.md` and
 `docs/threat-model.md` say what happened.
 
-**The rest of the re-check, the same night.** The IETF Datatracker gives draft-ietf-lamps-pq-composite-sigs as
+**The rest of the re-check, the same morning.** The IETF Datatracker gives draft-ietf-lamps-pq-composite-sigs as
 published: RFC 10073, *Composite Module-Lattice-Based Digital Signature Algorithm (ML-DSA) for Use in X.509 Public Key
 Infrastructure*, Proposed Standard, November 2026 (from revision 19), which `docs/crypto-agility.md` still called a
 draft in the RFC Editor queue; it is corrected. The drafts and RFCs the pages cite otherwise stand:
