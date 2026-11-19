@@ -40,6 +40,8 @@ SEEDS = (1, 2, 3, 4, 5)
 PARAMS = {
     "A": {"N": 8192, "bits": [50, 30, 30, 30, 50], "scale_bits": 30, "pq_bound_bits": 202},
     "B": {"N": 16384, "bits": [60, 40, 40, 40, 60], "scale_bits": 40, "pq_bound_bits": 411},
+    # The addendum (references/medical-square-student-preregistration-addendum-a2.md), after A failed criterion 3.
+    "A2": {"N": 8192, "bits": [48, 34, 34, 34, 52], "scale_bits": 34, "pq_bound_bits": 202},
 }
 MARGIN, FLOOR, MAX_LOGIT_ERR = 0.05, 0.60, 1e-3      # criteria 1, 2 and 3
 
@@ -166,6 +168,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--work", type=Path, required=True, help="checkpoints and logs, outside the repository")
     ap.add_argument("--ckks-only", action="store_true", help="re-run the CKKS phase on the recorded export")
+    ap.add_argument("--sets", nargs="+", choices=sorted(PARAMS), default=None,
+                    help="with --ckks-only: run these parameter sets only and keep the others' recorded results")
     args = ap.parse_args()
     args.work.mkdir(parents=True, exist_ok=True)
 
@@ -251,10 +255,14 @@ def main() -> int:
     # logits there rank by the class-1 logit alone. The first run of 2026-11-19 recorded that (0.77193).
     probs = np.exp(plain - plain.max(1, keepdims=True))
     probs /= probs.sum(1, keepdims=True)
-    record["export"] = {"seed": export, "plain_test_auc_float64": round(metrics.auroc(yte, probs), 6),
+    record["export"] = {**record.get("export", {}), "seed": export,
+                        "plain_test_auc_float64": round(metrics.auroc(yte, probs), 6),
                         "folded_weights_sha256": sha256(args.work / f"square_seed{export}_folded.npz")}
-    record["ckks"] = {}
+    if not (args.ckks_only and args.sets):
+        record["ckks"] = {}
     for name, params in PARAMS.items():
+        if args.sets and name not in args.sets:
+            continue
         run = ckks_run(params, p, x14te[:, 0])
         run["criterion_3"] = bool(run["max_abs_logit_error"] <= MAX_LOGIT_ERR and run["decisions_differ"] == 0)
         record["ckks"][name] = run
