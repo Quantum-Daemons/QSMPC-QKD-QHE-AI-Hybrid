@@ -5456,7 +5456,7 @@ it stops receiving requests rather than at the DNS TTL.
 **Still owed.** The usual host gets the same deploy after its maintenance, read through a pinned resolve before the
 owner moves the names back; the owner then cleans up the temporary host.
 
-### PR #62's advisory withdrawn, and its exception removed (2026-11-19)
+### Re-checked 2026-11-19: PR #62's advisory withdrawn, and composite ML-DSA published as RFC 10073
 
 GitHub withdrew GHSA-fc5q-39xc-vjpf on 2026-11-18 at 15:38 UTC (`withdrawn_at` in the advisory database's API), an
 hour after PR #62 let it through. On 2026-11-19 `npm audit --json` in `web/` reports no vulnerability at any level,
@@ -5469,3 +5469,16 @@ path (after the date, a fixed release, an unreadable version or range, another a
 report) now run on the historical entry as a fixture, and a new test checks that the file as it stands fails the audit
 on the same advisory, were it published again, and still passes a clean report. `docs/development.md` and
 `docs/threat-model.md` say what happened.
+
+**The rest of the re-check, the same night.** The IETF Datatracker gives draft-ietf-lamps-pq-composite-sigs as
+published: RFC 10073, *Composite Module-Lattice-Based Digital Signature Algorithm (ML-DSA) for Use in X.509 Public Key
+Infrastructure*, Proposed Standard, November 2026 (from revision 19), which `docs/crypto-agility.md` still called a
+draft in the RFC Editor queue; it is corrected. The drafts and RFCs the pages cite otherwise stand:
+draft-ietf-ipsecme-ikev2-mlkem is still at revision 09 (2026-08-13), RFC 9867 and RFC 10024 are as cited. NIST's PQC
+project page (updated 2026-10-27) still calls Falcon's and HQC's standardisation underway, and CSRC has no page for
+FIPS 206 or FIPS 207, draft or final (`docs/pqc-roadmap.md` notes the re-read). IBM/Multi-GNN#15 and #18 are still
+open and the repository's head is still `252b025`, as the training README says. `scripts/audit_deps.sh` passes for
+npm, Python and Rust (pip-audit cannot audit the CPU builds of torch and torchvision, which are not on PyPI). Sixteen
+of the 26 direct web dependencies are behind their newest release with no advisory against any; the majors (React 19,
+Vite 8, recharts 3, react-router 8, TypeScript 7) wait for the poster's notice on 2026-12-18, and the patch releases
+(vite 6.4.6 among them) for the next round's full gate.
