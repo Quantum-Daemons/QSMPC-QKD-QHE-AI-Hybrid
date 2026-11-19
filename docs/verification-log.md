@@ -5542,8 +5542,8 @@ shared agreement chart said every model was "one linear layer ... with no rescal
 ciphertext; a producer can now describe its own work, and this one does (nine ciphertexts in, two back; eleven
 plaintext and one ciphertext multiplication, three levels of rescaling, twenty rotations).
 
-**Still owed.** The merge on the owner's approval, the deploy after the public names are back on the usual host, and
-the section read on the live site.
+**Still owed.** The merge on the owner's approval, the deploy once the public names had moved (on 2026-11-20 they
+moved to a new host, not back to the usual one), and the section read on the live site.
 
 ### The walkthrough's export no longer downloads ruff itself (2026-11-19)
 
