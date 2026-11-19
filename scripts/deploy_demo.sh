@@ -21,6 +21,7 @@
 #     QSH_DEMO_KEY   path to the ssh key            (optional; ssh config may supply it)
 #     QSH_DEMO_DIR   deploy tree on the host
 #     QSH_DEMO_URL   public URL to verify against
+#     QSH_DEMO_ADDRESS  address the box serves on (optional; by default the address ssh would connect to)
 #     PROXY_NETWORK  the network the host's reverse proxy owns
 #
 # Put them in a gitignored file and source it. `make check-secrets` will not see this script because
@@ -50,6 +51,46 @@ COMPOSE="PROXY_NETWORK=$PROXY_NETWORK docker compose -p qsh-demo -f docker/docke
 # network and the site 502s while `docker ps` cheerfully reports Up.
 
 remote() { "${SSH[@]}" "cd $DIR && $*"; }
+
+# What THIS box serves under the public name, read through a resolve pinned to its address (checklist DP18). During a
+# move between hosts the public name can resolve to another machine, and a PASS read through DNS alone then describes
+# that machine: on 2026-11-19 the names pointed at a temporary host while the usual one was being redeployed. `ssh -G`
+# applies the ssh config, so an alias in QSH_DEMO_SSH gives the address ssh itself would use; QSH_DEMO_ADDRESS
+# overrides it where the box serves on another address. The address is never printed.
+url_host=${QSH_DEMO_URL#*://}; url_host=${url_host%%/*}
+url_port=443
+case "$url_host" in *:*) url_port=${url_host##*:}; url_host=${url_host%:*} ;; esac
+
+box_address() {
+  local a="${QSH_DEMO_ADDRESS:-}"
+  [ -n "$a" ] || a=$(ssh -G "$QSH_DEMO_SSH" 2>/dev/null | awk '$1 == "hostname" {print $2; exit}')
+  if [[ ! "$a" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+    a=$(getent ahostsv4 "$a" 2>/dev/null | awk 'NR == 1 {print $1}')
+  fi
+  printf '%s' "$a"
+}
+
+BUNDLE=""
+verify_served() {  # $1 says when, for the messages; sets BUNDLE to the bundle the box serves
+  local addr; addr=$(box_address)
+  [ -n "$addr" ] || die "could not work out the box's address from QSH_DEMO_SSH; set QSH_DEMO_ADDRESS"
+  local pin=(--resolve "$url_host:$url_port:$addr")
+  local code; code=$(curl -s "${pin[@]}" -o /dev/null -w '%{http_code}' "$QSH_DEMO_URL/?cb=$RANDOM")
+  [ "$code" = "200" ] || die "the box returned $code for the public name $1"
+  BUNDLE=$(curl -s "${pin[@]}" "$QSH_DEMO_URL/?cb=$RANDOM" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
+  [ -n "$BUNDLE" ] || die "no bundle referenced by the index.html the box serves $1"
+  ok "the box serves the public name: 200, $BUNDLE"
+  local pcode pbundle
+  pcode=$(curl -s -o /dev/null -w '%{http_code}' "$QSH_DEMO_URL/?cb=$RANDOM")
+  pbundle=$(curl -s "$QSH_DEMO_URL/?cb=$RANDOM" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
+  if [ "$pcode" = "200" ] && [ "$pbundle" = "$BUNDLE" ]; then
+    ok "the public name, as DNS resolves it here, gets the same build"
+  else
+    printf '  NOTE  the public name, as DNS resolves it here, gets %s %s: another machine answers it. During a\n' \
+      "$pcode" "${pbundle:-with no bundle}"
+    printf '        move between hosts, move the names only once every host they may reach serves %s (DP18).\n' "$BUNDLE"
+  fi
+}
 
 deploy_branch() {
   local branch="$1"
@@ -85,12 +126,8 @@ deploy_branch() {
     *) die "container is on '$nets' with no shared proxy network - the site will 502 while docker says Up" ;;
   esac
 
-  say "verify the PUBLIC url, not localhost"
-  local code; code=$(curl -s -o /dev/null -w '%{http_code}' "$QSH_DEMO_URL/?cb=$RANDOM")
-  [ "$code" = "200" ] || die "public URL returned $code"
-  local bundle; bundle=$(curl -s "$QSH_DEMO_URL/?cb=$RANDOM" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
-  [ -n "$bundle" ] || die "no bundle referenced by the served index.html"
-  ok "200, serving $bundle"
+  say "verify the public name on this box (a pinned resolve), not localhost, then the name as DNS resolves it"
+  verify_served "after the deploy"
 
   # DP7's pass condition is literally `git rev-parse --abbrev-ref HEAD` on the box, and only the
   # return half ran it. If `<branch>` is a tag or a sha, `git checkout` detaches HEAD and this path
@@ -144,13 +181,10 @@ return_to_main() {
     *) die "container is on '$nets' with no shared proxy network - the site will 502 while docker says Up" ;;
   esac
 
-  local code; code=$(curl -s -o /dev/null -w '%{http_code}' "$QSH_DEMO_URL/?cb=$RANDOM")
-  [ "$code" = "200" ] || die "public URL returned $code after returning to main"
-  local bundle; bundle=$(curl -s "$QSH_DEMO_URL/?cb=$RANDOM" | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1)
-  [ -n "$bundle" ] || die "no bundle referenced by the served index.html after returning to main"
+  verify_served "after returning to main"
   local branch; branch=$(remote "git rev-parse --abbrev-ref HEAD") || die "could not read the box's branch"
   [ "$branch" = "main" ] || die "box reports branch '$branch', not main"
-  ok "DP7 discharged: box on main at $head, serving $bundle, public URL 200"
+  ok "DP7 discharged: box on main at $head, serving $BUNDLE under the public name"
 }
 
 case "${1:-}" in
