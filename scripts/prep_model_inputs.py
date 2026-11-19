@@ -1413,7 +1413,7 @@ def _f1_over_baseline(y: np.ndarray, pred: np.ndarray) -> tuple[float, float, fl
 def build_medical_student(rng: np.random.Generator) -> dict:
     """BreastMNIST test split at 14x14, the resolution the student was distilled at.
 
-    Reproduces the recorded fidelity exactly: accuracy 0.730769 on all 156 rows.
+    Reproduces the recorded fidelity exactly: accuracy 0.769231 on all 156 rows (0.730769 until the student was re-trained with class weights).
     """
     import os
 

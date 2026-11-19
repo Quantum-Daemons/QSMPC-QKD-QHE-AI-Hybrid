@@ -218,10 +218,9 @@ def export_artifacts(work: Path, record: dict, x14te: np.ndarray, yte: np.ndarra
     """The folder the Hub repository is published from, written as the published student's script writes its own."""
     import shutil
 
-    import torch
     from safetensors.torch import load_file
 
-    from qsh.models import distil, export, metrics, train
+    from qsh.models import export
 
     seed = int(record["criteria"]["export_seed"])
     ckpt = work / f"square_seed{seed}" / "model.safetensors"
