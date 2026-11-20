@@ -86,3 +86,13 @@ def test_the_page_serves_the_record_byte_for_byte() -> None:
     assert served.read_bytes() == RECORD_PATH.read_bytes()
     component = (REPO / "web" / "src" / "components" / "DegreeF1Table.tsx").read_text(encoding="utf-8")
     assert "data/finance/degree-f1.json" in component and "<StageBadge kind=\"offline\" />" in component
+
+
+def test_the_table_loads_when_its_tab_is_shown_not_when_scrolled_to() -> None:
+    """2026-11-20, on the deployed site: an IntersectionObserver with a 6000 px margin left the table on its loading line
+    in a 621 px tall window until it was scrolled to. The tab's panel is mounted hidden, so the first box the element
+    gets (getClientRects, which a ResizeObserver reports) is the tab being opened, at any window height."""
+    component = (REPO / "web" / "src" / "components" / "DegreeF1Table.tsx").read_text(encoding="utf-8")
+    code = "\n".join(line for line in component.splitlines() if not line.lstrip().startswith("//"))
+    assert "new IntersectionObserver" not in code and "rootMargin" not in code
+    assert "new ResizeObserver" in code and code.count("el.getClientRects().length") == 2
