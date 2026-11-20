@@ -23,6 +23,8 @@
 #     QSH_DEMO_URL   public URL to verify against
 #     QSH_DEMO_ADDRESS  address the box serves on (optional; by default the address ssh would connect to)
 #     PROXY_NETWORK  the network the host's reverse proxy owns
+#     QSH_WALKTHROUGH_ORIGIN  the walkthrough's own origin, e.g. https://walkthrough.example (optional; unset keeps
+#                    it at /walkthrough/ on the demo's origin; its name must already reach this box)
 #
 # Put them in a gitignored file and source it. `make check-secrets` will not see this script because
 # it carries nothing to see.
@@ -42,11 +44,15 @@ ok()  { printf '  PASS  %s\n' "$1"; }
 : "${PROXY_NETWORK:?set PROXY_NETWORK (the reverse proxy network on the host); it is deliberately not in this file}"
 : "${QSH_DEMO_DIR:?set QSH_DEMO_DIR (the deploy tree on the host); it is deliberately not in this file}"
 DIR="$QSH_DEMO_DIR"
+WALK_ORIGIN="${QSH_WALKTHROUGH_ORIGIN:-}"
+if [ -n "$WALK_ORIGIN" ] && [[ ! "$WALK_ORIGIN" =~ ^https?://[A-Za-z0-9.-]+(:[0-9]+)?$ ]]; then
+  die "QSH_WALKTHROUGH_ORIGIN must be a scheme, a host and an optional port, no path: $WALK_ORIGIN"
+fi
 SSH=(ssh -o ConnectTimeout=20)
 [ -n "${QSH_DEMO_KEY:-}" ] && SSH+=(-i "$QSH_DEMO_KEY")
 SSH+=("$QSH_DEMO_SSH")
 
-COMPOSE="PROXY_NETWORK=$PROXY_NETWORK docker compose -p qsh-demo -f docker/docker-compose.demo.yml -f docker/docker-compose.demo.behind-proxy.yml"
+COMPOSE="PROXY_NETWORK=$PROXY_NETWORK QSH_WALKTHROUGH_ORIGIN=$WALK_ORIGIN docker compose -p qsh-demo -f docker/docker-compose.demo.yml -f docker/docker-compose.demo.behind-proxy.yml"
 # `-p qsh-demo` AND the behind-proxy override, both. Without them the container lands on no shared
 # network and the site 502s while `docker ps` cheerfully reports Up.
 
@@ -113,7 +119,26 @@ verify_headers() {  # $1 says when
   local pin=(--resolve "$url_host:$url_port:$addr")
   local app walk want block matcher name which
   app=$(curl -s -D - -o /dev/null "${pin[@]}" "$QSH_DEMO_URL/?cb=$RANDOM")
-  walk=$(curl -s -D - -o /dev/null "${pin[@]}" "$QSH_DEMO_URL/walkthrough/?cb=$RANDOM")
+  if [ -z "$WALK_ORIGIN" ]; then
+    walk=$(curl -s -D - -o /dev/null "${pin[@]}" "$QSH_DEMO_URL/walkthrough/?cb=$RANDOM")
+  else
+    # The walkthrough on its own origin (2026-11-20): read on that name through the same box, the app's /walkthrough/
+    # must move there, and the app must not answer on it.
+    local whost=${WALK_ORIGIN#*://} wport=443
+    [ "${WALK_ORIGIN%%://*}" = http ] && wport=80
+    case "$whost" in *:*) wport=${whost##*:}; whost=${whost%:*} ;; esac
+    local wpin=(--resolve "$whost:$wport:$addr") moved apppage
+    walk=$(curl -s -D - -o /dev/null "${wpin[@]}" "$WALK_ORIGIN/?cb=$RANDOM")
+    printf '%s\n' "$walk" | head -1 | grep -q ' 200' || die "the walkthrough's origin did not answer 200 $1"
+    [ -z "$(header_value "$walk" Content-Security-Policy-Report-Only)" ] || die "the walkthrough's origin sends the app's Report-Only candidate $1"
+    moved=$(curl -s -D - -o /dev/null "${pin[@]}" "$QSH_DEMO_URL/walkthrough/?cb=1")
+    printf '%s\n' "$moved" | head -1 | grep -q ' 301' || die "the app's /walkthrough/ did not answer 301 $1"
+    [ "$(header_value "$moved" Location)" = "$WALK_ORIGIN/?cb=1" ] || die "the app's /walkthrough/ did not move to $WALK_ORIGIN/ $1"
+    [ "$(header_value "$moved" Content-Security-Policy)" = "$(caddy_matched app_csp Content-Security-Policy)" ] \
+      || die "the app's /walkthrough/ redirect does not carry the app's policy $1"
+    apppage=$(curl -s -D - -o /dev/null "${wpin[@]}" "$WALK_ORIGIN/usecase/finance_aml")
+    printf '%s\n' "$apppage" | head -1 | grep -q ' 404' || die "the walkthrough's origin answers an app page $1"
+  fi
   # A missing file: Caddy's own error response, which the Caddyfile's handle_errors gives the same headers (2026-11-20).
   local missing; missing=$(curl -s -D - -o /dev/null "${pin[@]}" "$QSH_DEMO_URL/assets/qsh-deploy-check-missing-$RANDOM.js")
   printf '%s\n' "$missing" | head -1 | grep -q ' 404' || die "a missing file did not get a 404 $1"
@@ -131,8 +156,10 @@ verify_headers() {  # $1 says when
     [ -n "$want" ] || die "the Caddyfile in this checkout sets no $name"
     [ "$(header_value "$app" "$name")" = "$want" ] || die "the box does not send $name: $want $1"
     [ "$(header_value "$missing" "$name")" = "$want" ] || die "a missing file's 404 does not carry $name: $want $1"
+    [ "$(header_value "$walk" "$name")" = "$want" ] || die "the walkthrough does not get $name: $want $1"
   done
   ok "the box sends the Caddyfile's security headers: both policies, the Report-Only candidate, HSTS, nosniff, the referrer policy, COOP, COEP and CORP, and a missing file's 404 carries the last six"
+  [ -z "$WALK_ORIGIN" ] || ok "the walkthrough is on its own origin, under its policy; the app's /walkthrough/ moves there with the app's policy, and the app does not answer there"
   # The Caddyfile drops Server; one that still arrives was added in front of this container (the demo's front proxy drops
   # it too, since 2026-11-20). A note, not a failure: that proxy's configuration is not in this repository.
   local server; server=$(header_value "$app" Server)

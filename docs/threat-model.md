@@ -91,7 +91,13 @@
   never `'unsafe-eval'` or inline scripts, and fetches to this site and to Hugging Face, which serves the pinned model
   files and redirects to its CDN; HSTS for a year (this host only), `nosniff`, and a stated referrer policy. The Python
   walkthrough, a static marimo export with inline scripts and a chart library that compiles expressions, has a looser
-  policy confined to `/walkthrough/`. The policy limits what an injected script, or a third-party host, could add to a
+  policy. On the demo it runs on an origin of its own (`QSH_WALKTHROUGH_ORIGIN`, the owner's choice of 2026-11-20), so
+  a script that ran there could not read the app's storage or script its pages: storage and scripting are per origin,
+  and the app's origin answers `/walkthrough/` only with a 301, under the app's policy. A CSP sandbox was measured
+  first and left the walkthrough blank (its own scripts, styles and fonts blocked by CORS from a null origin, storage
+  throwing, no worker), and the HTML Standard refuses a sandboxed page that also sends COOP; `docs/verification-log.md`
+  has the measurements. Without the setting the walkthrough stays at `/walkthrough/` on the app's origin. The policy
+  limits what an injected script, or a third-party host, could add to a
   page; it does nothing against a compromised server or a malicious build, which this demo trusts like any static site.
   Until that day the site sent no such policy, and a pipeline run with WebGPU selected loaded ONNX Runtime's asyncify
   build from cdn.jsdelivr.net, third-party code where the site says it serves its runtime itself; both callers of ONNX

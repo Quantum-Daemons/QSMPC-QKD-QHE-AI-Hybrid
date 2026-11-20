@@ -5862,3 +5862,64 @@ and `/walkthrough/` answered 404, empty, with the six headers and no `Server`; p
 `/metrics` 404s were unchanged. No policy on error responses: an empty body has nothing to restrict.
 `tests/test_r86_security_headers.py` holds the block to the top-level headers (names and values), and the deploy now
 also reads a missing file through the pinned resolve: a 404, with the six headers.
+
+### The walkthrough on an origin of its own (2026-11-20)
+
+**Why.** The walkthrough's policy allows inline scripts and `'unsafe-eval'` (a static marimo export with inline scripts
+and a chart library that compiles expressions), and it ran on the app's origin, where a script injected into it could
+read the app's storage. The owner's choice of 2026-11-20 was to test a CSP sandbox first.
+
+**The sandbox, measured** (locally, Chrome 157, the image's Caddy, the walkthrough's current build). Under
+`sandbox allow-scripts` the walkthrough rendered nothing: its origin became `null`, so every module script, stylesheet
+and font it loads with `crossorigin` was blocked by CORS; storage threw `SecurityError`; no worker started. Allowing
+CORS on its files got the scripts loaded, and marimo then fell back to a `data:` worker, which `worker-src` blocked.
+Allowing that too (two loosenings) rendered the notebook with three failing cells: the worker resolved the data
+file's relative URL against its `data:` URL, and storage still threw. Chrome loaded the sandboxed page with COOP kept,
+but the HTML Standard says a conforming browser must refuse it (section 7.4.5, "create navigation params by fetching",
+step 12.3); dropping COOP drops cross-origin isolation. The owner chose a host name of its own instead.
+
+**The name.** The owner pointed `qsh.walkthrough.daemons.jp` at the demo's host. It is a separate origin from the app,
+the same site. On the owner's instruction, a site for it was added to the host's front proxy, which had none (TLS
+answered with an internal-error alert): a separate site file proxying to the same QSH container, with the app name's
+treatment (no `Server` header, the isolation headers), validated in the running proxy, then a graceful reload under
+the testbed's watchdog lock, with the headers of both existing names recorded before and after. A certificate was
+issued about 12 s after the reload; both existing names' headers were unchanged, and the testbed's own header check
+passed.
+
+**The split.** `QSH_WALKTHROUGH_ORIGIN` (unset by default) in both Caddyfiles: that host and port gets the walkthrough
+at its root and nothing of the app, and `/walkthrough/<rest>` on any other host answers 301 to `<origin>/<rest>` under
+the app's policy. The two policy matchers are complements built from the same two clauses, so the app's origin never
+sends the walkthrough's policy, the redirect included. Served by the image's Caddy, unset, every response was as
+before; set, the app's pages kept their policy, the app's `/walkthrough/`, `/walkthrough` and `/walkthrough/?x=1`
+answered 301 to the origin's `/`, `/` and `/?x=1`, the walkthrough's origin served the walkthrough under its policy
+with no Report-Only candidate, and an app page, `/api/x` and `/walkthrough/` there were empty 404s. On its own origin
+the walkthrough ran as before: cross-origin isolated, its worker started, 4482 characters rendered as on the app's
+origin, no error, no CSP report.
+
+**Two defects found on the way.** The first draft's 301 kept the prefix (`<origin>/walkthrough/`): in a `handle`,
+Caddy's directive order runs `redir` before `uri strip_prefix`, so both now sit in a `route`, which runs them in the
+order written. And the CSP walk's offline mode (`--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost`) also
+caught `127.0.0.1`, so in CI the 301 to the walkthrough's origin ended on Chrome's error page, which the walk reported
+only as "not cross-origin isolated". The rules now exclude `127.0.0.1`, and a page that ends on Chrome's error page
+fails as "the page did not load" (seeded with an unresolvable origin: it does).
+
+**Checks.** `tests/test_r86_security_headers.py` holds the matchers and the two handles in both Caddyfiles;
+`tests/test_r86_deploy_reads_the_box_it_deployed.py` runs the deploy's split checks on stubs (the split as it should
+be passes; no redirect, a redirect under the walkthrough's policy, the app answering on the walkthrough's origin and an
+origin with a path each fail). GitHub CI and `scripts/ci_local.sh` step 8b walk the site split, with the walkthrough on
+`http://127.0.0.1:4183`, and check the unsplit default on the broken-policy Caddy. The first gate failed on
+`tests/test_r86_caching_headers.py`, which took the file's first `root` for the default handle's and found the
+walkthrough's; it now reads the default handle's root, and says that the walkthrough's own origin is outside the
+year-long rule, its files revalidated on each load as they were under `/walkthrough/`.
+
+### #74 on the deployed site, and the candidate read on every path (2026-11-20)
+
+#74 merged as 5d1fd0e and was deployed with the standard command; its checks passed on the box, the new one included (a
+missing file's 404 carries the six static headers). The entry bundle stayed `index-BvWI9GhZ.js`: #74 changed no app
+code. From outside, `index.html` had no `style` attribute and linked `/placeholder.css` (200, `text/css`, 730 bytes), and
+a missing file's 404 was empty, with HSTS, `nosniff`, the referrer policy, COOP, COEP and CORP, and no `Server` header.
+`npm run check:csp` on the deployed site passed all 13 pages with every run finished and no violation, and the
+Report-Only candidate reported nothing. In the owner's Chrome, with a buffered `ReportingObserver`, the agent panel's
+two engines ran on WebGPU under the candidate, from the browser's cache: Transformers.js with distilGPT-2 (2015 ms) and
+WebLLM with SmolLM2-360M (2017 ms), each with its answer and no report, enforced or report-only. That is the
+Report-Only-first rule's condition for enforcing `style-src 'self'`: the walk and the paths only a button press reaches.

@@ -50,6 +50,10 @@ while [ $# -gt 0 ]; do
 done
 echo "$mode $resolve $dump" >> "$STUB_LOG"
 if [ "$dump" = 1 ]; then
+  if [ -n "${STUB_WALK_HOST:-}" ] && [[ "$url" == *"//$STUB_WALK_HOST"* ]]; then
+    case "$url" in *"/usecase/"*) printf '%b' "$STUB_WALKAPP_HEADERS" ;; *) printf '%b' "$STUB_WALKORIGIN_HEADERS" ;; esac
+    exit 0
+  fi
   case "$url" in *"/walkthrough/"*) printf '%b' "$STUB_WALK_HEADERS" ;; *"-missing-"*) printf '%b' "$STUB_MISSING_HEADERS" ;;
     *) printf '%b' "$STUB_APP_HEADERS" ;; esac
   exit 0
@@ -75,6 +79,8 @@ def _headers(drop: str = "", change: tuple[str, str] | None = None) -> tuple[str
                  "Cross-Origin-Embedder-Policy", "Cross-Origin-Resource-Policy"):
         app[name] = _caddy(rf'^\t\t>{name} "([^"]+)"$')
     walk = {"Content-Security-Policy": _caddy(r'^\theader @walkthrough_csp >Content-Security-Policy "([^"]+)"$')}
+    # The walkthrough gets the static headers too, which the deploy checks there as well (2026-11-20).
+    walk.update({name: app[name] for name in STATIC})
     app.pop(drop, None)
     if change:
         app[change[0]] = change[1]
@@ -95,7 +101,7 @@ def _missing(drop: str = "", status: str = "404") -> str:
 
 def _run(tmp_path: Path, box=("200", "/assets/index-NEW.js"), public=("200", "/assets/index-NEW.js"),
          address_override: str | None = None, headers: tuple[str, str] | None = None,
-         missing: str | None = None) -> tuple[subprocess.CompletedProcess, list[str]]:
+         missing: str | None = None, extra: dict[str, str] | None = None) -> tuple[subprocess.CompletedProcess, list[str]]:
     stubs = tmp_path / "bin"
     stubs.mkdir(exist_ok=True)
     for name, body in (("ssh", SSH_STUB), ("curl", CURL_STUB)):
@@ -118,6 +124,7 @@ def _run(tmp_path: Path, box=("200", "/assets/index-NEW.js"), public=("200", "/a
     }
     env["STUB_APP_HEADERS"], env["STUB_WALK_HEADERS"] = headers or _headers()
     env["STUB_MISSING_HEADERS"] = missing or _missing()
+    env.update(extra or {})
     if address_override:
         env["QSH_DEMO_ADDRESS"] = address_override
     res = subprocess.run(["bash", str(SCRIPT), "--return-to-main"], capture_output=True, text=True, env=env,
@@ -219,3 +226,60 @@ def test_a_server_header_is_a_note_not_a_failure(tmp_path: Path) -> None:
 def test_both_halves_verify_the_headers() -> None:
     code = "\n".join(line for line in SCRIPT.read_text().splitlines() if not line.lstrip().startswith("#"))
     assert code.count('verify_headers "') == 2, "the deploy half and the return half must both read the headers"
+
+
+WALK = "https://walk.example"
+
+
+def _split(moved_status: str = "301", moved_csp: str = "app_csp", walk_app_status: str = "404") -> dict[str, str]:
+    """The responses of a box whose walkthrough is on its own origin (2026-11-20, the owner's choice)."""
+    app_csp = _caddy(r'^\theader @app_csp >Content-Security-Policy "([^"]+)"$')
+    walk_csp = _caddy(r'^\theader @walkthrough_csp >Content-Security-Policy "([^"]+)"$')
+    static = {name: _caddy(rf'^\t\t>{name} "([^"]+)"$') for name in STATIC}
+    fmt = lambda status, h: f"HTTP/2 {status}\\r\\n" + "".join(f"{k.lower()}: {v}\\r\\n" for k, v in h.items()) + "\\r\\n"
+    moved = {"Location": f"{WALK}/?cb=1", "Content-Security-Policy": app_csp if moved_csp == "app_csp" else walk_csp, **static}
+    if moved_status != "301":
+        moved = {"Content-Security-Policy": walk_csp, **static}
+    return {
+        "QSH_WALKTHROUGH_ORIGIN": WALK, "STUB_WALK_HOST": "walk.example",
+        "STUB_WALK_HEADERS": fmt(moved_status, moved),
+        "STUB_WALKORIGIN_HEADERS": fmt("200", {"Content-Security-Policy": walk_csp, **static}),
+        "STUB_WALKAPP_HEADERS": fmt(walk_app_status, static),
+    }
+
+
+def test_the_walkthrough_on_its_own_origin_is_read_there(tmp_path: Path) -> None:
+    res, calls = _run(tmp_path, extra=_split())
+    out = res.stdout + res.stderr
+    assert res.returncode == 0, out
+    assert "the walkthrough is on its own origin, under its policy" in out
+    # its root and an app page, each through the box's address (the return half; the deploy half reads them too)
+    assert sum(1 for c in calls if c == f"box walk.example:443:{ADDRESS} 1") == 2, calls
+
+
+def test_a_walkthrough_still_on_the_app_origin_fails_the_split(tmp_path: Path) -> None:
+    res, _ = _run(tmp_path, extra=_split(moved_status="200"))
+    assert res.returncode == 1 and "the app's /walkthrough/ did not answer 301" in res.stderr
+
+
+def test_a_redirect_with_the_walkthrough_policy_fails(tmp_path: Path) -> None:
+    res, _ = _run(tmp_path, extra=_split(moved_csp="walkthrough_csp"))
+    assert res.returncode == 1 and "does not carry the app's policy" in res.stderr
+
+
+def test_the_app_answering_on_the_walkthrough_origin_fails(tmp_path: Path) -> None:
+    res, _ = _run(tmp_path, extra=_split(walk_app_status="200"))
+    assert res.returncode == 1 and "the walkthrough's origin answers an app page" in res.stderr
+
+
+def test_a_walkthrough_origin_with_a_path_is_refused(tmp_path: Path) -> None:
+    res, _ = _run(tmp_path, extra={**_split(), "QSH_WALKTHROUGH_ORIGIN": WALK + "/walkthrough"})
+    assert res.returncode == 1 and "QSH_WALKTHROUGH_ORIGIN must be a scheme, a host and an optional port" in res.stderr
+
+
+def test_the_setting_reaches_the_container() -> None:
+    code = SCRIPT.read_text()
+    assert 'COMPOSE="PROXY_NETWORK=$PROXY_NETWORK QSH_WALKTHROUGH_ORIGIN=$WALK_ORIGIN docker compose' in code
+    compose = (REPO / "docker" / "docker-compose.demo.yml").read_text()
+    assert 'QSH_WALKTHROUGH_ORIGIN: "${QSH_WALKTHROUGH_ORIGIN:-}"' in compose
+
