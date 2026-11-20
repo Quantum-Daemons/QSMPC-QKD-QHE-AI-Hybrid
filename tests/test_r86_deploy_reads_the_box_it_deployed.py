@@ -180,6 +180,15 @@ def test_a_missing_hsts_fails(tmp_path: Path) -> None:
     assert res.returncode == 1 and "does not send Strict-Transport-Security" in res.stderr
 
 
+def test_a_server_header_is_a_note_not_a_failure(tmp_path: Path) -> None:
+    """The Caddyfile drops Server; one that arrives was added by a proxy in front, whose configuration is not here."""
+    res, _ = _run(tmp_path)
+    assert res.returncode == 0 and "NOTE" not in res.stdout.replace("NOTE  the public name", ""), res.stdout
+    res, _ = _run(tmp_path, headers=_headers(change=("Server", "Caddy")))
+    assert res.returncode == 0, res.stdout + res.stderr
+    assert 'NOTE  the box sends "Server: Caddy", which this Caddyfile drops' in res.stdout
+
+
 def test_both_halves_verify_the_headers() -> None:
     code = "\n".join(line for line in SCRIPT.read_text().splitlines() if not line.lstrip().startswith("#"))
     assert code.count('verify_headers "') == 2, "the deploy half and the return half must both read the headers"

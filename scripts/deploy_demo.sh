@@ -129,6 +129,10 @@ verify_headers() {  # $1 says when
     [ "$(header_value "$app" "$name")" = "$want" ] || die "the box does not send $name: $want $1"
   done
   ok "the box sends the Caddyfile's security headers: both policies, the Report-Only candidate, HSTS, nosniff, the referrer policy, COOP, COEP and CORP"
+  # The Caddyfile drops Server; one that still arrives was added in front of this container (the demo's front proxy drops
+  # it too, since 2026-11-20). A note, not a failure: that proxy's configuration is not in this repository.
+  local server; server=$(header_value "$app" Server)
+  [ -z "$server" ] || printf '  NOTE  the box sends "Server: %s", which this Caddyfile drops: something in front of the container adds it %s\n' "$server" "$1"
 }
 
 deploy_branch() {

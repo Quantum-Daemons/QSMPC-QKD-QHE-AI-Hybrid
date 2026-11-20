@@ -168,6 +168,18 @@ walk does not press their run button: read them by hand in a browser with WebGPU
 with a buffered `ReportingObserver` (`new ReportingObserver(cb, { types: ['csp-violation'], buffered: true })`),
 which also returns what was reported before it was created.
 
+**Changing the policy: Report-Only first** (the owner's rule of 2026-11-20). A change to the enforced policy is
+never made in place. It is sent first as the `Content-Security-Policy-Report-Only` candidate beside the policy in
+force, in both Caddyfiles and `web/public/_headers` (`tests/test_r86_security_headers.py` holds them equal). Then
+it is deployed, and step 4 lists what the candidate would block without failing on it. The paths only a button
+press reaches, the agent's engines, are read by hand under it with the buffered `ReportingObserver`. Only when
+both are clean does the candidate replace the enforced policy. #71 is why: a `blob:` import that only the
+agent's run button reaches broke under the enforced policy, and was found after the deploy.
+
+The headers reach every page and file the container serves, and its `/api` and `/metrics` 404s. A missing
+file's 404 is Caddy's error response, written past the deferred header blocks: it is empty and carries none of
+them, `Server: Caddy` included (measured 2026-11-20; on the demo the front proxy adds COOP, COEP and CORP).
+
 Skipping step 2 has produced a false negative here: after a deploy, navigating to the same URL
 re-served the cached bundle, so a working fix looked broken. The failure is asymmetric - a stale tab
 makes a good fix look bad, you change it again, and the second change is the one that ships

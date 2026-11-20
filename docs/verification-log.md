@@ -5794,3 +5794,34 @@ from outside; inline-style needs removed one at a time after a Report-Only pass)
 - **Closing Chrome.** The check now closes Chrome through DevTools (`Browser.close`, 137 ms on this machine) and only
   then falls back to SIGTERM, which took from 60 ms to 7.6 s here. Removing the profile at the earlier 5 s limit, while
   Chrome was still running, left it behind.
+- **The CI step, replayed here before it ran on GitHub** (ports of its own, from this branch): the client-only build, the
+  walkthrough the image builds, the image's Caddy. The offline walk passed all 13 pages, every run finished, in 187 s;
+  the broken policy failed on `/usecase/medical_fl`, on WebAssembly (`script-src blocked wasm-eval`). Offline, the
+  candidate's whole would-block list is the three `style` attributes of `index.html`'s loading placeholder, on each of
+  the 12 app pages (36 entries); a page's own CSSOM writes are not governed by `style-src`.
+- **No `Server` header** (the owner's choice, after the testbed's front proxy dropped it for the demo): `-Server` in the
+  same deferred block as HSTS, in both Caddyfiles. Served by the image's Caddy, pages, files and the `/api` and
+  `/metrics` 404s then carry every header and no `Server`. A missing file's 404 does not: file_server answers it with
+  an error, and Caddy writes that empty response past the deferred blocks, so it carries `Server: Caddy` and none of
+  the security headers (on the demo the front proxy adds COOP, COEP and CORP to it, and its own `via: 1.1 Caddy`).
+  #70's test said the 404s all carry the headers; it now says which do. The deploy notes a `Server` header without
+  failing, since one that arrives is added in front of the container.
+- **Report-Only first**, the owner's rule for every later change to the enforced policy, is in
+  `docs/deployment.md`.
+
+### #72 on the deployed site, and its table loading when the tab is shown (2026-11-20)
+
+Merged as 34b71ec and deployed with the standard command: the box on main, `index-Bqkn2RpW.js` through the pinned
+resolve and through DNS. In the owner's Chrome, every cell of the degree table equalled the record, under all six
+settings of its two selectors, and so did the 24 hover intervals of each setting and the six rows of SALT-GNN's
+Table 2; a buffered `ReportingObserver` had no CSP report.
+
+**The table waited for a scroll.** It loaded through an IntersectionObserver with a 6000 px margin, to load it when
+the IBM tab opens. In a 621 px tall window the table, at the foot of the tab, was 6042 px below the window, and it
+stayed on its loading line until scrolled to. The gate measured it anyway, since the layout scan scrolls each page,
+but a visitor who opens the tab and reads it by keyboard or screen reader without scrolling never got it. The tab's
+panel is mounted hidden, and a hidden element has no box, so the table now loads when the element first has one (a
+ResizeObserver reports it), which is the tab being opened, at any height. In headless Chrome at 1280 x 600, without
+scrolling: this build loaded its 8 rows on opening the tab, where the deployed build stayed on its loading line; the
+file was fetched no time before the tab was opened and once after. `tests/test_r86_finance_degree_f1.py` holds the
+trigger.

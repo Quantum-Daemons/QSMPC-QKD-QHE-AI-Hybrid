@@ -48,7 +48,10 @@ def test_hsts_nosniff_and_the_referrer_policy(path: Path) -> None:
     assert '\t\t>X-Content-Type-Options "nosniff"\n' in text, path.name
     assert '\t\t>Referrer-Policy "strict-origin-when-cross-origin"\n' in text, path.name
     # The owner chose an enforced policy; a Report-Only header is only ever a stricter candidate beside it (below).
-    assert text.count(">Content-Security-Policy-Report-Only ") == 1, f"{path.name}: one Report-Only candidate, at most"
+    assert text.count(">Content-Security-Policy-Report-Only ") == 1, f"{path.name}: exactly one Report-Only candidate"
+    # No Server header (2026-11-20), dropped in the same deferred block as HSTS, so on the same responses (below).
+    block = text[text.index("\theader {\n\t\t>Strict-Transport-Security"):]
+    assert "\t\t-Server\n" in block[:block.index("\t}\n")], f"{path.name}: the Server header is not dropped"
 
 
 @pytest.mark.parametrize("path", CADDYFILES, ids=lambda p: p.name)
@@ -82,7 +85,12 @@ def test_both_caddyfiles_carry_the_same_headers() -> None:
 
 @pytest.mark.parametrize("path", CADDYFILES, ids=lambda p: p.name)
 def test_the_headers_are_top_level(path: Path) -> None:
-    """Outside every handle, so the routes rewritten to index.html, the files and the 404s all carry them."""
+    """Outside every handle, so the routes rewritten to index.html, the files, and the /api and /metrics 404s all carry them.
+
+    Not a missing file's 404: file_server answers it with an error, and Caddy writes an error response past the deferred
+    header blocks, so that empty 404 carries none of them and does carry `Server: Caddy` (measured 2026-11-20, served
+    by this image's Caddy; on the demo the front proxy adds COOP, COEP and CORP to it).
+    """
     text = path.read_text()
     assert text.index("header @app_csp") < text.index("\thandle {"), path.name
 
