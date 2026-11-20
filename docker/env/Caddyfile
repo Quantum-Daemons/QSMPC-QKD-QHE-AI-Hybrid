@@ -20,14 +20,21 @@
 	# its CDN (huggingface.co and *.hf.co, the only other hosts a full walk of every page and run contacted on
 	# 2026-11-20). style-src keeps 'unsafe-inline' for the style attributes in index.html and the <style> elements
 	# mermaid writes into its diagrams. The Python walkthrough is a static marimo export with four inline scripts and a
-	# chart library that compiles expressions, so it has its own, looser policy, under /walkthrough/ only.
+	# chart library that compiles expressions, so it has its own, looser policy, under /walkthrough/ only. No Server
+	# header (the owner's choice of 2026-11-20): the demo's front proxy drops it too, and this drops it wherever the
+	# image is served without one.
 	header {
 		>Strict-Transport-Security "max-age=31536000"
 		>X-Content-Type-Options "nosniff"
 		>Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
 	}
 	@app_csp not path /walkthrough /walkthrough/*
 	header @app_csp >Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://huggingface.co https://*.huggingface.co https://*.hf.co; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+	# A stricter candidate, reported and not enforced (the owner's choice of 2026-11-20, measure first): the app's policy
+	# without 'unsafe-inline' for styles. Each page's buffered ReportingObserver, and web/scripts/check_csp.mjs, list what it
+	# would block, so the inline-style needs can be removed one at a time before it is enforced.
+	header @app_csp >Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://huggingface.co https://*.huggingface.co https://*.hf.co; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
 	@walkthrough_csp path /walkthrough /walkthrough/*
 	header @walkthrough_csp >Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
 	@wasm path *.wasm

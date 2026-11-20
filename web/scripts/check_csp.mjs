@@ -54,7 +54,11 @@ async function connect() {
 
 const profile = mkdtempSync(join(tmpdir(), "qsh-csp-"));
 const chrome = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`,
-  "--window-size=1280,900", "--no-first-run", ...(process.env.CI ? ["--no-sandbox"] : []), "about:blank"], { stdio: "ignore" });
+  "--window-size=1280,900", "--no-first-run", ...(process.env.CI ? ["--no-sandbox"] : []),
+  // CSP_OFFLINE=1 (CI, which is offline by design): the page reaches localhost and nothing else, so the published models'
+  // fetches fail and every page is still walked under its policy.
+  ...(process.env.CSP_OFFLINE ? ["--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost"] : []),
+  "about:blank"], { stdio: "ignore" });
 let failures = 0;
 try {
   const b = await connect();
@@ -62,7 +66,19 @@ try {
   const { sessionId } = await b.send("Target.attachToTarget", { targetId, flatten: true });
   const S = (m, p) => b.send(m, p, sessionId);
   let found = [];
-  const record = (where, text) => { if (POLICY.test(text)) found.push(`${where}: ${text.replace(/\s+/g, " ").slice(0, 300)}`); };
+  const wouldBlock = new Map();   // Content-Security-Policy-Report-Only findings, by text: what a stricter candidate would block
+  const record = (where, text) => {
+    if (!POLICY.test(text)) return;
+    const line = `${where}: ${text.replace(/\s+/g, " ").slice(0, 300)}`;
+    // Read on the whole text, before it is cut to 300 characters: Chrome's console names a Report-Only violation at the
+    // end ("The policy is report-only, so the violation has been logged but no further action has been taken."), and the
+    // document listener below prefixes its own lines with "[Report Only]".
+    // The page's own console repeats what its document listener reports, in longer words, so only the listener's line and
+    // a worker's console line (a worker has no document) are listed.
+    if (/\[Report Only\]|policy is report-only/i.test(text)) {
+      if (where !== "page") wouldBlock.set(line, (wouldBlock.get(line) ?? 0) + 1);
+    } else found.push(line);
+  };
   const workers = new Set();
   b.on(async (msg) => {
     const p = msg.params ?? {};
@@ -85,7 +101,8 @@ try {
   await S("Target.setAutoAttach", { autoAttach: true, waitForDebuggerOnStart: true, flatten: true });
   await S("Page.addScriptToEvaluateOnNewDocument", { source: `window.__csp = [];
     document.addEventListener("securitypolicyviolation", (e) => window.__csp.push(
-      e.violatedDirective + " blocked " + (e.blockedURI || "inline") + " at " + (e.sourceFile || "") + ":" + e.lineNumber));` });
+      (e.disposition === "report" ? "[Report Only] " : "") + e.violatedDirective + " blocked " + (e.blockedURI || "inline")
+      + " at " + (e.sourceFile || "") + ":" + e.lineNumber));` });
   const ev = async (expression) => {
     const r = await S("Runtime.evaluate", { expression, awaitPromise: true, returnByValue: true });
     if (r.exceptionDetails) throw new Error(r.exceptionDetails.exception?.description ?? r.exceptionDetails.text);
@@ -138,20 +155,32 @@ try {
       notes.push(`${seen.length} actions`);
     }
     const state = await ev(`({ csp: window.__csp || [], isolated: window.crossOriginIsolated })`);
-    for (const v of state.csp) found.push(`document: ${v}`);
+    for (const v of state.csp) {
+      record("document", v.startsWith("[Report Only] ") ? `[Report Only] Content Security Policy: ${v.slice(14)}` : `Content Security Policy: ${v}`);
+    }
     const unique = [...new Set(found)];
     const label = `${page.path}${notes.length ? ` (${notes.join(", ")})` : ""}`;
     if (!state.isolated && page.path !== "/no-such-page") unique.push("the page is not cross-origin isolated");
     if (unique.length) { failures += unique.length; console.log(`  FAIL ${label}`); for (const f of unique) console.log(`       ${f}`); }
     else console.log(`  ok   ${label}`);
   }
+  if (wouldBlock.size) {
+    console.log(`the Report-Only candidate would block ${wouldBlock.size} distinct thing(s) (not failures):`);
+    for (const [line, n] of [...wouldBlock.entries()].sort()) console.log(`       x${n} ${line}`);
+  }
+  // Closing through DevTools exits Chrome cleanly in a fraction of a second (137 ms here); SIGTERM, below, took from
+  // 60 ms to 7.6 s on this machine (2026-11-20), and a profile removed before Chrome has exited is left half-written.
+  await Promise.race([b.send("Browser.close").catch(() => {}), sleep(2000)]);
   b.close();
 } finally {
   // Wait for Chrome to exit before removing its profile: removing it at once raced Chrome's last writes (ENOTEMPTY),
   // and the check then exited 1 after every page had passed.
-  const exited = new Promise((r) => (chrome.exitCode !== null ? r() : chrome.once("exit", r)));
-  chrome.kill("SIGTERM");
-  await Promise.race([exited, sleep(5000)]);
+  const exited = new Promise((r) => (chrome.exitCode !== null || chrome.signalCode !== null ? r() : chrome.once("exit", r)));
+  const within = (ms) => Promise.race([exited.then(() => true), sleep(ms).then(() => false)]);
+  if (!(await within(3000))) {
+    chrome.kill("SIGTERM");
+    if (!(await within(15000))) { chrome.kill("SIGKILL"); await within(5000); }
+  }
   // Chrome's helper processes can still be writing to the profile after the main one exits, so a failed removal is a
   // note, never the check's verdict: the profile is a throwaway directory under the system's temporary folder.
   try { rmSync(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }

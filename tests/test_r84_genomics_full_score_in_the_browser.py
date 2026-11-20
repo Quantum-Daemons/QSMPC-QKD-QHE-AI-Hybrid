@@ -79,6 +79,11 @@ export * as realData from ${JSON.stringify(resolve(WEB, "src/lib/realData"))};`,
       b.onResolve({ filter: /\.wasm\?url$|qsh_mpc\.js$/ }, (a) => ({ path: a.path, namespace: "stub" }));
       b.onLoad({ filter: /.*/, namespace: "stub" }, () => ({ contents: "export default '';", loader: "js" }));
     }
+    // Any other `?url` import, ONNX Runtime's files among them (web/src/lib/ortSameOrigin.ts, Round 86): its path on
+    // disk, as for the SEAL wasm. With the MPC module built the stubs above are not registered, and esbuild had no loader
+    // for those .wasm files (2026-11-20, a gate run in a worktree whose wasm an earlier run had built).
+    b.onResolve({ filter: /\?url$/ }, (a) => ({ path: resolve(a.resolveDir, a.path.slice(0, -"?url".length)), namespace: "fileurl" }));
+    b.onLoad({ filter: /.*/, namespace: "fileurl" }, (a) => ({ contents: `export default ${JSON.stringify(a.path)};`, loader: "js" }));
   } }],
 });
 globalThis.fetch = async (url) => {

@@ -34,13 +34,15 @@ export default function DegreeF1Table() {
   useEffect(() => {
     const el = box.current;
     if (!el || wanted) return;
-    if (typeof IntersectionObserver === "undefined") { setWanted(true); return; }
-    // A wide root margin: the table sits at the foot of the IBM tab, and it should load when that tab is opened (its
-    // panel is mounted hidden), not only once scrolled to, so the layout scan, which opens the tab, measures it.
-    const io = new IntersectionObserver((entries) => { if (entries.some((e) => e.isIntersecting)) setWanted(true); },
-      { rootMargin: "6000px 0px" });
-    io.observe(el);
-    return () => io.disconnect();
+    // Loaded when the IBM tab is shown, however tall the window. Its panel is mounted hidden (Tabs, keepMounted), and a
+    // hidden element has no box, so the first time the element has one is the tab being opened, which a ResizeObserver
+    // reports. The first version waited for an IntersectionObserver with a 6000 px margin: the table, at the foot of the
+    // tab, was further than that below a 621 px tall window, and stayed on its loading line until scrolled to (the
+    // deployed site, 2026-11-20), so a keyboard or screen-reader visitor who did not scroll never got it.
+    if (el.getClientRects().length || typeof ResizeObserver === "undefined") { setWanted(true); return; }
+    const ro = new ResizeObserver(() => { if (el.getClientRects().length) setWanted(true); });
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [wanted]);
   useEffect(() => {
     if (!wanted) return;

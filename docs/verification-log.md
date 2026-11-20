@@ -5761,3 +5761,76 @@ each refusal fires on a seeded fault, the page's copy is the record, and where t
 record is recomputed from them and must be equal (46 s here). The script asserts each bin's count-based F1 against a
 direct computation. `tests/test_r84_shipped_data_carries_its_licence.py` now lists the file (CDLA-Sharing-1.0, its
 credit and change note).
+
+### The policy in CI, the headers on every deploy, and a stricter style policy measured first (2026-11-20)
+
+The owner's choices of 2026-11-20, after notes from the owner's PQC-QKD testbed, whose demo moved to an enforced policy
+the same day (HSTS, nosniff, a policy; a smoke test in CI that also requires a broken policy to fail; headers checked
+from outside; inline-style needs removed one at a time after a Report-Only pass):
+
+- **CI.** The web job serves the client-only build it makes, with the walkthrough the web image builds, through the web
+  image's own Caddy image and `Caddyfile.client-only`, and runs `web/scripts/check_csp.mjs` offline (`CSP_OFFLINE=1`:
+  the page reaches localhost only, so the published models' fetches fail and every page is still walked). Then the
+  same site under a policy without `'wasm-unsafe-eval'` must make the check fail.
+- **Every deploy.** `scripts/deploy_demo.sh` reads the box's headers through the same pinned resolve as the bundle and
+  fails unless both policies, the Report-Only candidate, HSTS, `nosniff`, the referrer policy, COOP, COEP and CORP are
+  what the Caddyfile in the checkout writes. `tests/test_r86_deploy_reads_the_box_it_deployed.py` runs it on stubs: the
+  headers as written pass, and a missing policy, a loosened one and a missing HSTS each fail.
+- **Style, measured first.** Both Caddyfiles and `_headers` send a `Content-Security-Policy-Report-Only` candidate beside
+  the enforced policy: the app's policy with `style-src 'self'`, no `'unsafe-inline'`. It is reported and never
+  enforced; `check_csp.mjs` lists what it would block without failing, and
+  `tests/test_r86_security_headers.py` holds it to the enforced policy but for `style-src`.
+- **Reading reports in a browser.** A `securitypolicyviolation` listener added after a page has loaded misses what the
+  load itself reported, which is how the first checks in Chrome on 2026-11-20 were run (the headless walk listens from
+  before the page's first script). The checks after #71 used a buffered `ReportingObserver`, which returns those too:
+  none on `/`, `/validations` after its five buttons, `/walkthrough/` and both agent engines.
+- **Report-Only lines in Chrome's console.** Chrome 157 does not prefix a Report-Only violation's console line; it ends
+  it with "The policy is report-only, so the violation has been logged but no further action has been taken.", past
+  the 300 characters the check keeps of a line. The first draft of the check matched a prefix only and failed a probe
+  page on what were reports. The check now reads the whole line, and lists a report from the page's console only through
+  its document listener, which reports the same thing with its source and line. A local probe page (an inline
+  `<style>` and a `style` attribute, each written by the HTML and by a script, and one CSSOM write) then passed, with
+  those four in the would-block list and nothing for the CSSOM write, which `style-src` does not govern.
+- **Closing Chrome.** The check now closes Chrome through DevTools (`Browser.close`, 137 ms on this machine) and only
+  then falls back to SIGTERM, which took from 60 ms to 7.6 s here. Removing the profile at the earlier 5 s limit, while
+  Chrome was still running, left it behind.
+- **The CI step, replayed here before it ran on GitHub** (ports of its own, from this branch): the client-only build, the
+  walkthrough the image builds, the image's Caddy. The offline walk passed all 13 pages, every run finished, in 187 s;
+  the broken policy failed on `/usecase/medical_fl`, on WebAssembly (`script-src blocked wasm-eval`). Offline, the
+  candidate's whole would-block list is the three `style` attributes of `index.html`'s loading placeholder, on each of
+  the 12 app pages (36 entries); a page's own CSSOM writes are not governed by `style-src`.
+- **No `Server` header** (the owner's choice, after the testbed's front proxy dropped it for the demo): `-Server` in the
+  same deferred block as HSTS, in both Caddyfiles. Served by the image's Caddy, pages, files and the `/api` and
+  `/metrics` 404s then carry every header and no `Server`. A missing file's 404 does not: file_server answers it with
+  an error, and Caddy writes that empty response past the deferred blocks, so it carries `Server: Caddy` and none of
+  the security headers (on the demo the front proxy adds COOP, COEP and CORP to it, and its own `via: 1.1 Caddy`).
+  #70's test said the 404s all carry the headers; it now says which do. The deploy notes a `Server` header without
+  failing, since one that arrives is added in front of the container.
+- **Report-Only first**, the owner's rule for every later change to the enforced policy, is in
+  `docs/deployment.md`.
+- **On GitHub** the new step walked the 13 pages with every run finished, listed the same 36 entries and no violation,
+  and the broken policy failed on `/usecase/medical_fl` with `script-src blocked wasm-eval`.
+- **A test that only a reused worktree runs.** This branch's first local gate failed in step 1, on the eight tests of
+  `tests/test_r84_genomics_full_score_in_the_browser.py`: esbuild had no loader for ONNX Runtime's two `.wasm?url`
+  imports, which #70 and #71 put in `web/src/lib/ortSameOrigin.ts`. That harness stubs every `.wasm?url` only when the
+  MPC module is not built, and uses the real module when it is. Every earlier gate ran in a fresh worktree, where step
+  1 runs before step 8 builds the module, and GitHub's Python job never builds it, so none ran this path since #70;
+  this worktree's module was built by the replay above. The harness now resolves any other `?url` import to its path on
+  disk, as it does the SEAL wasm's. Every other harness stubs `?url` imports whether or not the module is built.
+
+### #72 on the deployed site, and its table loading when the tab is shown (2026-11-20)
+
+Merged as 34b71ec and deployed with the standard command: the box on main, `index-Bqkn2RpW.js` through the pinned
+resolve and through DNS. In the owner's Chrome, every cell of the degree table equalled the record, under all six
+settings of its two selectors, and so did the 24 hover intervals of each setting and the six rows of SALT-GNN's
+Table 2; a buffered `ReportingObserver` had no CSP report.
+
+**The table waited for a scroll.** It loaded through an IntersectionObserver with a 6000 px margin, to load it when
+the IBM tab opens. In a 621 px tall window the table, at the foot of the tab, was 6042 px below the window, and it
+stayed on its loading line until scrolled to. The gate measured it anyway, since the layout scan scrolls each page,
+but a visitor who opens the tab and reads it by keyboard or screen reader without scrolling never got it. The tab's
+panel is mounted hidden, and a hidden element has no box, so the table now loads when the element first has one (a
+ResizeObserver reports it), which is the tab being opened, at any height. In headless Chrome at 1280 x 600, without
+scrolling: this build loaded its 8 rows on opening the tab, where the deployed build stayed on its loading line; the
+file was fetched no time before the tab was opened and once after. `tests/test_r86_finance_degree_f1.py` holds the
+trigger.

@@ -92,6 +92,49 @@ verify_served() {  # $1 says when, for the messages; sets BUNDLE to the bundle t
   fi
 }
 
+# The security headers the box sends, against what the Caddyfile in this checkout writes (Round 86, the owner's choice of
+# 2026-11-20). A Caddyfile change that dropped HSTS or a policy would otherwise deploy unnoticed until a walk. Read through
+# the same pinned resolve as the bundle, for the app and for the walkthrough, which has its own policy. Every expected
+# value comes from the Caddyfile, so the check moves with it.
+CADDYFILE="$(cd "$(dirname "$0")/.." && pwd)/docker/env/Caddyfile.client-only"
+TAB=$(printf '\t')
+caddy_matched() {  # $1 matcher, $2 header name: the value `header @<matcher> ><name> "..."` sets
+  sed -n "s/^${TAB}header @$1 >$2 \"\(.*\)\"\$/\1/p" "$CADDYFILE" | head -1
+}
+caddy_block() {  # $1 header name: the value a `header { ><name> "..." }` block sets
+  sed -n "s/^${TAB}${TAB}>$1 \"\(.*\)\"\$/\1/p" "$CADDYFILE" | head -1
+}
+header_value() {  # $1 a header block, $2 a header name in any case: its value
+  printf '%s\n' "$1" | tr -d '\r' | awk -v n="$(printf '%s' "$2" | tr 'A-Z' 'a-z')" \
+    'index(tolower($0), n ":") == 1 { sub(/^[^:]*:[ \t]*/, ""); print; exit }'
+}
+verify_headers() {  # $1 says when
+  local addr; addr=$(box_address)
+  local pin=(--resolve "$url_host:$url_port:$addr")
+  local app walk want block matcher name which
+  app=$(curl -s -D - -o /dev/null "${pin[@]}" "$QSH_DEMO_URL/?cb=$RANDOM")
+  walk=$(curl -s -D - -o /dev/null "${pin[@]}" "$QSH_DEMO_URL/walkthrough/?cb=$RANDOM")
+  for spec in "app_csp|Content-Security-Policy|app" "app_csp|Content-Security-Policy-Report-Only|app" \
+              "walkthrough_csp|Content-Security-Policy|walkthrough"; do
+    IFS='|' read -r matcher name which <<< "$spec"
+    want=$(caddy_matched "$matcher" "$name")
+    [ -n "$want" ] || die "the Caddyfile in this checkout sets no $name for @$matcher"
+    block="$app"; [ "$which" = walkthrough ] && block="$walk"
+    [ "$(header_value "$block" "$name")" = "$want" ] || die "the box's $name for the $which is not the Caddyfile's $1"
+  done
+  for name in Strict-Transport-Security X-Content-Type-Options Referrer-Policy Cross-Origin-Opener-Policy \
+              Cross-Origin-Embedder-Policy Cross-Origin-Resource-Policy; do
+    want=$(caddy_block "$name")
+    [ -n "$want" ] || die "the Caddyfile in this checkout sets no $name"
+    [ "$(header_value "$app" "$name")" = "$want" ] || die "the box does not send $name: $want $1"
+  done
+  ok "the box sends the Caddyfile's security headers: both policies, the Report-Only candidate, HSTS, nosniff, the referrer policy, COOP, COEP and CORP"
+  # The Caddyfile drops Server; one that still arrives was added in front of this container (the demo's front proxy drops
+  # it too, since 2026-11-20). A note, not a failure: that proxy's configuration is not in this repository.
+  local server; server=$(header_value "$app" Server)
+  [ -z "$server" ] || printf '  NOTE  the box sends "Server: %s", which this Caddyfile drops: something in front of the container adds it %s\n' "$server" "$1"
+}
+
 deploy_branch() {
   local branch="$1"
   say "fetch $branch from GitHub (never rsync - a copy ships untracked files and omits uncommitted dirs)"
@@ -128,6 +171,7 @@ deploy_branch() {
 
   say "verify the public name on this box (a pinned resolve), not localhost, then the name as DNS resolves it"
   verify_served "after the deploy"
+  verify_headers "after the deploy"
 
   # DP7's pass condition is literally `git rev-parse --abbrev-ref HEAD` on the box, and only the
   # return half ran it. If `<branch>` is a tag or a sha, `git checkout` detaches HEAD and this path
@@ -182,6 +226,7 @@ return_to_main() {
   esac
 
   verify_served "after returning to main"
+  verify_headers "after returning to main"
   local branch; branch=$(remote "git rev-parse --abbrev-ref HEAD") || die "could not read the box's branch"
   [ "$branch" = "main" ] || die "box reports branch '$branch', not main"
   ok "DP7 discharged: box on main at $head, serving $BUNDLE under the public name"

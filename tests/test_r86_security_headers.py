@@ -47,7 +47,11 @@ def test_hsts_nosniff_and_the_referrer_policy(path: Path) -> None:
     assert hsts == ['"max-age=31536000"'], f"{path.name}: HSTS for a year, this host only, not {hsts}"
     assert '\t\t>X-Content-Type-Options "nosniff"\n' in text, path.name
     assert '\t\t>Referrer-Policy "strict-origin-when-cross-origin"\n' in text, path.name
-    assert "Content-Security-Policy-Report-Only" not in text, f"{path.name}: the owner chose an enforced policy"
+    # The owner chose an enforced policy; a Report-Only header is only ever a stricter candidate beside it (below).
+    assert text.count(">Content-Security-Policy-Report-Only ") == 1, f"{path.name}: exactly one Report-Only candidate"
+    # No Server header (2026-11-20), dropped in the same deferred block as HSTS, so on the same responses (below).
+    block = text[text.index("\theader {\n\t\t>Strict-Transport-Security"):]
+    assert "\t\t-Server\n" in block[:block.index("\t}\n")], f"{path.name}: the Server header is not dropped"
 
 
 @pytest.mark.parametrize("path", CADDYFILES, ids=lambda p: p.name)
@@ -81,7 +85,12 @@ def test_both_caddyfiles_carry_the_same_headers() -> None:
 
 @pytest.mark.parametrize("path", CADDYFILES, ids=lambda p: p.name)
 def test_the_headers_are_top_level(path: Path) -> None:
-    """Outside every handle, so the routes rewritten to index.html, the files and the 404s all carry them."""
+    """Outside every handle, so the routes rewritten to index.html, the files, and the /api and /metrics 404s all carry them.
+
+    Not a missing file's 404: file_server answers it with an error, and Caddy writes an error response past the deferred
+    header blocks, so that empty 404 carries none of them and does carry `Server: Caddy` (measured 2026-11-20, served
+    by this image's Caddy; on the demo the front proxy adds COOP, COEP and CORP to it).
+    """
     text = path.read_text()
     assert text.index("header @app_csp") < text.index("\thandle {"), path.name
 
@@ -99,3 +108,17 @@ def test_the_static_host_file_carries_the_same_headers() -> None:
     for line in ("Strict-Transport-Security: max-age=31536000", "X-Content-Type-Options: nosniff",
                  "Referrer-Policy: strict-origin-when-cross-origin"):
         assert f"  {line}\n" in static, line
+
+
+@pytest.mark.parametrize("path", CADDYFILES, ids=lambda p: p.name)
+def test_the_report_only_candidate_is_the_app_policy_without_inline_styles(path: Path) -> None:
+    """2026-11-20, the owner's choice: measure before tightening style-src. The candidate is reported, never enforced, and
+    differs from the enforced app policy in style-src alone, so what it reports is exactly what that tightening breaks."""
+    text = path.read_text()
+    enforced = re.search(r'^\theader @app_csp >Content-Security-Policy "([^"]+)"$', text, re.M).group(1)
+    candidate = re.search(r'^\theader @app_csp >Content-Security-Policy-Report-Only "([^"]+)"$', text, re.M)
+    assert candidate, f"{path.name}: no Report-Only candidate for the app"
+    assert candidate.group(1) == enforced.replace("style-src 'self' 'unsafe-inline';", "style-src 'self';"), path.name
+    static = (REPO / "web" / "public" / "_headers").read_text()
+    assert f"  Content-Security-Policy-Report-Only: {candidate.group(1)}\n" in static
+    assert "/walkthrough/*\n  ! Content-Security-Policy\n  ! Content-Security-Policy-Report-Only\n" in static
