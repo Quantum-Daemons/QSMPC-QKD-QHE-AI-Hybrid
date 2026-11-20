@@ -75,9 +75,27 @@ def test_no_model_carries_a_licence_the_page_does_not_honour() -> None:
 
 
 def test_transformers_js_is_pointed_at_this_sites_wasm_before_any_model_loads() -> None:
+    shared = (REPO / "web/src/lib/ortSameOrigin.ts").read_text(encoding="utf-8")
     for build in ("asyncify.mjs", "asyncify.wasm", "threaded.mjs", "threaded.wasm"):
-        assert f"ort-wasm-simd-threaded.{build}?url" in CLIENT_AI or f"ort-wasm-simd-{build}?url" in CLIENT_AI, build
+        assert f"ort-wasm-simd-threaded.{build}?url" in shared or f"ort-wasm-simd-{build}?url" in shared, build
+    assert 'from "./ortSameOrigin"' in CLIENT_AI and "useSameOriginOrtBuild(wasm, ortBuildOf(wasm));" in CLIENT_AI
     assert CLIENT_AI.index("useSameOriginOrtWasm(lib);") < CLIENT_AI.index("lib.pipeline("), "it reads wasmPaths on load"
+
+
+def test_every_load_of_the_webgpu_build_is_pointed_at_this_site() -> None:
+    """2026-11-20: the agent panel was pointed at this site's ONNX Runtime and the inference stage, its twin, was not.
+
+    The WebGPU build shares a chunk with Transformers.js, whose module points ONNX Runtime at jsDelivr when it runs, so a
+    pipeline run with WebGPU selected fetched the asyncify build's .mjs and .wasm from cdn.jsdelivr.net. Every import of
+    `onnxruntime-web/webgpu` under web/src must hand the module's wasm settings to `useSameOriginOrtBuild` before use.
+    """
+    sites = 0
+    for path in (REPO / "web/src").rglob("*.ts*"):
+        text = path.read_text(encoding="utf-8")
+        for m in re.finditer(r'import\("onnxruntime-web/webgpu"\)', text):
+            sites += 1
+            assert "useSameOriginOrtBuild(" in text[m.end():m.end() + 200], f"{path.name}: the WebGPU build is not pointed here"
+    assert sites >= 1, "no WebGPU build is loaded any more: drop this test with the import"
 
 
 def test_webllm_is_given_its_record_and_never_its_prebuilt_list() -> None:

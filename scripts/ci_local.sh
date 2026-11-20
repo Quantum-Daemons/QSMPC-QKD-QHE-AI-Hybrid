@@ -147,6 +147,36 @@ fi
   && ok "README diagrams: no label out of its node, over another or crossed; each fits 830 px" \
   || { bad "README diagram layout (web/scripts/check_readme_mermaid.mjs)"; grep -E "FAIL" /tmp/ci_mermaid.log | head -12; }
 
+step "8b/18 the site under its Content-Security-Policy, through the image's own Caddy"
+# Round 86 (2026-11-20, the owner's choice of an enforced policy): `vite preview` sends none of Caddy's headers, so the
+# layout scan above cannot see a violation. The client-only build above, with the walkthrough the image builds, is
+# served by the Caddy image the web image uses and by docker/env/Caddyfile.client-only, and web/scripts/check_csp.mjs
+# walks every page, tab, run and action with each worker attached. A violation anywhere fails; so does being unable to
+# serve it (no docker here is unchecked, not a pass).
+CSP_DIR=$(mktemp -d)
+CADDY_IMAGE=$(grep -oE '^FROM caddy:[^ ]+' docker/Dockerfile.web | head -1 | cut -d' ' -f2)
+if [ ! -f "$SCAN_OUT/index.html" ]; then
+  bad "CSP: no client-only build to serve (the layout step's build failed)"
+elif ! docker info >/dev/null 2>&1; then
+  bad "CSP: docker is not available here, so the policy is unchecked"
+elif curl -sf -o /dev/null http://localhost:4183/; then
+  bad "CSP: port 4183 already serves something, probably a container left by an interrupted run: stop it and run this again"
+elif cp -r "$SCAN_OUT" "$CSP_DIR/srv" && cp docker/env/Caddyfile.client-only "$CSP_DIR/Caddyfile" \
+     && docker build -q --target walkthrough -t qsh-ci-walkthrough -f docker/Dockerfile.web . >/tmp/ci_csp_walkthrough.log 2>&1 \
+     && cid=$(docker create qsh-ci-walkthrough) && docker cp "$cid:/out" "$CSP_DIR/srv/walkthrough" >>/tmp/ci_csp_walkthrough.log 2>&1 \
+     && docker rm "$cid" >/dev/null; then
+  docker run -d --rm --name qsh-ci-csp -p 127.0.0.1:4183:80 -e SITE_ADDRESS=:80 \
+    -v "$CSP_DIR/srv:/srv:ro,z" -v "$CSP_DIR/Caddyfile:/etc/caddy/Caddyfile:ro,z" "$CADDY_IMAGE" >/tmp/ci_csp_caddy.log 2>&1
+  for _ in $(seq 1 30); do curl -sf -o /dev/null http://localhost:4183/ && break; sleep 1; done
+  ( cd web && timeout 1800 node scripts/check_csp.mjs http://localhost:4183 >/tmp/ci_csp.log 2>&1 ) \
+    && ok "no CSP violation on any page, worker, run or action, under the image's Caddy and its Caddyfile" \
+    || { bad "CSP (web/scripts/check_csp.mjs)"; grep -E "FAIL|^ {7}|problem" /tmp/ci_csp.log | head -20; }
+  docker stop qsh-ci-csp >/dev/null 2>&1
+else
+  bad "CSP: could not assemble the site with its walkthrough"; tail -8 /tmp/ci_csp_walkthrough.log
+fi
+rm -rf "$CSP_DIR"
+
 step "9/18 PQC conformance (FIPS 203 s7.2 negatives + FIPS 204 sizes)"
 # Offline by design: reads the vendored CC0 snapshot in web/scripts/vectors. It was ungated for
 # several rounds because it used to fetch its vectors, and the only way to gate a network check is a
