@@ -39,7 +39,9 @@ def test_an_existing_hashed_asset_is_kept_and_everything_else_revalidated(path: 
     hashed, unhashed = HASHED.search(text), UNHASHED.search(text)
     assert hashed, f"{path.name}: no year-long Cache-Control for the existing files under /assets/"
     assert unhashed, f"{path.name}: no no-cache for the shell, the routes, the data and a missing asset"
-    served = re.search(r"^\t\troot \* (\S+)$", text, re.M)
+    # The default handle's root. The walkthrough's own origin (QSH_WALKTHROUGH_ORIGIN, 2026-11-20) serves /srv/walkthrough
+    # from its own handle, outside this rule: its files are revalidated on each load, as they were under /walkthrough/.
+    served = re.search(r"^\thandle \{\n\t\troot \* (\S+)$", text, re.M)
     assert served and hashed.group(1) == unhashed.group(1) == served.group(1), (
         f"{path.name}: the matchers look for files under a root the file server does not serve")
     # Top-level, so they apply to the routes the default handle rewrites to index.html, and to its 404s.
