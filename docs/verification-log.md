@@ -5908,3 +5908,15 @@ fails as "the page did not load" (seeded with an unresolvable origin: it does).
 be passes; no redirect, a redirect under the walkthrough's policy, the app answering on the walkthrough's origin and an
 origin with a path each fail). GitHub CI and `scripts/ci_local.sh` step 8b walk the site split, with the walkthrough on
 `http://127.0.0.1:4183`, and check the unsplit default on the broken-policy Caddy.
+
+### #74 on the deployed site, and the candidate read on every path (2026-11-20)
+
+#74 merged as 5d1fd0e and was deployed with the standard command; its checks passed on the box, the new one included (a
+missing file's 404 carries the six static headers). The entry bundle stayed `index-BvWI9GhZ.js`: #74 changed no app
+code. From outside, `index.html` had no `style` attribute and linked `/placeholder.css` (200, `text/css`, 730 bytes), and
+a missing file's 404 was empty, with HSTS, `nosniff`, the referrer policy, COOP, COEP and CORP, and no `Server` header.
+`npm run check:csp` on the deployed site passed all 13 pages with every run finished and no violation, and the
+Report-Only candidate reported nothing. In the owner's Chrome, with a buffered `ReportingObserver`, the agent panel's
+two engines ran on WebGPU under the candidate, from the browser's cache: Transformers.js with distilGPT-2 (2015 ms) and
+WebLLM with SmolLM2-360M (2017 ms), each with its answer and no report, enforced or report-only. That is the
+Report-Only-first rule's condition for enforcing `style-src 'self'`: the walk and the paths only a button press reaches.
