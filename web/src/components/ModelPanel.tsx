@@ -17,6 +17,7 @@ import type { VerificationSummary } from "../lib/clientCompute";
 import { browserModels, evaluatePublishedModel, type ModelEvalResult, publishedSampleOf } from "../lib/onnxInference";
 import IbmNeighbourhood, { type NeighbourhoodSample } from "./IbmNeighbourhood";
 import TeacherStudentPlot, { type DecryptedRows } from "./TeacherStudentPlot";
+import DegreeF1Table from "./DegreeF1Table";
 import { AncestryStrataChart, RealDataScatter } from "./VerificationChart";
 import RegistryNote from "./RegistryNote";
 import Tabs from "./Tabs";
@@ -981,6 +982,10 @@ function IbmTab({ usecase, specs, verifications, decrypted }:
           <strong>What the distillation keeps</strong>
           <TeacherStudentPlot teacher={teacher} teacherName="IBM Multi-PNA+EU" decrypted={decrypted} taughtBy={taughtBy} />
         </div>
+      )}
+      {/* Round 86 (the owner's choice of 2026-11-15): both IBM models, both protocols, by the receiver's in-degree. */}
+      {specs.some((s) => s.key === "finance_aml.gnn") && (
+        <div className="model-block"><DegreeF1Table /></div>
       )}
     </div>
   );
