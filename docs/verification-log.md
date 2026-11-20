@@ -5907,7 +5907,10 @@ fails as "the page did not load" (seeded with an unresolvable origin: it does).
 `tests/test_r86_deploy_reads_the_box_it_deployed.py` runs the deploy's split checks on stubs (the split as it should
 be passes; no redirect, a redirect under the walkthrough's policy, the app answering on the walkthrough's origin and an
 origin with a path each fail). GitHub CI and `scripts/ci_local.sh` step 8b walk the site split, with the walkthrough on
-`http://127.0.0.1:4183`, and check the unsplit default on the broken-policy Caddy.
+`http://127.0.0.1:4183`, and check the unsplit default on the broken-policy Caddy. The first gate failed on
+`tests/test_r86_caching_headers.py`, which took the file's first `root` for the default handle's and found the
+walkthrough's; it now reads the default handle's root, and says that the walkthrough's own origin is outside the
+year-long rule, its files revalidated on each load as they were under `/walkthrough/`.
 
 ### #74 on the deployed site, and the candidate read on every path (2026-11-20)
 
