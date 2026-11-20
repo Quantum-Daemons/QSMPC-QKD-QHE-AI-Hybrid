@@ -73,6 +73,14 @@
   },
   "revision": "0d682eda4fcd794537dbb27faa7e7e0a7acc0624"
  },
+ "medical_fl.square_student": {
+  "files": {
+   "eval_sample.json": "c39992bbd44d8f4e3504fd12de70279e9a5d59efdf174412edde320ef9a9fbc6",
+   "onnx/model.onnx": "f41f50c6fc357859b037cf7298893fa12c69fa10a2876906b373938eeca61b88",
+   "weights.json": "fc984ae400a09e55569d230c8c431f1ddaea487d8516facc625f1d4d270bc27b"
+  },
+  "revision": "04189759cef06ab9f159b26b45c05122ab54a699"
+ },
  "medical_fl.student": {
   "files": {
    "eval_sample.json": "3ede61f812699634845ce0496542f91a39823b16ef086d8d03347e471dbda5e1",

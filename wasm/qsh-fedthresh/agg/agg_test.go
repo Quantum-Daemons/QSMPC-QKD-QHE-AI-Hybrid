@@ -149,3 +149,29 @@ func TestFloodingIsUniform(t *testing.T) {
 		}
 	}
 }
+
+// Every setting's modulus is within 202 bits at N = 8192, summed as log2 of each prime Lattigo generated for Q and for
+// P (none so far): the HomomorphicEncryption.org standard's post-quantum table for 128-bit security with a ternary
+// secret (2018, Table 2), the bound Settings is sized to. The 2024 guidelines' table is classical and applies to P Q,
+// 214 bits at N = 8192 (Bossuat et al., IACR CiC 1(4), Table 5.2). Lattigo has no guard of its own, so this reads the
+// primes of the parameters Open builds.
+func TestModulusIsWithinTheQuantumTable(t *testing.T) {
+	const maxLogPQ = 202.0 // at N = 8192
+	for kind := range Settings() {
+		s, err := Open(kind, parties, []byte("crs"))
+		if err != nil {
+			t.Fatal(kind, err)
+		}
+		if s.params.N() != 8192 {
+			t.Fatalf("%s: N = %d, and 202 bits is the bound at N = 8192", kind, s.params.N())
+		}
+		logPQ := 0.0
+		for _, q := range append(s.params.Q(), s.params.P()...) {
+			logPQ += math.Log2(float64(q))
+		}
+		t.Logf("%s: %d primes of Q, %d of P, log2(PQ) = %.4f", kind, s.params.QCount(), s.params.PCount(), logPQ)
+		if logPQ > maxLogPQ {
+			t.Fatalf("%s: log2(PQ) = %.4f is past %.0f", kind, logPQ, maxLogPQ)
+		}
+	}
+}

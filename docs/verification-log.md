@@ -5500,6 +5500,51 @@ deploy passes with the pinned read; a name that reaches another build is a note,
 answering 502 fails although the name answers 200 elsewhere, the case the old check could not see; an explicit address
 overrides ssh's; and neither address appears in the output.
 
+### The fully encrypted medical student: pre-registered, run, published, and on the medical page (2026-11-19)
+
+**The owner's choices, 2026-11-19.** The medical page's CKKS student decrypts between its layers. The owner chose to
+test a student that does not, offline first and then in the browser, under two parameter sets, in a module of its own
+(`clientFHE.ts` stays as the FHE.org poster describes it until the notice on 2026-12-18), and to publish it on
+approval of its card.
+
+**Pre-registered before any run.** `references/medical-square-student-preregistration.md`, committed at 09:55 JST
+(0100414) and corrected before any run to name the recipe's optimizer as AdamW (68f7dee; SHA-256 `c8a8b5d5...`): the
+control is the published student's architecture, the candidate a convolution, batch norm (folded), $`x^2`$, average
+pool and dense layer, multiplicative depth 3; five seeds each on the published ResNet-18 teacher's labels; criteria
+fixed in advance (mean test AUC at least the control's minus 0.05; no collapse; every decrypted logit within
+$`10^{-3}`$ of the plaintext one on all 156 test images, no decision changed, per parameter set). A first attempt
+stopped while loading the teacher's graph, before any training.
+
+**Results.** Control $`0.8182 \pm 0.0045`$, square $`0.8435 \pm 0.0198`$: criteria 1 and 2 pass. The exported seed (2,
+best validation AUC 0.9267) scores 0.8198. Under TenSEAL on all 156 images, set B ($`N = 16384`$, 60+40+40+40+60) is
+within $`6.1 \times 10^{-5}`$; set A ($`N = 8192`$, 50+30+30+30+50, scale $`2^{30}`$) reached $`8.2 \times 10^{-3}`$,
+over the limit on every image though no decision changed, and the smallest decision margin on the split is 0.0077. On
+the owner's choice an addendum pre-registered A2 before its run (48+34+34+34+52 bits, exactly the 202-bit post-quantum
+bound at $`N = 8192`$, scale $`2^{34}`$; 2ed2e4c, SHA-256 `858cfd4b...`): within $`3.1 \times 10^{-4}`$, no decision
+changed. Found after the run and corrected in the record with a note: its float64 AUC field had ranked by the raw
+class-1 logit (0.77193 for 0.819758). The argmax, the pre-registered operating point, flags 66 of 156 images
+malignant: recall 0.738 and specificity 0.693 against the CKKS student's 0.571 and 0.842, and accuracy 0.705, below
+the 0.731 of always answering benign; the card and the page say so.
+
+**Published and pinned.** On the owner's approval of the card: `Daemons-Q/qsh-medical-breastmnist-ckks-square-student`
+at `04189759`, every served file equal to the reviewed one and none holding a local path; 18 models and 57 files
+pinned. The record lists the offered sets (A2, B) under `ckks` and the rejected one apart, so the model's table cannot
+show it as offered.
+
+**In the browser.** `web/src/lib/clientFHESquare.ts` runs the pass in a Web Worker under each set the published
+weights list. Every vector is tiled with period 1,024, so the rotate-and-add leaves the logit in every slot and no
+partial sum is decrypted; the depth-3 chain has no level left for the mask `clientFHE.ts` uses. Under the real
+node-seal (`tests/test_r86_square_student_ckks_in_node.py`, eight images) A2 is within $`1.5 \times 10^{-5}`$ and B
+within $`6.7 \times 10^{-7}`$. On a local client-only build: A2 on eight images within $`1.0 \times 10^{-5}`$, 45 ms
+to encrypt and 39 ms to evaluate per image; B on all 156 within $`7.7 \times 10^{-6}`$, no decision changed, accuracy
+0.7051 decrypted and in the clear, 27.6 s with the keys; the pipeline's re-scoring stage includes the model, PASS. The
+shared agreement chart said every model was "one linear layer ... with no rescale" and that the rows travelled in one
+ciphertext; a producer can now describe its own work, and this one does (nine ciphertexts in, two back; eleven
+plaintext and one ciphertext multiplication, three levels of rescaling, twenty rotations).
+
+**Still owed.** The merge on the owner's approval, the deploy once the public names had moved (on 2026-11-20 they
+moved to a new host, not back to the usual one), and the section read on the live site.
+
 ### The walkthrough's export no longer downloads ruff itself (2026-11-19)
 
 **Found deploying `main` at 35eb8f1 to the host the demo is moving to.** The image build failed in the walkthrough
@@ -5518,6 +5563,63 @@ that the installed marimo asks for the pinned ruff. `MARIMO_RUFF` records which 
 `--check` fails on a marimo bump until it is read again. `tests/test_r86_walkthrough.py`: a different ruff, a lock
 without hashes and an unrecorded marimo are refused; the image downloads before it exports, and the export is offline.
 A local build of the walkthrough stage downloaded and checked the wheel, exported offline and wrote 47.3 MB in 24 s.
+
+### The demo on its new host (2026-11-20)
+
+**The move.** On 2026-11-19 the owner chose to move the public demo to a new host rather than back to the usual one
+after its maintenance; the usual host is not public again and was not redeployed. The front proxy and the other demo
+were already running there; this project's part was QSH's own container. The first deploy of
+`main` (35eb8f1, a git clone on the host) failed in the image build, which PR #68 fixed (the entry above).
+
+**Before the names moved** (checklist DP18). At 00:03 JST `scripts/deploy_demo.sh --return-to-main` passed in 27 s on
+the build cache; its pinned read gave 200 and `index-DsXacjtg.js` while the public name still reached the temporary
+host with the same build. Through resolves pinned to each host, the two served the same headers and the same bytes
+for the index, the bundle, the CSS, the three wasm files, the notices, the walkthrough, two deep routes and two 404s,
+with COOP and COEP, over TLS 1.3. In headless Chrome with both names pinned to the new host (00:04 to 00:17): 12
+routes, every document from that host, no console error or warning, no exception, no failed request, no response of
+400 or more; 27 tabs each selected and non-empty; the four buttons on `/validations` (ML-KEM-768 with X25519: 1216 B
+key, 1120 B ciphertext, agreement true; ML-DSA-65: 1952 B key, 3309 B signature, valid and refusing a tampered
+message; the handshake's agreement true; BB84 run); Start on all six use cases finished, 66 PASS and no FAIL; the
+walkthrough booted; an unknown path shows "Page not found".
+
+**After.** By 00:46 the authoritative server, the local resolver, 1.1.1.1, 8.8.8.8 and 9.9.9.9 all gave the new host
+for both names, and the temporary host answered neither HTTPS nor ssh, so when its requests stopped could not be read.
+Live in Chrome the site answered 200 over HTTP/2 with the same bundle, cross-origin isolated, with no console error.
+`.env.demo` (gitignored) now names the new host, the old file kept beside it, so the documented deploy command
+reaches it; `scripts/check_secrets.sh` still refuses the earlier hosts' values in a tracked file. PR #68 was merged
+and deployed by that command at 02:14: the walkthrough came out byte-identical, so the image did not change.
+
+### The fully encrypted medical student on the deployed site (2026-11-20)
+
+PR #67, merged as 66e11d1 after the names had moved, deployed by the standard command at 03:0x JST (bundle
+`index-DdHnc4YV.js`), read in Chrome on the public name (checklist PI51):
+
+| run | largest logit error | decisions unchanged | accuracy, decrypted and in the clear | wall time with the keys |
+|---|---|---|---|---|
+| A2, eight images (four of each class) | $`9.72 \times 10^{-6}`$ | 8 of 8 | 0.6250 and 0.6250 | 1.1 s |
+| B, all 156 | $`1.38 \times 10^{-6}`$ | 156 of 156 | 0.7051 and 0.7051 | 27.9 s |
+
+Both ran in a Web Worker; each image crossed as nine ciphertexts (4.72 MB under A2, 9.44 MB under B) and came back as
+two (262 kB, 525 kB). The medical pipeline's Start re-scored `medical_fl.square_student` on all 156 rows of its
+published sample, PASS, accuracy 0.7051 against the recorded 0.7051; the Models tab "Square student (fully
+encrypted)" shows its card; no console error or warning. A pinned headless walk of the 12 routes and 28 tabs on that
+bundle found no console error, failed request or response of 400 or more, and every other page's text unchanged.
+
+### Two tests hold the HE moduli under the post-quantum table (opened 2026-11-18, taken in 2026-11-20)
+
+**Found** by the static check of this project's HE parameters behind the T1 report (2026-11-18): the BFV exactness test
+built its context with no coefficient modulus, so TenSEAL took SEAL's default for $`N = 8192`$ at 128 bits,
+43 + 43 + 44 + 44 + 44 = 218 bits. That is the 2018 HomomorphicEncryption.org standard's classical bound, past its
+post-quantum table (202 bits, Table 2) and the 2024 guidelines' table (214 bits, Bossuat et al., IACR Communications in
+Cryptology 1(4), Table 5.2, classical, for $`q = PQ`$). Lattigo, which the federation's threshold aggregation runs,
+has no guard of its own.
+
+**Changed.** `tests/test_scorecard_bfv_exact.py` sets 43 + 43 + 44 + 44 = 174 bits, and the exactness check still holds
+on all 20 rows. `TestModulusIsWithinTheQuantumTable` (`wasm/qsh-fedthresh/agg/agg_test.go`) builds every setting through
+`Open` and sums $`\log_2`$ of each prime Lattigo generated for Q and P, at most 202 bits at $`N = 8192`$: `ckks-demo` and
+`ckks-l40` 120.0000, `bgv-128` 199.9773; a setting at another ring size fails until it brings its own bound. Opened by
+another session on 2026-11-18 (PR #59, tests only); taken into this round on the owner's choice, with main merged in
+and #69's register row, both tests passing again on the merged tree.
 
 ### PR #60: the IKEv2 card's CAVP row counts the CAVP cases alone (2026-11-18)
 

@@ -774,6 +774,7 @@ const SHORT_TITLE: Record<string, string> = {
   "finance_aml.mlp_large": "MLP (CKKS and MPC)", "finance_aml.gnn_compact": "Compact GNN (CKKS and MPC)",
   "genomics.prs": "Polygenic risk score",
   "medical_fl.resnet18": "ResNet-18", "medical_fl.resnet50": "ResNet-50", "medical_fl.student": "CKKS student",
+  "medical_fl.square_student": "Square student (fully encrypted)",
   "satellite_comms.telemanom": "Telemanom LSTM", "satellite_comms.student": "Forecaster student",
   "satellite_comms.opssat": "OPS-SAT detector", "satellite_comms.opssat_student": "OPS-SAT student",
   "telecom_ids.transformer": "Transformer IDS", "telecom_ids.qml": "Random forest (QKD attacks)",
