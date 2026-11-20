@@ -5605,6 +5605,65 @@ published sample, PASS, accuracy 0.7051 against the recorded 0.7051; the Models 
 encrypted)" shows its card; no console error or warning. A pinned headless walk of the 12 routes and 28 tabs on that
 bundle found no console error, failed request or response of 400 or more, and every other page's text unchanged.
 
+### Two tests hold the HE moduli under the post-quantum table (opened 2026-11-18, taken in 2026-11-20)
+
+**Found** by the static check of this project's HE parameters behind the T1 report (2026-11-18): the BFV exactness test
+built its context with no coefficient modulus, so TenSEAL took SEAL's default for $`N = 8192`$ at 128 bits,
+43 + 43 + 44 + 44 + 44 = 218 bits. That is the 2018 HomomorphicEncryption.org standard's classical bound, past its
+post-quantum table (202 bits, Table 2) and the 2024 guidelines' table (214 bits, Bossuat et al., IACR Communications in
+Cryptology 1(4), Table 5.2, classical, for $`q = PQ`$). Lattigo, which the federation's threshold aggregation runs,
+has no guard of its own.
+
+**Changed.** `tests/test_scorecard_bfv_exact.py` sets 43 + 43 + 44 + 44 = 174 bits, and the exactness check still holds
+on all 20 rows. `TestModulusIsWithinTheQuantumTable` (`wasm/qsh-fedthresh/agg/agg_test.go`) builds every setting through
+`Open` and sums $`\log_2`$ of each prime Lattigo generated for Q and P, at most 202 bits at $`N = 8192`$: `ckks-demo` and
+`ckks-l40` 120.0000, `bgv-128` 199.9773; a setting at another ring size fails until it brings its own bound. Opened by
+another session on 2026-11-18 (PR #59, tests only); taken into this round on the owner's choice, with main merged in
+and #69's register row, both tests passing again on the merged tree.
+
+### PR #60: the IKEv2 card's CAVP row counts the CAVP cases alone (2026-11-18)
+
+The validations page's IKEv2 card printed `runIkev2Cavp()`'s `passed`/`total` in the row headed "CAVP SP 800-135 cases",
+and both counted RFC 5903 section 8.1's ECP-256 example with the six NIST CAVP cases: the row read 7/7, while the example
+also had its own row. The runner's `passed` and `total` now count the CAVP cases alone and the row's verdict is theirs;
+`allPassed` still requires the example as well, and `check:netkeys` still holds it to its own verdict.
+
+- **A check that sees the count.** `check:netkeys` counts the CAVP cases that pass on its own and requires the runner's
+  `passed` and `total` to equal them, with the example counted apart. With `main`'s `ikev2.ts` put back under the new
+  check, it fails on that check alone, "runner 7/7, this script 6/6 CAVP cases": nothing else in the check saw the
+  count. The `ikev2` and `rfc5903` negative controls still fail on their named cases and not on the count.
+- **On the page.** A client-only build of this branch, `/validations`, "Run the key schedule": the CAVP row reads
+  "true - 6/6" and the RFC 5903 row "true", read from the DOM; no console error.
+- **The gates.** `tsc --noEmit`, `check:jsx-spaces`, `check:netkeys` and `check:validations-download` pass. The suite
+  without the slow tests, with `QSH_REQUIRE_BROWSER_GATES=1`: 2157 passed, 39 skipped and one failure that `main` has
+  too, `tests/test_every_merged_pr_is_in_the_record.py`, which found no register row for #58 (CI's shallow checkout
+  skips it).
+- **#58's row, at the owner's request.** This PR added the register row #58 never wrote, from its own description, and
+  with it the register test passed on this branch, as did the other test files that read the register, the log or every
+  tracked Markdown file: 220 tests in 27 files, with `QSH_REQUIRE_BROWSER_GATES=1`. PR #61 wrote a row for #58 too while
+  both were open, and merged first: taking `main` in kept #61's row and dropped this PR's, so the register has one row
+  for #58 and this PR no longer changes it.
+- **No other record held 7/7.** The validations download carries `{kem, sig, pqc, qkd, mcp}`, not the IKEv2 run, and
+  the README's image of `/validations` does not open this card. Round 58's walk record that wrote "CAVP 7/7" is
+  annotated in place, and `references/net-key-schedules.md` states the count and adds the seeded case.
+- **`main` taken in (2026-11-19 and 2026-11-20).** PRs #61 to #65 and #68 merged while this PR was open, and `main` was
+  taken in after each of #61, #63, #64, #65 and #68. Each time both sides had added a section at the end of this log,
+  and the first two times a register row at the same place: the register's rows run in number order, #58, #60, #61, #62,
+  #63, #64, #65, this log keeps `main`'s sections before this one, and both sides' changes to the two documents come
+  through line for line. On the last merge, committed before the checks ran, `tsc --noEmit`, `check:jsx-spaces` (2383
+  JSX text nodes), `check:netkeys` and `check:validations-download` pass, and the suite without the slow tests, as CI
+  runs it (`QSH_REQUIRE_BROWSER_GATES=1`, `HF_HUB_OFFLINE=1`), gives 2196 passed, 41 skipped and one failure: the
+  register test, which finds no row for #68, as on `main`. On the first merge, a run before the resolution was staged
+  also failed `test_document_basenames_are_unique`, because `git ls-files` lists a conflicted file once per conflict
+  stage; it passes once the resolution is staged. On this text, 219 of the 220 tests in the 27 files that read the
+  register, the log or every tracked Markdown file pass; the one failure is the register test on #68.
+- **Taken into this round (2026-11-20).** On the owner's choice this PR is carried by the session that merged #61 to
+  #69 and #59; the session that opened it has Auto-fix off. `main` was taken in a sixth time, after #67, #69 and #59:
+  both sides had again added a section at the end of this log, and `main`'s sections stay before this one. #59's
+  register row is added, and the register's rows are back in number order (#67's and #68's had been written out of
+  it). On the merged tree `check:netkeys` (IKEv2 CAVP 6 cases x 5 values, and the RFC 5903 example counted apart) and
+  `check:validations-download` pass, and so does the register test, which now finds a row for every merged PR.
+
 ### Security headers and an enforced Content-Security-Policy, and a third-party runtime the policy found (2026-11-20)
 
 **Found.** On the new host, both hosts the demo had used and the other demo on the same proxy: the site sent COOP,

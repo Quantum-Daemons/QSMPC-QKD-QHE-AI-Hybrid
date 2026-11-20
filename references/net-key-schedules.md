@@ -22,7 +22,10 @@ Every file listed was downloaded on 2026-10-24 and hashed on arrival. The SHA-25
 | `tests/test_net_key_schedules.py` | runs that check, asserts provenance, and runs the seeded negative for every vector family |
 
 The node check compares bytes itself and then requires each in-tab runner to reach the same verdict, so
-a runner that compared a value with itself would be caught. `--corrupt=<family>` (or
+a runner that compared a value with itself would be caught. It holds the IKEv2 runner's count as well:
+`passed` and `total`, which the page prints in its "CAVP SP 800-135 cases" row, count the six CAVP
+cases alone, and the RFC 5903 example, which has its own row, is counted apart. Until 2026-11-18 the
+runner counted the example among them and the row read 7/7. `--corrupt=<family>` (or
 `QSH_NETKEYS_CORRUPT`) flips one byte of one expected value in memory; families `mlkem`, `noise`,
 `ikev2`, `rfc5903`, `wginit`. Each must make the check exit 1 and name the case, and the pytest file
 asserts that it does.
@@ -175,6 +178,7 @@ two that pass are the point of the table, not a failure of it: they sit in the l
 | Noise: prologue not hashed | caught | message 0 differs from byte 64 |
 | IKEv2: prf+ concatenates S before T(n-1) | caught | DKM differs from byte 48 (T1 is unaffected) |
 | IKEv2: SKEYSEED with key and data swapped | caught | SKEYSEED |
+| IKEv2 runner: the RFC 5903 example counted among the CAVP cases (the runner as it was until 2026-11-18) | caught | the runner's count, 7/7 against the check's 6/6; nothing else in the check sees it, which is how the page showed 7/7 |
 | WireGuard: empty prologue instead of the Identifier | caught | boringtun Hi; passed every other check before that file was added |
 | WireGuard: mac1 keyed with the sender's static key | caught | the responder rejects mac1 |
 | ML-KEM: 64-byte seed packed as z then d | caught | keyGen tcId 26 |
