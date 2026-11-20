@@ -5702,3 +5702,10 @@ fetches, and without `'wasm-unsafe-eval'` on the blocked wasm compilation (ONNX 
 holds the two Caddyfiles and `_headers` to the same headers and the app's policy to what it allows. Not run under the
 policy: the agent panel's two engines with a model loaded, which download 206 to 328 MB from Hugging Face; their
 runtime files are this site's (`check_csp.mjs` and the earlier wire check, checklist CS12).
+
+### PRs #59 and #60 merged; #60 on the deployed site (2026-11-20)
+
+#59 (tests only) merged as 9e62983 with no deploy. #60 merged as 619b86b and was deployed by the standard command
+(bundle `index-BQ3DRfK6.js`). Read in Chrome on the public name: `/validations`, "Run the key schedule": the row
+"CAVP SP 800-135 cases" reads "true - 6/6", and "ECP-256 shared secret, RFC 5903 section 8.1" reads "true" on its own
+row; the two exchange rows read "true"; no console error.
