@@ -169,9 +169,31 @@ elif cp -r "$SCAN_OUT" "$CSP_DIR/srv" && cp docker/env/Caddyfile.client-only "$C
     -v "$CSP_DIR/srv:/srv:ro,z" -v "$CSP_DIR/Caddyfile:/etc/caddy/Caddyfile:ro,z" "$CADDY_IMAGE" >/tmp/ci_csp_caddy.log 2>&1
   for _ in $(seq 1 30); do curl -sf -o /dev/null http://localhost:4183/ && break; sleep 1; done
   ( cd web && timeout 1800 node scripts/check_csp.mjs http://localhost:4183 >/tmp/ci_csp.log 2>&1 ) \
-    && ok "no CSP violation on any page, worker, run or action, under the image's Caddy and its Caddyfile" \
+    && { ok "no CSP violation on any page, worker, run or action, under the image's Caddy and its Caddyfile"
+         grep -E '^the Report-Only candidate' /tmp/ci_csp.log | sed 's/^/        note: /'; true; } \
     || { bad "CSP (web/scripts/check_csp.mjs)"; grep -E "FAIL|^ {7}|problem" /tmp/ci_csp.log | head -20; }
   docker stop qsh-ci-csp >/dev/null 2>&1
+  # The check must see a broken policy, as CI requires too: the same site under a policy without 'wasm-unsafe-eval' must
+  # fail on a page that compiles WebAssembly, and fail for that reason (a Chrome that never started also exits 1).
+  sed "s/script-src 'self' 'wasm-unsafe-eval';/script-src 'self';/" "$CSP_DIR/Caddyfile" > "$CSP_DIR/Caddyfile.broken"
+  if cmp -s "$CSP_DIR/Caddyfile" "$CSP_DIR/Caddyfile.broken"; then
+    bad "CSP: the broken-policy seed changed nothing in the Caddyfile"
+  elif curl -sf -o /dev/null http://localhost:4184/; then
+    bad "CSP: port 4184 already serves something, probably a container left by an interrupted run: stop it and run this again"
+  else
+    docker run -d --rm --name qsh-ci-csp-broken -p 127.0.0.1:4184:80 -e SITE_ADDRESS=:80 \
+      -v "$CSP_DIR/srv:/srv:ro,z" -v "$CSP_DIR/Caddyfile.broken:/etc/caddy/Caddyfile:ro,z" "$CADDY_IMAGE" >>/tmp/ci_csp_caddy.log 2>&1
+    for _ in $(seq 1 30); do curl -sf -o /dev/null http://localhost:4184/ && break; sleep 1; done
+    if ( cd web && CDP_PORT=9357 CSP_PAGES=/usecase/medical_fl timeout 600 node scripts/check_csp.mjs http://localhost:4184 \
+         >/tmp/ci_csp_broken.log 2>&1 ); then
+      bad "CSP: the check passed a policy without 'wasm-unsafe-eval', so it would not see a broken one"
+    elif grep -A40 '^  FAIL /usecase/medical_fl' /tmp/ci_csp_broken.log | grep -qi 'wasm'; then
+      ok "the check fails the same site under a policy without 'wasm-unsafe-eval', naming WebAssembly, as it must"
+    else
+      bad "CSP: the broken-policy run failed, but not on WebAssembly"; tail -8 /tmp/ci_csp_broken.log
+    fi
+    docker stop qsh-ci-csp-broken >/dev/null 2>&1
+  fi
 else
   bad "CSP: could not assemble the site with its walkthrough"; tail -8 /tmp/ci_csp_walkthrough.log
 fi

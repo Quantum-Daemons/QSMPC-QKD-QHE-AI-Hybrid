@@ -159,6 +159,15 @@ feature rather than logging a warning, since the policy is enforced. `scripts/ci
 8b) against the client-only build served by the image's own Caddy and Caddyfile. A WebGPU path runs only where a
 browser has an adapter, which headless Chrome here does not, so a change to it is read in a browser that has one.
 
+`scripts/deploy_demo.sh` itself asserts the headers on every deploy, through the same pinned resolve as the bundle:
+both policies (the app's and the walkthrough's), the Report-Only candidate, HSTS, `nosniff`, the referrer policy,
+COOP, COEP and CORP, each as `docker/env/Caddyfile.client-only` in the checkout writes it, so a Caddyfile change that
+dropped one fails the deploy instead of shipping. GitHub CI runs the CSP walk too, offline, and also requires a
+policy without `'wasm-unsafe-eval'` to fail it. The agent panel's engines download hundreds of megabytes, so the
+walk does not press their run button: read them by hand in a browser with WebGPU after a change to how they load,
+with a buffered `ReportingObserver` (`new ReportingObserver(cb, { types: ['csp-violation'], buffered: true })`),
+which also returns what was reported before it was created.
+
 Skipping step 2 has produced a false negative here: after a deploy, navigating to the same URL
 re-served the cached bundle, so a working fix looked broken. The failure is asymmetric - a stale tab
 makes a good fix look bad, you change it again, and the second change is the one that ships

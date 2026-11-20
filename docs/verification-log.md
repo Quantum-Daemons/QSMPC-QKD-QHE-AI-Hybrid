@@ -5730,3 +5730,36 @@ bundle holds, so its `.mjs` is still named, and under the policy that engine rep
 ran distilGPT-2 on WebGPU (15.8 s) with no violation, and the medical page's pipeline run with WebGPU selected still ran
 its published model on `onnx-webgpu`, 19 PASS. The engine's WASM device, which loads another 237 MB of weights, shares
 this loading path and was not run. On the deployed site before the fix, `npm run check:csp` passed all 13 pages.
+
+### The policy in CI, the headers on every deploy, and a stricter style policy measured first (2026-11-20)
+
+The owner's choices of 2026-11-20, after notes from the owner's PQC-QKD testbed, whose demo moved to an enforced policy
+the same day (HSTS, nosniff, a policy; a smoke test in CI that also requires a broken policy to fail; headers checked
+from outside; inline-style needs removed one at a time after a Report-Only pass):
+
+- **CI.** The web job serves the client-only build it makes, with the walkthrough the web image builds, through the web
+  image's own Caddy image and `Caddyfile.client-only`, and runs `web/scripts/check_csp.mjs` offline (`CSP_OFFLINE=1`:
+  the page reaches localhost only, so the published models' fetches fail and every page is still walked). Then the
+  same site under a policy without `'wasm-unsafe-eval'` must make the check fail.
+- **Every deploy.** `scripts/deploy_demo.sh` reads the box's headers through the same pinned resolve as the bundle and
+  fails unless both policies, the Report-Only candidate, HSTS, `nosniff`, the referrer policy, COOP, COEP and CORP are
+  what the Caddyfile in the checkout writes. `tests/test_r86_deploy_reads_the_box_it_deployed.py` runs it on stubs: the
+  headers as written pass, and a missing policy, a loosened one and a missing HSTS each fail.
+- **Style, measured first.** Both Caddyfiles and `_headers` send a `Content-Security-Policy-Report-Only` candidate beside
+  the enforced policy: the app's policy with `style-src 'self'`, no `'unsafe-inline'`. It is reported and never
+  enforced; `check_csp.mjs` lists what it would block without failing, and
+  `tests/test_r86_security_headers.py` holds it to the enforced policy but for `style-src`.
+- **Reading reports in a browser.** A `securitypolicyviolation` listener added after a page has loaded misses what the
+  load itself reported, which is how the first checks in Chrome on 2026-11-20 were run (the headless walk listens from
+  before the page's first script). The checks after #71 used a buffered `ReportingObserver`, which returns those too:
+  none on `/`, `/validations` after its five buttons, `/walkthrough/` and both agent engines.
+- **Report-Only lines in Chrome's console.** Chrome 157 does not prefix a Report-Only violation's console line; it ends
+  it with "The policy is report-only, so the violation has been logged but no further action has been taken.", past
+  the 300 characters the check keeps of a line. The first draft of the check matched a prefix only and failed a probe
+  page on what were reports. The check now reads the whole line, and lists a report from the page's console only through
+  its document listener, which reports the same thing with its source and line. A local probe page (an inline
+  `<style>` and a `style` attribute, each written by the HTML and by a script, and one CSSOM write) then passed, with
+  those four in the would-block list and nothing for the CSSOM write, which `style-src` does not govern.
+- **Closing Chrome.** The check now closes Chrome through DevTools (`Browser.close`, 137 ms on this machine) and only
+  then falls back to SIGTERM, which took from 60 ms to 7.6 s here. Removing the profile at the earlier 5 s limit, while
+  Chrome was still running, left it behind.

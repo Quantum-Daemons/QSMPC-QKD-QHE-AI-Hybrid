@@ -454,6 +454,41 @@ jobs:
           for _ in $(seq 1 30); do curl -sf -o /dev/null http://localhost:4182/ && break; sleep 1; done
           SCAN_OFFLINE=1 node scripts/check_text_overlap.mjs http://localhost:4182 1280 720
 
+      # Every page under the site's Content-Security-Policy (Round 86, the owner's choices of 2026-11-20: an enforced
+      # policy, and this check in CI as well as scripts/ci_local.sh step 8b). `vite preview` above sends none of Caddy's
+      # headers, so the build just made, with the walkthrough the web image builds, is served by the Caddy image the web
+      # image uses and its Caddyfile, and walked offline with every worker attached: any violation fails. Then a policy
+      # without 'wasm-unsafe-eval' must make the same check fail, or the check itself is not seeing anything.
+      - name: Every page under the site's Content-Security-Policy, and a broken policy fails
+        working-directory: web
+        run: |
+          CADDY=$(grep -oE '^FROM caddy:[^ ]+' ../docker/Dockerfile.web | head -1 | cut -d' ' -f2)
+          mkdir -p /tmp/qsh-csp && cp -r /tmp/qsh-scan /tmp/qsh-csp/srv
+          docker build -q --target walkthrough -t qsh-ci-walkthrough -f ../docker/Dockerfile.web .. >/tmp/qsh-csp-walkthrough.log 2>&1 \
+            || { tail -20 /tmp/qsh-csp-walkthrough.log; exit 1; }
+          cid=$(docker create qsh-ci-walkthrough) && docker cp "$cid:/out" /tmp/qsh-csp/srv/walkthrough && docker rm "$cid" >/dev/null
+          cp ../docker/env/Caddyfile.client-only /tmp/qsh-csp/Caddyfile
+          sed "s/script-src 'self' 'wasm-unsafe-eval';/script-src 'self';/" /tmp/qsh-csp/Caddyfile > /tmp/qsh-csp/Caddyfile.broken
+          cmp -s /tmp/qsh-csp/Caddyfile /tmp/qsh-csp/Caddyfile.broken && { echo "the seed changed nothing"; exit 1; }
+          for c in good:4183:Caddyfile broken:4184:Caddyfile.broken; do
+            IFS=: read -r tag port file <<< "$c"
+            docker run -d --rm --name "qsh-csp-$tag" -p "127.0.0.1:$port:80" -e SITE_ADDRESS=:80 \
+              -v /tmp/qsh-csp/srv:/srv:ro -v "/tmp/qsh-csp/$file:/etc/caddy/Caddyfile:ro" "$CADDY" >/dev/null
+            for _ in $(seq 1 30); do curl -sf -o /dev/null "http://localhost:$port/" && break; sleep 1; done
+          done
+          CSP_OFFLINE=1 node scripts/check_csp.mjs http://localhost:4183
+          rc=0
+          CSP_OFFLINE=1 CDP_PORT=9357 CSP_PAGES=/usecase/medical_fl node scripts/check_csp.mjs http://localhost:4184 \
+            > /tmp/qsh-csp-broken.log 2>&1 || rc=$?
+          cat /tmp/qsh-csp-broken.log
+          if [ "$rc" = 0 ]; then
+            echo "FAIL  the check passed a policy without 'wasm-unsafe-eval': it would not see a broken policy"; exit 1
+          fi
+          # Failing for that reason: a Chrome that never started also exits 1.
+          grep -A40 '^  FAIL /usecase/medical_fl' /tmp/qsh-csp-broken.log | grep -qi 'wasm' \
+            || { echo "FAIL  the broken-policy run failed, but not on WebAssembly"; exit 1; }
+          echo "PASS  the check fails the broken policy on WebAssembly, as it must"
+
       # The README's eleven Mermaid diagrams, rendered and measured: no label out of its node, over
       # another or crossed by an edge, and each fits GitHub's README column. A checklist row run by
       # hand until Round 80, when the owner chose a gate; Mermaid is a dev dependency for it alone.

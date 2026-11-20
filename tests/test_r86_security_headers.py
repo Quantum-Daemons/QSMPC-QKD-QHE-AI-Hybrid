@@ -47,7 +47,8 @@ def test_hsts_nosniff_and_the_referrer_policy(path: Path) -> None:
     assert hsts == ['"max-age=31536000"'], f"{path.name}: HSTS for a year, this host only, not {hsts}"
     assert '\t\t>X-Content-Type-Options "nosniff"\n' in text, path.name
     assert '\t\t>Referrer-Policy "strict-origin-when-cross-origin"\n' in text, path.name
-    assert "Content-Security-Policy-Report-Only" not in text, f"{path.name}: the owner chose an enforced policy"
+    # The owner chose an enforced policy; a Report-Only header is only ever a stricter candidate beside it (below).
+    assert text.count(">Content-Security-Policy-Report-Only ") == 1, f"{path.name}: one Report-Only candidate, at most"
 
 
 @pytest.mark.parametrize("path", CADDYFILES, ids=lambda p: p.name)
@@ -99,3 +100,17 @@ def test_the_static_host_file_carries_the_same_headers() -> None:
     for line in ("Strict-Transport-Security: max-age=31536000", "X-Content-Type-Options: nosniff",
                  "Referrer-Policy: strict-origin-when-cross-origin"):
         assert f"  {line}\n" in static, line
+
+
+@pytest.mark.parametrize("path", CADDYFILES, ids=lambda p: p.name)
+def test_the_report_only_candidate_is_the_app_policy_without_inline_styles(path: Path) -> None:
+    """2026-11-20, the owner's choice: measure before tightening style-src. The candidate is reported, never enforced, and
+    differs from the enforced app policy in style-src alone, so what it reports is exactly what that tightening breaks."""
+    text = path.read_text()
+    enforced = re.search(r'^\theader @app_csp >Content-Security-Policy "([^"]+)"$', text, re.M).group(1)
+    candidate = re.search(r'^\theader @app_csp >Content-Security-Policy-Report-Only "([^"]+)"$', text, re.M)
+    assert candidate, f"{path.name}: no Report-Only candidate for the app"
+    assert candidate.group(1) == enforced.replace("style-src 'self' 'unsafe-inline';", "style-src 'self';"), path.name
+    static = (REPO / "web" / "public" / "_headers").read_text()
+    assert f"  Content-Security-Policy-Report-Only: {candidate.group(1)}\n" in static
+    assert "/walkthrough/*\n  ! Content-Security-Policy\n  ! Content-Security-Policy-Report-Only\n" in static
