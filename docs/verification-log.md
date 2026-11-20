@@ -5923,3 +5923,31 @@ Report-Only candidate reported nothing. In the owner's Chrome, with a buffered `
 two engines ran on WebGPU under the candidate, from the browser's cache: Transformers.js with distilGPT-2 (2015 ms) and
 WebLLM with SmolLM2-360M (2017 ms), each with its answer and no report, enforced or report-only. That is the
 Report-Only-first rule's condition for enforcing `style-src 'self'`: the walk and the paths only a button press reaches.
+
+### style-src 'self' enforced, under the Report-Only-first rule (2026-11-20)
+
+The candidate, the app's policy with `style-src 'self'` and no `'unsafe-inline'`, was sent beside the enforced policy
+with #73. It reported the loading placeholder's three style attributes on every app page and nothing else; #74 moved
+them, and the fourth in `<noscript>`, to `/placeholder.css`. On the deployed site after #74 the walk of every page,
+tab, run and action reported nothing from it, and both agent engines, which only their run button reaches, ran under it
+in the owner's Chrome with no report (#74's entry). The owner's choice of 2026-11-20 was to enforce it then: both
+Caddyfiles and `web/public/_headers` now send `style-src 'self'` in the app's policy and no Report-Only header, and the
+walkthrough's own policy is unchanged. The Caddyfiles' comment had given mermaid's `<style>` elements as a reason for
+`'unsafe-inline'`; the app renders no mermaid diagram (it writes Mermaid text to copy or download; the `mermaid`
+package serves the README-diagram gate), which the candidate's silence agrees with. The deploy now requires the box to
+send no Report-Only header while the Caddyfile sets none (a stale image would), and a test seeds one.
+
+### #75 on the deployed site: the walkthrough on its own origin (2026-11-20)
+
+The order the owner approved, so that no visitor met a redirect loop: the front proxy's site for
+`qsh.walkthrough.daemons.jp` went back from the interim 302 (which had sent the name to the app's `/walkthrough/`
+while it showed the whole app) to forwarding, under the testbed's watchdog lock, with the two existing names' headers
+unchanged; then #75 (merged as fa649d3) was deployed with `QSH_WALKTHROUGH_ORIGIN=https://qsh.walkthrough.daemons.jp`
+in the deploy's environment. The deploy's own split checks passed on the box. From outside: the new name's root
+answered 200 with the walkthrough, its policy, COOP and no Report-Only header; an app page and `/walkthrough/` there
+answered 404; the app's `/`, pages and policy were unchanged, and its `/walkthrough/` and `/walkthrough/?x=1` answered
+301 to the new name's `/` and `/?x=1`, under the app's policy. In the owner's Chrome the app's `/walkthrough/` landed
+on `https://qsh.walkthrough.daemons.jp/`, cross-origin isolated, with `SharedArrayBuffer`, its own storage, the same
+4482 characters rendered as on the app's origin, no traceback and no CSP report (buffered `ReportingObserver`).
+`npm run check:csp` on the deployed site passed all 13 pages, the walkthrough through the 301, with no violation and
+nothing from the Report-Only candidate.

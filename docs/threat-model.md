@@ -88,7 +88,7 @@
   server-side MCP (client mirror only), so it adds no server trust surface.
 - **The page's own code** (Round 86, 2026-11-20): everything the browser runs comes from this site, over TLS. The
   site sends a Content-Security-Policy that allows scripts and workers from this site only, with wasm compilation and
-  never `'unsafe-eval'` or inline scripts, and fetches to this site and to Hugging Face, which serves the pinned model
+  never `'unsafe-eval'` or inline scripts (and, since 2026-11-20, no inline style), and fetches to this site and to Hugging Face, which serves the pinned model
   files and redirects to its CDN; HSTS for a year (this host only), `nosniff`, and a stated referrer policy. The Python
   walkthrough, a static marimo export with inline scripts and a chart library that compiles expressions, has a looser
   policy. On the demo it runs on an origin of its own (`QSH_WALKTHROUGH_ORIGIN`, the owner's choice of 2026-11-20), so
