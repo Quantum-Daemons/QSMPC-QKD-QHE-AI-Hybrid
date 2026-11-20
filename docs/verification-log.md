@@ -5808,6 +5808,15 @@ from outside; inline-style needs removed one at a time after a Report-Only pass)
   failing, since one that arrives is added in front of the container.
 - **Report-Only first**, the owner's rule for every later change to the enforced policy, is in
   `docs/deployment.md`.
+- **On GitHub** the new step walked the 13 pages with every run finished, listed the same 36 entries and no violation,
+  and the broken policy failed on `/usecase/medical_fl` with `script-src blocked wasm-eval`.
+- **A test that only a reused worktree runs.** This branch's first local gate failed in step 1, on the eight tests of
+  `tests/test_r84_genomics_full_score_in_the_browser.py`: esbuild had no loader for ONNX Runtime's two `.wasm?url`
+  imports, which #70 and #71 put in `web/src/lib/ortSameOrigin.ts`. That harness stubs every `.wasm?url` only when the
+  MPC module is not built, and uses the real module when it is. Every earlier gate ran in a fresh worktree, where step
+  1 runs before step 8 builds the module, and GitHub's Python job never builds it, so none ran this path since #70;
+  this worktree's module was built by the replay above. The harness now resolves any other `?url` import to its path on
+  disk, as it does the SEAL wasm's. Every other harness stubs `?url` imports whether or not the module is built.
 
 ### #72 on the deployed site, and its table loading when the tab is shown (2026-11-20)
 
