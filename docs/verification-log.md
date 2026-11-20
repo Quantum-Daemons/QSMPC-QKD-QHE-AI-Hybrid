@@ -5604,3 +5604,19 @@ two (262 kB, 525 kB). The medical pipeline's Start re-scored `medical_fl.square_
 published sample, PASS, accuracy 0.7051 against the recorded 0.7051; the Models tab "Square student (fully
 encrypted)" shows its card; no console error or warning. A pinned headless walk of the 12 routes and 28 tabs on that
 bundle found no console error, failed request or response of 400 or more, and every other page's text unchanged.
+
+### Two tests hold the HE moduli under the post-quantum table (opened 2026-11-18, taken in 2026-11-20)
+
+**Found** by the static check of this project's HE parameters behind the T1 report (2026-11-18): the BFV exactness test
+built its context with no coefficient modulus, so TenSEAL took SEAL's default for $`N = 8192`$ at 128 bits,
+43 + 43 + 44 + 44 + 44 = 218 bits. That is the 2018 HomomorphicEncryption.org standard's classical bound, past its
+post-quantum table (202 bits, Table 2) and the 2024 guidelines' table (214 bits, Bossuat et al., IACR Communications in
+Cryptology 1(4), Table 5.2, classical, for $`q = PQ`$). Lattigo, which the federation's threshold aggregation runs,
+has no guard of its own.
+
+**Changed.** `tests/test_scorecard_bfv_exact.py` sets 43 + 43 + 44 + 44 = 174 bits, and the exactness check still holds
+on all 20 rows. `TestModulusIsWithinTheQuantumTable` (`wasm/qsh-fedthresh/agg/agg_test.go`) builds every setting through
+`Open` and sums $`\log_2`$ of each prime Lattigo generated for Q and P, at most 202 bits at $`N = 8192`$: `ckks-demo` and
+`ckks-l40` 120.0000, `bgv-128` 199.9773; a setting at another ring size fails until it brings its own bound. Opened by
+another session on 2026-11-18 (PR #59, tests only); taken into this round on the owner's choice, with main merged in
+and #69's register row, both tests passing again on the merged tree.
