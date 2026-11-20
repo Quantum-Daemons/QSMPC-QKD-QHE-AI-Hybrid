@@ -30,6 +30,7 @@
 import { minorityPr, type MinorityPr } from "./minorityPr";
 import { evaluateForecastStudentOffThread, fetchForecasterWeights, type ForecastEventsFile, type StudentEvaluation } from "./forecastStudent";
 import { asJson, checkPinned } from "./pinnedFetch";
+import { useSameOriginOrtBuild } from "./ortSameOrigin";
 import type * as OrtTypes from "onnxruntime-web";
 
 /**
@@ -56,8 +57,10 @@ const ortBuilds: Record<"webgpu" | "wasm", Promise<typeof OrtTypes> | null> = {
 function loadOrt(useWebGPU: boolean): Promise<typeof OrtTypes> {
   const kind = useWebGPU ? "webgpu" : "wasm";
   if (!ortBuilds[kind]) {
+    // The WebGPU build shares a chunk with Transformers.js, whose module points ONNX Runtime at jsDelivr when it runs,
+    // so its wasm is pointed back at this site's copy before any session is created (lib/ortSameOrigin.ts).
     ortBuilds[kind] = (useWebGPU
-      ? import("onnxruntime-web/webgpu")
+      ? import("onnxruntime-web/webgpu").then((ort) => { useSameOriginOrtBuild(ort.env.wasm, "asyncify"); return ort; })
       : import("onnxruntime-web/wasm")) as Promise<typeof OrtTypes>;
   }
   return ortBuilds[kind]!;

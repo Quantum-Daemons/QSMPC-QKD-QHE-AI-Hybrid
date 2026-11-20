@@ -86,6 +86,17 @@
   on every interface; this sentence said the server was sandboxed. CORS is now off unless the operator
   names origins, and the compose file binds the API to loopback. The public demo runs no
   server-side MCP (client mirror only), so it adds no server trust surface.
+- **The page's own code** (Round 86, 2026-11-20): everything the browser runs comes from this site, over TLS. The
+  site sends a Content-Security-Policy that allows scripts and workers from this site only, with wasm compilation and
+  never `'unsafe-eval'` or inline scripts, and fetches to this site and to Hugging Face, which serves the pinned model
+  files and redirects to its CDN; HSTS for a year (this host only), `nosniff`, and a stated referrer policy. The Python
+  walkthrough, a static marimo export with inline scripts and a chart library that compiles expressions, has a looser
+  policy confined to `/walkthrough/`. The policy limits what an injected script, or a third-party host, could add to a
+  page; it does nothing against a compromised server or a malicious build, which this demo trusts like any static site.
+  Until that day the site sent no such policy, and a pipeline run with WebGPU selected loaded ONNX Runtime's asyncify
+  build from cdn.jsdelivr.net, third-party code where the site says it serves its runtime itself; both callers of ONNX
+  Runtime now point it at this site's copies (`web/src/lib/ortSameOrigin.ts`), and `web/scripts/check_csp.mjs` walks
+  every page under the policy in the local gate.
 
 ## What each step protects, in the browser and in the full deployment
 

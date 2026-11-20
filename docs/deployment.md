@@ -151,6 +151,14 @@ Grep for a **string literal**. Function names are minified, so only literals sur
     crossOriginIsolated        // -> true
     typeof SharedArrayBuffer   // -> "function"
 
+    # 4. the site under its Content-Security-Policy (Round 86): every page, tab, run and action, every worker attached
+    cd web && npm run check:csp -- https://your-domain.example
+
+Step 4 reads what the policy blocks, which the server's headers alone cannot say: a source the policy misses breaks a
+feature rather than logging a warning, since the policy is enforced. `scripts/ci_local.sh` runs the same check (step
+8b) against the client-only build served by the image's own Caddy and Caddyfile. A WebGPU path runs only where a
+browser has an adapter, which headless Chrome here does not, so a change to it is read in a browser that has one.
+
 Skipping step 2 has produced a false negative here: after a deploy, navigating to the same URL
 re-served the cached bundle, so a working fix looked broken. The failure is asymmetric - a stale tab
 makes a good fix look bad, you change it again, and the second change is the one that ships
