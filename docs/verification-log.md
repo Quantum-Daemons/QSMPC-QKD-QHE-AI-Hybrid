@@ -5563,3 +5563,44 @@ that the installed marimo asks for the pinned ruff. `MARIMO_RUFF` records which 
 `--check` fails on a marimo bump until it is read again. `tests/test_r86_walkthrough.py`: a different ruff, a lock
 without hashes and an unrecorded marimo are refused; the image downloads before it exports, and the export is offline.
 A local build of the walkthrough stage downloaded and checked the wheel, exported offline and wrote 47.3 MB in 24 s.
+
+### The demo on its new host (2026-11-20)
+
+**The move.** On 2026-11-19 the owner chose to move the public demo to a new host rather than back to the usual one
+after its maintenance; the usual host is not public again and was not redeployed. The front proxy and the other demo
+were already running there; this project's part was QSH's own container. The first deploy of
+`main` (35eb8f1, a git clone on the host) failed in the image build, which PR #68 fixed (the entry above).
+
+**Before the names moved** (checklist DP18). At 00:03 JST `scripts/deploy_demo.sh --return-to-main` passed in 27 s on
+the build cache; its pinned read gave 200 and `index-DsXacjtg.js` while the public name still reached the temporary
+host with the same build. Through resolves pinned to each host, the two served the same headers and the same bytes
+for the index, the bundle, the CSS, the three wasm files, the notices, the walkthrough, two deep routes and two 404s,
+with COOP and COEP, over TLS 1.3. In headless Chrome with both names pinned to the new host (00:04 to 00:17): 12
+routes, every document from that host, no console error or warning, no exception, no failed request, no response of
+400 or more; 27 tabs each selected and non-empty; the four buttons on `/validations` (ML-KEM-768 with X25519: 1216 B
+key, 1120 B ciphertext, agreement true; ML-DSA-65: 1952 B key, 3309 B signature, valid and refusing a tampered
+message; the handshake's agreement true; BB84 run); Start on all six use cases finished, 66 PASS and no FAIL; the
+walkthrough booted; an unknown path shows "Page not found".
+
+**After.** By 00:46 the authoritative server, the local resolver, 1.1.1.1, 8.8.8.8 and 9.9.9.9 all gave the new host
+for both names, and the temporary host answered neither HTTPS nor ssh, so when its requests stopped could not be read.
+Live in Chrome the site answered 200 over HTTP/2 with the same bundle, cross-origin isolated, with no console error.
+`.env.demo` (gitignored) now names the new host, the old file kept beside it, so the documented deploy command
+reaches it; `scripts/check_secrets.sh` still refuses the earlier hosts' values in a tracked file. PR #68 was merged
+and deployed by that command at 02:14: the walkthrough came out byte-identical, so the image did not change.
+
+### The fully encrypted medical student on the deployed site (2026-11-20)
+
+PR #67, merged as 66e11d1 after the names had moved, deployed by the standard command at 03:0x JST (bundle
+`index-DdHnc4YV.js`), read in Chrome on the public name (checklist PI51):
+
+| run | largest logit error | decisions unchanged | accuracy, decrypted and in the clear | wall time with the keys |
+|---|---|---|---|---|
+| A2, eight images (four of each class) | $`9.72 \times 10^{-6}`$ | 8 of 8 | 0.6250 and 0.6250 | 1.1 s |
+| B, all 156 | $`1.38 \times 10^{-6}`$ | 156 of 156 | 0.7051 and 0.7051 | 27.9 s |
+
+Both ran in a Web Worker; each image crossed as nine ciphertexts (4.72 MB under A2, 9.44 MB under B) and came back as
+two (262 kB, 525 kB). The medical pipeline's Start re-scored `medical_fl.square_student` on all 156 rows of its
+published sample, PASS, accuracy 0.7051 against the recorded 0.7051; the Models tab "Square student (fully
+encrypted)" shows its card; no console error or warning. A pinned headless walk of the 12 routes and 28 tabs on that
+bundle found no console error, failed request or response of 400 or more, and every other page's text unchanged.
