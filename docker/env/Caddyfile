@@ -13,6 +13,23 @@
 		Cross-Origin-Embedder-Policy "require-corp"
 		Cross-Origin-Resource-Policy "cross-origin"
 	}
+	# Security headers (Round 86, 2026-11-20, the owner's choice of an enforced Content-Security-Policy). HSTS for a
+	# year, this host only (no includeSubDomains: other hosts share the registered domain); no MIME sniffing; the
+	# browsers' default referrer policy, stated. The app's policy allows scripts and workers from this site only, wasm
+	# compilation, and fetches to this site and to Hugging Face, which serves the pinned model files and redirects to
+	# its CDN (huggingface.co and *.hf.co, the only other hosts a full walk of every page and run contacted on
+	# 2026-11-20). style-src keeps 'unsafe-inline' for the style attributes in index.html and the <style> elements
+	# mermaid writes into its diagrams. The Python walkthrough is a static marimo export with four inline scripts and a
+	# chart library that compiles expressions, so it has its own, looser policy, under /walkthrough/ only.
+	header {
+		>Strict-Transport-Security "max-age=31536000"
+		>X-Content-Type-Options "nosniff"
+		>Referrer-Policy "strict-origin-when-cross-origin"
+	}
+	@app_csp not path /walkthrough /walkthrough/*
+	header @app_csp >Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://huggingface.co https://*.huggingface.co https://*.hf.co; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
+	@walkthrough_csp path /walkthrough /walkthrough/*
+	header @walkthrough_csp >Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
 	@wasm path *.wasm
 	header @wasm Content-Type application/wasm
 

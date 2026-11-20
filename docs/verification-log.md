@@ -5604,3 +5604,42 @@ two (262 kB, 525 kB). The medical pipeline's Start re-scored `medical_fl.square_
 published sample, PASS, accuracy 0.7051 against the recorded 0.7051; the Models tab "Square student (fully
 encrypted)" shows its card; no console error or warning. A pinned headless walk of the 12 routes and 28 tabs on that
 bundle found no console error, failed request or response of 400 or more, and every other page's text unchanged.
+
+### Security headers and an enforced Content-Security-Policy, and a third-party runtime the policy found (2026-11-20)
+
+**Found.** On the new host, both hosts the demo had used and the other demo on the same proxy: the site sent COOP,
+COEP and CORP and nothing else, no HSTS, no `X-Content-Type-Options` and no Content-Security-Policy. The owner chose
+an enforced policy at once rather than a report-only one.
+
+**What the policy allows, and why.** An inventory first: a headless walk of every route, the six pipeline runs, every
+run or load button and the walkthrough on the live site contacted, besides this site, only huggingface.co (62
+fetches, 41 of them redirected) and its CDN host us.aws.cdn.hf.co (20), with `data:` images. The app's policy is
+`default-src 'self'`, scripts and workers from this site with wasm compilation and nothing else (`'wasm-unsafe-eval'`,
+no `'unsafe-eval'` or inline script), `connect-src` this site, huggingface.co and `*.hf.co`, `style-src` with
+`'unsafe-inline'` for four style attributes in `index.html` and the `<style>` elements mermaid writes into its
+diagrams, `object-src 'none'`, `base-uri`, `form-action` and `frame-ancestors` this site. The walkthrough is a static
+marimo export with four inline scripts and a chart library (vega) that compiles expressions with `new Function`, so it
+has its own policy, with `'unsafe-inline'` and `'unsafe-eval'`, under `/walkthrough/` only. HSTS is for a year and this
+host alone, since other hosts share the registered domain. `web/public/_headers`, for a static host, carries the same.
+
+**What the policy found.** In the owner's Chrome, which has a WebGPU adapter, against a local Caddy with the policy, a
+pipeline run with WebGPU selected was refused `cdn.jsdelivr.net/npm/onnxruntime-web@1.31.1/dist/ort-wasm-simd-threaded.asyncify.mjs`
+and fell back to WASM. The live site, which had no policy, loaded that file and its wasm from jsDelivr on the same run,
+read from the page's resource timing: third-party code, where the site says it serves its runtime itself.
+Transformers.js points ONNX Runtime at jsDelivr when its module runs, and Vite puts onnxruntime-web in the same chunk,
+so loading the WebGPU build for the inference stage ran that code too. The agent panel had been pointed at this site's
+copies earlier in the round; the inference stage, its twin, had not. Both now go through `web/src/lib/ortSameOrigin.ts`,
+and `tests/test_r86_browser_runtime_stays_same_origin.py` fails if any import of `onnxruntime-web/webgpu` skips it
+(seeded: removing the call fails the test). After the fix, under the policy, a WebGPU run on the medical page loaded
+both files from this site, raised no violation, and its published model ran on `onnx-webgpu`; the telecom page's
+run raised none either, and its model still falls back to WASM, as it does without the policy, for its own operators.
+
+**Checks.** `web/scripts/check_csp.mjs` walks every page, tab, run and action in headless Chrome with every worker
+attached, and fails on any violation from the document, the console of the page or of a worker, or an exception that
+names the policy; `scripts/ci_local.sh` step 8b runs it against the client-only build and the walkthrough, served by
+the web image's own Caddy image and `Caddyfile.client-only`. On a local build of this branch: all 13 pages pass, every
+page cross-origin isolated. Seeded both ways: without Hugging Face in `connect-src` it fails on the blocked model
+fetches, and without `'wasm-unsafe-eval'` on the blocked wasm compilation (ONNX and CKKS loads). `tests/test_r86_security_headers.py`
+holds the two Caddyfiles and `_headers` to the same headers and the app's policy to what it allows. Not run under the
+policy: the agent panel's two engines with a model loaded, which download 206 to 328 MB from Hugging Face; their
+runtime files are this site's (`check_csp.mjs` and the earlier wire check, checklist CS12).
