@@ -5731,6 +5731,37 @@ ran distilGPT-2 on WebGPU (15.8 s) with no violation, and the medical page's pip
 its published model on `onnx-webgpu`, 19 PASS. The engine's WASM device, which loads another 237 MB of weights, shares
 this loading path and was not run. On the deployed site before the fix, `npm run check:csp` passed all 13 pages.
 
+### F1 by the receiving account's in-degree, on the finance page's IBM tab (2026-11-20)
+
+**What and why.** The owner's choice of 2026-11-15: stratify IBM's two models by the receiver's in-degree, as SALT-GNN
+(Losavio et al., arXiv:2607.10131) does, which reports that graph models lose F1 where receivers are dense.
+`scripts/research/finance_degree_f1.py` bins the 1,523,504 test transfers (2,321 laundering) in the paper's bins from
+IBM's runs' saved test and validation scores, five seeds of Multi-PNA+EU and of Multi-GIN+EU under each protocol, with
+fit-window batch norm as the published checkpoints: the in-degree over every transfer of the file under IBM's protocol,
+whose test graph holds them all (`te_edge_index = edge_index` in IBM's `data_loading.py`), and over the transfers up to
+the end of the scored one's batch under the causal protocol (`causal_batches`: 2,048 rows, split where a batch spans
+more than the fit window's 1,020 s reach). F1 at 0.5, the paper's threshold, and at each run's validation-tuned one;
+per bin the five-run mean and standard deviation and a 95% bootstrap interval of the mean over the bin's transfers,
+drawn from the counts of the 64 label-and-flag patterns, which is the row bootstrap at a fixed cost. Each run left 859
+to 895 test transfers unscored (its sampler's draw, at most one of them laundering), counted as not flagged.
+
+**Found.** At 0.5 under IBM's protocol the 50-99 bin scores above the overall F1 for both networks (PNA $`0.741 \pm 0.042`$
+against $`0.638 \pm 0.025`$; GIN $`0.714 \pm 0.049`$ against $`0.511 \pm 0.044`$), where the paper's PNA and GIN score
+below (0.515 and 0.509 against 0.629 and 0.418); under the causal protocol PNA keeps $`0.642 \pm 0.097`$ against 0.611
+and GIN falls to $`0.330 \pm 0.152`$ against 0.440. The 5-9 bin is the lowest for every model. The 50-99 bin holds 167
+laundering transfers in IBM's window and 69 in the causal one; the 100+ bin holds one. The paper's split ratios and
+degree window are unstated, so nothing is ranked. Re-reading its Table 2 corrected the plan, which had said the plain
+PNA and GIN rows had no per-bin figures; the record carries the whole table.
+
+**On the page.** The IBM tab ends with the table, badged offline, fetched from `/data/finance/degree-f1.json` (the
+record byte for byte) when the tab is opened; a threshold and a degree-window selector, the paper's table beside
+it. **Checks.** `tests/test_r86_finance_degree_f1.py`: the record holds together (the paper's bins, rows and positives
+adding up to the test window, five runs whose mean is the mean shown, ordered intervals, the paper's rows as recorded),
+each refusal fires on a seeded fault, the page's copy is the record, and where the runs' dumps are on the machine the
+record is recomputed from them and must be equal (46 s here). The script asserts each bin's count-based F1 against a
+direct computation. `tests/test_r84_shipped_data_carries_its_licence.py` now lists the file (CDLA-Sharing-1.0, its
+credit and change note).
+
 ### The policy in CI, the headers on every deploy, and a stricter style policy measured first (2026-11-20)
 
 The owner's choices of 2026-11-20, after notes from the owner's PQC-QKD testbed, whose demo moved to an enforced policy
