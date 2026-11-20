@@ -152,8 +152,10 @@ step "8b/18 the site under its Content-Security-Policy, through the image's own 
 # layout scan above cannot see a violation. The client-only build above, with the walkthrough the image builds, is
 # served by the Caddy image the web image uses and by docker/env/Caddyfile.client-only, and web/scripts/check_csp.mjs
 # walks every page, tab, run and action with each worker attached. A violation anywhere fails; so does being unable to
-# serve it (no docker here is unchecked, not a pass).
+# serve it (no docker here is unchecked, not a pass). The walkthrough is on an origin of its own, as on the demo
+# (QSH_WALKTHROUGH_ORIGIN, 2026-11-20): http://127.0.0.1:4183, which the walk reaches through the app's 301.
 CSP_DIR=$(mktemp -d)
+WALK_ORIGIN_CI=http://127.0.0.1:4183
 CADDY_IMAGE=$(grep -oE '^FROM caddy:[^ ]+' docker/Dockerfile.web | head -1 | cut -d' ' -f2)
 if [ ! -f "$SCAN_OUT/index.html" ]; then
   bad "CSP: no client-only build to serve (the layout step's build failed)"
@@ -165,13 +167,24 @@ elif cp -r "$SCAN_OUT" "$CSP_DIR/srv" && cp docker/env/Caddyfile.client-only "$C
      && docker build -q --target walkthrough -t qsh-ci-walkthrough -f docker/Dockerfile.web . >/tmp/ci_csp_walkthrough.log 2>&1 \
      && cid=$(docker create qsh-ci-walkthrough) && docker cp "$cid:/out" "$CSP_DIR/srv/walkthrough" >>/tmp/ci_csp_walkthrough.log 2>&1 \
      && docker rm "$cid" >/dev/null; then
-  docker run -d --rm --name qsh-ci-csp -p 127.0.0.1:4183:80 -e SITE_ADDRESS=:80 \
+  docker run -d --rm --name qsh-ci-csp -p 127.0.0.1:4183:80 -e SITE_ADDRESS=:80 -e QSH_WALKTHROUGH_ORIGIN=$WALK_ORIGIN_CI \
     -v "$CSP_DIR/srv:/srv:ro,z" -v "$CSP_DIR/Caddyfile:/etc/caddy/Caddyfile:ro,z" "$CADDY_IMAGE" >/tmp/ci_csp_caddy.log 2>&1
   for _ in $(seq 1 30); do curl -sf -o /dev/null http://localhost:4183/ && break; sleep 1; done
   ( cd web && timeout 1800 node scripts/check_csp.mjs http://localhost:4183 >/tmp/ci_csp.log 2>&1 ) \
     && { ok "no CSP violation on any page, worker, run or action, under the image's Caddy and its Caddyfile"
          grep -E '^the Report-Only candidate' /tmp/ci_csp.log | sed 's/^/        note: /'; true; } \
     || { bad "CSP (web/scripts/check_csp.mjs)"; grep -E "FAIL|^ {7}|problem" /tmp/ci_csp.log | head -20; }
+  # Where the walkthrough is: on its own origin the app's /walkthrough/ moves there, that origin answers no app page,
+  # and it sends the walkthrough's policy and not the app's Report-Only candidate.
+  moved=$(curl -s -o /dev/null -w '%{http_code} %{redirect_url}' http://localhost:4183/walkthrough/)
+  apppage=$(curl -s -o /dev/null -w '%{http_code}' "$WALK_ORIGIN_CI/usecase/medical_fl")
+  walkh=$(curl -s -D - -o /dev/null "$WALK_ORIGIN_CI/" | tr -d '\r')
+  if [ "$moved" = "301 $WALK_ORIGIN_CI/" ] && [ "$apppage" = 404 ] && printf '%s' "$walkh" | grep -qi "^content-security-policy: .*'unsafe-eval'" \
+     && ! printf '%s' "$walkh" | grep -qi '^content-security-policy-report-only'; then
+    ok "the walkthrough on its own origin: the app's /walkthrough/ answers 301 there, and that origin serves only the walkthrough, under its policy"
+  else
+    bad "CSP: the walkthrough's own origin (moved: $moved; an app page there: $apppage)"
+  fi
   docker stop qsh-ci-csp >/dev/null 2>&1
   # The check must see a broken policy, as CI requires too: the same site under a policy without 'wasm-unsafe-eval' must
   # fail on a page that compiles WebAssembly, and fail for that reason (a Chrome that never started also exits 1).
@@ -191,6 +204,12 @@ elif cp -r "$SCAN_OUT" "$CSP_DIR/srv" && cp docker/env/Caddyfile.client-only "$C
       ok "the check fails the same site under a policy without 'wasm-unsafe-eval', naming WebAssembly, as it must"
     else
       bad "CSP: the broken-policy run failed, but not on WebAssembly"; tail -8 /tmp/ci_csp_broken.log
+    fi
+    # This one runs without QSH_WALKTHROUGH_ORIGIN, the default: the walkthrough at /walkthrough/, under its policy.
+    if curl -s -D - -o /dev/null http://localhost:4184/walkthrough/ | tr -d '\r' | grep -qi "^content-security-policy: .*'unsafe-eval'"; then
+      ok "without the setting, the walkthrough stays at /walkthrough/ under its own policy"
+    else
+      bad "CSP: without QSH_WALKTHROUGH_ORIGIN, /walkthrough/ did not serve the walkthrough under its policy"
     fi
     docker stop qsh-ci-csp-broken >/dev/null 2>&1
   fi

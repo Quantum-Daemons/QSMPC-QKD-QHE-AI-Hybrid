@@ -55,9 +55,10 @@ async function connect() {
 const profile = mkdtempSync(join(tmpdir(), "qsh-csp-"));
 const chrome = spawn(CHROME, ["--headless=new", `--remote-debugging-port=${PORT}`, `--user-data-dir=${profile}`,
   "--window-size=1280,900", "--no-first-run", ...(process.env.CI ? ["--no-sandbox"] : []),
-  // CSP_OFFLINE=1 (CI, which is offline by design): the page reaches localhost and nothing else, so the published models'
-  // fetches fail and every page is still walked under its policy.
-  ...(process.env.CSP_OFFLINE ? ["--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost"] : []),
+  // CSP_OFFLINE=1 (CI, which is offline by design): the page reaches this machine and nothing else, so the published
+  // models' fetches fail and every page is still walked under its policy. 127.0.0.1 is the walkthrough's own origin in
+  // CI (QSH_WALKTHROUGH_ORIGIN): `MAP *` alone sent its 301 to an error page (2026-11-20).
+  ...(process.env.CSP_OFFLINE ? ["--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE localhost, EXCLUDE 127.0.0.1"] : []),
   "about:blank"], { stdio: "ignore" });
 let failures = 0;
 try {
@@ -154,7 +155,10 @@ try {
       }
       notes.push(`${seen.length} actions`);
     }
-    const state = await ev(`({ csp: window.__csp || [], isolated: window.crossOriginIsolated })`);
+    const state = await ev(`({ csp: window.__csp || [], isolated: window.crossOriginIsolated, href: location.href })`);
+    // A page that ended on Chrome's error page (an unreachable host, a refused redirect) has no policy to break and is
+    // never isolated: say so, rather than let it read as an isolation failure or, worse, a clean page.
+    if (/^chrome-error:/.test(state.href)) found.push(`the page did not load: ${state.href}`);
     for (const v of state.csp) {
       record("document", v.startsWith("[Report Only] ") ? `[Report Only] Content Security Policy: ${v.slice(14)}` : `Content Security Policy: ${v}`);
     }

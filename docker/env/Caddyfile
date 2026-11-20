@@ -29,13 +29,20 @@
 		>Referrer-Policy "strict-origin-when-cross-origin"
 		-Server
 	}
-	@app_csp not path /walkthrough /walkthrough/*
+	# The walkthrough on an origin of its own (2026-11-20, the owner's choice), when QSH_WALKTHROUGH_ORIGIN names it
+	# (scheme, host and any port, no path: https://walkthrough.example). A request for that host and port gets the
+	# walkthrough at the root and nothing of the app; on any other host /walkthrough/... answers 301 there, so this
+	# origin never sends the walkthrough's looser policy. Unset (the default), the walkthrough stays at /walkthrough/
+	# on this origin. The two policy matchers below are exact complements, in both modes.
+	@walk_origin expression `"{$QSH_WALKTHROUGH_ORIGIN}" != "" && "{$QSH_WALKTHROUGH_ORIGIN}".endsWith("//" + {http.request.hostport})`
+	@walk_moved expression `"{$QSH_WALKTHROUGH_ORIGIN}" != "" && !"{$QSH_WALKTHROUGH_ORIGIN}".endsWith("//" + {http.request.hostport}) && path('/walkthrough', '/walkthrough/*')`
+	@app_csp expression `!("{$QSH_WALKTHROUGH_ORIGIN}" == "" && path('/walkthrough', '/walkthrough/*')) && !("{$QSH_WALKTHROUGH_ORIGIN}" != "" && "{$QSH_WALKTHROUGH_ORIGIN}".endsWith("//" + {http.request.hostport}))`
 	header @app_csp >Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://huggingface.co https://*.huggingface.co https://*.hf.co; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
 	# A stricter candidate, reported and not enforced (the owner's choice of 2026-11-20, measure first): the app's policy
 	# without 'unsafe-inline' for styles. Each page's buffered ReportingObserver, and web/scripts/check_csp.mjs, list what it
 	# would block, so the inline-style needs can be removed one at a time before it is enforced.
 	header @app_csp >Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://huggingface.co https://*.huggingface.co https://*.hf.co; worker-src 'self' blob:; media-src 'self' blob:; frame-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
-	@walkthrough_csp path /walkthrough /walkthrough/*
+	@walkthrough_csp expression `("{$QSH_WALKTHROUGH_ORIGIN}" == "" && path('/walkthrough', '/walkthrough/*')) || ("{$QSH_WALKTHROUGH_ORIGIN}" != "" && "{$QSH_WALKTHROUGH_ORIGIN}".endsWith("//" + {http.request.hostport}))`
 	header @walkthrough_csp >Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self'; worker-src 'self' blob:; frame-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'"
 	@wasm path *.wasm
 	header @wasm Content-Type application/wasm
@@ -62,6 +69,20 @@
 		}
 	}
 	header @unhashed Cache-Control "no-cache"
+
+	# The walkthrough's own origin: its files at the root, and nothing of the app.
+	handle @walk_origin {
+		root * /srv/walkthrough
+		file_server
+	}
+	# Any other host, when the walkthrough has an origin of its own: /walkthrough/<rest> moves there as /<rest>, query
+	# kept. In a route, so the prefix is stripped before the redirect: by Caddy's directive order redir runs first.
+	handle @walk_moved {
+		route {
+			uri strip_prefix /walkthrough
+			redir {$QSH_WALKTHROUGH_ORIGIN}{uri} 301
+		}
+	}
 
 	# API + WebSocket -> backend container (handled exclusively, before the SPA)
 	handle /api/* {

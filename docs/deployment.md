@@ -132,6 +132,26 @@ the **live OpenFHE** CKKS backend, and **Node** with the filesystem MCP server i
 
 The web image builds `/walkthrough/` in its own stage, with `scripts/build_walkthrough.py`. It needs the network at build time, for Pyodide and its packages, and checks each against the sha256 recorded in `walkthroughs/pyodide-sources.json`. Nothing is added at run time: it is 47 MB of static files.
 
+### On an origin of its own (`QSH_WALKTHROUGH_ORIGIN`)
+
+The walkthrough runs under a looser policy than the app (inline scripts, `'unsafe-eval'`). Set
+`QSH_WALKTHROUGH_ORIGIN` to an origin of its own, scheme, host and optional port with no path (the demo uses
+`https://qsh.walkthrough.daemons.jp`), and the container splits the two:
+
+- a request for that host and port gets the walkthrough at its root, and nothing of the app (an app page there is a 404);
+- `/walkthrough/<rest>` on any other host answers 301 to `<origin>/<rest>`, query kept, under the app's policy, so the
+  app's origin never sends the walkthrough's;
+- unset (the default), nothing changes: the walkthrough is at `/walkthrough/` on the app's origin.
+
+The name must reach the same container before the setting is useful: DNS for it, and on a box behind a front proxy, a
+site for it that proxies to the container like the app's name (on the demo, the host's `deploy/caddy.d/` holds one,
+added 2026-11-20, with the same treatment as the app's: no `Server` header, the isolation headers). `scripts/deploy_demo.sh`
+passes the setting to compose and, when it is set, reads the walkthrough's name through the same pinned resolve: its root
+under the walkthrough's policy with no Report-Only candidate, an app page there a 404, and the app's `/walkthrough/` a 301
+to it. GitHub CI and `scripts/ci_local.sh` step 8b walk the site with the walkthrough on `http://127.0.0.1:4183`, a second
+origin on the same port, reached through the app's 301, and also check that without the setting it stays at
+`/walkthrough/`.
+
 ## Verify the deploy, in this order
 
 Order matters. The first command says what the server sends; it says nothing about what a browser

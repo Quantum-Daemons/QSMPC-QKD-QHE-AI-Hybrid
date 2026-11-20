@@ -20,8 +20,13 @@ services:
         CLIENT_ONLY: "1"        # public demo: all compute client-side
     # SITE_ADDRESS configures Caddy's site address (Caddyfile {$SITE_ADDRESS::80}): unset → ":80" (local
     # HTTP); a domain → auto-HTTPS via Let's Encrypt. WEB_HTTP_PORT/WEB_HTTPS_PORT remap the host ports.
+    # QSH_WALKTHROUGH_ORIGIN (Round 86, 2026-11-20) moves the Python walkthrough to an origin of its own, e.g.
+    # https://walkthrough.example: that host gets the walkthrough at its root and nothing of the app, and /walkthrough/
+    # here answers 301 there. The name must also reach this container (DNS, and the front proxy's site for it). Unset:
+    # the walkthrough stays at /walkthrough/ on this origin. See docs/deployment.md.
     environment:
       SITE_ADDRESS: "${SITE_ADDRESS:-:80}"
+      QSH_WALKTHROUGH_ORIGIN: "${QSH_WALKTHROUGH_ORIGIN:-}"
     ports: ["${WEB_HTTP_PORT:-80}:80", "${WEB_HTTPS_PORT:-443}:443"]
     restart: unless-stopped
     volumes:

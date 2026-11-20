@@ -28,6 +28,19 @@ CADDYFILES = [REPO / "docker" / "env" / "Caddyfile.client-only", REPO / "docker"
 FETCH_HOSTS = {"'self'", "https://huggingface.co", "https://*.huggingface.co", "https://*.hf.co"}
 
 
+#: The two clauses the walkthrough's placement turns on (2026-11-20, the owner's choice of an origin of its own):
+#: QSH_WALKTHROUGH_ORIGIN unset and a /walkthrough/ path, or that setting naming the request's own host and port.
+_O = '"{$QSH_WALKTHROUGH_ORIGIN}"'
+UNSPLIT = f"{_O} == \"\" && path('/walkthrough', '/walkthrough/*')"
+ON_WALK = f'{_O} != "" && {_O}.endsWith("//" + {{http.request.hostport}})'
+
+
+def _matcher(text: str, name: str) -> str:
+    m = re.search(rf"^\t@{name} expression `([^`]+)`$", text, re.M)
+    assert m, f"no expression matcher @{name}"
+    return m.group(1)
+
+
 def _policy(text: str, matcher: str) -> dict[str, list[str]]:
     m = re.search(rf'^\theader @{matcher} >Content-Security-Policy "([^"]+)"$', text, re.M)
     assert m, f"no enforced Content-Security-Policy for @{matcher}"
@@ -58,7 +71,7 @@ def test_hsts_nosniff_and_the_referrer_policy(path: Path) -> None:
 @pytest.mark.parametrize("path", CADDYFILES, ids=lambda p: p.name)
 def test_the_app_policy_is_strict_for_scripts_and_names_every_host_it_fetches(path: Path) -> None:
     text = path.read_text()
-    assert "\t@app_csp not path /walkthrough /walkthrough/*\n" in text, f"{path.name}: the app policy covers all but the walkthrough"
+    assert _matcher(text, "app_csp") == f"!({UNSPLIT}) && !({ON_WALK})", f"{path.name}: the app policy covers all but the walkthrough"
     p = _policy(text, "app_csp")
     assert p["default-src"] == ["'self'"]
     assert p["script-src"] == ["'self'", "'wasm-unsafe-eval'"], p["script-src"]
@@ -70,7 +83,7 @@ def test_the_app_policy_is_strict_for_scripts_and_names_every_host_it_fetches(pa
 @pytest.mark.parametrize("path", CADDYFILES, ids=lambda p: p.name)
 def test_the_walkthrough_policy_is_scoped_to_the_walkthrough(path: Path) -> None:
     text = path.read_text()
-    assert "\t@walkthrough_csp path /walkthrough /walkthrough/*\n" in text, path.name
+    assert _matcher(text, "walkthrough_csp") == f"({UNSPLIT}) || ({ON_WALK})", path.name
     p = _policy(text, "walkthrough_csp")
     assert p["connect-src"] == ["'self'"], "the walkthrough loads nothing from another origin"
     assert "'unsafe-eval'" in p["script-src"] and "'unsafe-inline'" in p["script-src"]
@@ -140,4 +153,29 @@ def test_error_responses_carry_the_same_headers(path: Path) -> None:
     assert errs == top, f"{path.name}: {sorted(errs ^ top)}"
     assert "\t\t\t-Server\n" in inner and '\t\trespond "" {err.status_code}\n' in inner
     assert "Content-Security-Policy" not in inner
+
+
+@pytest.mark.parametrize("path", CADDYFILES, ids=lambda p: p.name)
+def test_the_walkthrough_moves_to_its_own_origin_on_one_setting(path: Path) -> None:
+    """2026-11-20, the owner's choice: with QSH_WALKTHROUGH_ORIGIN set, the walkthrough is served at the root of that
+    origin and nothing of the app is, and /walkthrough/ on any other host answers 301 there, path and query kept; unset,
+    nothing changes. The two policies' matchers are complements built from the same two clauses (tested above), so
+    the app's origin never sends the walkthrough's policy, not even on the redirect."""
+    text = path.read_text()
+    assert _matcher(text, "walk_origin") == ON_WALK
+    off_walk = f'{_O} != "" && !{_O}.endsWith("//" + {{http.request.hostport}})'
+    assert _matcher(text, "walk_moved") == off_walk + " && path('/walkthrough', '/walkthrough/*')"
+    assert "\thandle @walk_origin {\n\t\troot * /srv/walkthrough\n\t\tfile_server\n\t}\n" in text
+    # In a route, so the prefix goes before the redirect is written: in a plain handle, Caddy's directive order runs
+    # redir first, and the 301 kept /walkthrough/ in its target (measured 2026-11-20).
+    assert ("\thandle @walk_moved {\n\t\troute {\n\t\t\turi strip_prefix /walkthrough\n"
+            "\t\t\tredir {$QSH_WALKTHROUGH_ORIGIN}{uri} 301\n\t\t}\n\t}\n") in text
+
+
+def test_both_caddyfiles_place_the_walkthrough_the_same_way() -> None:
+    def handles(path: Path) -> str:
+        t = path.read_text()
+        start = t.index("\t# The walkthrough's own origin: its files at the root, and nothing of the app.\n")
+        return t[start:t.index("\t}\n\t}\n", t.index("\thandle @walk_moved {")) + 6]
+    assert handles(CADDYFILES[0]) == handles(CADDYFILES[1])
 
