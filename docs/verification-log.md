@@ -5657,3 +5657,9 @@ also had its own row. The runner's `passed` and `total` now count the CAVP cases
   also failed `test_document_basenames_are_unique`, because `git ls-files` lists a conflicted file once per conflict
   stage; it passes once the resolution is staged. On this text, 219 of the 220 tests in the 27 files that read the
   register, the log or every tracked Markdown file pass; the one failure is the register test on #68.
+- **Taken into this round (2026-11-20).** On the owner's choice this PR is carried by the session that merged #61 to
+  #69 and #59; the session that opened it has Auto-fix off. `main` was taken in a sixth time, after #67, #69 and #59:
+  both sides had again added a section at the end of this log, and `main`'s sections stay before this one. #59's
+  register row is added, and the register's rows are back in number order (#67's and #68's had been written out of
+  it). On the merged tree `check:netkeys` (IKEv2 CAVP 6 cases x 5 values, and the RFC 5903 example counted apart) and
+  `check:validations-download` pass, and so does the register test, which now finds a row for every merged PR.
