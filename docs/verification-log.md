@@ -5710,6 +5710,27 @@ runtime files are this site's (`check_csp.mjs` and the earlier wire check, check
 "CAVP SP 800-135 cases" reads "true - 6/6", and "ECP-256 shared secret, RFC 5903 section 8.1" reads "true" on its own
 row; the two exchange rows read "true"; no console error.
 
+### The agent panel's Transformers.js engine under the policy (2026-11-20)
+
+**Found on the deployed site,** in the owner's Chrome, right after #70 (the owner approved downloading the models for
+this check): the agent panel's Transformers.js engine failed with "Failed to fetch dynamically imported module: blob:"
+and a `script-src-elem` violation for `blob:`, before running its model. Transformers.js fetches the ONNX Runtime `.mjs`
+it is given and imports it from a `blob:` URL (`loadWasmFactory`, Transformers.js 4.3.1), and the app's policy allows no
+`blob:` script; the panel fell back to its notice and the quantum-safe MCP channel still ran. WebLLM, on the same page,
+ran its model (SmolLM2-360M, q4f16, 16.7 s on WebGPU) with no violation. The headless walk does not press the panel's
+run button, which downloads hundreds of megabytes, so the gate could not see it.
+
+**Changed.** For the asyncify build, `web/src/lib/ortSameOrigin.ts` now names only the wasm file: ONNX Runtime's bundle
+(`ort.webgpu.bundle.min.mjs`) holds that build's module, so nothing is imported from a blob, and the policy keeps no
+`blob:` script source. The plain build, Transformers.js's choice for Safari below 26 with no WebGPU, is not the one the
+bundle holds, so its `.mjs` is still named, and under the policy that engine reports the refusal there.
+`tests/test_r86_browser_runtime_stays_same_origin.py` fails if the asyncify `.mjs` is named again.
+
+**Checked** on a local image of this branch under the policy, in the owner's Chrome: the agent's Transformers.js engine
+ran distilGPT-2 on WebGPU (15.8 s) with no violation, and the medical page's pipeline run with WebGPU selected still ran
+its published model on `onnx-webgpu`, 19 PASS. The engine's WASM device, which loads another 237 MB of weights, shares
+this loading path and was not run. On the deployed site before the fix, `npm run check:csp` passed all 13 pages.
+
 ### F1 by the receiving account's in-degree, on the finance page's IBM tab (2026-11-20)
 
 **What and why.** The owner's choice of 2026-11-15: stratify IBM's two models by the receiver's in-degree, as SALT-GNN

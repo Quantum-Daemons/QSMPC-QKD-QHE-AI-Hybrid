@@ -76,8 +76,12 @@ def test_no_model_carries_a_licence_the_page_does_not_honour() -> None:
 
 def test_transformers_js_is_pointed_at_this_sites_wasm_before_any_model_loads() -> None:
     shared = (REPO / "web/src/lib/ortSameOrigin.ts").read_text(encoding="utf-8")
-    for build in ("asyncify.mjs", "asyncify.wasm", "threaded.mjs", "threaded.wasm"):
+    for build in ("asyncify.wasm", "threaded.mjs", "threaded.wasm"):
         assert f"ort-wasm-simd-threaded.{build}?url" in shared or f"ort-wasm-simd-{build}?url" in shared, build
+    # 2026-11-20: naming the asyncify build's .mjs made Transformers.js import it from a blob: URL, which the site's
+    # Content-Security-Policy refuses; ONNX Runtime's bundle holds that module, so only the wasm file is named.
+    assert "asyncify.mjs?url" not in shared, "the asyncify .mjs would be imported from a blob: URL the policy refuses"
+    assert '? { wasm: new URL(ortAsyncifyWasm, location.href).href }' in shared
     assert 'from "./ortSameOrigin"' in CLIENT_AI and "useSameOriginOrtBuild(wasm, ortBuildOf(wasm));" in CLIENT_AI
     assert CLIENT_AI.index("useSameOriginOrtWasm(lib);") < CLIENT_AI.index("lib.pipeline("), "it reads wasmPaths on load"
 
