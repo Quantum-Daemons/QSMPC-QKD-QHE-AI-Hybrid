@@ -13,6 +13,6 @@
     "summon-ts": "0.6.2"
   },
   "devDependencies": {
-    "vite": "~6.4.5"
+    "vite": "~6.4.6"
   }
 }

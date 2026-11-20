@@ -5951,3 +5951,26 @@ on `https://qsh.walkthrough.daemons.jp/`, cross-origin isolated, with `SharedArr
 4482 characters rendered as on the app's origin, no traceback and no CSP report (buffered `ReportingObserver`).
 `npm run check:csp` on the deployed site passed all 13 pages, the walkthrough through the 301, with no violation and
 nothing from the Report-Only candidate.
+
+### #76 on the deployed site: style-src 'self' enforced (2026-11-20)
+
+#76 merged as 1ae3ed4 and was deployed with the standard command; the deploy's checks passed on the box, the new one
+included: both policies as the Caddyfile writes them and no Report-Only header, since the Caddyfile sets none. From
+outside the app's policy read `style-src 'self'` and no Report-Only header arrived. `npm run check:csp` on the deployed
+site passed all 13 pages with every run finished and no violation, the walkthrough through its 301. In the owner's
+Chrome, with a buffered `ReportingObserver`, both agent engines ran on WebGPU under the enforced policy from the
+browser's cache: Transformers.js with distilGPT-2 (1757 ms) and WebLLM with SmolLM2-360M (2057 ms), each with its
+answer and no report.
+
+### The patch round: Caddy 2.11.9 and vite 6.4.6 (2026-11-20)
+
+The owner's choice of 2026-11-20. **Caddy** 2.11.8 to 2.11.9 in the web image, pinned by Docker Hub's index digest
+(`sha256:003a9780...836f0`, read with `docker buildx imagetools inspect`; the 2.11.8 pin was that tag's index digest
+too). Caddy's release notes for v2.11.9 (2026-11-05): a fix for 2.11.8's PHP directory-index regression, FastCGI
+security fixes (a request header overriding an `env` variable; NTFS short names on Windows) and go-jose v4.1.6 for
+GHSA-mgcc-cww5-fp2q. QSH's Caddy serves static files on Linux with no FastCGI or PHP, so none of them reached it; the
+update keeps the base current. Both Caddyfiles validate under 2.11.9, with the walkthrough setting unset and set.
+**vite** `~6.4.5` to `~6.4.6` in `web/` and in `prototypes/net-bench/bench`, each lock updated by npm with its integrity
+hash. vite's changelog for 6.4.6 (2026-11-09) lists one fix, escaping ids when resolving virtual modules (#24044); vite
+builds the bundle and is not in it. `npm audit` in `web/` found nothing; in the prototype it reports the two high
+advisories it reported before (zod, through the archived `mpc-framework`), with no fix available and unchanged by this.
