@@ -93,4 +93,20 @@
 		rewrite @route /index.html
 		file_server
 	}
+
+	# Caddy's own error responses (2026-11-20). A missing file's 404 is file_server's error, which Caddy writes past the
+	# deferred header blocks above, so it carried Server: Caddy and none of their headers. The same headers here, the same
+	# empty body and status, and no policy: an empty body has nothing to restrict.
+	handle_errors {
+		header {
+			>Cross-Origin-Opener-Policy "same-origin"
+			>Cross-Origin-Embedder-Policy "require-corp"
+			>Cross-Origin-Resource-Policy "cross-origin"
+			>Strict-Transport-Security "max-age=31536000"
+			>X-Content-Type-Options "nosniff"
+			>Referrer-Policy "strict-origin-when-cross-origin"
+			-Server
+		}
+		respond "" {err.status_code}
+	}
 }

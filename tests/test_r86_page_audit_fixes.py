@@ -95,9 +95,24 @@ def test_the_crypto_selects_are_filled_on_the_first_render() -> None:
 
 def test_the_loading_placeholder_has_no_collapsing_top_margin() -> None:
     html = (WEB / "index.html").read_text()
-    m = re.search(r'<div id="root"><div style="([^"]+)"', html)
-    assert m, "the inline loading placeholder moved"
-    assert "padding:14vh" in m.group(1) and not re.search(r"margin:\s*\d+vh", m.group(1)), m.group(1)
+    assert '<div id="root"><div class="qsh-boot">' in html, "the loading placeholder moved"
+    css = (WEB / "public" / "placeholder.css").read_text()
+    m = re.search(r"\.qsh-boot \{([^}]+)\}", css)
+    assert m, "the placeholder's rule moved"
+    assert "padding: 14vh" in m.group(1) and not re.search(r"margin:\s*\d+vh", m.group(1)), m.group(1)
+
+
+def test_the_loading_placeholder_needs_no_inline_style() -> None:
+    """Round 86 (2026-11-20): its four style attributes were the only thing the Report-Only candidate, the app's policy
+    without 'unsafe-inline' for styles, reported on any page. They are rules in /placeholder.css, linked from <head>
+    before the entry chunk, so the placeholder still paints first."""
+    html = (WEB / "index.html").read_text()
+    assert "style=" not in html and "<style" not in html
+    head = html[:html.index("</head>")]
+    assert '<link rel="stylesheet" href="/placeholder.css" />' in head
+    css = (WEB / "public" / "placeholder.css").read_text()
+    for cls in re.findall(r'class="(qsh-boot[a-z-]*)"', html):
+        assert re.search(r"\." + cls + r" \{", css), f"{cls} has no rule in placeholder.css"
 
 
 #: The hosts a regulatory-clock source may live on: the issuing body's own site.

@@ -50,7 +50,8 @@ while [ $# -gt 0 ]; do
 done
 echo "$mode $resolve $dump" >> "$STUB_LOG"
 if [ "$dump" = 1 ]; then
-  case "$url" in *"/walkthrough/"*) printf '%b' "$STUB_WALK_HEADERS" ;; *) printf '%b' "$STUB_APP_HEADERS" ;; esac
+  case "$url" in *"/walkthrough/"*) printf '%b' "$STUB_WALK_HEADERS" ;; *"-missing-"*) printf '%b' "$STUB_MISSING_HEADERS" ;;
+    *) printf '%b' "$STUB_APP_HEADERS" ;; esac
   exit 0
 fi
 if [ "$mode" = box ]; then code="$STUB_BOX_CODE"; bundle="$STUB_BOX_BUNDLE"; else code="$STUB_PUB_CODE"; bundle="$STUB_PUB_BUNDLE"; fi
@@ -81,8 +82,20 @@ def _headers(drop: str = "", change: tuple[str, str] | None = None) -> tuple[str
     return fmt(app), fmt(walk)
 
 
+STATIC = ("Strict-Transport-Security", "X-Content-Type-Options", "Referrer-Policy", "Cross-Origin-Opener-Policy",
+          "Cross-Origin-Embedder-Policy", "Cross-Origin-Resource-Policy")
+
+
+def _missing(drop: str = "", status: str = "404") -> str:
+    """A missing file's response: Caddy's error response, which handle_errors gives the static headers, no policy."""
+    h = {name: _caddy(rf'^\t\t>{name} "([^"]+)"$') for name in STATIC}
+    h.pop(drop, None)
+    return f"HTTP/2 {status}\\r\\n" + "".join(f"{k.lower()}: {v}\\r\\n" for k, v in h.items()) + "\\r\\n"
+
+
 def _run(tmp_path: Path, box=("200", "/assets/index-NEW.js"), public=("200", "/assets/index-NEW.js"),
-         address_override: str | None = None, headers: tuple[str, str] | None = None) -> tuple[subprocess.CompletedProcess, list[str]]:
+         address_override: str | None = None, headers: tuple[str, str] | None = None,
+         missing: str | None = None) -> tuple[subprocess.CompletedProcess, list[str]]:
     stubs = tmp_path / "bin"
     stubs.mkdir(exist_ok=True)
     for name, body in (("ssh", SSH_STUB), ("curl", CURL_STUB)):
@@ -104,6 +117,7 @@ def _run(tmp_path: Path, box=("200", "/assets/index-NEW.js"), public=("200", "/a
         "STUB_PUB_CODE": public[0], "STUB_PUB_BUNDLE": public[1],
     }
     env["STUB_APP_HEADERS"], env["STUB_WALK_HEADERS"] = headers or _headers()
+    env["STUB_MISSING_HEADERS"] = missing or _missing()
     if address_override:
         env["QSH_DEMO_ADDRESS"] = address_override
     res = subprocess.run(["bash", str(SCRIPT), "--return-to-main"], capture_output=True, text=True, env=env,
@@ -161,7 +175,8 @@ def test_the_security_headers_are_read_on_the_box_and_match_the_caddyfile(tmp_pa
     out = res.stdout + res.stderr
     assert res.returncode == 0, out
     assert "the box sends the Caddyfile's security headers" in out
-    assert sum(1 for c in calls if c == f"box {NAME}:443:{ADDRESS} 1") == 2, calls   # the app and the walkthrough, pinned
+    # the app, the walkthrough and a missing file, each pinned
+    assert sum(1 for c in calls if c == f"box {NAME}:443:{ADDRESS} 1") == 3, calls
 
 
 def test_a_missing_policy_fails(tmp_path: Path) -> None:
@@ -178,6 +193,18 @@ def test_a_changed_policy_fails(tmp_path: Path) -> None:
 def test_a_missing_hsts_fails(tmp_path: Path) -> None:
     res, _ = _run(tmp_path, headers=_headers(drop="Strict-Transport-Security"))
     assert res.returncode == 1 and "does not send Strict-Transport-Security" in res.stderr
+
+
+def test_a_missing_files_404_must_carry_the_headers(tmp_path: Path) -> None:
+    """2026-11-20: a missing file's 404 is Caddy's error response, which carried none of them until handle_errors."""
+    res, _ = _run(tmp_path, missing=_missing(drop="Strict-Transport-Security"))
+    assert res.returncode == 1 and "a missing file's 404 does not carry Strict-Transport-Security" in res.stderr
+
+
+def test_a_missing_file_must_be_a_404(tmp_path: Path) -> None:
+    """The SPA shell answers app routes only (Round 74); a file that is not there is a 404, not index.html."""
+    res, _ = _run(tmp_path, missing=_missing(status="200"))
+    assert res.returncode == 1 and "a missing file did not get a 404" in res.stderr
 
 
 def test_a_server_header_is_a_note_not_a_failure(tmp_path: Path) -> None:
