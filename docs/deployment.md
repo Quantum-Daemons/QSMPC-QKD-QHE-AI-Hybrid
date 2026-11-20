@@ -177,8 +177,10 @@ both are clean does the candidate replace the enforced policy. #71 is why: a `bl
 agent's run button reaches broke under the enforced policy, and was found after the deploy.
 
 The headers reach every page and file the container serves, and its `/api` and `/metrics` 404s. A missing
-file's 404 is Caddy's error response, written past the deferred header blocks: it is empty and carries none of
-them, `Server: Caddy` included (measured 2026-11-20; on the demo the front proxy adds COOP, COEP and CORP).
+file's 404 is Caddy's own error response, which Caddy writes past the deferred header blocks: until 2026-11-20
+it carried none of them and did carry `Server: Caddy`. The Caddyfiles' `handle_errors` now gives error responses
+the six static headers, no `Server` and the same empty body, with no policy, since there is no body to
+restrict; the deploy reads a missing file's 404 for them.
 
 Skipping step 2 has produced a false negative here: after a deploy, navigating to the same URL
 re-served the cached bundle, so a working fix looked broken. The failure is asymmetric - a stale tab

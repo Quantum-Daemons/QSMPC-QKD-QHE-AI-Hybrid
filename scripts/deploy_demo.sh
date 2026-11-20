@@ -114,6 +114,9 @@ verify_headers() {  # $1 says when
   local app walk want block matcher name which
   app=$(curl -s -D - -o /dev/null "${pin[@]}" "$QSH_DEMO_URL/?cb=$RANDOM")
   walk=$(curl -s -D - -o /dev/null "${pin[@]}" "$QSH_DEMO_URL/walkthrough/?cb=$RANDOM")
+  # A missing file: Caddy's own error response, which the Caddyfile's handle_errors gives the same headers (2026-11-20).
+  local missing; missing=$(curl -s -D - -o /dev/null "${pin[@]}" "$QSH_DEMO_URL/assets/qsh-deploy-check-missing-$RANDOM.js")
+  printf '%s\n' "$missing" | head -1 | grep -q ' 404' || die "a missing file did not get a 404 $1"
   for spec in "app_csp|Content-Security-Policy|app" "app_csp|Content-Security-Policy-Report-Only|app" \
               "walkthrough_csp|Content-Security-Policy|walkthrough"; do
     IFS='|' read -r matcher name which <<< "$spec"
@@ -127,11 +130,13 @@ verify_headers() {  # $1 says when
     want=$(caddy_block "$name")
     [ -n "$want" ] || die "the Caddyfile in this checkout sets no $name"
     [ "$(header_value "$app" "$name")" = "$want" ] || die "the box does not send $name: $want $1"
+    [ "$(header_value "$missing" "$name")" = "$want" ] || die "a missing file's 404 does not carry $name: $want $1"
   done
-  ok "the box sends the Caddyfile's security headers: both policies, the Report-Only candidate, HSTS, nosniff, the referrer policy, COOP, COEP and CORP"
+  ok "the box sends the Caddyfile's security headers: both policies, the Report-Only candidate, HSTS, nosniff, the referrer policy, COOP, COEP and CORP, and a missing file's 404 carries the last six"
   # The Caddyfile drops Server; one that still arrives was added in front of this container (the demo's front proxy drops
   # it too, since 2026-11-20). A note, not a failure: that proxy's configuration is not in this repository.
   local server; server=$(header_value "$app" Server)
+  [ -n "$server" ] || server=$(header_value "$missing" Server)
   [ -z "$server" ] || printf '  NOTE  the box sends "Server: %s", which this Caddyfile drops: something in front of the container adds it %s\n' "$server" "$1"
 }
 

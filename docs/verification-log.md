@@ -5834,3 +5834,31 @@ ResizeObserver reports it), which is the tab being opened, at any height. In hea
 scrolling: this build loaded its 8 rows on opening the tab, where the deployed build stayed on its loading line; the
 file was fetched no time before the tab was opened and once after. `tests/test_r86_finance_degree_f1.py` holds the
 trigger.
+
+### #73 on the deployed site; the placeholder's styles and Caddy's error responses (2026-11-20)
+
+#73 merged as eedad59 and was deployed with the standard command; its own new check passed on the box: both policies,
+the Report-Only candidate, HSTS, `nosniff`, the referrer policy, COOP, COEP and CORP as the Caddyfile writes them, and
+no `Server` header. `npm run check:csp` on the deployed site passed all 13 pages with every run finished (online: the
+medical page ran 4 actions where the offline walk ran 2) and no violation. The candidate's whole would-block list
+there, as offline and in the local gate, was the three `style` attributes of `index.html`'s loading placeholder on
+each of the 12 app pages. In the owner's Chrome, 677 px tall, the degree table was fetched no time before the IBM tab
+was opened, loaded its 8 rows on opening it without a scroll, and was fetched once; the buffered `ReportingObserver`
+held those three report-only reports and nothing enforced.
+
+**The placeholder.** Its four `style` attributes (the fourth, in `<noscript>`, is never parsed while scripts run, so
+no walk saw it) are four classes in `web/public/placeholder.css`, linked from `<head>` before the entry chunk, so the
+placeholder still paints before the 1.6 MB chunk arrives. Built and served by the image's Caddy, the offline walk
+passed all 13 pages and the candidate reported nothing. With script execution off, the placeholder read its rules from
+that file (top padding 126 px, 14vh of a 900 px window; the `<noscript>` line in its orange) and the console had no
+CSP line. `tests/test_r86_page_audit_fixes.py` holds the 14vh padding on the new rule and `index.html` free of inline
+style.
+
+**Caddy's error responses.** A missing file's 404 is file_server's error, which Caddy writes past the deferred header
+blocks, so it carried `Server: Caddy` and none of the headers (#73's entry). Both Caddyfiles now have a `handle_errors`
+block with the six static headers, `-Server`, and `respond "" {err.status_code}`: a first try, `respond
+{err.status_code}`, wrote the status as a three-byte body. Served by the image's Caddy, missing files under `/assets/`
+and `/walkthrough/` answered 404, empty, with the six headers and no `Server`; pages, files and the `/api` and
+`/metrics` 404s were unchanged. No policy on error responses: an empty body has nothing to restrict.
+`tests/test_r86_security_headers.py` holds the block to the top-level headers (names and values), and the deploy now
+also reads a missing file through the pinned resolve: a 404, with the six headers.
