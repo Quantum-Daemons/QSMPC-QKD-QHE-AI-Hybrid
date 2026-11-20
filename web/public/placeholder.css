@@ -1,0 +1,7 @@
+/* The loading placeholder in index.html, which paints before the entry chunk arrives. Its rules were style attributes
+   until Round 86 (2026-11-20): the page's Report-Only candidate, the app's policy without 'unsafe-inline' for styles,
+   reported those attributes and nothing else, so they moved here. Linked from <head>, so it still paints first. */
+.qsh-boot { max-width: 640px; margin: 0 auto; padding: 14vh 24px 0; font-family: ui-sans-serif, system-ui, sans-serif; color: #e6edf6; }
+.qsh-boot-title { font-weight: 700; font-size: 20px; letter-spacing: .2px; }
+.qsh-boot-note { color: #97a3b6; font-size: 14px; line-height: 1.6; margin-top: 10px; }
+.qsh-boot-noscript { color: #f5a623; font-size: 14px; line-height: 1.6; }
