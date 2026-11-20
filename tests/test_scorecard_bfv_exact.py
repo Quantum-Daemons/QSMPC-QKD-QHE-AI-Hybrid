@@ -58,7 +58,9 @@ def test_bfv_evaluates_the_scorecard_exactly_where_ckks_does_not():
     sc = fit_scorecard(X, y, coef_range=5, max_features=5, rounds=3, seed=0)
     plain = sc.score(X)
 
-    bfv = ts.context(ts.SCHEME_TYPE.BFV, poly_modulus_degree=8192, plain_modulus=1032193)
+    # log2 q = 174, within 202 (2018 HE standard, Table 2, quantum) and 214 (Bossuat et al. 2024, Table 5.2).
+    bfv = ts.context(ts.SCHEME_TYPE.BFV, poly_modulus_degree=8192, plain_modulus=1032193,
+                     coeff_mod_bit_sizes=[43, 43, 44, 44])
     for i in range(20):
         v = ts.bfv_vector(bfv, X[i].tolist())
         got = int(np.sum(np.array((v * sc.w.tolist()).decrypt()))) + int(sc.b)
