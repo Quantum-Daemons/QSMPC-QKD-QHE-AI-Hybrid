@@ -16,12 +16,8 @@
 // and are browser-cached after the first run. Nothing else is contacted.
 
 import { webCfg } from "./config";
-// Same-origin copies of the two ONNX Runtime builds Transformers.js chooses between. `?url` emits the file
-// and imports no code, and the wasm files are ones the build already ships for the inference stage.
-import ortAsyncifyMjs from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.mjs?url";
-import ortAsyncifyWasm from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.wasm?url";
-import ortPlainMjs from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs?url";
-import ortPlainWasm from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm?url";
+// Same-origin copies of the two ONNX Runtime builds Transformers.js chooses between, shared with the inference stage.
+import { ortBuildOf, useSameOriginOrtBuild } from "./ortSameOrigin";
 
 export type Engine = "transformers" | "webllm";
 /** The Transformers.js backend. WASM is the default (`web.tfjs_default_device`); WebGPU is opt-in. */
@@ -90,9 +86,7 @@ function describeProgress(p: any): string | null {
 function useSameOriginOrtWasm(lib: any): void {
   const wasm = lib.env?.backends?.onnx?.wasm;
   if (!wasm) throw new Error("Transformers.js exposed no ONNX Runtime settings");
-  const asyncify = String(wasm.wasmPaths?.wasm ?? "").includes("asyncify");
-  const [mjs, file] = asyncify ? [ortAsyncifyMjs, ortAsyncifyWasm] : [ortPlainMjs, ortPlainWasm];
-  wasm.wasmPaths = { mjs: new URL(mjs, location.href).href, wasm: new URL(file, location.href).href };
+  useSameOriginOrtBuild(wasm, ortBuildOf(wasm));
 }
 
 // The library's own fetch, kept once: a cancelled run can still be unwinding when the next one starts, so each run

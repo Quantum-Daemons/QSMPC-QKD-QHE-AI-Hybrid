@@ -41,14 +41,21 @@ const out = join(dir, "bundle.mjs");
 // specifier, `?url`. The CLI cannot resolve it; the plugin turns it into the wasm's path on disk, as the node
 // CKKS tests (tests/test_r84_c3_encrypted_heldout_in_node.py) do. Nothing here runs the CKKS.
 const { build } = createRequire(join(WEB, "package.json"))("esbuild");
-const sealWasm = join(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
+// Every `?url` import, not one: since 2026-11-20 the module also reaches lib/ortSameOrigin.ts, whose four ONNX Runtime
+// files are `?url` imports too. A relative specifier is resolved from its importer, a root-relative one (clientFHE.ts's
+// "/node_modules/node-seal/...") from web/, as Vite does, and a bare one from node_modules.
 await build({
   entryPoints: [entry], bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error",
   absWorkingDir: WEB,
-  plugins: [{ name: "wasm-url", setup(b) {
-    b.onResolve({ filter: /seal_throws\.wasm\?url$/ }, () => ({ path: "sealwasm", namespace: "wasmurl" }));
-    b.onLoad({ filter: /.*/, namespace: "wasmurl" },
-             () => ({ contents: `export default ${JSON.stringify(sealWasm)};`, loader: "js" }));
+  plugins: [{ name: "url-imports", setup(b) {
+    b.onResolve({ filter: /\?url$/ }, (args) => {
+      const spec = args.path.replace(/\?url$/, "");
+      const file = spec.startsWith(".") ? resolve(args.resolveDir, spec)
+        : spec.startsWith("/") ? join(WEB, spec) : join(WEB, "node_modules", spec);
+      return { path: file, namespace: "urlimport" };
+    });
+    b.onLoad({ filter: /.*/, namespace: "urlimport" },
+             (args) => ({ contents: `export default ${JSON.stringify(args.path)};`, loader: "js" }));
   } }],
 });
 
