@@ -625,6 +625,9 @@ export interface ModelEvalResult {
   /** Every row against the sample's per-row record, when it carries one (Round 86). With a record, `matchesExpected`
    *  is this comparison passing and the metric equalling the record; without one, the aggregate within `tolerance`. */
   perRow?: PerRowComparison;
+  /** A graph sample's seeds as this run scored them (Round 86, IBM's Multi-GNN): each one's row in the test window, its
+   *  label and the two logits the published graph gave it here, for the IBM tab's teacher-student view. */
+  graphRows?: { rows: number[]; labels: number[]; logits: number[][] };
   /** |measured - expected| within tolerance. False means the browser must NOT present the number. */
   matchesExpected: boolean;
   backend: string;
@@ -765,6 +768,18 @@ export function publishedSampleOf(spec: ModelSpec): Promise<SampleFetch> {
                     spec.file_sha256?.["eval_sample.json"]);
 }
 
+/** A published model's pinned weights file, checked against the SHA-256 recorded for its revision before it is returned
+ *  (Round 86, the IBM tab's teacher-student view): the bytes are the checked ones, never the response read twice. */
+export async function publishedWeightsOf(spec: ModelSpec): Promise<ArrayBuffer> {
+  if (!spec.hf_repo_id || !spec.hf_revision) throw new Error(`${spec.key} is not published and pinned`);
+  const res = await fetch(`https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/weights.json`,
+                          { mode: "cors", signal: AbortSignal.timeout(30_000) });
+  if (!res.ok) throw new Error(`the Hub answered HTTP ${res.status} for ${spec.key}`);
+  const bytes = await res.arrayBuffer();
+  await checkPinned(bytes, spec.file_sha256?.["weights.json"], `${spec.key} weights.json`);
+  return bytes;
+}
+
 /**
  * Any pinned graph of a published model as its own session (Round 86, split inference). `loadModel` opens the one graph a
  * model is scored by; the chest X-ray model also publishes the same network up to its pooled features, which the medical
@@ -796,6 +811,78 @@ export function openPinnedGraph(spec: ModelSpec, path: string):
     void hit.catch(() => graphSessions.delete(url));
   }
   return hit;
+}
+
+/** A graph model's evaluation sample (Round 86, IBM's Multi-GNN): one subgraph holding the 16 held-out transactions
+ *  the finance MLP and compact GNN are checked on, with the neighbourhood the protocol sampled, and where in it the 16
+ *  sit. Written by `scripts/train/ibm_multignn/export_for_browser.py`. */
+export interface GraphSampleFile {
+  kind: "graph"; protocol: string; protocol_note: string;
+  inputs: { x: number[]; x_shape: [number, number]; edge_index: number[]; edge_attr: number[]; edge_attr_dim: number;
+            rev_edge_index: number[]; rev_edge_attr: number[]; n_edges: number; n_rev_edges?: number };
+  seeds: { positions_in_batch: number[]; row_index_in_test_window: number[]; labels: number[] };
+  expected: { decision_threshold: number; accuracy: number; graph?: string; note?: string; per_row?: PerRowRecord };
+  classes?: Record<string, string>;
+  provenance?: string;
+}
+
+/** One run of a graph sample through its published graph: the whole subgraph at once, then each seed transfer's two
+ *  logits in the sample's order (Round 86). Shared by the whole-sample check and the pipeline's published-model stage. */
+async function graphSeedLogits(opened: OpenSession, file: GraphSampleFile):
+  Promise<{ name: string; logits: Float32Array; latencyMs: number }> {
+  const i = file.inputs, d = i.edge_attr_dim, nr = i.n_rev_edges ?? i.n_edges;
+  const T = opened.ort.Tensor;
+  const feeds = {
+    x: new T("float32", Float32Array.from(i.x), i.x_shape),
+    edge_index: new T("int64", BigInt64Array.from(i.edge_index, (v) => BigInt(v)), [2, i.n_edges]),
+    edge_attr: new T("float32", Float32Array.from(i.edge_attr), [i.n_edges, d]),
+    rev_edge_index: new T("int64", BigInt64Array.from(i.rev_edge_index, (v) => BigInt(v)), [2, nr]),
+    rev_edge_attr: new T("float32", Float32Array.from(i.rev_edge_attr), [nr, d]),
+  };
+  const ran = performance.now();
+  const out = await opened.session.run(feeds);
+  const latencyMs = performance.now() - ran;
+  const name = opened.session.outputNames[0];
+  const data = out[name].data as Float32Array;
+  const seeds = file.seeds.positions_in_batch;
+  const logits = new Float32Array(seeds.length * 2);
+  seeds.forEach((p, k) => { logits[2 * k] = data[2 * p]; logits[2 * k + 1] = data[2 * p + 1]; });
+  return { name, logits, latencyMs };
+}
+
+/** Re-scores a graph sample: the whole subgraph through the published graph, then the 16 seeds' logits, each decision
+ *  at the published threshold and each margin against the record, as `evaluatePublishedModel` does for rows. */
+async function evaluateGraphSample(usecase: string, target: { url: string; spec: ModelSpec }, file: GraphSampleFile,
+                                   base: ModelEvalResult, backend: OnnxBackend): Promise<ModelEvalResult> {
+  const fetchedGraph = target.url.split("/").pop() ?? "";
+  if (file.expected.graph && fetchedGraph && file.expected.graph !== fetchedGraph) {
+    return { ...base, error: `graph mismatch: the record was measured on ${file.expected.graph} and this browser fetched ${fetchedGraph}` };
+  }
+  const opened = (await loadModel(usecase, target.spec.key, backend)) ? openSession(usecase, target.spec.key, backend) : null;
+  if (!opened) return { ...base, error: status.error ?? "the graph model could not be opened in this browser" };
+  try {
+    const { name, logits } = await graphSeedLogits(opened, file);
+    const seeds = file.seeds.positions_in_batch, n = seeds.length;
+    const thr = file.expected.decision_threshold;
+    const kind = outputKind(name);
+    if (!kind) throw new Error(`the graph's output is named "${name}", neither probabilities nor logits`);
+    const prob = toProbabilities(logits, n, 2, kind);
+    const preds = Array.from({ length: n }, (_, k) => (prob[2 * k + 1] >= thr ? 1 : 0));
+    const labels = file.seeds.labels;
+    const score = preds.filter((v, k) => v === labels[k]).length / n;
+    const rec = file.expected.per_row;
+    const perRow = rec ? comparePerRow(rec, n, name, fetchedGraph, (k) => preds[k], (k) => prob[2 * k + 1] - thr, null) : undefined;
+    return {
+      ...base, ran: true, n, score, expected: file.expected.accuracy, decisionThreshold: thr, perRow,
+      graphRows: { rows: [...file.seeds.row_index_in_test_window], labels: [...labels],
+                   logits: seeds.map((_, k) => [logits[2 * k], logits[2 * k + 1]]) },
+      matchesExpected: !!perRow && perRowPasses(perRow) && (perRow.nearTies > 0 || Math.abs(score - file.expected.accuracy) <= 1e-9),
+      backend: opened.status.backend, bytes: opened.status.bytes, provenance: file.provenance ?? file.protocol_note,
+      note: file.expected.note ?? file.protocol_note,
+    };
+  } catch (e) {
+    return { ...base, error: `the graph sample could not be scored: ${(e as Error)?.message ?? String(e)}` };
+  }
 }
 
 /** Said wherever a sample could not be fetched, so a failed request never reads as a fact about
@@ -853,6 +940,10 @@ export async function evaluatePublishedModel(
   }
   const file = got.file;
   const split = base.split;
+  // IBM's Multi-GNN (Round 86): 16 held-out transactions with the neighbourhood the protocol sampled for them, one graph.
+  if ((file as unknown as { kind?: string }).kind === "graph") {
+    return evaluateGraphSample(usecase, target, file as unknown as GraphSampleFile, base, backend);
+  }
   // The forecaster student's sample is a stretch of a timeline scored by events, not rows for a graph (Round 86).
   if ((file as unknown as { task?: string }).task === "forecast_events") {
     try {
@@ -1310,6 +1401,40 @@ export async function runPublishedModel(
     ? openSession(usecase, key, opts.backend ?? DEFAULT_ONNX_BACKEND) : null;
   if (!opened) {
     return { kind: "failed", modelKey: key, error: status.error ?? "session creation failed" };
+  }
+
+  // A graph model (IBM's Multi-PNA+EU, Round 86) has no row of its own to read: its 16 transfers are scored together,
+  // each in the neighbourhood its protocol sampled for it, so the stage runs that graph and reports one transfer. It
+  // used to read the sample as rows and fail on `input.shape`, which a graph sample does not have.
+  if ((file as unknown as { kind?: string }).kind === "graph") {
+    const g = file as unknown as GraphSampleFile;
+    try {
+      const n = g.seeds.positions_in_batch.length;
+      if (!n) throw new Error("the graph sample has no seed transfers");
+      const rowIndex = ((opts.rowIndex ?? 0) % n + n) % n;
+      const { name, logits, latencyMs } = await graphSeedLogits(opened, g);
+      const kind = outputKind(name);
+      if (!kind) throw new Error(`the graph's output is named "${name}", neither probabilities nor logits`);
+      const prob = toProbabilities(logits, n, 2, kind);
+      const predictedClass = prob[2 * rowIndex + 1] >= g.expected.decision_threshold ? 1 : 0;
+      const trueClass = g.seeds.labels[rowIndex] ?? null;
+      return {
+        kind: "ran",
+        run: {
+          modelKey: key, repoId: target.spec.hf_repo_id ?? "", revision: target.spec.hf_revision ?? "",
+          graph: fetchedGraph, backend: opened.status.backend, inputShape: [...g.inputs.x_shape], rowIndex,
+          task: "classification", logits: [logits[2 * rowIndex], logits[2 * rowIndex + 1]], predictedClass, rowMae: null,
+          className: g.classes?.[String(predictedClass)] ?? null, trueClass,
+          trueClassName: trueClass == null ? null : g.classes?.[String(trueClass)] ?? null,
+          latencyMs: Number(latencyMs.toFixed(2)), totalMs: Number((performance.now() - started).toFixed(2)),
+          provenance: g.provenance ?? g.protocol_note, split: target.spec.eval_split ?? null,
+        },
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn("[onnx] published graph-model run failed:", msg);
+      return { kind: "failed", modelKey: key, error: msg };
+    }
   }
 
   try {

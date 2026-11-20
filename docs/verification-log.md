@@ -5121,3 +5121,486 @@ The README's twelve images are retaken from a client-only build of this branch, 
 each was opened and read for text over lines, unthemed controls, irregular axes and empty cards (checklist DC22): none
 found. Every image changed by SHA-256; the finance and E2E pages now show the banks, every page the sidebar's
 "Open-source notices" link, and the value page the WAMO DOI.
+
+### PR #57 on the deployed site (2026-11-15)
+
+Deployed from `main` at `a3db039` (bundle `index-NTqXpn5h.js`) and re-read in Chrome that evening, after a reload. No
+console error appeared on load or during the run.
+- **Before a run.** The finance canvas draws the PSI step as `bank 1` to `bank 3` (the control's default), with "one
+  garbled circuit: only the accounts all hold leave it" and "each bank: brings its account list into the circuit". No
+  party lane is drawn.
+- **After a run.** The run finished all 12 stages in 36 s and read "PSI among 3 banks, 3 accounts held by all,
+  30.53 MB", the figure the local build gave, over the same three lanes.
+
+### The deployed site walked on every page (2026-11-15)
+
+`a3db039`, bundle `index-NTqXpn5h.js`, read in Chrome in one tab. No page logged a console error, and no run showed a
+FAIL, a "did not run" or an alert.
+
+**Use-case pages**, each run once with its defaults:
+
+| Page | Stages | Time | What was checked |
+|---|---|---|---|
+| Finance | 12 of 12 | 36 s | |
+| Medical | 9 of 9 | 30 s | The chest X-ray model scores 0.6250 against 0.6250, with 16 of 16 decisions as recorded |
+| Genomics | 8 of 8 | 3 s | |
+| Telecom | 6 of 6 | 6 s | 593 right, 7 wrong, 0 changed by encryption |
+| Satellite | 6 of 6 | 30 s | QSDC NOT AVAILABLE, with the Eq. 8 bound -80.82 at 32.2 dB and g 532.66, then one-way quasi-QSDC; "falls back" does not appear |
+| DeFi | 6 of 6 | 3 s | |
+
+**The E2E page.**
+- At defaults it ran all seven use cases: finance 12 of 12 stages, medical 9 of 9, genomics 8 of 8, telecom 6 of 6,
+  satellite 6 of 6, DeFi 6 of 6 and the generic demo 8 of 8.
+- Finance with ML-KEM-1024 + X25519, ML-DSA-87 and the quantum channel off ran 11 of 11 stages, and the labels
+  followed the choices.
+- Medical on WebGPU ran 9 of 9: `medical_fl.resnet18` at `b24642c6ef10` on `onnx-webgpu`, 88.23 ms.
+
+**Validations.**
+- ML-KEM-768 + X25519 agrees, with a 1,216 B public key and a 1,120 B ciphertext.
+- ML-DSA-65 has a 1,952 B public key and a 3,309 B signature; the signature is valid and a tampered message is
+  rejected.
+- The ACVP cases pass 10 of 10, at ACVP-Server `975de31`.
+- BB84 reads QBER 0.0098.
+- The agent call is authenticated under MCP revision 2026-07-28, the current revision on modelcontextprotocol.io (read
+  2026-11-15), and a tampered message is rejected.
+- The IKEv2 key schedules are computed per spec, and the PPK changes only SK_d, SK_pi and SK_pr.
+
+**The telecom page's QKD control plane**, after a run. The figures agree with each other:
+- $`1.427 \times 10^{-3}`$ bit per pulse at the assumed 1 GHz gives skr 1,426,711 bit/s.
+- The key budget, 3,910,745 bit, is the block's average rate less the expected consumption, times the block's time:
+  $`(977{,}564 - 244{,}391.1)`$ bit/s over the 5.3 s shown, to its rounding.
+- The KME holds 11,110 keys of 352 bits.
+
+**The QCNNs**, re-scored on their held-out rows. Each gives the value its weights file records: finance minority-class
+F1 0.2286 over 600 rows, medical accuracy 0.9535 over 86 rows, telecom macro F1 0.9444 over 480 rows.
+
+**Other pages.**
+- `/value`: both IR 8547 rows read "final, Oct 2026", the FAR row reads "proposal due" as of 2026-11-15, and Art. 50
+  shows its grace period to 2 December 2026.
+- `/walkthrough/`: cross-origin isolated, one host and no Python error. It renders the bound
+  $`1 - 281{,}529 / 1{,}215{,}890 = 0.76846`$ and the 8 columns that differ across the 200 pairs.
+
+**Published figures beside the computation**, read on every use-case page after a run:
+
+| Page | Rows | What they read |
+|---|---|---|
+| Finance | 5 | GFP+XGBoost $`63.23 \pm 0.17`$ and Multi-PNA+EU $`68.16 \pm 2.65`$ as references. `finance_aml.gnn` reads "not comparable, not measured here" until the IBM tab lands. |
+| Medical | 11 | ResNet-18 is reproduced against MedMNIST v2's 0.901, and FLamby's FedAvg is reproduced (0.7005 for seed 1, against $`0.685 \pm 0.028`$). The other rows are reference, no spread or not comparable, each with its reason. |
+| Telecom | 4 | All not comparable, each with its reason. |
+| Satellite | 4 | No spread or reference, against ESA-ADB's Supplementary Table 9 and the OPS-SAT benchmark's FCNN. |
+| Genomics | 1 | Not comparable, against PGS Catalog PPM002038. |
+| DeFi | 0 | It publishes no model. |
+
+Two of these figures were re-read at their sources on 2026-11-15:
+- PGS Catalog's API gives PPM002038 an AUROC of 0.637 for PGS000072, on incident breast cancer and fitted with
+  covariates (Kachuri et al., 2020).
+- arXiv:1705.02315 v5, Table 17 gives Effusion 0.7585 in its ChestX-ray14 column and 0.7362 in its ChestX-ray8
+  column, for a ResNet-50 on the published split.
+
+`tests/test_r86_published_comparisons.py` passes.
+
+**Hub cards.** For each of the 15 pinned models, the README the Hub serves at the pin is identical, line for line, to
+the card `scripts/publish_hf.py` generates from the registry today. No republish is owed.
+
+**Outbound links.** The 11 pages hold 44 distinct external links on 23 hosts. Each was requested from the development
+machine on 2026-11-15:
+- 40 returned 200 or 206.
+- The ACM DOI of WAMO and the NSA's CNSA 2.0 FAQ returned 403 to a script. In a browser, the DOI resolves to the
+  paper's page.
+- The two EUR-Lex links (Regulations 2024/1689 and 2026/1744) returned 202. In a browser they redirected to EUR-Lex's
+  Official Journal index, which that evening read "EUR-Lex is temporarily not fully available". Every EUR-Lex address
+  form tried did the same: the ELI, the `data.europa.eu` ELI and the CELEX query.
+
+So the links stay as they are, and the EUR-Lex pair is re-read once EUR-Lex is back.
+
+**The EUR-Lex pair, re-read on 2026-11-16 at about 11:00 JST.** Both ELI links return 200 with no redirect, and each
+page is its act: "Regulation - EU - 2024/1689" and "Regulation - EU - 2026/1744" (the Official Journal L series of
+24.7.2026). Three statements the repository makes were re-read in the text of 2026/1744:
+- Article 4: it enters into force on the third day after its publication, so on 2026-07-27.
+- Article 113 point (c) as replaced: Chapter III Sections 1 to 3 apply from 2 December 2027 for Annex III systems and
+  from 2 August 2028 for Annex I systems.
+- The new Article 111(4): providers of systems generating synthetic content placed on the market before 2 August 2026
+  comply with Article 50(2) by 2 December 2026.
+
+All three match `docs/ai-act-art50-gap-analysis.md`, `docs/pqc-roadmap.md` and
+`references/2026-metric-practice-fact-check.md`. The links stay.
+
+**The FAR row on `/value`**, re-read at the Federal Register's API on the evening of 2026-11-15:
+- Nine proposed rules under 48 CFR have been published since EO 14412 (2026-06-25): the GSAR's implementations of EO
+  14275, four parts of the FAR overhaul and three DFARS cases.
+- None of them mentions cryptography, quantum or FIPS. (Filtering by the FAR's agency slug returns none at all, so
+  the check filters by CFR title instead.)
+
+So the row's "FAR proposal due" holds; its 180 days end about 2026-12-19.
+
+**The EU row on `/value`**, re-read on the evening of 2026-11-15.
+- The Commission's "EU Roadmap on Post-Quantum Cryptography - Survey feedback" page (published 2026-09-02) reports
+  on the NIS Cooperation Group's 2025 consultation (97 submissions) and links a separate FAQ, whose topics include
+  hybrid schemes. It is not a revised roadmap.
+- So the row's June 2025 roadmap and its milestones stand. The FAQ is a PDF and was not opened.
+
+**The Companies row on `/value`**, re-read at both posts on 2026-11-15. Both name 2029, as the row does:
+- Cloudflare's post of 2026-04-07: "We now target 2029 to be fully post-quantum (PQ) secure including, crucially,
+  post-quantum authentication".
+- Google's post of 2026-03-25 (Adkins and Schmieg): "We're setting a timeline for post-quantum cryptography migration
+  to 2029".
+
+**The TLS 1.3 row on `/value`**, re-read at EO 14306 (2025-06-06) on 2026-11-15. Its section 2(d) replaces section
+4(f) of EO 14144:
+- Agencies support "not later than January 2, 2030, Transport Layer Security protocol version 1.3 or a successor
+  version".
+- The NSA's Director issues the requirement for National Security Systems, and OMB's Director for other systems.
+
+The row's date, scope and instruments match.
+
+**The FIPS 140-2 row on `/value`**, re-read at NIST's CMVP page on 2026-11-15.
+- The page gives the FIPS 140-2 sunset as 2026-09-21: "After this date, FIPS 140-2 validation certificates will be
+  moved to the Historical List". The page was last updated 2026-08-21.
+- The row's dates match: active until 2026-09-21, Historical from 2026-09-22.
+- Whether the move has been carried out could not be read from the CMVP search, whose form ignores parameters in the
+  URL.
+
+### PR #58: the documents' scientific-notation numbers as inline math (2026-11-15)
+
+The owner chose to convert every number in scientific notation, the verification records included. 492 numbers in 13
+GitHub-rendered documents became inline math in the house form.
+- Left as they were: code, quotations (including ones that run over several lines), blockquotes, URLs and the Hugging
+  Face cards.
+- An upper-case E is never read as an exponent, which keeps export-control numbers such as 9E515. The dry run had
+  converted them.
+- A range like `5e6-2e8` became $`5 \times 10^{6}`$ to $`2 \times 10^{8}`$.
+- The dry run also found a sentence-final number the first pattern skipped. A second pass finds nothing left.
+
+The local gate passed all 18 blocking steps once the worktree linked the checklist and `.env.demo`; step 16 fails in a
+fresh worktree without the checklist. CI passed its 8 checks. It was merged as `5c0f642` (2026-11-15 14:40 UTC) on the
+owner's approval to merge when green. No deploy followed: no file under `web/` changed, so the served bundle is the
+same.
+
+### IBM's Multi-PNA+EU: five seeds, the evaluation mode, and what the published students were distilled from (2026-11-16)
+
+**Five seeds under IBM's protocol.** Seeds 1 to 5 trained IBM's 100 epochs on this project's windows (seeds 4 and 5 after
+the reboot into kernel 5.14.0-687.66.2). IBM's loop kept epochs 36, 38, 54, 33 and 39, and logged a test F1 there with
+mean $`0.6487`$ and sample standard deviation $`0.0208`$; the paper reports $`68.16 \pm 2.65`$ on its own split. Seed 4
+has the best logged validation F1 ($`0.6208`$) and is the one exported (`scripts/train/ibm_multignn/README.md`).
+
+**IBM's loop never switches to evaluation mode.** No `.py` file of IBM/Multi-GNN at `252b025` calls `model.eval()` or
+`model.train()`, so its validation and test passes run in training mode: the head's dropout is on, BatchNorm normalises
+each sampled subgraph by its own statistics, and each pass updates BatchNorm's running statistics. The checkpoint is
+saved after the test pass. Its `num_batches_tracked` says so exactly: 36 epochs times 348 fit, 87 validation and 186
+test batches is 22,356 for seed 1, and 33 times 621 is 20,493 for seed 4, where training alone would give 12,528 and
+11,484. Any eval-mode use of a saved checkpoint therefore normalises with statistics set by the end of the test window,
+which for the causal protocol would read past a transfer's horizon.
+- `precise_bn.py` recomputes the statistics as a plain average over one pass of the fit-window loader and scores the
+  windows with both on the same sampled batches. On seed 4 the test F1 at the validation-tuned threshold moves from
+  $`0.6804`$ to $`0.6822`$, the AUPRC from $`0.6299`$ to $`0.6318`$, and 178 of 1,522,629 decisions at 0.5 change.
+  Over five seeds the recomputed statistics give $`0.6577 \pm 0.0226`$ at the validation-tuned threshold and an AUPRC
+  of $`0.6197 \pm 0.0304`$.
+- The owner chose fit-window statistics for every exported checkpoint, under both protocols; `export_for_browser.py`
+  now refuses a checkpoint that does not carry them.
+- No issue on IBM/Multi-GNN mentions it (searched for six terms on 2026-11-16). The owner asked for the facts only, to
+  write an issue in their own words; nothing was posted.
+- IBM/Multi-GNN#10, the normalisation of the last edge column, concerns the RGCN branch only: PNA and GIN z-normalise
+  every edge column, the ports included.
+
+**The published students' teacher.** `finance_aml.gnn_compact` and `finance_aml.mlp_large` were distilled toward seed
+1's fit-window probabilities (`teacher_probs_sha256` `fb42c40a...`), dumped with that checkpoint's saved statistics.
+On the same sampled batches, the recomputed statistics change that probability by more than 0.1 on 554 of 2,843,044
+fit edges, 155 of them laundering, where two dumps with the saved statistics differ on 2. The training target
+$`0.7\,y + 0.3\,p`$ moves by up to 0.21. The owner chose to measure re-distillation from seed 1 and from seed 4, both
+with recomputed statistics, and to decide once every run is in; nothing has been republished.
+
+**One local hazard.** The main checkout's untracked `models/finance_aml_gbm/onnx/model.onnx` is the August model
+(sha256 `54511ef7...`), not the one pinned on the Hub (`d69b6532...`). `finance_aml_mlp.py` reads that file for the
+gradient booster's test decisions, so a run from the main checkout would compare against a stale teacher. The pinned
+file is in the `qsh-gnn` worktree and was copied, checked against the page's config, into the worktree the runs used.
+
+**Republished: the compact GNN and the MLP, re-distilled (2026-11-16).** The owner chose the teacher once every run of
+three was in: seed 1 with its BatchNorm statistics recomputed on the fit window (sha256 `b98191df...`). Retrained on
+the IBM branch at the same $`\alpha = 0.3`$ and the same validation selection:
+
+| Model | Test F1 | AUPRC | Seeds' test F1 | Was (published 2026-11-13) |
+|---|---|---|---|---|
+| `finance_aml.gnn_compact` | 0.6585 | 0.6687 | 0.642 to 0.659, median 0.651 | 0.6587, 0.6676 |
+| `finance_aml.mlp_large` | 0.6278 | 0.6432 | 0.594 to 0.637, median 0.624 | 0.5953, 0.6436 |
+
+The MLP's trainer is deterministic: a rerun with the published teacher reproduced all ten of its runs to six
+decimals, so the MLP's change is the teacher's alone. The GNN's trainer varies by about 0.0004 F1 between runs. Both
+evaluation samples were rebuilt (only their expected blocks changed), and the owner approved both cards; they were
+published at `60642a20` and `69e4fb7c`, each card served by the Hub byte for byte as generated, and pinned with the
+other 13 models' 48 files.
+
+### IBM's Multi-PNA+EU under the causal protocol with both time inputs, Multi-GIN+EU, and file paths in exported graphs (2026-11-18)
+
+**The ten causal runs.** Five seeds of each time input, `drop` (the input set to zero) and `lag` (each transfer's time
+before its batch's end over the fit window's span, clipped to $`[-1, 0]`$), ran from 2026-11-16 09:37 to 11-17 06:21
+UTC, one line per run in the working folder's `logs/runs_20261116.jsonl` (checkpoint and sha256, figures, kernel and
+driver, seconds per stage) and all ten in the model's record. `lag` has the better mean logged validation F1,
+$`0.6175`$ against $`0.5977`$, and its seed 1 the best of its five, so that is the export (the owner's rule): test F1
+0.6252, AUPRC 0.5789, threshold 0.4311, in eval mode with the fit-window statistics. Over five seeds `lag` scores
+$`0.6208 \pm 0.0330`$ under the protocol's batches and $`0.4366 \pm 0.0294`$ under the plain batches of 2,048;
+`drop` $`0.5613 \pm 0.0338`$ and $`0.5013 \pm 0.0309`$. Measured on the export: under the protocol's batches every
+scored transfer lies at most 1,020 s before its batch's end, in every window; under the plain batches 1,352 test
+transfers, 654 of them laundering, lie further back, up to 663,600 s, where `lag` reads values training never gave.
+
+**The causal export, corrected before anything shipped.** It draws each of the 16 transfers alone, and it measured
+`lag` back from the transfer's own time, where the test loader measures it from the last time among the test-window
+rows of the batch; it now does the same. Against the recorded scoring of the same transfers, its probabilities lie
+within 0.021 and decide the same 16; under IBM's protocol, the 16 drawn together, within 0.097, the same 16.
+
+**Multi-GIN+EU, five seeds under each protocol (2026-11-17 and 18).** Not exported. Under IBM's protocol it logs
+$`0.6018 \pm 0.0260`$ (the paper, $`64.79 \pm 1.22`$ on its own split), and the fit-window statistics give
+$`0.5737 \pm 0.0262`$ the exported way against $`0.5940 \pm 0.0292`$ with the saved ones; under the causal protocol
+with `lag` it logs $`0.4095 \pm 0.0563`$, and three of its seeds kept an epoch before the 17th. With `drop`, trained
+on the owner's choice the same day, its validation F1 is $`0.2746 \pm 0.1583`$, below `lag` as for PNA, and one seed
+never rose above 0.01.
+
+**File paths in exported ONNX graphs.** `torch.export` (torch 2.9 and later) writes each node's Python stack trace into
+the node's metadata, with the exporting machine's absolute file paths. Seven graphs on the Hub carried this machine's:
+`medical_fl.resnet18` (fp32 and int8), `medical_fl.resnet50`, and `medical_fl.cxr_fedavg` (features and model, fp32
+and int8); no file in git does, and the two IBM graphs, not published, did too. `strip_node_metadata` in
+`qsh.models.export` now drops node metadata after every torch export and after int8 quantisation, the IBM export
+drops it and refuses a graph that still holds the home directory, and `scripts/publish_hf.py` refuses any such file
+before an upload, dry runs included (`tests/test_r86_no_local_paths_in_published_files.py`). On copies of the seven,
+dropping it removed the paths, the outputs stayed bit-identical and the graphs were otherwise byte-identical; the IBM
+graph went from 0.87 MB to 0.34 MB.
+- The owner chose to republish the three repositories with clean graphs and keep their history:
+  `scripts/strip_published_graphs.py` dropped the metadata in place after checking each graph against its original
+  (outputs bit-identical on random inputs, the graph otherwise byte-identical) and re-recorded the sizes in the
+  export reports and the records. `medical_fl.resnet18` is now at `3ee6e722`, `medical_fl.resnet50` at `0d682eda`
+  and `medical_fl.cxr_fedavg` at `dff90e80`; each served file equals its new pin, the cards and the other files are
+  unchanged, and the earlier revisions on the Hub still hold the paths. The chest X-ray head
+  (`web/public/data/medical/cxr_head.json`) was regenerated for the new revision and its check is the 11-15 one to
+  the last digit on all 16 films (`docs/measurements/cxr-head-2026-11-18.json`). Read afterwards, none of the 100
+  files at the heads of the 17 published repositories holds the home directory.
+- **The two IBM models published (2026-11-18).** On the owner's approval of both cards: `finance_aml.gnn` at
+  `154865bd` and `finance_aml.gnn_causal` at `d160b79b`. A repository test then found their samples without the
+  `split` field every other published sample states (the gate holds published files only, and it was not run with
+  the two marked published before the upload); on the owner's approval both were republished the same day with it, at
+  `b01fba64` and `d8b27ed2`, each sample otherwise byte-identical and each graph unchanged. Each card is served as
+  generated and each pinned file equals its pin.
+- **What publishing them changed on the page, found on a local client-only build and fixed before any merge.** The
+  browser takes a use case's first published model as the pipeline's default and its first industry model with a
+  record as the use-case card's headline, in registry order, where the IBM specs stood first: the finance page's
+  default became IBM's protocol model, and its published-model stage then failed ("Cannot read properties of
+  undefined (reading 'shape')"), reading a graph sample as rows; the card's headline had been IBM's since its record
+  was written. The IBM specs now follow the page's own models, so both are the gradient-boosting teacher's again, and
+  the stage scores a graph model's sample and reports one of its transfers (chosen in the selector: the causal model
+  ran on transfer 12 of its 16, and all five published finance models re-verified, PASS). The Overview names the two
+  `Multi-PNA+EU, IBM's protocol` and `Multi-PNA+EU, causal protocol`. The text-overlap scan clicked a tab named
+  `Multi-PNA+EU GNN`, which the single IBM tab had replaced, and an absent tab was skipped silently, so the IBM tab
+  was never measured; an absent tab now fails the scan, and the IBM tab is measured before and after a run. Measured,
+  it drew two lines through other accounts' letters: its layout, shared with the finance page's transaction graphs, put
+  the counterparties in staggered columns, an inner account 1.6 px from the line to an outer one. Every transfer drawn
+  touches the payer or the payee, so the counterparties now stand on a fan centred on their account, each line a ray
+  that passes no other, and an account paying itself has its counterparties on a ring round it. Over the page's 16
+  scored rows and the 32 transfers of the two IBM samples, lines within 13 px of an account they do not join went from
+  110 to none (`tests/test_r86_model_explanations.py`). On the
+  same build the medical page's four models re-verified against their new pins, PASS, and split inference on film 1
+  fetched the 11.2 MB features graph against its pin, the decrypted logit within $`1.04 \times 10^{-9}`$ of the
+  clear one.
+
+### PR #61 on the deployed site, on a temporary host (2026-11-19)
+
+**Why a temporary host.** The usual host's provider announced maintenance for 2026-11-19, 10:00 to 19:00 JST, each
+machine down for about 30 minutes, and on the evening of 11-18 the public names were moved to a temporary host holding
+copies of the same images. The QSH image there was PR #57's build, served from a copied `docker/` folder with no git
+checkout, so `scripts/deploy_demo.sh` could not reach it as it stood (checklist DP18, new).
+
+**The deploy.** On the owner's approval, after both PRs merged (#62 as 723a7c9, #61 as e8ea912): a fresh clone of the
+repository at a new path on the temporary host, then `scripts/deploy_demo.sh --return-to-main` against it from the
+main checkout, with that host's connection details in a private file outside the repository and the output redacted.
+It took 9 minutes and left the host on `main` at `e8ea912`, serving `index-DsXacjtg.js` on the shared proxy network
+(DP7). The bundle was the same through the public name and through a pinned resolve to the temporary host, and the
+name resolved there from the local resolver, 1.1.1.1, 8.8.8.8, 9.9.9.9 and the authoritative server. The served bundle
+carries every new pin (`b01fba64`, `d8b27ed2`, `60642a20`, `69e4fb7c`, `3ee6e722`, `0d682eda`, `dff90e80`) and no home
+path, and `cxr_head.json` is at `dff90e80`. Cache headers as DP17 asks: the shell and the data `no-cache`, the new
+bundle immutable, `index-NTqXpn5h.js` 404.
+
+**A browser held on to the old host.** Chrome on this machine went on loading the old host's bundle while every
+resolver gave the new address, because it reused an open HTTP/2 connection to the old one; after about seven minutes
+without a request it opened a new connection and loaded `index-DsXacjtg.js`. A host therefore keeps serving the
+browsers that hold a connection to it after the names move, which is why DP18 has the temporary host cleaned up once
+it stops receiving requests rather than at the DNS TTL.
+
+**The walk**, every page at 1280 px in Chrome on the public name, no console error on any:
+
+- `/`, `/value` (the WAMO paper's DOI link, the FAR row) and `/usecases` (the finance card's headline: graph-feature
+  gradient boosting, 0.6161 against the published 0.6323).
+- `/validations`: all eight Run buttons; ML-KEM, ML-DSA (the tampered message rejected), the hybrid handshake, BB84
+  (QBER 0.0098), the secure agent call, ACVP 10 of 10, the WireGuard handshake checks and the IKEv2 key schedule with
+  its CAVP row at 7 of 7, every check true.
+- `/orchestration`: the default run in 34 s, 242 events, the published-model stage on gradient boosting by default;
+  the Stage order view; `?usecase=demo` in 1.5 s.
+- Finance: the run in 34 s re-scores all five published samples at their pins, PASS (gradient boosting, the student
+  and the MLP 8,192 rows each, the two IBM models 16 each); the MLP and the GNN under MPC return the clear network's
+  class, the largest logit error $`1.06 \times 10^{-4}`$ and $`5.25 \times 10^{-5}`$. The overview names
+  "Multi-PNA+EU, IBM's protocol" and "Multi-PNA+EU, causal protocol". The IBM tab shows both records at `b01fba646aad`
+  and `d8b27ed281c8`; IBM's protocol reads past the horizon on 16 of 16 transfers (the latest 3.3 days after), the
+  causal one on none (the latest 3 min after); the teacher against both students, 16 of 16 decisions agreeing for each
+  and the row decrypted under MPC marked; the transfers' accounts on a fan, no line through an account it does not
+  join. With the causal model chosen, the published-model stage runs it on transfer 12 of its sample (28 s).
+- Medical: the run in 30 s re-scores the four models at their new pins (`3ee6e7224e2b`, `0d682eda4fcd`, `dff90e809f69`
+  and the student's `1de47e045918`), PASS. Split inference on films 1 and 5 (no effusion) and 9 and 13 (effusion): the
+  11.2 MB features graph checked against its pin in 1.4 s, then cached; one ciphertext of 393,329 bytes; the layer in
+  39 ms with 9 rotations; each decrypted logit within $`1.04 \times 10^{-9}`$ of the clear one, and each decision the
+  full int8 model's recorded one.
+- Genomics (the polygenic score's flags agree), telecom (three models PASS, the QKD control plane table), satellite
+  (four models PASS, the Network and Downlink tabs) and DeFi (1 of 5 borrowers can be liquidated): each run once,
+  every tab opened.
+- `/licenses/js-bundle.txt` served; `/walkthrough/` runs: 105 of 113 columns identical over the 200 pairs, the ceiling
+  0.7685, the slider changing the pair.
+- At 375 px, the finance page after a run with the IBM tab open, and the medical page with the chest X-ray tab and
+  split inference on film 9: no sideways scroll. The IBM drawings keep their 520 px minimum and scroll in their own
+  box; the scored transfer's drawing scales to the width.
+
+**Still owed.** The usual host gets the same deploy after its maintenance, read through a pinned resolve before the
+owner moves the names back; the owner then cleans up the temporary host.
+
+### Re-checked 2026-11-19: PR #62's advisory withdrawn, and composite ML-DSA published as RFC 10073
+
+GitHub withdrew GHSA-fc5q-39xc-vjpf on 2026-11-18 at 15:38 UTC (`withdrawn_at` in the advisory database's API), an
+hour after PR #62 let it through. On 2026-11-19 `npm audit --json` in `web/` reports no vulnerability at any level,
+and picomatch's newest release is still 4.0.7, so the advisory went away by its withdrawal, not by a fix. The entry's
+own reopening condition said that a withdrawal makes it unused and that it is to be removed then.
+
+**Changed.** `scripts/npm_audit_ignore.json` holds no entry, its note saying why. `scripts/npm_audit_filter.mjs` reads
+another ignore file when `NPM_AUDIT_IGNORE` names one, which only the test does: the filter's checks of every failure
+path (after the date, a fixed release, an unreadable version or range, another advisory, another package, not a
+report) now run on the historical entry as a fixture, and a new test checks that the file as it stands fails the audit
+on the same advisory, were it published again, and still passes a clean report. `docs/development.md` and
+`docs/threat-model.md` say what happened.
+
+**The rest of the re-check, the same morning.** The IETF Datatracker gives draft-ietf-lamps-pq-composite-sigs as
+published: RFC 10073, *Composite Module-Lattice-Based Digital Signature Algorithm (ML-DSA) for Use in X.509 Public Key
+Infrastructure*, Proposed Standard, November 2026 (from revision 19), which `docs/crypto-agility.md` still called a
+draft in the RFC Editor queue; it is corrected. The drafts and RFCs the pages cite otherwise stand:
+draft-ietf-ipsecme-ikev2-mlkem is still at revision 09 (2026-08-13), RFC 9867 and RFC 10024 are as cited. NIST's PQC
+project page (updated 2026-10-27) still calls Falcon's and HQC's standardisation underway, and CSRC has no page for
+FIPS 206 or FIPS 207, draft or final (`docs/pqc-roadmap.md` notes the re-read). IBM/Multi-GNN#15 and #18 are still
+open and the repository's head is still `252b025`, as the training README says. `scripts/audit_deps.sh` passes for
+npm, Python and Rust (pip-audit cannot audit the CPU builds of torch and torchvision, which are not on PyPI). Sixteen
+of the 26 direct web dependencies are behind their newest release with no advisory against any; the majors (React 19,
+Vite 8, recharts 3, react-router 8, TypeScript 7) wait for the poster's notice on 2026-12-18, and the patch releases
+(vite 6.4.6 among them) for the next round's full gate.
+
+### The deploy script reads the box it deployed, not the name's current address (2026-11-19)
+
+**Found while planning the move back.** `scripts/deploy_demo.sh` read "200, serving <bundle>" through the public URL.
+On 2026-11-19 the public names pointed at the temporary host while the usual host was to be redeployed after its
+maintenance, so that deploy would have been verified against the temporary host: a pass describing another machine,
+the state DP18 exists to prevent. Read-only at 09:25 JST, through resolves pinned to each host: the temporary host
+served `index-DsXacjtg.js` and the usual host, before its maintenance, `index-NTqXpn5h.js`.
+
+**Changed.** Both halves of the script now read the public name through a resolve pinned to the box's own address, the
+one ssh connects to (from `ssh -G`, so an alias in the ssh config resolves as ssh would) or `QSH_DEMO_ADDRESS` where
+the box serves on another address; the script fails on that read, never prints the address, and reports the name as
+DNS resolves it beside it, as a note when another machine answers. `docs/deployment.md` says so.
+`tests/test_r86_deploy_reads_the_box_it_deployed.py` runs the script with `ssh` and `curl` replaced by stubs: a normal
+deploy passes with the pinned read; a name that reaches another build is a note, not a pass or a failure; a box
+answering 502 fails although the name answers 200 elsewhere, the case the old check could not see; an explicit address
+overrides ssh's; and neither address appears in the output.
+
+### The fully encrypted medical student: pre-registered, run, published, and on the medical page (2026-11-19)
+
+**The owner's choices, 2026-11-19.** The medical page's CKKS student decrypts between its layers. The owner chose to
+test a student that does not, offline first and then in the browser, under two parameter sets, in a module of its own
+(`clientFHE.ts` stays as the FHE.org poster describes it until the notice on 2026-12-18), and to publish it on
+approval of its card.
+
+**Pre-registered before any run.** `references/medical-square-student-preregistration.md`, committed at 09:55 JST
+(0100414) and corrected before any run to name the recipe's optimizer as AdamW (68f7dee; SHA-256 `c8a8b5d5...`): the
+control is the published student's architecture, the candidate a convolution, batch norm (folded), $`x^2`$, average
+pool and dense layer, multiplicative depth 3; five seeds each on the published ResNet-18 teacher's labels; criteria
+fixed in advance (mean test AUC at least the control's minus 0.05; no collapse; every decrypted logit within
+$`10^{-3}`$ of the plaintext one on all 156 test images, no decision changed, per parameter set). A first attempt
+stopped while loading the teacher's graph, before any training.
+
+**Results.** Control $`0.8182 \pm 0.0045`$, square $`0.8435 \pm 0.0198`$: criteria 1 and 2 pass. The exported seed (2,
+best validation AUC 0.9267) scores 0.8198. Under TenSEAL on all 156 images, set B ($`N = 16384`$, 60+40+40+40+60) is
+within $`6.1 \times 10^{-5}`$; set A ($`N = 8192`$, 50+30+30+30+50, scale $`2^{30}`$) reached $`8.2 \times 10^{-3}`$,
+over the limit on every image though no decision changed, and the smallest decision margin on the split is 0.0077. On
+the owner's choice an addendum pre-registered A2 before its run (48+34+34+34+52 bits, exactly the 202-bit post-quantum
+bound at $`N = 8192`$, scale $`2^{34}`$; 2ed2e4c, SHA-256 `858cfd4b...`): within $`3.1 \times 10^{-4}`$, no decision
+changed. Found after the run and corrected in the record with a note: its float64 AUC field had ranked by the raw
+class-1 logit (0.77193 for 0.819758). The argmax, the pre-registered operating point, flags 66 of 156 images
+malignant: recall 0.738 and specificity 0.693 against the CKKS student's 0.571 and 0.842, and accuracy 0.705, below
+the 0.731 of always answering benign; the card and the page say so.
+
+**Published and pinned.** On the owner's approval of the card: `Daemons-Q/qsh-medical-breastmnist-ckks-square-student`
+at `04189759`, every served file equal to the reviewed one and none holding a local path; 18 models and 57 files
+pinned. The record lists the offered sets (A2, B) under `ckks` and the rejected one apart, so the model's table cannot
+show it as offered.
+
+**In the browser.** `web/src/lib/clientFHESquare.ts` runs the pass in a Web Worker under each set the published
+weights list. Every vector is tiled with period 1,024, so the rotate-and-add leaves the logit in every slot and no
+partial sum is decrypted; the depth-3 chain has no level left for the mask `clientFHE.ts` uses. Under the real
+node-seal (`tests/test_r86_square_student_ckks_in_node.py`, eight images) A2 is within $`1.5 \times 10^{-5}`$ and B
+within $`6.7 \times 10^{-7}`$. On a local client-only build: A2 on eight images within $`1.0 \times 10^{-5}`$, 45 ms
+to encrypt and 39 ms to evaluate per image; B on all 156 within $`7.7 \times 10^{-6}`$, no decision changed, accuracy
+0.7051 decrypted and in the clear, 27.6 s with the keys; the pipeline's re-scoring stage includes the model, PASS. The
+shared agreement chart said every model was "one linear layer ... with no rescale" and that the rows travelled in one
+ciphertext; a producer can now describe its own work, and this one does (nine ciphertexts in, two back; eleven
+plaintext and one ciphertext multiplication, three levels of rescaling, twenty rotations).
+
+**Still owed.** The merge on the owner's approval, the deploy once the public names had moved (on 2026-11-20 they
+moved to a new host, not back to the usual one), and the section read on the live site.
+
+### The walkthrough's export no longer downloads ruff itself (2026-11-19)
+
+**Found deploying `main` at 35eb8f1 to the host the demo is moving to.** The image build failed in the walkthrough
+stage. marimo 0.25.2's WebAssembly export finds the notebook's local imports by running
+`uv tool run --from ruff==0.15.18 ruff analyze graph`, under a fixed 120-second timeout (`_RUFF_REQUIREMENT` and
+`_RUFF_GRAPH_TIMEOUT_SECONDS` in `marimo/_export/local_modules.py`, read at the 0.25.2 tag), so uv downloaded ruff from
+PyPI at that moment, against no recorded hash. From that host PyPI's CDN answered over IPv4 at about 70 kB/s (87 MB/s
+over IPv6, which the build containers do not use; crates.io at 2.9 MB/s and jsDelivr at 19 to 34 MB/s over IPv4), so
+the 11.6 MB wheel could not arrive in time: `LocalWheelError: Failed to run uv while resolving local imports for
+html-wasm export.` The same stage passed on the earlier hosts only because their path to PyPI was fast.
+
+**Changed.** `walkthroughs/ruff.lock` pins ruff 0.15.18 with a sha256 for each of the 18 files PyPI lists for the
+release. The image downloads the wheel against it with pip, which has no such limit, before the export, and
+`scripts/build_walkthrough.py` runs the export with `UV_OFFLINE=1` and that folder as uv's only source, after checking
+that the installed marimo asks for the pinned ruff. `MARIMO_RUFF` records which ruff each pinned marimo runs, so
+`--check` fails on a marimo bump until it is read again. `tests/test_r86_walkthrough.py`: a different ruff, a lock
+without hashes and an unrecorded marimo are refused; the image downloads before it exports, and the export is offline.
+A local build of the walkthrough stage downloaded and checked the wheel, exported offline and wrote 47.3 MB in 24 s.
+
+### The demo on its new host (2026-11-20)
+
+**The move.** On 2026-11-19 the owner chose to move the public demo to a new host rather than back to the usual one
+after its maintenance; the usual host is not public again and was not redeployed. The front proxy and the other demo
+were already running there; this project's part was QSH's own container. The first deploy of
+`main` (35eb8f1, a git clone on the host) failed in the image build, which PR #68 fixed (the entry above).
+
+**Before the names moved** (checklist DP18). At 00:03 JST `scripts/deploy_demo.sh --return-to-main` passed in 27 s on
+the build cache; its pinned read gave 200 and `index-DsXacjtg.js` while the public name still reached the temporary
+host with the same build. Through resolves pinned to each host, the two served the same headers and the same bytes
+for the index, the bundle, the CSS, the three wasm files, the notices, the walkthrough, two deep routes and two 404s,
+with COOP and COEP, over TLS 1.3. In headless Chrome with both names pinned to the new host (00:04 to 00:17): 12
+routes, every document from that host, no console error or warning, no exception, no failed request, no response of
+400 or more; 27 tabs each selected and non-empty; the four buttons on `/validations` (ML-KEM-768 with X25519: 1216 B
+key, 1120 B ciphertext, agreement true; ML-DSA-65: 1952 B key, 3309 B signature, valid and refusing a tampered
+message; the handshake's agreement true; BB84 run); Start on all six use cases finished, 66 PASS and no FAIL; the
+walkthrough booted; an unknown path shows "Page not found".
+
+**After.** By 00:46 the authoritative server, the local resolver, 1.1.1.1, 8.8.8.8 and 9.9.9.9 all gave the new host
+for both names, and the temporary host answered neither HTTPS nor ssh, so when its requests stopped could not be read.
+Live in Chrome the site answered 200 over HTTP/2 with the same bundle, cross-origin isolated, with no console error.
+`.env.demo` (gitignored) now names the new host, the old file kept beside it, so the documented deploy command
+reaches it; `scripts/check_secrets.sh` still refuses the earlier hosts' values in a tracked file. PR #68 was merged
+and deployed by that command at 02:14: the walkthrough came out byte-identical, so the image did not change.
+
+### The fully encrypted medical student on the deployed site (2026-11-20)
+
+PR #67, merged as 66e11d1 after the names had moved, deployed by the standard command at 03:0x JST (bundle
+`index-DdHnc4YV.js`), read in Chrome on the public name (checklist PI51):
+
+| run | largest logit error | decisions unchanged | accuracy, decrypted and in the clear | wall time with the keys |
+|---|---|---|---|---|
+| A2, eight images (four of each class) | $`9.72 \times 10^{-6}`$ | 8 of 8 | 0.6250 and 0.6250 | 1.1 s |
+| B, all 156 | $`1.38 \times 10^{-6}`$ | 156 of 156 | 0.7051 and 0.7051 | 27.9 s |
+
+Both ran in a Web Worker; each image crossed as nine ciphertexts (4.72 MB under A2, 9.44 MB under B) and came back as
+two (262 kB, 525 kB). The medical pipeline's Start re-scored `medical_fl.square_student` on all 156 rows of its
+published sample, PASS, accuracy 0.7051 against the recorded 0.7051; the Models tab "Square student (fully
+encrypted)" shows its card; no console error or warning. A pinned headless walk of the 12 routes and 28 tabs on that
+bundle found no console error, failed request or response of 400 or more, and every other page's text unchanged.

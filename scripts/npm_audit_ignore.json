@@ -1,0 +1,3 @@
+{
+  "_about": "npm advisories scripts/audit_deps.sh lets through, each with the package it names, the packages it may be reported through, its reason, what reopens it and the last day it is let through. scripts/npm_audit_filter.mjs applies this file and tests/test_dependency_advisories_are_checked_on_a_schedule.py reviews it, so an entry cannot be added without its reopening condition being read there. None is let through: the only entry so far, GHSA-fc5q-39xc-vjpf (picomatch, from 2026-11-18), was removed on 2026-11-19 because GitHub withdrew the advisory on 2026-11-18."
+}

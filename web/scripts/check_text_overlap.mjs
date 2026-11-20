@@ -50,7 +50,10 @@ const PAGES = [
   { path: "/usecase/satellite_comms", run: true },
   { path: "/usecase/satellite_comms", tab: "Network" },
   // Each model's tab in the Models section (Round 86): an inactive panel is hidden, so it is measured only when opened.
-  ...[["finance_aml", ["Multi-PNA+EU GNN", "Gradient boosting", "CKKS student", "MLP (CKKS and MPC)", "Compact GNN (CKKS and MPC)"]],
+  // The IBM tab once more after a run (Round 86): its sample views and the teacher-student plot draw only once the run has
+  // re-scored the published models.
+  { path: "/usecase/finance_aml", tab: "IBM Multi-PNA+EU", run: true },
+  ...[["finance_aml", ["IBM Multi-PNA+EU", "Gradient boosting", "CKKS student", "MLP (CKKS and MPC)", "Compact GNN (CKKS and MPC)"]],
       ["medical_fl", ["ResNet-18", "ResNet-50", "CKKS student"]], ["genomics", ["Polygenic risk score"]],
       ["telecom_ids", ["Transformer IDS", "Random forest (QKD attacks)", "5G-NIDD classifier", "CKKS student"]],
       ["satellite_comms", ["Telemanom LSTM", "Forecaster student", "OPS-SAT detector", "OPS-SAT student"]]]
@@ -337,7 +340,10 @@ async function check(s, page) {
   const cls = await ev(s, "window.__cls ?? 0");
   const shifted = cls >= 0.1 ? [`[page] layout shift ${cls.toFixed(3)} while loading, 0.1 or more`] : [];
   if (page.tab) {
-    await ev(s, `[...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === ${JSON.stringify(page.tab)})?.click()`);
+    // A tab that is not there is a failure (Round 86, 2026-11-18): the click used to be optional, so the finance IBM tab,
+    // renamed from "Multi-PNA+EU GNN", went unmeasured while the scan measured the Overview in its place and passed.
+    const opened = await ev(s, `(() => { const t = [...document.querySelectorAll('[role=tab]')].find(b => b.textContent.trim() === ${JSON.stringify(page.tab)}); t?.click(); return !!t; })()`);
+    if (!opened) return [...shifted, `[page] no tab named "${page.tab}"`];
     await sleep(2500);
   }
   for (const label of page.click ?? []) {

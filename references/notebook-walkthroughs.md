@@ -36,7 +36,7 @@ A marimo notebook that fetches the demo's own `/data/telecom_nidd/real_2d.json` 
 
 One notebook, `walkthroughs/nidd_copies.py`, at `/walkthrough/` on the demo, linked from the 5G-NIDD card. It reads 200 evenly spaced pairs of the flows the published 5G-NIDD file holds twice, on all 113 columns, and works out the ceiling they set.
 
-`scripts/build_walkthrough.py` runs in a stage of the web image. It exports the notebook, fetches 16 files (the Pyodide core and 13 wheels) against the sha256 in `walkthroughs/pyodide-sources.json`, writes a lock file naming only those local files, sets the two attributes, drops the note the export carries, and lists the third-party works in `THIRD_PARTY.txt`.
+`scripts/build_walkthrough.py` runs in a stage of the web image. It exports the notebook, fetches 16 files (the Pyodide core and 13 wheels) against the sha256 in `walkthroughs/pyodide-sources.json`, writes a lock file naming only those local files, sets the two attributes, drops the note the export carries, and lists the third-party works in `THIRD_PARTY.txt`. The export also runs ruff, through uv, to find the notebook's local imports; the image downloads that wheel first against `walkthroughs/ruff.lock` and the export runs uv offline, so nothing is fetched without a recorded hash (2026-11-19, after a deploy host's slow path to PyPI timed the download out).
 
 | | |
 |---|---|

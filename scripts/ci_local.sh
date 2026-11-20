@@ -191,6 +191,14 @@ step "11i/18 The compact GNN under MPC"
 ( cd web && npm run --silent check:hybrid-gnn >/tmp/ci_hybrid_gnn.log 2>&1 ) \
   && ok "the compact GNN under MPC matches the logits its trainer recorded" || { bad "the compact GNN under MPC"; tail -12 /tmp/ci_hybrid_gnn.log; }
 
+step "11k/18 What IBM's Multi-GNN read for each scored transfer"
+( cd web && npm run --silent check:graph-neighbourhood >/tmp/ci_graph_nb.log 2>&1 ) \
+  && ok "the IBM tab's neighbourhood counts match the hand-counted graph" || { bad "the IBM tab's neighbourhood counts"; tail -12 /tmp/ci_graph_nb.log; }
+
+step "11l/18 IBM's Multi-PNA+EU against the two models distilled from it"
+( cd web && npm run --silent check:teacher-student >/tmp/ci_teacher_student.log 2>&1 ) \
+  && ok "the teacher-student view pairs the recorded rows and refuses the seeded faults" || { bad "the teacher-student view"; tail -12 /tmp/ci_teacher_student.log; }
+
 step "11h/18 The trained QCNN under CKKS"
 ( cd web && npm run --silent check:qcnn-ckks >/tmp/ci_qcnn_ckks.log 2>&1 ) \
   && ok "the trained QCNN under CKKS matches the circuit in the clear" || { bad "the trained QCNN under CKKS"; tail -12 /tmp/ci_qcnn_ckks.log; }
@@ -212,11 +220,15 @@ $PY scripts/validate_cyclonedx.py web/public/cbom/qsh.cdx.json >/tmp/ci_cbom.log
   && ok "the CBOM validates" || { bad "the CBOM"; tail -8 /tmp/ci_cbom.log; }
 
 step "11f/18 The Python walkthrough's record and its notebook"
-# In its own environment: it needs marimo, which the project's lock file does not carry.
+# In its own environment: it needs marimo, which the project's lock file does not carry. A new one each run: the step
+# reused /tmp/ci_walkthrough_venv until 2026-11-20, when the system's ten-day /tmp clean-up (systemd-tmpfiles,
+# `Q /tmp 1777 root root 10d`) had removed pip's modules from it and left their directories and metadata, so
+# `python -m venv` on that path kept a pip that could not start.
+WT_VENV=$(mktemp -d /tmp/ci_walkthrough_venv.XXXXXX)
 $PY scripts/build_walkthrough.py --check >/tmp/ci_walkthrough.log 2>&1 \
-  && python3.12 -m venv /tmp/ci_walkthrough_venv >>/tmp/ci_walkthrough.log 2>&1 \
-  && /tmp/ci_walkthrough_venv/bin/pip install --quiet --require-hashes -r walkthroughs/requirements.lock >>/tmp/ci_walkthrough.log 2>&1 \
-  && /tmp/ci_walkthrough_venv/bin/python walkthroughs/nidd_copies.py >>/tmp/ci_walkthrough.log 2>&1 \
+  && python3.12 -m venv "$WT_VENV" >>/tmp/ci_walkthrough.log 2>&1 \
+  && "$WT_VENV/bin/pip" install --quiet --require-hashes -r walkthroughs/requirements.lock >>/tmp/ci_walkthrough.log 2>&1 \
+  && "$WT_VENV/bin/python" walkthroughs/nidd_copies.py >>/tmp/ci_walkthrough.log 2>&1 \
   && ok "the walkthrough's record is consistent and its notebook runs" || { bad "the walkthrough"; tail -8 /tmp/ci_walkthrough.log; }
 
 step "12/18 Hybrid-KEM combiner parity (Python vectors vs the browser module)"

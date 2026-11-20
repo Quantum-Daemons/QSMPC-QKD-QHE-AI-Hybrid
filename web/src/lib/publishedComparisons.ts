@@ -36,7 +36,10 @@ type Relation = { relation: "same" | "reference" | "citation"; why: string };
 
 /** How each registry model's published baseline relates to the model, read off the registry's baseline_source. */
 export const MODEL_RELATION: Record<string, Relation> = {
-  "finance_aml.gnn": { relation: "same", why: "Multi-PNA+EU itself, the architecture of the paper's figure" },
+  // "reference" since Round 86, when it was first measured here: the paper's figure is on its own split and this run on this
+  // project's windows, the reason the gradient booster's row below is a reference too.
+  "finance_aml.gnn": { relation: "reference", why: "Multi-PNA+EU itself from IBM's code, on this project's windows rather than the paper's split" },
+  "finance_aml.gnn_causal": { relation: "reference", why: "Multi-PNA+EU from IBM's code under the causal protocol, which reads less than the paper's" },
   "finance_aml.gbm": { relation: "reference", why: "same metric and corpus, a different protocol: the published figure splits by transaction order and updates IBM's Graph Feature Preprocessor over the test window" },
   "finance_aml.student": { relation: "reference", why: "a logistic regression distilled from the gradient-boosting model, beside the published GFP+XGBoost" },
   "finance_aml.mlp_large": { relation: "reference", why: "an MLP over this project's features, beside the published GFP+XGBoost" },
@@ -45,6 +48,7 @@ export const MODEL_RELATION: Record<string, Relation> = {
   "medical_fl.resnet18": { relation: "same", why: "ResNet-18 at 28 px on BreastMNIST's official split, as in MedMNIST v2" },
   "medical_fl.resnet50": { relation: "reference", why: "ResNet-50 at 28 px under a training regime that differs from the benchmark table's" },
   "medical_fl.student": { relation: "citation", why: "a single-convolution CNN reading 14 x 14 images, distilled for CKKS, beside the benchmark's ResNet-18 at 28 x 28" },
+  "medical_fl.square_student": { relation: "citation", why: "a single-convolution CNN with a square activation reading 14 x 14 images, run end to end under CKKS, beside the benchmark's ResNet-18 at 28 x 28" },
   "medical_fl.cxr_fedavg": { relation: "reference", why: "a one-finding ResNet-18 from random initialisation, trained under FedAvg at 224 px, beside the dataset paper's 14-finding ResNet-50 from ImageNet with its last layers trained, on the same official test split" },
   "satellite_comms.telemanom": { relation: "same", why: "Telemanom on ESA-ADB's Mission1 lightweight channels 41 to 46, anomalies alone: the like-for-like row of the benchmark" },
   "satellite_comms.student": { relation: "reference", why: "a linear forecaster distilled from Telemanom, beside Telemanom's benchmark row" },
@@ -92,7 +96,11 @@ export function modelRows(models: ModelSpec[], verifications: VerificationSummar
     }
     if (rel.relation === "reference") {
       const d = offlineValue == null ? "" : ` (${signed(offlineValue - published)} against it)`;
-      return { ...base, verdict: "reference" as Verdict, why: `${rel.why}${d}` };
+      // A record that also carries the figure the published method's own loop logs, over its seeds (IBM's Multi-GNN):
+      // that is the like-for-like number for the paper's, so the row says it rather than leaving the exported one alone.
+      const lg = (m.achieved as Record<string, any> | null)?.five_seeds?.logged_test_f1 as { mean: number; sample_sd: number; n: number } | undefined;
+      const logged = lg ? `; the figure its own training loop logs, the paper's measure, is ${f4(lg.mean)} +/- ${f4(lg.sample_sd)} over ${lg.n} seeds here` : "";
+      return { ...base, verdict: "reference" as Verdict, why: `${rel.why}${d}${logged}` };
     }
     if (offlineValue == null) return { ...base, verdict: "not comparable" as Verdict, why: `${rel.why}; not measured here` };
     const spread = (m.achieved as Record<string, any> | null)?.seed_spread as { mean: number; sd: number; n_seeds: number } | undefined;

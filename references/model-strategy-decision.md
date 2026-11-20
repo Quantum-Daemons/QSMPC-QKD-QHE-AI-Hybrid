@@ -162,8 +162,8 @@ no bootstrapping. Two finance models run this way in the browser, both trained h
 
 | model | parameters | ReLUs in garbled circuits | minority-class F1 over the test window |
 |---|---|---|---|
-| `finance_aml.mlp_large`, MLP [114, 128, 64, 2] | 23,106 | 192 | 0.5953 |
-| `finance_aml.gnn_compact`, 2 endpoints and 16 neighbour slots | 34,962 | 608 | 0.6587 |
+| `finance_aml.mlp_large`, MLP [114, 128, 64, 2] | 23,106 | 192 | 0.6278 |
+| `finance_aml.gnn_compact`, 2 endpoints and 16 neighbour slots | 34,962 | 608 | 0.6585 |
 | `finance_aml.student`, the CKKS-only linear student, for comparison | 115 | 0 | 0.3088 |
 
 Both networks are distilled from IBM's Multi-PNA+EU, run on this project's windows from IBM's code

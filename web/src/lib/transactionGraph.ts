@@ -69,25 +69,49 @@ export function layoutExemplar(g: Exemplar, w: number, base: number): { layout: 
   return { layout, h };
 }
 
-/** The scored transaction's two accounts in the centre, their counterparties in staggered columns to the left and the right, and accounts that touch both above and below. */
-export function layoutScored(g: ScoredRow, w: number, base: number): { layout: Layout; h: number } {
+/** Between neighbours on a fan, and the widest a fan opens (Round 86). */
+const FAN_GAP = 26, FAN_SPAN = (5 * Math.PI) / 6;
+
+/** The scored transaction's two accounts in the centre, the payer's other counterparties on a fan round the payer to the
+ *  left and the payee's on one round the payee to the right, and accounts that touch both above and below.
+ *
+ *  A fan, an arc centred on its account (Round 86, 2026-11-18): every transfer drawn touches the payer or the payee, so
+ *  every line from a fan is a ray from its centre and passes no other account on it. Two staggered columns put an inner
+ *  account 1.6 px from the line to an outer one, and the IBM tab's drawing ran two lines through other accounts'
+ *  letters; one column instead leaves a steep line to its last account grazing the next one. An account paying itself
+ *  touches both ends with all its counterparties, which then stood in one column through it, so they go on a ring round
+ *  it. Neighbours on a fan stay at least 22 px apart and every line at least 13 px from the accounts it does not join
+ *  (`tests/test_r86_model_explanations.py`). */
+export function layoutScored(g: Pick<ScoredRow, "nodes" | "from" | "to"> & { edges: { from: string; to: string }[] }, w: number, base: number): { layout: Layout; h: number } {
   const margin = 22, touchesFrom = new Set<string>(), touchesTo = new Set<string>();
   for (const e of g.edges) {
     if (e.from === g.from || e.to === g.from) { touchesFrom.add(e.from); touchesFrom.add(e.to); }
     if (e.from === g.to || e.to === g.to) { touchesTo.add(e.from); touchesTo.add(e.to); }
   }
   const others = g.nodes.filter((n) => n !== g.from && n !== g.to);
+  if (g.from === g.to) {
+    const h = Math.max(base, 2 * margin + Math.ceil((FAN_GAP * others.length) / Math.PI));
+    return { layout: { ...ring(others, w, h, margin), [g.from]: { x: w / 2, y: h / 2 } }, h };
+  }
   const both = others.filter((n) => touchesFrom.has(n) && touchesTo.has(n));
   const leftOnly = others.filter((n) => touchesFrom.has(n) && !touchesTo.has(n));
   const rightOnly = others.filter((n) => !touchesFrom.has(n));
-  const h = Math.max(base, 2 * margin + (Math.max(leftOnly.length, rightOnly.length) - 1) * SPACING, 2 * margin + 60 + (both.length - 1) * SPACING);
-  const out: Layout = { [g.from]: { x: w * 0.38, y: h / 2 }, [g.to]: { x: w * 0.62, y: h / 2 } };
-  if (g.from === g.to) out[g.from] = { x: w / 2, y: h / 2 };
-  const staggered = (names: string[], x: number, dir: number) => names.forEach((n, i) => {
-    out[n] = { x: x + dir * (i % 2) * 40, y: names.length === 1 ? h / 2 : margin + (i * (h - 2 * margin)) / (names.length - 1) };
+  const ax = w * 0.38, bx = w * 0.62;
+  // The old columns' distance where it gives room, further out (to the box's margin) where a fan needs more.
+  const fan = (n: number) => {
+    const r = Math.min(ax - margin, Math.max(ax - w * 0.14, (FAN_GAP * (n - 1)) / FAN_SPAN));
+    return { r, span: n > 1 ? Math.min(FAN_SPAN, (FAN_GAP * (n - 1)) / r) : 0 };
+  };
+  const fl = fan(leftOnly.length), fr = fan(rightOnly.length);
+  const reach = Math.max(fl.r * Math.sin(fl.span / 2), fr.r * Math.sin(fr.span / 2));
+  const h = Math.max(base, Math.ceil(2 * (margin + reach)), 2 * margin + 60 + (both.length - 1) * SPACING);
+  const out: Layout = { [g.from]: { x: ax, y: h / 2 }, [g.to]: { x: bx, y: h / 2 } };
+  const place = (names: string[], cx: number, dir: number, f: { r: number; span: number }) => names.forEach((n, i) => {
+    const phi = names.length === 1 ? 0 : -f.span / 2 + (f.span * i) / (names.length - 1);
+    out[n] = { x: cx + dir * f.r * Math.cos(phi), y: h / 2 + f.r * Math.sin(phi) };
   });
-  staggered(leftOnly, w * 0.14, 1);
-  staggered(rightOnly, w * 0.86, -1);
+  place(leftOnly, ax, -1, fl);
+  place(rightOnly, bx, 1, fr);
   both.forEach((n, i) => { out[n] = { x: w / 2, y: i % 2 === 0 ? margin + (i / 2) * SPACING : h - margin - ((i - 1) / 2) * SPACING }; });
   return { layout: out, h };
 }

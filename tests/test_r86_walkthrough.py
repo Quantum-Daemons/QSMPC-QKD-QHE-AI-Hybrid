@@ -22,7 +22,7 @@ import build_walkthrough as B  # noqa: E402
 
 @pytest.fixture
 def record(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    for name in ("LOCK", "SOURCES"):
+    for name in ("LOCK", "SOURCES", "RUFF_LOCK"):
         original = getattr(B, name)
         copy = tmp_path / original.name
         shutil.copy(original, copy)
@@ -65,11 +65,35 @@ def test_a_record_for_another_marimo_is_refused(record: Path) -> None:
     assert any("requirements.lock pins" in p for p in B.check())
 
 
+def test_a_ruff_other_than_marimos_is_refused(record: Path) -> None:
+    B.RUFF_LOCK.write_text(B.RUFF_LOCK.read_text().replace("ruff==0.15.18", "ruff==0.15.17"))
+    assert any("marimo 0.25.2 runs ruff 0.15.18" in p for p in B.check())
+
+
+def test_a_ruff_without_hashes_is_refused(record: Path) -> None:
+    B.RUFF_LOCK.write_text("ruff==0.15.18\n")
+    assert any("sha256 for every file" in p for p in B.check())
+
+
+def test_a_marimo_whose_ruff_is_unrecorded_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(B, "MARIMO_RUFF", {})
+    assert any("is not recorded" in p for p in B.check())
+
+
 def test_the_image_builds_it_and_serves_it() -> None:
     docker = (REPO / "docker" / "Dockerfile.web").read_text()
-    assert "scripts/build_walkthrough.py /out" in docker
+    assert "scripts/build_walkthrough.py /out --ruff-wheels /wheels" in docker
     assert "--require-hashes -r walkthroughs/requirements.lock" in docker
     assert "COPY --from=walkthrough /out /srv/walkthrough" in docker
+
+
+def test_the_export_fetches_nothing_itself() -> None:
+    """ruff is downloaded against recorded hashes before the export, and the export runs uv offline from that folder."""
+    docker = (REPO / "docker" / "Dockerfile.web").read_text()
+    download = "pip download --no-cache-dir --require-hashes --no-deps --only-binary=:all: -d /wheels -r walkthroughs/ruff.lock"
+    assert download in docker and docker.index(download) < docker.index("scripts/build_walkthrough.py /out")
+    source = (REPO / "scripts" / "build_walkthrough.py").read_text()
+    assert '"UV_OFFLINE": "1", "UV_FIND_LINKS": str(ruff_wheels)' in source and "env=env" in source
 
 
 def test_the_build_points_marimo_at_its_own_copies() -> None:

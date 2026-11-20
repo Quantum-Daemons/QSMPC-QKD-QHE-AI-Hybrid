@@ -69,6 +69,53 @@ console.log(JSON.stringify(out));
     assert bad == []
 
 
+def test_no_line_runs_through_an_account_it_does_not_join(tmp_path: Path) -> None:
+    """Round 86 (2026-11-18): staggered side columns put an inner account 1.6 px from the line to an outer one, and the IBM
+    tab's drawing ran two lines through other accounts' letters, which the text-overlap scan reported once that tab was
+    measured. Every scored row the finance page draws, and each of the 16 transfers of both IBM samples, is laid out
+    here as the page lays it out, and no line between two accounts may pass within a node's radius and 2 px of a third."""
+    samples = [str(REPO / "models" / d / "eval_sample.json") for d in ("finance_aml_gnn", "finance_aml_gnn_causal")]
+    script = WEB / ".tmp-explanations-lines.mjs"
+    script.write_text(f"""
+import {{ build }} from "esbuild";
+import {{ readFileSync }} from "node:fs";
+await build({{ stdin: {{ contents: 'export {{ layoutScored }} from "./src/lib/transactionGraph"; export {{ seedGraph }} from "./src/lib/graphNeighbourhood";',
+  resolveDir: {json.dumps(str(WEB))}, loader: "ts" }}, bundle: true, format: "esm", platform: "node",
+  outfile: {json.dumps(str(tmp_path / "lines.mjs"))}, logLevel: "error" }});
+const m = await import({json.dumps((tmp_path / "lines.mjs").as_uri())});
+const NODE = 11, out = [];
+const check = (name, nodes, edges, l) => {{
+  for (const e of edges) {{
+    if (e.from === e.to) continue;
+    const a = l[e.from], b = l[e.to], dx = b.x - a.x, dy = b.y - a.y, len2 = dx * dx + dy * dy;
+    for (const n of nodes) {{
+      if (n === e.from || n === e.to) continue;
+      const q = l[n], t = ((q.x - a.x) * dx + (q.y - a.y) * dy) / len2;
+      if (t <= 0 || t >= 1) continue;
+      const d = Math.hypot(q.x - (a.x + t * dx), q.y - (a.y + t * dy));
+      if (d < NODE + 2) out.push(name + ": the line " + e.from + " to " + e.to + " passes " + d.toFixed(1) + " px from " + n);
+    }}
+  }}
+}};
+const d = JSON.parse(readFileSync({json.dumps(str(WEB / "public/data/finance/transaction_graphs.json"))}, "utf8"));
+for (const [i, r] of d.scored_rows.entries()) {{ const {{ layout }} = m.layoutScored(r, 720, 300); check("scored row " + i, r.nodes, r.edges, layout); }}
+for (const path of {json.dumps(samples)}) {{
+  const s = JSON.parse(readFileSync(path, "utf8"));
+  s.seeds.positions_in_batch.forEach((seed, k) => {{
+    const g = m.seedGraph(s.inputs.edge_index, s.inputs.n_edges, s.view, seed);
+    const {{ layout }} = m.layoutScored({{ nodes: g.nodes, edges: g.edges, from: g.from, to: g.to }}, 720, 240);
+    check(s.protocol + " transfer " + (k + 1), g.nodes, g.edges, layout);
+  }});
+}}
+console.log(JSON.stringify(out));
+""")
+    try:
+        res = subprocess.run(["node", script.name], cwd=WEB, check=True, capture_output=True, text=True, timeout=180)
+    finally:
+        script.unlink(missing_ok=True)
+    assert json.loads(res.stdout.strip().splitlines()[-1]) == []
+
+
 def test_the_browsers_cnn_is_the_published_student(tmp_path: Path) -> None:
     sample = json.loads((REPO / "models/medical_breastmnist_student/eval_sample.json").read_text())
     size = int(len(sample["samples"][0]) ** 0.5)

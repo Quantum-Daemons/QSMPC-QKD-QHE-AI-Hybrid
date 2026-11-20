@@ -205,7 +205,7 @@ this as synthetic; it is never presented as measured on real traffic.
 - **Published evaluation samples (`models/*/eval_sample.json`), committed and redistributed.** Each
   model's held-out sample ships inside that model's own Hugging Face repo at the same pinned
   revision as the weights, so a sample can never be paired with a different revision of the model it
-  scores; all fifteen repos ship one, the satellite student's a stretch of a timeline and the compact GNN's the
+  scores; all eighteen repos ship one, the satellite student's a stretch of a timeline and the compact GNN's the
   16 rows its weights carry. They carry their source
   corpus's licence: AMLworld under CDLA-Sharing-1.0, BreastMNIST
   under CC BY 4.0 **as asserted by MedMNIST, the BUSI authors publishing no licence of their own** (see the
@@ -391,6 +391,13 @@ and notices of what they link.
   project moves from one to the other (its repository's LICENSE explains which contributions are under
   which; npm 2.1.0 declares "SEE LICENSE IN LICENSE" and its tarball has no such file). Installed from a lockfile in the
   full deployment's image (`docker/mcp-fs/`), and started with `npx` elsewhere; not in the demo.
+- **IBM/Multi-GNN** (Apache-2.0, at commit `252b025`; the repository ships a LICENSE and no NOTICE file) - the
+  official Multi-GIN+EU and Multi-PNA+EU of Egressy et al. (AAAI 2024).
+  - It is used to train the finance page's reference models and the compact GNN's teacher, and is not vendored:
+    `scripts/train/ibm_multignn/README.md` clones it at that commit.
+  - `project_split.patch` and `causal.patch` in that folder carry lines of IBM's code as patch context and as the
+    lines they change. That README states each change, as Apache-2.0 section 4 asks of modified files.
+  - The trained checkpoints and their ONNX exports carry the same credit on their model cards.
 - **PennyLane** (Apache-2.0) - variational quantum layers. The FedAvg and secure-aggregation code is
   this repository's own; **Flower is cited as prior art, not used as a dependency** (the unused `flwr`
   requirement was removed in Round 17).

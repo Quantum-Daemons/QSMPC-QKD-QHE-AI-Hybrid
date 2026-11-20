@@ -16,13 +16,21 @@ WHAT IS ASSERTED
   runs a pinned cargo-deny in the same digest-pinned Rust image as the web image's wasm stage;
 - the policy fails on every class of advisory and on any unexpected source, and every advisory it
   ignores is listed in IGNORED below with the condition that reopens it, so an ignore cannot be added
-  to deny.toml without being reviewed here.
+  to deny.toml without being reviewed here;
+- the same for npm (Round 86, 2026-11-18): every advisory scripts/npm_audit_ignore.json lets through is
+  listed in NPM_IGNORED below, and scripts/npm_audit_filter.mjs lets it through only on the packages named,
+  before its date and while no release fixes it, each of which is checked to fail here.
 """
 
 from __future__ import annotations
 
+import copy
+import json
+import os
 import re
+import subprocess
 import tomllib
+from datetime import date
 from pathlib import Path
 
 import yaml
@@ -39,9 +47,18 @@ IGNORED = {
                          "vulnerability is reported against it (that would be a separate advisory, not ignored)",
 }
 
+#: Each npm advisory scripts/npm_audit_ignore.json lets through, with what reopens it, as IGNORED is for deny.toml.
+#: None: GHSA-fc5q-39xc-vjpf (picomatch <= 4.0.7, CVE-2026-112366), let through from 2026-11-18, was removed on
+#: 2026-11-19 because GitHub withdrew the advisory on 2026-11-18. Its entry is kept below as _HISTORICAL, the
+#: fixture the filter's tests run on.
+NPM_IGNORED: dict[str, str] = {}
+NPM_IGNORE = REPO / "scripts" / "npm_audit_ignore.json"
+NPM_FILTER = REPO / "scripts" / "npm_audit_filter.mjs"
+
 WATCHED = {
     "web/package.json", "web/package-lock.json", "wasm/qsh-mpc/Cargo.toml", "wasm/qsh-mpc/Cargo.lock",
     "wasm/qsh-mpc/deny.toml", "scripts/audit_deps.sh", ".github/workflows/audit.yml",
+    "scripts/npm_audit_ignore.json", "scripts/npm_audit_filter.mjs",
 }
 
 
@@ -122,3 +139,100 @@ def test_the_policy_stays_out_of_the_image() -> None:
     lines = (REPO / ".dockerignore").read_text().splitlines()
     assert "wasm/qsh-mpc/deny.toml" in lines, "editing the policy would invalidate the cached Rust stage"
     assert "wasm/qsh-mpc/.cargo-home/" in lines
+
+
+def test_every_npm_advisory_let_through_has_a_reason_a_path_and_an_end() -> None:
+    entries = {k: v for k, v in json.loads(NPM_IGNORE.read_text()).items() if not k.startswith("_")}
+    assert sorted(entries) == sorted(NPM_IGNORED), (
+        f"scripts/npm_audit_ignore.json lets through {sorted(entries)} but this test reviews {sorted(NPM_IGNORED)}; add "
+        "the reopening condition here, or drop the stale entry")
+    for gid, e in entries.items():
+        assert re.fullmatch(r"GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}", gid), gid
+        assert e.get("reason", "").strip() and e.get("reopen", "").strip(), f"{gid} needs its reason and what reopens it"
+        assert e.get("package") and isinstance(e.get("through"), list), f"{gid} must name its package and its path"
+        date.fromisoformat(e["until"])
+
+
+def test_the_script_runs_the_filter_only_after_npm_audit_fails() -> None:
+    code = "\n".join(line for line in SCRIPT.read_text().splitlines() if not line.lstrip().startswith("#"))
+    assert "npm audit --audit-level=info --json) && return 0" in code
+    assert "node scripts/npm_audit_filter.mjs" in code
+    assert re.search(r"\(cd \"\$1\" && npm audit --audit-level=info\) \|\| true\n\s*return 1", code), (
+        "when the filter fails, npm's own report must be printed and the check must fail")
+
+
+#: The shape npm 10 reported on 2026-11-18 for web/: the advisory on picomatch, and the three packages it reaches through.
+_REPORT = {
+    "auditReportVersion": 2,
+    "vulnerabilities": {
+        "picomatch": {"name": "picomatch", "severity": "high", "via": [{
+            "source": 1247710, "name": "picomatch", "dependency": "picomatch", "severity": "high", "range": "<=4.0.7",
+            "title": "picomatch vulnerable to ReDoS through single-branch repeated extglobs",
+            "url": "https://github.com/advisories/GHSA-fc5q-39xc-vjpf"}], "effects": ["fdir", "tinyglobby", "vite"]},
+        "fdir": {"name": "fdir", "severity": "high", "via": ["picomatch"], "effects": ["vite"]},
+        "tinyglobby": {"name": "tinyglobby", "severity": "high", "via": ["fdir", "picomatch"], "effects": []},
+        "vite": {"name": "vite", "severity": "high", "via": ["fdir", "picomatch", "tinyglobby"], "effects": []},
+    },
+}
+
+
+#: The entry scripts/npm_audit_ignore.json held from 2026-11-18 to 2026-11-19, as it stood.
+_HISTORICAL = {
+    "GHSA-fc5q-39xc-vjpf": {
+        "package": "picomatch", "through": ["fdir", "tinyglobby", "vite"], "until": "2026-12-18",
+        "reason": "CVE-2026-112366: a ReDoS in picomatch through 4.0.7, reached only through vite's build tooling.",
+        "reopen": "a newer picomatch is published, another package reports it, or the date passes.",
+    },
+}
+
+
+def _filter(report: object, today: str, latest: dict, ignore: Path | None = None) -> subprocess.CompletedProcess:
+    env = {**os.environ, "AUDIT_TODAY": today, "NPM_LATEST": json.dumps(latest)}
+    env.pop("NPM_AUDIT_IGNORE", None)
+    if ignore is not None:
+        env["NPM_AUDIT_IGNORE"] = str(ignore)
+    return subprocess.run(["node", str(NPM_FILTER), "web"], input=json.dumps(report), capture_output=True, text=True,
+                          env=env, timeout=60)
+
+
+def test_the_npm_filter_lets_through_only_what_the_file_names_within_its_terms(tmp_path: Path) -> None:
+    historical = tmp_path / "npm_audit_ignore.json"
+    historical.write_text(json.dumps(_HISTORICAL))
+    now, unfixed = "2026-11-18", {"picomatch": "4.0.7"}
+    ok = _filter(_REPORT, now, unfixed, historical)
+    assert ok.returncode == 0, ok.stderr
+    assert "GHSA-fc5q-39xc-vjpf" in ok.stdout and "let through until 2026-12-18" in ok.stdout
+    assert _filter({"auditReportVersion": 2, "vulnerabilities": {}}, now, unfixed, historical).returncode == 0
+
+    failures = {
+        "after its date": (_REPORT, "2026-12-19", unfixed),
+        "a fixed release is published": (_REPORT, now, {"picomatch": "4.0.8"}),
+        "a version it cannot read": (_REPORT, now, {"picomatch": "4.1.0-beta.1"}),
+        "not a report": ({"error": {"code": "ENOTFOUND"}}, now, unfixed),
+    }
+    other = copy.deepcopy(_REPORT)
+    other["vulnerabilities"]["rollup"] = {"name": "rollup", "severity": "high", "via": [{
+        "name": "rollup", "range": "<4.22.4", "url": "https://github.com/advisories/GHSA-gcx4-mw62-g8wm"}], "effects": []}
+    failures["another advisory"] = (other, now, unfixed)
+    beyond = copy.deepcopy(_REPORT)
+    beyond["vulnerabilities"]["vite-plugin-glob"] = {"name": "vite-plugin-glob", "severity": "high", "via": ["picomatch"],
+                                                     "effects": []}
+    failures["reported through a package it does not name"] = (beyond, now, unfixed)
+    reshaped = copy.deepcopy(_REPORT)
+    reshaped["vulnerabilities"]["picomatch"]["via"][0]["range"] = ">=2.0.0 <=4.0.7"
+    failures["a range it cannot read"] = (reshaped, now, unfixed)
+    for why, (report, today, latest) in failures.items():
+        res = _filter(report, today, latest, historical)
+        assert res.returncode == 1, f"{why}: the filter let it through ({res.stdout})"
+        assert "not let through" in res.stderr, why
+
+
+def test_the_withdrawn_picomatch_advisory_would_fail_the_audit_again() -> None:
+    """The file as it stands lets nothing through: were GHSA-fc5q-39xc-vjpf published again, the audit fails until it
+    is reviewed again, and a clean report still passes."""
+    now, unfixed = "2026-11-19", {"picomatch": "4.0.7"}
+    again = _filter(_REPORT, now, unfixed)
+    assert again.returncode == 1, again.stdout
+    assert "GHSA-fc5q-39xc-vjpf" in again.stderr and "is not let through" in again.stderr
+    clean = _filter({"auditReportVersion": 2, "vulnerabilities": {}}, now, unfixed)
+    assert clean.returncode == 0 and "nothing reported" in clean.stdout, clean.stderr

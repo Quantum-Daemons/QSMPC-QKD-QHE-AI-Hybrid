@@ -109,7 +109,7 @@ measured on the paper's 60/20/20 split with the preprocessor updated over the te
 batch size of 128; at the 2,048 these features use, the GFP paper reports $`64.77 \pm 0.47`$
 (Blanusa et al., arXiv:2402.08593, Table 4), 0.032 above this teacher. Neither difference is stated as
 a measured gap, since the protocols differ. On
-the same windows the compact GNN distilled from IBM's Multi-PNA+EU scores 0.6587
+the same windows the compact GNN distilled from IBM's Multi-PNA+EU scores 0.6585
 ([the finance models on 114 inputs](models-and-benchmarks.md#the-finance-models-on-114-inputs-and-the-compact-gnn)).
 
 Two causes recorded here earlier do not hold. The Proprietary `snapml` licence on the preprocessor
@@ -361,8 +361,9 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   distilled student sized for CKKS: 115 parameters for finance against a 123,956-parameter teacher,
   3,226 against 11,171,266 for medical, 294 against 84,860 for satellite. Which of them CKKS
   evaluates in the browser, page by page, is under
-  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All fifteen repos are public, and
-  fifteen are pinned, the chest X-ray model's among them since 2026-11-15. The evaluation sample
+  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All eighteen repos are public, and
+  eighteen are pinned, the chest X-ray model's among them since 2026-11-15, IBM's two models since 2026-11-18 and
+  the fully encrypted medical student since 2026-11-19. The evaluation sample
   for each lives in that model's own repo at the same revision as its weights. Since Round 86 that
   includes the satellite student's, which is a stretch of a timeline rather than independent rows,
   because its metric is defined over a timeline.
@@ -635,7 +636,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   keep the AUROC within 0.8051 to 0.8063 and change 182 to 620 of the 25,589 decisions at the operating point. A
   logistic head refitted on the frozen features scores 0.802, four hospitals' heads averaged 0.803, against the network's
   0.806, so a browser could train the head alone on this backbone; heads for cardiomegaly and atelectasis on the same
-  features reach 0.782 and 0.680. The int8 graph (11.3 MB against 44.8 MB) scores 0.8063 and changes 134 decisions.
+  features reach 0.782 and 0.680. The int8 graph (11.2 MB against 44.7 MB) scores 0.8063 and changes 134 decisions.
 - **Heart sounds from a new source turn the score round (2026-11-14).** The PhysioNet/CinC Challenge 2016 recordings,
   six databases from different teams with abnormal shares from 9% to 77%, each held out in turn from a small CNN on
   log-mel windows: with the recordings split at random the network reaches AUROC 0.961, while held out it reaches

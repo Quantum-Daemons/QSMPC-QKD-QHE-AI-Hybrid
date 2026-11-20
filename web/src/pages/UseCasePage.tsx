@@ -17,6 +17,7 @@ import MpcCnnPanel from "../components/MpcCnnPanel";
 import FedHeartPanel, { type FedHeartSitesMeta } from "../components/FedHeartPanel";
 import CxrFlCard from "../components/CxrFlCard";
 import CxrSplitInference from "../components/CxrSplitInference";
+import SquareStudentCkks from "../components/SquareStudentCkks";
 import PcgFlCard from "../components/PcgFlCard";
 import MurmurDpCard from "../components/MurmurDpCard";
 import SatBoundaryCard from "../components/SatBoundaryCard";
@@ -265,7 +266,12 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {/* The registry's models and their measured numbers, next to the published baselines - and a
           Run button per model, or the reason it has none. This absorbed PublishedModelPanel, which
           used to sit forty lines below and offer the same run again with different chrome. */}
-      {!lending && <ModelPanel usecase={usecase} />}
+      {/* The run's own verifications reach the IBM tab (Round 86): its teacher-student view draws the logits the run computed,
+          and marks the row each student decrypted under MPC. */}
+      {!lending && <ModelPanel usecase={usecase} verifications={artifacts?.verifications as VerificationSummary[] | undefined}
+        decrypted={usecase === "finance_aml" ? {
+          "finance_aml.gnn_compact": (artifacts?.mpc_gnn as MpcGnnReport | undefined)?.rowIndex,
+          "finance_aml.mlp_large": (artifacts?.mpc_mlp as MpcMlpReport | undefined)?.rowIndex } : undefined} />}
       {hasTrainedQcnn(usecase) && <QcnnCircuitCard usecase={usecase} qubits={Number(run.params.qubits ?? 8)} hasComparison={clientFlow(usecase).includes("quantum_comparison")} />}
       {usecase === "genomics" && <PrsLocusCard />}
       {usecase === "telecom_ids" && <ConfusionCard />}
@@ -395,6 +401,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && artifacts?.fedHeart ? <FedHeartPanel result={artifacts.fedHeart as FedHeartResult} sites={(artifacts.fedHeartSites as FedHeartSitesMeta | undefined) ?? null} dp={(artifacts.fedHeartDp as FedHeartDpResult | undefined) ?? null} /> : null}
       {usecase === "medical_fl" && <CxrFlCard />}
       {usecase === "medical_fl" && <CxrSplitInference />}
+      {usecase === "medical_fl" && <SquareStudentCkks />}
       {usecase === "medical_fl" && <PcgFlCard />}
       {usecase === "medical_fl" && <MurmurDpCard />}
       {usecase === "satellite_comms" && <SatVusPrCard />}

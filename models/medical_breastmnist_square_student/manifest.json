@@ -1,0 +1,29 @@
+{
+  "key": "medical_fl.square_student",
+  "metric_name": "auc",
+  "best_metric": 0.9267241379310345,
+  "best_epoch": 20,
+  "epochs_run": 46,
+  "wall_clock_s": 0.8,
+  "git_sha": "68f7dee",
+  "seed": 2,
+  "hyperparameters": {
+    "epochs": 120,
+    "batch_size": 32,
+    "lr": 0.002,
+    "weight_decay": 0.0001,
+    "warmup_frac": 0.05,
+    "grad_clip": 1.0,
+    "patience": 25,
+    "seed": 2,
+    "amp": true,
+    "num_workers": 4,
+    "min_delta": 0.0001
+  },
+  "n_parameters": 442,
+  "device": "cuda",
+  "torch": "2.13.0+cu130",
+  "python": "3.12.15",
+  "checkpoint": "model.safetensors",
+  "role": "pre-registered square arm, seed 2"
+}
