@@ -231,10 +231,18 @@ export const IKEV2_NOT_VALIDATED = [
 
 export interface Ikev2CavpResult {
   source: { url: string; sha256: string; retrieved: string; page: string };
+  /** The NIST CAVP SP 800-135 cases. */
   cases: Ikev2CaseResult[];
+  /** RFC 5903 section 8.1's own example: an RFC's worked example, not a CAVP case. */
   ecp256: { source: { url: string; sha256: string; section: string }; cases: Ikev2CaseResult[] };
+  /**
+   * CAVP cases passed, out of `total` CAVP cases. The RFC 5903 example is not counted: the page
+   * gives it its own row. Until 2026-11-18 both counts included it, so the row headed "CAVP SP
+   * 800-135 cases" read 7/7 over six CAVP cases.
+   */
   passed: number;
   total: number;
+  /** Every CAVP case and the RFC 5903 example passed. */
   allPassed: boolean;
   notValidated: readonly string[];
 }
@@ -296,19 +304,21 @@ export function runEcp256Case(c: Ecp256Case): Ikev2CaseResult {
   });
 }
 
-/** Every stored vector. `file` exists so CI can hand in a corrupted copy and require a failure. */
+/**
+ * Every stored vector. `file` exists so CI can hand in a corrupted copy and require a failure.
+ * `passed` and `total` count the CAVP cases alone; `allPassed` also requires the RFC 5903 example.
+ */
 export function runIkev2Cavp(file: Ikev2VectorFile = bundledVectors as Ikev2VectorFile): Ikev2CavpResult {
   const cases = file.cases.map(runIkev2CavpCase);
   const ecp = file.ecp256Rfc5903.cases.map(runEcp256Case);
-  const all = [...cases, ...ecp];
-  const passed = all.filter((c) => c.passed).length;
+  const passed = cases.filter((c) => c.passed).length;
   return {
     source: { url: file.source.url, sha256: file.source.sha256, retrieved: file.source.retrieved, page: file.source.page },
     cases,
     ecp256: { source: { url: file.ecp256Rfc5903.source.url, sha256: file.ecp256Rfc5903.source.sha256, section: file.ecp256Rfc5903.source.section }, cases: ecp },
     passed,
-    total: all.length,
-    allPassed: cases.length > 0 && ecp.length > 0 && passed === all.length,
+    total: cases.length,
+    allPassed: cases.length > 0 && ecp.length > 0 && passed === cases.length && ecp.every((c) => c.passed),
     notValidated: IKEV2_NOT_VALIDATED,
   };
 }
