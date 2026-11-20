@@ -61,8 +61,9 @@ def test_hsts_nosniff_and_the_referrer_policy(path: Path) -> None:
     assert hsts and set(hsts) == {'"max-age=31536000"'}, f"{path.name}: HSTS for a year, this host only, not {hsts}"
     assert '\t\t>X-Content-Type-Options "nosniff"\n' in text, path.name
     assert '\t\t>Referrer-Policy "strict-origin-when-cross-origin"\n' in text, path.name
-    # The owner chose an enforced policy; a Report-Only header is only ever a stricter candidate beside it (below).
-    assert text.count(">Content-Security-Policy-Report-Only ") == 1, f"{path.name}: exactly one Report-Only candidate"
+    # The owner chose an enforced policy. A Report-Only header is only ever a stricter candidate beside it, sent before a
+    # tightening (docs/deployment.md); none is pending since style-src 'self' was enforced on 2026-11-20.
+    assert text.count(">Content-Security-Policy-Report-Only ") == 0, f"{path.name}: a Report-Only header with no candidate pending"
     # No Server header (2026-11-20), dropped in the same deferred block as HSTS, so on the same responses (below).
     block = text[text.index("\theader {\n\t\t>Strict-Transport-Security"):]
     assert "\t\t-Server\n" in block[:block.index("\t}\n")], f"{path.name}: the Server header is not dropped"
@@ -125,17 +126,14 @@ def test_the_static_host_file_carries_the_same_headers() -> None:
 
 
 @pytest.mark.parametrize("path", CADDYFILES, ids=lambda p: p.name)
-def test_the_report_only_candidate_is_the_app_policy_without_inline_styles(path: Path) -> None:
-    """2026-11-20, the owner's choice: measure before tightening style-src. The candidate is reported, never enforced, and
-    differs from the enforced app policy in style-src alone, so what it reports is exactly what that tightening breaks."""
-    text = path.read_text()
-    enforced = re.search(r'^\theader @app_csp >Content-Security-Policy "([^"]+)"$', text, re.M).group(1)
-    candidate = re.search(r'^\theader @app_csp >Content-Security-Policy-Report-Only "([^"]+)"$', text, re.M)
-    assert candidate, f"{path.name}: no Report-Only candidate for the app"
-    assert candidate.group(1) == enforced.replace("style-src 'self' 'unsafe-inline';", "style-src 'self';"), path.name
+def test_the_app_policy_allows_no_inline_style(path: Path) -> None:
+    """2026-11-20, under the owner's Report-Only-first rule: the candidate with style-src 'self' reported nothing on the
+    deployed site's every page, tab, run and action, nor under both agent engines in a browser with WebGPU, once the
+    loading placeholder's style attributes had moved to /placeholder.css. It is the enforced policy now, here and in
+    web/public/_headers, and no Report-Only header remains."""
+    assert _policy(path.read_text(), "app_csp")["style-src"] == ["'self'"]
     static = (REPO / "web" / "public" / "_headers").read_text()
-    assert f"  Content-Security-Policy-Report-Only: {candidate.group(1)}\n" in static
-    assert "/walkthrough/*\n  ! Content-Security-Policy\n  ! Content-Security-Policy-Report-Only\n" in static
+    assert "Report-Only" not in static
 
 
 @pytest.mark.parametrize("path", CADDYFILES, ids=lambda p: p.name)

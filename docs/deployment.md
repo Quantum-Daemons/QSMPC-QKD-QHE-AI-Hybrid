@@ -180,7 +180,7 @@ feature rather than logging a warning, since the policy is enforced. `scripts/ci
 browser has an adapter, which headless Chrome here does not, so a change to it is read in a browser that has one.
 
 `scripts/deploy_demo.sh` itself asserts the headers on every deploy, through the same pinned resolve as the bundle:
-both policies (the app's and the walkthrough's), the Report-Only candidate, HSTS, `nosniff`, the referrer policy,
+both policies (the app's and the walkthrough's), a Report-Only candidate while one is pending (and none when none is), HSTS, `nosniff`, the referrer policy,
 COOP, COEP and CORP, each as `docker/env/Caddyfile.client-only` in the checkout writes it, so a Caddyfile change that
 dropped one fails the deploy instead of shipping. GitHub CI runs the CSP walk too, offline, and also requires a
 policy without `'wasm-unsafe-eval'` to fail it. The agent panel's engines download hundreds of megabytes, so the
@@ -195,6 +195,9 @@ it is deployed, and step 4 lists what the candidate would block without failing 
 press reaches, the agent's engines, are read by hand under it with the buffered `ReportingObserver`. Only when
 both are clean does the candidate replace the enforced policy. #71 is why: a `blob:` import that only the
 agent's run button reaches broke under the enforced policy, and was found after the deploy.
+The first use: `style-src 'self'`, enforced on 2026-11-20 once the candidate reported nothing on the deployed
+site's walk and under both agent engines (after the loading placeholder's style attributes had moved to
+`/placeholder.css`). No candidate is pending.
 
 The headers reach every page and file the container serves, and its `/api` and `/metrics` 404s. A missing
 file's 404 is Caddy's own error response, which Caddy writes past the deferred header blocks: until 2026-11-20

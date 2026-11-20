@@ -73,8 +73,11 @@ def _caddy(pattern: str) -> str:
 
 def _headers(drop: str = "", change: tuple[str, str] | None = None) -> tuple[str, str]:
     """The app's and the walkthrough's response headers as the Caddyfile writes them, with one dropped or changed."""
-    app = {"Content-Security-Policy": _caddy(r'^\theader @app_csp >Content-Security-Policy "([^"]+)"$'),
-           "Content-Security-Policy-Report-Only": _caddy(r'^\theader @app_csp >Content-Security-Policy-Report-Only "([^"]+)"$')}
+    app = {"Content-Security-Policy": _caddy(r'^\theader @app_csp >Content-Security-Policy "([^"]+)"$')}
+    # A Report-Only candidate only while one is pending (none since 2026-11-20).
+    ro = re.search(r'^\theader @app_csp >Content-Security-Policy-Report-Only "([^"]+)"$', CADDYFILE, re.M)
+    if ro:
+        app["Content-Security-Policy-Report-Only"] = ro.group(1)
     for name in ("Strict-Transport-Security", "X-Content-Type-Options", "Referrer-Policy", "Cross-Origin-Opener-Policy",
                  "Cross-Origin-Embedder-Policy", "Cross-Origin-Resource-Policy"):
         app[name] = _caddy(rf'^\t\t>{name} "([^"]+)"$')
@@ -195,6 +198,13 @@ def test_a_changed_policy_fails(tmp_path: Path) -> None:
     looser = _caddy(r'^\theader @app_csp >Content-Security-Policy "([^"]+)"$').replace("'wasm-unsafe-eval'", "'unsafe-eval'")
     res, _ = _run(tmp_path, headers=_headers(change=("Content-Security-Policy", looser)))
     assert res.returncode == 1 and "is not the Caddyfile's" in res.stderr
+
+
+def test_a_report_only_header_the_caddyfile_does_not_set_fails(tmp_path: Path) -> None:
+    """With no candidate pending, a Report-Only header from the box comes from an older image: a stale deploy."""
+    assert "Content-Security-Policy-Report-Only" not in CADDYFILE
+    res, _ = _run(tmp_path, headers=_headers(change=("Content-Security-Policy-Report-Only", "default-src 'self'")))
+    assert res.returncode == 1 and "that the Caddyfile in this checkout does not set" in res.stderr
 
 
 def test_a_missing_hsts_fails(tmp_path: Path) -> None:

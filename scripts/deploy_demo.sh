@@ -146,8 +146,13 @@ verify_headers() {  # $1 says when
               "walkthrough_csp|Content-Security-Policy|walkthrough"; do
     IFS='|' read -r matcher name which <<< "$spec"
     want=$(caddy_matched "$matcher" "$name")
-    [ -n "$want" ] || die "the Caddyfile in this checkout sets no $name for @$matcher"
     block="$app"; [ "$which" = walkthrough ] && block="$walk"
+    if [ -z "$want" ] && [ "$name" = Content-Security-Policy-Report-Only ]; then
+      # No candidate pending (none since style-src 'self' was enforced, 2026-11-20): one that arrives is a stale deploy.
+      [ -z "$(header_value "$block" "$name")" ] || die "the box sends a $name that the Caddyfile in this checkout does not set $1"
+      continue
+    fi
+    [ -n "$want" ] || die "the Caddyfile in this checkout sets no $name for @$matcher"
     [ "$(header_value "$block" "$name")" = "$want" ] || die "the box's $name for the $which is not the Caddyfile's $1"
   done
   for name in Strict-Transport-Security X-Content-Type-Options Referrer-Policy Cross-Origin-Opener-Policy \
@@ -158,7 +163,9 @@ verify_headers() {  # $1 says when
     [ "$(header_value "$missing" "$name")" = "$want" ] || die "a missing file's 404 does not carry $name: $want $1"
     [ "$(header_value "$walk" "$name")" = "$want" ] || die "the walkthrough does not get $name: $want $1"
   done
-  ok "the box sends the Caddyfile's security headers: both policies, the Report-Only candidate, HSTS, nosniff, the referrer policy, COOP, COEP and CORP, and a missing file's 404 carries the last six"
+  local candidate="no Report-Only candidate"
+  [ -n "$(caddy_matched app_csp Content-Security-Policy-Report-Only)" ] && candidate="the Report-Only candidate"
+  ok "the box sends the Caddyfile's security headers: both policies, $candidate, HSTS, nosniff, the referrer policy, COOP, COEP and CORP, and a missing file's 404 carries the last six"
   [ -z "$WALK_ORIGIN" ] || ok "the walkthrough is on its own origin, under its policy; the app's /walkthrough/ moves there with the app's policy, and the app does not answer there"
   # The Caddyfile drops Server; one that still arrives was added in front of this container (the demo's front proxy drops
   # it too, since 2026-11-20). A note, not a failure: that proxy's configuration is not in this repository.

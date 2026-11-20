@@ -5920,3 +5920,16 @@ Report-Only candidate reported nothing. In the owner's Chrome, with a buffered `
 two engines ran on WebGPU under the candidate, from the browser's cache: Transformers.js with distilGPT-2 (2015 ms) and
 WebLLM with SmolLM2-360M (2017 ms), each with its answer and no report, enforced or report-only. That is the
 Report-Only-first rule's condition for enforcing `style-src 'self'`: the walk and the paths only a button press reaches.
+
+### style-src 'self' enforced, under the Report-Only-first rule (2026-11-20)
+
+The candidate, the app's policy with `style-src 'self'` and no `'unsafe-inline'`, was sent beside the enforced policy
+with #73. It reported the loading placeholder's three style attributes on every app page and nothing else; #74 moved
+them, and the fourth in `<noscript>`, to `/placeholder.css`. On the deployed site after #74 the walk of every page,
+tab, run and action reported nothing from it, and both agent engines, which only their run button reaches, ran under it
+in the owner's Chrome with no report (#74's entry). The owner's choice of 2026-11-20 was to enforce it then: both
+Caddyfiles and `web/public/_headers` now send `style-src 'self'` in the app's policy and no Report-Only header, and the
+walkthrough's own policy is unchanged. The Caddyfiles' comment had given mermaid's `<style>` elements as a reason for
+`'unsafe-inline'`; the app renders no mermaid diagram (it writes Mermaid text to copy or download; the `mermaid`
+package serves the README-diagram gate), which the candidate's silence agrees with. The deploy now requires the box to
+send no Report-Only header while the Caddyfile sets none (a stale image would), and a test seeds one.
