@@ -8,8 +8,8 @@
 // The Content-Security-Policy added the same day refuses that host, so the run then fell back to WASM. Both callers now
 // point ONNX Runtime here, through this one module.
 //
-// `?url` emits the file and imports no code; the wasm files are ones the build already ships.
-import ortAsyncifyMjs from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.mjs?url";
+// `?url` emits the file and imports no code; the wasm files are ones the build already ships. The asyncify build's
+// .mjs is not named: ONNX Runtime's bundle holds it (see useSameOriginOrtBuild).
 import ortAsyncifyWasm from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.asyncify.wasm?url";
 import ortPlainMjs from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.mjs?url";
 import ortPlainWasm from "../../node_modules/onnxruntime-web/dist/ort-wasm-simd-threaded.wasm?url";
@@ -22,9 +22,20 @@ export function ortBuildOf(wasm: OrtWasmEnv | undefined): "asyncify" | "plain" {
   return String((wasm?.wasmPaths as { wasm?: unknown } | undefined)?.wasm ?? "").includes("asyncify") ? "asyncify" : "plain";
 }
 
-/** Point ONNX Runtime's wasm settings at this site's copy of `build`. */
+/**
+ * Point ONNX Runtime's wasm settings at this site's copy of `build`.
+ *
+ * For the asyncify build only the wasm file is named, and ONNX Runtime uses the module its bundle already holds
+ * (`ort.webgpu.bundle.min.mjs` embeds that build's .mjs). Naming the .mjs too worked for the inference stage, but
+ * Transformers.js fetches a named .mjs and imports it from a `blob:` URL (its `loadWasmFactory`), which the site's
+ * Content-Security-Policy refuses: on 2026-11-20, the day the policy went live, the agent panel's Transformers.js
+ * engine failed with "Failed to fetch dynamically imported module: blob:...". The plain build (Transformers.js's choice
+ * for Safari below 26 with no WebGPU) is not the one the bundle holds, so its .mjs is still named; under the policy
+ * that engine then reports the refusal there instead of running.
+ */
 export function useSameOriginOrtBuild(wasm: OrtWasmEnv | undefined, build: "asyncify" | "plain"): void {
   if (!wasm) throw new Error("no ONNX Runtime wasm settings to point at this site");
-  const [mjs, file] = build === "asyncify" ? [ortAsyncifyMjs, ortAsyncifyWasm] : [ortPlainMjs, ortPlainWasm];
-  wasm.wasmPaths = { mjs: new URL(mjs, location.href).href, wasm: new URL(file, location.href).href };
+  wasm.wasmPaths = build === "asyncify"
+    ? { wasm: new URL(ortAsyncifyWasm, location.href).href }
+    : { mjs: new URL(ortPlainMjs, location.href).href, wasm: new URL(ortPlainWasm, location.href).href };
 }
