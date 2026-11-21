@@ -1,7 +1,7 @@
 {
  "bomFormat": "CycloneDX",
  "specVersion": "1.7",
- "serialNumber": "urn:uuid:349316e1-3d05-5cd7-8321-f327cd7c11c9",
+ "serialNumber": "urn:uuid:5bf1535a-352f-5340-aa5e-f147d10690e4",
  "version": 1,
  "metadata": {
   "component": {
@@ -709,7 +709,7 @@
       "encrypt",
       "decrypt"
      ],
-     "parameterSetIdentifier": "browser: N = 8192, coefficient moduli {60, 40, 40, 60} bits, scale 2^40; the medical page's shared-key aggregation {60, 40, 40} bits, NVIDIA FLARE's",
+     "parameterSetIdentifier": "browser: N = 8192, coefficient moduli {60, 40, 40, 60} bits, scale 2^40; the medical page's shared-key aggregation, NVIDIA FLARE's TenSEAL settings: N = 8192, coefficient moduli {60, 40, 40} bits, scale 2^40",
      "classicalSecurityLevel": 128
     }
    },

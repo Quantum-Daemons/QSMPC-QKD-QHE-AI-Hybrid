@@ -5974,3 +5974,77 @@ update keeps the base current. Both Caddyfiles validate under 2.11.9, with the w
 hash. vite's changelog for 6.4.6 (2026-11-09) lists one fix, escaping ids when resolving virtual modules (#24044); vite
 builds the bundle and is not in it. `npm audit` in `web/` found nothing; in the prototype it reports the two high
 advisories it reported before (zod, through the archived `mpc-framework`), with no fix available and unchanged by this.
+
+### #77 on the deployed site, and the CBOM's HE parameters checked against the standard (2026-11-21)
+
+#77 merged as ff54b8e and was deployed with the standard command; the deploy's checks passed on the box, and the
+running container reported Caddy v2.11.9. The bundle stayed `index-BvWI9GhZ.js`: vite 6.4.6's one fix did not change
+this build's output. `npm run check:csp` on the deployed site passed all 13 pages with every run finished and no
+violation. The main checkout's development install was brought to vite 6.4.6 with `npm ci`, from the lock.
+
+**The CBOM's HE parameters** (the owner's choice of 2026-11-21, the first layer of a CBOM-and-PETs evaluation).
+`tests/test_r86_cbom_he_parameters.py` reads every homomorphic-encryption parameter set from the published CBOM and
+checks each ciphertext modulus against the Homomorphic Encryption Security Standard v1.1 (2018), ternary secret
+(-1, 1), 128-bit security: Table 1 (BKZ.sieve, classical: $`\log_2 q \le 218`$ at $`N = 8192`$) and Table 2
+(BKZ.qsieve, post-quantum: $`\log_2 q \le 202`$ at $`N = 8192`$, $`411`$ at $`N = 16384`$), both read on the rendered
+page. The five sets it reads: the browser's CKKS chain ($`60+40+40+60 = 200`$ bits), the medical page's shared-key
+aggregation ($`140`$), threshold CKKS ($`120`$) and threshold BGV ($`200`$) at $`N = 8192`$, and the committee's
+threshold BGV ($`260`$) at $`N = 16384`$; every bound the CBOM's own text quotes is the table's. Writing it found the
+CKKS entry's identifier stopping mid-phrase since 2026-11-13 ("..., NVIDIA FLARE's"), so the shared-key aggregation's
+settings were half missing from the published CBOM; the inventory now names them as `web/src/lib/clientFedAgg.ts` runs
+them (N = 8192, moduli {60, 40, 40} bits, scale $`2^{40}`$), the CBOM is regenerated, and the test refuses an identifier
+that stops mid-phrase. The genomics card already states how repeated runs compose (each run a fresh release, $`k`$
+runs $`k`$ times the $`\rho`$ of one), so it needs no change.
+
+### A QCNN weights file asked for on every page that ships none at that width (2026-11-21)
+
+The live audit of 2026-11-21 (every page, tab and run of the deployed site in headless Chrome, every collapsed section
+opened, the console read) found one console error, on finance, medical and telecom: a 404 for
+`/data/<use case>/qcnn_weights_q8.json`. `loadQcnnWeights` asked for `qcnn_weights_q<width>.json` first and the default
+file second whenever a width was given, and the circuit card on those pages loads at the default width, 8: medical's and
+telecom's default files are 8 wires already, and finance's only trained width is 4. The fallback worked (each page drew
+the circuit that ran, and the run reported its width), so nothing a visitor reads was wrong, but every page asked for a
+file the site does not ship. `QCNN_VARIANT_FILES` in `web/src/lib/clientCompute.ts` now names the widths shipped as
+`qcnn_weights_q<N>.json` (telecom's 7), and only those are asked for by width; `tests/test_qcnn_usecases.py` holds it to
+the `_q<N>` files on disk both ways, each a declared width and not the default file's. Served by the image's Caddy, the
+three pages then asked only for their default file (200) and drew the same circuits (4 wires and 52 angles, 8 and 77,
+8 and 100), and telecom at 7 wires, chosen in the Parameters panel, loaded `qcnn_weights_q7.json` (200) and drew 7 wires
+and 98 angles. The rest of the audit is in the next entries.
+
+### The walkthrough link said the notebook is served from this site (2026-11-21)
+
+Since #75 the notebook is on its own host name, and `/walkthrough/` on the demo answers with a 301 to it, but the link
+under the NIDD copies' table in the model panel still said "It is served from this site". It now says what is true on
+both names: the notebook is served by the demo's own server, not by a third party, and the download is about 47 MB
+(47,373,602 bytes summed over the files the deployed notebook fetched on 2026-11-21). The sentence inside the notebook
+("served from this site") is about Pyodide on the notebook's own name and stays.
+
+### The live pages' citations against their sources, and one shortened quotation (2026-11-21)
+
+Every standard, regulation and paper the deployed pages cite (read from the live audit's dump of all 32 views) was
+checked against its primary source on 2026-11-21; dated claims were re-read, not taken from the earlier record.
+
+| Cited as | Read at the source | Holds |
+|---|---|---|
+| RFC 10024 specifies X25519MLKEM768, SecP256r1MLKEM768, SecP384r1MLKEM1024 (home) | rfc-editor.org: Proposed Standard, August 2026; code points 0x11EC, 0x11EB, 0x11ED | yes |
+| BSI's TR-02102 page on RFC 10024; TR-02102-1 v2026-01 s2.1 on QKD, s2.2 on hybrids, Tables 2.7 and B.3; TR-02102-2 Table 10 (home) | bsi.bund.de, English and German pages and both PDFs (Version 2026-01) | yes, word for word |
+| draft-ietf-ipsecme-ikev2-mlkem in the RFC Editor queue, not an RFC (/validations, "as checked on 2026-11-08") | datatracker: rev 09, IESG state "RFC Ed Queue", no RFC number | still true |
+| NIST IR 8547 final, October 2026, Tables 2 and 4; SP 800-131A Rev. 3 still a draft (/value) | csrc.nist.gov and the final PDF: deprecated after 2030, disallowed after 2035; SP 800-131A r3 has only its October 2024 draft | yes |
+| EO 14412 (FAR rule within 180 days), OMB M-26-15 (plans in 120 days, TLS 1.3 by 2030-01-02, HVA and high impact systems by 2030 and 2031) | Federal Register API: EO 14412 signed 2026-06-22; IR 8547's reference list: M-26-15 of 2026-06-24; no FAR proposed rule on PQC in the Federal Register on 2026-11-21 | yes |
+| Regulation (EU) 2026/1744: Art. 50(2) grace to 2026-12-02, Annex III to 2027-12-02, Annex I to 2028-08-02, in force 27 July 2026 | EUR-Lex: OJ L 2026/1744 of 24.7.2026, entry into force on the third day | yes |
+| EU NIS CG PQC roadmap v1.1: 2026, 2030, 2035 milestones | the Commission's page and PDF: "Part 1, Version: 1.1", 11.06.2025 (an FAQ of 15.04.2026 changes no date) | yes |
+| CNSA 2.0: new acquisitions 2027-01-01, phase-out 2030-12-31, all use 2031-12-31; NSA's "No" on QKD for NSS | NSA's CNSA 2.0 FAQ, Ver. 2.2, October 2026 | yes |
+| Cloudflare and Google, 2029 | Cloudflare blog, 2026-04-07; Google blog, 2026-03-25 | yes |
+| ETSI GS QKD 014 V1.1.1 the only edition; GS QKD 015 V2.1.1 clauses 1, 4.2, 4.5, 4.6 | etsi.org deliverable listings and the GS QKD 015 PDF (GS QKD 020 V1.1.1 appeared 2026-06-29) | yes |
+| NIST SP 800-226 on delta and epsilon; SP 800-227 s4.6.2 and s4.6.3 | the final PDFs (March 2025, September 2025) | yes |
+| 22 arXiv papers, their authors and the figures quoted from them (Gidney 2025's 4.96 days; Cain et al. 10,000 and 26,000 qubits; Babbush et al. under half a million; AML-QKD's 14-25%; Bilgi et al. 5.31 s and 1.65 s at a batch of 16, F1 63.72; Lyu's random walk as VUS-PR's top adversary; the 2 km free-space QKD's 110 kbit/s at 3.28%) | the arXiv API and each paper's HTML | yes |
+| IET Quantum Communication 7(1) e70028; Future Internet 18(5):234; IACR ePrint 2026/1282 | Crossref and eprint.iacr.org | yes |
+
+One quotation was shortened. The telecom models' baseline note quoted arXiv:2512.05069's withdrawal as "insufficient to
+fully support the conclusions"; the note on its v2 (2026-04-02) says "the paper's conclusions". It had read so since
+Round 17 (2026-08-03), and it is in the use-case page's config and both telecom cards on the Hub; `docs/findings.md`,
+`references/REFERENCES.md` and the training script already quoted it correctly. The registry now quotes the note's
+whole sentence, the config is regenerated, and `tests/test_r86_withdrawal_note_quoted_verbatim.py` holds every
+quotation of the note near a citation of the paper to the note as read (seeded: the old text fails it). The other 16
+published cards, read at their pins, are byte for byte what the registry generates today; the two telecom cards differ
+by this sentence only and change on the Hub only when they are republished.

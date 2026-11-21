@@ -1731,11 +1731,19 @@ function dataDirFor(usecase: string): string {
  *  default file is the fallback, so a requested width that was never trained degrades to the shipped
  *  circuit rather than to nothing - and `qcnn_qubits` then reports the width that actually RAN,
  *  which is what lets the page tell the truth about a request it could not honour. */
+/** The widths shipped as `qcnn_weights_q<N>.json` beside each use case's default file (2026-11-21). Only these are asked
+ *  for by width: until then every run asked for `qcnn_weights_q<width>.json` first, so a run at the default width, or at a
+ *  width never trained, requested a file that is not there, and finance, medical and telecom logged a 404 on every run
+ *  for `qcnn_weights_q8.json`. `tests/test_qcnn_usecases.py` holds this to the `_q<N>` files on disk, both ways. */
+export const QCNN_VARIANT_FILES: Record<string, number[]> = {
+  telecom_ids: [7],
+};
+
 export async function loadQcnnWeights(usecase: string, qubits?: number): Promise<QcnnWeights | null> {
   const key = `${usecase}@${qubits ?? "default"}`;
   if (key in _qcnnCache) return _qcnnCache[key];
   const dir = `${import.meta.env.BASE_URL}data/${dataDirFor(usecase)}`;
-  const paths = qubits != null
+  const paths = qubits != null && (QCNN_VARIANT_FILES[usecase] ?? []).includes(qubits)
     ? [`${dir}/qcnn_weights_q${qubits}.json`, `${dir}/qcnn_weights.json`]
     : [`${dir}/qcnn_weights.json`];
   for (const path of paths) {
