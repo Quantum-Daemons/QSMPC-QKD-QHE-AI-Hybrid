@@ -59,3 +59,5 @@ and the index $`I`$ public. That is three multiplications by a plaintext, one ad
 + 162{,}000 + 146{,}000 = 1{,}403{,}000`$ HCU a check on 64-bit integers and $`2{,}562{,}000`$ on 128-bit, so at most 14 or 7 checks
 fit in a transaction. These are the documentation's figures added up, not measurements. No Zama package is in the project and no
 Zama host is in any policy the site serves (`tests/test_r86_fhevm_model.py`), so the view runs nothing of Zama's, and says so.
+
+Re-checked on 2026-11-21 (`research-sweep-2026-11.md`): no confidential liquidation running in production was found. The nearest is null402, whose site describes a confidential lending app on Zama's fhEVM on the Ethereum **Sepolia testnet**, with liquidation triggers through the Gateway's asynchronous decryption; its "fhEVM Mainnet Ready" is a label, and the site shows no mainnet contract. The page's sentence stands.

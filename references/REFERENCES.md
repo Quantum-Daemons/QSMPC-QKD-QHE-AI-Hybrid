@@ -213,6 +213,21 @@ while `src/qsh/qml_ids/` and the Telecom/Defense use case shipped. The gap matte
 workstream whose honest answer is negative, and the reasoning lived only in a training script's
 docstring.
 
+- **Isha, Singh, Kumar, Pal, Hambarde and Shukla, "Beyond the QBER Threshold: A Temporal QBER Based Machine Learning
+  Framework for Multi Attack Detection in BB84 QKD"**, arXiv:2608.04047 (2026-08-04, a preprint) `[link]`
+  URL: https://arxiv.org/abs/2608.04047
+  Read at the abstract on 2026-11-21. The nearest published task to the telecom model's in shape: seven BB84 eavesdropping
+  attacks and a normal channel, under noise and loss, from 63 temporal QBER features. XGBoost reaches 88.01 percent accuracy
+  (sd 0.47) and macro F1 0.8803 over ten runs on the authors' simulator; as an attack-or-normal detector a fixed 11 percent QBER
+  threshold reaches 25.82 percent accuracy with a false-negative rate of 0.8477, against 0.0198 for the framework. Classical, and
+  on another simulator and feature set, so it is cited in the telecom note as an anchor, not a baseline.
+- **Das, Ahmed, Hussain and Pham, "Simulation-Based Quantum Forensics for QKD: Machine Learning Attack Detection and Signature
+  Extraction"**, arXiv:2610.25203 (2026-10-18; QUANCOM 2026, Trento, September 2026) `[link]`
+  URL: https://arxiv.org/abs/2610.25203
+  Read at the abstract on 2026-11-21. Four classes (normal, partial intercept-resend, detector blinding, fibre tap) from four
+  aggregated log features. Macro F1 0.8211 to 0.8243 on its generator falls to 0.5645 to 0.5669 on a second generator with the same
+  equations and shifted operating parameters, without retraining: evidence that an in-distribution score on synthetic telemetry
+  does not establish reliability, which the telecom note cites.
 - **Resisting Quantum Key Distribution Attacks Using Quantum Machine Learning** - Al-Kuwari et al.,
   *IET Quantum Communication* 7(1), January 2026, DOI 10.1049/qtc2.70028
   (arXiv:2509.14282 [cs.CR], v1 16 Sep 2025, v2 19 Feb 2026) `[link]`
@@ -609,6 +624,18 @@ reporting only the absence would be the omission this file exists to prevent.
   clearest evidence that the field's default division of labour is the opposite of this demo's**,
   which is why it is cited beside the novelty claim rather than in the FHE section. Added:
   2026-08-11.
+- **Biswas et al., "Practical and Private Hybrid ML Inference with Fully Homomorphic Encryption" (Safhire)**, arXiv:2509.01253
+  (v2 2026-10-16, accepted by TMLR) `[link]`
+  URL: https://arxiv.org/abs/2509.01253
+  Read at the abstract on 2026-11-21. Linear layers under FHE on a server and the non-linearities in plaintext at the client,
+  with intermediate values shuffled so the client cannot rebuild the model; no bootstrapping. The medical CNN student's split
+  is this one, without the shuffling (its model is public), so `/value` lists the split as not new.
+- **Galanopoulos, Provatas and Georgakopoulos-Soares, "Feasibility of Homomorphic Inference for a Genomic Foundation Model"**,
+  arXiv:2609.16211 (2026-09-14) `[link]`
+  URL: https://arxiv.org/abs/2609.16211
+  Read at the abstract on 2026-11-21. The same client-assisted split for a released genomic transformer: every block and the
+  head for one input, in 6,683 s and 9,839 MiB on one accelerator, matching the frozen reference label. Cited on `/value`
+  beside Safhire.
 - **Zama, TFHE-rs JS-on-WASM API documentation.** States that the WebAssembly client API supports
   key generation, encryption and decryption but **not FHE computation**, and gives no reason. It
   notes separately that without WASM threading key generation can be too slow, and that some
@@ -1024,6 +1051,19 @@ Added in Round 18 and previously recorded only in source docstrings.
   URL: https://www.bsi.bund.de/EN/Themen/Unternehmen-und-Organisationen/Standards-und-Zertifizierung/Technische-Richtlinien/TR-nach-Thema-sortiert/tr02102/tr02102_node.html
 - **HNDL** (Harvest Now, Decrypt Later) and Q-Day acceleration - Gidney, arXiv:2505.15917, 2025.
   URL: https://arxiv.org/abs/2505.15917
+- **The 2026 resource estimates after Gidney's**, each read at the abstract (the dates below) and cited on `/value`. All
+  are estimates under the stated hardware, not demonstrations, and the counts are not on one scale:
+  - Webster, Berent, Chandra, Hockings et al., "The Pinnacle Architecture", arXiv:2602.11457 (v1 2026-02-12, v2 2026-05-05):
+    RSA-2048 with fewer than 100,000 physical qubits on quantum LDPC codes, at a $`10^{-3}`$ physical error rate, a 1 us code
+    cycle and a 10 us reaction time. Read 2026-11-21.
+  - Cain et al., arXiv:2603.28627 (2026-03-30): Shor at cryptographic scale with as few as 10,000 reconfigurable atomic qubits,
+    and discrete logarithms on P-256 in a few days with 26,000. Read 2026-11-06.
+  - Babbush et al., arXiv:2603.28846 (2026-03-30, v2 2026-04-15): the 256-bit elliptic-curve discrete logarithm in minutes on
+    fewer than half a million physical qubits, at $`10^{-3}`$ and planar connectivity. Read 2026-11-06.
+  - Pappalardo, Goudarzi, Hertz, Jacinto et al., "Shor's algorithm compiled on cat qubits", arXiv:2610.37839 (v1 2026-10-27,
+    v2 2026-11-19), also IACR ePrint 2026/2665 (CC BY): about 23,000 cat qubits and 3.14 days for RSA-2048 with a 1 us cycle, a
+    10 us reaction time, phase-flip noise $`p_Z = 5 \times 10^{-4}`$ and no bit flips; about 45,000 if the bit-flip time is about
+    an hour; secp256k1 with at most 30,000 cat qubits in an hour. Read 2026-11-21.
 - **The Business of Quantum Technologies** - copyrighted book, `[R-local]`, deliberately not
   redistributed (`.gitignore` rule `references/The Business of Quantum Technologies.pdf`). Background
   reading only; no technical claim in this repository rests on it.
@@ -1737,6 +1777,7 @@ project is a browser tab.
   ABSTRACT ONLY. An agent on Aave V3 that estimates liquidation risk by survival analysis, validated on a simulator rather than on live data. No cryptography. Context for what a simulated market can and cannot show.
 
 - **Who holds the key in a private liquidation check**: the 2026 sources on custody and liquidation, read at origin, are in [`defi-lending-key-custody.md`](defi-lending-key-custody.md).
+- **The research sweep of 2026-11-21**: the August to November 2026 work searched for each use case, what it changed on the pages and what was read and left uncited, with reasons, is in [`research-sweep-2026-11.md`](research-sweep-2026-11.md).
   Its last section (2026-11-21) carries Zama's FHEVM documentation, licence and releases, read for the lending page's modelled FHEVM view and comparison card.
 - **Flood, Engelen, Aspinall and Desmet, "Bad Design Smells in Benchmark NIDS Datasets"**, IEEE EuroS&P 2024, pp. 658-675 `[link]`
   URL: https://detlearsom.github.io/pubs/BadSmells-EuroSP24-finaldraft.pdf
