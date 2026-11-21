@@ -5995,3 +5995,18 @@ settings were half missing from the published CBOM; the inventory now names them
 them (N = 8192, moduli {60, 40, 40} bits, scale $`2^{40}`$), the CBOM is regenerated, and the test refuses an identifier
 that stops mid-phrase. The genomics card already states how repeated runs compose (each run a fresh release, $`k`$
 runs $`k`$ times the $`\rho`$ of one), so it needs no change.
+
+### A QCNN weights file asked for on every page that ships none at that width (2026-11-21)
+
+The live audit of 2026-11-21 (every page, tab and run of the deployed site in headless Chrome, every collapsed section
+opened, the console read) found one console error, on finance, medical and telecom: a 404 for
+`/data/<use case>/qcnn_weights_q8.json`. `loadQcnnWeights` asked for `qcnn_weights_q<width>.json` first and the default
+file second whenever a width was given, and the circuit card on those pages loads at the default width, 8: medical's and
+telecom's default files are 8 wires already, and finance's only trained width is 4. The fallback worked (each page drew
+the circuit that ran, and the run reported its width), so nothing a visitor reads was wrong, but every page asked for a
+file the site does not ship. `QCNN_VARIANT_FILES` in `web/src/lib/clientCompute.ts` now names the widths shipped as
+`qcnn_weights_q<N>.json` (telecom's 7), and only those are asked for by width; `tests/test_qcnn_usecases.py` holds it to
+the `_q<N>` files on disk both ways, each a declared width and not the default file's. Served by the image's Caddy, the
+three pages then asked only for their default file (200) and drew the same circuits (4 wires and 52 angles, 8 and 77,
+8 and 100), and telecom at 7 wires, chosen in the Parameters panel, loaded `qcnn_weights_q7.json` (200) and drew 7 wires
+and 98 angles. The rest of the audit is in the next entries.

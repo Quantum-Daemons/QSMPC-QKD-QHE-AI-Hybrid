@@ -329,3 +329,28 @@ def test_the_width_floor_is_the_feature_count() -> None:
             if int(w["n_qubits"]) < int(w["n_features"]):
                 thin.append(f"{p.relative_to(REPO)}: {w['n_qubits']} wires for {w['n_features']} features")
     assert not thin, "these shipped circuits have fewer wires than features:\n  " + "\n  ".join(thin)
+
+
+def test_the_files_asked_for_by_width_are_exactly_the_variants_that_ship() -> None:
+    """`QCNN_VARIANT_FILES` (web/src/lib/clientCompute.ts) names the widths shipped as `qcnn_weights_q<N>.json`, and only
+    these are requested by width. Until 2026-11-21 every run requested `qcnn_weights_q<width>.json` first, so finance,
+    medical and telecom each logged a 404 for `qcnn_weights_q8.json` on every run (8 is medical's and telecom's default
+    width and was never trained for finance). Both directions: a variant on disk that is not declared is never loaded, and
+    one declared that does not ship is a 404. Each variant is a declared width and not the default file's width."""
+    text = (REPO / "web" / "src" / "lib" / "clientCompute.ts").read_text()
+    m = re.search(r"export const QCNN_VARIANT_FILES: Record<string, number\[\]> = \{(.*?)\};", text, re.S)
+    assert m, "QCNN_VARIANT_FILES not found in web/src/lib/clientCompute.ts"
+    declared = {k: sorted(int(n) for n in re.findall(r"\d+", v)) for k, v in re.findall(r"(\w+):\s*\[([^\]]*)\]", m.group(1))}
+    on_disk: dict[str, list[int]] = {}
+    for uc in ["finance_aml", "medical_fl", "genomics", "satellite_comms", "telecom_ids"]:
+        for p in sorted((PUBLIC / _data_dir(uc)).glob("qcnn_weights_q*.json")):
+            n = int(re.search(r"_q(\d+)\.json$", p.name).group(1))
+            assert int(json.loads(p.read_text())["n_qubits"]) == n, f"{p.name} holds another width"
+            on_disk.setdefault(uc, []).append(n)
+    assert declared == {k: sorted(v) for k, v in on_disk.items()}, (declared, on_disk)
+    widths = _declared_widths()
+    for uc, ns in declared.items():
+        default = int(json.loads((PUBLIC / _data_dir(uc) / "qcnn_weights.json").read_text())["n_qubits"])
+        for n in ns:
+            assert n in widths.get(uc, []) and n != default, (uc, n, default)
+
