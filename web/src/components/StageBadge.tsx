@@ -8,9 +8,10 @@
  * for hardware (QKD, QSDC, the quantum comparison). "seeded" is the quantum one-time pad: a real mask
  * from a seeded, non-cryptographic generator, so its structure is measured and its secrecy is not.
  * "offline" (Round 86) is a figure trained and measured on this project's GPU and recorded: the page shows the record, and
- * nothing behind it ran in the visitor's tab.
+ * nothing behind it ran in the visitor's tab. "modelled" (Round 86) is another system drawn from its own documentation, with this
+ * run's counts where it has them: nothing of that system runs here, and its figures are its documentation's.
  */
-export type StageKind = "real" | "notional" | "simulated" | "seeded" | "offline";
+export type StageKind = "real" | "notional" | "simulated" | "seeded" | "offline" | "modelled";
 
 const LABEL: Record<StageKind, string> = {
   real: "real, in your tab",
@@ -18,6 +19,7 @@ const LABEL: Record<StageKind, string> = {
   simulated: "simulated",
   seeded: "simulated, seeded pad",
   offline: "measured offline",
+  modelled: "modelled, not run",
 };
 
 const TITLE: Record<StageKind, string> = {
@@ -30,6 +32,8 @@ const TITLE: Record<StageKind, string> = {
     + "structure and cost are measured and its secrecy is not.",
   offline: "Trained and measured on this project's GPU, and recorded with its environment; the page shows the "
     + "recorded figures, and nothing behind them ran in your tab.",
+  modelled: "Another system drawn from its own published documentation, with this run's counts where it has them: none of its code "
+    + "runs in your tab, none of its hosts is contacted, and its figures are its documentation's, not measured.",
 };
 
 export default function StageBadge({ kind, label }: { kind: StageKind; label?: string }) {

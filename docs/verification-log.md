@@ -6048,3 +6048,69 @@ whole sentence, the config is regenerated, and `tests/test_r86_withdrawal_note_q
 quotation of the note near a citation of the paper to the note as read (seeded: the old text fails it). The other 16
 published cards, read at their pins, are byte for byte what the registry generates today; the two telecom cards differ
 by this sentence only and change on the Hub only when they are republished.
+
+### The lending check on Zama's FHEVM, modelled and cited (2026-11-21)
+
+The owner's choice of 2026-11-21: a cited comparison and a modelled flow in the canvas, within the terms Zama's code is offered
+on. Those terms rule out running it here: zama-ai/fhevm's README FAQ says the libraries are free "only for development,
+research, prototyping, and experimentation", commercial use needs Zama's patent licence, and the BSD-3-Clause-Clear licence
+grants no patent rights. So the project takes no Zama package and contacts no Zama host, and the lending page draws FHEVM from
+its documentation, read that day (the sources and what each establishes are in `references/defi-lending-key-custody.md`).
+
+- **The canvas's second view.** A switch above the lending canvas, *This run* or *FHEVM, modelled*. The second draws the pool's
+  contract on chain against Zama's network off chain, in six steps, every one badged "modelled" and none lit by a run:
+  - Bob's packed input with its proof of knowledge;
+  - the coprocessors' attestation;
+  - the check under FHE;
+  - the bit made publicly decryptable;
+  - the KMS's threshold decryption with its signatures;
+  - `FHE.checkSignatures` and the settlement.
+
+  The legend names TFHE ciphertexts and the KMS's decryption, not the run's CKKS and MPC shares. After a run, the view takes
+  the run's counts: its checks and their HCU, and its liquidations.
+- **The cost, restated.** FHEVM has no encrypted divisor and no signed integers, so the check becomes $`c_1 w_1 + c_2 w_2 <
+  d\,I`$. That is three multiplications by a plaintext, an addition and a comparison. On Zama's HCU table it comes to
+  $`1{,}403{,}000`$ HCU a check on 64-bit integers and $`2{,}562{,}000`$ on 128-bit, so 14 or 7 checks fit under the devnet's
+  $`20{,}000{,}000`$ a transaction. These are added-up figures, not measurements.
+- **The card.** *FHEVM beside this check*, after the private check, has eight rows: scheme, who can decrypt, where it computes,
+  input validity, the result, one check's cost, limits and licence. Each FHEVM cell links to the Zama page it is from, and the
+  page's own column follows the key-holder setting.
+- **Held by:** section 10 of `web/scripts/check_use_case_canvas.mjs`, and `tests/test_r86_fhevm_model.py`. The test pins
+  Zama's figures as read, finds no Zama package in any package file and no Zama host in any served policy, and confines Zama
+  URLs to the model's list of sources. Both were seeded: a stage id a run reports, a caption without its disclaimer, a
+  `@zama-fhe/sdk` dependency and a changed HCU figure each fail.
+
+**The lending page joins the text-layout scan.** It has been on the site since 2026-11-09, and `web/scripts/check_text_overlap.mjs`
+never measured it. Its first pass, after a run, found two axis titles cut off at the top of their charts: "borrow rate (% a
+year)" by 14 px and "margin from both shares" by 17 px. Recharts anchors an `insideLeft` title at its start, and its own position
+attributes override a `textAnchor`. The lending charts now draw their axis titles centred, at Recharts' own inset, and the four
+titles sit 42 to 63 px inside their charts. The scan now measures the page after a run and in the modelled view. Both entries
+pass in Noto and in DejaVu Sans on the local client-only build, and at 375 px the page stays 375 px wide.
+
+### #78 on the deployed site, and the two telecom cards republished (2026-11-21)
+
+#78 was merged as 1345526 on the owner's approval (CI 8 of 8, the local gate passed) and deployed from the main checkout. The
+deploy's checks passed on the box, which serves `index-74vbtZED.js` under the public name. Read on the deployed site in headless
+Chrome:
+
+- **QCNN weights.** Finance, medical and telecom each requested only `qcnn_weights.json` (200) and drew 4 wires and 52 angles,
+  8 and 77, and 8 and 100. Telecom at 7 wires, chosen in the Parameters panel, also requested `qcnn_weights_q7.json` (200) and
+  drew 7 wires and 98 angles. The 404 is gone.
+- **The CBOM.** `/cbom/qsh.cdx.json` serves the CKKS identifier in full.
+- **The telecom page.** It carries the withdrawal note's own words in every tab and the shortened quotation in none. The 5G-NIDD
+  tab's walkthrough link says the notebook is served by the demo's own server.
+- **The CSP walk.** It passed every page, worker and run, with no violation.
+
+The two telecom cards on the Hub carried the shortened quotation, and the owner chose to republish them. Only `README.md` was
+uploaded to each repository, because `scripts/publish_hf.py` re-sends every file and refuses `qsh-telecom-ids-ckks-student`,
+whose head holds an `onnx/model.onnx` the local folder no longer produces. The cards uploaded are the ones the registry
+generates.
+
+| Repository | Revision | Compared with the previous pin |
+|---|---|---|
+| `Daemons-Q/qsh-telecom-qml-ids` | `18123b2fa16845143ec0032f4ce7f5d415716dd9` | only `README.md` differs |
+| `Daemons-Q/qsh-telecom-ids-ckks-student` | `a32e7a4922b230a180f09f9c64cd8a1ff54a55e8` | only `README.md` differs |
+
+`models/metrics.json` now pins those revisions, recorded the way `scripts/publish_hf.py` records a pin. `scripts/pin_hub_hashes.py`
+changed only the two revisions in `models/hub_file_hashes.json`, since every file's digest is the same, and `--check` reports all
+18 models matching the Hub. All 18 cards, read at their pins, are now byte for byte what the registry generates.

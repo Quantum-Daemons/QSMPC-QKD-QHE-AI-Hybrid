@@ -49,6 +49,9 @@ const PAGES = [
   { path: "/usecase/genomics", run: true }, { path: "/usecase/telecom_ids", run: true },
   { path: "/usecase/satellite_comms", run: true },
   { path: "/usecase/satellite_comms", tab: "Network" },
+  // The lending page (Round 86): on the site since 2026-11-09 and missing from this list until 2026-11-21, so its canvas, charts
+  // and tables went unmeasured. After a run, and in the canvas's modelled FHEVM view, which draws nothing until it is chosen.
+  { path: "/usecase/defi_lending", run: true }, { path: "/usecase/defi_lending", click: ["FHEVM, modelled"] },
   // Each model's tab in the Models section (Round 86): an inactive panel is hidden, so it is measured only when opened.
   // The IBM tab once more after a run (Round 86): its sample views and the teacher-student plot draw only once the run has
   // re-scored the published models.

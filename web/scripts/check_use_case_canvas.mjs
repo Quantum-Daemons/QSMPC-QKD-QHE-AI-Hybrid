@@ -31,6 +31,10 @@
  *      QSDC withheld by its link budget badged "withheld", a QKD step with a zero finite key "no key",
  *      never the "failed" a real error keeps. In a pairwise walk the satellite page badged QSDC
  *      "failed" in 33 of 38 combinations, every one of them the model working as intended.
+ *  10. the lending canvas's modelled FHEVM view (Round 86, src/lib/fhevmModel.ts) places every step, draws
+ *      only ciphertext and threshold-decryption lanes and no key bus, labels each with its own legend,
+ *      uses no stage id a run reports, says in its caption that nothing of Zama's runs, adds up its HCU
+ *      from Zama's per-operation figures, and takes its counts from the run only when the run has them.
  *
  * HOW IT LOADS THE TS: esbuild bundles the module to a temp ESM file, as check_calibration.mjs does.
  *
@@ -51,7 +55,9 @@ const dir = mkdtempSync(join(tmpdir(), "qsh-canvas-"));
 const entry = join(dir, "entry.ts");
 writeFileSync(entry, `export { USECASE_SPECS, canvasRow, visibleSteps, kindOf, drawnChannels, captionOf, consumesSessionKey, failWordOf } from ${JSON.stringify(MODULE)};\n`
   + `export { appConfig } from ${JSON.stringify(join(WEB, "src/lib/config"))};\n`
-  + `export { USECASES } from ${JSON.stringify(join(WEB, "src/lib/useCases"))};\n`);
+  + `export { USECASES } from ${JSON.stringify(join(WEB, "src/lib/useCases"))};\n`
+  + `export { drawnChannelsOf } from ${JSON.stringify(MODULE)};\n`
+  + `export { FHEVM_SPEC, FHEVM_CAPTION, FHEVM_LEGEND, FHEVM_READ, FHEVM_SOURCES, HCU, HCU_LIMIT, checkCost } from ${JSON.stringify(join(WEB, "src/lib/fhevmModel"))};\n`);
 const out = join(dir, "bundle.mjs");
 execFileSync("npx", ["esbuild", entry, "--bundle", "--format=esm", "--platform=node",
                      `--outfile=${out}`, "--log-level=error"], { cwd: WEB, stdio: "pipe" });
@@ -185,6 +191,42 @@ for (const [uc, spec] of Object.entries(m.USECASE_SPECS)) {
 }
 check("fail-word", m.failWordOf({ stageId: "x" }) === "failed", "a step with no word of its own is not badged \"failed\"");
 
+// 10. The lending canvas's modelled FHEVM view.
+{
+  const spec = m.FHEVM_SPEC;
+  const rows = spec.steps.map((s) => ({ s, row: m.canvasRow("defi_lending", s, m.kindOf(s, {}), {}, {}) }));
+  for (const { s, row } of rows) {
+    check("fhevm", row.wide || row.a || row.b, `the modelled step ${s.stageId} has no component, lane or full-width row`);
+    if (row.a && row.b) check("fhevm", !!row.flow && row.channel !== "none", `the modelled step ${s.stageId} has two sides and no lane`);
+  }
+  const runIds = new Set(Object.values(m.USECASE_SPECS).flatMap((u) => u.steps.map((s) => s.stageId)));
+  const shared = spec.steps.filter((s) => runIds.has(s.stageId)).map((s) => s.stageId);
+  check("fhevm", shared.length === 0, `the modelled view uses stage ids a run reports (${shared.join(", ")}), so a run could light it`);
+  const l = m.drawnChannelsOf(spec, "defi_lending");
+  check("fhevm", l.lanes.length > 0 && l.lanes.every((ch) => ch === "fhe" || ch === "mpc") && !l.keyBus,
+    `the modelled view draws ${l.lanes.join(", ")}${l.keyBus ? " and the key bus" : ""}; only ciphertext and threshold-decryption lanes`);
+  for (const ch of l.lanes) check("fhevm", typeof m.FHEVM_LEGEND[ch] === "string" && /modelled/.test(m.FHEVM_LEGEND[ch]),
+    `the modelled view's ${ch} lane has no legend of its own, so it would read as the run's ${ch === "fhe" ? "CKKS ciphertext" : "MPC shares"}`);
+  check("fhevm", /^Modelled from Zama's documentation/.test(m.FHEVM_CAPTION) && /No Zama code runs/.test(m.FHEVM_CAPTION)
+    && /no Zama host is contacted/.test(m.FHEVM_CAPTION) && m.FHEVM_CAPTION.includes(m.FHEVM_READ),
+    "the modelled view's caption does not say it is modelled, on which day it was read, and that nothing of Zama's runs");
+  for (const [key, url] of Object.entries(m.FHEVM_SOURCES))
+    check("fhevm", /^https:\/\/(docs\.zama\.org\/protocol\/|github\.com\/zama-ai\/)/.test(url), `the source ${key} is not Zama's own page: ${url}`);
+  for (const w of ["euint64", "euint128"]) {
+    const h = m.HCU[w], c = m.checkCost(w);
+    check("fhevm", c.total === 3 * h.mulScalar + h.add + h.lt && c.sequential === h.mulScalar + h.add + h.lt
+      && c.perTransaction === Math.floor(m.HCU_LIMIT.perTransaction / c.total) && c.sequential <= m.HCU_LIMIT.sequentialPerTransaction,
+      `the ${w} check's HCU do not add up from Zama's per-operation figures: ${JSON.stringify(c)}`);
+  }
+  const label = (id, metrics) => spec.steps.find((s) => s.stageId === id)?.label(metrics, {}) ?? `(no modelled step ${id})`;
+  const total = (24 * m.checkCost("euint64").total).toLocaleString("en-US");
+  check("fhevm", label("fhevm_check", { lending_checks: 24 }).includes(`this run's 24 checks: ${total} HCU`) && !/this run/.test(label("fhevm_check", {})),
+    "the modelled check's label does not give the run's checks and their HCU when the run has them, or gives them before a run");
+  check("fhevm", /3 of 24 can be liquidated \(this run's count\)/.test(label("fhevm_decrypt", { lending_checks: 24, lending_flagged: 3 }))
+    && !/can be liquidated/.test(label("fhevm_decrypt", {})),
+    "the modelled decryption's label does not give the run's liquidations when it has them, or gives a count before a run");
+}
+
 if (failures.length) {
   console.error("check:use-case-canvas FAILED");
   for (const f of failures) console.error(`  - ${f}`);
@@ -193,4 +235,4 @@ if (failures.length) {
 console.log(`check:use-case-canvas OK  ${Object.keys(m.USECASE_SPECS).length} use cases: every stage placed, the downlink `
   + "drawn down, the run's parties counted, the inference client on its side, no quantum lane under PQC-only, "
   + "a legend of the lanes drawn, a caption of what runs, a canvas for every E2E selector entry, "
-  + "a designed outcome badged by what happened");
+  + "a designed outcome badged by what happened, and a modelled FHEVM view drawn as a model");

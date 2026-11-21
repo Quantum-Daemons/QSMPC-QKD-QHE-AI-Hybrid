@@ -50,6 +50,7 @@ const BOXES: Box[] = [
 
 const COLOR: Record<StageKind, string> = {
   real: "var(--accent-2)", notional: "var(--accent)", simulated: "var(--quantum)", seeded: "var(--warn)", offline: "var(--muted)",
+  modelled: "var(--muted)",
 };
 
 function SvgBox({ b }: { b: Box }) {
