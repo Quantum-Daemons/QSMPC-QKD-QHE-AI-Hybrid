@@ -33,3 +33,29 @@ The default is a separate key holder, Carol, in `web/src/lib/lending/privateChec
 Since 2026-11-13 the committee is one setting away too, in `web/src/lib/lending/committee.ts` on `wasm/qsh-fedthresh/agg/committee.go`: three members hold Shamir shares of a collective BGV key on Lattigo v6.2.0, no one holds the key, and any two re-encrypt each masked margin to Carol by a public-key switch, each share flooded with uniform noise. It is passive-secure and not robust, as Lattigo's multiparty package is; the robust or UC-secure designs above (Bootland et al.; Zyskind et al.) are not what it implements. Three and two keep a run in one tab short; Zama's example quorum is 9 of 13.
 
 The bilateral arrangement remains one setting away, with its own limits stated. `docs/threat-model.md` says what each protects and `npm run check:lending-private` holds all three to the clear answer.
+
+## The same check on Zama's FHEVM, modelled (2026-11-21)
+
+The owner's choice of 2026-11-21: set FHEVM, the on-chain design closest to this check, beside it, cited, and draw its flow as
+a model, within the terms Zama's code is offered on. Each source was read at its origin on 2026-11-21.
+
+| Source | What it establishes | How far it was read |
+|---|---|---|
+| zama-ai/fhevm, [README](https://github.com/zama-ai/fhevm#license) (FAQ) and LICENSE | BSD-3-Clause-Clear. The FAQ says the libraries are free to use under it "only for development, research, prototyping, and experimentation purposes", and that commercial use needs Zama's patent licence; the licence states that it grants no patent rights. | The licence, the FAQ |
+| GitHub releases and the npm registry | Current that day: fhevm v0.13.9 (2026-11-20), `@zama-fhe/sdk` 3.8.0 (2026-11-16), `@fhevm/sdk` 0.13.9, `@fhevm/solidity` 0.13.4, `tfhe` 1.8.2, all BSD-3-Clause-Clear. | Metadata |
+| Zama, [overview](https://docs.zama.org/protocol/protocol/overview) | The parts: host contracts, coprocessors, the Gateway, the KMS and a relayer. | Whole page |
+| Zama, [encrypted inputs](https://docs.zama.org/protocol/solidity-guides/smart-contract/inputs) | A transaction's inputs are packed into one ciphertext with a zero-knowledge proof of knowledge of the plaintext; `FHE.fromExternal` takes them in. | Whole page |
+| Zama, [coprocessor](https://docs.zama.org/protocol/protocol/overview/coprocessor) | Coprocessors verify the proof, store ciphertexts under handles and sign them, and run the FHE operations with the TFHE-rs library. | Whole page |
+| Zama, [Gateway](https://docs.zama.org/protocol/protocol/overview/gateway) | An Arbitrum rollup that gathers a majority of the coprocessors' signatures into attestations and orchestrates decryption. | Whole page |
+| Zama, [KMS](https://docs.zama.org/protocol/protocol/overview/kms) | Re-read: 13 MPC nodes, "e.g., 9 out of 13" still the example quorum, robust while at most a third act maliciously, each node in an AWS Nitro Enclave by default, responses signed. | Whole page |
+| Zama, [public decryption](https://docs.zama.org/protocol/solidity-guides/smart-contract/oracle) | `FHE.makePubliclyDecryptable` marks a handle for anyone, for good; the relayer returns the cleartext with a decryption proof, and `FHE.checkSignatures` verifies it on chain. | Whole page |
+| Zama, [operations](https://docs.zama.org/protocol/solidity-guides/smart-contract/operations) and [roadmap](https://docs.zama.org/protocol/protocol/roadmap) | Division and remainder by a plaintext divisor only; arithmetic can overflow; signed integers are "coming soon". | Whole pages |
+| Zama, [HCU](https://docs.zama.org/protocol/solidity-guides/development-guide/hcu) | Every FHE operation is metered: on 64-bit integers a multiplication by a plaintext costs 365,000 HCU, an addition of two ciphertexts 162,000 and a comparison 146,000; on 128-bit integers 696,000, 259,000 and 215,000. The devnet allows 20,000,000 HCU per transaction in all and 5,000,000 in operations that must run in order. | Whole page |
+
+What the page does with this: the lending canvas has a second view, **FHEVM, modelled**, and a card, **FHEVM beside this check**,
+after the private check (`web/src/lib/fhevmModel.ts`, `web/src/components/FhevmBeside.tsx`). The check is restated for FHEVM,
+which has no encrypted divisor and no signed integers: $`c_1 w_1 + c_2 w_2 < d\,I`$ with the weights $`w_i = p_i \mathrm{LT}_i`$
+and the index $`I`$ public. That is three multiplications by a plaintext, one addition and one comparison, or $`3 \times 365{,}000
++ 162{,}000 + 146{,}000 = 1{,}403{,}000`$ HCU a check on 64-bit integers and $`2{,}562{,}000`$ on 128-bit, so at most 14 or 7 checks
+fit in a transaction. These are the documentation's figures added up, not measurements. No Zama package is in the project and no
+Zama host is in any policy the site serves (`tests/test_r86_fhevm_model.py`), so the view runs nothing of Zama's, and says so.

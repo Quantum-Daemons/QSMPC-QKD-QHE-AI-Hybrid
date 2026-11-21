@@ -790,7 +790,12 @@ export const consumesSessionKey = (step: Step, row: CanvasRow): boolean =>
  *  canvas's legend may list. The legend listed all five on every use case until Round 81, so the
  *  telecom and satellite canvases explained CKKS, MPC and key lanes neither has. */
 export function drawnChannels(usecase: string, c: DiagramConfig = {}, m: M = {}): { lanes: Channel[]; keyBus: boolean } {
-  const rows = visibleSteps(usecase, c).map((s) => ({ s, row: canvasRow(usecase, s, kindOf(s, c), m, c) }));
+  return drawnChannelsOf(USECASE_SPECS[usecase], usecase, c, m);
+}
+
+/** The same for a spec that is not a use case's own: the lending page's modelled FHEVM view (fhevmModel.ts, Round 86). */
+export function drawnChannelsOf(spec: Spec | undefined, usecase: string, c: DiagramConfig = {}, m: M = {}): { lanes: Channel[]; keyBus: boolean } {
+  const rows = (spec?.steps ?? []).filter((st) => !st.hidden?.(c)).map((s) => ({ s, row: canvasRow(usecase, s, kindOf(s, c), m, c) }));
   const drawn = new Set(rows.filter(({ row }) => !row.wide && row.channel !== "none"
     && (row.many || (row.a && row.b && row.flow))).map(({ row }) => row.channel));
   return {

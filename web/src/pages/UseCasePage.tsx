@@ -2,7 +2,7 @@ import { EncryptedAgreementChart, MeasuredAgainstPublished, NoEncryptedCompariso
 import { downloadJSON, webmType } from "../lib/export";
 import { buildResultsBundle, loadedBundleAsset } from "../lib/resultsBundle";
 import type { EncryptedAgreementPlot } from "../components/VerificationChart";
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import AgenticAIPanel from "../components/AgenticAIPanel";
 import SdnControlPlanePanel from "../components/SdnControlPlanePanel";
@@ -41,7 +41,8 @@ import type { LendingMarketReport, LendingPrivateReport, LendingSweepReport } fr
 import type { MpcCnnReport, MpcGnnReport, MpcMlpReport, MultiPsiReport, QcnnCkksReport, VerificationSummary } from "../lib/clientCompute";
 import type { QcnnRescore } from "../lib/qcnnRescore";
 import ShapPanel from "../components/ShapPanel";
-import UseCaseCanvas from "../components/UseCaseCanvas";
+import UseCaseCanvas, { type ModelledView } from "../components/UseCaseCanvas";
+import { FHEVM_CAPTION, FHEVM_LEGEND, FHEVM_SPEC } from "../lib/fhevmModel";
 import { USECASE_SPECS } from "../lib/useCaseFlows";
 import { Qcnn3D, Qotp3D, Sat3D } from "../components/Lazy3D";
 
@@ -49,6 +50,8 @@ import { Qcnn3D, Qotp3D, Sat3D } from "../components/Lazy3D";
  *  render, and the page re-renders on every pipeline event, so the view rebuilt its WebGL renderer
  *  20 to 26 times per run until the browser refused new contexts. */
 const QCNN3D_FEATURES = [0.3, -0.5, 0.8, 0.1, -0.9, 0.6, -0.2, 0.4];
+/** The lending canvas's second view (Round 86, the owner's choice of 2026-11-21): the same check on Zama's FHEVM, modelled. */
+const FHEVM_VIEW: ModelledView = { spec: FHEVM_SPEC, caption: FHEVM_CAPTION, legend: FHEVM_LEGEND, source: "Zama's documentation" };
 import { FibreDistanceCharts, QsdcRangeChart } from "../components/QkdCharts";
 import SatNetworkPanel from "../components/SatNetworkPanel";
 import Tabs from "../components/Tabs";
@@ -91,6 +94,10 @@ function UseCaseView({ usecase }: { usecase: string }) {
   const hasRun = run.events.length > 0;
   // No model, no quantum channel and no benchmark row describes this page, so those panels do not appear on it.
   const lending = usecase === "defi_lending";
+  // Which view the lending canvas draws: the run, or the same check on FHEVM, modelled. The run's view each time the page opens.
+  const [canvasView, setCanvasView] = useState<"run" | "fhevm">("run");
+  // The page is reused when the address moves to another use case, so the view goes back to the run there too.
+  useEffect(() => setCanvasView("run"), [usecase]);
   const { events, active, done, metrics, signature, artifacts, state, logRef, gifBusy, webmBusy, benchmark,
     downloadGif, downloadWebm, downloadPng, downloadEvents, downloadMetricsCsv } = run;
 
@@ -126,8 +133,15 @@ function UseCaseView({ usecase }: { usecase: string }) {
                                      padding: 8, overflowX: "auto" }}>
         {/* The run's own config object (usePipelineRun), the one the E2E page's canvas reads too. */}
         {/* The run as it stands, or as it stood at the timeline's position (Round 86). */}
+        {lending && (
+          <div className="ucc-views" role="group" aria-label="What the canvas draws">
+            <button type="button" className="ucc-view" aria-pressed={canvasView === "run"} onClick={() => setCanvasView("run")}>This run</button>
+            <button type="button" className="ucc-view" aria-pressed={canvasView === "fhevm"} onClick={() => setCanvasView("fhevm")}>FHEVM, modelled</button>
+            {canvasView === "fhevm" && <StageBadge kind="modelled" />}
+          </div>
+        )}
         <UseCaseCanvas usecase={usecase} activeStage={run.view.active} doneStages={run.view.done} metrics={run.view.metrics}
-          config={run.diagramConfig} />
+          config={run.diagramConfig} model={lending && canvasView === "fhevm" ? FHEVM_VIEW : undefined} />
       </div>
       <TimelineBar events={events} cursor={run.cursor} setCursor={run.setCursor} marks={run.marks} inFlight={run.inFlight} />
       {/* THE REASON, VISIBLE - the same fix as `Orchestration.tsx`'s export row and for the same

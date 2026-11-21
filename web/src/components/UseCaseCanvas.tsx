@@ -21,9 +21,13 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import {
-  USECASE_SPECS, canvasRow, captionOf, consumesSessionKey, drawnChannels, kindOf, qkdName, visibleSteps,
-  type CanvasRow, type Channel, type DiagramConfig, failWordOf, type Flow, type Step,
+  USECASE_SPECS, canvasRow, captionOf, consumesSessionKey, drawnChannels, drawnChannelsOf, kindOf, qkdName, visibleSteps,
+  type CanvasRow, type Channel, type DiagramConfig, failWordOf, type Flow, type Spec, type Step,
 } from "../lib/useCaseFlows";
+
+/** A view the canvas draws instead of the run (Round 86): another system's flow, modelled from its documentation. Nothing in it runs, so its
+ *  rows are never lit by the run, every one is badged "modelled", and its caption and legend are its own. */
+export interface ModelledView { spec: Spec; caption: string; legend: Partial<Record<Channel, string>>; source: string }
 
 // Layout, in canvas units. The canvas is drawn at this width and scaled to its frame.
 const W = 980;
@@ -43,7 +47,7 @@ const LABEL_W = 2 * (RIGHT_X - 12 - LANE_MID);
 // where 0.62 put it under 8 on a phone.
 const MIN_SCALE = 0.8;
 
-type Status = "idle" | "pending" | "running" | "done" | "failed";
+type Status = "idle" | "pending" | "running" | "done" | "failed" | "modelled";
 // Literal colours, not the theme's variables: an SVG marker takes its colour as an attribute, where
 // var() does not resolve, and the arrowheads drew as bars. The values are the theme's (styles.css),
 // except the ciphertext's cyan, kept apart from the session key's and a finished stage's green.
@@ -52,7 +56,7 @@ const COLOR: Record<Channel, string> = {
 };
 const FAILED = "#ff8f6b", PENDING = "#46506a", KEY = "#36d399";
 const DASH: Partial<Record<Channel, string>> = { quantum: "7 4", mpc: "3 3" };
-const MARK: Record<Status, string> = { idle: "", pending: "", running: "running", done: "done", failed: "failed" };
+const MARK: Record<Status, string> = { idle: "", pending: "", running: "running", done: "done", failed: "failed", modelled: "modelled" };
 /** The badge word: a failed step's own word where it has one (`failWordOf`, Round 85). */
 const markOf = (step: Step, st: Status): string => (st === "failed" ? failWordOf(step) : MARK[st]);
 // "classical, under the session key" until Round 86: it labelled every classical lane - the handshake,
@@ -180,9 +184,8 @@ const sized = <T extends Record<string, unknown>>(n: Omit<Node<T>, "measured" | 
 
 interface Built { nodes: Node[]; edges: Edge[]; height: number }
 
-function build(usecase: string, steps: Step[], status: (s: Step) => Status, metrics: Record<string, any>,
+function build(usecase: string, spec: Spec, steps: Step[], status: (s: Step) => Status, metrics: Record<string, any>,
                config: DiagramConfig, motion: boolean): Built {
-  const spec = USECASE_SPECS[usecase];
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   let y = HEAD_H + 16;
@@ -209,7 +212,8 @@ function build(usecase: string, steps: Step[], status: (s: Step) => Status, metr
     const laneStyle = {
       stroke: st === "pending" ? PENDING : color,
       strokeWidth: st === "running" ? 3 : 2,
-      strokeDasharray: st === "running" ? undefined : DASH[row.channel],
+      // A modelled lane is dashed whatever it carries: it is drawn from documentation, and nothing crossed it.
+      strokeDasharray: st === "modelled" ? "6 4" : st === "running" ? undefined : DASH[row.channel],
       opacity: st === "pending" ? 0.7 : 1,
     };
     const ends = (flow: Flow) => ({
@@ -315,13 +319,15 @@ function ViewportSync({ zoom, ids }: { zoom: number; ids: string[] }) {
 }
 
 export default function UseCaseCanvas({
-  usecase, activeStage, doneStages, metrics, config = {},
+  usecase, activeStage, doneStages, metrics, config = {}, model,
 }: {
   usecase: string;
   activeStage: string | null;
   doneStages: Set<string>;
   metrics: Record<string, any>;
   config?: DiagramConfig;
+  /** Draw this modelled view instead of the run's architecture. */
+  model?: ModelledView;
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
   // The frame's width before React Flow first draws, so its first measurement is at the final scale
@@ -339,20 +345,23 @@ export default function UseCaseCanvas({
   const motion = useMemo(() =>
     !(typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches), []);
 
-  const spec = USECASE_SPECS[usecase];
-  const steps = useMemo(() => visibleSteps(usecase, config), [usecase, config]);
+  const spec = model?.spec ?? USECASE_SPECS[usecase];
+  const steps = useMemo(() => (model ? model.spec.steps.filter((s) => !s.hidden?.(config)) : visibleSteps(usecase, config)),
+    [usecase, config, model]);
   const idle = activeStage == null && doneStages.size === 0;
   const status = (s: Step): Status => {
+    if (model) return "modelled";
     if (idle) return "idle";
     if (s.stageId === activeStage) return "running";
     if (doneStages.has(s.stageId)) return s.ok && !s.ok(metrics, config) ? "failed" : "done";
     return "pending";
   };
   const { nodes, edges, height } = useMemo(
-    () => build(usecase, steps, status, metrics, config, motion),
+    () => build(usecase, spec, steps, status, metrics, config, motion),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [usecase, steps, activeStage, doneStages, metrics, config, motion]);
-  const legend = useMemo(() => drawnChannels(usecase, config, metrics), [usecase, config, metrics]);
+    [usecase, spec, steps, activeStage, doneStages, metrics, config, motion, model]);
+  const legend = useMemo(() => (model ? drawnChannelsOf(model.spec, usecase, config, metrics) : drawnChannels(usecase, config, metrics)),
+    [usecase, config, metrics, model]);
   if (!spec) return null;
 
   const zoom = Math.max(MIN_SCALE, Math.min(1, (frameW ?? W) / W));
@@ -367,7 +376,8 @@ export default function UseCaseCanvas({
   return (
     <figure className="ucc" style={{ margin: 0 }}>
       <div className="ucc-status" role="status" aria-live="polite">
-        {idle ? `${steps.length} stages · press Start to run them`
+        {model ? `${steps.length} steps modelled from ${model.source} · nothing in this view runs`
+          : idle ? `${steps.length} stages · press Start to run them`
           : runningLine || `${doneCount} of ${steps.length} stages done`}
       </div>
       <div ref={frameRef} className="ucc-frame">
@@ -378,7 +388,7 @@ export default function UseCaseCanvas({
               nodesDraggable={false} nodesConnectable={false} elementsSelectable={false}
               panOnDrag={false} zoomOnScroll={false} zoomOnPinch={false} zoomOnDoubleClick={false}
               preventScrolling={false} proOptions={{ hideAttribution: true }}
-              aria-label={`${(spec.parties?.(config) ?? spec).a.name} and ${(spec.parties?.(config) ?? spec).b.name}: the use case's architecture, stage by stage`}>
+              aria-label={`${(spec.parties?.(config) ?? spec).a.name} and ${(spec.parties?.(config) ?? spec).b.name}: ${model ? `modelled from ${model.source}, step by step` : "the use case's architecture, stage by stage"}`}>
               <ViewportSync zoom={zoom} ids={nodes.map((n) => n.id)} />
             </ReactFlow>
           </ReactFlowProvider>}
@@ -387,7 +397,7 @@ export default function UseCaseCanvas({
       {/* Only what this canvas draws (drawnChannels). */}
       <div className="ucc-legend" aria-label="Channels">
         {legend.lanes.map((ch) => (
-          <span key={ch}><i className={`ucc-sw ucc-sw-${ch}`} /> {ch === "quantum" ? `quantum, simulated (${qkdName(config)})` : LEGEND[ch]}</span>
+          <span key={ch}><i className={`ucc-sw ucc-sw-${ch}`} /> {model?.legend[ch] ?? (ch === "quantum" ? `quantum, simulated (${qkdName(config)})` : LEGEND[ch])}</span>
         ))}
         {legend.keyBus && <span><i className="ucc-sw ucc-sw-key" /> session key to its consumers</span>}
       </div>
@@ -405,7 +415,7 @@ export default function UseCaseCanvas({
           );
         })}
       </ol>
-      <figcaption className="figure-note">{captionOf(usecase, config)}</figcaption>
+      <figcaption className="figure-note">{model ? model.caption : captionOf(usecase, config)}</figcaption>
     </figure>
   );
 }

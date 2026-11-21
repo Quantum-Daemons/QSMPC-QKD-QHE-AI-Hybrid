@@ -504,3 +504,13 @@ hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 .cxr-film { background: transparent; border: 1px solid var(--border); border-radius: 6px; padding: 3px; color: var(--muted);
   display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; }
 .cxr-film.chosen { border-color: var(--accent); color: var(--text); }
+/* The lending canvas's two views (Round 86): the run, and the same check on Zama's FHEVM, modelled. */
+.ucc-views { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 2px 4px 8px; }
+.ucc-view { font: inherit; font-size: 12.5px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--border);
+  background: transparent; color: var(--text); cursor: pointer; }
+.ucc-view[aria-pressed="true"] { border-color: var(--accent); background: rgba(79, 157, 255, 0.14); }
+.ucc-view:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* A modelled row: drawn from another system's documentation, so dashed and never lit by the run. */
+.ucc-comp.ucc-modelled, .ucc-wide.ucc-modelled, .ucc-mini.ucc-modelled { border-style: dashed; border-color: var(--muted); }
+.ucc-badge-modelled { color: var(--text); border-color: var(--muted); border-style: dashed; }
+.stage-badge.modelled { color: var(--text); border-color: var(--muted); border-style: dashed; }

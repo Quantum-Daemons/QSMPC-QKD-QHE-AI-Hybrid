@@ -8,6 +8,7 @@ import {
 import { ChartReadout, HINT_KEYBOARD, HINT_POINTER, ReadoutTooltip } from "./ChartReadout";
 import Details from "./Details";
 import KeyPoints from "./KeyPoints";
+import FhevmBeside from "./FhevmBeside";
 import StageBadge from "./StageBadge";
 import { MarksHidden } from "./VerificationChart";
 import type { LendingMarketReport, LendingPrivateReport, LendingSweepReport } from "../lib/lending/report";
@@ -15,7 +16,20 @@ import type { LendingMarketReport, LendingPrivateReport, LendingSweepReport } fr
 const tick = { fill: "var(--muted)", fontSize: 11 };
 const grid = <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />;
 const axisLabel = (value: string) => ({ value, position: "insideBottom" as const, offset: -8, fill: "var(--muted)", fontSize: 11 });
-const yLabel = (value: string, side: "left" | "right" = "left") => ({ value, angle: side === "left" ? -90 : 90, position: side === "left" ? "insideLeft" as const : "insideRight" as const, fill: "var(--muted)", fontSize: 11 });
+// An axis title centred on its axis (Round 86). Recharts anchors an "insideLeft" title at its start, which its own position
+// attributes set over any text-anchor given, so a rotated title ran from the plot's middle up past the chart's top: "borrow rate
+// (% a year)" and "margin from both shares" were cut off there (the layout scan's first pass over this page, 2026-11-21). Drawn
+// here instead, at Recharts' own 5-unit inset, centred both ways.
+type AxisBox = { x?: number; y?: number; width?: number; height?: number };
+const yLabel = (value: string, side: "left" | "right" = "left") => ({
+  value,
+  content: ({ viewBox }: { viewBox?: AxisBox }) => {
+    const { x = 0, y = 0, width = 0, height = 0 } = viewBox ?? {};
+    const cx = side === "left" ? x + 5 + 5.5 : x + width - 5 - 5.5, cy = y + height / 2;
+    return <text x={cx} y={cy} transform={`rotate(${side === "left" ? -90 : 90}, ${cx}, ${cy})`} textAnchor="middle" dominantBaseline="central"
+      fill="var(--muted)" fontSize={11}>{value}</text>;
+  },
+});
 const money = (v: number) => v.toLocaleString("en-US", { maximumFractionDigits: 0 });
 const mb = (bytes: number) => `${(bytes / 1e6).toFixed(2)} MB`;
 const ms = (v: number) => `${v.toFixed(0)} ms`;
@@ -66,6 +80,8 @@ export default function LendingPanels({ market, sweep, check, ran, state, custod
       {check ? <PrivateCheck report={check} /> : market && state !== "running" ? (
         <div className="card"><h3>Private liquidation check</h3><p className="small" style={{ color: "var(--danger)" }}>The private check did not finish: see the log above.</p></div>
       ) : null}
+      {/* Zama's FHEVM beside the check, cited and not run (Round 86); the canvas's modelled view draws its flow. */}
+      <FhevmBeside custody={held} />
       {sweep ? <Sweep report={sweep} /> : null}
       {market ? <WhereItRan market={market} sweep={sweep} check={check} /> : null}
       <div className="note" style={{ marginTop: 14, fontSize: 12 }}>
