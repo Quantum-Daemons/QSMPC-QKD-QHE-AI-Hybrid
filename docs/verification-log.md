@@ -6103,7 +6103,8 @@ Chrome:
 
 The two telecom cards on the Hub carried the shortened quotation, and the owner chose to republish them. Only `README.md` was
 uploaded to each repository, because `scripts/publish_hf.py` re-sends every file and refuses `qsh-telecom-ids-ckks-student`,
-whose head holds an `onnx/model.onnx` the local folder no longer produces. The cards uploaded are the ones the registry
+whose head holds `onnx/model.onnx`, an artefact the registry lists and the page can fetch, which this checkout's folder does not
+hold: the training script writes it, and model artefacts are not committed. It is not stale and stays on the Hub. The cards uploaded are the ones the registry
 generates.
 
 | Repository | Revision | Compared with the previous pin |
@@ -6114,3 +6115,19 @@ generates.
 `models/metrics.json` now pins those revisions, recorded the way `scripts/publish_hf.py` records a pin. `scripts/pin_hub_hashes.py`
 changed only the two revisions in `models/hub_file_hashes.json`, since every file's digest is the same, and `--check` reports all
 18 models matching the Hub. All 18 cards, read at their pins, are now byte for byte what the registry generates.
+
+
+### #79 on the deployed site (2026-11-21)
+
+#79 was merged as b2d98d7 on the owner's approval (CI 8 of 8, the local gate passed on its head) and deployed; the box serves
+`index-BIYazPZ7.js`. Read on the deployed site in headless Chrome:
+
+- **The modelled view.** On the lending page, after a run of 5 checks that all matched the clear check, *FHEVM, modelled* drew
+  six steps, each badged "modelled". Step 3 read "this run's 5 checks: 7,015,000 HCU on 64-bit integers" ($`5 \times 1{,}403{,}000`$)
+  and step 5 "1 of 5 can be liquidated (this run's count)"; *This run* drew the run again.
+- **The card.** Eight rows and ten links, each to a docs.zama.org or github.com/zama-ai page.
+- **Hosts.** Through the load, the run and both views the page contacted only the demo's own host, 17 requests, none to Zama.
+- **Layout.** The four axis titles sit 42 to 63 px inside their charts. The scan's two lending entries pass in Noto and in
+  DejaVu Sans, and the CSP walk passes every page, worker and run.
+- **The telecom pins.** The telecom tabs name `18123b2fa168` and `a32e7a4922b2` and neither old pin. The run fetched both models at
+  those revisions (200) and re-scored each on its 600 rows, PASS.
