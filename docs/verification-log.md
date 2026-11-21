@@ -5974,3 +5974,24 @@ update keeps the base current. Both Caddyfiles validate under 2.11.9, with the w
 hash. vite's changelog for 6.4.6 (2026-11-09) lists one fix, escaping ids when resolving virtual modules (#24044); vite
 builds the bundle and is not in it. `npm audit` in `web/` found nothing; in the prototype it reports the two high
 advisories it reported before (zod, through the archived `mpc-framework`), with no fix available and unchanged by this.
+
+### #77 on the deployed site, and the CBOM's HE parameters checked against the standard (2026-11-21)
+
+#77 merged as ff54b8e and was deployed with the standard command; the deploy's checks passed on the box, and the
+running container reported Caddy v2.11.9. The bundle stayed `index-BvWI9GhZ.js`: vite 6.4.6's one fix did not change
+this build's output. `npm run check:csp` on the deployed site passed all 13 pages with every run finished and no
+violation. The main checkout's development install was brought to vite 6.4.6 with `npm ci`, from the lock.
+
+**The CBOM's HE parameters** (the owner's choice of 2026-11-21, the first layer of a CBOM-and-PETs evaluation).
+`tests/test_r86_cbom_he_parameters.py` reads every homomorphic-encryption parameter set from the published CBOM and
+checks each ciphertext modulus against the Homomorphic Encryption Security Standard v1.1 (2018), ternary secret
+(-1, 1), 128-bit security: Table 1 (BKZ.sieve, classical: $`\log_2 q \le 218`$ at $`N = 8192`$) and Table 2
+(BKZ.qsieve, post-quantum: $`\log_2 q \le 202`$ at $`N = 8192`$, $`411`$ at $`N = 16384`$), both read on the rendered
+page. The five sets it reads: the browser's CKKS chain ($`60+40+40+60 = 200`$ bits), the medical page's shared-key
+aggregation ($`140`$), threshold CKKS ($`120`$) and threshold BGV ($`200`$) at $`N = 8192`$, and the committee's
+threshold BGV ($`260`$) at $`N = 16384`$; every bound the CBOM's own text quotes is the table's. Writing it found the
+CKKS entry's identifier stopping mid-phrase since 2026-11-13 ("..., NVIDIA FLARE's"), so the shared-key aggregation's
+settings were half missing from the published CBOM; the inventory now names them as `web/src/lib/clientFedAgg.ts` runs
+them (N = 8192, moduli {60, 40, 40} bits, scale $`2^{40}`$), the CBOM is regenerated, and the test refuses an identifier
+that stops mid-phrase. The genomics card already states how repeated runs compose (each run a fresh release, $`k`$
+runs $`k`$ times the $`\rho`$ of one), so it needs no change.

@@ -101,7 +101,7 @@ ASSETS: tuple[CryptoAsset, ...] = (
                 "HomomorphicEncryption.org security standard (2018)", BOTH,
                 (("web/src/lib/clientFHE.ts", "seal.SchemeType.ckks"), ("src/qsh/fhe/backends.py", "CKKS"), ("web/src/lib/clientQcnnCkks.ts", "evaluator.multiplyPlain"), ("src/qsh/qhe/qcnn_pauli.py", "enc.dot("),
                  ("web/src/lib/clientFedAgg.ts", "seal.SchemeType.ckks")),
-                parameter_set="browser: N = 8192, coefficient moduli {60, 40, 40, 60} bits, scale 2^40; the medical page's shared-key aggregation {60, 40, 40} bits, NVIDIA FLARE's", classical_bits=128),
+                parameter_set="browser: N = 8192, coefficient moduli {60, 40, 40, 60} bits, scale 2^40; the medical page's shared-key aggregation, NVIDIA FLARE's TenSEAL settings: N = 8192, coefficient moduli {60, 40, 40} bits, scale 2^40", classical_bits=128),
     CryptoAsset("ckks-threshold", "Threshold CKKS", "other", None, ("encrypt", "decrypt"),
                 "The medical page's encrypted-aggregation comparison: four hospitals' collective key, their FedAvg updates summed under it, and each sum decrypted once by all four noise-flooded shares, on Lattigo v6.2.0 compiled to WebAssembly",
                 "Mouchet, Troncoso-Pastoriza, Bossuat and Hubaux, PETS 2021 (multiparty RLWE); Cheon, Kim, Kim and Song, ASIACRYPT 2017", (BROWSER,),
