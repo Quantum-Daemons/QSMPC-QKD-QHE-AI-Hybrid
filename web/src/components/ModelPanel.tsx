@@ -452,7 +452,8 @@ function RowsAsPublished({ achieved }: { achieved: Record<string, unknown> }) {
       {typeof copies.what_this_means === "string" && <p className="muted small">{copies.what_this_means}</p>}
       <p className="muted small">
         <a href="/walkthrough/" target="_blank" rel="noreferrer noopener">Check the two copies yourself</a>: 200 pairs of them, in
-        Python, in this browser. It is served from this site and downloads about 47 MB if you open it.
+        Python, in this browser. It is served by this demo&apos;s own server, not by a third party, and downloads about 47
+        MB if you open it.
       </p>
     </div>
   );

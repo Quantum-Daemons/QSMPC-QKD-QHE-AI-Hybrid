@@ -6010,3 +6010,11 @@ the `_q<N>` files on disk both ways, each a declared width and not the default f
 three pages then asked only for their default file (200) and drew the same circuits (4 wires and 52 angles, 8 and 77,
 8 and 100), and telecom at 7 wires, chosen in the Parameters panel, loaded `qcnn_weights_q7.json` (200) and drew 7 wires
 and 98 angles. The rest of the audit is in the next entries.
+
+### The walkthrough link said the notebook is served from this site (2026-11-21)
+
+Since #75 the notebook is on its own host name, and `/walkthrough/` on the demo answers with a 301 to it, but the link
+under the NIDD copies' table in the model panel still said "It is served from this site". It now says what is true on
+both names: the notebook is served by the demo's own server, not by a third party, and the download is about 47 MB
+(47,373,602 bytes summed over the files the deployed notebook fetched on 2026-11-21). The sentence inside the notebook
+("served from this site") is about Pyodide on the notebook's own name and stays.
