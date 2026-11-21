@@ -6103,7 +6103,8 @@ Chrome:
 
 The two telecom cards on the Hub carried the shortened quotation, and the owner chose to republish them. Only `README.md` was
 uploaded to each repository, because `scripts/publish_hf.py` re-sends every file and refuses `qsh-telecom-ids-ckks-student`,
-whose head holds an `onnx/model.onnx` the local folder no longer produces. The cards uploaded are the ones the registry
+whose head holds `onnx/model.onnx`, an artefact the registry lists and the page can fetch, which this checkout's folder does not
+hold: the training script writes it, and model artefacts are not committed. It is not stale and stays on the Hub. The cards uploaded are the ones the registry
 generates.
 
 | Repository | Revision | Compared with the previous pin |
@@ -6114,3 +6115,47 @@ generates.
 `models/metrics.json` now pins those revisions, recorded the way `scripts/publish_hf.py` records a pin. `scripts/pin_hub_hashes.py`
 changed only the two revisions in `models/hub_file_hashes.json`, since every file's digest is the same, and `--check` reports all
 18 models matching the Hub. All 18 cards, read at their pins, are now byte for byte what the registry generates.
+
+
+### #79 on the deployed site (2026-11-21)
+
+#79 was merged as b2d98d7 on the owner's approval (CI 8 of 8, the local gate passed on its head) and deployed; the box serves
+`index-BIYazPZ7.js`. Read on the deployed site in headless Chrome:
+
+- **The modelled view.** On the lending page, after a run of 5 checks that all matched the clear check, *FHEVM, modelled* drew
+  six steps, each badged "modelled". Step 3 read "this run's 5 checks: 7,015,000 HCU on 64-bit integers" ($`5 \times 1{,}403{,}000`$)
+  and step 5 "1 of 5 can be liquidated (this run's count)"; *This run* drew the run again.
+- **The card.** Eight rows and ten links, each to a docs.zama.org or github.com/zama-ai page.
+- **Hosts.** Through the load, the run and both views the page contacted only the demo's own host, 17 requests, none to Zama.
+- **Layout.** The four axis titles sit 42 to 63 px inside their charts. The scan's two lending entries pass in Noto and in
+  DejaVu Sans, and the CSP walk passes every page, worker and run.
+- **The telecom pins.** The telecom tabs name `18123b2fa168` and `a32e7a4922b2` and neither old pin. The run fetched both models at
+  those revisions (200) and re-scored each on its 600 rows, PASS.
+
+### The research sweep, August to November 2026 (2026-11-21)
+
+The owner's choice of 2026-11-21, after the live audit: search the work published from August to November 2026 for each use
+case, and fix what changes a figure, a comparison or a claim. Every source was read at its origin that day. What was read,
+and why each item is or is not cited, is in `references/research-sweep-2026-11.md`.
+
+- **`/value`, "Resource estimates falling".** The card said "Two 2026 preprints"; there were at least four. It now gives each
+  with its own hardware assumptions, and says they are not on one scale:
+  - Webster et al. (arXiv:2602.11457): fewer than 100,000 physical qubits for RSA-2048 on quantum LDPC codes, at $`10^{-3}`$.
+  - Cain et al. and Babbush et al.: unchanged.
+  - Pappalardo et al. (arXiv:2610.37839, IACR ePrint 2026/2665): about 23,000 cat qubits and 3.14 days with no bit flips, and
+    about 45,000 with a bit-flip time of about an hour.
+- **The telecom note.** It called IACR ePrint 2026/1282 "the nearest strong 2026 result", on BBM92 and binary detection.
+  - Isha et al. (arXiv:2608.04047, 2026-08-04) is now named as the nearest in shape: seven BB84 attacks and a normal channel,
+    XGBoost at macro F1 0.8803 on their simulator.
+  - QF-LOG (arXiv:2610.25203) shows a synthetic macro F1 of 0.82 falling to 0.56 under shifted parameters.
+  - The note is on the page and on both telecom cards. The owner approved a README-only republish: `59bbb6ed` and `95b8f7e0`,
+    in which only the card changed.
+  - The pins moved, `pin_hub_hashes.py --check` matches 18 of 18, and all 18 cards are what the registry generates.
+- **`/value`, the prior-art table.** It gains a row: linear layers encrypted and non-linearities in the clear at the data
+  owner, verdict "not new". Safhire (arXiv:2509.01253, accepted by TMLR) publishes the split the medical student uses, and
+  Galanopoulos et al. (arXiv:2609.16211) run a genomic foundation model that way in 6,683 s. The browser-inference row stays
+  "not found".
+- **Unchanged, re-checked:**
+  - No confidential liquidation was found in production. The nearest, null402, is on the Sepolia testnet.
+  - ESA-ADB, Lyu and the 2 km free-space QKD link are at the cited versions.
+  - FIPS 206 and 207 have no draft.
