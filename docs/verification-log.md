@@ -6018,3 +6018,33 @@ under the NIDD copies' table in the model panel still said "It is served from th
 both names: the notebook is served by the demo's own server, not by a third party, and the download is about 47 MB
 (47,373,602 bytes summed over the files the deployed notebook fetched on 2026-11-21). The sentence inside the notebook
 ("served from this site") is about Pyodide on the notebook's own name and stays.
+
+### The live pages' citations against their sources, and one shortened quotation (2026-11-21)
+
+Every standard, regulation and paper the deployed pages cite (read from the live audit's dump of all 32 views) was
+checked against its primary source on 2026-11-21; dated claims were re-read, not taken from the earlier record.
+
+| Cited as | Read at the source | Holds |
+|---|---|---|
+| RFC 10024 specifies X25519MLKEM768, SecP256r1MLKEM768, SecP384r1MLKEM1024 (home) | rfc-editor.org: Proposed Standard, August 2026; code points 0x11EC, 0x11EB, 0x11ED | yes |
+| BSI's TR-02102 page on RFC 10024; TR-02102-1 v2026-01 s2.1 on QKD, s2.2 on hybrids, Tables 2.7 and B.3; TR-02102-2 Table 10 (home) | bsi.bund.de, English and German pages and both PDFs (Version 2026-01) | yes, word for word |
+| draft-ietf-ipsecme-ikev2-mlkem in the RFC Editor queue, not an RFC (/validations, "as checked on 2026-11-08") | datatracker: rev 09, IESG state "RFC Ed Queue", no RFC number | still true |
+| NIST IR 8547 final, October 2026, Tables 2 and 4; SP 800-131A Rev. 3 still a draft (/value) | csrc.nist.gov and the final PDF: deprecated after 2030, disallowed after 2035; SP 800-131A r3 has only its October 2024 draft | yes |
+| EO 14412 (FAR rule within 180 days), OMB M-26-15 (plans in 120 days, TLS 1.3 by 2030-01-02, HVA and high impact systems by 2030 and 2031) | Federal Register API: EO 14412 signed 2026-06-22; IR 8547's reference list: M-26-15 of 2026-06-24; no FAR proposed rule on PQC in the Federal Register on 2026-11-21 | yes |
+| Regulation (EU) 2026/1744: Art. 50(2) grace to 2026-12-02, Annex III to 2027-12-02, Annex I to 2028-08-02, in force 27 July 2026 | EUR-Lex: OJ L 2026/1744 of 24.7.2026, entry into force on the third day | yes |
+| EU NIS CG PQC roadmap v1.1: 2026, 2030, 2035 milestones | the Commission's page and PDF: "Part 1, Version: 1.1", 11.06.2025 (an FAQ of 15.04.2026 changes no date) | yes |
+| CNSA 2.0: new acquisitions 2027-01-01, phase-out 2030-12-31, all use 2031-12-31; NSA's "No" on QKD for NSS | NSA's CNSA 2.0 FAQ, Ver. 2.2, October 2026 | yes |
+| Cloudflare and Google, 2029 | Cloudflare blog, 2026-04-07; Google blog, 2026-03-25 | yes |
+| ETSI GS QKD 014 V1.1.1 the only edition; GS QKD 015 V2.1.1 clauses 1, 4.2, 4.5, 4.6 | etsi.org deliverable listings and the GS QKD 015 PDF (GS QKD 020 V1.1.1 appeared 2026-06-29) | yes |
+| NIST SP 800-226 on delta and epsilon; SP 800-227 s4.6.2 and s4.6.3 | the final PDFs (March 2025, September 2025) | yes |
+| 22 arXiv papers, their authors and the figures quoted from them (Gidney 2025's 4.96 days; Cain et al. 10,000 and 26,000 qubits; Babbush et al. under half a million; AML-QKD's 14-25%; Bilgi et al. 5.31 s and 1.65 s at a batch of 16, F1 63.72; Lyu's random walk as VUS-PR's top adversary; the 2 km free-space QKD's 110 kbit/s at 3.28%) | the arXiv API and each paper's HTML | yes |
+| IET Quantum Communication 7(1) e70028; Future Internet 18(5):234; IACR ePrint 2026/1282 | Crossref and eprint.iacr.org | yes |
+
+One quotation was shortened. The telecom models' baseline note quoted arXiv:2512.05069's withdrawal as "insufficient to
+fully support the conclusions"; the note on its v2 (2026-04-02) says "the paper's conclusions". It had read so since
+Round 17 (2026-08-03), and it is in the use-case page's config and both telecom cards on the Hub; `docs/findings.md`,
+`references/REFERENCES.md` and the training script already quoted it correctly. The registry now quotes the note's
+whole sentence, the config is regenerated, and `tests/test_r86_withdrawal_note_quoted_verbatim.py` holds every
+quotation of the note near a citation of the paper to the note as read (seeded: the old text fails it). The other 16
+published cards, read at their pins, are byte for byte what the registry generates today; the two telecom cards differ
+by this sentence only and change on the Hub only when they are republished.
