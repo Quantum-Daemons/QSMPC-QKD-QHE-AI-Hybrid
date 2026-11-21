@@ -6086,3 +6086,31 @@ year)" by 14 px and "margin from both shares" by 17 px. Recharts anchors an `ins
 attributes override a `textAnchor`. The lending charts now draw their axis titles centred, at Recharts' own inset, and the four
 titles sit 42 to 63 px inside their charts. The scan now measures the page after a run and in the modelled view. Both entries
 pass in Noto and in DejaVu Sans on the local client-only build, and at 375 px the page stays 375 px wide.
+
+### #78 on the deployed site, and the two telecom cards republished (2026-11-21)
+
+#78 was merged as 1345526 on the owner's approval (CI 8 of 8, the local gate passed) and deployed from the main checkout. The
+deploy's checks passed on the box, which serves `index-74vbtZED.js` under the public name. Read on the deployed site in headless
+Chrome:
+
+- **QCNN weights.** Finance, medical and telecom each requested only `qcnn_weights.json` (200) and drew 4 wires and 52 angles,
+  8 and 77, and 8 and 100. Telecom at 7 wires, chosen in the Parameters panel, also requested `qcnn_weights_q7.json` (200) and
+  drew 7 wires and 98 angles. The 404 is gone.
+- **The CBOM.** `/cbom/qsh.cdx.json` serves the CKKS identifier in full.
+- **The telecom page.** It carries the withdrawal note's own words in every tab and the shortened quotation in none. The 5G-NIDD
+  tab's walkthrough link says the notebook is served by the demo's own server.
+- **The CSP walk.** It passed every page, worker and run, with no violation.
+
+The two telecom cards on the Hub carried the shortened quotation, and the owner chose to republish them. Only `README.md` was
+uploaded to each repository, because `scripts/publish_hf.py` re-sends every file and refuses `qsh-telecom-ids-ckks-student`,
+whose head holds an `onnx/model.onnx` the local folder no longer produces. The cards uploaded are the ones the registry
+generates.
+
+| Repository | Revision | Compared with the previous pin |
+|---|---|---|
+| `Daemons-Q/qsh-telecom-qml-ids` | `18123b2fa16845143ec0032f4ce7f5d415716dd9` | only `README.md` differs |
+| `Daemons-Q/qsh-telecom-ids-ckks-student` | `a32e7a4922b230a180f09f9c64cd8a1ff54a55e8` | only `README.md` differs |
+
+`models/metrics.json` now pins those revisions, recorded the way `scripts/publish_hf.py` records a pin. `scripts/pin_hub_hashes.py`
+changed only the two revisions in `models/hub_file_hashes.json`, since every file's digest is the same, and `--check` reports all
+18 models matching the Hub. All 18 cards, read at their pins, are now byte for byte what the registry generates.
