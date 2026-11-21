@@ -29,6 +29,17 @@ WEB = REPO / "web"
 RECORD = REPO / "docs" / "measurements" / "fedheart-dp-sweep-2026-11-14.json"
 CARD = WEB / "public" / "data" / "medical" / "fedheart_dp_sweep.json"
 LABEL = "fedheart-dp-sweep-2026-11-14"
+#: The card's credit (Round 86, 2026-11-21): figures computed from UCI Heart Disease (CC BY 4.0), the corpus of the page's
+#: `heart_disease_sites.json`, whose credit is repeated here, as the page's other aggregate cards credit their corpora.
+CARD_ATTRIBUTION = {
+    "provider": "UCI Machine Learning Repository",
+    "dataset": "Heart Disease: the processed Cleveland, Hungarian, Switzerland and VA Long Beach files, one hospital each",
+    "download": "https://archive.ics.uci.edu/dataset/45/heart+disease",
+    "dataset_doi": "10.24432/C52P4X",
+    "citation": "Janosi, A., Steinbrunn, W., Pfisterer, M. and Detrano, R. (1988). Heart Disease. UCI Machine Learning Repository. https://doi.org/10.24432/C52P4X",
+    "licence": "CC BY 4.0",
+    "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+}
 
 HARNESS = r"""
 import { createRequire } from "node:module";
@@ -96,7 +107,8 @@ def main() -> int:
     RECORD.parent.mkdir(parents=True, exist_ok=True)
     RECORD.write_text(json.dumps(record, indent=1) + "\n")
     CARD.write_text(json.dumps({**{k: record[k] for k in ("seed", "draws", "delta", "rounds", "clip", "metric", "rows")},
-                                "_about": "The medical DP card's band; written by scripts/measure_fedheart_dp_sweep.py."},
+                                "_about": "The medical DP card's band; written by scripts/measure_fedheart_dp_sweep.py.",
+                                "attribution": CARD_ATTRIBUTION},
                                indent=1) + "\n")
     print(json.dumps(record["rows"], indent=1))
     return 0

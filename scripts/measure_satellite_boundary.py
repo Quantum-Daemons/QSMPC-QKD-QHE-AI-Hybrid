@@ -42,6 +42,16 @@ RECORD = REPO / "docs" / "measurements" / "satellite-boundary-2026-11-14.json"
 CARD = REPO / "web" / "public" / "data" / "satellite" / "boundary.json"
 KEY = "satellite_comms.opssat"
 PLANE = ("n_peaks", "diff2_peaks")
+#: The card's licence fields (Round 86, 2026-11-21). `near` holds test segments of OPS-SAT-AD (CC BY 4.0): their two feature values
+#: and published labels. Shared, they go with the licence, its link, a note of the changes and the credit, which is the
+#: registry's (`registry.get(KEY).dataset.attribution`), as on the overlay's own file.
+CARD_LICENCE = {
+    "licence": "CC-BY-4.0",
+    "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+    "modifications": ("The full model's probability on a grid over two of the 19 published per-segment features (n_peaks, "
+                      "diff2_peaks), the other 17 held at the test partition's medoid, and the test segments within the slice: "
+                      "their two feature values rounded to 4 decimals, their published labels and the two models' classes."),
+}
 GRID = 60
 MIN_NEAR, MIN_AGREEMENT = 20, 0.90
 
@@ -183,7 +193,8 @@ def main() -> int:
                        "model": int(p_te[i] >= 0.5), "slice": int(c)}
                       for i, c in zip(np.flatnonzero(near), slice_cls, strict=True)] if chosen == "slice" else None),
             "surrogate": record["surrogate"] if chosen == "surrogate" else None,
-            "model_test_auc_pr": ap_model, "test_segments": int(len(yte))}, indent=0) + "\n")
+            "model_test_auc_pr": ap_model, "test_segments": int(len(yte)),
+            **CARD_LICENCE, "attribution": registry.get(KEY).dataset.attribution}, indent=0) + "\n")
     print(json.dumps({k: record[k] for k in ("model_test_auc_pr", "slice", "surrogate", "chosen")}, indent=1))
     return 0
 

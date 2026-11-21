@@ -48,5 +48,13 @@
  "event_wise_f0_5_corrected": 0.9499,
  "comparator": "none: no published VUS-PR for ESA-ADB Mission1 channels 41-46 was found on 2026-11-14",
  "_about": "What the satellite page's VUS-PR line shows; written by scripts/measure_satellite_vus_pr.py.",
+ "attribution": {
+  "provider": "European Space Agency",
+  "dataset": "ESA Anomaly Dataset (ESA-ADB), version 1.0, Mission1 lightweight channels 41-46",
+  "download": "https://zenodo.org/records/12528696",
+  "licence": "CC BY 3.0 IGO",
+  "licence_url": "https://creativecommons.org/licenses/by/3.0/igo/",
+  "citation": "Kotowski et al., 'European Space Agency Dataset and Benchmark for Real-World Anomaly Detection in Spacecraft Time Series', Journal of Data-centric Machine Learning Research (DMLR), 2026 (earlier version: arXiv:2406.17826). Data: De Canio, Kotowski & Haskamp, 'ESA Anomaly Dataset', Zenodo record 12528696 (2024), CC BY 3.0 IGO."
+ },
  "tsb_ad": "1.5"
 }
