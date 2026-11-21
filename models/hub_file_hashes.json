@@ -136,7 +136,7 @@
    "feature_spec.json": "b82fbe1101293f6841f00dcfac7e1866e68d6a2511abbb0499149a6c49b2cdb8",
    "onnx/model.onnx": "505c91b833b850f5ac88a8531fc87cc923a7789faca2ad871ca3fdc1732b0834"
   },
-  "revision": "18123b2fa16845143ec0032f4ce7f5d415716dd9"
+  "revision": "59bbb6ed14f877ee616519706014f64e84a6187a"
  },
  "telecom_ids.student": {
   "files": {
@@ -144,6 +144,6 @@
    "onnx/model.onnx": "416fb8420048ac6cb139bf2eb0be5f39fe6c38abed3ecb3ecd2ec7c8deb59891",
    "weights.json": "da3a4dae31afaf6d42057197befd843143d6c9a8ca59f022a31349c21020bacd"
   },
-  "revision": "a32e7a4922b230a180f09f9c64cd8a1ff54a55e8"
+  "revision": "95b8f7e0cd0e8c17f4b984d512d62fd2f382e3b4"
  }
 }
