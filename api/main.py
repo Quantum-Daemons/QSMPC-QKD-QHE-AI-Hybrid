@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict
 
 from qsh import __version__
 
+from .host_guard import HostOriginGuard, allowed_hosts_from_env, allowed_origins_from_env
 from .inference_service import pqc_handshake_demo, predict_fraud, qkd_demo
 from .run_manager import RESULTS_DIR, RunManager
 
@@ -45,6 +46,13 @@ async def cross_origin_isolation(request, call_next):
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin"
     response.headers["Cross-Origin-Embedder-Policy"] = "require-corp"
     return response
+
+
+# Added last, so it runs first (Starlette puts the newest middleware outermost): a request on a host or from an
+# origin the deployment does not serve never reaches CORS or a route (api/host_guard.py says why).
+app.add_middleware(HostOriginGuard, hosts=allowed_hosts_from_env(), origins=allowed_origins_from_env())
+
+
 manager = RunManager()
 WEB_DIST = Path(__file__).resolve().parents[1] / "web" / "dist"
 

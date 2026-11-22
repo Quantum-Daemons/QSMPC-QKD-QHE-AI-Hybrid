@@ -6265,3 +6265,35 @@ TenSEAL 0.3.18, liboqs 0.16.0, oqs-provider 0.12.0 and HEonGPU 2.1.1 are each th
 issues 63 and 100 are still open; the Hugging Face Space still answers 401 and the organisation lists none. Three
 README images were retaken from the deployed site (the DeFi page's view switch, `/value`'s new prior-art row, and the
 telecom page's pin); the four others the capture changed differed only in a timing or a hash, and were kept.
+
+### #82 on the deployed site (2026-11-22)
+
+#82 was merged as 9a45829 on the owner's approval (CI 8 of 8, the local gate passed on its head) and deployed; the box serves
+`index-C-GZhrkH.js`, the bundle it served before, since #82 changed documents, images, one Python module and tests, and no
+web source. The deploy's checks passed (the security headers, the walkthrough on its own origin, the box on main), and the
+CSP walk passes every page, worker and run.
+
+### The full deployment local by default, and the API's host guard (2026-11-22)
+
+#82 recorded that `docker/docker-compose.yml` bound the API's own port to loopback while publishing the web service, which
+forwards `/api/*` and `/metrics` to the API without authentication, on every interface, and Prometheus, Grafana and
+node-exporter with it. Two sources decided what to do, both read on 2026-11-22:
+
+- Docker's port-publishing page: "Publishing container ports is insecure by default"; with 127.0.0.1 in the mapping, only
+  the host reaches the port.
+- The MCP specification, revision 2026-07-28, Streamable HTTP, its security warning: a server MUST validate the `Origin`
+  header to prevent DNS rebinding and answer an invalid one with 403, SHOULD bind to localhost when it runs locally, and
+  SHOULD authenticate every connection.
+
+Loopback binding alone does not stop DNS rebinding: a hostile page makes its own host name resolve to 127.0.0.1, and the
+browser then sends its requests to the local API as same-origin requests, which CORS does not touch. The owner chose
+loopback by default and a host and origin check, without a password to manage:
+
+- every published port binds to `QSH_BIND_ADDRESS`, 127.0.0.1 unless set (the API's own port stays on loopback);
+- `api/host_guard.py`, outermost in the app, refuses a `Host` outside `QSH_ALLOWED_HOSTS` (by default the loopback names and
+  `api`, the name Prometheus scrapes) with 400, and an `Origin` that is neither on those hosts nor in `QSH_CORS_ORIGINS`
+  with 403, on HTTP requests and on WebSocket handshakes alike.
+
+`tests/test_r86_full_deployment_is_local_by_default.py` holds the compose mappings and the guard. It was seeded twice: the
+web mapping as it stood is refused, and with the guard removed from the app its test fails. Grafana and Prometheus check
+neither header, which the threat model states.
