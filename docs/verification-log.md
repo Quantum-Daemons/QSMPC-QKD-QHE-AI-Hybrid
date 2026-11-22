@@ -6389,3 +6389,15 @@ machine. What followed:
 
 The training script also re-distils the student and rewrites its files when it trains this teacher; in this worktree they
 were restored from git, so the published student is unchanged.
+
+### #85 on the deployed site (2026-11-23)
+
+#85 was merged as b16f7a0 on the owner's approval (CI 8 of 8 and the local gate on 839a9f5, after the contrast fix) and
+deployed shortly after midnight. The box serves `index-B6bupnnu.js`; the deploy's checks passed (main, the public name's
+build, the security headers, the walkthrough's own origin). Read on the public site:
+
+- The medical page names the seven runs on every model tab ("runs differing only in the seed, this one among them",
+  0.8761), and the six-seed figure of the pretrained variant appears nowhere.
+- The published comparison's "differs" badge is `rgb(3, 7, 15)` on `rgb(245, 101, 101)` at 12 px bold: 6.66:1, read as
+  the computed style in a headless Chrome.
+- The CSP walk passed all 13 pages, every worker and every run, with no violation.
