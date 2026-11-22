@@ -68,7 +68,25 @@ def _opssat():
                                   "student": "satellite_comms.opssat_student: soft logistic on the degree-2 expansion"}}
 
 
-TARGETS = {"opssat": _opssat}
+def _telecom_qml():
+    """The QKD-attack random forest (scripts/train/telecom_ids.py's settings) on the rows its generator writes."""
+    from sklearn.ensemble import RandomForestClassifier
+
+    from qsh.qml_ids.attacks import generate
+
+    X, y, _ = generate(n_per_class=300, seed=42)
+
+    def fit(Xs, ys, seed):
+        rf = RandomForestClassifier(n_estimators=200, random_state=seed, n_jobs=4)
+        rf.fit(Xs, ys)
+        return {"forest": rf}
+
+    return np.asarray(X, dtype=float), np.asarray(y, dtype=int), fit, {
+        "data": "QKD-attack telemetry this repository generates (qsh.qml_ids.attacks, 8 classes x 300, seed 42; Apache-2.0)",
+        "models": {"forest": "telecom_ids.qml: RandomForestClassifier(n_estimators=200), the trainer's settings"}}
+
+
+TARGETS = {"opssat": _opssat, "telecom_qml": _telecom_qml}
 
 
 # --------------------------------------------------------------------------------------------- attacks

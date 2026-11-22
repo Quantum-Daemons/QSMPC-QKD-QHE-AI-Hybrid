@@ -1,0 +1,56 @@
+{
+ "what": "membership inference against the training procedure, over shadow models",
+ "target": "telecom_qml",
+ "data": "QKD-attack telemetry this repository generates (qsh.qml_ids.attacks, 8 classes x 300, seed 42; Apache-2.0)",
+ "models": {
+  "forest": "telecom_ids.qml: RandomForestClassifier(n_estimators=200), the trainer's settings"
+ },
+ "design": {
+  "pool": 2400,
+  "audit_records": 1920,
+  "population_records": 480,
+  "shadow_models": 64,
+  "membership": "complementary pairs: each record a member of exactly half the models",
+  "references_per_target": 62,
+  "seed": 0,
+  "rmia_offline_a": 0.3,
+  "fit_seconds": 14.4
+ },
+ "attacks": {
+  "lira_online": "Carlini et al., IEEE S&P 2022 (arXiv:2112.03570); implemented here",
+  "rmia_offline": "Zarifzadeh, Liu and Shokri, ICML 2024 (arXiv:2312.03262); implemented here and checked against ML Privacy Meter's run_rmia at e384af8fd931"
+ },
+ "results": {
+  "forest": {
+   "lira_online": {
+    "auc": 0.7045,
+    "members": 61440,
+    "non_members": 61440,
+    "tpr_at_fpr_0.001": 0.0061,
+    "tpr_at_fpr_0.01": 0.0502,
+    "tpr_at_fpr_0.1": 0.1806
+   },
+   "rmia_offline": {
+    "auc": 0.8671,
+    "members": 61440,
+    "non_members": 61440,
+    "tpr_at_fpr_0.001": null,
+    "not_resolvable": [
+     "fpr 0.001: 0.0024 of non-members tie at the top score"
+    ],
+    "tpr_at_fpr_0.01": 0.2264,
+    "tpr_at_fpr_0.1": 0.5822
+   },
+   "rmia_matches_ml_privacy_meter_max_abs_diff": 0.0020833333333333814,
+   "records_exposed_in_most_targets_at_fpr_1e-3": 7,
+   "audit_records": 1920
+  }
+ },
+ "reading": "TPR at a fixed low FPR is the measure; an AUC near 0.5 with TPR near the FPR means the attack learns little about membership from this model's outputs. An attack gives a lower bound on leakage, not a proof of its absence.",
+ "environment": {
+  "git": "9aa0c7c",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-23"
+ }
+}
