@@ -56,6 +56,37 @@ third party's system.
   v6.2.0, the version the threshold module uses), with the rule that the client never tells an evaluator whether a
   decryption decoded. The threshold module imports no bootstrapping package, so it holds no coefficient-to-slot keys.
 
+## Reconstruction and inversion, read 2026-11-22
+
+The memo also proposes model-inversion and reconstruction tests. What applies here depends on what an adversary holds:
+the weights are published, and the federations aggregate updates.
+
+- **Logistic models and small MLPs: an informed adversary reconstructs a record in closed form.** Balle, Cherubin and
+  Hayes, *Reconstructing Training Data with Informed Adversaries*, IEEE S&P 2022 (doi:10.1109/SP46214.2022.9833677),
+  give the attack for an adversary who knows every training record but one. Run on planted canaries, it measures what
+  the published students and the federated heart model reveal. Its authors' companion code
+  (`facebookresearch/bounding_data_reconstruction`) is CC BY-NC 4.0, so it is reimplemented here, not copied.
+- **Gradients in a federation.** Geiping et al., *Inverting Gradients* (NeurIPS 2020, arXiv:2003.14053), after Zhu, Liu
+  and Han, *Deep Leakage from Gradients* (NeurIPS 2019, arXiv:1906.08935): one example's update to a layer with a bias
+  gives its input exactly. Secure aggregation leaves an honest server only the sum; a server that tampers with the
+  model can still isolate records, which is outside what the pages simulate. For the chest X-ray federation, a run with
+  `breaching` (MIT) or LeakPro (Apache-2.0) at a positive control and at the real local configuration would measure it,
+  on the GPU.
+- **DP-trained models.** Hayes, Mahloujifar and Balle, *Bounding Training Data Reconstruction in DP-SGD* (NeurIPS 2023,
+  arXiv:2302.07225), and a k-candidate canary game run in one training run (Mahloujifar, Melis and Chaudhuri, *Auditing
+  f-Differential Privacy in One Run*, ICML 2025, arXiv:2410.22235), reported beside the 1/k baseline and the bound that
+  riskcal (MIT) computes after Kulynych et al. (NeurIPS 2025, arXiv:2507.06969).
+- **Attribute inference on the tabular heart data**, reported as success over an imputation baseline, because earlier
+  attacks did no better than imputing (Jayaraman and Evans, *Are Attribute Inference Attacks Just Imputation?*, CCS
+  2022, doi:10.1145/3548606.3560663).
+- **Not run, because the result would mislead.** Inverting a linear student returns its published weight direction,
+  and inverting the binary BreastMNIST classifier returns a class prototype; the telemetry and synthetic-data models
+  hold no person's record; and reconstructing from the ResNets is exploratory work whose failure would prove nothing.
+
+Reporting follows from this: the threat model and the unit of privacy (record, patient or hospital), where the noise is
+added, canary success with its confidence interval beside the baseline and any DP bound, and that an attack gives a
+lower bound only. Metrics are published, never a reconstructed record or image.
+
 ## What each use case could add
 
 | Use case | Membership-inference audit | DP audit | Note |
