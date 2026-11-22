@@ -14,6 +14,7 @@ import { useState } from "react";
 import StageBadge from "./StageBadge";
 import { type FedHeartDpResult, fedHeartComparisons, type FedHeartResult } from "../lib/clientFedHeart";
 import DpPrivacyUtility from "./DpPrivacyUtility";
+import DpLedgerPanel from "./DpLedgerPanel";
 import { composedEpsilon, formatDelta } from "../lib/clientDp";
 import { type AggregationComparison, DP_ROW_EPSILON } from "../lib/clientFedAgg";
 import { compareAggregationsInWorker } from "../lib/clientFedAggRun";
@@ -272,6 +273,8 @@ function DpTable({ dp }: { dp: FedHeartDpResult }) {
         Steinke, 2016): published together, the {dp.rows.filter((x) => Number.isFinite(x.epsilon)).length} rows are
         epsilon {dp.epsilonAllRows.toFixed(2)} at the same delta, not the largest of them.
       </p>
+      <DpLedgerPanel population="medical-heart" thisRun={{ epsilon: dp.epsilonAllRows, delta: dp.delta }}
+        thisRunLabel="This run's four noised models" />
     </div>
   );
 }

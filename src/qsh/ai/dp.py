@@ -205,6 +205,7 @@ def genomics_dp(counts: list[int], epsilon: float, rb: RandBelow = crypto_rand_b
         "epsilon_achieved": epsilon_of(V, 1, d2, n, 1, GENOMICS_DELTA),
         "epsilon_one_dishonest": epsilon_of(V, 1, d2, n - 1, 1, GENOMICS_DELTA),
         "variance_per_cohort": V,
+        "rho": rho_of(V, 1, d2, n, 1),
     }
 
 
@@ -220,4 +221,5 @@ def dp_count(count: int, rb: RandBelow = crypto_rand_below, epsilon: float = FIN
         "released": max(0, int(count) + discrete_gaussian(V, rb)),
         "epsilon_achieved": epsilon_of(V, 1, FINANCE_SENSITIVITY, 1, 1, FINANCE_DELTA),
         "variance": V,
+        "rho": rho_of(V, 1, FINANCE_SENSITIVITY, 1, 1),
     }
