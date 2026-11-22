@@ -67,7 +67,9 @@ export default function DpLedgerPanel({ population, thisRun, thisRunLabel }: {
         In words: someone who put the chance that one given {unit} is in the data at 1 in 10 can, after
         {more ? " all of this tab's releases" : ` ${thisRunLabel.charAt(0).toLowerCase()}${thisRunLabel.slice(1)}`}, put it at
         most at {posterior(posteriorAtMost(widest, LEDGER_PRIOR))},
-        whatever else they knew: epsilon bounds how far any result moves anyone&apos;s odds. That reading is exact when
+        whatever else they knew: epsilon bounds how far any result moves anyone&apos;s odds. A survey of 963 people found
+        odds-based explanations of epsilon more effective than ones that show outputs or leave epsilon out (Nanayakkara,
+        Smart, Cummings, Kaptchuk and Redmiles, USENIX Security 2023). That reading is exact when
         delta is 0. With delta {formatDelta(thisRun.delta)} the exact statement is the last column: a test of
         whether {aUnit} is in the data that wrongly flags 1 in 20 of those that are not finds at most that share of those that are
         (Kairouz, Oh and Viswanath, ICML 2015). The ledger lives in this tab: it cannot see other tabs, earlier visits or

@@ -9,6 +9,7 @@ import { sumUnderThresholdBgvInWorker } from "../lib/clientFedAggRun";
 import { genomicsDpRows } from "../lib/cardRows";
 import CardExport from "./CardExport";
 import DpLedgerPanel from "./DpLedgerPanel";
+import DpNoiseModels from "./DpNoiseModels";
 
 export interface GenomicsDpArtifact extends GenomicsDp {
   released: number; exact: number; variant: string; individuals: number; cohorts: number;
@@ -54,6 +55,7 @@ export default function GenomicsDpCard({ dp }: { dp: GenomicsDpArtifact }) {
       </p>
       <DpLedgerPanel population="genomics" thisRun={{ epsilon: dp.epsilonAchieved, delta: dp.delta }}
         thisRunLabel="This run's count" />
+      <DpNoiseModels here="distributed" n={dp.individuals} units="people" />
       <ThresholdBgv dp={dp} />
     </div>
   );

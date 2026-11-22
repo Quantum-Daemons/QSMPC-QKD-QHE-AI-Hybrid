@@ -4,6 +4,7 @@ import { type CountRelease, formatDelta } from "../lib/clientDp";
 import { financeDpRows } from "../lib/cardRows";
 import CardExport from "./CardExport";
 import DpLedgerPanel from "./DpLedgerPanel";
+import DpNoiseModels from "./DpNoiseModels";
 
 export interface FinanceDpArtifact extends CountRelease { exact: number; sizeA: number; sizeB: number }
 
@@ -39,6 +40,7 @@ export default function FinanceDpCard({ dp }: { dp: FinanceDpArtifact }) {
       </p>
       <DpLedgerPanel population="finance" thisRun={{ epsilon: dp.epsilonAchieved, delta: dp.delta }}
         thisRunLabel="This run's count" />
+      <DpNoiseModels here="central" n={dp.sizeA + dp.sizeB} units="accounts" />
     </div>
   );
 }

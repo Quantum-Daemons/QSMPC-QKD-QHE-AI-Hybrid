@@ -15,6 +15,7 @@ import StageBadge from "./StageBadge";
 import { type FedHeartDpResult, fedHeartComparisons, type FedHeartResult } from "../lib/clientFedHeart";
 import DpPrivacyUtility from "./DpPrivacyUtility";
 import DpLedgerPanel from "./DpLedgerPanel";
+import DpNoiseModels from "./DpNoiseModels";
 import { composedEpsilon, formatDelta } from "../lib/clientDp";
 import { type AggregationComparison, DP_ROW_EPSILON } from "../lib/clientFedAgg";
 import { compareAggregationsInWorker } from "../lib/clientFedAggRun";
@@ -100,7 +101,7 @@ export default function FedHeartPanel({ result, sites, dp }: { result: FedHeartR
           it: {sites.modifications}
         </p>
       )}
-      {dp && <DpTable dp={dp} />}
+      {dp && <DpTable dp={dp} patients={trainTotal} />}
       <EncryptedAggregation seed={r.seed} dp={dp ?? null} />
     </div>
   );
@@ -223,7 +224,7 @@ function EncryptedAggregation({ seed, dp }: { seed: number; dp: FedHeartDpResult
  * be with one hospital adding no noise, the noise, and the accuracy. The noise comes from the tab's CSPRNG, so a reload
  * shows other figures; the caption says so rather than presenting one draw as the result.
  */
-function DpTable({ dp }: { dp: FedHeartDpResult }) {
+function DpTable({ dp, patients }: { dp: FedHeartDpResult; patients: number }) {
   return (
     <div style={{ marginTop: 14 }} id="fed-heart-dp">
       <h4>With record-level differential privacy</h4>
@@ -275,6 +276,7 @@ function DpTable({ dp }: { dp: FedHeartDpResult }) {
       </p>
       <DpLedgerPanel population="medical-heart" thisRun={{ epsilon: dp.epsilonAllRows, delta: dp.delta }}
         thisRunLabel="This run's four noised models" />
+      <DpNoiseModels here="distributed" n={patients} units="patients" />
     </div>
   );
 }
