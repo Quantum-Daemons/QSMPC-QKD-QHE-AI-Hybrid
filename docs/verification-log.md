@@ -6159,3 +6159,54 @@ and why each item is or is not cited, is in `references/research-sweep-2026-11.m
   - No confidential liquidation was found in production. The nearest, null402, is on the Sepolia testnet.
   - ESA-ADB, Lyu and the 2 km free-space QKD link are at the cited versions.
   - FIPS 206 and 207 have no draft.
+
+
+### #80 on the deployed site (2026-11-21)
+
+#80 was merged as 51a7b25 on the owner's approval (CI 8 of 8, the local gate passed on its head) and deployed; the box serves
+`index-C-GZhrkH.js`. Read on the deployed site in headless Chrome:
+
+- **`/value`.** It names Webster et al. and Pappalardo et al. beside Cain et al. and Babbush et al., ends "All are estimates,
+  not demonstrations", and no longer says "Two 2026 preprints". The prior-art table carries the hybrid-split row with Safhire.
+- **The telecom page.** It carries arXiv:2608.04047 and QF-LOG, and not "nearest strong 2026".
+- **The telecom pins.** Its tabs name `59bbb6ed14f8` and `95b8f7e0cd0e` and neither earlier pin. The run fetched both models at
+  those revisions (200) and re-scored each on its 600 rows, PASS.
+- **The CSP walk.** It passes every page, worker and run.
+
+### The dataset licences, re-read at their sources, and the register made whole (2026-11-21)
+
+The owner's option 3 asks for each use case's dataset licences to be checked. Every corpus in section 1 of `DATA_LICENSES.md`
+that publishes its terms where a script can read them was re-read at the source on 2026-11-21, and each matches the register:
+
+| Corpus | Source read | Licence |
+|---|---|---|
+| IBM AMLworld | Kaggle | CDLA-Sharing-1.0 |
+| MedMNIST+ | Zenodo, v3.0 | CC BY 4.0 |
+| PhysioNet/CinC 2016 and CirCor 1.0.3 | PhysioNet | ODC-By 1.0 |
+| PANNs features | Zenodo | CC BY 4.0 |
+| ESA-ADB | Zenodo's rights field; the legacy API format omits it | CC BY 3.0 IGO |
+| OPS-SAT-AD | Zenodo | CC BY 4.0 |
+| 5G-NIDD | its Fairdata record | CC BY 4.0 |
+| PGS000072 | the Catalog's pass-through to its publication, Graff et al. 2021 | CC BY 4.0 (Crossref) |
+
+NIH's ChestX-ray14 terms were read at NIH on 2026-11-14.
+
+The register itself was not whole. `tests/test_r84_shipped_data_carries_its_licence.py` checks a hand-written list, and files
+added since were not on it. Read against `git ls-files web/public/data`:
+
+- **`satellite/boundary.json` had no licence fields.** It shipped OPS-SAT-AD test segments, with their two feature values and
+  published labels, without the licence, the link, the credit or a change note.
+- **Two aggregate files had no credit.** `satellite/vus_pr.json` and `medical/fedheart_dp_sweep.json` hold figures computed from
+  ESA-ADB and UCI Heart Disease, and credited neither, where the page's other aggregate cards credit their corpora.
+- **Eight shipped files had no row of their own in `DATA_LICENSES.md`.**
+
+The three scripts that write those files now write the fields, the boundary's credit taken from the registry. The shipped files
+gained exactly those fields, with no number changed; each diff only adds lines. Section 2b gains the eight rows.
+`tests/test_r86_every_shipped_data_file_is_licensed.py` takes its files from git and puts each in one class with its own rule:
+
+- **rows:** the licence, a matching link, the changes, and a credit where the licence asks one;
+- **aggregates:** a credit object with where to download, the citation, and a licence or terms;
+- **fitted weights.**
+
+The test also asks each file for a row of its own in the register, and holds the three files to what their scripts write. It
+was seeded: the boundary as it shipped, and a credit without its licence, each fail.

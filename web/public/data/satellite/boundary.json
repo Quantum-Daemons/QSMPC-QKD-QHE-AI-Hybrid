@@ -4478,5 +4478,9 @@
 ],
 "surrogate": null,
 "model_test_auc_pr": 0.9681071056846158,
-"test_segments": 529
+"test_segments": 529,
+"licence": "CC-BY-4.0",
+"licence_url": "https://creativecommons.org/licenses/by/4.0/",
+"modifications": "The full model's probability on a grid over two of the 19 published per-segment features (n_peaks, diff2_peaks), the other 17 held at the test partition's medoid, and the test segments within the slice: their two feature values rounded to 4 decimals, their published labels and the two models' classes.",
+"attribution": "Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, CC BY 4.0. Data: Ruszczak, B., Kotowski, K., Nalepa, J. & Evans, D., 'OPSSAT-AD - anomaly detection dataset for satellite telemetry', Zenodo (2024), doi:10.5281/zenodo.12588359 (version 1)."
 }

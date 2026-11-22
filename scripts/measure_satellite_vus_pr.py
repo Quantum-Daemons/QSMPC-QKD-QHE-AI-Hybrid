@@ -51,6 +51,15 @@ sys.path.insert(0, str(REPO / "src"))
 RECORD = REPO / "docs" / "measurements" / "satellite-vus-pr-2026-11-14.json"
 CARD = REPO / "web" / "public" / "data" / "satellite" / "vus_pr.json"
 KEY = "satellite_comms.telemanom"
+#: The card's credit (Round 86, 2026-11-21): figures computed from ESA-ADB (CC BY 3.0 IGO), credited as the page's other
+#: aggregate cards credit their corpora; the citation is the registry's (`registry.get(KEY).dataset.attribution`).
+CARD_ATTRIBUTION = {
+    "provider": "European Space Agency",
+    "dataset": "ESA Anomaly Dataset (ESA-ADB), version 1.0, Mission1 lightweight channels 41-46",
+    "download": "https://zenodo.org/records/12528696",
+    "licence": "CC BY 3.0 IGO",
+    "licence_url": "https://creativecommons.org/licenses/by/3.0/igo/",
+}
 THRESHOLDS = 250
 FINE_THRESHOLDS = 1000
 DRAWS = 5
@@ -235,6 +244,7 @@ def main() -> int:
                                    "vus_roc", "point_wise_average_precision", "sensitivity", "no_skill",
                                    "event_wise_f0_5_corrected", "comparator")}
     card["_about"] = "What the satellite page's VUS-PR line shows; written by scripts/measure_satellite_vus_pr.py."
+    card["attribution"] = {**CARD_ATTRIBUTION, "citation": spec.dataset.attribution}
     card["tsb_ad"] = env["tsb_ad"]
     CARD.write_text(json.dumps(rounded(card, 4), indent=1) + "\n")
     print(json.dumps({k: record[k] for k in ("vus_pr", "vus_roc", "point_wise_average_precision", "sensitivity", "no_skill")}, indent=1))
