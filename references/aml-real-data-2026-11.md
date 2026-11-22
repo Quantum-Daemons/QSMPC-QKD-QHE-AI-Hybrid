@@ -39,6 +39,24 @@ in the owner's chosen words.
   commercial use, but it is copyleft, which this repository's permissive set excludes, and whether it reaches trained
   weights is unsettled.
 
+## The checks as run
+
+- **BitcoinHeist, 2026-11-22** (`scripts/measure_bitcoinheist_check.py`, record
+  `docs/measurements/bitcoinheist-check-2026-11-22.json`). The finance booster's settings, a threshold chosen on 2015,
+  the soft logistic student and its linear score under CKKS, fitted on 2011-2014 (1,468,876 rows,
+  18,592 positives, 6 families) and tested on 2016-2017 (749,117 rows,
+  19,117 positives, 26 families, most of them never seen in the fit window). The booster
+  reaches minority-class F1 0.069 and AUPRC 0.039 against a base rate of
+  0.026 (AUROC 0.65); the linear student is at chance (AUROC 0.52, AUPRC
+  0.024). Under CKKS the student's 64 scored rows match its clear score within
+  $`1.1e-06`$ and all 64 decisions agree. So the pipeline and its encrypted path run on
+  real rows, and a detector fitted on earlier ransomware families does not carry to new ones; it is not a laundering
+  result and not a detector.
+- **BitcoinTemporalGraph**: downloaded (MD5s match Figshare's). The archive is a PostgreSQL directory-format dump, two
+  table files of 46.61 GB and 26.99 GB, 73.61 GB unpacked; the GNN check reads the dump's table files directly and runs
+  on the GPU only on the owner's approval of each job.
+- **The GPL-3.0 corporate-account set**: downloaded for a local comparison; nothing derived from it is committed.
+
 ## Read by the survey and not verified here
 
 These were reported by the survey and are not relied on: BybitML (FlowShield, arXiv:2608.17355) as CC BY-NC 4.0 on a
