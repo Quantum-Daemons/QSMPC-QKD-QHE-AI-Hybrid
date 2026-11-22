@@ -44,7 +44,7 @@ with no warning. Discarding the cache is the only guard, and it is manual.
 
 The booster is retrained from `scripts/train/finance_aml.py`'s own functions at its own seed (42),
 `TEST_FRACTION` 0.30 and `VAL_FRACTION` 0.20 over the full 5,078,345-row HI-Small corpus. Three
-recorded numbers reproduce to every digit `models/metrics.json` carries:
+recorded numbers reproduced, in Round 49, to every digit `models/metrics.json` then carried (the retrain on 114 inputs in Round 86 has replaced them):
 
 | quantity | `models/metrics.json` | this run |
 |---|---|---|
@@ -72,7 +72,7 @@ inside the correction.
 ECE is over 20 equal-frequency bins; `ECE_pos` is the same per-bin gap weighted by each bin's
 positive count instead of its row count.
 
-| arm | Brier | log loss | ECE(20) | ECE_pos(20) | Brier, y=1 only | log loss, y=1 only | AUROC | AUPRC | distinct outputs |
+| arm | Brier | log loss | ECE(20) | ECE_pos(20) | Brier, $`y = 1`$ only | log loss, $`y = 1`$ only | AUROC | AUPRC | distinct outputs |
 |---|---|---|---|---|---|---|---|---|---|
 | raw | 0.00150259 | 0.00965987 | 0.00064837 | 0.003586 | 0.862178 | 5.745480 | 0.95255826 | 0.123341 | 1,388,669 |
 | `platt_prob` (shipped) | 0.00145433 | 0.01049835 | 0.00183223 | 0.013111 | 0.943890 | 6.256003 | 0.95255826 | 0.123341 | 1,388,669 |
@@ -310,7 +310,7 @@ windows (`fit_on=fit` against `fit_on=tr`), which is why this is reported as sup
 
 Calibration set 1,523,504 cases / 2,321 events; scored on 710,969 cases / 801 events:
 
-| arm | Brier | log loss | ECE(20) | ECE_pos(20) | Brier, y=1 | log loss, y=1 | AUROC | AUPRC | distinct |
+| arm | Brier | log loss | ECE(20) | ECE_pos(20) | Brier, $`y = 1`$ | log loss, $`y = 1`$ | AUROC | AUPRC | distinct |
 |---|---|---|---|---|---|---|---|---|---|
 | raw | 0.00114486 | 0.00635503 | 0.00081842 | 0.008983 | 0.722692 | 4.234174 | 0.95836322 | 0.197493 | 685,000 |
 | `platt_prob` | 0.00104814 | 0.00722038 | 0.00151102 | 0.006742 | 0.838169 | 5.001447 | 0.95836322 | 0.197493 | 685,000 |
@@ -356,4 +356,4 @@ artifact is a defect with a timer on it.
 | `tests/test_calibration.py` | CORRECTED SINCE. The `imbalanced` fixture claimed a 1-in-650 base rate and 90% of scores below $`10^{-4}`$ and delivered 1-in-16 and 34.8%, drawing its labels from the score itself - so the defect was not reproduced and a shape assertion would have passed on the broken arm. Rebuilt, and the missing near-constant test added. A second test now pins the ARTIFACT (`on_logit`, the formula string, the clip, and that the map can express a risk an order of magnitude below the base rate), because nothing in CI read that field and a revert of the trainer's one argument left every gate green |
 | the private verification checklist's calibration rule (not published; it requires a calibration to be reported with the metric it cost) | CORRECTED SINCE. Its worked example was "measured on finance: Brier and MCB improved while log-loss got WORSE", which the fix makes false. The rule is kept; the example is re-labelled as the pre-fix state |
 | `docs/deliverable-verification.md` Round 46 stamp | CORRECTED SINCE. Still asserted in the present tense that `fit_platt` "is fed a probability"; every sibling site had a supersession note and this one did not |
-| `report/technical-report.tex`, `README.md` pin counts | ADJACENT, corrected where measured. The retrain unpinned both finance models (`hf_revision` -> `hf_revision_invalidated_by_retrain`), emptying the finance browser tier until a re-publish; README's "10 of 13" was wrong before and after, and is now stated from the registry (11 of 11 published specs pinned, 4 of 15 not published) |
+| the technical report (private since Round 86) and `README.md`'s pin counts | ADJACENT, corrected where measured. The retrain unpinned both finance models (`hf_revision` -> `hf_revision_invalidated_by_retrain`), emptying the finance browser tier until a re-publish; README's "10 of 13" was wrong before and after, and is now stated from the registry (11 of 11 published specs pinned, 4 of 15 not published) |

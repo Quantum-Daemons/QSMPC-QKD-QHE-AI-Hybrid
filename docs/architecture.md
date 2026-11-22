@@ -38,7 +38,7 @@ backbone** (`qrng/`: state-vector `|+>` measurement, the **SP 800-90B section 4.
 tests (Repetition Count + Adaptive Proportion) which gate the verdict, with SP 800-22 p-values reported
 but NOT gating -- section 4.1 states those tests "are not useful for monitoring the noise source" -- + an **SP 800-90B**
 most-common-value **min-entropy** estimate, and a **Leftover-Hash-Lemma-bounded Toeplitz / seedless two-source**
-extractor - Giestinhas & Spiller, arXiv:2603.26907) that **can** seed the BB84/E91 basis+bit choices (**opt-in, off by default**: `qrng.enabled = False` in `src/qsh/config/defaults.py`, so BB84 entropy is byte-for-byte unchanged unless enabled), plus a selectable
+extractor - Giestinhas & Spiller, arXiv:2603.26907) that **can** seed the BB84 basis+bit choices (**opt-in, off by default**: `qrng.enabled = False` in `src/qsh/config/defaults.py`, so BB84 entropy is byte-for-byte unchanged unless enabled), plus a selectable
 **E91/CHSH** entanglement protocol (`qkd/e91.py`, `protocol="e91"`) alongside the two-intensity decoy-state BB84
 (`bb84.py`, where `mu_decoy` genuinely moves the SKR - Ma-Qi-Zhao-Lo 2005; OptiQKD tunes it, arXiv:2603.04192).
 The `pqc/` module adds a config-gated PQC+QKD key combiner (`transport.py`,

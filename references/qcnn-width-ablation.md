@@ -291,7 +291,8 @@ would turn the directional reading above into a settled one.
 ## Why the widths differ per use case
 
 Telecom was narrowed from 8 wires to 7 because it encodes **7 features**, so the 8-wire model's last
-wire is padding. Finance and medical encode **8 features**, so 7 is not a width they have:
+wire is padding. Finance and medical encoded **8 features** then (finance has encoded four, at 4 wires, since Round 84), so 7 was not a
+width they had:
 `scripts/train/qcnn_variational.py` exits with `8 features exceeds 7 wires`. The only spare-wire
 question available on those two is the widening one, 8 to 9.
 
@@ -359,8 +360,8 @@ and the honest claim remains that a difference in either direction needs more th
 
 ## What ships
 
-Both 9-wire circuits ship, as `web/public/data/{finance,medical}/qcnn_weights_q9.json`, and the
-browser's QCNN width control now offers exactly the widths that ship - {8, 9} on finance and medical,
-{7, 8} on telecom - instead of 2..14 with a silent fallback to 8. Shipping a width that loses at the
+Both 9-wire circuits shipped then, as `web/public/data/{finance,medical}/qcnn_weights_q9.json` (removed in Round 84),
+and the browser's QCNN width control offered exactly the widths that shipped - {8, 9} on finance and medical, {7, 8}
+on telecom; {4}, {8} and {7, 8} today - instead of 2..14 with a silent fallback to 8. Shipping a width that loses at the
 median is deliberate: the control is meant to reach a real circuit, and a visitor who moves it should
 see that more wires is not free.

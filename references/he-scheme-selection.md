@@ -39,7 +39,7 @@ For scale, the nearest working system costs 40 s to 8.4 minutes per switch on na
 CPU at ring degree $`2^{16}`$, against this project's 8192.
 
 **ISO/IEC 28033-5** is titled *Mechanisms for scheme switching* and is the laggard of that series at
-Working Draft 20.60 (2025-08-16), while Part 3 (CKKS) is at its FDIS ballot (stage 50.20, read 2026-11-01). The standards process agrees
+Working Draft 20.60 (2025-08-16), while Part 3 (CKKS) is under publication (stage 60.00, read 2026-11-22; at its FDIS ballot, 50.20, on 2026-11-01). The standards process agrees
 with the literature about maturity.
 
 ## What the goal actually needs: two contexts, not one hybrid
@@ -56,7 +56,7 @@ and `ckks` plus `BatchEncoder`, verified directly against the installed package.
 | | CKKS (current) | BFV (scorecard) |
 |---|---|---|
 | arithmetic | approximate, over reals | **exact, over integers** |
-| slots at N=8192 | 4096 complex | **8192 integer** |
+| slots at $`N = 8192`$ | 4096 complex | **8192 integer** |
 | rescaling / scale management | required | none |
 | plaintext-encrypted agreement | to a precision bound | **bit-exact** |
 

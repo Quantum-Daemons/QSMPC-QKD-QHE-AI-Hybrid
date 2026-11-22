@@ -7,7 +7,8 @@ rule here is that a comparator has to be resolved to the artefact that published
 
 ## The problem with comparing total latency
 
-This project's encrypted tier evaluates between 20 and 3,226 parameters on WASM CPU inside a browser
+This project's encrypted tier evaluates between 64 and 3,226 parameters under CKKS alone, and 23,106 and 34,962 in the finance MLP and
+compact GNN beside garbled circuits, on WASM CPU inside a browser
 tab. The 2026 encrypted-inference figures it would sit beside are ResNets and transformers on
 datacentre GPUs. Putting the tab's latency for a 64-parameter student next to a few hundred
 milliseconds for a CNN on an A100 tells a reader nothing about either system, and this repository's own rule against
@@ -20,11 +21,11 @@ key-switch, which is the primitive the CKKS literature benchmarks, and model siz
 
 The obvious derivation - `fhe_linear_ms / fhe_dense_rotations`, both of which the page already
 printed side by side - is wrong, and wrong by a lot. `fhe_linear_ms` is the measured wall-clock
-multiplied by `benchScale()` for the run's model size - a value that comes from the config
-default, since the Parameters-panel selector for it was removed in Round 20 and this document
+multiplied by `benchScale()` for the run's model size - a fixed constant, `BENCH_MODEL_SIZE`, since 2026-11-08 (the config
+default before), since the Parameters-panel selector for it was removed in Round 20 and this document
 described it as current - while
-`fhe_dense_rotations` is a raw count from the loop. On the genomics page the scale factor is 33, so
-that division reads **159.9 ms per rotation against a true 3.18**.
+`fhe_dense_rotations` is a raw count from the loop. On the genomics page the scale factor was 33 until Round 84 (it is 1 now), so
+that division read **159.9 ms per rotation against a true 3.18**.
 
 `rotateVector` is now timed directly. The page reports `fhe_ms_per_rotation` from that measurement,
 and reports `fhe_linear_measured_ms` and `fhe_bench_scale` beside `fhe_linear_ms` so the projected
@@ -137,7 +138,7 @@ Columns are Native C++, Node, Bun, Chrome, Firefox, Safari.
 
 ### Which of the two rows is a fair comparison, and which is not
 
-**n=8192 is comparable.** Same ring degree, same library, both Chrome, both WASM. The coefficient
+**$`n = 8192`$ is comparable.** Same ring degree, same library, both Chrome, both WASM. The coefficient
 moduli differ - 218 bits published against 200 here - which is a similar limb count, so the
 comparison is like-for-like enough to state. Published Chrome 6.83 ms against 3.10-3.24 ms measured
 here: this host is roughly **2.2x faster** than the published M1 Pro figure. Different CPU and a
@@ -168,7 +169,7 @@ relinearization: single-thread Microsoft SEAL on a Ryzen 9 7950X3D gives 1641 us
 14563 us at 16384; HEonGPU on an RTX 4090 gives 41.8 us and 84.1 us.
 
 This measures relinearization, not rotation. Both are key-switching, and node-seal's own table shows
-the two within 1% of each other at both ring degrees (8192: relin 1832 against rotate 1836; 16384:
+the two within 1.5% of each other at both ring degrees (8192: relin 1832 against rotate 1836; 16384:
 11292 against 11458), so it is a sound proxy - but it is cited as relinearization.
 
 The paper's CPU SEAL figure at ring 8192 (1641 us, Ryzen) against node-seal's native column (1832

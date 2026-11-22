@@ -67,7 +67,7 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   URL: https://arxiv.org/abs/2607.24118
   Added: no PDF bundled; abstract loaded and claim verified 2026-08-15
   Licence **CC BY 4.0**, read from the abstract page's own licence line.
-  **v1 only. It has an arXiv DataCite DOI (10.48550/arXiv.2607.24118) and NO journal DOI** - which
+  **v1 and v2 (below). It has an arXiv DataCite DOI (10.48550/arXiv.2607.24118) and NO journal DOI** - which
   is not the same thing as "no DOI", the phrasing a code comment used until Round 44. Every arXiv
   paper carries a DataCite DOI; what is absent here is peer review.
   Reports, verbatim from the v1 abstract: a **100 MHz** repetition rate, **164.8 kbps** secure key
@@ -76,7 +76,8 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   **v2 (2026-10-16), read 2026-10-27:** an **average finite-key** secure key rate of **110 kbps** at an
   average QBER of **3.28 %**, same link and clock. The code, the config and the control-plane panel
   quote v2 since Round 75.
-  **What it grounds, and only this:** the `source_rate_hz` / `free_space_source_rate_hz` defaults in
+  **What it grounded until Round 76, and only this:** the `source_rate_hz` / `free_space_source_rate_hz` defaults (since
+  then Rusca et al.'s 1 GHz on fibre and Liao et al.'s 100 MHz on the downlink) in
   `src/qsh/config/defaults.py`. Round 44 made the source repetition rate an explicit, operator-set
   assumption so ETSI GS QKD 015's `skr`/`eskr` could carry the bit/s the spec defines them as, and
   this paper's 100 MHz is the default that assumption starts from. It anchored the free-space
@@ -173,7 +174,8 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
   efficiency of 1.32-1.36 at 3% QBER. Read as the InGaAs comparison in Round 76; not adopted.
 
 - **Information-Theoretic Solutions for Seedless QRNG Bootstrapping and Hybrid PQC-QKD Key
-  Combination** - Giestinhas and Spiller, University of York, arXiv:2603.26907v2 [quant-ph], 2026
+  Combination** - Giestinhas and Spiller, University of York, arXiv:2603.26907v2 [quant-ph], 2026 (v3, 2026-08-11,
+  rewords the abstract, "smooth min-entropy" for "min-entropy"; the construction this project follows is unchanged)
   `[R-local]`
   URL: https://arxiv.org/abs/2603.26907
   Added: not committed (`.gitignore` rule
@@ -205,7 +207,8 @@ Each carries whether it was reproduced locally or is recorded as reported-and-un
 **Workings for the 5G-NIDD metric profile live in
 [`5g-nidd-metric-profile.md`](5g-nidd-metric-profile.md).** Its finding is that the published file holds one attacker's UDP flood twice under contradictory labels, which sets a ceiling of 0.7685 on the rows as published; the model is fitted with the Benign copy removed and scores 0.9979. Round 49 published `telecom_ids.nidd` with
 accuracy 0.7608 against literature figures of 0.90 to 0.98 and attributed the gap to row-identifier
-leakage in the published work. Round 50 measured the cause as one column, `IdleTime`, which `Combined.csv` does not carry, and refitted on it to reach 0.982897. Round 86 read that column's values: one per attack session and base station, so it names the file a flow came from, and the 0.98 measured how well a model recognises the file. The model is refitted without it, at accuracy 0.7616 and macro F1 0.9275, against a ceiling of 0.7685 for these columns and 0.42 and 0.61 across base stations, and that file carries the correction. The leakage-aware prior work Round 49 did not consult is cited there. The identifier finding itself stands - three integer counters move the narrow configuration to
+leakage in the published work. Round 50 measured the cause as one column, `IdleTime`, which `Combined.csv` does not carry, and refitted on it to reach 0.982897. Round 86 read that column's values: one per attack session and base station, so it names the file a flow came from, and the 0.98 measured how well a model recognises the file. The model was refitted without it, at accuracy 0.7616 and macro F1 0.9275 on the rows as published (macro F1 0.9972
+  now, `models/metrics.json`), against a ceiling of 0.7685 for these columns and 0.42 and 0.61 across base stations, and that file carries the correction. The leakage-aware prior work Round 49 did not consult is cited there. The identifier finding itself stands - three integer counters move the narrow configuration to
 0.9997 - but it does not explain anyone else's numbers.
 
 This section was promised by the preamble of every earlier revision of this file and never written,
@@ -284,7 +287,7 @@ docstring.
   Added: no PDF bundled; withdrawal confirmed 2026-08-04
   Withdrawn **by its own authors** (v2, 2026-04-02) because the evaluation was "insufficient to
   fully support the paper's conclusions". Cited as evidence about the state of the field, not as a
-  method. It is listed here so that a reader who finds v1 elsewhere learns it was retracted.
+  method. It is listed here so that a reader who finds v1 elsewhere learns it was withdrawn.
 
 **What this repository measured**, and it is a negative result kept deliberately: on the synthetic
 8-class telemetry, RandomForest reaches macro F1 0.9866 on its 600 test rows, while the
@@ -529,7 +532,7 @@ papers. Where the two used to overlap, that file is the owner.
   then. The module is kept (`src/qsh/benchmark/quantum_advantage.py`), but neither tier computes it
   for a run and no page shows it. Informs
   `src/qsh/qhe/rate1_qfhe.py` (QOTP plus a KEM-masked key; no Eval).
-- **Classical rate-1 FHE, the counterpart the comparison above omitted** `[R]`
+- **Classical rate-1 FHE, the counterpart the comparison above omitted** `[link]`
   Gentry and Halevi, "Compressible FHE with Applications to PIR", TCC 2019, LNCS 11892, pp. 438-464,
   doi:10.1007/978-3-030-36033-7_17 (ePrint 2019/733): rate $`1-\epsilon`$ under (ring) LWE, with a
   concrete rate-4/9 PIR. Brakerski, Doettling, Garg and Malavolta, "Leveraging Linear Decryption:
@@ -778,7 +781,7 @@ teacher scores minority-class F1 **0.1519** at AMLworld's real prevalence of rou
 Round 86, on 114 inputs; the lesson below is unchanged). The
 published work scores over 0.99 on a balanced set. Both are correct; they are not the same task,
 and a reader comparing them without the prevalence would conclude this implementation is six times
-worse than the state of the art rather than measured on harder rows. It is the same reason this
+(about 1.6 since Round 86's 0.6161) worse than the state of the art rather than measured on harder rows. It is the same reason this
 project refuses to quote aggregate accuracy for AML at all - at that prevalence a model predicting
 "never launder" scores 99.9 percent accuracy - and it is why the finance page prints
 minority-class F1 against an all-positive baseline instead.
@@ -847,7 +850,7 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   fully-connected block per-survivor), and then on a circuit carrying two classes of analytically
   dead parameter (reordered later in the same round). All six artifacts were retrained twice; the
   current values are read from `models/*/weights.json`, which each card is now gated against. **The
-  direction never moved - the classical baseline wins on all three use cases before and after every
+  direction never moved - the classical baseline is level or ahead on all three use cases (medical ties) before and after every
   one of those changes - and only its size did**, which is the only thing this citation was ever
   quoted for.
   Added: 2026-08-11; telecom result and journal reference added 2026-08-13; metrics refreshed after
@@ -895,7 +898,7 @@ Added 2026-08-11. Both verified at the arXiv abstract page.
   *Research Directions: Quantum Technologies* **3**, e3, DOI `10.1017/qut.2025.2` (the bundled PDF, CC BY 4.0, is this version of
   record); preprint arXiv:2409.19359, 2024 `[R]`
   URL: https://doi.org/10.1017/qut.2025.2
-  Added: 2026-06-27
+  Added: 2026-08-15 (the version of record replaced the preprint PDF)
   File: `Quantum_Delegated_and_Federated_Learning_via_Quantum_Homomorphic_Encryption.pdf`
   QOTP-encrypted delegated and federated learning; informs the `src/qsh/ai/federated.py` privacy
   layer. **What that layer's pairwise masks do, stated 2026-11-01.** In both tiers each client draws
@@ -981,7 +984,8 @@ Added in Round 18 and previously recorded only in source docstrings.
 - **ITU-T Y.3804 / Y.3805** - QKDN control and management `[link]`
   URL: https://www.itu.int/rec/T-REC-Y.3804/en
   Added: re-verified 2026-08-04
-  Cited in `docs/pqc-roadmap.md` as the ITU counterpart to the ETSI control plane. Not implemented.
+  Cited in `src/qsh/qkd/sdn_controller.py` and the control-plane panel (`web/src/components/SdnControlPlanePanel.tsx`) as
+  the ITU counterpart to the ETSI control plane. Not implemented.
 
 ---
 - **Barral et al., "Interconnecting Regional QKD Networks: Hybrid Key Delivery Across Quantum
@@ -1103,7 +1107,7 @@ in Round 17 are marked below.
 | `open-quantum-safe/liboqs` and `liboqs-python` | `qsh/pqc/*` | MIT |
 | `openfheorg/openfhe-development`, `microsoft/SEAL` | `qsh/fhe/*`, benchmark | BSD-2 / MIT |
 | `tenseal` | `qsh/fhe/*`, benchmark | **Apache-2.0**, confirmed from the installed package metadata; an earlier revision of this table listed it under BSD-2/MIT |
-| `enCRYPTON-labs/HEonGPU` (moved from `Alisah-Ozcan/HEonGPU`), `chart21/hpmpc` (PIGEON) | git submodules. HEonGPU v2.1.1 is the GPU CKKS backend since Round 86, through this project's binding (`native/heongpu_py`, `qsh/fhe/backends.py`), measured in `docs/models-and-benchmarks.md`; hpmpc is not run yet. `kanav99/shark`, listed here until 2026-10-30, was removed in Round 17 and nothing uses it | Apache-2.0 / MIT |
+| `enCRYPTON-labs/HEonGPU` (moved from `Alisah-Ozcan/HEonGPU`), `chart21/hpmpc` (PIGEON) | git submodules. HEonGPU v2.1.1 is the GPU CKKS backend since Round 86, through this project's binding (`native/heongpu_py`, `qsh/fhe/backends.py`), measured in `docs/models-and-benchmarks.md`; hpmpc is benchmarked offline (`scripts/bench_hpmpc_gpu.sh`, 2026-11-06) and no stage or page runs it. `kanav99/shark`, listed here until 2026-10-30, was removed in Round 17 and nothing uses it | Apache-2.0 / MIT |
 | `data61/MP-SPDZ` | not in the repository (its submodule was removed in Round 17, unreferenced); cited as a CPU MPC reference only | BSD-3-Clause, per CSIRO's grant (the correction above); its bundled third-party components carry their own terms |
 | `lschoe/mpyc` | `qsh/mpc/secret_inference.py` - non-linear MPC (ReLU, argmax, max-pool on shares), run as three party processes by `qsh/mpc/parties.py` since Round 75. A normal PyPI dependency in `requirements-fhe.txt`; the submodule was dropped in Round 17 and nothing is vendored | MIT |
 | `IBM/AMLSim`, `synthetichealth/synthea` | **cited only, not used.** Round 17 removed both submodules as unreferenced; `qsh/data/synthetic.py` mentions them in prose only and no code path calls them | Apache-2.0 |
@@ -1123,7 +1127,8 @@ config, and had no entry. A baseline a page prints beside a measured number is a
 belongs in this file rather than only in a comment.
 
 - **Ruszczak, Kotowski, Evans & Nalepa, "The OPS-SAT benchmark for detecting anomalies in
-  satellite telemetry", *Scientific Data* 12, 710 (2025).** DOI 10.1038/s41597-025-05035-3. Data:
+  satellite telemetry", *Scientific Data* 12, 710 (2025).** DOI 10.1038/s41597-025-05035-3 (a correction of 2025-08-18,
+  doi:10.1038/s41597-025-05751-w, puts Figures 3 to 10 back in order; their numbers and labels were right). Data:
   Zenodo 10.5281/zenodo.12588359, version 1, CC BY 4.0: the record the dataset's README cites and
   the file the loader fetches. The concept DOI 10.5281/zenodo.12588358 resolves to version 2 (record
   15108715), whose files differ and which adds an MIT licence file from KP Labs (`DATA_LICENSES.md`,
@@ -1169,8 +1174,8 @@ belongs in this file rather than only in a comment.
   NeurIPS 2023 Datasets and Benchmarks.** arXiv:2306.16424. AMLworld; source of the 0.6323 finance
   baseline and of the corpus's own synthetic-by-construction statement. Added: 2026-08-07.
 - **Egressy et al., "Provably Powerful Graph Neural Networks for Directed Multigraphs" (Multi-PNA+EU),
-  AAAI-24, vol. 38 no. 10, pp. 11838-11846.** DOI 10.1609/aaai.v38i10.29073. Source of the 0.6816
-  finance ceiling. Added: 2026-08-07.
+  AAAI-24, vol. 38 no. 10, pp. 11838-11846.** DOI 10.1609/aaai.v38i10.29069 (it read 29073, which does not resolve, until 2026-11-22). Source of the GNN cards' 0.6816
+  baseline (the finance ceiling is MEGA's 0.7581). Added: 2026-08-07.
 - **Liu, Qinghua and Paparrizos, John, "The Elephant in the Room: Towards A Reliable Time-Series
   Anomaly Detection Benchmark" (TSB-AD), NeurIPS 2024 Datasets and Benchmarks Track.** The
   proceedings entry IS the citation - **TSB-AD has no arXiv ID at all**, so there is no preprint
@@ -1200,7 +1205,7 @@ belongs in this file rather than only in a comment.
 > **The withdrawn number was quoted in seven places outside this file. All are corrected since** (2026-11-08: only correction notes remain, at `src/qsh/models/metrics.py` and `scripts/train/satellite_telemanom.py`).
 > Listed so the cleanup was a task rather than a discovery, because a correction that lands in the
 > provenance file only is the weakest possible version of it: `README.md:823`;
-> `report/technical-report.tex:201` and `:636`; `scripts/train/satellite_telemanom.py:10` and `:308`
+> the technical report (private since Round 86); `scripts/train/satellite_telemanom.py:10` and `:308`
 > (which is what writes the string into `models/metrics.json:273`, whose `metric_note` therefore carries
 > it, and into `web/src/lib/config.defaults.json:699` via the generated config); and
 > `src/qsh/models/metrics.py:19`, which is the worst of them because it adds an inference the source
@@ -1235,7 +1240,8 @@ belongs in this file rather than only in a comment.
   it is recorded as the code's, while the two sentences above were verified at the arXiv abstract page
   on 2026-08-12. What the repository does with it: `metrics.py` reports **event-wise F-beta with its
   event count as the headline** and computes `point_adjusted_f1` **only as a companion, to show the
-  inflation** - on the satellite run, `point_adjusted_f1` 0.993691 against `event_wise_f0_5` 0.454545
+  inflation** - on the satellite run, `point_adjusted_f1` 0.993691 against `event_wise_f0_5` 0.454545 (that run's; the current one
+  gives 0.948868 against 0.950413 over 29 scored events)
   (`models/metrics.json`), which is the whole argument in two numbers from one run. (That run's; the
   Round 71 retrain, without the whole-series z-score, scores 0 on both, because neither of its 2
   flagged points falls inside one of the 3 scored events.) That is
@@ -1272,7 +1278,7 @@ belongs in this file rather than only in a comment.
   and ancestry normalization", *Nat Genet* 56:1989-1994 (2024).** DOI 10.1038/s41588-024-01937-x. The
   citation the PGS Catalog's REST `/rest/info` asks for. Added: 2026-10-31.
 - **Al Badawi, Alexandru, Polyakov and Vaikuntanathan, "SoK: Private LLM Inference using Approximate
-  Homomorphic Encryption", IACR ePrint 2026/935**, revised 2026-10-23 (its third revision). Quoted in `models/distil.py` on
+  Homomorphic Encryption", IACR ePrint 2026/935**, revised 2026-10-23 (its third revision). Cited in `docs/pqc-roadmap.md` on
   why distillation is the practical route to FHE-feasible inference. Added: 2026-08-07, corrected
   2026-08-12. This entry also named `models/registry.py` until Round 33: Round 31 replaced that
   citation with the primary source (Park et al., arXiv:2601.18511v2), so the SoK has not appeared in
@@ -1288,7 +1294,8 @@ belongs in this file rather than only in a comment.
   saying most published work does not make one.
 - **Lyu, "Did We Actually Fix It? An Independent Adversarial Stress-Test of Post-Point-Adjustment
   Evaluation Metrics for Time-Series Anomaly Detection", arXiv:2607.11969** (v1 2026-07-12, v2
-  2026-07-19). Quoted in the satellite model card and baked into `config.defaults.json` as the
+  2026-07-19). Quoted then in the satellite model card and `config.defaults.json`, and now on the satellite page's VUS-PR card
+  (`web/src/components/SatVusPrCard.tsx`), as the
   reason the event-wise F0.5 non-reproduction is reported as metric instability rather than as a
   training failure. Added: 2026-08-07. **Read at the abstract 2026-10-30, it does not support that
   use.** Its subject is no-skill detectors gaming the metrics that replaced point adjustment (PA%K,
@@ -1687,8 +1694,8 @@ nobody ran, and this project has twice re-derived a negative it had already esta
 
 - **NIST SP 800-227: no change, checked at the primary source.** The CSRC document history reads
   exactly `01/07/25: SP 800-227 (Draft)` and `09/18/25: SP 800-227 (Final)` and nothing else - no
-  errata, no update, no withdrawal, no follow-on. Section 4.6.3's IND-CCA-preserving combiner, which
-  `src/qsh/pqc/hybrid_kem.py` implements, is unchanged.
+  errata, no update, no withdrawal, no follow-on. Section 4.6.2's two-step KDF, which
+  `src/qsh/pqc/hybrid_kem.py` implements over the inputs section 4.6.3 binds, is unchanged.
 - **FIPS 203 / 204 / 205: no change in window.** All three still show only `08/24/23 Draft` and
   `08/13/24 Final`. FIPS 204 has an errata spreadsheet dated **2026-07-31**, one day outside the
   window; it concerns the signature standard rather than the KEM. `csrc.nist.gov/news` carries two
@@ -1936,8 +1943,8 @@ makes**, in the direction of understating what is possible.
   URL: https://arxiv.org/abs/2506.15258
   VQGAN compresses images to latents at an optimum **downsampling factor of eight**; activations replaced
   with lower-degree polynomials; squeeze-and-excitation adapted to HE; two chest X-ray datasets.
-  `models/metrics.json` calls `medical_fl.student`'s 3,226 parameters over a 14x14 input "a
-  CKKS-feasibility budget". After this paper that is **a choice of input representation**, not a
+  `models/metrics.json` called `medical_fl.student`'s 3,226 parameters over a $`14 \times 14`$ input "a
+  CKKS-feasibility budget" until Round 32. After this paper that is **a choice of input representation**, not a
   feasibility limit - and this repository is unusually well placed for the alternative, because the
   client is a browser tab already running `onnxruntime-web`, so an encoder could run locally in plaintext
   with no privacy loss at all. Recorded as the **sixth** falsifiable trigger in the additional-model
@@ -2012,9 +2019,9 @@ to no publication.
   URL: https://doi.org/10.1177/0272989x06295361
   VERIFIED via Europe PMC, 2026-08-12. The source of the method `metrics.py::net_benefit` implements:
   its docstring says "Vickers-Elkin net benefit" and carried no citation, and this file had no entry.
-  The implemented form `NB(p) = TP/N - (FP/N) * p/(1-p)` is **algebraically identical** to the published
-  `sensitivity x prevalence - (1 - specificity) x (1 - prevalence) x w` with `w = p/(1-p)`, since
-  `sensitivity x prevalence = TP/N` and `(1 - specificity) x (1 - prevalence) = FP/N` - a reader can
+  The implemented form $`\mathrm{NB}(p) = TP/N - (FP/N)\, p/(1-p)`$ is **algebraically identical** to the published
+  $`\text{sens} \cdot \text{prev} - (1 - \text{spec})(1 - \text{prev})\, w`$ with $`w = p/(1-p)`$, since
+  $`\text{sens} \cdot \text{prev} = TP/N`$ and $`(1 - \text{spec})(1 - \text{prev}) = FP/N`$ - a reader can
   check the identity without the PDF, which is why it is written out.
   **The load-bearing point is what the 2006 contribution actually was:** net benefit plotted **across**
   threshold probabilities. A single-threshold scalar is the thing decision curve analysis was invented
@@ -2082,8 +2089,8 @@ to no publication.
   that the rules can be too few, so it supports the floor as a minimum and is not its source.
   The paragraph below said this was "the citation that rules OUT reliability diagrams"; the ruling is
   Van Calster's, and the measured counts are attributable rather than asserted: medical **42** malignant cases in the scored
-  split (`src/qsh/models/distil.py:194`), finance **164** positives in the browser's evaluation sample
-  (`scripts/prep_model_inputs.py:125`), satellite **113** anomalous segments (`anomaly_rate_test`
+  split (`src/qsh/models/distil.py`), finance **164** positives in the browser's evaluation sample
+  (`scripts/prep_model_inputs.py`), satellite **113** anomalous segments (`anomaly_rate_test`
   0.213611 x `n_test_segments` 529, `models/satellite_opssat/README.md`), and genomics **no outcome
   label at all** - 1000 Genomes carries no case/control status, which is why the PRS AUROC there is
   cited as external and never computed. So **no binary page clears the 200-event bar**, medical does
@@ -2294,7 +2301,7 @@ what a reviewer would expect a demo to say about the satellite page's timeline d
   URL: https://arxiv.org/abs/2608.08280
   Names *"the boundary between ML-based decision support and security certification"* as an open
   challenge. Independent support for a line this repository already carries at
-  `references/model-choice-vs-2026-practice.md:200` - *"ML as an overlay for sub-threshold stealthy
+  `references/model-choice-vs-2026-practice.md` - *"ML as an overlay for sub-threshold stealthy
   attacks, never as a replacement for decoy-state accounting"* - which until now rested on a single 2026
   study cited there and on no statement about the certification boundary itself. A survey is weak
   evidence for a mechanism and adequate evidence for a boundary, which is all it is used for here.
@@ -2347,7 +2354,8 @@ so each one names what was checked and where it stopped.
   consecutive round.** An IACR full-text search for "WebAssembly" returns **8 results across all
   years**, the newest crypto-relevant one still **2025/487 webSPDZ**. The composition novelty claim has
   now survived five independent attempts to refute it, which is worth more than any single sweep.
-- **Bland and Altman (1986) is NOT FOUND and must not be cited.** The canonical method-comparison paper
+- **Bland and Altman (1986) was NOT FOUND when this entry was written, and was not to be cited; superseded, since it is
+  cited below from its Lancet record.** The canonical method-comparison paper
   was not loaded: PubMed **2868172** returned a reCAPTCHA and Europe PMC returned navigation chrome
   only. It is the obvious citation for a plaintext-versus-ciphertext agreement plot, which is exactly
   why this negative is recorded - the temptation to cite it from memory is the hazard. Use the PH-mis
@@ -2377,7 +2385,7 @@ so each one names what was checked and where it stopped.
 
   So the UX rows do not rest on this folder, and any claim that they do would be false. What they
   rest on is stated instead: the **WCAG 2.2 success criteria themselves**, quoted by number in
-  `docs/browser-verification-checklist.md`, plus that file's own measurement procedures - composite
+  the private verification checklist, plus that file's own measurement procedures - composite
   the alpha before reading a contrast ratio, read the `role` the element carries rather than the prop
   that was passed, enumerate the series from the source rather than from the last sweep's list. That
   is a defensible basis; it is simply a different one from a paper in this folder.
@@ -2466,7 +2474,7 @@ on UNSWorks). Each value a template carries is quoted in its JSON file under
 neither a quote nor a stated assumption.
 
 - **Kasten and Young, "Revised optical air mass tables and approximation formula"**, Appl. Opt. 28,
-  4735 (1989). METADATA-ONLY `[doi]` The formula `1 / (sin(g) + 0.50572 (g + 6.07995)^-1.6364)` the
+  4735 (1989). METADATA-ONLY `[doi]` The formula $`1/(\sin g + 0.50572\,(g + 6.07995)^{-1.6364})`$ the
   downlink's atmosphere scales by (`channel.py::air_mass`, `quantumSim.ts::airMass`). Bourgoin et al.
   (below) show the same scaling reproduces a MODTRAN elevation curve.
 - **Liao et al., "Satellite-Relayed Intercontinental Quantum Network"**, Phys. Rev. Lett. 120,
@@ -2531,7 +2539,7 @@ neither a quote nor a stated assumption.
 - **Li et al., "Microsatellite-based real-time quantum key distribution"** (Jinan-1), Nature 640, 47-54 (2025),
   arXiv:2408.10994; the Table 1 used here is arXiv v1's (the version of record reports up to 1.07
   million bits in one pass and moves the per-pass results to Extended Data, not read). `[link]` URL: https://arxiv.org/abs/2408.10994
-  READ 2026-10-28. Not a template yet: it states no dark counts, atmosphere, pointing loss or
+  READ 2026-10-28. Not a template yet then (it is one now, below): it states no dark counts, atmosphere, pointing loss or
   satellite optics efficiency, and fitting them to its own pass would make that pass a circular
   check. Its divergence is a "full angle at 1/e2 of maximum" (9 to 10 urad), a Gaussian convention 3
   dB away from this model's top-hat law.
@@ -2711,7 +2719,7 @@ in the technical report.
   models, across LAN and WAN settings, model sizes, batch sizes and input lengths, measuring energy
   and monetary cost as well as performance, with offline and online computation and communication
   counted. Cited for system-level cost by the use-case pages' footnote
-  (`web/src/pages/UseCasePage.tsx`, under a shortened title), with no entry here until now. No number
+  (`web/src/pages/UseCasePage.tsx`, under a shortened title) until 2026-11-05, and by no page since. No number
   on the page or here is taken from it.
 - **Yugay, Cui, Pei and Zaytsev, "Strong Linear Baselines Strike Back: Closed-Form Linear Models as
   Gaussian Process Conditional Density Estimators for TSAD"**, arXiv:2602.00672 [cs.LG], 2026-01-31
@@ -2779,7 +2787,7 @@ The page's trained QCNN ran on plaintext features and said so. These are the sou
 
 - **Blanusa, Cravero Baraja, Anghel, von Niederhausern, Altman, Pozidis and Atasu, "Graph Feature Preprocessor: Real-time Subgraph-based Feature Extraction for Financial Crime Detection", ACM ICAIF 2024 (extended version arXiv:2402.08593).** Sec. 2.2: graph-pattern features are computed after inserting a batch of edges into an in-memory graph over a time window; batches of 128 and 2,048 on the AML datasets. Table 5, HI-Small, minority-class F1 (percent) at batch 128 and 2048: XGBoost basic features 19.75, fan-in and fan-out 56.88 and 59.71, multi-hop 58.60 and 61.01, vertex statistics 63.23 and 64.77; LightGBM basic 21.30, fan-in and fan-out 50.85 and 49.73. The library is proprietary, which is why `scripts/train/finance_aml_fan.py` computes the same kind of feature in the open; 60/20/20 temporal split.
 - **Altman, Blanusa, von Niederhausern, Egressy, Anghel and Atasu, NeurIPS 2023 Datasets and Benchmarks.** Table 2 on HI-Small: GIN 28.70, GIN+EU 47.73, PNA 56.77, GFP+LightGBM 62.86, GFP+XGBoost 63.23. Figure 1 shows transactions in tabular and graph form and Figure 2 the eight laundering patterns modelled.
-- **Egressy, von Niederhausern, Blanusa, Altman, Wattenhofer and Atasu, AAAI 2024, arXiv:2306.11586.** Table 2 on AML Small HI: Multi-PNA+EU $`68.16 \pm 2.65`$. This is the architecture of the registry's never-trained `finance_aml.gnn` card, whose official code is `IBM/Multi-GNN` (Apache-2.0).
+- **Egressy, von Niederhausern, Blanusa, Altman, Wattenhofer and Atasu, AAAI 2024, arXiv:2306.11586.** Table 2 on AML Small HI: Multi-PNA+EU $`68.16 \pm 2.65`$. This is the architecture of the registry's `finance_aml.gnn`, trained here and published since Round 86, card, whose official code is `IBM/Multi-GNN` (Apache-2.0).
 - **Bilgi, Mutluergil, Yildirim, Atasu and Savas, arXiv:2610.18054v2 (14 Oct 2026).** A GNN on IBM AML under CKKS, on HEonGPU with $`N = 65536`$ and bootstrapping: Table 2 plaintext minority-class F1 on Small-HI $`63.72 \pm 1.86`$, hidden dimension 16, 64 and 128 at 57.20, 63.72 and 65.09 (Table 4); 5.31 s per transaction on an RTX 5090, and the FHE and plaintext decisions agree on 99.25 percent of 2,000 seed edges. The nearest published work to private AML inference; it needs the graph and a GPU, and this page's model needs neither.
 - **Literature on the MLP's shape:** QUOTIENT (Agrawal et al., CCS 2019) 2 x 124 on tabular data; Wodzinski et al., arXiv:2611.02856, a pyramid $`[h, \lfloor h/2 \rfloor]`$ on clinical tabular data. **Search negative, 2026-11-09:** no paper found runs a trained MLP on finance tabular data under a CKKS and MPC hybrid.
 

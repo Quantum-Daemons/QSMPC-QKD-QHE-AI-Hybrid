@@ -9,7 +9,7 @@ about the input.
 
 Same eight-feature vector, twelve different run seeds:
 
-| seed | <Z0> | class |
+| seed | $`\langle Z_0\rangle`$ | class |
 |---|---|---|
 | 0 | +0.0928 | 1 |
 | 1 | -0.0024 | 0 |
@@ -31,8 +31,8 @@ Over 24 random feature vectors x 8 seeds each:
 ## Two causes, and the obvious one is the smaller
 
 **The QOTP mask is applied and never undone.** `qotpQcnnInfer` applies a random Pauli X/Z per qubit,
-then runs the circuit, then reads <Z0> off the *masked* state. An X on qubit 0 flips the sign of
-<Z0>, so the class inherits a coin flip from the seed. That is the intuitive explanation and it is
+then runs the circuit, then reads $`\langle Z_0\rangle`$ off the *masked* state. An X on qubit 0 flips the sign of
+$`\langle Z_0\rangle`$, so the class inherits a coin flip from the seed. That is the intuitive explanation and it is
 not the main one.
 
 **The circuit has no trained parameters, and scrambles.** Disabling the mask entirely barely moves

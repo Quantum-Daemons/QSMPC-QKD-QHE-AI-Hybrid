@@ -42,7 +42,7 @@ Youden for net benefit in AI mammography moved sensitivity 72% -> 99% (specifici
 **What this means here.** Youden's J implies a symmetric cost ratio - one missed cancer costs the
 same as one false alarm - which is wrong for screening and is not a choice this project ever stated.
 The 2026 answer is decision-curve analysis / net benefit, or an explicit fixed-sensitivity operating
-point. Recorded as a known gap rather than silently left as "we used Youden".
+point. Recorded as a known gap rather than silently left as "we used Youden"; closed since: the medical student's threshold is chosen by net benefit (`scripts/train/medical_breastmnist.py`).
 
 ## 3. Reporting fidelity separately from the task metric IS 2026 practice
 
