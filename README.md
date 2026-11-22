@@ -505,6 +505,8 @@ tests/         pytest suite
 
 - Primary sources: [`references/REFERENCES.md`](references/REFERENCES.md) (annotated, paper -> code -> workstream).
 - Standards/threat context: [`docs/pqc-roadmap.md`](docs/pqc-roadmap.md).
+- Security reports: [`SECURITY.md`](SECURITY.md) (private vulnerability reporting). Contributions:
+  [`CONTRIBUTING.md`](CONTRIBUTING.md).
 - Code license: **Apache-2.0** ([`LICENSE`](LICENSE)). Upstream OSS retains its own licenses
   ([`docs/development.md`](docs/development.md), OSS / submodules).
 

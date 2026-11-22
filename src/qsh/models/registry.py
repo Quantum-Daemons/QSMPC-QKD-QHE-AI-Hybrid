@@ -241,7 +241,9 @@ DS_AMLWORLD = DatasetSpec(
         "SYNTHETIC: IBM generates it with a multi-agent virtual-world model and states 'Everything is "
         "synthetic'; the paper is titled 'Realistic Synthetic Financial Transactions for AML Models'. "
         "Chosen for its calibration to real transaction statistics and its CDLA-Sharing terms, not "
-        "because it is real data - no commercial-OK corpus of real laundering transactions exists. "
+        "because it is real data. No real laundering-labelled corpus under a permissive licence was found "
+        "(2026-11-22): Elliptic and Elliptic2 are CC BY-NC-ND 4.0, and the one real bank set found is GPL-3.0 "
+        "with differentially private PCA features (arXiv:2507.08835). "
         # Round 86, measured by scripts/measure_finance_test_window_tail.py; the numbers are held to that
         # measurement by tests/test_r86_finance_tail.py.
         "THE TEST WINDOW RUNS PAST THE DATA: HI-Small holds ten days, September 1-10, 2022 (IBM's dataset "
