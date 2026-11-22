@@ -7,7 +7,11 @@
 bash env/setup_venv.sh      # or: make setup
 source .venv/bin/activate
 
-# 2. Run the test suite (crypto correctness, FHE accuracy, E2E smoke)
+# 2. The locked tiers the suite needs: the use-case tests import torch and xgboost and fail at collection
+#    without them. This is the lock CI and the API image install, CPU wheels; a GPU box, see below.
+pip install --require-hashes --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.lock
+
+# 3. Run the test suite (crypto correctness, FHE accuracy, E2E smoke)
 make test             # pytest prints the count; the Node/OpenFHE-gated slow tests are deselected
 # No count is quoted here. This line read "187 collected, 183 passed" while the suite had grown to
 # 393 - and `Makefile` two files over already carries the same lesson from its own help text, which
@@ -16,20 +20,20 @@ make test             # pytest prints the count; the Node/OpenFHE-gated slow tes
 # `make test-all` runs every test. The OpenFHE bootstrap test runs in a subprocess, so a native crash
 # fails that test rather than the suite; scripts/ci_local.sh and CI run it too.
 
-# 3. Optional tiers
-pip install -r requirements-ai.txt  # torch (CUDA 13 auto), PennyLane (QFL), XGBoost, MedMNIST, ONNX, MCP SDK
-pip install -r requirements-fhe.txt  # TenSEAL + OpenFHE (commercial-OK CKKS)
+# 4. Or the tiers unlocked, at their floors (how a GPU box gets CUDA torch; PennyLane is in the core tier)
+pip install -r requirements-ai.txt  # torch (CUDA 13 auto), XGBoost, MedMNIST, ONNX, MCP SDK
+pip install -r requirements-fhe.txt  # TenSEAL + OpenFHE (commercial-OK CKKS), MPyC
 pip install -r requirements-api.txt  # FastAPI backend
 
-# 4. Run an E2E use case (writes results/ artifacts)
+# 5. Run an E2E use case (writes results/ artifacts)
 python -m qsh.orchestration.pipeline --usecase finance_aml --out results/
 
-# 5. Classical-vs-quantum benchmark
+# 6. Classical-vs-quantum benchmark
 bash scripts/run_benchmark.sh linear
 
-# 6. Web: API + SPA (two terminals)
+# 7. Web: API + SPA (two terminals); the SPA imports the wasm modules, built once (Docker)
 uvicorn api.main:app --port 8000      # backend
-cd web && npm install && npm run dev    # SPA at http://localhost:5173
+bash scripts/build_wasm.sh && cd web && npm install && npm run dev    # SPA at http://localhost:5173
 ```
 
 GPU quantum simulation (Blackwell): see **Dev environment** below. CUDA-Q, PennyLane `lightning.gpu` and
@@ -40,7 +44,7 @@ Qiskit Aer GPU 0.18.2 all run on it; `quantum_sim.device` chooses the Python tie
 ## Dev environment
 
 Target box: **AlmaLinux 9.8, i5-13600K, 128 GB DDR5, NVIDIA RTX PRO 6000 Blackwell 96 GB**. Read
-2026-11-05: kernel 5.14.0-687.65.1, Python 3.12.15, gcc 11.5, cmake 3.31, Node 22.23, Docker 29.9,
+2026-11-22: kernel 5.14.0-687.66.2, Python 3.12.15, gcc 11.5, cmake 3.31, Node 22.23, Docker 29.9,
 `torch 2.13.0+cu130` with `cuda.is_available() == True`, nvcc 13.5.37, driver 620.70.06
 (CUDA 13 wheels require 580.65.06 or newer on Linux). A GPU figure elsewhere in this repository dated before
 then ran on AlmaLinux 9.7, nvcc 13.0.88 and driver 580.105.08. CUDA 13.0 became a **stable** PyTorch build target in 2.11, so this
@@ -85,7 +89,7 @@ Measured on this machine on 2026-11-06 ([State-vector simulators, measured](mode
 - **MPyC** (MIT, pure-Python, v0.11 2026, a pip dependency - the submodule was dropped in Round 17) - Shamir secret-sharing with secure
   comparison drives the **non-linear** layers (ReLU/argmax) on shares, the `ReLU([x]) =
   [x] * [x>0]` pattern. Wired in `src/qsh/mpc/secret_inference.py` and run as three parties, each its own
-  process over loopback TCP (`src/qsh/mpc/parties.py`, t = 1, k = 40); the `mpc` crypto-agility family's one
+  process over loopback TCP (`src/qsh/mpc/parties.py`, $`t = 1`$, $`k = 40`$); the `mpc` crypto-agility family's one
   option, `mpyc-shamir` (MP-SPDZ and hpmpc were names in it that nothing ran, until Round 86). The linear layers stay under FHE - see
   the hybrid benchmark in [`docs/models-and-benchmarks.md`](models-and-benchmarks.md).
 
@@ -130,7 +134,7 @@ container. The measurements that led to the module are in `prototypes/polytune-a
 and `prototypes/net-bench/` (between two tabs over netem-shaped TCP).
 
 ### Dependency advisories
-One script checks every locked dependency against the published advisories, and fails on any. Since
+One script checks the locked npm (`web/`, `docker/mcp-fs/`), Rust and Python (`requirements.lock`) dependencies against the published advisories, and fails on any; it also watches node-seal and Polytune upstream. The Go module of the threshold wasm, the walkthrough's lock and `requirements-gpu.lock` are not audited. Since
 Round 67, `.github/workflows/audit.yml` runs it daily, on demand, and whenever a manifest, a lockfile
 or the policy changes:
 
@@ -158,7 +162,7 @@ needs the workflow re-enabled in the Actions tab.
 
 ### Languages
 Python-first, plus **TypeScript** for the browser tier. **C++ and CUDA** only for the GPU: the
-HEonGPU binding (`native/heongpu_py`) and the submodules it and hpmpc build from. Go was evaluated and not needed. **Rust** builds the demo's MPC module
+HEonGPU binding (`native/heongpu_py`) and the submodules it and hpmpc build from. **Go** builds the threshold module (`wasm/qsh-fedthresh`, Lattigo v6.2.0, Apache-2.0) to WebAssembly, since Round 86. **Rust** builds the demo's MPC module
 (`wasm/qsh-mpc`, Polytune, MIT) and the measurement prototypes in `prototypes/`; the client-side Rust
 decline recorded in the register concerned tfhe-rs (no FHE evaluation in its WASM build, and a licence
 that withholds patent rights) and still stands.
@@ -195,7 +199,7 @@ supported platform, or `ExportWebAssembly.jl` out of WIP.
 
 ## Bills of materials
 
-**SBOMs.** The `sbom` job in `.github/workflows/ci.yml` runs `scripts/generate_sbom.sh` on every push and keeps the output as a 90-day workflow artefact: CycloneDX 1.7 documents for `requirements.lock` (cyclonedx-py), `web/package-lock.json` without development dependencies (cyclonedx-npm) `wasm/qsh-mpc/Cargo.lock` (cargo-cyclonedx), and, since Round 86, the threshold-aggregation module `wasm/qsh-fedthresh`: the Go modules `go list` compiles into its wasm and Go's standard library, written by its own `sbom.py` with the licences read from each module's licence files, the same reading its `notices.py` makes for the notices it ships. The three tools are Apache-2.0. No container image is built in CI, so there is no SBOM of an image.
+**SBOMs.** The `sbom` job in `.github/workflows/ci.yml` runs `scripts/generate_sbom.sh` on every push and keeps the output as a 90-day workflow artefact: CycloneDX 1.7 documents for `requirements.lock` (cyclonedx-py), `web/package-lock.json` without development dependencies (cyclonedx-npm) `wasm/qsh-mpc/Cargo.lock` (cargo-cyclonedx), and, since Round 86, the threshold-aggregation module `wasm/qsh-fedthresh`: the Go modules `go list` compiles into its wasm and Go's standard library, written by its own `sbom.py` with the licences read from each module's licence files, the same reading its `notices.py` makes for the notices it ships. The three tools are Apache-2.0. No shipped image (api or web) is built in CI, so there is no SBOM of an image; CI builds only the web image's walkthrough stage and, through `scripts/build_wasm.sh`, its wasm stage.
 
 **CBOM.** `web/public/cbom/qsh.cdx.json` is a CycloneDX 1.7 list of the cryptography this repository's code calls, generated by `scripts/generate_cbom.py` from `src/qsh/crypto_inventory.py` and rendered on the Validations page. It is hand-written and checked, not scanned: `tests/test_r86_cbom.py` requires each entry's evidence to be in the source and fails on a cryptographic import no entry accounts for. A scanner was not used because CBOMkit's sonar-cryptography carries SonarSource's source-available licence. OWASP's cdxgen 12.9.2 (Apache-2.0) was tried once as a cross-check on 2026-11-15, with the owner's approval, on an export of `web/` from main, with `-t js --include-crypto --evidence`: it wrote a CycloneDX 1.7 SBOM of 354 components (the noble libraries and node-seal among them, as libraries) and no cryptographic asset, though the page calls WebCrypto (SHA-256, HKDF, AES-GCM) in 7 files. Its algorithm-level detection for JS and TS runs through `@appthreat/atom`, whose npm package 2.5.6 is the JVM build and needs JDK 21 or later, and this machine has 17; it would not see the noble libraries' ML-KEM, ML-DSA and X25519, node-seal's CKKS or the Python side in any case, since it follows node:crypto, WebCrypto and JWT calls. The inventory stays the CBOM's source. Neither kind of document is a claim of conformance to anything.
 
@@ -245,7 +249,7 @@ The last column is the version `requirements.lock` pins and the date PyPI gives 
 has a release inside the last year, which checklist rows TR5 and G3 ask. A development venv can lag the lock: this machine's ran TenSEAL 0.3.16, Qiskit 2.5.1 and Qiskit Aer
 0.17.2 that day, while CI and the Docker image install from the lock. TenSEAL 0.3.18's notes name no SEAL bump after 0.3.17's move to 4.3.3.
 
-HEonGPU builds the GPU CKKS backend and hpmpc is vendored for a GPU MPC run not yet made; their pins,
+HEonGPU builds the GPU CKKS backend and hpmpc is vendored for the GPU MPC measurement of 2026-11-06 (`scripts/bench_hpmpc_gpu.sh`), which no stage runs; their pins,
 licences, what the HEonGPU build links and the unlicensed submodule one level below hpmpc are in
 [`DATA_LICENSES.md`](../DATA_LICENSES.md#6a-git-submodules).
 
@@ -254,7 +258,7 @@ in-browser ML-KEM and ML-DSA, with `@noble/curves`, `@noble/hashes` and `@noble/
 exact versions 0.7.1 depends on (Round 85: moved together, so one copy of each is bundled). The pin
 matters: **0.2.1 accepted all 2,595 malformed encapsulation keys** in the C2SP/CCTV modulus set,
 because its polynomial coder took the compression path for
-d=12 where FIPS 203 specifies plain ByteEncode12/ByteDecode12, making the section 7.2 modulus check
+$`d = 12`$ where FIPS 203 specifies plain ByteEncode12/ByteDecode12, making the section 7.2 modulus check
 a no-op. 0.6.1, 0.7.0 and 0.7.1 reject all 2,595, and `npm run check:pqc` asserts it - now with a
 keygen/encapsulate/decapsulate round trip and the FIPS 203 Table 3 ciphertext lengths on the same
 line, because the rejection count alone reads identically for a working library and a totally broken

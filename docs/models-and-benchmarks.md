@@ -8,11 +8,11 @@ has no licence instrument at all (IGSR's disclaimer; it ships under the cell bud
 [DATA_LICENSES.md](../DATA_LICENSES.md) section 4); its PGS000072 weights are CC BY 4.0 (Graff et al.,
 Nat Commun 12:970, 2021). The synthetic
 generators are an offline-CI fallback only (logged as such, never a silent substitute):
-- **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) -> eight AML-named columns, of which the demo's linear model reads four (amount, cross_border, night_tx, new_payee) and none built from PaySim's balance columns, which the dataset's description says must not be used for fraud detection. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 transactions at 1 laundering in 981. **AMLworld is synthetic too** - IBM generates it with a multi-agent virtual-world model and states "Everything is synthetic"; the NeurIPS 2023 D&B paper is titled *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is used because it is calibrated to real transaction statistics and its CDLA-Sharing terms permit publishing derived weights - **not** because it is real data. No commercial-OK corpus of real laundering transactions exists.
-- **Medical**: MedMNIST v2 BreastMNIST for the trained models (CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence - see [DATA_LICENSES.md](../DATA_LICENSES.md)), BreastMNIST also for the full deployment's CNN path (`benchmark.medical_cnn`; PneumoniaMNIST until Round 86), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 - attribution required). MedMNIST states that its data "is NOT intended for clinical use", and nothing here is either.
+- **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) -> eight AML-named columns, of which the demo's linear model reads four (amount, cross_border, night_tx, new_payee) and none built from PaySim's balance columns, which the dataset's description says must not be used for fraud detection. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus of the AMLworld models is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 transactions at 1 laundering in 981; the finance QCNN and the page's four-column linear surrogate are fitted on the PaySim sample. **AMLworld is synthetic too** - IBM generates it with a multi-agent virtual-world model and states "Everything is synthetic"; the NeurIPS 2023 D&B paper is titled *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is used because it is calibrated to real transaction statistics and its CDLA-Sharing terms permit publishing derived weights - **not** because it is real data. No commercial-OK corpus of real laundering transactions exists.
+- **Medical**: MedMNIST v2 BreastMNIST for the BreastMNIST models (CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence - see [DATA_LICENSES.md](../DATA_LICENSES.md)), NIH ChestX-ray14 for the federated chest X-ray model (`medical_fl.cxr_fedavg`, under NIH's terms), UCI Heart Disease for the four-hospital federation and its differential-privacy arm, PhysioNet/CinC 2016 and CirCor for the heart-sound cards, BreastMNIST also for the full deployment's CNN path (`benchmark.medical_cnn`; PneumoniaMNIST until Round 86), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 - attribution required). MedMNIST states that its data "is NOT intended for clinical use", and nothing here is either.
 - **Genomics**: **real 1000 Genomes** phase-3 genotypes, read through the Ensembl REST API (open *access*, but IGSR attaches **no licence instrument**: "rights claimed on pieces of data vary"; cite The 1000 Genomes Project Consortium, Nature 526:68-74, 2015) + the **real PGS-Catalog** PGS000072 weights (Graff et al., Nat Commun 12:970, 2021, **CC BY 4.0**; 183 of the 187 variants have a 1000 Genomes genotype and are scored, the other 4 are left out). The weights are cleared for redistribution with credit; the genotypes are shipped as a slice under the cell budget, not under a licence. See [DATA_LICENSES.md](../DATA_LICENSES.md).
-- **Satellite**: the browser demo scores **real OPS-SAT-AD** telemetry segments (ESA OPS-SAT; Ruszczak et al., Scientific Data 2025; CC BY 4.0) since Round 84, with a demo anomaly regression fitted on 370 test-partition segments and verdicts drawn from the other 159. The **real NASA SMAP/MSL** spacecraft telemetry it served before (Telemanom; Hundman et al. 2018; NASA JPL) has **no licence granted by any provider** (checked at each source on 2026-10-30), so it is neither served nor kept in the repository; the full deployment's CKKS telemetry stage scores one of the same OPS-SAT-AD segments per run, with the same demo regression as the browser ([which pages encrypt](#which-pages-encrypt)). Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only, covers works of federal employees (JPL staff are Caltech employees), and is not a grant. Bundled demo sample only - the satellite **training** corpus is ESA-ADB (CC BY 3.0 IGO). See [DATA_LICENSES.md](../DATA_LICENSES.md).
-- **Telecom/defense**: synthetic QKD-attack telemetry. The class list comes from the literature; the signature values are this project's own illustrative design and are not fitted to any measurement (no public real capture of **QKD-layer** attacks was found: arXiv:2508.12749 reports anomalies recorded on an experimental receiver and states no data release).
+- **Satellite**: the browser demo scores **real OPS-SAT-AD** telemetry segments (ESA OPS-SAT; Ruszczak et al., Scientific Data 2025; CC BY 4.0) since Round 84, with a demo anomaly regression fitted on 370 test-partition segments and verdicts drawn from the other 159. The **real NASA SMAP/MSL** spacecraft telemetry it served before (Telemanom; Hundman et al. 2018; NASA JPL) has **no licence granted by any provider** (checked at each source on 2026-10-30), so it is neither served nor kept in the repository; the full deployment's CKKS telemetry stage scores one of the same OPS-SAT-AD segments per run, with the same demo regression as the browser ([which pages encrypt](#which-pages-encrypt)). Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only, covers works of federal employees (JPL staff are Caltech employees), and is not a grant. Bundled demo sample only - the satellite forecaster and its student are trained on ESA-ADB (CC BY 3.0 IGO), and the segment classifier and its student on OPS-SAT-AD. See [DATA_LICENSES.md](../DATA_LICENSES.md).
+- **Telecom/defense**: synthetic QKD-attack telemetry for the QKD-layer detectors, and real 5G-NIDD traffic (CC BY 4.0) for `telecom_ids.nidd`. The class list comes from the literature; the signature values are this project's own illustrative design and are not fitted to any measurement (no public real capture of **QKD-layer** attacks was found: arXiv:2508.12749 reports anomalies recorded on an experimental receiver and states no data release).
 
 Loaders + generators: `qsh.data.loaders` / `qsh.data.synthetic`.
 
@@ -59,16 +59,16 @@ QOT sketch.
 
 ### The finance models on 114 inputs, and the compact GNN
 
-All four finance models read the same 114 inputs, computed in the open by `model_inputs` in `scripts/train/finance_aml.py` and by `scripts/train/finance_aml_fan.py`: the 32 per-account aggregates, causal so that each row sees only earlier transactions; 79 per-transaction window features, fan-in and fan-out, the spread of amounts and the time since each account's last edge in windows of one hour to three days, and scatter-gather counts; and 3 pair features, the earlier transactions between the same two accounts in each direction and whether this is their first contact (motivated by MEGA-GNN's count of illicit edges on single-edge pairs, 0.7292 against 0.0894 overall, reproduced here from the corpus). Like the Graph Feature Preprocessor paper's pipeline, a transaction's window and pair features see the transactions up to the end of its batch of 2,048, so this is micro-batch scoring and not a per-transaction real-time decision. That horizon is capped at the furthest any batch of the fit window reaches, 17 minutes: in the sparse last days of the corpus a batch takes days to fill, and more than a quarter of the test window's laundering rows would otherwise see over a day ahead. No label is read.
+The four finance models trained on this project's features read the same 114 inputs (IBM's two GNNs, further down, read the transaction graph itself), computed in the open by `model_inputs` in `scripts/train/finance_aml.py` and by `scripts/train/finance_aml_fan.py`: the 32 per-account aggregates, causal so that each row sees only earlier transactions; 79 per-transaction window features, fan-in and fan-out, the spread of amounts and the time since each account's last edge in windows of one hour to three days, and scatter-gather counts; and 3 pair features, the earlier transactions between the same two accounts in each direction and whether this is their first contact (motivated by MEGA-GNN's count of illicit edges on single-edge pairs, 0.7292 against 0.0894 overall, reproduced here from the corpus). Like the Graph Feature Preprocessor paper's pipeline, a transaction's window and pair features see the transactions up to the end of its batch of 2,048, so this is micro-batch scoring and not a per-transaction real-time decision. That horizon is capped at the furthest any batch of the fit window reaches, 17 minutes: in the sparse last days of the corpus a batch takes days to fill, and more than a quarter of the test window's laundering rows would otherwise see over a day ahead. No label is read.
 
 Measured on the whole held-out window (1,523,504 rows, 2,321 of them laundering, the last 30 percent in time order), with every threshold, scaling and seed chosen on the validation window:
 
 | Model | Inputs | Minority-class F1 | AUPRC | Where it runs |
 |---|---|---|---|---|
-| CKKS linear student (`finance_aml.student`), 115 parameters | 114, distilled from the teacher | 0.3088 | - | the browser, under CKKS |
+| CKKS linear student (`finance_aml.student`), 115 parameters | 114, distilled from the teacher | 0.3088 | 0.1840 | the browser, under CKKS |
 | MLP (`finance_aml.mlp_large`), $`[114, 128, 64, 2]`$, 23,106 parameters, distilled | 114 | 0.6278 (seeds 0.594 to 0.637, median 0.624) | 0.6432 | the browser, CKKS and garbled circuits |
 | XGBoost on the same inputs | 114 | 0.6076 | 0.6368 | comparator |
-| Gradient-boosting teacher (`finance_aml.gbm`) | 114 | 0.6161 | 0.6428 | the full deployment |
+| Gradient-boosting teacher (`finance_aml.gbm`) | 114 | 0.6161 | 0.6428 | the browser (plaintext ONNX) and the full deployment |
 | **Compact GNN (`finance_aml.gnn_compact`)**, 34,962 parameters, distilled | 114, and 16 neighbouring edges | **0.6585** (seeds 0.642 to 0.659, median 0.651) | **0.6687** | the browser, CKKS and garbled circuits |
 | IBM's Multi-GIN+EU, official code, this split, five seeds | the raw edges; neighbours sampled from every edge of the test window | logged by IBM's loop $`0.6018 \pm 0.0260`$ | - | a server GPU |
 | IBM's Multi-PNA+EU (`finance_aml.gnn`), official code, this split, five seeds, 64,374 parameters | the raw edges; neighbours sampled from every edge of the test window | logged by IBM's loop $`0.6487 \pm 0.0208`$; the exported seed 4, 0.6822 at a threshold tuned on validation | 0.6318 (five seeds $`0.6197 \pm 0.0304`$) | trained on a GPU; in the browser in plaintext on 16 held-out transfers (the IBM tab) |
@@ -91,11 +91,11 @@ Measured on the whole held-out window (1,523,504 rows, 2,321 of them laundering,
 | SALT-GNN's PNA, its Table 2 | $`0.629 \pm 0.032`$ | 0.516 | $`0.515 \pm 0.099`$ |
 | SALT-GNN's GIN, its Table 2 | $`0.418 \pm 0.107`$ | 0.362 | $`0.509 \pm 0.106`$ |
 
-On these windows the dense-receiver drop does not appear under IBM's protocol: both networks score higher in the 50-99 bin than overall, where the paper's PNA and GIN score lower; only GIN under the causal protocol falls there. The 5-9 bin is the lowest for every model here, as for most in the paper. The 50-99 bin holds 167 of the 2,321 laundering transfers in IBM's window and 69 in the causal one, and the 100+ bin a single one, so the intervals are wide. The paper's split is temporal with no ratios stated and its degree window is unstated, so the rows are set side by side, not ranked; its code is not released, so no SALT model is reproduced. Each run left 859 to 895 test transfers unscored, counted as not flagged.
+On these windows the dense-receiver drop does not appear under IBM's protocol: both networks score higher in the 50-99 bin than overall, where the paper's PNA scores lower (its GIN scores higher); only GIN under the causal protocol falls there. The 5-9 bin is the lowest for three of the four runs here, as for most models in the paper; for GIN under the causal protocol the 50-99 bin is lower still. The 50-99 bin holds 167 of the 2,321 laundering transfers in IBM's window and 69 in the causal one, and the 100+ bin a single one, so the intervals are wide. The paper's split is temporal with no ratios stated and its degree window is unstated, so the rows are set side by side, not ranked; its code is not released, so no SALT model is reproduced. Each run left 859 to 895 test transfers unscored, counted as not flagged.
 
 Against the published figures on this corpus: on HI-Small the Graph Feature Preprocessor paper (Blanusa et al., ICAIF 2024, Table 5) reports 19.75 percent for XGBoost on basic features, 56.88 to 59.71 with fan-in and fan-out, and 63.23 to 64.77 with its other features; Altman et al. (NeurIPS 2023) report 63.23 for GFP + XGBoost and 56.77 for PNA; Egressy et al. (AAAI 2024) 68.16 for Multi-PNA+EU; and Bilgi et al. 63.72 in plaintext for a GNN they also run under CKKS, at 5.31 s per transaction on a consumer GPU with bootstrapping at $`N = 65536`$. Their splits are 60/20/20 or 64/19/17 and their neighbourhoods include later transactions, so none of the rows above is a reproduction of those figures.
 
-The pages show each network's logits and its decision, not a probability. Trained with class weights towards soft targets, the networks' raw probabilities are not risks: their Brier scores on test, 0.00278 for the MLP and 0.00210 for the GNN, are worse than giving every row the window's rate (0.00152). Each record carries a Platt map fitted on validation that brings the CORP miscalibration term down 36- to 53-fold, to $`3.8 \times 10^{-5}`$, as the teacher's and the student's records do. By CORP's discrimination term the GNN (0.000783) leads the teacher (0.000763) and the MLP (0.000744).
+The pages show each network's logits and its decision, not a probability. Trained with class weights towards soft targets, the networks' raw probabilities are not risks: their Brier scores on test, 0.00177 for the MLP and 0.00181 for the GNN, are worse than giving every row the window's rate (0.00152). Each record carries a Platt map fitted on validation, as the teacher's and the student's do, and on the two networks it brings CORP's miscalibration term down 13- and 20-fold, to $`7.4 \times 10^{-5}`$ for the MLP and $`5.3 \times 10^{-5}`$ for the GNN. By CORP's discrimination term the GNN (0.000783) leads the teacher (0.000763) and the MLP (0.000741).
 
 ### The trained QCNN under CKKS
 
@@ -122,21 +122,21 @@ The benchmark's architecture is **per use case**, not a single generic shape
 lightweight row is the trained linear model; its medium and large rows cost the use case's trained model where one exists: **finance** the one published MLP, `finance_aml.mlp_large`, whichever size is asked for ([below](#the-finance-models-on-114-inputs-and-the-compact-gnn)); **medical** an MLP or a two-block CNN trained in the run on its own rows; and a use case with neither falls back to generic shapes with random weights, labelled as cost only. Genomics
 has no hidden layer at any size, because what runs is one weighted sum over its scored variants.
 **Medical** is the
-exception, a **genuine small CNN**: in the browser it reads a tabular (WDBC) row tiled to the image
-size, run on the published student's own weights under CKKS, and real MedMNIST images only in the
-full deployment. The pages have **no workload selector**;
+exception, a **genuine small CNN**: in the browser it reads a held-out BreastMNIST test image at $`14 \times 14`$, its published
+evaluation sample (a tabular row tiled to the image until Round 86), run on the published student's own weights under
+CKKS, and MedMNIST images in the full deployment. The pages have **no workload selector**;
 the CLI's `--workload` still exists. The selector offered `linear` against `cnn`, and once the CNN
 path began evaluating the published student's own weights under CKKS, `linear` was the only
 fabricated option left on the medical page.
 
 **Medical + `cnn` is a real encrypted convolution, not a cost proxy.** When the medical use case loads
 MedMNIST (`config['dataset']='medmnist'` / the CNN workload), the pipeline federated-trains a tiny CNN
-(one conv block 1 -> 4 ch 3x3, avg-pool, dense head at 14x14) and runs it under the hybrid as a **genuine FHE
+(one conv block 1 -> 4 ch $`3 \times 3`$, avg-pool, dense head at $`14 \times 14`$) and runs it under the hybrid as a **genuine FHE
 convolution** - im2col -> CKKS `dot_plain` per output channel (`src/qsh/fhe/conv.py`), with ReLU
 under MPC (`secure_relu`) and the average pool computed on each party's share locally (`secure_maxpool`
 serves a max-pool layer). The convolution arithmetic happens on the **encrypted image**, with every
 slot masked as above;
-on the Blackwell box the FHE-linear conv cost dominates (~4.6 s for one 14x14 image on CPU CKKS, against
+on the Blackwell box the FHE-linear conv cost dominates (~4.6 s for one $`14 \times 14`$ image on CPU CKKS, against
 ~2.0 s for the three MPC parties' 801 comparisons; decision faithful to plaintext). On a two-core machine
 the three party processes share the cores and the MPC half can be the larger. This is FHE-feasible by
 design for **this operating point** - a MedMNIST-scale CNN, **not** ResNet/ViT, because the demo targets
@@ -148,9 +148,9 @@ the metric is FHE/MPC **cost + fidelity**, not task SOTA; lightweight === the tr
 stays exact. The benchmark shows the architecture label + parameter count.
 
 The pages have **no lightweight / medium / large** selector either; the CLI's `--model-size` and the
-config's `tier_architectures` still exist and produce the rows below. The selector scaled invented
+config's `generic_architecture` still exist and produce the rows below: with no use case, the trained linear model at lightweight and random weights on 16, and on 64 and 32, hidden units at medium and large (`tier_architectures` sizes the per-use-case pipeline). The selector scaled invented
 architectures - a "tabular fraud MLP" at 18/850/9,538 parameters against a real distilled student of
-33 - so the sizes described models nothing had trained. Finance's page has one trained MLP and one switch for it. What survives of the idea: **the measured
+33 at the time - so the sizes described models nothing had trained. Finance's page has one trained MLP and one switch for it. What survives of the idea: **the measured
 path runs end to end for real**
 (CKKS-FHE linear + MPyC-MPC non-linear); **large is clearly labelled *projected*** - extrapolated from the
 measured medium per-op cost (MAC / comparison counts) so the page stays responsive. Results on the
@@ -177,7 +177,7 @@ kind of bytes [the ct/pt section](#what-ctpt-measures) counts. The operations th
 under [CKKS on each backend, measured](#ckks-on-each-backend-measured).
 
 **What the MPC columns measure.** The non-linear layers run under MPyC as three
-parties, each its own process, over loopback TCP: Shamir threshold t = 1, statistical security 40,
+parties, each its own process, over loopback TCP: Shamir threshold $`t = 1`$, statistical security parameter $`k = 40`$,
 64-bit fixed point. "MPC comm" is the bytes the three parties sent, about 15,120 per secure comparison
 and the same on every run. "MPC-non-linear" is the protocol's time on the parties' own clocks, about
 2.3 ms per comparison here. Each MPC session also spends 0.16 to 0.20 s starting its processes, which
@@ -207,7 +207,7 @@ communication).
   `secure_key_bits > 0` rather than a threshold, and, on BB84 runs, the GLLP tagged fraction showing
   what the decoy states are buying (E91 uses none, so its table has no such row). It and the table's
   Security model column replaced the 0-100 composite, which nothing computes since Round 86: no row,
-  signed summary or download carries it
+  signed summary or download carries it; the runs recorded on 2026-11-06, before its removal, still hold its parts
   ([why it was retired](../references/security-scoring-fact-check.md#why-the-existing-score-had-to-go)).
 - **Quantum advantage (0-10) - retired 2026-10-23, not rendered.** `qsh/benchmark/quantum_advantage.py`
   is kept for its own tests, as the 0-100 composite was, but no run computes it: the browser, the run
@@ -235,7 +235,7 @@ communication).
   exists at `qsh/benchmark/alice_bob_e2e.py` (`POST /api/alice-bob`).
 
 The benchmark and security posture are computed server-side **and** mirrored
-client-side (`web/src/lib/clientCompute.ts`) so the public demo shows identical numbers with no backend.
+client-side (`web/src/lib/clientCompute.ts`) so the public demo shows the same posture with no backend; the benchmark's figures are each tier's own measurement, and the next section says why their ct/pt differ.
 In both, the QKD figures come from the simulated channel model.
 
 ### What ct/pt measures
@@ -302,7 +302,7 @@ visible number.
   table) in which every date carries who it binds and how firm it is: requirement, proposed rule,
   draft, company target, deferred, or passed.
 - **Validations** - the PQC primitives; the simulated BB84 channel with a sweep of QBER and secure bits
-  against the eavesdropper fraction; the MCP agent call; and handshakes of the network layer's kinds,
+  against the eavesdropper fraction; the MCP agent call; a secure argmax over a shaped network under two garbled-circuit engines, measured; the CBOM of the cryptography the project calls; and handshakes of the network layer's kinds,
   keyed with the page's own material and computed in the tab:
   - an ML-KEM-768 known-answer test against NIST ACVP cases (key generation, encapsulation, and
     decapsulation of valid and modified ciphertexts);
@@ -350,8 +350,8 @@ The sample draws each class of the test window on its own (164 laundering rows, 
 and its prevalence is not; $`\mu`$ is the window's own, 2,321 of 1,523,504 (0.152%), which is the case-control
 estimator of Pfeiffer and Gail (2020, eq. 11). The score passes through the record's Platt map first, and the
 threshold range, 0.002 to 0.05, is the use case's decision context in the config, shared with the BFV scorecard's
-fit. Measured on 2026-11-11 against the whole window with the published graph, and again on 2026-11-12 at the pin its card-only
-republish moved, with the same figures, per 10,000 transactions
+fit. Measured on 2026-11-11 against the whole window with the published graph, and again on 2026-11-12 and on 2026-11-13 at the
+pins its republishes moved (the record is the last, at `b74d16f`), with the same figures, per 10,000 transactions
 ([`measurements/finance-decision-curve-2026-11-11.json`](measurements/finance-decision-curve-2026-11-11.json)):
 
 | $`t`$ | whole window | the page's sample, pointwise 95% | weighted by the sample's 2.0% | treat-all |
@@ -403,19 +403,19 @@ probability read as a risk, negative from $`t \approx 0.015`$, is why the map is
 
 #### Which pages encrypt
 
-In the browser, the finance, medical and genomics pages run node-seal CKKS and a Polytune
-garbled-circuit 2PC between notional parties in one tab; the telecom and satellite pages run a CKKS check of a
-published student and no 2PC. The satellite page's anomaly verdict and SHAP explanation are a separate demo regression,
+In the browser, the finance, medical, genomics and DeFi lending pages run node-seal CKKS and Polytune
+garbled circuits between notional parties in one tab, and on request the medical, genomics and lending pages run Lattigo's threshold CKKS or BGV, compiled to WebAssembly; the telecom and satellite pages run a CKKS check of each
+published student they carry and no garbled circuit. The satellite page's anomaly verdict and SHAP explanation are a separate demo regression,
 computed in plaintext on a bundled OPS-SAT-AD segment; its check scores `satellite_comms.opssat_student` on the benchmark's
-529 test-partition segments, through the quadratic expansion and the scaler its ONNX graph applies. The full deployment scores one of those
+529 test-partition segments, through the quadratic expansion and the scaler its ONNX graph applies, and the forecaster's student, `satellite_comms.student`, is re-scored under CKKS on its whole published stretch, 8,640 forecasts. The full deployment scores one of those
 segments, with the same demo regression, under CKKS (TenSEAL), and reports how far the decrypted
 logits are from the plaintext ones. What CKKS evaluates in the browser: on the medical page the
 Wisconsin logistic regression, whose logits the 2PC argmax then compares, and the published medical
 student's convolution and both dense layers; the fully encrypted square student end to end, in its own
-CKKS context (below); the telecom student; the full 183-variant genomics
-score; and, on finance, a linear surrogate over four columns of the PaySim demo sample, while the
+CKKS context (below); the chest X-ray model's own last layer over its 512 pooled features; the telecom student; the full 183-variant genomics
+score; on finance, a linear surrogate over four columns of the PaySim demo sample, and the published MLP and the compact GNN on one held-out transaction each, their ReLUs and argmax in garbled circuits, while the
 115-parameter AMLworld student is encrypted on 8,192 held-out test-window rows for its agreement
-figure. What each step hides, in either tier, is in
+figure; on the lending page, each check's margin; and, where a trained QCNN is chosen under CKKS, its input as a linear form. What each step hides, in either tier, is in
 [the threat model's table](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment).
 
 #### The fully encrypted square student
@@ -570,7 +570,7 @@ Every backend gives the same $`\langle Z_0\rangle`$ to $`5.5\times10^{-7}`$, the
   `quantum_sim.device` stays `default.qubit`, which runs everywhere and trains the hybrid network by backpropagation.
 - **The GPU pays from about 18 qubits**, where `default.qubit` takes 77 ms against 3.6 ms on `lightning.gpu`, and at 20 qubits it is 200
   times faster. `qsh.quantum_device` lets a larger experiment use it without editing a module.
-- **CUDA-Q in single precision is about 10 times faster than in double from 22 qubits up**, more than halving the memory traffic alone
+- **CUDA-Q in single precision is about 10 times faster than in double from 24 qubits up** (3.1 times at 22, 14.6 at 24, 9.8 to 10.3 from 26 to 30), more than halving the memory traffic alone
   explains. The cause is not established here.
 - **Qiskit Aer GPU 0.18.2 runs on this Blackwell GPU.** The earlier records said its wheels did not target `sm_120` and that it had no
   release since 2024; 0.18.2 was released on 2026-10-26, built on the CUDA 12 runtime, and ran these circuits.
@@ -669,7 +669,7 @@ runs, each started with the 1-minute load under 4:
 | 34, $`k = 512`$ | 2.88 s | 5.29 s | 18.0 s | 0.54 | 0.16 | 129 MB |
 | 35, $`n = 8`$ | 0.701 s | 0.440 s | 0.404 s | 1.59 | 1.74 | 2.6 MB |
 | 35, $`n = 16`$ | 2.70 s | 0.639 s | 0.495 s | 4.22 | 5.45 | 10 MB |
-| 35, $`n = 32`$ | 11.7 s | 1.22 s | 0.827 s | 9.6 | 14.1 | 42 MB |
+| 35, $`n = 32`$ | 11.7 s | 1.21 s | 0.827 s | 9.6 | 14.1 | 42 MB |
 | 35, $`n = 64`$ | 47.2 s | 2.39 s | 0.882 s | 19.7 | 53.5 | 168 MB |
 
 The deep layer is where the GPU pays: function 35 is ahead from $`n = 8`$ and 53.5 times faster at $`n = 64`$ with the

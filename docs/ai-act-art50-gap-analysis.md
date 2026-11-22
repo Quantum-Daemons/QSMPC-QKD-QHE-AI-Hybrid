@@ -53,8 +53,8 @@ The Code of Practice supplies the reasoning, and each step is quoted from it:
 So no machine-readable marking is owed on the page. This is a Code provision rather than a statutory
 one, and the underlying justification is sound independently: marking short text is provably limited -
 Christ, Gunn and Zamir (COLT 2024) prove that "low empirical entropy outputs are not watermarked in any
-undetectable watermarking scheme for any model", and Kirchenbauer et al.'s own Appendix G reports z of
-0.25-0.40 for short greedy output against a detection threshold of 4.
+undetectable watermarking scheme for any model", and Kirchenbauer et al.'s own Appendix G reports $`z`$ of
+0.25 to 0.40 for short greedy output against a detection threshold of 4.
 
 ### The JSON download: signed metadata, implemented
 
@@ -97,7 +97,8 @@ The public specification Sub-measure 2.1.1 asks for. `ai_provenance` in the down
 (`run.text`), and `content_sha256`, the SHA-256 of the UTF-8 bytes of `run.text`, in hex.
 
 To check a file: verify `sig` over `body` under `public_key`, parse `body`, and compare `content_sha256`
-with the hash of `run.text`. The two implementations are `web/src/lib/aiProvenance.ts` and
+with the hash of `run.text`. Both also report whether the copy in `mcp.echoedPayload.answer`, where a file has one,
+equals `run.text` (`copy_matches`); that copy is outside the signed record. The two implementations are `web/src/lib/aiProvenance.ts` and
 `scripts/verify_ai_provenance.py`; `tests/fixtures/ai_provenance_sample.json`, signed by the first, is
 checked by both in CI. The record carries no prompt and nothing about the visitor.
 

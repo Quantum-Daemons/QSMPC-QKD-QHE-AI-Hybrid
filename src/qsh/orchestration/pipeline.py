@@ -261,10 +261,6 @@ def main(argv: list[str] | None = None) -> int:
     return 0 if pipe.state in (PipelineState.DONE, PipelineState.STOPPED) else 1
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
-
-
 def _prune_runs(out: Path) -> int:
     """Keep the newest ``orchestration.keep_runs`` runs in ``out``, delete the rest.
 
@@ -310,3 +306,7 @@ def _prune_runs(out: Path) -> int:
             except OSError:
                 pass
     return removed
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -6210,3 +6210,58 @@ gained exactly those fields, with no number changed; each diff only adds lines. 
 
 The test also asks each file for a row of its own in the register, and holds the three files to what their scripts write. It
 was seeded: the boundary as it shipped, and a credit without its licence, each fail.
+
+### #81 on the deployed site (2026-11-22)
+
+#81 was merged as 2691732 on the owner's approval (CI 8 of 8, the local gate passed on its head) and deployed; the box serves
+`index-C-GZhrkH.js`, the bundle #80 left, since #81 changed data files, scripts, tests and records and no web source. Read on
+the deployed site:
+
+- **The three files.** `/data/satellite/boundary.json`, `/data/satellite/vus_pr.json` and `/data/medical/fedheart_dp_sweep.json`
+  are byte-identical to main (sha256), and each carries its new fields: the boundary its CC BY 4.0 licence, link, change note
+  and credit, the two aggregates a credit with where to download, the citation and the licence.
+- **The pages that read them.** In headless Chrome the satellite and medical pages ran to the end; the boundary and VUS-PR
+  cards and the DP band's chart are drawn, with no "did not load" text and no page error.
+- **The CSP walk.** It passes every page, worker and run.
+
+### The README and docs/ checked against the code (2026-11-22)
+
+The owner's option 4 begins with README.md and docs/. Four read-only reviews read the ten documents in docs/ line by line
+against the code, the registry, `models/metrics.json` and the recorded measurements, and returned 118 candidate
+discrepancies. Each was checked at the code or the record before anything changed, and four were not taken: the
+QSMPC-FHE row's 56 T-gates is the browser's own count, and a live run prints "56 T-gates counted"; a front-proxy header
+example depends on how Caddy merges headers, which the repository cannot show; a Round 21 paragraph's input shapes are
+history; and the date the demo first became reachable cannot be settled from git.
+
+What the documents had wrong:
+
+- **Figures that moved with retraining.** The finance MLP's and GNN's Brier scores are 0.00177 and 0.00181, and Platt
+  scaling brings CORP's miscalibration term down 13- and 20-fold (the text gave 0.00278, 0.00210 and 36- to 53-fold);
+  the finance student agrees with its teacher at 0.997, not 0.983, and has 115 parameters, not 33; its AUPRC, 0.1840,
+  is recorded; the DP figures in `docs/threat-model.md` and `docs/findings.md` predated the conversion of 2026-11-14
+  ($`V = 30`$, not 38; 8.1 alleles and 5.5 accounts, not 9.8 and 6.2).
+- **Statements Round 86 overtook.** The medical CNN reads a held-out BreastMNIST image, not a tiled tabular row; all
+  eighteen published models carry a sample and are re-scored on Start, where the text counted 15 specs, 11 published
+  and six verifiable in place; `finance_aml.gnn`, called never trained, is published; the medical half of the
+  CKKS-friendly student plan is done (the square student, $`N = 8192`$ at 202 bits); threshold CKKS and BGV on Lattigo,
+  the DeFi page, its committee mode and its FHEVM view, the walkthrough and the CBOM were missing where they belong.
+- **Claims wider than the code.** "Algorithms are never hard-coded" holds for the five registry families only, and the
+  CBOM lists all 24 primitives; the QRNG seeds BB84, not E91; QKD does not run on `@noble`; the benchmark CLI's tiers
+  come from `generic_architecture`; CUDA-Q's single-precision gain is about 10x from 24 qubits, not 22; the paper's GIN
+  scores higher in the dense bin, not lower; the full deployment's API, bound to loopback, is still reachable through the
+  web port.
+- **Commands that fail.** The quickstarts ran `make test` on the core tier, where the use-case tests fail at collection
+  without torch and xgboost, and `npm run dev` before the wasm the SPA imports was built. Both now follow CI: the lock,
+  then the tests; `scripts/build_wasm.sh`, then the dev server.
+
+A defect outside the documents: `python -m qsh.orchestration.pipeline` with its default use case stopped with a
+`NameError`, because its `__main__` guard stood above a definition the run calls. The guard now ends the module, and
+`tests/test_r86_a_module_runs_after_its_definitions.py` holds every module to that and runs the default CLI; it fails on
+the old file.
+
+Read again at the source the same day: ISO/IEC 28033-3, the CKKS part, has passed its FDIS ballot and is under
+publication (stage 60.00), as is Part 4; NIST's FIPS listing still has no FIPS 206 or 207; node-seal 7.0.0, SEAL 4.7.2,
+TenSEAL 0.3.18, liboqs 0.16.0, oqs-provider 0.12.0 and HEonGPU 2.1.1 are each the newest release, and Polytune's
+issues 63 and 100 are still open; the Hugging Face Space still answers 401 and the organisation lists none. Three
+README images were retaken from the deployed site (the DeFi page's view switch, `/value`'s new prior-art row, and the
+telecom page's pin); the four others the capture changed differed only in a timing or a hash, and were kept.

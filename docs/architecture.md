@@ -33,7 +33,7 @@
    +-------------------------------------------------------------------+
 ```
 
-**WS1 entropy + QKD protocols.** The `qkd/` module also provides a **QRNG entropy
+**WS1 entropy + QKD protocols.** The `qrng/` package, beside `qkd/`, provides a **QRNG entropy
 backbone** (`qrng/`: state-vector `|+>` measurement, the **SP 800-90B section 4.4** continuous health
 tests (Repetition Count + Adaptive Proportion) which gate the verdict, with SP 800-22 p-values reported
 but NOT gating -- section 4.1 states those tests "are not useful for monitoring the noise source" -- + an **SP 800-90B**
@@ -46,7 +46,7 @@ The `pqc/` module adds a config-gated PQC+QKD key combiner (`transport.py`,
 arXiv:2603.26907, seeded here with SHAKE-256 of its own inputs; the paper's leakage-resilience
 property needs a seed independent of the input, so as implemented the combiner is computational, not
 information-theoretic, like HKDF. Its QKD input is a simulated key at best, and the browser mixes
-none into any key ([what each tier mixes in](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)).
+no QKD key into any key, though its MCP channel can mix a fixed 32-byte constant ([what each tier mixes in](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)).
 The QRNG post-processing and the combiner mode are both runtime-selectable - see
 `crypto-agility.md`.
 
@@ -80,7 +80,7 @@ A `Pipeline` runs an ordered list of `Stage`s over a shared `Context`, emitting
 structured `Event`s to an `EventBus`. The canonical chain:
 
 ```
-PQCHandshake > QKDKeyAgreement > QSMPCCompute > PrivateInference > Result
+PQCHandshake > QKDKeyAgreement > QSMPCCompute > PrivateInference > Explainability > QuantumComparison > Result > Signature
 ```
 
 Each stage resolves its algorithm from the `CryptoRegistry` (crypto-agility), so the
@@ -141,7 +141,7 @@ masks are real numbers, uniform on $`[-2^{30}, 2^{30})`$ from the OS CSPRNG, whe
 mask exactly over a ring. Behind such a mask a value of size $`B`$ is $`B / 2^{30}`$ from any other
 in statistical distance, and every run reports two bounds. `mask_statistical_distance` covers the
 values that enter and leave the MPC through slot 0, the number of them times the largest over
-$`2^{30}`$ (about $`2 \times 10^{-7}`$ on the test CNNs and $`1.4 \times 10^{-6}`$ on the medical use case's 14x14 CNN, recorded
+$`2^{30}`$ (about $`2 \times 10^{-7}`$ on the test CNNs and $`1.4 \times 10^{-6}`$ on the medical use case's $`14 \times 14`$ CNN, recorded
 before Round 84). `view_statistical_distance` covers the client's whole view, every real and
 imaginary part of every slot it decrypts plus each value the MPC opens, each one's content over
 $`2^{30}`$: about $`2 \times 10^{-7}`$ on an 8-4-2 MLP, measured 2026-10-30. The masks on the other slots double as
@@ -247,7 +247,7 @@ ciphertext-plaintext multiply followed by a rotate-and-sum over the slots, so th
 rotation (Galois) keys, and TenSEAL refuses the dot product without them. The server encrypts one
 patch per ciphertext, so it runs one rotate-and-sum per (patch, output channel); the browser packs
 every patch into one ciphertext and reduces each output channel with $`\log_2`$ of the block size
-in rotations, 16 for the medical student's four 3x3 kernels (`web/src/lib/clientFHE.ts`). The engine
+in rotations, 16 for the medical student's four $`3 \times 3`$ kernels (`web/src/lib/clientFHE.ts`). The engine
 dispatches on tagged layer specs (`mpc/layers.py`: `ConvSpec`/`DenseSpec`/`PoolSpec`/`FlattenSpec`),
 so the **medical** use case runs a real MedMNIST-scale CNN under FHE-linear conv + MPC `secure_relu`,
 with its average pool on each party's share locally (`secure_maxpool` serves max-pool layers; the
@@ -267,7 +267,7 @@ the encrypted student where a use case has one, and the full deployment's dense 
 
 ## SPA shape
 Overview, Introduction & Value, Validations, E2E Orchestration (generic "run any pipeline"), Use Cases
-index, and **5 per-use-case simulator pages** (`/usecase/:id`). The E2E page shows its run in two tabs:
+index, and **5 per-use-case simulator pages** (`/usecase/:id`), and in the client-only build a sixth, the DeFi lending check. The E2E page shows its run in two tabs:
 the use-case pages' architecture canvas, for any use case or the generic demo, and the
 stage-order graph, the one figure that also places the stages only the full deployment runs.
 
@@ -281,7 +281,8 @@ request since Round 60) or WebLLM
 bundle). The AI request/response is wrapped in a **client-side quantum-safe MCP channel**
 (`web/src/lib/clientMcp.ts` - a zero-server mirror of `pqc/mcp_bridge.py` + `transport.py` via @noble
 ML-KEM-768/ML-DSA-65 + WebCrypto HKDF/AES-256-GCM), with a **per-industry MCP tool** (`score_transaction` /
-`query_cohort` / `pool_allele_counts` / `inspect_qkd_telemetry` / `relay_mission_telemetry`) and the live
+`query_cohort` / `pool_allele_counts` / `inspect_qkd_telemetry` / `relay_mission_telemetry`, and on the lending page, in the browser only,
+`check_position_health`) and the live
 run's metrics composed into the prompt. Everything fails soft (WebGPU selected without a usable adapter
 -> Transformers.js WASM, and the result says so; the MCP envelope always runs). Each use-case page
 unifies a **live architecture canvas** (each party's components and a lane per stage, driven by the running pipeline's
@@ -298,7 +299,7 @@ Orchestration page and every use-case page; the demo mirrors it client-side via
 
 **Config single source of truth.** The benchmark cost model, per-use-case tier architectures, workload
 multipliers, the retired advantage function's weights, demo data sizes and in-browser-AI knobs all live in
-`src/qsh/config/defaults.py`. The backend reads the dataclasses directly; the SPA gets the same data from
+`src/qsh/config/defaults.py`, overlaid by `config.yaml` (or the file `$QSH_CONFIG` names). The backend reads the dataclasses directly; the SPA gets the same data from
 `/api/config` (full mode) or the baked `web/src/lib/config.defaults.json` (demo, zero `/api`), generated
 by `scripts/export_config.py`. So the demo's representative numbers can never drift from the backend
 (`web/src/lib/config.ts` is the single frontend accessor; a test asserts the baked JSON == the config).
@@ -317,8 +318,13 @@ cost - genomics and the generic demo - and labels it so):
   secret-shared modulo $`2^{32}`$ with masks from the browser's CSPRNG (since Round 66), the argmax circuit
   privately reconstructs + compares them, and **both parties run loopback
   in one tab** (zero VPS) - the reported MPC ms + real garbled-circuit communication bytes are measured.
+- **Threshold FHE** - `web/src/lib/fedThresh.ts` loads Lattigo v6.2.0 (Go -> WASM, Apache-2.0, built from
+  `wasm/qsh-fedthresh`) for threshold CKKS and BGV: the medical federation's sums and its DP arm on request, the
+  genomics sum on request, and the lending page's committee. Every party is notional, in one tab, and each
+  decryption share is flooded by the module's own uniform noise.
 - **QFL** - "Quantum Federated Learning" runs on every run of the finance and medical pages; it is
-  not a toggle. It performs a real client-side FedAvg over the page's own bundled sample, so it is
+  not a toggle. It performs a real client-side FedAvg, on finance over the page's own bundled sample and on medical across four
+  real hospitals (UCI Heart Disease, since 2026-11-13), so it is
   part of what the demo does rather than something to opt into. Server side, reached only by a direct
   `POST /api/run/medical_fl` with `qfl` set and no `dataset` (no page sends that; the medical page federates its CNN):
   `ai.federated.federated_train(kind="qfl")` trains a hybrid **PennyLane VQC (`HybridQNN`) + classical**
@@ -354,7 +360,7 @@ cost - genomics and the generic demo - and labels it so):
   deployment, against a 90th-percentile cut over the bundled panel; telecom: synthetic QKD-attack data,
   whose published `telecom_ids.qml` is a random forest
   ([and why](findings.md#telecom-the-classical-forest-wins)); satellite: ESA-ADB telemetry for the
-  trained models, with a CKKS anomaly score in the full deployment only
+  forecaster and its student and OPS-SAT-AD for the segment classifier and its student, with CKKS checks of the students in the browser and a CKKS anomaly score of one segment in the full deployment
   ([which pages encrypt](models-and-benchmarks.md#which-pages-encrypt)). The FHE-*encrypted*
   inference is the FHE-feasible part; the full model is the real industry architecture (honest crypto scope).
 
@@ -362,7 +368,7 @@ cost - genomics and the generic demo - and labels it so):
 MCP bridge), `qkd/` (BB84, channel, QSDC), `qsmpc/` (QOT, Shamir, secure summation), `fhe/` (CKKS
 inference, conv, backends), `mpc/` (secret inference, layers), `ai/` (models incl. `HybridQNN`, federated,
 explainability), `qml_ids/`, `benchmark/`, `usecases/`, `orchestration/`, `mcp/`, `config/`
-(single source). Not every `/api/*` endpoint has a caller in the SPA. `/api/mcp/tools`,
+(single source), `qrng/` (the simulated QRNG, its health tests and extractors), `qhe/` (QOTP, the QCNNs, Rate-1 transport), `models/` (the registry, training, export, publishing), `data/` (loaders), `monitoring/` (the Prometheus exporter), `crypto_inventory.py` (the CBOM's source), `quantum_device.py` and `cli.py`. Not every `/api/*` endpoint has a caller in the SPA. `/api/mcp/tools`,
 `/api/mcp/call` and `/api/mcp/filesystem` have **no** reference anywhere in `web/src`; the SPA's MCP
 path is `/api/demo/mcp` or the in-browser `clientMcp.ts` mirror, so those three are reachable only by
 an external MCP client. `/api/health`, `/api/usecases`, `/api/benchmark`, `/api/alice-bob`,
@@ -376,10 +382,10 @@ full-mode SPA uses the run controls (`/api/run`, `/api/stop`, `/api/pause`, `/ap
 
 ## Two compute topologies
 - **Full** (GPU box): everything runs server-side - federated training (own FedAvg; PennyLane QFL by direct API call), CPU
-  FHE (TenSEAL / OpenFHE) and GPU FHE (HEonGPU, where `scripts/build_heongpu.sh` has built it), GPU quantum sim (CUDA-Q / lightning.gpu), the real MCP server, Prometheus + Grafana.
+  FHE (TenSEAL / OpenFHE) and GPU FHE (HEonGPU, where `scripts/build_heongpu.sh` has built it), GPU quantum sim (PennyLane's lightning.gpu through `quantum_sim.device`; CUDA-Q is benchmarked only), the real MCP server, Prometheus + Grafana.
 - **Client-side build** (no GPU, no server-side ML): the static SPA runs **all** heavy compute in the
-  browser (PQC via @noble in plain JavaScript, **real CKKS FHE + garbled-circuit MPC**, ONNX inference, in-browser
-  AI, JS BB84/PSI/SHAP/QFL, the client MCP mirror) - it makes **zero `/api` compute calls** (Validations'
+  browser (PQC via @noble in plain JavaScript, **real CKKS FHE, threshold CKKS and BGV, and garbled-circuit MPC**, ONNX inference, in-browser
+  AI, JS BB84/PSI/SHAP/QFL, the client MCP mirror, and the Python walkthrough on Pyodide, from an origin of its own) - it makes **zero `/api` compute calls** (Validations'
   PQC/QKD/MCP are client-mirrored). It ships **no backend at all**. A slim
   API image (core+api, no FHE/torch) used to run beside it as a `?demo=full` fallback. Two separate
   removals a round apart: **Round 17** stopped serving it after testing it on the deployed site, and
