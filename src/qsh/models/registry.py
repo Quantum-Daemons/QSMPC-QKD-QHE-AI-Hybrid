@@ -816,7 +816,7 @@ M_BREASTMNIST = MetricSpec(
 #: Kept off `M_BREASTMNIST`, which the student's metric copies, so the student's published card does not change.
 M_BREASTMNIST_RESNET18 = replace(M_BREASTMNIST, baseline_source=(
     M_BREASTMNIST.baseline_source + ". That baseline is \"the mean value of at least 3 trials\" (Yang et al.); this "
-    "card's 0.9147 is one run, and its six seeds average 0.8905 +/- 0.0198 (the record's seed_spread), below 0.901"))
+    "card's 0.9147 is one run, at seed 42; over seven runs differing only in the seed, this one among them, the AUC averages 0.8761 +/- 0.0218 (0.8517 to 0.9147, the record's seed_spread), and only this run reaches 0.901"))
 #: The CKKS student against the same baseline (Round 86). The bars share the metric and the test split, not the input:
 #: the chart said "Both bars are the same metric on the same axis" over a 14 x 14 single-convolution student and a
 #: 28 x 28 ResNet-18. The card does not print this field, so the student's card is unchanged.

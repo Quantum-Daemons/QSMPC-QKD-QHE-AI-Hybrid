@@ -2816,17 +2816,27 @@
             "opset": 18
           },
           "git_sha": "61b855e-dirty",
-          "hf_revision": "3ee6e7224e2b4a666a23213e8e7f597d92dc1af2",
+          "hf_revision": "156aa7353495ea1b2c3be5a05580277942fbe73f",
           "macro_f1": 0.8249158249158248,
           "n_parameters": 11171266,
           "resolution": 28,
           "seed_spread": {
-            "hi": 0.9216,
-            "lo": 0.863,
-            "mean": 0.8905,
-            "n_seeds": 6,
-            "sd": 0.0198,
-            "source": "references/medical-student-collapse-investigation.md"
+            "hi": 0.9147,
+            "init": "random, the shipped configuration",
+            "lo": 0.8517,
+            "mean": 0.8761,
+            "n_seeds": 7,
+            "sd": 0.0218,
+            "seeds": [
+              42,
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "source": "docs/measurements/medical-resnet18-seeds-2026-11-22.json"
           },
           "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
           "wall_clock_s": 8.4
@@ -2879,14 +2889,14 @@
           "onnx/model_int8.onnx": "a1e5b6ce9cef59d06e3d6a48aa99444150523e8e4e00ac661a18348eb77de088"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
-        "hf_revision": "3ee6e7224e2b4a666a23213e8e7f597d92dc1af2",
+        "hf_revision": "156aa7353495ea1b2c3be5a05580277942fbe73f",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "medical_fl.resnet18",
         "label": "ResNet-18 on BreastMNIST",
         "metric": {
           "baseline": 0.901,
-          "baseline_source": "ResNet-18 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.901 / ACC 0.863). That baseline is \"the mean value of at least 3 trials\" (Yang et al.); this card's 0.9147 is one run, and its six seeds average 0.8905 +/- 0.0198 (the record's seed_spread), below 0.901",
+          "baseline_source": "ResNet-18 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.901 / ACC 0.863). That baseline is \"the mean value of at least 3 trials\" (Yang et al.); this card's 0.9147 is one run, at seed 42; over seven runs differing only in the seed, this one among them, the AUC averages 0.8761 +/- 0.0218 (0.8517 to 0.9147, the record's seed_spread), and only this run reaches 0.901",
           "ceiling": 0.919,
           "ceiling_source": "Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
           "companion": "accuracy",
