@@ -69,5 +69,8 @@ at the version the pages cite.
 
 - FIPS 206 (FN-DSA) and FIPS 207 (HQC): no draft in NIST's FIPS listing, and none in the PQC project's news after IR 8547
   (2026-10-27). No page names either.
-- ISO/IEC 28033-1 and -2 (fully homomorphic encryption): draft standards as indexed; the ISO catalogue could not be read
-  past its bot check. No page or test cites them; the CBOM check stays on the HE Standard v1.1 (2018).
+- ISO/IEC 28033 (fully homomorphic encryption): the ISO catalogue could not be read past its bot check on 2026-11-21.
+  Read in a browser on 2026-11-22: Part 3, the CKKS part, and Part 4 are under publication (stage 60.00), Part 1's
+  FDIS is registered for formal approval (50.00), Part 2 is at DIS (40.60) and Part 5 at WD (20.60). None is
+  published, so the CBOM check stays on the HE Standard v1.1 (2018) until Part 3 is; `docs/threat-model.md` carries the
+  stages.

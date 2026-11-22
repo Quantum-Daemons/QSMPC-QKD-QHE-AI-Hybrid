@@ -13,10 +13,10 @@ We use the definition from the EU NIS Cooperation Group,
 > attacks if not done very carefully.
 
 **QSH implements the first half of that definition and deliberately does not implement the
-second.** Algorithms are never hard-coded; they are resolved from a registry so the system
+second.** The five families below (KEM, QKD, FHE, MPC, signature) are not hard-coded; they are resolved from a registry so the system
 survives a future PQC migration - or the withdrawal of a broken primitive - as a
 *configuration change*, not a rewrite. That is the modular-replaceability property. It is
-**not** cipher-suite negotiation.
+**not** cipher-suite negotiation. The other primitives (AES-256-GCM, HKDF, the OPRF, threshold BGV, the garbled circuits and the rest) are fixed in code, and the CBOM (`web/public/cbom/qsh.cdx.json`) lists all 24.
 
 ### What "selectable" means here (and what it does not)
 
@@ -37,7 +37,7 @@ constructions wherever feasible**, which is what the `kem` family does by defaul
 ## The registry
 `src/qsh/orchestration/crypto_agility.py` defines `CryptoRegistry` with five families:
 
-| Family | Providers (June 2026) | Default |
+| Family | Providers | Default |
 |--------|-----------------------|---------|
 | `kem` | `ml-kem-768+x25519`, `ml-kem-1024+x25519` | ml-kem-768+x25519 |
 | `qkd` | `bb84-decoy`, `pqc-only` | bb84-decoy |
@@ -47,18 +47,18 @@ constructions wherever feasible**, which is what the `kem` family does by defaul
 
 `fhe` and `mpc` are the two halves of the **hybrid private-inference** path: linear layers run under
 FHE/CKKS (`fhe`), non-linear layers (ReLU/argmax) under secret-sharing MPC (`mpc`). `mpyc-shamir`
-(MIT, a normal PyPI dependency - nothing in this repository is vendored) is the one MPC backend that runs, so the page shows it as text rather than offering a choice. Until Round 86 the family also registered `mp-spdz` and `hpmpc-gpu` by name and the page offered them, but no stage read the selection, so choosing either changed nothing a run computed. A name returns to the family when its backend runs.
+(MIT, a normal PyPI dependency, not vendored) is the one MPC backend that runs, so the page shows it as text rather than offering a choice. Until Round 86 the family also registered `mp-spdz` and `hpmpc-gpu` by name and the page offered them, but no stage read the selection, so choosing either changed nothing a run computed. A name returns to the family when its backend runs.
 
 ## Config sub-strategies (not registry providers, but runtime-selectable + security-relevant)
 Three knobs in `config/defaults.py` are also runtime-selectable and shift the observed security, so they belong
 to the crypto-agility story even though they are not `CryptoRegistry` families. `qkd.protocol` and
 `qrng.post_processing` are edited in the **Parameters panel**; `crypto.hybrid_combiner_mode` is selected in the
-**Agentic-AI, MCP panel** (it governs that panel's PQC+QKD channel-key derivation). Each visibly changes the run:
+**Agentic-AI, MCP panel** (it governs that panel's PQC+QKD channel-key derivation). The Parameters panel's finite-key settings (the block, the security parameter, the statistics and the intensities) move the key too, and are described with [the QKD key blocks](models-and-benchmarks.md#the-qkd-key-blocks). Each of the three visibly changes the run:
 
 | Knob | Options | Effect (demo-observable) |
 |------|---------|--------|
 | `qkd.protocol` | `bb84` (two-intensity decoy-state), `e91` (entanglement / CHSH) | picks the simulated QKD model the run uses - selecting `e91` moves the surfaced QBER / secure-key-bits and adds a CHSH `S`-parameter metric (independent of OptiQKD, which then tunes whichever is chosen) |
-| `qrng.post_processing` | `von_neumann`, `toeplitz` (Leftover-Hash-Lemma, epsilon-parameterised), `seedless` (two-source) | the entropy extractor + min-entropy floor of the simulated QRNG, which can seed BB84/E91 in Python when `qrng.enabled` is set (off by default; in the browser its bits feed only the health metrics). The LHL `epsilon` knob applies only to `toeplitz`/`seedless`, so it is greyed out on the `von_neumann` default |
+| `qrng.post_processing` | `von_neumann`, `toeplitz` (Leftover-Hash-Lemma, epsilon-parameterised), `seedless` (two-source) | the entropy extractor + min-entropy floor of the simulated QRNG, which can seed BB84 in Python when `qrng.enabled` is set (off by default; in the browser its bits feed only the health metrics). The LHL `epsilon` knob applies only to `toeplitz`/`seedless`, so it is greyed out on the `von_neumann` default |
 | `crypto.hybrid_combiner_mode` | `hkdf` (default, dual-PRF KDF), `its_toeplitz` (Toeplitz+QLHL) | the PQC+QKD key combiner. Both keep the session key if either input holds. `its_toeplitz` is the Toeplitz+QLHL extractor of arXiv:2603.26907 (which explicitly does *not* claim to beat XOR), seeded here with SHAKE-256 of its own inputs. The paper's leakage-resilience property needs an independent seed, so as implemented the combiner is computational, not information-theoretic, and the demo's QKD input to it is a fixed constant. The MCP envelope reports the combiner used + the derived-key fingerprint |
 
 Each provider is a factory; `register(family, name, factory, default=...)`, `get(family, name)`,
@@ -67,12 +67,12 @@ a new FHE backend) is **one `register(...)` call** - no stage code changes.
 
 ## Runtime selection (observable)
 - **API**: `GET /api/crypto-options` returns `{families, defaults}`.
-- **SPA**: the E2E Orchestration page (and every per-use-case page) renders a selector per family
-  (KEM / QKD / FHE (linear) / MPC (non-linear) / Signature); the choice is sent in the run config and
-  threaded to the stages via `ctx.config`. In the **public demo** the FHE/MPC *backend* selectors are
+- **SPA**: the E2E Orchestration page (and every per-use-case page) renders a selector for KEM,
+  QKD, FHE (linear) and Signature, and names the one MPC (non-linear) backend as text; the choice is sent in the run config and
+  threaded to the stages via `ctx.config`. In the **public demo** the FHE *backend* selector and the MPC text are
   replaced by a "real, in-browser" badge - the demo runs genuine client-side **node-seal CKKS** +
-  **Polytune garbled-circuit 2PC** rather than the server-side TenSEAL/MPyC backends, so a backend
-  choice would be inert; KEM/QKD/Signature stay selectable (they run client-side via `@noble`). The
+  **Polytune garbled circuits**, with Lattigo's threshold CKKS and BGV where a page asks for them, rather than the server-side TenSEAL/MPyC backends, so a backend
+  choice would be inert; KEM/QKD/Signature stay selectable (KEM and signature run client-side on `@noble`, QKD on the page's channel simulation). The
   **Parameters panel** additionally exposes `qkd.protocol` (BB84 <-> E91), the QRNG extractor + bits + epsilon, the
   OptiQKD budget, the QCNN qubit count, and the per-use-case data knobs; the **Agentic-AI, MCP panel**
   exposes the `hybrid_combiner_mode` combiner (HKDF <-> Toeplitz+LHL). Every one of these genuinely changes the
@@ -169,6 +169,6 @@ composite signatures in 0.10.0; composite ML-DSA for X.509 is RFC 10073 (Propose
 2026, from draft-ietf-lamps-pq-composite-sigs-19).
 
 ## Migration drill
-1. New algorithm lands -> `register("kem", "ml-kem-1024+x25519",...)`.
+1. New algorithm lands -> `register("kem", "hqc-192+x25519",...)` (HQC, say, once FIPS 207 is final).
 2. Flip the default in `config.yaml` (`crypto.kem`) or pick it in the SPA.
 3. Re-run - the signed run summary records exactly which algorithms were used.

@@ -22,8 +22,8 @@ checkout. The box is read through a resolve pinned to its own address (the one s
 `QSH_DEMO_ADDRESS`), and the name as DNS resolves it is reported beside it, as a note when another
 machine answers it: during a move between hosts the name can reach a different machine, and a pass
 read through DNS alone would describe that machine (checklist DP18, 2026-11-19). Connection details
-come from `QSH_DEMO_SSH`, `QSH_DEMO_KEY`, `QSH_DEMO_DIR`, `QSH_DEMO_URL` and, optionally,
-`QSH_DEMO_ADDRESS` in the environment - the script is tracked, so it carries none of them.
+come from `QSH_DEMO_SSH`, `QSH_DEMO_DIR`, `QSH_DEMO_URL`, `PROXY_NETWORK` and, optionally, `QSH_DEMO_KEY`,
+`QSH_DEMO_ADDRESS` and `QSH_WALKTHROUGH_ORIGIN` in the environment - the script is tracked, so it carries none of them.
 
 The steps below remain the reference for what the script does and why, and for what it does not cover
 (the clone-verify step is still a manual judgement call).
@@ -44,7 +44,7 @@ success.
 
     # 3. server: reset the deploy tree to exactly that commit
     cd "$QSH_DEMO_DIR"
-    git fetch origin && git reset --hard origin/<branch>
+    git fetch origin && git checkout <branch> && git reset --hard origin/<branch>
     git rev-parse --short HEAD                                   # record this; it is the deployed version
 
 Step 2 is the one worth keeping. A fresh clone of the pushed commit is the only check that answers
@@ -110,10 +110,10 @@ bind-mounted Caddyfile.
     git clone <repo> qsh && cd qsh
     docker compose -f docker/docker-compose.yml build    # the images: the full AI tier, OpenFHE, Node for MCP
     docker images | grep -E 'docker-(api|web)'            # the freshly built images
-    docker compose -f docker/docker-compose.yml up -d    # API with the AI tier, SPA, Prometheus, Grafana
+    docker compose -f docker/docker-compose.yml up -d    # API with the AI tier, SPA, Prometheus, Grafana, node-exporter
     docker compose -f docker/docker-compose.yml ps       # all services healthy
 
-    #  SPA :8080  -  API :8000/api/health  -  Grafana :3000  -  Prometheus :9090
+    #  SPA :8080  -  API 127.0.0.1:8000/api/health  -  Grafana :3000  -  Prometheus :9090  -  node-exporter :9100
 
     # an end-to-end federated run (writes results/); the real MCP server lives in this image too:
     docker compose -f docker/docker-compose.yml exec api \
@@ -125,8 +125,8 @@ bind-mounted Caddyfile.
 The full `Dockerfile.api` (Debian-trixie) **bakes in the AI tier** (CPU torch + PennyLane + MedMNIST),
 the **live OpenFHE** CKKS backend, and **Node** with the filesystem MCP server installed from `docker/mcp-fs`'s lockfile, so a federated
 `medical_fl` run and the MCP server work out of the box. GPU passthrough via the host's
-`nvidia-container-toolkit` and the `deploy.resources` GPU block is optional. The ports are env-overridable (`WEB_PORT`, `API_PORT`, `GRAFANA_PORT`,
-`PROMETHEUS_PORT`).
+`nvidia-container-toolkit` and the `deploy.resources` GPU block is optional, and alone gives no GPU path: the image installs CPU torch from the lock, a GPU host adds a CUDA build by hand, and no image builds HEonGPU. The ports are env-overridable (`WEB_PORT`, `API_PORT`, `GRAFANA_PORT`,
+`PROMETHEUS_PORT`, `NODE_EXPORTER_PORT`).
 
 ## The Python walkthrough
 
@@ -234,6 +234,6 @@ public-demo profile - is in the sections above.
   computation runs in the browser (real CKKS FHE + a Polytune garbled-circuit 2PC, ONNX inference, a
   simulated BB84 channel, PSI / SHAP / QFL), with **zero `/api` compute**. In this mode the system needs **neither the backend
   FHE/MPC compute path nor the frontend FHE/MPC backend-selectors** - the client owns both - so it requires
-  no GPU and no server-side ML. The same pages and buttons work in both modes.
+  no GPU and no server-side ML. The same pages and buttons work in both modes, with two differences: the DeFi lending page exists only in the client-only build, and the FHE backend is selectable only in the full deployment.
 - **Monitoring**: see [`monitoring/README.md`](../monitoring/README.md) (Prometheus + Grafana for the local
   full deployment; Zabbix dropped as redundant).

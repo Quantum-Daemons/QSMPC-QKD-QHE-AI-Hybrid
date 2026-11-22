@@ -47,7 +47,7 @@ recorded in [`docs/deliverable-verification.md`](deliverable-verification.md) an
 > and the numeric "quantum advantage" score the benchmark used to print is
 > **retired from every page of the demo** (2026-10-23): its inputs measured different things on the two
 > sides, and no run computes it any more: `advantage` is null in the browser and in the full deployment. For the QCNN specifically the evidence is sharper than "unproven": the trained QCNNs here are
-> classically simulable, nothing on their path is encrypted, and logistic regression beats or ties
+> classically simulable, nothing on their plaintext path is encrypted (the CKKS option evaluates only their readout, as a linear form), and logistic regression beats or ties
 > each of them on the same split ([what the trained QCNNs are](#what-the-trained-qcnns-are)).
 >
 > The production-relevant output is the **security posture table** - per-row facts, each
@@ -64,10 +64,10 @@ Four workstreams (WS), unified by one pipeline and a crypto-agility registry:
 
 | WS | Theme | What's implemented |
 |----|-------|--------------------|
-| **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (Ma et al.'s own one-decoy bound, section 3.5 Eq. 41, which leaves the vacuum yield $`Y_0`$ to Eve), over **Rusca et al. 2018's stated detector set** (SNSPDs at efficiency 0.5, $`10^{-8}`$ dark counts per gate, a 1% error floor, 1 GHz with a 100 ns dead time charged by their Eq. B3; a simulation set, not a measured link) (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection (intercept-resend's $`0.25 f`$ disturbance composed independently with the channel error, $`a + b - 2ab`$, in both languages); a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 13 tests hold it to published values where the papers state them (Lo, Ma and Chen, PRL 94, 230504: over 140 km with decoys, "only about 30 km" without; Ma et al., PRA 72, 012326: 142.05 km asymptotic) and to this model's own outputs where they do not (about 42 km without decoys, and at the customary $`\mu = 0.1`$ a tagged fraction of about 1.04 at **zero** distance, so no key even back-to-back); a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that can seed the BB84/E91 basis choices in Python (opt-in, off by default; in the browser its bits feed only the health metrics); a config-gated PQC+QKD key combiner (HKDF, or a Toeplitz+QLHL extractor seeded with SHAKE-256 of its own inputs, so computational rather than information-theoretic); and **OptiQKD** - a measured optimizer (a scikit-learn surrogate with gradient-free polish in the full deployment, gradient-free coordinate ascent on the page) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
-| **WS2** | **QML-IDS** intrusion detection | 8 classes = **7 QKD attack types + normal traffic**; RandomForest baseline + PennyLane variational quantum classifier and a quantum-kernel SVC, both offline; the published `telecom_ids.qml` is the random forest, which neither beats ([why](findings.md#telecom-the-classical-forest-wins)). Scored on macro F1, not attack-vs-normal F1 |
-| **WS3** | **QSMPC x QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), quantum oblivious transfer, and a semi-honest PSI on RFC 9497's OPRF over the PQC channel, not post-quantum ([what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)) |
-| **WS4** | **QHE x AI** | Quantum one-time pad (perfectly hiding as a scheme; the demo's pad is seeded); a trained variational QCNN that predicts in the clear (no T gate, no mask), beside an untrained QOTP + Clifford+T comparison circuit in the browser that counts T gates and predicts nothing (the Python module has no T gate); Rate-1 quantum **transport** (no `Eval`, so not QFHE); classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU, or HEonGPU on a GPU where it is built, commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) in the full deployment, a Polytune garbled-circuit 2PC between notional parties in the browser - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`). The full deployment runs the medical use case's small CNN on **real MedMNIST images** under that hybrid; the browser runs the published student's convolution and dense layers under CKKS on a held-out BreastMNIST image of its published evaluation sample (until 2026-11-13 a tabular WDBC row tiled to the image size), decrypting between layers to apply ReLU and pooling in plaintext |
+| **WS1** | **AI-QKD** parameter optimization | BB84 **two-intensity decoy-state** simulation (Ma et al.'s own one-decoy bound, section 3.5 Eq. 41, which leaves the vacuum yield $`Y_0`$ to Eve), over **Rusca et al. 2018's stated detector set** (SNSPDs at efficiency 0.5, $`10^{-8}`$ dark counts per gate, a 1% error floor, 1 GHz with a 100 ns dead time charged by their Eq. B3; a simulation set, not a measured link) (+ a selectable **E91/CHSH** protocol), QBER/SKR telemetry, eavesdropper detection (intercept-resend's $`0.25 f`$ disturbance composed independently with the channel error, $`a + b - 2ab`$, in both languages); a **published-reference decoy model** (`qkd/decoy_reference.py`) whose 14 tests hold it to published values where the papers state them (Lo, Ma and Chen, PRL 94, 230504: over 140 km with decoys, "only about 30 km" without; Ma et al., PRA 72, 012326: 142.05 km asymptotic) and to this model's own outputs where they do not (about 42 km without decoys, and at the customary $`\mu = 0.1`$ a tagged fraction of about 1.04 at **zero** distance, so no key even back-to-back); a **QRNG** entropy source (state-vector quantum-measurement sim + SP 800-90B section 4.4 continuous health tests, an **SP 800-90B min-entropy estimate**, and a **Leftover-Hash-Lemma / seedless** Toeplitz extractor) that can seed the BB84/E91 basis choices in Python (opt-in, off by default; in the browser its bits feed only the health metrics); a config-gated PQC+QKD key combiner (HKDF, or a Toeplitz+QLHL extractor seeded with SHAKE-256 of its own inputs, so computational rather than information-theoretic); and **OptiQKD** - a measured optimizer (a scikit-learn surrogate with gradient-free polish in the full deployment, gradient-free coordinate ascent on the page) tuning decoy (`mu_signal` / `mu_decoy`) + basis params to raise the secret-key rate vs default (with a convergence metric); the reference framework reports +14-25 % in simulation |
+| **WS2** | **QML-IDS** intrusion detection | 8 classes = **7 QKD attack types + normal traffic**; RandomForest baseline + PennyLane variational quantum classifier and a quantum-kernel SVC, both offline; the published `telecom_ids.qml` is the random forest, which neither beats ([why](findings.md#telecom-the-classical-forest-wins)). The forest is scored on macro F1 over the eight classes; the two quantum models are binary attack-against-normal classifiers |
+| **WS3** | **QSMPC x QKD** | Shamir + d-level QFT secure summation (faithful to the paper example), a sketch of quantum oblivious transfer (not a secure OT; nothing is built on it), and a semi-honest PSI on RFC 9497's OPRF over the PQC channel, not post-quantum ([what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)) |
+| **WS4** | **QHE x AI** | Quantum one-time pad (perfectly hiding as a scheme; the demo's pad is seeded); a trained variational QCNN that predicts in the clear (no T gate, no mask) or with its readout under CKKS as a linear form, beside an untrained QOTP + Clifford+T comparison circuit in the browser that counts T gates and predicts nothing (the Python module has no T gate); Rate-1 quantum **transport** (no `Eval`, so not QFHE); classical hybrid = CKKS **linear** layers (TenSEAL CPU / OpenFHE CPU, or HEonGPU on a GPU where it is built, commercial-OK) + **MPyC** secret-sharing **non-linear** layers (ReLU/argmax) in the full deployment, a Polytune garbled-circuit 2PC between notional parties in the browser - incl. a **genuine FHE convolution** (im2col -> CKKS `dot_plain`). The full deployment runs the medical use case's small CNN on **real MedMNIST images** under that hybrid; the browser runs the published student's convolution and dense layers under CKKS on a held-out BreastMNIST image of its published evaluation sample (until 2026-11-13 a tabular WDBC row tiled to the image size), decrypting between layers to apply ReLU and pooling in plaintext; a square-activation student runs whole under CKKS, and one image per run goes through the CNN with its ReLUs and argmax in garbled circuits |
 
 **Crypto-agility is the headline library strategy** - in the EU NIS Cooperation Group sense
 ([PQC Roadmap](https://digital-strategy.ec.europa.eu/en/library/coordinated-implementation-roadmap-transition-post-quantum-cryptography),
@@ -84,21 +84,21 @@ approach the EU roadmap recommends), **crypto-agility**
 pair of clients agrees its mask seed by X25519, so the aggregator cannot remove a mask alone, though
 a client that drops breaks the round: [what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)) - including a **Quantum
 Federated Learning** option (a PennyLane hybrid quantum-classical VQC over this repo's own FedAvg; in the
-browser it runs on every finance and medical run rather than behind a toggle, over the page's own
-bundled sample, as a logistic regression over a closed-form feature map with no circuit behind it), **explainable AI**
+browser it runs on every finance run rather than behind a toggle, over the page's own
+bundled sample, as a logistic regression over a closed-form feature map with no circuit behind it; the medical page federates four real hospitals instead), **explainable AI**
 (exact linear-SHAP attributions for independent features, ML-DSA-signed under a per-run key - aimed at EU AI Act
 Art. 13, which binds high-risk systems only: from 2 Dec 2027 for Annex III and 2 Aug 2028 for Annex I
 products after the AI Omnibus, and each use-case page states which, if either, would apply to it), an **E2E orchestration** engine with **Run / Pause / Resume / Step / Stop / Restart**
 controls, live WebSocket event streaming, config-driven parameters editable in the WebUI (a per-page
 **Parameters** panel - every QKD / QRNG / OptiQKD / IDS / data knob defaults from `config/defaults.py`
 and is editable per run, with reset-to-defaults; no hardcoded values), and
-high-DPI PNG / animated-GIF export of the run. An **Agentic AI, MCP** capability runs a small language
+high-DPI PNG / animated-GIF / WebM export of the run. An **Agentic AI, MCP** capability runs a small language
 model **entirely in the browser** (Transformers.js on WASM by default and WebGPU on request, or WebLLM
 on WebGPU; Apache-2.0) whose
 request/response is sealed + signed over a **client-side quantum-safe MCP** channel - agentic AI with a
 quantum-safe layer, zero server compute. It is **integrated into every use-case page** as a per-industry
 panel (its own MCP tool - `score_transaction` / `query_cohort` / `pool_allele_counts` /
-`inspect_qkd_telemetry` / `relay_mission_telemetry` - fed by that run's live metrics), so MCP is the
+`inspect_qkd_telemetry` / `relay_mission_telemetry`, and on the lending page, in the browser only, `check_position_health` - fed by that run's live metrics), so MCP is the
 per-use-case **cross-cutting integration layer** (no standalone page - it lives inside each industry use
 case). The **full
 deployment** additionally runs a **real MCP server** (MCP Python SDK, `mcp>=2.2.0`; the class is `MCPServer`,
@@ -123,16 +123,16 @@ Each use case shows a figure of the kind a reviewer expects beside its model, co
 
 | Use case | Pipeline | Industry |
 |----------|----------|----------|
-| `finance_aml` | PQC -> QKD -> **PSI** (cross-bank blacklists) -> FHE fraud inference, and the published MLP on one held-out row under CKKS and garbled circuits | finance / AML |
-| `medical_fl` | PQC -> QKD -> **federated training** + pairwise-masked aggregation -> private diagnosis | healthcare |
+| `finance_aml` | PQC -> QKD -> **PSI** (cross-bank blacklists, and among 3 to 5 banks under MPC) -> FHE fraud inference, and the published MLP and the compact GNN on one held-out transaction each under CKKS and garbled circuits | finance / AML |
+| `medical_fl` | PQC -> QKD -> **federated training** + pairwise-masked aggregation -> private inference by a separate model, not a diagnosis | healthcare |
 | `genomics` | PQC -> QKD -> **QSMS secure summation** (pooled allele counts) -> FHE | genomics |
 | `telecom_ids` | PQC -> simulated QKD (optional eavesdropper) -> **QML-IDS** attack detection | telecom / defence |
 | `satellite_comms` | PQC -> simulated **free-space QKD** (BB84 downlink) -> two-way **QSDC** test with an inline eavesdrop check (it cannot close at the default link budget, and the run says why) -> one-way **quasi-QSDC** (STIKE) from a pre-shared key pool | satellite |
-| `defi_lending` | PQC -> simulated lending market -> **margin under CKKS, its sign in a garbled circuit**. Browser demo only, no QKD and no model | DeFi |
+| `defi_lending` | PQC -> simulated lending market -> **margin under CKKS, its sign in a garbled circuit** (threshold BGV in the committee mode). Browser demo only, no QKD and no model | DeFi |
 
 `/orchestration?usecase=<id>` opens the end-to-end page on that use case. An id the page does not know selects the finance use case and says so on the page.
 
-**The lending page in one paragraph.** Alice's pool and Bob, one of its borrowers, run through a simulated month with the mechanics of Aave V3's public contracts, re-derived: a two-slope rate, debt on a public index and liquidation below a health factor of 1, up to half the debt in one step, or all of it at or below 0.95. At chosen hours the pool checks Bob's position with his balances encrypted. By default a separate key holder, Carol, holds the CKKS key, standing in for the threshold committees confidential-DeFi systems use: Bob encrypts once and can go offline, and prices and thresholds are public. A bilateral mode has Bob hold the key and the pool keep its thresholds from him. The check is the sign of the margin
+**The lending page in one paragraph.** Alice's pool and Bob, one of its borrowers, run through a simulated month with the mechanics of Aave V3's public contracts, re-derived: a two-slope rate, debt on a public index and liquidation below a health factor of 1, up to half the debt in one step, or all of it at or below 0.95. At chosen hours the pool checks Bob's position with his balances encrypted. By default a separate key holder, Carol, holds the CKKS key, standing in for the threshold committees confidential-DeFi systems use: Bob encrypts once and can go offline, and prices and thresholds are public. A committee mode puts the key with three members instead, holding Shamir shares of a collective BGV key, any two of whom re-encrypt each masked margin to Carol; a bilateral mode has Bob hold the key and the pool keep its thresholds from him. The check is the sign of the margin
 
 $$M = \frac{1}{1000}\sum_i c_i\, p_i\, \mathrm{LT}_i - \frac{\tilde d}{1000}\, I_t ,$$
 
@@ -175,8 +175,8 @@ for the full diagram.
 The trained QCNNs that decide a page's class when Inference is set to QCNN run on few qubits:
 finance at 4 wires, one per feature over the four columns its linear model reads; medical at 8; and
 telecom at 8 and at 7. No 9-wire artefact ships: the 9-wire finance and medical circuits were removed
-because their pad wire changed no class. Nothing on the QCNN path is encrypted, so it is not
-homomorphic evaluation either.
+because their pad wire changed no class. On the plaintext option nothing on the QCNN path is encrypted; the CKKS option evaluates its readout as a linear form
+under CKKS ([the trained QCNN under CKKS](models-and-benchmarks.md#the-trained-qcnn-under-ckks)).
 
 **They are classically simulable.** Bermejo, Braccia, Rudolph, Holmes, Cincio and Cerezo show that
 randomly initialised QCNNs **can only act on low-bodyness measurements of their input and are
@@ -195,7 +195,7 @@ shipped seed (accuracy 0.9535 each, the same class on all 86 held-out rows) and 
 over five seeds, and both figures are printed side by side on the page. Two circuit widths ship for
 telecom so the effect of the register size can be read rather than assumed: the eighth wire encodes
 no feature, and on the SU(4) circuit seven wires beat eight on five of five seeds (mean macro F1
-0.9705 against 0.9537, paired p = 0.041), so the padding wire buys nothing and measurably costs
+0.9705 against 0.9537, paired $`p = 0.041`$), so the padding wire buys nothing and measurably costs
 something ([`references/qcnn-width-ablation.md`](../references/qcnn-width-ablation.md)).
 
 Relatedly, Li, Wu, Li and Yung separate observable concentration from loss of parameter sensitivity

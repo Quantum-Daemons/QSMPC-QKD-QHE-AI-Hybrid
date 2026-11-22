@@ -2,14 +2,15 @@
 
 ## Adversaries
 - **Harvest-Now-Decrypt-Later (HNDL)**: records ciphertext today to decrypt once a CRQC
-  exists. Mitigation: PQC-first hybrid (ML-KEM+X25519) on every channel - confidential
-  as long as *either* primitive holds; the X25519 half covers today, ML-KEM the quantum future.
+  exists. Mitigation: PQC-first hybrid (ML-KEM+X25519) on the session key, the MCP channel and the PSI - confidential
+  as long as *either* primitive holds; the X25519 half covers today, ML-KEM the quantum future. The federation's
+  pairwise mask seeds are agreed by X25519 alone (the table below).
 - **Quantum adversary at Q-Day**: breaks RSA/ECC. Mitigation: ML-KEM/ML-DSA (FIPS 203/204);
   QKD is an optional *add-on* to the PQC hybrid, never standalone - this project's choice, which
   neither BSI nor NSA recommends ([their positions, in the roadmap](pqc-roadmap.md#standards-alignment-done--in-progress)).
   Real QKD would add key material whose secrecy rests on physics rather than on a hardness
   assumption; here the quantum channel is simulated, so the add-on contributes none of that security.
-- **A substituted model file**: a Hub, its CDN or the network serves other bytes for a pinned revision. A pin names a commit and says nothing about what comes back for it. Mitigation: the browser checks every model file, weights file and evaluation sample against a SHA-256 that ships with this site, and refuses a file that does not match or has no entry (`web/src/lib/pinnedFetch.ts`; the record is `models/hub_file_hashes.json`, written by `scripts/pin_hub_hashes.py`). A refused file is reported as refused, and no other figure is put in its place. Not covered: the in-browser LLM's weight shards, which the WebLLM engine fetches itself and whose integrity option covers only its configuration, tokenizer and model library. The record is as trustworthy as the site that serves it.
+- **A substituted model file**: a Hub, its CDN or the network serves other bytes for a pinned revision. A pin names a commit and says nothing about what comes back for it. Mitigation: the browser checks every file of this project's eighteen published models (graph, weights file and evaluation sample) against a SHA-256 that ships with this site, and refuses a file that does not match or has no entry (`web/src/lib/pinnedFetch.ts`; the record is `models/hub_file_hashes.json`, written by `scripts/pin_hub_hashes.py`). A refused file is reported as refused, and no other figure is put in its place. Not covered: the in-browser LLM's weight shards, which the WebLLM engine fetches itself and whose integrity option covers only its configuration, tokenizer and model library. The record is as trustworthy as the site that serves it.
 - **Honest-but-curious compute server** (delegated AI): would read inputs/model. Mitigation:
   QHE (QOTP, perfectly hiding as a scheme; the demo's pad is seeded) for the quantum path; CKKS for
   the classical path, with masked HE-to-MPC conversions in the full deployment; secure aggregation
@@ -31,7 +32,7 @@
   min-entropy -- and that claim needs a seed independent of the input. Here the extractor's seed is
   `SHAKE-256` over the same two keys it extracts from (`transport.py:64`), so as implemented it is a
   **computationally-seeded** extractor, not an information-theoretic or leakage-resilient one, and its
-  QKD input is a fixed constant on the MCP channel. The docstring says so; the label "ITS" does not; + QML-IDS (WS2) classifying 7 attack types against normal traffic (8 classes).
+  QKD input is a fixed constant on the MCP channel. The docstring says so; the label "ITS" does not; + QML-IDS (WS2), a demonstration classifying 7 attack types against normal traffic (8 classes) on synthetic signatures of this project's design.
 - **Classical control-plane adversary against the QKD stack** - recorded 2026-08-12 as a **GAP**,
   because until then this document had no such adversary at all. Every QKD adversary above attacks the
   quantum channel or the network crypto; none attacks the **classical procedure text** that drives the
@@ -60,19 +61,21 @@
   imperfections (the WS2 IDS targets exactly these).
 - The crypto/compute libraries are trusted as implemented, after review: server-side
   TenSEAL / OpenFHE / liboqs / MPyC (and HEonGPU with this project's binding, where it is built); client-side **node-seal** (CKKS) + **Polytune /
-  Garble** (garbled-circuit 2PC, Rust compiled to wasm from `wasm/qsh-mpc`, Round 65) for the in-browser
+  Garble** (garbled-circuit 2PC, Rust compiled to wasm from `wasm/qsh-mpc`, Round 65), **Lattigo** v6.2.0
+  (threshold CKKS and BGV, Go compiled to wasm from `wasm/qsh-fedthresh`, Round 86) and `@noble/post-quantum`,
+  `@noble/curves`, `@noble/hashes` and `@noble/ciphers` for the in-browser
   demo; the **MCP Python SDK** (`MCPServer`, named `FastMCP` before v2.0.0) for
   the full-deployment MCP server. Only some of them are pinned. The browser's npm packages and the
-  Rust crates are fixed by lockfiles (`web/package-lock.json`, `wasm/qsh-mpc/Cargo.lock`), Polytune by
-  commit, and the image's liboqs C library by tag (0.16.0). The Python packages are version floors
-  (OpenFHE is also capped below 1.6) with no lockfile, so a fresh image can resolve newer releases
-  than the ones measured here: TenSEAL
-  0.3.16, which this repository's environment runs, bundles Microsoft SEAL 4.1.1, and TenSEAL 0.3.17
-  and later, which its floor admits, bundle SEAL 4.3.3. That release itself introduced process termination on
+  Rust crates and the Go module are fixed by lockfiles (`web/package-lock.json`, `wasm/qsh-mpc/Cargo.lock`,
+  `wasm/qsh-fedthresh/go.sum`), Polytune by commit, and the image's liboqs C library by tag (0.16.0). The API image
+  and CI install the Python packages from a hash-pinned lock (`requirements.lock`, `pip install --require-hashes`):
+  TenSEAL 0.3.18 and OpenFHE 1.6.1. The requirement files' floors (OpenFHE capped below 1.7) bound what a re-lock may
+  resolve, and a development environment may still hold TenSEAL 0.3.16, as the one measured here does. TenSEAL
+  0.3.16 bundles Microsoft SEAL 4.1.1, and TenSEAL 0.3.17 and later bundle SEAL 4.3.3. That release itself introduced process termination on
   truncated compressed input, fixed in SEAL 4.5.1 (2026-10-09); the same "never deserializes foreign objects" bound
   covers it.
 - **Server-tier MPC** (full deployment, `src/qsh/mpc/parties.py`): three MPyC parties, the client
-  who holds the CKKS key, the server who holds the model, and a helper; Shamir with t = 1, so
+  who holds the CKKS key, the server who holds the model, and a helper; Shamir with $`t = 1`$, so
   **semi-honest with an honest majority**. What the masked conversions hide is in
   [the table below](#what-each-step-protects-in-the-browser-and-in-the-full-deployment). Here the
   three run on one host over loopback; a deployment that relies on the honest majority needs them on
@@ -84,10 +87,12 @@
   that folder and nothing else. Until Round 86 the caller chose the folder, the tool (write tools
   included) and the arguments, unauthenticated, with CORS open to every origin and the port published
   on every interface; this sentence said the server was sandboxed. CORS is now off unless the operator
-  names origins, and the compose file binds the API to loopback. The public demo runs no
+  names origins, and the compose file binds the API's own port to loopback; the web service, published on every
+  interface, forwards `/api/*` and `/metrics` to it without authentication, and Prometheus, Grafana and
+  node-exporter are published on every interface too, so the full deployment belongs on a trusted host or network. The public demo runs no
   server-side MCP (client mirror only), so it adds no server trust surface.
 - **The page's own code** (Round 86, 2026-11-20): everything the browser runs comes from this site, over TLS. The
-  site sends a Content-Security-Policy that allows scripts and workers from this site only, with wasm compilation and
+  site sends a Content-Security-Policy that allows scripts from this site only and workers from it and from `blob:` URLs, with wasm compilation and
   never `'unsafe-eval'` or inline scripts (and, since 2026-11-20, no inline style), and fetches to this site and to Hugging Face, which serves the pinned model
   files and redirects to its CDN; HSTS for a year (this host only), `nosniff`, and a stated referrer policy. The Python
   walkthrough, a static marimo export with inline scripts and a chart library that compiles expressions, has a looser
@@ -102,7 +107,7 @@
   Until that day the site sent no such policy, and a pipeline run with WebGPU selected loaded ONNX Runtime's asyncify
   build from cdn.jsdelivr.net, third-party code where the site says it serves its runtime itself; both callers of ONNX
   Runtime now point it at this site's copies (`web/src/lib/ortSameOrigin.ts`), and `web/scripts/check_csp.mjs` walks
-  every page under the policy in the local gate.
+  every page under the policy in the local gate and in GitHub CI.
 
 ## What each step protects, in the browser and in the full deployment
 
@@ -118,7 +123,7 @@ involved anywhere in this project.
 | PSI (finance) | A semi-honest DH-OPRF PSI on RFC 9497's OPRF, mode 0x00, suite ristretto255-SHA512 (the group is RFC 9496's ristretto255), run with `@noble/curves`' `ristretto255_oprf` (`web/src/lib/oprfPsi.ts`), both banks in one tab. Bank B, the OPRF server, draws a fresh key $`k`$ for the run; Bank A blinds each of its IDs; Bank B evaluates each blinded element and sends $`F_k(y)`$ for each of its own IDs $`y`$ in an order shuffled with the CSPRNG; Bank A finalizes $`F_k(x)`$ for its own IDs and intersects. **Bank A learns the intersection and $`\lvert B\rvert`$; Bank B learns $`\lvert A\rvert`$** and nothing else about Bank A's IDs, since a blinded element is uniform whatever the ID (RFC 9497 section 7.1, "Unconditional input secrecy"). Bank B does not learn the intersection. Bank A cannot compute $`F_k`$ without Bank B, so it can test an ID against Bank B's list only by having Bank B answer a query for it. **No malicious security**: a bank that deviates (blinding IDs it does not hold, answering under another key, sending made-up outputs) is not detected, and mode 0x00 carries no proof. **Not post-quantum**: the pseudorandomness of $`F_k`$, which keeps Bank B's list from Bank A, rests on the One-More Gap Computational Diffie-Hellman assumption (RFC 9497 section 7.2.1), so Bank A, with a quantum computer, could solve for $`k`$ from a blinded element and its evaluation and test every candidate against Bank B's outputs; Bank B's view of Bank A's IDs stays hidden even then. The three messages are sealed with AES-256-GCM under two keys HKDF-SHA256 derives from the session key above, one per direction: that keeps the transcript from third parties, including one who records it now and attacks ristretto255 later, for as long as the hybrid holds, and hides nothing between the banks. | The same protocol in pure Python: `qsmpc/oprf.py` implements ristretto255 and the OPRF from RFC 9496 and RFC 9497, checked against both RFCs' test vectors and byte for byte against the browser, and `qsmpc/psi.py` runs it between the two banks in one process, sealed with the transport's `SecureChannel` under keys derived as in the browser. The OPRF runs on libsodium's ristretto255 (through `pysodium`, Round 85), which is written to run in constant time as RFC 9497 section 7.4 requires, with the pure-Python code as the fallback where the host has no libsodium and as the cross-check; the run reports which (`psi_oprf_backend`). Side channels on the host stay out of scope here. A malicious-secure PSI and a post-quantum OPRF are future work. |
 | Secure aggregation (finance, medical) | Each client draws an X25519 key pair per run; each pair of clients derives its mask seed from their X25519 shared secret by HKDF-SHA256, and each round's mask from the seed by SHAKE-256 (`web/src/lib/clientQFL.ts`), the pairwise key agreement of Bonawitz et al. (CCS 2017). Client $`i`$ adds the mask for every $`j > i`$ and subtracts it for every $`j < i`$, modulo $`2^{32}`$, so the masks cancel exactly. The aggregator receives only the public keys and the masked updates, so it cannot remove a mask on its own, and the PQC session key seeds no mask. **Not post-quantum**: the seeds come from X25519 alone and the masked updates are not sealed, so the aggregator, or anyone who records the public keys and the updates, could recompute every seed with a quantum computer and unmask each update; agreeing the seeds by ML-KEM-768 + X25519, as the session key is, would close it. All clients run in one tab, which holds every private key; the aggregator's step reads none. Not implemented: the double masking and the secret-shared keys that recover from a dropout (a client that drops breaks the round), security against a malicious aggregator, and authentication of the public keys (an aggregator that substitutes its own keys can unmask; that adversary is out of scope). | Medical only. The same key agreement, seeds and mask words (`SecureAggregator`, `federated.py`, byte-identical to the browser's for the same private keys), with fresh keys every run unless a caller passes fixed ones; every client and the aggregator run in one process. Since Round 85 the shares are the browser's to the bit: each weighted update is quantised to $`2^{-20}`$ and masked modulo $`2^{32}`$, so the masks cancel exactly and the aggregate is the exact sum of the quantised updates (until then the masks were added as reals in float64 and cancelled only to rounding). The same three omissions apply. |
 | Secure sum (genomics) | Additive shares modulo a prime above any total the four cohorts can reach, each mask uniform from `crypto.getRandomValues` by rejection; the cohorts are notional parties in one tab. | QSMS (Shamir and a d-level QFT), with its measurement outcomes sampled analytically rather than measured on a device. |
-| Private inference | The tab generates the CKKS keys, evaluates and decrypts, so the key holder, the decryptor and the viewer are one party. Each encrypted layer decrypts its outputs only, its bias added under encryption and every other slot flooded; the medical CNN's layer-by-layer path applies ReLU and pooling in plaintext between its encrypted layers ([the CNN under MPC](#the-medical-cnn-under-mpc) is the path that does not), and the garbled-circuit argmax (Polytune) runs on logits the tab has already decrypted, its two parties in one tab, so it measures the protocol's cost and hides nothing. The CKKS half is post-quantum at these parameters ($`N = 8192`$ with a 200-bit modulus, inside the HE Standard v1.1 bound for 128-bit quantum security); the 2PC is not, since Polytune's OT extension (KOS) runs over Chou-Orlandi base OTs on ristretto255, which rest on discrete log. | Three MPyC parties ([Trust assumptions](#trust-assumptions)). Every CKKS slot the key holder can decode carries an independent mask from the OS CSPRNG, real and imaginary parts, added as a vector encrypted under the client's key, which also re-randomises the ciphertext (`src/qsh/fhe/masking.py`, used by the dense layer, the convolution and, since Round 86, the linear model whose class the stage reports, `src/qsh/fhe/ckks_inference.py`, which until then decrypted the rotate-and-sum whole, partial sums included, review PI-1; there the client decrypts the logits themselves and takes the class in the clear, so it learns the logits, not only the class). One decryption is deliberately not masked: genomics' panel check (`encrypted_scores`) reads each person's score from a block whose other slots hold partial sums of the published PGS weights' products, which the page prints anyway. The MPC opens re-masked values and, at the end, the class index to the client alone. The client's whole view is hidden statistically rather than perfectly, with its bound (`view_statistical_distance`) reported per run; on OpenFHE the context is real-typed, so the imaginary parts are not flooded, and the run says so in `masked_slots` and reports no flood margin. A client and helper who pool their Shamir shares recover the server's masks, and with them every intermediate. |
+| Private inference | The tab generates the CKKS keys, evaluates and decrypts, so the key holder, the decryptor and the viewer are one party. Each encrypted layer decrypts its outputs only, its bias added under encryption and every other slot flooded; the medical CNN's layer-by-layer path applies ReLU and pooling in plaintext between its encrypted layers ([the CNN under MPC](#the-medical-cnn-under-mpc) is the path that does not), and the garbled-circuit argmax (Polytune) runs on logits the tab has already decrypted, its two parties in one tab, so it measures the protocol's cost and hides nothing. The square student runs whole under CKKS with no layer decrypted; the chest X-ray model's last layer runs under CKKS over its 512 pooled features, computed in the clear; and the finance MLP and compact GNN run like the CNN under MPC, their ReLUs and argmax in garbled circuits. The CKKS half is post-quantum at these parameters ($`N = 8192`$ with a 200-bit modulus, and the square student's own contexts, 202 bits at $`N = 8192`$ or 240 at $`N = 16384`$, inside the HE Standard v1.1 bounds for 128-bit quantum security); the 2PC is not, since Polytune's OT extension (KOS) runs over Chou-Orlandi base OTs on ristretto255, which rest on discrete log. | Three MPyC parties ([Trust assumptions](#trust-assumptions)). Every CKKS slot the key holder can decode carries an independent mask from the OS CSPRNG, real and imaginary parts, added as a vector encrypted under the client's key, which also re-randomises the ciphertext (`src/qsh/fhe/masking.py`, used by the dense layer, the convolution and, since Round 86, the linear model whose class the stage reports, `src/qsh/fhe/ckks_inference.py`, which until then decrypted the rotate-and-sum whole, partial sums included, review PI-1; there the client decrypts the logits themselves and takes the class in the clear, so it learns the logits, not only the class). One decryption is deliberately not masked: genomics' panel check (`encrypted_scores`) reads each person's score from a block whose other slots hold partial sums of the published PGS weights' products, which the page prints anyway. The MPC opens re-masked values and, at the end, the class index to the client alone. The client's whole view is hidden statistically rather than perfectly, with its bound (`view_statistical_distance`) reported per run; on OpenFHE the context is real-typed, so the imaginary parts are not flooded, and the run says so in `masked_slots` and reports no flood margin. A client and helper who pool their Shamir shares recover the server's masks, and with them every intermediate. |
 
 Each key's lifetime and source is in the next section; what would close each gap is under the
 residual risks below. The masks' statistical bounds, and what they do not cover, are derived in
@@ -142,6 +147,9 @@ keys exist and some of them are recomputable by a party they were meant to hide 
 | PSI blinds (Bank A) | Per ID, per run | Bank A's memory, from the same CSPRNGs | Each blinded element is uniform whatever the ID (RFC 9497 section 7.1). |
 | PSI transcript keys | Per run | HKDF-SHA256 of the PQC session key, one info string per direction | Keep the PSI's three messages from third parties for as long as the session key holds. Both banks hold them, so they hide nothing between the banks. |
 | QOTP demo key (`quantumSim.ts`) | Per run | The run's seeded generator | **Disclosed in place since Round 40, not changed.** The pad is perfectly hiding as a scheme, but this key decides the circuit's output, so it stays reproducible and anyone with the seed can recompute it. |
+| CKKS key pairs (node-seal; `clientFHE.ts`, `clientHybridCnn.ts`, `clientFHESquare.ts`, `lending/privateCheck.ts`) | The page load for the main context (`clientFHE.ts`), a run for the others | Tab memory, or a worker's | The tab makes and holds every secret key, so the key holder, the decryptor and the viewer are one party; on the lending page the secret key stands for Carol's and is handed only masked margins. |
+| Threshold key shares (Lattigo; `fedThresh.ts`, `agg/agg.go`, `agg/committee.go`) | One aggregation, or one committee | WebAssembly memory in the tab | Every party's share, and the lending committee's key for Carol, is made in the one tab, so the threshold separates notional parties only. |
+| AI-provenance ML-DSA-65 key pair (`aiProvenance.ts`) | One signed file | Tab memory; the secret key is zeroed after signing | The public key travels inside the file it signs, so the signature shows the file unchanged since signing, not who signed it. |
 | ETSI KME key IDs (`qkd/kme.py`) | Per issued key, in memory | The KME's own store | Bound to one `(master_SAE_ID, slave_SAE_ID)` pair, so a `key_ID` observed in transit is not a bearer token. That binding is the only thing protecting it, because **mutual TLS is absent** - see below. |
 
 **The GS QKD 014 authentication gap, stated rather than implied.** The spec mandates mutual TLS with
@@ -295,9 +303,11 @@ one with nothing:
   is at least 10,000)."* It also scopes the attack the way this document should: it *"applies to the
   setting where decryption results need to be shared between multiple parties, e.g., in the threshold
   FHE setting"* - which is the server-side deployment, not the single-tab demo. OpenFHE is one of the
-  server tier's two CKKS backends (`qsh/fhe/backends.py`; TenSEAL is the default), so it is the one
-  place in this project where the mitigation can be configured at all; the backend sets neither
-  option.
+  server tier's three CKKS backends (`qsh/fhe/backends.py`: TenSEAL, the default, OpenFHE, and HEonGPU where it is
+  built), and it exposes the mitigation as an option; the backend sets neither
+  option. The project floods its own decryptions where another party sees them instead: the MPC tier masks every slot the
+  key holder can decode (`src/qsh/fhe/masking.py`), and the threshold module floods each decryption share
+  (`wasm/qsh-fedthresh/agg/agg.go`).
 
 **Two things that stop noise flooding being read as a solved fix.** First, the countermeasure is itself
 under attack: Guo, Nabokov, Suvanto and Johansson, *"Key Recovery Attacks on Approximate Homomorphic
@@ -320,8 +330,8 @@ Threshold Decryption from Lattices with Polynomial Modulus" (IACR ePrint 2026/16
 fourth revision 2026-09-19, retitled), treats adaptive corruption and leakage from **decryption queries** in
 the random-oracle model with bounded queries, using polynomial noise flooding and a coupled refined leftover
 hash lemma. It matters here rather than in general
-because HEonGPU ships N-out-of-N collective bootstrapping, so the threshold case is one dependency away
-rather than hypothetical. Its collective path is correct only from v2.1.1 (2026-11-02), which fixes the round-2
+because HEonGPU ships N-out-of-N collective bootstrapping, and threshold decryption already runs in the tab, on
+Lattigo, on the medical and lending pages (notional parties), so the threshold case is not hypothetical. Its collective path is correct only from v2.1.1 (2026-11-02), which fixes the round-2
 relinearization-key share reading error polynomials from uninitialized memory. Nothing here calls it.
 
 **What SEAL itself says it does not give.** The same SEAL commit as the IND-CPA-D note above (16cb511, 2026-07-25)
@@ -339,7 +349,7 @@ do not address timing, which stays out of scope here.
 - ePrint 2026/2524 (GCKKS) and 2026/2675 (noise cleaning, threshold CKKS): keeping precision after flooding.
 
 **No standard requires testing for this.** The HomomorphicEncryption.org standard contains no
-testing or conformance clause and names CKKS with others as schemes that "are not described in this standard"; ISO/IEC 28033 is not published, and the part that matters here is **Part 3** - mechanisms for arithmetic on approximate numbers, i.e. CKKS - which is at its FDIS ballot, **stage 50.20** since 2026-09-23, closing around 2026-11-18, so it may publish soon (read at iso.org on 2026-11-03). The other parts, same reading: Part 1 general DIS 40.60 (2025-12-11), Part 2 DIS 40.60 (2026-04-25), Part 4 FDIS 50.20 (2026-09-08), Part 5 WD 20.60 (2025-08-16). Part 1 scopes correctness out. Naming "Parts 1-4 at DIS" was imprecise in both directions: Part 3 is further along than DIS and is the CKKS part, so this claim has a shelf life of months and carries a date for that reason. Checked 2026-08-10. So this section is a
+testing or conformance clause and names CKKS with others as schemes that "are not described in this standard"; ISO/IEC 28033 is not published, and the part that matters here is **Part 3** - mechanisms for arithmetic on approximate numbers, i.e. CKKS - which has passed its FDIS ballot and is **under publication, stage 60.00** (read at iso.org on 2026-11-22; on 2026-11-03 it was at the ballot, stage 50.20). The other parts, read the same day: Part 1 general, its FDIS registered for formal approval, 50.00; Part 2 DIS 40.60; Part 4 under publication, 60.00; Part 5 WD 20.60. Part 1 scopes correctness out. Naming "Parts 1-4 at DIS" was imprecise in both directions: Part 3 is further along than DIS and is the CKKS part, so this claim has a shelf life of months and carries a date for that reason. Checked 2026-08-10. So this section is a
 statement of known limitations, not a conformance gap against any published requirement.
 
 ## The medical page's federation, aggregated five ways, and its DP arm under threshold BGV
@@ -380,9 +390,11 @@ $`\lambda - \log_2 r`$ bits over its lifetime, which the page prints beside each
 **A share is never made twice for the same ciphertext.** Lattigo's SECURITY.md says repeating a multiparty protocol must
 be considered insecure, since a second share of the same ciphertext under the same key share leaks; each round here
 encrypts fresh updates and decrypts their sum once, and the aggregate ciphertext never leaves the function that
-decrypts it. **Every prime of the modulus stays above six times the flooding deviation**: below that, Lattigo
-v6.2.0's Gaussian sampler writes unreduced residues and the decryption fails (reported as tuneinsight/lattigo#596), and
-`wasm/qsh-fedthresh/agg/agg_test.go` holds every setting to it.
+decrypts it. **The flooding is this module's own, uniform and bounded.** Lattigo v6.2.0's Gaussian sampler wrote unreduced
+residues when a prime of the modulus was within six times the flooding deviation, and the decryption failed (reported
+as tuneinsight/lattigo#596). Since 2026-11-13 the module sets Lattigo's own flooding to zero and adds a uniform flood
+to each share, sized from the analytic worst-case noise bound over a whole share, so the decryption cannot fail
+(`wasm/qsh-fedthresh/agg/agg.go`).
 
 **A sixth row, and the genomics count, with the DP noise inside.** The same button runs the record-level DP arm once
 more at $`\epsilon = 1`$ and sums each of its 50 steps' noisy vectors under threshold BGV, the model training on what
@@ -432,7 +444,7 @@ The finance page's main PSI is two-party, RFC 9497's OPRF. Beside it, when ticke
 
 ## The private liquidation check (DeFi lending page)
 
-Implemented in `web/src/lib/lending/privateCheck.ts` and `web/src/lib/lending/committee.ts`, in three arrangements. The sources behind the choice are in [`references/defi-lending-key-custody.md`](../references/defi-lending-key-custody.md).
+Implemented in `web/src/lib/lending/privateCheck.ts` and `web/src/lib/lending/committee.ts`, in three arrangements. A fourth view, *FHEVM, modelled*, draws the same check as Zama's FHEVM would run it, from Zama's documentation (`web/src/lib/fhevmModel.ts`); it runs nothing, contacts no host and adds no party or data flow. The sources behind the choice are in [`references/defi-lending-key-custody.md`](../references/defi-lending-key-custody.md).
 
 **Carol holds the key (the default).** Prices, thresholds and the interest index are public, as on a real market, and Carol stands in for the threshold committees confidential-DeFi systems use.
 
@@ -530,7 +542,9 @@ Where two-way QSDC cannot close, the page sends its telemetry by STIKE (Pan et a
   model and the full deployment's federated path still carry none.
 - **Not everything the demo displays was computed.** **One** thing cannot be done in a browser at all
   and is labelled `SIMULATED` rather than quietly approximated: QKD has no browser API and cannot have
-  one, so every QKD figure comes from an analytic channel model. *This bullet used to list three.* The
+  one, so every QKD figure comes from an analytic channel model. Two other kinds of figure did not run in the tab and
+  say so with their stage badge: `offline`, a record of this project's own GPU runs, and `modelled`, the lending
+  page's FHEVM view, drawn from Zama's documentation. *This bullet used to list three.* The
   other two were claims about specific libraries, and they no longer describe what ships: TFHE-rs' WASM
   build does not support FHE computations, but the demo does not use TFHE-rs - it runs **node-seal**
   (Microsoft SEAL compiled to WASM) for real CKKS (`web/src/lib/clientFHE.ts`); and JIFF is indeed
@@ -559,8 +573,8 @@ Where two-way QSDC cannot close, the page sends its telemetry by STIKE (Pan et a
   release bundles 4.4.0 or later. node-seal's main branch moved to SEAL 4.7.2 on 2026-10-31 (PR #168;
   its `CHANGES.md` calls the release 7.1.0, and that release also rejects NaN and infinities at CKKS
   encode), and npm's newest node-seal was still 7.0.0 on 2026-11-02. What bounds the exposure until
-  then: neither tier deserializes a SEAL object it did not create (each serializes only to measure a
-  ciphertext's size), so 4.4.0's hardened deserialization guards an input this project never takes,
+  then: neither tier deserializes a SEAL object it did not create: the MPC and lending paths pass keys and
+  ciphertexts as bytes between their notional parties and workers, but the same tab created every one of them, so 4.4.0's hardened deserialization guards an input this project never takes,
   while 4.4.0's fixes to ciphertext evaluation and 4.7.2's sampler fix are missing from every build either tier can run.
   The upgrade waits for the release, and a check makes the release hard to miss:
   `scripts/audit_deps.sh seal`, run daily by the audit workflow, fails once npm's newest node-seal is
@@ -670,8 +684,10 @@ Where two-way QSDC cannot close, the page sends its telemetry by STIKE (Pan et a
   65 sections carry the evidence.
   **Kept at zero since Round 67, rather than measured at zero by hand.** `scripts/audit_deps.sh` runs
   daily in `.github/workflows/audit.yml`, and whenever a manifest, a lockfile or the policy changes.
-  It runs npm audit over `web/`, and cargo-deny over the Rust crates compiled into the MPC wasm, which
-  had never been audited before. The cargo-deny policy (`wasm/qsh-mpc/deny.toml`) fails on every
+  It runs npm audit over `web/` and `docker/mcp-fs/`, cargo-deny over the Rust crates compiled into the MPC wasm,
+  which had never been audited before, and pip-audit over `requirements.lock`, and it checks that the locked
+  node-seal is npm's newest and watches the Polytune upstream. Nothing audits the Go module of the threshold wasm
+  (`wasm/qsh-fedthresh`). The cargo-deny policy (`wasm/qsh-mpc/deny.toml`) fails on every
   RustSec advisory and on any source other than crates.io and the pinned Polytune repository. It
   ignores one advisory: RUSTSEC-2025-0141, which says bincode 2.0.1 (pulled by Polytune) is
   unmaintained. That advisory reports no vulnerability, and there is no safe upgrade. A vulnerability
@@ -739,7 +755,7 @@ SECRET-GWAS, privateQTL and the CKKS polygenic-score system HEPRS (Cell Reports 
 all decrypt and release plaintext statistics with no output noise. SF-GWAS argues explicitly that DP
 is impractical at GWAS scale because releasing statistics for many variants would require
 substantial noise; that view is now contested, since GOPHER (Nandi, Neel and Cho, arXiv:2512.04225)
-releases complete genome-wide statistics at $`\epsilon = 3`$, reporting r = 0.85 to 0.86 in its own
+releases complete genome-wide statistics at $`\epsilon = 3`$, reporting $`r = 0.85`$ to $`0.86`$ in its own
 evaluation. So this is a field-wide gap rather than an oversight peculiar to this project -
 which is a reason to state it, not a reason to be quiet about it.
 
@@ -754,7 +770,7 @@ Closing this properly means adding calibrated noise to the released aggregate wi
 and reporting the utility cost - a UK Biobank study (DOI 10.1093/jamia/ocaf090, Jun 2025) found odds
 ratios destabilising below $`\epsilon \approx \ln 2`$, with some reversing sign. That is a design decision
 with a real accuracy price. The browser now pays it for its one count, and with 30 people the price is plain: at
-$`\epsilon = 1`$ the noise has a standard deviation of 9.8 alleles on a count of at most 60. The full deployment's
+$`\epsilon = 1`$ the noise has a standard deviation of 8.1 alleles on a count of at most 60. The full deployment's
 release, and any release of many variants, remain open.
 
 ## Differential privacy
@@ -764,9 +780,9 @@ it carries none.
 
 | page | released | unit | mechanism | parameters |
 |---|---|---|---|---|
-| medical | the model of the record-level arm, beside FedAvg's | one patient, added or removed | full-batch gradient descent; each patient's gradient clipped to L2 norm 1, each hospital's sum rounded to $`2^{-16}`$ with its share of discrete Gaussian noise added, inside fresh pairwise masks | 50 steps; $`\epsilon`$ = 8, 4, 2, 1; $`\delta = 10^{-6}`$ |
+| medical | the model of the record-level arm, beside FedAvg's | one patient, added or removed | full-batch gradient descent; each patient's gradient clipped to $`L_2`$ norm 1, each hospital's sum rounded to $`2^{-16}`$ with its share of discrete Gaussian noise added, inside fresh pairwise masks | 50 steps; $`\epsilon`$ = 8, 4, 2, 1; $`\delta = 10^{-6}`$ |
 | genomics | the pooled allele count at one variant | one person, who moves it by at most 2 | each cohort's count in the fixed point $`1/16`$ plus its share of the noise, inside the secure sum | $`\epsilon`$ chosen on the page from 0.5 to 8; $`\delta = 10^{-5}`$ |
-| finance | the count of accounts the two banks share, as it would be published | one account, which moves it by at most 1 | one party adds $`\mathcal{N}_{\mathbb{Z}}(0, V)`$ to the count once, clamped at 0 | $`\epsilon = 1`$; $`\delta = 10^{-8}`$; $`V = 38`$ |
+| finance | the count of accounts the two banks share, as it would be published | one account, which moves it by at most 1 | one party adds $`\mathcal{N}_{\mathbb{Z}}(0, V)`$ to the count once, clamped at 0 | $`\epsilon = 1`$; $`\delta = 10^{-8}`$; $`V = 30`$ |
 
 **The accountant.** Kairouz, Liu and Steinke (ICML 2021), Theorem 1: with $`n`$ honest parties each adding
 $`\mathcal{N}_{\mathbb{Z}}(0, V)`$ to an integer vector of dimension $`d`$ and $`L_2`$ sensitivity $`\Delta_2`$, the
@@ -810,12 +826,12 @@ $`10^{-3}`$ and $`\delta = 10^{-5}`$ instead; the finance lists hold at most 4,6
 $`1/n^2 = 4.7 \times 10^{-8}`$ and $`\delta = 10^{-8}`$.
 
 **What it costs.** Medical, seed 1, 20 draws of the noise in Python: 0.721 with no noise (clipping and full-batch steps
-alone), $`0.724 \pm 0.004`$ at $`\epsilon = 8`$, $`0.727 \pm 0.007`$ at 4, $`0.726 \pm 0.015`$ at 2 and
-$`0.706 \pm 0.032`$ at 1, against 0.7005 for FedAvg without DP. Genomics: the released count's noise has a standard
-deviation of 19.4, 9.8, 5.0, 2.6 and 1.4 alleles at $`\epsilon`$ = 0.5, 1, 2, 4 and 8, on a count of at most 60.
-Finance: a standard deviation of 6.2 accounts, on a count of 60 at the default volume (two lists of 260).
+alone), $`0.724 \pm 0.008`$ at $`\epsilon = 8`$, $`0.725 \pm 0.010`$ at 4, $`0.723 \pm 0.017`$ at 2 and
+$`0.718 \pm 0.024`$ at 1, against 0.7005 for FedAvg without DP. Genomics: the released count's noise has a standard
+deviation of 15.3, 8.1, 4.3, 2.3 and 1.3 alleles at $`\epsilon = 0.5`$, 1, 2, 4 and 8, on a count of at most 60.
+Finance: a standard deviation of 5.5 accounts, on a count of 60 at the default volume (two lists of 260).
 
-**What it does not cover.** The FedAvg model, the private-inference models (trained centrally on public data), the
+**What it does not cover.** The FedAvg model, the private-inference models (trained centrally on public data, the chest X-ray model by FedAvg; the murmur card's DP-SGD study is a recorded figure, not a model the page trains), the
 full deployment's federated path and secure summation, and the person's own polygenic score, which goes back to that
 person; on finance, the PSI's answer to the banks, which is its purpose. The telecom, satellite and DeFi pages carry
 none, each for the reason it states: the IDS data are synthetic, spacecraft telemetry describes no person, and the DeFi

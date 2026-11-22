@@ -22,7 +22,7 @@ implementation maps to each, and where gaps remain.
 |---|---|---|
 | (1)/(e) huge compute + ciphertext/plaintext overhead | The benchmark measures the CKKS ciphertext/plaintext byte ratio of this configuration, which tracks slot utilisation rather than CKKS itself, and renders no quantum ratio beside it, because none can share that column ([what ct/pt measures](models-and-benchmarks.md#what-ctpt-measures)) | `benchmark/`, `qhe/rate1_qfhe.py` |
 | (2) bootstrapping bottleneck | **PARTLY met, on the CPU only.** OpenFHE CKKS `EvalBootstrap` refreshes ciphertext levels: at ring dimension 65536 one bootstrap takes 6.2 to 7.7 s and returns a level-22 ciphertext at level 19, on OpenFHE 1.6.1 (four runs on 2026-11-06; 7.7 to 9.1 s on the 1.5 series, `docs/verification-log.md`). HEonGPU's bootstrapping is **not run here**: since Round 86 `HeongpuBackend` runs the hybrid's linear half on the GPU, and its binding exposes the seven operations that needs and no bootstrap. Both libraries are commercial-OK | `fhe/backends.py` (`OpenFHEBackend(use_bootstrap=True)`, `HeongpuBackend`) |
-| (3)/(a) quantum encoding / practical QHE | QOTP + a variational QCNN + a Rate-1 quantum transport (the module has no homomorphic `Eval`) at small scale. **Three different circuits, and only one is Clifford+T:** the BROWSER's QSMPC-FHE comparison circuit (`qotpQcnnInfer` in `web/src/lib/quantumSim.ts`) is untrained and built from H, CNOT and T on a padded state, counts 7n real T gates (56 at 8 qubits), and predicts nothing; the TRAINED QCNN that decides the class on the finance, medical and telecom pages when Inference is set to QCNN (`qcnnInferTrained`, RY, RZ, CNOT and CRY) has **no T gate and no mask**, and it is classically simulable at its 4 to 8 wires ([what the trained QCNNs are](use-cases.md#what-the-trained-qcnns-are)); and the PYTHON module (`qhe/qcnn.py`) contains **no T gate at all** - it is `AngleEmbedding` plus CNOT/RY/RZ, and its `t_count()` is a labelled Solovay-Kitaev estimate of what a fault-tolerant deployment would cost, not a count of gates present. | `qhe/qotp.py`, `qhe/qcnn.py`, `web/src/lib/quantumSim.ts` |
+| (3)/(a) quantum encoding / practical QHE | QOTP + a variational QCNN + a Rate-1 quantum transport (the module has no homomorphic `Eval`) at small scale. **Three different circuits, and only one is Clifford+T:** the BROWSER's QSMPC-FHE comparison circuit (`qotpQcnnInfer` in `web/src/lib/quantumSim.ts`) is untrained and built from H, CNOT and T on a padded state, counts 7n real T gates (56 at 8 qubits), and predicts nothing; the TRAINED QCNN that decides the class on the finance, medical and telecom pages when Inference is set to QCNN (`qcnnInferTrained`: RY, RZ, CNOT and CRY, and in telecom's circuit, Hur et al.'s, also U3, CRZ, CRX and X) has **no T gate and no mask**, and it is classically simulable at its 4 to 8 wires ([what the trained QCNNs are](use-cases.md#what-the-trained-qcnns-are)); and the PYTHON module (`qhe/qcnn.py`) contains **no T gate at all** - it is `AngleEmbedding` plus CNOT/RY/RZ, and its `t_count()` is a labelled Solovay-Kitaev estimate of what a fault-tolerant deployment would cost, not a count of gates present. | `qhe/qotp.py`, `qhe/qcnn.py`, `web/src/lib/quantumSim.ts` |
 | (b) QFL gradient leakage (arXiv:2508.15998) | **NOT met.** Pairwise-mask secure aggregation runs with each pair's mask seed agreed by X25519, so an honest-but-curious aggregator cannot remove a mask, but there is no dropout recovery, no malicious security and no authentication of the public keys, and every client runs in one tab or one process ([what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)); even a complete protocol would not bound what the aggregate leaks, and FedAvg carries no differential-privacy budget; since 2026-11-13 the medical page's record-level arm beside it does (distributed discrete Gaussian inside the masks, $`\epsilon`$ 8 to 1, $`\delta = 10^{-6}`$). QOTP-delegated learning is not implemented | `ai/federated.py`, `web/src/lib/clientQFL.ts`, `web/src/lib/clientDp.ts` |
 | (c) input privacy under Clifford evaluation, and correct decryption | **Input privacy holds by the QOTP theorem, and correctness is tested; nothing checks a deviating server.** A random Clifford word over {H, S, CNOT} is evaluated on the QOTP-encrypted state; the client tracks the Pauli frame through the same word and recovers the plaintext result at fidelity 1.0, tested at depths 8, 12, 20 and 30, one seed each. The server sees the maximally-mixed state throughout, so both the input and the computation's operand are hidden from it. Arbitrary Clifford words need the S frame rule (`H` and `CNOT` alone reach only a subgroup) and a CNOT applier not hardcoded to wires 0 and 1, and both are implemented. **Does NOT extend to T:** `T X T-dagger` is not Pauli, so the frame does not propagate, which is why the QCNN's non-linear layers are costed as magic-state T-gates instead. | `qhe/qcnn.py` (`qotp_clifford_random_circuit_demo`), `qhe/qotp.py` (`update_key_h/s/cnot`) |
 | (f) hiding the server's circuit from a malicious client | **NOT met, and in tension with the mechanism rather than merely unimplemented.** The client can only decrypt by applying the circuit's action to its own Pauli frame, so under plain QOTP it must know the circuit - "the client updates its frame" and "the client does not learn the circuit" are close to mutually exclusive. Earning this needs a construction where that does not hold, which is what Ortega and Martin-Delgado's scheme addresses and this repository does not implement. Split from (c) so the one that is met is not held hostage to the one that is not. Cf. QOTPH (arXiv:2604.19256), which builds universal QHE from QOTP over Clifford+T with Pauli key updates and reports results on real quantum processors. | not implemented |
@@ -45,8 +45,8 @@ See [`docs/pqc-roadmap.md`](pqc-roadmap.md).
 ## Per-industry models: three tiers
 
 The **classical crypto/protocol layer is real wherever a use case's flow runs it** (PSI, QSMS
-secure-sum, MPyC MPC, CKKS FHE, federated secure-aggregation), though the satellite page runs none of
-these in the browser ([which pages encrypt](models-and-benchmarks.md#which-pages-encrypt)), the PSI
+secure-sum, MPyC MPC, CKKS FHE, federated secure-aggregation), though the telecom and satellite pages run only a
+CKKS check of their published students in the browser ([which pages encrypt](models-and-benchmarks.md#which-pages-encrypt)), the PSI
 is semi-honest only, and the secure aggregation keeps nothing private between the parties, which all
 run in one tab or one process
 ([what each step protects](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment)).
@@ -65,14 +65,14 @@ model *and* encrypted inference of that model **here**:
 | tier | what it is | where it runs |
 |---|---|---|
 | **T1 crypto** | the FHE/MPC-feasible student | real CKKS + MPyC server-side; node-seal CKKS + Polytune 2PC in-browser |
-| **T2 industry** | the real literature model, trained here, published to the Hub | browser (**int8 ONNX where a quantised graph exists**; the two tree-ensemble models serve **fp32**, because their parameters live in node attributes and dynamic quantisation has nothing to quantise) and server (fp32 ONNX) |
-| **T3 large** | models too big to encrypt at all | WebGPU in-browser, or a hosted endpoint |
+| **T2 industry** | the real literature model, trained here, published to the Hub | browser (**int8 ONNX where a quantised graph exists**; the four tree ensembles (`finance_aml.gbm`, `telecom_ids.nidd`, `telecom_ids.qml` and `satellite_comms.opssat`) serve **fp32**, because their parameters live in node attributes and dynamic quantisation has nothing to quantise) and server (fp32 ONNX) |
+| **T3 large** | models too big to encrypt at all | WebGPU in-browser; a hosted endpoint was decided against (below) |
 
 The headline numbers are **two agreements, one measured per run and one offline**. Per run, the
 browser reports `encrypted_agreement`: how often the CKKS evaluation reproduces the PLAINTEXT
 STUDENT's top-1 class over the rows it scored, which measures the encryption's noise (Concrete-ML
 calls the same quantity "Similarity"). Offline, from training, `models/metrics.json` records the
-student's `agreement` with its TEACHER on held-out data: finance 0.983, medical 0.827, OPS-SAT
+student's `agreement` with its TEACHER on held-out data: finance 0.997, medical 0.827 (its square student 0.750), OPS-SAT
 0.958, satellite 0.9996, telecom 0.995, which measures what choosing an encryption-sized model
 costs, beside the industry's own metric (on satellite, flag agreement over a timeline the teacher
 rarely flags; that student's event score is the comparison that means something, below). Everything
@@ -86,7 +86,7 @@ fall short:
 | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC BY 4.0 **asserted by MedMNIST**; the BUSI authors **publish no licence** - see [DATA_LICENSES.md](../DATA_LICENSES.md)) | AUC **0.9147** from one run (DeLong 95% 0.858 to 0.971); six seeds average $`0.8905 \pm 0.0198`$ | 0.901 (Yang et al., Scientific Data 10:41, 2023), the mean of at least three trials, so the comparable figure is the six-seed mean, below it |
 | **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000072** (Graff et al. 2021, CC BY 4.0; 183 of its 187 variants scored) over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.637 - *external citation, not measurable here: a reference panel carries no phenotype. Fitted WITH covariates a dot product does not have, on 162 of the 187 variants and at 5 years, so it is a citation and not a target* |
 | **satellite** | **Telemanom** 2xLSTM(80), seq 250, a 10-step forecast served by its first step, non-parametric dynamic threshold + pruning, by ESA-ADB's Telemanom-ESA recipe | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | corrected event-wise F0.5 **0.950** over **29 anomalies** (tp=23 fp=0 fn=6); 0.968 with ESA-ADB's label-reading preparation and the paper's floor | 0.968 (ESA-ADB Supp. Table 9, anomalies only) |
-| **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 - **RF 0.987**, quantum-kernel SVC **0.832**, variational QNN **0.467** | no trustworthy single number exists - see below |
+| **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 over the eight classes, **RF 0.987**; the two quantum models are binary, each on its own draw: quantum-kernel SVC **0.832** against a forest's 1.000, variational QNN **0.467** (it predicts attack for every row) against 0.990 | no trustworthy single number exists - see below |
 
 Four of those deserve their caveat stated here rather than buried.
 
@@ -131,7 +131,7 @@ argued: every feature is bit-identical whether or not later rows exist.
 
 Genomics cannot produce an AUROC here, so it does not print one. 1000 Genomes is a reference
 panel with no case/control status; the published AUROC comes from a phenotyped UK Biobank
-cohort (PPM002038, n=216,273). What *is* computable from real genotypes is the portability failure,
+cohort (PPM002038, $`n = 216{,}273`$). What *is* computable from real genotypes is the portability failure,
 and it is stark:
 **a single global 90th-percentile "high risk" threshold flags 39.1% of East Asian-ancestry samples
 against 4.0% of European and 1.7% to 2.9% of the other three super-populations - driven entirely
@@ -204,7 +204,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
 
 ## Concerns & recommendations
 
-- **Planned, not started: CKKS-friendly students (the owner's decision, 2026-11-02).** The Round 86
+- **CKKS-friendly students: planned on 2026-11-02 (the owner's decision), the medical half done on 2026-11-19.** The Round 86
   review found the encrypted tier evaluating students that are weak or fed out of domain, and the
   owner chose to plan a replacement as research rather than retrain now. The facts the plan starts from:
   - `finance_aml.student` (115 parameters, on the teacher's 114 inputs since Round 86) scores
@@ -220,9 +220,13 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
     held-out image of its published evaluation sample, the one the CNN-under-MPC card takes for the same
     seed, named with its true class; until 2026-11-13 it was a tabular row tiled to fill the image
     (review PI-10, which the page stated). A student that runs
-    whole under CKKS needs a polynomial activation, and more rescales than the 60+40+40+60 chain's two;
-    a longer chain needs $`N = 16384`$, which Round 38 measured at about twice the cost of every FHE
-    figure, so the plan must show what the depth buys before it pays for it.
+    whole under CKKS needed a polynomial activation, and more rescales than the 60+40+40+60 chain's two.
+    **Done on 2026-11-19:** `medical_fl.square_student`, a square-activation student measured against a ReLU control
+    under a preregistered rule ([its preregistration](../references/medical-square-student-preregistration.md); mean
+    test AUC 0.844 against 0.818 over five seeds), runs whole under CKKS with no layer decrypted, at $`N = 8192`$ with
+    48+34+34+34+52 bits at scale $`2^{34}`$ or at $`N = 16384`$ with 60+40+40+40+60 at $`2^{40}`$; the first $`N = 8192`$
+    chain, 50+30+30+30+50, failed its fidelity criterion
+    ([the record](measurements/medical-square-student-2026-11-19.json)). The layer-by-layer student stays beside it.
   - The plan's rule: each candidate is measured against the shipped student on the same rows, with the
     decision fixed before the run, and is published only if it wins; a published one needs a
     republish, a new pin and a regenerated held-out sample. Until then the shipped students stay.
@@ -233,7 +237,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   ONNX tier failed on every use case, every run silently dropped to the bundled 8-feature linear
   model, and the badge above it read MEASURED. The Models panel forty lines below advertised a
   ResNet-18 the page never ran. `runPublishedModel()` is now shared by the panel and the pipeline,
-  and a **Published model** selector picks which one on the three use cases that publish several.
+  and a **Published model** selector picks which one on the four use cases that publish several.
   Measured in-browser: `finance_aml.gbm` 1.4 ms `1x32`, `medical_fl.resnet18` 4.7 ms `1x1x28x28`,
   `telecom_ids.qml` 5.9 ms `1x7` (its published ONNX graph is a random forest, not the quantum
   models its name suggests: [telecom](#telecom-the-classical-forest-wins)), `satellite_comms.telemanom`
@@ -265,16 +269,16 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   published ONNX models run on WASM by default, and on WebGPU only when the visitor selects it; other
   GPUs and browsers were not measured.
 
-- **Four of the five CKKS students can be re-scored in a browser.** The Models panel runs each
-  student's ONNX graph in plaintext on its held-out sample; this checks the published graph, not the
+- **Every encrypted-tier model can be re-scored in a browser, the satellite student on its published stretch.** The
+  Models panel runs each student's ONNX graph in plaintext on its held-out sample when the page runs; this checks the published graph, not the
   encrypted evaluation. Samples ship model-ready with `preprocessing: []`, because
   the browser's `applyPreprocessing` is per-scalar and cannot apply a 114-length mean/scale vector or
   an area resize. Reproduced before publishing: medical accuracy 0.769231, OPS-SAT rare-class F1
   0.904348, finance rare-class F1 0.614815 on its shipped rows (0.313187 for the student on 32
   aggregates that it replaced in Round 86), and telecom macro F1 0.988329, published on 2026-11-13 with a
-  graph built from its weights file (`qsh.models.linear_onnx`). `satellite_comms.student` has
-  none, and the blocker is its METRIC, not a missing scaler: it is scored on event-wise F0.5, which
-  is defined over contiguous runs of a timeline and cannot be computed from independent rows.
+  graph built from its weights file (`qsh.models.linear_onnx`). `satellite_comms.student` is
+  scored on event-wise F0.5, which is defined over contiguous runs of a timeline and cannot be computed from
+  independent rows, so its sample is a stretch of the timeline, scored by events, with every row run under CKKS.
 - **The page compares every row of every published sample, not one figure within 0.05 (2026-11-13).**
   Each sample carries `expected.per_row`: each row's class by the page's own rule and its margin to the
   decision boundary, or each window's forecast, written by a Python twin of that rule
@@ -287,7 +291,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   notices said "rounded to 6 decimals" over values written at float32 precision since Round 86, and the
   CKKS tier's bundled student copies were checked against nothing; a test now holds each to its pinned file.
 
-- **The browser scores each student on the metric it was published with.** Three of the four record
+- **The browser scores each student on the metric it was published with.** Two of the four record
   rare-class F1, and reporting accuracy for them would have confirmed a number nobody claimed - the
   finance student is about 99 percent accurate on a test window that is 0.15 percent positive. Its
   F1 is 2.0x higher on the shipped rows (0.6148) than over the whole test window (0.3088), because
@@ -337,19 +341,21 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   student, Linear was the only fabricated option left - an 8-feature dot product with a hand-written
   weight pattern matching no trained model. For finance, satellite and OPS-SAT the students genuinely
   ARE linear, which is why the selector only ever appeared on the medical page.
-- **Every model in the Models panel carries a Run button, or a specific reason it has none.** Six can
-  be verified in place; the rest are in three genuinely different states that are never collapsed
-  into one message - never trained (the finance GNN, the telecom Transformer), served with the page
-  rather than from the Hub (the PRS, whose weights are PGS000072's own, CC BY 4.0), or published
-  without a held-out sample.
-- **`finance_aml.gnn` is a decision, not a backlog item, and the reason is where the graph lives, not
-  model strength.** On AMLworld HI-Small the published GNNs are the stronger models: the registry
+- **Every published model is re-scored when the page runs, and the two that are not published say why.** All
+  eighteen carry a held-out sample, and the Models panel re-scores each on it during the run (it has no Run
+  button); the other two are in states that are never collapsed into one message - never trained (the telecom
+  Transformer) and served with the page rather than from the Hub (the PRS, whose weights are PGS000072's own,
+  CC BY 4.0).
+- **`finance_aml.gnn` was a decision until Round 86, and it is now published.** On AMLworld HI-Small the published GNNs are the stronger models: the registry
   records GFP + XGBoost at minority-class F1 63.23 (Altman et al., NeurIPS 2023 D&B) against
   Multi-PNA+EU at 68.16 (AAAI 2024) and, in MEGA's published table (TMLR 08/2026, arXiv:2412.00241v3, Table 16), MEGA-PNA at 74.01 and Multi-FraudGT at 75.81, and the
-  XGBoost shipped here, without IBM's preprocessor, scores 15.19. The decision rests on the operating
-  point, as the registry states it: message passing needs each account's graph neighbourhood at
-  scoring time, which this demo's browser tier does not hold, so every tier ships the model that
-  scores one precomputed feature row per transaction. It is not an impossibility under FHE: Bilgi et
+  gradient-boosting model shipped here, without IBM's preprocessor, scored 15.19 on the 32 aggregates (61.61 on the
+  114 inputs since Round 86). The decision rested on the operating point: message passing needs each account's graph
+  neighbourhood at scoring time, which the browser tier did not hold. Round 86 changed both: `finance_aml.gnn` is
+  IBM's official Multi-PNA+EU trained here on this project's windows (`finance_aml.gnn_causal` the same under the
+  causal protocol), and `finance_aml.gnn_compact`, distilled from it, runs in the tab under CKKS and garbled circuits
+  on one held-out transaction's neighbourhood
+  ([the finance models](models-and-benchmarks.md#the-finance-models-on-114-inputs-and-the-compact-gnn)). It is not an impossibility under FHE: Bilgi et
   al. (arXiv:2610.18054v2, preprint) run an edge-centric GNN under CKKS on the IBM AML benchmark at
   as little as 5.31 s per queried transaction with HEonGPU on one RTX 5090, the graph held in plaintext by
   the server, and DESIGN (arXiv:2507.05649) and TGHE (arXiv:2606.26664) run GNNs under FHE too. The
@@ -385,8 +391,8 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
     label its forecast is closer to the truth than the teacher's (MAE 0.276 against 0.304). The page
     scores its published stretch end to end; every forecast there runs under CKKS and changes no flag.
     It was published on the owner's approval on 2026-11-07, at `231db24`.
-  - **Requiring several channels to agree in place of a floor** is now a third reading, with k chosen on
-    the validation months (6 there). It scores 0.909 on anomalies and 0.845 on all events, against the
+  - **Requiring several channels to agree in place of a floor** is now a third reading, with $`k`$ chosen on
+    the validation months ($`k = 6`$ there). It scores 0.909 on anomalies and 0.845 on all events, against the
     floor's 0.950 and 0.745.
 
   The workings are in `references/satellite-event-count-investigation.md`.
@@ -540,8 +546,8 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   patient's gradient clipped and the four hospitals' exact discrete Gaussian noise added in shares inside the masks
   (Kairouz, Liu and Steinke, ICML 2021), $`\delta = 10^{-6}`$. Seed 1, 20 draws: 0.721 with no noise,
   $`0.727 \pm 0.007`$ at $`\epsilon = 4`$ and $`0.706 \pm 0.032`$ at $`\epsilon = 1`$, against 0.7005 for FedAvg
-  without DP. The genomics page releases its count with noise at an epsilon the visitor chooses from 0.5 to 8
-  ($`\delta = 10^{-5}`$); at $`\epsilon = 1`$ the noise has a standard deviation of 9.8 alleles on a count of at most
+  without DP ($`0.725 \pm 0.010`$ and $`0.718 \pm 0.024`$ under the conversion of 2026-11-14). The genomics page releases its count with noise at an $`\epsilon`$ the visitor chooses from 0.5 to 8
+  ($`\delta = 10^{-5}`$); at $`\epsilon = 1`$ the noise has a standard deviation of 9.8 alleles (8.1 under the conversion of 2026-11-14) on a count of at most
   60, the price of a strong guarantee over 30 people. The finance, telecom, satellite and DeFi pages each state why
   they carry none. The sampler is exact and the accountant has a Python twin held to the same draws
   ([`references/differential-privacy.md`](../references/differential-privacy.md)). Writing this also found the
@@ -553,12 +559,12 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   contributions under threshold BGV, equal to the masked integer. BGV is exact, so the encryption costs no accuracy;
   what it changes is who could read one party's noisy vector. Finance releases the count of shared accounts as it
   would be published, one party adding discrete Gaussian noise once ($`\epsilon = 1`$, $`\delta = 10^{-8}`$, a
-  standard deviation of 6.2 accounts); the PSI's answer to the banks stays exact, since it is the PSI's purpose.
+  standard deviation of 6.2 accounts, 5.5 under the conversion of 2026-11-14); the PSI's answer to the banks stays exact, since it is the PSI's purpose.
   Writing it found a gap in the medical table: its four noised rows are four releases from the same patients, and
   together they are $`\epsilon = 9.56`$, not 8 (concentrated DP adds $`\rho`$; Bun and Steinke, TCC 2016); the page
   now prints that figure (9.75 from 2026-11-14, under the tighter conversion). A search of 2026 work recommends DP for none of the telecom, satellite, DeFi and PQC-QKD
   stages, and of further cryptography a threshold committee for the DeFi key holder and a two-path key split for the
-  QKD relay, both to be built ([`references/differential-privacy.md`](../references/differential-privacy.md), "The
+  QKD relay, both built since (below; [`references/differential-privacy.md`](../references/differential-privacy.md), "The
   other pages"). Two LaTeX commands on main had lost their backslash to a string escape, `\times` in the threat
   model's aggregation section and `\tau_0` in the benchmark notes, each rendering as a gap and a stray word; both are
   repaired and a house-style test now fails on any control character inside a math span.
@@ -656,7 +662,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   training set, 816 people once the 70 who came to both campaigns under two patient IDs are joined (a first, scratch run
   split by ID came out about 0.04 higher), a logistic head on frozen PANNs CNN14 features (AudioSet, CC BY 4.0) reaches
   0.852 without noise and, under central DP-SGD with person-level clipping, 0.835, 0.812, 0.802 and 0.777 at
-  $`\epsilon`$ = 8, 4, 2 and 1 ($`\delta = 10^{-5}`$), with learning rates and thresholds chosen on a PhysioNet 2016
+  $`\epsilon = 8`$, 4, 2 and 1 ($`\delta = 10^{-5}`$), with learning rates and thresholds chosen on a PhysioNet 2016
   stand-in so that epsilon covers everything that touched CirCor. Choosing the rates on CirCor's own validation people
   gives the same figures but leaves the choice out of epsilon; a stand-in drawn from the databases the heart-sound
   card's CNN was trained on failed (0.633 to 0.635 at every epsilon); Papernot and Steinke's accounted search over three
@@ -770,10 +776,11 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   return 404. Its FHE/MPC is **genuinely real and measured in the browser**: **node-seal CKKS**
   (a real homomorphic linear layer, ~$`10^{-9}`$ error) + a real **Polytune garbled-circuit 2PC** for the
   non-linear argmax, both parties loopback in one tab (zero VPS). In-browser federated learning runs
-  on every run of the finance and medical pages, not behind a toggle: a real client-side FedAvg of
+  on every run of the finance and medical pages, not behind a toggle. On finance it is a real client-side FedAvg of
   a 4-weight logistic regression whose inputs are `qcnnExpectation`, a closed-form
   `tanh(mean(sin(x_i + 0.5 i)))`, so despite the "Quantum Federated Learning" label nothing quantum
-  is computed in that stage; the full deployment runs the **PennyLane** QFL over this repo's own FedAvg + secure aggregation (each pair of clients agreeing its mask seed by X25519), plus server-side FHE inference (incl.
+  is computed in that stage; on medical, since 2026-11-13, it is FedAvg across four real hospitals (UCI Heart
+  Disease, FLamby's Fed-Heart-Disease); the full deployment runs the **PennyLane** QFL over this repo's own FedAvg + secure aggregation (each pair of clients agreeing its mask seed by X25519), plus server-side FHE inference (incl.
   the medical CNN under real encrypted convolution). In the browser, node-seal CKKS evaluates the
   published medical student's convolution and both dense layers, 28 counted rotations, each layer's
   bias added under encryption, and the client decrypts each layer's outputs between layers to apply
@@ -784,7 +791,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   for anything too large to run in a tab or under encryption. It was **decided against in Round 24**
   and the record is in `docs/deliverable-verification.md`: the public demo is zero-server by design,
   so a remote provenance contradicts the architecture rather than extending it. The Space itself
-  returns **HTTP 401** (re-checked 2026-08-12) and the org Space listing is empty, so `ProvenanceBadge`
+  returns **HTTP 401** (re-checked 2026-11-22) and the org Space listing is empty, so `ProvenanceBadge`
   declares no remote state ([its four states](threat-model.md#what-a-results-provenance-badge-says)).
   **Reopening condition:** wire it only if the
   demo acquires a workload that genuinely cannot run client-side, and re-add the badge state in the
@@ -816,10 +823,10 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   Diagnostic Breast-Cancer sample (UCI dataset 17 via sklearn, **CC BY 4.0 - attribution required**) + a real logistic-regression model;
   **genomics** uses the real PGS-Catalog PGS000072 weights (Graff et al., Nat Commun 12:970, 2021, **CC BY 4.0**; 183 of its 187 variants have a 1000 Genomes genotype and are scored) over real 1000 Genomes
   genotypes -> a **Polygenic Risk Score** over those 183 variants with per-SNP signed SHAP, and its CKKS step evaluates that full score: all 183 dosages in one ciphertext, the plaintext weights applied by one multiply-plain and a rotation sum, the decrypted score compared with the 90th percentile of the score over the 30 bundled individuals; **finance** uses a
-  **PaySim** simulator sample (synthetic transactions, CC-BY-SA-4.0) + a linear surrogate over four of its columns (none built from PaySim's balance columns), which is what the finance page's one-row CKKS step evaluates (the 33-parameter AMLworld student is encrypted on 8,192 held-out test-window rows for the agreement figure since Round 84); and **satellite** scores
+  **PaySim** simulator sample (synthetic transactions, CC-BY-SA-4.0) + a linear surrogate over four of its columns (none built from PaySim's balance columns), which is what the finance page's one-row CKKS step evaluates (the 115-parameter AMLworld student is encrypted on 8,192 held-out test-window rows for the agreement figure since Round 84); and **satellite** scores
   **real OPS-SAT-AD telemetry segments** (CC BY 4.0, since Round 84; the NASA SMAP/MSL windows before them had no licence from any provider - see DATA_LICENSES.md) with a plaintext demo anomaly regression - all tiny static JSON
-  under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](../web/src/lib/realData.ts). The finance, medical and genomics pages compute with the
-  real in-browser node-seal CKKS + a Polytune garbled-circuit 2PC (notional parties); the satellite page runs a CKKS check of a published student and no 2PC ([which pages encrypt](models-and-benchmarks.md#which-pages-encrypt)). Only **telecom** has no commercial-OK real attack dataset
+  under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](../web/src/lib/realData.ts). The finance, medical, genomics and DeFi lending pages compute with the
+  real in-browser node-seal CKKS + Polytune garbled circuits (notional parties); the telecom and satellite pages run a CKKS check of each published student they carry and no garbled circuit ([which pages encrypt](models-and-benchmarks.md#which-pages-encrypt)). Only **telecom** has no commercial-OK real attack dataset
   - the narrower and correct statement, since **5G-NIDD is CC BY 4.0 and commercially usable**, and this repository trains on it. What does not exist is a commercial-OK corpus of QKD-LAYER attacks, which is a different problem needing a physical QKD testbed under attack - so the QKD IDS uses representative synthetic features (logged as such in the run).
   The bundled sets are public / de-identified, so no real *personal* data leaves the browser - the privacy property
   is demonstrated on real or realistic inputs.
@@ -848,8 +855,8 @@ Recorded on 2026-11-13 at the owner's choice; each was proposed in a plan and le
 | proposal | decision and reason | what would reopen it |
 |---|---|---|
 | UMAP or t-SNE views of the 2D plots (plan 30) | Declined: a linear model's decision boundary cannot be drawn honestly in a non-linear embedding. | Never for a boundary view; an embedding of the data alone would use PCA. |
-| Recomputing a metric inside `VerificationChart.tsx` (plan 30) | Declined: the chart's stated invariant is that it recomputes and re-fetches nothing. The planned table of published figures against this project's is a separate component and leaves the invariant as it is. | A chart that is meant to compute, built as its own component. |
-| A provenance chip on every number, C2PA-style L1 to L3 with a `LITERATURE` chip (plan 19) | Not adopted per number: results carry the provenance badge and each stage its stage badge, and the planned table gives every literature figure its source in a column of its own. | A page where, after that table, a reader still cannot tell a measured figure from a cited one. |
+| Recomputing a metric inside `VerificationChart.tsx` (plan 30) | Declined: the chart's stated invariant is that it recomputes and re-fetches nothing. The table of published figures against this project's, built since (`PublishedComparisonCard.tsx`), is a separate component and leaves the invariant as it is. | A chart that is meant to compute, built as its own component. |
+| A provenance chip on every number, C2PA-style L1 to L3 with a `LITERATURE` chip (plan 19) | Not adopted per number: results carry the provenance badge and each stage its stage badge, and that table gives every literature figure its source in a column of its own. | A page where, after that table, a reader still cannot tell a measured figure from a cited one. |
 | Quantum random forest and the VAE filter (plans 1 and 11) | Not built: the owner's rule for quantum ML on the finance and medical pages is to introduce nothing whose value has not been shown, and none has been shown here. | A published result on one of these corpora above its classical baseline at a matching protocol. |
 | One-vs-rest QCNN readouts (plan 32) | Not needed: the native readout predicts all eight telecom classes, macro F1 0.968 against 0.976 for logistic regression on the same split (`models/qcnn_telecom_q7`). | A native readout that misses a class. |
 | XGBoost 3.4.0 for its GPU SHAP fix on SM120 (plan 27) | Unreachable here: no source file calls TreeSHAP or `pred_contribs`, and the page's attributions are exact linear SHAP over the distilled students, so the fix cannot change a figure. The lock pins 3.4.1 while the development environment runs 3.3.0, and the GBM's card does not state which trained it: an open record item. | A tree-SHAP view of the GBM. |

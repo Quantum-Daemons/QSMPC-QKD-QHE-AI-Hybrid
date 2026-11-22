@@ -50,7 +50,7 @@ not a code rewrite. Add remote re-key + in-flight algorithm substitution next. [
 ## AI-QKD (WS1) + entropy: the optimizer is built and measured; the reference architecture's real-time loop is not
 - **OptiQKD / AML-QKD** - an AI parameter optimizer (scikit-learn GBM/GP surrogate + gradient-free
   coordinate ascent) tunes the **two-intensity decoy-state** parameters `basis_prob` / `mu_signal` /
-  **`mu_decoy`** / `pp_threshold` (Ma-Qi-Zhao-Lo 2005 single-photon Y1/e1 bounds - `mu_decoy` genuinely
+  **`mu_decoy`** / `pp_threshold` (Ma-Qi-Zhao-Lo 2005 single-photon $`Y_1`$/$`e_1`$ bounds - `mu_decoy` genuinely
   moves the SKR) to **raise the measured secret-key rate** vs the default baseline on the same
   simulated channel, and reports a **convergence metric** (evaluations-to-95 %). An **E91 / CHSH**
   entanglement protocol (`src/qsh/qkd/e91.py`) is selectable via `protocol="e91"`.
@@ -107,8 +107,10 @@ repository with no licence file grants no right to copy or reuse it, so those en
 5. **GPU FHE at scale** - HEonGPU runs the linear half on the GPU since Round 86 (`scripts/build_heongpu.sh`),
    and the MPC half is still MPyC on the CPU. What remains: batched CNN/Transformer private inference,
    bootstrapping on the GPU, and a stage on hpmpc, whose GPU code covers matrix multiplication and convolution (its non-linear layers stay on the CPU; measured in `models-and-benchmarks.md`).
-6. **Continuous PQC inventory** - scan dependencies/protocols for quantum-vulnerable
-   crypto (a "crypto bill of materials") to drive migration priority.
+6. **Continuous PQC inventory** - the CBOM exists since Round 86 (`web/public/cbom/qsh.cdx.json`, written from
+   `qsh.crypto_inventory` by `scripts/generate_cbom.py`, validated against the vendored CycloneDX 1.7 schema and held
+   by `tests/test_r86_cbom.py`); what remains is scanning dependencies and protocols for quantum-vulnerable crypto
+   to keep it current and drive migration priority.
 7. **Finance AML graph features** - done in Round 86: per-transaction fan-in, fan-out, vertex-statistic and
    scatter-gather features, the architectural difference behind the finance model's gap to its published
    baseline, took the teacher from minority-class F1 0.1519 to 0.6161:
@@ -233,20 +235,21 @@ document on 2026-08-15; `references/REFERENCES.md` records the two ways an earli
   `KEM_hqc_1/3/5` by default again, in the image and on the development machine, which builds the same
   tag. No code here registers HQC: it is built into the library and unused.
 
-## Standards status re-checked 2026-10-27
+## Standards status, re-checked 2026-11-22
 
 Read at NIST's PQC news page and the pqc-forum on 2026-10-27. IR 8547's final appeared on
 2026-10-27, after this table was read; its row was re-read at the CSRC page on 2026-10-30. Re-read at
 CSRC on 2026-11-15: still no FIPS 206 or HQC draft. The PQC news page's newest item is IR 8547
 (2026-10-27), and CSRC has no initial-public-draft page for FIPS 206. Re-read on 2026-11-19: unchanged;
 the project page (updated 2026-10-27) still calls Falcon's and HQC's standardisation underway, and CSRC
-has no page for FIPS 206 or FIPS 207, draft or final.
+has no page for FIPS 206 or FIPS 207, draft or final. Re-read on 2026-11-22: CSRC's FIPS listing names FIPS 203, 204
+and 205, and no FIPS 206 or 207.
 
 | Document | Status | Why it matters here |
 |---|---|---|
 | **NIST SP 800-227** - Recommendations for KEMs | **Final, 2025-09-18** | The combiner reference. This repository's HKDF combiner is a section 4.6.2 two-step KDF (equations 13-14) over the transcript section 4.6.3 binds; it is not that section's KeyCombineCCA_H. |
 | **FIPS 206** (FN-DSA) | **No draft.** 2026-09-28: NIST's FIPS 206 team posted a new plan to the pqc-forum - a single fixed-point signing procedure, validatable by known-answer tests | Nothing to wire yet; the signature registry stays ML-DSA. |
-| **HQC** (FIPS 207) | **No draft** as of 2026-11-19; liboqs 0.16.0, the image's pin, enables it by default (see above) | The backup KEM stays unregistered. |
+| **HQC** (FIPS 207) | **No draft** as of 2026-11-22; liboqs 0.16.0, the image's pin, enables it by default (see above) | The backup KEM stays unregistered. |
 | **NIST SP 800-230** (initial public draft) - additional SLH-DSA parameter sets for limited signature use | Released 2026-04-13, comments closed 2026-06-12 | Not used here; tracked because SLH-DSA is the hash-based fallback. |
 | **NIST SP 800-133 Rev. 3** (initial public draft) - key generation | Released 2026-04-17, comments closed 2026-06-16 | Governs how the demo's keys would have to be generated in an approved product. |
 | **NIST IR 8610** - additional signatures, round 2 status | 2026-05-14, nine candidates advanced to round 3 | The on-ramp; no algorithm to adopt yet. |
@@ -259,7 +262,7 @@ has no page for FIPS 206 or FIPS 207, draft or final.
 | **NIST SP 800-90C** | **Final, 2025-09-25** | RBG constructions. A QRNG targeting full-entropy output is an RBG3 construction; the QRNG bullet above cites it beside SP 800-90B. |
 | **NIST IR 8214C** - First Call for Multi-Party Threshold Schemes | **Final, Jan 2026** | Scope explicitly includes **FHE, MPC and ZKPs**. The most relevant NIST process to this project's WS3/WS4. |
 | **NIST CSWP 39upd1** - Considerations for Achieving Crypto Agility | Final, 2026-06-29 | Supersedes the 2025-12 original; this is now *the* NIST crypto-agility reference, and `crypto-agility.md` cites it. |
-| **ETSI GS QKD 020** - REST-based Interoperable KMS API | V1.1.1, 2026-06-29 | First cross-vendor KMS-to-KMS spec. `pqc/transport.py` targets GS QKD **014** only; 014 + 020 is the current pair. |
+| **ETSI GS QKD 020** - REST-based Interoperable KMS API | V1.1.1, 2026-06-29 | First cross-vendor KMS-to-KMS spec. `qkd/kme.py` implements GS QKD **014** only; 014 + 020 is the current pair. |
 | **ETSI GS QKD 015 V2.1.1** - SDN control interface | Published 2022-04 | **Implemented in Round 18** (`qkd/sdn_controller.py`, mirrored in `web/src/lib/clientSdnController.ts`). Supplies the control plane the demo previously lacked, and its clause 1 scope statement is what settles that an MCP agent is an SAE rather than a controller. |
 | **ETSI GS QKD 014 V1.1.1** - key delivery API | Published 2019-02, **still the only published edition** | **Implemented in Round 18** (`qkd/kme.py`). An ed2 stable draft (v1.3.1) existed as of 2025-06 but is not published, so "QKD 014 compliant" in this repository means the 2019 document. The mandated mutual TLS is **not** implemented - see `threat-model.md`. |
 | **BSI TR-02102-1 v2026-01** | 2026-01-23 | The quotable basis for the hybrid PQC + classical key-agreement recommendation (section 2.2) and for BSI not recommending QKD (section 2.1). It does not recommend QKD as an add-on either: "QKD never standalone" is this project's rule, not BSI's. |

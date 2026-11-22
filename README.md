@@ -2,7 +2,7 @@
 
 > An end-to-end orchestration **security layer** that chains **QKD -> QSMPC -> QHE/FHE ->
 > privacy-preserving AI** on a **PQC-first hybrid** foundation, with industry use cases
-> (finance / healthcare / genomics / telecom-defence / **satellite**), a **classical-vs-quantum
+> (finance / healthcare / genomics / telecom-defence / **satellite**) and a DeFi lending check, a **classical-vs-quantum
 > benchmark** (latency, accuracy, a **security posture table**, and an
 > animated **architecture simulator** per use case), and a researcher/business-facing **SPA** that runs **entirely
 > client-side** in public-demo mode.
@@ -32,7 +32,7 @@ and is not new, the positioning (quantum-safe, not quantum-advantage) and the fo
 | QKD on fibre | BB84 decoy-state and E91; the BB84 key is a composable finite key over a privacy-amplification block of $`10^{7}`$ key-basis bits, E91's stays asymptotic | simulated channel, real bounds | Ma et al. 2005; Rusca et al. 2018 Table I (26 dB row within 2 percent); Yin et al. 2020's Chernoff-type statistics |
 | QKD from a satellite | Micius downlink; the key is the finite key of one pass; a trusted relay and a constellation | simulated | Liao et al. 2017's pass (detections within 1 percent; the key 0.75 of theirs on one basis, 1.50 on both, as they keyed it), 23 measured Micius nights, Lim et al. 2014 |
 | QRNG | quantum-measurement simulation with SP 800-90B health tests and seeded or seedless extraction | simulated source, real tests | NIST SP 800-90B |
-| Private inference | CKKS linear layers (node-seal) and a garbled-circuit 2PC for the argmax (Polytune); on the medical CNN's layer-by-layer path ReLU and pooling run in plaintext between its encrypted layers, and a separate run puts one held-out image through the same CNN with its ReLUs and argmax in garbled circuits; the published chest X-ray model runs split, its network up to the 512 pooled features in the clear and its own last layer under CKKS; and a square-activation student runs end to end under CKKS with no layer decrypted, in its own context (N = 8,192 or 16,384) | real protocols, notional parties | plaintext against CKKS on the same inputs |
+| Private inference | CKKS linear layers (node-seal) and a garbled-circuit 2PC for the argmax (Polytune); on the medical CNN's layer-by-layer path ReLU and pooling run in plaintext between its encrypted layers, and a separate run puts one held-out image through the same CNN with its ReLUs and argmax in garbled circuits; the published chest X-ray model runs split, its network up to the 512 pooled features in the clear and its own last layer under CKKS; and a square-activation student runs end to end under CKKS with no layer decrypted, in its own context ($`N = 8{,}192`$ or $`16{,}384`$) | real protocols, notional parties | plaintext against CKKS on the same inputs |
 | QSMPC | a semi-honest set intersection on RFC 9497's OPRF over ristretto255 (not post-quantum) and secure summation; quantum forms in the full deployment | computed in the browser with both parties in one tab (notional parties), simulated quantum forms | the plaintext result; the RFC 9496 and RFC 9497 test vectors, in Python and in the browser |
 | QHE and QML | quantum one-time pad, an untrained Clifford+T comparison circuit, trained QCNNs (run in the clear, or with their input under CKKS as a linear form), a QML intrusion detector | simulated circuits | the QCNNs against a logistic-regression baseline on the same split |
 | Models | eighteen published models: sixteen run with ONNX Runtime in the browser, two from their weights files (the satellite student under CKKS, the compact GNN under CKKS and garbled circuits), and the finance MLP under CKKS and garbled circuits as well | real inference | per-model metrics and model cards |
@@ -95,11 +95,12 @@ flowchart TB
 
 | Use case | Industry | Its own stages |
 |---|---|---|
-| `finance_aml` | finance, AML | PSI over cross-bank blacklists (the count of shared accounts, as it would be published, with differential privacy at epsilon 1), federated training, FHE fraud inference |
-| `medical_fl` | healthcare | federated training across four real hospitals (UCI Heart Disease, FLamby's benchmark: each alone, federated, pooled) with pairwise masks whose seeds each pair of hospitals agrees by X25519 (no dropout recovery, no public-key authentication), and on request the same federation aggregated under CKKS with one shared key (NVIDIA FLARE's design) and under threshold CKKS and BGV (Lattigo, compiled to WebAssembly), side by side, and a record-level differential-privacy arm (distributed discrete Gaussian inside the masks, epsilon 8 to 1, and once more inside threshold BGV on request); private inference: the encrypted CNN reads a held-out BreastMNIST image in the browser, and the square student reads one with no layer decrypted in between |
-| `genomics` | genomics | secure summation of pooled allele counts, released with differential privacy at an epsilon chosen on the page (the cohorts' exact discrete Gaussian noise inside the sum, and on request the same contributions summed under threshold BGV), FHE |
+| `finance_aml` | finance, AML | PSI over cross-bank blacklists (the count of shared accounts, as it would be published, with differential privacy at $`\varepsilon = 1`$), federated training, FHE fraud inference |
+| `medical_fl` | healthcare | federated training across four real hospitals (UCI Heart Disease, FLamby's benchmark: each alone, federated, pooled) with pairwise masks whose seeds each pair of hospitals agrees by X25519 (no dropout recovery, no public-key authentication), and on request the same federation aggregated under CKKS with one shared key (NVIDIA FLARE's design) and under threshold CKKS and BGV (Lattigo, compiled to WebAssembly), side by side, and a record-level differential-privacy arm (distributed discrete Gaussian inside the masks, $`\varepsilon`$ from 8 to 1, and once more inside threshold BGV on request); private inference: the encrypted CNN reads a held-out BreastMNIST image in the browser, and the square student reads one with no layer decrypted in between |
+| `genomics` | genomics | secure summation of pooled allele counts, released with differential privacy at an $`\varepsilon`$ chosen on the page (the cohorts' exact discrete Gaussian noise inside the sum, and on request the same contributions summed under threshold BGV), FHE |
 | `telecom_ids` | telecom, defence | simulated QKD with an optional eavesdropper, a QML intrusion detector |
 | `satellite_comms` | satellite | simulated free-space QKD over a model of the Micius downlink, a two-way QSDC feasibility check with an inline eavesdrop check, and one-way quasi-QSDC under a pre-shared key where that check cannot close |
+| `defi_lending` | DeFi, lending | a simulated month of a lending pool with Aave V3's mechanics re-derived; at chosen hours the pool checks a borrower's margin under CKKS and takes its sign in a garbled circuit, with a separate key holder by default; and the same check on FHEVM, modelled from Zama's documentation (nothing of Zama's runs). Browser demo only: no QKD and no model |
 
 Each use-case page also sets its published figures beside this project's offline measurement and the run, with a
 verdict whose rule is written in `web/src/lib/publishedComparisons.ts` (reproduced, differs, no spread, a reference
@@ -152,7 +153,7 @@ flowchart TB
 </details>
 
 <details>
-<summary>Healthcare: federated training and private diagnosis</summary>
+<summary>Healthcare: federated training and private inference</summary>
 
 <!-- figure: uc-medical_fl -->
 ```mermaid
@@ -338,6 +339,7 @@ flowchart LR
 | E2E Orchestration | `/orchestration` | the pipeline of any use case or the generic demo, run live (start, pause, step, stop), in two tabs: the architecture canvas, and the stage order with the stages only the full deployment adds |
 | Use cases | `/usecases` | the five industry use cases and the DeFi lending check |
 | A use case | `/usecase/<id>` | an animated architecture simulator, the run's metrics and security facts, the benchmark, the models, an MCP panel; the satellite page adds the Network tab |
+| Python walkthrough | `/walkthrough/`, redirected on the demo to an origin of its own | a marimo notebook, run in the tab by Pyodide, that checks the flows the published 5G-NIDD file holds twice; linked from the 5G-NIDD card, 47 MB, fetched only if opened ([`references/notebook-walkthroughs.md`](references/notebook-walkthroughs.md)) |
 
 <table>
 <tr>
@@ -378,7 +380,10 @@ content wider than its box ([`web/scripts/check_text_overlap.mjs`](web/scripts/c
 
 ```bash
 bash env/setup_venv.sh && source .venv/bin/activate   # Python 3.12 venv and the core stack
+pip install --require-hashes --extra-index-url https://download.pytorch.org/whl/cpu \
+  -r requirements.lock                                 # the lock CI installs; the suite needs torch and xgboost
 make test                                              # the test suite, slow tests deselected
+bash scripts/build_wasm.sh                             # the wasm modules the SPA imports (needs Docker)
 cd web && npm ci && npm run dev                        # the SPA at http://localhost:5173
 ```
 
@@ -427,8 +432,8 @@ flowchart TB
   end
   subgraph GH["GitHub"]
     direction LR
-    PR["Pull request"] --> ACT["GitHub Actions: Python, web typecheck, build and text layout, repository guards"]
-    AUD["Audit workflow: npm audit, cargo-deny"]
+    PR["Pull request"] --> ACT["GitHub Actions: Python, web typecheck, build and text layout, SBOMs and the CBOM, repository guards"]
+    AUD["Audit workflow: npm audit, pip-audit, cargo-deny, upstream checks"]
   end
   subgraph DEMO["Demo host"]
     direction LR
@@ -449,18 +454,28 @@ taught). The technical report is not part of this repository.
 ## Repository layout
 
 ```
-src/qsh/      the qsh package: orchestration, pqc, qkd, qml_ids, qsmpc, qhe, config, models, qrng,
-              fhe, mpc, ai, mcp (real MCP server, MCP Python SDK), usecases, benchmark, data, monitoring
-api/          FastAPI backend (REST, WebSocket, downloads, /metrics)
-web/          React + Vite + TS SPA, and web/scripts/ checks and the screenshot capture
-docker/       Dockerfiles, compose (full and client-only builds), Caddyfile
-monitoring/   Prometheus config and Grafana notes
-references/   primary-source notes and REFERENCES.md
-schemas/      the CycloneDX 1.7 JSON schema, vendored to validate the CBOM and SBOMs
-scripts/      bootstrap, benchmark, export_config.py, publish_hf.py, deploy_demo.sh, ci_local.sh,
-              train/ (per-vertical training), data/ (dataset provenance)
-docs/         the documents below, and images/
-tests/        pytest suite
+src/qsh/       the qsh package: orchestration, pqc, qkd, qml_ids, qsmpc, qhe, config, models, qrng,
+               fhe, mpc, ai, mcp (real MCP server, MCP Python SDK), usecases, benchmark, data, monitoring
+api/           FastAPI backend (REST, WebSocket, downloads, /metrics)
+web/           React + Vite + TS SPA, and web/scripts/ checks and the screenshot capture
+wasm/          compiled to WebAssembly for the SPA: qsh-mpc (Rust, the garbled-circuit MPC on Polytune)
+               and qsh-fedthresh (Go, threshold CKKS and BGV on Lattigo)
+walkthroughs/  the Python walkthrough (a marimo notebook) and the records its build checks
+models/        the model cards, metrics.json and the Hub file hashes
+data/          the bundled demo samples: finance, genomics, satellite
+docker/        Dockerfiles, compose (full and client-only builds), Caddyfile
+monitoring/    Prometheus config and Grafana notes
+native/        the HEonGPU Python binding (GPU CKKS, full deployment)
+submodules/    upstream submodules: HEonGPU, hpmpc
+prototypes/    measurement harnesses, not part of the demo: net-bench, polytune-argmax
+spaces/        a Hugging Face Space's card and app, kept but not deployed (docs/findings.md says why)
+references/    primary-source notes and REFERENCES.md
+schemas/       the CycloneDX 1.7 JSON schema, vendored to validate the CBOM and SBOMs
+scripts/       bootstrap, benchmark, export_config.py, publish_hf.py, deploy_demo.sh, ci_local.sh,
+               train/ (per-vertical training), data/ (dataset provenance)
+env/           the venv set-up and the OpenFHE build for EL9
+docs/          the documents below, and images/
+tests/         pytest suite
 ```
 
 ---
