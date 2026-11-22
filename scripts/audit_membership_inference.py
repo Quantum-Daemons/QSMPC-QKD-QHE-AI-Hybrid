@@ -15,11 +15,13 @@ Inference Attacks From First Principles*, IEEE S&P 2022, arXiv:2112.03570), with
   arXiv:2312.03262), offline, from ML Privacy Meter (MIT) at a pinned commit, imported from a checkout outside this
   repository: `--mlpm <checkout>`. Its population is a fifth of the pool that no shadow model trains on.
 
-The audit pool is the model's public training data (here OPS-SAT-AD's train and test partitions, CC BY 4.0). Only
-aggregate figures are written; no record is.
+The audit pool is the model's public training data (OPS-SAT-AD's train and test partitions; BreastMNIST's train and
+test splits, under the terms DATA_LICENSES.md records). Only aggregate figures are written; no record is.
 
     python scripts/audit_membership_inference.py --target opssat --mlpm <ml_privacy_meter checkout> \
         -o docs/measurements/mia-opssat-<date>.json
+    CUDA_VISIBLE_DEVICES= python scripts/audit_membership_inference.py --target breastmnist_students \
+        --teacher <the published ResNet-18 graph> --mlpm <checkout> -o docs/measurements/mia-breastmnist-students-<date>.json
 """
 
 from __future__ import annotations
@@ -44,7 +46,7 @@ EPS = 1e-12
 # --------------------------------------------------------------------------------------------- targets
 
 
-def _opssat():
+def _opssat(args=None):
     """OPS-SAT-AD's teacher (scripts/train/satellite_opssat.py's settings) and its degree-2 CKKS student."""
     from sklearn.ensemble import HistGradientBoostingClassifier
 
@@ -68,7 +70,7 @@ def _opssat():
                                   "student": "satellite_comms.opssat_student: soft logistic on the degree-2 expansion"}}
 
 
-def _telecom_qml():
+def _telecom_qml(args=None):
     """The QKD-attack random forest (scripts/train/telecom_ids.py's settings) on the rows its generator writes."""
     from sklearn.ensemble import RandomForestClassifier
 
@@ -86,7 +88,115 @@ def _telecom_qml():
         "models": {"forest": "telecom_ids.qml: RandomForestClassifier(n_estimators=200), the trainer's settings"}}
 
 
-TARGETS = {"opssat": _opssat, "telecom_qml": _telecom_qml}
+def _breastmnist_students(args):
+    """The two BreastMNIST students the encrypted tier runs, each distilled from the published ResNet-18's labels.
+
+    The teacher is held fixed: it is the published graph (its sha256 is checked against the pin), trained on the train
+    split, and each shadow student is distilled from its labels on that shadow's members by the students' own recipes
+    (scripts/train/medical_breastmnist.py and medical_square_student.py): class-weighted cross-entropy, at most 120
+    epochs, the epoch kept by AUC on the val split's teacher labels, and for the CNN student the net-benefit cut folded
+    into its head. So this measures what a student's own training adds. Whether a record was in the teacher's training
+    set is not audited here: that needs the teacher retrained for every shadow, a GPU job.
+    """
+    import hashlib
+    import importlib.util
+    import tempfile
+
+    import onnxruntime as ort
+    import torch
+    from safetensors.torch import load_file
+    from torch.utils.data import DataLoader, TensorDataset
+
+    from qsh.ai.cnn_layers import downsample, small_medmnist_cnn
+    from qsh.models import datasets, distil, metrics, train
+
+    if torch.cuda.is_available():
+        raise SystemExit("this target runs on the CPU (the owner approves each GPU job): set CUDA_VISIBLE_DEVICES=")
+    if args is None or args.teacher is None:
+        raise SystemExit("--teacher (the published ResNet-18 graph) is required for this target")
+    torch.set_num_threads(args.threads)
+    pin = json.loads((REPO / "models" / "hub_file_hashes.json").read_text(encoding="utf-8"))["medical_fl.resnet18"]
+    digest = hashlib.sha256(args.teacher.read_bytes()).hexdigest()
+    if digest != pin["files"]["onnx/model.onnx"]:
+        raise SystemExit(f"{args.teacher} is not the published teacher at {pin['revision'][:10]} (sha256 {digest[:12]})")
+    spec = importlib.util.spec_from_file_location("square", REPO / "scripts" / "train" / "medical_square_student.py")
+    square = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(square)
+    MALIGNANT, BENIGN = 0, 1                     # MedMNIST's label order (scripts/train/medical_breastmnist.py)
+
+    def split(name):
+        imgs, labels = datasets.breastmnist(name, size=28)
+        x = (np.asarray(imgs, dtype=np.float32)[:, None] / 255.0 - 0.5) / 0.5
+        return x, np.asarray(labels).ravel().astype(np.int64)
+
+    (xtr, _), (xva, yva), (xte, _) = split("train"), split("val"), split("test")
+    sess = ort.InferenceSession(str(args.teacher), providers=["CPUExecutionProvider"])
+    teach = lambda x: sess.run(None, {"input": x})[0].argmax(1).astype(np.int64)      # noqa: E731
+    to14 = lambda x: np.asarray(downsample(x, 14), dtype=np.float32)                    # noqa: E731
+    pool28 = np.concatenate([xtr, xte])
+    X, t_pool = to14(pool28), teach(pool28)
+    x14va, t_va = to14(xva), teach(xva)
+    val_dl = DataLoader(TensorDataset(torch.from_numpy(x14va), torch.from_numpy(t_va)), batch_size=256)
+
+    class Probs:
+        """predict_proba over the trained student, in eval mode, softmax in float64."""
+
+        def __init__(self, model):
+            self.model = model.eval()
+
+        def predict_proba(self, x):
+            with torch.no_grad():
+                z = self.model(torch.from_numpy(np.ascontiguousarray(x, dtype=np.float32))).double()
+            return torch.softmax(z, 1).numpy()
+
+    def cnn():
+        return small_medmnist_cnn(in_ch=1, n_classes=2, img_size=14, channels=(4,), hidden=16)
+
+    def fit(Xs, ys, seed):
+        counts = np.bincount(ys, minlength=2).astype(np.float64)
+        weight = torch.tensor(counts.sum() / (2.0 * np.maximum(counts, 1)), dtype=torch.float32)
+        out = {}
+        with tempfile.TemporaryDirectory(prefix="qsh-mia-") as tmp:
+            for name, make in (("student", cnn), ("square_student", square.square_student)):
+                train.seed_everything(seed)
+                model = make()
+                res = train.train_torch(
+                    f"mia.{name}", model,
+                    DataLoader(TensorDataset(torch.from_numpy(Xs), torch.from_numpy(ys)), batch_size=32, shuffle=True),
+                    val_dl, metric_fn=lambda y, p: metrics.auroc(y, p), metric_name="auc",
+                    loss_fn=torch.nn.CrossEntropyLoss(weight=weight),
+                    cfg=train.TrainConfig(epochs=120, batch_size=32, lr=2e-3, patience=25, seed=seed),
+                    out_dir=Path(tmp) / name)
+                model.load_state_dict(load_file(res.checkpoint))
+                model.eval()
+                if name == "student":
+                    # The trainer's operating point: the net-benefit cut on the val split's true labels, folded into
+                    # the head unless no cut beats both defaults or it collapses validation to one class.
+                    scores = train.predict_loader(model, DataLoader(
+                        TensorDataset(torch.from_numpy(x14va), torch.from_numpy(yva)), batch_size=256))[1]
+                    p_mal = torch.softmax(torch.tensor(scores), 1).numpy()[:, MALIGNANT]
+                    q, nb, nb_all, nb_none = metrics.best_threshold_by_net_benefit(yva == MALIGNANT, p_mal, lo=0.05,
+                                                                                   hi=0.5)
+                    if nb - max(nb_all, nb_none) > 1e-9 and len(np.unique(np.where(p_mal >= q, MALIGNANT, BENIGN))) == 2:
+                        distil.fold_threshold_into_torch_head(model, q, positive_class=MALIGNANT)
+                out[name] = Probs(model)
+        return out
+
+    return X, t_pool, fit, {
+        "data": "MedMNIST v2 BreastMNIST at 28 px, train and test splits (CC BY 4.0 as MedMNIST states it; the BUSI "
+                "authors publish no licence; DATA_LICENSES.md), downsampled to 14 px as the students see them; the val "
+                "split selects each student's epoch, as in training",
+        "teacher": {"key": "medical_fl.resnet18", "hf_revision": pin["revision"], "sha256": digest,
+                    "held_fixed": "every shadow student is distilled from the published teacher, which was trained on "
+                                  "the train split, so membership in the teacher's training set is not audited here"},
+        "label": "the teacher's label, which is each student's training target and which anyone can compute from the "
+                 "published teacher",
+        "models": {"student": "medical_fl.student: conv 1->4, ReLU, avg-pool, dense 196->16, ReLU, dense 16->2, the "
+                              "net-benefit cut folded into the head",
+                   "square_student": "medical_fl.square_student: conv 1->4, batch norm, x^2, avg-pool, dense 196->2"}}
+
+
+TARGETS = {"opssat": _opssat, "telecom_qml": _telecom_qml, "breastmnist_students": _breastmnist_students}
 
 
 # --------------------------------------------------------------------------------------------- attacks
@@ -153,6 +263,8 @@ def main() -> int:
     ap.add_argument("--population", type=float, default=0.2)
     ap.add_argument("--offline-a", type=float, default=0.3)
     ap.add_argument("--mlpm", required=True, type=Path, help="an ml_privacy_meter checkout at commit " + MLPM_COMMIT)
+    ap.add_argument("--teacher", type=Path, default=None, help="breastmnist_students: the published ResNet-18 graph")
+    ap.add_argument("--threads", type=int, default=4, help="breastmnist_students: torch's CPU threads")
     ap.add_argument("-o", "--output", required=True)
     args = ap.parse_args()
 
@@ -163,7 +275,7 @@ def main() -> int:
     sys.path.insert(0, str(args.mlpm))
     from modules.mia.attacks.rmia import run_rmia
 
-    X, y, fit, about = TARGETS[args.target]()
+    X, y, fit, about = TARGETS[args.target](args)
     rng = np.random.default_rng(args.seed)
     n = len(y)
     order = rng.permutation(n)
@@ -220,11 +332,13 @@ def main() -> int:
         # A record counts as exposed if, as a member, LiRA puts it above the threshold at FPR 1e-3 in most targets.
         neg = np.sort(lira[~member & np.isfinite(lira)])[::-1]
         thr = neg[max(int(np.floor(1e-3 * len(neg))) - 1, 0)]
-        per = np.zeros(len(aud_idx)); cnt = np.zeros(len(aud_idx))
+        per = np.zeros(len(aud_idx))
+        cnt = np.zeros(len(aud_idx))
         for t in range(K):
             s = lira[t * len(aud_idx):(t + 1) * len(aud_idx)]
             mm = M[:, t]
-            per += (mm & (s > thr)); cnt += mm
+            per += (mm & (s > thr))
+            cnt += mm
         exposed = int(((per / np.maximum(cnt, 1)) > 0.5).sum())
         results[name] = {"lira_online": lira_sum, "rmia_offline": rmia_sum,
                          "rmia_matches_ml_privacy_meter_max_abs_diff": crosscheck,
