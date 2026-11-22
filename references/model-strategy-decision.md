@@ -10,8 +10,8 @@ records the answer per option, with what was measured rather than assumed.
 The encrypted tier evaluates 20-3,226 parameters (Round 24d; since Round 86 the CKKS-only students span
 64 to 3,226, and two finance models of 23,106 and 34,962 pair CKKS with garbled circuits, below). That is not a preference: CKKS at
 `poly_modulus_degree` 8192 gives 4096 slots, and a ciphertext-plaintext dot product is one
-multiplicative level. Anything deeper needs bootstrapping, which this project does not do in a
-browser tab.
+multiplicative level. Anything deeper needs a longer modulus chain or bootstrapping; the square student's depth-3
+contexts (2026-11-19) take the first, and this project does not bootstrap in a browser tab.
 
 **But "small" and "weak" are different claims, and conflating them cost two rounds.** The medical
 student was 3,226 parameters and scored AUC 0.5984, which was written into three documents as a
@@ -29,7 +29,7 @@ baseline (0.9147 vs 0.901), while opssat (0.9681 vs 0.979), resnet50 (0.7988 vs 
 model (0.1519 vs 0.6323) and telemanom (0.0 vs 0.968) sit below theirs, each for the reasons its card states.
 (Round 86: the finance model scores 0.6161 against 0.6323, which is GFP + XGBoost at a batch of 128, and 64.77
 at the batch of 2,048 its features use; telemanom scores 0.950 against 0.968 by ESA-ADB's own recipe; and
-resnet18's 0.9147 is one run, whose six seeds average 0.8905, below MedMNIST's multi-trial 0.901.)
+resnet18's 0.9147 is one run, whose six seeds average 0.8905, below MedMNIST's multi-trial 0.901. Two teachers added since clear theirs: IBM's Multi-PNA+EU trained here, 0.6822 against the paper's 0.6816, and the chest X-ray model, 0.8065 against 0.7585.)
 
 ## Option 2: reinforcement learning - NO, and it is a category error at this scale
 
@@ -79,7 +79,7 @@ client computes it before encrypting; the encrypted step remains one dot product
 on a 529-row imbalanced test set is exactly the size that turns out to be resampling noise. Paired
 bootstrap, 4,000 resamples, both models scored on identical rows in each draw:
 
-| delta | mean | 95% CI | P(quadratic > linear) |
+| delta | mean | 95% CI | $`P(\text{quadratic} > \text{linear})`$ |
 |---|---|---|---|
 | AUC-PR | +0.0460 | **[+0.0089, +0.0853]** | 0.991 |
 | minority-class F1 | +0.0528 | **[+0.0154, +0.0929]** | 0.999 |
@@ -133,7 +133,7 @@ benefit directly rather than a surrogate loss, are in the tree end to end:
 | `scripts/train/finance_scorecard.py` | the trainer |
 | `tests/test_scorecard_bfv_exact.py` | asserts equality under BFV **and** inequality under CKKS, so a change that made CKKS look exact would fail |
 | the verification rule for integer models (asserted as equality, not a tolerance) | 60 of 60 rows exact under BFV, against **-1.999998397974359** for an exact -2 under CKKS |
-| `report/technical-report.tex` | cites it |
+| the technical report, private since Round 86 | cites it |
 | `references/he-scheme-selection.md` | the scheme argument and the net-benefit comparison |
 
 **And as of 2026-08-12 the numbers are a machine record rather than hand-written prose.** Until this
@@ -147,8 +147,8 @@ published its figures by hand - which is how the new generated-prose gate found 
 The finding this closed on is not the accuracy: the integer scorecard **loses** to the CKKS student on
 net benefit, and that was measured in Round 24h. What it buys is **exactness** - the encrypted score
 equals the plaintext score bit for bit under BFV, which no CKKS student can offer - and interpretability,
-which is the reason the credit-scoring literature uses the form at all. It ships as a second,
-independent BFV context alongside CKKS, with no scheme conversion anywhere.
+which is the reason the credit-scoring literature uses the form at all. It is implemented and
+tested as a second, independent BFV context alongside CKKS, with no scheme conversion anywhere; no page runs it.
 
 **So there is no genuinely open option left on this list.** If a later round wants one, it has to be
 found rather than inherited from this paragraph.

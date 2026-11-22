@@ -39,7 +39,8 @@ the quantity a reader would use to judge the noise source.
 
 Also reported, NOT reproduced here: `health.py:171` uses `n` where SP 800-90B section 6.3.1 uses
 `(L-1)` in the MCV estimator, and the Adaptive Proportion cutoffs sit one below Table 2 at H = 0.2 /
-0.6 / 0.8. Both directions are stated as conservative. **Re-derive before touching.**
+0.6 / 0.8. Both directions are stated as conservative. **Re-derive before touching.** Both fixed since: the MCV estimator divides
+by `n - 1`, and the cutoffs reproduce all ten Table 2 values (`src/qsh/qrng/health.py`, `tests/test_qrng.py`).
 
 ### 2. `FiniteKeyParams` hardcodes the retired intensities. spot-checkable from the code
 
@@ -63,7 +64,7 @@ asserts the SOURCE of the default instead, which has no tolerance to hide in, an
 `src/qsh/qkd/finite_key.py:115-116` carries `mu=0.5, nu=0.1`; the shipped configuration is
 `mu_signal=0.3416, mu_decoy=0.1417`. `src/qsh/qkd/bb84.py:141-147` fixed exactly this for `QKDParams`
 and the sibling did not follow - the same one-site-short pattern this project has recorded in seven
-consecutive rounds. Round 49's plan listed it as a known gap and it is still open.
+consecutive rounds. Round 49's plan listed it as a known gap; it was closed in Round 51.
 
 Reported consequences, unreproduced: the positive-key threshold quoted as "~1e5 sifted bits" is
 **42,448** at the shipped pair rather than 143,645; the "order of magnitude" phrasing at
@@ -131,7 +132,7 @@ Reported, and both are quotation-level claims worth re-reading at source before 
 
 ### 5. E91 and QSDC, both permissive, neither flipping a shipped verdict
 
-**E91 FIXED IN ALL THREE IMPLEMENTATIONS - Python in Round 53, the two browser copies in Round 54,
+**E91 FIXED IN ALL THREE IMPLEMENTATIONS AND THE CHECKER - Python in Round 53, the two browser copies in Round 54,
 and the one-round gap is the finding.** Round 53 fixed `qkd/e91.py` and left
 `web/src/lib/quantumSim.ts` and `web/src/lib/clientOptiQKD.ts` carrying the bug. **This demo is
 client-side only**, so the copy that was fixed is the one no visitor executes and the two that were
@@ -178,7 +179,7 @@ ETSI portal access to settle; nothing in the repo was changed on it.
 
 ### 7. Two claims in `model-choice-vs-2026-practice.md` no longer hold
 
-**SECOND CLAIM CONFIRMED AND CORRECTED Round 53.** `runs_encrypted=True` is on **six** specs, not
+**SECOND CLAIM CONFIRMED AND CORRECTED Round 53.** `runs_encrypted=True` was on **six** specs then (nine since Round 86), not
 five - `finance_aml.student`, `medical_fl.student`, `genomics.prs`, `satellite_comms.student`,
 `satellite_comms.opssat_student`, `telecom_ids.student`. The document contradicted itself: the
 sentence after the count says the telecom gap "is being closed in this same round", which is what
@@ -263,7 +264,8 @@ moving:
 | 6 currency | **RESOLVED Round 55, and my earlier refusal was the wrong call.** I declined to advance `REFERENCES.md`'s Y.3835 ceiling because search could not confirm Y.3836-3838, and treated that as caution. It was stale search indexing, not absence: `itu.int/rec/T-REC-Y.3838-202608-P/en` prints *"Approved in 2026-08-13"* verbatim, and ITU's own AAP JSON API returns `approvalDate 2026-08-13` for all three. Y.3839 returns HTTP 200 with a **0-byte body** against 9.5 KB for Y.3834-3838, so Y.3838 is the ceiling. **All three are prepublished, not just Y.3836** - the parenthetical singling out Y.3836 was also wrong. GS QKD 010 is likewise resolved: `portal.etsi.org` is reachable even though `www.etsi.org` 403s, and work item 43375 shows v0.6.2 Drafting - so "needs portal access" was true and the portal was available. Refusing to move a claim is the right default and it is not free: it left two wrong lines standing for a round |  Y.3836-Y.3838 unconfirmed by search; `etsi.org/deliver` returns 403 for QKD 010, 014 AND 020 alike, so the 403 carries no information about publication status. Needs ETSI portal access |
 | 7 `model-choice-vs-2026-practice.md` | **Second claim FIXED** - `runs_encrypted=True` is on six specs, not five, and the document contradicted itself two paragraphs apart. **First claim closed in Round 55**: arXiv:2605.31449 read at source, the paragraph is withdrawn (`model-choice-vs-2026-practice.md`) |
 
-Three of seven fully closed, two partly, two open with a stated obstacle. The open ones are NOT
+Three of seven were fully closed at Round 55, two partly, two open with a stated obstacle; all seven are closed now
+(the table above). The open ones are NOT
 re-conditioned to a later round, because moving a promise is not discharging it - they are recorded as
 requiring something this session could not obtain (a plotted figure, a paywalled portal, a paper).
 

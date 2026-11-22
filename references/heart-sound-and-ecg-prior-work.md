@@ -39,7 +39,7 @@ rest is agent-read.
 
 The Zenodo set copies the NEJM AI task design on public data; by the agent's count its second hospital has 5 positive
 subjects, too few for a cross-hospital evaluation. ODC-By 1.0 licenses the database and says it does not cover the
-individual contents, a gap to record in `DATA_LICENSES.md` before anything ships from the PhysioNet sets.
+individual contents, a gap recorded in `DATA_LICENSES.md` since, in both sets' rows.
 
 ## Secure computation on ECG and heart sounds (agent-read)
 
@@ -61,7 +61,7 @@ ECG from 2022 to 2026 was found.
 
 ## What follows for the project
 
-- A ConvNeXt backbone for the chest X-ray federation: optional, as one offline run of a small variant under the same
+- A ConvNeXt backbone for the chest X-ray federation: run once offline since, as ConvNeXt-atto, under the same
   recipe as the baselines; the browser trains the head only, so the backbone matters less there.
 - Heart sounds: a federation across the PhysioNet 2016 sources with each source held out in turn, and CirCor's murmur
   label with per-patient DP, are the variants public data support; the HFrEF set would follow the NEJM AI design and

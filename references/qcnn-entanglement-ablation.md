@@ -36,7 +36,7 @@
 > those either.)
 >
 > **The one conclusion that is untouched** is the one this file shares with `REFERENCES.md`: the QCNN
-> loses to logistic regression on every use case, before and after both changes. Entanglement
+> loses to or ties logistic regression on every use case, before and after both changes. Entanglement
 > mattering to a model that loses is not evidence of advantage, which is what the closing section
 > already says.
 
@@ -152,7 +152,7 @@ recorded digit.
 
 - **Supported:** on this circuit, on these three tasks, the entangling ring carries a large part of
   the result, and removing it is not free.
-- **Supported:** the QCNN still loses to a classical baseline on every use case. That is unchanged
+- **Supported:** the QCNN still loses to or ties a classical baseline on every use case. That is unchanged
   by this ablation and is the point PRX Quantum 7, 020304 (2026) makes structurally - see
   `REFERENCES.md`.
 - **NOT supported:** any claim of quantum advantage. Entanglement mattering to a model that loses is

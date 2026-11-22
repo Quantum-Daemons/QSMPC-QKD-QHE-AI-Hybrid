@@ -5474,7 +5474,7 @@ on the same advisory, were it published again, and still passes a clean report. 
 published: RFC 10073, *Composite Module-Lattice-Based Digital Signature Algorithm (ML-DSA) for Use in X.509 Public Key
 Infrastructure*, Proposed Standard, November 2026 (from revision 19), which `docs/crypto-agility.md` still called a
 draft in the RFC Editor queue; it is corrected. The drafts and RFCs the pages cite otherwise stand:
-draft-ietf-ipsecme-ikev2-mlkem is still at revision 09 (2026-08-13), RFC 9867 and RFC 10024 are as cited. NIST's PQC
+draft-ietf-ipsecme-ikev2-mlkem is still at revision 09 (2026-07-05), RFC 9867 and RFC 10024 are as cited. NIST's PQC
 project page (updated 2026-10-27) still calls Falcon's and HQC's standardisation underway, and CSRC has no page for
 FIPS 206 or FIPS 207, draft or final (`docs/pqc-roadmap.md` notes the re-read). IBM/Multi-GNN#15 and #18 are still
 open and the repository's head is still `252b025`, as the training README says. `scripts/audit_deps.sh` passes for
@@ -6265,3 +6265,50 @@ TenSEAL 0.3.18, liboqs 0.16.0, oqs-provider 0.12.0 and HEonGPU 2.1.1 are each th
 issues 63 and 100 are still open; the Hugging Face Space still answers 401 and the organisation lists none. Three
 README images were retaken from the deployed site (the DeFi page's view switch, `/value`'s new prior-art row, and the
 telecom page's pin); the four others the capture changed differed only in a timing or a hash, and were kept.
+
+### references/ checked against the code and at the sources (2026-11-22)
+
+The owner's next choice in option 4. Two checks ran side by side.
+
+**At the sources.** Every arXiv ID and DOI in references/ was looked up: 198 identifiers at arXiv's API, and 74 DOIs at
+Crossref, then at doi.org for the ones Crossref does not hold.
+
+- arXiv:2512.05069 is withdrawn, which both of its entries say.
+- arXiv:2603.26907 has a v3 (2026-08-11) that rewords its abstract only, and arXiv:2602.11833's v2 was already
+  recorded; its 10-degree visible region is unchanged.
+- One DOI was wrong: Egressy et al., AAAI 2024, is `10.1609/aaai.v38i10.29069`; the entry gave 29073, which does not
+  resolve. Phys. Rev. X's old-style DOI, already explained in its entry, is the other that does not resolve.
+- Two articles carry corrections: the OPS-SAT benchmark (2025-08-18, Figures 3 to 10 reordered, their numbers and
+  labels right), now noted in its entry, and TRIPOD+AI (2024-04-18), whose notice sits behind a bot check.
+
+**Against the code.** Four read-only reviews read the 35 notes and REFERENCES.md line by line against the code, the
+registry, `models/metrics.json` and the recorded measurements, and returned 117 candidates. Each was checked before an
+edit. The notes are dated records, so a statement the repository has since contradicted gets a dated update in place,
+as their own convention does, rather than a rewrite. The two preregistration files are not touched: their SHA-256 is
+pinned. What was wrong, beside many small updates:
+
+- **A formula broken by the conversion of 2026-11-15:** FIPS 203's failure rates read `$2^{-138}$.8` and so on, the
+  decimal outside the exponent. It was the only such case in any tracked Markdown file.
+- **A retraction that had not reached the note.** `medical-student-collapse-investigation.md` still said ResNet-50
+  rose above its published 0.857 baseline; this log retracted that on 2026-08-10 (the reruns had changed the
+  initialisation).
+- **The DP conversion's saving, recomputed from `src/qsh/ai/dp.py`:** 7.0 to 21.0 percent less noise at the same
+  $`\epsilon`$, where four places, the module's own docstring among them, said 7 or 8 to 18.
+- **Code moved on:**
+  - finance's QCNN runs at 4 wires;
+  - the 9-wire circuits are gone;
+  - the QRNG health tests and the finite-key defaults were fixed in Rounds 51 to 55;
+  - genomics is priced at scale 1;
+  - the chest X-ray federation, its view analysis and its ConvNeXt run were built;
+  - the clock defaults come from Rusca et al. and Liao et al.;
+  - `hybrid_kem.py` implements SP 800-227 section 4.6.2's KDF, not 4.6.3's combiner.
+- **Rendering:** `<Z0>` read as an HTML tag and vanished on GitHub; it is $`\langle Z_0\rangle`$ now.
+- **Outside references/:** `docs/architecture.md` still had the QRNG seeding E91; this log gave draft-09 of the IKEv2
+  ML-KEM draft the date 2026-08-13, where the Datatracker has 2026-07-05; and a comment in `clientSdnController.ts`
+  still named arXiv:2607.24118's clock.
+
+One finding goes beyond the documents. The ResNet-18 card and `models/metrics.json` quote "six seeds average 0.8905,
+sd 0.0198" for the shipped model, from `medical-student-collapse-investigation.md`. This log's retraction of 2026-08-10
+says those six runs used the ImageNet-pretrained variant, which is not what ships, and the figure returned with the
+card republish of 2026-11-08. The note now says what the runs were. Re-measuring the shipped configuration and
+republishing the card is the owner's decision.

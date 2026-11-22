@@ -15,13 +15,13 @@ from scratch are in [heart-sound-and-ecg-prior-work.md](heart-sound-and-ecg-prio
 |---|---|---|
 | browser, medical page (since 2026-11-13) | FLamby's Fed-Heart-Disease on four real hospitals: each alone, FedAvg under the pairwise masks, all four pooled (`web/src/lib/clientFedHeart.ts`, twin `qsh.ai.fed_heart`) | five seeds: alone 0.735, 0.636, 0.601, 0.644; federated $`0.712 \pm 0.017`$; pooled 0.715 (FLamby's metric, sample standard deviation); on its own test rows a hospital's own model is above the federated one at three or four of the four hospitals in every seed |
 | full deployment, `{"dataset": "medmnist", "model": "cnn"}` | FedAvg of a 3,226-parameter CNN over 409 BreastMNIST images of 14x14 in four label-skewed hospitals | until 2026-11-13 one class for every image (0.7282, the majority); class-weighted Adam now, seed 0: balanced accuracy 0.619, AUC 0.685 |
-| published models | ResNet-18, ResNet-50 and the CKKS student on BreastMNIST | trained centrally |
+| published models | ResNet-18, ResNet-50, the CKKS student and the square student on BreastMNIST; a ResNet-18 on NIH ChestX-ray14 | trained centrally; the chest X-ray model by FedAvg (2026-11-15) |
 
 Built since: CKKS-encrypted aggregation and threshold CKKS and BGV beside the masks, run on request (2026-11-13).
 Built since: record-level differential privacy beside the federation (2026-11-13; `references/differential-privacy.md`).
-Planned, in the owner's order of 2026-11-13: chest
-X-ray federation on NIH ChestX-ray14 with a view-position bias analysis and CAM; EfficientNet-B0, DeiT-Tiny and VGG-11
-trained federated offline; a 2D U-Net on breast ultrasound; FLARE, FeTS-style and federated-LoRA experiments offline.
+Built since: the chest X-ray federation on NIH ChestX-ray14, with its view analysis and the overlap of its maps with
+NIH's boxes (2026-11-15; `web/src/components/CxrFlCard.tsx`). Planned, in the owner's order of 2026-11-13:
+EfficientNet-B0, DeiT-Tiny and VGG-11 trained federated offline; a 2D U-Net on breast ultrasound; FLARE, FeTS-style and federated-LoRA experiments offline.
 
 ## The published cases
 
@@ -60,16 +60,17 @@ trained federated offline; a 2D U-Net on breast ultrasound; FLARE, FeTS-style an
 - **View position.** About 40 percent of NIH's images are AP (agent-read); models learn AP, portable markers and site
   as shortcuts (Zech et al., 2018; DeGrave et al., 2021; agent-read). The page will report AUROC by view, sensitivity
   and specificity by view at one threshold, a probe that predicts the view from the model's features, and a PA-only
-  model beside the mixed one.
+  model beside the mixed one (since 2026-11-15 the card reports AUROC by view and a PA-only arm).
 - **CAM.** For a backbone ending in global average pooling and a linear head, Grad-CAM reduces to CAM (Selvaraju et
   al., ICCV 2017, section 3.1; agent-read), so the page can draw exact maps from a forward graph that also returns the
   last feature maps; ONNX Runtime Web 1.31.1 runs no gradient graph. Saporta et al. (Nature Machine Intelligence,
   2022) found Grad-CAM the best of seven saliency methods on chest X-rays and all seven significantly worse than
   radiologists at localisation (abstract read here; the percentages agent-read), so the page will say a map shows where
-  this model's score came from, not where a lesion is, and measure the overlap with NIH's 984 boxes.
+  this model's score came from, not where a lesion is, and measure the overlap with NIH's boxes (measured since on the 153 Effusion boxes;
+  `docs/measurements/cxr-fl-2026-11-14.json`).
 - **Training in a tab.** No maintained library: ONNX Runtime deprecated its training packages at 1.20.0, and jax-js
   0.1.27 (18 Oct 2026, MIT) calls itself early. Models of a few thousand parameters train with hand-written
-  backpropagation; EfficientNet-B0 (5.3M parameters), VGG-11 and DeiT-Tiny train federated offline, without ImageNet
+  backpropagation; EfficientNet-B0 (5.3M parameters), VGG-11 and DeiT-Tiny would train federated offline, without ImageNet
   weights, and the page verifies them as it verifies the other published models.
 - **Encryption beside FedAvg (built 2026-11-13; `web/src/lib/clientFedAgg.ts`, `wasm/qsh-fedthresh`).** The pairwise masks are exact and let the aggregator read the sum. CKKS aggregation as
   FLARE does it is the second design: the clients hold the key and the aggregator only adds ciphertexts. Threshold
