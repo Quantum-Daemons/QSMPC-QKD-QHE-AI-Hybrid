@@ -4,6 +4,8 @@
 // are the model's pinned Hub files, each checked against the SHA-256 recorded for its revision.
 import { useState } from "react";
 import { type SquareRun, type SquareWeights, runSquareStudentOffThread } from "../lib/clientFHESquare";
+import BfvBudgetMeter from "./BfvBudgetMeter";
+import CkksLadder from "./CkksLadder";
 import { modelsFor } from "../lib/config";
 import { type ModelInputFile, publishedSampleOf, publishedWeightsOf } from "../lib/onnxInference";
 import StageBadge from "./StageBadge";
@@ -157,6 +159,7 @@ export default function SquareStudentCkks() {
                 </tbody>
               </table>
               {plot ? <EncryptedAgreementChart plot={plot} /> : null}
+              <CkksLadder ladder={o.runs[0].ladder} setName={o.set} />
             </>
           ) : null}
           <p className="muted small" style={{ marginTop: 8 }}>
@@ -168,6 +171,7 @@ export default function SquareStudentCkks() {
             MedMNIST v2 BreastMNIST (Yang et al., Scientific Data 2023); for research and demonstration only, not for
             clinical use.
           </p>
+          <BfvBudgetMeter />
         </>
       )}
     </div>

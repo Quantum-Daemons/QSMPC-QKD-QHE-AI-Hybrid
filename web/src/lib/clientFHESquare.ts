@@ -50,6 +50,8 @@ export interface SquareRun {
   /** The class index of the decrypted logits' argmax. */
   predicted: number;
   ms: { encrypt: number; evaluate: number; decrypt: number };
+  /** The CKKS ladder of this image's pass: the same for every image under one parameter set. */
+  ladder: LadderRung[];
   bytes: { input: number; output: number };
 }
 
@@ -136,11 +138,23 @@ function tiled(values: ArrayLike<number>, slots: number): Float64Array {
 }
 
 interface SquareCtx {
-  seal: any; encoder: any; encryptor: any; decryptor: any; evaluator: any; relin: any; galois: any;
+  seal: any; context: any; encoder: any; encryptor: any; decryptor: any; evaluator: any; relin: any; galois: any;
   slots: number; scale: number;
 }
 
+/**
+ * One rung of the CKKS ladder (Round 86, the owner's choice of 2026-11-22: FHE budget views): a ciphertext's place in
+ * the modulus chain and its scale after a step of the encrypted pass, read from the ciphertext this tab made. Each
+ * rescale drops one prime and brings the scale back down; when only the last prime is left, no multiplication fits.
+ */
+export interface LadderRung { step: string; level: number; primes: number; modulusBits: number; scaleBits: number }
+
 let _seal: Promise<any> | null = null;
+/** node-seal, loaded once, for this module and for the page's BFV budget meter (BfvBudgetMeter.tsx). */
+export function loadSeal(): Promise<any> {
+  return sealModule();
+}
+
 function sealModule(): Promise<any> {
   if (!_seal) {
     _seal = (async () => {
@@ -168,6 +182,7 @@ function squareContext(N: number, bits: number[], scaleBits: number): Promise<Sq
       const keyGen = new seal.KeyGenerator(context);
       return {
         seal,
+        context,
         encoder: new seal.CKKSEncoder(context),
         encryptor: new seal.Encryptor(context, keyGen.createPublicKey()),
         decryptor: new seal.Decryptor(context, keyGen.secretKey()),
@@ -189,8 +204,20 @@ export async function runSquareStudent(x: ArrayLike<number>, w: SquareWeights, s
   const p = w.ckks[set];
   if (!p) throw new Error(`the published weights offer no parameter set "${set}" (they offer ${Object.keys(w.ckks).join(", ")})`);
   const c = await squareContext(p.N, p.coeff_mod_bits, p.scale_bits);
-  const { seal, encoder, encryptor, decryptor, evaluator, relin, galois, slots, scale } = c;
+  const { seal, context, encoder, encryptor, decryptor, evaluator, relin, galois, slots, scale } = c;
   const live: { delete(): void }[] = [];
+  const ladder: LadderRung[] = [];
+  const rung = (step: string, x: any) => {
+    const pid = x.parmsId();
+    const data = context.getContextData(pid);
+    try {
+      ladder.push({ step, level: data.chainIndex(), primes: x.coeffModulusSize(), modulusBits: data.totalCoeffModulusBitCount(),
+                    scaleBits: Math.log2(x.scale()) });
+    } finally {
+      data.delete();
+      pid.delete();
+    }
+  };
   const pt = () => { const o = new seal.Plaintext(); live.push(o); return o; };
   const ct = () => { const o = new seal.Ciphertext(); live.push(o); return o; };
   const encodeAt = (values: Float64Array, s: number, like: any | null) => {
@@ -210,6 +237,7 @@ export async function runSquareStudent(x: ArrayLike<number>, w: SquareWeights, s
       encryptor.encrypt(encodeAt(tiled(rep, slots), scale, null), out);
       return out;
     });
+    rung("encrypted input (one of nine taps)", enc[0]);
     const inputBytes = enc.reduce((n, e) => n + e.saveToArray(seal.ComprModeType.none).length, 0);
     const t1 = performance.now();
 
@@ -223,24 +251,30 @@ export async function runSquareStudent(x: ArrayLike<number>, w: SquareWeights, s
       if (acc === null) acc = prod;
       else evaluator.add(acc, prod, acc);
     }
+    rung("convolution: nine plaintext products, summed", acc);
     evaluator.rescaleToNextInplace(acc);
+    rung("convolution rescaled", acc);
     const bias = new Array<number>(USED);
     for (let ch = 0; ch < CHANNELS; ch++) for (let i = 0; i < PIXELS; i++) bias[ch * PIXELS + i] = w.conv.bias[ch];
     evaluator.addPlain(acc, encodeAt(tiled(bias, slots), acc.scale(), acc), acc);
     const sq = ct();
     evaluator.square(acc, sq);
     evaluator.relinearizeInplace(sq, relin);
+    rung("squared and relinearised", sq);
     evaluator.rescaleToNextInplace(sq);
+    rung("square rescaled", sq);
     const outs = [0, 1].map((j) => {
       const t = ct();
       evaluator.multiplyPlain(sq, encodeAt(tiled(pooledDense(w, j), slots), scale, sq), t);
       evaluator.rescaleToNextInplace(t);
+      if (j === 0) rung("dense layer rescaled (one logit)", t);
       const r = ct();
       for (const s of ROTATIONS) {
         evaluator.rotateVector(t, s, galois, r);
         evaluator.add(t, r, t);
       }
       evaluator.addPlain(t, encodeAt(new Float64Array(slots).fill(w.dense[0].bias[j]), t.scale(), t), t);
+      if (j === 0) rung("rotations summed, bias added: the output", t);
       return t;
     });
     const outputBytes = outs.reduce((n, o) => n + o.saveToArray(seal.ComprModeType.none).length, 0);
@@ -261,7 +295,7 @@ export async function runSquareStudent(x: ArrayLike<number>, w: SquareWeights, s
       maxAbsError: Math.max(Math.abs(logits[0] - ref[0]), Math.abs(logits[1] - ref[1])),
       decisionAgrees: predicted === (ref[1] > ref[0] ? 1 : 0), predicted,
       ms: { encrypt: t1 - t0, evaluate: t2 - t1, decrypt: t3 - t2 },
-      bytes: { input: inputBytes, output: outputBytes },
+      bytes: { input: inputBytes, output: outputBytes }, ladder,
     };
   } finally {
     for (const o of live) o.delete();
