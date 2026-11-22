@@ -1,6 +1,12 @@
 # Local full stack: API (optionally GPU) + SPA (Caddy) + Prometheus + Grafana.
 #   docker compose -f docker/docker-compose.yml up --build
 # For GPU, uncomment the `deploy.resources` block on `api` and install nvidia-container-toolkit.
+#
+# Local by default (Round 86, the owner's choice of 2026-11-22). Docker publishes a port on every interface unless told
+# otherwise ("Publishing container ports is insecure by default", Docker's port-publishing docs), and nothing here asks
+# for a password, so every published port binds to QSH_BIND_ADDRESS, 127.0.0.1 unless you set it. To reach the stack
+# from another machine, set QSH_BIND_ADDRESS and add the name or address you will use to QSH_ALLOWED_HOSTS, which the
+# API checks against each request's Host (api/host_guard.py, the DNS-rebinding defence); put it on a trusted network.
 services:
   api:
     build:
@@ -10,6 +16,10 @@ services:
     # internal docker network regardless of this host mapping). Loopback only (Round 86): published on
     # every interface, the API was reachable from the whole network, unauthenticated.
     ports: ["127.0.0.1:${API_PORT:-8000}:8000"]
+    environment:
+      # Empty means the defaults: the loopback names and `api` (api/host_guard.py); no cross-origin access.
+      - QSH_ALLOWED_HOSTS=${QSH_ALLOWED_HOSTS:-}
+      - QSH_CORS_ORIGINS=${QSH_CORS_ORIGINS:-}
     volumes:
       - ../results:/app/results
     # GPU (Blackwell/CUDA13):
@@ -26,7 +36,7 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.web
     depends_on: [api]
-    ports: ["${WEB_PORT:-8080}:80"]
+    ports: ["${QSH_BIND_ADDRESS:-127.0.0.1}:${WEB_PORT:-8080}:80"]
 
   prometheus:
     image: prom/prometheus:v3.16.0@sha256:e04987641b57704f408e31f6373ba4138ecf27cb4a165d24aabb6c38fddd0f06
@@ -34,7 +44,7 @@ services:
       - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     command: ["--config.file=/etc/prometheus/prometheus.yml",
               "--storage.tsdb.retention.time=7d"]
-    ports: ["${PROMETHEUS_PORT:-9090}:9090"]
+    ports: ["${QSH_BIND_ADDRESS:-127.0.0.1}:${PROMETHEUS_PORT:-9090}:9090"]
     deploy: { resources: { limits: { memory: 512m } } }
 
   grafana:
@@ -47,11 +57,11 @@ services:
       # Mounting the JSON directory straight onto provisioning/dashboards silently loaded nothing.
       - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
       - ../monitoring/grafana:/var/lib/grafana/dashboards:ro
-    ports: ["${GRAFANA_PORT:-3000}:3000"]
+    ports: ["${QSH_BIND_ADDRESS:-127.0.0.1}:${GRAFANA_PORT:-3000}:3000"]
     depends_on: [prometheus]
     deploy: { resources: { limits: { memory: 256m } } }
 
   node-exporter:
     image: prom/node-exporter:v1.12.1@sha256:1b4e4438faca4dd7e001dd445d161a4a2091b0fededa84093b3a8dfeae1f1be0
-    ports: ["${NODE_EXPORTER_PORT:-9100}:9100"]
+    ports: ["${QSH_BIND_ADDRESS:-127.0.0.1}:${NODE_EXPORTER_PORT:-9100}:9100"]
     deploy: { resources: { limits: { memory: 64m } } }

@@ -85,7 +85,7 @@ def test_the_http_route_answers_200_across_the_slider() -> None:
         sys.path.insert(0, str(REPO))
     from api.main import app
 
-    client = TestClient(app, raise_server_exceptions=False)
+    client = TestClient(app, raise_server_exceptions=False, base_url="http://localhost")
     km = _distance_km()
     for eve in [round(0.1 * i, 1) for i in range(11)] + [0.45]:
         resp = client.get("/api/demo/qkd", params={"distance_km": km, "eve": eve})

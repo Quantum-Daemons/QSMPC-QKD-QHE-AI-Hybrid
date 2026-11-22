@@ -113,7 +113,7 @@ bind-mounted Caddyfile.
     docker compose -f docker/docker-compose.yml up -d    # API with the AI tier, SPA, Prometheus, Grafana, node-exporter
     docker compose -f docker/docker-compose.yml ps       # all services healthy
 
-    #  SPA :8080  -  API 127.0.0.1:8000/api/health  -  Grafana :3000  -  Prometheus :9090  -  node-exporter :9100
+    #  all on 127.0.0.1: SPA :8080  -  API :8000/api/health  -  Grafana :3000  -  Prometheus :9090  -  node-exporter :9100
 
     # an end-to-end federated run (writes results/); the real MCP server lives in this image too:
     docker compose -f docker/docker-compose.yml exec api \
@@ -126,7 +126,10 @@ The full `Dockerfile.api` (Debian-trixie) **bakes in the AI tier** (CPU torch + 
 the **live OpenFHE** CKKS backend, and **Node** with the filesystem MCP server installed from `docker/mcp-fs`'s lockfile, so a federated
 `medical_fl` run and the MCP server work out of the box. GPU passthrough via the host's
 `nvidia-container-toolkit` and the `deploy.resources` GPU block is optional, and alone gives no GPU path: the image installs CPU torch from the lock, a GPU host adds a CUDA build by hand, and no image builds HEonGPU. The ports are env-overridable (`WEB_PORT`, `API_PORT`, `GRAFANA_PORT`,
-`PROMETHEUS_PORT`, `NODE_EXPORTER_PORT`).
+`PROMETHEUS_PORT`, `NODE_EXPORTER_PORT`). Every one binds to `127.0.0.1` unless `QSH_BIND_ADDRESS` is set (the API's own port stays
+on loopback either way). Reaching the stack from another machine also needs that machine's name for it, or the address, in
+`QSH_ALLOWED_HOSTS`: the API answers only the hosts listed there, by default the loopback names and `api`, and refuses a
+foreign `Origin` (`api/host_guard.py`). Nothing asks for a password, so put a stack opened this way on a trusted network.
 
 ## The Python walkthrough
 

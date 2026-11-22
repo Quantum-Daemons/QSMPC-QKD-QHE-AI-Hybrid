@@ -87,9 +87,12 @@
   that folder and nothing else. Until Round 86 the caller chose the folder, the tool (write tools
   included) and the arguments, unauthenticated, with CORS open to every origin and the port published
   on every interface; this sentence said the server was sandboxed. CORS is now off unless the operator
-  names origins, and the compose file binds the API's own port to loopback; the web service, published on every
-  interface, forwards `/api/*` and `/metrics` to it without authentication, and Prometheus, Grafana and
-  node-exporter are published on every interface too, so the full deployment belongs on a trusted host or network. The public demo runs no
+  names origins. Since 2026-11-22 every port the full deployment publishes binds to `127.0.0.1` unless
+  `QSH_BIND_ADDRESS` says otherwise (the web service forwards `/api/*` and `/metrics` to the API without
+  authentication), and the API refuses a request whose `Host` is not one of `QSH_ALLOWED_HOSTS` (400) or whose
+  `Origin` names another site (403): the defence the MCP specification requires against DNS rebinding (revision
+  2026-07-28, Streamable HTTP; `api/host_guard.py`). Grafana and Prometheus check neither header, so a deployment
+  opened to a network still belongs on a trusted one. The public demo runs no
   server-side MCP (client mirror only), so it adds no server trust surface.
 - **The page's own code** (Round 86, 2026-11-20): everything the browser runs comes from this site, over TLS. The
   site sends a Content-Security-Policy that allows scripts from this site only and workers from it and from `blob:` URLs, with wasm compilation and

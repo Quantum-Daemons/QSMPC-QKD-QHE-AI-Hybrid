@@ -45,7 +45,7 @@ def api(monkeypatch):
 
     monkeypatch.setattr(fs_interop, "node_available", lambda: True)
     monkeypatch.setattr(fs_interop, "secure_filesystem_interop", fake_interop)
-    return TestClient(main.app), main, calls
+    return TestClient(main.app, base_url="http://localhost"), main, calls
 
 
 def test_a_write_tool_is_refused_before_any_server_starts(api) -> None:
