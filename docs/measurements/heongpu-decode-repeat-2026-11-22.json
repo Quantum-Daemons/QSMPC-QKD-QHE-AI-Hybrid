@@ -1,0 +1,33 @@
+{
+ "what": "the GPU backend's CKKS decode, repeated on one ciphertext and on fresh encryptions",
+ "why": "HEonGPU v2.1.1 builds GPU-FFT at b743607, before GPU-FFT's 5f2cd2c (a warp-level race in the last forward FFT stages); CKKS decoding runs that transform",
+ "machine": {
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition, 620.70.06",
+  "nvcc": "Build cuda_13.5.r13.5/compiler.39125733_0",
+  "kernel": "5.14.0-687.66.2.el9_8.x86_64",
+  "date": "2026-11-22"
+ },
+ "versions": {
+  "HEonGPU": "v2.1.1",
+  "HEonGPU commit": "837ffc87aa263bdfebfdfd1d077e5a52c7ae1ed1",
+  "GPU-FFT pinned by that commit": "b743607c1173000718ca1f84016fd03093ebb6fc",
+  "GPU-NTT pinned by that commit": "8a4daf11c7cdea8dde45fa0f8f7183c138d42b3b"
+ },
+ "parameters": {
+  "slots": 4096,
+  "seed": 2026,
+  "same_ciphertext_decodes": 20000,
+  "fresh_encryptions": 2000
+ },
+ "results": {
+  "decodes_differing_from_the_first": 0,
+  "max_run_to_run_difference": 0.0,
+  "max_difference_from_plaintext_same_ciphertext": 8.659169714597681e-09,
+  "fresh_encryptions_beyond_1e-6": 0,
+  "max_difference_from_plaintext_fresh": 1.1945974209837118e-08,
+  "seconds": {
+   "same_ciphertext": 3.74,
+   "fresh": 0.62
+  }
+ }
+}

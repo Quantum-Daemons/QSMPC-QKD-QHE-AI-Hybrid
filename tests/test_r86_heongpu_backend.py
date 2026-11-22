@@ -65,6 +65,21 @@ def test_the_mask_covers_every_slot_and_both_parts(gpu) -> None:
     assert abs(out.imag[1] - mask[1].imag) < 1e-2
 
 
+def test_one_ciphertext_decodes_the_same_every_time(gpu) -> None:
+    """HEonGPU v2.1.1 builds GPU-FFT at `b743607`, before GPU-FFT's fix of a warp-level race in the last forward FFT stages
+    (`5f2cd2c`), and CKKS decoding runs that forward transform. A race of that kind shows as one ciphertext decoding to
+    different values on different runs. On this project's GPU, 20,000 decodes were bitwise identical
+    (`docs/measurements/heongpu-decode-repeat-2026-11-22.json`); these 2,000, under a second, would catch it appearing with
+    another driver, GPU or build."""
+    rng = np.random.default_rng(5)
+    x = rng.normal(size=gpu.slot_count)
+    ct = gpu.encrypt(x)
+    first = np.asarray(gpu.decrypt_slots(ct))
+    assert np.allclose(first.real, x, atol=1e-6)
+    differing = sum(not np.array_equal(np.asarray(gpu.decrypt_slots(ct)), first) for _ in range(2000))
+    assert differing == 0, f"{differing} of 2,000 decodes of one ciphertext differ from the first"
+
+
 def test_the_selector_offers_it_only_where_it_runs() -> None:
     from qsh.orchestration.crypto_agility import default_registry
 

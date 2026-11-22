@@ -11,7 +11,7 @@
  },
  "inputs": {
   "model_key": "finance_aml.student",
-  "hf_revision": "c305a104be537e93612d3556fbc0c36f637e45e9",
+  "hf_revision": "4dc494c57f0d4e334ff6e23b06f902bbd1395d72",
   "weights_sha256": "dd58191c8279e7f6d36522db5545e46e1a6dda135abffb741eaba545d6a66528",
   "page_rows_git_blob": "cc108298864690145ef24b1be5016aadd4fbaaa8",
   "calibration": {
@@ -41,6 +41,12 @@
    "rows": 8192,
    "events": 164,
    "rate": 0.02001953125
+  },
+  "hf_revision_moved": {
+   "from": "c305a104be537e93612d3556fbc0c36f637e45e9",
+   "card_republished_on": "2026-11-22",
+   "pin_moved_on": "2026-11-23",
+   "why": "a README-only republish of the card; every file this measurement reads (onnx/model.onnx, eval_sample.json, weights.json) has the same SHA-256 at both revisions, read from the Hub's file listing"
   }
  },
  "results": {

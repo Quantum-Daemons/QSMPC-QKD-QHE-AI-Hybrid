@@ -121,7 +121,9 @@ record in `models/metrics.json`.
 SYNTHETIC: IBM generates it with a multi-agent virtual-world model and states that everything is
 synthetic; the paper is titled 'Realistic Synthetic Financial Transactions for AML Models'. Chosen
 for its calibration to real transaction statistics and its CDLA-Sharing terms, not because it is real
-data - no commercial-OK corpus of real laundering transactions exists.
+data. No real laundering-labelled corpus under a permissive licence was found (2026-11-22): Elliptic
+and Elliptic2 are CC BY-NC-ND 4.0, and the one real bank set found is GPL-3.0 with differentially
+private PCA features (arXiv:2507.08835).
 
 ## Scope
 

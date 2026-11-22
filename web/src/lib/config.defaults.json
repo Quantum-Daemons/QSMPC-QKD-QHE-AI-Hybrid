@@ -1076,7 +1076,7 @@
             "opset": null
           },
           "git_sha": "0a5ed44-dirty",
-          "hf_revision": "b74d16f36b5658b86df5f0ca67ef16b26e13b5c9",
+          "hf_revision": "6bc79977618fedc176729adf2abb134e715940ed",
           "minority_class_f1": 0.6160558464223386,
           "n_features": 114,
           "n_test": 1523504,
@@ -1125,7 +1125,7 @@
           "onnx/model.onnx": "d69b65320c55496001d7b6b77ed2b9c4ee6d88495ab4e1e12f967903947db8a5"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "b74d16f36b5658b86df5f0ca67ef16b26e13b5c9",
+        "hf_revision": "6bc79977618fedc176729adf2abb134e715940ed",
         "hf_revision_stale": null,
         "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "finance_aml.gbm",
@@ -1212,7 +1212,7 @@
             "student_flagged": 5497,
             "teacher_flagged": 1117
           },
-          "hf_revision": "c305a104be537e93612d3556fbc0c36f637e45e9",
+          "hf_revision": "4dc494c57f0d4e334ff6e23b06f902bbd1395d72",
           "metric_delta": 0.307281,
           "metric_delta_pp": 30.7281,
           "metric_name": "minority_class_f1",
@@ -1260,7 +1260,7 @@
           "weights.json": "dd58191c8279e7f6d36522db5545e46e1a6dda135abffb741eaba545d6a66528"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": "c305a104be537e93612d3556fbc0c36f637e45e9",
+        "hf_revision": "4dc494c57f0d4e334ff6e23b06f902bbd1395d72",
         "hf_revision_stale": null,
         "int8_withheld_reason": "ai.onnx.ml linear model: coefficients live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "finance_aml.student",
@@ -1365,7 +1365,7 @@
             "opset": 17
           },
           "git_sha": "2718809-dirty",
-          "hf_revision": "69e4fb7ce933e15e8d82ec05a9f1dbd299749eb7",
+          "hf_revision": "2bd74b9e5139a7b0cbfd119b855a57c350c7d016",
           "max_of_seeds_minority_f1": 0.636814,
           "median_of_seeds_minority_f1": 0.623607,
           "min_of_seeds_minority_f1": 0.594431,
@@ -1505,7 +1505,7 @@
           "weights.json": "a6d71112897b947045630682533bccfe14a1ac761ca04a257b675015363ca5c2"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-mlp-large",
-        "hf_revision": "69e4fb7ce933e15e8d82ec05a9f1dbd299749eb7",
+        "hf_revision": "2bd74b9e5139a7b0cbfd119b855a57c350c7d016",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "finance_aml.mlp_large",
@@ -1606,7 +1606,7 @@
           },
           "endpoint_scaling": "standard",
           "git_sha": "2718809-dirty",
-          "hf_revision": "60642a2009465836ef435d5ec2438f4211492578",
+          "hf_revision": "0dec1a118ec25f811e588d143192a012b4e3b945",
           "max_of_seeds_minority_f1": 0.658602,
           "median_of_seeds_minority_f1": 0.651029,
           "min_of_seeds_minority_f1": 0.64177,
@@ -1733,7 +1733,7 @@
           "weights.json": "fc086bd5269fde1db9c677c8fe558d312e61b0907ffe9f5ac355250491f894b3"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gnn-compact",
-        "hf_revision": "60642a2009465836ef435d5ec2438f4211492578",
+        "hf_revision": "0dec1a118ec25f811e588d143192a012b4e3b945",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "finance_aml.gnn_compact",
@@ -1827,7 +1827,7 @@
             }
           },
           "git_sha": "a7ea883-dirty",
-          "hf_revision": "b01fba646aad55b84c33429b1b1d091ae8b433ac",
+          "hf_revision": "22cdddcd939aace1c4f7a1766d6c5cfa6578a6a0",
           "kept_epoch": 33,
           "logged_test_f1": 0.6751,
           "logged_validation_f1": 0.6208,
@@ -2012,7 +2012,7 @@
           "onnx/model.onnx": "c5bc68963c6deea0ad9ddf4e08f822faaf639eb8071ed47510de0e48840a51cd"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gnn",
-        "hf_revision": "b01fba646aad55b84c33429b1b1d091ae8b433ac",
+        "hf_revision": "22cdddcd939aace1c4f7a1766d6c5cfa6578a6a0",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "finance_aml.gnn",
@@ -2236,7 +2236,7 @@
             }
           },
           "git_sha": "a7ea883-dirty",
-          "hf_revision": "d8b27ed281c86de4e8671b5f6b243be7c82f7242",
+          "hf_revision": "5d24f8f1a9f4e6c5b01fdfe4a1d8b4ae101beb8e",
           "kept_epoch": 16,
           "logged_test_f1": 0.5474,
           "logged_validation_f1": 0.6258,
@@ -2647,7 +2647,7 @@
           "onnx/model.onnx": "7afd7339ce9a79e6db38c11dcb46f6c83be0c0e2f9779dd265e414fdddc61afa"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gnn-causal",
-        "hf_revision": "d8b27ed281c86de4e8671b5f6b243be7c82f7242",
+        "hf_revision": "5d24f8f1a9f4e6c5b01fdfe4a1d8b4ae101beb8e",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "finance_aml.gnn_causal",
@@ -2816,17 +2816,27 @@
             "opset": 18
           },
           "git_sha": "61b855e-dirty",
-          "hf_revision": "3ee6e7224e2b4a666a23213e8e7f597d92dc1af2",
+          "hf_revision": "156aa7353495ea1b2c3be5a05580277942fbe73f",
           "macro_f1": 0.8249158249158248,
           "n_parameters": 11171266,
           "resolution": 28,
           "seed_spread": {
-            "hi": 0.9216,
-            "lo": 0.863,
-            "mean": 0.8905,
-            "n_seeds": 6,
-            "sd": 0.0198,
-            "source": "references/medical-student-collapse-investigation.md"
+            "hi": 0.9147,
+            "init": "random, the shipped configuration",
+            "lo": 0.8517,
+            "mean": 0.8761,
+            "n_seeds": 7,
+            "sd": 0.0218,
+            "seeds": [
+              42,
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "source": "docs/measurements/medical-resnet18-seeds-2026-11-22.json"
           },
           "transfer_learning": "none \u2014 trained from random initialisation, so the weights are not ImageNet-derived and carry no ImageNet terms (see DATA_LICENSES.md)",
           "wall_clock_s": 8.4
@@ -2879,14 +2889,14 @@
           "onnx/model_int8.onnx": "a1e5b6ce9cef59d06e3d6a48aa99444150523e8e4e00ac661a18348eb77de088"
         },
         "hf_repo_id": "Daemons-Q/qsh-medical-breastmnist-resnet18",
-        "hf_revision": "3ee6e7224e2b4a666a23213e8e7f597d92dc1af2",
+        "hf_revision": "156aa7353495ea1b2c3be5a05580277942fbe73f",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "medical_fl.resnet18",
         "label": "ResNet-18 on BreastMNIST",
         "metric": {
           "baseline": 0.901,
-          "baseline_source": "ResNet-18 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.901 / ACC 0.863). That baseline is \"the mean value of at least 3 trials\" (Yang et al.); this card's 0.9147 is one run, and its six seeds average 0.8905 +/- 0.0198 (the record's seed_spread), below 0.901",
+          "baseline_source": "ResNet-18 @28px, MedMNIST v2, Yang et al., Scientific Data 10:41 (2023) (AUC 0.901 / ACC 0.863). That baseline is \"the mean value of at least 3 trials\" (Yang et al.); this card's 0.9147 is one run, at seed 42; over seven runs differing only in the seed, this one among them, the AUC averages 0.8761 +/- 0.0218 (0.8517 to 0.9147, the record's seed_spread), and only this run reaches 0.901",
           "ceiling": 0.919,
           "ceiling_source": "Google AutoML Vision, MedMNIST v2 (AUC 0.919)",
           "companion": "accuracy",
@@ -4883,7 +4893,7 @@
             "int8_skipped_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
             "opset": 17
           },
-          "framing": "Architecture comparison, not a performance claim. The published model is the random forest; the quantum-kernel SVC and the variational QNN are recorded beside it and not published. The data is synthetic because no commercial-OK real QKD-attack corpus exists. Published QML-IDS results are mixed rather than uniformly below a random forest: Al-Kuwari et al. (arXiv:2509.14282) report a hybrid QLSTM at 94.7% against their own random forest, while arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
+          "framing": "Architecture comparison, not a performance claim. The published model is the random forest; the quantum-kernel SVC and the variational QNN are recorded beside it and not published. The data is synthetic because no public real QKD-attack capture was found. Published QML-IDS results are mixed rather than uniformly below a random forest: Al-Kuwari et al. (arXiv:2509.14282) report a hybrid QLSTM at 94.7% against their own random forest, while arXiv:2512.05069 was withdrawn by its own authors for insufficient evaluation. Per-class F1 is the headline; aggregate accuracy is shown beside it because Engelen et al. (WTMC 2021) demonstrated it stays at 0.99 across a label correction that moved Bot F1 from 0.60 to 0.99.",
           "git_sha": "67dcd50-dirty",
           "hf_revision": "59bbb6ed14f877ee616519706014f64e84a6187a",
           "n_classes": 8,

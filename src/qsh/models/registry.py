@@ -241,7 +241,9 @@ DS_AMLWORLD = DatasetSpec(
         "SYNTHETIC: IBM generates it with a multi-agent virtual-world model and states 'Everything is "
         "synthetic'; the paper is titled 'Realistic Synthetic Financial Transactions for AML Models'. "
         "Chosen for its calibration to real transaction statistics and its CDLA-Sharing terms, not "
-        "because it is real data - no commercial-OK corpus of real laundering transactions exists. "
+        "because it is real data. No real laundering-labelled corpus under a permissive licence was found "
+        "(2026-11-22): Elliptic and Elliptic2 are CC BY-NC-ND 4.0, and the one real bank set found is GPL-3.0 "
+        "with differentially private PCA features (arXiv:2507.08835). "
         # Round 86, measured by scripts/measure_finance_test_window_tail.py; the numbers are held to that
         # measurement by tests/test_r86_finance_tail.py.
         "THE TEST WINDOW RUNS PAST THE DATA: HI-Small holds ten days, September 1-10, 2022 (IBM's dataset "
@@ -816,7 +818,7 @@ M_BREASTMNIST = MetricSpec(
 #: Kept off `M_BREASTMNIST`, which the student's metric copies, so the student's published card does not change.
 M_BREASTMNIST_RESNET18 = replace(M_BREASTMNIST, baseline_source=(
     M_BREASTMNIST.baseline_source + ". That baseline is \"the mean value of at least 3 trials\" (Yang et al.); this "
-    "card's 0.9147 is one run, and its six seeds average 0.8905 +/- 0.0198 (the record's seed_spread), below 0.901"))
+    "card's 0.9147 is one run, at seed 42; over seven runs differing only in the seed, this one among them, the AUC averages 0.8761 +/- 0.0218 (0.8517 to 0.9147, the record's seed_spread), and only this run reaches 0.901"))
 #: The CKKS student against the same baseline (Round 86). The bars share the metric and the test split, not the input:
 #: the chart said "Both bars are the same metric on the same axis" over a 14 x 14 single-convolution student and a
 #: 28 x 28 ResNet-18. The card does not print this field, so the student's card is unchanged.

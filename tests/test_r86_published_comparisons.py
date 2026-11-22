@@ -89,7 +89,9 @@ def test_flamby_figures_are_the_logs(run) -> None:
 
 def test_the_verdicts_follow_their_rules(run) -> None:
     v = {uc: {k: verdict for k, verdict, _ in rows} for uc, rows in run["rows"].items()}
-    assert v["medical_fl"]["medical_fl.resnet18"] == "reproduced"
+    # 0.901 lies 1.1 sd above the mean of seven from-scratch runs (docs/measurements/medical-resnet18-seeds-2026-11-22.json);
+    # it was "reproduced" while the record carried six runs of the ImageNet-pretrained variant.
+    assert v["medical_fl"]["medical_fl.resnet18"] == "differs"
     assert v["medical_fl"]["medical_fl.resnet50"] == "reference"
     assert v["medical_fl"]["medical_fl.student"] == "not comparable"
     assert v["satellite_comms"]["satellite_comms.telemanom"] == "no spread"
