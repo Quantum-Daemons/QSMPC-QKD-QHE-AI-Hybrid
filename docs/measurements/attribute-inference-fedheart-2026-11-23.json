@@ -1,0 +1,201 @@
+{
+ "what": "attribute inference of a patient's sex from the published heart models, against imputation",
+ "attacks": {
+  "loss": "Yeom, Giacomelli, Fredrikson and Jha, IEEE CSF 2018; implemented here",
+  "model_inversion": "Fredrikson et al., USENIX Security 2014; implemented here",
+  "comparison": "Jayaraman and Evans, ACM CCS 2022 (arXiv:2209.01292)"
+ },
+ "data": "UCI Heart Disease: four hospitals, as FLamby's Fed-Heart-Disease prepares them (CC-BY-4.0): training rows 486 (members), test rows 254 (the adversary's sample of the population; cross-fitted when they are scored)",
+ "models": "seed 0, the page's default, of its federation through the Python twin: FedAvg and pooled",
+ "attribute": "sex (UCI: 1 male, 0 female), read back from the standardised column with each hospital's published mean and deviation",
+ "results": {
+  "federated": {
+   "members": {
+    "loss": {
+     "accuracy": 0.3539,
+     "women": 118,
+     "women_called_women": 28,
+     "called_women": 252,
+     "recall_of_women": 0.2373,
+     "precision_on_women": 0.1111
+    },
+    "model_inversion": {
+     "accuracy": 0.7572,
+     "women": 118,
+     "women_called_women": 0,
+     "called_women": 0,
+     "recall_of_women": 0.0,
+     "precision_on_women": null
+    },
+    "imputation_label_only": {
+     "accuracy": 0.7572,
+     "women": 118,
+     "women_called_women": 0,
+     "called_women": 0,
+     "recall_of_women": 0.0,
+     "precision_on_women": null
+    },
+    "imputation_all_features": {
+     "accuracy": 0.7675,
+     "women": 118,
+     "women_called_women": 13,
+     "called_women": 21,
+     "recall_of_women": 0.1102,
+     "precision_on_women": 0.619
+    }
+   },
+   "non_members": {
+    "loss": {
+     "accuracy": 0.3819,
+     "women": 56,
+     "women_called_women": 15,
+     "called_women": 131,
+     "recall_of_women": 0.2679,
+     "precision_on_women": 0.1145
+    },
+    "model_inversion": {
+     "accuracy": 0.7795,
+     "women": 56,
+     "women_called_women": 0,
+     "called_women": 0,
+     "recall_of_women": 0.0,
+     "precision_on_women": null
+    },
+    "imputation_label_only": {
+     "accuracy": 0.7795,
+     "women": 56,
+     "women_called_women": 0,
+     "called_women": 0,
+     "recall_of_women": 0.0,
+     "precision_on_women": null
+    },
+    "imputation_all_features": {
+     "accuracy": 0.7795,
+     "women": 56,
+     "women_called_women": 11,
+     "called_women": 22,
+     "recall_of_women": 0.1964,
+     "precision_on_women": 0.5
+    }
+   },
+   "always_male": {
+    "members": {
+     "accuracy": 0.7572,
+     "women": 118,
+     "women_called_women": 0,
+     "called_women": 0,
+     "recall_of_women": 0.0,
+     "precision_on_women": null
+    },
+    "non_members": {
+     "accuracy": 0.7795,
+     "women": 56,
+     "women_called_women": 0,
+     "called_women": 0,
+     "recall_of_women": 0.0,
+     "precision_on_women": null
+    }
+   },
+   "loss_attack_is_the_label_rule": true,
+   "weight_on_sex": -0.038918
+  },
+  "pooled": {
+   "members": {
+    "loss": {
+     "accuracy": 0.6461,
+     "women": 118,
+     "women_called_women": 90,
+     "called_women": 234,
+     "recall_of_women": 0.7627,
+     "precision_on_women": 0.3846
+    },
+    "model_inversion": {
+     "accuracy": 0.7551,
+     "women": 118,
+     "women_called_women": 2,
+     "called_women": 5,
+     "recall_of_women": 0.0169,
+     "precision_on_women": 0.4
+    },
+    "imputation_label_only": {
+     "accuracy": 0.7572,
+     "women": 118,
+     "women_called_women": 0,
+     "called_women": 0,
+     "recall_of_women": 0.0,
+     "precision_on_women": null
+    },
+    "imputation_all_features": {
+     "accuracy": 0.7675,
+     "women": 118,
+     "women_called_women": 13,
+     "called_women": 21,
+     "recall_of_women": 0.1102,
+     "precision_on_women": 0.619
+    }
+   },
+   "non_members": {
+    "loss": {
+     "accuracy": 0.6181,
+     "women": 56,
+     "women_called_women": 41,
+     "called_women": 123,
+     "recall_of_women": 0.7321,
+     "precision_on_women": 0.3333
+    },
+    "model_inversion": {
+     "accuracy": 0.7717,
+     "women": 56,
+     "women_called_women": 0,
+     "called_women": 2,
+     "recall_of_women": 0.0,
+     "precision_on_women": 0.0
+    },
+    "imputation_label_only": {
+     "accuracy": 0.7795,
+     "women": 56,
+     "women_called_women": 0,
+     "called_women": 0,
+     "recall_of_women": 0.0,
+     "precision_on_women": null
+    },
+    "imputation_all_features": {
+     "accuracy": 0.7795,
+     "women": 56,
+     "women_called_women": 11,
+     "called_women": 22,
+     "recall_of_women": 0.1964,
+     "precision_on_women": 0.5
+    }
+   },
+   "always_male": {
+    "members": {
+     "accuracy": 0.7572,
+     "women": 118,
+     "women_called_women": 0,
+     "called_women": 0,
+     "recall_of_women": 0.0,
+     "precision_on_women": null
+    },
+    "non_members": {
+     "accuracy": 0.7795,
+     "women": 56,
+     "women_called_women": 0,
+     "called_women": 0,
+     "recall_of_women": 0.0,
+     "precision_on_women": null
+    }
+   },
+   "loss_attack_is_the_label_rule": true,
+   "weight_on_sex": 0.447731
+  }
+ },
+ "reading": "An attack shows disclosure from the model only where it beats the imputation with the same knowledge and does better on members than on non-members. Accuracy is beside the always-male rate, because most patients here are men; recall and precision on women are the minority value's.",
+ "seconds": 0.9,
+ "environment": {
+  "git": "ecaa07f",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-23"
+ }
+}

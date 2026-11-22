@@ -80,7 +80,8 @@ def note_problems(note: str) -> list[str]:
 
 
 def test_the_membership_records_hold_their_own_checks() -> None:
-    for name in ("mia-opssat-2026-11-23.json", "mia-telecom-qml-2026-11-23.json", "mia-breastmnist-students-2026-11-23.json"):
+    for name in ("mia-opssat-2026-11-23.json", "mia-telecom-qml-2026-11-23.json", "mia-breastmnist-students-2026-11-23.json",
+                 "mia-fedheart-2026-11-23.json"):
         assert mia_problems(_load(name)) == [], name
 
 

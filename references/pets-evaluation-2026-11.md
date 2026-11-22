@@ -112,6 +112,20 @@ On the owner's choices of 2026-11-22 (the CPU phase first; GPU jobs asked one by
   sha256, and every shadow student is distilled from its labels by the student's own recipe, on 281 records, about half
   the 546 the published students saw. So this is what a student's own training adds. Membership in the teacher's
   training set needs the teacher retrained for every shadow, a GPU job.
+- **Membership inference, the heart federation** (`mia-fedheart-2026-11-23.json`, 64 shadow federations through the
+  page's Python twin; the script's FedAvg, pooled and DP arms give the twin's weights exactly): FedAvg, LiRA AUC 0.504
+  and 0.21 percent at a false-positive rate of 0.1 percent; the pooled model, LiRA AUC 0.541 and 0.36 percent; the
+  record-level DP federation, LiRA AUC 0.548 with clipping alone, 0.544 at epsilon 8 and 0.507 at epsilon 1. RMIA
+  matches ML Privacy Meter's exactly for every arm. At epsilon 1 every measured rate is under the guarantee's bound,
+  exp(epsilon) times the false-positive rate plus delta: 0.0977 against 0.2718 at a false-positive rate of 10 percent.
+  At epsilon 8 that bound is above 1 at these rates, so no attack could test it there.
+- **Attribute inference, the heart models** (`attribute-inference-fedheart-2026-11-23.json`): asked a patient's sex
+  from everything else known about them, no attack beats imputation with the same knowledge and no model (Jayaraman
+  and Evans, CCS 2022). On the training rows, model inversion (Fredrikson et al.) gets 75.72 percent from the FedAvg
+  model and 75.51 from the pooled one, where answering "male" every time gets 75.72; the loss attack (Yeom et al.)
+  gets 35.39 and 64.61; imputation from all the features gets 76.75. For a logistic model the loss attack's guess
+  depends on the diagnosis alone (the record checks this), so its lead of 2.80 points on the training rows over the
+  test rows for the pooled model comes from the two splits' own mix of sex and diagnosis, not from memorisation.
 - **Reconstruction by an informed adversary, the OPS-SAT student** (`reconstruction-opssat-student-2026-11-23.json`):
   from the published preprocessing mean, every one of the 1,594 training records within 0.1 percent (median
   relative error 7.1e-05); from the weights solved to the optimum, 98.93 percent within 10 percent and
@@ -119,8 +133,7 @@ On the owner's choices of 2026-11-22 (the CPU phase first; GPU jobs asked one by
   preprocessing a CKKS client needs is a release of training statistics, and a model on private data would need them
   and its weights computed under differential privacy; this telemetry is public, so it shows the mechanism.
 
-Still to run in the CPU phase: the federated heart model (its training is TypeScript, run through the page's own
-module), the canary game with the one-run DP audit, and attribute inference against imputation.
+Still to run in the CPU phase: the canary game with the one-run DP audit.
 
 ## What each use case could add
 
