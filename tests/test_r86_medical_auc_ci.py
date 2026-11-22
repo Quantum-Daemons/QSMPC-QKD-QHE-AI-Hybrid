@@ -64,5 +64,5 @@ def test_the_published_baseline_lies_inside_the_interval() -> None:
 
 def test_the_card_prints_the_interval_and_the_seeds() -> None:
     panel = (REPO / "web" / "src" / "components" / "ModelPanel.tsx").read_text()
-    for needle in ('"auc_ci_95"', '"seed_spread"', "95% CI {aucCi.lo.toFixed(3)} to {aucCi.hi.toFixed(3)}", "earlier runs differing only in the seed"):
+    for needle in ('"auc_ci_95"', '"seed_spread"', "95% CI {aucCi.lo.toFixed(3)} to {aucCi.hi.toFixed(3)}", "runs differing only in the seed, this one among them"):
         assert needle in panel, needle

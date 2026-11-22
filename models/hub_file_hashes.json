@@ -63,7 +63,7 @@
    "onnx/model.onnx": "e25b8dc2cba9294e2adfa81358627b2239208a7cf890820a323c6c8447bd169f",
    "onnx/model_int8.onnx": "a1e5b6ce9cef59d06e3d6a48aa99444150523e8e4e00ac661a18348eb77de088"
   },
-  "revision": "3ee6e7224e2b4a666a23213e8e7f597d92dc1af2"
+  "revision": "156aa7353495ea1b2c3be5a05580277942fbe73f"
  },
  "medical_fl.resnet50": {
   "files": {

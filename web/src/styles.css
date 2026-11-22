@@ -211,7 +211,9 @@ tr:hover td, tr:hover th[scope="row"] { background: var(--bg-2); }
 .badge-state.running { background: var(--warn); color: #03070f; }
 .badge-state.done { background: var(--accent-2); color: #03070f; }
 .badge-state.stopped { background: var(--muted); color: #03070f; }
-.badge-state.error { background: var(--danger); color: #fff; }
+/* Dark text, as the other badges: white on --danger is 3.03:1 at 12 px, and CI's text-layout check failed the medical
+   page on it once a published comparison there read "differs" (2026-11-22). #03070f is 6.66:1. */
+.badge-state.error { background: var(--danger); color: #03070f; }
 .badge-state.idle { background: var(--border); color: var(--text); }
 /* usePipelineRun sets state="paused" on pipeline_pause. Without a rule the badge rendered unstyled,
    so a paused run looked identical to an idle one. */

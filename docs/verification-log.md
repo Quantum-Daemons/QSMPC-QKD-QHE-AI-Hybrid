@@ -6350,3 +6350,42 @@ sd 0.0198" for the shipped model, from `medical-student-collapse-investigation.m
 says those six runs used the ImageNet-pretrained variant, which is not what ships, and the figure returned with the
 card republish of 2026-11-08. The note now says what the runs were. Re-measuring the shipped configuration and
 republishing the card is the owner's decision.
+
+### #84 on the deployed site (2026-11-22)
+
+#84 was merged as c854b8e on the owner's approval, given again for its new head after main was merged into it (CI 8 of
+8, the local gate passed on bcf346d), and deployed. The box serves `index-C-GZhrkH.js`, unchanged: #84 changed
+documents, references and one code comment, which the build drops. The deploy's checks passed, and the CSP walk
+passes every page, worker and run.
+
+### The ResNet-18 card's seed spread, measured on the configuration that ships (2026-11-22)
+
+The references audit found that `models/metrics.json`, the ResNet-18 card and the medical page quoted a six-seed spread,
+$`0.8905 \pm 0.0198`$, whose runs used the ImageNet-pretrained variant. This log retracted that figure on 2026-08-10, because
+the shipped model is trained from random initialisation, and the card republish of 2026-11-08 brought it back. The
+owner chose to re-measure and republish.
+
+The shipped configuration was trained with the training script's own defaults
+(`scripts/train/medical_breastmnist.py --seed <seed>`, random initialisation, 28 px), each run scored on the official
+156-image test split.
+
+- **Seed 42, the published seed**, reproduces 0.914683.
+- **Seeds 0 to 5** give 0.893275, 0.858605, 0.851713, 0.879073, 0.869256 and 0.865915, none at or above the published
+  0.901.
+- **All seven** give mean 0.8761 and sd 0.0218 (sample), so the published run is the best of the seven.
+
+The record is `docs/measurements/medical-resnet18-seeds-2026-11-22.json`, with the commit, the dataset's SHA-256 and the
+machine. What followed:
+
+- `seed_spread` holds the seven runs, from random initialisation, with the record as its source. The registry's caveat
+  and the card, re-rendered by `model_card`, say the card's 0.9147 is one run and that only it reaches 0.901.
+- The page's published-comparison verdict for the model follows its rule from "reproduced" to "differs": 0.901 is 1.1
+  standard deviations above the seven runs' mean. A model card is the place where a single favourable run should not
+  stand for the pipeline.
+- The card was republished, README only, on the owner's approval: revision `156aa7353495`, pinned in `metrics.json` and
+  `hub_file_hashes.json`. All 18 Hub cards equal the cards the registry generates.
+- `tests/test_r86_resnet18_spread_is_the_shipped_configuration.py` holds the record, the caveat, the card and the
+  findings to the measurement. It was seeded with the spread as it stood.
+
+The training script also re-distils the student and rewrites its files when it trains this teacher; in this worktree they
+were restored from git, so the published student is unchanged.
