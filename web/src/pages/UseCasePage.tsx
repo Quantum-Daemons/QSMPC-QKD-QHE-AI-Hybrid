@@ -54,6 +54,7 @@ const QCNN3D_FEATURES = [0.3, -0.5, 0.8, 0.1, -0.9, 0.6, -0.2, 0.4];
 const FHEVM_VIEW: ModelledView = { spec: FHEVM_SPEC, caption: FHEVM_CAPTION, legend: FHEVM_LEGEND, source: "Zama's documentation" };
 import { FibreDistanceCharts, QsdcRangeChart } from "../components/QkdCharts";
 import QrngHealthLive from "../components/QrngHealthLive";
+import Bb84PhotonPanel from "../components/Bb84PhotonPanel";
 import SatNetworkPanel from "../components/SatNetworkPanel";
 import Tabs from "../components/Tabs";
 import { satChannel } from "../lib/satLink";
@@ -291,6 +292,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "genomics" && <PrsLocusCard />}
       {usecase === "telecom_ids" && <ConfusionCard />}
       {usecase === "telecom_ids" && <QrngHealthLive />}
+      {usecase === "telecom_ids" && <Bb84PhotonPanel />}
 
       {/* XAI: signed SHAP attribution.
           Gated on an explanation EXISTING, not on `meta.inference`. The flag meant "has a
