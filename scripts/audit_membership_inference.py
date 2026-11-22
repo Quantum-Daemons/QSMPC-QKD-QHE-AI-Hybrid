@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import platform
 import subprocess
 import sys
@@ -196,7 +197,137 @@ def _breastmnist_students(args):
                    "square_student": "medical_fl.square_student: conv 1->4, batch norm, x^2, avg-pool, dense 196->2"}}
 
 
-TARGETS = {"opssat": _opssat, "telecom_qml": _telecom_qml, "breastmnist_students": _breastmnist_students}
+#: The heart federation's DP arms audited: clipping alone, and the two ends of the page's sweep.
+FEDHEART_DP_EPSILONS = (math.inf, 8.0, 1.0)
+
+
+def fedheart_parts(Xs: np.ndarray, ys: np.ndarray, n_sites: int) -> list[tuple[list, list]]:
+    """Each hospital's rows and labels; the hospital is the last column, which the models do not see."""
+    return [([r[:-1] for r in Xs[Xs[:, -1] == k].tolist()], ys[Xs[:, -1] == k].tolist()) for k in range(n_sites)]
+
+
+def fedheart_federated(parts, seed: int) -> list[float]:
+    """`qsh.ai.fed_heart.run`'s FedAvg arm: its initial weights, its streams and its order of operations."""
+    from qsh.ai import fed_heart
+    from qsh.ai.federated import dequantise, quantise
+
+    sizes = [len(yk) for _, yk in parts]
+    total = sum(sizes)
+    streams = [fed_heart.mulberry32(seed * 1000 + 200 + k) for k in range(len(parts))]
+    glob = list(fed_heart.init_theta(seed))
+    for _ in range(fed_heart.ROUNDS):
+        acc = np.zeros(len(glob), dtype=np.uint64)
+        for k, (Xk, yk) in enumerate(parts):
+            local = fed_heart.train_sgd_steps(glob, Xk, yk, streams[k])
+            acc += quantise(np.asarray(local, dtype=np.float64) * (sizes[k] / total), len(parts))
+        glob = dequantise((acc % (1 << 32)).astype(np.uint32)).tolist()
+    return glob
+
+
+def fedheart_pooled(parts, seed: int) -> list[float]:
+    """`run`'s pooled arm: every hospital's rows together, Adam for 50 epochs."""
+    from qsh.ai import fed_heart
+
+    Xp = [r for Xk, _ in parts for r in Xk]
+    yp = [v for _, yk in parts for v in yk]
+    return fed_heart.train_adam(fed_heart.init_theta(seed), Xp, yp, fed_heart.mulberry32(seed * 1000 + 300))
+
+
+def fedheart_dp(parts, seed: int, epsilon: float, rb) -> list[float]:
+    """`run_dp`'s loop at one epsilon: full-batch descent on clipped per-patient gradients, each hospital's sum rounded to
+    2^-16 with its share of the discrete Gaussian noise added, the shares summed."""
+    from qsh.ai import dp, fed_heart
+
+    n_sites, dim = len(parts), len(parts[0][0][0]) + 1
+    unit = 2 ** fed_heart.DP_FIXED_POINT_BITS
+    sensitivity = fed_heart.DP_CLIP * unit + math.sqrt(dim)
+    V = dp.variance_for(epsilon, fed_heart.DP_ROUNDS, sensitivity, n_sites, dim, fed_heart.DP_DELTA)
+    total = sum(len(yk) for _, yk in parts)
+    theta = fed_heart.init_theta(seed, dim - 1)
+    for _ in range(fed_heart.DP_ROUNDS):
+        sums = [0] * dim
+        for Xk, yk in parts:
+            g = fed_heart.clipped_gradient_sum(theta, Xk, yk, fed_heart.DP_CLIP)
+            for j, x in enumerate(g):
+                sums[j] += math.floor(x * unit + 0.5) + dp.discrete_gaussian(V, rb)
+        theta = [t - fed_heart.DP_LR * (sums[j] / unit) / total for j, t in enumerate(theta)]
+    return theta
+
+
+class _Logit:
+    """predict_proba of a logistic model's weights; the last column of the input (the hospital) is not a feature."""
+
+    def __init__(self, theta: list[float]) -> None:
+        self.w, self.b = np.asarray(theta[:-1], dtype=float), float(theta[-1])
+
+    def predict_proba(self, x: np.ndarray) -> np.ndarray:
+        p1 = 1.0 / (1.0 + np.exp(-(np.asarray(x)[:, :-1] @ self.w + self.b)))
+        return np.column_stack([1.0 - p1, p1])
+
+
+def _fedheart(args=None):
+    """FLamby's Fed-Heart-Disease federation the medical page runs, through its Python twin `qsh.ai.fed_heart`.
+
+    Each shadow federation trains on its members among each hospital's rows (train and test splits pooled within the
+    hospital) by the page's procedures and random streams: FedAvg under the secure sum's quantisation, the pooled model,
+    and the record-level DP federation at epsilon infinity (clipping alone), 8 and 1 (delta 1e-6), whose noise here comes
+    from a seeded stream: NOT private, the same distribution as the page's CSPRNG.
+    """
+    from qsh.ai import dp, fed_heart
+
+    s = json.loads(fed_heart.SAMPLE.read_text(encoding="utf-8"))
+    cs = s["centres"]
+    rows, labels = [], []
+    for k, c in enumerate(cs):
+        for part in ("train", "test"):
+            for x, yy in zip(c[part]["X"], c[part]["y"], strict=True):
+                rows.append([*x, k])
+                labels.append(int(yy))
+
+    def fit(Xs, ys, seed):
+        parts = fedheart_parts(Xs, ys, len(cs))
+        out = {"federated": _Logit(fedheart_federated(parts, seed)), "pooled": _Logit(fedheart_pooled(parts, seed))}
+        for eps in FEDHEART_DP_EPSILONS:
+            name = "dp_clip_only" if not math.isfinite(eps) else f"dp_epsilon_{eps:g}"
+            out[name] = _Logit(fedheart_dp(parts, seed, eps, dp.seeded_rand_below(f"mia-fedheart-{seed}-{eps:g}")))
+        return out
+
+    return np.asarray(rows, dtype=float), np.asarray(labels, dtype=int), fit, {
+        "data": f"{s['corpus']}: UCI Heart Disease's four hospitals as FLamby prepares them ({s['licence']}), train and "
+                f"test rows pooled within each hospital, {len(rows)} rows",
+        "models": {"federated": "the page's FedAvg: 15 rounds of 100 local SGD steps at lr 0.001, the secure sum's ring",
+                   "pooled": "the four hospitals' rows together, Adam (lr 0.001, batches of 4, 50 epochs)",
+                   "dp_clip_only": "record-level DP federation, 50 rounds of full-batch descent, clipping at 1, no noise",
+                   "dp_epsilon_8": "the same with the page's discrete Gaussian noise for epsilon 8, delta 1e-6",
+                   "dp_epsilon_1": "the same for epsilon 1"},
+        "noise": "the DP arms' noise is drawn from dp.seeded_rand_below (not private; the CSPRNG's distribution)",
+        "dp_delta": fed_heart.DP_DELTA}
+
+
+def dp_bound_check(results: dict, delta: float) -> dict:
+    """Each DP arm's measured rates against its guarantee: an (epsilon, delta)-DP training procedure lets no test of a
+    record's membership reach a true-positive rate above exp(epsilon) * FPR + delta (Kairouz, Oh and Viswanath, ICML
+    2015). An attack's rate is a lower bound on what is possible, so a rate above the bound would mean the accounting
+    or the implementation is wrong; one below it shows nothing more."""
+    out = {}
+    for name, res in results.items():
+        if not name.startswith("dp_epsilon_"):
+            continue
+        eps = float(name.removeprefix("dp_epsilon_"))
+        rows = []
+        for attack in ("lira_online", "rmia_offline"):
+            for f in FPRS:
+                tpr = res[attack].get(f"tpr_at_fpr_{f:g}")
+                if tpr is None:
+                    continue
+                bound = min(1.0, math.exp(eps) * f + delta)
+                rows.append({"attack": attack, "fpr": f, "tpr": tpr, "bound": round(bound, 6), "holds": tpr <= bound})
+        out[name] = {"epsilon": eps, "delta": delta, "rows": rows, "all_hold": all(r["holds"] for r in rows)}
+    return out
+
+
+TARGETS = {"opssat": _opssat, "telecom_qml": _telecom_qml, "breastmnist_students": _breastmnist_students,
+           "fedheart": _fedheart}
 
 
 # --------------------------------------------------------------------------------------------- attacks
@@ -356,7 +487,8 @@ def main() -> int:
                     "rmia_offline": "Zarifzadeh, Liu and Shokri, ICML 2024 (arXiv:2312.03262); implemented here and checked "
                                     f"against ML Privacy Meter's run_rmia at {MLPM_COMMIT}"},
         "results": results,
-        "reading": "TPR at a fixed low FPR is the measure; an AUC near 0.5 with TPR near the FPR means the attack learns "
+        **({"dp_bound_check": dp_bound_check(results, about["dp_delta"])} if "dp_delta" in about else {}),
+        "reading":"TPR at a fixed low FPR is the measure; an AUC near 0.5 with TPR near the FPR means the attack learns "
                    "little about membership from this model's outputs. An attack gives a lower bound on leakage, not a proof "
                    "of its absence.",
         "environment": {"git": subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"], capture_output=True,
