@@ -165,7 +165,7 @@ TRL 4, 2024-2025), Kamm & Willemson 2014, Hemenway et al. SCN 2016, and two 2025
 including a DLR CKKS collision-probability system (arXiv:2501.09397). Claiming novelty there would
 collide with prior art immediately.
 
-## Four motivations to avoid, and why
+## Five motivations to avoid, and why
 
 | tempting claim | why not |
 |---|---|

@@ -38,7 +38,7 @@ three activities and section 8.11 double-click handling are protocol logic a bro
 | Source | What it prescribes | Usable here |
 |---|---|---|
 | NIST SP 800-227 (2025) | Only CAVP/CMVP conformance, and undercuts it: validation "does not guarantee correct functioning on all inputs". Refuses to give side-channel guidance. **But section 4.6.3 is directly on point for a hybrid**: the naive combiner `KDF(K1,K2)` "does not preserve IND-CCA security, regardless of the properties of the KDF"; the approved form binds the ciphertexts and encapsulation keys. | Yes - section 4.6.3 |
-| FIPS 203 section 7.2 / section 7.3 | Normative SHALL: encapsulation-key modulus round-trip check, decapsulation-key hash check. Table 1 decapsulation failure rates $`2^{-138}`$.8 / $`2^{-164}`$.8 / $`2^{-174}`$.8. | Yes |
+| FIPS 203 section 7.2 / section 7.3 | Normative SHALL: encapsulation-key modulus round-trip check, decapsulation-key hash check. Table 1 decapsulation failure rates $`2^{-138.8}`$ / $`2^{-164.8}`$ / $`2^{-174.8}`$. | Yes |
 | NIST ACVP + C2SP/CCTV | NIST does publish negative vectors, at the algorithm-validation layer: ML-DSA sigVer's five disposition categories, and CCTV's `modulus/`, `strcmp/`, `unlucky/` sets. | Yes |
 | ISO/IEC 23837-1/-2:2023 | The only QKD adversarial test procedures that exist, and they deliberately contain no thresholds. | Form only |
 | ETSI GS QKD 010 | Gives the Trojan-horse relation $`\mu_{\text{out}} \le \mu_{\text{in}} \cdot r_{\text{rel}}`$ as **equation (8) inside clause 7.4**, then **MANDATES** privacy amplification without fixing one formula: clause 8 says the bound *"shall be used ... to determine the amount of privacy amplification that shall be applied"* and the adopter *"shall provide a security justification for how they calculate the amount"*. **CORRECTED Round 55** - this row previously said 010 "declines to specify the privacy amplification", which is a different and wrong claim, and cited "clause 8" for the relation, which is an equation number read as a clause number. **AND 010 IS NOT PUBLISHED**: ETSI work item 43375, reference `DGS/QKD-0010_ISTrojan`, is at **v0.6.2, status Drafting**, TB approval targeted 2026-12-02, and its public draft cover states *"Do not use as reference material. Do not cite this document other than as work in progress."* The "V1.1.1 (2023-04)" a search summary reported belongs to **GS QKD 016**, the Common Criteria Protection Profile. Clause content above is from the public v0.4.1; v0.6.2 is not public, so numbering may have moved. | No |
@@ -54,8 +54,8 @@ three activities and section 8.11 double-click handling are protocol logic a bro
 1. **Hybrid key-combiner robustness.** The most defensible test available, because it is the only one
    that tests the *hybrid* property this project claims. Compromise one component secret and show the
    composite survives under the ciphertext-binding combiner and fails under `KDF(K1,K2)`.
-   **This became true of the code in Round 38 and was not before.** The site count lives in
-   `docs/pqc-roadmap.md` and in what `npm run check:combiner` enumerates, not here - three
+   **This became true of the code in Round 38 and was not before.** The site count is what
+   `npm run check:combiner` enumerates, which `docs/pqc-roadmap.md` points to, not here - three
    documents carried three different numbers until Round 39. The combiner sites
    bound the encapsulation keys and omitted `c1`, the ML-KEM ciphertext - and the MCP one
    bound nothing at all, which is expression (16) itself. Section 4.6.3 is explicit that the

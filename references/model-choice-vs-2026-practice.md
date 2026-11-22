@@ -103,7 +103,7 @@ Round 32 corrected finance's binding constraint to **statefulness at inference**
 right about the object it describes and does not reach the student. Statefulness is the reason there is no
 GNN: message passing needs the transaction's graph neighbourhood at inference time, so `finance_aml.gnn`
 carries `hf_repo=None`, has no `models/metrics.json` entry, and was never trained - it is a reference
-architecture kept as the published state of the art the GBM is measured against. **A reason not to ship an
+architecture kept as the published state of the art the GBM is measured against (Round 86: `finance_aml.gnn` is now IBM's official Multi-PNA+EU, trained here on this project's windows and published at minority-class F1 0.6822, and the compact GNN distilled from it runs under CKKS and garbled circuits). **A reason not to ship an
 untrained GNN is not a reason to ship a 33-parameter linear model instead of the trained GBM.**
 
 The real reason is **client-side latency**, and it is worth saying without dressing:
@@ -227,8 +227,8 @@ arXiv on 2026-11-15, and the first paper's full text in its HTML version.
   layer. On HI-Small and HI-Medium it improves dense-context F1 by 3 to 6 points, with up to 77 percent fewer
   parameters than the graph-transformer baselines. The abstract names no Multi-GNN baseline.
 
-  The IBM tab prints each scored transfer's payer and payee degrees, so the page could also report the
-  published models' F1 stratified by degree.
+  The IBM tab prints each scored transfer's payer and payee degrees, and since 2026-11-20 the page also
+  reports the published models' F1 stratified by degree.
 - **Explainable GATv2** (Shahbazi et al., [arXiv:2609.37155](https://arxiv.org/abs/2609.37155),
   29 September 2026). It reports AUPRC $`64.85`$ percent and best F1 $`68.42`$ percent on HI-Small, against
   XGBoost at AUPRC $`38.46`$ percent. Its split is a "temporal, leakage-safe partitioning" whose ratios the
@@ -236,7 +236,7 @@ arXiv on 2026-11-15, and the first paper's full text in its HTML version.
   labelled "best", it is no evidence against Multi-PNA+EU's $`68.16 \pm 2.65`$ (Egressy et al., Table 2).
 
 None of the three changes a decision here:
-- Multi-PNA+EU stays the baseline the compact GNN is distilled from and compared with (HF30).
+- Multi-PNA+EU stays the baseline the compact GNN is distilled from and compared with.
 - IBM's code at `252b025` is still the newest commit on its main branch (read 2026-11-15).
 - None of the three describes a time bound on its test-time neighbourhoods; the first says so in its full text,
   the other two in their abstracts. That is the question the causal protocol answers for IBM's two models
@@ -260,7 +260,7 @@ the exclusivity claim that rested on it.** Round 55 searched properly and found 
 
 | baseline | architecture | result | latency | ring |
 |---|---|---|---|---|
-| **PriMed** - Gopalakrishnan et al., *Expert Systems* 42(1):e13283 (online Mar 2023) | Conv(3->8,k3) -> Square -> AvgPool -> FC, **BFV** via Pyfhel/SEAL | **87.58%** | **171.4 s** | m=4096 |
+| **PriMed** - Gopalakrishnan et al., *Expert Systems* 42(1):e13283 (online Mar 2023) | Conv(3->8,k3) -> Square -> AvgPool -> FC, **BFV** via Pyfhel/SEAL | **87.58%** | **171.4 s** | $`m = 4096`$ |
 | Al Badawi & Bin Yusof, *BioData Mining* 17:33 (Sep 2024) | RBF-kernel **SVM**, CKKS/OpenFHE | F1 0.80 | 2.09 s | **$`N = 65536`$** |
 | Selvakumar & Senthilkumar, *Sci Rep* (Jul 2025) | 2-layer quantized **FCNN**, TFHE | 81.82% -> 81.81% encrypted | **137.68 s/sample** | - |
 | **Gecko** - Wei et al., arXiv:2608.02378 (Aug 2026), preprint | frozen ResNet50v2 in **plaintext client-side**, then encrypted predictor, CKKS/Lattigo | **87.18%** vs 87.82% plaintext | **413 ms** | conjugate-invariant |
@@ -319,7 +319,7 @@ baselines above are easy to miss.
 The linear per-SNP weighted sum is unambiguously current - *Nature Communications*, Jun 2025, finds
 neural models **outperformed by linear regression** across 28 UK Biobank traits. The nearest
 comparator is HEPRS (*Cell Reports Methods*, Jan 2026): CKKS via Lattigo, a 110,258-SNP schizophrenia
-score, r > 0.999 against plaintext. Its introduction gives 4.9 s and 3.3 GB per individual on a laptop with its
+score, $`r > 0.999`$ against plaintext. Its introduction gives 4.9 s and 3.3 GB per individual on a laptop with its
 best parameters; its results section gives about 10 s and 3 GB for one individual on a MacBook Pro M1 at ring
 dimension $`2^{13}`$.
 
@@ -341,7 +341,7 @@ algorithm on Mission1 while unsupervised baselines score below 0.001. Two traps,
 avoided here and both worth keeping avoided:
 
 - **Never quote Telemanom's SMAP/MSL F1.** A uniform random score reaches F1 0.931 on MSL and 0.961
-  on SMAP under point adjustment (AAAI-22). Checked: this project mentions SMAP/MSL only in
+  on SMAP under point adjustment (AAAI-22). Checked: this project mentions SMAP/MSL only as licence history, in
   `registry.py` as a warning about exactly that inflation, and never as a result.
 - **This project does not run an encrypted LSTM, and must not imply it.** Depth accumulates per
   timestep, and 2026 work either abandons CKKS for TFHE programmable bootstrapping (ePrint 2026/1091,
@@ -389,8 +389,8 @@ cost of 0.010 rather than settling whether the LSTM is needed.
 
 The paper is still worth carrying, for the use this project can actually make of it: **it is the citation
 to reach for if anyone proposes replacing the Telemanom teacher, not the one that justifies the student.**
-It is cited here and in no other file, including `references/REFERENCES.md`, which is where a paper this
-load-bearing should have an entry with its authors and date.
+It was cited here and in no other file when this was written; `references/REFERENCES.md` has carried its entry,
+with its authors and date, since.
 
 ## Telecom: the weakest vertical
 
@@ -471,7 +471,7 @@ Measured rather than inferred: `runs_encrypted=True` appeared on exactly **five*
 in `src/qsh/models/registry.py` - the finance student, the medical student, the genomics PRS, and both
 satellite students.
 
-**RE-MEASURED Round 53: it is now SIX**, and the sixth is `telecom_ids.student` - the entry the next
+**RE-MEASURED Round 53: it is now SIX** (nine since Round 86), and the sixth is `telecom_ids.student` - the entry the next
 paragraph says was being added in the same round. So this sentence and the one below it have
 contradicted each other since the day they were written, with the count frozen at its pre-closure
 value while the prose described the closure. Left as "appeared" with the correction beside it rather
@@ -479,12 +479,12 @@ than silently updated, because the point of the paragraph is what the count was 
 closed, and rewriting it to six would erase the finding it exists to record.
 
 **And the student beat its teacher, which the argument below does not allow for.** Distilled from the
-random forest (`distil_linear_student(rf, ...)`, `scripts/train/telecom_ids.py:288`), the 64-parameter
+random forest (`distil_linear_student(rf, ...)`, `scripts/train/telecom_ids.py`), the 64-parameter
 CKKS-linear student scores macro F1 **0.988329** against the forest's **0.986629**, at 0.995
 agreement. A student exceeding its teacher is not impossible - soft-target distillation regularises,
 and 0.0017 on 600 held-out rows is well inside the noise this project records elsewhere for
 event-wise metrics - but it should be stated rather than assumed away. Recorded here as an
-observation, not as a claim that the linear model is better than the forest. `telecom_ids` has **two T2 specs and no T1**: `telecom_ids.qml` and
+observation, not as a claim that the linear model is better than the forest. `telecom_ids` had **two T2 specs and no T1** then (since Round 86, three T2 and one T1): `telecom_ids.qml` and
 `telecom_ids.transformer`, the latter itself a documented non-artifact. So on the one use case whose whole
 subject matter is the security of a quantum channel, the demo ran no encrypted inference, and this file
 gave it a verdict that did not mention it. **The gap was invisible because the verdict column was full.**
@@ -508,7 +508,7 @@ missed rather than declined.
 **Recorded in Round 33 because two unrelated meanings of "quantised" are allowed to blur, and the blur
 flatters the project.** The artifact class this demo advertises has three members. The first two are real
 and measured: every encrypted-tier model here is **distilled** from a teacher, and all of them except the
-medical conv block are **linear**. The third has no instance in the private-inference path at all.
+medical conv block are **linear** (Round 86 added three that are not: the finance MLP and the compact GNN, their ReLUs in garbled circuits, and the medical square student). The third has no instance in the private-inference path at all.
 
 What exists is `onnx/model_int8.onnx`, and it serves the **plaintext browser tier** - `_ONNX_PAIR` in
 `src/qsh/models/registry.py` marks the int8 graph `browser`, with fp32 kept as the fallback for the cases
@@ -544,7 +544,7 @@ CLS-token-plus-CKKS-linear-head SHAPE and says nothing about the frozen part, wh
 project would be relying on. That would let this project say "ViT-class backbone" honestly while
 keeping the encrypted step exactly as cheap as it is today.
 
-Not adopted this round, and recorded as a recommendation rather than a plan, because the backbone's
+Not adopted this round (the chest X-ray card has used this shape since 2026-11-15: its features in the tab, its 512-weight head under CKKS), and recorded as a recommendation rather than a plan, because the backbone's
 licence and redistribution terms would need the same scrutiny the ImageNet question already got.
 
 ## Re-check, 2026-08-13: is there anything to be judged AGAINST?
@@ -607,7 +607,7 @@ minority-class F1 is 0.1519.** The page labels it correctly - the rendered text 
 published baseline, NOT measured here" - and the label is what I misread.
 
 The repository's own record was never unclear about this. `registry.py` carries `baseline=0.6323`
-with `baseline_source` naming GFP+XGBoost, `metrics.json` carries `minority_class_f1` 0.1519, and
+with `baseline_source` naming GFP+XGBoost, `metrics.json` carried `minority_class_f1` 0.1519 (0.6161 since Round 86), and
 `baseline_gap_note` explains the cause at length: IBM's Graph Feature Preprocessor computes
 per-transaction subgraph patterns over a dynamically updated graph, this project computes per-account
 scalar aggregates, and the gap is unreachable at any threshold because measured AUPRC is far below

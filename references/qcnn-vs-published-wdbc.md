@@ -20,7 +20,7 @@
 > travel with any comparison are unchanged, and a single-seed project number still must not be put
 > beside a published one without them. Only the project's own column moved.
 >
-> Nothing below is deleted, for the reason `deliverable-verification.md` gives: a conclusion that
+> Nothing below is deleted, for the reason `docs/deliverable-verification.md` gives: a conclusion that
 > moved is only checkable against the record that moved it.
 
 The browser verification checklist declined this check, with a reason: *"it is parity against an
@@ -69,8 +69,9 @@ baselines - *"the cited row scores the SAME TARGET the project scores"*.
 2. **Split: a held-out test set against none.** The paper reports the *validation* split it selected
    on; this project reports a test split that neither the fit nor the checkpoint choice has seen. The
    comparison therefore flatters the paper, by an amount neither side measures.
-3. **Architecture.** The paper's quantum layer sits inside a classical CNN; this circuit is a flat
-   variational RY stack with a CNOT ring and no classical front-end. The paper does not state its
+3. **Architecture.** The paper's quantum layer sits inside a classical CNN; this circuit was a flat
+   variational RY stack with a CNOT ring when this was written, and is now a tree QCNN of two-qubit blocks (RY, RZ
+   and CNOT, pooled by CRY); either way it has no classical front-end. The paper does not state its
    qubit count, depth or encoding, so the two circuits cannot be aligned even in principle.
 
 ## What the comparison actually shows

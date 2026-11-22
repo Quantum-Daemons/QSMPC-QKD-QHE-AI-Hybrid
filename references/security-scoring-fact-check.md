@@ -19,7 +19,7 @@ the papers.
 
 ## Why the existing score had to go
 
-Of 17 fields in `SecurityScoringConfig`, exactly one is traceable to a citation (`leakage_low 0.1`,
+Of the 17 fields `SecurityScoringConfig` had (the class is gone since Round 86), exactly one is traceable to a citation (`leakage_low 0.1`,
 Sulimany et al., PRX 15 041056). Two are traceable by name only. Fourteen are unexplained and none
 carries a stated rationale. The maxima sum to exactly $`30 + 30 + 20 + 10 + 10 = 100`$, which is the
 signature of a number designed backwards from its total. And it awarded a perfect 100/100 to a run
@@ -87,8 +87,8 @@ carries only a note on why it was retired
   always false and a constant was used unconditionally - under a comment claiming the Eve slider had
   been wired through. The slider never reached the verdict; one literal had been replaced by another.
 - The Python call sites passed neither `kem` nor `qkd_key_bits`, making both rows constant.
-- The configured QBER threshold 0.11 sits **above** this repository's own measured GLLP zero-key
-  point of 0.098106, so a channel in [0.098, 0.11) scored full marks while producing zero key.
+- The configured QBER threshold 0.11 sat **above** this repository's then-measured GLLP zero-key
+  point of 0.098106 (a constant retired in Rounds 45-46; the zero-key point is now computed per run), so a channel in [0.098, 0.11) scored full marks while producing zero key.
 
 ## The sixth candidate: Quantum Risk / Readiness Indices - DECLINED 2026-08-12 (Round 33)
 

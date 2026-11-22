@@ -11,7 +11,7 @@ Kamath and Steinke (NeurIPS 2020, arXiv:2004.00010, Proposition 12, as Google's 
     eps = min over a > 1 of  a rho + log(1 - 1/a) - (log(delta) + log(a)) / (a - 1),
 
 never more than the simpler rho + 2 sqrt(rho log(1/delta)) (Bun and Steinke, TCC 2016, Proposition 1.3) the pages used
-until 2026-11-14, and 8 to 18 percent less noise for the same eps on the medical and genomics settings.
+until 2026-11-14, and 7 to 21 percent less noise for the same eps on the medical and genomics settings.
 The sampler is their exact Algorithms 1 to 3 in integers, from `secrets` by default. `seeded_rand_below` reproduces the
 page's test source, SHA-256 of `label:counter`; a run on it is NOT private.
 """

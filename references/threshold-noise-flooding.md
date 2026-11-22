@@ -4,7 +4,7 @@ Read on 2026-11-13 for the medical page's threshold CKKS and BGV rows, the genom
 page's committee, all on Lattigo v6.2.0 in `wasm/qsh-fedthresh`. A research agent read the papers (several from
 archived copies of the ePrint PDFs, which returned 403 directly) and the libraries' source at the versions named;
 "read here" marks what was read again for this file, and the rest is agent-read. Arithmetic marked [calc] is this
-project's, for N = 8192, four parties, error deviation 3.2 and bound 19.2, ternary secrets.
+project's, for $`N = 8192`$, four parties, error deviation 3.2 and bound 19.2, ternary secrets.
 
 ## The smudging lemma
 

@@ -1,6 +1,6 @@
 # The finance AML gap: what actually causes it, and what got fixed (Round 24, 2026-08-09)
 
-`finance_aml.gbm` scores minority-class F1 **0.0808** against the published **0.6323**
+`finance_aml.gbm` scored minority-class F1 **0.0808** (0.6161 on 114 inputs since Round 86) against the published **0.6323**
 (GFP+XGBoost, AMLworld HI-Small, NeurIPS 2023 D&B). The repository has carried an explanation for
 several rounds. This is the measured investigation of whether that explanation is right.
 
@@ -35,8 +35,8 @@ per-account aggregates. (This paragraph called the multi-hop gain "four percent 
 
 ## What was found instead: a train/test feature asymmetry
 
-`scripts/train/finance_aml.py:82-127` computes per-account aggregates with a `groupby` over the
-**whole training window**, then reindexes them onto every row. The comment at `:45` explains the
+`scripts/train/finance_aml.py` computed per-account aggregates with a `groupby` over the
+**whole training window**, then reindexes them onto every row. A comment there explained the
 design as leak-avoidance - "Recomputing them over the full timeline would leak future edges into
 past rows" - which is true of the naive alternative but not of the correct one.
 
@@ -114,7 +114,7 @@ larger:
 |---|---|---|---|
 | minority-class F1 | 0.0808 | **0.1519** | **+88%** |
 | AUPRC | 0.0732 | **0.1233** | **+68%** |
-| AUROC | 0.8980 | **0.9526** | +6.1 pp |
+| AUROC | 0.8980 | **0.9526** | +6.1% |
 | decision threshold | 0.928426 | 0.386869 | - |
 
 **Leakage was disproved, not argued.** `causal_account_features` was run over the full frame and again

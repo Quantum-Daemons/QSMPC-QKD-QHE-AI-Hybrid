@@ -52,7 +52,7 @@ use-case sample selection (`X[y == 1][0]` commented "a malignant case", which se
 diagnosis to what the model meant.** Combined with defect 1, the medical use case reported
 "malignant" for every patient while the model's output meant "normal, benign".
 
-The project contradicted itself in-tree: `medical_breastmnist_resnet18/eval_sample.json` carried the
+The project contradicted itself in-tree: `models/medical_breastmnist_resnet18/eval_sample.json` carried the
 correct `{'0': 'malignant'}` while the student's carried the inverted one, because they are written
 by different code paths. Two files, same repo, opposite claims about which class is cancer.
 
@@ -86,7 +86,8 @@ any threshold that collapses to one class regardless of what it scored.
 
 ## The number is one draw, and that is measured
 
-Six runs, identical config, seed the only difference:
+Six runs, identical config, seed the only difference. They were taken before the student's fix of Round 24d, on the
+ImageNet-pretrained teacher, which is not what ships ([`docs/verification-log.md`](../docs/verification-log.md)):
 
 | | mean | sd | range |
 |---|---|---|---|
@@ -98,10 +99,10 @@ student's range runs from chance to 0.72. On a 156-image test split that is what
 AUC is worth, and the same caution the satellite investigation reached by a different route:
 report the sample size and the spread, or the comparison to a published benchmark is theatre.
 
-Two recorded teacher numbers moved on rerun with no functional change to the teacher path -
-resnet18 0.9147 to 0.8779 and resnet50 0.7988 to 0.8876. The resnet50 figure now exceeds its
-published 0.857 baseline. That is variance, not an improvement, and is recorded here so it is not
-later cited as one.
+Two recorded teacher numbers seemed to move on rerun - resnet18 0.9147 to 0.8779 and resnet50 0.7988 to
+0.8876 - and this note first called that seed variance. It was not: those reruns had dropped the from-scratch
+initialisation, and with it restored they reproduce 0.9147 and 0.7988 to four decimal places, so ResNet-50 stays below
+its published 0.857 ([`docs/verification-log.md`](../docs/verification-log.md), the retraction).
 
 ## What is NOT claimed
 
