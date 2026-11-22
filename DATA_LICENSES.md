@@ -411,7 +411,11 @@ and notices of what they link.
   (BSD-3-Clause, whose `wasm_exec.js` ships beside the module). Its non-test packages import testify and go-cmp, so
   ten modules in all are compiled in, every one Apache-2.0, BSD, ISC or MIT; their own licence and notice files are
   collected at build time into `/licenses/qsh-fedthresh.txt`, which ships with the demo.
-- **onnxruntime-web** (MIT) - runs the published industry models in the browser.
+- **onnxruntime-web** (MIT) - runs the published industry models in the browser. Its npm package (1.31.1) ships
+  no LICENSE file and declares MIT, so the notice the demo ships quotes the repository's LICENSE. On 2026-11-22
+  `github.com/microsoft/onnxruntime` answered 404, as did onnxruntime-genai and the inference examples, while npm
+  still served 1.31.1; the notice now cites the Internet Archive's copy of the LICENSE of 2026-10-18, which reads
+  MIT, "Copyright (c) Microsoft Corporation". The cause of the 404 was not established.
 - **@huggingface/transformers** and **@mlc-ai/web-llm** (both Apache-2.0) - the Agentic AI panel's two engines. Their
   models and the libraries this project builds for one of them: section 5b.
 - **MCP Python SDK** (`mcp`, MIT) - the quantum-safe MCP server; the official
