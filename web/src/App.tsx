@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import NotFound from "./components/NotFound";
 import { NAV, shortNav } from "./lib/nav";
 import { useRunStatus } from "./lib/runStatus";
+import SiteFooter from "./components/SiteFooter";
 
 
 /** Where the visitor's choice to collapse the sidebar is kept. Per browser and per viewer only: a
@@ -136,6 +137,7 @@ export default function App() {
               as a broken page rather than a wrong address. */}
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
+        <SiteFooter />
       </main>
     </div>
   );

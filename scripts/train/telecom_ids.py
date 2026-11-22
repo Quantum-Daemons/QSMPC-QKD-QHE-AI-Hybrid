@@ -12,8 +12,9 @@ WHAT THIS IS AND IS NOT
         say "No commercial-OK real network-attack corpus exists". 5G-NIDD is one - CC BY 4.0,
         access_type Open, at Fairdata/Metax, DOI 10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361 -
         and this project rejected it until Round 47 on a mirror that carries no licence string.
-        What survives is narrower and is the actual constraint: **no commercial-OK corpus of real
-        QKD-LAYER attacks exists**, because that needs a physical QKD testbed under attack.
+        What survives is narrower and is the actual constraint: **no public corpus of real
+        QKD-LAYER attacks was found**, because that needs a physical QKD testbed under attack (the
+        nearest record, arXiv:2508.12749, states no data release).
         UNSW-NB15 needs the authors' agreement for commercial use; CIC-IDS2017's provider pages
         state conflicting terms and the Engelen-corrected redistribution states none; and 5G-NIDD
         is network-layer flow statistics, a different problem rather than a substitute for the
@@ -77,7 +78,7 @@ CLASSICAL_RF_ATTRIBUTION_NOTE = (
 FRAMING = (
         "Architecture comparison, not a performance claim. The published model is the random "
         "forest; the quantum-kernel SVC and the variational QNN are recorded beside it and not "
-        "published. The data is synthetic because no commercial-OK real QKD-attack corpus exists. "
+        "published. The data is synthetic because no public real QKD-attack capture was found. "
         "Published QML-IDS results are mixed rather than uniformly below a random forest: "
         "Al-Kuwari et al. (arXiv:2509.14282) report a hybrid QLSTM at 94.7% against their own "
         "random forest, while arXiv:2512.05069 was withdrawn by its own authors for insufficient "

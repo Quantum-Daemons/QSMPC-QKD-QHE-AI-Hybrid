@@ -64,8 +64,8 @@ function tracePackages(bundle: Record<string, any>): void {
   }
 }
 // Four packages in the bundle ship no licence file in their npm package. Their notice is taken from the project's own
-// repository, read on 2026-11-14 (gif.js, onnxruntime, victory: MIT). The text states where it came from, and that a
-// repository's file may be newer than the version bundled.
+// repository (gif.js, onnxruntime, victory: MIT), each with the date it was read. The text states where it came from,
+// and that a repository's file may be newer than the version bundled.
 const MIT_TERMS = [
   "Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated",
   "documentation files (the \"Software\"), to deal in the Software without restriction, including without limitation the",
@@ -78,13 +78,21 @@ const MIT_TERMS = [
   "COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR",
   "OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.",
 ].join("\n");
-const ONNXRUNTIME = { source: "https://github.com/microsoft/onnxruntime/blob/main/LICENSE", copyright: "Copyright (c) Microsoft Corporation" };
-export const NOTICE_FROM_REPOSITORY: Record<string, { source: string; copyright: string }> = {
-  "gif.js": { source: "https://github.com/jnordberg/gif.js/blob/master/LICENSE", copyright: "Copyright (c) 2013-2018 Johan Nordberg" },
+// onnxruntime-web 1.31.1 ships no LICENSE file and declares "MIT" in package.json, so the notice quotes the
+// repository's LICENSE. github.com/microsoft/onnxruntime answered 404 on 2026-11-22, so the source is the Internet
+// Archive's copy of 2026-10-18, read that day: MIT, "Copyright (c) Microsoft Corporation", the text below.
+const ONNXRUNTIME = {
+  source: "https://web.archive.org/web/20261018102640/https://raw.githubusercontent.com/microsoft/onnxruntime/main/LICENSE",
+  copyright: "Copyright (c) Microsoft Corporation",
+  read: "2026-11-22",
+};
+export const NOTICE_FROM_REPOSITORY: Record<string, { source: string; copyright: string; read: string }> = {
+  "gif.js": { source: "https://github.com/jnordberg/gif.js/blob/master/LICENSE", copyright: "Copyright (c) 2013-2018 Johan Nordberg",
+              read: "2026-11-14" },
   "onnxruntime-common": ONNXRUNTIME,
   "onnxruntime-web": ONNXRUNTIME,
   "victory-vendor": { source: "https://github.com/FormidableLabs/victory/blob/main/LICENSE.txt",
-                      copyright: "Copyright (c) 2015-2026 Nearform., and the further notices in that file" },
+                      copyright: "Copyright (c) 2015-2026 Nearform., and the further notices in that file", read: "2026-11-14" },
 };
 
 function noticesText(): string {
@@ -100,7 +108,7 @@ function noticesText(): string {
     const text = file ? readFileSync(join(dir, file), "utf8").trim()
       : repo && /\bMIT\b/.test(licence) ? `MIT License\n\n${repo.copyright}\n\n${MIT_TERMS}` : "";
     const origin = file ? `From its ${file}:`
-      : repo ? `The npm package ships no licence file; the notice below is from ${repo.source} (read 2026-11-14), which may be newer than this version:`
+      : repo ? `The npm package ships no licence file; the notice below is from ${repo.source} (read ${repo.read}), which may be newer than this version:`
       : "The package ships no licence file.";
     return { name, version, licence, text, origin };
   }).sort((x, y) => x.name.localeCompare(y.name) || x.version.localeCompare(y.version));

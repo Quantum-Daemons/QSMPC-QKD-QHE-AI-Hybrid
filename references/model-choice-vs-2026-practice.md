@@ -570,7 +570,8 @@ behind.
 | Satellite | **No**, and no *cryptographic* privacy work at all. The closest is plain FedAvg on ESA-ADB (Atefrad & Karami 2025, F0.5 0.86, precision 0.93, AUC 0.85), which lists differential privacy and secure aggregation as **future** work - the same category the Medical row already discounts. ESA-ADB is the credible plaintext benchmark. | Genuinely novel, which cuts both ways: nothing to be judged against, and nothing to be validated by. |
 
 **Telecom deserves a note, because a decision recorded here as a limitation reads differently now.**
-This project trains on synthetic QKD-attack telemetry because no commercial-OK real corpus exists,
+This project trains on synthetic QKD-attack telemetry because no public real QKD-attack capture was
+found (this said no commercial-OK real corpus *exists* until 2026-11-22; `DATA_LICENSES.md` section 3),
 and the model card says so. The 2026 literature has meanwhile turned hard against the standard
 alternatives: **NSL-KDD has been withdrawn by its own publisher** (the CIC page now serves only
 "this dataset is no longer available"), a EuroS&P 2024 paper excludes KDD/NSL-KDD from analysis as

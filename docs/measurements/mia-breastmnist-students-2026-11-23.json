@@ -1,0 +1,90 @@
+{
+ "what": "membership inference against the training procedure, over shadow models",
+ "target": "breastmnist_students",
+ "data": "MedMNIST v2 BreastMNIST at 28 px, train and test splits (CC BY 4.0 as MedMNIST states it; the BUSI authors publish no licence; DATA_LICENSES.md), downsampled to 14 px as the students see them; the val split selects each student's epoch, as in training",
+ "teacher": {
+  "key": "medical_fl.resnet18",
+  "hf_revision": "156aa7353495ea1b2c3be5a05580277942fbe73f",
+  "sha256": "e25b8dc2cba9294e2adfa81358627b2239208a7cf890820a323c6c8447bd169f",
+  "held_fixed": "every shadow student is distilled from the published teacher, which was trained on the train split, so membership in the teacher's training set is not audited here"
+ },
+ "label": "the teacher's label, which is each student's training target and which anyone can compute from the published teacher",
+ "models": {
+  "student": "medical_fl.student: conv 1->4, ReLU, avg-pool, dense 196->16, ReLU, dense 16->2, the net-benefit cut folded into the head",
+  "square_student": "medical_fl.square_student: conv 1->4, batch norm, x^2, avg-pool, dense 196->2"
+ },
+ "design": {
+  "pool": 702,
+  "audit_records": 562,
+  "population_records": 140,
+  "shadow_models": 64,
+  "membership": "complementary pairs: each record a member of exactly half the models",
+  "references_per_target": 62,
+  "seed": 0,
+  "rmia_offline_a": 0.3,
+  "fit_seconds": 83.8
+ },
+ "attacks": {
+  "lira_online": "Carlini et al., IEEE S&P 2022 (arXiv:2112.03570); implemented here",
+  "rmia_offline": "Zarifzadeh, Liu and Shokri, ICML 2024 (arXiv:2312.03262); implemented here and checked against ML Privacy Meter's run_rmia at e384af8fd931"
+ },
+ "results": {
+  "student": {
+   "lira_online": {
+    "auc": 0.6105,
+    "members": 17984,
+    "non_members": 17984,
+    "tpr_at_fpr_0.001": 0.0027,
+    "tpr_at_fpr_0.01": 0.034,
+    "tpr_at_fpr_0.1": 0.1813
+   },
+   "rmia_offline": {
+    "auc": 0.6119,
+    "members": 17984,
+    "non_members": 17984,
+    "tpr_at_fpr_0.001": null,
+    "not_resolvable": [
+     "fpr 0.001: 0.0106 of non-members tie at the top score",
+     "fpr 0.01: 0.0106 of non-members tie at the top score"
+    ],
+    "tpr_at_fpr_0.01": null,
+    "tpr_at_fpr_0.1": 0.1813
+   },
+   "rmia_matches_ml_privacy_meter_max_abs_diff": 0.0,
+   "records_exposed_in_most_targets_at_fpr_1e-3": 0,
+   "audit_records": 562
+  },
+  "square_student": {
+   "lira_online": {
+    "auc": 0.6171,
+    "members": 17984,
+    "non_members": 17984,
+    "tpr_at_fpr_0.001": 0.0043,
+    "tpr_at_fpr_0.01": 0.0293,
+    "tpr_at_fpr_0.1": 0.1888
+   },
+   "rmia_offline": {
+    "auc": 0.6307,
+    "members": 17984,
+    "non_members": 17984,
+    "tpr_at_fpr_0.001": null,
+    "not_resolvable": [
+     "fpr 0.001: 0.0102 of non-members tie at the top score",
+     "fpr 0.01: 0.0102 of non-members tie at the top score"
+    ],
+    "tpr_at_fpr_0.01": null,
+    "tpr_at_fpr_0.1": 0.1929
+   },
+   "rmia_matches_ml_privacy_meter_max_abs_diff": 0.0,
+   "records_exposed_in_most_targets_at_fpr_1e-3": 2,
+   "audit_records": 562
+  }
+ },
+ "reading": "TPR at a fixed low FPR is the measure; an AUC near 0.5 with TPR near the FPR means the attack learns little about membership from this model's outputs. An attack gives a lower bound on leakage, not a proof of its absence.",
+ "environment": {
+  "git": "fe54a64",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-23"
+ }
+}

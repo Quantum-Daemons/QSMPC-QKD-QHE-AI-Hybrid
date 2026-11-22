@@ -47,6 +47,16 @@ CSE-CIC-IDS2018's own page grants redistribution (section 3) and that the NASA S
 no grant at any source (section 2, which records its removal). Section 2c lists what each licence
 asks of a shipped file and where the file carries it.
 
+Checked again at each source on 2026-11-22, through each repository of record's own interface:
+Zenodo's records of OPS-SAT-AD (both versions, with the sizes and MD5s above), ESA-ADB (both versions),
+PANNs and MedMNIST+; Fairdata's Metax record of 5G-NIDD; UCI's pages of WDBC and Heart Disease;
+PhysioNet's pages of the 2016 Challenge and CirCor; Kaggle's Croissant metadata of AMLworld and
+PaySim; the PGS Catalog's REST record of PGS000072; gnomAD's terms, in the source of its browser's
+terms page; and the Hub cards of the Agentic AI panel's models and of the eighteen published repos.
+The same licences hold. What had gone stale was this file's own bookkeeping, corrected where it
+stood: the count of published repos (section 4), HEonGPU's upstream (section 6a), the MCP
+filesystem server's locked version (section 6) and two line numbers (section 8).
+
 `src/qsh/models/registry.py` is the machine-readable version of this file: each model spec carries
 its dataset, licence, source URL, the date the licence text was last read, and a `publishable` flag
 that `scripts/publish_hf.py` enforces. The script **refuses** to create a public repo when that flag
@@ -59,7 +69,7 @@ non-exclusive"* - a licensing mistake there cannot be undone.
 
 | Vertical | Corpus | Licence | Weights publishable? | Notes |
 |---|---|---|---|---|
-| **Finance** | [IBM AMLworld HI-Small](https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml) - 5,078,345 transactions, 5,177 laundering (1 in 981); **synthetic** | **CDLA-Sharing-1.0** | **Yes** | **AMLworld is synthetic, like PaySim.** IBM's own README: *"The data is generated using a multi-agent virtual world model... Everything is synthetic"*, and the NeurIPS 2023 D&B paper is *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is the training corpus because it is calibrated to real transaction statistics **and** its licence permits publishing derived weights - not because it is real. There is no commercial-OK corpus of real laundering transactions. CDLA-Sharing section 1.11 defines *Results* as the outputs of Computational Use, and section 3.5 states *"This Agreement imposes no obligations or restrictions on Your Use or Publication of Results."* Trained weights are Results; the ShareAlike reciprocity attaches to redistributing the **Data**, and this repository does redistribute Data: the 8,192-row evaluation samples in the two finance Hub repos and in git (section 4), and `web/public/data/finance/real_2d.json` (section 2b). Those computed-feature rows are Enhanced Data, so CDLA-Sharing-1.0 binds them: the same unmodified agreement (sections 3.1(a) and 3.3), prominent notices on the changed files (3.1(b)), preserved credit (3.1(c)), and the agreement's text, name or a link (3.3). Section 2c says what the files still lack. Test-fixture feature rows (`fixtures.npy`) are git-ignored and excluded from every upload. |
+| **Finance** | [IBM AMLworld HI-Small](https://www.kaggle.com/datasets/ealtman2019/ibm-transactions-for-anti-money-laundering-aml) - 5,078,345 transactions, 5,177 laundering (1 in 981); **synthetic** | **CDLA-Sharing-1.0** | **Yes** | **AMLworld is synthetic, like PaySim.** IBM's own README: *"The data is generated using a multi-agent virtual world model... Everything is synthetic"*, and the NeurIPS 2023 D&B paper is *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is the training corpus because it is calibrated to real transaction statistics **and** its licence permits publishing derived weights - not because it is real. No real laundering-labelled corpus under a permissive licence was found (2026-11-22): Elliptic and Elliptic2 are CC BY-NC-ND 4.0, and the one real bank set found is GPL-3.0 with differentially private PCA features (arXiv:2507.08835); section 7 lists what was checked. CDLA-Sharing section 1.11 defines *Results* as the outputs of Computational Use, and section 3.5 states *"This Agreement imposes no obligations or restrictions on Your Use or Publication of Results."* Trained weights are Results; the ShareAlike reciprocity attaches to redistributing the **Data**, and this repository does redistribute Data: the 8,192-row evaluation samples in the two finance Hub repos and in git (section 4), and `web/public/data/finance/real_2d.json` (section 2b). Those computed-feature rows are Enhanced Data, so CDLA-Sharing-1.0 binds them: the same unmodified agreement (sections 3.1(a) and 3.3), prominent notices on the changed files (3.1(b)), preserved credit (3.1(c)), and the agreement's text, name or a link (3.3). Section 2c says what the files still lack. Test-fixture feature rows (`fixtures.npy`) are git-ignored and excluded from every upload. |
 | **Medical** | [MedMNIST v2 BreastMNIST](https://medmnist.com/) - 780 breast-ultrasound images | **CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence** | **Yes, by decision (2026-10-26)** | Attribution: MedMNIST v2, Yang et al., *Scientific Data* 10:41 (2023), and MedMNIST v1, Yang, Shi and Ni, IEEE ISBI 2021 - MedMNIST asks for both - plus the BUSI source paper below. MedMNIST also states that its data is not for clinical use. **Because the test split ships in three public Hub repos and in git, no file in this repository may say BreastMNIST cannot be redistributed**. **Checked again 2026-10-26, at every source the BUSI authors publish.** The host page asks only for a citation in every capture from 2021 to 2026; the article's supplements hold the Baheya Hospital ethics committee's approval to publish the dataset publicly and the waiver of consent, and no licence; the authors made no repository deposit; and every Kaggle mirror carries a licence its uploader chose, none of them an author. So the data was released publicly with no terms, and the only licence anyone states is MedMNIST's own CC BY 4.0. The three Hugging Face repos stay public on that basis, by decision. Unlike CIC-IDS2017 (declined) and ImageNet (dropped), whose providers state conflicting or restrictive terms, BUSI's state none. **Checked 2026-08-10 and downgraded.** MedMNIST licenses itself CC BY 4.0, but BreastMNIST is a resize of BUSI (Al-Dhabyani et al., *Data in Brief* 28:104863, 2020), where the CC BY attaches to the ARTICLE - PMC states no separate data licence, and the dataset host asks only "If you use this dataset, please cite". A citation request is not a grant. Same ambiguity class as CIC-IDS2017 (declined) and ImageNet (dropped); unresolved rather than disproven, and recorded because three HF repos ship on it. Separately, BUSI is contaminated - see `registry.py` `DS_BREASTMNIST` for the measured train/test duplicate with contradictory labels. |
 | **Medical (second model)** | [MedMNIST v2 BreastMNIST](https://medmnist.com/) | **CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence** | **Yes, by decision (2026-10-26)** | **Corrected Round 55.** This cell read a flat "CC BY 4.0 / Yes" while saying in its own next clause that it is "the same corpus as the ResNet-18 row above" - and that row was downgraded on 2026-08-10 with the reasoning spelled out. The downgrade reached the registry and one of the four places that state this licence; the row that names itself a duplicate of the downgraded one was not among them. See the row above for the full argument: the CC BY on BUSI attaches to the ARTICLE, and a citation request is not a grant. The same corpus as the ResNet-18 row above, deliberately: `medical_fl.resnet50` exists to reproduce a published comparison, and a comparison on different data is not one. Both are scored on the identical 156-image official test split, which ships whole in each model's own HF repo. **Camelyon17-WILDS was removed in Round 20**, along with the `medical_fl.densenet` spec that named it: there was no loader, no `wilds` dependency, no training script and no artefact directory, and the card advertised a Hugging Face repo that did not exist. A planned dataset with no code path is a claim, not a plan. |
 | **Genomics** | [PGS Catalog](https://www.pgscatalog.org/downloads/) scoring files [PGS000072](https://www.pgscatalog.org/score/PGS000072/) (`CC_Breast`, 187 variants, Graff et al. 2021 - **the active score**) and [PGS000001](https://www.pgscatalog.org/score/PGS000001/) (alias `PRS77_BC`, 77 SNPs, Mavaddat et al. 2015 - retired) + [1000 Genomes phase 3](https://www.internationalgenome.org/) via the Ensembl REST API | **PGS000072: CC BY 4.0** (its publication); 1000 Genomes: no licence instrument | **Weights: yes, with the credit** (no Hub repo; they ship with the page). Genotypes: no | See section 4. The score's publication is Graff RE et al., *Cross-cancer evaluation of polygenic risk scores for 16 cancer types in two large cohorts*, Nat Commun 12:970 (2021), doi:10.1038/s41467-021-21288-z, CC BY 4.0. The PGS Catalog asks to be cited as Lambert, Wingfield et al., *Enhancing the Polygenic Score Catalog with tools for score calculation and ancestry normalization*, Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x (the citation its REST `/rest/info` names, read 2026-10-31). |
@@ -201,8 +211,11 @@ CSE-CIC-IDS2018's own page grants redistribution, republication and mirroring in
 citation and a link to its AWS registry page. And the sentence generalised them into a claim about
 the whole field, which 5G-NIDD falsifies: CC BY 4.0, Open, section 1. Nothing ships from
 CSE-CIC-IDS2018; it is a second commercially usable real network-attack corpus beside 5G-NIDD. The
-narrower statement that survives is the real reason and always was - **no commercial-OK corpus of real QKD-layer attacks exists**, because producing one
-needs a physical QKD testbed under attack. 5G-NIDD is network-layer traffic and a different problem,
+narrower statement that survives is the real reason and always was - **no public corpus of real QKD-layer
+attacks was found**, because producing one needs a physical QKD testbed under attack; the nearest record,
+anomalies on an experimental QKD receiver (arXiv:2508.12749), states no data release. Until 2026-11-22 this
+sentence said no such corpus *exists*, the claim the registry, the bundled files and the telecom cards
+dropped on 2026-11-08. 5G-NIDD is network-layer traffic and a different problem,
 not a substitute, which is why adopting it changes what this project may publish without changing
 what the telecom demo runs on. The demo therefore uses **synthetic**
 telemetry whose class structure follows Al-Kuwari et al., arXiv:2509.14282, **16 Sep 2025** (later in *IET Quantum Communication* 7(1), e70028) - **8 classes = 7 attack types + normal traffic**, not "eight attack scenarios". The run logs
@@ -226,8 +239,8 @@ this as synthetic; it is never presented as measured on real traffic.
   full corpora are **not** redistributed and are not in this repository.
 
 - **The encrypted-tier students are published too.** `finance_aml.student` (115 params),
-  `medical_fl.student` (3226), `satellite_comms.student` (294) and `satellite_comms.opssat_student`
-  (210) are the models sized for CKKS. They are distilled from the teachers on the same corpora and
+  `medical_fl.student` (3226), `medical_fl.square_student` (434), `satellite_comms.student` (294),
+  `satellite_comms.opssat_student` (210) and `telecom_ids.student` (64) are the models sized for CKKS. They are distilled from the teachers on the same corpora and
   inherit the same licences, and their small `weights.json` files are also tracked in git. Which of
   them CKKS evaluates in the browser is in
   [`docs/models-and-benchmarks.md`](docs/models-and-benchmarks.md#which-pages-encrypt).
@@ -243,11 +256,18 @@ this as synthetic; it is never presented as measured on real traffic.
   than publish on an open question under an irrevocable grant, the dependency was dropped -
   `medical_fl.resnet18` is now trained from random initialisation.
 
-  The trade was expected to cost accuracy and did not: AUC went from 0.8876 to **0.9147**, above the
-  MedMNIST v2 published ResNet-18 baseline of 0.901, while accuracy and macro F1 each fell about a
-  point. The earlier text predicted "the metric will be lower than 0.878 and that is the honest
-  trade"; that prediction was wrong and is recorded here rather than quietly replaced. All thirteen Hub
-  repos, seven teachers, four encrypted students, the finance MLP and the compact GNN, are public.
+  The trade was expected to cost accuracy, and one run each said it did not: AUC went from 0.8876 to
+  **0.9147**, above the MedMNIST v2 published ResNet-18 baseline of 0.901, while accuracy and macro F1
+  each fell about a point. The earlier text predicted "the metric will be lower than 0.878 and that is
+  the honest trade", and this paragraph called that prediction wrong. One run each could not settle it.
+  Over seven runs of the shipped configuration that differ only in the seed, the AUC averages
+  $`0.8761 \pm 0.0218`$, below both 0.878 and 0.901, and only the published run, at seed 42, reaches
+  0.901 (`docs/measurements/medical-resnet18-seeds-2026-11-22.json`). Six runs of the pretrained
+  variant, taken earlier, averaged $`0.8905 \pm 0.0198`$
+  (`references/medical-student-collapse-investigation.md`); the two means are within one standard
+  deviation of each other, so these runs do not show whether dropping ImageNet cost AUC. All eighteen
+  Hub repos, ten teachers, six encrypted students, the finance MLP and the compact GNN, are public (the
+  Hub's API, 2026-11-22).
 
 - **PGS Catalog is not blanket CC BY 4.0: a score's terms are its publication's.** The scoring-file
   format defines an optional `#license` line, and PGS000072's file has none. Its REST record carries
@@ -336,7 +356,7 @@ this as synthetic; it is never presented as measured on real traffic.
 The published models' graphs live on the Hugging Face Hub (repo ids in `src/qsh/models/registry.py`),
 pinned by 40-character commit sha, and never in git (`.gitignore` excludes `*.onnx`, `*.safetensors`,
 `*.pt`, `*.npy`; CI fails the build if one is staged). Small JSON weight files are a different matter and are tracked in
-git: the QCNN angles, the five Hub students' (the telecom student's also in section 2b), the finance MLP's and the compact GNN's `weights.json`, the
+git: the QCNN angles, the six Hub students' (the telecom student's also in section 2b), the finance MLP's and the compact GNN's `weights.json`, the
 finance scorecard, and the PGS000072 effect weights the page scores (183 of them in
 `models/genomics_prs/weights.json` and in the browser payload
 `web/public/data/genomics/pgs000072_breast_cancer.json`; all 187 in the bundled scoring file). Those
@@ -391,13 +411,18 @@ and notices of what they link.
   (BSD-3-Clause, whose `wasm_exec.js` ships beside the module). Its non-test packages import testify and go-cmp, so
   ten modules in all are compiled in, every one Apache-2.0, BSD, ISC or MIT; their own licence and notice files are
   collected at build time into `/licenses/qsh-fedthresh.txt`, which ships with the demo.
-- **onnxruntime-web** (MIT) - runs the published industry models in the browser.
+- **onnxruntime-web** (MIT) - runs the published industry models in the browser. Its npm package (1.31.1) ships
+  no LICENSE file and declares MIT, so the notice the demo ships quotes the repository's LICENSE. On 2026-11-22
+  `github.com/microsoft/onnxruntime` answered 404, as did onnxruntime-genai and the inference examples, while npm
+  still served 1.31.1; the notice now cites the Internet Archive's copy of the LICENSE of 2026-10-18, which reads
+  MIT, "Copyright (c) Microsoft Corporation". The cause of the 404 was not established.
 - **@huggingface/transformers** and **@mlc-ai/web-llm** (both Apache-2.0) - the Agentic AI panel's two engines. Their
   models and the libraries this project builds for one of them: section 5b.
 - **MCP Python SDK** (`mcp`, MIT) - the quantum-safe MCP server; the official
   **@modelcontextprotocol/server-filesystem** for external-MCP interop, MIT and Apache-2.0 while its
   project moves from one to the other (its repository's LICENSE explains which contributions are under
-  which; npm 2.1.0 declares "SEE LICENSE IN LICENSE" and its tarball has no such file). Installed from a lockfile in the
+  which; npm 2.2.0, the version `docker/mcp-fs/` locks, declares "SEE LICENSE IN LICENSE" and its tarball has no
+  such file, nor has 2.4.0's, the latest on 2026-11-22). Installed from a lockfile in the
   full deployment's image (`docker/mcp-fs/`), and started with `npx` elsewhere; not in the demo.
 - **IBM/Multi-GNN** (Apache-2.0, at commit `252b025`; the repository ships a LICENSE and no NOTICE file) - the
   official Multi-GIN+EU and Multi-PNA+EU of Egressy et al. (AAAI 2024).
@@ -452,16 +477,26 @@ the one table of them; `docs/development.md` links here.
 
 | Submodule | Upstream | Used for | Licence | Commercial use | Pinned commit | Upstream default branch | Last push |
 |---|---|---|---|---|---|---|---|
-| `submodules/HEonGPU` | enCRYPTON-labs/HEonGPU (moved from Alisah-Ozcan/HEonGPU) | the GPU CKKS backend, through `native/heongpu_py` | Apache-2.0 | yes | `837ffc87aa26` (v2.1.1) | `837ffc8`, the pin (read 2026-11-06) | 2026-11-02 |
+| `submodules/HEonGPU` | enCRYPTON-labs/HEonGPU (moved from Alisah-Ozcan/HEonGPU) | the GPU CKKS backend, through `native/heongpu_py` | Apache-2.0 | yes | `837ffc87aa26` (v2.1.1) | `62fa9b9`, 11 commits past the pin (read 2026-11-22) | 2026-11-16 |
 | `submodules/hpmpc` | chart21/hpmpc (PIGEON) | recorded measurements of its secret-shared matrix multiplication and convolution on the CPU and the GPU (`scripts/bench_hpmpc_gpu.sh`), built in a clone outside the submodule; no stage or page runs it | MIT | yes | `155c93572d74` | `a6a4a6a`, 2026-10-23, one commit past the pin | 2026-10-23 |
 
 Both are permissive and commercial-OK and neither is archived, read from the GitHub API rather than
 assumed, since a submodule silently falling years behind is the failure mode this table exists to
-catch. **HEonGPU's pin is its upstream head**; Round 86 moved it from `1928a14bb002`, 156 commits
-behind, to v2.1.1, the release its CMake and the binding are written against. **hpmpc's is one commit
+catch. **HEonGPU's pin is its latest release, v2.1.1, 11 commits behind its default branch** (read
+2026-11-22); Round 86 moved it from `1928a14bb002`, 156 commits behind, to v2.1.1, the release its CMake
+and the binding are written against. Two of the 11 move the GPU libraries HEonGPU builds. One takes
+GPU-NTT's fix of a Barrett reduction that shifted a 64-bit word by 64 for a 61-bit modulus, which this
+backend's 60- and 40-bit moduli (`FHEConfig.coeff_mod_bit_sizes`) never use. The other takes GPU-FFT
+past its fix of a warp-level race in the last stages of the forward transform (`5f2cd2c`), which CKKS
+decoding runs and which v2.1.1's GPU-FFT, `b743607`, predates. On this project's GPU, 20,000 decodes
+of one ciphertext were bitwise identical and 2,000 fresh encryptions decoded within
+$`1.2 \times 10^{-8}`$ of their plaintext (`docs/measurements/heongpu-decode-repeat-2026-11-22.json`),
+and `tests/test_r86_heongpu_backend.py` repeats a decode on every run where the module is built, so
+the race would be caught if it appeared. **hpmpc's is one commit
 behind**: `a6a4a6a` removes a 47,035-line `log.txt` that carried local build paths and changes no
 code. Until Round 86 this paragraph said both pins were their upstream heads, which had stopped
-being true of both. Re-check both on each round; the condition to act on is an archived upstream, a
+being true of both, and until 2026-11-22 it said HEonGPU's was, which had stopped being true on
+2026-11-15. Re-check both on each round; the condition to act on is an archived upstream, a
 licence change, or a default branch that has not moved in a year.
 
 **What the HEonGPU build links, and what is distributed.** `scripts/build_heongpu.sh` builds a
@@ -525,6 +560,29 @@ nested repository is Apache-2.0, and never at the root, where it would also fetc
   three.js (0.186.1, MIT), loaded only where drawn. *Reopens if* it is relicensed under a permissive licence, or a page
   needs what three.js cannot draw and the register records how the bundle would meet LGPL-2.1 section 6 (loading the
   library as its own file, which section 6(b) allows, is one way).
+
+### Real laundering-labelled corpora, checked 2026-11-22
+
+The finance cards said no commercial-OK corpus of real laundering transactions *exists*, the form the correction of
+2026-11-08 removed from the QKD-attack claim. Each corpus below was read at its own record on 2026-11-22; nothing was
+downloaded, and none is used.
+
+| Corpus | What it is | Licence | Why not used |
+|---|---|---|---|
+| Elliptic (Weber et al., 2019; Kaggle `ellipticco/elliptic-data-set`, 0.70 GB) | *"a transaction graph collected from the Bitcoin blockchain"*, licit against illicit (scams, malware, ransomware, Ponzi schemes and more), not laundering as such | CC BY-NC-ND 4.0 | NonCommercial and NoDerivatives |
+| Elliptic2 (Bellei et al., arXiv:2404.19109; Kaggle `ellipticco/elliptic2-data-set`, 88.25 GB) | 122K subgraphs, the suspicious ones *"indicative of money laundering"* | CC BY-NC-ND 4.0 | The same; the data page its code repository links now redirects to the provider's home page |
+| BABD-13 (Kaggle `lemonx/babd13`) | Bitcoin address behaviour, one class money laundering | CC BY-NC-ND 4.0 | The same |
+| Ethereum phishing transaction network (XBlock, Chen et al. 2019; Kaggle `xblock/ethereum-phishing-transaction-network`) | phishing labels; the real-data set of Egressy et al., whose Multi-GNN the finance page runs (*"Since banks do not release their data, we turn to cryptocurrencies"*) | Kaggle: "Unknown" | No grant (section 8's rule) |
+| Corporate bank accounts (arXiv:2507.08835; Kaggle `haroldg/time-series-of-transactions-money-laundering`, 2.32 GB) | *"anonymised 3-month transaction time-series (corporate bank accounts), labelled for anti-money-laundering (AML) research"*, released after a differential-privacy mechanism at $`\epsilon = 1`$ and a PCA projection | GPL 3 | Copyleft, outside section 6's permissive set as QKDNetSim's GPL-2.0 is, and whether it reaches trained weights is unsettled; on the owner's choice of 2026-11-22, a local comparison that is never published, after its own download approval |
+
+Three real corpora under CC BY 4.0 carry related labels rather than laundering ones. On the owner's choice of
+2026-11-22 they are external checks of the approach, never replacements for AMLworld: BitcoinHeist (UCI dataset 526,
+DOI 10.24432/C5BG8V, 110.7 MB, ransomware families against "white" addresses) and BitcoinTemporalGraph (Figshare, DOI
+10.6084/m9.figshare.26305093.v3, 17.39 GB, a Bitcoin value-transfer graph with about 100,000 labelled addresses), both
+fetched on that approval to directories outside the repository, where nothing derived from a row is committed
+(BitcoinHeist's aggregate result is in `docs/measurements/`); and BitFraud (Zenodo record 24170215, published
+2026-11-12), watched because its files are restricted during review. Sources, and what was and was not verified:
+[`references/aml-real-data-2026-11.md`](references/aml-real-data-2026-11.md).
 
 ### Removed from this list: 5G-NIDD, whose rejection is withdrawn
 
@@ -607,7 +665,7 @@ in `references/REFERENCES.md` with their URL.
 
 The last row is **not** recorded as "all rights reserved". That phrase appears nowhere in the source
 and would be an inference; what is true is that no grant was found, and this project's own rule -
-`scripts/train/genomics_prs.py:123`, *"SILENCE IS NOT PERMISSION"* - makes an absent grant sufficient
+`scripts/train/genomics_prs.py`, *"SILENCE IS NOT PERMISSION"* - makes an absent grant sufficient
 to exclude without needing to characterise it further.
 
 ### What this replaced
@@ -618,7 +676,7 @@ both CC BY 4.0, were excluded for being ~17 MB each while a CC BY-NC-ND camera-r
 
 **This paragraph then said "the rules now state a licence reason per file", and that was false.**
 Corrected Round 50 by reading `.gitignore` rather than this file. Four of the eight reference-PDF
-exclusion rules state a licence reason; the other four (`.gitignore:28-32`) still exclude on size and
+exclusion rules state a licence reason; the other four (the first four reference-PDF rules in `.gitignore`) still exclude on size and
 on one copyright call, exactly as before, and `.gitignore`'s own comment block says so in terms - *"the
 three rules above never did [exclude on licence]: they exclude on SIZE"*. Two tracked files
 contradicting each other about which rule is in force is worse than either being wrong alone, and
