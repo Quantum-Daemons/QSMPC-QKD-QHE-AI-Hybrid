@@ -87,6 +87,34 @@ Reporting follows from this: the threat model and the unit of privacy (record, p
 added, canary success with its confidence interval beside the baseline and any DP bound, and that an attack gives a
 lower bound only. Metrics are published, never a reconstructed record or image.
 
+## Results of the CPU phase (2026-11-23)
+
+On the owner's choices of 2026-11-22 (the CPU phase first; GPU jobs asked one by one), each record is in
+`docs/measurements/` with its script.
+
+- **The DP-SGD accountant** (`dp-accountant-crosscheck-2026-11-23.json`): at the murmur study's settings the
+  repository's Renyi-DP accountant is within 1 percent of dp_accounting's RDP and never below its PLD: noise multiplier
+  1.89138 gives dp_accounting RDP 5.6114 and PLD 5.1434;
+  3.45294 gives 2.6082 and 2.3904. The tighter PLD accountant would
+  spend about 9 percent less epsilon for the same noise.
+- **Membership inference, OPS-SAT** (`mia-opssat-2026-11-23.json`, 64 shadow models): the gradient-boosted teacher,
+  LiRA AUC 0.583 and a true-positive rate of 2.55 percent at a false-positive rate of 0.1
+  percent, 44 of 1698 records exposed in most targets; the CKKS student, LiRA AUC
+  0.532 and 0.30 percent. RMIA agrees (AUC 0.600 and 0.525); its rate at 0.1
+  percent is not resolvable, because its top score ties across more non-members than that.
+- **Membership inference, the telecom forest** (`mia-telecom-qml-2026-11-23.json`): RMIA AUC 0.867, 22.64 percent
+  at 1 percent; LiRA AUC 0.705. A forest memorises its training points; these are generated rows.
+- **Reconstruction by an informed adversary, the OPS-SAT student** (`reconstruction-opssat-student-2026-11-23.json`):
+  from the published preprocessing mean, every one of the 1,594 training records within 0.1 percent (median
+  relative error 7.1e-05); from the weights solved to the optimum, 98.93 percent within 10 percent and
+  89.40 percent within 1; from the weights as the trainer's solver left them, 2.26 percent within 10. The
+  preprocessing a CKKS client needs is a release of training statistics, and a model on private data would need them
+  and its weights computed under differential privacy; this telemetry is public, so it shows the mechanism.
+
+Still to run in the CPU phase: the BreastMNIST students (the local teacher checkpoint is to be tied to the published one
+first), the federated heart model (its training is TypeScript, run through the page's own module), the canary game with
+the one-run DP audit, and attribute inference against imputation.
+
 ## What each use case could add
 
 | Use case | Membership-inference audit | DP audit | Note |
