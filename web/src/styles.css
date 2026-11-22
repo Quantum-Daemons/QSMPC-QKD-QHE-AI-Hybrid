@@ -56,6 +56,8 @@ code, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
   .app.nav-collapsed .nav .nav-group { font-size: 0; height: 1px; background: var(--border); margin: 10px 6px; padding: 0; }
   .app.nav-collapsed .run-status-box { padding: 6px 4px; justify-content: center; }
   .app.nav-collapsed .run-status-box .badge-state { padding: 3px 6px; font-size: 10px; }
+  .app.nav-collapsed .run-status-box .badge-state.pausing,
+  .app.nav-collapsed .run-status-box .badge-state.stopping { padding: 1px 4px; }
 }
 .brand { font-weight: 800; font-size: 18px; letter-spacing: -0.02em; }
 .brand small { display: block; color: var(--muted); font-weight: 500; font-size: 12px; margin-top: 4px; }
@@ -220,9 +222,16 @@ tr:hover td, tr:hover th[scope="row"] { background: var(--bg-2); }
 .badge-state.paused { background: var(--accent); color: #03070f; }
 /* Transitional: the button was pressed and the flag is set, but the stage in flight runs to its end
    before the pipeline reads it. Striped so it reads as "in transition" without a new colour, since a
-   badge that looks terminal while the run continues is the thing these two states exist to stop. */
+   badge that looks terminal while the run continues is the thing these two states exist to stop.
+   The stripes are a 2 px ring and the text sits on the solid --border fill inside it (11.17:1): until
+   2026-11-22 the stripes filled the badge and the text crossed --accent stripes at 2.34:1. The padding
+   gives the ring's width back, so the badge keeps its size from state to state. */
 .badge-state.pausing, .badge-state.stopping {
-  background: repeating-linear-gradient(135deg, var(--accent) 0 6px, var(--border) 6px 12px);
+  background:
+    linear-gradient(var(--border), var(--border)) padding-box,
+    repeating-linear-gradient(135deg, var(--accent) 0 6px, var(--border) 6px 12px) border-box;
+  border: 2px solid transparent;
+  padding: 2px 10px;
   color: var(--text);
 }
 
