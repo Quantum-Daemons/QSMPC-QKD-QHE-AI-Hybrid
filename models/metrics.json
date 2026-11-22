@@ -86,7 +86,7 @@
       "opset": null
     },
     "git_sha": "0a5ed44-dirty",
-    "hf_revision": "b74d16f36b5658b86df5f0ca67ef16b26e13b5c9",
+    "hf_revision": "6bc79977618fedc176729adf2abb134e715940ed",
     "minority_class_f1": 0.6160558464223386,
     "n_features": 114,
     "n_test": 1523504,
@@ -166,7 +166,7 @@
       }
     },
     "git_sha": "a7ea883-dirty",
-    "hf_revision": "b01fba646aad55b84c33429b1b1d091ae8b433ac",
+    "hf_revision": "22cdddcd939aace1c4f7a1766d6c5cfa6578a6a0",
     "kept_epoch": 33,
     "logged_test_f1": 0.6751,
     "logged_validation_f1": 0.6208,
@@ -527,7 +527,7 @@
       }
     },
     "git_sha": "a7ea883-dirty",
-    "hf_revision": "d8b27ed281c86de4e8671b5f6b243be7c82f7242",
+    "hf_revision": "5d24f8f1a9f4e6c5b01fdfe4a1d8b4ae101beb8e",
     "kept_epoch": 16,
     "logged_test_f1": 0.5474,
     "logged_validation_f1": 0.6258,
@@ -989,7 +989,7 @@
     },
     "endpoint_scaling": "standard",
     "git_sha": "2718809-dirty",
-    "hf_revision": "60642a2009465836ef435d5ec2438f4211492578",
+    "hf_revision": "0dec1a118ec25f811e588d143192a012b4e3b945",
     "max_of_seeds_minority_f1": 0.658602,
     "median_of_seeds_minority_f1": 0.651029,
     "min_of_seeds_minority_f1": 0.64177,
@@ -1171,7 +1171,7 @@
       "opset": 17
     },
     "git_sha": "2718809-dirty",
-    "hf_revision": "69e4fb7ce933e15e8d82ec05a9f1dbd299749eb7",
+    "hf_revision": "2bd74b9e5139a7b0cbfd119b855a57c350c7d016",
     "max_of_seeds_minority_f1": 0.636814,
     "median_of_seeds_minority_f1": 0.623607,
     "min_of_seeds_minority_f1": 0.594431,
@@ -1358,7 +1358,7 @@
       "student_flagged": 5497,
       "teacher_flagged": 1117
     },
-    "hf_revision": "c305a104be537e93612d3556fbc0c36f637e45e9",
+    "hf_revision": "4dc494c57f0d4e334ff6e23b06f902bbd1395d72",
     "metric_delta": 0.307281,
     "metric_delta_pp": 30.7281,
     "metric_name": "minority_class_f1",

@@ -1784,6 +1784,7 @@ project is a browser tab.
   ABSTRACT ONLY. An agent on Aave V3 that estimates liquidation risk by survival analysis, validated on a simulator rather than on live data. No cryptography. Context for what a simulated market can and cannot show.
 
 - **Who holds the key in a private liquidation check**: the 2026 sources on custody and liquidation, read at origin, are in [`defi-lending-key-custody.md`](defi-lending-key-custody.md).
+- **Real anti-money-laundering data, read 2026-11-22**: which real laundering-labelled corpora exist, each licence read at the dataset's own record (Elliptic and Elliptic2 CC BY-NC-ND 4.0, a 2025 corporate-account set GPL-3.0, three related CC BY 4.0 corpora planned as external checks), in [`aml-real-data-2026-11.md`](aml-real-data-2026-11.md).
 - **The research sweep of 2026-11-21**: the August to November 2026 work searched for each use case, what it changed on the pages and what was read and left uncited, with reasons, is in [`research-sweep-2026-11.md`](research-sweep-2026-11.md).
   Its last section (2026-11-21) carries Zama's FHEVM documentation, licence and releases, read for the lending page's modelled FHEVM view and comparison card.
 - **Flood, Engelen, Aspinall and Desmet, "Bad Design Smells in Benchmark NIDS Datasets"**, IEEE EuroS&P 2024, pp. 658-675 `[link]`

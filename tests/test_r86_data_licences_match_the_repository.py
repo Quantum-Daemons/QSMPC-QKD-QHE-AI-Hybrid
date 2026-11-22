@@ -32,9 +32,14 @@ WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight",
          "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"]
 #: The two finance models published beside the teachers and the students, each with held-out rows in its weights.
 NEITHER = {"finance_aml.mlp_large", "finance_aml.gnn_compact"}
-#: The QKD-attack claim in each wording it shipped in, and the network-attack one before it. Not the finance cards'
-#: "no commercial-OK corpus of real laundering transactions exists", a different claim.
-RETIRED = re.compile(r"commercial-OK (real (QKD-|network-)?attack|real QKD|corpus of real QKD)", re.I)
+#: The QKD-attack claim in each wording it shipped in, the network-attack one before it, and the finance cards'
+#: "no commercial-OK corpus of real laundering transactions exists", which a real GPL-3.0 bank set contradicts
+#: (references/aml-real-data-2026-11.md; reworded on the owner's choice of 2026-11-22).
+RETIRED = re.compile(r"commercial-OK (real (QKD-|network-)?attack|real QKD|corpus of real (QKD|laundering))", re.I)
+#: The finance sentence the owner chose, which the registry note, the cards and the two documents carry.
+FOUND = ("No real laundering-labelled corpus under a permissive licence was found (2026-11-22): Elliptic and Elliptic2 "
+         "are CC BY-NC-ND 4.0, and the one real bank set found is GPL-3.0 with differentially private PCA features "
+         "(arXiv:2507.08835)")
 
 
 def _flat(text: str) -> str:
@@ -142,14 +147,29 @@ def test_no_shipped_text_says_no_commercial_ok_real_corpus_exists() -> None:
     assert "no public corpus of real QKD-layer attacks was found" in register
 
 
+def test_the_finance_sentence_is_the_one_chosen_everywhere_it_stands() -> None:
+    from qsh.models import registry
+
+    places = {"the registry note": registry.get("finance_aml.gbm").dataset.notes,
+              "DATA_LICENSES.md": (REPO / "DATA_LICENSES.md").read_text(encoding="utf-8"),
+              "docs/models-and-benchmarks.md": (REPO / "docs" / "models-and-benchmarks.md").read_text(encoding="utf-8")}
+    for key in sorted(k for k in registry.ARTIFACT_DIRS if k.startswith("finance_aml.")):
+        places[key] = (REPO / registry.ARTIFACT_DIRS[key] / "README.md").read_text(encoding="utf-8")
+    missing = [where for where, text in places.items() if FOUND not in _flat(text)]
+    assert not missing, f"the chosen finance sentence is missing from {missing}"
+
+
 def test_the_checks_refuse_the_sentences_as_they_stood() -> None:
     as_they_stood = {
         "web/public/data/telecom/qcnn_weights_q7.json": [
             "8 classes = 7 attack types + normal traffic. No commercial-OK real attack corpus exists, and the synthetic "
             "origin is why no result here is a performance claim about real links."],
         "models/metrics.json": ["The data is synthetic because no commercial-OK real QKD-attack corpus exists. "],
+        "models/finance_aml_gbm/README.md": ["Chosen for its calibration to real transaction statistics and its "
+                                             "CDLA-Sharing terms, not because it is real data - no commercial-OK corpus "
+                                             "of real laundering transactions exists."],
     }
-    assert len(retired_claims(as_they_stood)) == 2
+    assert len(retired_claims(as_they_stood)) == 3
     register = (REPO / "DATA_LICENSES.md").read_text(encoding="utf-8")
     stale = register.replace(
         _flat_find(register, "All eighteen"), "All thirteen Hub\n  repos, seven teachers, four encrypted students")

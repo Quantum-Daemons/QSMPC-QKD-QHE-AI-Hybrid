@@ -5,28 +5,28 @@
    "feature_spec.json": "38deeb419fc9863735bdc68db1f6580f55c19347e606679cbade02fbb4ddd3e8",
    "onnx/model.onnx": "d69b65320c55496001d7b6b77ed2b9c4ee6d88495ab4e1e12f967903947db8a5"
   },
-  "revision": "b74d16f36b5658b86df5f0ca67ef16b26e13b5c9"
+  "revision": "6bc79977618fedc176729adf2abb134e715940ed"
  },
  "finance_aml.gnn": {
   "files": {
    "eval_sample.json": "4e66c824e0b78f690c4c6bc4fe0397672af54f8ebe839800dfea27c38ada7bf7",
    "onnx/model.onnx": "c5bc68963c6deea0ad9ddf4e08f822faaf639eb8071ed47510de0e48840a51cd"
   },
-  "revision": "b01fba646aad55b84c33429b1b1d091ae8b433ac"
+  "revision": "22cdddcd939aace1c4f7a1766d6c5cfa6578a6a0"
  },
  "finance_aml.gnn_causal": {
   "files": {
    "eval_sample.json": "0c32a818927075dd83dc0f02f6715e976060498d24b1c9c8cbf3525f02748454",
    "onnx/model.onnx": "7afd7339ce9a79e6db38c11dcb46f6c83be0c0e2f9779dd265e414fdddc61afa"
   },
-  "revision": "d8b27ed281c86de4e8671b5f6b243be7c82f7242"
+  "revision": "5d24f8f1a9f4e6c5b01fdfe4a1d8b4ae101beb8e"
  },
  "finance_aml.gnn_compact": {
   "files": {
    "eval_sample.json": "e90f12f13f6224b7a7c2c9d6e8bd03f6e6d56dc2c390a08d00d25af0ca35e5e4",
    "weights.json": "fc086bd5269fde1db9c677c8fe558d312e61b0907ffe9f5ac355250491f894b3"
   },
-  "revision": "60642a2009465836ef435d5ec2438f4211492578"
+  "revision": "0dec1a118ec25f811e588d143192a012b4e3b945"
  },
  "finance_aml.mlp_large": {
   "files": {
@@ -34,7 +34,7 @@
    "onnx/model.onnx": "e645f43bfee1bc1a8111f783b474858810ee928caaa550642303fa160e4e542c",
    "weights.json": "a6d71112897b947045630682533bccfe14a1ac761ca04a257b675015363ca5c2"
   },
-  "revision": "69e4fb7ce933e15e8d82ec05a9f1dbd299749eb7"
+  "revision": "2bd74b9e5139a7b0cbfd119b855a57c350c7d016"
  },
  "finance_aml.student": {
   "files": {
@@ -42,7 +42,7 @@
    "onnx/model.onnx": "bb9216552451632aac9acf9e42cd38f16cc2583e23cd4afe411df86cbbca3fd7",
    "weights.json": "dd58191c8279e7f6d36522db5545e46e1a6dda135abffb741eaba545d6a66528"
   },
-  "revision": "c305a104be537e93612d3556fbc0c36f637e45e9"
+  "revision": "4dc494c57f0d4e334ff6e23b06f902bbd1395d72"
  },
  "medical_fl.cxr_fedavg": {
   "files": {
