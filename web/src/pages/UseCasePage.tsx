@@ -53,6 +53,7 @@ const QCNN3D_FEATURES = [0.3, -0.5, 0.8, 0.1, -0.9, 0.6, -0.2, 0.4];
 /** The lending canvas's second view (Round 86, the owner's choice of 2026-11-21): the same check on Zama's FHEVM, modelled. */
 const FHEVM_VIEW: ModelledView = { spec: FHEVM_SPEC, caption: FHEVM_CAPTION, legend: FHEVM_LEGEND, source: "Zama's documentation" };
 import { FibreDistanceCharts, QsdcRangeChart } from "../components/QkdCharts";
+import QrngHealthLive from "../components/QrngHealthLive";
 import SatNetworkPanel from "../components/SatNetworkPanel";
 import Tabs from "../components/Tabs";
 import { satChannel } from "../lib/satLink";
@@ -289,6 +290,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {hasTrainedQcnn(usecase) && <QcnnCircuitCard usecase={usecase} qubits={Number(run.params.qubits ?? 8)} hasComparison={clientFlow(usecase).includes("quantum_comparison")} />}
       {usecase === "genomics" && <PrsLocusCard />}
       {usecase === "telecom_ids" && <ConfusionCard />}
+      {usecase === "telecom_ids" && <QrngHealthLive />}
 
       {/* XAI: signed SHAP attribution.
           Gated on an explanation EXISTING, not on `meta.inference`. The flag meant "has a
