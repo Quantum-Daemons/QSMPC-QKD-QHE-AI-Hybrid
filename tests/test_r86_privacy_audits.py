@@ -9,7 +9,8 @@ hold the note to the records, and each record to the internal checks its script 
 WHAT IS ASSERTED
 
 - Membership inference: each record pools as many member as non-member scores; RMIA here agrees with ML Privacy Meter's
-  run_rmia to within one population comparison; a rate the ROC cannot reach is recorded as absent, with its reason.
+  run_rmia to within one population comparison; a rate the ROC cannot reach is recorded as absent, with its reason. The
+  BreastMNIST students' record names the published teacher it distilled from, at the pinned sha256.
 - Reconstruction: route A recovers every record within 0.1 percent; the student solved to the optimum satisfies its
   stationarity condition (residual under 1e-3) and recovers more than the trainer's solver point does.
 - The note quotes each record's figures at the precision it prints them.
@@ -50,23 +51,44 @@ def mia_problems(record: dict) -> list[str]:
     return out
 
 
+def _pct(x: float) -> str:
+    return f"{100 * x:.2f} percent"
+
+
 def note_problems(note: str) -> list[str]:
     flat = re.sub(r"\s+", " ", note)
     ops, tel, rec = _load("mia-opssat-2026-11-23.json"), _load("mia-telecom-qml-2026-11-23.json"), \
         _load("reconstruction-opssat-student-2026-11-23.json")
+    bm = _load("mia-breastmnist-students-2026-11-23.json")["results"]
     t, s, f = ops["results"]["teacher"], ops["results"]["student"], tel["results"]["forest"]
+    cnn, sq = bm["student"], bm["square_student"]
     C = rec["routes"]["C_weights_solved_to_the_optimum"]
-    pct = lambda x: f"{100 * x:.2f} percent"
-    want = [f"LiRA AUC {t['lira_online']['auc']:.3f}", pct(t["lira_online"]["tpr_at_fpr_0.001"]),
-            f"LiRA AUC {s['lira_online']['auc']:.3f}", pct(s["lira_online"]["tpr_at_fpr_0.001"]),
-            f"RMIA AUC {f['rmia_offline']['auc']:.3f}", pct(f["rmia_offline"]["tpr_at_fpr_0.01"]),
-            f"{pct(C['share_below_0.1'])} within 10 percent"]
+    want = [f"LiRA AUC {t['lira_online']['auc']:.3f}", _pct(t["lira_online"]["tpr_at_fpr_0.001"]),
+            f"LiRA AUC {s['lira_online']['auc']:.3f}", _pct(s["lira_online"]["tpr_at_fpr_0.001"]),
+            f"RMIA AUC {f['rmia_offline']['auc']:.3f}", _pct(f["rmia_offline"]["tpr_at_fpr_0.01"]),
+            f"{_pct(C['share_below_0.1'])} within 10 percent",
+            f"RMIA agrees (AUC {cnn['rmia_offline']['auc']:.3f} and {sq['rmia_offline']['auc']:.3f})"]
+    # Each student's figures as one phrase, so a count cannot be matched inside another number ("2" in "562").
+    exposed = cnn["records_exposed_in_most_targets_at_fpr_1e-3"]
+    want.append(f"the CNN student, LiRA AUC {cnn['lira_online']['auc']:.3f} and "
+                f"{_pct(cnn['lira_online']['tpr_at_fpr_0.001'])} at a false-positive rate of 0.1 percent, "
+                f"{'none' if exposed == 0 else exposed} of {cnn['audit_records']} records exposed")
+    want.append(f"the square-activation student, LiRA AUC {sq['lira_online']['auc']:.3f} and "
+                f"{_pct(sq['lira_online']['tpr_at_fpr_0.001'])}, "
+                f"{sq['records_exposed_in_most_targets_at_fpr_1e-3']} records exposed")
     return [f"the note does not quote {w!r}" for w in want if w not in flat]
 
 
 def test_the_membership_records_hold_their_own_checks() -> None:
-    for name in ("mia-opssat-2026-11-23.json", "mia-telecom-qml-2026-11-23.json"):
+    for name in ("mia-opssat-2026-11-23.json", "mia-telecom-qml-2026-11-23.json", "mia-breastmnist-students-2026-11-23.json"):
         assert mia_problems(_load(name)) == [], name
+
+
+def test_the_students_were_distilled_from_the_published_teacher() -> None:
+    pin = json.loads((REPO / "models" / "hub_file_hashes.json").read_text(encoding="utf-8"))["medical_fl.resnet18"]
+    teacher = _load("mia-breastmnist-students-2026-11-23.json")["teacher"]
+    assert teacher["sha256"] == pin["files"]["onnx/model.onnx"]
+    assert teacher["hf_revision"] == pin["revision"]
 
 
 def test_the_reconstruction_record_holds_its_own_checks() -> None:
@@ -87,6 +109,7 @@ def test_the_checks_refuse_a_rounded_note_and_a_zeroed_rate() -> None:
     rate = ops["results"]["teacher"]["lira_online"]["tpr_at_fpr_0.001"]
     note = NOTE.read_text(encoding="utf-8")
     assert note_problems(note.replace(f"{100 * rate:.2f} percent", "5.00 percent"))
+    assert note_problems(note.replace("0.43 percent, 2 records exposed", "0.43 percent, no records exposed"))
     zeroed = json.loads(json.dumps(ops))
     zeroed["results"]["teacher"]["rmia_offline"]["tpr_at_fpr_0.001"] = 0.0
     zeroed["results"]["teacher"]["rmia_offline"].pop("not_resolvable", None)

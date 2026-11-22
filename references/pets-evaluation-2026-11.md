@@ -104,6 +104,14 @@ On the owner's choices of 2026-11-22 (the CPU phase first; GPU jobs asked one by
   percent is not resolvable, because its top score ties across more non-members than that.
 - **Membership inference, the telecom forest** (`mia-telecom-qml-2026-11-23.json`): RMIA AUC 0.867, 22.64 percent
   at 1 percent; LiRA AUC 0.705. A forest memorises its training points; these are generated rows.
+- **Membership inference, the BreastMNIST students** (`mia-breastmnist-students-2026-11-23.json`, 64 shadow models,
+  on the CPU): the CNN student, LiRA AUC 0.611 and 0.27 percent at a false-positive rate of 0.1 percent, none of 562
+  records exposed in most targets; the square-activation student, LiRA AUC 0.617 and 0.43 percent, 2 records exposed.
+  RMIA agrees (AUC 0.612 and 0.631) and matches ML Privacy Meter's exactly; its rate at 0.1 percent is not resolvable,
+  as for OPS-SAT. The teacher is held fixed: the local graph, its node metadata set aside, has the published pin's
+  sha256, and every shadow student is distilled from its labels by the student's own recipe, on 281 records, about half
+  the 546 the published students saw. So this is what a student's own training adds. Membership in the teacher's
+  training set needs the teacher retrained for every shadow, a GPU job.
 - **Reconstruction by an informed adversary, the OPS-SAT student** (`reconstruction-opssat-student-2026-11-23.json`):
   from the published preprocessing mean, every one of the 1,594 training records within 0.1 percent (median
   relative error 7.1e-05); from the weights solved to the optimum, 98.93 percent within 10 percent and
@@ -111,9 +119,8 @@ On the owner's choices of 2026-11-22 (the CPU phase first; GPU jobs asked one by
   preprocessing a CKKS client needs is a release of training statistics, and a model on private data would need them
   and its weights computed under differential privacy; this telemetry is public, so it shows the mechanism.
 
-Still to run in the CPU phase: the BreastMNIST students (the local teacher checkpoint is to be tied to the published one
-first), the federated heart model (its training is TypeScript, run through the page's own module), the canary game with
-the one-run DP audit, and attribute inference against imputation.
+Still to run in the CPU phase: the federated heart model (its training is TypeScript, run through the page's own
+module), the canary game with the one-run DP audit, and attribute inference against imputation.
 
 ## What each use case could add
 
