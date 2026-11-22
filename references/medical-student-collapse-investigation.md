@@ -110,3 +110,14 @@ one-conv-block CNN at 14x14 on 780 ultrasound images is not a diagnostic model, 
 recovers what the capacity does not support. The honest summary is that it went from *fraudulently
 respectable* to *visibly weak*, which is the direction that matters when the number is displayed
 beside a published baseline.
+
+## The teacher's spread, measured on the shipped configuration (2026-11-22)
+
+The teacher row of the six-run table above came from the ImageNet-pretrained variant, which is not what ships, and
+`models/metrics.json` and the ResNet-18 card quoted it until 2026-11-22. The shipped configuration (random
+initialisation, 28 px, the training script's defaults) was then trained at the published seed and at six more. Seed 42
+reproduces the published test AUC, 0.914683. Seeds 0 to 5 give 0.893275, 0.858605, 0.851713, 0.879073, 0.869256 and
+0.865915: mean 0.8696, sd 0.0149 (sample), range 0.8517 to 0.8933, none at or above the published 0.901. The published
+run is the best of the seven; over all seven, the spread the record now carries, the mean is 0.8761 and the sd 0.0218.
+The record is `docs/measurements/medical-resnet18-seeds-2026-11-22.json`.
+

@@ -259,7 +259,7 @@ function MetricRows({ spec }: { spec: ModelSpec }) {
                 <> · 95% CI {aucCi.lo.toFixed(3)} to {aucCi.hi.toFixed(3)} ({aucCi.method}, {aucCi.n_pos} + {aucCi.n_neg} test images, this training run)</>
               )}
               {k === "auc" && seeds && (
-                <> · over {seeds.n_seeds} earlier runs differing only in the seed: mean {seeds.mean.toFixed(4)}, sd {seeds.sd.toFixed(4)}, range {seeds.lo.toFixed(4)} to {seeds.hi.toFixed(4)}</>
+                <> · over {seeds.n_seeds} runs differing only in the seed, this one among them: mean {seeds.mean.toFixed(4)}, sd {seeds.sd.toFixed(4)}, range {seeds.lo.toFixed(4)} to {seeds.hi.toFixed(4)}</>
               )}
               {k === "agreement" && neverFlagsAgrees != null && (
                 <>A student that never flags would agree {fmt(neverFlagsAgrees)}: the teacher flags {flags?.teacher_flagged?.toLocaleString("en-US")} of{" "}

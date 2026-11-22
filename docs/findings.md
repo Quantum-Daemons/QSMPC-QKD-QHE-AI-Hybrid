@@ -307,9 +307,11 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   ResNet-18's 0.901 on this 780-image corpus, so the deeper network is expected to lose. It does,
   and by more than the published gap - 0.7988 against our ResNet-18's 0.9147, both trained from
   random initialisation. One AUC on 156 test images is wide: ResNet-18's DeLong 95% interval is 0.858 to 0.971, ResNet-50's 0.723 to
-  0.876 (`docs/measurements/medical-auc-ci-2026-11-08.json`, on the served graphs), and six runs of the ResNet-18 pipeline
-  differing only in the seed gave mean 0.8905, sd 0.0198, range 0.8630 to 0.9216
-  (`references/medical-student-collapse-investigation.md`). So the +0.014 over the published 0.901 is not resolved here. MedMNIST+ (Doerrich et al.,
+  0.876 (`docs/measurements/medical-auc-ci-2026-11-08.json`, on the served graphs), and seven runs of the shipped
+  from-scratch pipeline, differing only in the seed (the published seed 42 among them), gave mean 0.8761, sd 0.0218, range
+  0.8517 to 0.9147, with only the published run at or above 0.901
+  (`docs/measurements/medical-resnet18-seeds-2026-11-22.json`; the 0.8905 quoted until 2026-11-22 came from the
+  ImageNet-pretrained variant). So the +0.014 over the published 0.901 is one run's, not the pipeline's. MedMNIST+ (Doerrich et al.,
   Sci Rep 15, 7669, 2025, Table S2) reports an ImageNet-pretrained ResNet-18 at 28 by 28 at AUC $`87.61 \pm 1.16`$ (percent) over three seeds, on a
   different pipeline (zero-padded to 224 by 224, AdamW at $`10^{-4}`$). A third consequence of the same over-parameterisation appears in the
   export: its int8 graph agrees with its own fp32 on
@@ -581,8 +583,9 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   a different method or protocol on the same data is a reference, never a reproduction; and the rest say why they
   are not comparable. On the medical page the federation is FLamby's benchmark run in the tab: seed 1's FedAvg,
   0.7005, is +0.0155 from FLamby's 0.685, inside two of its seed standard deviations (0.028). ResNet-18 on
-  BreastMNIST is the same method as MedMNIST v2's, whose 0.901 lies inside one standard deviation of this
-  project's six seeds (0.8905, 0.0198). Telemanom on ESA-ADB's like-for-like row is 0.0181 below the published 0.968
+  BreastMNIST is the same method as MedMNIST v2's, whose 0.901 lay inside one standard deviation of the
+  six seeds then quoted (0.8905, 0.0198, runs of the ImageNet-pretrained variant); the shipped configuration's seven
+  seeds (0.8761, 0.0218, 2026-11-22) put it about 1.1 standard deviations above their mean. Telemanom on ESA-ADB's like-for-like row is 0.0181 below the published 0.968
   with no spread on either side. The run also re-scores every published model and, until now, showed only the
   selected one; the others reached the log alone. They now have a table, and each card's rows, and the whole run,
   download as CSV and JSON. The Models section is in tabs, an overview first. The owner's question about AI
