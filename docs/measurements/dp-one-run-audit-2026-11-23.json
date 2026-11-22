@@ -1,0 +1,283 @@
+{
+ "what": "a one-run DP audit (white-box Dirac canaries, every release observed) of the heart federation's and the murmur study's DP training",
+ "method": "Steinke, Nasr and Jagielski, Privacy Auditing with One (1) Training Run, NeurIPS 2023 (arXiv:2305.08846): Corollary 5.4 and Appendix D, implemented here",
+ "design": {
+  "guesses": [
+   100,
+   300,
+   1000,
+   3000
+  ],
+  "each_tested_at": 0.0125,
+  "confidence": 0.95,
+  "fedheart_runs": 1000,
+  "murmur_runs": 40,
+  "canaries_per_run": {
+   "fedheart": 14,
+   "murmur": 129
+  },
+  "seed": 0,
+  "noise": "fedheart: dp.seeded_rand_below (not private); murmur: torch's generator, as the study"
+ },
+ "fedheart": {
+  "epsilon_8": {
+   "variance_per_hospital": 25510910486,
+   "canaries": 14000,
+   "included": 6988,
+   "rows": [
+    {
+     "guesses": 100,
+     "right": 98,
+     "epsilon_lower_bound": 2.4187
+    },
+    {
+     "guesses": 300,
+     "right": 294,
+     "epsilon_lower_bound": 2.9951
+    },
+    {
+     "guesses": 1000,
+     "right": 966,
+     "epsilon_lower_bound": 2.9563
+    },
+    {
+     "guesses": 3000,
+     "right": 2847,
+     "epsilon_lower_bound": 2.7371
+    }
+   ],
+   "epsilon_lower_bound": 2.9951,
+   "epsilon_accounted": 8.0,
+   "under_the_accountant": true
+  },
+  "epsilon_4": {
+   "variance_per_hospital": 86305481948,
+   "canaries": 14000,
+   "included": 6988,
+   "rows": [
+    {
+     "guesses": 100,
+     "right": 91,
+     "epsilon_lower_bound": 1.5308
+    },
+    {
+     "guesses": 300,
+     "right": 270,
+     "epsilon_lower_bound": 1.7629
+    },
+    {
+     "guesses": 1000,
+     "right": 864,
+     "epsilon_lower_bound": 1.6406
+    },
+    {
+     "guesses": 3000,
+     "right": 2431,
+     "epsilon_lower_bound": 1.3472
+    }
+   ],
+   "epsilon_lower_bound": 1.7629,
+   "epsilon_accounted": 4.0,
+   "under_the_accountant": true
+  },
+  "epsilon_2": {
+   "variance_per_hospital": 304546705797,
+   "canaries": 14000,
+   "included": 6988,
+   "rows": [
+    {
+     "guesses": 100,
+     "right": 71,
+     "epsilon_lower_bound": 0.3821
+    },
+    {
+     "guesses": 300,
+     "right": 220,
+     "epsilon_lower_bound": 0.7126
+    },
+    {
+     "guesses": 1000,
+     "right": 711,
+     "epsilon_lower_bound": 0.7418
+    },
+    {
+     "guesses": 3000,
+     "right": 1997,
+     "epsilon_lower_bound": 0.6012
+    }
+   ],
+   "epsilon_lower_bound": 0.7418,
+   "epsilon_accounted": 2.0,
+   "under_the_accountant": true
+  },
+  "epsilon_1": {
+   "variance_per_hospital": 1102259957495,
+   "canaries": 14000,
+   "included": 6988,
+   "rows": [
+    {
+     "guesses": 100,
+     "right": 65,
+     "epsilon_lower_bound": 0.127
+    },
+    {
+     "guesses": 300,
+     "right": 193,
+     "epsilon_lower_bound": 0.3122
+    },
+    {
+     "guesses": 1000,
+     "right": 629,
+     "epsilon_lower_bound": 0.3789
+    },
+    {
+     "guesses": 3000,
+     "right": 1798,
+     "epsilon_lower_bound": 0.3184
+    }
+   ],
+   "epsilon_lower_bound": 0.3789,
+   "epsilon_accounted": 1.0,
+   "under_the_accountant": true
+  }
+ },
+ "murmur": {
+  "noise_1.89138": {
+   "noise_multiplier": 1.89138,
+   "sampling_rate": 0.12524461839530332,
+   "steps": 239,
+   "canaries": 5160,
+   "included": 2544,
+   "rows": [
+    {
+     "guesses": 100,
+     "right": 94,
+     "epsilon_lower_bound": 1.7465
+    },
+    {
+     "guesses": 300,
+     "right": 277,
+     "epsilon_lower_bound": 1.9764
+    },
+    {
+     "guesses": 1000,
+     "right": 891,
+     "epsilon_lower_bound": 1.8663
+    },
+    {
+     "guesses": 3000,
+     "right": 2361,
+     "epsilon_lower_bound": 1.2052
+    }
+   ],
+   "epsilon_lower_bound": 1.9764,
+   "epsilon_accounted": 5.6644,
+   "under_the_accountant": true
+  },
+  "noise_3.45294": {
+   "noise_multiplier": 3.45294,
+   "sampling_rate": 0.12524461839530332,
+   "steps": 239,
+   "canaries": 5160,
+   "included": 2544,
+   "rows": [
+    {
+     "guesses": 100,
+     "right": 86,
+     "epsilon_lower_bound": 1.115
+    },
+    {
+     "guesses": 300,
+     "right": 239,
+     "epsilon_lower_bound": 1.0264
+    },
+    {
+     "guesses": 1000,
+     "right": 762,
+     "epsilon_lower_bound": 0.992
+    },
+    {
+     "guesses": 3000,
+     "right": 1996,
+     "epsilon_lower_bound": 0.5988
+    }
+   ],
+   "epsilon_lower_bound": 1.115,
+   "epsilon_accounted": 2.6083,
+   "under_the_accountant": true
+  }
+ },
+ "seeded_checks": {
+  "fedheart_a_sixteenth_of_the_variance": {
+   "variance_per_hospital": 68891247343,
+   "accountant_assumes": 1102259957495,
+   "canaries": 14000,
+   "included": 6985,
+   "rows": [
+    {
+     "guesses": 100,
+     "right": 94,
+     "epsilon_lower_bound": 1.8231
+    },
+    {
+     "guesses": 300,
+     "right": 282,
+     "epsilon_lower_bound": 2.2074
+    },
+    {
+     "guesses": 1000,
+     "right": 891,
+     "epsilon_lower_bound": 1.8721
+    },
+    {
+     "guesses": 3000,
+     "right": 2517,
+     "epsilon_lower_bound": 1.5389
+    }
+   ],
+   "epsilon_lower_bound": 2.2074,
+   "epsilon_accounted": 1.0,
+   "under_the_accountant": false
+  },
+  "murmur_every_person_every_step": {
+   "noise_multiplier": 1.89138,
+   "accountant_assumes_sampling_rate": 0.12524461839530332,
+   "steps": 239,
+   "canaries": 5160,
+   "included": 2582,
+   "rows": [
+    {
+     "guesses": 100,
+     "right": 100,
+     "epsilon_lower_bound": 2.7233
+    },
+    {
+     "guesses": 300,
+     "right": 300,
+     "epsilon_lower_bound": 3.8555
+    },
+    {
+     "guesses": 1000,
+     "right": 1000,
+     "epsilon_lower_bound": 5.0709
+    },
+    {
+     "guesses": 3000,
+     "right": 3000,
+     "epsilon_lower_bound": 6.1727
+    }
+   ],
+   "epsilon_lower_bound": 6.1727,
+   "epsilon_accounted": 5.6644,
+   "under_the_accountant": false
+  }
+ },
+ "reading": "A lower bound under the accountant's epsilon is consistent with the accounting and proves nothing more; the seeded checks show the audit catches a mechanism that adds less noise or samples no one.",
+ "seconds": 190.9,
+ "environment": {
+  "git": "ecbe941",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-23"
+ }
+}

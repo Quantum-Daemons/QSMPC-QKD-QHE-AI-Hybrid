@@ -126,6 +126,16 @@ On the owner's choices of 2026-11-22 (the CPU phase first; GPU jobs asked one by
   gets 35.39 and 64.61; imputation from all the features gets 76.75. For a logistic model the loss attack's guess
   depends on the diagnosis alone (the record checks this), so its lead of 2.80 points on the training rows over the
   test rows for the pooled model comes from the two splits' own mix of sex and diagnosis, not from memorisation.
+- **A one-run DP audit** (`dp-one-run-audit-2026-11-23.json`): Steinke, Nasr and Jagielski's bound (NeurIPS 2023,
+  arXiv:2305.08846, Corollary 5.4 and their Appendix D's search), implemented here and checked against the four values
+  that appendix prints. The canaries are gradients, one per coordinate, seen by an adversary who observes every release
+  and knows every other contribution, the strongest setting the paper audits. The heart federation's DP rows, 14,000
+  canaries over 1,000 runs, give lower bounds of 2.99 at epsilon 8, 1.76 at epsilon 4, 0.74 at epsilon 2, 0.37 at
+  epsilon 1 (each truncated, never rounded up). The murmur study's DP-SGD, 5,160 canaries, gives 1.97 against its accountant's 5.66 at noise multiplier
+  1.89138, and 1.11 against 2.61 at 3.45294. Every arm is under its accountant's epsilon. Both seeded bugs are caught:
+  the federation with a sixteenth of the variance gives 2.20 against the 1 its accountant states, and DP-SGD with
+  every person in every step gives 6.17 against 5.66. A bound under the accountant's epsilon is consistent with the
+  accounting and proves nothing more; the gap at the sampled DP-SGD is the paper's own finding for one-run audits.
 - **Reconstruction by an informed adversary, the OPS-SAT student** (`reconstruction-opssat-student-2026-11-23.json`):
   from the published preprocessing mean, every one of the 1,594 training records within 0.1 percent (median
   relative error 7.1e-05); from the weights solved to the optimum, 98.93 percent within 10 percent and
@@ -133,7 +143,8 @@ On the owner's choices of 2026-11-22 (the CPU phase first; GPU jobs asked one by
   preprocessing a CKKS client needs is a release of training statistics, and a model on private data would need them
   and its weights computed under differential privacy; this telemetry is public, so it shows the mechanism.
 
-Still to run in the CPU phase: the canary game with the one-run DP audit.
+The CPU phase is complete. Still to run, each asked first: the GPU jobs (the ResNets' own membership audits, the
+teacher retrained for every shadow of the BreastMNIST students, gradient inversion on the chest X-ray federation).
 
 ## What each use case could add
 
