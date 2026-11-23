@@ -361,6 +361,12 @@ def test_every_qcnn_implementation_is_pinned_to_another() -> None:
         "src/qsh/ai/fed_heart.py": "logistic regression's theta, beside 'pooled' training; the Python half of the "
                                    "four-hospital twin, pinned to the page by tests/test_r86_fed_heart_twin.py",
         "web/src/lib/clientFedHeart.ts": "the browser half of the same twin",
+        "scripts/audit_membership_inference.py": "the same logistic theta, the heart federation's arms re-implemented for "
+                                                 "the membership audit ('pooled' its pooled arm, 'pool' the audit pool); "
+                                                 "pinned to the twin weight for weight by "
+                                                 "tests/test_r86_heart_privacy_audits.py",
+        "scripts/audit_attribute_inference.py": "the same logistic theta, through the membership script's arms; "
+                                                "tests/test_r86_heart_privacy_audits.py",
     }
     assert all(f in tracked for f in NOT_THE_QCNN), "an exemption names a file that is gone; remove it"
     unpinned = []
