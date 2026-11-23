@@ -35,6 +35,10 @@ in the owner's chosen words.
   BitcoinTemporalGraph (reproduce its published baselines, then adapt IBM's Multi-GNN, leaving out entity names and
   any forum text the archive carries), and BitFraud watched until its files open. Each download waits for its own
   approval. None has laundering labels, so none can stand in for AMLworld's task.
+  **Outcome, 2026-11-23:** the BitcoinHeist check ran on 2026-11-22 (`docs/measurements/bitcoinheist-check-2026-11-22.json`)
+  and the BitcoinTemporalGraph check on 2026-11-23, in #90 (`docs/measurements/btg-check-2026-11-23.json`): entity
+  types from a labelled node's own features and, by a GNN, from its one-hop neighbourhood. Neither the paper's
+  two-hop GNNs nor an adaptation of IBM's Multi-GNN was run. BitFraud's files are still restricted.
 - **The GPL-3.0 bank set**: a local comparison, never published, after its own download approval. GPL-3.0 permits
   commercial use, but it is copyleft, which this repository's permissive set excludes, and whether it reaches trained
   weights is unsettled.

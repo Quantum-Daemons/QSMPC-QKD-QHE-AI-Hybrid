@@ -25,7 +25,8 @@ third party's system.
   Standard and to the guidelines of Bossuat et al., *Security Guidelines for Implementing Homomorphic Encryption*,
   IACR Communications in Cryptology 1(4), 2025 (doi:10.62056/anxra69p1). npm audit, pip-audit and cargo-deny run
   daily (`.github/workflows/audit.yml`).
-- **Candidate: OSV-Scanner over the SBOMs, offline.** Apache-2.0, v2.7.1 (2026-11-09). It finds CycloneDX SBOMs by
+- **Candidate: OSV-Scanner over the SBOMs, offline.** (Adopted on 2026-11-23 in #90, over every tracked lockfile
+  rather than the SBOMs: the `osv` job and `scripts/scan_lockfiles.sh`.) Apache-2.0, v2.7.1 (2026-11-09). It finds CycloneDX SBOMs by
   the `*.cdx.json` names these already have, and checks them against the OSV database; online it sends package names,
   versions and hashes to OSV.dev, so only `--offline` fits. A cross-check of the three audits, not a replacement.
 - **Candidate: lattice-estimator for parameter sets outside the guidelines' tables.** Its README gives LGPL-3.0-or-later
@@ -34,7 +35,8 @@ third party's system.
 
 ## Layer 3: what the outputs leak
 
-- **Membership inference: nothing here yet.** The current attacks are LiRA (Carlini et al., *Membership Inference
+- **Membership inference: nothing here yet** when this was written; run on 2026-11-22 to 23 (#88): LiRA and RMIA over
+  64 shadow models on OPS-SAT and the telecom forest, the BreastMNIST students and the heart federation. The current attacks are LiRA (Carlini et al., *Membership Inference
   Attacks From First Principles*, IEEE S&P 2022, arXiv:2112.03570; reference code in `tensorflow/privacy`,
   `research/mi_lira_2021`) and RMIA (Zarifzadeh, Liu and Shokri, *Low-Cost High-Power Membership Inference Attacks*,
   ICML 2024, arXiv:2312.03262; implemented in ML Privacy Meter, MIT, `modules/mia/attacks/rmia.py`, last pushed
@@ -42,7 +44,8 @@ third party's system.
   at a false-positive rate of $`10^{-3}`$ or below, per record and over several seeds, because an average hides the
   records most exposed (Aerni, Zhang and Tramer, *Evaluations of Machine Learning Privacy Defenses are Misleading*,
   CCS 2024, arXiv:2404.17399). IBM's Adversarial Robustness Toolbox (MIT) has only the older shadow-model and label-only attacks.
-- **Differential privacy: accounting here, no empirical audit.** The murmur study accounts DP-SGD by Renyi DP and
+- **Differential privacy: accounting here, no empirical audit** when this was written; since #88 the one-run audit
+  after Steinke, Nasr and Jagielski (`docs/measurements/dp-one-run-audit-2026-11-23.json`). The murmur study accounts DP-SGD by Renyi DP and
   `qsh.ai.dp` composes zCDP releases. The empirical check is a canary audit: Steinke, Nasr and Jagielski, *Privacy
   Auditing with One (1) Training Run*, NeurIPS 2023 (arXiv:2305.08846), which gives a lower bound on the epsilon a run
   actually spends, to set beside the claimed one. The current accountants are PRV and PLD (Gopi, Lee and Wutschitz,
@@ -146,7 +149,10 @@ On the owner's choices of 2026-11-22 (the CPU phase first; GPU jobs asked one by
   preprocessing a CKKS client needs is a release of training statistics, and a model on private data would need them
   and its weights computed under differential privacy; this telemetry is public, so it shows the mechanism.
 
-The CPU phase is complete. The GPU jobs, on the owner's approval of 2026-11-23:
+The CPU phase is complete as run, with two parts of the plan above not done: the informed reconstruction ran on the
+OPS-SAT student only (`docs/measurements/reconstruction-opssat-student-2026-11-23.json`), not on the other published
+students or the heart federation, and the k-candidate canary game with riskcal's bound was not built. The GPU jobs, on
+the owner's approval of 2026-11-23:
 
 - **Membership inference, BreastMNIST's whole pipeline** (`mia-breastmnist-pipeline-2026-11-23.json`, 64 shadows): each
   shadow retrains the ResNet-18 teacher by its published recipe on its members, then distils both students from it,
