@@ -6511,3 +6511,55 @@ version stops the writer, against the go command's output replayed; the manufact
 authors or compositions; CI writes the environment SBOM before its tests, and the `sbom` job waits for the python job,
 still runs when it fails and passes the file on. The page-claims test holds the ML-KEM date in the module and the card
 equal.
+
+### One batch: the BFV meter at the post-quantum bound, telecom's argmax in two-party computation, four plots and records re-read (2026-11-24)
+
+**What and why.** The owner's choices of 2026-11-23, in one pull request so that gates, merges and deploys stay few: the
+BFV meter fixed in all three of its parts; telecom's class taken by a garbled-circuit argmax; four plots; the 12 px type
+floor carried to two labels under it; the records a sweep found stale; #91's and #66's register rows.
+
+**Found.**
+
+- The BFV meter built SEAL's `BFVDefault(8192)`, a 218-bit modulus: inside the HomomorphicEncryption.org standard's
+  classical bound for 128 bits at $`N = 8192`$, but over its post-quantum bound of 202 bits, and the CBOM listed no BFV
+  at all. The meter now builds $`40 + 40 + 40 + 41 + 41 = 202`$ bits; its ladder reads 133, 101, 68, 35, 2 and 0 bits, the
+  fifth decryption wrong as before. The CBOM's 25th asset is `crypto/bfv`, read against NIST IR 8547 in both rule
+  tables, its import check reads node-seal's schemes, and sbom-tools' record was run again (13 agree, 3 reviewed
+  differences, 9 without a verdict).
+- Telecom's key holder decrypted all 8 class scores to take their argmax, and Cho et al. (ePrint 2026/2349) show that
+  released anomaly scores can reveal a private threshold. The page now masks the 8 scores under CKKS and takes the
+  argmax on their additive shares in a garbled circuit, as the finance MLP does, so the key holder learns the class and
+  not the scores; `web/scripts/check_hybrid_mlp.mjs` runs it on 4 held-out rows, about half a second each.
+- Two labels were under the 12 px floor: the collapsed sidebar's run badge (10 px) and the CBOM's year strip (10.5 px).
+- The plots, each from what its record or the run states:
+  - the square student's three CKKS parameter sets, largest logit error against time per image, from the
+    pre-registered record (TenSEAL 0.3.16 on the development machine), with the $`10^{-3}`$ limit: A over it on all 156
+    images and not offered, A2 and B under it; a run in the tab adds its own point, labelled as another library on
+    another machine;
+  - finance, each model's AUPRC on the 1,523,504-transfer test window against what one transfer cost under encryption
+    in the run: the student's batch divided by its 8,192 transfers, one transfer each for the MLP and the compact GNN,
+    the gradient-boosted model a line with no encrypted path; in a preview run the student cost about 1 ms a transfer
+    and the two networks about 5 to 7 s;
+  - satellite, every one of the 8,640 forecasts' largest decrypted-minus-plaintext difference against its time, on one
+    canvas: in a preview run the largest was $`1.57 \times 10^{-9}`$, the run's own logged figure, and encryption
+    changed none of the 69 flags;
+  - medical, all 16 published chest X-ray films through the split, each decrypted logit against the clear one with
+    the operating point on both axes: in a preview run the largest difference was $`1.32 \times 10^{-9}`$ and the
+    decision was the same in all 16, matching the full int8 model's recorded decisions in all 16.
+- Records re-read: the degree table's record named a private plan file where it now names the owner's choice; IBM's
+  Multi-PNA+EU has shipped since #61 and FIDESlib has tags; the benchmark's pad bits come from a generator seeded with
+  7, and BSI's TR-02102 page, re-read on 2026-11-23, says what the page says; two register entries and two research
+  plans carry their outcomes; the crypto-agility guide says the retired score remains in the dated benchmark records
+  of 2026-11-06; the regulatory clock's EU rows say the roadmap is the Member States' own under a non-binding Commission
+  Recommendation; `references/model-choice-vs-2026-practice.md` was re-checked against August to November 2026
+  research; the IKEv2 layers' prf and prf+ match CAVP's vectors rather than being CAVP-validated, and the Overview names
+  all six use cases.
+
+**Checks.** `tests/test_r86_square_student_sets_plot.py` (the served file equals the script's output and the record,
+the offered sets are the published weights' and the config's, the line is the pre-registered limit, the tab's point is
+timed as the record times a set); `web/scripts/check_finance_cost_plot.mjs` and `web/scripts/check_sat_residual_plot.mjs`,
+both run by the suite (each figure against its record or a stated run, a partial run, the wiring);
+`tests/test_r86_satellite_student_ckks_in_node.py` (under the real node-seal, every row's largest difference, whose
+maximum is the logged figure, and the changed rows as many as the count); `tests/test_r86_cxr_split.py` (the all-films
+figures on stated films, and one function for one film and for all sixteen); the CBOM, IR 8547 and sbom-tools tests for
+the BFV entry; the node checks for telecom's garbled-circuit argmax.
