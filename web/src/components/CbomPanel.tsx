@@ -6,6 +6,7 @@ import CbomGraph, { CLASS_COLOUR, CLASS_NAME } from "./CbomGraph";
 import { downloadCSV, downloadText } from "../lib/export";
 import { IR8547, localIsoDate, type Ir8547Class, type Standing } from "../lib/ir8547";
 import { reportCounts, reportCsvRows, reportMarkdown, reportRows, sha256Hex, type CbomDoc } from "../lib/cbomReport";
+import { checkCbom, SCHEMA_CHECK, type SchemaCheck } from "../lib/cbomSchemaCheck";
 
 const URL_ = `${import.meta.env.BASE_URL}cbom/qsh.cdx.json`;
 const FILE = "qsh.cdx.json";
@@ -26,6 +27,7 @@ export default function CbomPanel() {
   const [doc, setDoc] = useState<CbomDoc | null>(null);
   const [sha, setSha] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
+  const [schema, setSchema] = useState<SchemaCheck | null>(null);
   const [date, setDate] = useState(() => localIsoDate());
   useEffect(() => {
     let live = true;
@@ -35,6 +37,8 @@ export default function CbomPanel() {
         const parsed = JSON.parse(new TextDecoder().decode(buf)) as CbomDoc;
         const digest = await sha256Hex(buf);
         if (live) { setDoc(parsed); setSha(digest); }
+        const checked = await checkCbom(parsed).catch((e: Error) => ({ valid: false, error: `the check did not run (${e.message})` }));
+        if (live) setSchema(checked);
       })
       .catch((e: Error) => { if (live) setFailed(e.message); });
     return () => { live = false; };
@@ -61,6 +65,8 @@ export default function CbomPanel() {
         The file read: {FILE}, {doc.bomFormat} {doc.specVersion}, serial <span className="mono">{doc.serialNumber}</span>, version {doc.version}, describing {app?.name} {app?.version}.
         {" "}Its SHA-256, computed in this tab from the bytes fetched: <span className="mono" style={{ wordBreak: "break-all" }}>{sha}</span>
         {built === sha ? ", the file this build was made from." : <>, which is <strong>not</strong> the file this build was made from (<span className="mono" style={{ wordBreak: "break-all" }}>{built}</span>).</>}
+        {" "}Checked in this tab against {SCHEMA_CHECK}:{" "}
+        {schema === null ? "checking…" : schema.valid ? <strong>valid</strong> : <><strong>not valid</strong> ({schema.error})</>}.
       </p>
 
       <h3 style={{ marginTop: 16 }}>Read against NIST IR 8547, on a date</h3>
