@@ -256,6 +256,23 @@ jobs:
           path: sbom-out/*.cdx.json
           retention-days: 90
 
+  osv:
+    name: known vulnerabilities in the lockfiles
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # OSV-Scanner v2.7.1, checked against the release's own SHA256SUMS, then every tracked lockfile against the OSV
+      # databases downloaded fresh (Round 86, the owner's choice of 2026-11-23). Exceptions: osv-scanner.toml.
+      - name: Install OSV-Scanner
+        run: |
+          curl -sSfL -o osv-scanner https://github.com/google/osv-scanner/releases/download/v2.7.1/osv-scanner_linux_amd64
+          echo "fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8  osv-scanner" | sha256sum -c -
+          chmod +x osv-scanner
+
+      - name: Scan every tracked lockfile
+        run: bash scripts/scan_lockfiles.sh ./osv-scanner --download-offline-databases
+
   web:
     name: web typecheck + build
     runs-on: ubuntu-24.04

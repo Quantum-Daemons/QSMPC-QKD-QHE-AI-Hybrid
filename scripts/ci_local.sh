@@ -290,6 +290,18 @@ step "11e/18 The CBOM against the vendored CycloneDX 1.7 schema"
 $PY scripts/validate_cyclonedx.py web/public/cbom/qsh.cdx.json >/tmp/ci_cbom.log 2>&1 \
   && ok "the CBOM validates" || { bad "the CBOM"; tail -8 /tmp/ci_cbom.log; }
 
+step "11m/18 Known vulnerabilities in the lockfiles (OSV-Scanner, offline databases)"
+# CI's job `osv` downloads the databases each run. Here the scanner and a local copy of the databases come from
+# QSH_OSV_SCANNER and QSH_OSV_DB; without them this prints a SKIP, which is not a pass, and QSH_REQUIRE_OSV=1 fails.
+if [ -n "${QSH_OSV_SCANNER:-}" ] && [ -x "${QSH_OSV_SCANNER:-}" ] && [ -d "${QSH_OSV_DB:-}" ]; then
+  OSV_SCANNER_LOCAL_DB_CACHE_DIRECTORY="$QSH_OSV_DB" bash scripts/scan_lockfiles.sh "$QSH_OSV_SCANNER" >/tmp/ci_osv.log 2>&1 \
+    && ok "no advisory outside osv-scanner.toml's exceptions" || { bad "OSV-Scanner"; tail -20 /tmp/ci_osv.log; }
+elif [ "${QSH_REQUIRE_OSV:-}" = "1" ]; then
+  bad "OSV-Scanner: QSH_REQUIRE_OSV=1, and QSH_OSV_SCANNER or QSH_OSV_DB is not set"
+else
+  echo "  SKIP  OSV-Scanner: set QSH_OSV_SCANNER and QSH_OSV_DB to run it here (a skip, not a pass; CI runs it)"
+fi
+
 step "11f/18 The Python walkthrough's record and its notebook"
 # In its own environment: it needs marimo, which the project's lock file does not carry. A new one each run: the step
 # reused /tmp/ci_walkthrough_venv until 2026-11-20, when the system's ten-day /tmp clean-up (systemd-tmpfiles,

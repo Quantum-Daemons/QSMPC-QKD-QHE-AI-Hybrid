@@ -1,0 +1,12 @@
+# Advisories OSV-Scanner reports that this repository accepts, each with the reason and a date to look again
+# (scripts/scan_lockfiles.sh; Round 86, 2026-11-23). An entry past its date stops being ignored.
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0141"
+ignoreUntil = 2027-05-23
+reason = "bincode 2.0.1 is unmaintained: an informational advisory naming no vulnerability. It comes in through polytune, the MPC engine of wasm/qsh-mpc and prototypes/polytune-argmax, which depends on it."
+
+[[IgnoredVulns]]
+id = "GHSA-mrhx-c7xc-m3w5"
+ignoreUntil = 2027-02-23
+reason = "zod 3.25.76, memory exhaustion validating oversized constrained collections, fixed only in zod 4.6.6. It is in prototypes/net-bench/bench only, a measurement harness that is not part of the demo, through mpc-framework 0.3.0, which requires zod ^3.23.8."

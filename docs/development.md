@@ -205,6 +205,18 @@ supported platform, or `ExportWebAssembly.jl` out of WIP.
 
 `scripts/validate_cyclonedx.py` checks all of them against the schema vendored in `schemas/cyclonedx/` (tag 1.7.2, Apache-2.0).
 
+**Known vulnerabilities.** Since 2026-11-23 the `osv` job scans every tracked lockfile, nine that day, with
+OSV-Scanner v2.7.1 (Apache-2.0), checked against its release's SHA-256, against the OSV databases downloaded fresh each
+run (`scripts/scan_lockfiles.sh`; `scripts/ci_local.sh` runs the same scan on a local copy, or says SKIP).
+Exceptions are in `osv-scanner.toml`, each with its reason and a date after which it stops being ignored, and
+`tests/test_r86_osv_scan_covers_every_lockfile.py` fails when a tracked lockfile is missing from the scan. The first
+scan found golang.org/x/crypto 0.45.0 (advisories in ssh, ssh/agent, knownhosts and openpgp; the threshold-aggregation
+module reaches x/crypto only through Lattigo v6.2.0, whose sources import blake2b alone), golang.org/x/sys 0.38.0 (in
+x/sys/windows) and rustix 1.1.5 in both Cargo lockfiles; they were moved to x/crypto 0.59.0, x/sys 0.50.0 and rustix
+1.1.6, and the module's `go` line to 1.26, which x/crypto 0.59.0 requires. Left as exceptions: bincode 2.0.1, an
+"unmaintained" advisory naming no vulnerability, through polytune; and zod 3.25.76 in the net-bench prototype, which is
+not part of the demo, through mpc-framework 0.3.0, which requires zod 3 (the fix is in zod 4).
+
 ## OSS / submodules
 
 **The maintenance rule, in one place** (owner's choice, 2026-11-05): a dependency's project must have moved within the last
