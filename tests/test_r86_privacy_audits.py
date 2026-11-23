@@ -76,12 +76,21 @@ def note_problems(note: str) -> list[str]:
     want.append(f"the square-activation student, LiRA AUC {sq['lira_online']['auc']:.3f} and "
                 f"{_pct(sq['lira_online']['tpr_at_fpr_0.001'])}, "
                 f"{sq['records_exposed_in_most_targets_at_fpr_1e-3']} records exposed")
+    pipe = _load("mia-breastmnist-pipeline-2026-11-23.json")["results"]
+    tl = pipe["teacher"]["lira_online"]
+    want.append(f"The teacher leaks: LiRA AUC {tl['auc']:.3f}, {_pct(tl['tpr_at_fpr_0.001'])[:-8]} percent of members found")
+    want.append(f"{100 * tl['tpr_at_fpr_0.01']:.2f} at 1 and {100 * tl['tpr_at_fpr_0.1']:.2f} at 10")
+    want.append(f"{pipe['teacher']['records_exposed_in_most_targets_at_fpr_1e-3']} of {pipe['teacher']['audit_records']} records")
+    for key, label in (("student", "the CNN student"), ("square_student", "the square student")):
+        lr = pipe[key]["lira_online"]
+        want.append(f"{label}, LiRA AUC {lr['auc']:.3f}")
+        want.append(f"{_pct(lr['tpr_at_fpr_0.001'])[:-8]}")
     return [f"the note does not quote {w!r}" for w in want if w not in flat]
 
 
 def test_the_membership_records_hold_their_own_checks() -> None:
     for name in ("mia-opssat-2026-11-23.json", "mia-telecom-qml-2026-11-23.json", "mia-breastmnist-students-2026-11-23.json",
-                 "mia-fedheart-2026-11-23.json"):
+                 "mia-fedheart-2026-11-23.json", "mia-breastmnist-pipeline-2026-11-23.json"):
         assert mia_problems(_load(name)) == [], name
 
 
