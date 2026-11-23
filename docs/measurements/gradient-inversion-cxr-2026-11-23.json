@@ -1,0 +1,62 @@
+{
+ "what": "gradient inversion of the chest X-ray federation's model from one gradient step, the attack's worst case",
+ "attack": "Geiping, Bauermeister, Droege and Moeller, NeurIPS 2020 (arXiv:2003.14053); reimplemented here",
+ "model": {
+  "key": "medical_fl.cxr_fedavg",
+  "weights_sha256": "24ada521ce977e4d19723628ede9d95d645cea3c25c33c0f3a63d0c9df224dcb",
+  "tied_to_the_published_graph": {
+   "rows": 16,
+   "classes_equal": true,
+   "max_abs_margin_difference_vs_int8_graph": 0.00877,
+   "tied": true
+  }
+ },
+ "victims": "the 4 films of the published eval_sample.json, NIH ChestX-ray14's official test split (public)",
+ "settings": {
+  "iterations": 12000,
+  "tv_weight": 0.1,
+  "signed_gradients": true,
+  "optimiser": "Adam, lr 0.025 on pixels in [0, 1], stepped down 10x at 3/8, 5/8 and 7/8",
+  "loss": "1 - cosine over all parameters' gradients + tv x total variation",
+  "network_mode": "training (batch statistics), as FedAvg's local step",
+  "labels": "known",
+  "augmentation": "none",
+  "device": "cuda"
+ },
+ "results": {
+  "batch_1": {
+   "films": 4,
+   "gradients": 4,
+   "psnr_median": 8.55,
+   "psnr_min": 8.3,
+   "psnr_max": 12.29,
+   "ssim_median": 0.2151,
+   "ssim_max": 0.2843,
+   "baseline_flat_mean_psnr_median": 11.25,
+   "baseline_flat_mean_ssim_median": 0.3911,
+   "baseline_best_other_film_ssim_median": 0.4441,
+   "films_above_best_other_film_ssim": 0
+  },
+  "batch_4": {
+   "films": 4,
+   "gradients": 1,
+   "psnr_median": 9.91,
+   "psnr_min": 8.86,
+   "psnr_max": 11.75,
+   "ssim_median": 0.17,
+   "ssim_max": 0.1878,
+   "baseline_flat_mean_psnr_median": 11.25,
+   "baseline_flat_mean_ssim_median": 0.3911,
+   "baseline_best_other_film_ssim_median": 0.4441,
+   "films_above_best_other_film_ssim": 0
+  }
+ },
+ "reading": "SSIM above the best other film's means the reconstruction resembles THIS film more than any other film in the set does; PSNR and SSIM of a flat image at the mean grey are what knowing nothing gives. One step on few films is the worst case; FedAvg's update after local epochs over thousands of augmented films is much harder to invert, and secure aggregation leaves the aggregator only the sum of the hospitals' updates.",
+ "seconds": 922.5,
+ "environment": {
+  "git": "81b8b18",
+  "python": "3.12.15",
+  "torch": "2.13.0+cu130",
+  "date": "2026-11-23"
+ }
+}

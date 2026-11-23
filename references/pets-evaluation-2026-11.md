@@ -154,7 +154,19 @@ The CPU phase is complete. The GPU jobs, on the owner's approval of 2026-11-23:
   shadows gave the same figures bit for bit (cuDNN deterministic). The teacher's figure is the one that matters for a
   deployment: it is the model trained on the patients' images, and a pipeline that publishes it publishes this.
 
-Still to run, each asked first: gradient inversion on the chest X-ray federation, and the BitcoinTemporalGraph check.
+- **Gradient inversion, the chest X-ray federation** (`gradient-inversion-cxr-2026-11-23.json`): Geiping et al.'s
+  attack (NeurIPS 2020; cosine gradient matching, a total-variation prior, signed Adam), reimplemented, on one gradient
+  step at the published weights, which first reproduce all 16 sample rows' classes of the published graph (margins
+  within 0.009 of its int8 build). This is the defender's worst case, a single step on few films with the labels known,
+  which a real FedAvg update after local epochs over thousands of augmented films is not. At 12,000 iterations, half
+  the paper's budget for ImageNet, no film came back recognisable: median SSIM 0.215 with one film per gradient and
+  0.170 with four, below a flat grey image (0.391) and below the most similar other film (0.444), and none of the 4
+  films was reconstructed closer to itself than its nearest other film. That bounds this attack at this budget; it is
+  not evidence that a hospital's gradient is safe to show the aggregator, which longer runs, restarts or a learned image
+  prior could exploit further. In a deployment the aggregator would see only the hospitals' sum (secure aggregation),
+  or a DP update; this offline study sends the updates in the clear.
+
+Still to run, asked and approved: the BitcoinTemporalGraph check.
 
 ## What each use case could add
 
