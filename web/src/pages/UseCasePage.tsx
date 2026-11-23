@@ -24,6 +24,7 @@ import SatBoundaryCard from "../components/SatBoundaryCard";
 import SatVusPrCard from "../components/SatVusPrCard";
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
+import FinanceAccuracyCost from "../components/FinanceAccuracyCost";
 import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCard";
 import VerificationsCard from "../components/VerificationsCard";
 import PublishedComparisonCard from "../components/PublishedComparisonCard";
@@ -428,6 +429,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} rescore={(artifacts.qcnn_rescore as QcnnRescore | undefined) ?? null} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_mlp ? <MpcMlpPanel report={artifacts.mpc_mlp as MpcMlpReport} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_gnn ? <MpcGnnPanel report={artifacts.mpc_gnn as MpcGnnReport} /> : null}
+      {usecase === "finance_aml" && state === "done" ? <FinanceAccuracyCost metrics={metrics} /> : null}
       {usecase === "finance_aml" && <TransactionGraphCard scoredRow={artifacts?.mpc_mlp ? (artifacts.mpc_mlp as MpcMlpReport).rowIndex : null} />}
       {usecase === "finance_aml" && artifacts?.financeDp ? <FinanceDpCard dp={artifacts.financeDp as FinanceDpArtifact} /> : null}
       {usecase === "finance_aml" && artifacts?.multi_party_psi ? <MultiPsiPanel report={artifacts.multi_party_psi as MultiPsiReport} /> : null}

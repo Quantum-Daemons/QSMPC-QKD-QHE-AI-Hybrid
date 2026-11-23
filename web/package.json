@@ -40,6 +40,7 @@
     "check:relay-pass-pairs": "node scripts/check_relay_pass_pairs.mjs",
     "check:model-cards": "node scripts/check_model_cards.mjs",
     "check:student-cost-rows": "node scripts/check_student_cost_rows.mjs",
+    "check:finance-cost-plot": "node scripts/check_finance_cost_plot.mjs",
     "check:validations-download": "node scripts/check_validations_download.mjs",
     "check:link-contrast": "node scripts/check_link_and_label_contrast.mjs"
   },
