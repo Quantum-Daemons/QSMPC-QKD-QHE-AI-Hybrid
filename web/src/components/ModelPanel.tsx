@@ -611,7 +611,8 @@ function ModelRunner({ usecase, spec }: { usecase: string; spec: ModelSpec }) {
   }
   const blocked =
     // "No trained artifact", not "never trained": IBM's Multi-PNA+EU was trained here as the finance networks' teacher
-    // (its card's notes say so) and ships nothing, so "never trained" contradicted the card it sat under (Round 86).
+    // (its card's notes say so) and shipped nothing until #61 published it (2026-11-18), so "never trained"
+    // contradicted the card it sat under (Round 86). The wording stays for any model trained here but not shipped.
     !spec.achieved ? "no trained artifact in this build, so there is nothing to run - the baseline above is the target, not a result"
     : !spec.hf_repo_id ? "not published on Hugging Face, so this panel has no pinned artefact to fetch"
     : spec.hf_revision_stale && spec.pin_withdrawn_reason ? `its pin is withdrawn: ${spec.pin_withdrawn_reason}`
