@@ -302,6 +302,24 @@ else
   echo "  SKIP  OSV-Scanner: set QSH_OSV_SCANNER and QSH_OSV_DB to run it here (a skip, not a pass; CI runs it)"
 fi
 
+step "11n/18 The CBOM against this repository's rules (sbom-utility) and beside sbom-tools' reading"
+# CI's job `sbom` downloads sbom-utility v1.0.1 and sbom-tools 0.4.0 each run. Here they come from QSH_SBOM_UTILITY and
+# QSH_SBOM_TOOLS (a command: sbom-tools 0.4.0 needs glibc 2.38, so on an older machine it can be a wrapper that runs it in
+# a container); without them this prints a SKIP, which is not a pass, and QSH_REQUIRE_SBOM_TOOLS=1 fails.
+if [ -n "${QSH_SBOM_UTILITY:-}" ] && [ -x "${QSH_SBOM_UTILITY:-}" ] && [ -n "${QSH_SBOM_TOOLS:-}" ]; then
+  SBT_OUT=$(mktemp -d /tmp/ci_sbomtools.XXXXXX)
+  { "$QSH_SBOM_UTILITY" validate -i web/public/cbom/qsh.cdx.json --custom schemas/sbom-utility/qsh-cbom-rules.json --quiet \
+      && { $QSH_SBOM_TOOLS validate "$PWD/web/public/cbom/qsh.cdx.json" --standard pqc --pqc-mode deadline --as-of "$(date -u +%Y-%m-%d)" \
+             --offline -o json -O "$SBT_OUT/pqc.json"; [ $? -le 1 ]; } \
+      && $PY scripts/compare_sbom_tools.py "$SBT_OUT/pqc.json"; } >/tmp/ci_sbomtools.log 2>&1 \
+    && ok "the CBOM keeps this repository's rules, and every difference from sbom-tools is reviewed" \
+    || { bad "sbom-utility or sbom-tools"; tail -12 /tmp/ci_sbomtools.log; }
+elif [ "${QSH_REQUIRE_SBOM_TOOLS:-}" = "1" ]; then
+  bad "sbom-utility and sbom-tools: QSH_REQUIRE_SBOM_TOOLS=1, and QSH_SBOM_UTILITY or QSH_SBOM_TOOLS is not set"
+else
+  echo "  SKIP  sbom-utility and sbom-tools: set QSH_SBOM_UTILITY and QSH_SBOM_TOOLS to run them here (a skip, not a pass; CI runs them)"
+fi
+
 step "11f/18 The Python walkthrough's record and its notebook"
 # In its own environment: it needs marimo, which the project's lock file does not carry. A new one each run: the step
 # reused /tmp/ci_walkthrough_venv until 2026-11-20, when the system's ten-day /tmp clean-up (systemd-tmpfiles,
