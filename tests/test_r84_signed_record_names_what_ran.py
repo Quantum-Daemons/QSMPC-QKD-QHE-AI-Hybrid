@@ -62,6 +62,13 @@ await build({
       export async function secureArgmax(l) {
         let b = 0; for (let i = 1; i < l.length; i++) if (l[i] > l[b]) b = i;
         return { out: [b], compares: Math.max(0, l.length - 1), commBytes: 0, mpcMs: 0, messages: 0, clearOut: [b] };
+      }
+      // The shares' argmax (telecom's student since 2026-11-23): the shares added back modulo 2^32, the first maximum.
+      export const SCALE = 2 ** 20, OFFSET = 512;
+      export async function secureArgmaxShares(a, b) {
+        let best = 0, top = -1;
+        for (let i = 0; i < a.length; i++) { const v = (a[i] + b[i]) >>> 0; if (v > top) { top = v; best = i; } }
+        return { arg: best, mpcMs: 0, bytes: 0, messages: 0, andOps: 0 };
       }` }));
     b.onResolve({ filter: /\.wasm\?url$|qsh_mpc\.js$/ }, (a) => ({ path: a.path, namespace: "stub" }));
     b.onLoad({ filter: /.*/, namespace: "stub" }, () => ({ contents: "export default '';", loader: "js" }));

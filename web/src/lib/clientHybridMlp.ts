@@ -19,6 +19,28 @@ export interface MlpWeights {
 
 export const blockFor = (n: number) => 1 << Math.ceil(Math.log2(Math.max(n, 2)));
 
+/** A published linear student's file (`data/<use case>/student_weights.json`): class scores W x + b over inputs standardised by its own mean and scale. */
+export interface LinearStudentFile {
+  W: number[][]; b?: number[]; input?: { mean?: number[]; scale?: number[] }; classes?: string[]; features?: string[]; n_parameters?: number;
+}
+
+/**
+ * That student as a one-layer MLP with no activation and no clipping, so its class can come from the 2PC argmax on the shares of its masked scores
+ * (Round 86, the owner's choice of 2026-11-23 for telecom). `scaleRow` then computes exactly the student's own (x - mean) / scale.
+ */
+export function linearStudentAsMlp(w: LinearStudentFile, key: string): MlpWeights {
+  const n = w.W[0].length;
+  const layer: MlpLayer = { in: n, out: w.W.length, weight: w.W, bias: w.W.map((_, j) => Number(w.b?.[j] ?? 0)), activation: "none" };
+  return {
+    kind: "mlp", key, n_features: n, features: Array.isArray(w.features) ? w.features : [],
+    scaling: { kind: "standard", center: Array.from({ length: n }, (_, i) => Number(w.input?.mean?.[i] ?? 0)),
+               scale: Array.from({ length: n }, (_, i) => Number(w.input?.scale?.[i]) || 1), clip: Number.POSITIVE_INFINITY },
+    layers: [layer], n_parameters: Number(w.n_parameters) || n * layer.out + layer.out,
+    classes: Object.fromEntries((w.classes ?? []).map((c, k) => [String(k), c])),
+    fixtures: { rows: [], labels: [], logits: [] },
+  };
+}
+
 /** What each layer adds to the run's report. */
 export interface CkksTally { bytes: number; ms: number; statistical: number; maxLayerError: number; clientView: number[] }
 
