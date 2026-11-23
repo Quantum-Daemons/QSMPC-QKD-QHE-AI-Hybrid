@@ -69,7 +69,12 @@ in the owner's chosen words.
   series and each model selected on the validation split's macro-F1, test macro-F1 (mean and standard deviation over the
   seeds) is $`0.547 \pm 0.016`$ for the paper's GBC rerun, $`0.614 \pm 0.014`$ for a class-balanced HistGradientBoosting
   booster, $`0.470 \pm 0.003`$ for the GNN's network without neighbours and $`0.570 \pm 0.007`$ for two GraphSAGE layers
-  over a one-hop sample of 10 neighbours. The neighbours add +0.099 to the same network on all five seeds, most on
+  over a one-hop sample of 10 neighbours. The selection rule was changed once, after a look at seed 0's validation
+  curves: training first kept the epoch of lowest validation loss, as the authors' code does, which stopped the GNN
+  about 0.07 macro-F1 short of its best validation score and the network without neighbours about 0.02, so every model
+  now keeps its best validation macro-F1. Seed 0's test scores under the first rule had been seen before the change;
+  the record keeps every run's lowest-loss epoch and its validation score. The neighbours add +0.099 to the same
+  network on all five seeds, most on
   RANSOMWARE (F1 0.309 against 0.108), but the booster on the node's own features stays ahead of the one-hop GNN on
   every seed. The rerun is within 0.05 of the paper's GBC on five classes and short on EXCHANGE (0.466 against 0.54) and
   above all RANSOMWARE (0.139 against 0.50), where the missing USD amounts may matter, ransoms being priced in dollars;
