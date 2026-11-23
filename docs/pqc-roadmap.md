@@ -247,7 +247,7 @@ and 205, and no FIPS 206 or 207.
 
 | Document | Status | Why it matters here |
 |---|---|---|
-| **NIST SP 800-227** - Recommendations for KEMs | **Final, 2025-09-18** | The combiner reference. This repository's HKDF combiner is a section 4.6.2 two-step KDF (equations 13-14) over the transcript section 4.6.3 binds; it is not that section's KeyCombineCCA_H. |
+| **NIST SP 800-227** - Recommendations for KEMs | **Final, 2025-09-18** | The combiner reference. This repository's HKDF combiner is in the form of section 4.6.2's two-step KDF (equations 13-14), over the transcript section 4.6.3 binds; it is not that section's KeyCombineCCA_H, and it is not validated. |
 | **FIPS 206** (FN-DSA) | **No draft.** 2026-09-28: NIST's FIPS 206 team posted a new plan to the pqc-forum - a single fixed-point signing procedure, validatable by known-answer tests | Nothing to wire yet; the signature registry stays ML-DSA. |
 | **HQC** (FIPS 207) | **No draft** as of 2026-11-22; liboqs 0.16.0, the image's pin, enables it by default (see above) | The backup KEM stays unregistered. |
 | **NIST SP 800-230** (initial public draft) - additional SLH-DSA parameter sets for limited signature use | Released 2026-04-13, comments closed 2026-06-12 | Not used here; tracked because SLH-DSA is the hash-based fallback. |

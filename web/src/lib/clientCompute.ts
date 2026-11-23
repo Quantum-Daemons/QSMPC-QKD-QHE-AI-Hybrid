@@ -2327,7 +2327,7 @@ export function runClientPipeline(
           // The info string is DECODED FROM THE COMBINER, not typed here. It used to be typed,
           // and it printed a separator the run had not used - it omitted the length tag the
           // backend applies. A run log that states what the run did has to read it.
-          + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="${new TextDecoder().decode(hybridCombinerInfo(kemLabel, 32)).replace(/\|$/, "")}" then transcript c1||c2||ek1||ek2: a NIST SP 800-227 s4.6.2 two-step combiner over the s4.6.3 transcript — byte-identical to the backend, asserted by check:combiner`);
+          + `ephemeral public key, combined with HKDF-SHA256(pq_ss || x25519_ss), info="${new TextDecoder().decode(hybridCombinerInfo(kemLabel, 32)).replace(/\|$/, "")}" then transcript c1||c2||ek1||ek2: in the form of NIST SP 800-227 s4.6.2's two-step combiner, over the s4.6.3 transcript; not validated — byte-identical to the backend, asserted by check:combiner`);
         // The handshake's two messages, both safe in the clear, and what each side keeps. The responder (side B) made
         // its key pairs in this tab for the run; the session key never leaves either side.
         message(stage, { from: "b", to: "a", what: `its ${kemLabel} encapsulation key and an X25519 public key`,

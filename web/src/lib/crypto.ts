@@ -85,7 +85,7 @@ export function mlkemDemo(): KemDemo {
     // DERIVED from the combiner, not asserted about it. This read "same as the backend" while
     // the backend had a length tag this side did not, so the sentence was false on the very
     // page that displays it. Printing the actual bytes makes it an observation.
-    combiner: `HKDF-SHA256(pq_ss || x25519_ss), info=${new TextDecoder().decode(hybridCombinerInfo("ML-KEM-768", 32))} then transcript c1||c2||ek1||ek2: an SP 800-227 s4.6.2 two-step combiner over the s4.6.3 transcript`,
+    combiner: `HKDF-SHA256(pq_ss || x25519_ss), info=${new TextDecoder().decode(hybridCombinerInfo("ML-KEM-768", 32))} then transcript c1||c2||ek1||ek2: in the form of SP 800-227 s4.6.2's two-step combiner, over the s4.6.3 transcript; not validated`,
     publicKeyBytes: bob.publicKey.length + bobXPub.length,
     pqcCipherTextBytes: cipherText.length,
     classicalPublicKeyBytes: aliceXPub.length,
