@@ -6401,3 +6401,22 @@ build, the security headers, the walkthrough's own origin). Read on the public s
 - The published comparison's "differs" badge is `rgb(3, 7, 15)` on `rgb(245, 101, 101)` at 12 px bold: 6.66:1, read as
   the computed style in a headless Chrome.
 - The CSP walk passed all 13 pages, every worker and every run, with no violation.
+
+### #87 on the deployed site (2026-11-23)
+
+#87 was merged as b6ea87c on the owner's approval (CI 8 of 8, the local gate on 1094a5f) and deployed. The box serves
+`index-DYOUPQXi.js`; the deploy's checks passed. Read on the public site:
+
+- The finance page, run in a headless Chrome with every tab and disclosure opened, names the six republished revisions
+  (`6bc79977618f`, `22cdddcd939a`, `5d24f8f1a9f4`, `0dec1a118ec2`, `2bd74b9e5139`, `4dc494c57f0d`) and neither revision
+  the two decision-curve records used to pin (`b74d16f36b56`, `c305a104be53`); no page error.
+- `licenses/js-bundle.txt` cites ONNX Runtime's licence from the Internet Archive's copy of 2026-10-18, read 2026-11-22.
+- The served `data/telecom/qcnn_weights_q7.json` carries "No public real QKD-attack capture was found".
+- The deployed stylesheet draws "pausing" and "stopping" as a striped ring around a solid fill.
+
+### #86 on the deployed site (2026-11-23)
+
+#86 was merged as 48bc1d0 on the owner's approval (CI 8 of 8; the local gate passed on d3923d9, and d4248a7, which merged
+main, has the same tree) and deployed. The box serves `index-B7UEX40n.js`; the deploy's checks passed. In Chrome, on all
+eleven routes and the not-found page, the footer is `<main>`'s last element, with the same text and three links: the
+repository, the models' Hub page and the organisation's page; it shows v0.85.0, the version in `web/package.json`.
