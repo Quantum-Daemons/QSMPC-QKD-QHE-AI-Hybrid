@@ -815,6 +815,17 @@ encrypted-aggregation row at $`\epsilon = 1`$ adds its own $`\rho`$. On the geno
 draws fresh noise, so $`k`$ runs of the same count are $`k`$ times one run's $`\rho`$; averaging enough runs recovers
 the count, which is what the guarantee allows for and why a deployment releases once.
 
+**This tab's ledger.** From 2026-11-23 the tab keeps a ledger of the releases it has made (`web/src/lib/dpLedger.ts`):
+each run's genomics count, finance count and medical rows, and the encrypted-aggregation row when its result reaches
+the page, each with its $`\rho`$. Each DP card's panel (`DpLedgerPanel`) shows the run's own $`\epsilon`$ and, once
+there is more, the tab's total, the conversion of $`\sum_i \rho_i`$ at the page's $`\delta`$. The ledger cannot see
+other tabs, earlier visits or anyone else's runs, and a reload empties it. The panel reads each $`\epsilon`$ two ways:
+as the factor $`e^{\epsilon}`$ by which a release can multiply anyone's odds that one person is in the data, exact
+only when $`\delta = 0`$; and as the exact statement, that a test which wrongly flags a fraction $`\alpha`$ of those
+not in the data finds at most $`\min(1,\ e^{\epsilon}\alpha + \delta,\ 1 - e^{-\epsilon}(1 - \delta - \alpha))`$ of
+those who are (Kairouz, Oh and Viswanath, ICML 2015), shown at $`\alpha = 0.05`$. `tests/test_r86_dp_ledger.py` holds
+the composition to `qsh.ai.dp` and checks that every release the page makes is recorded where it is made.
+
 **Inside the encryption.** The medical page's encrypted-aggregation button runs the record-level arm once more at
 $`\epsilon = 1`$ with each step's four noisy vectors summed under threshold BGV (Lattigo v6.2.0, 128-bit smudging),
 the model training on what the four decryption shares open, and compares every step's sum with the masks' sum of the
