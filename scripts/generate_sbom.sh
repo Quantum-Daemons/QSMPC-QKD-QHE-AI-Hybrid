@@ -7,7 +7,7 @@
 #   fedthresh.cdx.json  wasm/qsh-fedthresh, the threshold-aggregation module: the Go modules compiled into it and Go's
 #                     standard library (Round 86), written by its own sbom.py from `go list`
 #
-# Needs cyclonedx-py (cyclonedx-bom 8.0.1), cargo-cyclonedx 0.5.10, npx and Go. CI installs them; the first three are
+# Needs cyclonedx-py (cyclonedx-bom 9.0.0, with cyclonedx-python-lib 11.12), cargo-cyclonedx 0.5.10, npx and Go. CI installs them; the first three are
 # Apache-2.0, Go is BSD-3-Clause.
 # Each file is validated against the vendored schema by scripts/validate_cyclonedx.py afterwards. The output directory is
 # the first argument, sbom-out by default, and is gitignored.

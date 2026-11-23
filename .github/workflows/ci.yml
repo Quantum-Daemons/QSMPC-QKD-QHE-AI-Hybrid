@@ -241,7 +241,7 @@ jobs:
 
       - name: Install the generators
         run: |
-          python -m pip install --quiet "cyclonedx-bom==8.0.1" "jsonschema==4.26.0"
+          python -m pip install --quiet "cyclonedx-bom==9.0.0" "jsonschema==4.26.0"
           cargo install cargo-cyclonedx --version 0.5.10 --locked
 
       - name: Generate the SBOMs
@@ -250,11 +250,119 @@ jobs:
       - name: Validate them and the CBOM against the vendored CycloneDX 1.7 schema
         run: python scripts/validate_cyclonedx.py sbom-out/python.cdx.json sbom-out/web.cdx.json sbom-out/wasm.cdx.json sbom-out/fedthresh.cdx.json web/public/cbom/qsh.cdx.json
 
+      # Three tools the owner chose on 2026-11-23, each pinned and checked against the SHA-256 GitHub records for its
+      # release asset, and run offline. sbom-utility v1.0.1 checks the CBOM against this repository's own rules and fails
+      # the job on a broken one; sbom-tools 0.4.0 reads the CBOM against NIST IR 8547, and scripts/compare_sbom_tools.py
+      # fails the job on a difference from the Validations page's reading that has no review note; sbomqs 2.1.3 scores the
+      # four SBOMs and never fails it. Nothing any of them says is shown on the site.
+      - name: Install sbom-utility, sbom-tools and sbomqs
+        run: |
+          d="$RUNNER_TEMP/sbomtools" && mkdir -p "$d/su" "$d/st" "$d/sq" && cd "$d"
+          curl -sSfL -o su.tgz https://github.com/CycloneDX/sbom-utility/releases/download/v1.0.1/sbom-utility-v1.0.1-linux-amd64.tar.gz
+          curl -sSfL -o st.tgz https://github.com/sbom-tool/sbom-tools/releases/download/v0.4.0/sbom-tools-linux-x86_64.tar.gz
+          curl -sSfL -o sq.tgz https://github.com/interlynk-io/sbomqs/releases/download/v2.1.3/sbomqs_2.1.3_Linux_x86_64.tar.gz
+          printf '%s\n' \
+            "05e62a9b79929203451c25b0ad11cdb3dc3c827cfee024297d1dc12fa25c53a6  su.tgz" \
+            "94e2447f7048059b26f23dbbca87537f3711ddf2871abf668c27829b6f3b86f8  st.tgz" \
+            "c96f07a6a27314c1c268af141af04f1c1b49e61400d7058f6419ca4f7f3bdd6b  sq.tgz" | sha256sum -c -
+          tar -xzf su.tgz -C su && tar -xzf st.tgz -C st && tar -xzf sq.tgz -C sq
+          printf '%s\n' "$d/su" "$d/st" "$d/sq" >> "$GITHUB_PATH"
+
+      - name: The CBOM against this repository's rules (sbom-utility)
+        run: sbom-utility validate -i web/public/cbom/qsh.cdx.json --custom schemas/sbom-utility/qsh-cbom-rules.json --quiet
+
+      - name: The CBOM read against NIST IR 8547 (sbom-tools), beside the Validations page's reading
+        run: |
+          today=$(date -u +%Y-%m-%d)
+          set +e
+          sbom-tools validate web/public/cbom/qsh.cdx.json --standard pqc --pqc-mode deadline --as-of "$today" --offline -o json -O sbom-out/sbom-tools-pqc.json
+          code=$?
+          set -e
+          # 0 compliant, 1 findings (this CBOM has some by design); anything else is the tool failing to run.
+          [ "$code" -le 1 ] || { echo "sbom-tools did not run (exit $code)"; exit 1; }
+          python scripts/compare_sbom_tools.py sbom-out/sbom-tools-pqc.json --write sbom-out/sbom-tools-comparison.json | tee -a "$GITHUB_STEP_SUMMARY"
+          sbom-tools view web/public/cbom/qsh.cdx.json --bom-type cbom --as-of "$today" --offline -o markdown -O sbom-out/sbom-tools-cbom-view.md \
+            || echo "sbom-tools view did not run" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Score the four SBOMs (sbomqs, report only)
+        env:
+          INTERLYNK_DISABLE_VERSION_CHECK: "true"
+        run: |
+          for f in python web wasm fedthresh; do
+            if sbomqs score "sbom-out/$f.cdx.json" --json > "sbom-out/sbomqs-$f.json"; then
+              python -c "import json,sys; x=json.load(open(sys.argv[1]))['files'][0]; print(f\"- {sys.argv[2]}: sbomqs {x['sbom_quality_score']:.2f} ({x['grade']}), {x['num_components']} components\")" "sbom-out/sbomqs-$f.json" "$f.cdx.json" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "- $f.cdx.json: sbomqs could not score it" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done
+
       - uses: actions/upload-artifact@v4
         with:
           name: sbom
-          path: sbom-out/*.cdx.json
+          path: |
+            sbom-out/*.cdx.json
+            sbom-out/sbom-tools-*.json
+            sbom-out/sbom-tools-cbom-view.md
+            sbom-out/sbomqs-*.json
           retention-days: 90
+
+  # cdxgen 13.8.0's view of web/, report only (the owner's choice of 2026-11-23): the standalone binary, checked against
+  # the SHA-256 GitHub records, run on a copy of web/ with licence fetching off and no dependency install. What it finds
+  # is listed beside the CBOM's assets in the job summary; the job never fails the build. 13.9.0 when it is released.
+  cdxgen:
+    name: cdxgen's view of web/ (report only)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      # The summary script below uses only the standard library.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install cdxgen 13.8.0
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/cdxgen" https://github.com/cdxgen/cdxgen/releases/download/v13.8.0/cdxgen-linux-amd64
+          echo "01f2a7f822449242987942ae81da7464dc9d8eed27ae36d33b0f4ddce95e5b43  $RUNNER_TEMP/cdxgen" | sha256sum -c -
+          chmod +x "$RUNNER_TEMP/cdxgen"
+
+      - name: Read a copy of web/
+        env:
+          CDXGEN_SECURE_MODE: "true"
+        run: |
+          cp -r web "$RUNNER_TEMP/web-copy"
+          cd "$RUNNER_TEMP/web-copy"
+          "$RUNNER_TEMP/cdxgen" -t js --include-crypto --evidence --spec-version 1.7 --no-install-deps --no-include-formulation \
+            -o "$RUNNER_TEMP/cdxgen-web.cdx.json" . || echo "cdxgen exited $?" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Its cryptographic assets beside the CBOM's
+        run: python3 scripts/compare_cdxgen_crypto.py "$RUNNER_TEMP/cdxgen-web.cdx.json" web/public/cbom/qsh.cdx.json >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cdxgen
+          path: ${{ runner.temp }}/cdxgen-web.cdx.json
+          if-no-files-found: warn
+          retention-days: 30
+
+  osv:
+    name: known vulnerabilities in the lockfiles
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      # OSV-Scanner v2.7.1, checked against the release's own SHA256SUMS, then every tracked lockfile against the OSV
+      # databases downloaded fresh (Round 86, the owner's choice of 2026-11-23). Exceptions: osv-scanner.toml.
+      - name: Install OSV-Scanner
+        run: |
+          curl -sSfL -o osv-scanner https://github.com/google/osv-scanner/releases/download/v2.7.1/osv-scanner_linux_amd64
+          echo "fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8  osv-scanner" | sha256sum -c -
+          chmod +x osv-scanner
+
+      - name: Scan every tracked lockfile
+        run: bash scripts/scan_lockfiles.sh ./osv-scanner --download-offline-databases
 
   web:
     name: web typecheck + build

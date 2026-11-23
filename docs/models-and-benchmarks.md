@@ -302,7 +302,7 @@ visible number.
   table) in which every date carries who it binds and how firm it is: requirement, proposed rule,
   draft, company target, deferred, or passed.
 - **Validations** - the PQC primitives; the simulated BB84 channel with a sweep of QBER and secure bits
-  against the eavesdropper fraction; the MCP agent call; a secure argmax over a shaped network under two garbled-circuit engines, measured; the CBOM of the cryptography the project calls; and handshakes of the network layer's kinds,
+  against the eavesdropper fraction; the MCP agent call; a secure argmax over a shaped network under two garbled-circuit engines, measured; the CBOM of the cryptography the project calls, read against NIST IR 8547 on a date the reader picks; and handshakes of the network layer's kinds,
   keyed with the page's own material and computed in the tab:
   - an ML-KEM-768 known-answer test against NIST ACVP cases (key generation, encapsulation, and
     decapsulation of valid and modified ciphertexts);

@@ -2,10 +2,11 @@
 
 Implements a *hybrid* construction (a classical ECDH combined with a NIST PQC KEM), the
 kind BSI TR-02102-1 v2026-01 section 2.2 recommends, so the session key is secure as long as
-*either* primitive holds. The combiner is one NIST SP 800-227 section 4.6.2 approves: an
-SP 800-56C two-step KDF with both shared secrets extracted and the transcript in FixedInfo
-(equations 13 and 14), over the inputs section 4.6.3's IND-CCA-preserving combiner binds. It is
-not section 4.6.3's KeyCombineCCA_H itself, which is one SHA-3-family hash over all seven inputs,
+*either* primitive holds. The combiner is in the form of NIST SP 800-227 section 4.6.2's
+two-step combiner: an SP 800-56C two-step KDF with both shared secrets extracted and the
+transcript in FixedInfo (equations 13 and 14), over the inputs section 4.6.3's IND-CCA-preserving
+combiner binds. It is not validated (it has no CAVP or CMVP certificate), and it is not section
+4.6.3's KeyCombineCCA_H itself, which is one SHA-3-family hash over all seven inputs,
 so that section's random-oracle proof applies by analogy rather than verbatim. This said section
 4.6.3 "specifies a combiner for" the construction until Round 75. This is the PQC-first hybrid (FIPS 203 for the ML-KEM half). It is NOT
 a CNSA 2.0 requirement, as this docstring used to say: NSA "will not require NSS
@@ -179,16 +180,16 @@ def encapsulate(pub: HybridPublicKey, *, length: int = 32) -> tuple[HybridCipher
     not rescue it. That is precisely the non-preservation the section warns about.
 
     Scoping it honestly: this demo runs in one process with no network transport and no exposed
-    decapsulation oracle, so this was a conformance and claim-accuracy defect rather than an
-    exploitable break in the shipped artefact. It is fixed because the project's claim is
-    standards-conformance.
+    decapsulation oracle, so this was a claim-accuracy defect rather than an exploitable break in
+    the shipped artefact. It is fixed because the project claims the form of SP 800-227's combiner
+    over that section's transcript, which the old transcript did not have.
 
     The domain separator moves to v2 with the change. Deriving a different key under an unchanged
     label is exactly what domain separation exists to prevent.
 
     What the construction IS: HKDF-SHA256, Extract over K1 || K2 and Expand with the separator and
-    this transcript as info - section 4.6.2's two-step form, which that section approves. Section
-    4.6.3 supplies the transcript, not the function.
+    this transcript as info - in the form of section 4.6.2's two-step combiner; not validated.
+    Section 4.6.3 supplies the transcript, not the function.
     """
     with oqs.KeyEncapsulation(pub.kem_name) as kem:
         _require_length(kem, "length_public_key", pub.mlkem_public, "the ML-KEM encapsulation key")

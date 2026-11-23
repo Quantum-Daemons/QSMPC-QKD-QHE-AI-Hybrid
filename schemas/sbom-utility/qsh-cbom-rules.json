@@ -1,0 +1,62 @@
+{
+  "validation": {
+    "actions": [
+      {
+        "id": "qsh-cbom-document",
+        "description": "The document is CycloneDX 1.7 with a urn:uuid serial number",
+        "selector": {"path": ""},
+        "functions": ["hasProperties"],
+        "properties": [
+          {"key": "bomFormat", "value": "^CycloneDX$"},
+          {"key": "specVersion", "value": "^1\\.7$"},
+          {"key": "serialNumber", "value": "^urn:uuid:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"},
+          {"key": "version"},
+          {"key": "metadata"},
+          {"key": "components"},
+          {"key": "dependencies"}
+        ]
+      },
+      {
+        "id": "qsh-cbom-application",
+        "description": "The application the document describes is qsh, with a semantic version",
+        "selector": {"path": "metadata.component"},
+        "functions": ["hasProperties"],
+        "properties": [
+          {"key": "type", "value": "^application$"},
+          {"key": "bom-ref", "value": "^qsh$"},
+          {"key": "name", "value": "^qsh$"},
+          {"key": "version", "value": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+        ]
+      },
+      {
+        "id": "qsh-cbom-every-asset",
+        "description": "Every asset is a cryptographic asset with a crypto/ bom-ref, a role, its algorithm properties, the repository's two properties and the source files that call it",
+        "selector": {"path": "components"},
+        "functions": ["hasProperties"],
+        "properties": [
+          {"key": "type", "value": "^cryptographic-asset$"},
+          {"key": "bom-ref", "value": "^crypto/[a-z0-9-]+$"},
+          {"key": "name"},
+          {"key": "description"},
+          {"key": "cryptoProperties"},
+          {"key": "properties"},
+          {"key": "evidence"}
+        ]
+      },
+      {
+        "id": "qsh-cbom-the-application-uses-the-assets",
+        "description": "The application has one dependency entry, listing the assets it uses",
+        "selector": {"path": "dependencies", "primaryKey": {"key": "ref", "value": "qsh"}},
+        "functions": ["hasProperties", "isUnique"],
+        "properties": [{"key": "dependsOn"}]
+      },
+      {
+        "id": "qsh-cbom-the-combiner-names-its-inputs",
+        "description": "The hybrid combiner has one dependency entry, listing what it combines",
+        "selector": {"path": "dependencies", "primaryKey": {"key": "ref", "value": "crypto/hybrid-combiner"}},
+        "functions": ["hasProperties", "isUnique"],
+        "properties": [{"key": "dependsOn"}]
+      }
+    ]
+  }
+}

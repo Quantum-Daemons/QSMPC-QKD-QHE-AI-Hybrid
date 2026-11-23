@@ -76,12 +76,38 @@ def note_problems(note: str) -> list[str]:
     want.append(f"the square-activation student, LiRA AUC {sq['lira_online']['auc']:.3f} and "
                 f"{_pct(sq['lira_online']['tpr_at_fpr_0.001'])}, "
                 f"{sq['records_exposed_in_most_targets_at_fpr_1e-3']} records exposed")
+    pipe = _load("mia-breastmnist-pipeline-2026-11-23.json")["results"]
+    tl = pipe["teacher"]["lira_online"]
+    want.append(f"The teacher leaks: LiRA AUC {tl['auc']:.3f}, {_pct(tl['tpr_at_fpr_0.001'])[:-8]} percent of members found")
+    want.append(f"{100 * tl['tpr_at_fpr_0.01']:.2f} at 1 and {100 * tl['tpr_at_fpr_0.1']:.2f} at 10")
+    want.append(f"{pipe['teacher']['records_exposed_in_most_targets_at_fpr_1e-3']} of {pipe['teacher']['audit_records']} records")
+    for key, label in (("student", "the CNN student"), ("square_student", "the square student")):
+        lr = pipe[key]["lira_online"]
+        want.append(f"{label}, LiRA AUC {lr['auc']:.3f}")
+        want.append(f"{_pct(lr['tpr_at_fpr_0.001'])[:-8]}")
     return [f"the note does not quote {w!r}" for w in want if w not in flat]
+
+
+def test_the_gradient_inversion_record_is_tied_and_quoted() -> None:
+    rec = _load("gradient-inversion-cxr-2026-11-23.json")
+    tie = rec["model"]["tied_to_the_published_graph"]
+    assert tie["tied"] and tie["classes_equal"] and tie["rows"] == 16
+    assert tie["max_abs_margin_difference_vs_int8_graph"] <= 0.03
+    r1, r4 = rec["results"]["batch_1"], rec["results"]["batch_4"]
+    assert r1["gradients"] == r1["films"] and r4["gradients"] * 4 == r4["films"]
+    flat = re.sub(r"\s+", " ", NOTE.read_text(encoding="utf-8"))
+    want = [f"{rec['settings']['iterations']:,} iterations",
+            f"median SSIM {r1['ssim_median']:.3f} with one film per gradient and {r4['ssim_median']:.3f} with four",
+            f"below a flat grey image ({r1['baseline_flat_mean_ssim_median']:.3f})",
+            f"below the most similar other film ({r1['baseline_best_other_film_ssim_median']:.3f})",
+            f"none of the {r1['films']} films"]
+    assert [w for w in want if w not in flat] == []
+    assert r1["films_above_best_other_film_ssim"] == 0 and r4["films_above_best_other_film_ssim"] == 0
 
 
 def test_the_membership_records_hold_their_own_checks() -> None:
     for name in ("mia-opssat-2026-11-23.json", "mia-telecom-qml-2026-11-23.json", "mia-breastmnist-students-2026-11-23.json",
-                 "mia-fedheart-2026-11-23.json"):
+                 "mia-fedheart-2026-11-23.json", "mia-breastmnist-pipeline-2026-11-23.json"):
         assert mia_problems(_load(name)) == [], name
 
 

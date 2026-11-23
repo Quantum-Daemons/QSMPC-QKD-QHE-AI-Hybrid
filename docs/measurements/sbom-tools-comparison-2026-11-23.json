@@ -1,0 +1,563 @@
+{
+ "what": "sbom-tools' NIST PQC reading of the CBOM beside the Validations page's, asset by asset; dated tool output, not a compliance statement",
+ "tool": {
+  "name": "sbom-tools",
+  "version": "0.4.0"
+ },
+ "as_of": "2026-11-23",
+ "cbom_sha256": "cbd6f9861109a3a3b87dea61224cc8c723f3d2a4d6fd96490b8a1d7509dd1997",
+ "tool_read_sha256": "cbd6f9861109a3a3b87dea61224cc8c723f3d2a4d6fd96490b8a1d7509dd1997",
+ "tool_summary": {
+  "score": 26,
+  "counts": {
+   "error": 1,
+   "warning": 21,
+   "info": 4,
+   "passed": 4
+  }
+ },
+ "assets": [
+  {
+   "ref": "crypto/ml-kem-768",
+   "name": "ML-KEM-768",
+   "in_house": {
+    "class": "post-quantum",
+    "basis": "Table 5",
+    "quantum_vulnerable": false,
+    "standing": "post-quantum",
+    "label": "Post-quantum; no transition date",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "post-quantum",
+    "rule": "SBOM-PQC-009",
+    "severity": "Pass",
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-009"
+    ]
+   },
+   "agreement": "agree"
+  },
+  {
+   "ref": "crypto/ml-kem-1024",
+   "name": "ML-KEM-1024",
+   "in_house": {
+    "class": "post-quantum",
+    "basis": "Table 5",
+    "quantum_vulnerable": false,
+    "standing": "post-quantum",
+    "label": "Post-quantum; no transition date",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "post-quantum",
+    "rule": "SBOM-PQC-009",
+    "severity": "Pass",
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-009"
+    ]
+   },
+   "agreement": "agree"
+  },
+  {
+   "ref": "crypto/x25519",
+   "name": "X25519",
+   "in_house": {
+    "class": "quantum-vulnerable",
+    "basis": "Section 4.1.2",
+    "quantum_vulnerable": true,
+    "standing": "quantum-vulnerable",
+    "label": "Not named; deprecated after 2030 (section 4.1.2)",
+    "deprecated_after": 2030
+   },
+   "sbom_tools": {
+    "verdict": "quantum-vulnerable",
+    "rule": "SBOM-PQC-001",
+    "severity": "Info",
+    "deadline": "2030-12-31",
+    "rules": [
+     "SBOM-PQC-001"
+    ]
+   },
+   "agreement": "agree"
+  },
+  {
+   "ref": "crypto/ecdh-p256",
+   "name": "ECDH P-256",
+   "in_house": {
+    "class": "quantum-vulnerable",
+    "basis": "Table 4",
+    "quantum_vulnerable": true,
+    "standing": "approved-quantum-vulnerable",
+    "label": "Listed as approved; deprecated after 2030",
+    "deprecated_after": 2030
+   },
+   "sbom_tools": {
+    "verdict": "quantum-vulnerable",
+    "rule": "SBOM-PQC-001",
+    "severity": "Info",
+    "deadline": "2030-12-31",
+    "rules": [
+     "SBOM-PQC-001"
+    ]
+   },
+   "agreement": "agree"
+  },
+  {
+   "ref": "crypto/hkdf-sha256",
+   "name": "HKDF-SHA256",
+   "in_house": {
+    "class": "symmetric",
+    "basis": "Section 4.1.3",
+    "quantum_vulnerable": false,
+    "standing": "symmetric",
+    "label": "Category 1 or above; no transition date",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "no verdict",
+    "rule": null,
+    "severity": null,
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012"
+    ]
+   },
+   "agreement": "no verdict"
+  },
+  {
+   "ref": "crypto/hybrid-combiner",
+   "name": "ML-KEM + X25519 two-step HKDF combiner",
+   "in_house": {
+    "class": "hybrid",
+    "basis": "Sections 3.2.1 and 4.1.2",
+    "quantum_vulnerable": false,
+    "standing": "allowed-composite",
+    "label": "Allowed as a composite (section 3.2.1); not validated",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "quantum-vulnerable",
+    "rule": "SBOM-PQC-001",
+    "severity": "Info",
+    "deadline": "2030-12-31",
+    "rules": [
+     "SBOM-PQC-001",
+     "SBOM-PQC-012"
+    ]
+   },
+   "agreement": "differ",
+   "reviewed": "sbom-tools finds X25519 in the combiner's name and dates the whole combiner as quantum-vulnerable (Table 4). IR 8547 section 3.2.1 allows a composite whose other input comes from an approved scheme even when one input is disallowed, and against a quantum attacker this one rests on ML-KEM; the page shows the combination and both parts. Kept."
+  },
+  {
+   "ref": "crypto/aes-256-gcm",
+   "name": "AES-256-GCM",
+   "in_house": {
+    "class": "symmetric",
+    "basis": "Table 6",
+    "quantum_vulnerable": false,
+    "standing": "symmetric",
+    "label": "Category 5; no transition date",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "no verdict",
+    "rule": null,
+    "severity": null,
+    "deadline": null,
+    "rules": []
+   },
+   "agreement": "no verdict"
+  },
+  {
+   "ref": "crypto/chacha20-poly1305",
+   "name": "ChaCha20-Poly1305",
+   "in_house": {
+    "class": "outside",
+    "basis": "none",
+    "quantum_vulnerable": false,
+    "standing": "not-classified",
+    "label": "Not classified",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "no verdict",
+    "rule": null,
+    "severity": null,
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012"
+    ]
+   },
+   "agreement": "no verdict"
+  },
+  {
+   "ref": "crypto/ml-dsa-65",
+   "name": "ML-DSA-65",
+   "in_house": {
+    "class": "post-quantum",
+    "basis": "Table 3",
+    "quantum_vulnerable": false,
+    "standing": "post-quantum",
+    "label": "Post-quantum; no transition date",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "post-quantum",
+    "rule": "SBOM-PQC-009",
+    "severity": "Pass",
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-009"
+    ]
+   },
+   "agreement": "agree"
+  },
+  {
+   "ref": "crypto/ml-dsa-87",
+   "name": "ML-DSA-87",
+   "in_house": {
+    "class": "post-quantum",
+    "basis": "Table 3",
+    "quantum_vulnerable": false,
+    "standing": "post-quantum",
+    "label": "Post-quantum; no transition date",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "post-quantum",
+    "rule": "SBOM-PQC-009",
+    "severity": "Pass",
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-009"
+    ]
+   },
+   "agreement": "agree"
+  },
+  {
+   "ref": "crypto/sha-256",
+   "name": "SHA-256",
+   "in_house": {
+    "class": "symmetric",
+    "basis": "Table 8",
+    "quantum_vulnerable": false,
+    "standing": "symmetric",
+    "label": "Category 2 (collision), 5 (preimage); no transition date",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "no verdict",
+    "rule": null,
+    "severity": null,
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012"
+    ]
+   },
+   "agreement": "no verdict"
+  },
+  {
+   "ref": "crypto/sha-384",
+   "name": "SHA-384",
+   "in_house": {
+    "class": "symmetric",
+    "basis": "Table 8",
+    "quantum_vulnerable": false,
+    "standing": "symmetric",
+    "label": "Category 4 (collision), 5 (preimage); no transition date",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "no verdict",
+    "rule": null,
+    "severity": null,
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012"
+    ]
+   },
+   "agreement": "no verdict"
+  },
+  {
+   "ref": "crypto/sha-512",
+   "name": "SHA-512",
+   "in_house": {
+    "class": "symmetric",
+    "basis": "Table 8",
+    "quantum_vulnerable": false,
+    "standing": "symmetric",
+    "label": "Category 5 (collision), 5 (preimage); no transition date",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "no verdict",
+    "rule": null,
+    "severity": null,
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012"
+    ]
+   },
+   "agreement": "no verdict"
+  },
+  {
+   "ref": "crypto/shake256",
+   "name": "SHAKE256",
+   "in_house": {
+    "class": "symmetric",
+    "basis": "Table 8",
+    "quantum_vulnerable": false,
+    "standing": "symmetric",
+    "label": "Category 5 (collision), 5 (preimage); no transition date",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "no verdict",
+    "rule": null,
+    "severity": null,
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012"
+    ]
+   },
+   "agreement": "no verdict"
+  },
+  {
+   "ref": "crypto/hmac-sha256",
+   "name": "HMAC-SHA256",
+   "in_house": {
+    "class": "symmetric",
+    "basis": "Section 4.1.3",
+    "quantum_vulnerable": false,
+    "standing": "symmetric",
+    "label": "Category 1 or above; no transition date",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "no verdict",
+    "rule": null,
+    "severity": null,
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012"
+    ]
+   },
+   "agreement": "no verdict"
+  },
+  {
+   "ref": "crypto/blake2s-256",
+   "name": "BLAKE2s-256",
+   "in_house": {
+    "class": "outside",
+    "basis": "none",
+    "quantum_vulnerable": false,
+    "standing": "not-classified",
+    "label": "Not classified",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "no verdict",
+    "rule": null,
+    "severity": null,
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012"
+    ]
+   },
+   "agreement": "no verdict"
+  },
+  {
+   "ref": "crypto/oprf-ristretto255",
+   "name": "OPRF(ristretto255, SHA-512)",
+   "in_house": {
+    "class": "outside",
+    "basis": "none",
+    "quantum_vulnerable": true,
+    "standing": "not-classified",
+    "label": "Not classified; quantum-vulnerable",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "quantum-vulnerable",
+    "rule": "SBOM-PQC-001",
+    "severity": "Info",
+    "deadline": "2030-12-31",
+    "rules": [
+     "SBOM-PQC-001"
+    ]
+   },
+   "agreement": "differ",
+   "reviewed": "Both readings call it quantum-vulnerable. sbom-tools dates it as elliptic-curve DH (Table 4, deprecated after 2030); IR 8547 does not classify oblivious PRFs, so the page gives it no dates. Kept."
+  },
+  {
+   "ref": "crypto/ckks",
+   "name": "CKKS",
+   "in_house": {
+    "class": "outside",
+    "basis": "none",
+    "quantum_vulnerable": false,
+    "standing": "not-classified",
+    "label": "Not classified",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "unclassified",
+    "rule": "SBOM-PQC-ALG-UNKNOWN",
+    "severity": "Warning",
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012",
+     "SBOM-PQC-ALG-UNKNOWN"
+    ]
+   },
+   "agreement": "agree"
+  },
+  {
+   "ref": "crypto/ckks-threshold",
+   "name": "Threshold CKKS",
+   "in_house": {
+    "class": "outside",
+    "basis": "none",
+    "quantum_vulnerable": false,
+    "standing": "not-classified",
+    "label": "Not classified",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "unclassified",
+    "rule": "SBOM-PQC-ALG-UNKNOWN",
+    "severity": "Warning",
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012",
+     "SBOM-PQC-ALG-UNKNOWN"
+    ]
+   },
+   "agreement": "agree"
+  },
+  {
+   "ref": "crypto/bgv-threshold",
+   "name": "Threshold BGV",
+   "in_house": {
+    "class": "outside",
+    "basis": "none",
+    "quantum_vulnerable": false,
+    "standing": "not-classified",
+    "label": "Not classified",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "unclassified",
+    "rule": "SBOM-PQC-ALG-UNKNOWN",
+    "severity": "Warning",
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012",
+     "SBOM-PQC-ALG-UNKNOWN"
+    ]
+   },
+   "agreement": "agree"
+  },
+  {
+   "ref": "crypto/bgv-threshold-committee",
+   "name": "Threshold BGV, 2 of 3",
+   "in_house": {
+    "class": "outside",
+    "basis": "none",
+    "quantum_vulnerable": false,
+    "standing": "not-classified",
+    "label": "Not classified",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "unclassified",
+    "rule": "SBOM-PQC-ALG-UNKNOWN",
+    "severity": "Warning",
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012",
+     "SBOM-PQC-ALG-UNKNOWN"
+    ]
+   },
+   "agreement": "agree"
+  },
+  {
+   "ref": "crypto/wrk17b",
+   "name": "WRK17b authenticated garbling",
+   "in_house": {
+    "class": "outside",
+    "basis": "none",
+    "quantum_vulnerable": true,
+    "standing": "not-classified",
+    "label": "Not classified; quantum-vulnerable",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "quantum-vulnerable",
+    "rule": "SBOM-PQC-001",
+    "severity": "Error",
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-001"
+    ]
+   },
+   "agreement": "differ",
+   "reviewed": "Both readings call it quantum-vulnerable. sbom-tools, finding no algorithm it knows, says no transition applies and makes it an error; IR 8547 does not classify secure computation, so the page gives it no dates. Kept."
+  },
+  {
+   "ref": "crypto/shamir",
+   "name": "Shamir secret sharing",
+   "in_house": {
+    "class": "outside",
+    "basis": "none",
+    "quantum_vulnerable": false,
+    "standing": "not-classified",
+    "label": "Not classified",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "unclassified",
+    "rule": "SBOM-PQC-ALG-UNKNOWN",
+    "severity": "Warning",
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012",
+     "SBOM-PQC-ALG-UNKNOWN"
+    ]
+   },
+   "agreement": "agree"
+  },
+  {
+   "ref": "crypto/csprng",
+   "name": "Platform CSPRNG",
+   "in_house": {
+    "class": "outside",
+    "basis": "none",
+    "quantum_vulnerable": false,
+    "standing": "not-classified",
+    "label": "Not classified",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "unclassified",
+    "rule": "SBOM-PQC-ALG-UNKNOWN",
+    "severity": "Warning",
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012",
+     "SBOM-PQC-ALG-UNKNOWN"
+    ]
+   },
+   "agreement": "agree"
+  }
+ ],
+ "counts": {
+  "agree": 12,
+  "differ": 3,
+  "no verdict": 9
+ },
+ "unreviewed": []
+}

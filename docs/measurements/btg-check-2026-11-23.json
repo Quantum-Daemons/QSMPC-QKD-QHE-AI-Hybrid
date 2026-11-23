@@ -1,0 +1,1176 @@
+{
+ "what": "BitcoinTemporalGraph's entity types (the paper's seven) predicted from a labelled node's own features and, by a GNN, from its one-hop neighbourhood too: a real-data check of whether the graph adds to the features",
+ "not": "a laundering result, a replacement for AMLworld's task, a reproduction of the paper's two-hop GNNs, or a detector of any entity type",
+ "data": {
+  "name": "BitcoinTemporalGraph",
+  "source": "Figshare article 26305093, version 3",
+  "doi": "10.6084/m9.figshare.26305093.v3",
+  "licence": "CC BY 4.0",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "citation": "Schnoering and Vazirgiannis, BitcoinTemporalGraph, figshare (2024), doi:10.6084/m9.figshare.26305093.v3",
+  "archive": {
+   "file": "dataset.tar.gz",
+   "sha256": "6fe7af7dee0e9178145d8bdcfcc09526e44e3be2368b151c2e923fc3f5ac9f99",
+   "bytes": 17387128375,
+   "members_read": [
+    "dataset/toc.dat",
+    "dataset/3617.dat",
+    "dataset/3618.dat"
+   ],
+   "tables": {
+    "node_features": "3618.dat",
+    "transaction_edges": "3617.dat"
+   },
+   "verified_on_both_passes": true
+  },
+  "node_rows": 252219007,
+  "edge_rows": 785954737,
+  "rows_match_the_paper": true,
+  "labelled_nodes": 34098,
+  "labels": {
+   "INDIVIDUAL": 23236,
+   "BET": 6723,
+   "GAMBLING": 1410,
+   "EXCHANGE": 794,
+   "MINING": 724,
+   "PONZI": 587,
+   "RANSOMWARE": 234,
+   "FAUCET": 125,
+   "MARKETPLACE": 115,
+   "MIXER": 80,
+   "BRIDGE": 70
+  },
+  "labelled_nodes_match_the_paper": true,
+  "task_classes": [
+   "EXCHANGE",
+   "MINING",
+   "GAMBLING",
+   "PONZI",
+   "INDIVIDUAL",
+   "RANSOMWARE",
+   "BET"
+  ],
+  "task_nodes": {
+   "EXCHANGE": 794,
+   "MINING": 724,
+   "GAMBLING": 1410,
+   "PONZI": 587,
+   "INDIVIDUAL": 23236,
+   "RANSOMWARE": 234,
+   "BET": 6723
+  },
+  "addresses_csv": {
+   "file_sha256": "a451de6d9974594b0794284769d76c64ad92224ca010485d9265c9102feda283",
+   "rows": 103812,
+   "distinct_addresses": 101387,
+   "rows_without_category": 231,
+   "by_category": {
+    "INDIVIDUAL": 63189,
+    "BET": 16366,
+    "RANSOMWARE": 12539,
+    "GAMBLING": 4718,
+    "EXCHANGE": 2738,
+    "MINING": 1608,
+    "PONZI": 1012,
+    "MARKETPLACE": 406,
+    "FAUCET": 401,
+    "BRIDGE": 370,
+    "MIXER": 234
+   },
+   "by_category_equals_paper_table_4": true,
+   "used": "not for the labels: the dump has no map from addresses to nodes, and node_features carries each labelled node's type, which is what the paper predicts"
+  }
+ },
+ "paper": {
+  "citation": "Schnoering and Vazirgiannis, Bitcoin research with a transaction graph dataset, Scientific Data 12, 404 (2025), doi:10.1038/s41597-025-04684-8 (preprint arXiv:2411.10325)",
+  "url": "https://www.nature.com/articles/s41597-025-04684-8",
+  "table_url": "https://www.nature.com/articles/s41597-025-04684-8/tables/6",
+  "table": "Table 6, performance comparison of the trained models on test split",
+  "split": "the labelled nodes divided at random into 40% training, 30% validation and 30% test",
+  "graph": "undirected; GNNs see a two-hop sample, 10 then 5 neighbours, 12 samples per node",
+  "nodes": 252219007,
+  "edges": 785954737,
+  "labelled_nodes": 34098,
+  "macro_f1": {
+   "GCN": 0.56,
+   "GraphSage": 0.62,
+   "GAT": 0.64,
+   "GIN": 0.63,
+   "GBC": 0.57
+  },
+  "per_class_f1": {
+   "GCN": [
+    0.43,
+    0.45,
+    0.56,
+    0.46,
+    0.88,
+    0.19,
+    0.98
+   ],
+   "GraphSage": [
+    0.51,
+    0.57,
+    0.58,
+    0.55,
+    0.93,
+    0.25,
+    0.98
+   ],
+   "GAT": [
+    0.49,
+    0.57,
+    0.62,
+    0.57,
+    0.93,
+    0.32,
+    0.98
+   ],
+   "GIN": [
+    0.54,
+    0.54,
+    0.62,
+    0.6,
+    0.94,
+    0.21,
+    0.98
+   ],
+   "GBC": [
+    0.54,
+    0.45,
+    0.57,
+    0.3,
+    0.94,
+    0.5,
+    0.89
+   ]
+  },
+  "addresses_by_category": {
+   "INDIVIDUAL": 63189,
+   "BET": 16366,
+   "RANSOMWARE": 12539,
+   "GAMBLING": 4718,
+   "EXCHANGE": 2738,
+   "MINING": 1608,
+   "PONZI": 1012,
+   "MARKETPLACE": 406,
+   "FAUCET": 401,
+   "BRIDGE": 370,
+   "MIXER": 234
+  },
+  "per_class_mean": {
+   "GCN": 0.5643,
+   "GraphSage": 0.6243,
+   "GAT": 0.64,
+   "GIN": 0.6329,
+   "GBC": 0.5986
+  },
+  "gbc_row": "the GBC row's seven per-class F1 average 0.599, not the 0.57 printed as its macro-F1; each GNN row's average is within 0.0043 of its printed macro-F1"
+ },
+ "one_hop": {
+  "edges": 785954737,
+  "edges_with_a_labelled_endpoint": 60042276,
+  "edges_between_two_labelled_nodes": 141302,
+  "self_loops": 0,
+  "distinct_neighbour_pairs": 58375712,
+  "nodes_read": 606761,
+  "sampled_neighbours_unlabelled_or_other": 573053,
+  "neighbours_per_class": {
+   "EXCHANGE": {
+    "nodes": 794,
+    "no_neighbour": 0,
+    "median_neighbours": 16.0,
+    "p90_neighbours": 984.3000000000004
+   },
+   "MINING": {
+    "nodes": 724,
+    "no_neighbour": 1,
+    "median_neighbours": 52.0,
+    "p90_neighbours": 973.4000000000019
+   },
+   "GAMBLING": {
+    "nodes": 1410,
+    "no_neighbour": 0,
+    "median_neighbours": 4.0,
+    "p90_neighbours": 255.60000000000082
+   },
+   "PONZI": {
+    "nodes": 587,
+    "no_neighbour": 0,
+    "median_neighbours": 27.0,
+    "p90_neighbours": 545.3999999999996
+   },
+   "INDIVIDUAL": {
+    "nodes": 23236,
+    "no_neighbour": 9,
+    "median_neighbours": 20.0,
+    "p90_neighbours": 149.0
+   },
+   "RANSOMWARE": {
+    "nodes": 234,
+    "no_neighbour": 0,
+    "median_neighbours": 9.0,
+    "p90_neighbours": 107.0
+   },
+   "BET": {
+    "nodes": 6723,
+    "no_neighbour": 0,
+    "median_neighbours": 5.0,
+    "p90_neighbours": 14.0
+   }
+  },
+  "degree_column_against_the_edges": {
+   "nodes": 33708,
+   "mismatches": 0,
+   "null_degree_and_no_edge": 10
+  },
+  "fanout": 10,
+  "draws": 12,
+  "sampler_seed": 20261123,
+  "direction": "undirected: u is a neighbour of v if either sent to the other; self-loops dropped"
+ },
+ "features": {
+  "names": [
+   "degree",
+   "degree_in",
+   "degree_out",
+   "total_transactions_in",
+   "total_transactions_out",
+   "min_sent",
+   "total_sent",
+   "max_sent",
+   "min_received",
+   "total_received",
+   "max_received",
+   "cluster_size",
+   "cluster_num_edges",
+   "cluster_num_nodes_in_cc",
+   "avg_sent",
+   "avg_received",
+   "age",
+   "degree_age_ratio",
+   "degree_in_age_ratio",
+   "degree_out_age_ratio",
+   "transactions_in_age_ratio",
+   "transactions_out_age_ratio",
+   "cluster_size_age_ratio",
+   "cluster_num_edges_age_ratio",
+   "proportion_nodes_in_cc",
+   "time_before_first_transaction",
+   "degree_out_in_ratio"
+  ],
+  "dropped": "the paper's eight USD conversions, which need a BTC/USD price series the dump does not carry",
+  "networks_and_paper_gbc": "the paper's pre-processing (zeros to missing, log, scaled by the minimum or 5th percentile and the 95th percentile of the training rows, clipped to [0, 1], missing to 0; the share of non-isolated addresses unscaled, missing to 1); for the networks fitted on the training nodes and their sampled neighbours, for the paper's GBC on its training and validation nodes",
+  "hgb": "the same features log-scaled and not clipped; zero, missing or infinite left missing"
+ },
+ "split": {
+  "kind": "stratified by class, 40% training, 30% validation, 30% test",
+  "why": "the paper's split is random (not by time) over the labelled nodes; a stratified split keeps its proportions in every class on every seed",
+  "seeds": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "counts": {
+   "0": {
+    "train": {
+     "EXCHANGE": 317,
+     "MINING": 290,
+     "GAMBLING": 564,
+     "PONZI": 235,
+     "INDIVIDUAL": 9293,
+     "RANSOMWARE": 94,
+     "BET": 2689
+    },
+    "validation": {
+     "EXCHANGE": 238,
+     "MINING": 217,
+     "GAMBLING": 423,
+     "PONZI": 176,
+     "INDIVIDUAL": 6972,
+     "RANSOMWARE": 70,
+     "BET": 2017
+    },
+    "test": {
+     "EXCHANGE": 239,
+     "MINING": 217,
+     "GAMBLING": 423,
+     "PONZI": 176,
+     "INDIVIDUAL": 6971,
+     "RANSOMWARE": 70,
+     "BET": 2017
+    }
+   },
+   "1": {
+    "train": {
+     "EXCHANGE": 317,
+     "MINING": 290,
+     "GAMBLING": 564,
+     "PONZI": 235,
+     "INDIVIDUAL": 9293,
+     "RANSOMWARE": 94,
+     "BET": 2689
+    },
+    "validation": {
+     "EXCHANGE": 238,
+     "MINING": 217,
+     "GAMBLING": 423,
+     "PONZI": 176,
+     "INDIVIDUAL": 6972,
+     "RANSOMWARE": 70,
+     "BET": 2017
+    },
+    "test": {
+     "EXCHANGE": 239,
+     "MINING": 217,
+     "GAMBLING": 423,
+     "PONZI": 176,
+     "INDIVIDUAL": 6971,
+     "RANSOMWARE": 70,
+     "BET": 2017
+    }
+   },
+   "2": {
+    "train": {
+     "EXCHANGE": 317,
+     "MINING": 290,
+     "GAMBLING": 564,
+     "PONZI": 235,
+     "INDIVIDUAL": 9293,
+     "RANSOMWARE": 94,
+     "BET": 2689
+    },
+    "validation": {
+     "EXCHANGE": 238,
+     "MINING": 217,
+     "GAMBLING": 423,
+     "PONZI": 176,
+     "INDIVIDUAL": 6972,
+     "RANSOMWARE": 70,
+     "BET": 2017
+    },
+    "test": {
+     "EXCHANGE": 239,
+     "MINING": 217,
+     "GAMBLING": 423,
+     "PONZI": 176,
+     "INDIVIDUAL": 6971,
+     "RANSOMWARE": 70,
+     "BET": 2017
+    }
+   },
+   "3": {
+    "train": {
+     "EXCHANGE": 317,
+     "MINING": 290,
+     "GAMBLING": 564,
+     "PONZI": 235,
+     "INDIVIDUAL": 9293,
+     "RANSOMWARE": 94,
+     "BET": 2689
+    },
+    "validation": {
+     "EXCHANGE": 238,
+     "MINING": 217,
+     "GAMBLING": 423,
+     "PONZI": 176,
+     "INDIVIDUAL": 6972,
+     "RANSOMWARE": 70,
+     "BET": 2017
+    },
+    "test": {
+     "EXCHANGE": 239,
+     "MINING": 217,
+     "GAMBLING": 423,
+     "PONZI": 176,
+     "INDIVIDUAL": 6971,
+     "RANSOMWARE": 70,
+     "BET": 2017
+    }
+   },
+   "4": {
+    "train": {
+     "EXCHANGE": 317,
+     "MINING": 290,
+     "GAMBLING": 564,
+     "PONZI": 235,
+     "INDIVIDUAL": 9293,
+     "RANSOMWARE": 94,
+     "BET": 2689
+    },
+    "validation": {
+     "EXCHANGE": 238,
+     "MINING": 217,
+     "GAMBLING": 423,
+     "PONZI": 176,
+     "INDIVIDUAL": 6972,
+     "RANSOMWARE": 70,
+     "BET": 2017
+    },
+    "test": {
+     "EXCHANGE": 239,
+     "MINING": 217,
+     "GAMBLING": 423,
+     "PONZI": 176,
+     "INDIVIDUAL": 6971,
+     "RANSOMWARE": 70,
+     "BET": 2017
+    }
+   }
+  },
+  "caveat": "the split is by node, as the paper's: nodes of one entity can fall on both sides, and the dump has no map from addresses to nodes to group them"
+ },
+ "models": {
+  "gbc_paper_setting": "sklearn GradientBoostingClassifier, default settings, fitted on training and validation together on the natural class mix (the paper's GBC)",
+  "hgb_features": "sklearn HistGradientBoostingClassifier, class_weight balanced, grown to 1000 iterations on the training split; the iteration with the best validation macro-F1 is kept",
+  "mlp_features": "the GNN's layers without neighbours: 27-256-7, trained as the GNN",
+  "gnn_one_hop": "two GraphSAGE layers (mean aggregation, root weight) on the one-hop star, 256 hidden, plain PyTorch; test probabilities averaged over the 12 draws",
+  "training": "ReLU, dropout 0.1, Adam lr 0.0001, batch 32, every class resampled each epoch to between 300 and 1500 rows, cross-entropy weighted inversely to the resampled counts (mean weight 1), a random draw per row per epoch, 2000 epochs, the epoch with the best validation macro-F1 kept; each run also records the epoch with the lowest class-balanced validation cross-entropy and the validation macro-F1 there"
+ },
+ "results": {
+  "gbc_paper_setting": {
+   "macro_f1": {
+    "mean": 0.5472164448711843,
+    "std": 0.015986594009358167,
+    "min": 0.5334284516413436,
+    "max": 0.5716014154440889
+   },
+   "per_class_f1": {
+    "EXCHANGE": {
+     "mean": 0.4656668264670844,
+     "std": 0.02067619017641814,
+     "min": 0.4421052631578947,
+     "max": 0.49612403100775193
+    },
+    "MINING": {
+     "mean": 0.4882728027593354,
+     "std": 0.03446231427024839,
+     "min": 0.4484848484848485,
+     "max": 0.53125
+    },
+    "GAMBLING": {
+     "mean": 0.563309264784382,
+     "std": 0.011931478719223862,
+     "min": 0.5448717948717948,
+     "max": 0.5759493670886076
+    },
+    "PONZI": {
+     "mean": 0.29680341265269017,
+     "std": 0.034012808387195906,
+     "min": 0.2644628099173554,
+     "max": 0.34782608695652173
+    },
+    "INDIVIDUAL": {
+     "mean": 0.9418369815638489,
+     "std": 0.000750733558581761,
+     "min": 0.9409399694995148,
+     "max": 0.9429800221975583
+    },
+    "RANSOMWARE": {
+     "mean": 0.13856849924348089,
+     "std": 0.051348597489066915,
+     "min": 0.09195402298850575,
+     "max": 0.21153846153846154
+    },
+    "BET": {
+     "mean": 0.9360573266274678,
+     "std": 0.0022254268736393527,
+     "min": 0.9329135383870186,
+     "max": 0.9387755102040817
+    }
+   },
+   "accuracy": {
+    "mean": 0.9007811727479481,
+    "std": 0.0012866145896825126,
+    "min": 0.8990408385246712,
+    "max": 0.9025017304459606
+   },
+   "per_seed": [
+    {
+     "seed": 0,
+     "macro_f1": 0.5368150116195686,
+     "per_class_f1": {
+      "EXCHANGE": 0.4583333333333333,
+      "MINING": 0.4892966360856269,
+      "GAMBLING": 0.5628930817610063,
+      "PONZI": 0.27755102040816326,
+      "INDIVIDUAL": 0.9414860466726681,
+      "RANSOMWARE": 0.09195402298850575,
+      "BET": 0.9361909400876766
+     },
+     "accuracy": 0.9003263126668645
+    },
+    {
+     "seed": 1,
+     "macro_f1": 0.5334284516413436,
+     "per_class_f1": {
+      "EXCHANGE": 0.4421052631578947,
+      "MINING": 0.4605678233438486,
+      "GAMBLING": 0.5714285714285714,
+      "PONZI": 0.2796610169491525,
+      "INDIVIDUAL": 0.9409399694995148,
+      "RANSOMWARE": 0.10638297872340426,
+      "BET": 0.9329135383870186
+     },
+     "accuracy": 0.8990408385246712
+    },
+    {
+     "seed": 2,
+     "macro_f1": 0.5390768983788916,
+     "per_class_f1": {
+      "EXCHANGE": 0.4751958224543081,
+      "MINING": 0.4484848484848485,
+      "GAMBLING": 0.5448717948717948,
+      "PONZI": 0.31451612903225806,
+      "INDIVIDUAL": 0.94180407371484,
+      "RANSOMWARE": 0.10989010989010989,
+      "BET": 0.9387755102040817
+     },
+     "accuracy": 0.9006229605458321
+    },
+    {
+     "seed": 3,
+     "macro_f1": 0.5716014154440889,
+     "per_class_f1": {
+      "EXCHANGE": 0.456575682382134,
+      "MINING": 0.53125,
+      "GAMBLING": 0.5759493670886076,
+      "PONZI": 0.34782608695652173,
+      "INDIVIDUAL": 0.9429800221975583,
+      "RANSOMWARE": 0.21153846153846154,
+      "BET": 0.9350902879453392
+     },
+     "accuracy": 0.9025017304459606
+    },
+    {
+     "seed": 4,
+     "macro_f1": 0.5551604472720283,
+     "per_class_f1": {
+      "EXCHANGE": 0.49612403100775193,
+      "MINING": 0.5117647058823529,
+      "GAMBLING": 0.5614035087719298,
+      "PONZI": 0.2644628099173554,
+      "INDIVIDUAL": 0.9419747957346628,
+      "RANSOMWARE": 0.17307692307692307,
+      "BET": 0.9373163565132223
+     },
+     "accuracy": 0.9014140215564126
+    }
+   ],
+   "runs": [
+    {
+     "seed": 0,
+     "trees_per_class": 100,
+     "seconds": 47.0
+    },
+    {
+     "seed": 1,
+     "trees_per_class": 100,
+     "seconds": 46.3
+    },
+    {
+     "seed": 2,
+     "trees_per_class": 100,
+     "seconds": 50.3
+    },
+    {
+     "seed": 3,
+     "trees_per_class": 100,
+     "seconds": 46.7
+    },
+    {
+     "seed": 4,
+     "trees_per_class": 100,
+     "seconds": 47.2
+    }
+   ]
+  },
+  "hgb_features": {
+   "macro_f1": {
+    "mean": 0.6140614049512818,
+    "std": 0.01407954845975814,
+    "min": 0.5969046713813917,
+    "max": 0.6299052305335089
+   },
+   "per_class_f1": {
+    "EXCHANGE": {
+     "mean": 0.5331535066027778,
+     "std": 0.027088379128098868,
+     "min": 0.4913151364764268,
+     "max": 0.5654205607476636
+    },
+    "MINING": {
+     "mean": 0.5976938938780669,
+     "std": 0.011320131117097901,
+     "min": 0.5828571428571429,
+     "max": 0.6070460704607046
+    },
+    "GAMBLING": {
+     "mean": 0.5896460386272961,
+     "std": 0.01852109761135587,
+     "min": 0.5619596541786743,
+     "max": 0.6072992700729927
+    },
+    "PONZI": {
+     "mean": 0.40486396410330333,
+     "std": 0.061270363567480716,
+     "min": 0.3484848484848485,
+     "max": 0.47297297297297297
+    },
+    "INDIVIDUAL": {
+     "mean": 0.9481734017610396,
+     "std": 0.0021520374983826345,
+     "min": 0.945794914780665,
+     "max": 0.9507002801120448
+    },
+    "RANSOMWARE": {
+     "mean": 0.27418710727534257,
+     "std": 0.016894583665715814,
+     "min": 0.25,
+     "max": 0.29411764705882354
+    },
+    "BET": {
+     "mean": 0.950711922411146,
+     "std": 0.004107508454714951,
+     "min": 0.9462102689486552,
+     "max": 0.954778782693718
+    }
+   },
+   "accuracy": {
+    "mean": 0.9110451893602294,
+    "std": 0.0026055149858172128,
+    "min": 0.9083358053989914,
+    "max": 0.9143676456046672
+   },
+   "per_seed": [
+    {
+     "seed": 0,
+     "macro_f1": 0.6107835082366752,
+     "per_class_f1": {
+      "EXCHANGE": 0.5323741007194245,
+      "MINING": 0.6065573770491803,
+      "GAMBLING": 0.5850144092219021,
+      "PONZI": 0.3609022556390977,
+      "INDIVIDUAL": 0.9501433466191176,
+      "RANSOMWARE": 0.2857142857142857,
+      "BET": 0.954778782693718
+     },
+     "accuracy": 0.9129832888361515
+    },
+    {
+     "seed": 1,
+     "macro_f1": 0.5969046713813917,
+     "per_class_f1": {
+      "EXCHANGE": 0.4913151364764268,
+      "MINING": 0.5882352941176471,
+      "GAMBLING": 0.6060606060606061,
+      "PONZI": 0.3484848484848485,
+      "INDIVIDUAL": 0.9475375480265456,
+      "RANSOMWARE": 0.25,
+      "BET": 0.9466992665036675
+     },
+     "accuracy": 0.9088302185306042
+    },
+    {
+     "seed": 2,
+     "macro_f1": 0.6057202648031911,
+     "per_class_f1": {
+      "EXCHANGE": 0.5316455696202531,
+      "MINING": 0.5828571428571429,
+      "GAMBLING": 0.5619596541786743,
+      "PONZI": 0.3722627737226277,
+      "INDIVIDUAL": 0.945794914780665,
+      "RANSOMWARE": 0.29411764705882354,
+      "BET": 0.9514041514041514
+     },
+     "accuracy": 0.9083358053989914
+    },
+    {
+     "seed": 3,
+     "macro_f1": 0.6269933498016422,
+     "per_class_f1": {
+      "EXCHANGE": 0.5450121654501217,
+      "MINING": 0.6037735849056604,
+      "GAMBLING": 0.6072992700729927,
+      "PONZI": 0.4696969696969697,
+      "INDIVIDUAL": 0.9466909192668252,
+      "RANSOMWARE": 0.2702702702702703,
+      "BET": 0.9462102689486552
+     },
+     "accuracy": 0.9107089884307327
+    },
+    {
+     "seed": 4,
+     "macro_f1": 0.6299052305335089,
+     "per_class_f1": {
+      "EXCHANGE": 0.5654205607476636,
+      "MINING": 0.6070460704607046,
+      "GAMBLING": 0.5878962536023055,
+      "PONZI": 0.47297297297297297,
+      "INDIVIDUAL": 0.9507002801120448,
+      "RANSOMWARE": 0.2708333333333333,
+      "BET": 0.9544671425055378
+     },
+     "accuracy": 0.9143676456046672
+    }
+   ],
+   "runs": [
+    {
+     "seed": 0,
+     "iterations_grown": 1000,
+     "chosen_iteration": 279,
+     "val_macro_f1": 0.631446,
+     "seconds": 13.2
+    },
+    {
+     "seed": 1,
+     "iterations_grown": 1000,
+     "chosen_iteration": 549,
+     "val_macro_f1": 0.59847,
+     "seconds": 12.8
+    },
+    {
+     "seed": 2,
+     "iterations_grown": 1000,
+     "chosen_iteration": 401,
+     "val_macro_f1": 0.631283,
+     "seconds": 12.7
+    },
+    {
+     "seed": 3,
+     "iterations_grown": 1000,
+     "chosen_iteration": 780,
+     "val_macro_f1": 0.608258,
+     "seconds": 12.1
+    },
+    {
+     "seed": 4,
+     "iterations_grown": 1000,
+     "chosen_iteration": 240,
+     "val_macro_f1": 0.612415,
+     "seconds": 11.1
+    }
+   ]
+  },
+  "mlp_features": {
+   "macro_f1": {
+    "mean": 0.4704637338433623,
+    "std": 0.0025581422504352635,
+    "min": 0.46686746768631654,
+    "max": 0.47405689776461785
+   },
+   "per_class_f1": {
+    "EXCHANGE": {
+     "mean": 0.38542617151133285,
+     "std": 0.025965451184264146,
+     "min": 0.34638196915776986,
+     "max": 0.4184704184704185
+    },
+    "MINING": {
+     "mean": 0.4180430487618262,
+     "std": 0.03212610785120304,
+     "min": 0.36610169491525424,
+     "max": 0.45288753799392095
+    },
+    "GAMBLING": {
+     "mean": 0.4155425381260274,
+     "std": 0.015414729144062568,
+     "min": 0.3944875107665805,
+     "max": 0.4359464627151052
+    },
+    "PONZI": {
+     "mean": 0.23999358151701305,
+     "std": 0.030745895877683085,
+     "min": 0.18617511520737326,
+     "max": 0.2619647355163728
+    },
+    "INDIVIDUAL": {
+     "mean": 0.8090694956245479,
+     "std": 0.008678375071286873,
+     "min": 0.7960224375318715,
+     "max": 0.8197400016560404
+    },
+    "RANSOMWARE": {
+     "mean": 0.10836813187331103,
+     "std": 0.021414222069401273,
+     "min": 0.08727272727272728,
+     "max": 0.14098360655737704
+    },
+    "BET": {
+     "mean": 0.9168031694894777,
+     "std": 0.0024701125328931038,
+     "min": 0.9126117179741807,
+     "max": 0.9186532317522733
+    }
+   },
+   "accuracy": {
+    "mean": 0.7271037278750123,
+    "std": 0.008621068038284857,
+    "min": 0.7143280925541382,
+    "max": 0.7375655097399387
+   },
+   "per_seed": [
+    {
+     "seed": 0,
+     "macro_f1": 0.4705081279693078,
+     "per_class_f1": {
+      "EXCHANGE": 0.4184704184704185,
+      "MINING": 0.4194373401534527,
+      "GAMBLING": 0.3944875107665805,
+      "PONZI": 0.24793388429752067,
+      "INDIVIDUAL": 0.8074659492180931,
+      "RANSOMWARE": 0.08727272727272728,
+      "BET": 0.9184890656063618
+     },
+     "accuracy": 0.7247107683180065
+    },
+    {
+     "seed": 1,
+     "macro_f1": 0.4700371405445502,
+     "per_class_f1": {
+      "EXCHANGE": 0.34638196915776986,
+      "MINING": 0.45288753799392095,
+      "GAMBLING": 0.4359464627151052,
+      "PONZI": 0.18617511520737326,
+      "INDIVIDUAL": 0.8092320604280319,
+      "RANSOMWARE": 0.14098360655737704,
+      "BET": 0.9186532317522733
+     },
+     "accuracy": 0.7274794818550381
+    },
+    {
+     "seed": 2,
+     "macro_f1": 0.46686746768631654,
+     "per_class_f1": {
+      "EXCHANGE": 0.383601756954612,
+      "MINING": 0.36610169491525424,
+      "GAMBLING": 0.418732782369146,
+      "PONZI": 0.2467866323907455,
+      "INDIVIDUAL": 0.8197400016560404,
+      "RANSOMWARE": 0.11555555555555555,
+      "BET": 0.917553849962862
+     },
+     "accuracy": 0.7375655097399387
+    },
+    {
+     "seed": 3,
+     "macro_f1": 0.4708490352520191,
+     "per_class_f1": {
+      "EXCHANGE": 0.38451612903225807,
+      "MINING": 0.4191461836998706,
+      "GAMBLING": 0.4204946996466431,
+      "PONZI": 0.25710754017305315,
+      "INDIVIDUAL": 0.7960224375318715,
+      "RANSOMWARE": 0.10604453870625663,
+      "BET": 0.9126117179741807
+     },
+     "accuracy": 0.7143280925541382
+    },
+    {
+     "seed": 4,
+     "macro_f1": 0.47405689776461785,
+     "per_class_f1": {
+      "EXCHANGE": 0.39416058394160586,
+      "MINING": 0.4326424870466321,
+      "GAMBLING": 0.4080512351326624,
+      "PONZI": 0.2619647355163728,
+      "INDIVIDUAL": 0.8128870292887029,
+      "RANSOMWARE": 0.09198423127463863,
+      "BET": 0.9167079821517105
+     },
+     "accuracy": 0.7314347869079403
+    }
+   ],
+   "runs": [
+    {
+     "seed": 0,
+     "epochs_run": 2000,
+     "chosen_epoch": 1901,
+     "val_macro_f1": 0.475605,
+     "lowest_val_balanced_ce_epoch": 882,
+     "val_macro_f1_there": 0.445381,
+     "parameters": 8967,
+     "train_seconds": 123.0
+    },
+    {
+     "seed": 1,
+     "epochs_run": 2000,
+     "chosen_epoch": 1927,
+     "val_macro_f1": 0.469427,
+     "lowest_val_balanced_ce_epoch": 535,
+     "val_macro_f1_there": 0.436815,
+     "parameters": 8967,
+     "train_seconds": 125.5
+    },
+    {
+     "seed": 2,
+     "epochs_run": 2000,
+     "chosen_epoch": 1815,
+     "val_macro_f1": 0.486911,
+     "lowest_val_balanced_ce_epoch": 757,
+     "val_macro_f1_there": 0.457831,
+     "parameters": 8967,
+     "train_seconds": 125.1
+    },
+    {
+     "seed": 3,
+     "epochs_run": 2000,
+     "chosen_epoch": 1795,
+     "val_macro_f1": 0.468089,
+     "lowest_val_balanced_ce_epoch": 576,
+     "val_macro_f1_there": 0.437165,
+     "parameters": 8967,
+     "train_seconds": 117.6
+    },
+    {
+     "seed": 4,
+     "epochs_run": 2000,
+     "chosen_epoch": 1776,
+     "val_macro_f1": 0.478252,
+     "lowest_val_balanced_ce_epoch": 862,
+     "val_macro_f1_there": 0.452065,
+     "parameters": 8967,
+     "train_seconds": 120.7
+    }
+   ]
+  },
+  "gnn_one_hop": {
+   "macro_f1": {
+    "mean": 0.5699118544414384,
+    "std": 0.006669103980170705,
+    "min": 0.5606087307758271,
+    "max": 0.5763275048964474
+   },
+   "per_class_f1": {
+    "EXCHANGE": {
+     "mean": 0.4523539626177892,
+     "std": 0.01177332366400893,
+     "min": 0.43351063829787234,
+     "max": 0.46614173228346456
+    },
+    "MINING": {
+     "mean": 0.46083494812194664,
+     "std": 0.026424224088193372,
+     "min": 0.4153846153846154,
+     "max": 0.48021828103683495
+    },
+    "GAMBLING": {
+     "mean": 0.5357997668042122,
+     "std": 0.014137593191524758,
+     "min": 0.5233111322549953,
+     "max": 0.5585392051557465
+    },
+    "PONZI": {
+     "mean": 0.37580475589303836,
+     "std": 0.028104240831070805,
+     "min": 0.3328550932568149,
+     "max": 0.4
+    },
+    "INDIVIDUAL": {
+     "mean": 0.8944341463344246,
+     "std": 0.006273696084489757,
+     "min": 0.8840021990104453,
+     "max": 0.8993381560720333
+    },
+    "RANSOMWARE": {
+     "mean": 0.3087338229442039,
+     "std": 0.041878183550470495,
+     "min": 0.24113475177304963,
+     "max": 0.3508771929824561
+    },
+    "BET": {
+     "mean": 0.9614215783744544,
+     "std": 0.003152271790157307,
+     "min": 0.9565004887585533,
+     "max": 0.9646885728298186
+    }
+   },
+   "accuracy": {
+    "mean": 0.8363690299614358,
+    "std": 0.006941320904361485,
+    "min": 0.8252743992880451,
+    "max": 0.8424799762681697
+   },
+   "per_seed": [
+    {
+     "seed": 0,
+     "macro_f1": 0.5606087307758271,
+     "per_class_f1": {
+      "EXCHANGE": 0.45345345345345345,
+      "MINING": 0.48021828103683495,
+      "GAMBLING": 0.5585392051557465,
+      "PONZI": 0.3328550932568149,
+      "INDIVIDUAL": 0.8933717579250721,
+      "RANSOMWARE": 0.24113475177304963,
+      "BET": 0.9646885728298186
+     },
+     "accuracy": 0.8344704835360427
+    },
+    {
+     "seed": 1,
+     "macro_f1": 0.5763275048964474,
+     "per_class_f1": {
+      "EXCHANGE": 0.4539877300613497,
+      "MINING": 0.4672364672364672,
+      "GAMBLING": 0.5233111322549953,
+      "PONZI": 0.4,
+      "INDIVIDUAL": 0.8986559555074927,
+      "RANSOMWARE": 0.33460076045627374,
+      "BET": 0.9565004887585533
+     },
+     "accuracy": 0.8413922673786216
+    },
+    {
+     "seed": 2,
+     "macro_f1": 0.575465743084588,
+     "per_class_f1": {
+      "EXCHANGE": 0.46614173228346456,
+      "MINING": 0.4153846153846154,
+      "GAMBLING": 0.5393939393939394,
+      "PONZI": 0.39410681399631675,
+      "INDIVIDUAL": 0.8993381560720333,
+      "RANSOMWARE": 0.3508771929824561,
+      "BET": 0.9630177514792899
+     },
+     "accuracy": 0.8424799762681697
+    },
+    {
+     "seed": 3,
+     "macro_f1": 0.5657680821729056,
+     "per_class_f1": {
+      "EXCHANGE": 0.43351063829787234,
+      "MINING": 0.4783216783216783,
+      "GAMBLING": 0.531850353892821,
+      "PONZI": 0.36199095022624433,
+      "INDIVIDUAL": 0.8840021990104453,
+      "RANSOMWARE": 0.3081761006289308,
+      "BET": 0.9625246548323472
+     },
+     "accuracy": 0.8252743992880451
+    },
+    {
+     "seed": 4,
+     "macro_f1": 0.5713892112774241,
+     "per_class_f1": {
+      "EXCHANGE": 0.4546762589928058,
+      "MINING": 0.46301369863013697,
+      "GAMBLING": 0.5259042033235581,
+      "PONZI": 0.3900709219858156,
+      "INDIVIDUAL": 0.8968026631570798,
+      "RANSOMWARE": 0.3088803088803089,
+      "BET": 0.9603764239722635
+     },
+     "accuracy": 0.8382280233362999
+    }
+   ],
+   "runs": [
+    {
+     "seed": 0,
+     "epochs_run": 2000,
+     "chosen_epoch": 1491,
+     "val_macro_f1": 0.56852,
+     "lowest_val_balanced_ce_epoch": 426,
+     "val_macro_f1_there": 0.477189,
+     "parameters": 17671,
+     "train_seconds": 269.9
+    },
+    {
+     "seed": 1,
+     "epochs_run": 2000,
+     "chosen_epoch": 1966,
+     "val_macro_f1": 0.565039,
+     "lowest_val_balanced_ce_epoch": 502,
+     "val_macro_f1_there": 0.484763,
+     "parameters": 17671,
+     "train_seconds": 278.4
+    },
+    {
+     "seed": 2,
+     "epochs_run": 2000,
+     "chosen_epoch": 1815,
+     "val_macro_f1": 0.590484,
+     "lowest_val_balanced_ce_epoch": 624,
+     "val_macro_f1_there": 0.511684,
+     "parameters": 17671,
+     "train_seconds": 279.1
+    },
+    {
+     "seed": 3,
+     "epochs_run": 2000,
+     "chosen_epoch": 1543,
+     "val_macro_f1": 0.563494,
+     "lowest_val_balanced_ce_epoch": 540,
+     "val_macro_f1_there": 0.491416,
+     "parameters": 17671,
+     "train_seconds": 274.9
+    },
+    {
+     "seed": 4,
+     "epochs_run": 2000,
+     "chosen_epoch": 1888,
+     "val_macro_f1": 0.571262,
+     "lowest_val_balanced_ce_epoch": 403,
+     "val_macro_f1_there": 0.496392,
+     "parameters": 17671,
+     "train_seconds": 283.0
+    }
+   ]
+  }
+ },
+ "gnn_minus_mlp_macro_f1": {
+  "mean": 0.09944812059807615,
+  "std": 0.007792734906841141,
+  "min": 0.09010060280651927,
+  "max": 0.10859827539827144,
+  "per_seed": [
+   0.09010060280651927,
+   0.10629036435189715,
+   0.10859827539827144,
+   0.09491904692088654,
+   0.0973323135128063
+  ],
+  "seeds_gnn_higher": 5
+ },
+ "gnn_minus_hgb_macro_f1": {
+  "mean": -0.04414955050984337,
+  "std": 0.01790955061481874,
+  "min": -0.06122526762873659,
+  "max": -0.020577166484944343,
+  "per_seed": [
+   -0.050174777460848086,
+   -0.020577166484944343,
+   -0.0302545217186031,
+   -0.06122526762873659,
+   -0.05851601925608474
+  ],
+  "seeds_gnn_higher": 0
+ },
+ "deviations_from_the_paper": [
+  "one hop of neighbours, 10 per draw, where the paper samples two hops (10 then 5) and its code builds one more layer than hops; the owner's scope for this check was one hop",
+  "no USD features (27 features instead of 35)",
+  "a stratified split over five seeds instead of one random split",
+  "resampling and the neighbourhood draw are redrawn every epoch (the paper: every 100 epochs)",
+  "the networks keep the epoch with the best validation macro-F1 over 2000 epochs, where the authors' code keeps the lowest validation loss and stops 50 epochs after it; the lowest-loss epoch is recorded per run",
+  "GraphSAGE only of the paper's four GNNs; the features-only booster and network are additions"
+ ],
+ "runtime_seconds": {
+  "pass_1_labelled_nodes": 178.0,
+  "pass_2_one_hop": 239.7,
+  "total": 2725.2
+ },
+ "environment": {
+  "git": "84fc43a",
+  "script_as_committed": true,
+  "fresh_passes": true,
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "pyarrow": "25.0.0",
+  "sklearn": "1.9.0",
+  "torch": "2.13.0+cu130",
+  "device": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+  "cpu_threads": 8,
+  "date": "2026-11-23"
+ }
+}

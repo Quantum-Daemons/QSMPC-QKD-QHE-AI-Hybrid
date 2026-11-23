@@ -6428,3 +6428,21 @@ repository, the models' Hub page and the organisation's page; it shows v0.85.0, 
 not part of the site. The deploy's checks passed (the box on main at 86d4542, the public name, the security headers and
 the walkthrough's own origin). In Chrome, the Validations page loads that bundle, and the footer is `<main>`'s last
 element, showing v0.85.0.
+
+### #89 on the deployed site (2026-11-23)
+
+#89 was merged as 4caf31e on the owner's approval (CI 8 of 8, the local gate on 3c48e04) and deployed. The box serves
+`index-Dd7Al-OM.js`; the deploy's checks passed. Read on the public site:
+
+- After a run in a headless Chrome, with every tab and disclosure opened: genomics, finance and medical show the ledger panel
+  ("This tab's releases, and what epsilon means"), genomics and finance where the noise is added, genomics the survey it
+  cites, and telecom the QRNG's live health tests and BB84 pulse by pulse; no page error.
+- In Chrome, genomics: one run gives $`\varepsilon = 1.00`$, odds 2.72 and 13.6 percent at 1 in 20; a second run composes to
+  $`\rho = 0.0611`$, $`\varepsilon = 1.46`$, odds 4.31 and 21.5 percent, a 1-in-10 prior moving to at most 32.4 percent.
+- Medical, the square student loaded from its Hub repository and run on 8 images under A2: the ladder reads 4 primes and
+  150 bits, products at scale $`2^{68}`$, then 116, 82 and 48 bits, each rescale back to $`2^{34}`$. The BFV meter's budget
+  reads 146, 114, 81, 48, 15 and 0 bits, and the fifth decryption is wrong (425445 against 328482).
+- Telecom: the QRNG stream passes both tests; stuck at 1, the repetition count fails (24 of 24) while the adaptive
+  proportion passes; after a restart both pass; biased to 3 ones in 4, the adaptive proportion fails (625 of 625) while the
+  repetition count passes. BB84 without Eve: QBER 0.81 percent (95 percent interval 0.52 to 1.25) against the model's
+  1.00; with Eve on half the pulses: 12.39 percent (11.13 to 13.77) against 13.25.
