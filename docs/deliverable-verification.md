@@ -7791,7 +7791,8 @@ each combination on a fresh page could have seen it.
 
 **Open, carried.**
 - This machine's virtual environment runs liboqs 0.14.0 under liboqs-python 0.16.0.2 (a warning at
-  import); the API image builds liboqs 0.16.0, the version the binding expects.
+  import); the API image builds liboqs 0.16.0, the version the binding expects. **Resolved** (read on
+  2026-11-23): the environment runs liboqs 0.16.0 under liboqs-python 0.16.0.2, as a later round's versions record.
 - GitHub still serves the PDFs removed on 2026-10-31 through the pull-request refs, which only GitHub
   Support can drop. **Resolved on 2026-11-02**: this repository was created again without them (Round 86,
   "The history, rewritten"), and the repository that holds those refs is private.
@@ -8061,6 +8062,8 @@ student rather than retrain. Branch `round86-private-inference`, from `main` at 
   models' records carry no clean commit).
 - The node-seal and TenSEAL upgrades, on release (above).
 - A CKKS-friendly student, planned and not started (`docs/findings.md`, "Concerns & recommendations").
+  **Since:** its medical half shipped on 2026-11-19 as `medical_fl.square_student` (#67); the finance half has no
+  candidate yet (`docs/findings.md`).
 
 **The history, rewritten (2026-11-02), by the owner's decision.** The report's earlier versions were still
 retrievable from this repository's public history, by an old commit's raw URL, although the tree no
