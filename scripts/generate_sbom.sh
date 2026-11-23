@@ -5,7 +5,8 @@
 #   web.cdx.json      web/package-lock.json without development dependencies, what the browser bundle can contain
 #   wasm.cdx.json     wasm/qsh-mpc/Cargo.lock, the garbled-circuit module
 #   fedthresh.cdx.json  wasm/qsh-fedthresh, the threshold-aggregation module: the Go modules compiled into it and Go's
-#                     standard library (Round 86), written by its own sbom.py from `go list`
+#                     standard library (Round 86), written by its own sbom.py from `go list`, each module with the
+#                     SHA-256 of the zip `go mod download` verified against go.sum
 #
 # Needs cyclonedx-py (cyclonedx-bom 9.0.0, with cyclonedx-python-lib 11.12), cargo-cyclonedx 0.5.10, npx and Go. CI installs them; the first three are
 # Apache-2.0, Go is BSD-3-Clause.

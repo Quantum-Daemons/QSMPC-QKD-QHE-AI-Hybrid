@@ -18,7 +18,10 @@ wrong: the WASM SBOM said it was made on 1970-01-01, because `SOURCE_DATE_EPOCH=
    python job, where `requirements.lock` is installed);
 5. the result still valid against the vendored CycloneDX 1.7 schema, the generator script calling the step and no
    longer setting `SOURCE_DATE_EPOCH=0`, and CI writing the environment SBOM in the python job before its tests, with
-   the sbom job waiting for that job, still running when it fails, and passing the file on.
+   the sbom job waiting for that job, still running when it fails, and passing the file on;
+6. the threshold-aggregation module's SBOM (`wasm/qsh-fedthresh/sbom.py`, the owner's choice of 2026-11-23): each Go
+   module's hash is the SHA-256 of the zip `go mod download` reports, and a module with an error, no zip or another
+   version stops it. Go is not needed here: the go command's output is replayed.
 """
 
 from __future__ import annotations
@@ -184,3 +187,49 @@ def test_ci_reads_the_licences_in_the_python_job_and_the_sbom_job_waits_for_it()
     assert down["continue-on-error"] is True and down["with"]["name"] == f"python-environment-sbom-{versions[0]}"
     gen = next(s for s in sbom["steps"] if s.get("name") == "Generate the SBOMs")
     assert gen["env"]["QSH_PYTHON_ENVIRONMENT_SBOM"] == down["with"]["path"] + "/python-environment.cdx.json"
+
+
+def _fedthresh_sbom():
+    import sys
+
+    sys.path.insert(0, str(REPO / "wasm" / "qsh-fedthresh"))
+    try:
+        return _module("fedthresh_sbom", "wasm/qsh-fedthresh/sbom.py")
+    finally:
+        sys.path.remove(str(REPO / "wasm" / "qsh-fedthresh"))
+
+
+def test_the_go_modules_hashes_are_their_verified_zips(tmp_path, monkeypatch) -> None:
+    import subprocess
+
+    sbom = _fedthresh_sbom()
+    zips = {}
+    for name, body in (("a", b"module a zip"), ("b", b"module b zip")):
+        zips[name] = tmp_path / f"{name}.zip"
+        zips[name].write_bytes(body)
+    modules = {"example.com/a": ("v1.0.0", tmp_path), "example.com/b/v2": ("v2.1.0", tmp_path)}
+
+    def replay(*reports, code=None):
+        printed = "".join(json.dumps(r, indent="\t") + "\n" for r in reports)
+        failed = 1 if code is None and any("Error" in r for r in reports) else (code or 0)
+        monkeypatch.setattr(sbom.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, failed, stdout=printed, stderr="go: failed"))
+
+    replay({"Path": "example.com/a", "Version": "v1.0.0", "Zip": str(zips["a"]), "Sum": "h1:x"},
+           {"Path": "example.com/b/v2", "Version": "v2.1.0", "Zip": str(zips["b"]), "Sum": "h1:y"})
+    assert sbom.zip_hashes(modules) == {"example.com/a": hashlib.sha256(b"module a zip").hexdigest(),
+                                        "example.com/b/v2": hashlib.sha256(b"module b zip").hexdigest()}
+    for broken in ([{"Path": "example.com/a", "Version": "v1.0.0", "Error": "checksum mismatch"}],
+                   [{"Path": "example.com/a", "Version": "v1.0.0", "Dir": str(tmp_path)}],
+                   [{"Path": "example.com/a", "Version": "v1.0.1", "Zip": str(zips["a"])},
+                    {"Path": "example.com/b/v2", "Version": "v2.1.0", "Zip": str(zips["b"])}],
+                   [{"Path": "example.com/a", "Version": "v1.0.0", "Zip": str(zips["a"])}]):
+        replay(*broken)
+        with pytest.raises(SystemExit):
+            sbom.zip_hashes(modules)
+    replay({"Path": "example.com/a", "Version": "v1.0.0", "Zip": str(zips["a"])},
+           {"Path": "example.com/b/v2", "Version": "v2.1.0", "Zip": str(zips["b"])}, code=1)
+    with pytest.raises(SystemExit):
+        sbom.zip_hashes(modules)
+    script = (REPO / "wasm" / "qsh-fedthresh" / "sbom.py").read_text(encoding="utf-8")
+    assert '"hashes": [{"alg": "SHA-256", "content": hashes[path]}]' in script
+
