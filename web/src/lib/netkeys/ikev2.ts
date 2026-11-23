@@ -224,8 +224,8 @@ export interface Ikev2CaseResult { id: string; prf: string; checks: ValueCheck[]
 
 /** Statements a page must show next to any RFC 9370 / RFC 8784 output. */
 export const IKEV2_NOT_VALIDATED = [
-  "RFC 9370 additional key exchange (SKEYSEED(n), SK_*(n)): no official test vectors exist; computed per RFC 9370 section 2.2.2 from CAVP-validated prf and prf+.",
-  "RFC 8784 PPK mixing (SK_d, SK_pi, SK_pr): no official test vectors exist; computed per RFC 8784 section 3 from the CAVP-validated prf+.",
+  "RFC 9370 additional key exchange (SKEYSEED(n), SK_*(n)): no official test vectors exist; computed per RFC 9370 section 2.2.2 from prf and prf+, which match CAVP's SP 800-135 vectors.",
+  "RFC 8784 PPK mixing (SK_d, SK_pi, SK_pr): no official test vectors exist; computed per RFC 8784 section 3 from prf+, which matches CAVP's SP 800-135 vectors.",
   "The composition of the two (PPK applied after the last RFC 9370 round) is this module's reading; neither RFC defines the combination.",
 ] as const;
 
@@ -500,7 +500,7 @@ export function ikev2KeySchedule(opts: Ikev2DemoOptions = {}): Ikev2KeyScheduleR
       rfc: "RFC 9370 section 2.2.2; draft-ietf-ipsecme-ikev2-mlkem-09",
       formula: "SKEYSEED(1) = prf(SK_d(0), SK(1) | Ni | Nr); {SK_d(1) | ... | SK_pr(1)} = prf+(SKEYSEED(1), Ni | Nr | SPIi | SPIr)",
       validated: false,
-      validatedBy: "no official vectors exist; computed per the RFC text from CAVP-validated prf and prf+ (ML-KEM-768 itself: NIST ACVP)",
+      validatedBy: "no official vectors exist; computed per the RFC text from prf and prf+, which match CAVP's SP 800-135 vectors (ML-KEM-768 itself: NIST ACVP)",
       skeyseedFingerprint: fp16(ake1I.skeyseed),
       keys: fingerprints(ake1I.keys),
       peersAgree: equalBytes(ake1I.skeyseed, ake1R.skeyseed) && sameKeys(ake1I.keys, ake1R.keys),
@@ -513,7 +513,7 @@ export function ikev2KeySchedule(opts: Ikev2DemoOptions = {}): Ikev2KeyScheduleR
       rfc: "RFC 8784 section 3",
       formula: "SK_d = prf+(PPK, SK_d'); SK_pi = prf+(PPK, SK_pi'); SK_pr = prf+(PPK, SK_pr')  (primed = before the PPK)",
       validated: false,
-      validatedBy: "no official vectors exist; computed per the RFC text from the CAVP-validated prf+",
+      validatedBy: "no official vectors exist; computed per the RFC text from prf+, which matches CAVP's SP 800-135 vectors",
       keys: fingerprints(finalI),
       peersAgree: sameKeys(finalI, finalR),
       changedFromPrevious: changed(ake1I.keys, finalI),

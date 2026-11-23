@@ -48,8 +48,8 @@ export default function Overview() {
         {/* Was "validated for finance, healthcare, genomics and telecom/defence". Nothing here is
             validated in any of those settings - the Research PoC note on this page says the
             quantum-channel results are "simulated, not hardware-validated" - and the list left out
-            the fifth use case. */}
-        Demonstrated on finance, healthcare, genomics, telecom/defence and satellite use cases.
+            the fifth use case; the sixth, DeFi lending, came in Round 86. */}
+        Demonstrated on finance, healthcare, genomics, telecom/defence, satellite and DeFi lending use cases.
       </p>
 
       <div className="grid cols-4">
