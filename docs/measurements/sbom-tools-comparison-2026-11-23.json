@@ -5,13 +5,13 @@
   "version": "0.4.0"
  },
  "as_of": "2026-11-23",
- "cbom_sha256": "cbd6f9861109a3a3b87dea61224cc8c723f3d2a4d6fd96490b8a1d7509dd1997",
- "tool_read_sha256": "cbd6f9861109a3a3b87dea61224cc8c723f3d2a4d6fd96490b8a1d7509dd1997",
+ "cbom_sha256": "d708c1ef0a9c6c66c09064208264b22568f47a24c45813834ee56b08bf21b2af",
+ "tool_read_sha256": "d708c1ef0a9c6c66c09064208264b22568f47a24c45813834ee56b08bf21b2af",
  "tool_summary": {
   "score": 26,
   "counts": {
    "error": 1,
-   "warning": 21,
+   "warning": 23,
    "info": 4,
    "passed": 4
   }
@@ -485,6 +485,29 @@
    "agreement": "agree"
   },
   {
+   "ref": "crypto/bfv",
+   "name": "BFV",
+   "in_house": {
+    "class": "outside",
+    "basis": "none",
+    "quantum_vulnerable": false,
+    "standing": "not-classified",
+    "label": "Not classified",
+    "deprecated_after": null
+   },
+   "sbom_tools": {
+    "verdict": "unclassified",
+    "rule": "SBOM-PQC-ALG-UNKNOWN",
+    "severity": "Warning",
+    "deadline": null,
+    "rules": [
+     "SBOM-PQC-012",
+     "SBOM-PQC-ALG-UNKNOWN"
+    ]
+   },
+   "agreement": "agree"
+  },
+  {
    "ref": "crypto/wrk17b",
    "name": "WRK17b authenticated garbling",
    "in_house": {
@@ -555,7 +578,7 @@
   }
  ],
  "counts": {
-  "agree": 12,
+  "agree": 13,
   "differ": 3,
   "no verdict": 9
  },

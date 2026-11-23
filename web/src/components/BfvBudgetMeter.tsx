@@ -2,7 +2,7 @@
 // views). The page's encrypted paths are CKKS, whose limit is the level ladder; BFV's is a noise budget, which falls
 // with each multiplication until decryption fails. The arithmetic is lib/bfvMeter.ts; this panel shows it.
 import { useEffect, useRef, useState } from "react";
-import { BFV_DEMO, type BfvMeter, type BudgetStep, makeBfvMeter } from "../lib/bfvMeter";
+import { BFV_DEMO, BFV_DEMO_COEFF_BITS, type BfvMeter, type BudgetStep, makeBfvMeter } from "../lib/bfvMeter";
 import { loadSeal } from "../lib/clientFHESquare";
 
 export default function BfvBudgetMeter() {
@@ -41,7 +41,9 @@ export default function BfvBudgetMeter() {
       <p className="small" style={{ marginTop: 4 }}>
         The encrypted paths on this page are CKKS, whose limit is the ladder above. BFV, an exact scheme, has a noise budget
         instead: each multiplication spends part of it, and once it is gone decryption returns the wrong number. This
-        encrypts {String(BFV_DEMO.start)} in slot 0 under N = {BFV_DEMO.N}, SEAL&apos;s default 128-bit modulus and a{" "}
+        encrypts {String(BFV_DEMO.start)} in slot 0 under N = {BFV_DEMO.N}, a {BFV_DEMO_COEFF_BITS.reduce((a, b) => a + b, 0)}-bit
+        coefficient modulus ({BFV_DEMO_COEFF_BITS.join(" + ")}, the HomomorphicEncryption.org standard&apos;s 128-bit
+        post-quantum bound at this N) and a{" "}
         {BFV_DEMO.plainBits}-bit plaintext prime t, then squares it on each press. The budget is computed with the secret
         key, so it is read only from this ciphertext, which this tab made: computed for a ciphertext someone else chose, it
         would tell them about the key.

@@ -1,7 +1,7 @@
 {
  "bomFormat": "CycloneDX",
  "specVersion": "1.7",
- "serialNumber": "urn:uuid:2efb7399-d7b5-51b1-be07-6c9c061d4c79",
+ "serialNumber": "urn:uuid:f7ec414b-d70f-5e19-b13f-d8953098e894",
  "version": 1,
  "metadata": {
   "component": {
@@ -919,6 +919,46 @@
   },
   {
    "type": "cryptographic-asset",
+   "bom-ref": "crypto/bfv",
+   "name": "BFV",
+   "description": "The medical page's noise-budget meter beside the square student: one ciphertext this tab makes, squared until its noise budget is spent, on Microsoft SEAL (node-seal)",
+   "cryptoProperties": {
+    "assetType": "algorithm",
+    "algorithmProperties": {
+     "primitive": "other",
+     "executionEnvironment": "software-plain-ram",
+     "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
+     "cryptoFunctions": [
+      "encrypt",
+      "decrypt"
+     ],
+     "parameterSetIdentifier": "N = 8192, Q 40+40+40+41+41 bits (inside the HE standard's post-quantum 202 at N = 8192), a 20-bit batching plaintext prime",
+     "classicalSecurityLevel": 128
+    }
+   },
+   "properties": [
+    {
+     "name": "qsh:standard",
+     "value": "Brakerski, CRYPTO 2012; Fan and Vercauteren, ePrint 2012/144; HomomorphicEncryption.org security standard (2018)"
+    },
+    {
+     "name": "qsh:scope",
+     "value": "browser"
+    }
+   ],
+   "evidence": {
+    "occurrences": [
+     {
+      "location": "web/src/lib/bfvMeter.ts"
+     }
+    ]
+   }
+  },
+  {
+   "type": "cryptographic-asset",
    "bom-ref": "crypto/wrk17b",
    "name": "WRK17b authenticated garbling",
    "description": "The argmax, the CNN's ReLUs, the PSI among banks and the sign of the lending committee's margin modulo t, on Polytune. Its oblivious transfers rest on a discrete-log assumption",
@@ -1058,6 +1098,7 @@
     "crypto/ckks-threshold",
     "crypto/bgv-threshold",
     "crypto/bgv-threshold-committee",
+    "crypto/bfv",
     "crypto/wrk17b",
     "crypto/shamir",
     "crypto/csprng"
