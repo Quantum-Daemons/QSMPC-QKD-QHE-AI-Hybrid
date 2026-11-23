@@ -169,7 +169,8 @@ The CPU phase is complete. The GPU jobs, on the owner's approval of 2026-11-23:
   prior could exploit further. In a deployment the aggregator would see only the hospitals' sum (secure aggregation),
   or a DP update; this offline study sends the updates in the clear.
 
-Still to run, asked and approved: the BitcoinTemporalGraph check.
+The BitcoinTemporalGraph check, asked and approved, ran on 2026-11-23 and shipped in #90: entity types predicted from
+a labelled node's own features and, by a GNN, from its one-hop neighbourhood too (`docs/measurements/btg-check-2026-11-23.json`).
 
 ## What each use case could add
 

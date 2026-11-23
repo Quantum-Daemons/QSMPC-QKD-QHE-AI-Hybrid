@@ -8,12 +8,15 @@ network, and clone-verify before touching the live tree.
 
 ## Run it, do not follow it: `scripts/deploy_demo.sh`
 
-The sequence below is also a script, and the script is the preferred form because its last step,
-returning the demo host to `main` once the round's PR merges, comes due after the session that ran
-the deploy has ended, and as a manual step it was skipped for many rounds.
+The sequence below is also a script, and the script is the preferred form. Under the owner's rule of
+2026-11-14 the demo serves only merged `main`: once a pull request merges, `--return-to-main` checks
+out `origin/main` on the box, rebuilds and starts it, and verifies it, and the pages are then checked
+live. Before the rule a round deployed its branch first and returned the box to `main` after the
+merge; that return came due after the session that ran the deploy had ended, and as a manual step it
+was skipped for many rounds. The script can still deploy a branch, which the rule no longer does.
 
-    bash scripts/deploy_demo.sh <branch>          # deploy, then verify the public name on this box
-    bash scripts/deploy_demo.sh --return-to-main  # after the merge: return the demo host to main
+    bash scripts/deploy_demo.sh --return-to-main  # after the merge: deploy main, verify the public name on this box
+    bash scripts/deploy_demo.sh <branch>          # a branch: the script's other form, not used under the rule
 
 It asserts rather than assumes: the build's exit status is captured, the container's networks are
 checked against the shared-proxy requirement (the 502 trap below), the public name must answer 200
@@ -33,7 +36,7 @@ The steps below remain the reference for what the script does and why, and for w
 Commit, push, then have the server fetch. Copying a working directory to the server ships untracked
 files and silently omits directories that are present locally but never committed - which has
 happened here, and the failure appears at runtime as a missing module, long after the copy reported
-success.
+success. Under the rule above, `<branch>` in steps 2 and 3 is `main` after the merge.
 
     # 1. local: commit and push
     git add -A && git commit && git push -u origin <branch>
