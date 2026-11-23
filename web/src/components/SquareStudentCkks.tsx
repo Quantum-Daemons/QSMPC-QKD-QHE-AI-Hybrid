@@ -8,6 +8,7 @@ import BfvBudgetMeter from "./BfvBudgetMeter";
 import CkksLadder from "./CkksLadder";
 import { modelsFor } from "../lib/config";
 import { type ModelInputFile, publishedSampleOf, publishedWeightsOf } from "../lib/onnxInference";
+import SquareStudentSetsChart, { type SquareTabPoint } from "./SquareStudentSetsChart";
 import StageBadge from "./StageBadge";
 import { EncryptedAgreementChart, type EncryptedAgreementPlot } from "./VerificationChart";
 
@@ -83,6 +84,12 @@ export default function SquareStudentCkks() {
   // The sample's own split and licence fields, which every published sample carries (prep_model_inputs.py) and the
   // shared type leaves undeclared.
   const meta = (file ?? {}) as { split?: string; licence?: string; licence_url?: string; attribution?: string; modifications?: string };
+  // This run on the sets' plot: its largest error and its median time per image, encrypt to decrypt, keys excluded, as
+  // the record times a set.
+  const tabPoint: SquareTabPoint | null = o ? {
+    set: o.set, worst, images: o.runs.length, ranIn: o.ranIn,
+    medianMs: median(o.runs.map((r) => r.ms.encrypt + r.ms.evaluate + r.ms.decrypt)),
+  } : null;
   const plot: EncryptedAgreementPlot | null = o && file ? {
     kind: "encrypted-agreement",
     points: o.runs.map((r, k) => ({
@@ -119,6 +126,7 @@ export default function SquareStudentCkks() {
         (every decrypted logit within {LIMIT.toExponential(0)} of the plaintext one, no decision changed). Both parties
         run in this tab, so the separation is notional.
       </p>
+      <SquareStudentSetsChart run={tabPoint} />
       {!file || !weights ? (
         <button className="btn" onClick={load} disabled={busy != null}>
           {busy ?? "Load the 156 test images and the weights (0.4 MB from the model's Hub repository)"}

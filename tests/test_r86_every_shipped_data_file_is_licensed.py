@@ -49,6 +49,7 @@ AGGREGATES = {
     "medical/pcg_fl.json": "PhysioNet/CinC Challenge 2016",
     "medical/murmur_dp.json": "CirCor and the PhysioNet/CinC Challenge 2016",
     "medical/fedheart_dp_sweep.json": "UCI Heart Disease",
+    "medical/square_student_sets.json": "MedMNIST v2 BreastMNIST",
     "satellite/vus_pr.json": "ESA-ADB",
 }
 #: Fitted numbers.

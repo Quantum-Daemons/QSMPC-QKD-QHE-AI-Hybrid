@@ -1,0 +1,85 @@
+{
+ "_about": "What the medical page's square-student plot draws; written by scripts/export_square_student_sets.py from docs/measurements/medical-square-student-2026-11-19.json. Aggregate figures only.",
+ "source": "docs/measurements/medical-square-student-2026-11-19.json",
+ "timing": "median_s and max_s: the seconds to encrypt, evaluate and decrypt one image, keys excluded",
+ "timed_with": "TenSEAL 0.3.16 in Python 3.12.15 on the development machine, not in a browser",
+ "limit": 0.001,
+ "limit_note": "the pre-registered limit on the largest absolute decrypted-logit error (criterion 3); a set over it is not offered",
+ "sets": {
+  "A": {
+   "N": 8192,
+   "bits": [
+    50,
+    30,
+    30,
+    30,
+    50
+   ],
+   "scale_bits": 30,
+   "modulus_bits": 190,
+   "pq_bound_bits": 202,
+   "images": 156,
+   "max_abs_logit_error": 0.008169292084093449,
+   "median_abs_logit_error": 0.006362791075280021,
+   "median_s": 0.06291752550168894,
+   "max_s": 0.07276674499735236,
+   "input_bytes": 3062594,
+   "output_bytes": 235902,
+   "decisions_differ": 0,
+   "criterion_3": false
+  },
+  "A2": {
+   "N": 8192,
+   "bits": [
+    48,
+    34,
+    34,
+    34,
+    52
+   ],
+   "scale_bits": 34,
+   "modulus_bits": 202,
+   "pq_bound_bits": 202,
+   "images": 156,
+   "max_abs_logit_error": 0.00030554046701603,
+   "median_abs_logit_error": 6.0457781013545375e-05,
+   "median_s": 0.06231442902935669,
+   "max_s": 0.08402403799118474,
+   "input_bytes": 3306365,
+   "output_bytes": 224969,
+   "decisions_differ": 0,
+   "criterion_3": true
+  },
+  "B": {
+   "N": 16384,
+   "bits": [
+    60,
+    40,
+    40,
+    40,
+    60
+   ],
+   "scale_bits": 40,
+   "modulus_bits": 240,
+   "pq_bound_bits": 411,
+   "images": 156,
+   "max_abs_logit_error": 6.137514408344202e-05,
+   "median_abs_logit_error": 1.6893420504204837e-05,
+   "median_s": 0.1308243709790986,
+   "max_s": 0.13777193799614906,
+   "input_bytes": 7701218,
+   "output_bytes": 524582,
+   "decisions_differ": 0,
+   "criterion_3": true
+  }
+ },
+ "attribution": {
+  "provider": "MedMNIST",
+  "dataset": "MedMNIST v2 BreastMNIST, the official test split (156 images)",
+  "download": "https://medmnist.com/",
+  "citation": "Yang, Shi, Wei, Liu, Zhao, Ke, Pfister & Ni, 'MedMNIST v2 - A large-scale lightweight benchmark for 2D and 3D biomedical image classification', Scientific Data 10:41 (2023), and Yang, Shi & Ni, 'MedMNIST Classification Decathlon: A Lightweight AutoML Benchmark for Medical Image Analysis', IEEE ISBI 2021; CC BY 4.0. BreastMNIST is derived from Al-Dhabyani, Gomaa, Khaled & Fahmy, 'Dataset of breast ultrasound images', Data in Brief 28:104863 (2020).",
+  "licence": "CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/"
+ },
+ "modifications": "Aggregate figures only (errors, times and sizes over the 156 test images), computed by this project's square student; no image of the dataset"
+}
