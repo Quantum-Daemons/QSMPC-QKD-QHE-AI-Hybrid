@@ -409,11 +409,11 @@ flowchart TB
   end
   subgraph W2["2. Before the merge"]
     direction LR
-    PR["Pull request: GitHub Actions CI"] --> DB["The branch on the demo: Docker, deployed from git"] --> LB["Live check in a browser"] --> RC["Records: register, log"]
+    PR["Pull request: GitHub Actions CI"] --> AP["The maintainer's approval to merge"]
   end
   subgraph W3["3. After the merge"]
     direction LR
-    MG["Merge to main"] --> DM["Main on the demo again"] --> LM["Live check again"]
+    MG["Merge to main"] --> DM["Main on the demo: Docker, deployed from git"] --> LM["Live check in a browser"] --> RC["Records: register, log"]
   end
   W1 --> W2 --> W3
 ```
@@ -432,7 +432,7 @@ flowchart TB
   end
   subgraph GH["GitHub"]
     direction LR
-    PR["Pull request"] --> ACT["GitHub Actions: Python, web typecheck, build and text layout, SBOMs and the CBOM, repository guards"]
+    PR["Pull request"] --> ACT["GitHub Actions: Python, web typecheck, build and text layout, SBOMs and the CBOM (sbom-utility, sbom-tools, sbomqs), OSV over every lockfile, cdxgen (report only), repository guards"]
     AUD["Audit workflow: npm audit, pip-audit, cargo-deny, upstream checks"]
   end
   subgraph DEMO["Demo host"]
@@ -470,7 +470,7 @@ submodules/    upstream submodules: HEonGPU, hpmpc
 prototypes/    measurement harnesses, not part of the demo: net-bench, polytune-argmax
 spaces/        a Hugging Face Space's card and app, kept but not deployed (docs/findings.md says why)
 references/    primary-source notes and REFERENCES.md
-schemas/       the CycloneDX 1.7 JSON schema, vendored to validate the CBOM and SBOMs
+schemas/       the CycloneDX 1.7 JSON schema, vendored to validate the CBOM and SBOMs; sbom-utility's rules for the CBOM
 scripts/       bootstrap, benchmark, export_config.py, publish_hf.py, deploy_demo.sh, ci_local.sh,
                train/ (per-vertical training), data/ (dataset provenance)
 env/           the venv set-up and the OpenFHE build for EL9

@@ -24,6 +24,9 @@ recorded in [`docs/deliverable-verification.md`](deliverable-verification.md) an
 > without WASM threads key generation can be too slow, and that some parameter sets' keys exceed
 > what it calls WASM's 2 GB memory limit (WebAssembly's own limit is 4 GiB for a 32-bit memory and 16 GiB for a 64-bit one). The narrower thing the search did not find is a peer-reviewed 2025-26 report of CKKS neural-network
 > inference evaluated in a browser tab, and that is an absence of evidence rather than a proof.
+> Outside peer review, a teaching demo, crypto-lab-ckks-lab (2026, re-checked 2026-11-19), runs a
+> two-layer network's forward pass on its own toy CKKS in the browser, with a symmetric key and no
+> claim to be a hardened library.
 > This demo evaluates a real CKKS dot product and a real CKKS convolution in the tab.
 >
 > **So the claim is the composition, not either half:** PQC key establishment to a simulated QKD link

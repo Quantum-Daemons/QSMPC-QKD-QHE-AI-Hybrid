@@ -324,13 +324,15 @@ step "11f/18 The Python walkthrough's record and its notebook"
 # In its own environment: it needs marimo, which the project's lock file does not carry. A new one each run: the step
 # reused /tmp/ci_walkthrough_venv until 2026-11-20, when the system's ten-day /tmp clean-up (systemd-tmpfiles,
 # `Q /tmp 1777 root root 10d`) had removed pip's modules from it and left their directories and metadata, so
-# `python -m venv` on that path kept a pip that could not start.
+# `python -m venv` on that path kept a pip that could not start. Each is removed after the step (2026-11-23): left
+# behind, they had grown to 22 directories and 5.6 GB.
 WT_VENV=$(mktemp -d /tmp/ci_walkthrough_venv.XXXXXX)
 $PY scripts/build_walkthrough.py --check >/tmp/ci_walkthrough.log 2>&1 \
   && python3.12 -m venv "$WT_VENV" >>/tmp/ci_walkthrough.log 2>&1 \
   && "$WT_VENV/bin/pip" install --quiet --require-hashes -r walkthroughs/requirements.lock >>/tmp/ci_walkthrough.log 2>&1 \
   && "$WT_VENV/bin/python" walkthroughs/nidd_copies.py >>/tmp/ci_walkthrough.log 2>&1 \
   && ok "the walkthrough's record is consistent and its notebook runs" || { bad "the walkthrough"; tail -8 /tmp/ci_walkthrough.log; }
+case "$WT_VENV" in /tmp/ci_walkthrough_venv.?*) rm -rf -- "$WT_VENV" ;; esac
 
 step "12/18 Hybrid-KEM combiner parity (Python vectors vs the browser module)"
 (cd web && npm run --silent check:combiner && npm run --silent check:mcp-envelope) \

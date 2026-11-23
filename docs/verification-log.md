@@ -6446,3 +6446,68 @@ element, showing v0.85.0.
   proportion passes; after a restart both pass; biased to 3 ones in 4, the adaptive proportion fails (625 of 625) while the
   repetition count passes. BB84 without Eve: QBER 0.81 percent (95 percent interval 0.52 to 1.25) against the model's
   1.00; with Eve on half the pulses: 12.39 percent (11.13 to 13.77) against 13.25.
+
+### #90 on the deployed site (2026-11-23)
+
+#90 was merged as 3bdedb2 on the owner's approval (all 17 checks; the local gate on 0ff3fea, with OSV-Scanner and the SBOM
+tools run) and deployed. The box serves `index-P2Py_ipU.js`; the deploy's checks passed. Read on the public site:
+
+- The Validations page's CBOM panel, in a headless Chrome: the served file's SHA-256 is the build's and the in-tab check says
+  "valid"; post-quantum 4, symmetric 7, quantum-vulnerable 1 and 1, hybrid 1, outside IR 8547's tables 10; ECDH P-256 and
+  X25519 read "deprecated after 2030" on 2030-12-31, deprecated on 2031-01-01 and disallowed on 2036-01-01; "Run the checks"
+  emits 29 events, the dim nodes fall from 24 to 0 and the combiner's 4 edges appear last; all five broken copies are refused
+  with their path; the validator's chunk loads with the panel; no page error.
+- The hybrid handshake card's combiner row, and the log of a finance run, read "in the form of ... s4.6.2's two-step
+  combiner, over the s4.6.3 transcript; not validated", and neither has the old wording.
+- The first CI run (45123743367): the three tools' release checksums verified; sbom-tools agrees on 12 assets, differs on 3
+  (reviewed) and gives no verdict on 9, as it did locally; sbomqs scores python 3.85 (F), web 4.37 (F), wasm 6.50 (D),
+  fedthresh 4.15 (F); cdxgen 13.8.0 lists 359 components and no cryptographic asset; the `osv` job passes.
+- The layout scan on the public site, which now carries #89's views as well as this panel, passes on every page, after
+  runs, in this machine's system font and in DejaVu Sans.
+
+### One batch: the SBOMs' hashes and licences, version 0.86.0, the prior-art re-run and stale records (2026-11-23)
+
+**What and why.** The owner's choices of 2026-11-23, gathered into one pull request so that gates, merges and deploys
+stay few: the SBOMs' hashes and licences, version 0.86.0, the prior-art re-run of 2026-11-19 (#66, merged into the batch
+with its commits, so the batch's merge closes it), hashes for the threshold-aggregation module's SBOM, and the records a
+sweep of the project's notes found stale.
+
+**Found.**
+
+- The web SBOM had its hashes all along. cyclonedx-npm 6.0.1 writes each package's SHA-512, read from the lockfile's
+  `integrity`, on the package's distribution reference, as cyclonedx-py does for the Python SBOM's files, and sbomqs
+  2.1.3 counts only a component's own `hashes`. On that day's CI file all 151 packages, 3 of them nested, agreed with
+  `web/package-lock.json`; copied onto the components, they take the web SBOM's score from 5.25 to 6.89.
+- This machine cannot give the Python SBOM its licences: its virtualenv is not the locked environment (55 of the lock's
+  121 packages at the locked version). cyclonedx-py's environment mode therefore runs in CI's python job, where
+  `requirements.lock` is installed with its hashes, and the `sbom` job waits for that job.
+- `go mod download -json` exits 1 when a module fails and still prints that module's object with its `Error`, so the
+  module SBOM's writer reads the objects before the exit code. The format was read offline in a Go 1.26 image, with the
+  proxy and the network off, on two cached modules and one that was not.
+- A shared editable install answers `importlib.metadata` with the main checkout's version. After the bump,
+  `tests/test_r86_the_version_has_one_source.py` failed in the batch's worktree under the shared virtualenv, so the gate
+  ran under one of its own that adds the shared site-packages and installs this tree's `qsh`.
+- CycloneDX 1.7 calls the creator of a BOM made by an automated process `metadata.manufacturer` and keeps `authors` for
+  hand-written ones. The SBOMs name their manufacturer and write no `compositions`: an aggregate of "complete" says no
+  further component or dependency is known, and requirements mode records no dependency graph.
+- Two dated page lines, re-read at their sources. The IETF Datatracker still has draft-ietf-ipsecme-ikev2-mlkem at -09:
+  IESG state "RFC Ed Queue", RFC Editor state "In Progress", no RFC number, and IANA's key exchange method 36,
+  ml-kem-768, cites the draft. The Federal Register still has no FAR proposed rule on PQC: since 2026-06-22 the FAR's own
+  proposed rules are the Revolutionary FAR Overhaul's parts of 2026-06-23 and 2026-09-18, and the only document naming
+  quantum and the FAR is the order itself.
+- #66's source, re-read at origin: crypto-lab-ckks-lab is MIT, created 2026-04-12 and public, and its README calls it a
+  teaching demo, not a hardened or audited library, with symmetric encryption and no public key. One row of `/value`
+  conflicted with main, which had added the Safhire row above it; the batch keeps that row and takes #66's text for the
+  browser row, whose square student runs under B or the addendum's A2, both pre-registered.
+- Stale records the sweep found: the runbook and the README's workflow figure still deployed the branch before the merge,
+  which the owner's rule of 2026-11-14 replaced with merged `main` only; `references/pets-evaluation-2026-11.md` still
+  listed the BitcoinTemporalGraph check as to be run, though it shipped in #90; the README's repository layout did not
+  name sbom-utility's rules.
+
+**Checks.** `tests/test_r86_sbom_metadata.py`: the web hashes are the lockfile's and must equal cyclonedx-npm's, nested
+packages included, and every integrity in the real lockfile is one the step reads; the Python licences come only from the
+same package at the same version; the Go hashes are the reported zips', and a module with an error, no zip or another
+version stops the writer, against the go command's output replayed; the manufacturer is the supplier and there are no
+authors or compositions; CI writes the environment SBOM before its tests, and the `sbom` job waits for the python job,
+still runs when it fails and passes the file on. The page-claims test holds the ML-KEM date in the module and the card
+equal.

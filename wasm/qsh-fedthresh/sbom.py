@@ -5,12 +5,15 @@ Run by scripts/generate_sbom.sh with Go on the path, only the standard library b
     python3 sbom.py <output.cdx.json>
 
 The module set is the one notices.py lists (`GOOS=js GOARCH=wasm go list -deps ./cmd/wasm`), with the licences detected
-the same way from each module's own licence files. The document is deterministic: no timestamp, and a serial number
-derived from its content, as the other SBOMs are made with --output-reproducible.
+the same way from each module's own licence files. Each module's hash is the SHA-256 of its zip as `go mod download`
+left it in the module cache, the file Go fetched and checked against go.sum (Round 86, 2026-11-23); the standard
+library ships with Go and has none. The document is deterministic: no timestamp, and a serial number derived from its
+content, as the other SBOMs are made with --output-reproducible.
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -37,6 +40,38 @@ def licence_of(d: Path) -> dict:
     return {"license": {"id": ids[0]}} if len(ids) == 1 else {"expression": " AND ".join(ids)}
 
 
+def json_objects(text: str) -> list[dict]:
+    """The JSON objects a go command prints one after another with -json."""
+    decoder, objects, at = json.JSONDecoder(), [], 0
+    while at < len(text):
+        if text[at].isspace():
+            at += 1
+            continue
+        obj, at = decoder.raw_decode(text, at)
+        objects.append(obj)
+    return objects
+
+
+def zip_hashes(modules: dict[str, tuple[str, Path]]) -> dict[str, str]:
+    """The SHA-256 of each module's zip in the module cache, by module path. `go mod download` checks a zip against
+    go.sum before it keeps it, so this is the hash of the file Go verified. A module it reports an error for, or one
+    with no zip (a directory replacement), stops the script: the SBOM states a hash for every module or for none."""
+    run = subprocess.run(["go", "mod", "download", "-json", *(f"{p}@{v}" for p, (v, _) in sorted(modules.items()))],
+                         capture_output=True, text=True)
+    found = {}
+    # It exits 1 when a module fails, and still prints that module's object with its Error.
+    for info in json_objects(run.stdout):
+        if info.get("Error") or not info.get("Zip"):
+            sys.exit(f"sbom: no verified zip for {info.get('Path')}@{info.get('Version')}: {info.get('Error', 'no Zip')}")
+        found[info["Path"]] = (info["Version"], hashlib.sha256(Path(info["Zip"]).read_bytes()).hexdigest())
+    if run.returncode != 0:
+        sys.exit(f"sbom: go mod download exited {run.returncode}: {run.stderr.strip()[:300]}")
+    missing = sorted(p for p, (v, _) in modules.items() if found.get(p, (None,))[0] != v)
+    if missing:
+        sys.exit(f"sbom: go mod download did not report {', '.join(missing)} at the listed versions")
+    return {p: h for p, (_, h) in found.items()}
+
+
 def main(out: str) -> None:
     env = dict(os.environ, GOOS="js", GOARCH="wasm")
     listing = subprocess.run(["go", "list", "-deps", "-json", "./cmd/wasm"], env=env, check=True,
@@ -51,10 +86,11 @@ def main(out: str) -> None:
     components = [{"type": "library", "bom-ref": f"pkg:golang/std@{gover}", "name": "std", "version": gover,
                    "description": "Go standard library and runtime, compiled into the module; wasm_exec.js ships beside it",
                    "purl": f"pkg:golang/std@{gover}", "licenses": [licence_of(goroot)]}]
+    hashes = zip_hashes(modules)
     for path, (version, d) in sorted(modules.items()):
         purl = f"pkg:golang/{path}@{version}"
         components.append({"type": "library", "bom-ref": purl, "name": path, "version": version, "purl": purl,
-                           "licenses": [licence_of(d)]})
+                           "hashes": [{"alg": "SHA-256", "content": hashes[path]}], "licenses": [licence_of(d)]})
     body = {
         "bomFormat": "CycloneDX", "specVersion": "1.7", "version": 1,
         "metadata": {"component": {"type": "library", "bom-ref": "qsh-fedthresh", "name": "qsh-fedthresh",

@@ -179,7 +179,7 @@ document on 2026-08-15; `references/REFERENCES.md` records the two ways an earli
   2030-12-31 and digital signatures by 2031-12-31 (section 4(b)). For contractors, section 6(c) directs
   the FAR Council to publish a *proposed* rule within 180 days (about 2026-12-19) amending the FAR to
   require covered contractors to comply by 2030-12-31 with NIST's FIPS, including all applicable FIPS
-  incorporating PQC algorithms; none had appeared in the Federal Register as of 2026-11-15 (its API: since
+  incorporating PQC algorithms; none had appeared in the Federal Register as of 2026-11-23 (its API: since
   2026-06-22 the FAR's proposed rules are the Revolutionary FAR Overhaul's parts of 2026-06-23 and 2026-09-18,
   none mentioning post-quantum, and the only document mentioning quantum and the FAR is the order itself).
   **National Security Systems are excluded** and stay on CNSA 2.0. This is the binding US

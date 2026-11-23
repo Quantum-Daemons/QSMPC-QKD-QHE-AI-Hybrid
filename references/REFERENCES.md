@@ -672,6 +672,13 @@ to WebAssembly for browsers. No WebGPU-accelerated homomorphic-encryption or MPC
 for 2025-2026 either, which is consistent with the note in `web/src/lib/clientFHE.ts` that no
 commercial-OK WebGPU FHE exists in 2026. Absence of evidence is recorded as absence of evidence: the
 searches and their dates are here so the next round can re-run them rather than re-reason.
+[Re-run 2026-11-19: three web searches (homomorphic-encryption neural-network inference in a browser or
+WebAssembly; client-side CKKS or WebGPU private inference; IACR ePrint 2026 on FHE, WebAssembly and neural
+networks) found no peer-reviewed report. Found outside peer review: crypto-lab-ckks-lab
+(github.com/systemslibrarian/crypto-lab-ckks-lab, MIT, created 2026-04-12; read: its README through the
+GitHub API), a teaching demo that runs a two-layer network's forward pass, with a quadratic activation, on
+its own CKKS in the browser; its encryption is symmetric, with no public key, and it says it is not a
+hardened or audited library. `/value` and `docs/use-cases.md` name it.]
 
 ## Hybrid FHE/MPC private inference: the 2026 state of the art, and an attack on the nearest design
 

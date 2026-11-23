@@ -73,19 +73,27 @@ audit_polytune() {
   rev=$(sed -n 's/^polytune = .*rev = "\([0-9a-f]\{40\}\)".*/\1/p' wasm/qsh-mpc/Cargo.toml)
   [ -n "$rev" ] || { echo "polytune: no pinned rev in wasm/qsh-mpc/Cargo.toml" >&2; return 1; }
   api=${POLYTUNE_API:-polytune_api}
-  issue63=$($api "repos/sine-fdn/polytune/issues/63") || return 1
-  issue100=$($api "repos/sine-fdn/polytune/issues/100") || return 1
-  compare=$($api "repos/sine-fdn/polytune/compare/$rev...main") || return 1
-  ISSUE63=$issue63 ISSUE100=$issue100 COMPARE=$compare node -e '
+  # The responses go to files, not environment variables: on 2026-11-23 the compare past the pin was 139,155 bytes,
+  # over Linux's 131,072-byte limit on one environment string, and node never started ("Argument list too long").
+  dir=$(mktemp -d) || return 1
+  if ! { $api "repos/sine-fdn/polytune/issues/63" > "$dir/issue63.json" \
+         && $api "repos/sine-fdn/polytune/issues/100" > "$dir/issue100.json" \
+         && $api "repos/sine-fdn/polytune/compare/$rev...main" > "$dir/compare.json"; }; then
+    rm -rf "$dir"; return 1
+  fi
+  status=0
+  POLYTUNE_JSON=$dir node -e '
+    const fs = require("fs"), path = require("path");
+    const read = (name) => JSON.parse(fs.readFileSync(path.join(process.env.POLYTUNE_JSON, name), "utf8"));
     // The comment counts read on 2026-11-09. A new one is what this exists to catch.
     const seen = { 63: 2, 100: 0 };
     const problems = [];
-    for (const [n, name] of [[63, "ISSUE63"], [100, "ISSUE100"]]) {
-      const i = JSON.parse(process.env[name]);
+    for (const n of [63, 100]) {
+      const i = read(`issue${n}.json`);
       if (i.state !== "open" || i.comments !== seen[n])
         problems.push(`issue #${n} is ${i.state} with ${i.comments} comments, and ${seen[n]} comments on an open issue were last read`);
     }
-    const c = JSON.parse(process.env.COMPARE);
+    const c = read("compare.json");
     // Protocol source: Rust under src/ of the crate or of a member crate, except the test utilities.
     const source = (c.files || []).map((f) => f.filename)
       .filter((f) => /(^|\/)src\/.*\.rs$/.test(f) && !f.startsWith("crates/polytune-test-utils/"));
@@ -96,7 +104,9 @@ audit_polytune() {
       process.exit(1);
     }
     console.log(`polytune: ${c.ahead_by} commits past the pin, no protocol source among them; issues #63 and #100 unchanged`);
-  '
+  ' || status=$?
+  rm -rf "$dir"
+  return "$status"
 }
 
 polytune_api() {
