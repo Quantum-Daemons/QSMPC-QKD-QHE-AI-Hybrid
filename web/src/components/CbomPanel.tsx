@@ -2,9 +2,9 @@
 // read against NIST IR 8547 on a date the reader picks, with the served file's digest and version as its provenance,
 // the document's dependency graph, and the report as Markdown or CSV. The owner's choice of 2026-11-23.
 import { useEffect, useMemo, useState } from "react";
-import CbomGraph, { CLASS_COLOUR, CLASS_NAME } from "./CbomGraph";
+import CbomLive from "./CbomLive";
 import { downloadCSV, downloadText } from "../lib/export";
-import { IR8547, localIsoDate, type Ir8547Class, type Standing } from "../lib/ir8547";
+import { IR8547, localIsoDate, type Standing } from "../lib/ir8547";
 import { reportCounts, reportCsvRows, reportMarkdown, reportRows, sha256Hex, type CbomDoc } from "../lib/cbomReport";
 import { checkCbom, SCHEMA_CHECK, type SchemaCheck } from "../lib/cbomSchemaCheck";
 
@@ -12,7 +12,7 @@ const URL_ = `${import.meta.env.BASE_URL}cbom/qsh.cdx.json`;
 const FILE = "qsh.cdx.json";
 
 const STANDING_CLASS: Record<Standing | "none", string> = {
-  "post-quantum": "pq", symmetric: "sym", "approved-quantum-vulnerable": "qv", "quantum-vulnerable": "qv", deprecated: "qv", disallowed: "dis",
+  "post-quantum": "pq", symmetric: "sym", "approved-quantum-vulnerable": "qv", "quantum-vulnerable": "qv", deprecated: "dep", disallowed: "dis",
   "allowed-composite": "hyb", "not-classified": "out", none: "out",
 };
 
@@ -62,7 +62,7 @@ export default function CbomPanel() {
         {" "}{exposed.length} of them would not survive a large quantum computer ({exposed.map((c) => c.name).join(", ")}).
       </p>
       <p className="small">
-        The file read: {FILE}, {doc.bomFormat} {doc.specVersion}, serial <span className="mono">{doc.serialNumber}</span>, version {doc.version}, describing {app?.name} {app?.version}.
+        The file read: {FILE}, {doc.bomFormat} {doc.specVersion}, serial <span className="mono" style={{ overflowWrap: "anywhere" }}>{doc.serialNumber}</span>, version {doc.version}, describing {app?.name} {app?.version}.
         {" "}Its SHA-256, computed in this tab from the bytes fetched: <span className="mono" style={{ wordBreak: "break-all" }}>{sha}</span>
         {built === sha ? ", the file this build was made from." : <>, which is <strong>not</strong> the file this build was made from (<span className="mono" style={{ wordBreak: "break-all" }}>{built}</span>).</>}
         {" "}Checked in this tab against {SCHEMA_CHECK}:{" "}
@@ -105,19 +105,14 @@ export default function CbomPanel() {
         </table>
       </div>
 
-      <h3 style={{ marginTop: 16 }}>What depends on what</h3>
+      <h3 style={{ marginTop: 16 }}>What depends on what, checked in the tab</h3>
       <p>
         Drawn from the document&apos;s own dependencies: the application uses every asset, and the hybrid combiner depends on the assets it combines. What a library uses inside
-        (ML-KEM&apos;s SHA-3, for one) is not listed, so an asset with no edge of its own has unknown dependencies, not none.
+        (ML-KEM&apos;s SHA-3, for one) is not listed, so an asset with no edge of its own has unknown dependencies, not none. Run the checks to watch the file fetched, hashed,
+        checked against the schema and read asset by asset, then replay the run; play the years to watch IR 8547&apos;s dates arrive; pick an asset for its details; or check a
+        broken copy, which the schema check must refuse.
       </p>
-      <CbomGraph doc={doc} />
-      <p className="small">
-        {(Object.keys(CLASS_NAME) as Ir8547Class[]).map((k) => (
-          <span key={k} style={{ marginRight: 14, whiteSpace: "nowrap" }}>
-            <span aria-hidden="true" style={{ display: "inline-block", width: 9, height: 9, borderRadius: "50%", background: CLASS_COLOUR[k], marginRight: 5 }} />{CLASS_NAME[k]}
-          </span>
-        ))}
-      </p>
+      <CbomLive doc={doc} url={URL_} date={day} setDate={setDate} builtSha256={built} />
 
       <div className="btn-row" style={{ marginTop: 12, flexWrap: "wrap" }}>
         <button className="btn ghost" onClick={() => downloadText(reportMarkdown(doc, day, provenance), `qsh-pqc-readiness-${day}.md`, "text/markdown")}>⬇ This report (Markdown)</button>

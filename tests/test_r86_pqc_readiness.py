@@ -277,7 +277,9 @@ def test_the_combiner_is_described_by_its_form() -> None:
 def test_the_panel_renders_the_report_and_claims_no_certification() -> None:
     panel = (WEB / "src" / "components" / "CbomPanel.tsx").read_text(encoding="utf-8")
     graph = (WEB / "src" / "components" / "CbomGraph.tsx").read_text(encoding="utf-8")
-    for needed in ("reportRows(", "reportMarkdown(", "reportCsvRows(", "sha256Hex(", "__CBOM_SHA256__", "<CbomGraph",
+    live = (WEB / "src" / "components" / "CbomLive.tsx").read_text(encoding="utf-8")
+    assert "<CbomGraph" in live, "the graph is drawn inside the live panel"
+    for needed in ("reportRows(", "reportMarkdown(", "reportCsvRows(", "sha256Hex(", "__CBOM_SHA256__", "<CbomLive",
                    "not a certification", "2030-12-31", "2031-01-01", "2036-01-01", 'type="date"'):
         assert needed in panel, needed
     assert "doc.dependencies" in graph, "the graph must be drawn from the document's own dependencies"

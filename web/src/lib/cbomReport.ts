@@ -13,6 +13,7 @@ export interface CbomComponent {
   description: string;
   properties?: { name: string; value: string }[];
   cryptoProperties?: { algorithmProperties?: { primitive?: string; nistQuantumSecurityLevel?: number; certificationLevel?: string[] } };
+  evidence?: { occurrences?: { location: string }[] };
 }
 
 export interface CbomDoc {
