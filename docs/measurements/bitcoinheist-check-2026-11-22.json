@@ -1,0 +1,113 @@
+{
+ "what": "the finance page's tabular pipeline on real Bitcoin data with ransomware labels: a related-task sanity check",
+ "not": "a laundering result, a replacement for AMLworld, or a ransomware detector",
+ "data": {
+  "name": "BitcoinHeist Ransomware Address Dataset",
+  "source": "UCI Machine Learning Repository, dataset 526",
+  "doi": "10.24432/C5BG8V",
+  "licence": "CC BY 4.0",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "citation": "Akcora, Li, Gel and Kantarcioglu, BitcoinHeist: Topological Data Analysis for Ransomware Detection on the Bitcoin Blockchain, arXiv:1906.07852",
+  "file_sha256": "cdf3bb34199367b08285cf7f9c1db06c4a262d353aa596055e97db77f4514e5b",
+  "rows": 2916697,
+  "labels": "28 ransomware families against 'white' (not known to be ransomware); positive = any family",
+  "features": [
+   "length",
+   "weight",
+   "count",
+   "looped",
+   "neighbors",
+   "income"
+  ],
+  "dropped": [
+   "address (an identifier)"
+  ],
+  "order": [
+   "year",
+   "day"
+  ]
+ },
+ "split": {
+  "fit": {
+   "years": "2011-2014",
+   "rows": 1468876,
+   "positives": 18592,
+   "families": 6
+  },
+  "validation": {
+   "years": "2015",
+   "rows": 368701,
+   "positives": 3701,
+   "families": 7
+  },
+  "test": {
+   "years": "2016-2017",
+   "rows": 749117,
+   "positives": 19117,
+   "families": 26
+  },
+  "reported_apart": {
+   "years": "2018",
+   "rows": 330003,
+   "positives": 3,
+   "families": 2
+  }
+ },
+ "booster": {
+  "n_estimators": 600,
+  "max_depth": 8,
+  "learning_rate": 0.08,
+  "subsample": 0.9,
+  "colsample_bytree": 0.9,
+  "min_child_weight": 4,
+  "reg_lambda": 2.0,
+  "eval_metric": "aucpr",
+  "tree_method": "hist",
+  "device": "cpu",
+  "scale_pos_weight": 78.006,
+  "threads": 6,
+  "seed": 0,
+  "fit_seconds": 16.9
+ },
+ "booster_test": {
+  "minority_class_f1": 0.06884857864669869,
+  "auprc": 0.03897285583617119,
+  "auprc_baseline": 0.02551937814787276,
+  "accuracy": 0.45386368217514755,
+  "auroc": 0.6533472633552149,
+  "decision_threshold": 0.286343
+ },
+ "student": {
+  "kind": "soft logistic student distilled from the booster (qsh.models.distil.distil_linear)",
+  "inputs": "log1p, standardised on the fit window",
+  "parameters": 7,
+  "test": {
+   "minority_class_f1": 0.05539159016207639,
+   "auprc": 0.0240303319859049,
+   "auprc_baseline": 0.02551937814787276,
+   "accuracy": 0.1655896208469438,
+   "auroc": 0.5179776703443324,
+   "decision_threshold": 0.249043
+  },
+  "agreement_with_booster": 0.673943
+ },
+ "student_under_ckks": {
+  "rows": 64,
+  "backend": "tenseal-ckks-cpu",
+  "max_abs_error": 1.133071071190983e-06,
+  "decisions_agree": 64
+ },
+ "year_2018": {
+  "rows": 330003,
+  "positives": 3,
+  "flagged_at_the_test_threshold": 181339
+ },
+ "environment": {
+  "git": "b16f7a0",
+  "python": "3.12.15",
+  "xgboost": "3.3.0",
+  "numpy": "2.5.1",
+  "date": "2026-11-22",
+  "cpu_threads_available": 20
+ }
+}

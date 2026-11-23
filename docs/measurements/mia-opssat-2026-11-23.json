@@ -1,0 +1,81 @@
+{
+ "what": "membership inference against the training procedure, over shadow models",
+ "target": "opssat",
+ "data": "OPS-SAT-AD, train and test partitions (CC BY 4.0, Zenodo 12588359)",
+ "models": {
+  "teacher": "satellite_comms.opssat: HistGradientBoostingClassifier, the trainer's settings",
+  "student": "satellite_comms.opssat_student: soft logistic on the degree-2 expansion"
+ },
+ "design": {
+  "pool": 2123,
+  "audit_records": 1698,
+  "population_records": 425,
+  "shadow_models": 64,
+  "membership": "complementary pairs: each record a member of exactly half the models",
+  "references_per_target": 62,
+  "seed": 0,
+  "rmia_offline_a": 0.3,
+  "fit_seconds": 7.7
+ },
+ "attacks": {
+  "lira_online": "Carlini et al., IEEE S&P 2022 (arXiv:2112.03570); implemented here",
+  "rmia_offline": "Zarifzadeh, Liu and Shokri, ICML 2024 (arXiv:2312.03262); implemented here and checked against ML Privacy Meter's run_rmia at e384af8fd931"
+ },
+ "results": {
+  "teacher": {
+   "lira_online": {
+    "auc": 0.5825,
+    "members": 54336,
+    "non_members": 54336,
+    "tpr_at_fpr_0.001": 0.0255,
+    "tpr_at_fpr_0.01": 0.0562,
+    "tpr_at_fpr_0.1": 0.1729
+   },
+   "rmia_offline": {
+    "auc": 0.5995,
+    "members": 54336,
+    "non_members": 54336,
+    "tpr_at_fpr_0.001": null,
+    "not_resolvable": [
+     "fpr 0.001: 0.0020 of non-members tie at the top score"
+    ],
+    "tpr_at_fpr_0.01": 0.0538,
+    "tpr_at_fpr_0.1": 0.1822
+   },
+   "rmia_matches_ml_privacy_meter_max_abs_diff": 0.0,
+   "records_exposed_in_most_targets_at_fpr_1e-3": 44,
+   "audit_records": 1698
+  },
+  "student": {
+   "lira_online": {
+    "auc": 0.5317,
+    "members": 54336,
+    "non_members": 54336,
+    "tpr_at_fpr_0.001": 0.003,
+    "tpr_at_fpr_0.01": 0.0218,
+    "tpr_at_fpr_0.1": 0.1266
+   },
+   "rmia_offline": {
+    "auc": 0.5252,
+    "members": 54336,
+    "non_members": 54336,
+    "tpr_at_fpr_0.001": null,
+    "not_resolvable": [
+     "fpr 0.001: 0.0017 of non-members tie at the top score"
+    ],
+    "tpr_at_fpr_0.01": 0.0181,
+    "tpr_at_fpr_0.1": 0.1173
+   },
+   "rmia_matches_ml_privacy_meter_max_abs_diff": 0.0,
+   "records_exposed_in_most_targets_at_fpr_1e-3": 4,
+   "audit_records": 1698
+  }
+ },
+ "reading": "TPR at a fixed low FPR is the measure; an AUC near 0.5 with TPR near the FPR means the attack learns little about membership from this model's outputs. An attack gives a lower bound on leakage, not a proof of its absence.",
+ "environment": {
+  "git": "5f5a3ea",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-23"
+ }
+}

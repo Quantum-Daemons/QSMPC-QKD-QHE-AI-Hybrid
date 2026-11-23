@@ -1,0 +1,244 @@
+{
+ "what": "membership inference against the training procedure, over shadow models",
+ "target": "fedheart",
+ "data": "UCI Heart Disease: four hospitals, as FLamby's Fed-Heart-Disease prepares them: UCI Heart Disease's four hospitals as FLamby prepares them (CC-BY-4.0), train and test rows pooled within each hospital, 740 rows",
+ "models": {
+  "federated": "the page's FedAvg: 15 rounds of 100 local SGD steps at lr 0.001, the secure sum's ring",
+  "pooled": "the four hospitals' rows together, Adam (lr 0.001, batches of 4, 50 epochs)",
+  "dp_clip_only": "record-level DP federation, 50 rounds of full-batch descent, clipping at 1, no noise",
+  "dp_epsilon_8": "the same with the page's discrete Gaussian noise for epsilon 8, delta 1e-6",
+  "dp_epsilon_1": "the same for epsilon 1"
+ },
+ "noise": "the DP arms' noise is drawn from dp.seeded_rand_below (not private; the CSPRNG's distribution)",
+ "dp_delta": 1e-06,
+ "design": {
+  "pool": 740,
+  "audit_records": 592,
+  "population_records": 148,
+  "shadow_models": 64,
+  "membership": "complementary pairs: each record a member of exactly half the models",
+  "references_per_target": 62,
+  "seed": 0,
+  "rmia_offline_a": 0.3,
+  "fit_seconds": 13.4
+ },
+ "attacks": {
+  "lira_online": "Carlini et al., IEEE S&P 2022 (arXiv:2112.03570); implemented here",
+  "rmia_offline": "Zarifzadeh, Liu and Shokri, ICML 2024 (arXiv:2312.03262); implemented here and checked against ML Privacy Meter's run_rmia at e384af8fd931"
+ },
+ "results": {
+  "federated": {
+   "lira_online": {
+    "auc": 0.5042,
+    "members": 18944,
+    "non_members": 18944,
+    "tpr_at_fpr_0.001": 0.0021,
+    "tpr_at_fpr_0.01": 0.0122,
+    "tpr_at_fpr_0.1": 0.1022
+   },
+   "rmia_offline": {
+    "auc": 0.5115,
+    "members": 18944,
+    "non_members": 18944,
+    "tpr_at_fpr_0.001": null,
+    "not_resolvable": [
+     "fpr 0.001: 0.0056 of non-members tie at the top score"
+    ],
+    "tpr_at_fpr_0.01": 0.0067,
+    "tpr_at_fpr_0.1": 0.1022
+   },
+   "rmia_matches_ml_privacy_meter_max_abs_diff": 0.0,
+   "records_exposed_in_most_targets_at_fpr_1e-3": 0,
+   "audit_records": 592
+  },
+  "pooled": {
+   "lira_online": {
+    "auc": 0.5413,
+    "members": 18944,
+    "non_members": 18944,
+    "tpr_at_fpr_0.001": 0.0036,
+    "tpr_at_fpr_0.01": 0.0199,
+    "tpr_at_fpr_0.1": 0.1315
+   },
+   "rmia_offline": {
+    "auc": 0.5282,
+    "members": 18944,
+    "non_members": 18944,
+    "tpr_at_fpr_0.001": null,
+    "not_resolvable": [
+     "fpr 0.001: 0.0059 of non-members tie at the top score"
+    ],
+    "tpr_at_fpr_0.01": 0.0079,
+    "tpr_at_fpr_0.1": 0.1093
+   },
+   "rmia_matches_ml_privacy_meter_max_abs_diff": 0.0,
+   "records_exposed_in_most_targets_at_fpr_1e-3": 0,
+   "audit_records": 592
+  },
+  "dp_clip_only": {
+   "lira_online": {
+    "auc": 0.5481,
+    "members": 18944,
+    "non_members": 18944,
+    "tpr_at_fpr_0.001": 0.0011,
+    "tpr_at_fpr_0.01": 0.0146,
+    "tpr_at_fpr_0.1": 0.1278
+   },
+   "rmia_offline": {
+    "auc": 0.5379,
+    "members": 18944,
+    "non_members": 18944,
+    "tpr_at_fpr_0.001": null,
+    "not_resolvable": [
+     "fpr 0.001: 0.0072 of non-members tie at the top score"
+    ],
+    "tpr_at_fpr_0.01": 0.0102,
+    "tpr_at_fpr_0.1": 0.1255
+   },
+   "rmia_matches_ml_privacy_meter_max_abs_diff": 0.0,
+   "records_exposed_in_most_targets_at_fpr_1e-3": 0,
+   "audit_records": 592
+  },
+  "dp_epsilon_8": {
+   "lira_online": {
+    "auc": 0.5444,
+    "members": 18944,
+    "non_members": 18944,
+    "tpr_at_fpr_0.001": 0.0006,
+    "tpr_at_fpr_0.01": 0.0136,
+    "tpr_at_fpr_0.1": 0.1271
+   },
+   "rmia_offline": {
+    "auc": 0.5365,
+    "members": 18944,
+    "non_members": 18944,
+    "tpr_at_fpr_0.001": null,
+    "not_resolvable": [
+     "fpr 0.001: 0.0053 of non-members tie at the top score"
+    ],
+    "tpr_at_fpr_0.01": 0.0092,
+    "tpr_at_fpr_0.1": 0.1255
+   },
+   "rmia_matches_ml_privacy_meter_max_abs_diff": 0.0,
+   "records_exposed_in_most_targets_at_fpr_1e-3": 0,
+   "audit_records": 592
+  },
+  "dp_epsilon_1": {
+   "lira_online": {
+    "auc": 0.507,
+    "members": 18944,
+    "non_members": 18944,
+    "tpr_at_fpr_0.001": 0.0008,
+    "tpr_at_fpr_0.01": 0.0116,
+    "tpr_at_fpr_0.1": 0.0977
+   },
+   "rmia_offline": {
+    "auc": 0.5194,
+    "members": 18944,
+    "non_members": 18944,
+    "tpr_at_fpr_0.001": null,
+    "not_resolvable": [
+     "fpr 0.001: 0.0058 of non-members tie at the top score"
+    ],
+    "tpr_at_fpr_0.01": 0.0083,
+    "tpr_at_fpr_0.1": 0.1075
+   },
+   "rmia_matches_ml_privacy_meter_max_abs_diff": 0.0,
+   "records_exposed_in_most_targets_at_fpr_1e-3": 0,
+   "audit_records": 592
+  }
+ },
+ "dp_bound_check": {
+  "dp_epsilon_8": {
+   "epsilon": 8.0,
+   "delta": 1e-06,
+   "rows": [
+    {
+     "attack": "lira_online",
+     "fpr": 0.001,
+     "tpr": 0.0006,
+     "bound": 1.0,
+     "holds": true
+    },
+    {
+     "attack": "lira_online",
+     "fpr": 0.01,
+     "tpr": 0.0136,
+     "bound": 1.0,
+     "holds": true
+    },
+    {
+     "attack": "lira_online",
+     "fpr": 0.1,
+     "tpr": 0.1271,
+     "bound": 1.0,
+     "holds": true
+    },
+    {
+     "attack": "rmia_offline",
+     "fpr": 0.01,
+     "tpr": 0.0092,
+     "bound": 1.0,
+     "holds": true
+    },
+    {
+     "attack": "rmia_offline",
+     "fpr": 0.1,
+     "tpr": 0.1255,
+     "bound": 1.0,
+     "holds": true
+    }
+   ],
+   "all_hold": true
+  },
+  "dp_epsilon_1": {
+   "epsilon": 1.0,
+   "delta": 1e-06,
+   "rows": [
+    {
+     "attack": "lira_online",
+     "fpr": 0.001,
+     "tpr": 0.0008,
+     "bound": 0.002719,
+     "holds": true
+    },
+    {
+     "attack": "lira_online",
+     "fpr": 0.01,
+     "tpr": 0.0116,
+     "bound": 0.027184,
+     "holds": true
+    },
+    {
+     "attack": "lira_online",
+     "fpr": 0.1,
+     "tpr": 0.0977,
+     "bound": 0.271829,
+     "holds": true
+    },
+    {
+     "attack": "rmia_offline",
+     "fpr": 0.01,
+     "tpr": 0.0083,
+     "bound": 0.027184,
+     "holds": true
+    },
+    {
+     "attack": "rmia_offline",
+     "fpr": 0.1,
+     "tpr": 0.1075,
+     "bound": 0.271829,
+     "holds": true
+    }
+   ],
+   "all_hold": true
+  }
+ },
+ "reading": "TPR at a fixed low FPR is the measure; an AUC near 0.5 with TPR near the FPR means the attack learns little about membership from this model's outputs. An attack gives a lower bound on leakage, not a proof of its absence.",
+ "environment": {
+  "git": "410280d",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-23"
+ }
+}
