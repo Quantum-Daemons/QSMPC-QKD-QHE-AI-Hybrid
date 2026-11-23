@@ -56,7 +56,7 @@ code, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
   /* The group heading becomes a rule, so the five use cases still read as a group. */
   .app.nav-collapsed .nav .nav-group { font-size: 0; height: 1px; background: var(--border); margin: 10px 6px; padding: 0; }
   .app.nav-collapsed .run-status-box { padding: 6px 4px; justify-content: center; }
-  .app.nav-collapsed .run-status-box .badge-state { padding: 3px 6px; font-size: 10px; }
+  .app.nav-collapsed .run-status-box .badge-state { padding: 3px 5px; font-size: 12px; }  /* the type scale's 12 px floor (2026-11-23) */
   .app.nav-collapsed .run-status-box .badge-state.pausing,
   .app.nav-collapsed .run-status-box .badge-state.stopping { padding: 1px 4px; }
 }
@@ -208,7 +208,7 @@ label.is-disabled input { cursor: not-allowed; }
 .cbom-log .ok { color: var(--accent-2); }
 .cbom-log .bad { color: var(--danger); }
 .cbom-years { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; margin-top: 6px; }
-.cbom-years span { font-size: 10.5px; text-align: center; padding: 2px 0; border-radius: 3px; background: var(--bg); color: var(--muted); }
+.cbom-years span { font-size: 12px; text-align: center; padding: 2px 0; border-radius: 3px; background: var(--bg); color: var(--muted); }
 
 .btn {
   background: var(--accent); color: #03070f; border: none; padding: 9px 16px;
