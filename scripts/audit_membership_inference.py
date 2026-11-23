@@ -197,6 +197,123 @@ def _breastmnist_students(args):
                    "square_student": "medical_fl.square_student: conv 1->4, batch norm, x^2, avg-pool, dense 196->2"}}
 
 
+def _breastmnist_pipeline(args):
+    """BreastMNIST's whole pipeline for every shadow: the ResNet-18 teacher retrained on the shadow's members, then both
+    students distilled from it.
+
+    On the owner's approval of 2026-11-23 (a GPU job). Each shadow trains the teacher by scripts/train/medical_breastmnist.py's
+    settings (random initialisation, class-weighted cross-entropy, AdamW at 3e-4 with weight decay 1e-4, at most 60
+    epochs, the epoch kept by AUC on the val split with patience 15) on its members at 28 px, labels its members and the
+    val split with it, and distils both students by their recipes, as `breastmnist_students` does from the published
+    teacher. All three models are scored on the true label, so membership in the teacher's own training set is audited,
+    and each student's figure is what the whole pipeline leaks through it.
+    """
+    import importlib.util
+    import tempfile
+
+    import torch
+    from safetensors.torch import load_file
+    from torch.utils.data import DataLoader, TensorDataset
+
+    from qsh.ai.cnn_layers import downsample, small_medmnist_cnn
+    from qsh.models import datasets, distil, metrics, train
+
+    def load(name, path):
+        spec = importlib.util.spec_from_file_location(name, REPO / "scripts" / "train" / path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    square, trainer = load("square", "medical_square_student.py"), load("breast", "medical_breastmnist.py")
+    MALIGNANT, BENIGN = 0, 1
+    dev = train._device()
+
+    def split(name):
+        imgs, labels = datasets.breastmnist(name, size=28)
+        x = (np.asarray(imgs, dtype=np.float32)[:, None] / 255.0 - 0.5) / 0.5
+        return x, np.asarray(labels).ravel().astype(np.int64)
+
+    (xtr, ytr), (xva, yva), (xte, yte) = split("train"), split("val"), split("test")
+    to14 = lambda x: np.asarray(downsample(x, 14), dtype=np.float32)                    # noqa: E731
+    x14va = to14(xva)
+    pool28, y = np.concatenate([xtr, xte]), np.concatenate([ytr, yte])
+
+    class Probs:
+        """predict_proba over a trained torch model, in eval mode, softmax in float64; `small` downsamples to 14 px."""
+
+        def __init__(self, model, small: bool):
+            self.model, self.small = model.eval(), small
+
+        def predict_proba(self, x):
+            x = to14(x) if self.small else np.ascontiguousarray(x, dtype=np.float32)
+            out = []
+            with torch.no_grad():
+                for i in range(0, len(x), 256):
+                    out.append(torch.softmax(self.model(torch.from_numpy(x[i:i + 256]).to(dev)).double(), 1).cpu().numpy())
+            return np.concatenate(out)
+
+    def seq_argmax(model, x):
+        return Probs(model, small=False).predict_proba(x).argmax(1).astype(np.int64)
+
+    def weighted(labels):
+        counts = np.bincount(labels, minlength=2).astype(np.float64)
+        return torch.tensor(counts.sum() / (2.0 * np.maximum(counts, 1)), dtype=torch.float32).to(dev)
+
+    def fit(Xs, ys, seed):
+        out = {}
+        with tempfile.TemporaryDirectory(prefix="qsh-mia-") as tmp:
+            train.seed_everything(seed)
+            teacher = trainer.build_resnet("resnet18")
+            res = train.train_torch(
+                "mia.teacher", teacher,
+                DataLoader(TensorDataset(torch.from_numpy(Xs), torch.from_numpy(ys)), batch_size=32, shuffle=True),
+                DataLoader(TensorDataset(torch.from_numpy(xva), torch.from_numpy(yva)), batch_size=256),
+                metric_fn=lambda yy, p: metrics.auroc(yy, p), metric_name="auc",
+                cfg=train.TrainConfig(epochs=60, batch_size=32, lr=3e-4, weight_decay=1e-4, patience=15, seed=seed),
+                loss_fn=torch.nn.CrossEntropyLoss(weight=weighted(ys)), out_dir=Path(tmp) / "teacher")
+            teacher.load_state_dict(load_file(res.checkpoint))
+            teacher.eval()
+            out["teacher"] = Probs(teacher, small=False)
+            t_members, t_val = seq_argmax(teacher, Xs), seq_argmax(teacher, xva)
+            val_dl = DataLoader(TensorDataset(torch.from_numpy(x14va), torch.from_numpy(t_val)), batch_size=256)
+            for name, make in (("student", lambda: small_medmnist_cnn(in_ch=1, n_classes=2, img_size=14, channels=(4,),
+                                                                      hidden=16)),
+                               ("square_student", square.square_student)):
+                train.seed_everything(seed)
+                model = make()
+                r = train.train_torch(
+                    f"mia.{name}", model,
+                    DataLoader(TensorDataset(torch.from_numpy(to14(Xs)), torch.from_numpy(t_members)), batch_size=32,
+                               shuffle=True),
+                    val_dl, metric_fn=lambda yy, p: metrics.auroc(yy, p), metric_name="auc",
+                    loss_fn=torch.nn.CrossEntropyLoss(weight=weighted(t_members)),
+                    cfg=train.TrainConfig(epochs=120, batch_size=32, lr=2e-3, patience=25, seed=seed),
+                    out_dir=Path(tmp) / name)
+                model.load_state_dict(load_file(r.checkpoint))
+                model.eval()
+                if name == "student":
+                    scores = train.predict_loader(model, DataLoader(
+                        TensorDataset(torch.from_numpy(x14va), torch.from_numpy(yva)), batch_size=256))[1]
+                    p_mal = torch.softmax(torch.tensor(scores), 1).numpy()[:, MALIGNANT]
+                    q, nb, nb_all, nb_none = metrics.best_threshold_by_net_benefit(yva == MALIGNANT, p_mal, lo=0.05,
+                                                                                   hi=0.5)
+                    if nb - max(nb_all, nb_none) > 1e-9 and len(np.unique(np.where(p_mal >= q, MALIGNANT, BENIGN))) == 2:
+                        distil.fold_threshold_into_torch_head(model, q, positive_class=MALIGNANT)
+                out[name] = Probs(model, small=True)
+        return out
+
+    return pool28, y, fit, {
+        "data": "MedMNIST v2 BreastMNIST at 28 px, train and test splits (CC BY 4.0 as MedMNIST states it; the BUSI "
+                "authors publish no licence; DATA_LICENSES.md); the val split selects every model's epoch, as in training",
+        "label": "the true label, for all three models",
+        "device": str(dev),
+        "models": {"teacher": "medical_fl.resnet18's recipe, retrained on each shadow's members (random init, 60 epochs "
+                              "at most, AUC selection on val)",
+                   "student": "medical_fl.student's recipe, distilled from that shadow's teacher, the net-benefit cut "
+                              "folded into the head",
+                   "square_student": "medical_fl.square_student's recipe, distilled from that shadow's teacher"}}
+
+
 #: The heart federation's DP arms audited: clipping alone, and the two ends of the page's sweep.
 FEDHEART_DP_EPSILONS = (math.inf, 8.0, 1.0)
 
@@ -327,7 +444,7 @@ def dp_bound_check(results: dict, delta: float) -> dict:
 
 
 TARGETS = {"opssat": _opssat, "telecom_qml": _telecom_qml, "breastmnist_students": _breastmnist_students,
-           "fedheart": _fedheart}
+           "breastmnist_pipeline": _breastmnist_pipeline, "fedheart": _fedheart}
 
 
 # --------------------------------------------------------------------------------------------- attacks
