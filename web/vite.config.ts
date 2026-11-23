@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -139,8 +141,13 @@ const thirdPartyNotices = (write: boolean) => ({
 const DEV_PORT = Number(process.env.VITE_DEV_PORT ?? 5173);
 const API_TARGET = process.env.VITE_API_TARGET ?? "http://127.0.0.1:8000";
 
+// The CBOM's SHA-256 when the build was made (Round 86). The Validations page hashes the file it fetches and says
+// whether it is this one, so a cached or substituted file shows as such.
+const CBOM_SHA256 = createHash("sha256").update(readFileSync(fileURLToPath(new URL("./public/cbom/qsh.cdx.json", import.meta.url)))).digest("hex");
+
 export default defineConfig({
   plugins: [react(), crossOriginIsolation, dropDanglingSourceMapComments, thirdPartyNotices(true)],
+  define: { __CBOM_SHA256__: JSON.stringify(CBOM_SHA256) },
   server: {
     port: DEV_PORT,
     proxy: {

@@ -163,6 +163,15 @@ label.is-disabled input { cursor: not-allowed; }
 }
 .tag.deep { color: var(--accent-2); border-color: var(--accent-2); }
 .tag.scaffold { color: var(--warn); border-color: var(--warn); }
+/* The CBOM panel's NIST IR 8547 standings (Round 86): the words carry the meaning, the colour and the dot repeat it. */
+.standing { white-space: normal; }
+.standing::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: currentColor; vertical-align: 1px; }
+.standing.pq { color: var(--accent-2); }
+.standing.sym { color: var(--accent); }
+.standing.qv { color: var(--warn); }
+.standing.dis { color: var(--danger); }
+.standing.hyb { color: var(--quantum); }
+.standing.out { color: var(--muted); }
 
 .btn {
   background: var(--accent); color: #03070f; border: none; padding: 9px 16px;
