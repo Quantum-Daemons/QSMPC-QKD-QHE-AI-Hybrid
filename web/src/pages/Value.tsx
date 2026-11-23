@@ -27,7 +27,8 @@ export default function Value() {
           demo uses, published benchmarks of CKKS evaluation in three browsers (its BENCHMARK.md, at
           the 7.0.0 tag; the file left its main branch on 2026-10-31), and she-wasm (AsiaCCS 2018)
           evaluates two-level HE in WebAssembly. <b>Not found:</b> a peer-reviewed 2025-2026 report of encrypted
-          neural-network inference inside a browser tab.</>,
+          neural-network inference inside a browser tab (outside peer review, a teaching demo runs a two-layer
+          network on its own toy CKKS).</>,
       ]} />
       <p className="lead">
         {/* "then QKD-derived key material" until 2026-10-24: the browser's bb84() returns a count and
@@ -60,7 +61,7 @@ export default function Value() {
             <tr><td>FHE encrypt / decrypt in a browser</td><td>IACR ePrint 2026/515 treats client-side operations as encryption and decryption; Zama's TFHE-rs WASM API supports key generation, encryption and decryption</td><td>common</td><td>-</td></tr>
             <tr><td>HE <i>evaluation</i> in a browser</td><td>node-seal (Microsoft SEAL in WebAssembly) benchmarks CKKS evaluation operations such as rotation in Chrome, Firefox and Safari; she-wasm (Attrapadung et al., AsiaCCS 2018) evaluates two-level HE in WebAssembly. TFHE-rs WASM documents that it does <b>not</b> support FHE computation; it gives no reason, and separately notes slow key generation without WASM threads and keys over WASM&apos;s 2&nbsp;GB limit</td><td>not new</td><td>node-seal evaluates a real CKKS dot product and convolution in the tab</td></tr>
             <tr><td>Linear layers encrypted, the non-linear ones in the clear at the data owner</td><td>Safhire (Biswas et al., arXiv:2509.01253, accepted by TMLR, v2 2026-10-16) runs a model&apos;s linear layers under FHE on a server and its non-linearities in plaintext at the client, shuffling intermediate values so the client cannot rebuild the model; Galanopoulos et al. (arXiv:2609.16211, 2026-09-14) run a genomic foundation model the same way, in 6,683 s for one input on one accelerator. Both server-side</td><td>not new</td><td>the medical CNN student&apos;s split, with no shuffling: its model is public here</td></tr>
-            <tr><td>Encrypted neural-network inference in a browser tab</td><td>no peer-reviewed 2025-2026 report found; an absence of evidence from a search that was not exhaustive</td><td>not found</td><td>on the medical page, the conv and dense layers of a small CNN student under CKKS, decrypted between layers, with ReLU and pooling in the clear; and the same student on one held-out image per run with its ReLUs and argmax in garbled circuits, so neither notional party holds an activation in the clear</td></tr>
+            <tr><td>Encrypted neural-network inference in a browser tab</td><td>no peer-reviewed 2025-2026 report found; outside peer review, a teaching demo (crypto-lab-ckks-lab, 2026) runs a two-layer network on its own toy CKKS in the browser, with a symmetric key and no claim to be a hardened library; an absence of evidence from a search that was not exhaustive</td><td>not found</td><td>on the medical page, the conv and dense layers of a small CNN student under CKKS, decrypted between layers, with ReLU and pooling in the clear; and the same student on one held-out image per run with its ReLUs and argmax in garbled circuits, so neither notional party holds an activation in the clear; and a square-activation student run end to end under CKKS with no layer decrypted (a convolution, a square and a pooled dense layer, three multiplications deep, in its own context under either of two pre-registered parameter sets)</td></tr>
           </tbody>
         </table>
         <Details summary="How the prior-art search was run">
@@ -85,7 +86,9 @@ export default function Value() {
             to servers, and Zama's TFHE-rs WASM API supports key generation, encryption and decryption but
             not FHE computation. What the search did not find is a peer-reviewed 2025-2026 report of
             encrypted neural-network inference inside a browser tab; that is an absence of evidence, not
-            a proof.
+            a proof. Outside peer review, a teaching demo, crypto-lab-ckks-lab (2026, re-checked
+            2026-11-19), runs a two-layer network&apos;s forward pass on its own toy CKKS in the browser,
+            with a symmetric key and no claim to be a hardened library.
           </p>
         </Details>
       </div>
