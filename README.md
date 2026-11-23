@@ -432,7 +432,7 @@ flowchart TB
   end
   subgraph GH["GitHub"]
     direction LR
-    PR["Pull request"] --> ACT["GitHub Actions: Python, web typecheck, build and text layout, SBOMs and the CBOM, repository guards"]
+    PR["Pull request"] --> ACT["GitHub Actions: Python, web typecheck, build and text layout, SBOMs and the CBOM (sbom-utility, sbom-tools, sbomqs), OSV over every lockfile, cdxgen (report only), repository guards"]
     AUD["Audit workflow: npm audit, pip-audit, cargo-deny, upstream checks"]
   end
   subgraph DEMO["Demo host"]
