@@ -48,7 +48,10 @@ third party's system.
   actually spends, to set beside the claimed one. The current accountants are PRV and PLD (Gopi, Lee and Wutschitz,
   NeurIPS 2021, arXiv:2106.02848, the Opacus default); `dp_accounting` 0.7.0 (Apache-2.0) offers PLD for a
   cross-check of this repository's own accountant.
-- **Repeated queries.** Each DP release on a page is accounted per run; reruns in one tab are not composed.
+- **Repeated queries.** Each DP release on a page was accounted per run, and reruns in one tab were not composed. From
+  2026-11-23 the tab keeps a ledger of its releases (`web/src/lib/dpLedger.ts`) and each DP card shows the tab's total
+  beside the run's own, rho added across releases (Bun and Steinke, TCC 2016); `tests/test_r86_dp_ledger.py` holds it
+  to `qsh.ai.dp` and checks that every release the page makes is recorded.
 - **Inversion and the decryption surface: covered.** The pages return decrypted scores to the party that owns the
   input, and the weights are published, so extraction gains nothing. The surface that matters is a decryption, or the
   reaction to one, reaching another party: [`docs/threat-model.md`](../docs/threat-model.md) covers Li and Micciancio

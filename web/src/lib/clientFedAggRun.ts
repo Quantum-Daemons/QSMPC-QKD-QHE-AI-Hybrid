@@ -1,5 +1,6 @@
-/** The main thread's handle on clientFedAgg.worker.ts: it imports no compute, only types (Round 86). */
+/** The main thread's handle on clientFedAgg.worker.ts: it imports no compute, only types and the tab's DP ledger (Round 86). */
 import type { AggregationComparison, AggregationKind, ThresholdSum } from "./clientFedAgg";
+import { recordRelease } from "./dpLedger";
 
 function inWorker<T>(message: Record<string, unknown>, onProgress?: (p: { kind: AggregationKind; done: number; of: number }) => void): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -22,7 +23,17 @@ export function compareAggregationsInWorker(
 ): Promise<AggregationComparison> {
   const dataUrl = new URL(`${import.meta.env.BASE_URL}data/medical/heart_disease_sites.json`, location.href).href;
   return inWorker<AggregationComparison>({ task: "compare", seed, dataUrl },
-    onProgress && ((p) => onProgress(p.kind, p.done, p.of)));
+    onProgress && ((p) => onProgress(p.kind, p.done, p.of))).then((result) => {
+    // The DP row trains the heart federation once more, with fresh noise from the worker's CSPRNG, and the page shows
+    // its accuracy: one more release about the same patients, so it goes into the tab's ledger (dpLedger.ts).
+    for (const d of result.designs) {
+      if (d.dp && Number.isFinite(d.dp.rho)) {
+        recordRelease({ population: "medical-heart", what: `the federated model at epsilon ${d.dp.epsilon}, under threshold BGV`,
+                        rho: d.dp.rho, delta: d.dp.delta, epsilon: d.dp.epsilonAchieved });
+      }
+    }
+    return result;
+  });
 }
 
 /** The genomics page's noisy contributions, summed under threshold BGV; `crsLabel` is public. */

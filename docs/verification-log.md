@@ -6420,3 +6420,11 @@ build, the security headers, the walkthrough's own origin). Read on the public s
 main, has the same tree) and deployed. The box serves `index-B7UEX40n.js`; the deploy's checks passed. In Chrome, on all
 eleven routes and the not-found page, the footer is `<main>`'s last element, with the same text and three links: the
 repository, the models' Hub page and the organisation's page; it shows v0.85.0, the version in `web/package.json`.
+
+### #88 on the deployed site (2026-11-23)
+
+#88 was merged as 86d4542 on the owner's approval (CI 8 of 8, the local gate on 91bc679) and deployed. The box serves
+`index-B7UEX40n.js`, the bundle #86 left, because nothing #88 changed is served: its records, notes, scripts and tests are
+not part of the site. The deploy's checks passed (the box on main at 86d4542, the public name, the security headers and
+the walkthrough's own origin). In Chrome, the Validations page loads that bundle, and the footer is `<main>`'s last
+element, showing v0.85.0.

@@ -222,6 +222,8 @@ export interface GenomicsDp {
   variancePerCohort: number; scale: number;
   /** The noise in the released count, in alleles. */
   sdTotal: number;
+  /** The release's zero-concentrated DP parameter: releases about the same people add it (`dpLedger`). */
+  rho: number;
 }
 
 /** `seededLabel` is for the twin tests only: that run is NOT private. */
@@ -233,7 +235,7 @@ export function genomicsDp(counts: number[], epsilon: number, opts?: { seededLab
   return {
     contributions: counts.map((c) => c * scale + discreteGaussian(V, rb)),
     epsilon, epsilonAchieved: epsilonOf(V, 1, d2, n, 1, delta), epsilonOneDishonest: epsilonOf(V, 1, d2, n - 1, 1, delta),
-    delta, variancePerCohort: V, scale, sdTotal: Math.sqrt(n * V) / scale,
+    delta, variancePerCohort: V, scale, sdTotal: Math.sqrt(n * V) / scale, rho: rhoOf(V, 1, d2, n, 1),
   };
 }
 
@@ -251,6 +253,8 @@ export interface CountRelease {
   /** The noisy count, clamped at 0 (post-processing, which costs no privacy). */
   released: number;
   epsilon: number; epsilonAchieved: number; delta: number; variance: number; sd: number;
+  /** The release's zero-concentrated DP parameter: releases about the same accounts add it (`dpLedger`). */
+  rho: number;
 }
 
 /** `seededLabel` is for the twin tests only: that run is NOT private. */
@@ -263,5 +267,6 @@ export function dpCount(count: number, opts?: { seededLabel?: string; epsilon?: 
   return {
     released: Math.max(0, count + discreteGaussian(V, rb)),
     epsilon, epsilonAchieved: epsilonOf(V, 1, sensitivity, 1, 1, delta), delta, variance: V, sd: Math.sqrt(V),
+    rho: rhoOf(V, 1, sensitivity, 1, 1),
   };
 }

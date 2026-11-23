@@ -40,6 +40,7 @@ import {
 } from "./onnxInference";
 import { FED_HEART, fedHeart, fedHeartComparisons, fedHeartDp, loadHeartSites } from "./clientFedHeart";
 import { dpCount, GENOMICS_DP, genomicsDp } from "./clientDp";
+import { recordRelease } from "./dpLedger";
 import { heldOutCorpus, realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
   type HeldOutCorpus, type RealInput, realAlleleCounts } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
@@ -3137,6 +3138,8 @@ export function runClientPipeline(
             metric(stage, "dp_delta", g.delta);
             metric(stage, "dp_noise_sd", r2(g.sdTotal));
             metric(stage, "dp_epsilon_one_dishonest", r2(g.epsilonOneDishonest));
+            recordRelease({ population: "genomics", what: `the pooled allele count at ${alleles.variant}`, rho: g.rho,
+                            delta: g.delta, epsilon: g.epsilonAchieved });
             artifacts.genomicsDp = { ...g, released, exact: total, variant: alleles.variant, individuals: alleles.individuals,
                                      cohorts: nParties };
             emit("log", stage, `differential privacy: the pooled count released as ${r2(released)} (epsilon ${r2(g.epsilonAchieved)}, `
@@ -3217,6 +3220,8 @@ export function runClientPipeline(
             // The count as it would leave the banks (Round 86, the owner's choice of 2026-11-13): the banks learn the
             // shared accounts themselves, so the noise protects only the published count; one account moves it by 1.
             const fd = dpCount(psi.intersection_size);
+            recordRelease({ population: "finance", what: "the count of shared accounts", rho: fd.rho, delta: fd.delta,
+                            epsilon: fd.epsilonAchieved });
             artifacts.financeDp = { ...fd, exact: psi.intersection_size, sizeA: psi.size_a, sizeB: psi.size_b };
             metric(stage, "dp_released_shared_accounts", fd.released);
             metric(stage, "dp_epsilon", Math.round(fd.epsilonAchieved * 100) / 100);
@@ -3312,6 +3317,12 @@ export function runClientPipeline(
             // fedHeartDp, full-batch gradient descent with the hospitals' exact discrete Gaussian noise added in shares
             // inside fresh pairwise masks. The noise comes from this tab's CSPRNG, so these figures change run to run.
             const dpRun = await fedHeartDp(sites, seed);
+            // Each noised row is published, so each is a release about the same patients; the row with clipping and no
+            // noise is not one.
+            for (const row of dpRun.rows.filter((x) => Number.isFinite(x.rho))) {
+              recordRelease({ population: "medical-heart", what: `the federated model at epsilon ${row.epsilon}`, rho: row.rho,
+                              delta: dpRun.delta, epsilon: row.epsilonAchieved });
+            }
             artifacts.fedHeartDp = dpRun;
             message(stage, { from: "many", to: "b", what: "its clipped gradient sum with its share of the noise, under fresh pairwise masks, every step",
               bytes: null, count: h.centres.length * dpRun.rounds * dpRun.rows.length, protection: "pairwise masks" });
