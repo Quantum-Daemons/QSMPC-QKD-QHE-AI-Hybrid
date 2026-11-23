@@ -24,9 +24,9 @@ pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="the check 
 
 
 def _check(tmp_path: Path, *, issue63: tuple[str, int] = ("open", 2), issue100: tuple[str, int] = ("open", 0),
-           files: tuple[str, ...] = ()) -> subprocess.CompletedProcess[str]:
+           files: tuple[str, ...] = (), patch_bytes: int = 0) -> subprocess.CompletedProcess[str]:
     issue = lambda state, comments: json.dumps({"state": state, "comments": comments})   # noqa: E731
-    compare = json.dumps({"ahead_by": len(files), "files": [{"filename": f} for f in files]})
+    compare = json.dumps({"ahead_by": len(files), "files": [{"filename": f, "patch": "+" * patch_bytes} for f in files]})
     stub = tmp_path / "api.sh"
     stub.write_text("#!/bin/sh\ncase \"$1\" in\n"
                     f"  */issues/63) cat <<'J'\n{issue(*issue63)}\nJ\n  ;;\n"
@@ -40,6 +40,16 @@ def _check(tmp_path: Path, *, issue63: tuple[str, int] = ("open", 2), issue100: 
 def test_nothing_changed_passes(tmp_path: Path) -> None:
     r = _check(tmp_path)
     assert r.returncode == 0 and "no protocol source among them" in r.stdout, r.stdout + r.stderr
+
+
+def test_a_compare_past_the_kernel_s_limit_on_one_environment_string_is_read(tmp_path: Path) -> None:
+    """2026-11-23: the real compare past the pin was 139,155 bytes; passed as an environment variable it was over Linux's
+    131,072-byte limit on one string, and node never started ("Argument list too long", exit 126). The responses go to
+    files now."""
+    r = _check(tmp_path, files=("Cargo.lock", "README.md"), patch_bytes=100_000)
+    assert r.returncode == 0 and "no protocol source among them" in r.stdout, r.stdout + r.stderr
+    r = _check(tmp_path, files=("src/mpc/faand.rs", "README.md"), patch_bytes=100_000)
+    assert r.returncode == 1 and "src/mpc/faand.rs" in r.stderr, r.stdout + r.stderr
 
 
 def test_dependency_bumps_and_test_utilities_do_not_count(tmp_path: Path) -> None:
