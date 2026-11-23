@@ -22,7 +22,9 @@ NOTE = ("Generated from this repository's own list of the cryptography its code 
 
 
 def _component(a) -> dict:
-    alg: dict = {"primitive": a.primitive, "executionEnvironment": "software-plain-ram", "implementationPlatform": "generic", "cryptoFunctions": list(a.functions)}
+    # certificationLevel "none": no implementation this repository calls is FIPS 140 or Common Criteria certified here.
+    alg: dict = {"primitive": a.primitive, "executionEnvironment": "software-plain-ram", "implementationPlatform": "generic", "certificationLevel": ["none"],
+                 "cryptoFunctions": list(a.functions)}
     if a.family:
         alg["algorithmFamily"] = a.family
     if a.parameter_set:
@@ -64,7 +66,10 @@ def build() -> dict:
             "properties": [{"name": "qsh:scope", "value": NOTE}],
         },
         "components": components,
-        "dependencies": [{"ref": root, "dependsOn": [c["bom-ref"] for c in components]}],
+        # The application uses every asset; an asset that combines others (the hybrid combiner) depends on them. An asset with no entry of its own has
+        # unknown dependencies, as CycloneDX reads a missing one, because library internals are not listed.
+        "dependencies": [{"ref": root, "dependsOn": [c["bom-ref"] for c in components]}]
+        + [{"ref": f"crypto/{a.ref}", "dependsOn": [f"crypto/{d}" for d in a.depends_on]} for a in ASSETS if a.depends_on],
     }
     serial = uuid.uuid5(uuid.NAMESPACE_URL, "qsh-cbom:" + json.dumps(body, sort_keys=True))
     return {"bomFormat": body["bomFormat"], "specVersion": body["specVersion"], "serialNumber": f"urn:uuid:{serial}", **{k: v for k, v in body.items() if k not in ("bomFormat", "specVersion")}}

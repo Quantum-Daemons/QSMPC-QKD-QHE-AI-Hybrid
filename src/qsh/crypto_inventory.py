@@ -8,6 +8,8 @@ It covers the primitives this repository's own code selects or calls. It does no
 whether any of this is validated: nothing here is FIPS 140-3 validated.
 
 `nist_quantum_level` is the NIST security category of the entry, 0 where a cryptographically relevant quantum computer breaks it, and None where this project does not rate it.
+`depends_on` names the entries an entry's own code combines, as the CBOM's dependency graph shows them: only the hybrid combiner has any. What the libraries
+use inside (ML-KEM's SHA-3, for one) is not listed, so an entry with no `depends_on` has unknown dependencies, not none.
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ class CryptoAsset:
     mode: str | None = None
     curve: str | None = None
     oid: str | None = None
+    depends_on: tuple[str, ...] = ()
 
 
 BOTH = (BROWSER, FULL)
@@ -59,8 +62,9 @@ ASSETS: tuple[CryptoAsset, ...] = (
                 (("web/src/lib/hybridCombiner.ts", "@noble/hashes/hkdf.js"), ("src/qsh/pqc/hybrid_kem.py", "HKDF(")),
                 parameter_set="SHA-256", oid="1.2.840.113549.1.9.16.3.29"),
     CryptoAsset("hybrid-combiner", "ML-KEM + X25519 two-step HKDF combiner", "combiner", None, ("keyderive",),
-                "Combines the two shared secrets with the transcript", "NIST SP 800-227 section 4.6", BOTH,
-                (("web/src/lib/hybridCombiner.ts", "qsh/hybrid-kem/v2"), ("src/qsh/pqc/hybrid_kem.py", "qsh/hybrid-kem/v2"))),
+                "Combines the two shared secrets with the transcript", "In the form of NIST SP 800-227 section 4.6.2; not validated", BOTH,
+                (("web/src/lib/hybridCombiner.ts", "qsh/hybrid-kem/v2"), ("src/qsh/pqc/hybrid_kem.py", "qsh/hybrid-kem/v2")),
+                depends_on=("ml-kem-768", "ml-kem-1024", "x25519", "hkdf-sha256")),
     CryptoAsset("aes-256-gcm", "AES-256-GCM", "ae", "AES", ("encrypt", "decrypt", "tag"),
                 "Seals the PSI's messages, the MCP channel and the full deployment's records", "NIST SP 800-38D", BOTH,
                 (("web/src/lib/clientMcp.ts", '"AES-GCM"'), ("src/qsh/pqc/transport.py", "AESGCM(")),

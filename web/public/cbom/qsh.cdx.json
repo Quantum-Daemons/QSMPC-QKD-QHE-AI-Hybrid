@@ -1,7 +1,7 @@
 {
  "bomFormat": "CycloneDX",
  "specVersion": "1.7",
- "serialNumber": "urn:uuid:5bf1535a-352f-5340-aa5e-f147d10690e4",
+ "serialNumber": "urn:uuid:10368d13-ffc5-5905-8cb5-549380b48699",
  "version": 1,
  "metadata": {
   "component": {
@@ -29,6 +29,9 @@
      "primitive": "kem",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "keygen",
       "encapsulate",
@@ -72,6 +75,9 @@
      "primitive": "kem",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "keygen",
       "encapsulate",
@@ -112,6 +118,9 @@
      "primitive": "key-agree",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "keygen",
       "keyderive"
@@ -158,6 +167,9 @@
      "primitive": "key-agree",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "keygen",
       "keyderive"
@@ -197,6 +209,9 @@
      "primitive": "kdf",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "keyderive"
      ],
@@ -237,6 +252,9 @@
      "primitive": "combiner",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "keyderive"
      ]
@@ -245,7 +263,7 @@
    "properties": [
     {
      "name": "qsh:standard",
-     "value": "NIST SP 800-227 section 4.6"
+     "value": "In the form of NIST SP 800-227 section 4.6.2; not validated"
     },
     {
      "name": "qsh:scope",
@@ -274,6 +292,9 @@
      "primitive": "ae",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "encrypt",
       "decrypt",
@@ -319,6 +340,9 @@
      "primitive": "ae",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "encrypt",
       "decrypt",
@@ -357,6 +381,9 @@
      "primitive": "signature",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "keygen",
       "sign",
@@ -400,6 +427,9 @@
      "primitive": "signature",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "keygen",
       "sign",
@@ -440,6 +470,9 @@
      "primitive": "hash",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "digest"
      ],
@@ -482,6 +515,9 @@
      "primitive": "hash",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "digest"
      ],
@@ -518,6 +554,9 @@
      "primitive": "hash",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "digest"
      ],
@@ -557,6 +596,9 @@
      "primitive": "xof",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "digest"
      ],
@@ -596,6 +638,9 @@
      "primitive": "mac",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "tag"
      ],
@@ -632,6 +677,9 @@
      "primitive": "hash",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "digest"
      ]
@@ -666,6 +714,9 @@
      "primitive": "other",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "other"
      ],
@@ -705,6 +756,9 @@
      "primitive": "other",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "encrypt",
       "decrypt"
@@ -754,6 +808,9 @@
      "primitive": "other",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "encrypt",
       "decrypt"
@@ -791,6 +848,9 @@
      "primitive": "other",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "encrypt",
       "decrypt"
@@ -828,6 +888,9 @@
      "primitive": "other",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "encrypt",
       "decrypt"
@@ -865,6 +928,9 @@
      "primitive": "other",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "other"
      ],
@@ -903,6 +969,9 @@
      "primitive": "other",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "other"
      ]
@@ -937,6 +1006,9 @@
      "primitive": "drbg",
      "executionEnvironment": "software-plain-ram",
      "implementationPlatform": "generic",
+     "certificationLevel": [
+      "none"
+     ],
      "cryptoFunctions": [
       "generate"
      ]
@@ -989,6 +1061,15 @@
     "crypto/wrk17b",
     "crypto/shamir",
     "crypto/csprng"
+   ]
+  },
+  {
+   "ref": "crypto/hybrid-combiner",
+   "dependsOn": [
+    "crypto/ml-kem-768",
+    "crypto/ml-kem-1024",
+    "crypto/x25519",
+    "crypto/hkdf-sha256"
    ]
   }
  ]
