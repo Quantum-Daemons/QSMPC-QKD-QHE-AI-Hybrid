@@ -9,7 +9,9 @@ This sets, in place, only what is true and the same on every run of the same com
 - the creation time: the commit's own time (`git log -1 --format=%ct`), replacing a missing or 1970-01-01 one;
 - a serial number derived from the document's content (a UUID v5, as `scripts/generate_cbom.py` derives the CBOM's),
   where the generator wrote none;
-- the supplier, the project's own organisation, and the lifecycle phase "build";
+- the supplier, the project's own organisation; the same organisation as the BOM's manufacturer, CycloneDX's field
+  for the creator of a BOM made by an automated process (a hand-written one names its authors); and the lifecycle
+  phase "build";
 - the Python SBOM's primary component, the `qsh` package `requirements.lock` is locked for, which cyclonedx-py's
   requirements mode does not name; and the threshold-aggregation module's version, which is the repository's;
 - the web SBOM's component hashes: each package's SHA-512 from `web/package-lock.json`'s `integrity`, the hash of the
@@ -60,6 +62,7 @@ def complete(doc: dict, name: str, when: str, version: str) -> dict:
     if md.get("timestamp") in (None, *EPOCH):
         md["timestamp"] = when
     md.setdefault("supplier", SUPPLIER)
+    md.setdefault("manufacturer", SUPPLIER)
     md.setdefault("lifecycles", [{"phase": "build"}])
     comp = md.get("component")
     if name == "python" and not comp:

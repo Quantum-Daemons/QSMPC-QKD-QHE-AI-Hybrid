@@ -9,8 +9,9 @@ wrong: the WASM SBOM said it was made on 1970-01-01, because `SOURCE_DATE_EPOCH=
 
 1. a missing or 1970-01-01 creation time replaced by the commit's own time, and a real one kept;
 2. a serial number derived from the content where none was written, the same on a second run, and a written one kept;
-3. the supplier and the "build" lifecycle phase; the Python SBOM's primary component (the `qsh` package, at its version);
-   the threshold-aggregation module's version where it had none;
+3. the supplier, the same organisation as the BOM's manufacturer (CycloneDX's field for an automated BOM's creator), and
+   the "build" lifecycle phase; no authors and no compositions; the Python SBOM's primary component (the `qsh` package,
+   at its version); the threshold-aggregation module's version where it had none;
 4. no hash and no licence from the metadata itself. The web SBOM's component hashes are `web/package-lock.json`'s
    SHA-512s, nested packages included, and the step stops where the lockfile disagrees with what cyclonedx-npm wrote;
    every integrity in the real lockfile is one it reads. The Python SBOM's licences are copied only from the same
@@ -80,6 +81,8 @@ def test_the_serial_number_comes_from_the_content_and_does_not_change() -> None:
 def test_the_supplier_lifecycle_and_components_are_the_project_s() -> None:
     py = META.complete(_doc(), "python", WHEN, qsh.__version__)
     assert py["metadata"]["supplier"] == {"name": "Quantum Daemons", "url": ["https://quantum.daemons.jp/"]}
+    assert py["metadata"]["manufacturer"] == py["metadata"]["supplier"], "the organisation whose CI writes the BOM"
+    assert "authors" not in py["metadata"] and "compositions" not in py, "no hand-written authors, no completeness claim"
     assert py["metadata"]["lifecycles"] == [{"phase": "build"}]
     assert py["metadata"]["component"]["name"] == "qsh" and py["metadata"]["component"]["version"] == qsh.__version__
     go = META.complete(_doc(component={"type": "library", "bom-ref": "m", "name": "qsh-fedthresh"}), "fedthresh", WHEN, qsh.__version__)
