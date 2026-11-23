@@ -1075,6 +1075,13 @@ async function surfaceQcnnUnderCkks(stage: string, usecase: string, w: QcnnWeigh
   }
 }
 
+/** The satellite forecaster student's forecasts under CKKS, row by row, as one run reports them (Round 86): the
+ *  residual card reads this. `residuals[t]` is row t's largest |decrypted - plaintext| over the channels. */
+export interface ForecastResidualReport {
+  key: string; rows: number; ciphertexts: number; fheMs: number; maxAbsError: number; flagsChanged: number;
+  residuals: number[]; changedRows: number[]; flaggedRows: number[]; startMs: number; stepMs: number; ranIn: string | null;
+}
+
 /** What a published MLP's run under MPC reports (Round 86): the card reads this. */
 export interface MpcMlpReport {
   key: string; nFeatures: number; result: HybridCnnResult; ranIn: string; rowIndex: number; rowCount: number; rowLabel: number; expectedLogits: number[]; classes: Record<string, string>;
@@ -2210,6 +2217,15 @@ export function runClientPipeline(
               + `the decrypted forecast, thresholded in this tab, changes ${c.flagsChanged} of ${sd.plain.flags.length} `
               + `flags and scores ${r2(e.f05)} (tp ${e.tp} fp ${e.fp} fn ${e.fn}) against ${r2(sd.plain.anomalies.f05)} `
               + `from the plaintext forecast, whose flags match the published digest: ${sd.flagsDigestMatches ? "yes" : "NO"}.`);
+            // The residual against time (Round 86, the owner's choice of 2026-11-23): every row's largest difference,
+            // the rows the plaintext forecast flags, and the ones encryption changed, for the satellite card.
+            const flagged: number[] = [];
+            sd.plain.flags.forEach((f, i) => { if (f) flagged.push(i); });
+            artifacts.forecast_residual = {
+              key, rows: c.rows, ciphertexts: c.ciphertexts, fheMs: c.fheMs, maxAbsError: c.maxAbsError,
+              flagsChanged: c.flagsChanged, residuals: c.residuals, changedRows: c.changedRows, flaggedRows: flagged,
+              startMs: sd.stretch.startMs, stepMs: sd.stretch.stepMs, ranIn: sd.ranIn ?? null,
+            } satisfies ForecastResidualReport;
           }
           // A model that cannot beat a trivial predictor is worth saying out loud even when it
           // reproduces its own figure exactly - reproducing a bad number is still reproducing it.

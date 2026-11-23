@@ -30,6 +30,7 @@ import VerificationsCard from "../components/VerificationsCard";
 import PublishedComparisonCard from "../components/PublishedComparisonCard";
 import { flambyRows, modelRows, PAGE_NOTES } from "../lib/publishedComparisons";
 import MpcGnnPanel from "../components/MpcGnnPanel";
+import SatForecastResidual from "../components/SatForecastResidual";
 import { ConfusionCard, PrsLocusCard } from "../components/ModelExplanations";
 import MpcMlpPanel from "../components/MpcMlpPanel";
 import QcnnCkksPanel from "../components/QcnnCkksPanel";
@@ -39,7 +40,7 @@ import MultiPsiPanel from "../components/MultiPsiPanel";
 import LendingPanels from "../components/LendingPanels";
 import QsdcLinkPanel from "../components/QsdcLinkPanel";
 import type { LendingMarketReport, LendingPrivateReport, LendingSweepReport } from "../lib/lending/report";
-import type { MpcCnnReport, MpcGnnReport, MpcMlpReport, MultiPsiReport, QcnnCkksReport, VerificationSummary } from "../lib/clientCompute";
+import type { ForecastResidualReport, MpcCnnReport, MpcGnnReport, MpcMlpReport, MultiPsiReport, QcnnCkksReport, VerificationSummary } from "../lib/clientCompute";
 import type { QcnnRescore } from "../lib/qcnnRescore";
 import ShapPanel from "../components/ShapPanel";
 import UseCaseCanvas, { type ModelledView } from "../components/UseCaseCanvas";
@@ -425,6 +426,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && <MurmurDpCard />}
       {usecase === "satellite_comms" && <SatVusPrCard />}
       {usecase === "satellite_comms" && <SatBoundaryCard />}
+      {usecase === "satellite_comms" && artifacts?.forecast_residual ? <SatForecastResidual report={artifacts.forecast_residual as ForecastResidualReport} /> : null}
       {usecase === "genomics" && artifacts?.genomicsDp ? <GenomicsDpCard dp={artifacts.genomicsDp as GenomicsDpArtifact} /> : null}
       {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} rescore={(artifacts.qcnn_rescore as QcnnRescore | undefined) ?? null} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_mlp ? <MpcMlpPanel report={artifacts.mpc_mlp as MpcMlpReport} /> : null}

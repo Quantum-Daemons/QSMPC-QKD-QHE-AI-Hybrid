@@ -48,7 +48,10 @@ const c = ev.ckks;
 console.log(JSON.stringify({ digest: ev.flagsDigestMatches, score: ev.scoreMatches, rows: c.rows,
   offered: sample.stretch.rows, maxAbs: c.maxAbsError, changed: c.flagsChanged,
   plain: [ev.plain.anomalies.tp, ev.plain.anomalies.fp, ev.plain.anomalies.fn, ev.plain.anomalies.f05],
-  enc: [c.encrypted.anomalies.tp, c.encrypted.anomalies.fp, c.encrypted.anomalies.fn, c.encrypted.anomalies.f05] }));
+  enc: [c.encrypted.anomalies.tp, c.encrypted.anomalies.fp, c.encrypted.anomalies.fn, c.encrypted.anomalies.f05],
+  residuals: c.residuals.length, residualMax: c.residuals.reduce((a, v) => Math.max(a, v), 0),
+  residualsFinite: c.residuals.every((v) => Number.isFinite(v) && v >= 0), changedRows: c.changedRows.length,
+  stretch: [ev.stretch.startMs === sample.stretch.start_ms, ev.stretch.stepMs === sample.stretch.step_ms] }));
 """
 
 
@@ -78,3 +81,9 @@ def test_the_decrypted_forecast_gives_the_plaintext_forecasts_events() -> None:
     # CKKS noise at this ring and scale is about 1e-9 on these forecasts; a thousandth would be a broken encoding.
     assert r["maxAbs"] < 1e-6, r["maxAbs"]
     assert r["changed"] == 0 and r["enc"] == r["plain"], "the decrypted forecast gives other events"
+    # The residual card (Round 86, the owner's choice of 2026-11-23) draws one point per row: each row's largest
+    # difference, whose maximum is the figure the log prints, and the rows whose flag changed, as many as it counts.
+    assert r["residuals"] == r["rows"] and r["residualsFinite"], r
+    assert r["residualMax"] == r["maxAbs"], (r["residualMax"], r["maxAbs"])
+    assert r["changedRows"] == r["changed"], r
+    assert r["stretch"] == [True, True], "the card's clock is not the stretch's"
