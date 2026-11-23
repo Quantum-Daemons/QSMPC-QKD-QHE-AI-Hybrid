@@ -53,14 +53,35 @@ in the owner's chosen words.
   real rows, and a detector fitted on earlier ransomware families does not carry to new ones; it is not a laundering
   result and not a detector.
 - **BitcoinTemporalGraph**: downloaded (MD5s match Figshare's). The archive is a PostgreSQL directory-format dump, two
-  table files of 46.61 GB and 26.99 GB, 73.61 GB unpacked; the GNN check reads the dump's table files directly and runs
-  on the GPU only on the owner's approval of each job.
+  table files of 46.61 GB and 26.99 GB, 73.61 GB unpacked; the GNN check streams both tables out of the archive, since
+  the extracted edge table read at 4 to 32 MB/s through the NTFS driver, and runs on the GPU only on the owner's
+  approval of each job.
+
+  **The GNN check, 2026-11-23** (`scripts/measure_btg_check.py`, record `docs/measurements/btg-check-2026-11-23.json`).
+  The dataset's paper (Schnoering and Vazirgiannis, Scientific Data 12, 404 (2025),
+  https://www.nature.com/articles/s41597-025-04684-8) predicts seven entity types from the node features on a random
+  40/30/30 split. Its Table 6 gives scikit-learn's gradient boosting macro-F1 0.57, though that row's seven per-class F1
+  average 0.599, and four GNNs on a two-hop sample 0.56 to 0.64 (GraphSage 0.62). Its labels come from BitcoinTalk posts
+  and profiles, exchanges' published wallets, the Padua and Montreal ransomware sets, the US Treasury's SDN list and
+  miners' coinbase messages. The dump holds the paper's 252,219,007 nodes, 785,954,737 edges and 34,098 labelled nodes,
+  33,708 of them in the seven classes, and the edges give every one of those as many distinct neighbours as its stored
+  degree. On a stratified 40/30/30 split over 5 seeds, with the 27 of the paper's 35 features that need no BTC/USD price
+  series and each model selected on the validation split's macro-F1, test macro-F1 (mean and standard deviation over the
+  seeds) is $`0.547 \pm 0.016`$ for the paper's GBC rerun, $`0.614 \pm 0.014`$ for a class-balanced HistGradientBoosting
+  booster, $`0.470 \pm 0.003`$ for the GNN's network without neighbours and $`0.570 \pm 0.007`$ for two GraphSAGE layers
+  over a one-hop sample of 10 neighbours. The neighbours add +0.099 to the same network on all five seeds, most on
+  RANSOMWARE (F1 0.309 against 0.108), but the booster on the node's own features stays ahead of the one-hop GNN on
+  every seed. The rerun is within 0.05 of the paper's GBC on five classes and short on EXCHANGE (0.466 against 0.54) and
+  above all RANSOMWARE (0.139 against 0.50), where the missing USD amounts may matter, ransoms being priced in dollars;
+  that is not tested here. The split is by node, as the paper's, so one entity's clusters can sit on both sides; it is
+  not a laundering result and nothing here is a detector.
 - **The GPL-3.0 corporate-account set**: downloaded for a local comparison; nothing derived from it is committed.
 
 ## Read by the survey and not verified here
 
 These were reported by the survey and are not relied on: BybitML (FlowShield, arXiv:2608.17355) as CC BY-NC 4.0 on a
 private OSF project; the EVM dataset of arXiv:2607.18869, whose Figshare link returned no page; DIAM, T-Finance,
-EthereumHeist and ICIJ's FinCEN Files transaction data, each reported without a licence; and BitcoinTemporalGraph's
-published baselines and how its labels were made. The systematic review arXiv:2405.19383 (v4) classes datasets as
-proprietary, open-source or synthetic and gives no licences.
+EthereumHeist and ICIJ's FinCEN Files transaction data, each reported without a licence. BitcoinTemporalGraph's
+published baselines and how its labels were made, listed here on 2026-11-22, were read in its paper on 2026-11-23 (the
+GNN check above). The systematic review arXiv:2405.19383 (v4) classes datasets as proprietary, open-source or synthetic
+and gives no licences.
