@@ -6446,3 +6446,21 @@ element, showing v0.85.0.
   proportion passes; after a restart both pass; biased to 3 ones in 4, the adaptive proportion fails (625 of 625) while the
   repetition count passes. BB84 without Eve: QBER 0.81 percent (95 percent interval 0.52 to 1.25) against the model's
   1.00; with Eve on half the pulses: 12.39 percent (11.13 to 13.77) against 13.25.
+
+### #90 on the deployed site (2026-11-23)
+
+#90 was merged as 3bdedb2 on the owner's approval (all 17 checks; the local gate on 0ff3fea, with OSV-Scanner and the SBOM
+tools run) and deployed. The box serves `index-P2Py_ipU.js`; the deploy's checks passed. Read on the public site:
+
+- The Validations page's CBOM panel, in a headless Chrome: the served file's SHA-256 is the build's and the in-tab check says
+  "valid"; post-quantum 4, symmetric 7, quantum-vulnerable 1 and 1, hybrid 1, outside IR 8547's tables 10; ECDH P-256 and
+  X25519 read "deprecated after 2030" on 2030-12-31, deprecated on 2031-01-01 and disallowed on 2036-01-01; "Run the checks"
+  emits 29 events, the dim nodes fall from 24 to 0 and the combiner's 4 edges appear last; all five broken copies are refused
+  with their path; the validator's chunk loads with the panel; no page error.
+- The hybrid handshake card's combiner row, and the log of a finance run, read "in the form of ... s4.6.2's two-step
+  combiner, over the s4.6.3 transcript; not validated", and neither has the old wording.
+- The first CI run (45123743367): the three tools' release checksums verified; sbom-tools agrees on 12 assets, differs on 3
+  (reviewed) and gives no verdict on 9, as it did locally; sbomqs scores python 3.85 (F), web 4.37 (F), wasm 6.50 (D),
+  fedthresh 4.15 (F); cdxgen 13.8.0 lists 359 components and no cryptographic asset; the `osv` job passes.
+- The layout scan on the public site, which now carries #89's views as well as this panel, passes on every page, after
+  runs, in this machine's system font and in DejaVu Sans.
