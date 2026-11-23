@@ -17,6 +17,14 @@ out=$(mkdir -p "${1:-sbom-out}" && cd "${1:-sbom-out}" && pwd)
 
 cyclonedx-py requirements --sv 1.7 --output-reproducible --of JSON -o "$out/python.cdx.json" requirements.lock
 ( cd web && npx --yes @cyclonedx/cyclonedx-npm@6.0.1 --sv 1.7 --omit dev --output-reproducible --package-lock-only -o "$out/web.cdx.json" )
-( cd wasm/qsh-mpc && SOURCE_DATE_EPOCH=0 cargo cyclonedx --format json --spec-version 1.7 --override-filename qsh-mpc && mv qsh-mpc.json "$out/wasm.cdx.json" )
+( cd wasm/qsh-mpc && SOURCE_DATE_EPOCH="$(git log -1 --format=%ct)" cargo cyclonedx --format json --spec-version 1.7 --override-filename qsh-mpc && mv qsh-mpc.json "$out/wasm.cdx.json" )
 ( cd wasm/qsh-fedthresh && go mod download && python3 sbom.py "$out/fedthresh.cdx.json" )
+# The metadata the generators leave out, reproducibly: the commit's time, a content-derived serial number, the supplier,
+# the lifecycle phase, the Python SBOM's primary component; the web SBOM's component hashes from web/package-lock.json;
+# and, when QSH_PYTHON_ENVIRONMENT_SBOM names cyclonedx-py's environment-mode SBOM of an interpreter where
+# requirements.lock is installed (CI's python job writes one), the Python SBOM's licences (scripts/sbom_metadata.py,
+# Round 86). In GitHub Actions it also writes a line per SBOM to the job summary.
+env_sbom=${QSH_PYTHON_ENVIRONMENT_SBOM:-}
+python3 scripts/sbom_metadata.py ${env_sbom:+--python-environment "$env_sbom"} ${GITHUB_STEP_SUMMARY:+--summary "$GITHUB_STEP_SUMMARY"} \
+  "$out/python.cdx.json" "$out/web.cdx.json" "$out/wasm.cdx.json" "$out/fedthresh.cdx.json"
 echo "wrote $out/python.cdx.json, web.cdx.json, wasm.cdx.json and fedthresh.cdx.json"

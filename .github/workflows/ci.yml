@@ -55,6 +55,24 @@ jobs:
           pip install --require-hashes --extra-index-url https://download.pytorch.org/whl/cpu -r requirements.lock
           pip install --no-deps -e .
 
+      - name: The installed packages' SBOM, for the Python SBOM's licences
+        # requirements.lock names no licences; the installed packages' metadata does, and this job is where the lock is
+        # installed with its hashes. cyclonedx-bom 9.0.0, the sbom job's pin, runs from a venv of its own so that it does
+        # not list itself. The sbom job waits for this job and copies each licence onto the same package at the same
+        # version (scripts/sbom_metadata.py; Round 86, the owner's choice of 2026-11-23). It runs before the tests, so a
+        # failing test still leaves the file.
+        run: |
+          python -m venv "$RUNNER_TEMP/cdx"
+          "$RUNNER_TEMP/cdx/bin/pip" install --quiet "cyclonedx-bom==9.0.0"
+          "$RUNNER_TEMP/cdx/bin/cyclonedx-py" environment --sv 1.7 --of JSON --output-reproducible \
+            -o "$RUNNER_TEMP/python-environment.cdx.json" "$(command -v python)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-environment-sbom-${{ matrix.python }}
+          path: ${{ runner.temp }}/python-environment.cdx.json
+          retention-days: 7
+
       # Needed by the cross-language gates: they bundle `web/src/lib/*.ts` with esbuild and run it
       # under node to compare the browser's numbers against Python's. Without this the gates skip.
       - uses: actions/setup-node@v4
@@ -222,6 +240,11 @@ jobs:
   sbom:
     name: SBOMs and the CBOM
     runs-on: ubuntu-24.04
+    # It waits for the python job, whose installed environment gives the Python SBOM its licences: about two minutes
+    # more wall time, the owner's choice of 2026-11-23. It still runs when that job fails, and the summary then says
+    # the licences are missing.
+    needs: python
+    if: ${{ !cancelled() }}
     steps:
       - uses: actions/checkout@v4
 
@@ -244,7 +267,16 @@ jobs:
           python -m pip install --quiet "cyclonedx-bom==9.0.0" "jsonschema==4.26.0"
           cargo install cargo-cyclonedx --version 0.5.10 --locked
 
+      - name: The installed packages' SBOM, from the python job
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: python-environment-sbom-3.12
+          path: ${{ runner.temp }}/sbom-env
+
       - name: Generate the SBOMs
+        env:
+          QSH_PYTHON_ENVIRONMENT_SBOM: ${{ runner.temp }}/sbom-env/python-environment.cdx.json
         run: bash scripts/generate_sbom.sh sbom-out
 
       - name: Validate them and the CBOM against the vendored CycloneDX 1.7 schema
