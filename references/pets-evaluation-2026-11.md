@@ -87,6 +87,65 @@ Reporting follows from this: the threat model and the unit of privacy (record, p
 added, canary success with its confidence interval beside the baseline and any DP bound, and that an attack gives a
 lower bound only. Metrics are published, never a reconstructed record or image.
 
+## Results of the CPU phase (2026-11-23)
+
+On the owner's choices of 2026-11-22 (the CPU phase first; GPU jobs asked one by one), each record is in
+`docs/measurements/` with its script.
+
+- **The DP-SGD accountant** (`dp-accountant-crosscheck-2026-11-23.json`): at the murmur study's settings the
+  repository's Renyi-DP accountant is within 1 percent of dp_accounting's RDP and never below its PLD: noise multiplier
+  1.89138 gives dp_accounting RDP 5.6114 and PLD 5.1434;
+  3.45294 gives 2.6082 and 2.3904. The tighter PLD accountant would
+  spend about 9 percent less epsilon for the same noise.
+- **Membership inference, OPS-SAT** (`mia-opssat-2026-11-23.json`, 64 shadow models): the gradient-boosted teacher,
+  LiRA AUC 0.583 and a true-positive rate of 2.55 percent at a false-positive rate of 0.1
+  percent, 44 of 1698 records exposed in most targets; the CKKS student, LiRA AUC
+  0.532 and 0.30 percent. RMIA agrees (AUC 0.600 and 0.525); its rate at 0.1
+  percent is not resolvable, because its top score ties across more non-members than that.
+- **Membership inference, the telecom forest** (`mia-telecom-qml-2026-11-23.json`): RMIA AUC 0.867, 22.64 percent
+  at 1 percent; LiRA AUC 0.705. A forest memorises its training points; these are generated rows.
+- **Membership inference, the BreastMNIST students** (`mia-breastmnist-students-2026-11-23.json`, 64 shadow models,
+  on the CPU): the CNN student, LiRA AUC 0.611 and 0.27 percent at a false-positive rate of 0.1 percent, none of 562
+  records exposed in most targets; the square-activation student, LiRA AUC 0.617 and 0.43 percent, 2 records exposed.
+  RMIA agrees (AUC 0.612 and 0.631) and matches ML Privacy Meter's exactly; its rate at 0.1 percent is not resolvable,
+  as for OPS-SAT. The teacher is held fixed: the local graph, its node metadata set aside, has the published pin's
+  sha256, and every shadow student is distilled from its labels by the student's own recipe, on 281 records, about half
+  the 546 the published students saw. So this is what a student's own training adds. Membership in the teacher's
+  training set needs the teacher retrained for every shadow, a GPU job.
+- **Membership inference, the heart federation** (`mia-fedheart-2026-11-23.json`, 64 shadow federations through the
+  page's Python twin; the script's FedAvg, pooled and DP arms give the twin's weights exactly): FedAvg, LiRA AUC 0.504
+  and 0.21 percent at a false-positive rate of 0.1 percent; the pooled model, LiRA AUC 0.541 and 0.36 percent; the
+  record-level DP federation, LiRA AUC 0.548 with clipping alone, 0.544 at epsilon 8 and 0.507 at epsilon 1. RMIA
+  matches ML Privacy Meter's exactly for every arm. At epsilon 1 every measured rate is under the guarantee's bound,
+  exp(epsilon) times the false-positive rate plus delta: 0.0977 against 0.2718 at a false-positive rate of 10 percent.
+  At epsilon 8 that bound is above 1 at these rates, so no attack could test it there.
+- **Attribute inference, the heart models** (`attribute-inference-fedheart-2026-11-23.json`): asked a patient's sex
+  from everything else known about them, no attack beats imputation with the same knowledge and no model (Jayaraman
+  and Evans, CCS 2022). On the training rows, model inversion (Fredrikson et al.) gets 75.72 percent from the FedAvg
+  model and 75.51 from the pooled one, where answering "male" every time gets 75.72; the loss attack (Yeom et al.)
+  gets 35.39 and 64.61; imputation from all the features gets 76.75. For a logistic model the loss attack's guess
+  depends on the diagnosis alone (the record checks this), so its lead of 2.80 points on the training rows over the
+  test rows for the pooled model comes from the two splits' own mix of sex and diagnosis, not from memorisation.
+- **A one-run DP audit** (`dp-one-run-audit-2026-11-23.json`): Steinke, Nasr and Jagielski's bound (NeurIPS 2023,
+  arXiv:2305.08846, Corollary 5.4 and their Appendix D's search), implemented here and checked against the four values
+  that appendix prints. The canaries are gradients, one per coordinate, seen by an adversary who observes every release
+  and knows every other contribution, the strongest setting the paper audits. The heart federation's DP rows, 14,000
+  canaries over 1,000 runs, give lower bounds of 2.99 at epsilon 8, 1.76 at epsilon 4, 0.74 at epsilon 2, 0.37 at
+  epsilon 1 (each truncated, never rounded up). The murmur study's DP-SGD, 5,160 canaries, gives 1.97 against its accountant's 5.66 at noise multiplier
+  1.89138, and 1.11 against 2.61 at 3.45294. Every arm is under its accountant's epsilon. Both seeded bugs are caught:
+  the federation with a sixteenth of the variance gives 2.20 against the 1 its accountant states, and DP-SGD with
+  every person in every step gives 6.17 against 5.66. A bound under the accountant's epsilon is consistent with the
+  accounting and proves nothing more; the gap at the sampled DP-SGD is the paper's own finding for one-run audits.
+- **Reconstruction by an informed adversary, the OPS-SAT student** (`reconstruction-opssat-student-2026-11-23.json`):
+  from the published preprocessing mean, every one of the 1,594 training records within 0.1 percent (median
+  relative error 7.1e-05); from the weights solved to the optimum, 98.93 percent within 10 percent and
+  89.40 percent within 1; from the weights as the trainer's solver left them, 2.26 percent within 10. The
+  preprocessing a CKKS client needs is a release of training statistics, and a model on private data would need them
+  and its weights computed under differential privacy; this telemetry is public, so it shows the mechanism.
+
+The CPU phase is complete. Still to run, each asked first: the GPU jobs (the ResNets' own membership audits, the
+teacher retrained for every shadow of the BreastMNIST students, gradient inversion on the chest X-ray federation).
+
 ## What each use case could add
 
 | Use case | Membership-inference audit | DP audit | Note |

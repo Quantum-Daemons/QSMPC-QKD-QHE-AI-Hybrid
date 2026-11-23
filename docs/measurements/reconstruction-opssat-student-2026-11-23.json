@@ -1,0 +1,51 @@
+{
+ "what": "an informed adversary's reconstruction of each training record from the rest and the published student",
+ "attack": "Balle, Cherubin and Hayes, IEEE S&P 2022 (doi:10.1109/SP46214.2022.9833677); reimplemented here",
+ "target": "satellite_comms.opssat_student",
+ "training_records": 1594,
+ "features": 19,
+ "data": "OPS-SAT-AD train partition (CC BY 4.0), public telemetry",
+ "routes": {
+  "A_published_preprocessing_mean": {
+   "records": 1594,
+   "relative_error_median": 7.13596873785859e-05,
+   "relative_error_p90": 0.00016149951133937154,
+   "share_below_0.001": 1.0,
+   "share_below_0.01": 1.0,
+   "share_below_0.1": 1.0
+  },
+  "B_weights_at_the_optimum": {
+   "records": 1594,
+   "relative_error_median": 0.5996974725089099,
+   "relative_error_p90": 2.018903849528084,
+   "share_below_0.001": 0.0,
+   "share_below_0.01": 0.0,
+   "share_below_0.1": 0.0226,
+   "coefficient_abs_median": 0.017874699751685534,
+   "class_weights": [
+    0.624006,
+    2.516039
+   ],
+   "stationarity_residual": 0.11844434552782841,
+   "published_weights_max_abs_diff": 0.0058172263761239185
+  },
+  "C_weights_solved_to_the_optimum": {
+   "records": 1594,
+   "relative_error_median": 0.0015409021735668358,
+   "relative_error_p90": 0.010822248881698958,
+   "share_below_0.001": 0.3814,
+   "share_below_0.01": 0.894,
+   "share_below_0.1": 0.9893,
+   "stationarity_residual": 3.368259073763143e-05,
+   "solver_iterations": 321
+  }
+ },
+ "reading": "Relative L2 error of each reconstructed row against the true one. The informed adversary is the worst case differential privacy is defined against; nothing here is a DP-trained model, so an exact reconstruction is the expected outcome, and the training statistics a client must have are a release.",
+ "seconds": 1.5,
+ "environment": {
+  "git": "9e246bf",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-23"
+ }
+}

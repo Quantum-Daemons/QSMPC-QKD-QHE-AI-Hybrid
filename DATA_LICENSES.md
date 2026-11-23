@@ -576,11 +576,12 @@ downloaded, and none is used.
 | Corporate bank accounts (arXiv:2507.08835; Kaggle `haroldg/time-series-of-transactions-money-laundering`, 2.32 GB) | *"anonymised 3-month transaction time-series (corporate bank accounts), labelled for anti-money-laundering (AML) research"*, released after a differential-privacy mechanism at $`\epsilon = 1`$ and a PCA projection | GPL 3 | Copyleft, outside section 6's permissive set as QKDNetSim's GPL-2.0 is, and whether it reaches trained weights is unsettled; on the owner's choice of 2026-11-22, a local comparison that is never published, after its own download approval |
 
 Three real corpora under CC BY 4.0 carry related labels rather than laundering ones. On the owner's choice of
-2026-11-22 they are planned as external checks of the approach, never as replacements for AMLworld, and none is
-fetched yet: BitcoinHeist (UCI dataset 526, DOI 10.24432/C5BG8V, 110.7 MB, ransomware families against "white"
-addresses), BitcoinTemporalGraph (Figshare, DOI 10.6084/m9.figshare.26305093.v3, 17.39 GB, a Bitcoin value-transfer
-graph with about 100,000 labelled addresses) and BitFraud (Zenodo record 24170215, published 2026-11-12, its files
-restricted during review). Sources, and what was and was not verified:
+2026-11-22 they are external checks of the approach, never replacements for AMLworld: BitcoinHeist (UCI dataset 526,
+DOI 10.24432/C5BG8V, 110.7 MB, ransomware families against "white" addresses) and BitcoinTemporalGraph (Figshare, DOI
+10.6084/m9.figshare.26305093.v3, 17.39 GB, a Bitcoin value-transfer graph with about 100,000 labelled addresses), both
+fetched on that approval to directories outside the repository, where nothing derived from a row is committed
+(BitcoinHeist's aggregate result is in `docs/measurements/`); and BitFraud (Zenodo record 24170215, published
+2026-11-12), watched because its files are restricted during review. Sources, and what was and was not verified:
 [`references/aml-real-data-2026-11.md`](references/aml-real-data-2026-11.md).
 
 ### Removed from this list: 5G-NIDD, whose rejection is withdrawn

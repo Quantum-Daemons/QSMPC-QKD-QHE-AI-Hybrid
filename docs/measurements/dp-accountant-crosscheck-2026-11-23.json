@@ -1,0 +1,30 @@
+{
+ "what": "DP-SGD's (epsilon, delta) for the murmur study's settings, from dp_accounting's RDP and PLD accountants",
+ "mechanism": "Poisson-sampled Gaussian, self-composed",
+ "settings": {
+  "fitting_records": 511,
+  "expected_batch": 64,
+  "sampling_rate": 0.12524461839530332,
+  "steps": 239,
+  "delta": 1e-05,
+  "source": "docs/measurements/murmur-dp-2026-11-14.json, the search route"
+ },
+ "rows": [
+  {
+   "noise_multiplier": 1.89138,
+   "dp_accounting_rdp_epsilon": 5.611379,
+   "dp_accounting_pld_epsilon": 5.143357
+  },
+  {
+   "noise_multiplier": 3.45294,
+   "dp_accounting_rdp_epsilon": 2.60824,
+   "dp_accounting_pld_epsilon": 2.39045
+  }
+ ],
+ "pld_value_discretization_interval": 0.0001,
+ "environment": {
+  "dp_accounting": "0.7.0",
+  "python": "3.12.15",
+  "date": "2026-11-23"
+ }
+}
