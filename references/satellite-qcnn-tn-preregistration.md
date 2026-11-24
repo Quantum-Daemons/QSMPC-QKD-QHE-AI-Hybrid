@@ -93,3 +93,14 @@ Section B first described the grid as "resampled to 30 s by mean" with a z-score
 shipped Telemanom student's preparation, which B says it uses, is ESA-ADB's zero-order hold and a z-score from the
 unlabelled training rows before 2006-10-01; B now says so, and adds that windows crossing a boundary are dropped. Found
 while writing `scripts/data/esa_qcnn_windows.py`, before it ran.
+
+## Addendum 2, 2026-11-24, after the windows were counted and before any model was trained
+
+`scripts/data/esa_qcnn_windows.py` gives 110,924 fit windows (712 positive), 4,139 validation windows (2 positive)
+and 115,064 test windows (1,077 positive); 2 windows crossing a boundary were dropped. ESA-ADB's validation months
+hold two positive windows, so for B anything chosen on validation would rest on two events. Therefore, for B only:
+the circuit keeps its last epoch's weights (`--keep-last-epoch`), as ESA-ADB's own Telemanom runs do, instead of the
+best validation score's; average precision leads, being free of any threshold; the F1 and balanced accuracy at the
+validation-chosen threshold are reported with the note that the threshold rests on two positive windows. A is
+unchanged. Only the counts above had been seen.
+
