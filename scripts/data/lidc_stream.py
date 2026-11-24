@@ -15,8 +15,11 @@ layout pylidc reads. Then, from those images:
 The patient's folder is then deleted, and a record of what was verified is written. A stopped run resumes at the next
 patient. How this differs from the pre-registration's text (883 series, TotalSegmentator during the fetch) is in
 references/medical-nodule3d-square-student-preregistration-addendum.md. `merge` joins the parts into the files the training script reads.
+`recut` fetched the training patients again after the first run's HU cubes overwrote their crops (part_path), and
+checks each re-cut crop against the cluster records and against the centre of that HU cube.
 
     venv/bin/python scripts/data/lidc_stream.py run --out OUT --tmp TMP --split SPLIT --records RECORDS --queue Q
+    venv/bin/python scripts/data/lidc_stream.py recut --out OUT --tmp TMP --records RECORDS
     venv/bin/python scripts/data/lidc_stream.py merge --out OUT
 
 pylidc reads the series from the folder ~/.pylidcrc names, which must be TMP/LIDC-IDRI.
@@ -79,10 +82,16 @@ def fetch_patient(patient: str, series: list[dict], root: Path) -> list[dict]:
     return checked
 
 
+def part_path(stem: Path, ext: str) -> Path:
+    """stem + ext, never Path.with_suffix: with_suffix would turn both 'P.crops28' and 'P.hu64' into 'P.npy', and the
+    HU cubes overwrote the 28 mm crops of every training patient on 2026-11-24 (the addendum records it)."""
+    return stem.parent / f"{stem.name}{ext}"
+
+
 def save_parts(stem: Path, got: list[tuple[dict, np.ndarray]]) -> int:
     if got:
-        np.save(stem.with_suffix(".npy"), np.stack([c for _, c in got]))
-    stem.with_suffix(".json").write_text(json.dumps([m for m, _ in got]))
+        np.save(part_path(stem, ".npy"), np.stack([c for _, c in got]))
+    part_path(stem, ".json").write_text(json.dumps([m for m, _ in got]))
     return len(got)
 
 
@@ -153,6 +162,82 @@ def run(args) -> int:
     return 0
 
 
+def rename_old_parts(parts: Path) -> dict:
+    """The parts the first run wrote as 'P.npy' and 'P.json' (see part_path), renamed by what each holds: a float16
+    cube of 64 points a side is a training patient's HU cubes (which had overwritten its crops), a uint8 cube of 28 a
+    crop of a patient outside training."""
+    moved = {"hu64": 0, "crops28": 0}
+    for npy in sorted(parts.glob("LIDC-IDRI-[0-9][0-9][0-9][0-9].npy")):
+        a = np.load(npy, mmap_mode="r")
+        kind = ("hu64" if a.dtype == np.float16 and a.shape[1:] == (64, 64, 64) else
+                "crops28" if a.dtype == np.uint8 and a.shape[1:] == (28, 28, 28) else None)
+        if kind is None:
+            raise SystemExit(f"{npy.name}: {a.dtype} {a.shape} is neither kind of part")
+        stem = parts / f"{npy.stem}.{kind}"
+        npy.rename(part_path(stem, ".npy"))
+        parts.joinpath(f"{npy.stem}.json").rename(part_path(stem, ".json"))
+        moved[kind] += 1
+    return moved
+
+
+def recut(args) -> int:
+    """The training patients' 28 mm crops again (the owner's choice of 2026-11-24, after the HU cubes overwrote them):
+    every series fetched and verified as `run` does, the crops cut by the same function, and three checks a patient:
+    the crops' records equal the cluster records the split was drawn from, the count equals the first run's, and each
+    crop equals the centre of the first run's HU cube (same sample points, float16 there) within one uint8 level."""
+    from lidc_make_crops import HU_HI, HU_LO, crops_of
+
+    parts, done_dir, rec_dir = args.out / "parts", args.out / "done", args.out / "recut"
+    rec_dir.mkdir(parents=True, exist_ok=True)
+    print("renamed old parts:", rename_old_parts(parts), flush=True)
+    records = json.loads(args.records.read_text())["records"]
+    by_cluster = {(r["patient"], r["series"], r["cluster"]): {k: v for k, v in r.items() if k != "study"} for r in records}
+    series_of = {s["SeriesInstanceUID"]: s for s in listing(args.out)}
+    first = {p.stem: json.loads(p.read_text()) for p in done_dir.glob("*.json")}
+    todo = sorted(p for p, d in first.items() if d["train"] and not (rec_dir / f"{p}.json").exists())
+    if args.limit:
+        todo = todo[:args.limit]
+    root = args.tmp / "LIDC-IDRI"
+    print(f"{sum(d['train'] for d in first.values())} training patients; {len(todo)} to re-cut", flush=True)
+    t0, done_bytes = time.time(), 0
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
+        ahead: dict[str, concurrent.futures.Future] = {}
+        for k, patient in enumerate(todo):
+            for p in todo[k:k + args.prefetch]:
+                if p not in ahead:
+                    ss = sorted((series_of[s["series"]] for s in first[p]["series"]), key=lambda s: s["SeriesInstanceUID"])
+                    ahead[p] = pool.submit(fetch_patient, p, ss, root)
+            try:
+                checked = ahead.pop(patient).result()
+            except Exception as e:  # noqa: BLE001 - recorded, and the patient is left for a later run
+                print(f"[{k + 1}/{len(todo)}] {patient}: NOT verified: {type(e).__name__}: {e}", flush=True)
+                shutil.rmtree(root / patient, ignore_errors=True)
+                continue
+            got = crops_of((patient, str(root), None))
+            shutil.rmtree(root / patient, ignore_errors=True)
+            metas_equal = all(by_cluster.get((m["patient"], m["series"], m["cluster"])) == m for m, _ in got)
+            hu = np.load(part_path(parts / f"{patient}.hu64", ".npy")).astype(np.float32)
+            hu_meta = json.loads(part_path(parts / f"{patient}.hu64", ".json").read_text())
+            same_order = [(m["series"], m["cluster"]) for m, _ in got] == [(m["series"], m["cluster"]) for m in hu_meta]
+            centre = np.round((np.clip(hu[:, 18:46, 18:46, 18:46], HU_LO, HU_HI) - HU_LO) / (HU_HI - HU_LO) * 255)
+            diff = np.abs(np.stack([c for _, c in got]).astype(np.int16) - centre.astype(np.int16)) if got else np.zeros(1)
+            ok = metas_equal and same_order and len(got) == first[patient]["crops"] and int(diff.max()) <= 1
+            if not ok:
+                print(f"[{k + 1}/{len(todo)}] {patient}: re-cut does NOT match (metas {metas_equal}, order {same_order}, "
+                      f"{len(got)} of {first[patient]['crops']} crops, largest level difference {int(diff.max())})", flush=True)
+                continue
+            save_parts(parts / f"{patient}.crops28", got)
+            (rec_dir / f"{patient}.json").write_text(json.dumps({
+                "patient": patient, "series": checked, "crops": len(got), "metas_equal_records": metas_equal,
+                "max_level_difference_from_hu64_centre": int(diff.max()),
+                "voxels_differing_from_hu64_centre": int((diff > 0).sum()), "voxels": int(diff.size)}))
+            done_bytes += sum(c["zip_bytes"] for c in checked)
+            rate = done_bytes / max(time.time() - t0, 1e-9) / 1e6
+            print(f"[{k + 1}/{len(todo)}] {patient}: {len(checked)} series verified again, {len(got)} crops re-cut, "
+                  f"{int((diff > 0).sum())} voxels a level off the HU cube's centre ({rate:.1f} MB/s)", flush=True)
+    return 0
+
+
 def merge(args) -> int:
     """The parts, in patient order, as the files the training and teacher scripts read."""
     def join(kind: str, about: str, name: str) -> int:
@@ -161,7 +246,7 @@ def merge(args) -> int:
             m = json.loads(f.read_text())
             if m:
                 metas += m
-                cubes.append(np.load(f.with_suffix(".npy")))
+                cubes.append(np.load(part_path(f.parent / f.name[:-len(".json")], ".npy")))
         np.savez_compressed(args.out / f"{name}.npz", crops=np.concatenate(cubes) if cubes else np.zeros((0,)))
         (args.out / f"{name}.json").write_text(json.dumps({"about": about, "patients": len({m["patient"] for m in metas}),
                                                            "nodules": len(metas), "records": metas}, indent=1))
@@ -190,10 +275,17 @@ def main() -> int:
     r.add_argument("--workers", type=int, default=3)
     r.add_argument("--prefetch", type=int, default=4)
     r.add_argument("--limit", type=int)
+    c = sub.add_parser("recut")
+    c.add_argument("--out", type=Path, required=True)
+    c.add_argument("--tmp", type=Path, required=True)
+    c.add_argument("--records", type=Path, required=True)
+    c.add_argument("--workers", type=int, default=3)
+    c.add_argument("--prefetch", type=int, default=4)
+    c.add_argument("--limit", type=int)
     m = sub.add_parser("merge")
     m.add_argument("--out", type=Path, required=True)
     args = ap.parse_args()
-    return run(args) if args.cmd == "run" else merge(args)
+    return {"run": run, "recut": recut, "merge": merge}[args.cmd](args)
 
 
 if __name__ == "__main__":
