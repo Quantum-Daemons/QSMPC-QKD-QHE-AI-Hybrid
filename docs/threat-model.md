@@ -575,7 +575,7 @@ Where two-way QSDC cannot close, the page sends its telemetry by STIKE (Pan et a
   which bundles SEAL 4.3.3, and a development environment may still hold TenSEAL 0.3.16 (SEAL 4.1.1), which the floor admits. No TenSEAL
   release bundles 4.4.0 or later. node-seal's main branch moved to SEAL 4.7.2 on 2026-10-31 (PR #168;
   its `CHANGES.md` calls the release 7.1.0, and that release also rejects NaN and infinities at CKKS
-  encode), and npm's newest node-seal was still 7.0.0 on 2026-11-02. What bounds the exposure until
+  encode), and npm's newest node-seal was still 7.0.0 on 2026-11-24 (`npm view node-seal`). What bounds the exposure until
   then: neither tier deserializes a SEAL object it did not create: the MPC and lending paths pass keys and
   ciphertexts as bytes between their notional parties and workers, but the same tab created every one of them, so 4.4.0's hardened deserialization guards an input this project never takes,
   while 4.4.0's fixes to ciphertext evaluation and 4.7.2's sampler fix are missing from every build either tier can run.
