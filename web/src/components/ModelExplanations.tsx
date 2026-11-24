@@ -69,7 +69,22 @@ export function PrsLocusCard() {
       }
       return { l, x: px + 5, y: py - 4, anchor: "start" as const };
     });
-    return { chroms, start, cumulative, W, H, left, right, top, bottom, max, X, Y, top5 };
+    // The chromosome names on up to two rows (2026-11-24): at 375 px the SVG keeps its 560 px minimum, and on the deployed
+    // site DejaVu Sans overprinted 18 and 19, whose bands are narrower than two digits. Each name goes on the first row
+    // where it clears the one before it, and is left out only if both rows are taken; every point's title names its
+    // chromosome. DIGIT is an upper estimate of a digit's width at font size 10, DejaVu Sans's 0.636 em included.
+    const DIGIT = 6.4;
+    const ends = [-Infinity, -Infinity];
+    const chromLabels: { c: string; x: number; row: number }[] = [];
+    chroms.forEach((c, i) => {
+      const x = left + ((start[c] + ((start[chroms[i + 1] ?? ""] ?? cumulative) - start[c]) / 2) / cumulative) * (W - left - right);
+      const half = (c.length * DIGIT) / 2;
+      const row = ends.findIndex((end) => x - half > end + 2);
+      if (row < 0) return;
+      ends[row] = x + half;
+      chromLabels.push({ c, x, row });
+    });
+    return { chroms, start, cumulative, W, H, left, right, top, bottom, max, X, Y, top5, chromLabels };
   }, [data]);
   return (
     <details className="card details" style={{ marginTop: 14 }} id="prs-locus" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
@@ -83,8 +98,10 @@ export function PrsLocusCard() {
                 {plot.chroms.map((c, i) => (
                   <g key={c}>
                     {i % 2 === 0 && <rect x={plot.left + (plot.start[c] / plot.cumulative) * (plot.W - plot.left - plot.right)} y={plot.top} width={(((plot.start[plot.chroms[i + 1] ?? ""] ?? plot.cumulative) - plot.start[c]) / plot.cumulative) * (plot.W - plot.left - plot.right)} height={plot.H - plot.top - plot.bottom} fill={edge} opacity={0.25} />}
-                    <text x={plot.left + ((plot.start[c] + ((plot.start[plot.chroms[i + 1] ?? ""] ?? plot.cumulative) - plot.start[c]) / 2) / plot.cumulative) * (plot.W - plot.left - plot.right)} y={plot.H - plot.bottom + 14} textAnchor="middle" fontSize={10} fill={muted}>{c}</text>
                   </g>
+                ))}
+                {plot.chromLabels.map(({ c, x, row }) => (
+                  <text key={`label-${c}`} x={x} y={plot.H - plot.bottom + 14 + row * 11} textAnchor="middle" fontSize={10} fill={muted}>{c}</text>
                 ))}
                 <line x1={plot.left} x2={plot.W - plot.right} y1={plot.Y(0)} y2={plot.Y(0)} stroke={muted} strokeDasharray="3 3" />
                 {[plot.max, -plot.max].map((b) => <text key={b} x={plot.left - 6} y={plot.Y(b) + 8} textAnchor="end" fontSize={10} fill={muted}>{b.toFixed(2)}</text>)}
