@@ -14,6 +14,7 @@
   "dp-one-run-audit-2026-11-23.json": "279d2deeadfe3354fc70484e6c472349e17fd75ea29f5bdc7d0fd3830e0eab4a",
   "reconstruction-opssat-student-2026-11-23.json": "24f9f3eb168839027ad4948238b7d127a7e063a2c37c0ae66cc9ab3a683663b8",
   "reconstruction-telecom-student-2026-11-24.json": "6b6a74bfccb6f7cc9ea079e0b73470faf9ad44ac6af8531e7467a15d3d54a8d3",
+  "reconstruction-finance-student-2026-11-24.json": "dd5fad6aff94156269890843bd866679cfc19acc66264ab85d05466565cf8fd5",
   "reconstruction-fedheart-2026-11-24.json": "5810d4537bffa5973d09ea92e1af5f9bc7ab14727e2337041ac39a457d6d61b2",
   "attribute-inference-fedheart-2026-11-23.json": "077c20d35db50877ac38e50a5c4b721eeeced805a64f0890bbcf039ef057f61c",
   "gradient-inversion-cxr-2026-11-23.json": "3aa16f56cfd05f8dbc870e98c2bf9ebfabab32d928312e98250584aeb15f07da"
@@ -571,6 +572,23 @@
       0.8739,
       0.9794,
       0.9961
+     ]
+    }
+   ]
+  },
+  {
+   "file": "reconstruction-finance-student-2026-11-24.json",
+   "use_case": "Finance",
+   "title": "the AML CKKS student (synthetic transactions)",
+   "records": 2843872,
+   "routes": [
+    {
+     "label": "from the published preprocessing mean",
+     "median_relative_error": 1.8487813950842844e-06,
+     "share_within": [
+      1.0,
+      1.0,
+      1.0
      ]
     }
    ]

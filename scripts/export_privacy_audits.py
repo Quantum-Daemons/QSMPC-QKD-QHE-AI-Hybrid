@@ -55,6 +55,8 @@ RECONSTRUCTION = (
      {"A_published_preprocessing_mean": "from the published preprocessing mean",
       "B_weights_at_the_optimum": "from the weights, as the trainer's solver left them",
       "C_weights_solved_to_the_optimum": "from the weights, solved to the optimum"}),
+    ("reconstruction-finance-student-2026-11-24.json", "Finance", "the AML CKKS student (synthetic transactions)",
+     {"A_published_preprocessing_mean": "from the published preprocessing mean"}),
     ("reconstruction-fedheart-2026-11-24.json", "Medical", "the heart federation's models",
      {"A_published_preprocessing_mean": "from each hospital's published mean",
       "B_pooled_as_the_page_trains_it": "from the pooled model, as the page trains it",

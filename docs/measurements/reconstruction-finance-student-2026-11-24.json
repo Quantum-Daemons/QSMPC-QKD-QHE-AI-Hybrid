@@ -1,0 +1,28 @@
+{
+ "what": "an informed adversary's reconstruction of each training record from the rest and the published student",
+ "attack": "Balle, Cherubin and Hayes, IEEE S&P 2022 (doi:10.1109/SP46214.2022.9833677); reimplemented here",
+ "target": "finance_aml.student",
+ "training_records": 2843872,
+ "features": 114,
+ "data": "AMLworld HI-Small (synthetic; CDLA-Sharing-1.0, Kaggle version 8), the trainer's fit window, its 114 inputs",
+ "routes": {
+  "A_published_preprocessing_mean": {
+   "records": 2843872,
+   "relative_error_median": 1.8487813950842844e-06,
+   "relative_error_p90": 4.150987165876845e-06,
+   "share_below_0.001": 1.0,
+   "share_below_0.01": 1.0,
+   "share_below_0.1": 1.0,
+   "published_mean_max_abs_diff": 0.0
+  }
+ },
+ "not_run": "routes B and C: the pinned teacher's file is not cached here, and a booster retrained on this machine would not be the published one; the closed form is shown on the OPS-SAT student",
+ "reading": "Relative L2 error of each reconstructed row against the true one. The informed adversary is the worst case differential privacy is defined against; nothing here is a DP-trained model, so an exact reconstruction is the expected outcome, and the training statistics a client must have are a release.",
+ "seconds": 182.9,
+ "environment": {
+  "git": "b0c394e",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-24"
+ }
+}

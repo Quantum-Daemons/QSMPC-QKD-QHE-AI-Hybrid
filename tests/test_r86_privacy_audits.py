@@ -92,6 +92,8 @@ def note_problems(note: str) -> list[str]:
     want.append(f"({tel['B_weights_at_the_optimum']['solver_iterations']} iterations), "
                 f"{_pct(tel['B_weights_at_the_optimum']['share_below_0.1'])[:-8]} percent within 10")
     want.append(f"(Adam, 50 epochs), {_pct(heart['B_pooled_as_the_page_trains_it']['share_below_0.1'])[:-8]} percent within 10")
+    fin = _load("reconstruction-finance-student-2026-11-24.json")
+    want.append(f"all {fin['training_records']:,} fit rows within 0.1 percent")
     if heart["B_fedavg_as_the_page_trains_it"]["share_below_0.1"] == 0:
         want.append("from the FedAvg model as the page trains it, none within 10")
     return [f"the note does not quote {w!r}" for w in want if w not in flat]
@@ -152,6 +154,8 @@ def test_the_reconstruction_records_of_2026_11_24_hold_their_own_checks() -> Non
     assert heart["C_pooled_solved_to_the_optimum"]["stationarity_residual"] < 1e-6
     assert heart["B_pooled_as_the_page_trains_it"]["share_below_0.1"] < 0.5
     assert heart["B_fedavg_as_the_page_trains_it"]["share_below_0.1"] <= heart["B_pooled_as_the_page_trains_it"]["share_below_0.1"]
+    fin = _load("reconstruction-finance-student-2026-11-24.json")["routes"]["A_published_preprocessing_mean"]
+    assert fin["share_below_0.001"] == 1.0 and fin["published_mean_max_abs_diff"] == 0.0
 
 def test_the_note_quotes_the_records() -> None:
     assert note_problems(NOTE.read_text(encoding="utf-8")) == []

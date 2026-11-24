@@ -160,13 +160,15 @@ On the owner's choices of 2026-11-22 (the CPU phase first; GPU jobs asked one by
   page trains it (Adam, 50 epochs), 13.37 percent within 10; from the FedAvg model as the page trains it, none within
   10. The closed form needs the exact optimum, which an early-stopped or federated model does not reach; that is not a
   defence, because a release of training statistics already gives every record back, and the DP arms are audited by the
-  one-run audit instead. The finance student was not run: its AMLworld features are not on this machine since the data
-  drive failed on 2026-11-24, and its route through the published mean is the same as the OPS-SAT student's.
+  one-run audit instead. The AML student (`reconstruction-finance-student-2026-11-24.json`): from the published
+  preprocessing mean, all 2,843,872 fit rows within 0.1 percent, the recomputed mean equal to the published one in
+  every feature; routes B and C were not run, the pinned teacher's file not being cached here and a booster retrained
+  on this machine not being the published one.
 
 The CPU phase of 2026-11-23 left two parts of the plan above undone: the informed reconstruction had run on the
 OPS-SAT student only (`docs/measurements/reconstruction-opssat-student-2026-11-23.json`), and the k-candidate canary
 game with riskcal's bound was not built. On the owner's choice of 2026-11-24 the reconstruction now covers the
-QKD-attack student and the heart federation (above; the finance student is not run), and the canary game is next. The
+QKD-attack student, the heart federation and the AML student (above), and the canary game is next. The
 GPU jobs, on the owner's approval of 2026-11-23:
 
 - **Membership inference, BreastMNIST's whole pipeline** (`mia-breastmnist-pipeline-2026-11-23.json`, 64 shadows): each
@@ -197,7 +199,7 @@ a labelled node's own features and, by a GNN, from its one-hop neighbourhood too
 
 | Use case | Membership-inference audit | DP audit | Other | Note |
 |---|---|---|---|---|
-| Finance | not run: the GBM, MLP, compact GNN and the two Multi-PNA+EU models, on AMLworld | not run: the counting release (`dp_count`) | informed reconstruction of the student: not run, its features are not on this machine since 2026-11-24 | the training data is synthetic, so a figure measures memorisation, not exposure of people |
+| Finance | not run: the GBM, MLP, compact GNN and the two Multi-PNA+EU models, on AMLworld | not run: the counting release (`dp_count`) | done: informed reconstruction of the student through its published mean (2026-11-24) | the training data is synthetic, so a figure measures memorisation, not exposure of people |
 | Medical, 2D | done: BreastMNIST's students (teacher fixed) and the whole pipeline (teacher retrained, GPU); the heart federation's five arms | done: the one-run audit of the heart federation's noise and of the murmur DP-SGD | done: attribute inference (heart), gradient inversion (chest X-ray); informed reconstruction of the heart models (2026-11-24); the k-candidate canary game: on the owner's choice of 2026-11-24 | records of real patients, all public |
 | Medical, 3D (LIDC-IDRI) | to be chosen after one teacher fit is timed (the owner's choice of 2026-11-24): 64 retrained shadows as for BreastMNIST, or fewer | none: not trained under DP | none | CT scans of real patients, public (TCIA, CC BY 3.0) |
 | Genomics | none: the score's weights are published, not trained here | the discrete-Gaussian counts: not audited | | |
