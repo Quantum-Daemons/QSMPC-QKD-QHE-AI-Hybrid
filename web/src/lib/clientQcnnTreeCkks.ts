@@ -92,6 +92,10 @@ export async function treeReadoutCkks(net: TreeNetwork, rows: ArrayLike<number>[
   const slots = p.N / 2, delta = Math.pow(2, p.scale_bits);
   const live: { delete(): void }[] = [];
   const keep = <T extends { delete(): void }>(o: T) => { live.push(o); return o; };
+  // Objects made for one block are freed when the block is decrypted: a run over many blocks would otherwise hold every
+  // intermediate ciphertext (2 MB each at N = 16384) until the end and outgrow wasm's 4 GB.
+  let blockLive: { delete(): void }[] = [];
+  const temp = <T extends { delete(): void }>(o: T) => { blockLive.push(o); return o; };
   try {
     const tk = performance.now();
     const parms = keep(new seal.EncryptionParameters(seal.SchemeType.ckks));
@@ -109,18 +113,18 @@ export async function treeReadoutCkks(net: TreeNetwork, rows: ArrayLike<number>[
     const ev = keep(new seal.Evaluator(context));
     const keyMs = performance.now() - tk;
 
-    const ct = () => keep(new seal.Ciphertext());
+    const ct = () => temp(new seal.Ciphertext());
     const fill = (v: number) => new Float64Array(slots).fill(v);
     /** A constant at a ciphertext's level and exact scale, for an addition. */
     const constLike = (v: number, like: any) => {
-      const out = keep(new seal.Plaintext());
+      const out = temp(new seal.Plaintext());
       encoder.encode(fill(v), like.scale(), out);
       ev.plainModSwitchToInplace(out, like.parmsId());
       return out;
     };
     /** A scalar at a ciphertext's level, at scale `at` (delta unless given), for a multiplication. */
     const scalarAt = (v: number, like: any, at: number = delta) => {
-      const out = keep(new seal.Plaintext());
+      const out = temp(new seal.Plaintext());
       encoder.encode(fill(v), at, out);
       ev.plainModSwitchToInplace(out, like.parmsId());
       return out;
@@ -157,7 +161,7 @@ export async function treeReadoutCkks(net: TreeNetwork, rows: ArrayLike<number>[
         if (c === null) return null;
         const v = new Float64Array(slots);
         v.set(comp[c as number].subarray(lo, hi));
-        const pt = keep(new seal.Plaintext());
+        const pt = temp(new seal.Plaintext());
         encoder.encode(v, delta, pt);
         const out = ct();
         encryptor.encrypt(pt, out);
@@ -215,14 +219,17 @@ export async function treeReadoutCkks(net: TreeNetwork, rows: ArrayLike<number>[
       downBytes += result.saveToArray(seal.ComprModeType.none).length;
 
       t = performance.now();
-      const pt = keep(new seal.Plaintext());
+      const pt = temp(new seal.Plaintext());
       decryptor.decrypt(result, pt);
       const vals: Float64Array = encoder.decodeFloat64(pt);
       readouts.set(vals.subarray(0, hi - lo), lo);
       decryptMs += performance.now() - t;
+      for (const o of blockLive.reverse()) { try { o.delete(); } catch { /* already freed */ } }
+      blockLive = [];
     }
     return { readouts, rows: rows.length, blocks: nBlocks, ciphertextsUp, upBytes, downBytes, keyBytes, keyMs, encryptMs, evaluateMs, decryptMs };
   } finally {
+    for (const o of blockLive.reverse()) { try { o.delete(); } catch { /* already freed */ } }
     for (const o of live.reverse()) { try { o.delete(); } catch { /* already freed */ } }
   }
 }
