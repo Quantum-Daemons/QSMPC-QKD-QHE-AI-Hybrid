@@ -80,8 +80,10 @@ def test_every_he_parameter_set_in_the_cbom_is_inside_the_standard() -> None:
     assert _problems(cbom) == []
     sets = [s for ident in _he_entries(cbom).values() for s in parameter_sets(ident)]
     # What was read, so a parser that silently matched less would show here: the browser's CKKS chain, the shared-key
-    # aggregation, threshold CKKS and threshold BGV at N = 8192, and the committee's threshold BGV at N = 16384.
-    assert sorted((n, q) for n, q, _ in sets) == [(8192, 120), (8192, 140), (8192, 200), (8192, 200), (8192, 202), (16384, 260)], sets
+    # aggregation, threshold CKKS and threshold BGV at N = 8192, the square students' two sets (A2 at N = 8192, B at
+    # N = 16384), and the committee's threshold BGV at N = 16384.
+    assert sorted((n, q) for n, q, _ in sets) == [(8192, 120), (8192, 140), (8192, 200), (8192, 200), (8192, 202), (8192, 202),
+                                                   (16384, 240), (16384, 260)], sets
 
 
 def test_every_bound_the_cbom_quotes_is_the_standards() -> None:
