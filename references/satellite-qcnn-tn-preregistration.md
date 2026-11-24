@@ -117,3 +117,15 @@ is a bilinear function of the pair's, $`r'_k = \sum_{i,j} M_{kij} r_{a,i} r_{b,j
 $`M_{kij} = \tfrac{1}{4} \mathrm{Tr}[(\sigma_k \otimes I) V (\sigma_i \otimes \sigma_j) V^\dagger]`$, $`V`$ the
 pair's convolution and pool; the final rotation and $`\langle Z_0 \rangle`$ are linear in the last survivor's.
 
+## Addendum 4, 2026-11-24, after the runs: where the ONNX graph is
+
+C said the ONNX graph is one "that ONNX Runtime Web runs on the page". The graphs met C's criterion (OPS-SAT: all 529
+test rows within 2.3e-7; ESA-ADB: all 115,064 within 3.0e-7; no decision changed), but the repository commits no
+`.onnx` (`*.onnx` is ignored; models reach the page from the Hub), and the owner chose to serve these circuits from the
+site without a Hub upload. So the page runs the same contraction in TypeScript (`clearReadout` in
+`web/src/lib/clientQcnnTreeCkks.ts`, held to the state vector) and under CKKS, and the graph is rebuilt from the
+committed weights byte for byte (`scripts/export_qcnn_tree_onnx.py`, its SHA-256 in each `tree.json`, checked by
+`tests/test_r86_satellite_qcnn.py`). Running the graph itself in ONNX Runtime Web would need it in git or on the Hub,
+which is the owner's decision. The figures are in `docs/measurements/satellite-qcnn-2026-11-24.json` and
+`satellite-qcnn-tree-ckks-2026-11-24.json`.
+
