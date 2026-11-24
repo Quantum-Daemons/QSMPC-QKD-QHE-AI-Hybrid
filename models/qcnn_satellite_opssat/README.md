@@ -47,8 +47,9 @@ because the pre-registration fixed seed 0 before any run; no seed was picked on 
 - Under CKKS, one row a slot: the tree network stage by stage (`clientQcnnTreeCkks.ts`; N = 16384, moduli 60 + 6 x 40 +
   60 = 360 bits, inside the HomomorphicEncryption.org standard's post-quantum bound at that N),
   `docs/measurements/satellite-qcnn-tree-ckks-2026-11-24.json`.
-- `tree.onnx`: the same contraction as an ONNX graph, written only because it equals the state vector on every test row
-  within 1e-5 with no decision changed (`tree.json`).
+- The same contraction as an ONNX graph (opset 17), which equals the state vector on every test row within 1e-5 with no
+  decision changed. The repository commits no `.onnx`, so it is not stored here: `scripts/export_qcnn_tree_onnx.py`
+  rebuilds it from `weights.json` byte for byte, and `tree.json` records its SHA-256 and its check.
 
 Retrain: `python scripts/train/qcnn_variational.py --usecase satellite_opssat --layers 3 --epochs 120 --seed 0 --threads 1
 --qubits 8 --arch tree --encoding-scale 0.5` (on the CPU; CPU and CUDA kernels round differently).

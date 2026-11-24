@@ -150,8 +150,8 @@ export default function SatelliteQcnnCard() {
       ) : null}
       <p className="muted small" style={{ margin: "8px 0 0" }}>
         Recorded on node over {file.ckks_record.rows.toLocaleString("en-US")} test rows: largest error {file.ckks_record.tree_max_abs_readout_error.toExponential(1)},
-        {" "}{file.ckks_record.tree_decisions_differing} decisions changed, {file.ckks_record.per_row.tree_ms} ms and {kb(file.ckks_record.per_row.tree_bytes_up)} a row
-        one row a slot, against {file.ckks_record.per_row.pauli_ms} ms and {kb(file.ckks_record.per_row.pauli_bytes_up)} a row the per-row way
+        {" "}{file.ckks_record.tree_decisions_differing} decisions changed, {file.ckks_record.per_row.tree_ms.toFixed(2)} ms and {kb(file.ckks_record.per_row.tree_bytes_up)} a row
+        one row a slot, against {file.ckks_record.per_row.pauli_ms.toFixed(0)} ms and {kb(file.ckks_record.per_row.pauli_bytes_up)} a row the per-row way
         ({file.ckks_record.pauli_rows} rows). CKKS with N = 16384 and 360 modulus bits, inside the HomomorphicEncryption.org
         standard&apos;s post-quantum bound; the weights are public and the key stays in this tab. The same contraction as an ONNX
         graph ({kb(file.onnx_record.bytes)}) equals the state vector on all {file.onnx_record.test_rows.toLocaleString("en-US")} test rows to{" "}

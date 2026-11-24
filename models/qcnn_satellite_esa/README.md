@@ -46,9 +46,10 @@ because the pre-registration fixed seed 0 before any run; no seed was picked on 
 
 As for the OPS-SAT circuit: in the clear; under CKKS one row at a time (the Pauli-form path); under CKKS one row a slot
 (`clientQcnnTreeCkks.ts`, N = 16384, 360 bits), whose measurement on all 115,064 test windows is in
-`docs/measurements/satellite-qcnn-tree-ckks-2026-11-24.json`; and `tree.onnx`, written only because it equals the
-state vector on every test window within 1e-5 with no decision changed (`tree.json`). The page ships the first 8,192
-test windows, one CKKS block.
+`docs/measurements/satellite-qcnn-tree-ckks-2026-11-24.json`; and the same contraction as an ONNX graph, which equals
+the state vector on every test window within 1e-5 with no decision changed. The repository commits no `.onnx`:
+`scripts/export_qcnn_tree_onnx.py` rebuilds it from `weights.json` byte for byte, and `tree.json` records its SHA-256 and
+its check. The page ships the first 8,192 test windows, one CKKS block.
 
 Retrain: `python scripts/data/esa_qcnn_windows.py`, then `python scripts/train/qcnn_variational.py --usecase
 satellite_esa --layers 3 --epochs 120 --seed 0 --threads 1 --qubits 8 --arch tree --encoding-scale 0.5

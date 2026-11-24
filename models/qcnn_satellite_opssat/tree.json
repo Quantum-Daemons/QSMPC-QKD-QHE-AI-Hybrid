@@ -1,0 +1,11 @@
+{
+ "onnx": "tree.onnx",
+ "sha256": "87172cd61ae6bd6966f1d47c2178b69e140240c51c005f919f36be423667ae28",
+ "bytes": 2538,
+ "opset": 17,
+ "test_rows": 529,
+ "max_abs_readout_difference": 2.2765879070796302e-07,
+ "decisions_differing": 0,
+ "against": "qsh.qhe.qcnn_trained._run_circuit (state vector, float64)",
+ "onnxruntime": "1.31.1"
+}
