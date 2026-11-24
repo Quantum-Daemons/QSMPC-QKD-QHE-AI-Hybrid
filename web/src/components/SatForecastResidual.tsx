@@ -11,7 +11,11 @@ import { MarksHidden } from "./VerificationChart";
 import type { ForecastResidualReport } from "../lib/clientCompute";
 import { modelsFor } from "../lib/config";
 
-const BLUE = "#4f9dff", RED = "#ff6b6b", AMBER = "#f6b73c";
+// One declaration each: the chart-contrast check (tests/test_chart_accessibility.py) resolves a mark's colour
+// from a `const NAME = "#hex"` statement, and read only the first of three on one line.
+const BLUE = "#4f9dff";
+const RED = "#ff6b6b";
+const AMBER = "#f6b73c";
 const tick = { fill: "var(--muted)", fontSize: 11 };
 const NO_POINTS: never[] = [];
 const HOUR = 3_600_000;
