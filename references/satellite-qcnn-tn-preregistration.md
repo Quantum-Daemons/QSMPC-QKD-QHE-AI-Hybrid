@@ -104,3 +104,16 @@ best validation score's; average precision leads, being free of any threshold; t
 validation-chosen threshold are reported with the note that the threshold rests on two positive windows. A is
 unchanged. Only the counts above had been seen.
 
+## Addendum 3, 2026-11-24, before any code for C or D was written
+
+The repository already evaluates a binary QCNN under CKKS another way (`src/qsh/qhe/qcnn_pauli.py` and its browser
+twin `web/src/lib/clientQcnnCkks.ts`): the readout is a linear form in the $`3^n`$ products of the encoded angles'
+sines and cosines, so the client encrypts those products for one row and the server takes one inner product. That path
+applies unchanged to the satellite artifacts, which are binary. D's evaluation, stage by stage with one row a slot, is
+therefore reported beside it on the same rows: the error against the clear circuit, the time and the bytes per row.
+The tree's stage maps, in C and D, are exact for this circuit: each pair's three convolution rounds and its pool act
+on a product of two single-qubit states and the discarded wire is never touched again, so the survivor's Bloch vector
+is a bilinear function of the pair's, $`r'_k = \sum_{i,j} M_{kij} r_{a,i} r_{b,j}`$ with $`r = (1, x, y, z)`$ and
+$`M_{kij} = \tfrac{1}{4} \mathrm{Tr}[(\sigma_k \otimes I) V (\sigma_i \otimes \sigma_j) V^\dagger]`$, $`V`$ the
+pair's convolution and pool; the final rotation and $`\langle Z_0 \rangle`$ are linear in the last survivor's.
+
