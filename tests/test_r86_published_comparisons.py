@@ -41,6 +41,14 @@ for (const [uc, models] of Object.entries(cfg.models)) {
   out.rows[uc] = m.modelRows(models, verifications).map((r) => [r.figure.split(":")[0], r.verdict, r.thisRun]);
 }
 out.otherMetric = m.modelRows([cfg.models.medical_fl[0]], [{ modelKey: cfg.models.medical_fl[0].key, selected: true, outcome: "PASS", metric: "accuracy", score: 0.859, expected: 0.859, n: 156, split: "test" }])[0].thisRun;
+out.qcnn = {};
+for (const uc of ["finance_aml", "medical_fl", "telecom_ids", "genomics"]) {
+  out.qcnn[uc] = {
+    before: m.qcnnRows(uc, { metric: "accuracy", value: 0.9535 }, null),
+    after: m.qcnnRows(uc, { metric: "accuracy", value: 0.9535 }, { label: "accuracy", headline: 0.9535, rows: 86, matchesRecord: true }),
+  };
+}
+out.qcnnKeys = Object.keys(m.QCNN_REFERENCES);
 out.fedAt7005 = m.flambyRows(fake(0.7005)).map((r) => [r.figure, r.verdict]);
 out.fedAt785 = m.flambyRows(fake(0.785)).map((r) => [r.figure, r.verdict]);
 console.log(JSON.stringify(out));
@@ -116,3 +124,30 @@ def test_this_run_reports_the_models_own_rescoring_and_names_its_metric(run) -> 
             assert this_run.startswith("PASS: ") and " 0.5000 on 10 rows of its sample (test)" in this_run, this_run
             assert "not this row's metric" not in this_run, this_run
     assert run["otherMetric"].endswith(", not this row's metric"), run["otherMetric"]
+
+
+def test_each_trained_qcnn_has_labelled_literature_beside_it(run) -> None:
+    """Checklist CS13, the owner's choice of 2026-11-24: same-split classical baselines for both techniques (the QCNN's
+    is logistic regression, in its run's log line), and literature figures beside them only as labelled references.
+    Every page that offers a trained QCNN carries at least one; none is a reproduction, since no published figure is a
+    QCNN on the page's data and split; each names its source; and this run's column follows the QCNN run."""
+    offered = set(re.search(r'QCNN_USECASES = new Set\(\[([^\]]+)\]\)',
+                            (WEB / "src/lib/usePipelineRun.ts").read_text()).group(1).replace('"', "").replace(" ", "").split(","))
+    assert set(run["qcnnKeys"]) == offered, (run["qcnnKeys"], offered)
+    want = {"finance_aml": ["not comparable"], "medical_fl": ["reference", "reference"], "telecom_ids": ["not comparable"]}
+    for uc, verdicts in want.items():
+        before, after = run["qcnn"][uc]["before"], run["qcnn"][uc]["after"]
+        assert [r["verdict"] for r in before] == verdicts, (uc, before)
+        for r in before:
+            assert r["figure"] == "QCNN (trained, not encrypted): accuracy" and r["offline"] == "0.9535", r
+            assert re.search(r"doi:10\.\d{4,}/|arXiv:\d{4}\.\d{4,5}", r["source"]), r["source"]
+            assert r["why"] and r["thisRun"].startswith("not run in this tab"), r
+        for r in after:
+            assert r["thisRun"] == "re-scored 0.9535 on 86 rows of the trainer's test split, equal to the record", r
+    assert run["qcnn"]["genomics"]["before"] == [], "genomics ships no trained QCNN"
+    # Two references can share a figure (medical's two), so the card keys a row by figure and source together: keyed
+    # on the figure alone, the preview of 2026-11-24 kept a stale third row once the circuit's record loaded.
+    pairs = [(r["figure"], r["source"]) for r in run["qcnn"]["medical_fl"]["before"]]
+    assert len(pairs) == len(set(pairs)) == 2, pairs
+    card = (WEB / "src/components/PublishedComparisonCard.tsx").read_text()
+    assert "<tr key={`${r.figure} | ${r.source}`}>" in card, "the card must key a row by figure and source"

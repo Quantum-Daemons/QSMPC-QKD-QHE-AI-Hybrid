@@ -42,7 +42,9 @@ export default function PublishedComparisonCard({ usecase, rows, note }: {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.figure}>
+                // Figure and source together: two published references can stand beside one figure (the medical QCNN's
+                // two), and a key on the figure alone left a stale row behind when the figure's name loaded.
+                <tr key={`${r.figure} | ${r.source}`}>
                   <th scope="row" style={{ textAlign: "left", fontWeight: 500 }}>{r.figure}<br />
                     <span className="muted small">{r.source}</span></th>
                   <td>{r.published}</td>

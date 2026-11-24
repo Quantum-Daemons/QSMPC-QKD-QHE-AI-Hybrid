@@ -1724,7 +1724,7 @@ const _qcnnCache: Record<string, QcnnWeights | null> = {};
  *  weights actually load or the control goes inert again. The two live in different modules, so
  *  `tests/test_qcnn_usecases.py` compares `QCNN_USECASES` against the files on disk using this same
  *  mapping rather than relying on the two staying in step by inspection. */
-function dataDirFor(usecase: string): string {
+export function dataDirFor(usecase: string): string {
   return usecase === "medical_fl" ? "medical" : usecase.split("_")[0];        // finance_aml -> finance
 }
 

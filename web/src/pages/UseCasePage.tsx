@@ -28,7 +28,8 @@ import FinanceAccuracyCost from "../components/FinanceAccuracyCost";
 import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCard";
 import VerificationsCard from "../components/VerificationsCard";
 import PublishedComparisonCard from "../components/PublishedComparisonCard";
-import { flambyRows, modelRows, PAGE_NOTES } from "../lib/publishedComparisons";
+import { flambyRows, modelRows, PAGE_NOTES, qcnnRows } from "../lib/publishedComparisons";
+import { useQcnnRecord } from "../lib/qcnnRecord";
 import MpcGnnPanel from "../components/MpcGnnPanel";
 import SatForecastResidual from "../components/SatForecastResidual";
 import { ConfusionCard, PrsLocusCard } from "../components/ModelExplanations";
@@ -92,6 +93,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
   const meta = USECASE_META[usecase];
   const diagramRef = useRef<HTMLDivElement>(null);
   const run = usePipelineRun(usecase, diagramRef);
+  // The trained QCNN's recorded headline, for the published-figure table's QCNN rows (checklist CS13).
+  const qcnnRecord = useQcnnRecord(usecase);
   // Before a run there is nothing to export: GIF silently did nothing (the recorder is only
   // built by launch()) and Metrics wrote an empty CSV. BenchmarkPanel already gates on
   // rows.length; these now match it.
@@ -397,6 +400,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       <PublishedComparisonCard usecase={usecase} note={PAGE_NOTES[usecase]} rows={[
         ...modelRows(modelsFor(usecase), artifacts?.verifications as VerificationSummary[] | undefined),
         ...(usecase === "medical_fl" && artifacts?.fedHeart ? flambyRows(artifacts.fedHeart as FedHeartResult) : []),
+        ...qcnnRows(usecase, qcnnRecord, (artifacts?.qcnn_rescore as QcnnRescore | undefined) ?? null),
       ]} />
 
       {/* `surfacedBackend` is the backend that RAN, not the control that was set. Passing
