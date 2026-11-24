@@ -233,3 +233,29 @@ export async function treeReadoutCkks(net: TreeNetwork, rows: ArrayLike<number>[
     for (const o of live.reverse()) { try { o.delete(); } catch { /* already freed */ } }
   }
 }
+
+/** The run off the page's thread: in a dedicated worker in a browser, on the calling thread elsewhere (node). A worker
+ *  that fails is reported as the failure it is, never retried on the page's thread; the worker is terminated after the
+ *  run, which frees its wasm heap. */
+export async function treeReadoutCkksOffThread(net: TreeNetwork, rows: number[][]):
+    Promise<{ run: TreeCkksRun; ranIn: string }> {
+  if (typeof window === "undefined" || typeof Worker === "undefined") {
+    return { run: await treeReadoutCkks(net, rows), ranIn: "the calling thread" };
+  }
+  // Vite bundles the worker from exactly this form: `new URL(...)` written inside `new Worker(...)`.
+  const worker = new Worker(new URL("./clientQcnnTreeCkks.worker.ts", import.meta.url), { type: "module" });
+  try {
+    return await new Promise((resolve, reject) => {
+      worker.onmessage = (e: MessageEvent<{ id: number; ok: boolean; run?: TreeCkksRun; error?: string }>) => {
+        const d = e.data;
+        if (d.ok && d.run) resolve({ run: d.run, ranIn: "a Web Worker" });
+        else reject(new Error(`in its worker: ${d.error ?? "no result"}`));
+      };
+      worker.onerror = (e) => reject(new Error(`its worker failed: ${e.message || "the worker could not be loaded"}`));
+      worker.onmessageerror = () => reject(new Error("its worker's result could not be read back"));
+      worker.postMessage({ id: 1, net, rows });
+    });
+  } finally {
+    worker.terminate();
+  }
+}

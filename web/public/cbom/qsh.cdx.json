@@ -1,7 +1,7 @@
 {
  "bomFormat": "CycloneDX",
  "specVersion": "1.7",
- "serialNumber": "urn:uuid:03a14bcd-edb5-5d9e-85c4-bba8071ee072",
+ "serialNumber": "urn:uuid:442dc2d8-64a8-5c3f-a77e-8f67ab019ac6",
  "version": 1,
  "metadata": {
   "component": {
@@ -755,7 +755,7 @@
    "type": "cryptographic-asset",
    "bom-ref": "crypto/ckks",
    "name": "CKKS",
-   "description": "Homomorphic evaluation of linear layers, of the square-activation students' convolution, square and dense layer, and of the trained QCNN's readout as a linear form, on Microsoft SEAL (node-seal in the browser; TenSEAL, OpenFHE or HEonGPU in the full deployment)",
+   "description": "Homomorphic evaluation of linear layers, of the square-activation students' convolution, square and dense layer, of the trained QCNN's readout as a linear form, and of the satellite QCNN's tree network stage by stage, on Microsoft SEAL (node-seal in the browser; TenSEAL, OpenFHE or HEonGPU in the full deployment)",
    "cryptoProperties": {
     "assetType": "algorithm",
     "algorithmProperties": {
@@ -769,7 +769,7 @@
       "encrypt",
       "decrypt"
      ],
-     "parameterSetIdentifier": "browser: N = 8192, coefficient moduli {60, 40, 40, 60} bits, scale 2^40; the square-activation students (BreastMNIST and the 3D nodules), by the set the reader picks: N = 8192, coefficient moduli {48, 34, 34, 34, 52} bits, scale 2^34, or N = 16384, coefficient moduli {60, 40, 40, 40, 60} bits, scale 2^40; the medical page's shared-key aggregation, NVIDIA FLARE's TenSEAL settings: N = 8192, coefficient moduli {60, 40, 40} bits, scale 2^40",
+     "parameterSetIdentifier": "browser: N = 8192, coefficient moduli {60, 40, 40, 60} bits, scale 2^40; the square-activation students (BreastMNIST and the 3D nodules), by the set the reader picks: N = 8192, coefficient moduli {48, 34, 34, 34, 52} bits, scale 2^34, or N = 16384, coefficient moduli {60, 40, 40, 40, 60} bits, scale 2^40; the satellite QCNN's tree network, one row a slot: N = 16384, coefficient moduli {60, 40, 40, 40, 40, 40, 40, 60} bits, scale 2^40; the medical page's shared-key aggregation, NVIDIA FLARE's TenSEAL settings: N = 8192, coefficient moduli {60, 40, 40} bits, scale 2^40",
      "classicalSecurityLevel": 128
     }
    },
@@ -808,6 +808,9 @@
      },
      {
       "location": "web/src/lib/clientFHESquare3d.ts"
+     },
+     {
+      "location": "web/src/lib/clientQcnnTreeCkks.ts"
      }
     ]
    }

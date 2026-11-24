@@ -21,6 +21,7 @@ import SquareStudentCkks from "../components/SquareStudentCkks";
 import PcgFlCard from "../components/PcgFlCard";
 import MurmurDpCard from "../components/MurmurDpCard";
 import SatBoundaryCard from "../components/SatBoundaryCard";
+import SatelliteQcnnCard from "../components/SatelliteQcnnCard";
 import SatVusPrCard from "../components/SatVusPrCard";
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
@@ -430,6 +431,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && <MurmurDpCard />}
       {usecase === "satellite_comms" && <SatVusPrCard />}
       {usecase === "satellite_comms" && <SatBoundaryCard />}
+      {usecase === "satellite_comms" && <SatelliteQcnnCard />}
       {usecase === "satellite_comms" && artifacts?.forecast_residual ? <SatForecastResidual report={artifacts.forecast_residual as ForecastResidualReport} /> : null}
       {usecase === "genomics" && artifacts?.genomicsDp ? <GenomicsDpCard dp={artifacts.genomicsDp as GenomicsDpArtifact} /> : null}
       {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} rescore={(artifacts.qcnn_rescore as QcnnRescore | undefined) ?? null} /> : null}

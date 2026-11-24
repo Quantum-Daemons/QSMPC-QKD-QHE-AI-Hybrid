@@ -13,7 +13,8 @@ layout pylidc reads. Then, from those images:
   scripts/train/medical_nodule3d_teacher_totalseg.py answers in its own environment.
 
 The patient's folder is then deleted, and a record of what was verified is written. A stopped run resumes at the next
-patient. `merge` joins the parts into the files the training script reads.
+patient. How this differs from the pre-registration's text (883 series, TotalSegmentator during the fetch) is in
+references/medical-nodule3d-square-student-preregistration-addendum.md. `merge` joins the parts into the files the training script reads.
 
     venv/bin/python scripts/data/lidc_stream.py run --out OUT --tmp TMP --split SPLIT --records RECORDS --queue Q
     venv/bin/python scripts/data/lidc_stream.py merge --out OUT
