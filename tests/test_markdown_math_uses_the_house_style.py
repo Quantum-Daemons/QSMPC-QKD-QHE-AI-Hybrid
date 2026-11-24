@@ -25,6 +25,7 @@ WHAT IS ASSERTED
 
 from __future__ import annotations
 
+import hashlib
 import re
 import subprocess
 from pathlib import Path
@@ -152,10 +153,29 @@ def test_the_prose_formula_detector_sees_one_and_skips_quotes_and_code() -> None
     assert all(hit.startswith("1:") for hit in _prose_formulas(sample)), _prose_formulas(sample)
 
 
+#: Frozen texts, each with the SHA-256 it is frozen at. A pre-registration's bytes are pinned by its trainer
+#: (`PREREG_SHA256`) and were committed before its run, so retypesetting one after the run would be an edit to a
+#: pre-registration with its results known. The exemption covers that file at that hash only and lapses, failing below,
+#: the moment the file changes.
+FROZEN = {
+    # "clipped to +-10": committed 2026-11-25 (8f70aa5) before this test read it, the finance square student's run
+    # under it the same day.
+    "references/finance-square-student-preregistration.md":
+        "9ac9039309cbf6bfa53b76fcbe749f817a3d25839419670e99413eb14d49759e",
+}
+
+
+def test_each_frozen_text_is_still_the_frozen_one() -> None:
+    changed = [f for f, h in FROZEN.items() if hashlib.sha256((REPO / f).read_bytes()).hexdigest() != h]
+    assert not changed, f"frozen texts that changed, so their exemption no longer applies: {changed}"
+
+
 def test_github_markdown_types_no_formula_as_prose() -> None:
     bad = []
     for f in _markdown():
         if f.startswith(HF_RENDERED):
+            continue
+        if f in FROZEN and hashlib.sha256((REPO / f).read_bytes()).hexdigest() == FROZEN[f]:
             continue
         bad += [f"{f}:{hit}" for hit in _prose_formulas((REPO / f).read_text(errors="replace"))]
     assert not bad, ("formulas typed as prose; write them in the house form $`...`$ (or quote the source "

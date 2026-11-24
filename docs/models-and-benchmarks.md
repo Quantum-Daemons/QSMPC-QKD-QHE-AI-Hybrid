@@ -97,6 +97,16 @@ Against the published figures on this corpus: on HI-Small the Graph Feature Prep
 
 The pages show each network's logits and its decision, not a probability. Trained with class weights towards soft targets, the networks' raw probabilities are not risks: their Brier scores on test, 0.00177 for the MLP and 0.00181 for the GNN, are worse than giving every row the window's rate (0.00152). Each record carries a Platt map fitted on validation, as the teacher's and the student's do, and on the two networks it brings CORP's miscalibration term down 13- and 20-fold, to $`7.4 \times 10^{-5}`$ for the MLP and $`5.3 \times 10^{-5}`$ for the GNN. By CORP's discrimination term the GNN (0.000783) leads the teacher (0.000763) and the MLP (0.000741).
 
+IBM's own Multi-PNA+EU (`finance_aml.gnn`) carried no such map until batch 4 (2026-11-25):
+`docs/measurements/finance-gnn-calibration-2026-11-25.json` (`scripts/measure_finance_gnn_calibration.py`) reads the
+probabilities its record was scored from, each seed's test AUPRC, rows and positives checked against the record, and
+fits the same Platt map on validation. On the published seed, 4, its raw probabilities are overconfident in every bin
+above 0.1 (in the 0.1 to 0.2 bin the mean prediction is 0.135 and the observed rate 0.024), with an expected calibration
+error of $`2.5 \times 10^{-3}`$ over fifteen equal-mass bins; the map brings it to $`1.3 \times 10^{-4}`$ and CORP's
+miscalibration term from $`2.2 \times 10^{-4}`$ to $`9.9 \times 10^{-6}`$, with the discrimination term unchanged, as a
+monotone map must leave it. The other four seeds move the same way. The record holds each seed's ten-bin reliability
+table with a Wilson interval per bin; the model's own record and its Hub card are unchanged.
+
 ### The trained QCNN under CKKS
 
 Finance, medical and telecom offer `QCNN (trained, under CKKS)` beside the plaintext `QCNN (trained, not encrypted)`. The readout is exactly $`\langle O\rangle = \sum_P c_P\,\phi_P(x)`$ over $`P \in \{I, X, Z\}^{\otimes n}`$, because the encoding is a product of real states ($`\phi_I = 1`$, $`\phi_X = \sin\theta`$, $`\phi_Z = \cos\theta`$ per wire, $`c_P = 2^{-n}\operatorname{Tr}(AP)`$ with $`A`$ the real part of $`U^\dagger O U`$ on the encoded basis states). So the client encrypts $`3^n`$ products and the server takes one inner product per readout: one multiplicative level at the frozen parameters, power-of-two rotation keys only, no relinearisation key.
