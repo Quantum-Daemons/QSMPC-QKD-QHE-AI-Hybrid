@@ -19,8 +19,11 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import re
 from pathlib import Path
+
+import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 SERVED = REPO / "web" / "public" / "data" / "medical" / "square_student_sets.json"
@@ -135,3 +138,43 @@ def test_the_tab_s_point_is_timed_as_the_record_times_a_set() -> None:
     loop = trainer[trainer.index("for x14 in images:"):trainer.index("times.append(time.perf_counter() - t0)")]
     assert "t0 = time.perf_counter()" in loop and "ckks_vector(" in loop and ".decrypt()" in loop
     assert "generate_galois_keys" not in loop
+
+
+AXIS = r"""
+import { createRequire } from "node:module";
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+const WEB = process.argv[2], OUT = process.argv[3];
+const { build } = createRequire(WEB + "/package.json")("esbuild");
+await build({ entryPoints: [resolve(WEB, "src/lib/logAxis.ts")], bundle: true, format: "esm", platform: "node",
+              outfile: OUT, logLevel: "error" });
+const m = await import(pathToFileURL(OUT).href);
+const record = [8.17e-3, 3.06e-4, 6.14e-5];
+console.log(JSON.stringify({ record: m.errorDomain(record, 1e-3), deployed: m.errorDomain([...record, 1.05e-5], 1e-3),
+  preview: m.errorDomain([...record, 1.77e-5], 1e-3), edge: m.EDGE }));
+"""
+
+
+def test_no_point_is_drawn_on_the_error_axis_s_ends(tmp_path) -> None:
+    """On the deployed site (2026-11-24) a tab run of 8 images under A2 had a largest error of 1.05e-5, and the axis,
+    which began at the decade at or below the smallest point, put it on its 1e-5 floor: the diamond cut in half and its
+    name struck through. Every point now sits at least a factor of 1.5 inside both ends."""
+    import shutil
+    import subprocess
+
+    web = REPO / "web"
+    if shutil.which("node") is None or not (web / "node_modules" / "esbuild").exists():
+        msg = "node or esbuild absent, so the axis cannot be checked. This is a SKIP, not a pass."
+        if os.environ.get("QSH_REQUIRE_BROWSER_GATES") == "1":
+            pytest.fail(msg + " QSH_REQUIRE_BROWSER_GATES=1 is set, so this is a failure.")
+        pytest.skip(msg)
+    (tmp_path / "a.mjs").write_text(AXIS)
+    r = subprocess.run(["node", str(tmp_path / "a.mjs"), str(web), str(tmp_path / "b.mjs")], capture_output=True,
+                       text=True, timeout=300)
+    assert r.returncode == 0, r.stderr[-2000:]
+    out = json.loads(r.stdout.strip().splitlines()[-1])
+    assert out["deployed"][0] == pytest.approx(1e-6) and out["preview"][0] == pytest.approx(1e-5), out
+    for name in ("record", "deployed", "preview"):
+        lo, hi = out[name]
+        points = [8.17e-3, 3.06e-4, 6.14e-5] + ([1.05e-5] if name == "deployed" else [1.77e-5] if name == "preview" else [])
+        assert all(p / lo >= out["edge"] and hi / p >= out["edge"] for p in points), (name, out[name])

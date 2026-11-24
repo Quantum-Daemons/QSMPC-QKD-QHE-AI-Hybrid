@@ -5,7 +5,7 @@ import { useId } from "react";
 import { CartesianGrid, Legend, ReferenceLine, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartReadout, HINT_POINTER, ReadoutTooltip } from "./ChartReadout";
 import { MarksHidden } from "./VerificationChart";
-import { type CxrHead, type FilmRun, filmsSummary } from "../lib/cxrSplit";
+import { logitAxis, type CxrHead, type FilmRun, filmsSummary } from "../lib/cxrSplit";
 
 const tick = { fill: "var(--muted)", fontSize: 11 };
 type AxisBox = { x?: number; y?: number; width?: number; height?: number };
@@ -24,9 +24,7 @@ export default function CxrFilmsChart({ head, runs }: { head: CxrHead; runs: rea
   const s = filmsSummary(head, runs);
   const point = (r: FilmRun) => ({ film: `film ${r.film + 1}`, plain: r.zPlain, enc: r.zEnc });
   const effusion = runs.filter((r) => r.label === 1).map(point), none = runs.filter((r) => r.label !== 1).map(point);
-  const zs = runs.flatMap((r) => [r.zPlain, r.zEnc]).concat(head.operating_point_logit);
-  const pad = Math.max(0.25, (Math.max(...zs) - Math.min(...zs)) * 0.08);
-  const lo = Math.floor((Math.min(...zs) - pad) * 2) / 2, hi = Math.ceil((Math.max(...zs) + pad) * 2) / 2;
+  const { lo, hi, ticks, decimals } = logitAxis(runs.flatMap((r) => [r.zPlain, r.zEnc]).concat(head.operating_point_logit));
   const t = head.operating_point_logit;
   return (
     <figure className="chart-figure" style={{ margin: "10px 0 0" }}>
@@ -45,12 +43,12 @@ export default function CxrFilmsChart({ head, runs }: { head: CxrHead; runs: rea
             <ScatterChart role="img" title={`Decrypted against plaintext logit for the ${s.films} published chest X-ray films`}
               aria-describedby={captionId} margin={{ top: 8, right: 12, bottom: 18, left: 4 }}>
               <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-              <XAxis type="number" dataKey="plain" name="logit in the clear" domain={[lo, hi]} tick={tick}
-                tickFormatter={(v: number) => v.toFixed(1)}
+              <XAxis type="number" dataKey="plain" name="logit in the clear" domain={[lo, hi]} ticks={ticks} tick={tick}
+                tickFormatter={(v: number) => v.toFixed(decimals)}
                 label={{ value: "logit in the clear", position: "insideBottom", offset: -8, fill: "var(--muted)", fontSize: 11 }} />
               {/* Both axes start at the same corner; only the x axis labels it, as VerificationChart does. */}
-              <YAxis type="number" dataKey="enc" name="decrypted logit" domain={[lo, hi]} tick={tick} width={48}
-                tickFormatter={(v: number) => (Math.abs(v - lo) < 1e-9 ? "" : v.toFixed(1))} label={yLabel("decrypted logit")} />
+              <YAxis type="number" dataKey="enc" name="decrypted logit" domain={[lo, hi]} ticks={ticks} tick={tick} width={48}
+                tickFormatter={(v: number) => (Math.abs(v - lo) < 1e-9 ? "" : v.toFixed(decimals))} label={yLabel("decrypted logit")} />
               <Tooltip content={<ReadoutTooltip />}
                 formatter={(v: number, name: string, entry: { payload?: { film?: string } }, i: number) =>
                   [v.toFixed(6), i === 0 ? `${entry.payload?.film ?? ""}: ${name}` : name]} />
