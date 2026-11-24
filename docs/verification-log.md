@@ -5878,7 +5878,7 @@ file's relative URL against its `data:` URL, and storage still threw. Chrome loa
 but the HTML Standard says a conforming browser must refuse it (section 7.4.5, "create navigation params by fetching",
 step 12.3); dropping COOP drops cross-origin isolation. The owner chose a host name of its own instead.
 
-**The name.** The owner pointed `qsh.walkthrough.daemons.jp` at the demo's host. It is a separate origin from the app,
+**The name.** The owner pointed a second name at the demo's host. It is a separate origin from the app,
 the same site. On the owner's instruction, a site for it was added to the host's front proxy, which had none (TLS
 answered with an internal-error alert): a separate site file proxying to the same QSH container, with the app name's
 treatment (no `Server` header, the isolation headers), validated in the running proxy, then a graceful reload under
@@ -5940,14 +5940,14 @@ send no Report-Only header while the Caddyfile sets none (a stale image would), 
 ### #75 on the deployed site: the walkthrough on its own origin (2026-11-20)
 
 The order the owner approved, so that no visitor met a redirect loop: the front proxy's site for
-`qsh.walkthrough.daemons.jp` went back from the interim 302 (which had sent the name to the app's `/walkthrough/`
+the new name went back from the interim 302 (which had sent the name to the app's `/walkthrough/`
 while it showed the whole app) to forwarding, under the testbed's watchdog lock, with the two existing names' headers
-unchanged; then #75 (merged as fa649d3) was deployed with `QSH_WALKTHROUGH_ORIGIN=https://qsh.walkthrough.daemons.jp`
-in the deploy's environment. The deploy's own split checks passed on the box. From outside: the new name's root
+unchanged; then #75 (merged as fa649d3) was deployed with `QSH_WALKTHROUGH_ORIGIN` set to that
+name in the deploy's environment. The deploy's own split checks passed on the box. From outside: the new name's root
 answered 200 with the walkthrough, its policy, COOP and no Report-Only header; an app page and `/walkthrough/` there
 answered 404; the app's `/`, pages and policy were unchanged, and its `/walkthrough/` and `/walkthrough/?x=1` answered
 301 to the new name's `/` and `/?x=1`, under the app's policy. In the owner's Chrome the app's `/walkthrough/` landed
-on `https://qsh.walkthrough.daemons.jp/`, cross-origin isolated, with `SharedArrayBuffer`, its own storage, the same
+on the new name's root, cross-origin isolated, with `SharedArrayBuffer`, its own storage, the same
 4482 characters rendered as on the app's origin, no traceback and no CSP report (buffered `ReportingObserver`).
 `npm run check:csp` on the deployed site passed all 13 pages, the walkthrough through the 301, with no violation and
 nothing from the Report-Only candidate.
