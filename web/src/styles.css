@@ -39,7 +39,7 @@ code, .mono { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; }
 }
 .sidebar-toggle:hover { color: var(--text); background: var(--panel); }
 .sidebar-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.nav-short { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; }
+.nav-short { font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }  /* the type scale's 12 px floor (2026-11-24): CASES, the widest, fits the 47 px rail in DejaVu Sans with this spacing */
 /* The status region is always in the DOM (an empty live region is announced reliably later); only
    its box takes space, and only while a run is in flight. */
 .run-status-box {

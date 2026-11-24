@@ -6522,8 +6522,9 @@ floor carried to two labels under it; the records a sweep found stale; #91's and
 
 - The BFV meter built SEAL's `BFVDefault(8192)`, a 218-bit modulus: inside the HomomorphicEncryption.org standard's
   classical bound for 128 bits at $`N = 8192`$, but over its post-quantum bound of 202 bits, and the CBOM listed no BFV
-  at all. The meter now builds $`40 + 40 + 40 + 41 + 41 = 202`$ bits; its ladder reads 133, 101, 68, 35, 2 and 0 bits, the
-  fifth decryption wrong as before. The CBOM's 25th asset is `crypto/bfv`, read against NIST IR 8547 in both rule
+  at all. The meter now builds $`40 + 40 + 40 + 41 + 41 = 202`$ bits; in one run its ladder read 133, 101, 68, 35, 2 and 0 bits, the
+  fifth decryption wrong as before. A budget depends on the fresh encryption's noise, so another run can differ by a
+  bit: on the deployed site on 2026-11-24 it read 133, 101, 68, 36, 3 and 0, the fifth decryption wrong. The CBOM's 25th asset is `crypto/bfv`, read against NIST IR 8547 in both rule
   tables, its import check reads node-seal's schemes, and sbom-tools' record was run again (13 agree, 3 reviewed
   differences, 9 without a verdict).
 - Telecom's key holder decrypted all 8 class scores to take their argmax, and Cho et al. (ePrint 2026/2349) show that
