@@ -1,0 +1,41 @@
+{
+ "what": "LIDC-IDRI (TCIA, CC BY 3.0) as streamed through the system disk and verified file by file",
+ "records": {
+  "file": "records.json",
+  "sha256": "a5bfdb6f62d123eece152042f535d20a7f22cf8e2b5f484c900cb92e793e6f8b",
+  "clusters": 2651,
+  "series": 883,
+  "patients": 875
+ },
+ "fetched": {
+  "patients": 875,
+  "series": 883,
+  "files": 215912,
+  "files_md5_checked": 215912,
+  "bytes": 62718634621
+ },
+ "cut": {
+  "crops_28mm": 2651,
+  "training_patients": 518,
+  "hu64_cubes": 1719
+ },
+ "refetched_training": {
+  "patients": 518,
+  "series": 522,
+  "files_md5_checked": 127372,
+  "bytes": 36964811368,
+  "crops_recut": 1719,
+  "records_equal": 518,
+  "largest_level_difference_from_hu64_centre": 1,
+  "voxels_one_level_off_hu64_centre": 875655,
+  "voxels_compared": 37735488
+ },
+ "totalsegmentator": {
+  "series_segmented": 522,
+  "failed": 0,
+  "empty_masks": 47
+ },
+ "complete": true,
+ "problems": [],
+ "date": "2026-11-24"
+}

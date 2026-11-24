@@ -43,7 +43,12 @@ a patient: the re-cut crops' records equal the cluster records, their number equ
 equals the centre of the first run's HU cube (the same 28 sample points a side, kept there in float16) within one
 uint8 level. Deriving the crops from the HU cubes instead was not done: float16 rounding could move up to 7.3 % of
 their voxels by one level. The crops are therefore the ones the pre-registration's procedure makes; the stream's
-summary (`docs/measurements/lidc-stream-<date>.json`) records both fetches.
+summary (`docs/measurements/lidc-stream-2026-11-24.json`) records both fetches. The outcome, the same day and before any
+model was trained: all 883 series (215,912 files) verified in the first fetch and the training patients' 522 series
+(127,372 files) again in the second; 1,719 crops re-cut, every patient's records equal to the cluster records, every
+crop within one uint8 level of its HU cube's centre (2.3 % of the voxels one level off, the float16 rounding); and the
+merged crops give the split's counts in every part (train 1,178 labelled nodules, 381 malignant; validation 170, 55;
+test 347, 109).
 
 ## 4. The crops the page shows
 
