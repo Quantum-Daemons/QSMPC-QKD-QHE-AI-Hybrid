@@ -40,8 +40,8 @@ def test_every_source_is_named_with_its_digest() -> None:
 def test_no_audit_record_is_left_out() -> None:
     """A new membership, reconstruction or DP-audit record must reach the card, or the exporter must refuse it."""
     sources = set(_export()["sources"])
-    for pattern in ("mia-*.json", "reconstruction-*.json", "dp-one-run-audit-*.json", "attribute-inference-*.json",
-                    "gradient-inversion-*.json"):
+    for pattern in ("mia-*.json", "reconstruction-*.json", "dp-one-run-audit-*.json", "dp-kcandidate-audit-*.json",
+                    "attribute-inference-*.json", "gradient-inversion-*.json"):
         found = {p.name for p in MEASUREMENTS.glob(pattern)}
         assert found <= sources, f"not on the card: {sorted(found - sources)}"
 
@@ -103,3 +103,16 @@ def test_the_card_is_on_the_validations_page() -> None:
     page = PAGE.read_text(encoding="utf-8")
     assert 'import PrivacyAudits from "../components/PrivacyAudits";' in page
     assert page.index("<CbomPanel />") < page.index("<PrivacyAudits />")
+
+
+def test_the_guessing_game_rows_are_the_records_and_the_bugs_are_caught() -> None:
+    kc = _export()["dp_kcandidate"]
+    record = json.loads((MEASUREMENTS / kc["file"]).read_text(encoding="utf-8"))
+    honest = [r for r in kc["rows"] if not r["seeded_bug"]]
+    seeded = [r for r in kc["rows"] if r["seeded_bug"]]
+    assert len(seeded) == len(record["seeded_checks"]) == 2
+    assert all(r["under_the_accountant"] and r["within_the_bound"] for r in honest)
+    assert all(not r["under_the_accountant"] and not r["within_the_bound"] for r in seeded)
+    assert len(honest) == sum(len([g for g in ("k2_add_remove", "k7_swap") if g in arm])
+                              for study in ("fedheart", "murmur") for arm in record[study].values())
+

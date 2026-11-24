@@ -63,6 +63,11 @@ RECONSTRUCTION = (
       "B_fedavg_as_the_page_trains_it": "from the FedAvg model, as the page trains it",
       "C_pooled_solved_to_the_optimum": "from the pooled model, solved to the optimum"}),
 )
+KCANDIDATE = "dp-kcandidate-audit-2026-11-24.json"
+KC_STUDIES = {"fedheart": "Heart federation, record-level DP", "murmur": "Murmur study, DP-SGD"}
+KC_SEEDED = {"fedheart_a_sixteenth_of_the_variance": ("Heart federation, record-level DP", "bug: a sixteenth of the variance"),
+             "murmur_every_person_every_step": ("Murmur study, DP-SGD", "bug: every person, every step")}
+KC_GAMES = {"k2_add_remove": "add or remove, k = 2", "k7_swap": "swap, k = 7"}
 ATTRIBUTE = "attribute-inference-fedheart-2026-11-23.json"
 ATTRIBUTE_ATTACKS = {"model_inversion": "model inversion (Fredrikson et al.)", "loss": "loss attack (Yeom et al.)",
                      "imputation_label_only": "imputation from the diagnosis alone",
@@ -111,6 +116,33 @@ def build() -> dict:
                      "lower_bound": a["epsilon_lower_bound"], "canaries": a["canaries"], "seeded_bug": True})
     dp = {"file": DP_AUDIT, "method": d["method"], "confidence": d["design"]["confidence"], "arms": arms}
 
+    kc = _read(KCANDIDATE, sources)
+
+    def kc_row(study: str, arm: str, game: str, a: dict, seeded: bool, eps_accounted) -> dict:
+        e = a["every_slot"]
+        return {"study": study, "arm": arm, "game": KC_GAMES[game], "k": a["k"], "slots": a["slots"],
+                "mu_lower_bound": a["mu_lower_bound"], "mu_accounted": a["mu_accounted"],
+                "epsilon_lower_bound": a["epsilon_lower_bound"], "epsilon_accounted": eps_accounted,
+                "under_the_accountant": a["under_the_accountant"], "accuracy": e["accuracy"], "interval_95": e["interval_95"],
+                "baseline": e["baseline"], "reconstruction_bound": a["reconstruction_bound"],
+                "within_the_bound": e["within_the_bound"], "seeded_bug": seeded}
+
+    kc_rows = []
+    for study, label in KC_STUDIES.items():
+        for arm_key, arm in kc[study].items():
+            for game in KC_GAMES:
+                if game in arm:
+                    kc_rows.append(kc_row(label, arm_key.replace("noise_", "noise multiplier ").replace("_", " "), game, arm[game],
+                                          False, arm.get("epsilon_accounted")))
+        for key, (lab, what) in KC_SEEDED.items():
+            if lab == label:
+                arm = kc["seeded_checks"][key]
+                kc_rows.append(kc_row(label, what, "k2_add_remove", arm["k2_add_remove"], True, arm.get("epsilon_accounted")))
+    if len([r for r in kc_rows if r["seeded_bug"]]) != len(kc["seeded_checks"]):
+        raise SystemExit(f"{KCANDIDATE}: a seeded check is not exported")
+    kcandidate = {"file": KCANDIDATE, "method": kc["method"], "bound": kc["reconstruction_bound"]["method"],
+                  "riskcal": kc["reconstruction_bound"]["riskcal"], "rows": kc_rows}
+
     reconstruction = []
     for name, use_case, title, routes in RECONSTRUCTION:
         r = _read(name, sources)
@@ -135,7 +167,7 @@ def build() -> dict:
          "films_closer_to_themselves": v["films_above_best_other_film_ssim"]} for v in g["results"].values()]}
 
     return {"_generated_by": "scripts/export_privacy_audits.py from docs/measurements; do not edit by hand",
-            "fprs": list(FPRS), "sources": sources, "membership": membership, "dp_one_run": dp,
+            "fprs": list(FPRS), "sources": sources, "membership": membership, "dp_one_run": dp, "dp_kcandidate": kcandidate,
             "reconstruction": reconstruction, "attribute_inference": attribute, "gradient_inversion": inversion}
 
 

@@ -190,6 +190,37 @@ export default function PrivacyAudits() {
         Record: <code>docs/measurements/{audits.dp_one_run.file}</code>.
       </p>
 
+      <h3 style={{ marginTop: 22, marginBottom: 4 }}>A guessing game in one run</h3>
+      <p className="small muted" style={{ marginTop: 0 }}>
+        {audits.dp_kcandidate.method}. Each slot holds one of k canaries; the adversary names it or abstains. The lower bound
+        on mu is the largest mu-GDP claim the run rejects at 95% confidence; beside it, the accuracy of naming every slot
+        against {audits.dp_kcandidate.bound} (riskcal {audits.dp_kcandidate.riskcal}). The murmur study is not Gaussian
+        DP, so its rows compare epsilon, the lower bound read inside the Gaussian family as the paper does.
+      </p>
+      <div style={{ overflowX: "auto" }}>
+        <table className="table small">
+          <thead><tr><th>Study and arm</th><th>Game</th><th>Lower bound / accountant</th><th>Naming every slot (95% interval)</th>
+            <th>Bound 1 - f(1/k)</th><th>Holds</th></tr></thead>
+          <tbody>
+            {audits.dp_kcandidate.rows.map((r) => (
+              <tr key={`${r.study}-${r.arm}-${r.game}`} style={r.seeded_bug ? { color: "var(--danger)" } : undefined}>
+                <td>{r.study}: {r.arm}</td>
+                <td>{r.game}</td>
+                <td>{r.mu_accounted != null
+                  ? <>mu {r.mu_lower_bound.toFixed(3)} / {r.mu_accounted.toFixed(3)}</>
+                  : <>epsilon {r.epsilon_lower_bound.toFixed(2)} / {Number(r.epsilon_accounted).toFixed(2)}</>}</td>
+                <td>{pct(r.accuracy)} ({pct(r.interval_95[0])} to {pct(r.interval_95[1])}); a guess {pct(r.baseline)}</td>
+                <td>{pct(r.reconstruction_bound)}</td>
+                <td>{r.under_the_accountant && r.within_the_bound ? "both" : r.seeded_bug ? "neither: the seeded bug is caught" : "no"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="muted small" style={{ margin: "4px 0 14px" }}>
+        Red rows carry a bug seeded on purpose. Record: <code>docs/measurements/{audits.dp_kcandidate.file}</code>.
+      </p>
+
       <Details summary="Reconstruction, attribute inference and gradient inversion">
         {audits.reconstruction.map((r) => (
           <div key={r.file}>

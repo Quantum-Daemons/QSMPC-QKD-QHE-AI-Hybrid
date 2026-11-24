@@ -92,6 +92,15 @@ def note_problems(note: str) -> list[str]:
     want.append(f"({tel['B_weights_at_the_optimum']['solver_iterations']} iterations), "
                 f"{_pct(tel['B_weights_at_the_optimum']['share_below_0.1'])[:-8]} percent within 10")
     want.append(f"(Adam, 50 epochs), {_pct(heart['B_pooled_as_the_page_trains_it']['share_below_0.1'])[:-8]} percent within 10")
+    kc = _load("dp-kcandidate-audit-2026-11-24.json")
+    hk = [kc["fedheart"][f"epsilon_{e}"]["k2_add_remove"] for e in (8, 4, 2, 1)]
+    want.append("lower bounds are $`\\mu`$ " + ", ".join(f"{a['mu_lower_bound']:.3f}" for a in hk[:3])
+                + f" and {hk[3]['mu_lower_bound']:.3f} against its accountant's "
+                + ", ".join(f"{a['mu_accounted']:.3f}" for a in hk[:3]) + f" and {hk[3]['mu_accounted']:.3f}")
+    want.append(f"{100 * hk[0]['every_slot']['accuracy']:.2f} percent against a bound of "
+                f"{100 * hk[0]['reconstruction_bound']:.2f} for k = 2")
+    bug = kc["seeded_checks"]["fedheart_a_sixteenth_of_the_variance"]["k2_add_remove"]
+    want.append(f"{100 * bug['every_slot']['accuracy']:.2f} percent against a bound of {100 * bug['reconstruction_bound']:.2f}")
     fin = _load("reconstruction-finance-student-2026-11-24.json")
     want.append(f"all {fin['training_records']:,} fit rows within 0.1 percent")
     if heart["B_fedavg_as_the_page_trains_it"]["share_below_0.1"] == 0:

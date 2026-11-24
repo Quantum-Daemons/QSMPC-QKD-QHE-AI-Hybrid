@@ -12,6 +12,7 @@
   "mia-opssat-2026-11-23.json": "526d65125abfd19e4311cbe7639d70886b32f99f3c69f35bba381e109b733c02",
   "mia-telecom-qml-2026-11-23.json": "a94eab067aee495c96b22e265aaa9ed10abfd96cefe3c05fc501659ea52baf66",
   "dp-one-run-audit-2026-11-23.json": "279d2deeadfe3354fc70484e6c472349e17fd75ea29f5bdc7d0fd3830e0eab4a",
+  "dp-kcandidate-audit-2026-11-24.json": "bbb2d2eaeafb011c3ca700f8b54d86e30f813446e6e59f6ccc0a36adc934b5dc",
   "reconstruction-opssat-student-2026-11-23.json": "24f9f3eb168839027ad4948238b7d127a7e063a2c37c0ae66cc9ab3a683663b8",
   "reconstruction-telecom-student-2026-11-24.json": "6b6a74bfccb6f7cc9ea079e0b73470faf9ad44ac6af8531e7467a15d3d54a8d3",
   "reconstruction-finance-student-2026-11-24.json": "dd5fad6aff94156269890843bd866679cfc19acc66264ab85d05466565cf8fd5",
@@ -501,6 +502,266 @@
     "accounted": 5.6644,
     "lower_bound": 6.1727,
     "canaries": 5160,
+    "seeded_bug": true
+   }
+  ]
+ },
+ "dp_kcandidate": {
+  "file": "dp-kcandidate-audit-2026-11-24.json",
+  "method": "Mahloujifar, Melis and Chaudhuri, Auditing f-Differential Privacy in One Run, ICML 2025 (arXiv:2410.22235): Theorem 3.1 and Algorithm 3 as the appendix's audit_rh_with_cap, reimplemented; mu-GDP hypotheses",
+  "bound": "Kulynych et al., NeurIPS 2025 (arXiv:2507.06969), Theorem 3.1: success <= 1 - f(1/k), f from riskcal (zCDP for the heart federation, 4 rho for a swap; the PLD of the Poisson-subsampled Gaussian for the murmur study)",
+  "riskcal": "1.5.1",
+  "rows": [
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 8",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 14000,
+    "mu_lower_bound": 0.974,
+    "mu_accounted": 1.4508,
+    "epsilon_lower_bound": 4.7423,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.770357,
+    "interval_95": [
+     0.763298,
+     0.777303
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.963054,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 8",
+    "game": "swap, k = 7",
+    "k": 7,
+    "slots": 2000,
+    "mu_lower_bound": 0.965,
+    "mu_accounted": 2.9015,
+    "epsilon_lower_bound": 4.6926,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.589,
+    "interval_95": [
+     0.567069,
+     0.610669
+    ],
+    "baseline": 0.142857,
+    "reconstruction_bound": 0.995432,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 4",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 14000,
+    "mu_lower_bound": 0.442,
+    "mu_accounted": 0.7888,
+    "epsilon_lower_bound": 1.9691,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.650643,
+    "interval_95": [
+     0.642679,
+     0.658544
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.837238,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 4",
+    "game": "swap, k = 7",
+    "k": 7,
+    "slots": 2000,
+    "mu_lower_bound": 0.512,
+    "mu_accounted": 1.5775,
+    "epsilon_lower_bound": 2.3136,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.3285,
+    "interval_95": [
+     0.30793,
+     0.349574
+    ],
+    "baseline": 0.142857,
+    "reconstruction_bound": 0.847105,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 2",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 14000,
+    "mu_lower_bound": 0.243,
+    "mu_accounted": 0.4199,
+    "epsilon_lower_bound": 1.0287,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.586929,
+    "interval_95": [
+     0.578719,
+     0.595102
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.700354,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 2",
+    "game": "swap, k = 7",
+    "k": 7,
+    "slots": 2000,
+    "mu_lower_bound": 0.245,
+    "mu_accounted": 0.8398,
+    "epsilon_lower_bound": 1.0378,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.247,
+    "interval_95": [
+     0.228231,
+     0.266513
+    ],
+    "baseline": 0.142857,
+    "reconstruction_bound": 0.491125,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 1",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 14000,
+    "mu_lower_bound": 0.127,
+    "mu_accounted": 0.2207,
+    "epsilon_lower_bound": 0.5125,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.539929,
+    "interval_95": [
+     0.531629,
+     0.548211
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.608916,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 1",
+    "game": "swap, k = 7",
+    "k": 7,
+    "slots": 2000,
+    "mu_lower_bound": 0.11,
+    "mu_accounted": 0.4414,
+    "epsilon_lower_bound": 0.4394,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.2005,
+    "interval_95": [
+     0.183152,
+     0.21873
+    ],
+    "baseline": 0.142857,
+    "reconstruction_bound": 0.300161,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "bug: a sixteenth of the variance",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 14000,
+    "mu_lower_bound": 0.585,
+    "mu_accounted": 0.2207,
+    "epsilon_lower_bound": 2.6798,
+    "epsilon_accounted": null,
+    "under_the_accountant": false,
+    "accuracy": 0.661714,
+    "interval_95": [
+     0.653808,
+     0.669553
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.608916,
+    "within_the_bound": false,
+    "seeded_bug": true
+   },
+   {
+    "study": "Murmur study, DP-SGD",
+    "arm": "noise multiplier 1.89138",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 5160,
+    "mu_lower_bound": 0.67,
+    "mu_accounted": null,
+    "epsilon_lower_bound": 2.769,
+    "epsilon_accounted": 5.6644,
+    "under_the_accountant": true,
+    "accuracy": 0.691279,
+    "interval_95": [
+     0.678472,
+     0.70387
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.859504,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Murmur study, DP-SGD",
+    "arm": "noise multiplier 3.45294",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 5160,
+    "mu_lower_bound": 0.304,
+    "mu_accounted": null,
+    "epsilon_lower_bound": 1.1484,
+    "epsilon_accounted": 2.6083,
+    "under_the_accountant": true,
+    "accuracy": 0.601744,
+    "interval_95": [
+     0.588236,
+     0.615137
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.715557,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Murmur study, DP-SGD",
+    "arm": "bug: every person, every step",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 5160,
+    "mu_lower_bound": 1.853,
+    "mu_accounted": null,
+    "epsilon_lower_bound": 9.1036,
+    "epsilon_accounted": 5.6644,
+    "under_the_accountant": false,
+    "accuracy": 0.993798,
+    "interval_95": [
+     0.991256,
+     0.995754
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.859504,
+    "within_the_bound": false,
     "seeded_bug": true
    }
   ]

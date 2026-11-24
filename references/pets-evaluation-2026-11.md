@@ -165,10 +165,31 @@ On the owner's choices of 2026-11-22 (the CPU phase first; GPU jobs asked one by
   every feature; routes B and C were not run, the pinned teacher's file not being cached here and a booster retrained
   on this machine not being the published one.
 
+- **A guessing game in one run** (2026-11-24, the owner's choice that day; `dp-kcandidate-audit-2026-11-24.json`,
+  `scripts/audit_dp_kcandidate.py` and `scripts/audit_dp_kcandidate_bound.py`): Mahloujifar, Melis and Chaudhuri,
+  *Auditing f-Differential Privacy in One Run* (ICML 2025, arXiv:2410.22235), Theorem 3.1 and Algorithm 3 as the
+  paper's appendix code, reimplemented and checked on an idealised Gaussian game, where its bound never passed the
+  true $`\mu`$; Gaussian-DP hypotheses, rejected at 95 percent. Each slot holds one of k canaries and the adversary
+  names it or abstains. With k = 2 (adding or removing a canary, the canaries of the earlier one-run audit) the heart
+  federation's lower bounds are $`\mu`$ 0.974, 0.442, 0.243 and 0.127 against its accountant's 1.451, 0.789, 0.420
+  and 0.221 at epsilon 8, 4, 2 and 1; with k = 7 one-hot canaries, where a slot's change swaps one record for another,
+  0.965, 0.512, 0.245 and 0.110 against 2.902, 1.578, 0.840 and 0.441 (twice the accountant's, by group privacy). The
+  murmur DP-SGD is not Gaussian DP, so its bound is read inside the Gaussian family, as the paper's Definition 7 does,
+  and compared by epsilon: 2.77 against 5.66 and 1.15 against 2.61. Every honest arm's accuracy at naming every slot
+  is inside Kulynych et al.'s bound on a reconstruction's success, $`1 - f(1/k)`$ (NeurIPS 2025, arXiv:2507.06969,
+  Theorem 3.1), with f from riskcal 1.5.1 (the heart federation's zCDP, 4 rho for a swap; the murmur study's
+  privacy-loss distribution): at epsilon 8, 77.04 percent against a bound of 96.31 for k = 2 and 58.90 against 99.54
+  for k = 7. Both seeded bugs are caught by both measures: a sixteenth of the variance gives $`\mu`$ 0.585 against
+  0.221 and 66.17 percent against a bound of 60.89; every person in every step gives epsilon 9.10 against 5.66 and
+  99.38 percent against 85.95. Beside the earlier one-run audit (Steinke, Nasr and Jagielski) the bounds are tighter,
+  as the paper reports: epsilon 4.74 against 2.99 at the heart federation's epsilon 8, 2.77 against 1.97 at the
+  murmur study's first noise multiplier. A bound under the accountant's is consistent with the accounting and proves
+  nothing more.
+
 The CPU phase of 2026-11-23 left two parts of the plan above undone: the informed reconstruction had run on the
 OPS-SAT student only (`docs/measurements/reconstruction-opssat-student-2026-11-23.json`), and the k-candidate canary
 game with riskcal's bound was not built. On the owner's choice of 2026-11-24 the reconstruction now covers the
-QKD-attack student, the heart federation and the AML student (above), and the canary game is next. The
+QKD-attack student, the heart federation and the AML student, and the canary game is run (both above). The
 GPU jobs, on the owner's approval of 2026-11-23:
 
 - **Membership inference, BreastMNIST's whole pipeline** (`mia-breastmnist-pipeline-2026-11-23.json`, 64 shadows): each
@@ -200,7 +221,7 @@ a labelled node's own features and, by a GNN, from its one-hop neighbourhood too
 | Use case | Membership-inference audit | DP audit | Other | Note |
 |---|---|---|---|---|
 | Finance | not run: the GBM, MLP, compact GNN and the two Multi-PNA+EU models, on AMLworld | not run: the counting release (`dp_count`) | done: informed reconstruction of the student through its published mean (2026-11-24) | the training data is synthetic, so a figure measures memorisation, not exposure of people |
-| Medical, 2D | done: BreastMNIST's students (teacher fixed) and the whole pipeline (teacher retrained, GPU); the heart federation's five arms | done: the one-run audit of the heart federation's noise and of the murmur DP-SGD | done: attribute inference (heart), gradient inversion (chest X-ray); informed reconstruction of the heart models (2026-11-24); the k-candidate canary game: on the owner's choice of 2026-11-24 | records of real patients, all public |
+| Medical, 2D | done: BreastMNIST's students (teacher fixed) and the whole pipeline (teacher retrained, GPU); the heart federation's five arms | done: the one-run audit of the heart federation's noise and of the murmur DP-SGD | done: attribute inference (heart), gradient inversion (chest X-ray); informed reconstruction of the heart models and the one-run guessing game (2026-11-24) | records of real patients, all public |
 | Medical, 3D (LIDC-IDRI) | to be chosen after one teacher fit is timed (the owner's choice of 2026-11-24): 64 retrained shadows as for BreastMNIST, or fewer | none: not trained under DP | none | CT scans of real patients, public (TCIA, CC BY 3.0) |
 | Genomics | none: the score's weights are published, not trained here | the discrete-Gaussian counts: not audited | | |
 | Telecom | done: the QKD-attack forest (generated rows); not run: the 5G-NIDD classifier (real flows, CC BY 4.0) | none | done: informed reconstruction of the QKD-attack student (2026-11-24) | |
