@@ -806,7 +806,10 @@ class WebConfig:
     # see the page work. Every q4f16_1 build needs the WebGPU `shader-f16` feature, absent on some Qualcomm adapters,
     # so a q4f32_1 build is listed for those. It is the same download: the two differ in compute, not in storage.
     # `lib` is served from `webllm_lib_dir`, built from source by scripts/build_webllm_libs.sh, and `lib_sri` is its
-    # hash. `context_window_size` is the value the WebLLM library's own record sets for each model.
+    # hash. `config_sri` and `tokenizer_sri` are the SHA-384 of `mlc-chat-config.json` and `tokenizer.json` at
+    # `revision`, read on 2026-11-24 (the owner's approval): WebLLM checks both before it uses them and throws on a
+    # mismatch. Its integrity option has no entry for the weight shards, which stay unchecked (docs/threat-model.md).
+    # `context_window_size` is the value the WebLLM library's own record sets for each model.
     # Each model's licence is in DATA_LICENSES.md, section 5b. Llama-3.2-1B was removed by the owner's choice (Round 86).
     webllm_lib_dir: str = "webllm/0.2.87"
     # How many times a WebLLM load runs before a lost request is reported. Finished shards stay cached, so each
@@ -816,19 +819,23 @@ class WebConfig:
         {"id": "SmolLM2-360M-Instruct-q4f16_1-MLC", "label": "SmolLM2-360M",
          "revision": "3a622fd89e0216e8bb10c410c007c786baa8a033", "bytes": 205_844_887, "requires": "shader-f16",
          "lib": "SmolLM2-360M-Instruct-q4f16_1_cs1k-webgpu.wasm",
-         "lib_sri": "sha256-OLk4LS2tFnLJYIo2DsVwgcckQoNyWAG4pHfGUkFjius=", "context_window_size": 4096},
+         "lib_sri": "sha256-OLk4LS2tFnLJYIo2DsVwgcckQoNyWAG4pHfGUkFjius=", "config_sri": "sha384-q5g7Vr8NPimskWQfkKEHbD/LHSezXA8Jd/6026NLSMR2rWz/4RoTUK9HsuC3seC4",
+         "tokenizer_sri": "sha384-TYQ9bvLe/Vytaer+YyXqKp0FA6bauwU+PxOlTcHSoLqTCPKrQwSHApOPo4MCLoB0", "context_window_size": 4096},
         {"id": "SmolLM2-360M-Instruct-q4f32_1-MLC", "label": "SmolLM2-360M f32",
          "revision": "1e6b2ca3684e2bc8a6d39eb36e8d6cd51eb12bda", "bytes": 205_844_887, "requires": "",
          "lib": "SmolLM2-360M-Instruct-q4f32_1_cs1k-webgpu.wasm",
-         "lib_sri": "sha256-ySTaMbQk0QFoWdMKy6WLCDB+fxKQFg4yWBSAL3EAd6Y=", "context_window_size": 4096},
+         "lib_sri": "sha256-ySTaMbQk0QFoWdMKy6WLCDB+fxKQFg4yWBSAL3EAd6Y=", "config_sri": "sha384-3JoT21tYfd6w4oqvk68b5bk2eOE4VrLROnNU0XboZgpOMhn5SXz3MKAoABros1Yg",
+         "tokenizer_sri": "sha384-TYQ9bvLe/Vytaer+YyXqKp0FA6bauwU+PxOlTcHSoLqTCPKrQwSHApOPo4MCLoB0", "context_window_size": 4096},
         {"id": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC", "label": "Qwen2.5-0.5B",
          "revision": "32ff081fe7e4dfe4ffb167b94c66fdf11e02b8ad", "bytes": 285_132_405, "requires": "shader-f16",
          "lib": "Qwen2.5-0.5B-Instruct-q4f16_1_cs1k-webgpu.wasm",
-         "lib_sri": "sha256-Jkn8TDUJiwz1wEF17fYrak5QheKHkt0F5Ia5pJnIj8M=", "context_window_size": 4096},
+         "lib_sri": "sha256-Jkn8TDUJiwz1wEF17fYrak5QheKHkt0F5Ia5pJnIj8M=", "config_sri": "sha384-WgLJ/WbEHhF9cv1KwSDlI9RYpxrZ6dhA4SbE1G7I/DlKGOUKjHqEJTIiDo+bhowR",
+         "tokenizer_sri": "sha384-l5K5CpBtbywB5lTHysuesWqCadOP0PqIM5CaLYNPn2xpBA30Q5pAgRo4L1K2EjDM", "context_window_size": 4096},
         {"id": "Phi-3-mini-4k-instruct-q4f16_1-MLC", "label": "Phi-3-mini-4k",
          "revision": "7ecdc19b399efd7e967025c02496353e0dc50500", "bytes": 2_151_632_945, "requires": "shader-f16",
          "lib": "Phi-3-mini-4k-instruct-q4f16_1_cs1k-webgpu.wasm",
-         "lib_sri": "sha256-BcDA7G7G4az9x443HX+j541fQK4RK0ztaCMqNh8iTQs=", "context_window_size": 4096}])
+         "lib_sri": "sha256-BcDA7G7G4az9x443HX+j541fQK4RK0ztaCMqNh8iTQs=", "config_sri": "sha384-Q8D87PAbdAFaa7A+BCySOMlNtO1F1h+J7RM671cZ/ds4wkfvpduQ4YZ7+aga/tcR",
+         "tokenizer_sri": "sha384-S4RV348Dbq2RiQ+znMPpRanZvs0Tfez2ErGijnVRDX1uL3EL3DYnIUkIXIyhUQSN", "context_window_size": 4096}])
     # The agent is abandoned after this long WITHOUT PROGRESS - no download event and no answer - not
     # after this long in total. A first run downloads its weights (236.7 MB for distilGPT-2 on WASM),
     # and until Round 60 a total limit cut off downloads that were still arriving.

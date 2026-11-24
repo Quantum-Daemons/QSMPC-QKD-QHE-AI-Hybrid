@@ -106,7 +106,17 @@ def test_webllm_is_given_its_record_and_never_its_prebuilt_list() -> None:
     assert "appConfig: { model_list: [record] }" in CLIENT_AI
     assert "resolve/${spec.revision}/" in CLIENT_AI, "the library would read resolve/main"
     assert "prebuiltAppConfig" not in CLIENT_AI and "CreateMLCEngine" not in CLIENT_AI
-    assert "integrity: { model_lib: spec.lib_sri }" in CLIENT_AI
+    assert ('integrity: { config: spec.config_sri, model_lib: spec.lib_sri, tokenizer: { "tokenizer.json": spec.tokenizer_sri },'
+            in CLIENT_AI and 'onFailure: "error"' in CLIENT_AI), "WebLLM must check the config and tokenizer as well"
+
+
+@pytest.mark.parametrize("model", WEB["webllm_models"], ids=lambda m: m["id"])
+def test_each_webllm_config_and_tokenizer_has_a_pinned_hash(model: dict) -> None:
+    """The chat config and tokenizer.json are fetched from Hugging Face at the pinned revision; their SHA-384 hashes were
+    read from those files on 2026-11-24. This checks the form only: the files are not in this repository, and a wrong
+    hash fails loudly in the browser, since WebLLM throws on a mismatch."""
+    for key in ("config_sri", "tokenizer_sri"):
+        assert re.fullmatch(r"sha384-[A-Za-z0-9+/]{64}", model[key]), (model["id"], key)
 
 
 def test_no_source_names_the_library_host_without_a_licence() -> None:
