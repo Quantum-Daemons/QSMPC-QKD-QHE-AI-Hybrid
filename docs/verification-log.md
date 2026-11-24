@@ -6554,6 +6554,9 @@ floor carried to two labels under it; the records a sweep found stale; #91's and
   Recommendation; `references/model-choice-vs-2026-practice.md` was re-checked against August to November 2026
   research; the IKEv2 layers' prf and prf+ match CAVP's vectors rather than being CAVP-validated, and the Overview names
   all six use cases.
+- The AI Act gap analysis's open question, when the public URL first answered, has its answer from certificate
+  transparency (crt.sh, on the owner's approval): the demo's name had its first certificate on 2026-06-27, before
+  2 August 2026, so the transition to 2 December 2026 is the one the document assumes.
 
 **Checks.** `tests/test_r86_square_student_sets_plot.py` (the served file equals the script's output and the record,
 the offered sets are the published weights' and the config's, the line is the pre-registered limit, the tab's point is
