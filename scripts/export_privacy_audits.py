@@ -51,6 +51,15 @@ RECONSTRUCTION = (
      {"A_published_preprocessing_mean": "from the published preprocessing mean",
       "B_weights_at_the_optimum": "from the weights, as the trainer's solver left them",
       "C_weights_solved_to_the_optimum": "from the weights, solved to the optimum"}),
+    ("reconstruction-telecom-student-2026-11-24.json", "Telecom", "the QKD-attack CKKS student (generated rows)",
+     {"A_published_preprocessing_mean": "from the published preprocessing mean",
+      "B_weights_at_the_optimum": "from the weights, as the trainer's solver left them",
+      "C_weights_solved_to_the_optimum": "from the weights, solved to the optimum"}),
+    ("reconstruction-fedheart-2026-11-24.json", "Medical", "the heart federation's models",
+     {"A_published_preprocessing_mean": "from each hospital's published mean",
+      "B_pooled_as_the_page_trains_it": "from the pooled model, as the page trains it",
+      "B_fedavg_as_the_page_trains_it": "from the FedAvg model, as the page trains it",
+      "C_pooled_solved_to_the_optimum": "from the pooled model, solved to the optimum"}),
 )
 ATTRIBUTE = "attribute-inference-fedheart-2026-11-23.json"
 ATTRIBUTE_ATTACKS = {"model_inversion": "model inversion (Fredrikson et al.)", "loss": "loss attack (Yeom et al.)",

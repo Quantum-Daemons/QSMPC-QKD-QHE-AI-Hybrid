@@ -13,6 +13,8 @@
   "mia-telecom-qml-2026-11-23.json": "a94eab067aee495c96b22e265aaa9ed10abfd96cefe3c05fc501659ea52baf66",
   "dp-one-run-audit-2026-11-23.json": "279d2deeadfe3354fc70484e6c472349e17fd75ea29f5bdc7d0fd3830e0eab4a",
   "reconstruction-opssat-student-2026-11-23.json": "24f9f3eb168839027ad4948238b7d127a7e063a2c37c0ae66cc9ab3a683663b8",
+  "reconstruction-telecom-student-2026-11-24.json": "6b6a74bfccb6f7cc9ea079e0b73470faf9ad44ac6af8531e7467a15d3d54a8d3",
+  "reconstruction-fedheart-2026-11-24.json": "5810d4537bffa5973d09ea92e1af5f9bc7ab14727e2337041ac39a457d6d61b2",
   "attribute-inference-fedheart-2026-11-23.json": "077c20d35db50877ac38e50a5c4b721eeeced805a64f0890bbcf039ef057f61c",
   "gradient-inversion-cxr-2026-11-23.json": "3aa16f56cfd05f8dbc870e98c2bf9ebfabab32d928312e98250584aeb15f07da"
  },
@@ -534,6 +536,85 @@
       0.3814,
       0.894,
       0.9893
+     ]
+    }
+   ]
+  },
+  {
+   "file": "reconstruction-telecom-student-2026-11-24.json",
+   "use_case": "Telecom",
+   "title": "the QKD-attack CKKS student (generated rows)",
+   "records": 1800,
+   "routes": [
+    {
+     "label": "from the published preprocessing mean",
+     "median_relative_error": 0.00046340480897808173,
+     "share_within": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "label": "from the weights, as the trainer's solver left them",
+     "median_relative_error": 0.24689260131302726,
+     "share_within": [
+      0.0,
+      0.0,
+      0.0839
+     ]
+    },
+    {
+     "label": "from the weights, solved to the optimum",
+     "median_relative_error": 6.429010513917213e-05,
+     "share_within": [
+      0.8739,
+      0.9794,
+      0.9961
+     ]
+    }
+   ]
+  },
+  {
+   "file": "reconstruction-fedheart-2026-11-24.json",
+   "use_case": "Medical",
+   "title": "the heart federation's models",
+   "records": 486,
+   "routes": [
+    {
+     "label": "from each hospital's published mean",
+     "median_relative_error": 4.878979936785129e-06,
+     "share_within": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "label": "from the pooled model, as the page trains it",
+     "median_relative_error": 0.2439359407006932,
+     "share_within": [
+      0.0,
+      0.0,
+      0.1337
+     ]
+    },
+    {
+     "label": "from the FedAvg model, as the page trains it",
+     "median_relative_error": 0.5652402009161358,
+     "share_within": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "label": "from the pooled model, solved to the optimum",
+     "median_relative_error": 3.6322960914635577e-07,
+     "share_within": [
+      1.0,
+      1.0,
+      1.0
      ]
     }
    ]
