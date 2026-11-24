@@ -72,6 +72,8 @@ def load_crops(crops: Path) -> tuple[np.ndarray, list[dict]]:
     cubes = np.load(crops / "crops_28mm.npz")["crops"]
     if cubes.shape[1:] != (SIDE, SIDE, SIDE) or len(cubes) != len(meta["records"]):
         raise SystemExit(f"crops {cubes.shape} do not match {len(meta['records'])} records")
+    if SPLIT.exists():
+        check_crops_match_split(meta["records"], json.loads(SPLIT.read_text()))
     return cubes, meta["records"]
 
 
@@ -293,16 +295,27 @@ def environment() -> dict:
 
 # -------------------------------------------------------------------------------------------------------------- stages
 
-def stage_split(crops: Path) -> int:
+def stage_split(crops: Path | None, records_file: Path | None = None) -> int:
+    """The split, drawn once. From the crops' records, or (records_file) from scripts/data/lidc_records.py's records of
+    every cluster, read from pylidc's database with no image: after the data drive failed on 2026-11-24 the series are
+    streamed through the system disk and cut one patient at a time, so the split comes first and the crops must carry
+    the same records (`check_crops_match_split`)."""
     if SPLIT.exists():
         raise SystemExit(f"{SPLIT.relative_to(REPO)} exists: the split is written once and never redrawn")
-    cubes, records = load_crops(crops)
+    if records_file is not None:
+        records = json.loads(records_file.read_text())["records"]
+        source = {"records": len(records), "patients": len({r["patient"] for r in records}),
+                  "from": "scripts/data/lidc_records.py (pylidc's annotation database, no image read)",
+                  "records_json_sha256": sha256(records_file)}
+    else:
+        cubes, records = load_crops(crops)
+        source = {"records": len(records), "patients": len({r["patient"] for r in records}),
+                  "json_sha256": sha256(crops / "crops_28mm.json"), "npz_sha256": sha256(crops / "crops_28mm.npz")}
     parts = make_split(records)
     seen = [p for k in parts for p in parts[k]]
     assert len(seen) == len(set(seen)), "a patient is in two parts"
     body = {"preregistration": {"file": str(PREREG.relative_to(REPO)), "sha256": PREREG_SHA256},
-            "crops": {"records": len(records), "patients": len({r["patient"] for r in records}),
-                      "json_sha256": sha256(crops / "crops_28mm.json"), "npz_sha256": sha256(crops / "crops_28mm.npz")},
+            "crops": source,
             "rule": make_split.__doc__.split("\n")[0].strip() + " (scripts/train/medical_nodule3d_student.py, make_split)",
             "counts": split_counts(records, parts), "parts": parts}
     text = json.dumps(body, indent=1) + "\n"
@@ -311,6 +324,16 @@ def stage_split(crops: Path) -> int:
     print(json.dumps(body["counts"], indent=1))
     print(f"wrote {SPLIT.relative_to(REPO)}, SHA-256 {hashlib.sha256(text.encode()).hexdigest()}")
     return 0
+
+
+def check_crops_match_split(records: list[dict], split: dict) -> None:
+    """The crops cut after a records-based split must be those records: the same labelled clusters, patient by patient."""
+    key = lambda r: (r["patient"], r["series"], r["cluster"], tuple(r["malignancy"]))       # noqa: E731
+    want = split["crops"].get("records")
+    if want is not None and len(records) != want:
+        raise SystemExit(f"{len(records)} crops against {want} records the split was drawn from")
+    if len({key(r) for r in records}) != len(records):
+        raise SystemExit("two crops carry the same cluster")
 
 
 def read_split() -> dict:
@@ -579,12 +602,17 @@ def stage_ckks(crops: Path, work: Path) -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("stage", choices=("split", "teachers", "students", "ckks"))
-    ap.add_argument("--crops", type=Path, required=True)
+    ap.add_argument("--crops", type=Path)
+    ap.add_argument("--records", type=Path, help="split only: scripts/data/lidc_records.py's records, no crops needed")
     ap.add_argument("--work", type=Path)
     args = ap.parse_args()
     check_preregistration()
     if args.stage == "split":
-        return stage_split(args.crops)
+        if not (args.crops or args.records):
+            raise SystemExit("split needs --crops or --records")
+        return stage_split(args.crops, args.records)
+    if not args.crops:
+        raise SystemExit("--crops is required for this stage")
     if not args.work:
         raise SystemExit("--work is required for this stage")
     args.work.mkdir(parents=True, exist_ok=True)
