@@ -1,7 +1,7 @@
 {
  "bomFormat": "CycloneDX",
  "specVersion": "1.7",
- "serialNumber": "urn:uuid:f7ec414b-d70f-5e19-b13f-d8953098e894",
+ "serialNumber": "urn:uuid:6264859b-d6df-566f-89eb-c141aac79d77",
  "version": 1,
  "metadata": {
   "component": {
@@ -463,7 +463,7 @@
    "type": "cryptographic-asset",
    "bom-ref": "crypto/sha-256",
    "name": "SHA-256",
-   "description": "Inside HKDF and HMAC; digests of published files, including the check of every model file fetched from the Hub against its recorded digest; the account hashes of the PSI among banks",
+   "description": "Inside HKDF and HMAC; digests of published files, including the check of every model file fetched from the Hub against its recorded digest and WebLLM's check of each model library against its recorded SRI digest; the account hashes of the PSI among banks",
    "cryptoProperties": {
     "assetType": "algorithm",
     "algorithmProperties": {
@@ -500,6 +500,9 @@
      },
      {
       "location": "web/src/lib/pinnedFetch.ts"
+     },
+     {
+      "location": "web/src/lib/clientAI.ts"
      }
     ]
    }
@@ -508,7 +511,7 @@
    "type": "cryptographic-asset",
    "bom-ref": "crypto/sha-384",
    "name": "SHA-384",
-   "description": "The IKEv2 key schedule test",
+   "description": "The IKEv2 key schedule test; WebLLM's check of each model's config and tokenizer against their recorded SRI digests",
    "cryptoProperties": {
     "assetType": "algorithm",
     "algorithmProperties": {
@@ -539,6 +542,9 @@
     "occurrences": [
      {
       "location": "web/src/lib/netkeys/ikev2.ts"
+     },
+     {
+      "location": "web/src/lib/clientAI.ts"
      }
     ]
    }
