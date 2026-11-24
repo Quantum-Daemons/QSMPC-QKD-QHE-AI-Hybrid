@@ -164,7 +164,7 @@
   },
   "federated": {
     "browser_lr": 0.15,
-    "browser_override_reason": "the browser runs a lighter schedule so a federated round completes inside a page interaction; the server-side values above are what the full deployment trains with",
+    "browser_override_reason": "the browser runs a lighter schedule so a federated round completes inside a page interaction; the full deployment's medical stage runs its own fixed schedule and does not read these values",
     "browser_rounds": 6,
     "hospitals": 4,
     "local_epochs": 1,

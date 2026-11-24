@@ -581,8 +581,10 @@ class FederatedConfig:
     test_split: float = 0.2
     secure_aggregation: bool = True
     #: The browser's lighter federated schedule. A deliberate override of `rounds` and `lr`, because a
-    #: federated round has to finish inside a page interaction - the server-side values above are what
-    #: the full deployment trains with.
+    #: federated round has to finish inside a page interaction. The values above are this configuration's;
+    #: the full deployment's medical stage does not read them (`src/qsh/usecases/medical_fl`: 6 rounds by
+    #: default, 2 for the CNN and 4 for the QFL, at learning rates fixed in the stage), as the 2026-11-23
+    #: review found.
     #:
     #: These were literals inside `frontend_config()` for three rounds (29, 30, 31), recorded on the
     #: deferred list with a reason and **no condition that would resolve it** - which fails the backlog

@@ -114,7 +114,8 @@ def frontend_config() -> dict:
             "browser_lr": c.federated.browser_lr,
             "browser_override_reason":
                 "the browser runs a lighter schedule so a federated round completes inside a page "
-                "interaction; the server-side values above are what the full deployment trains with",
+                "interaction; the full deployment's medical stage runs its own fixed schedule and does not "
+                "read these values",
         },
         # The CKKS parameter set. Absent until Round 38, which meant the ring degree the browser ran
         # was a literal in `clientFHE.ts`, the ring degree the server ran was a default argument in
