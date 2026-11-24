@@ -1,0 +1,655 @@
+{
+ "what": "a one-run k-candidate guessing-game audit (white-box canaries, every release observed) of the heart federation's and the murmur study's DP training",
+ "method": "Mahloujifar, Melis and Chaudhuri, Auditing f-Differential Privacy in One Run, ICML 2025 (arXiv:2410.22235): Theorem 3.1 and Algorithm 3 as the appendix's audit_rh_with_cap, reimplemented; mu-GDP hypotheses",
+ "design": {
+  "tau": 0.05,
+  "guess_shares": [
+   0.01,
+   0.03,
+   0.1,
+   0.3,
+   1.0
+  ],
+  "each_tested_at": 0.01,
+  "mu_resolution": 0.001,
+  "fedheart_runs": 1000,
+  "murmur_runs": 40,
+  "seed": 0,
+  "noise": "fedheart: dp.seeded_rand_below (not private); murmur: torch's generator, as the study"
+ },
+ "fedheart": {
+  "epsilon_8": {
+   "variance_per_hospital": 25510910486,
+   "rho": 1.05235800454728,
+   "k2_add_remove": {
+    "slots": 14000,
+    "k": 2,
+    "rows": [
+     {
+      "guesses": 140,
+      "right": 138,
+      "mu_lower_bound": 0.76
+     },
+     {
+      "guesses": 420,
+      "right": 415,
+      "mu_lower_bound": 0.974
+     },
+     {
+      "guesses": 1400,
+      "right": 1360,
+      "mu_lower_bound": 0.92
+     },
+     {
+      "guesses": 4200,
+      "right": 3913,
+      "mu_lower_bound": 0.762
+     },
+     {
+      "guesses": 14000,
+      "right": 10785,
+      "mu_lower_bound": 0.41100000000000003
+     }
+    ],
+    "mu_lower_bound": 0.974,
+    "every_slot": {
+     "guesses": 14000,
+     "right": 10785,
+     "accuracy": 0.770357,
+     "interval_95": [
+      0.763298,
+      0.777303
+     ],
+     "baseline": 0.5,
+     "within_the_bound": true
+    },
+    "mu_accounted": 1.4508,
+    "epsilon_lower_bound": 4.7423,
+    "delta": 1e-06,
+    "under_the_accountant": true,
+    "reconstruction_bound": 0.963054
+   },
+   "k7_swap": {
+    "slots": 2000,
+    "k": 7,
+    "rows": [
+     {
+      "guesses": 20,
+      "right": 20,
+      "mu_lower_bound": 0.851
+     },
+     {
+      "guesses": 60,
+      "right": 55,
+      "mu_lower_bound": 0.896
+     },
+     {
+      "guesses": 200,
+      "right": 176,
+      "mu_lower_bound": 0.965
+     },
+     {
+      "guesses": 600,
+      "right": 476,
+      "mu_lower_bound": 0.887
+     },
+     {
+      "guesses": 2000,
+      "right": 1178,
+      "mu_lower_bound": 0.682
+     }
+    ],
+    "mu_lower_bound": 0.965,
+    "every_slot": {
+     "guesses": 2000,
+     "right": 1178,
+     "accuracy": 0.589,
+     "interval_95": [
+      0.567069,
+      0.610669
+     ],
+     "baseline": 0.142857,
+     "within_the_bound": true
+    },
+    "mu_accounted": 2.9015,
+    "epsilon_lower_bound": 4.6926,
+    "delta": 1e-06,
+    "under_the_accountant": true,
+    "reconstruction_bound": 0.995432
+   }
+  },
+  "epsilon_4": {
+   "variance_per_hospital": 86305481948,
+   "rho": 0.31106495494001896,
+   "k2_add_remove": {
+    "slots": 14000,
+    "k": 2,
+    "rows": [
+     {
+      "guesses": 140,
+      "right": 124,
+      "mu_lower_bound": 0.405
+     },
+     {
+      "guesses": 420,
+      "right": 358,
+      "mu_lower_bound": 0.424
+     },
+     {
+      "guesses": 1400,
+      "right": 1167,
+      "mu_lower_bound": 0.442
+     },
+     {
+      "guesses": 4200,
+      "right": 3274,
+      "mu_lower_bound": 0.382
+     },
+     {
+      "guesses": 14000,
+      "right": 9109,
+      "mu_lower_bound": 0.214
+     }
+    ],
+    "mu_lower_bound": 0.442,
+    "every_slot": {
+     "guesses": 14000,
+     "right": 9109,
+     "accuracy": 0.650643,
+     "interval_95": [
+      0.642679,
+      0.658544
+     ],
+     "baseline": 0.5,
+     "within_the_bound": true
+    },
+    "mu_accounted": 0.7888,
+    "epsilon_lower_bound": 1.9691,
+    "delta": 1e-06,
+    "under_the_accountant": true,
+    "reconstruction_bound": 0.837238
+   },
+   "k7_swap": {
+    "slots": 2000,
+    "k": 7,
+    "rows": [
+     {
+      "guesses": 20,
+      "right": 16,
+      "mu_lower_bound": 0.512
+     },
+     {
+      "guesses": 60,
+      "right": 36,
+      "mu_lower_bound": 0.454
+     },
+     {
+      "guesses": 200,
+      "right": 103,
+      "mu_lower_bound": 0.468
+     },
+     {
+      "guesses": 600,
+      "right": 251,
+      "mu_lower_bound": 0.41200000000000003
+     },
+     {
+      "guesses": 2000,
+      "right": 657,
+      "mu_lower_bound": 0.337
+     }
+    ],
+    "mu_lower_bound": 0.512,
+    "every_slot": {
+     "guesses": 2000,
+     "right": 657,
+     "accuracy": 0.3285,
+     "interval_95": [
+      0.30793,
+      0.349574
+     ],
+     "baseline": 0.142857,
+     "within_the_bound": true
+    },
+    "mu_accounted": 1.5775,
+    "epsilon_lower_bound": 2.3136,
+    "delta": 1e-06,
+    "under_the_accountant": true,
+    "reconstruction_bound": 0.847105
+   }
+  },
+  "epsilon_2": {
+   "variance_per_hospital": 304546705797,
+   "rho": 0.08815268837984488,
+   "k2_add_remove": {
+    "slots": 14000,
+    "k": 2,
+    "rows": [
+     {
+      "guesses": 140,
+      "right": 106,
+      "mu_lower_bound": 0.194
+     },
+     {
+      "guesses": 420,
+      "right": 303,
+      "mu_lower_bound": 0.215
+     },
+     {
+      "guesses": 1400,
+      "right": 993,
+      "mu_lower_bound": 0.243
+     },
+     {
+      "guesses": 4200,
+      "right": 2769,
+      "mu_lower_bound": 0.201
+     },
+     {
+      "guesses": 14000,
+      "right": 8217,
+      "mu_lower_bound": 0.12
+     }
+    ],
+    "mu_lower_bound": 0.243,
+    "every_slot": {
+     "guesses": 14000,
+     "right": 8217,
+     "accuracy": 0.586929,
+     "interval_95": [
+      0.578719,
+      0.595102
+     ],
+     "baseline": 0.5,
+     "within_the_bound": true
+    },
+    "mu_accounted": 0.4199,
+    "epsilon_lower_bound": 1.0287,
+    "delta": 1e-06,
+    "under_the_accountant": true,
+    "reconstruction_bound": 0.700354
+   },
+   "k7_swap": {
+    "slots": 2000,
+    "k": 7,
+    "rows": [
+     {
+      "guesses": 20,
+      "right": 8,
+      "mu_lower_bound": 0.04
+     },
+     {
+      "guesses": 60,
+      "right": 21,
+      "mu_lower_bound": 0.14
+     },
+     {
+      "guesses": 200,
+      "right": 68,
+      "mu_lower_bound": 0.243
+     },
+     {
+      "guesses": 600,
+      "right": 178,
+      "mu_lower_bound": 0.245
+     },
+     {
+      "guesses": 2000,
+      "right": 494,
+      "mu_lower_bound": 0.20600000000000002
+     }
+    ],
+    "mu_lower_bound": 0.245,
+    "every_slot": {
+     "guesses": 2000,
+     "right": 494,
+     "accuracy": 0.247,
+     "interval_95": [
+      0.228231,
+      0.266513
+     ],
+     "baseline": 0.142857,
+     "within_the_bound": true
+    },
+    "mu_accounted": 0.8398,
+    "epsilon_lower_bound": 1.0378,
+    "delta": 1e-06,
+    "under_the_accountant": true,
+    "reconstruction_bound": 0.491125
+   }
+  },
+  "epsilon_1": {
+   "variance_per_hospital": 1102259957495,
+   "rho": 0.0243559703595175,
+   "k2_add_remove": {
+    "slots": 14000,
+    "k": 2,
+    "rows": [
+     {
+      "guesses": 140,
+      "right": 99,
+      "mu_lower_bound": 0.127
+     },
+     {
+      "guesses": 420,
+      "right": 268,
+      "mu_lower_bound": 0.10300000000000001
+     },
+     {
+      "guesses": 1400,
+      "right": 833,
+      "mu_lower_bound": 0.09
+     },
+     {
+      "guesses": 4200,
+      "right": 2474,
+      "mu_lower_bound": 0.106
+     },
+     {
+      "guesses": 14000,
+      "right": 7559,
+      "mu_lower_bound": 0.052000000000000005
+     }
+    ],
+    "mu_lower_bound": 0.127,
+    "every_slot": {
+     "guesses": 14000,
+     "right": 7559,
+     "accuracy": 0.539929,
+     "interval_95": [
+      0.531629,
+      0.548211
+     ],
+     "baseline": 0.5,
+     "within_the_bound": true
+    },
+    "mu_accounted": 0.2207,
+    "epsilon_lower_bound": 0.5125,
+    "delta": 1e-06,
+    "under_the_accountant": true,
+    "reconstruction_bound": 0.608916
+   },
+   "k7_swap": {
+    "slots": 2000,
+    "k": 7,
+    "rows": [
+     {
+      "guesses": 20,
+      "right": 5,
+      "mu_lower_bound": 0.0
+     },
+     {
+      "guesses": 60,
+      "right": 14,
+      "mu_lower_bound": 0.0
+     },
+     {
+      "guesses": 200,
+      "right": 49,
+      "mu_lower_bound": 0.082
+     },
+     {
+      "guesses": 600,
+      "right": 132,
+      "mu_lower_bound": 0.10200000000000001
+     },
+     {
+      "guesses": 2000,
+      "right": 401,
+      "mu_lower_bound": 0.11
+     }
+    ],
+    "mu_lower_bound": 0.11,
+    "every_slot": {
+     "guesses": 2000,
+     "right": 401,
+     "accuracy": 0.2005,
+     "interval_95": [
+      0.183152,
+      0.21873
+     ],
+     "baseline": 0.142857,
+     "within_the_bound": true
+    },
+    "mu_accounted": 0.4414,
+    "epsilon_lower_bound": 0.4394,
+    "delta": 1e-06,
+    "under_the_accountant": true,
+    "reconstruction_bound": 0.300161
+   }
+  }
+ },
+ "murmur": {
+  "noise_1.89138": {
+   "noise_multiplier": 1.89138,
+   "sampling_rate": 0.12524461839530332,
+   "steps": 239,
+   "epsilon_accounted": 5.6644,
+   "k2_add_remove": {
+    "slots": 5160,
+    "k": 2,
+    "rows": [
+     {
+      "guesses": 52,
+      "right": 52,
+      "mu_lower_bound": 0.67
+     },
+     {
+      "guesses": 154,
+      "right": 146,
+      "mu_lower_bound": 0.627
+     },
+     {
+      "guesses": 516,
+      "right": 455,
+      "mu_lower_bound": 0.537
+     },
+     {
+      "guesses": 1548,
+      "right": 1295,
+      "mu_lower_bound": 0.489
+     },
+     {
+      "guesses": 5160,
+      "right": 3567,
+      "mu_lower_bound": 0.276
+     }
+    ],
+    "mu_lower_bound": 0.67,
+    "every_slot": {
+     "guesses": 5160,
+     "right": 3567,
+     "accuracy": 0.691279,
+     "interval_95": [
+      0.678472,
+      0.70387
+     ],
+     "baseline": 0.5,
+     "within_the_bound": true
+    },
+    "mu_accounted": null,
+    "epsilon_lower_bound": 2.769,
+    "delta": 1e-05,
+    "under_the_accountant": true,
+    "reconstruction_bound": 0.859504
+   }
+  },
+  "noise_3.45294": {
+   "noise_multiplier": 3.45294,
+   "sampling_rate": 0.12524461839530332,
+   "steps": 239,
+   "epsilon_accounted": 2.6083,
+   "k2_add_remove": {
+    "slots": 5160,
+    "k": 2,
+    "rows": [
+     {
+      "guesses": 52,
+      "right": 46,
+      "mu_lower_bound": 0.304
+     },
+     {
+      "guesses": 154,
+      "right": 118,
+      "mu_lower_bound": 0.232
+     },
+     {
+      "guesses": 516,
+      "right": 379,
+      "mu_lower_bound": 0.264
+     },
+     {
+      "guesses": 1548,
+      "right": 1099,
+      "mu_lower_bound": 0.27
+     },
+     {
+      "guesses": 5160,
+      "right": 3105,
+      "mu_lower_bound": 0.14100000000000001
+     }
+    ],
+    "mu_lower_bound": 0.304,
+    "every_slot": {
+     "guesses": 5160,
+     "right": 3105,
+     "accuracy": 0.601744,
+     "interval_95": [
+      0.588236,
+      0.615137
+     ],
+     "baseline": 0.5,
+     "within_the_bound": true
+    },
+    "mu_accounted": null,
+    "epsilon_lower_bound": 1.1484,
+    "delta": 1e-05,
+    "under_the_accountant": true,
+    "reconstruction_bound": 0.715557
+   }
+  }
+ },
+ "seeded_checks": {
+  "fedheart_a_sixteenth_of_the_variance": {
+   "variance_per_hospital": 68891247343,
+   "accountant_assumes": 1102259957495,
+   "rho_accounted": 0.0243559703595175,
+   "k2_add_remove": {
+    "slots": 14000,
+    "k": 2,
+    "rows": [
+     {
+      "guesses": 140,
+      "right": 125,
+      "mu_lower_bound": 0.42
+     },
+     {
+      "guesses": 420,
+      "right": 386,
+      "mu_lower_bound": 0.585
+     },
+     {
+      "guesses": 1400,
+      "right": 1202,
+      "mu_lower_bound": 0.493
+     },
+     {
+      "guesses": 4200,
+      "right": 3323,
+      "mu_lower_bound": 0.402
+     },
+     {
+      "guesses": 14000,
+      "right": 9264,
+      "mu_lower_bound": 0.23
+     }
+    ],
+    "mu_lower_bound": 0.585,
+    "every_slot": {
+     "guesses": 14000,
+     "right": 9264,
+     "accuracy": 0.661714,
+     "interval_95": [
+      0.653808,
+      0.669553
+     ],
+     "baseline": 0.5,
+     "within_the_bound": false
+    },
+    "mu_accounted": 0.2207,
+    "epsilon_lower_bound": 2.6798,
+    "delta": 1e-06,
+    "under_the_accountant": false,
+    "reconstruction_bound": 0.608916
+   }
+  },
+  "murmur_every_person_every_step": {
+   "noise_multiplier": 1.89138,
+   "accountant_assumes_sampling_rate": 0.12524461839530332,
+   "steps": 239,
+   "epsilon_accounted": 5.6644,
+   "k2_add_remove": {
+    "slots": 5160,
+    "k": 2,
+    "rows": [
+     {
+      "guesses": 52,
+      "right": 52,
+      "mu_lower_bound": 0.67
+     },
+     {
+      "guesses": 154,
+      "right": 154,
+      "mu_lower_bound": 1.025
+     },
+     {
+      "guesses": 516,
+      "right": 516,
+      "mu_lower_bound": 1.445
+     },
+     {
+      "guesses": 1548,
+      "right": 1548,
+      "mu_lower_bound": 1.853
+     },
+     {
+      "guesses": 5160,
+      "right": 5128,
+      "mu_lower_bound": 1.508
+     }
+    ],
+    "mu_lower_bound": 1.853,
+    "every_slot": {
+     "guesses": 5160,
+     "right": 5128,
+     "accuracy": 0.993798,
+     "interval_95": [
+      0.991256,
+      0.995754
+     ],
+     "baseline": 0.5,
+     "within_the_bound": false
+    },
+    "mu_accounted": null,
+    "epsilon_lower_bound": 9.1036,
+    "delta": 1e-05,
+    "under_the_accountant": false,
+    "reconstruction_bound": 0.859504
+   }
+  }
+ },
+ "reading": "A mu lower bound under the accountant's mu is consistent with the accounting and proves nothing more; the seeded checks must exceed theirs. The murmur arms' accountant is not Gaussian DP (Poisson-subsampled Gaussian), so they are compared by epsilon at the study's delta, the lower bound's mu converted as Gaussian DP; riskcal's bound from the privacy-loss distribution stands beside them (scripts/audit_dp_kcandidate_bound.py).",
+ "seconds": 336.0,
+ "environment": {
+  "git": "3b5b6f7",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-24"
+ },
+ "reconstruction_bound": {
+  "method": "Kulynych et al., NeurIPS 2025 (arXiv:2507.06969), Theorem 3.1: success <= 1 - f(1/k), f from riskcal (zCDP for the heart federation, 4 rho for a swap; the PLD of the Poisson-subsampled Gaussian for the murmur study)",
+  "riskcal": "1.5.1",
+  "dp_accounting": "0.7.0",
+  "reading": "within_the_bound: the lower end of the every-slot accuracy's 95 percent interval is at or under the bound; an accuracy past it would contradict the accounting, as the seeded checks are built to."
+ }
+}
