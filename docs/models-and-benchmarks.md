@@ -447,6 +447,43 @@ the depth-3 chain has no level left for the 0/1 mask `clientFHE.ts` uses. At its
 point, it flags 66 of the 156 test images malignant (recall 0.738, specificity 0.693; accuracy 0.705, below the 0.731
 of always answering benign). `tests/test_r86_square_student_ckks_in_node.py` runs the module under the real node-seal.
 
+#### The 3D nodule student
+
+The same design in three dimensions (Round 86, batch 4, on the owner's choices of 2026-11-24), on LIDC-IDRI chest CT
+from TCIA (CC BY 3.0): one 3 x 3 x 3 convolution with four filters, batch norm folded, $`x^2`$, a 2 x 2 x 2 average
+pool and a dense layer from $`4 \cdot 14^3`$ to two logits, on a 28 mm cube at 1 mm around a nodule. Pre-registered
+before any image was fetched (`references/medical-nodule3d-square-student-preregistration.md`), with an addendum before
+any model was trained (how the scans were fetched and verified, the training patients fetched a second time after a
+naming bug, and the rule that picks the page's twelve test crops). Every file was checked against TCIA's MD5 and every
+series against its image count (`docs/measurements/lidc-stream-2026-11-24.json`); the split is by patient
+(1,178 labelled training nodules of 518 patients, 170 validation, 347 test). Record:
+`docs/measurements/medical-nodule3d-square-student.json`.
+
+| teacher candidate, out of fold over the training patients | AUC |
+|---|---|
+| 3D ResNet-18 from scratch (taught: the best of the three) | 0.874 |
+| TotalSegmentator's nodule volume, a one-feature logistic regression | 0.786 |
+| CT-FM's linear probe on its features averaged over a 64 mm cube | 0.641 |
+
+| | test AUC, five seeds | exported seed |
+|---|---|---|
+| 3D square student | $`0.907 \pm 0.009`$ | 0.893 (95 % interval 0.848 to 0.933 over test patients) |
+| the same network with ReLU (control) | $`0.882 \pm 0.027`$ | - |
+
+| parameter set | $`N`$ | modulus bits | largest logit error, 347 test crops | decisions changed | median time a crop | bytes up, back |
+|---|---|---|---|---|---|---|
+| A2 | 8,192 | 48+34+34+34+52 (202) | $`3.2 \times 10^{-5}`$ | 0 | 1.7 s | 85.0 MB, 262 kB |
+| B | 16,384 | 60+40+40+40+60 (240) | $`1.6 \times 10^{-5}`$ | 0 | 2.2 s | 84.9 MB, 525 kB |
+
+All three pre-registered criteria are met. The exported seed is the best on validation, the rule fixed before any run,
+and the lowest of the five on test. CT-FM's probe is reported as measured: its features are averaged over the whole
+cube, of which the nodule is a small part, and the pre-registered probe was not tuned after the fact. The card on the
+medical page (`Nodule3dCard.tsx`) draws one of twelve test crops as three planes with the exact contribution map and
+runs it under CKKS in a Web Worker; in the preview a crop took 1.9 s under A2 and 2.4 s under B, keys included.
+NoduleMNIST3D's official-split figures (ResNet-18 3D 0.863, ResNet-50 3D 0.875, auto-sklearn 0.914) are cited for
+context and not compared: that split shares scans across its parts and labels differently. Membership inference
+against these students is in `docs/measurements/mia-nodule3d-*.json`.
+
 #### The PSI among banks under MPC
 
 The finance page runs a private set intersection among three to five banks as one garbled circuit under Polytune, in a Web Worker (`wasm/qsh-mpc`, `web/src/lib/clientMultiPsi.ts`). Each bank brings eight generated accounts, hashed to 32 bits, and three are shared by construction. The circuit costs $`k((n-1)k \cdot 31 + (n-1)(k-1) + (n-2) + 32)`$ AND gates for $`n`$ banks of $`k`$ accounts. Measured in a browser tab on 2026-11-08, on a build of this tree, while other work ran on the machine:

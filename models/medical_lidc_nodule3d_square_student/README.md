@@ -9,8 +9,8 @@ For research and demonstration only, not for clinical use.
 
 ## What it is
 
-One 3 x 3 x 3 convolution with four filters (batch norm folded in), the square $`x^2`$ as its activation, a 2 x 2 x 2
-average pool and a dense layer from $`4 \cdot 14^3`$ to two logits, on a 28 mm cube at 1 mm around a nodule's centre.
+One 3 x 3 x 3 convolution with four filters (batch norm folded in), the square $x^2$ as its activation, a 2 x 2 x 2
+average pool and a dense layer from $4 \cdot 14^3$ to two logits, on a 28 mm cube at 1 mm around a nodule's centre.
 The square makes the whole network a polynomial of depth 3, so it runs end to end under CKKS with no layer decrypted
 in between (`web/src/lib/clientFHESquare3d.ts`). It was distilled with soft labels from the best of three pre-registered
 teacher candidates, each scored out of fold over the training patients; the decision is Platt scaling of the logit
@@ -51,8 +51,8 @@ picked on test figures.
 
 | | test AUC, five seeds | criterion |
 |---|---|---|
-| square student | $`0.907 \pm 0.009`$ | 1, accuracy: at least the control's mean minus 0.03 - met |
-| control (ReLU) | $`0.882 \pm 0.027`$ | 2, no collapse: every square seed at least 0.60 and predicting both classes - met |
+| square student | $0.907 \pm 0.009$ | 1, accuracy: at least the control's mean minus 0.03 - met |
+| control (ReLU) | $0.882 \pm 0.027$ | 2, no collapse: every square seed at least 0.60 and predicting both classes - met |
 
 The teacher candidates, each scored out of fold over the training patients: the 3D ResNet-18 trained from scratch
 0.874, TotalSegmentator's nodule size 0.786, and CT-FM's linear probe 0.641; the ResNet-18 taught. CT-FM's probe reads
@@ -73,15 +73,15 @@ a Web Worker, under the parameter sets that met the pre-registered limit.
 `scripts/train/medical_nodule3d_student.py ckks` ran the page's own module under node-seal on all 347 labelled test
 crops, under both pre-registered sets, in node on this project's machine (load average about 1).
 
-| parameter set | $`N`$ | modulus bits | scale | largest logit error | decisions changed | median time a crop | ciphertexts up, back | bytes up, back |
+| parameter set | $N$ | modulus bits | scale | largest logit error | decisions changed | median time a crop | ciphertexts up, back | bytes up, back |
 |---|---|---|---|---|---|---|---|---|
-| A2 | 8,192 | 48+34+34+34+52 (202) | $`2^{34}`$ | $`3.2 \times 10^{-5}`$ | 0 of 347 | 1.7 s | 162, 2 | 85.0 MB, 262 kB |
-| B | 16,384 | 60+40+40+40+60 (240) | $`2^{40}`$ | $`1.6 \times 10^{-5}`$ | 0 of 347 | 2.2 s | 81, 2 | 84.9 MB, 525 kB |
+| A2 | 8,192 | 48+34+34+34+52 (202) | $2^{34}$ | $3.2 \times 10^{-5}$ | 0 of 347 | 1.7 s | 162, 2 | 85.0 MB, 262 kB |
+| B | 16,384 | 60+40+40+40+60 (240) | $2^{40}$ | $1.6 \times 10^{-5}$ | 0 of 347 | 2.2 s | 81, 2 | 84.9 MB, 525 kB |
 
-Both sets met criterion 3 (every decrypted logit within the pre-registered $`10^{-3}`$ of the plaintext one, no
+Both sets met criterion 3 (every decrypted logit within the pre-registered $10^{-3}$ of the plaintext one, no
 decision changed) and both are offered; both are within the HomomorphicEncryption.org standard's 128-bit post-quantum
-bound for a ternary secret (202 bits at $`N = 8192`$, 411 at $`N = 16384`$). The input travels as the 27 taps of the
-convolution, packed over $`28^3 = 21{,}952`$ voxels in 6 blocks under A2 and 3 under B.
+bound for a ternary secret (202 bits at $N = 8192$, 411 at $N = 16384$). The input travels as the 27 taps of the
+convolution, packed over $28^3 = 21{,}952$ voxels in 6 blocks under A2 and 3 under B.
 
 Retrain: `scripts/data/lidc_stream.py` (fetch, verify, cut), then `scripts/train/medical_nodule3d_student.py teachers`,
 the CT-FM and TotalSegmentator candidates' own scripts, `students` and `ckks` (the 3D ResNet-18 and the students on the
