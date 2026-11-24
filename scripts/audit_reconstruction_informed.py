@@ -262,7 +262,38 @@ def fedheart() -> dict:
             "routes": routes}
 
 
-TARGETS = {"opssat_student": opssat_student, "telecom_student": telecom_student, "fedheart": fedheart}
+def finance_student() -> dict:
+    """The AML student's training statistics: route A only.
+
+    The student publishes the mean its client standardises with (`input.mean`, the StandardScaler fitted on the fit
+    window, scripts/train/finance_aml.py at degree 1), so route A is the OPS-SAT student's. Routes B and C need the
+    teacher's probabilities on every fit row; the pinned teacher's file is not in this machine's cache and a retrained
+    booster (the trainer fits it on the GPU) would not be the published one, so they are not run: the closed form is the
+    same as for the OPS-SAT student, where it is shown.
+    """
+    sys.path.insert(0, str(REPO / "scripts" / "train"))
+    from finance_aml import causal_account_features, load_sorted, model_inputs, temporal_windows
+
+    df = load_sorted()
+    fit, val, te, tr = temporal_windows(df)
+    (Xfit, _, _), names, _ = model_inputs(df, fit, val, te, tr, causal_account_features(df))
+    X = np.asarray(Xfit, dtype=np.float64)
+    n, d = X.shape
+    published = json.loads((REPO / "models" / "finance_aml_student" / "weights.json").read_text(encoding="utf-8"))
+    pub_mean = np.asarray(published["input"]["mean"], dtype=float)
+    if len(pub_mean) != d or published["n_features"] != len(names):
+        raise SystemExit(f"the published mean has {len(pub_mean)} entries, the fit window {d} features")
+    route_a = _errors(n * pub_mean - (X.sum(axis=0)[None, :] - X), X)
+    route_a["published_mean_max_abs_diff"] = float(np.max(np.abs(pub_mean - X.mean(axis=0))))
+    return {"target": "finance_aml.student", "training_records": int(n), "features": int(d),
+            "data": "AMLworld HI-Small (synthetic; CDLA-Sharing-1.0, Kaggle version 8), the trainer's fit window, its 114 inputs",
+            "routes": {"A_published_preprocessing_mean": route_a},
+            "not_run": "routes B and C: the pinned teacher's file is not cached here, and a booster retrained on this "
+                       "machine would not be the published one; the closed form is shown on the OPS-SAT student"}
+
+
+TARGETS = {"opssat_student": opssat_student, "telecom_student": telecom_student, "fedheart": fedheart,
+           "finance_student": finance_student}
 
 
 def main() -> int:
