@@ -178,16 +178,47 @@ the owner's approval of 2026-11-23:
 The BitcoinTemporalGraph check, asked and approved, ran on 2026-11-23 and shipped in #90: entity types predicted from
 a labelled node's own features and, by a GNN, from its one-hop neighbourhood too (`docs/measurements/btg-check-2026-11-23.json`).
 
-## What each use case could add
+## What each use case could add (status on 2026-11-24)
 
-| Use case | Membership-inference audit | DP audit | Note |
-|---|---|---|---|
-| Finance | the GBM, MLP, compact GNN and the two Multi-PNA+EU models, on AMLworld | the counting release (`dp_count`) | the training data is synthetic, so the figure measures memorisation, not exposure of people |
-| Medical | the BreastMNIST ResNets and students; the chest X-ray FedAvg model, where a server sees every client's update | the murmur DP-SGD model; the federated heart model's noise | the one use case on records of real patients, all public |
-| Genomics | none: the score's weights are published, not trained here | the discrete-Gaussian counts | |
-| Telecom | the 5G-NIDD classifier (real flows, CC BY 4.0) | none | the QKD-attack model trains on generated rows |
-| Satellite | the OPS-SAT and Telemanom models | none | telemetry, not personal data |
-| DeFi | none | none | the liquidation check is arithmetic on balances and the hour's public prices, not a trained model |
+| Use case | Membership-inference audit | DP audit | Other | Note |
+|---|---|---|---|---|
+| Finance | not run: the GBM, MLP, compact GNN and the two Multi-PNA+EU models, on AMLworld | not run: the counting release (`dp_count`) | informed reconstruction of the student: on the owner's choice of 2026-11-24 | the training data is synthetic, so a figure measures memorisation, not exposure of people |
+| Medical, 2D | done: BreastMNIST's students (teacher fixed) and the whole pipeline (teacher retrained, GPU); the heart federation's five arms | done: the one-run audit of the heart federation's noise and of the murmur DP-SGD | done: attribute inference (heart), gradient inversion (chest X-ray); informed reconstruction of the heart models and the k-candidate canary game: on the owner's choice of 2026-11-24 | records of real patients, all public |
+| Medical, 3D (LIDC-IDRI) | to be chosen after one teacher fit is timed (the owner's choice of 2026-11-24): 64 retrained shadows as for BreastMNIST, or fewer | none: not trained under DP | none | CT scans of real patients, public (TCIA, CC BY 3.0) |
+| Genomics | none: the score's weights are published, not trained here | the discrete-Gaussian counts: not audited | | |
+| Telecom | done: the QKD-attack forest (generated rows); not run: the 5G-NIDD classifier (real flows, CC BY 4.0) | none | informed reconstruction of the QKD-attack student: on the owner's choice of 2026-11-24 | |
+| Satellite | done: OPS-SAT's teacher and student; not run: Telemanom | none | done: informed reconstruction of the OPS-SAT student | telemetry, not personal data |
+| DeFi | none | none | | the liquidation check is arithmetic on balances and the hour's public prices, not a trained model |
+
+Every recorded result is shown on the Validations page from 2026-11-24 (the owner's choice that day): the card
+`web/src/components/PrivacyAudits.tsx` draws `web/src/lib/privacyAudits.json`, which `scripts/export_privacy_audits.py`
+copies from the records with each record's SHA-256, and `tests/test_r86_privacy_audits_card.py` holds the card to the
+file and the file to the records. Metrics only, as above.
 
 Not adopted: CrypTen, archived since 2024; MP-SPDZ, TenSEAL, OpenFHE's Python binding, Opacus and the
 estimator on the public page, all server-side; and any attack aimed at a system that is not this project's.
+
+## Re-checked on 2026-11-24
+
+On the owner's instruction of 2026-11-24 the memo's four sections were read again against the repository and at source.
+
+- **Still as written above.** OWASP Dependency-Track's issues #3145 and #6191 are open; cdxgen's newest release is
+  v13.8.0 (2026-11-14); OSV-Scanner's is still v2.7.1; ML Privacy Meter's newest commit is still 2025-04-26 (each read
+  through the GitHub API).
+- **The HE parameter check, and an ISO standard on its way.** The ISO/IEC 28033 series, *Information security - Fully
+  homomorphic encryption* (ISO/IEC JTC 1/SC 27), read on iso.org in a browser on 2026-11-24: Part 1, *General*, FDIS,
+  stage 50.00; Part 2, BGV and BFV "and parameter selection for various security levels", DIS, stage 40.60 (close of
+  voting); Part 3, CKKS with the same, stage 60.00 (under publication); Part 4, arithmetic by look-up-table evaluation,
+  stage 60.00; Part 5, scheme switching, a working draft. None is published, so
+  `tests/test_r86_cbom_he_parameters.py` still rests on the HE Standard (2018) and on Bossuat et al. (2025). When
+  Part 3 is published, holding the CKKS sets to its tables needs the standard bought (ISO sells it; it is not
+  redistributed here), which is the owner's decision. NIST's threshold call (NIST IR 8214C) lists FHE as its category
+  S5, with preview talks in 2026; no submission deadline for full packages was found.
+- **A cheaper membership attack, for models too costly to retrain 64 times.** Bertran et al., *Scalable Membership
+  Inference Attacks via Quantile Regression* (NeurIPS 2023, arXiv:2307.03694; code `amazon-science/quantile-mia`,
+  Apache-2.0, last pushed 2024-04-04): one quantile regressor fitted to the scores of non-members, no shadow models;
+  its authors report it competitive with shadow-model attacks. A candidate for the 3D pipeline if retraining its teacher
+  64 times is too long.
+- **The repository's own settings.** On the owner's choice of 2026-11-24, secret scanning, push protection and
+  Dependabot security updates were turned on (the GitHub API confirms each); Dependabot alerts and private
+  vulnerability reporting were on already.
