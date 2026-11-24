@@ -565,6 +565,17 @@ export const USECASE_SPECS: Record<string, Spec> = {
         label: (m, c) => `${qkdName(c)}${eveTag(m)} · QBER ${f(m, "qber")}${optiTag(m, c)}`,
         hidden: pqcOnly, ok: qkdOk, failWord: QKD_NO_KEY },
       { stageId: "qml_ids", kind: "local-a", label: (m) => `IDS stage: classical softmax attack detection · macro-F1 ${f(m, "ids_macro_f1")}` },
+      // The stage's encrypted tier, in its two halves (Round 86, batch 4). Since round86-batch3 the published student
+      // scores one held-out row under CKKS with every score masked, and its argmax runs in a garbled circuit on the two
+      // shares; the canvas drew the stage as one local box until the deployed walk of 2026-11-24 found it.
+      { stageId: "qml_ids", kind: "fhe-arrow",
+        label: (m) => (m["encrypted_student_ms"] == null
+          ? "CKKS student · one held-out row, every score masked"
+          : `CKKS student · one held-out row · ${f(m, "encrypted_student_ms")} ms · every score masked`) },
+      { stageId: "qml_ids", kind: "mpc-bidir",
+        label: (m) => (m["encrypted_argmax_gc_ms"] == null
+          ? "argmax in a garbled circuit, on shares of the masked scores"
+          : `argmax in a garbled circuit · ${f(m, "encrypted_argmax_gc_ms")} ms · class ${f(m, "encrypted_student_class")}`) },
       publishedStep("qml_ids"),
       QSMPC_COMPARE,
       { stageId: "sign_result", kind: "c-bidir", label: (_m, c) => `${sigName(c)}-signed audit record` },
@@ -758,6 +769,12 @@ export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: Diag
             : { a: "CKKS: applies the settlements, adds the weights, masks the margin", b: "CKKS: decrypts the masked margin", flow: "ab", channel: "fhe" })
         : { ...sides("garbled circuit: holds a share", "garbled circuit: holds a share"), flow: "both", channel: "mpc" };
     case "qml_ids":
+      // The encrypted tier (round86-batch3): CKKS for the student's dot products, every score masked before the key
+      // holder decrypts, then the argmax in a garbled circuit on the two shares; both parties are in this tab.
+      if (kind === "fhe-arrow")
+        return { ...sides("CKKS: encrypts the row, decrypts only masked scores", "CKKS: evaluates the student, masks every score"), flow: "both", channel: "fhe" };
+      if (kind === "mpc-bidir")
+        return { ...sides("garbled circuit: holds a share of each score", "garbled circuit: holds the other share"), flow: "both", channel: "mpc" };
       // Synthetic rows generated in the tab, not this link's telemetry (see the telecom `meet`).
       return { a: "IDS: classifies synthetic attack telemetry, not this link's", channel: "none" };
     case "sign_result":
@@ -812,9 +829,11 @@ export function captionOf(usecase: string, c: DiagramConfig = {}): string {
   if (!spec) return "";
   const infers = visibleSteps(usecase, c).some((s) => s.stageId === "private_inference");
   const quantum = visibleSteps(usecase, c).some((s) => kindOf(s, c) === "q-arrow");
+  const idsTier = visibleSteps(usecase, c).some((s) => s.stageId === "qml_ids" && kindOf(s, c) === "mpc-bidir");
   return [
     spec.meet(c),
     infers ? "MPC-FHE hybrid: linear layers under CKKS, biases included, decrypted by the client, and the argmax as two-party MPC over the scores the client has decrypted, both parties in this tab, so the MPC measures the protocol's cost and hides nothing; the QSMPC-FHE bar is a simulated comparison circuit beside it, not a score." : "",
+    idsTier ? "The IDS stage's encrypted tier: the published student's dot products under CKKS on one held-out row, every score masked before the key holder decrypts, and the argmax in a garbled circuit on the two shares, so only the class leaves it; both parties are in this tab, drawn as the carrier and the remote site." : "",
     pqcOnly(c) || !quantum ? "This profile has no quantum channel, and the proof of concept runs in this tab."
       : "The quantum channel is simulated, and the proof of concept runs in this tab.",
   ].filter(Boolean).join(" ");

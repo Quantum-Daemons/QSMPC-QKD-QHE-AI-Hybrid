@@ -404,8 +404,8 @@ probability read as a risk, negative from $`t \approx 0.015`$, is why the map is
 #### Which pages encrypt
 
 In the browser, the finance, medical, genomics and DeFi lending pages run node-seal CKKS and Polytune
-garbled circuits between notional parties in one tab, and on request the medical, genomics and lending pages run Lattigo's threshold CKKS or BGV, compiled to WebAssembly; the telecom and satellite pages run a CKKS check of each
-published student they carry and no garbled circuit. The satellite page's anomaly verdict and SHAP explanation are a separate demo regression,
+garbled circuits between notional parties in one tab, and on request the medical, genomics and lending pages run Lattigo's threshold CKKS or BGV, compiled to WebAssembly; the telecom page runs its
+student under CKKS on one held-out row with its argmax in a garbled circuit, on the shares of the masked scores, and both the telecom and satellite pages run a CKKS check of each published student they carry, with no garbled circuit in that check. The satellite page's anomaly verdict and SHAP explanation are a separate demo regression,
 computed in plaintext on a bundled OPS-SAT-AD segment; its check scores `satellite_comms.opssat_student` on the benchmark's
 529 test-partition segments, through the quadratic expansion and the scaler its ONNX graph applies, and the forecaster's student, `satellite_comms.student`, is re-scored under CKKS on its whole published stretch, 8,640 forecasts. The full deployment scores one of those
 segments, with the same demo regression, under CKKS (TenSEAL), and reports how far the decrypted

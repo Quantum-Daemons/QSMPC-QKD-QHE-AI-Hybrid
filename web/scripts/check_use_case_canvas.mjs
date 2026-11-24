@@ -15,14 +15,16 @@
  *   3. a many-party stage draws the parties the run has: the configured count before a run, and the
  *      run's own count once it reports one;
  *   4. the private inference's client is the side whose input it protects: Bank B's transaction on
- *      finance, the hospital's and the cohort's data on medical and genomics;
+ *      finance, the hospital's and the cohort's data on medical and genomics, the carrier's row on telecom;
  *   5. a PQC-only profile draws no quantum lane: the key stages are dropped, and the satellite's
  *      telemetry, which the browser then sends under the session key with QSDC skipped, is drawn
  *      as the classical exchange it is. Both figures drew a quantum QSDC arrow there until Round 80;
  *   6. the legend lists the lanes the canvas draws and no others, and the key bus exactly where a
  *      stage reads the session key (the PSI, which seals its OPRF messages under keys derived from it;
  *      since Round 84 the federated masks take their seeds from X25519). Until Round 81 it listed all five
- *      everywhere, so telecom and satellite explained CKKS, MPC and key lanes neither draws;
+ *      everywhere, so telecom and satellite explained CKKS, MPC and key lanes neither draws. Since Round 86
+ *      (batch 4) telecom's IDS stage draws its CKKS and garbled-circuit halves, which round86-batch3 put in it,
+ *      and its caption says the argmax runs on shares; satellite still draws neither;
  *   7. the caption says what the run does: the MPC-FHE sentence only where a private inference
  *      runs, no WAN between a satellite and its ground station, and no simulated quantum channel
  *      under a profile that has none. One caption served all five until Round 81;
@@ -128,6 +130,9 @@ const clientOf = (usecase) => {
 check("client", clientOf("finance_aml") === "b", `finance's CKKS client is side ${clientOf("finance_aml")}; the input is Bank B's transaction`);
 check("client", clientOf("medical_fl") === "a", `medical's CKKS client is side ${clientOf("medical_fl")}; the input is the hospital's`);
 check("client", clientOf("genomics") === "a", `genomics' CKKS client is side ${clientOf("genomics")}; the input is the cohort's`);
+// Telecom's IDS stage (Round 86, batch 4): the carrier's held-out row is what the CKKS half encrypts.
+const idsFhe = find(rowsOf("telecom_ids"), "qml_ids", (row) => row.channel === "fhe")?.row;
+check("client", /encrypts/.test(idsFhe?.a ?? ""), `telecom's CKKS client is not the carrier (side a): ${idsFhe?.a ?? "no CKKS row"}`);
 
 // 5. No quantum lane under PQC-only.
 for (const usecase of Object.keys(m.USECASE_SPECS)) {
@@ -137,10 +142,16 @@ for (const usecase of Object.keys(m.USECASE_SPECS)) {
 
 // 6. The legend: the lanes drawn, and the key bus where the session key is read.
 const legend = (usecase, config = {}) => m.drawnChannels(usecase, config);
-for (const usecase of ["telecom_ids", "satellite_comms"]) {
-  const l = legend(usecase);
+{
+  const l = legend("satellite_comms");
   check("legend", !l.lanes.includes("fhe") && !l.lanes.includes("mpc") && !l.keyBus,
-    `${usecase}'s legend lists ${[...l.lanes, ...(l.keyBus ? ["key bus"] : [])].join(", ")}; it draws no CKKS, MPC or key lane`);
+    `satellite_comms' legend lists ${[...l.lanes, ...(l.keyBus ? ["key bus"] : [])].join(", ")}; it draws no CKKS, MPC or key lane`);
+  // Telecom's IDS stage runs CKKS and a garbled circuit since round86-batch3 (drawn since batch 4), and reads no key.
+  const t = legend("telecom_ids");
+  check("legend", t.lanes.includes("fhe") && t.lanes.includes("mpc") && !t.keyBus,
+    `telecom_ids' legend lists ${[...t.lanes, ...(t.keyBus ? ["key bus"] : [])].join(", ")}; it draws its IDS stage's CKKS and MPC lanes and no key bus`);
+  const ids = rowsOf("telecom_ids").filter(({ s }) => s.stageId === "qml_ids").map(({ row }) => row.channel);
+  check("legend", ids.includes("fhe") && ids.includes("mpc"), `telecom's IDS stage draws ${ids.join(", ")}; it runs CKKS and a garbled circuit`);
 }
 for (const usecase of Object.keys(m.USECASE_SPECS)) {
   const l = legend(usecase);
@@ -170,6 +181,10 @@ for (const usecase of Object.keys(m.USECASE_SPECS)) {
   check("caption", !/quantum channel is simulated/.test(m.captionOf(usecase, { qkd: "pqc-only" })),
     `${usecase}'s caption describes a simulated quantum channel under a PQC-only profile`);
 }
+check("caption", /garbled circuit on the two shares/.test(m.captionOf("telecom_ids")) && !/MPC-FHE hybrid/.test(m.captionOf("telecom_ids")),
+  "telecom's caption does not say its IDS stage takes the argmax in a garbled circuit on shares, or claims the decrypted-score hybrid");
+check("caption", !/garbled circuit on the two shares/.test(m.captionOf("satellite_comms")),
+  "the satellite's caption claims an encrypted IDS tier");
 check("caption", !/WAN/.test(m.captionOf("satellite_comms")) && !/WAN/.test(m.captionOf("satellite_comms", { qkd: "pqc-only" })),
   "the satellite's caption puts it and its ground station on a WAN");
 

@@ -120,7 +120,7 @@ export default function PipelineControls({ run }: { run: Run }) {
             MP-SPDZ and hpmpc, which nothing ran, so choosing them changed nothing a run computed. */}
         {demo ? (
           <span className="muted" style={{ fontSize: 13 }}
-            title="Where a page has a private-inference stage (finance, medical, genomics) or the lending page's margin check, the demo computes FHE/MPC for real in your browser (node-seal CKKS + a Polytune garbled-circuit 2PC whose two parties share this tab); telecom and satellite each run a CKKS check of a student and no MPC. There is no server backend to select.">
+            title="Where a page has a private-inference stage (finance, medical, genomics) or the lending page's margin check, the demo computes FHE/MPC for real in your browser (node-seal CKKS + a Polytune garbled-circuit 2PC whose two parties share this tab); telecom's IDS stage runs its student under CKKS with the same garbled-circuit argmax, and satellite runs a CKKS check of a student and no MPC. There is no server backend to select.">
             FHE/MPC, where a page runs them: <strong>node-seal CKKS + garbled-circuit 2PC</strong> - real protocol, in-browser, notional parties
           </span>
         ) : (
