@@ -1,0 +1,615 @@
+{
+ "_generated_by": "scripts/export_privacy_audits.py from docs/measurements; do not edit by hand",
+ "fprs": [
+  0.001,
+  0.01,
+  0.1
+ ],
+ "sources": {
+  "mia-breastmnist-pipeline-2026-11-23.json": "2f8847e25b8d8fbb1fe3992245ccdf5b67a35e5a68674680d841527d371dd34a",
+  "mia-breastmnist-students-2026-11-23.json": "79d05443f1e2b29782ce4548b4a4e1084d259f67201fd1982789bbcb352b9765",
+  "mia-fedheart-2026-11-23.json": "b2f322e3db537dae62a37b9152a6194efc4fff07fdf0c75d93ddca63db06fdb1",
+  "mia-opssat-2026-11-23.json": "526d65125abfd19e4311cbe7639d70886b32f99f3c69f35bba381e109b733c02",
+  "mia-telecom-qml-2026-11-23.json": "a94eab067aee495c96b22e265aaa9ed10abfd96cefe3c05fc501659ea52baf66",
+  "dp-one-run-audit-2026-11-23.json": "279d2deeadfe3354fc70484e6c472349e17fd75ea29f5bdc7d0fd3830e0eab4a",
+  "reconstruction-opssat-student-2026-11-23.json": "24f9f3eb168839027ad4948238b7d127a7e063a2c37c0ae66cc9ab3a683663b8",
+  "attribute-inference-fedheart-2026-11-23.json": "077c20d35db50877ac38e50a5c4b721eeeced805a64f0890bbcf039ef057f61c",
+  "gradient-inversion-cxr-2026-11-23.json": "3aa16f56cfd05f8dbc870e98c2bf9ebfabab32d928312e98250584aeb15f07da"
+ },
+ "membership": [
+  {
+   "file": "mia-breastmnist-pipeline-2026-11-23.json",
+   "use_case": "Medical",
+   "title": "BreastMNIST, the whole pipeline",
+   "unit": "an ultrasound image",
+   "data": "MedMNIST v2 BreastMNIST at 28 px, train and test splits (CC BY 4.0 as MedMNIST states it; the BUSI authors publish no licence; DATA_LICENSES.md); the val split selects every model's epoch, as in training",
+   "shadow_models": 64,
+   "audit_records": 562,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "teacher",
+     "label": "ResNet-18 teacher",
+     "description": "medical_fl.resnet18's recipe, retrained on each shadow's members (random init, 60 epochs at most, AUC selection on val)",
+     "lira": {
+      "auc": 0.7702,
+      "tpr": [
+       0.0872,
+       0.181,
+       0.4094
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.6918,
+      "tpr": [
+       null,
+       0.1036,
+       0.2716
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0052 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 44,
+     "audit_records": 562
+    },
+    {
+     "key": "student",
+     "label": "CNN student",
+     "description": "medical_fl.student's recipe, distilled from that shadow's teacher, the net-benefit cut folded into the head",
+     "lira": {
+      "auc": 0.5938,
+      "tpr": [
+       0.0047,
+       0.0324,
+       0.174
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5947,
+      "tpr": [
+       null,
+       0.0284,
+       0.1691
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0083 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 1,
+     "audit_records": 562
+    },
+    {
+     "key": "square_student",
+     "label": "square-activation student",
+     "description": "medical_fl.square_student's recipe, distilled from that shadow's teacher",
+     "lira": {
+      "auc": 0.6186,
+      "tpr": [
+       0.0036,
+       0.0286,
+       0.1898
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.6286,
+      "tpr": [
+       null,
+       0.033,
+       0.1879
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0095 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 2,
+     "audit_records": 562
+    }
+   ]
+  },
+  {
+   "file": "mia-breastmnist-students-2026-11-23.json",
+   "use_case": "Medical",
+   "title": "BreastMNIST students, the teacher held fixed",
+   "unit": "an ultrasound image",
+   "data": "MedMNIST v2 BreastMNIST at 28 px, train and test splits (CC BY 4.0 as MedMNIST states it; the BUSI authors publish no licence; DATA_LICENSES.md), downsampled to 14 px as the students see them; the val split selects each student's epoch, as in training",
+   "shadow_models": 64,
+   "audit_records": 562,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "student",
+     "label": "CNN student",
+     "description": "medical_fl.student: conv 1->4, ReLU, avg-pool, dense 196->16, ReLU, dense 16->2, the net-benefit cut folded into the head",
+     "lira": {
+      "auc": 0.6105,
+      "tpr": [
+       0.0027,
+       0.034,
+       0.1813
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.6119,
+      "tpr": [
+       null,
+       null,
+       0.1813
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0106 of non-members tie at the top score",
+       "fpr 0.01: 0.0106 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 562
+    },
+    {
+     "key": "square_student",
+     "label": "square-activation student",
+     "description": "medical_fl.square_student: conv 1->4, batch norm, x^2, avg-pool, dense 196->2",
+     "lira": {
+      "auc": 0.6171,
+      "tpr": [
+       0.0043,
+       0.0293,
+       0.1888
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.6307,
+      "tpr": [
+       null,
+       null,
+       0.1929
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0102 of non-members tie at the top score",
+       "fpr 0.01: 0.0102 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 2,
+     "audit_records": 562
+    }
+   ]
+  },
+  {
+   "file": "mia-fedheart-2026-11-23.json",
+   "use_case": "Medical",
+   "title": "The heart federation (four hospitals)",
+   "unit": "a patient's record",
+   "data": "UCI Heart Disease: four hospitals, as FLamby's Fed-Heart-Disease prepares them: UCI Heart Disease's four hospitals as FLamby prepares them (CC-BY-4.0), train and test rows pooled within each hospital, 740 rows",
+   "shadow_models": 64,
+   "audit_records": 592,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "federated",
+     "label": "FedAvg",
+     "description": "the page's FedAvg: 15 rounds of 100 local SGD steps at lr 0.001, the secure sum's ring",
+     "lira": {
+      "auc": 0.5042,
+      "tpr": [
+       0.0021,
+       0.0122,
+       0.1022
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5115,
+      "tpr": [
+       null,
+       0.0067,
+       0.1022
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0056 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 592
+    },
+    {
+     "key": "pooled",
+     "label": "pooled, one model on all rows",
+     "description": "the four hospitals' rows together, Adam (lr 0.001, batches of 4, 50 epochs)",
+     "lira": {
+      "auc": 0.5413,
+      "tpr": [
+       0.0036,
+       0.0199,
+       0.1315
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5282,
+      "tpr": [
+       null,
+       0.0079,
+       0.1093
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0059 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 592
+    },
+    {
+     "key": "dp_clip_only",
+     "label": "record-level DP, clipping only",
+     "description": "record-level DP federation, 50 rounds of full-batch descent, clipping at 1, no noise",
+     "lira": {
+      "auc": 0.5481,
+      "tpr": [
+       0.0011,
+       0.0146,
+       0.1278
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5379,
+      "tpr": [
+       null,
+       0.0102,
+       0.1255
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0072 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 592
+    },
+    {
+     "key": "dp_epsilon_8",
+     "label": "record-level DP, epsilon 8",
+     "description": "the same with the page's discrete Gaussian noise for epsilon 8, delta 1e-6",
+     "lira": {
+      "auc": 0.5444,
+      "tpr": [
+       0.0006,
+       0.0136,
+       0.1271
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5365,
+      "tpr": [
+       null,
+       0.0092,
+       0.1255
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0053 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 592
+    },
+    {
+     "key": "dp_epsilon_1",
+     "label": "record-level DP, epsilon 1",
+     "description": "the same for epsilon 1",
+     "lira": {
+      "auc": 0.507,
+      "tpr": [
+       0.0008,
+       0.0116,
+       0.0977
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5194,
+      "tpr": [
+       null,
+       0.0083,
+       0.1075
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0058 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 592
+    }
+   ]
+  },
+  {
+   "file": "mia-opssat-2026-11-23.json",
+   "use_case": "Satellite",
+   "title": "OPS-SAT-AD anomaly detection",
+   "unit": "a telemetry segment",
+   "data": "OPS-SAT-AD, train and test partitions (CC BY 4.0, Zenodo 12588359)",
+   "shadow_models": 64,
+   "audit_records": 1698,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "teacher",
+     "label": "gradient-boosted teacher",
+     "description": "satellite_comms.opssat: HistGradientBoostingClassifier, the trainer's settings",
+     "lira": {
+      "auc": 0.5825,
+      "tpr": [
+       0.0255,
+       0.0562,
+       0.1729
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5995,
+      "tpr": [
+       null,
+       0.0538,
+       0.1822
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0020 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 44,
+     "audit_records": 1698
+    },
+    {
+     "key": "student",
+     "label": "CKKS student",
+     "description": "satellite_comms.opssat_student: soft logistic on the degree-2 expansion",
+     "lira": {
+      "auc": 0.5317,
+      "tpr": [
+       0.003,
+       0.0218,
+       0.1266
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5252,
+      "tpr": [
+       null,
+       0.0181,
+       0.1173
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0017 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 4,
+     "audit_records": 1698
+    }
+   ]
+  },
+  {
+   "file": "mia-telecom-qml-2026-11-23.json",
+   "use_case": "Telecom",
+   "title": "The QKD-attack classifier (generated rows)",
+   "unit": "a generated row",
+   "data": "QKD-attack telemetry this repository generates (qsh.qml_ids.attacks, 8 classes x 300, seed 42; Apache-2.0)",
+   "shadow_models": 64,
+   "audit_records": 1920,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "forest",
+     "label": "random forest",
+     "description": "telecom_ids.qml: RandomForestClassifier(n_estimators=200), the trainer's settings",
+     "lira": {
+      "auc": 0.7045,
+      "tpr": [
+       0.0061,
+       0.0502,
+       0.1806
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.8671,
+      "tpr": [
+       null,
+       0.2264,
+       0.5822
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0024 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 7,
+     "audit_records": 1920
+    }
+   ]
+  }
+ ],
+ "dp_one_run": {
+  "file": "dp-one-run-audit-2026-11-23.json",
+  "method": "Steinke, Nasr and Jagielski, Privacy Auditing with One (1) Training Run, NeurIPS 2023 (arXiv:2305.08846): Corollary 5.4 and Appendix D, implemented here",
+  "confidence": 0.95,
+  "arms": [
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 8",
+    "accounted": 8.0,
+    "lower_bound": 2.9951,
+    "canaries": 14000,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 4",
+    "accounted": 4.0,
+    "lower_bound": 1.7629,
+    "canaries": 14000,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 2",
+    "accounted": 2.0,
+    "lower_bound": 0.7418,
+    "canaries": 14000,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 1",
+    "accounted": 1.0,
+    "lower_bound": 0.3789,
+    "canaries": 14000,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "bug: a sixteenth of the variance",
+    "accounted": 1.0,
+    "lower_bound": 2.2074,
+    "canaries": 14000,
+    "seeded_bug": true
+   },
+   {
+    "study": "Murmur study, DP-SGD",
+    "arm": "noise multiplier 1.89138",
+    "accounted": 5.6644,
+    "lower_bound": 1.9764,
+    "canaries": 5160,
+    "seeded_bug": false
+   },
+   {
+    "study": "Murmur study, DP-SGD",
+    "arm": "noise multiplier 3.45294",
+    "accounted": 2.6083,
+    "lower_bound": 1.115,
+    "canaries": 5160,
+    "seeded_bug": false
+   },
+   {
+    "study": "Murmur study, DP-SGD",
+    "arm": "bug: every person, every step",
+    "accounted": 5.6644,
+    "lower_bound": 6.1727,
+    "canaries": 5160,
+    "seeded_bug": true
+   }
+  ]
+ },
+ "reconstruction": [
+  {
+   "file": "reconstruction-opssat-student-2026-11-23.json",
+   "use_case": "Satellite",
+   "title": "OPS-SAT-AD CKKS student",
+   "records": 1594,
+   "routes": [
+    {
+     "label": "from the published preprocessing mean",
+     "median_relative_error": 7.13596873785859e-05,
+     "share_within": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "label": "from the weights, as the trainer's solver left them",
+     "median_relative_error": 0.5996974725089099,
+     "share_within": [
+      0.0,
+      0.0,
+      0.0226
+     ]
+    },
+    {
+     "label": "from the weights, solved to the optimum",
+     "median_relative_error": 0.0015409021735668358,
+     "share_within": [
+      0.3814,
+      0.894,
+      0.9893
+     ]
+    }
+   ]
+  }
+ ],
+ "attribute_inference": {
+  "file": "attribute-inference-fedheart-2026-11-23.json",
+  "attribute": "sex (UCI: 1 male, 0 female), read back from the standardised column with each hospital's published mean and deviation",
+  "rows": [
+   {
+    "model": "federated",
+    "attack": "model inversion (Fredrikson et al.)",
+    "members": 0.7572,
+    "non_members": 0.7795
+   },
+   {
+    "model": "federated",
+    "attack": "loss attack (Yeom et al.)",
+    "members": 0.3539,
+    "non_members": 0.3819
+   },
+   {
+    "model": "federated",
+    "attack": "imputation from the diagnosis alone",
+    "members": 0.7572,
+    "non_members": 0.7795
+   },
+   {
+    "model": "federated",
+    "attack": "imputation from every other feature, no model",
+    "members": 0.7675,
+    "non_members": 0.7795
+   },
+   {
+    "model": "pooled",
+    "attack": "model inversion (Fredrikson et al.)",
+    "members": 0.7551,
+    "non_members": 0.7717
+   },
+   {
+    "model": "pooled",
+    "attack": "loss attack (Yeom et al.)",
+    "members": 0.6461,
+    "non_members": 0.6181
+   },
+   {
+    "model": "pooled",
+    "attack": "imputation from the diagnosis alone",
+    "members": 0.7572,
+    "non_members": 0.7795
+   },
+   {
+    "model": "pooled",
+    "attack": "imputation from every other feature, no model",
+    "members": 0.7675,
+    "non_members": 0.7795
+   }
+  ]
+ },
+ "gradient_inversion": {
+  "file": "gradient-inversion-cxr-2026-11-23.json",
+  "rows": [
+   {
+    "setting": "4 films, 4 gradients",
+    "ssim_median": 0.2151,
+    "flat_grey_ssim_median": 0.3911,
+    "nearest_other_film_ssim_median": 0.4441,
+    "films_closer_to_themselves": 0
+   },
+   {
+    "setting": "4 films, 1 gradient",
+    "ssim_median": 0.17,
+    "flat_grey_ssim_median": 0.3911,
+    "nearest_other_film_ssim_median": 0.4441,
+    "films_closer_to_themselves": 0
+   }
+  ]
+ }
+}
