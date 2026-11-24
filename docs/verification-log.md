@@ -6572,3 +6572,41 @@ maximum is the logged figure, and the changed rows as many as the count); `tests
 figures on stated films, and one function for one film and for all sixteen); the CBOM, IR 8547 and sbom-tools tests for
 the BFV entry; the node checks for telecom's garbled-circuit argmax; `tests/test_r86_polytune_watch.py` (the transpose
 file at the version read passes, any other version of it or any other source file fails).
+
+### Batch four, the work done before the 3D series: privacy audits on the page, the satellite QCNNs, and CBOM gaps (2026-11-24)
+
+On the owner's instruction of 2026-11-24 the design memo's four sections (a three-layer PETs evaluation) were read
+again against the repository and at source (`references/pets-evaluation-2026-11.md`, "Re-checked on 2026-11-24"), and
+the owner chose what to add, in panels that day.
+
+- **The recorded privacy audits on the Validations page.** `web/src/components/PrivacyAudits.tsx` draws
+  `web/src/lib/privacyAudits.json`, which `scripts/export_privacy_audits.py` copies from the records in
+  `docs/measurements` with each record's SHA-256: membership inference as true-positive rates at false-positive rates
+  of 0.1, 1 and 10 percent on log-log axes beside the line of a guess, the one-run DP audit beside each accountant, the
+  guessing game, and the reconstruction, attribute-inference and gradient-inversion tables. Metrics only: no record or
+  image.
+- **Informed reconstruction of the other published students and the heart federation.** A published training mean
+  gives every record back (the QKD-attack student's 1,800 rows, the heart federation's 486, the AML student's 2,843,872
+  fit rows, each within 0.1 percent); the weights give them back only at the optimum the closed form assumes.
+- **A guessing game in one run** (Mahloujifar, Melis and Chaudhuri, ICML 2025; riskcal 1.5.1 for Kulynych et al.'s
+  bound, installed in the separate audit environment on the owner's approval): every honest arm under its accountant
+  and inside the reconstruction bound, both seeded bugs past both.
+- **The satellite QCNNs**, pre-registered before any training (`references/satellite-qcnn-tn-preregistration.md` and
+  four addenda), on OPS-SAT-AD and ESA-ADB Mission1, five seeds each: the classical surrogate leads on both, and the
+  page says so. Their tree network is exact in numpy and in ONNX, and under CKKS one row a slot it met its criterion on
+  every test row (all 115,064 ESA-ADB windows within 8.5e-8, no decision changed), at 0.28 ms and 3.8 kB a row against
+  164 ms and 787 kB for the per-row form. The satellite page shows both circuits and runs the encrypted tree network in a
+  Web Worker.
+- **CBOM gaps closed.** WebLLM's integrity checks (SHA-384 and SHA-256), the square students' two CKKS sets, which had
+  shipped without an entry, and the tree network's set (N = 16384, 360 bits), each held inside the HE standard's
+  post-quantum bound by `tests/test_r86_cbom_he_parameters.py`.
+- **Repository settings.** Secret scanning, push protection and Dependabot security updates turned on (the owner's
+  choice; the GitHub API confirms each).
+- **Stale text.** The 3D pre-registration's two deviations recorded in an addendum (883 series fetched, the ones that
+  hold a nodule; TotalSegmentator run during the fetch); node-seal 7.0.0 still npm's newest on 2026-11-24; the
+  use-case canvas's labels at the 12 px floor.
+
+**Checks.** `tests/test_r86_privacy_audits_card.py`, `tests/test_r86_privacy_audits.py` (the plan quotes the records),
+`tests/test_r86_qcnn_tree.py`, `tests/test_r86_satellite_qcnn.py` (the card's data equals the artifacts and the records,
+the ONNX graphs rebuild byte for byte, the encrypted path on 256 shipped rows of each corpus on the real node-seal), and
+the CBOM tests.
