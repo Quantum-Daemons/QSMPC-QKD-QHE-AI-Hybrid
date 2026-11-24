@@ -44,3 +44,12 @@ equals the centre of the first run's HU cube (the same 28 sample points a side, 
 uint8 level. Deriving the crops from the HU cubes instead was not done: float16 rounding could move up to 7.3 % of
 their voxels by one level. The crops are therefore the ones the pre-registration's procedure makes; the stream's
 summary (`docs/measurements/lidc-stream-<date>.json`) records both fetches.
+
+## 4. The crops the page shows
+
+Written on 2026-11-24 before any teacher, student or probe was trained. If the candidate is adopted (criteria 1 and
+2), the medical page ships twelve test crops for its card, chosen by this rule and no other: the labelled test crops
+in the order of the cluster records (patient, series, cluster), the first six with a malignant label and the first six
+with a benign one, the rule the 2D square student's card uses for its eight images. No patient or series identifier is
+shipped with them, only each crop's label, its readers' count and their median malignancy rating; the page's figures
+for the whole test part are copied from the record, not computed on these twelve.
