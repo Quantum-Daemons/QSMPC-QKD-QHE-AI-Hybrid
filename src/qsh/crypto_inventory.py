@@ -99,7 +99,7 @@ ASSETS: tuple[CryptoAsset, ...] = (
                 (("web/src/lib/netkeys/wireguard.ts", "blake2s"),)),
     CryptoAsset("oprf-ristretto255", "OPRF(ristretto255, SHA-512)", "other", None, ("other",),
                 "The private set intersection between two banks", "RFC 9497, mode 0x00", BOTH,
-                (("web/src/lib/oprfPsi.ts", "ristretto255_oprf"), ("src/qsh/qsmpc/oprf.py", "ristretto255")),
+                (("web/src/lib/oprfPsi.ts", "ristretto255_oprf"), ("src/qsh/qsmpc/oprf.py", "ristretto255")), parameter_set="suite ristretto255-SHA512, mode 0x00 (OPRF); elements 32 bytes, outputs 64 (RFC 9497 section 4.1)",
                 nist_quantum_level=0, classical_bits=128),
     CryptoAsset("ckks", "CKKS", "other", None, ("encrypt", "decrypt"),
                 "Homomorphic evaluation of linear layers, of the square-activation students' convolution, square and dense layer, of the trained QCNN's readout as a linear form, and of the satellite QCNN's tree network stage by stage, on Microsoft SEAL (node-seal in the browser; TenSEAL, OpenFHE or HEonGPU in the full deployment)",

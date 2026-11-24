@@ -1,7 +1,7 @@
 {
  "bomFormat": "CycloneDX",
  "specVersion": "1.7",
- "serialNumber": "urn:uuid:442dc2d8-64a8-5c3f-a77e-8f67ab019ac6",
+ "serialNumber": "urn:uuid:6ab85d6c-17dd-5b84-8195-6fb417604537",
  "version": 1,
  "metadata": {
   "component": {
@@ -726,6 +726,7 @@
      "cryptoFunctions": [
       "other"
      ],
+     "parameterSetIdentifier": "suite ristretto255-SHA512, mode 0x00 (OPRF); elements 32 bytes, outputs 64 (RFC 9497 section 4.1)",
      "nistQuantumSecurityLevel": 0,
      "classicalSecurityLevel": 128
     }
