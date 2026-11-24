@@ -21,7 +21,7 @@ interface CorpusFile {
   ckks_record: { rows: number; blocks: number; per_row: { tree_ms: number; tree_bytes_up: number; pauli_ms: number; pauli_bytes_up: number };
     tree_max_abs_readout_error: number; tree_decisions_differing: number; pauli_rows: number };
   onnx_record: { bytes: number; max_abs_readout_difference: number; decisions_differing: number; test_rows: number };
-  attribution: { dataset: string; citation: string; licence: string; licence_url: string; modifications: string };
+  licence: string; licence_url: string; attribution: string; modifications: string;
 }
 
 const f3 = (v: number) => v.toFixed(3);
@@ -155,8 +155,8 @@ export default function SatelliteQcnnCard() {
         ({file.ckks_record.pauli_rows} rows). CKKS with N = 16384 and 360 modulus bits, inside the HomomorphicEncryption.org
         standard&apos;s post-quantum bound; the weights are public and the key stays in this tab. The same contraction as an ONNX
         graph ({kb(file.onnx_record.bytes)}) equals the state vector on all {file.onnx_record.test_rows.toLocaleString("en-US")} test rows to{" "}
-        {file.onnx_record.max_abs_readout_difference.toExponential(1)}. Data: {file.attribution.citation}; licence{" "}
-        <a href={file.attribution.licence_url} target="_blank" rel="noreferrer">{file.attribution.licence}</a>; {file.attribution.modifications}.
+        {file.onnx_record.max_abs_readout_difference.toExponential(1)}. Data: {file.attribution}; licence{" "}
+        <a href={file.licence_url} target="_blank" rel="noreferrer">{file.licence}</a>; {file.modifications}.
       </p>
     </div>
   );

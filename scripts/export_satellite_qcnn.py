@@ -34,14 +34,14 @@ CORPORA = {
                "rows_about": "all 529 test rows of the benchmark's own partition",
                "attribution": {"dataset": "OPS-SAT-AD", "citation": "Ruszczak, Kotowski, Evans and Nalepa, The OPS-SAT benchmark "
                                "for detecting anomalies in satellite telemetry, Scientific Data 12, 710 (2025), "
-                               "doi:10.1038/s41597-025-05035-3; dataset Zenodo 12588359", "licence": "CC BY 4.0",
+                               "doi:10.1038/s41597-025-05035-3; dataset Zenodo 12588359", "licence": "CC-BY-4.0",
                                "licence_url": "https://creativecommons.org/licenses/by/4.0/",
                                "modifications": "eight of nineteen features, the test partition only"}},
     "esa": {"usecase": "satellite_esa", "rows": 8192, "title": "ESA-ADB Mission1",
             "rows_about": "the first 8,192 test windows from 2007-01-01 (one CKKS block)",
             "attribution": {"dataset": "ESA Anomalies Dataset, Mission1", "citation": "Kotowski et al., European Space "
                             "Agency Benchmark for Anomaly Detection in Satellite Telemetry (ESA-ADB); dataset Zenodo 12528696",
-                            "licence": "CC BY 3.0 IGO", "licence_url": "https://creativecommons.org/licenses/by/3.0/igo/",
+                            "licence": "CC-BY-3.0-IGO", "licence_url": "https://creativecommons.org/licenses/by/3.0/igo/",
                             "modifications": "channels 41 to 46 on a 30 s grid, z-scored, cut into 64-step windows, "
                                              "eight statistics a window (scripts/data/esa_qcnn_windows.py)"}},
 }
@@ -90,7 +90,10 @@ def build(short: str) -> dict:
         "sources": {"docs/measurements/satellite-qcnn-2026-11-24.json": _sha(SCORES),
                     "docs/measurements/satellite-qcnn-tree-ckks-2026-11-24.json": _sha(CKKS),
                     f"models/qcnn_satellite_{short}/weights.json": _sha(wpath)},
-        "attribution": spec["attribution"],
+        # The register's row fields (tests/test_r86_every_shipped_data_file_is_licensed.py): the licence, its link, the
+        # credit and the note of the changes, at the top level as every shipped row file carries them.
+        "licence": spec["attribution"]["licence"], "licence_url": spec["attribution"]["licence_url"],
+        "attribution": spec["attribution"]["citation"], "modifications": spec["attribution"]["modifications"],
     }
 
 

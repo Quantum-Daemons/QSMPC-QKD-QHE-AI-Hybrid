@@ -10,6 +10,7 @@ import {
 import Details from "./Details";
 import KeyPoints from "./KeyPoints";
 import { ChartReadout, HINT_POINTER, ReadoutTooltip } from "./ChartReadout";
+import { MarksHidden } from "./VerificationChart";
 import audits from "../lib/privacyAudits.json";
 
 type Study = (typeof audits.membership)[number];
@@ -21,12 +22,13 @@ const FPRS = audits.fprs;
 const X_DOMAIN: [number, number] = [5e-4, 0.2];
 const Y_DOMAIN: [number, number] = [1e-4, 1];
 /** A colour and a shape for each model, so two lines differ by more than colour (WCAG 2.2 SC 1.4.1). */
+const SERIES_COLOURS = ["var(--danger)", "var(--accent)", "var(--accent-2)", "var(--warn)", "var(--quantum)"] as const;
 const MARKS = [
-  { color: "var(--danger)", shape: "diamond", dash: "" },
-  { color: "var(--accent)", shape: "circle", dash: "6 3" },
-  { color: "var(--accent-2)", shape: "square", dash: "2 3" },
-  { color: "var(--warn)", shape: "triangle", dash: "8 3 2 3" },
-  { color: "var(--quantum)", shape: "cross", dash: "1 3" },
+  { shape: "diamond", dash: "" },
+  { shape: "circle", dash: "6 3" },
+  { shape: "square", dash: "2 3" },
+  { shape: "triangle", dash: "8 3 2 3" },
+  { shape: "cross", dash: "1 3" },
 ] as const;
 
 const pct = (v: number | null) => (v == null ? "-" : `${(100 * v).toFixed(2)}%`);
@@ -35,12 +37,13 @@ const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
 function MembershipChart({ study, captionId }: { study: Study; captionId: string }) {
   const series = study.models.map((m, i) => ({
-    m, mark: MARKS[i % MARKS.length],
+    m, mark: MARKS[i % MARKS.length], colour: SERIES_COLOURS[i % SERIES_COLOURS.length],
     points: m.lira.tpr.map((tpr, k) => ({ fpr: FPRS[k], tpr, model: m.label }))
       .filter((p): p is { fpr: number; tpr: number; model: string } => p.tpr != null && p.tpr > 0),
   }));
   return (
     <ChartReadout hint={HINT_POINTER}>
+      <MarksHidden>
       <ResponsiveContainer width="100%" height={260}>
         <ScatterChart role="img" aria-describedby={captionId}
           title={`LiRA's true-positive rate against the false-positive rate, log-log, for ${study.title}`}
@@ -58,13 +61,14 @@ function MembershipChart({ study, captionId }: { study: Study; captionId: string
           <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
           <ReferenceLine segment={[{ x: X_DOMAIN[0], y: X_DOMAIN[0] }, { x: X_DOMAIN[1], y: X_DOMAIN[1] }]}
             stroke="var(--muted)" strokeDasharray="4 4" />
-          {series.map(({ m, mark, points }) => (
-            <Scatter key={m.key} name={`${m.label} (${mark.shape})`} data={points} fill={mark.color}
-              shape={mark.shape} line={{ stroke: mark.color, strokeDasharray: mark.dash }} lineType="joint"
+          {series.map(({ m, mark, colour, points }, i) => (
+            <Scatter key={m.key} name={`${m.label} (${mark.shape})`} data={points} fill={SERIES_COLOURS[i % SERIES_COLOURS.length]}
+              shape={mark.shape} line={{ stroke: colour, strokeDasharray: mark.dash }} lineType="joint"
               isAnimationActive={false} />
           ))}
         </ScatterChart>
       </ResponsiveContainer>
+      </MarksHidden>
     </ChartReadout>
   );
 }
@@ -90,9 +94,9 @@ function DpAuditChart({ study, captionId }: { study: string; captionId: string }
           <YAxis type="category" dataKey="name" tick={{ ...tick, width: 140 }} width={150} interval={0} />
           <Tooltip content={<ReadoutTooltip />} formatter={(v: number, name: string) => [v.toFixed(2), name]} />
           <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />
-          <Bar dataKey="accounted" name="the accountant's epsilon (outlined)" fill="transparent" stroke="var(--muted)"
-            strokeWidth={1.5} isAnimationActive={false} barSize={10} />
-          <Bar dataKey="lower_bound" name="the audit's lower bound (filled; red where a bug was seeded)" isAnimationActive={false} barSize={10}>
+          <Bar dataKey="accounted" name="the accountant's epsilon (grey)" fill="var(--muted)" isAnimationActive={false} barSize={10} />
+          <Bar dataKey="lower_bound" name="the audit's lower bound (green; red where a bug was seeded)" fill="var(--accent-2)"
+            isAnimationActive={false} barSize={10}>
             {rows.map((r) => <Cell key={r.name} fill={r.seeded_bug ? "var(--danger)" : "var(--accent-2)"} />)}
           </Bar>
         </ComposedChart>
