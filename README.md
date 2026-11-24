@@ -327,7 +327,7 @@ flowchart LR
   U --- F["Finance - AML"]
   U --- M["Medical - FL"]
   U --- G["Genomics"]
-  U --- T["Telecom / Defence"]
+  U --- T["Telecom / Defense"]
   U --- ST["Satellite: Downlink and Network tabs"]
 ```
 
@@ -359,7 +359,7 @@ flowchart LR
 <td><img src="docs/images/usecase-genomics.jpg" alt="Genomics use case after a run" width="420"><br>Genomics</td>
 </tr>
 <tr>
-<td><img src="docs/images/usecase-telecom.jpg" alt="Telecom and defence use case after a run" width="420"><br>Telecom / Defence</td>
+<td><img src="docs/images/usecase-telecom.jpg" alt="Telecom and defense use case after a run" width="420"><br>Telecom / Defense</td>
 <td><img src="docs/images/usecase-satellite.jpg" alt="Satellite use case after a run" width="420"><br>Satellite, Downlink tab</td>
 </tr>
 <tr>
