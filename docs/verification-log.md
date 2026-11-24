@@ -6638,8 +6638,10 @@ membership audit both with the teacher held fixed and through the whole pipeline
   pushed past the card on a phone, a plural, the seed's test rank beside "best on validation", and a double fetch.
 - **Membership inference, the teacher held fixed** (`docs/measurements/mia-nodule3d-students-2026-11-25.json`, 64
   shadows, members drawn by patient): the shipped student's LiRA TPR is 0.41 % at 0.1 % FPR and 1.74 % at 1 % (AUC
-  0.544); the control's 0.48 % and 2.37 % (0.551). On the privacy card. The whole-pipeline audit, which retrains the
-  teacher for every shadow, follows in its own record.
+  0.544); the control's 0.48 % and 2.37 % (0.551). Through the whole pipeline
+  (`docs/measurements/mia-nodule3d-pipeline-2026-11-25.json`, the 3D ResNet-18 retrained out of fold for every shadow)
+  the students leak less: the shipped student 0.17 % at 0.1 % FPR and 1.33 % at 1 % (AUC 0.514). Both on the privacy
+  card.
 
 **Checks.** `tests/test_r86_lidc_stream_parts.py`, `tests/test_r86_nodule3d_card.py` (the exporter's `--check`, the
 twelve crops and no identifier, the offered sets, the credit, and a crop of each label under both sets on the real

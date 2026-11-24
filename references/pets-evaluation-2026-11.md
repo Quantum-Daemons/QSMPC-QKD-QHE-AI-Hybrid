@@ -207,8 +207,12 @@ GPU jobs, on the owner's approval of 2026-11-23:
   With the teacher's out-of-fold labels held fixed, the shipped square student: LiRA AUC 0.544, 0.41 percent of members
   at a false-positive rate of 0.1 percent, 1.74 at 1 and 13.12 at 10, no nodule exposed in most targets; the ReLU
   control 0.551, 0.48, 2.37 and 13.85, one nodule. RMIA matches ML Privacy Meter's exactly and is not resolvable at 0.1
-  percent. The whole pipeline, the 3D ResNet-18 retrained out of fold on each shadow's members before both arms are
-  distilled, is a separate record (`mia-nodule3d-pipeline-2026-11-25.json`).
+  percent. Through the whole pipeline (`mia-nodule3d-pipeline-2026-11-25.json`; the 3D ResNet-18 retrained out of fold
+  on each shadow's members, five folds, before both arms are distilled from its probabilities; 2 h 11 min on the GPU)
+  the students leak less: the square student LiRA AUC 0.514, 0.17 percent at 0.1, 1.33 at 1 and 11.26 at 10; the
+  control 0.515, 0.15, 1.30 and 11.47; no nodule exposed in most targets; RMIA matches ML Privacy Meter's exactly.
+  No teacher is scored here, unlike BreastMNIST's pipeline: every soft label comes from a fold that did not see that
+  nodule, so there is no one teacher trained on all of a shadow's members, and none is published.
 - **Gradient inversion, the chest X-ray federation** (`gradient-inversion-cxr-2026-11-23.json`): Geiping et al.'s
   attack (NeurIPS 2020; cosine gradient matching, a total-variation prior, signed Adam), reimplemented, on one gradient
   step at the published weights, which first reproduce all 16 sample rows' classes of the published graph (margins
