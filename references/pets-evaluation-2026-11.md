@@ -257,6 +257,12 @@ On the owner's instruction of 2026-11-24 the memo's four sections were read agai
   Apache-2.0, last pushed 2024-04-04): one quantile regressor fitted to the scores of non-members, no shadow models;
   its authors report it competitive with shadow-model attacks. A candidate for the 3D pipeline if retraining its teacher
   64 times is too long.
+- **The CBOM's parameters, entry by entry.** The memo asks for every primitive's parameters in `cryptoProperties`.
+  On 2026-11-24 the square students' two CKKS sets and the tree network's set were added (each inside the HE
+  standard's post-quantum bound), and the OPRF's RFC 9497 suite and mode. Still without a `parameterSetIdentifier`:
+  the WRK17b garbling (Polytune: its computational and statistical security parameters) and Shamir sharing in the
+  full deployment (MPyC: its field and threshold), which need their values read from those libraries' code before they
+  are written.
 - **The repository's own settings.** On the owner's choice of 2026-11-24, secret scanning, push protection and
   Dependabot security updates were turned on (the GitHub API confirms each); Dependabot alerts and private
   vulnerability reporting were on already.
