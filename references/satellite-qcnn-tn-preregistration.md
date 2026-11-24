@@ -33,9 +33,10 @@ pages say so. Its classical form is what makes an ONNX export and an encrypted e
 - **Data.** ESA Anomalies Dataset, Mission1 (Kotowski et al.; Zenodo 12528696, CC BY 3.0 IGO), channels 41 to 46,
   already on this machine; positives are the annotations whose category is Anomaly, as ESA-ADB's lightweight score
   counts them (rare nominal events and communication gaps are not positives).
-- **Grid and split.** The shipped Telemanom student's preparation: resampled to 30 s by mean, carried forward only,
-  z-scored with the constants of the rows before 2007-01-01; ESA-ADB's own split: fit before 2006-10-01, validation
-  from 2006-10-01 to 2007-01-01, test from 2007-01-01.
+- **Grid and split.** The shipped Telemanom student's preparation (`prepare` in
+  `scripts/train/satellite_telemanom.py`): ESA-ADB's zero-order hold on a 30 s grid, and a z-score per channel from the
+  unlabelled training rows before the validation months; ESA-ADB's own split: fit before 2006-10-01, validation from
+  2006-10-01 to 2007-01-01, test from 2007-01-01. A window that crosses either boundary is dropped.
 - **Windows and label.** Non-overlapping windows of 64 grid steps (32 minutes); a window is positive when it overlaps
   an Anomaly interval on any of the six channels.
 - **Features (eight a window).** The standard deviation of each of the six channels in the window; the largest
@@ -85,3 +86,10 @@ pages say so. Its classical form is what makes an ONNX export and an encrypted e
 
 Which of the A and B artifacts the satellite page shows by default, and whether the encrypted tree network ships on
 the page or stays a recorded prototype, are the owner's choices after the figures.
+
+## Addendum, 2026-11-24, before any window or model was computed
+
+Section B first described the grid as "resampled to 30 s by mean" with a z-score "of the rows before 2007-01-01". The
+shipped Telemanom student's preparation, which B says it uses, is ESA-ADB's zero-order hold and a z-score from the
+unlabelled training rows before 2006-10-01; B now says so, and adds that windows crossing a boundary are dropped. Found
+while writing `scripts/data/esa_qcnn_windows.py`, before it ran.
