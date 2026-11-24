@@ -33,6 +33,8 @@ MEMBERSHIP = (
      "an ultrasound image", {"teacher": "ResNet-18 teacher", "student": "CNN student", "square_student": "square-activation student"}),
     ("mia-breastmnist-students-2026-11-23.json", "Medical", "BreastMNIST students, the teacher held fixed",
      "an ultrasound image", {"student": "CNN student", "square_student": "square-activation student"}),
+    ("mia-nodule3d-students-2026-11-25.json", "Medical", "LIDC-IDRI 3D nodule students, the teacher held fixed",
+     "a nodule's 28 mm crop, members drawn by patient", {"control": "ReLU control", "square": "3D square student"}),
     ("mia-fedheart-2026-11-23.json", "Medical", "The heart federation (four hospitals)",
      "a patient's record", {"federated": "FedAvg", "pooled": "pooled, one model on all rows", "dp_clip_only": "record-level DP, clipping only",
                             "dp_epsilon_8": "record-level DP, epsilon 8", "dp_epsilon_1": "record-level DP, epsilon 1"}),

@@ -8,6 +8,7 @@
  "sources": {
   "mia-breastmnist-pipeline-2026-11-23.json": "2f8847e25b8d8fbb1fe3992245ccdf5b67a35e5a68674680d841527d371dd34a",
   "mia-breastmnist-students-2026-11-23.json": "79d05443f1e2b29782ce4548b4a4e1084d259f67201fd1982789bbcb352b9765",
+  "mia-nodule3d-students-2026-11-25.json": "42c1c0b5a01e9a0d63dd85b95f0797be3e181902afa48ffe0724591e7f25577d",
   "mia-fedheart-2026-11-23.json": "b2f322e3db537dae62a37b9152a6194efc4fff07fdf0c75d93ddca63db06fdb1",
   "mia-opssat-2026-11-23.json": "526d65125abfd19e4311cbe7639d70886b32f99f3c69f35bba381e109b733c02",
   "mia-telecom-qml-2026-11-23.json": "a94eab067aee495c96b22e265aaa9ed10abfd96cefe3c05fc501659ea52baf66",
@@ -179,6 +180,72 @@
      },
      "exposed": 2,
      "audit_records": 562
+    }
+   ]
+  },
+  {
+   "file": "mia-nodule3d-students-2026-11-25.json",
+   "use_case": "Medical",
+   "title": "LIDC-IDRI 3D nodule students, the teacher held fixed",
+   "unit": "a nodule's 28 mm crop, members drawn by patient",
+   "data": "LIDC-IDRI (TCIA, CC BY 3.0): the 1,178 labelled 28 mm crops of the 518 training patients of docs/measurements/medical-nodule3d-split.json; the validation part selects every model's epoch, as in training; the test part is not touched",
+   "shadow_models": 64,
+   "audit_records": 956,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "control",
+     "label": "ReLU control",
+     "description": "the control arm: conv 1->4 (3x3x3), batch norm, ReLU, avg-pool 2, dense 4*14^3 -> 2",
+     "lira": {
+      "auc": 0.5512,
+      "tpr": [
+       0.0048,
+       0.0237,
+       0.1385
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5168,
+      "tpr": [
+       null,
+       0.0092,
+       0.1143
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0056 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 1,
+     "audit_records": 956
+    },
+    {
+     "key": "square",
+     "label": "3D square student",
+     "description": "the shipped arm: conv 1->4 (3x3x3), batch norm, x^2, avg-pool 2, dense 4*14^3 -> 2",
+     "lira": {
+      "auc": 0.5442,
+      "tpr": [
+       0.0041,
+       0.0174,
+       0.1312
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5218,
+      "tpr": [
+       null,
+       0.0096,
+       0.1168
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0062 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 956
     }
    ]
   },
