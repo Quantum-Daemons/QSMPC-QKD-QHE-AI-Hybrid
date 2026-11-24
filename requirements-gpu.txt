@@ -70,8 +70,9 @@ pennylane-lightning-gpu==0.45.0
 #                           FORK, not with the library this project installs. Adopting it would mean
 #                           replacing our OpenFHE with a build whose encapsulation is removed, and
 #                           depending on internals upstream deliberately made private - which any
-#                           OpenFHE point release may move. With zero tagged releases on top, that is
-#                           three independent reasons rather than one.
+#                           OpenFHE point release may move. It had no tagged release when this was
+#                           written; it has tags v2.0.0 to v2.2.0 since but publishes no GitHub release
+#                           (read 2026-11-23), so the first two reasons stand on their own.
 #
 #                           NO PERFORMANCE NUMBER WAS OBTAINED, and that is not a hole in the survey:
 #                           the benchmark is unreachable without first replacing this project's FHE

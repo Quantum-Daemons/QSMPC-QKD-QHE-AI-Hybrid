@@ -100,6 +100,25 @@ def test_every_cryptographic_import_belongs_to_an_entry() -> None:
     assert not problems, f"cryptography with no entry in qsh.crypto_inventory: {sorted(set(problems))}"
 
 
+#: node-seal's schemes (`seal.SchemeType.<name>`), by the entry each must have. The check above reads only @noble and
+#: Python's cryptography, so from #89 to 2026-11-23 the medical page's BFV meter ran with no entry in the CBOM.
+SEAL_SCHEMES = {"ckks": "ckks", "bfv": "bfv"}
+
+
+def _seal_scheme_problems(texts: dict[str, str], refs: set[str]) -> list[str]:
+    return [f"{path}: seal.SchemeType.{name}" for path, text in texts.items()
+            for name in re.findall(r"\bseal\.SchemeType\.([a-z]+)\b", text) if SEAL_SCHEMES.get(name) not in refs]
+
+
+def test_every_node_seal_scheme_belongs_to_an_entry() -> None:
+    refs = {a.ref for a in ASSETS}
+    texts = {str(p.relative_to(REPO)): p.read_text() for p in _tracked("web/src/**/*.ts", "web/src/**/*.tsx")}
+    assert sum(t.count("seal.SchemeType.") for t in texts.values()) >= 2, "the scan found no node-seal scheme"
+    assert _seal_scheme_problems(texts, refs) == []
+    assert _seal_scheme_problems({"x.ts": "new seal.EncryptionParameters(seal.SchemeType.bgv)"}, refs) == ["x.ts: seal.SchemeType.bgv"]
+    assert _seal_scheme_problems({"x.ts": "seal.SchemeType.bfv"}, refs - {"bfv"}) == ["x.ts: seal.SchemeType.bfv"]
+
+
 def test_families_and_curves_are_cyclonedx_s_own() -> None:
     defs = json.loads((SCHEMAS / "cryptography-defs.schema.json").read_text())["definitions"]
     families, curves = set(defs["algorithmFamiliesEnum"]["enum"]), set(defs["ellipticCurvesEnum"]["enum"])

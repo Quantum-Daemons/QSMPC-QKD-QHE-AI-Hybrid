@@ -3,7 +3,22 @@
 
 The question was whether this project's published models are credible representatives of
 privacy-preserving inference practice, or whether the field has moved on and the demo is showing
-something dated. Answered per vertical. All five are now checked.
+something dated. Answered per vertical. All five are now checked. (Six use cases since Round 86; the re-check of
+2026-11-23 below covers them.)
+
+## Re-checked on 2026-11-23: research from August to November 2026
+
+The sixth use case, DeFi lending, runs no model. Each source was read at origin on 2026-11-23, at its abstract or
+landing page; a figure from a paper's body is marked as such.
+
+| use case | verdict | the nearest work in the window |
+|---|---|---|
+| finance | equivalent. The compact GNN and the MLP run under CKKS and garbled circuits in the tab; the 115-parameter linear student, the page's default, is the weakest encrypted model (macro F1 0.3088 against its teacher's 0.6161) | Bilgi et al., arXiv:2610.18054 (2026-10-13): CKKS GNN inference on the IBM AML benchmark, server side, 5.31 s per queried transaction on one consumer GPU, 1.65 s amortised. Keller, ePrint 2026/2457: secure sorting for graph pattern matching under MPC. OblivDGL, ePrint 2026/2655: secure GNN inference that hides the graph. A stronger public teacher now has code (MEGA-GNN-TMLR, MIT, created 2026-08-12) |
+| medical | a reasonable simplification for a browser tab; the chest X-ray split is current practice | Machado and Idalino, SBSeg 2026: an encrypted-CNN benchmark on a MedMNIST set with bootstrapping, which in its body reports an encrypted AUC close to the plaintext one at a cost per image far beyond a tab (figures read once by the sweep of 2026-11-23, to be re-read on the paper). Wei et al., Gecko, arXiv:2608.02378, and Nguyen et al., PRICE, arXiv:2610.25286: a public encoder in the clear and an encrypted head, the chest X-ray card's shape. Kim and Lee, arXiv:2609.12911: a Safhire-style ResNet-20's linear layers recovered with 5,712 queries; the weights here are public |
+| genomics | equivalent: a clinical score is still a weighted sum, which is what the page encrypts | Galanopoulos et al., arXiv:2609.16211: homomorphic inference for a genomic foundation model, 6,683 s and 9,839 MiB for one input |
+| telecom | a reasonable simplification, with one change worth making | Cho et al., ePrint 2026/2349 (2026-10-05): CKKS anomaly scores on three intrusion datasets. Released scores can reveal a private threshold; quantising them kept 99.864% of decisions; a surrogate trained on 128 decision-only responses reached balanced accuracy 0.817 under random splitting and about 0.5 once time and flow identifiers were separated. The student decrypted all 8 class scores until this re-check; the page now takes the argmax in a garbled circuit on the shares of the masked scores, so only the class leaves (`models/metrics.json`, `argmax_location`), which follows that paper's output policies. On QML, Chakraborty et al., arXiv:2611.12219 (XGBoost 98.94% and 99.41% against Pegasos-QSVC's 91.80% and 82.98%) and Gillani et al., arXiv:2608.18155 (two advantages survive false-discovery correction, one of them at the 1% false-positive point) agree with the page's forest-against-QNN result |
+| satellite | a reasonable simplification; no private-inference work on spacecraft telemetry was found in the window | - |
+| DeFi lending | equivalent: no model, a rule under encryption | Zama's FHEVM releases; Zama's Developer Program post describes the protocol's infrastructure as live on mainnet |
 
 ## Finance: the choices are validated, and more strongly than expected
 
@@ -197,7 +212,10 @@ Not architecture. The 2026 deltas are all efficiency and threat model: hiding re
 amortising over very large forests (Kangaroo, 969 trees at ~60 ms/tree over WAN), making *training*
 non-interactive rather than inference (PoPETs 2026, 360x speedup for XGBoost training over FHE),
 proving training occurred (ZKBoost, IACR 2026/202, with JPMorgan AI Research - the author list spans CNRS/IRIF, JPMorgan and Arizona State, so "from" over-attributed it), and securing the
-preprocessing (ALIOTH). The model class is held fixed across all of them.
+preprocessing (ALIOTH). The model class is held fixed across all of them. (Re-checked 2026-11-23: LCPDTE, ePrint
+2026/1263, evaluates private decision trees under homomorphic encryption at lower cost than FASTER; Keller's secure
+sorting, ePrint 2026/2457, matches laundering graph patterns under MPC; OblivDGL, ePrint 2026/2655, hides the graph in
+secure GNN inference.)
 
 ### Re-check, 2026-11-15: the AML graph literature since August
 
@@ -312,7 +330,8 @@ sentence in the same round.
 
 Worth knowing: an arXiv query for `MedMNIST AND homomorphic` returns **zero** results. MedMNIST is
 used in medical-informatics venues and never in the security conferences, which is why the two
-baselines above are easy to miss.
+baselines above are easy to miss. (Re-checked 2026-11-23: the query still returns zero, but SBSeg 2026, a security
+conference, benchmarks encrypted CNN inference on a MedMNIST set; see the re-check at the top.)
 
 ## Genomics: the model is right and the threat model was pointed at the wrong thing
 
@@ -496,7 +515,8 @@ and it is the shape the 4096-slot budget supports - eight score vectors over a s
 inside one ciphertext at multiplicative depth 1.
 
 **No numbers are quoted for it here, deliberately, because none have been measured at the time of
-writing.** Whatever it scores is what gets recorded, and given the teacher's macro F1 of 0.9866 against a
+writing.** (Measured since: macro F1 0.988329 and agreement with its teacher 0.995, published;
+`models/metrics.json`.) Whatever it scores is what gets recorded, and given the teacher's macro F1 of 0.9866 against a
 linear student's capacity, a gap should be expected rather than treated as a defect - the medical case is
 the precedent for training the small model properly once before drawing a conclusion from its size.
 What can be said now without measurement is the structural claim: after this round
@@ -559,7 +579,8 @@ The state of the field generally: a practitioner catalogue of production FHE lis
 deployments (Microsoft Edge Password Monitor, Apple Live Caller ID Lookup, Apple Enhanced Visual
 Search) and **none of them evaluates a neural network homomorphically** - Apple's runs the model
 on-device and encrypts only the resulting embedding. There is no production FHE ML inference to be
-behind.
+behind. (Re-checked 2026-11-23: Zama's Developer Program post describes its protocol's infrastructure as live on
+mainnet; it evaluates contract logic, not a neural network, so this still holds.)
 
 | Vertical | Is there a benchmark to match? | What this repo should claim |
 |---|---|---|

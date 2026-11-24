@@ -5,7 +5,8 @@
 // repository's record of its last layer (lib/cxrSplit.ts says which).
 import { useEffect, useRef, useState } from "react";
 import { modelsFor } from "../lib/config";
-import { type CxrHead, decide, filmInput, filmRgba, headLogit } from "../lib/cxrSplit";
+import { type CxrHead, decide, filmInput, filmRgba, type FilmRun, headLogit } from "../lib/cxrSplit";
+import CxrFilmsChart from "./CxrFilmsChart";
 import { type ModelInputFile, openPinnedGraph, publishedSampleOf } from "../lib/onnxInference";
 import StageBadge from "./StageBadge";
 
@@ -39,6 +40,7 @@ export default function CxrSplitInference() {
   const [busy, setBusy] = useState<string | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [all, setAll] = useState<FilmRun[] | null>(null);
   if (!spec?.hf_revision) return null;
   const views = (file as unknown as { views?: string[] } | null)?.views ?? [];
   const labels = (file?.labels ?? []) as number[];
@@ -58,27 +60,46 @@ export default function CxrSplitInference() {
     finally { setBusy(null); }
   };
 
+  // One film through the split. The single-film run and the all-films run both call this, so a film's point on the
+  // all-films plot is what its own run gives.
+  const inferFilm = async (f: ModelInputFile, h: CxrHead, i: number, say: (s: string) => void): Promise<Outcome> => {
+    say("Running the network up to its pooled features in this tab...");
+    const graph = await openPinnedGraph(spec, h.features_graph);
+    const input = filmInput(f.samples[i] as number[]);
+    const t0 = performance.now();
+    const { Tensor } = await import("onnxruntime-web/wasm");
+    const name0 = graph.session.inputNames[0];
+    const out = await graph.session.run({ [name0]: new Tensor("float32", input, [1, 1, SIZE, SIZE]) });
+    const features = Array.from(out[graph.session.outputNames[0]].data as Float32Array);
+    const backboneMs = performance.now() - t0;
+    say("Encrypting the 512 features and evaluating the last layer under CKKS...");
+    const { encryptedLinear } = await import("../lib/clientFHE");
+    const fhe = await encryptedLinear([h.weights], [h.bias], features);
+    const zEnc = fhe.logits[0];
+    const d = decide(h, zEnc);
+    const recorded = (f.expected as { per_row?: { predicted?: number[] } })?.per_row?.predicted?.[i] ?? null;
+    return { film: i, backboneMs, graphBytes: graph.bytes, graphLoadMs: graph.loadMs, zPlain: headLogit(h, features),
+             zEnc, fheMs: fhe.fheMs, ctBytes: fhe.ctBytes, rotations: fhe.rotations, effusion: d.effusion, p: d.p, recorded };
+  };
+
   const run = async () => {
     if (!file || !head) return;
     setFailed(null); setOutcome(null);
+    try { setOutcome(await inferFilm(file, head, chosen, setBusy)); }
+    catch (e) { setFailed((e as Error)?.message ?? String(e)); }
+    finally { setBusy(null); }
+  };
+
+  const runAll = async () => {
+    if (!file || !head) return;
+    setFailed(null); setAll(null);
     try {
-      setBusy("Running the network up to its pooled features in this tab...");
-      const graph = await openPinnedGraph(spec, head.features_graph);
-      const input = filmInput(file.samples[chosen] as number[]);
-      const t0 = performance.now();
-      const { Tensor } = await import("onnxruntime-web/wasm");
-      const name0 = graph.session.inputNames[0];
-      const out = await graph.session.run({ [name0]: new Tensor("float32", input, [1, 1, SIZE, SIZE]) });
-      const features = Array.from(out[graph.session.outputNames[0]].data as Float32Array);
-      const backboneMs = performance.now() - t0;
-      setBusy("Encrypting the 512 features and evaluating the last layer under CKKS...");
-      const { encryptedLinear } = await import("../lib/clientFHE");
-      const fhe = await encryptedLinear([head.weights], [head.bias], features);
-      const zEnc = fhe.logits[0];
-      const d = decide(head, zEnc);
-      const recorded = (file.expected as { per_row?: { predicted?: number[] } })?.per_row?.predicted?.[chosen] ?? null;
-      setOutcome({ film: chosen, backboneMs, graphBytes: graph.bytes, graphLoadMs: graph.loadMs, zPlain: headLogit(head, features),
-                   zEnc, fheMs: fhe.fheMs, ctBytes: fhe.ctBytes, rotations: fhe.rotations, effusion: d.effusion, p: d.p, recorded });
+      const runs: FilmRun[] = [];
+      for (let i = 0; i < file.samples.length; i++) {
+        const o = await inferFilm(file, head, i, (s) => setBusy(`Film ${i + 1} of ${file.samples.length}: ${s}`));
+        runs.push({ film: i, zPlain: o.zPlain, zEnc: o.zEnc, effusion: o.effusion, label: labels[i] ?? null, recorded: o.recorded });
+      }
+      setAll(runs);
     } catch (e) { setFailed((e as Error)?.message ?? String(e)); }
     finally { setBusy(null); }
   };
@@ -139,6 +160,10 @@ export default function CxrSplitInference() {
             Films: NIH Clinical Center, ChestX-ray14 (Wang et al., CVPR 2017), <a href="https://nihcc.app.box.com/v/ChestXray-NIHCC"
             target="_blank" rel="noreferrer">nihcc.app.box.com/v/ChestXray-NIHCC</a>.
           </p>
+          <button className="btn ghost" onClick={runAll} disabled={busy != null} style={{ marginTop: 6 }}>
+            {busy != null && busy.startsWith("Film ") ? busy : `Run all ${file.samples.length} films through the split`}
+          </button>
+          {all && head ? <CxrFilmsChart head={head} runs={all} /> : null}
         </>
       )}
       {!file && failed ? <p className="small" style={{ color: "var(--danger)" }}>The films did not load: {failed}</p> : null}

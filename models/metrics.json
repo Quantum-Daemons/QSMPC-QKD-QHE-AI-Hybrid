@@ -3361,7 +3361,7 @@
   "telecom_ids.student": {
     "aggregate_accuracy": 0.988333,
     "agreement": 0.995,
-    "argmax_location": "client, in plaintext, after decrypting all 8 class scores",
+    "argmax_location": "a garbled circuit, on additive shares of the 8 masked class scores (the page, since 2026-11-23)",
     "distilled_on": "teacher predict_proba (soft targets), weighted one-copy-per-class",
     "hf_revision": "95b8f7e0cd0e8c17f4b984d512d62fd2f382e3b4",
     "macro_f1": 0.988329,

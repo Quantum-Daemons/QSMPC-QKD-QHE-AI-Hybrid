@@ -18,7 +18,8 @@ import pytest
 
 WEB = Path(__file__).resolve().parents[1] / "web"
 CHECKS = ["check_control_plane", "check_relay_pass_pairs", "check_model_cards",
-          "check_validations_download", "check_link_and_label_contrast", "check_student_cost_rows"]
+          "check_validations_download", "check_link_and_label_contrast", "check_student_cost_rows",
+          "check_finance_cost_plot", "check_sat_residual_plot"]
 
 
 def _require_node_or_skip() -> None:

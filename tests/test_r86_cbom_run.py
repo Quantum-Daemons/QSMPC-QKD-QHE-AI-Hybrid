@@ -127,7 +127,8 @@ def test_the_replay_lights_exactly_what_has_been_read(page: dict) -> None:
     assert states[0]["read"] == [] and states[3]["read"] == [], "nothing is read before the three checks are done"
     assert [r for r, _ in states[4]["read"]] == refs[:1] and states[4]["current"] == refs[0]
     assert [r for r, _ in states[10]["read"]] == refs[:7] and states[10]["current"] == refs[6]
-    assert [r for r, _ in states[27]["read"]] == refs and states[27]["edges"] == []
+    done = 3 + len(refs)   # the three checks, then one state per asset read
+    assert [r for r, _ in states[done]["read"]] == refs and states[done]["edges"] == []
     assert states[n - 1]["edges"] == [f"crypto/hybrid-combiner>{t}" for t in
                                       ("crypto/ml-kem-768", "crypto/ml-kem-1024", "crypto/x25519", "crypto/hkdf-sha256")]
     assert states[n]["edges"] == states[n - 1]["edges"] and states[n]["date"] == DATE

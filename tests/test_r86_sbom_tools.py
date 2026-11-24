@@ -111,7 +111,7 @@ def test_the_committed_view_is_labelled_and_the_tool_s_own_text() -> None:
     assert "--as-of 2026-11-23 --offline" in label and "CRA section, which is left out here" in label
     assert body.lstrip().startswith("# SBOM Report") and "## Cryptographic Inventory" in body
     assert "## CRA Compliance" not in body and "Non-compliant" not in body
-    assert body.rstrip().endswith("**Quantum Readiness:** 21% (5 safe / 24 total algorithms)")
+    assert body.rstrip().endswith("**Quantum Readiness:** 20% (5 safe / 25 total algorithms)")
 
 
 def test_the_workflow_pins_each_tool_and_cdxgen_cannot_fail_the_build() -> None:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """F1 by the receiving account's in-degree, in SALT-GNN's bins, for IBM's two models on this project's windows.
 
-The owner's choice of 2026-11-15 (plan `.claude/plan-finance-degree-f1-20261115.md`): stratify the finance page's IBM
+The owner's choice of 2026-11-15: stratify the finance page's IBM
 models by the receiver's in-degree, as Losavio, Sovrano, Fenoglio, Gjoreski and Langheinrich do (SALT-GNN,
 arXiv:2607.10131, Algorithm 1: $|N_{in}(v)|$ of the transaction's receiver, logarithmic bins 1-4, 5-9, 10-19, 20-49, 50-99
 and 100+, F1 at 0.5). The stratification is post hoc; nothing is retrained.
@@ -158,7 +158,7 @@ def run(transactions: Path, dumps: Path, bootstrap: int, seed: int) -> dict:
     out: dict = {
         "what": "F1 by the receiving account's in-degree, in SALT-GNN's bins, for IBM's Multi-GNN models on this "
                 "project's windows; computed offline from each run's test and validation scores, nothing retrained",
-        "plan": ".claude/plan-finance-degree-f1-20261115.md (the owner's choice of 2026-11-15)",
+        "plan": "the owner's choice of 2026-11-15",
         "licence": "CDLA-Sharing-1.0",
         "licence_url": "https://cdla.dev/sharing-1-0/",
         "attribution": ("Altman et al., 'Realistic Synthetic Financial Transactions for Anti-Money Laundering Models', "

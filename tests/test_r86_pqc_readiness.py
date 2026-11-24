@@ -194,16 +194,16 @@ def test_the_hybrid_is_read_by_both_parts(page: dict) -> None:
 
 def test_every_asset_outside_the_tables_says_so(page: dict) -> None:
     outside = [r for r in page["rules"] if r["basis"] == "none"]
-    assert {r["cls"] for r in outside} == {"outside"} and len(outside) == 10
+    assert {r["cls"] for r in outside} == {"outside"} and len(outside) == 11
     for r in outside:
         assert r["reading"].startswith("IR 8547 does not "), r["ref"]
         assert not r["named"], r["ref"]
     assert {r["ref"] for r in outside if r["quantumVulnerable"]} == {"crypto/oprf-ristretto255", "crypto/wrk17b"}
-    for ref in ("crypto/ckks", "crypto/ckks-threshold", "crypto/bgv-threshold", "crypto/bgv-threshold-committee"):
+    for ref in ("crypto/ckks", "crypto/ckks-threshold", "crypto/bgv-threshold", "crypto/bgv-threshold-committee", "crypto/bfv"):
         assert "post-quantum limit for 128-bit security, which the build checks" in next(r for r in outside if r["ref"] == ref)["reading"]
     counts = {c["standing"]: c["count"] for c in page["counts"]["2026-11-23"]}
     assert counts == {"post-quantum": 4, "symmetric": 7, "approved-quantum-vulnerable": 1, "quantum-vulnerable": 1,
-                      "allowed-composite": 1, "not-classified": 10}, counts
+                      "allowed-composite": 1, "not-classified": 11}, counts
     assert {c["standing"]: c["count"] for c in page["counts"]["2036-01-01"]}["disallowed"] == 2
 
 

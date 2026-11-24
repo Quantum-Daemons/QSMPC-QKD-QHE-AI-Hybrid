@@ -81,7 +81,7 @@ def test_every_he_parameter_set_in_the_cbom_is_inside_the_standard() -> None:
     sets = [s for ident in _he_entries(cbom).values() for s in parameter_sets(ident)]
     # What was read, so a parser that silently matched less would show here: the browser's CKKS chain, the shared-key
     # aggregation, threshold CKKS and threshold BGV at N = 8192, and the committee's threshold BGV at N = 16384.
-    assert sorted((n, q) for n, q, _ in sets) == [(8192, 120), (8192, 140), (8192, 200), (8192, 200), (16384, 260)], sets
+    assert sorted((n, q) for n, q, _ in sets) == [(8192, 120), (8192, 140), (8192, 200), (8192, 200), (8192, 202), (16384, 260)], sets
 
 
 def test_every_bound_the_cbom_quotes_is_the_standards() -> None:
@@ -92,7 +92,7 @@ def test_every_bound_the_cbom_quotes_is_the_standards() -> None:
         for m in re.finditer(r"post-quantum (\d+) at N = (\d+)", ident):
             quoted.append((int(m[2]), int(m[1])))
             assert int(m[1]) == POST_QUANTUM_128[int(m[2])], m.group(0)
-    assert sorted(quoted) == [(8192, 202), (16384, 411)]
+    assert sorted(quoted) == [(8192, 202), (8192, 202), (16384, 411)]
 
 
 def test_a_modulus_past_the_limit_is_refused() -> None:

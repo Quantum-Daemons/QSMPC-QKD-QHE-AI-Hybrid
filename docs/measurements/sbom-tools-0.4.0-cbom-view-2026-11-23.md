@@ -1,6 +1,6 @@
 > **Dated tool output, not a compliance statement.** This is the CBOM part of what sbom-tools 0.4.0 (MIT; release asset
 > `sbom-tools-linux-x86_64.tar.gz`, SHA-256 `94e2447f7048059b26f23dbbca87537f3711ddf2871abf668c27829b6f3b86f8`) printed on
-> 2026-11-23 for `web/public/cbom/qsh.cdx.json` (SHA-256 `cbd6f9861109a3a3b87dea61224cc8c723f3d2a4d6fd96490b8a1d7509dd1997`), offline:
+> 2026-11-23 for `web/public/cbom/qsh.cdx.json` (SHA-256 `d708c1ef0a9c6c66c09064208264b22568f47a24c45813834ee56b08bf21b2af`), offline:
 > `sbom-tools view qsh.cdx.json --bom-type cbom --as-of 2026-11-23 --offline -o markdown`. Below the line the text is the
 > tool's, unaltered, up to its CRA section, which is left out here: it scores product metadata (a PSIRT contact, a supplier,
 > a CE marking, a support period) that a cryptography inventory does not carry. CI keeps the whole view, unaltered, as an
@@ -19,8 +19,8 @@
 
 | Metric | Value |
 |--------|-------|
-| Total Components | 25 |
-| Total Dependencies | 28 |
+| Total Components | 26 |
+| Total Dependencies | 29 |
 | Total Vulnerabilities | 0 |
 | Critical | 0 |
 | High | 0 |
@@ -31,7 +31,7 @@
 
 | Name | Version | Ecosystem | License | Vulnerabilities |
 |------|---------|-----------|---------|-----------------|
-| qsh | 0.85.0 | - | - | 0 |
+| qsh | 0.86.0 | - | - | 0 |
 | ML-KEM-768 | - | - | - | 0 |
 | ML-KEM-1024 | - | - | - | 0 |
 | X25519 | - | - | - | 0 |
@@ -53,6 +53,7 @@
 | Threshold CKKS | - | - | - | 0 |
 | Threshold BGV | - | - | - | 0 |
 | Threshold BGV, 2 of 3 | - | - | - | 0 |
+| BFV | - | - | - | 0 |
 | WRK17b authenticated garbling | - | - | - | 0 |
 | Shamir secret sharing | - | - | - | 0 |
 | Platform CSPRNG | - | - | - | 0 |
@@ -82,8 +83,9 @@
 | Threshold CKKS | algorithm | - | other | 128 | - |
 | Threshold BGV | algorithm | - | other | 128 | - |
 | Threshold BGV, 2 of 3 | algorithm | - | other | 128 | - |
+| BFV | algorithm | - | other | 128 | - |
 | WRK17b authenticated garbling | algorithm | - | other | - | 0 |
 | Shamir secret sharing | algorithm | - | other | - | - |
 | Platform CSPRNG | algorithm | - | drbg | - | - |
 
-**Quantum Readiness:** 21% (5 safe / 24 total algorithms)
+**Quantum Readiness:** 20% (5 safe / 25 total algorithms)

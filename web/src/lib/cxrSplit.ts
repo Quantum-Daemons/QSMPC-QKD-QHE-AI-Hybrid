@@ -49,3 +49,24 @@ export function filmRgba(pixels: readonly number[]): Uint8ClampedArray<ArrayBuff
   }
   return out;
 }
+
+/** One film through the split, as the card's runs report it (Round 86, the owner's choice of 2026-11-23: all 16). */
+export interface FilmRun {
+  film: number; zPlain: number; zEnc: number; effusion: boolean;
+  /** NIH's label (1 = effusion) and the full int8 model's recorded decision, when the sample carries them. */
+  label: number | null; recorded: number | null;
+}
+
+/** What the all-films plot states: the largest decrypted-minus-plaintext difference, and the decisions compared. */
+export function filmsSummary(head: CxrHead, runs: readonly FilmRun[]): {
+  films: number; worst: number; sameDecision: number; recorded: number; agreeRecorded: number; labelled: number; agreeLabel: number;
+} {
+  let worst = 0, sameDecision = 0, recorded = 0, agreeRecorded = 0, labelled = 0, agreeLabel = 0;
+  for (const r of runs) {
+    worst = Math.max(worst, Math.abs(r.zEnc - r.zPlain));
+    if (decide(head, r.zPlain).effusion === r.effusion) sameDecision++;
+    if (r.recorded != null) { recorded++; if ((r.recorded === 1) === r.effusion) agreeRecorded++; }
+    if (r.label != null) { labelled++; if ((r.label === 1) === r.effusion) agreeLabel++; }
+  }
+  return { films: runs.length, worst, sameDecision, recorded, agreeRecorded, labelled, agreeLabel };
+}

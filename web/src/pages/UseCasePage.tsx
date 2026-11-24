@@ -24,11 +24,13 @@ import SatBoundaryCard from "../components/SatBoundaryCard";
 import SatVusPrCard from "../components/SatVusPrCard";
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
+import FinanceAccuracyCost from "../components/FinanceAccuracyCost";
 import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCard";
 import VerificationsCard from "../components/VerificationsCard";
 import PublishedComparisonCard from "../components/PublishedComparisonCard";
 import { flambyRows, modelRows, PAGE_NOTES } from "../lib/publishedComparisons";
 import MpcGnnPanel from "../components/MpcGnnPanel";
+import SatForecastResidual from "../components/SatForecastResidual";
 import { ConfusionCard, PrsLocusCard } from "../components/ModelExplanations";
 import MpcMlpPanel from "../components/MpcMlpPanel";
 import QcnnCkksPanel from "../components/QcnnCkksPanel";
@@ -38,7 +40,7 @@ import MultiPsiPanel from "../components/MultiPsiPanel";
 import LendingPanels from "../components/LendingPanels";
 import QsdcLinkPanel from "../components/QsdcLinkPanel";
 import type { LendingMarketReport, LendingPrivateReport, LendingSweepReport } from "../lib/lending/report";
-import type { MpcCnnReport, MpcGnnReport, MpcMlpReport, MultiPsiReport, QcnnCkksReport, VerificationSummary } from "../lib/clientCompute";
+import type { ForecastResidualReport, MpcCnnReport, MpcGnnReport, MpcMlpReport, MultiPsiReport, QcnnCkksReport, VerificationSummary } from "../lib/clientCompute";
 import type { QcnnRescore } from "../lib/qcnnRescore";
 import ShapPanel from "../components/ShapPanel";
 import UseCaseCanvas, { type ModelledView } from "../components/UseCaseCanvas";
@@ -424,10 +426,12 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && <MurmurDpCard />}
       {usecase === "satellite_comms" && <SatVusPrCard />}
       {usecase === "satellite_comms" && <SatBoundaryCard />}
+      {usecase === "satellite_comms" && artifacts?.forecast_residual ? <SatForecastResidual report={artifacts.forecast_residual as ForecastResidualReport} /> : null}
       {usecase === "genomics" && artifacts?.genomicsDp ? <GenomicsDpCard dp={artifacts.genomicsDp as GenomicsDpArtifact} /> : null}
       {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} rescore={(artifacts.qcnn_rescore as QcnnRescore | undefined) ?? null} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_mlp ? <MpcMlpPanel report={artifacts.mpc_mlp as MpcMlpReport} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_gnn ? <MpcGnnPanel report={artifacts.mpc_gnn as MpcGnnReport} /> : null}
+      {usecase === "finance_aml" && state === "done" ? <FinanceAccuracyCost metrics={metrics} /> : null}
       {usecase === "finance_aml" && <TransactionGraphCard scoredRow={artifacts?.mpc_mlp ? (artifacts.mpc_mlp as MpcMlpReport).rowIndex : null} />}
       {usecase === "finance_aml" && artifacts?.financeDp ? <FinanceDpCard dp={artifacts.financeDp as FinanceDpArtifact} /> : null}
       {usecase === "finance_aml" && artifacts?.multi_party_psi ? <MultiPsiPanel report={artifacts.multi_party_psi as MultiPsiReport} /> : null}

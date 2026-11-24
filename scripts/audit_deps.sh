@@ -94,16 +94,25 @@ audit_polytune() {
         problems.push(`issue #${n} is ${i.state} with ${i.comments} comments, and ${seen[n]} comments on an open issue were last read`);
     }
     const c = read("compare.json");
+    // Source past the pin that was read and found to leave the protocol as it was, keyed by the blob SHA the file had
+    // at upstream main when it was read: any later change to the file gives a new SHA, and the watch fails again.
+    // No apostrophes in this script: it is one single-quoted shell word.
+    // 2026-11-24: d0921018 (wide 1.5.0 to 1.7.1) rewrote `*v = *v << 1` as `*v <<= 1` in the portable bit-matrix
+    // transpose of the OT extension, the one a wasm32 build runs; wide 1.7.1 defines <<= as exactly that assignment.
+    // docs/threat-model.md records it. The pin stays.
+    const reviewed = { "src/transpose/portable.rs": "1c706c121d13cf93153df990e0bb6a08c63ee62f" };
     // Protocol source: Rust under src/ of the crate or of a member crate, except the test utilities.
-    const source = (c.files || []).map((f) => f.filename)
-      .filter((f) => /(^|\/)src\/.*\.rs$/.test(f) && !f.startsWith("crates/polytune-test-utils/"));
+    const source = (c.files || [])
+      .filter((f) => /(^|\/)src\/.*\.rs$/.test(f.filename) && !f.filename.startsWith("crates/polytune-test-utils/")
+                     && reviewed[f.filename] !== f.sha)
+      .map((f) => f.filename);
     if (source.length) problems.push(`protocol source changed past the pin: ${source.join(", ")}`);
     if (problems.length) {
       console.error("polytune upstream needs a review:\n  " + problems.join("\n  ") +
         "\nRead it, update docs/threat-model.md, then update the counts here or the pin and REVIEWED_POLYTUNE_REV.");
       process.exit(1);
     }
-    console.log(`polytune: ${c.ahead_by} commits past the pin, no protocol source among them; issues #63 and #100 unchanged`);
+    console.log(`polytune: ${c.ahead_by} commits past the pin, no unread protocol source among them; issues #63 and #100 unchanged`);
   ' || status=$?
   rm -rf "$dir"
   return "$status"

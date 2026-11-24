@@ -70,6 +70,7 @@ RULES: tuple[Ir8547Rule, ...] = (
     _r("ckks-threshold", "outside", "none"),
     _r("bgv-threshold", "outside", "none"),
     _r("bgv-threshold-committee", "outside", "none"),
+    _r("bfv", "outside", "none"),
     _r("wrk17b", "outside", "none", quantum_vulnerable=True),
     _r("shamir", "outside", "none"),
     _r("csprng", "outside", "none"),

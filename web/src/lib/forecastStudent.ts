@@ -26,7 +26,14 @@ export interface StudentEvaluation {
   ckks: null | {
     rows: number; ciphertexts: number; fheMs: number; maxAbsError: number;
     flagsChanged: number; encrypted: StretchScore;
+    /** Per encrypted row, the largest |decrypted - plaintext| over the channels, in the forecast's standardised units
+     *  (Round 86, the owner's choice of 2026-11-23: the residual against time). Its maximum is `maxAbsError`. */
+    residuals: number[];
+    /** The rows whose flag the decrypted forecast changed; as many as `flagsChanged`. */
+    changedRows: number[];
   };
+  /** The stretch's clock: row t is the forecast for start_ms + t * step_ms. */
+  stretch: { startMs: number; stepMs: number };
   /** Where it ran: the page's own runs use a dedicated Web Worker; node, which has none, the calling thread. */
   ranIn?: "a Web Worker" | "the calling thread";
 }
@@ -56,6 +63,7 @@ export async function evaluateForecastStudent(file: ForecastEventsFile, w: Forec
       && plain.anomalies.tp === exp.anomalies.tp && plain.anomalies.fp === exp.anomalies.fp
       && plain.anomalies.fn === exp.anomalies.fn,
     ckks: null,
+    stretch: { startMs: file.stretch.start_ms, stepMs: file.stretch.step_ms },
   };
   const mode = opts.ckks ?? "none";
   if (mode === "none") return result;
@@ -66,16 +74,20 @@ export async function evaluateForecastStudent(file: ForecastEventsFile, w: Forec
     throw new Error(`CKKS scored ${enc.rows} of the ${rows.length} rows offered; the cap would hide the rest`);
   }
   let maxAbs = 0;
+  const residuals = new Array<number>(enc.rows);
   for (let r = 0; r < enc.rows; r++) {
-    for (let c = 0; c < w.b.length; c++) maxAbs = Math.max(maxAbs, Math.abs(enc.logits[r][c] - forecast[r][c]));
+    let worst = 0;
+    for (let c = 0; c < w.b.length; c++) worst = Math.max(worst, Math.abs(enc.logits[r][c] - forecast[r][c]));
+    residuals[r] = worst;
+    maxAbs = Math.max(maxAbs, worst);
   }
   // The events of the decrypted forecast, over the whole stretch only when every row was encrypted.
   const decrypted = mode === "all" ? enc.logits : null;
   const encrypted = decrypted ? scoreStretch(file, w, decrypted) : plain;
-  let changed = 0;
-  if (decrypted) for (let i = 0; i < plain.flags.length; i++) if (plain.flags[i] !== encrypted.flags[i]) changed++;
+  const changedRows: number[] = [];
+  if (decrypted) for (let i = 0; i < plain.flags.length; i++) if (plain.flags[i] !== encrypted.flags[i]) changedRows.push(i);
   result.ckks = { rows: enc.rows, ciphertexts: enc.ciphertexts, fheMs: enc.fheMs, maxAbsError: maxAbs,
-                  flagsChanged: changed, encrypted };
+                  flagsChanged: changedRows.length, encrypted, residuals, changedRows };
   return result;
 }
 

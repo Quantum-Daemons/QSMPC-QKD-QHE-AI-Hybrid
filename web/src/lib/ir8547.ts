@@ -112,6 +112,7 @@ export const RULES: readonly Ir8547Rule[] = [
     `IR 8547 does not classify homomorphic encryption or threshold decryption. Threshold BGV rests on ring LWE; ${HE}`),
   rule("bgv-threshold-committee", "outside", "none",
     `IR 8547 does not classify homomorphic encryption or threshold decryption. The committee's threshold BGV rests on ring LWE, with Shamir shares of its key; ${HE}`),
+  rule("bfv", "outside", "none", `IR 8547 does not classify homomorphic encryption. BFV rests on ring LWE; ${HE}`),
   rule("wrk17b", "outside", "none",
     "IR 8547 does not classify secure computation. WRK17b's oblivious transfers rest on a discrete-log assumption, which a large quantum computer breaks.",
     { quantumVulnerable: true }),

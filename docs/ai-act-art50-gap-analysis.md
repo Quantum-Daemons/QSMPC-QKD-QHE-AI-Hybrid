@@ -129,6 +129,16 @@ this repository. It does not change the conclusion above, since the download has
 Round 86 and the date of that is before the transition ends, but it should be established and written
 down, because it determines whether the download was compliant from 2 August 2026 or only by 2 December.
 
+**Answered 2026-11-24, from certificate transparency.** The public logs, read through crt.sh on 2026-11-24, list the
+first certificate for the demo's name, `qsmpc-qkd-qhe-ai-hybrid.daemons.jp`, issued by Let's Encrypt (intermediate
+YE2) with `notBefore` 2026-06-27 14:22:04 UTC; the next ones begin 2026-08-26 and, in Cert Spotter's log of the same
+name, 2026-10-24, about 60 days apart, as Caddy renews. Let's Encrypt validated control of the name on 2026-06-27; with
+the HTTP-01 or TLS-ALPN-01 challenge that a Caddyfile without a DNS provider uses, as both of this repository's do, that
+means the host answered at its public name that day. The repository's own earliest record of a page on the public host
+is later, Round 21 (2026-08-06 to 08-08). So the demo was reachable at its public URL before 2 August 2026, and the
+transition to 2 December 2026 is the one this document assumes. Whether reachable means "placed on the market or put
+into service" is a legal reading, recorded here as the operator's working assumption, not as legal advice.
+
 Scope is also worth stating plainly: the free and open-source exclusion in Art. 2(12) is expressly
 disapplied to Article 50, and "putting into service" in Art. 3(11) carries no commercial-activity
 qualifier. This system should be treated as in scope.

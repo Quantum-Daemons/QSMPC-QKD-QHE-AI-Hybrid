@@ -129,7 +129,7 @@ export default function BenchmarkPanel(
             </table>
             <ul className="key-points" style={{ margin: "6px 0 0", paddingLeft: 18, fontSize: 12.5 }}>
               <li>The QSMPC-FHE row is simulated, not quantum hardware; its gate count, width and latency are measurements, its secrecy is not.</li>
-              <li>The security model in that row is the SCHEME's, not this run's: the one-time pad is perfectly hiding with uniform secret key bits, and this simulation draws them from a seeded generator whose seed is on this page.</li>
+              <li>The security model in that row is the SCHEME's, not this run's: the one-time pad is perfectly hiding with uniform secret key bits, and this simulation draws them from a generator seeded with 7, so they can be reproduced and are not secret.</li>
               <li>The Security posture table below gives per-row facts, each traceable to FIPS 203/204 or to this run.</li>
             </ul>
             <Details summary="Why two scores that used to sit here were retired">

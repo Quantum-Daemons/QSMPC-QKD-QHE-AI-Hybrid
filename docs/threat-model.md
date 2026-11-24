@@ -640,6 +640,12 @@ Where two-way QSDC cannot close, the page sends its telemetry by STIKE (Pan et a
     - None of the published analyses covers the earlier ordering. Its consequences are not assessed
       here.
     - A comment asking the maintainers was posted on `sine-fdn/polytune#63` on 2026-10-29 (issuecomment-6499773496), and none had come by 2026-11-09. `scripts/audit_deps.sh polytune` runs daily and fails once that issue, or #100, changes, or once protocol source changes past the pin.
+    - On 2026-11-24 (Round 86) the watch failed for one source change past the pin, which was read that
+      day. Upstream's d0921018 (2026-11-23, a bump of the `wide` SIMD crate from 1.5.0 to 1.7.1) rewrote
+      `*v = *v << 1` as `*v <<= 1` in `src/transpose/portable.rs`. That is the bit-matrix transpose the
+      OT extension uses where AVX2 is absent, wasm32 included. wide 1.7.1 defines `<<=` as that same
+      assignment, so the protocol is unchanged and the pin stays at 47dc378. The watch passes that file
+      only at the version that was read (blob `1c706c12`), so any later change to it fails again.
   - So nothing here claims malicious security for two hosts at this commit. The demo, with both
     parties in one tab, is unaffected.
   - What was fixed: the integration, not the library.

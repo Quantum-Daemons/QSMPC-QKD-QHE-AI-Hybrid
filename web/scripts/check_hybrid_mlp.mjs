@@ -25,7 +25,7 @@ const check = (ok, what) => { console.log(`${ok ? "ok  " : "FAIL"} ${what}`); if
 
 try {
   await build({
-    stdin: { contents: `export { hybridMlpInference, scaleRow } from ${JSON.stringify(join(WEB, "src/lib/clientHybridMlp"))};`, resolveDir: WEB, loader: "ts" },
+    stdin: { contents: `export { hybridMlpInference, scaleRow, linearStudentAsMlp } from ${JSON.stringify(join(WEB, "src/lib/clientHybridMlp"))};`, resolveDir: WEB, loader: "ts" },
     bundle: true, format: "esm", platform: "node", outfile: join(tmp, "b.mjs"), logLevel: "error",
     define: { "import.meta.env": '{"BASE_URL":"/"}' },
     plugins: [{ name: "wasm-url", setup(b) {
@@ -62,6 +62,23 @@ try {
     check(r.statisticalDistanceLog2 < -20, `the run's bound on the masks is below 2^-20 (2^${r.statisticalDistanceLog2.toFixed(1)})`);
     check(r.conjugations === ciphertexts, `every ciphertext the client decrypts had its imaginary half cancelled (${r.conjugations} of ${ciphertexts})`);
     check(r.maxLayerError < 5e-3, `each layer's reconstruction is within 5e-3 of the clear layer (${r.maxLayerError.toExponential(2)})`);
+  }
+  // The telecom student (the owner's choice of 2026-11-23): one dense layer, no activation, its class from the 2PC argmax on
+  // the shares of its masked scores, as the page runs it (`runEncryptedTelecomStudent`), on held-out rows.
+  const tw = JSON.parse(readFileSync(join(WEB, "public/data/telecom/student_weights.json"), "utf8"));
+  const held = JSON.parse(readFileSync(join(WEB, "public/data/telecom/student_heldout.json"), "utf8"));
+  const tm = m.linearStudentAsMlp(tw, "telecom_ids.student");
+  const clear = (raw) => { const z = m.scaleRow(tm, raw); return tw.W.map((row, j) => row.reduce((a, v, i) => a + v * z[i], tw.b?.[j] ?? 0)); };
+  for (const i of [0, 150, 300, 450]) {
+    const raw = held.samples[i], want = clear(raw), wantCls = want.indexOf(Math.max(...want));
+    const started = Date.now();
+    const r = await m.hybridMlpInference(tm, raw);
+    console.log(`--- telecom_ids.student, held-out row ${i}, label ${held.labels[i]}: ${((Date.now() - started) / 1000).toFixed(1)} s`);
+    check(r.matchesClear && r.prediction === wantCls, `the 2PC class (${r.prediction}) is the clear student's (${wantCls})`);
+    const err = Math.max(...r.logits.map((v, k) => Math.abs(v - want[k])));
+    check(err < 5e-3, `the 8 scores from the shares are within 5e-3 of the clear student's (${err.toExponential(2)})`);
+    check(r.reluCount === 0 && r.batches === 0, "no ReLU: only the argmax runs in garbled circuits");
+    check(r.clientViewMedianAbs > 2 ** cfg.logit_mask_bits / 8, `what the client decoded is masked (median |value| ${r.clientViewMedianAbs.toExponential(2)})`);
   }
 } finally {
   rmSync(tmp, { recursive: true, force: true });

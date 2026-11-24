@@ -41,7 +41,7 @@ const out = join(dir, "bundle.mjs");
 const sealWasm = resolve(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
 await build({
   stdin: { contents: `export { encryptedLinear } from ${JSON.stringify(resolve(WEB, "src/lib/clientFHE"))};
-export { headLogit, decide, filmInput, filmRgba } from ${JSON.stringify(resolve(WEB, "src/lib/cxrSplit"))};`,
+export { headLogit, decide, filmInput, filmRgba, filmsSummary } from ${JSON.stringify(resolve(WEB, "src/lib/cxrSplit"))};`,
            resolveDir: WEB, loader: "ts" },
   bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error",
   define: { "import.meta.env": '{"BASE_URL":"/","VITE_CLIENT_ONLY":"1"}', "process.env.NODE_ENV": '"production"' },
@@ -65,7 +65,15 @@ for (let k = 0; k < 3; k++) {
               rotations: r.rotations, ctBytes: r.ctBytes });
 }
 const px = [0, 128, 255];
-console.log(JSON.stringify({ runs, input: Array.from(m.filmInput(px)), rgba: Array.from(m.filmRgba(px)) }));
+// The all-films plot's figures on three stated films: one above the operating point, NIH and the int8 model agreeing;
+// one below it, NIH saying effusion and the int8 model not; one with neither record.
+const t = head.operating_point_logit;
+const films = m.filmsSummary(head, [
+  { film: 0, zPlain: t + 1, zEnc: t + 1 + 2e-9, effusion: true, label: 1, recorded: 1 },
+  { film: 1, zPlain: t - 1, zEnc: t - 1 - 1e-9, effusion: false, label: 1, recorded: 0 },
+  { film: 2, zPlain: t - 2, zEnc: t - 2, effusion: false, label: null, recorded: null },
+]);
+console.log(JSON.stringify({ runs, input: Array.from(m.filmInput(px)), rgba: Array.from(m.filmRgba(px)), films }));
 """
 
 
@@ -103,13 +111,16 @@ def test_the_page_s_ckks_layer_evaluates_this_head(tmp_path: Path) -> None:
     assert out["input"][0] == 0 and out["input"][2] == 1 and math.isclose(out["input"][1], 128 / 255, rel_tol=1e-7), \
         "the graph reads pixel / 255, in float32"
     assert out["rgba"] == [0, 0, 0, 255, 128, 128, 128, 255, 255, 255, 255, 255]
+    f = out["films"]
+    assert f["films"] == 3 and abs(f["worst"] - 2e-9) < 1e-12, f
+    assert (f["sameDecision"], f["recorded"], f["agreeRecorded"], f["labelled"], f["agreeLabel"]) == (3, 2, 2, 2, 1), f
 
 
 def test_the_medical_page_mounts_the_card_and_the_card_reads_its_files() -> None:
     page = (WEB / "src" / "pages" / "UseCasePage.tsx").read_text()
     assert '{usecase === "medical_fl" && <CxrSplitInference />}' in page
     card = (WEB / "src" / "components" / "CxrSplitInference.tsx").read_text()
-    assert "data/medical/cxr_head.json" in card and "openPinnedGraph(spec, head.features_graph)" in card
+    assert "data/medical/cxr_head.json" in card and "openPinnedGraph(spec, h.features_graph)" in card
     assert "publishedSampleOf(spec)" in card and 'import("../lib/clientFHE")' in card
 
 
@@ -129,3 +140,15 @@ def test_the_card_says_the_page_runs_the_last_layer_encrypted() -> None:
     card = publish_hf.model_card(spec, registry.achieved(spec.key))
     assert "No code path" not in card and "its own last layer under CKKS" in card and "512 pooled features" in card
     assert "runs it split" not in publish_hf.model_card(spec, registry.achieved(spec.key), private=True)
+
+
+def test_all_sixteen_films_go_through_the_single_film_steps() -> None:
+    """The owner's choice of 2026-11-23: a film's point on the all-films plot is what its own run gives, so both runs call
+    one function, and the plot draws what that function returned for every film."""
+    card = (WEB / "src" / "components" / "CxrSplitInference.tsx").read_text()
+    assert "try { setOutcome(await inferFilm(file, head, chosen, setBusy)); }" in card
+    assert "const o = await inferFilm(file, head, i, (s) => setBusy(`Film ${i + 1} of ${file.samples.length}: ${s}`));" in card
+    assert "for (let i = 0; i < file.samples.length; i++)" in card and "<CxrFilmsChart head={head} runs={all} />" in card
+    chart = (WEB / "src" / "components" / "CxrFilmsChart.tsx").read_text()
+    assert "filmsSummary(head, runs)" in chart and "head.operating_point_logit" in chart
+    assert "<ReferenceLine x={t}" in chart and "<ReferenceLine y={t}" in chart

@@ -441,7 +441,7 @@ def distil_linear_student(teacher, Xtr, ytr, Xte, yte, out: Path, *, seed: int) 
         "n_parameters": int(student.coef_.size + student.intercept_.size),
         "agreement": round(agreement, 6),
         "distilled_on": "teacher predict_proba (soft targets), weighted one-copy-per-class",
-        "argmax_location": "client, in plaintext, after decrypting all 8 class scores",
+        "argmax_location": "a garbled circuit, on additive shares of the 8 masked class scores (the page, since 2026-11-23)",
         "metric_note": STUDENT_METRIC_NOTE,
     }
     if n_predicted < n_classes:

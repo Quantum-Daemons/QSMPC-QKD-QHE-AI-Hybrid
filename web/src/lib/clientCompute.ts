@@ -1075,6 +1075,13 @@ async function surfaceQcnnUnderCkks(stage: string, usecase: string, w: QcnnWeigh
   }
 }
 
+/** The satellite forecaster student's forecasts under CKKS, row by row, as one run reports them (Round 86): the
+ *  residual card reads this. `residuals[t]` is row t's largest |decrypted - plaintext| over the channels. */
+export interface ForecastResidualReport {
+  key: string; rows: number; ciphertexts: number; fheMs: number; maxAbsError: number; flagsChanged: number;
+  residuals: number[]; changedRows: number[]; flaggedRows: number[]; startMs: number; stepMs: number; ranIn: string | null;
+}
+
 /** What a published MLP's run under MPC reports (Round 86): the card reads this. */
 export interface MpcMlpReport {
   key: string; nFeatures: number; result: HybridCnnResult; ranIn: string; rowIndex: number; rowCount: number; rowLabel: number; expectedLogits: number[]; classes: Record<string, string>;
@@ -1955,12 +1962,13 @@ export function runClientPipeline(
    * -1.999998 against an exact -2 is what makes the approximation concrete. The error here is a MAX
    * and is labelled as one: OpenFHE averages, so a max is the stricter claim.
    *
-   * The argmax is NOT computed under encryption and the log says so. CKKS has no native comparison;
-   * all 8 scores are decrypted and the maximum is taken in the clear, which is the mainstream
-   * construction and is what Concrete-ML's deployment model does. A homomorphic argmax costs 12.83 s
-   * for 128 elements (Mazzone et al., USENIX Security 2025), and routing it through the MPC argmax
-   * this repo already implements would demonstrate an architecture rather than establish a security
-   * property, because both MPC parties share one JS heap - `docs/threat-model.md` records that.
+   * The argmax runs in a garbled circuit (the owner's choice of 2026-11-23). Until then all 8 scores were
+   * decrypted and the maximum taken in the clear, the mainstream construction and Concrete-ML's deployment
+   * model; a homomorphic argmax costs 12.83 s for 128 elements (Mazzone et al., USENIX Security 2025). Cho et
+   * al. (ePrint 2026/2349) show that released anomaly scores can reveal a private threshold, and propose
+   * releasing less. So the evaluator masks the scores under CKKS, the key holder decrypts only masked values,
+   * and the existing 2PC argmax on the additive shares returns the class alone: the finance MLP's path. Both
+   * parties are in one tab, so the separation is notional here (`docs/threat-model.md`).
    */
   async function runEncryptedTelecomStudent(stage: string, raw: number[] | undefined) {
     try {
@@ -1981,11 +1989,16 @@ export function runClientPipeline(
       _fheKeygenMs = performance.now() - tk;
       _fheWarmed = true;
     }
-      const fhe = await encryptedLinear(w.W, w.b, z);
+      // One dense layer with no activation and no clipping, through the finance MLP's path: CKKS for the 8 dot
+      // products, masks on every slot, and the 2PC argmax on the shares of the masked scores.
+      const { hybridMlpInferenceOffThread, linearStudentAsMlp } = await import("./clientHybridMlp");
+      const hy = await hybridMlpInferenceOffThread(linearStudentAsMlp(w, "telecom_ids.student"), raw);
       const plain = w.W.map((row: number[], j: number) =>
         row.reduce((a, wij, i) => a + wij * (z[i] ?? 0), 0) + (w.b?.[j] ?? 0));
-      const encCls = argmax(fhe.logits), plainCls = argmax(plain);
-      const maxAbs = Math.max(...fhe.logits.map((v, i) => Math.abs(v - plain[i])));
+      const encCls = hy.prediction, plainCls = argmax(plain);
+      // The scores reconstructed from the two shares, which exist only because both parties are in this tab: they
+      // measure the CKKS error, as the decrypted scores did before.
+      const maxAbs = Math.max(...hy.logits.map((v, i) => Math.abs(v - plain[i])));
       // Bits of precision is -log2(error), and the sign is the whole point. This read
       // `Math.abs(Math.log2(maxAbs))` until Round 34, which made the best and the worst case print
       // IDENTICALLY: an error of 4.294e-9 gives 27 bits, and an error of 2^27 - a total CKKS blow-up,
@@ -2000,12 +2013,17 @@ export function runClientPipeline(
 
       metric(stage, "encrypted_student_params", Number(w.n_parameters) || null);
       metric(stage, "encrypted_student_class", w.classes?.[encCls] ?? encCls);
-      metric(stage, "encrypted_student_ms", r2(fhe.fheMs));
+      metric(stage, "encrypted_student_ms", r2(hy.ckksMs));
       metric(stage, "encrypted_max_abs_error", maxAbs);
       metric(stage, "encrypted_precision_bits", bits);
-      metric(stage, "encrypted_argmax_location", "client, plaintext");
+      metric(stage, "encrypted_argmax_location", "garbled circuit, on additive shares of the masked scores");
+      metric(stage, "encrypted_argmax_gc_ms", r2(hy.gcMs));
+      metric(stage, "encrypted_argmax_gc_bytes", hy.gcBytes);
+      metric(stage, "encrypted_argmax_matches_clear", hy.matchesClear ? 1 : 0);
       emit("log", stage, `encrypted tier (REAL CKKS, ${w.n_parameters} params, `
-        + `${w.W.length} dot products): class "${w.classes?.[encCls] ?? encCls}" in ${r2(fhe.fheMs)} ms. `
+        + `${w.W.length} dot products, then a 2PC argmax): class "${w.classes?.[encCls] ?? encCls}"`
+        + `${hy.matchesClear ? ", as in the clear" : `, and the clear computation gives "${w.classes?.[plainCls] ?? plainCls}"`}, `
+        + `CKKS ${r2(hy.ckksMs)} ms and the garbled circuit ${r2(hy.gcMs)} ms (${(hy.gcBytes / 1e6).toFixed(2)} MB) in ${hy.ranIn}. `
         + `Max abs error ${maxAbs.toExponential(3)}`
         + (bits !== null ? ` (about ${bits} bits of precision, MAX not mean)` : "")
         + (precisionFailed
@@ -2026,9 +2044,10 @@ export function runClientPipeline(
       // student was evaluated on and never fitted on. Every row is scored (two ciphertexts at width
       // 8), so the 88-row cap disclosure no longer applies here.
       await scoreHeldOutStudent(stage, "telecom_ids", "data/telecom/student_heldout.json");
-      emit("log", stage, `the ARGMAX is NOT encrypted: all ${w.W.length} class scores are decrypted `
-        + `and the maximum taken in the clear, because CKKS has no native comparison. That is the `
-        + `standard construction and it reveals nothing here, since in one tab the client is the user.`);
+      emit("log", stage, `the ARGMAX ran in a garbled circuit: the key holder decrypted only masked scores, and `
+        + `only the class left the circuit. Both parties are in this tab, so the separation is notional here. `
+        + `The held-out check above decrypts every row's ${w.W.length} scores, because it measures the CKKS `
+        + `arithmetic against the plaintext one.`);
     } catch (e) {
       // No invented numbers on failure. A skipped encrypted tier is reported as skipped.
       emit("log", stage, `encrypted tier skipped: ${e instanceof Error ? e.message : String(e)}`);
@@ -2198,6 +2217,15 @@ export function runClientPipeline(
               + `the decrypted forecast, thresholded in this tab, changes ${c.flagsChanged} of ${sd.plain.flags.length} `
               + `flags and scores ${r2(e.f05)} (tp ${e.tp} fp ${e.fp} fn ${e.fn}) against ${r2(sd.plain.anomalies.f05)} `
               + `from the plaintext forecast, whose flags match the published digest: ${sd.flagsDigestMatches ? "yes" : "NO"}.`);
+            // The residual against time (Round 86, the owner's choice of 2026-11-23): every row's largest difference,
+            // the rows the plaintext forecast flags, and the ones encryption changed, for the satellite card.
+            const flagged: number[] = [];
+            sd.plain.flags.forEach((f, i) => { if (f) flagged.push(i); });
+            artifacts.forecast_residual = {
+              key, rows: c.rows, ciphertexts: c.ciphertexts, fheMs: c.fheMs, maxAbsError: c.maxAbsError,
+              flagsChanged: c.flagsChanged, residuals: c.residuals, changedRows: c.changedRows, flaggedRows: flagged,
+              startMs: sd.stretch.startMs, stepMs: sd.stretch.stepMs, ranIn: sd.ranIn ?? null,
+            } satisfies ForecastResidualReport;
           }
           // A model that cannot beat a trivial predictor is worth saying out loud even when it
           // reproduces its own figure exactly - reproducing a bad number is still reproducing it.

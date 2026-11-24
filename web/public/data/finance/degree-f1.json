@@ -1,6 +1,6 @@
 {
  "what": "F1 by the receiving account's in-degree, in SALT-GNN's bins, for IBM's Multi-GNN models on this project's windows; computed offline from each run's test and validation scores, nothing retrained",
- "plan": ".claude/plan-finance-degree-f1-20261115.md (the owner's choice of 2026-11-15)",
+ "plan": "the owner's choice of 2026-11-15",
  "licence": "CDLA-Sharing-1.0",
  "licence_url": "https://cdla.dev/sharing-1-0/",
  "attribution": "Altman et al., 'Realistic Synthetic Financial Transactions for Anti-Money Laundering Models', NeurIPS 2023 Datasets and Benchmarks. Data: IBM Transactions for Anti-Money Laundering (AML), CDLA-Sharing-1.0.",

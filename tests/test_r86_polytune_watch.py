@@ -24,9 +24,11 @@ pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="the check 
 
 
 def _check(tmp_path: Path, *, issue63: tuple[str, int] = ("open", 2), issue100: tuple[str, int] = ("open", 0),
-           files: tuple[str, ...] = (), patch_bytes: int = 0) -> subprocess.CompletedProcess[str]:
+           files: tuple[str | tuple[str, str], ...] = (), patch_bytes: int = 0) -> subprocess.CompletedProcess[str]:
     issue = lambda state, comments: json.dumps({"state": state, "comments": comments})   # noqa: E731
-    compare = json.dumps({"ahead_by": len(files), "files": [{"filename": f, "patch": "+" * patch_bytes} for f in files]})
+    entries = [(f, "0" * 40) if isinstance(f, str) else f for f in files]
+    compare = json.dumps({"ahead_by": len(entries),
+                          "files": [{"filename": f, "sha": sha, "patch": "+" * patch_bytes} for f, sha in entries]})
     stub = tmp_path / "api.sh"
     stub.write_text("#!/bin/sh\ncase \"$1\" in\n"
                     f"  */issues/63) cat <<'J'\n{issue(*issue63)}\nJ\n  ;;\n"
@@ -39,7 +41,7 @@ def _check(tmp_path: Path, *, issue63: tuple[str, int] = ("open", 2), issue100: 
 
 def test_nothing_changed_passes(tmp_path: Path) -> None:
     r = _check(tmp_path)
-    assert r.returncode == 0 and "no protocol source among them" in r.stdout, r.stdout + r.stderr
+    assert r.returncode == 0 and "no unread protocol source among them" in r.stdout, r.stdout + r.stderr
 
 
 def test_a_compare_past_the_kernel_s_limit_on_one_environment_string_is_read(tmp_path: Path) -> None:
@@ -47,7 +49,7 @@ def test_a_compare_past_the_kernel_s_limit_on_one_environment_string_is_read(tmp
     131,072-byte limit on one string, and node never started ("Argument list too long", exit 126). The responses go to
     files now."""
     r = _check(tmp_path, files=("Cargo.lock", "README.md"), patch_bytes=100_000)
-    assert r.returncode == 0 and "no protocol source among them" in r.stdout, r.stdout + r.stderr
+    assert r.returncode == 0 and "no unread protocol source among them" in r.stdout, r.stdout + r.stderr
     r = _check(tmp_path, files=("src/mpc/faand.rs", "README.md"), patch_bytes=100_000)
     assert r.returncode == 1 and "src/mpc/faand.rs" in r.stderr, r.stdout + r.stderr
 
@@ -75,3 +77,16 @@ def test_it_runs_on_the_schedule() -> None:
     assert "polytune) audit_polytune ;;" in script and "audit_polytune && audit_python" in script
     assert "bash scripts/audit_deps.sh polytune" in workflow and 'cron: "17 3 * * *"' in workflow
     assert "scripts/audit_deps.sh polytune" in " ".join((REPO / "docs" / "threat-model.md").read_text().split())
+
+
+READ_PORTABLE = ("src/transpose/portable.rs", "1c706c121d13cf93153df990e0bb6a08c63ee62f")
+
+
+def test_a_source_file_read_at_its_blob_passes_and_a_later_change_to_it_fails(tmp_path: Path) -> None:
+    """2026-11-24: upstream's d0921018 rewrote one line of src/transpose/portable.rs (`*v = *v << 1` as `*v <<= 1`), read
+    and recorded by that file's blob SHA. The same blob passes; any later change to the file is a new blob and fails."""
+    assert _check(tmp_path, files=(READ_PORTABLE, "Cargo.lock")).returncode == 0
+    r = _check(tmp_path, files=(("src/transpose/portable.rs", "f" * 40),))
+    assert r.returncode == 1 and "src/transpose/portable.rs" in r.stderr, r.stdout + r.stderr
+    r = _check(tmp_path, files=(READ_PORTABLE, "src/mpc/faand.rs"))
+    assert r.returncode == 1 and "src/mpc/faand.rs" in r.stderr and "portable.rs" not in r.stderr, r.stdout + r.stderr
