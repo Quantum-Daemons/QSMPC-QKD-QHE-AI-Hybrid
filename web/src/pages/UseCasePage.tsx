@@ -18,6 +18,7 @@ import FedHeartPanel, { type FedHeartSitesMeta } from "../components/FedHeartPan
 import CxrFlCard from "../components/CxrFlCard";
 import CxrSplitInference from "../components/CxrSplitInference";
 import SquareStudentCkks from "../components/SquareStudentCkks";
+import Nodule3dCard from "../components/Nodule3dCard";
 import PcgFlCard from "../components/PcgFlCard";
 import MurmurDpCard from "../components/MurmurDpCard";
 import SatBoundaryCard from "../components/SatBoundaryCard";
@@ -427,6 +428,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && <CxrFlCard />}
       {usecase === "medical_fl" && <CxrSplitInference />}
       {usecase === "medical_fl" && <SquareStudentCkks />}
+      {usecase === "medical_fl" && <Nodule3dCard />}
       {usecase === "medical_fl" && <PcgFlCard />}
       {usecase === "medical_fl" && <MurmurDpCard />}
       {usecase === "satellite_comms" && <SatVusPrCard />}

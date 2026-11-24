@@ -1,0 +1,314 @@
+{
+ "preregistration": {
+  "file": "references/medical-nodule3d-square-student-preregistration.md",
+  "sha256": "9f6ec0871b5c3aa2c1d2064923c1f61fcf556d30485d0f35f6a01f1c97c8c7e5"
+ },
+ "split": {
+  "file": "docs/measurements/medical-nodule3d-split.json",
+  "sha256": "3f8355aaf874015d710e33c1f5d2a48929183ac62345030908cbc865f03829d0",
+  "counts": {
+   "train": {
+    "patients": 518,
+    "nodules": 1178,
+    "malignant": 381,
+    "benign": 797
+   },
+   "val": {
+    "patients": 74,
+    "nodules": 170,
+    "malignant": 55,
+    "benign": 115
+   },
+   "test": {
+    "patients": 148,
+    "nodules": 347,
+    "malignant": 109,
+    "benign": 238
+   }
+  }
+ },
+ "teachers": {
+  "resnet3d18": {
+   "oof_auc": 0.874421
+  },
+  "ctfm_probe": {
+   "oof_auc": 0.640535
+  },
+  "totalseg_size": {
+   "oof_auc": 0.786316
+  }
+ },
+ "teacher": "resnet3d18",
+ "environment": {
+  "python": "3.12.15",
+  "torch": "2.13.0+cu130",
+  "kernel": "5.14.0-687.66.2.el9_8.x86_64",
+  "cpu": "x86_64",
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition"
+ },
+ "arms": {
+  "control": {
+   "1": {
+    "val_auc": 0.804269,
+    "test_auc": 0.898659,
+    "val_balanced_accuracy": 0.753755,
+    "test_balanced_accuracy": 0.814451,
+    "predicts_both_classes": true,
+    "platt": [
+     0.7058050076305378,
+     -0.5116039927023439
+    ],
+    "threshold": 0.3885720508985591,
+    "best_epoch": 2,
+    "epochs_run": 28,
+    "checkpoint_sha256": "74512b09a680635e6fa554fb97225c81ef0da0b527a5b35c1797fe4866480aca"
+   },
+   "2": {
+    "val_auc": 0.820553,
+    "test_auc": 0.887441,
+    "val_balanced_accuracy": 0.754545,
+    "test_balanced_accuracy": 0.807417,
+    "predicts_both_classes": true,
+    "platt": [
+     0.8626029118713745,
+     -0.4569061721484765
+    ],
+    "threshold": 0.3284083025840566,
+    "best_epoch": 24,
+    "epochs_run": 50,
+    "checkpoint_sha256": "6bbe7ae373d474ab90fbdb9e5f885cd98e7e3779b4993955fe317b8b292e1b7f"
+   },
+   "3": {
+    "val_auc": 0.823715,
+    "test_auc": 0.901627,
+    "val_balanced_accuracy": 0.765613,
+    "test_balanced_accuracy": 0.773726,
+    "predicts_both_classes": true,
+    "platt": [
+     0.6482173631241785,
+     -0.7504209682014856
+    ],
+    "threshold": 0.4955943225503272,
+    "best_epoch": 19,
+    "epochs_run": 45,
+    "checkpoint_sha256": "348b3d8f73e00a5301f7ee4cf7a857d66aa57155b2be3b7cc4a4579c9933fa64"
+   },
+   "4": {
+    "val_auc": 0.831462,
+    "test_auc": 0.835556,
+    "val_balanced_accuracy": 0.756917,
+    "test_balanced_accuracy": 0.76407,
+    "predicts_both_classes": true,
+    "platt": [
+     0.9524884123804366,
+     -1.3530501571251663
+    ],
+    "threshold": 0.2731013248081974,
+    "best_epoch": 19,
+    "epochs_run": 45,
+    "checkpoint_sha256": "212f6e2932da543f4555f1e2b8d000df639bfe66abf5e2ebccb59fe08768d17f"
+   },
+   "5": {
+    "val_auc": 0.814071,
+    "test_auc": 0.886979,
+    "val_balanced_accuracy": 0.765613,
+    "test_balanced_accuracy": 0.797047,
+    "predicts_both_classes": true,
+    "platt": [
+     0.655821696814878,
+     -0.4176490492069815
+    ],
+    "threshold": 0.46931561990128207,
+    "best_epoch": 33,
+    "epochs_run": 59,
+    "checkpoint_sha256": "13bbcfe144c7b46528cbc89f7bdd617c30f34353a79d38a5f338a5808fddd353"
+   }
+  },
+  "square": {
+   "1": {
+    "val_auc": 0.831304,
+    "test_auc": 0.914733,
+    "val_balanced_accuracy": 0.78498,
+    "test_balanced_accuracy": 0.834342,
+    "predicts_both_classes": true,
+    "platt": [
+     0.8484639946325395,
+     -0.8894768535828537
+    ],
+    "threshold": 0.36131988461084436,
+    "best_epoch": 20,
+    "epochs_run": 46,
+    "checkpoint_sha256": "8d85800aaa40033c4abf39a5542153a71c16da283daa0409f9f09ea406782474"
+   },
+   "2": {
+    "val_auc": 0.818024,
+    "test_auc": 0.909645,
+    "val_balanced_accuracy": 0.779447,
+    "test_balanced_accuracy": 0.826286,
+    "predicts_both_classes": true,
+    "platt": [
+     0.7000556795946833,
+     -0.6612808902516761
+    ],
+    "threshold": 0.47241162555589833,
+    "best_epoch": 50,
+    "epochs_run": 76,
+    "checkpoint_sha256": "56d4bd49827a94c07d9d2c151205725171235b7eb1dfa2ab5d852c05d5863dfd"
+   },
+   "3": {
+    "val_auc": 0.81834,
+    "test_auc": 0.905905,
+    "val_balanced_accuracy": 0.76917,
+    "test_balanced_accuracy": 0.783845,
+    "predicts_both_classes": true,
+    "platt": [
+     0.669389586077092,
+     -0.7367351483434883
+    ],
+    "threshold": 0.5865370984623042,
+    "best_epoch": 64,
+    "epochs_run": 90,
+    "checkpoint_sha256": "ba9745d87c8b9d777753c825d6af426bdabee3267ecb34acefa09e73d410ce93"
+   },
+   "4": {
+    "val_auc": 0.827352,
+    "test_auc": 0.913654,
+    "val_balanced_accuracy": 0.778656,
+    "test_balanced_accuracy": 0.839662,
+    "predicts_both_classes": true,
+    "platt": [
+     0.9117819189827442,
+     -0.701901914009278
+    ],
+    "threshold": 0.49371168479953986,
+    "best_epoch": 38,
+    "epochs_run": 64,
+    "checkpoint_sha256": "8ddc048ebb06690f8df93a37ca03e9ba3c2f9e91acd8459cf32719c30e3aa4c2"
+   },
+   "5": {
+    "val_auc": 0.838577,
+    "test_auc": 0.892568,
+    "val_balanced_accuracy": 0.781028,
+    "test_balanced_accuracy": 0.846003,
+    "predicts_both_classes": true,
+    "platt": [
+     0.6910863311937708,
+     -0.6279448200955109
+    ],
+    "threshold": 0.32502078125170786,
+    "best_epoch": 90,
+    "epochs_run": 116,
+    "checkpoint_sha256": "81fe5ee948410857b07590d50b1568d92093b26e1cba5c7b946306faa81fc3ca"
+   }
+  }
+ },
+ "majority_class_rate_test": 0.685879,
+ "malignant_share": {
+  "train": 0.32343,
+  "val": 0.323529,
+  "test": 0.314121
+ },
+ "criteria": {
+  "mean_test_auc": {
+   "control": 0.882052,
+   "square": 0.907301
+  },
+  "sd_test_auc": {
+   "control": 0.026806,
+   "square": 0.008946
+  },
+  "1_accuracy": true,
+  "2_no_collapse": true,
+  "export_seed": 5,
+  "3_fidelity": {
+   "A2": true,
+   "B": true
+  }
+ },
+ "export_bootstrap": {
+  "auc": 0.892568,
+  "ci95": [
+   0.847758,
+   0.933242
+  ],
+  "resamples": 2000
+ },
+ "ckks": {
+  "A2": {
+   "N": 8192,
+   "coeff_mod_bits": [
+    48,
+    34,
+    34,
+    34,
+    52
+   ],
+   "scale_bits": 34,
+   "pq_bound_bits": 202,
+   "modulus_bits": 202,
+   "crops": 347,
+   "max_abs_logit_error": 3.23760016416319e-05,
+   "median_abs_logit_error": 1.0055457720037353e-05,
+   "decisions_differ": 0,
+   "median_ms": 1705.214958000055,
+   "max_ms": 1808.699,
+   "ciphertexts": {
+    "input": 162,
+    "output": 2
+   },
+   "bytes": {
+    "input": 84952962,
+    "output": 262370
+   },
+   "load_average_before": [
+    1.56,
+    1.18,
+    0.59
+   ],
+   "load_average_after": [
+    1.02,
+    1.1,
+    0.88
+   ],
+   "criterion_3": true
+  },
+  "B": {
+   "N": 16384,
+   "coeff_mod_bits": [
+    60,
+    40,
+    40,
+    40,
+    60
+   ],
+   "scale_bits": 40,
+   "pq_bound_bits": 411,
+   "modulus_bits": 240,
+   "crops": 347,
+   "max_abs_logit_error": 1.593019118872885e-05,
+   "median_abs_logit_error": 4.021937865861247e-06,
+   "decisions_differ": 0,
+   "median_ms": 2211.903121999989,
+   "max_ms": 2301.6277440000003,
+   "ciphertexts": {
+    "input": 81,
+    "output": 2
+   },
+   "bytes": {
+    "input": 84943809,
+    "output": 524514
+   },
+   "load_average_before": [
+    1.02,
+    1.1,
+    0.88
+   ],
+   "load_average_after": [
+    1.0,
+    1.03,
+    1.0
+   ],
+   "criterion_3": true
+  }
+ }
+}

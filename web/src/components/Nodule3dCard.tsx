@@ -25,6 +25,7 @@ interface NoduleFile {
   figures: {
     export_seed: number; teacher: string; teachers_oof_auc: Record<string, number>;
     mean_test_auc: { control: number; square: number }; sd_test_auc: { control: number; square: number };
+    square_test_aucs: number[];
     export: { test_auc: number; val_auc: number; test_balanced_accuracy: number;
               bootstrap: { auc: number; ci95: [number, number]; resamples: number } };
     criteria: { "1_accuracy": boolean; "2_no_collapse": boolean; "3_fidelity": Record<string, boolean> };
@@ -41,6 +42,16 @@ const kb = (b: number) => (b >= 1e6 ? `${(b / 1e6).toFixed(2)} MB` : `${(b / 1e3
 const TEACHER_NAMES: Record<string, string> = {
   resnet3d18: "3D ResNet-18 from scratch", ctfm_probe: "CT-FM linear probe", totalseg_size: "TotalSegmentator nodule size",
 };
+
+/** One request per page load: the page mounts this card twice in quick succession (both fetches were seen in the
+ *  network log, 18 ms apart), and the file is 0.8 MB. A failed request is forgotten, so a later mount can retry. */
+let loading: Promise<NoduleFile> | null = null;
+function loadFile(): Promise<NoduleFile> {
+  loading ??= fetch(`${import.meta.env.BASE_URL}data/medical/nodule3d_square_student.json`)
+    .then((r) => (r.ok ? r.json() as Promise<NoduleFile> : Promise.reject(new Error(`HTTP ${r.status}`))))
+    .catch((e) => { loading = null; throw e; });
+  return loading;
+}
 
 /** The voxels of one shipped crop: its base64 bytes, read as the network reads them, (u / 255 - 0.5) / 0.5. */
 function decode(c: CropEntry): { u8: Uint8Array; v: Float64Array } {
@@ -59,6 +70,15 @@ function malignantAt(logits: [number, number], d: NoduleFile["weights"]["decisio
   return 1 / (1 + Math.exp(-(a * (logits[1] - logits[0]) + b))) >= d.threshold;
 }
 
+/** Where the shipped seed stands on test among the five square seeds; it was chosen on validation, before any test
+ *  figure was read, by the pre-registration's rule, so the card says where that left it. */
+function seedPosition(fig: NoduleFile["figures"]): string {
+  const all = fig.square_test_aucs;
+  const rank = all.filter((v) => v > fig.export.bootstrap.auc + 1e-9).length + 1;
+  return `On test it ranks ${rank} of ${all.length} square seeds (${f3(Math.min(...all))} to ${f3(Math.max(...all))}); ` +
+    "the pre-registration chooses by validation, so no seed was picked on test figures.";
+}
+
 function setLabel(name: string, p: { N: number; coeff_mod_bits: number[]; scale_bits: number }): string {
   const total = p.coeff_mod_bits.reduce((a, b) => a + b, 0);
   return `${name}: N = ${p.N.toLocaleString("en-US")}, ${p.coeff_mod_bits.join("+")} bits (${total}), scale 2^${p.scale_bits}`;
@@ -74,9 +94,8 @@ export default function Nodule3dCard() {
 
   useEffect(() => {
     let live = true;
-    fetch(`${import.meta.env.BASE_URL}data/medical/nodule3d_square_student.json`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((d: NoduleFile) => { if (live) { setFile(d); setSet(Object.keys(d.weights.ckks).sort()[0] ?? ""); } })
+    loadFile()
+      .then((d) => { if (live) { setFile(d); setSet(Object.keys(d.weights.ckks).sort()[0] ?? ""); } })
       .catch((e) => { if (live) setFailed((e as Error)?.message ?? String(e)); });
     return () => { live = false; };
   }, []);
@@ -120,7 +139,7 @@ export default function Nodule3dCard() {
           <tr><th scope="row">Test AUC, mean of five seeds</th>
             <td>square student {f3(fig.mean_test_auc.square)} (sd {f3(fig.sd_test_auc.square)}); control with ReLU {f3(fig.mean_test_auc.control)} (sd {f3(fig.sd_test_auc.control)})</td></tr>
           <tr><th scope="row">The shipped seed ({fig.export_seed}, best on validation)</th>
-            <td>test AUC {f3(fig.export.bootstrap.auc)}, 95% interval {f3(fig.export.bootstrap.ci95[0])} to {f3(fig.export.bootstrap.ci95[1])} over test patients ({fig.export.bootstrap.resamples.toLocaleString("en-US")} resamples); balanced accuracy {f3(fig.export.test_balanced_accuracy)} at the validation threshold</td></tr>
+            <td>test AUC {f3(fig.export.bootstrap.auc)}, 95% interval {f3(fig.export.bootstrap.ci95[0])} to {f3(fig.export.bootstrap.ci95[1])} over test patients ({fig.export.bootstrap.resamples.toLocaleString("en-US")} resamples); balanced accuracy {f3(fig.export.test_balanced_accuracy)} at the validation threshold. {seedPosition(fig)}</td></tr>
           <tr><th scope="row">Teacher candidates, out of fold</th>
             <td>{Object.entries(fig.teachers_oof_auc).map(([k, v]) => `${TEACHER_NAMES[k] ?? k} ${f3(v)}`).join("; ")}; the teacher: {TEACHER_NAMES[fig.teacher] ?? fig.teacher}</td></tr>
           <tr><th scope="row">Test part</th>
@@ -132,13 +151,15 @@ export default function Nodule3dCard() {
         </tbody>
       </table>
 
-      <fieldset className="small" style={{ border: 0, padding: 0, margin: "10px 0 6px" }}>
+      {/* A fieldset's min-width defaults to its content's, so without minWidth 0 the select's max-width: 100% would
+          resolve against a box as wide as its longest option and push the card sideways on a phone. */}
+      <fieldset className="small" style={{ border: 0, padding: 0, margin: "10px 0 6px", minWidth: 0 }}>
         <legend className="muted">Test crop (the addendum&apos;s twelve: the first six of each label)</legend>
         <select value={pick} disabled={busy != null} onChange={(e) => { setPick(Number(e.target.value)); setOutcome(null); }}
-          aria-label="Test crop">
+          aria-label="Test crop" style={{ maxWidth: "100%" }}>
           {file.crops.map((k, i) => (
             <option key={k.sha256} value={i}>
-              {`Crop ${i + 1}: ${CLASS_NAMES[k.label]} by the readers (median rating ${k.median_rating}, ${k.readers} readers)`}
+              {`Crop ${i + 1}: ${CLASS_NAMES[k.label]} by the readers (median rating ${k.median_rating}, ${k.readers} reader${k.readers === 1 ? "" : "s"})`}
             </option>
           ))}
         </select>

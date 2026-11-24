@@ -120,6 +120,7 @@ def figures(record: dict) -> dict:
         "export_seed": seed, "teacher": record["teacher"],
         "teachers_oof_auc": {k: v["oof_auc"] for k, v in record["teachers"].items()},
         "mean_test_auc": record["criteria"]["mean_test_auc"], "sd_test_auc": record["criteria"]["sd_test_auc"],
+        "square_test_aucs": [record["arms"]["square"][k]["test_auc"] for k in sorted(record["arms"]["square"], key=int)],
         "export": {"test_auc": arm["test_auc"], "val_auc": arm["val_auc"],
                    "test_balanced_accuracy": arm["test_balanced_accuracy"], "bootstrap": record["export_bootstrap"]},
         "criteria": {k: record["criteria"][k] for k in ("1_accuracy", "2_no_collapse", "3_fidelity")},
