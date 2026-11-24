@@ -45,7 +45,8 @@ sys.path.insert(0, str(REPO / "src"))
 sys.path.insert(0, str(REPO / "scripts"))
 
 TAU = 0.05
-GUESS_FRACTIONS = (0.01, 0.03, 0.1, 0.3)       # c' as a share of m, fixed before any run; each tested at TAU / 4
+GUESS_FRACTIONS = (0.01, 0.03, 0.1, 0.3, 1.0)  # c' as a share of m, fixed before any run; each tested at TAU / 5.
+#: 1.0 guesses every slot: its accuracy is what Kulynych et al.'s per-target bound, 1 - f(1/k), caps in expectation.
 MU_STEP, MU_MAX = 0.001, 20.0
 
 
@@ -124,7 +125,14 @@ def audit(m: int, right_by_guesses: dict[int, int], k: int, delta: float, *, mu_
     best = max(r["mu_lower_bound"] for r in rows)
     eps = gdp_epsilon(best, delta)
     under = best <= mu_accounted if mu_accounted is not None else eps <= float(epsilon_accounted)
-    return {"slots": m, "k": k, "rows": rows, "mu_lower_bound": best,
+    from scipy.stats import beta as beta_dist
+    full = max(right_by_guesses)                     # every slot guessed
+    c_all = right_by_guesses[full]
+    every = {"guesses": full, "right": c_all, "accuracy": round(c_all / full, 6),
+             "interval_95": [round(float(beta_dist.ppf(0.025, c_all, full - c_all + 1)) if c_all else 0.0, 6),
+                             round(float(beta_dist.ppf(0.975, c_all + 1, full - c_all)) if c_all < full else 1.0, 6)],
+             "baseline": round(1 / k, 6)}
+    return {"slots": m, "k": k, "rows": rows, "mu_lower_bound": best, "every_slot": every,
             "mu_accounted": None if mu_accounted is None else round(mu_accounted, 4),
             "epsilon_lower_bound": round(eps, 4), "delta": delta, "under_the_accountant": bool(under)}
 
