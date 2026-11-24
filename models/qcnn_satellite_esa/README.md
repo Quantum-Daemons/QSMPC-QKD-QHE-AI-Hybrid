@@ -24,7 +24,26 @@ split: fit before 2006-10-01 (all 712 positive windows and four negatives for ea
 2007-01-01 (4,139 windows, 2 positive), test from 2007-01-01 (115,064 windows, 1,077 positive). By addendum 2 the
 circuit keeps its last epoch (`--keep-last-epoch`), as ESA-ADB's own runs do, and average precision leads.
 
-## Figures (test windows, `docs/measurements/satellite-qcnn-2026-11-24.json`)
+## Measured performance
+
+The trainer's own figures, recorded in `weights.json`, on the ESA-ADB test windows (115,064 rows), at the circuit's own decision rule. The pre-registered figures, below, are scored differently (average precision, and a threshold chosen on validation).
+
+| quantity | value |
+|---|---|
+| `minority_class_f1` (this circuit, the headline), at its own threshold (a positive logit) | 0.715854 |
+| accuracy (companion, not the headline) | 0.994377 |
+| logistic regression minority-class F1, identical split | 0.716418 |
+| logistic regression accuracy, identical split | 0.994386 |
+| classical surrogate minority-class F1 (6,561 products) | 0.361964 |
+| classical surrogate accuracy | 0.968044 |
+| all-positive F1 floor | 0.018546 |
+| majority-class accuracy floor | 0.99064 |
+| test prevalence | 0.00936 |
+| encoding scale c | 0.5 |
+| checkpoint epoch | 119 |
+| n_train / n_val / n_test | 3560 / 4139 / 115064 |
+
+## Pre-registered figures (test windows, the record `docs/measurements/satellite-qcnn-2026-11-24.json`)
 
 | Model, same split and features | Average precision | Minority F1 at the validation threshold | Balanced accuracy |
 |---|---|---|---|

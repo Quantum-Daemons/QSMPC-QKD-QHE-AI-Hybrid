@@ -22,7 +22,26 @@ chosen on the training partition alone by how far each one's AUC is from 0.5: n_
 len, diff2_peaks, var_div_len, var_div_duration, sampling. Validation is a stratified 15 percent of the training
 partition (seed 0): 1,354 rows fit, 240 validate, and the 529 test rows (113 anomalous) are the benchmark's.
 
-## Figures (test rows, `docs/measurements/satellite-qcnn-2026-11-24.json`)
+## Measured performance
+
+The trainer's own figures, recorded in `weights.json`, on the OPS-SAT-AD test partition (529 rows), at the circuit's own decision rule. The pre-registered figures, below, are scored differently (average precision, and a threshold chosen on validation).
+
+| quantity | value |
+|---|---|
+| `minority_class_f1` (this circuit, the headline), at its own threshold (a positive logit) | 0.859903 |
+| accuracy (companion, not the headline) | 0.94518 |
+| logistic regression minority-class F1, identical split | 0.769231 |
+| logistic regression accuracy, identical split | 0.914934 |
+| classical surrogate minority-class F1 (6,561 products) | 0.914798 |
+| classical surrogate accuracy | 0.964083 |
+| all-positive F1 floor | 0.352025 |
+| majority-class accuracy floor | 0.786389 |
+| test prevalence | 0.213611 |
+| encoding scale c | 0.5 |
+| checkpoint epoch | 110 |
+| n_train / n_val / n_test | 1354 / 240 / 529 |
+
+## Pre-registered figures (test rows, the record `docs/measurements/satellite-qcnn-2026-11-24.json`)
 
 | Model, same split and features | Average precision | Minority F1 at the validation threshold | Balanced accuracy |
 |---|---|---|---|
