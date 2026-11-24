@@ -87,4 +87,4 @@ def test_the_check_refuses_what_the_footer_must_not_carry() -> None:
         seeded = src.replace("· QKD and QSDC are simulated", extra + " · QKD and QSDC are simulated")
         assert f"it carries {what}" in footer_problems(seeded), what
     assert "the review date 1 January 2999 is in the future" in footer_problems(
-        src.replace('PAGES_LAST_REVIEWED = "22 November 2026"', 'PAGES_LAST_REVIEWED = "1 January 2999"'))
+        src.replace('PAGES_LAST_REVIEWED = "25 November 2026"', 'PAGES_LAST_REVIEWED = "1 January 2999"'))
