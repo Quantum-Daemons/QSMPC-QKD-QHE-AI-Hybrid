@@ -98,6 +98,21 @@ def params_of(weights: dict) -> dict:
             "fc_b": np.array(weights["dense"][0]["bias"], dtype=np.float64)}
 
 
+def artifact_metrics(record: dict) -> dict:
+    """The record's figures for the exported seed, kept in weights.json so its card's measured table is checked against
+    its own artifact (tests/test_a_model_card_states_what_its_weights_state.py)."""
+    seed = record["criteria"]["export_seed"]
+    arm = record["arms"]["square"][str(seed)]
+    boot = record["export_bootstrap"]
+    return {"test_auc": boot["auc"], "test_auc_ci95_low": boot["ci95"][0], "test_auc_ci95_high": boot["ci95"][1],
+            "bootstrap_resamples": boot["resamples"], "val_auc": arm["val_auc"],
+            "test_balanced_accuracy": arm["test_balanced_accuracy"],
+            "mean_test_auc_square": record["criteria"]["mean_test_auc"]["square"],
+            "mean_test_auc_control": record["criteria"]["mean_test_auc"]["control"],
+            "majority_class_rate_test": record["majority_class_rate_test"],
+            "test_nodules": record["split"]["counts"]["test"]["nodules"]}
+
+
 def figures(record: dict) -> dict:
     seed = record["criteria"]["export_seed"]
     arm = record["arms"]["square"][str(seed)]
@@ -144,7 +159,8 @@ def write(crops_dir: Path, work: Path) -> int:
     seed = record["criteria"]["export_seed"]
     arm = record["arms"]["square"][str(seed)]
     p = dict(np.load(work / f"square_seed{seed}_folded.npz"))
-    weights_text = json.dumps(s.weights_json(p, offered_sets(record), int(seed), arm["platt"], arm["threshold"])) + "\n"
+    weights_text = json.dumps({**s.weights_json(p, offered_sets(record), int(seed), arm["platt"], arm["threshold"]),
+                               "metrics": artifact_metrics(record)}) + "\n"
     cubes, records = s.load_crops(crops_dir)
     rows = page_rows(cubes, records, s.read_split())
     crops = [crop_entry(cubes[i], records[i], p) for i in rows]
