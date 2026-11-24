@@ -290,3 +290,41 @@ export async function runSquare3d(v: ArrayLike<number>, w: Square3dWeights, set:
     for (const o of live.reverse()) o.delete();
   }
 }
+
+/** The same run off the page's thread. One crop holds about 85 MB of ciphertexts and takes about two seconds under
+ *  either set in node, so on the page's thread it would hold input for seconds; like the 2D student, this runs in a
+ *  dedicated worker in a browser and on the calling thread elsewhere, and a worker that fails is reported as the
+ *  failure it is, never retried on the page's thread. Every ciphertext is freed inside `runSquare3d`, and the worker
+ *  is terminated after the run, which frees its wasm heap. */
+export async function runSquare3dOffThread(v: ArrayLike<number>, w: Square3dWeights, set: string):
+    Promise<{ run: Square3dRun; ranIn: string }> {
+  if (typeof window === "undefined" || typeof Worker === "undefined") {
+    return { run: await runSquare3d(v, w, set), ranIn: "the calling thread" };
+  }
+  // Vite bundles the worker from exactly this form: `new URL(...)` written inside `new Worker(...)`.
+  const worker = new Worker(new URL("./clientFHESquare3d.worker.ts", import.meta.url), { type: "module" });
+  try {
+    return await new Promise((resolve, reject) => {
+      worker.onmessage = (e: MessageEvent<{ id: number; ok: boolean; run?: Square3dRun; error?: string }>) => {
+        const d = e.data;
+        if (d.ok && d.run) resolve({ run: d.run, ranIn: "a Web Worker" });
+        else reject(new Error(`in its worker: ${d.error ?? "no result"}`));
+      };
+      worker.onerror = (e) => reject(new Error(`its worker failed: ${e.message || "the worker could not be loaded"}`));
+      worker.onmessageerror = () => reject(new Error("its worker's result could not be read back"));
+      worker.postMessage({ id: 1, crop: Array.from(v), weights: w, set });
+    });
+  } finally {
+    worker.terminate();
+  }
+}
+
+/** What one run holds at its peak, measured in node (about 0.6 GB resident under either set), against what the
+ *  device reports. `navigator.deviceMemory` is Chromium's, rounded and capped at 8 GB; elsewhere there is no figure,
+ *  and nothing is said. */
+export function memoryNote(): string | null {
+  const gb = typeof navigator === "undefined" ? undefined : (navigator as { deviceMemory?: number }).deviceMemory;
+  if (gb === undefined || gb >= 4) return null;
+  return `This device reports about ${gb} GB of memory, and one run holds about 0.6 GB while it works: it may be slow, ` +
+    "or the tab may be stopped.";
+}
