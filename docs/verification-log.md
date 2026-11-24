@@ -6557,6 +6557,10 @@ floor carried to two labels under it; the records a sweep found stale; #91's and
 - The AI Act gap analysis's open question, when the public URL first answered, has its answer from certificate
   transparency (crt.sh, on the owner's approval): the demo's name had its first certificate on 2026-06-27, before
   2 August 2026, so the transition to 2 December 2026 is the one the document assumes.
+- The daily Polytune watch failed on this pull request's CI: upstream's d0921018 (2026-11-23), a bump of the `wide`
+  crate, rewrote one line of the portable bit-matrix transpose, `*v = *v << 1` as `*v <<= 1`, and wide 1.7.1 defines
+  `<<=` as that same assignment. It was read and is recorded in `docs/threat-model.md`; the pin stays at 47dc378, and
+  the watch passes that file only at the version read.
 
 **Checks.** `tests/test_r86_square_student_sets_plot.py` (the served file equals the script's output and the record,
 the offered sets are the published weights' and the config's, the line is the pre-registered limit, the tab's point is
@@ -6565,4 +6569,5 @@ both run by the suite (each figure against its record or a stated run, a partial
 `tests/test_r86_satellite_student_ckks_in_node.py` (under the real node-seal, every row's largest difference, whose
 maximum is the logged figure, and the changed rows as many as the count); `tests/test_r86_cxr_split.py` (the all-films
 figures on stated films, and one function for one film and for all sixteen); the CBOM, IR 8547 and sbom-tools tests for
-the BFV entry; the node checks for telecom's garbled-circuit argmax.
+the BFV entry; the node checks for telecom's garbled-circuit argmax; `tests/test_r86_polytune_watch.py` (the transpose
+file at the version read passes, any other version of it or any other source file fails).
