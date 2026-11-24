@@ -179,7 +179,10 @@ for the full diagram.
 The trained QCNNs that decide a page's class when Inference is set to QCNN run on few qubits:
 finance at 4 wires, one per feature over the four columns its linear model reads; medical at 8; and
 telecom at 8 and at 7. No 9-wire artefact ships: the 9-wire finance and medical circuits were removed
-because their pad wire changed no class. On the plaintext option nothing on the QCNN path is encrypted; the CKKS option evaluates its readout as a linear form
+because their pad wire changed no class. The satellite page shows two more, 8-wire tree circuits on real telemetry
+(OPS-SAT-AD and ESA-ADB Mission1, pre-registered in
+[`references/satellite-qcnn-tn-preregistration.md`](../references/satellite-qcnn-tn-preregistration.md)), on a card
+of their own rather than through the Inference control. On the plaintext option nothing on the QCNN path is encrypted; the CKKS option evaluates its readout as a linear form
 under CKKS ([the trained QCNN under CKKS](models-and-benchmarks.md#the-trained-qcnn-under-ckks)).
 
 **They are classically simulable.** Bermejo, Braccia, Rudolph, Holmes, Cincio and Cerezo show that
@@ -194,7 +197,11 @@ every neighbouring pair, which is not a tree: its survivors are entangled. It is
 $`2^n`$ amplitudes at 7 or 8 wires, so it is classically simulable at this size, and classical data
 in a product angle encoding is still that section's regime.
 
-**Logistic regression beats or ties every trained QCNN on the same split.** It ties medical at the
+**Logistic regression beats or ties every trained QCNN that decides a page's class, on the same split.** On the
+satellite card the order differs and the conclusion does not: there the circuit is ahead of logistic regression on its
+eight inputs (average precision 0.931 against 0.881 on OPS-SAT-AD, 0.864 against 0.857 on ESA-ADB) and behind the same
+estimator on the circuit's own 6,561 products (0.943 and 0.892), so a classical model with the circuit's hypothesis
+class leads there too. On the class-deciding pages, logistic regression ties medical at the
 shipped seed (accuracy 0.9535 each, the same class on all 86 held-out rows) and leads it by 0.0186
 over five seeds, and both figures are printed side by side on the page. Two circuit widths ship for
 telecom so the effect of the register size can be read rather than assumed: the eighth wire encodes
