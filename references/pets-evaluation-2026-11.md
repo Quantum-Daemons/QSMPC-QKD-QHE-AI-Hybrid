@@ -201,6 +201,14 @@ GPU jobs, on the owner's approval of 2026-11-23:
   shadows gave the same figures bit for bit (cuDNN deterministic). The teacher's figure is the one that matters for a
   deployment: it is the model trained on the patients' images, and a pipeline that publishes it publishes this.
 
+- **Membership inference, the 3D nodule students** (`mia-nodule3d-students-2026-11-25.json`, 64 shadows on the GPU, the
+  owner's choice of 2026-11-25): the LIDC-IDRI training patients' 1,178 labelled crops, members drawn by PATIENT so no
+  patient's nodules sit on both sides of a shadow (956 audited nodules of 414 patients; a population of 222 of 104).
+  With the teacher's out-of-fold labels held fixed, the shipped square student: LiRA AUC 0.544, 0.41 percent of members
+  at a false-positive rate of 0.1 percent, 1.74 at 1 and 13.12 at 10, no nodule exposed in most targets; the ReLU
+  control 0.551, 0.48, 2.37 and 13.85, one nodule. RMIA matches ML Privacy Meter's exactly and is not resolvable at 0.1
+  percent. The whole pipeline, the 3D ResNet-18 retrained out of fold on each shadow's members before both arms are
+  distilled, is a separate record (`mia-nodule3d-pipeline-2026-11-25.json`).
 - **Gradient inversion, the chest X-ray federation** (`gradient-inversion-cxr-2026-11-23.json`): Geiping et al.'s
   attack (NeurIPS 2020; cosine gradient matching, a total-variation prior, signed Adam), reimplemented, on one gradient
   step at the published weights, which first reproduce all 16 sample rows' classes of the published graph (margins

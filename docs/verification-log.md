@@ -6610,3 +6610,38 @@ the owner chose what to add, in panels that day.
 `tests/test_r86_qcnn_tree.py`, `tests/test_r86_satellite_qcnn.py` (the card's data equals the artifacts and the records,
 the ONNX graphs rebuild byte for byte, the encrypted path on 256 shipped rows of each corpus on the real node-seal), and
 the CBOM tests.
+
+### Batch four, the 3D nodule student: LIDC-IDRI fetched and verified, trained as pre-registered, on the medical page (2026-11-25)
+
+On the owner's choices of 2026-11-24 (the full LIDC-IDRI collection from TCIA, streamed through the system disk after
+the data drive failed; canvas 2D for the 3D view; one batch) and 2026-11-25 (the training patients fetched again; the
+membership audit both with the teacher held fixed and through the whole pipeline).
+
+- **The data, complete and genuine.** `docs/measurements/lidc-stream-2026-11-24.json`: 875 patients, 883 series,
+  215,912 files, each file matched to the MD5 TCIA's API lists and each series to its ImageCount. A naming bug
+  (`Path.with_suffix`) let the training patients' 64 mm HU cubes overwrite their 28 mm crops; the 518 training
+  patients' 522 series were fetched and checked again (127,372 files) and their 1,719 crops re-cut, each crop's records
+  equal to the cluster records and each within one uint8 level of its HU cube's centre. The merged crops give the
+  split's counts in every part. The pre-registration's addendum records both fetches, and the rule for the page's twelve
+  crops, before any model was trained.
+- **Teachers, out of fold over the training patients.** 3D ResNet-18 from scratch 0.874 (it taught), TotalSegmentator's
+  nodule volume 0.786, CT-FM's linear probe 0.641, the last reported as measured, not tuned.
+- **The students.** Test AUC over five seeds: square $`0.907 \pm 0.009`$, ReLU control $`0.882 \pm 0.027`$; criteria 1
+  and 2 met. The exported seed is the best on validation and the lowest of the five on test: 0.893, 95 % interval 0.848
+  to 0.933 over test patients.
+- **Under CKKS, every test crop.** The page's module under node-seal on all 347: A2 largest logit error
+  $`3.2 \times 10^{-5}`$, B $`1.6 \times 10^{-5}`$, no decision changed, 1.7 s and 2.2 s a crop; criterion 3 met under
+  both sets, so both are offered.
+- **The card.** `Nodule3dCard.tsx` on the medical page: twelve test crops, three planes and the exact contribution map,
+  a crop under CKKS in a Web Worker. In the preview at 1280 and 375 px: crop 1 under A2 (error 1.26e-5, 1.9 s with keys)
+  and crop 6 under B (4.83e-6, 2.4 s), the decision unchanged on both, redraw median 1.8 ms; fixed there, the select
+  pushed past the card on a phone, a plural, the seed's test rank beside "best on validation", and a double fetch.
+- **Membership inference, the teacher held fixed** (`docs/measurements/mia-nodule3d-students-2026-11-25.json`, 64
+  shadows, members drawn by patient): the shipped student's LiRA TPR is 0.41 % at 0.1 % FPR and 1.74 % at 1 % (AUC
+  0.544); the control's 0.48 % and 2.37 % (0.551). On the privacy card. The whole-pipeline audit, which retrains the
+  teacher for every shadow, follows in its own record.
+
+**Checks.** `tests/test_r86_lidc_stream_parts.py`, `tests/test_r86_nodule3d_card.py` (the exporter's `--check`, the
+twelve crops and no identifier, the offered sets, the credit, and a crop of each label under both sets on the real
+node-seal), `tests/test_r86_nodule3d_square_ckks_in_node.py`, `tests/test_r86_nodule3d_student_rules.py`, the model-card,
+licence-register and math-style tests, and `tests/test_r86_privacy_audits_card.py`.
