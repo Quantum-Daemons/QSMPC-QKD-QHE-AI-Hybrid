@@ -1,0 +1,475 @@
+{
+ "preregistration": {
+  "file": "references/finance-square-student-page-preregistration.md",
+  "sha256": "388a1668b82b8e9011539511efcbc3887b053a2e0e60022040c4054eee60492f"
+ },
+ "follows": {
+  "preregistration": {
+   "file": "references/finance-square-student-preregistration.md",
+   "sha256": "9ac9039309cbf6bfa53b76fcbe749f817a3d25839419670e99413eb14d49759e"
+  },
+  "record": "docs/measurements/finance-square-student-2026-11-25.json"
+ },
+ "data": {
+  "corpus": "IBM AMLworld HI-Small (CDLA-Sharing-1.0, synthetic)",
+  "inputs": 114,
+  "fit": 2843872,
+  "val": 710969,
+  "test": 1523504,
+  "test_positive": 2321,
+  "scaling": "standard, from the fit window",
+  "clip": 10.0
+ },
+ "arms": {
+  "square": {
+   "5": {
+    "val_auprc": 0.430542,
+    "test_auprc": 0.507503,
+    "test_minority_f1": 0.488487,
+    "predicts_both_classes": true,
+    "threshold": 0.9986899495124817,
+    "best_epoch": 19,
+    "seconds": 5.6,
+    "folded_matches_torch_max_abs": 2.317558812592324e-05,
+    "decisions_at_argmax_equal_threshold": true
+   },
+   "6": {
+    "val_auprc": 0.400805,
+    "test_auprc": 0.494534,
+    "test_minority_f1": 0.486307,
+    "predicts_both_classes": true,
+    "threshold": 0.9963958859443665,
+    "best_epoch": 11,
+    "seconds": 3.4,
+    "folded_matches_torch_max_abs": 4.033687533677721e-05,
+    "decisions_at_argmax_equal_threshold": true
+   },
+   "7": {
+    "val_auprc": 0.406768,
+    "test_auprc": 0.475361,
+    "test_minority_f1": 0.473942,
+    "predicts_both_classes": true,
+    "threshold": 0.9973297119140625,
+    "best_epoch": 17,
+    "seconds": 4.5,
+    "folded_matches_torch_max_abs": 3.0447980627457127e-05,
+    "decisions_at_argmax_equal_threshold": true
+   },
+   "8": {
+    "val_auprc": 0.393047,
+    "test_auprc": 0.524711,
+    "test_minority_f1": 0.516236,
+    "predicts_both_classes": true,
+    "threshold": 0.9972442388534546,
+    "best_epoch": 8,
+    "seconds": 3.2,
+    "folded_matches_torch_max_abs": 2.717339351221426e-05,
+    "decisions_at_argmax_equal_threshold": true
+   },
+   "9": {
+    "val_auprc": 0.445194,
+    "test_auprc": 0.496723,
+    "test_minority_f1": 0.472037,
+    "predicts_both_classes": true,
+    "threshold": 0.9988129138946533,
+    "best_epoch": 21,
+    "seconds": 5.1,
+    "folded_matches_torch_max_abs": 2.772039677978455e-05,
+    "decisions_at_argmax_equal_threshold": true
+   }
+  }
+ },
+ "environment": {
+  "python": "3.12.15",
+  "torch": "2.13.0+cu130",
+  "numpy": "2.5.1",
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+  "git": "de94388"
+ },
+ "control": {
+  "model": "finance_aml.student",
+  "test_auprc": 0.184001,
+  "test_minority_f1": 0.308775,
+  "f7_scored_it": 0.184001
+ },
+ "criteria": {
+  "linear_test_auprc": 0.184001,
+  "mean_test_auprc": 0.499766,
+  "sd_test_auprc": 0.018127,
+  "1_accuracy": true,
+  "1_margins": {
+   "mean_at_least": 0.334001,
+   "each_at_least": 0.284001
+  },
+  "2_no_collapse": true,
+  "export_seed": 9,
+  "3_fidelity": {
+   "A2": true,
+   "B": true
+  },
+  "4_page": {
+   "A2": true,
+   "B": false
+  },
+  "sets_offered": [
+   "A2"
+  ],
+  "adopted": true
+ },
+ "export_bootstrap": {
+  "auprc": 0.497034,
+  "ci95": [
+   0.475696,
+   0.519081
+  ],
+  "resamples": 2000
+ },
+ "references": {
+  "f7_square_test_auprc_by_seed": {
+   "0": 0.520548,
+   "1": 0.514421,
+   "2": 0.475019,
+   "3": 0.500537,
+   "4": 0.488156
+  },
+  "f7_control_relu_mean_test_auprc": 0.54913,
+  "published_mlp": {
+   "test_auprc_by_seed": [
+    0.643212,
+    0.647173,
+    0.642649,
+    0.628759,
+    0.649644
+   ],
+   "note": "114 -> 128 -> 64 -> 2 with ReLU; its ReLUs run in garbled circuits on the page"
+  },
+  "published_teacher": {
+   "test_auprc": 0.6428339350667854,
+   "test_minority_f1": 0.6160558464223386
+  }
+ },
+ "wall_clock_s": 558.6,
+ "ckks": {
+  "A2": {
+   "N": 8192,
+   "coeff_mod_bits": [
+    48,
+    34,
+    34,
+    34,
+    52
+   ],
+   "scale_bits": 34,
+   "modulus_bits": 202,
+   "rows": 1523504,
+   "blocks": 372,
+   "max_abs_logit_error": 4.210830290674039e-06,
+   "median_abs_logit_error": 1.2029520046752396e-07,
+   "decisions_differ": 0,
+   "js_plain_matches_numpy_max_abs": 5.684341886080802e-14,
+   "largest_abs_plain_logit": 50.95166591189113,
+   "per_block": {
+    "rows": 4096,
+    "encrypt_ms": 612.0669595000005,
+    "evaluate_ms": 9620.37050058125,
+    "decrypt_ms": 0.7596681562507002,
+    "ciphertexts": {
+     "input": 114,
+     "output": 2
+    },
+    "bytes": {
+     "input": 59781714,
+     "output": 262370
+    }
+   },
+   "shards": 10,
+   "key_ms_median": 321.262268,
+   "per_block_note": "medians over 10 node processes running at once, one a shard of whole blocks, on the 20-thread i5-13600K, so each figure is a block's time under that load",
+   "seconds": 535.9,
+   "load_average_before": [
+    0.64,
+    1.85,
+    1.88
+   ],
+   "load_average_after": [
+    2.5,
+    5.73,
+    4.41
+   ],
+   "criterion_3": true
+  },
+  "B": {
+   "N": 16384,
+   "coeff_mod_bits": [
+    60,
+    40,
+    40,
+    40,
+    60
+   ],
+   "scale_bits": 40,
+   "modulus_bits": 240,
+   "rows": 1523504,
+   "blocks": 186,
+   "max_abs_logit_error": 1.7145980812927064e-07,
+   "median_abs_logit_error": 3.76005959701331e-09,
+   "decisions_differ": 0,
+   "js_plain_matches_numpy_max_abs": 5.684341886080802e-14,
+   "largest_abs_plain_logit": 50.95166591189113,
+   "per_block": {
+    "rows": 8192,
+    "encrypt_ms": 1243.9010419250026,
+    "evaluate_ms": 21466.482204150005,
+    "decrypt_ms": 1.5309057500046037,
+    "ciphertexts": {
+     "input": 114,
+     "output": 2
+    },
+    "bytes": {
+     "input": 119550546,
+     "output": 524514
+    }
+   },
+   "shards": 10,
+   "key_ms_median": 633.4898285,
+   "per_block_note": "medians over 10 node processes running at once, one a shard of whole blocks, on the 20-thread i5-13600K, so each figure is a block's time under that load",
+   "seconds": 595.2,
+   "load_average_before": [
+    2.5,
+    5.73,
+    4.41
+   ],
+   "load_average_after": [
+    2.31,
+    6.12,
+    5.82
+   ],
+   "criterion_3": true
+  }
+ },
+ "browser": {
+  "browser": "Chrome/157.0.8103.78",
+  "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+  "runs_per_set": 3,
+  "budget": {
+   "total_ms": 30000,
+   "wasm_memory_bytes": 1500000000.0
+  },
+  "rows_from": "web/public/data/finance/student_heldout.json",
+  "sets": {
+   "A2": {
+    "rows": 4096,
+    "blocks": 1,
+    "runs": [
+     {
+      "set": "A2",
+      "rows": 4096,
+      "blocks": 1,
+      "total_ms": 17368.609999999404,
+      "scale_ms": 7.450000002980232,
+      "key_ms": 275.3800000101328,
+      "key_bytes": 3277429,
+      "per_block": {
+       "rows": 4096,
+       "encrypt_ms": 559.0649999976158,
+       "evaluate_ms": 16465.079999998212,
+       "decrypt_ms": 1.5850000083446503,
+       "ciphertexts": {
+        "input": 114,
+        "output": 2
+       },
+       "bytes": {
+        "input": 59781714,
+        "output": 262370
+       }
+      },
+      "max_abs_error": 2.28915853561773e-06,
+      "decisions_differ": 0,
+      "flagged_decrypted": 47,
+      "wasm_memory_bytes": 87097344,
+      "load_average_before": [
+       0.17,
+       0.24,
+       0.34
+      ]
+     },
+     {
+      "set": "A2",
+      "rows": 4096,
+      "blocks": 1,
+      "total_ms": 17210.875,
+      "scale_ms": 9.45499999821186,
+      "key_ms": 277.0049999952316,
+      "key_bytes": 3277429,
+      "per_block": {
+       "rows": 4096,
+       "encrypt_ms": 558.625,
+       "evaluate_ms": 16306.464999988675,
+       "decrypt_ms": 1.4949999898672104,
+       "ciphertexts": {
+        "input": 114,
+        "output": 2
+       },
+       "bytes": {
+        "input": 59781714,
+        "output": 262370
+       }
+      },
+      "max_abs_error": 1.8744571423923162e-06,
+      "decisions_differ": 0,
+      "flagged_decrypted": 47,
+      "wasm_memory_bytes": 87097344,
+      "load_average_before": [
+       0.43,
+       0.29,
+       0.36
+      ]
+     },
+     {
+      "set": "A2",
+      "rows": 4096,
+      "blocks": 1,
+      "total_ms": 17040.02499999106,
+      "scale_ms": 6.329999998211861,
+      "key_ms": 275.2849999964237,
+      "key_bytes": 3277429,
+      "per_block": {
+       "rows": 4096,
+       "encrypt_ms": 558.4100000113249,
+       "evaluate_ms": 16137.079999998212,
+       "decrypt_ms": 1.4950000047683716,
+       "ciphertexts": {
+        "input": 114,
+        "output": 2
+       },
+       "bytes": {
+        "input": 59781714,
+        "output": 262370
+       }
+      },
+      "max_abs_error": 1.838942727871995e-06,
+      "decisions_differ": 0,
+      "flagged_decrypted": 47,
+      "wasm_memory_bytes": 87097344,
+      "load_average_before": [
+       0.59,
+       0.34,
+       0.37
+      ]
+     }
+    ],
+    "js_plain_matches_numpy_max_abs": 2.1316282072803006e-14,
+    "slowest_total_ms": 17368.609999999404,
+    "largest_wasm_memory_bytes": 87097344,
+    "criterion_4": true
+   },
+   "B": {
+    "rows": 8192,
+    "blocks": 1,
+    "runs": [
+     {
+      "set": "B",
+      "rows": 8192,
+      "blocks": 1,
+      "total_ms": 35606.27500000596,
+      "scale_ms": 12.149999991059303,
+      "key_ms": 536.5499999970198,
+      "key_bytes": 6554229,
+      "per_block": {
+       "rows": 8192,
+       "encrypt_ms": 1156.5,
+       "evaluate_ms": 33785.47499999404,
+       "decrypt_ms": 2.5750000029802322,
+       "ciphertexts": {
+        "input": 114,
+        "output": 2
+       },
+       "bytes": {
+        "input": 119550546,
+        "output": 524514
+       }
+      },
+      "max_abs_error": 6.038439437361376e-08,
+      "decisions_differ": 0,
+      "flagged_decrypted": 106,
+      "wasm_memory_bytes": 180682752,
+      "load_average_before": [
+       0.69,
+       0.37,
+       0.38
+      ]
+     },
+     {
+      "set": "B",
+      "rows": 8192,
+      "blocks": 1,
+      "total_ms": 35629.65500000119,
+      "scale_ms": 11.760000005364418,
+      "key_ms": 535.2549999952316,
+      "key_bytes": 6554229,
+      "per_block": {
+       "rows": 8192,
+       "encrypt_ms": 1166.1749999970198,
+       "evaluate_ms": 33800.42499999702,
+       "decrypt_ms": 2.435000002384186,
+       "ciphertexts": {
+        "input": 114,
+        "output": 2
+       },
+       "bytes": {
+        "input": 119550546,
+        "output": 524514
+       }
+      },
+      "max_abs_error": 8.241985194334944e-08,
+      "decisions_differ": 0,
+      "flagged_decrypted": 106,
+      "wasm_memory_bytes": 180682752,
+      "load_average_before": [
+       0.95,
+       0.48,
+       0.42
+      ]
+     },
+     {
+      "set": "B",
+      "rows": 8192,
+      "blocks": 1,
+      "total_ms": 35544.375,
+      "scale_ms": 14.215000003576279,
+      "key_ms": 537.4250000119209,
+      "key_bytes": 6554229,
+      "per_block": {
+       "rows": 8192,
+       "encrypt_ms": 1158.4500000029802,
+       "evaluate_ms": 33720.52000001073,
+       "decrypt_ms": 2.5249999910593033,
+       "ciphertexts": {
+        "input": 114,
+        "output": 2
+       },
+       "bytes": {
+        "input": 119550546,
+        "output": 524514
+       }
+      },
+      "max_abs_error": 6.527395288863369e-08,
+      "decisions_differ": 0,
+      "flagged_decrypted": 106,
+      "wasm_memory_bytes": 180682752,
+      "load_average_before": [
+       1.66,
+       0.7,
+       0.5
+      ]
+     }
+    ],
+    "js_plain_matches_numpy_max_abs": 2.1316282072803006e-14,
+    "slowest_total_ms": 35629.65500000119,
+    "largest_wasm_memory_bytes": 180682752,
+    "criterion_4": false
+   }
+  },
+  "machine": "the machine F7's record names (i5-13600K, 20 threads), headless, no other job"
+ }
+}

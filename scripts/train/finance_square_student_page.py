@@ -214,6 +214,8 @@ def main() -> int:
     ap.add_argument("stage", choices=("train", "ckks", "browser"))
     ap.add_argument("--work", type=Path, required=True)
     args = ap.parse_args()
+    # Absolute: the node harnesses run from web/, and a relative work path would resolve there.
+    args.work = args.work.resolve()
     check_preregistration()
     if args.stage == "train":
         return stage_train(args.work)
