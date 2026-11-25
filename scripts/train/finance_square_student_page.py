@@ -13,6 +13,14 @@ Three stages, in order, into one record:
     python scripts/train/finance_square_student_page.py train   --work W   # seeds 5 to 9 on the GPU; criteria 1, 2
     python scripts/train/finance_square_student_page.py ckks    --work W   # every test row in node, A2 and B; criterion 3
     python scripts/train/finance_square_student_page.py browser --work W   # headless Chrome, three runs a set; criterion 4
+    python scripts/train/finance_square_student_page.py export  --work W   # the page's file, after the run (below)
+
+`export` follows the owner's choice of 2026-11-25, after the result: the square network replaces the linear student on
+the finance page. It is not part of the pre-registration. It writes `web/public/data/finance/square_student_weights.json`
+(the exported seed's folded weights, the scaling and clip, the parameter sets the criteria offered, the record's figures)
+with a Platt map fitted on the validation window by `finance_aml.network_calibration`, the finance records' method, so
+the page's decision curve and probability can read this network as they read the linear student; the map is written to
+the record too, under `after_the_run`, so that it is never read as pre-registered.
 
 The network, its recipe, windows, inputs and parameter sets are F7's, imported from F7's trainer, so the two runs differ
 by their seeds alone. The control is the published linear student, unchanged, scored on the same test window as F7 scored
@@ -46,6 +54,7 @@ SEEDS = (5, 6, 7, 8, 9)
 MEAN_MARGIN, EACH_MARGIN = 0.15, 0.10            # criterion 1, over the linear student's test AUPRC
 BROWSER_MS, BROWSER_BYTES = 30_000, 1.5e9        # criterion 4: 30 s keys to last decryption; 1.5 GB (10^9 bytes)
 RUNS = 3
+PAGE_FILE = REPO / "web" / "public" / "data" / "finance" / "square_student_weights.json"
 
 
 def check_preregistration() -> None:
@@ -209,9 +218,91 @@ def stage_browser(work: Path) -> int:
     return 0
 
 
+def page_file(w: dict, record: dict, calibration: dict) -> dict:
+    """The finance page's copy of the exported seed: what `clientFHESquareTabular.ts` reads, the sets the criteria
+    offered, the calibration fitted after the run, and the record's figures the page quotes."""
+    c, b = record["criteria"], record["browser"]["sets"]
+    seed = str(c["export_seed"])
+    arm = record["arms"]["square"][seed]
+    keep = ("kind", "n_in", "width", "centre", "scale", "clip", "w1", "b1", "w2", "b2", "classes", "decision")
+    return {
+        "_generated_by": "scripts/train/finance_square_student_page.py export; do not edit by hand",
+        **{k: w[k] for k in keep},
+        "ckks": {k: w["ckks"][k] for k in c["sets_offered"]},
+        "export_seed": int(seed),
+        "calibration": calibration,
+        "record": str(RECORD.relative_to(REPO)),
+        "preregistration": record["preregistration"],
+        "figures": {
+            "test_auprc": arm["test_auprc"], "test_minority_f1": arm["test_minority_f1"],
+            "test_auprc_ci95": record["export_bootstrap"]["ci95"],
+            "mean_test_auprc": c["mean_test_auprc"], "sd_test_auprc": c["sd_test_auprc"],
+            "linear_test_auprc": c["linear_test_auprc"], "linear_test_minority_f1": record["control"]["test_minority_f1"],
+            "test_rows": record["data"]["test"], "test_positive": record["data"]["test_positive"],
+            "ckks": {k: {kk: record["ckks"][k][kk] for kk in ("max_abs_logit_error", "decisions_differ", "rows")}
+                     for k in c["sets_offered"]},
+            "browser": {k: {"rows": b[k]["rows"], "slowest_total_ms": b[k]["slowest_total_ms"],
+                            "largest_wasm_memory_bytes": b[k]["largest_wasm_memory_bytes"]} for k in c["sets_offered"]},
+            "browser_name": record["browser"]["browser"],
+            "sets_not_offered": {k: "slowest run {:.1f} s, over the 30 s budget".format(b[k]["slowest_total_ms"] / 1000)
+                                 for k in b if k not in c["sets_offered"]},
+        },
+        "note": ("F7b's exported seed (references/finance-square-student-page-preregistration.md): dense 114 -> 128 with "
+                 "batch norm folded, the square, dense 128 -> 2, the validation threshold folded into the last bias, "
+                 "so the decision is the argmax of the two logits. CKKS evaluates it end to end, one row a slot. The "
+                 "Platt map was fitted on the validation window after the pre-registered run, on the owner's choice to "
+                 "replace the linear student on the page, and is not part of the pre-registration."),
+    }
+
+
+def stage_export(work: Path) -> int:
+    from finance_aml import (
+        causal_account_features,
+        load_sorted,
+        model_inputs,
+        network_calibration,
+        temporal_windows,
+    )
+    from finance_aml_mlp import _scaled, scaling_of
+
+    record = json.loads(RECORD.read_text())
+    if not record.get("criteria", {}).get("adopted"):
+        raise SystemExit("F7b was not adopted, so the page does not change")
+    seed = record["criteria"]["export_seed"]
+    df = load_sorted()
+    fit_w, val_w, te_w, tr_w = temporal_windows(df)
+    y_val, y_te = (d["label"].to_numpy(dtype=np.int8) for d in (val_w, te_w))
+    (x_fit, x_val, _x_te), features, _ = model_inputs(df, fit_w, val_w, te_w, tr_w, causal_account_features(df))
+    centre, scale = scaling_of("standard", x_fit)
+    sc = dict(np.load(work / "scaling.npz"))
+    if not (np.array_equal(centre, sc["centre"]) and np.array_equal(scale, sc["scale"])
+            and features == json.loads((work / "features.json").read_text())):
+        raise SystemExit("the windows rebuilt here are not the ones the run scaled")
+    p = dict(np.load(work / f"square_seed{seed}_folded.npz"))
+    lv = f7.plain_logits(_scaled(x_val, centre, scale).cpu().numpy(), p)
+    lt = f7.plain_logits(np.load(work / "z_test.npy").astype(np.float64), p)
+    calibration = network_calibration(lv, y_val, lt, y_te, model="square network",
+                                      fitted_by="scripts/train/finance_square_student_page.py export, after the run")
+    calibration["fitted_after_the_preregistered_run"] = True
+    # network_calibration writes False for the MLP and the compact GNN, whose pages show logits; this network replaces
+    # the linear student, whose decision curve and probability the finance page reads through its map.
+    calibration["page_reads_this_map"] = True
+    record["after_the_run"] = {
+        "why": ("the owner's choice of 2026-11-25, after the result: the square network replaces the linear student on "
+                "the finance page, whose decision curve and probability read a Platt map"),
+        "calibration": calibration}
+    RECORD.write_text(json.dumps(record, indent=1) + "\n")
+    w = json.loads((work / "page_weights.json").read_text())
+    PAGE_FILE.write_text(json.dumps(page_file(w, record, calibration), separators=(",", ":")) + "\n")
+    print(f"wrote {PAGE_FILE.relative_to(REPO)} ({PAGE_FILE.stat().st_size / 1e3:.0f} kB); Brier "
+          f"{calibration['brier_raw']:.8f} -> {calibration['brier_calibrated']:.8f}, MCB "
+          f"{calibration['corp_raw']['mcb']:.3e} -> {calibration['corp_calibrated']['mcb']:.3e}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    ap.add_argument("stage", choices=("train", "ckks", "browser"))
+    ap.add_argument("stage", choices=("train", "ckks", "browser", "export"))
     ap.add_argument("--work", type=Path, required=True)
     args = ap.parse_args()
     # Absolute: the node harnesses run from web/, and a relative work path would resolve there.
@@ -221,6 +312,8 @@ def main() -> int:
         return stage_train(args.work)
     if args.stage == "browser":
         return stage_browser(args.work)
+    if args.stage == "export":
+        return stage_export(args.work)
     z = np.load(args.work / "z_test.npy", mmap_mode="r")
     raw = args.work / "z_test.npy.f32"
     if not raw.exists() or raw.stat().st_size != z.size * 4:

@@ -471,5 +471,63 @@
    }
   },
   "machine": "the machine F7's record names (i5-13600K, 20 threads), headless, no other job"
+ },
+ "after_the_run": {
+  "why": "the owner's choice of 2026-11-25, after the result: the square network replaces the linear student on the finance page, whose decision curve and probability read a Platt map",
+  "calibration": {
+   "page_reads_this_map": true,
+   "method": "platt",
+   "a": -0.7728790228952094,
+   "b": 1.4128267909117365,
+   "on_logit": true,
+   "logit_clip_eps": 1e-12,
+   "formula": "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), logit(q) = log(q / (1 - q))",
+   "n_calibration": 710969,
+   "positives_calibration": 801,
+   "argument": "the square network's P(laundering), $q = \\sigma(z_1 - z_0)$, the softmax of its two logits $z_0, z_1$. The tuned threshold is folded into the last layer's bias, so the operating point is $q = 0.5$",
+   "test_rows_clipped_by_logit": 5862,
+   "fitted_on": "validation split; scored on the held-out test split",
+   "fitted_by": "scripts/train/finance_square_student_page.py export, after the run",
+   "raw_is": "the square network's own softmax probability. The folded threshold puts 0.5 at the operating point and the class weights of its training raise it, so it is not a risk.",
+   "brier_raw": 0.00165764,
+   "brier_calibrated": 0.00109185,
+   "log_loss_raw": 0.00706842,
+   "log_loss_calibrated": 0.00496463,
+   "corp_raw": {
+    "brier": 0.00165764,
+    "mcb": 0.0006525,
+    "dsc": 0.00051601,
+    "unc": 0.00152114,
+    "brier_recalibrated": 0.00100513,
+    "base_rate": 0.00152346,
+    "n": 1523504,
+    "positives": 2321,
+    "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+    "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118"
+   },
+   "corp_calibrated": {
+    "brier": 0.00109185,
+    "mcb": 8.672e-05,
+    "dsc": 0.00051601,
+    "unc": 0.00152114,
+    "brier_recalibrated": 0.00100513,
+    "base_rate": 0.00152346,
+    "n": 1523504,
+    "positives": 2321,
+    "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+    "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118"
+   },
+   "auprc_raw": 0.49703406,
+   "auprc_calibrated": 0.49703406,
+   "isotonic_measured": {
+    "brier": 0.00113449,
+    "log_loss": 0.00561335,
+    "auprc": 0.47097995,
+    "distinct_outputs": 218,
+    "rows_at_zero": 739836
+   },
+   "why_not_isotonic": "Measured on this square network's windows, not carried from the gradient-boosting teacher's record. Isotonic's Brier 0.00113449 is above Platt's 0.00109185 and its log-loss 0.00561335 is above 0.00496463; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly monotone, so the curve ranks rows as the square network does (AUPRC 0.49703406 against the raw 0.49703406, with 5,862 test rows tied at the logit clip; isotonic's 0.47097995 comes from the test window's scores tied at 218 values, 739,836 of them exactly zero), and it is the method of the teacher's and the student's records, so the four finance records differ by the model and not by the map.",
+   "fitted_after_the_preregistered_run": true
+  }
  }
 }
