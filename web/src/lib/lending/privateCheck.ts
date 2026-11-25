@@ -255,7 +255,12 @@ export function maskedPartials(x: number[], w: number[]): number[] {
 
 export type Mpc = typeof import("../clientMPC");
 
-/** The two parties' shares of M into the existing argmax: index 1 wins only when offset > M + offset, that is when M < 0. `held` is the key holder's value, M + r. */
+/** The two parties' shares of M into the existing argmax: index 1 wins only when offset > M + offset, that is when M < 0. `held` is the key holder's value, M + r.
+ *
+ *  THE RANGE. The shares add modulo 2^32 with `margin_scale_bits` fractional bits, M in thousands of stable units, so the sign is exact only while
+ *  |M| < 2^(31 - margin_scale_bits): 32,768 thousand units, about 32.8 million, at 16 bits. Neither party can check that in the clear (each holds a masked
+ *  value), so it is a bound on the positions the check is used for: `web/scripts/check_lending.mjs` holds every simulated checkpoint inside it, and a check
+ *  on larger positions needs fewer fractional bits or a wider ring. */
 async function signOfMargin(mpc: Mpc, held: number, r: number, cfg: CheckSessionOptions["cfg"]) {
   const scale = 2 ** cfg.margin_scale_bits, ring = 2 ** 32;
   const offset = 2 ** (31 - cfg.margin_scale_bits);       // in margin units: centres the margin in the unsigned 32-bit ring

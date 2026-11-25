@@ -961,7 +961,9 @@ class DecisionCurveConfig:
 class LendingConfig:
     """The lending simulator's parameters (Round 86): an illustrative pool, not any live market's settings.
 
-    The mechanics follow Aave V3's public contracts, re-derived: a two-slope rate, a health factor, 50% close factor (100% at or below HF 0.95), a liquidation bonus.
+    The mechanics follow Aave V3's public contracts, re-derived and simplified: a two-slope rate, a health factor, a 50% close factor (100% at or below HF 0.95,
+    V3's rule for positions of at least USD 2,000 on both sides; V3's whole liquidation of smaller positions and its USD 1,000 leftover rule are not
+    modelled), a liquidation bonus.
     `web/src/lib/lending/model.ts` is the simulation and `web/scripts/check_lending.mjs` holds it to closed forms and its own books.
     """
 
