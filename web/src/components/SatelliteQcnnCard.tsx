@@ -4,6 +4,8 @@
 // and the CKKS run are computed in this tab.
 import { useEffect, useMemo, useState } from "react";
 import StageBadge from "./StageBadge";
+import { BlockDiagram } from "./QcnnCircuitCard";
+import { recordQcnn } from "../lib/circuitDiagram";
 import { clearReadout, treeReadoutCkksOffThread, type TreeCkksRun, type TreeNetwork } from "../lib/clientQcnnTreeCkks";
 import { qcnnInferCkks, type QcnnCkksResult } from "../lib/clientQcnnCkks";
 import { qcnnInferTrained, type QcnnWeights } from "../lib/quantumSim";
@@ -50,6 +52,9 @@ export default function SatelliteQcnnCard() {
     encoding_scale: file.weights.encoding_scale ?? 1, n_qubits: file.weights.n_qubits,
   } : null), [file]);
   const clear = useMemo(() => (file && net ? clearReadout(net, file.rows) : null), [file, net]);
+  // The circuit as trained, recorded from the simulator's own circuit function on the shipped weights: a retrain
+  // that ships new weights redraws it, with nothing typed in.
+  const recorded = useMemo(() => { try { return file ? recordQcnn(file.weights) : null; } catch { return null; } }, [file]);
   const counts = useMemo(() => {
     if (!file || !net || !clear) return null;
     let tp = 0, fp = 0, fn = 0, tn = 0;
@@ -99,6 +104,16 @@ export default function SatelliteQcnnCard() {
           <option value="esa">ESA-ADB Mission1 (32-minute windows)</option>
         </select>
       </label>
+      {recorded ? (
+        <figure style={{ margin: "8px 0 0" }}>
+          <BlockDiagram r={recorded} weights={file.weights} />
+          <figcaption className="muted small">
+            The trained {file.title} circuit, {recorded.nQubits} wires and {file.weights.theta.length} trained angles, drawn from
+            the weights this card ships by the simulator&apos;s own circuit function: each conv block is one shared two-qubit
+            filter, each pooling step a controlled rotation, the readout &lang;Z&#8320;&rang; through a scale and bias.
+          </figcaption>
+        </figure>
+      ) : null}
       <div style={{ overflowX: "auto" }}>
         <table className="table small" style={{ marginTop: 8 }}>
           <thead><tr><th>{file.title}: {fig.test_rows.toLocaleString("en-US")} test rows, {fig.test_positive.toLocaleString("en-US")} anomalous</th>

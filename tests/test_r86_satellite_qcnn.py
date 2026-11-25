@@ -112,3 +112,14 @@ def test_the_tree_network_under_ckks_on_shipped_rows_in_node() -> None:
     for case in out["cases"]:
         assert case["tree"]["max_abs_readout_error"] < 1e-3 and case["tree"]["decisions_differing"] == 0, case
         assert case["clear_twin_max_difference"] < 1e-12, case
+
+
+def test_the_satellite_card_draws_its_circuit_from_the_shipped_weights() -> None:
+    """The owner's choice of 2026-11-25: the satellite QCNNs' circuit drawn as the other pages draw theirs, by
+    `recordQcnn` on the weights the card ships, so a retrain that ships new weights redraws it and nothing is typed in."""
+    card = (REPO / "web" / "src" / "components" / "SatelliteQcnnCard.tsx").read_text()
+    shared = (REPO / "web" / "src" / "components" / "QcnnCircuitCard.tsx").read_text()
+    assert 'import { BlockDiagram } from "./QcnnCircuitCard";' in card
+    assert "recordQcnn(file.weights)" in card and "<BlockDiagram r={recorded} weights={file.weights} />" in card
+    assert "export function BlockDiagram(" in shared
+    assert not list((REPO / "web" / "public").rglob("*circuit*.svg")), "a circuit drawn as a fixed SVG file"
