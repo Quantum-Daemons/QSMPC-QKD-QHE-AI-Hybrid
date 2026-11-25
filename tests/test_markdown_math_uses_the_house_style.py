@@ -167,6 +167,9 @@ FROZEN = {
     "references/finance-square-student-page-preregistration.md":
         "388a1668b82b8e9011539511efcbc3887b053a2e0e60022040c4054eee60492f",
     # The finance QCNN on AMLworld: committed 2026-11-25 before any input was scored for selection or any circuit trained.
+    # The satellite threshold comparison: committed 2026-11-25 before any threshold was fitted or any test window scored.
+    "references/satellite-threshold-calibration-preregistration.md":
+        "a2436cde71d939c32b7d67f895f892fd0012262f1c7a1fb3a39505d85a153d65",
     "references/finance-qcnn-amlworld-preregistration.md":
         "5a411b05d7e1984306d08397d95b147ab2a09796a4bfa4a6b624cf515253edd0",
 }
