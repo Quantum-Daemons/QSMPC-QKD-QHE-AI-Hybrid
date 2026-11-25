@@ -34,6 +34,30 @@ def test_the_card_files_are_what_the_exporter_writes() -> None:
     assert r.returncode == 0, r.stderr
 
 
+def test_without_the_corpora_the_check_still_checks_everything_but_the_rows(tmp_path: Path, monkeypatch) -> None:
+    """CI has no corpus, so there the check takes the rows, labels and feature names from the shipped files; it must
+    still fail when any other field differs from what the artifacts and the records give."""
+    sys.path.insert(0, str(REPO / "scripts"))
+    import export_satellite_qcnn as ex
+
+    monkeypatch.setenv("QSH_DATA_ROOT", str(tmp_path / "no-corpus"))
+    out = tmp_path / "out"
+    out.mkdir()
+    for short in CORPORA:
+        (out / f"satellite_qcnn_{short}.json").write_bytes((WEB / f"satellite_qcnn_{short}.json").read_bytes())
+    monkeypatch.setattr(ex, "OUT", out)
+    monkeypatch.setattr(sys, "argv", ["export_satellite_qcnn.py", "--check"])
+    assert ex.main() == 0
+    for short, field in (("opssat", "test_rows"), ("esa", "test_positive")):
+        f = out / f"satellite_qcnn_{short}.json"
+        kept = f.read_bytes()
+        d = json.loads(kept)
+        d["figures"][field] += 1
+        f.write_text(json.dumps(d, separators=(",", ":")) + "\n", encoding="utf-8")
+        assert ex.main() == 1, f"{short}: a changed {field} passed the check without the corpus"
+        f.write_bytes(kept)
+
+
 @pytest.mark.parametrize("short", CORPORA)
 def test_the_page_runs_the_shipped_weights_and_their_tree(short: str) -> None:
     from qsh.qhe import qcnn_tree

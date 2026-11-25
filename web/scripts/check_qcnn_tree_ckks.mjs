@@ -33,6 +33,12 @@ export { qcnnInferCkks } from ${JSON.stringify(join(WEB, "src/lib/clientQcnnCkks
     plugins: [{ name: "wasm-url", setup(b) {
       b.onResolve({ filter: /seal_throws\.wasm\?url$/ }, () => ({ path: "sealwasm", namespace: "wasmurl" }));
       b.onLoad({ filter: /.*/, namespace: "wasmurl" }, () => ({ contents: `export default ${JSON.stringify(sealWasm)};`, loader: "js" }));
+    } }, { name: "stub-mpc", setup(b) {
+      // The MPC wasm module (gitignored, built by the web job only) is reached through clientMPC's dynamic import;
+      // neither path here calls it, so it is stubbed, and a call would throw rather than pass.
+      b.onResolve({ filter: /qsh_mpc\.js$/ }, (a) => ({ path: a.path, namespace: "mpcstub" }));
+      b.onLoad({ filter: /.*/, namespace: "mpcstub" }, () => ({ loader: "js",
+        contents: 'export default async function init() { throw new Error("the MPC module is stubbed in this check"); }' }));
     } }],
   });
   const m = await import(pathToFileURL(join(tmp, "b.mjs")).href);
