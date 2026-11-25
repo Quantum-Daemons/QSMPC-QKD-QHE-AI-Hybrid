@@ -1064,6 +1064,21 @@ M_NIDD = MetricSpec(
     companion="aggregate_accuracy",
 )
 
+#: The 5G-NIDD federation's metric (Round 86, batch 6). Its comparison is this project's own pre-registered one, not a
+#: published figure, so `baseline` is None as for M_NIDD and the numbers are in `baseline_source`.
+M_NIDD_FED = MetricSpec(
+    name="flamby_macro_f1",
+    display="macro F1 across 9 network-attack classes, the mean of the two base stations' test flows (FLamby's metric)",
+    baseline=None,
+    baseline_source=(
+        "No published figure on this split: no peer-reviewed federation of 5G-NIDD by base station was found "
+        "(2026-11-26). The comparison is the pre-registered one in references/telecom-nidd-federated-preregistration.md, "
+        "on the same rows and by the same metric: station 1's own model 0.985, pooling every flow in one place (the "
+        "page's CKKS student) 0.974, station 2's own model 0.959 (docs/measurements/telecom-nidd-federated-2026-11-26.json)."),
+    companion="pooled_flamby_macro_f1",
+    companion_note="the same procedure on every flow in one place, the page's CKKS student, scored by the same metric",
+)
+
 
 # --------------------------------------------------------------------------- #
 #  The registry
@@ -1837,6 +1852,44 @@ _SPECS: tuple[ModelSpec, ...] = (
             "graph is built from weights.json (qsh.models.linear_onnx), not refitted, so the page's plaintext "
             "re-score and its encrypted tier evaluate the same model."),
     ),
+    #: 5G-NIDD's two base stations, federated (Round 86, batch 6; the owner's choices of 2026-11-26: the federation, then
+    #: the page and the Hub). Pre-registered in `references/telecom-nidd-federated-preregistration.md`, trained by
+    #: `scripts/train/telecom_nidd_federated.py`, exported by `scripts/export_nidd_federated.py`: its weights.json and a
+    #: graph built from it (`qsh.models.linear_onnx`, with the clip the inputs carry). After the telecom student, so the
+    #: page's default model does not move.
+    ModelSpec(
+        usecase="telecom_ids",
+        tier="t1_crypto",
+        key="telecom_ids.nidd_federated",
+        label="CKKS-linear 5G-NIDD detector, federated across two base stations",
+        architecture=("multinomial logistic regression, 9x36 + 9, on 36 standardised and clipped flow features, trained "
+                      "by FedAvg across the corpus's two base stations under pairwise masks"),
+        params=333,
+        dataset=DS_5G_NIDD,
+        metric=M_NIDD_FED,
+        runs_encrypted=True,
+        artifacts=_STUDENT_ARTIFACTS,
+        hf_repo="qsh-telecom-5g-nidd-federated-ckks",
+        eval_split=("the CKKS student's 2,048 held-out flows, a class-stratified draw from the seed-42 test split, each "
+                    "named by its base station"),
+        notes=(
+            "FEDERATED, NOT DISTILLED. The corpus's two base-station files are two clients: each round, each runs 20 "
+            "L-BFGS-B iterations on its own training flows from the global model, and the aggregator sums their "
+            "parameters, weighted by their shares of the training flows and masked with pairwise masks whose seeds each "
+            "pair agrees by X25519 (the page's secure aggregation), for 40 rounds; the penalty and the temperature were "
+            "chosen from masked sums of the stations' validation losses. The stations exchanged their row counts and each "
+            "feature's mean and deviation in the clear, to standardise alike. "
+            "THE PRE-REGISTERED COMPARISON IT DOES NOT WIN. By the mean of the two stations' test macro F1, station 1's own "
+            "model scores 0.985, pooling 0.974, this model 0.971 and station 2's own 0.959: station 1's model carries to "
+            "station 2's flows while station 2's does not carry back (SYNFlood 0.83 on station 1's flows), and one linear "
+            "model trained on both sits between them. It is 0.003 below pooling. "
+            "Under CKKS in the browser, on the 2,048 held-out flows, the largest logit error is about 2e-7 and no decision "
+            "changes; all 9 scores are decrypted and the argmax is taken in the clear, as for the other linear students. "
+            "LIMITS: with two stations each can compute the other's update from the global model and its own, so the masks "
+            "hide the updates from the aggregator only; X25519 is not post-quantum; one process played both stations and "
+            "the aggregator, offline and once; no differential privacy is applied; the split is random, so a station's "
+            "test flows share attack sessions with its training flows."),
+    ),
 )
 
 
@@ -1912,6 +1965,7 @@ ARTIFACT_DIRS: dict[str, str] = {
     "medical_fl.nodule3d_square_student": "models/medical_lidc_nodule3d_square_student",
     "medical_fl.cxr_fedavg": "models/medical_cxr14_fedavg_resnet18",
     "satellite_comms.student": "models/satellite_telemanom_student",
+    "telecom_ids.nidd_federated": "models/telecom_nidd_federated",
 }
 
 #: Repo root, so ARTIFACT_DIRS resolves regardless of the caller's working directory.

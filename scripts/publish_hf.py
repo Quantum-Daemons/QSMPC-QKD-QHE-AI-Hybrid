@@ -67,6 +67,9 @@ SPLIT_MODELS = {"medical_fl.cxr_fedavg": "its 512 pooled features"}
 #: The 3D nodule student (Round 86, batch 4): its teacher is not published and no agreement with it is recorded, so the
 #: encrypted tier's generic paragraph, which says one was measured, is not this model's.
 NODULE3D_MODELS = {"medical_fl.nodule3d_square_student"}
+#: Trained by federation on labels, not distilled from a teacher (Round 86, batch 6): the encrypted tier's generic
+#: paragraph, which reads it against a teacher, would be false of it.
+FEDERATED_MODELS = {"telecom_ids.nidd_federated"}
 
 
 def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool = False) -> str:
@@ -140,6 +143,13 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool
                  "site's own copy of these weights, and draws each crop as three orthogonal planes; its fidelity under CKKS on",
                  "all 347 test crops was measured offline, by the page's own module under node-seal. The notes below give the",
                  "pre-registered comparison and the parameter sets."]
+    elif spec.key in FEDERATED_MODELS:
+        body += [f"This is the **federated** model for the `{spec.usecase}` use case: a linear model the corpus's two base",
+                 "stations trained together without pooling their flows, by FedAvg under pairwise masks agreed by X25519, the",
+                 "page's secure aggregation. It is trained on the labels and distilled from no teacher. The telecom page scores",
+                 "it under CKKS on 2,048 held-out flows that ship with the site, from the site's own copy of these weights,",
+                 "and replays the last round's masked sum in the tab. The pre-registered comparison with each station alone",
+                 "and with pooling, which it does not win, is in the notes below."]
     elif spec.runs_encrypted:
         # "and the demo runs it that way" was true of some students only. The public page encrypts the medical CNN
         # student and, on held-out rows, the finance, telecom and OPS-SAT students (finance since Round 84, when it

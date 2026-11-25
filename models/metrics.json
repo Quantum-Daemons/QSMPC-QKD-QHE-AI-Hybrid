@@ -3422,6 +3422,51 @@
       ]
     }
   },
+  "telecom_ids.nidd_federated": {
+    "ckks": {
+      "ciphertexts": 32,
+      "decisions_differ": 0,
+      "encrypted_accuracy": 0.98583984375,
+      "flips_beyond_twice_the_error": 0,
+      "max_abs_logit_error": 1.738424497688129e-07,
+      "rows": 2048
+    },
+    "criteria": {
+      "1_federated_above_each_station_alone": false,
+      "2_within_0_01_of_pooled": true,
+      "federated_minus_best_alone": -0.013901,
+      "federated_minus_pooled": -0.00312
+    },
+    "ece_station_1": 0.004095,
+    "ece_station_2": 0.004994,
+    "eval_sample": {
+      "accuracy": 0.98583984375,
+      "macro_f1": 0.9796104135992275,
+      "same_class_as_the_page": 2048
+    },
+    "flamby_macro_f1": 0.970821,
+    "l2": 1e-06,
+    "local_iterations": 20,
+    "masked_messages": 270,
+    "metric_name": "flamby_macro_f1",
+    "metric_note": "`flamby_macro_f1` is the mean of the two base stations' test macro F1, each station weighted equally; the `*_alone_*` and `pooled_*` figures are the pre-registered comparison on the same rows. `ckks` is the page's own module in node on the 2,048 held-out flows.",
+    "n_eval": 233591,
+    "pooled_flamby_macro_f1": 0.973941,
+    "preregistration": {
+      "file": "references/telecom-nidd-federated-preregistration.md",
+      "sha256": "5e3a137bfb4c0382ce626bb733531f94b9a505b7ec93e8500bdad8122affff0d"
+    },
+    "rounds": 40,
+    "scoring_unit": "flows",
+    "station_1_alone_flamby_macro_f1": 0.984722,
+    "station_1_macro_f1": 0.959339,
+    "station_2_alone_flamby_macro_f1": 0.958705,
+    "station_2_macro_f1": 0.982303,
+    "student_params": 333,
+    "temperature": 0.9312519672407261,
+    "union_accuracy": 0.986078,
+    "union_macro_f1": 0.97163
+  },
   "telecom_ids.qml": {
     "aggregate_accuracy": 0.986667,
     "classical_rf_attribution_note": "Impurity importance (training split, biased toward high-cardinality features) and permutation importance (held-out split, scored on macro F1, 20 repeats, std reported). Read the permutation figure where they disagree. These rank which features of a SYNTHETIC corpus this forest needs, not signals from a real QKD link. Two planted features are nearly redundant: sift_ratio separates detector_blinding perfectly on its own yet costs almost nothing to remove, because click_asymmetry separates the same class; and dark_count_rate is within one std of zero. Exact linear SHAP does not apply to a tree ensemble, which is why these two measures are used instead.",
