@@ -37,6 +37,7 @@ RECORD = REPO / "docs" / "measurements" / "finance-square-student-2026-11-25.jso
 WIDTH = 128
 SEEDS = (0, 1, 2, 3, 4)
 MARGIN, FLOOR, MAX_LOGIT_ERR = 0.02, 0.15, 1e-3        # criteria 1, 2 and 3
+SHARDS = 10                                             # node processes at once in the ckks stage
 PARAMS = {
     "A2": {"N": 8192, "coeff_mod_bits": [48, 34, 34, 34, 52], "scale_bits": 34},
     "B": {"N": 16384, "coeff_mod_bits": [60, 40, 40, 40, 60], "scale_bits": 40},
@@ -228,7 +229,7 @@ HARNESS = r"""
 import { createRequire } from "node:module";
 import { readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-const [WEB, OUT, DIR, SET, ROWS] = process.argv.slice(2);
+const [WEB, OUT, DIR, SET, ROWS, OFFSET, COUNT, TAG] = process.argv.slice(2);
 const { build } = createRequire(WEB + "/package.json")("esbuild");
 const wasm = resolve(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
 await build({
@@ -244,13 +245,14 @@ await build({
 const m = await import(`file://${OUT}`);
 const w = JSON.parse(readFileSync(DIR + "/weights.json", "utf8"));
 const buf = readFileSync(ROWS);
-const z = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
-const rows = z.length / w.n_in;
+const all = new Float32Array(buf.buffer, buf.byteOffset, buf.byteLength / 4);
+const off = Number(OFFSET), rows = Number(COUNT);
+const z = all.subarray(off * w.n_in, (off + rows) * w.n_in);
 const r = await m.runSquareTabular(w, z, rows, SET, (done, total) => {
-  if (done % 25 === 0 || done === total) console.error(`block ${done} of ${total}`);
+  if (done % 25 === 0 || done === total) console.error(`${TAG}: block ${done} of ${total}`);
 });
-writeFileSync(DIR + "/plain.f64", Buffer.from(r.plain.buffer));
-writeFileSync(DIR + "/dec.f64", Buffer.from(r.logits.buffer));
+writeFileSync(DIR + `/plain_${TAG}.f64`, Buffer.from(r.plain.buffer));
+writeFileSync(DIR + `/dec_${TAG}.f64`, Buffer.from(r.logits.buffer));
 const { logits, plain, ...rest } = r;
 console.log(JSON.stringify(rest));
 """
@@ -288,12 +290,30 @@ def stage_ckks(work: Path) -> int:
             (d / "harness.mjs").write_text(HARNESS)
             load_before = os.getloadavg()
             t0 = time.time()
-            out = subprocess.run(["node", "--max-old-space-size=8192", str(d / "harness.mjs"), str(REPO / "web"),
-                                  str(d / "bundle.mjs"), str(d), name, str(work / "z_test.npy.f32")],
-                                 check=True, cwd=REPO / "web", timeout=4 * 3600, capture_output=True, text=True)
-            run = json.loads(out.stdout.strip().splitlines()[-1])
-            plain_js = np.fromfile(d / "plain.f64", dtype=np.float64).reshape(-1, 2)
-            dec = np.fromfile(d / "dec.f64", dtype=np.float64).reshape(-1, 2)
+            # node-seal's wasm is single-threaded: the rows are cut into SHARDS contiguous runs of whole blocks, each in a
+            # node process of its own with its own keys, all at once. Every row is still decrypted and compared.
+            block = PARAMS[name]["N"] // 2
+            n = len(z)
+            per = -(-(-(-n // block)) // SHARDS) * block
+            cuts = [(o, min(per, n - o)) for o in range(0, n, per)]
+            procs = [subprocess.Popen(["node", "--max-old-space-size=8192", str(d / "harness.mjs"), str(REPO / "web"),
+                                       str(d / f"bundle_{k}.mjs"), str(d), name, str(work / "z_test.npy.f32"), str(o),
+                                       str(c), f"s{k}"], cwd=REPO / "web", stdout=subprocess.PIPE,
+                                      stderr=subprocess.PIPE, text=True)
+                     for k, (o, c) in enumerate(cuts)]
+            runs = []
+            for k, pr in enumerate(procs):
+                so, se = pr.communicate(timeout=4 * 3600)
+                if pr.returncode:
+                    raise SystemExit(f"shard {k} of set {name} failed: {se[-2000:]}")
+                runs.append(json.loads(so.strip().splitlines()[-1]))
+            plain_js = np.concatenate([np.fromfile(d / f"plain_s{k}.f64", dtype=np.float64) for k in range(len(cuts))]).reshape(-1, 2)
+            dec = np.concatenate([np.fromfile(d / f"dec_s{k}.f64", dtype=np.float64) for k in range(len(cuts))]).reshape(-1, 2)
+            pb = [r["per_block"] for r in runs]
+            run = {"blocks": int(sum(r["blocks"] for r in runs)), "shards": len(cuts),
+                   "per_block": {**pb[0], **{k: float(np.median([b[k] for b in pb]))
+                                             for k in ("encrypt_ms", "evaluate_ms", "decrypt_ms")}},
+                   "key_ms_median": float(np.median([r["keyMs"] for r in runs]))}
         err = np.abs(dec - plain_js)
         differ = int((dec.argmax(1) != plain_js.argmax(1)).sum())
         res = {**PARAMS[name], "modulus_bits": sum(PARAMS[name]["coeff_mod_bits"]), "rows": int(len(dec)),
@@ -301,7 +321,10 @@ def stage_ckks(work: Path) -> int:
                "median_abs_logit_error": float(np.median(err)), "decisions_differ": differ,
                "js_plain_matches_numpy_max_abs": float(np.max(np.abs(plain_js - mine))),
                "largest_abs_plain_logit": float(np.max(np.abs(mine))),
-               "per_block": run["per_block"], "seconds": round(time.time() - t0, 1),
+               "per_block": run["per_block"], "shards": run["shards"], "key_ms_median": run["key_ms_median"],
+               "per_block_note": f"medians over {run['shards']} node processes running at once, one a shard of whole "
+                                 "blocks, on the 20-thread i5-13600K, so each figure is a block's time under that load",
+               "seconds": round(time.time() - t0, 1),
                "load_average_before": [round(x, 2) for x in load_before],
                "load_average_after": [round(x, 2) for x in os.getloadavg()]}
         res["criterion_3"] = bool(res["max_abs_logit_error"] <= MAX_LOGIT_ERR and differ == 0)

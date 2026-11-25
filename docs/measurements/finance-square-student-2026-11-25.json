@@ -1,0 +1,273 @@
+{
+ "preregistration": {
+  "file": "references/finance-square-student-preregistration.md",
+  "sha256": "9ac9039309cbf6bfa53b76fcbe749f817a3d25839419670e99413eb14d49759e"
+ },
+ "data": {
+  "corpus": "IBM AMLworld HI-Small (CDLA-Sharing-1.0, synthetic)",
+  "inputs": 114,
+  "fit": 2843872,
+  "val": 710969,
+  "test": 1523504,
+  "test_positive": 2321,
+  "scaling": "standard, from the fit window",
+  "clip": 10.0
+ },
+ "arms": {
+  "control": {
+   "0": {
+    "val_auprc": 0.428666,
+    "test_auprc": 0.527075,
+    "test_minority_f1": 0.519763,
+    "predicts_both_classes": true,
+    "threshold": 0.9956209063529968,
+    "best_epoch": 11,
+    "seconds": 4.2
+   },
+   "1": {
+    "val_auprc": 0.462068,
+    "test_auprc": 0.552626,
+    "test_minority_f1": 0.542524,
+    "predicts_both_classes": true,
+    "threshold": 0.9973908066749573,
+    "best_epoch": 35,
+    "seconds": 7.0
+   },
+   "2": {
+    "val_auprc": 0.465143,
+    "test_auprc": 0.537954,
+    "test_minority_f1": 0.524227,
+    "predicts_both_classes": true,
+    "threshold": 0.9973579049110413,
+    "best_epoch": 28,
+    "seconds": 6.6
+   },
+   "3": {
+    "val_auprc": 0.464633,
+    "test_auprc": 0.569963,
+    "test_minority_f1": 0.559891,
+    "predicts_both_classes": true,
+    "threshold": 0.9971762895584106,
+    "best_epoch": 14,
+    "seconds": 3.9
+   },
+   "4": {
+    "val_auprc": 0.452689,
+    "test_auprc": 0.558034,
+    "test_minority_f1": 0.553763,
+    "predicts_both_classes": true,
+    "threshold": 0.9975438714027405,
+    "best_epoch": 21,
+    "seconds": 4.7
+   }
+  },
+  "square": {
+   "0": {
+    "val_auprc": 0.433415,
+    "test_auprc": 0.520548,
+    "test_minority_f1": 0.521656,
+    "predicts_both_classes": true,
+    "threshold": 0.998196542263031,
+    "best_epoch": 6,
+    "seconds": 2.6,
+    "folded_matches_torch_max_abs": 2.165981513968518e-05,
+    "decisions_at_argmax_equal_threshold": true
+   },
+   "1": {
+    "val_auprc": 0.393507,
+    "test_auprc": 0.514421,
+    "test_minority_f1": 0.499134,
+    "predicts_both_classes": true,
+    "threshold": 0.9955614805221558,
+    "best_epoch": 11,
+    "seconds": 3.3,
+    "folded_matches_torch_max_abs": 4.074004561971378e-05,
+    "decisions_at_argmax_equal_threshold": true
+   },
+   "2": {
+    "val_auprc": 0.414094,
+    "test_auprc": 0.475019,
+    "test_minority_f1": 0.475106,
+    "predicts_both_classes": true,
+    "threshold": 0.9966208934783936,
+    "best_epoch": 19,
+    "seconds": 4.5,
+    "folded_matches_torch_max_abs": 4.032493765038225e-05,
+    "decisions_at_argmax_equal_threshold": true
+   },
+   "3": {
+    "val_auprc": 0.375623,
+    "test_auprc": 0.500537,
+    "test_minority_f1": 0.506903,
+    "predicts_both_classes": true,
+    "threshold": 0.9951549768447876,
+    "best_epoch": 2,
+    "seconds": 2.1,
+    "folded_matches_torch_max_abs": 2.2269170372624103e-05,
+    "decisions_at_argmax_equal_threshold": true
+   },
+   "4": {
+    "val_auprc": 0.391966,
+    "test_auprc": 0.488156,
+    "test_minority_f1": 0.492825,
+    "predicts_both_classes": true,
+    "threshold": 0.997760534286499,
+    "best_epoch": 10,
+    "seconds": 3.2,
+    "folded_matches_torch_max_abs": 2.3756547651743176e-05,
+    "decisions_at_argmax_equal_threshold": true
+   }
+  }
+ },
+ "environment": {
+  "python": "3.12.15",
+  "torch": "2.13.0+cu130",
+  "numpy": "2.5.1",
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+  "git": "8f70aa5"
+ },
+ "criteria": {
+  "mean_test_auprc": {
+   "control": 0.54913,
+   "square": 0.499736
+  },
+  "sd_test_auprc": {
+   "control": 0.016859,
+   "square": 0.018671
+  },
+  "1_accuracy": false,
+  "2_no_collapse": true,
+  "export_seed": 0,
+  "3_fidelity": {
+   "A2": true,
+   "B": true
+  }
+ },
+ "export_bootstrap": {
+  "auprc": 0.520735,
+  "ci95": [
+   0.499361,
+   0.543606
+  ],
+  "resamples": 2000
+ },
+ "references": {
+  "published_mlp": {
+   "test_auprc_by_seed": [
+    0.643212,
+    0.647173,
+    0.642649,
+    0.628759,
+    0.649644
+   ],
+   "note": "114 -> 128 -> 64 -> 2 with ReLU; its ReLUs run in garbled circuits on the page"
+  },
+  "published_linear_student": {
+   "test_auprc": 0.184001,
+   "test_minority_f1": 0.308775
+  },
+  "published_teacher": {
+   "test_auprc": 0.6428339350667854,
+   "test_minority_f1": 0.6160558464223386
+  }
+ },
+ "wall_clock_s": 573.1,
+ "ckks": {
+  "A2": {
+   "N": 8192,
+   "coeff_mod_bits": [
+    48,
+    34,
+    34,
+    34,
+    52
+   ],
+   "scale_bits": 34,
+   "modulus_bits": 202,
+   "rows": 1523504,
+   "blocks": 372,
+   "max_abs_logit_error": 3.1095906347644586e-06,
+   "median_abs_logit_error": 9.807308143372495e-08,
+   "decisions_differ": 0,
+   "js_plain_matches_numpy_max_abs": 3.552713678800501e-14,
+   "largest_abs_plain_logit": 27.35527598849314,
+   "per_block": {
+    "rows": 4096,
+    "encrypt_ms": 624.3137368000004,
+    "evaluate_ms": 9905.15419025,
+    "decrypt_ms": 0.7638595687505585,
+    "ciphertexts": {
+     "input": 114,
+     "output": 2
+    },
+    "bytes": {
+     "input": 59781714,
+     "output": 262370
+    }
+   },
+   "shards": 10,
+   "key_ms_median": 317.87026850000007,
+   "per_block_note": "medians over 10 node processes running at once, one a shard of whole blocks, on the 20-thread i5-13600K, so each figure is a block's time under that load",
+   "seconds": 537.1,
+   "load_average_before": [
+    2.68,
+    1.52,
+    1.24
+   ],
+   "load_average_after": [
+    3.64,
+    6.21,
+    4.28
+   ],
+   "criterion_3": true
+  },
+  "B": {
+   "N": 16384,
+   "coeff_mod_bits": [
+    60,
+    40,
+    40,
+    40,
+    60
+   ],
+   "scale_bits": 40,
+   "modulus_bits": 240,
+   "rows": 1523504,
+   "blocks": 186,
+   "max_abs_logit_error": 1.0799627503388365e-07,
+   "median_abs_logit_error": 3.058277187051317e-09,
+   "decisions_differ": 0,
+   "js_plain_matches_numpy_max_abs": 3.552713678800501e-14,
+   "largest_abs_plain_logit": 27.35527598849314,
+   "per_block": {
+    "rows": 8192,
+    "encrypt_ms": 1317.3821410249957,
+    "evaluate_ms": 22061.288538137505,
+    "decrypt_ms": 1.664646362503845,
+    "ciphertexts": {
+     "input": 114,
+     "output": 2
+    },
+    "bytes": {
+     "input": 119550546,
+     "output": 524514
+    }
+   },
+   "shards": 10,
+   "key_ms_median": 634.9649965,
+   "per_block_note": "medians over 10 node processes running at once, one a shard of whole blocks, on the 20-thread i5-13600K, so each figure is a block's time under that load",
+   "seconds": 607.7,
+   "load_average_before": [
+    3.64,
+    6.21,
+    4.28
+   ],
+   "load_average_after": [
+    2.34,
+    6.47,
+    5.94
+   ],
+   "criterion_3": true
+  }
+ }
+}
