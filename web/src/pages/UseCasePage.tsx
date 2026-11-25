@@ -24,6 +24,7 @@ import MurmurDpCard from "../components/MurmurDpCard";
 import SatBoundaryCard from "../components/SatBoundaryCard";
 import SatelliteQcnnCard from "../components/SatelliteQcnnCard";
 import SatVusPrCard from "../components/SatVusPrCard";
+import SatThresholdsCard from "../components/SatThresholdsCard";
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
 import FinanceAccuracyCost from "../components/FinanceAccuracyCost";
@@ -441,6 +442,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && <PcgFlCard />}
       {usecase === "medical_fl" && <MurmurDpCard />}
       {usecase === "satellite_comms" && <SatVusPrCard />}
+      {usecase === "satellite_comms" && <SatThresholdsCard />}
       {usecase === "satellite_comms" && <SatBoundaryCard />}
       {usecase === "satellite_comms" && <SatelliteQcnnCard />}
       {usecase === "satellite_comms" && artifacts?.forecast_residual ? <SatForecastResidual report={artifacts.forecast_residual as ForecastResidualReport} /> : null}

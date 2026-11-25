@@ -52,6 +52,8 @@ AGGREGATES = {
     "medical/fedheart_dp_sweep.json": "UCI Heart Disease",
     "medical/square_student_sets.json": "MedMNIST v2 BreastMNIST",
     "satellite/vus_pr.json": "ESA-ADB",
+    # The pre-registered threshold comparison (Round 86, batch 6), shown on the page on the owner's choice of 2026-11-26.
+    "satellite/thresholds.json": "ESA-ADB",
 }
 #: Fitted numbers.
 WEIGHTS = {

@@ -1,0 +1,86 @@
+{
+ "_generated_by": "scripts/export_satellite_thresholds_card.py from docs/measurements/satellite-thresholds-2026-11-25.json; do not edit by hand",
+ "model": "satellite_comms.student",
+ "preregistration": {
+  "file": "references/satellite-threshold-calibration-preregistration.md",
+  "sha256": "a2436cde71d939c32b7d67f895f892fd0012262f1c7a1fb3a39505d85a153d65"
+ },
+ "record": "docs/measurements/satellite-thresholds-2026-11-25.json",
+ "events": "ESA-ADB's anomalies of Mission1 channels 41-46 in the test period, 29 events",
+ "metric": "ESA-ADB's corrected event-wise F0.5",
+ "arms": [
+  {
+   "key": "ndt",
+   "label": "Telemanom's NDT with ESA-ADB's pruning (the page's rule)",
+   "f0_5": 0.9398,
+   "tp": 22,
+   "fp": 0,
+   "fn": 7,
+   "share_flagged": 0.00086568
+  },
+  {
+   "key": "pot_alpha_0.0001",
+   "label": "extreme value (POT), alpha 1e-4, primary",
+   "f0_5": 0.2597,
+   "tp": 4,
+   "fp": 8,
+   "fn": 25,
+   "share_flagged": 0.00650515
+  },
+  {
+   "key": "conformal_alpha_0.0001",
+   "label": "weighted conformal, alpha 1e-4, primary",
+   "f0_5": 0.0444,
+   "tp": 7,
+   "fp": 182,
+   "fn": 22,
+   "share_flagged": 0.01216391
+  },
+  {
+   "key": "pot_alpha_0.001",
+   "label": "extreme value (POT), alpha 1e-3",
+   "f0_5": 0.2277,
+   "tp": 7,
+   "fp": 24,
+   "fn": 22,
+   "share_flagged": 0.01401898
+  },
+  {
+   "key": "conformal_alpha_0.001",
+   "label": "weighted conformal, alpha 1e-3",
+   "f0_5": 0.0011,
+   "tp": 10,
+   "fp": 10956,
+   "fn": 19,
+   "share_flagged": 0.02360921
+  },
+  {
+   "key": "pot_alpha_1e-05",
+   "label": "extreme value (POT), alpha 1e-5",
+   "f0_5": 0.2703,
+   "tp": 2,
+   "fp": 0,
+   "fn": 27,
+   "share_flagged": 0.00202209
+  },
+  {
+   "key": "conformal_alpha_1e-05",
+   "label": "weighted conformal, alpha 1e-5",
+   "f0_5": 0.1404,
+   "tp": 6,
+   "fp": 40,
+   "fn": 23,
+   "share_flagged": 0.01032351
+  }
+ ],
+ "vus_pr_of_the_shared_score": 0.6562,
+ "ndt_matches_the_students_record": true,
+ "attribution": {
+  "provider": "European Space Agency",
+  "dataset": "ESA Anomaly Dataset (ESA-ADB), version 1.0, Mission1 lightweight channels 41-46",
+  "download": "https://zenodo.org/records/12528696",
+  "licence": "CC BY 3.0 IGO",
+  "licence_url": "https://creativecommons.org/licenses/by/3.0/igo/",
+  "citation": "Kotowski et al., 'European Space Agency Dataset and Benchmark for Real-World Anomaly Detection in Spacecraft Time Series', Journal of Data-centric Machine Learning Research (DMLR), 2026 (earlier version: arXiv:2406.17826). Data: De Canio, Kotowski & Haskamp, 'ESA Anomaly Dataset', Zenodo record 12528696 (2024), CC BY 3.0 IGO."
+ }
+}
