@@ -63,3 +63,12 @@ The comparison is plaintext; nothing here touches CKKS.
 ## Not decided here
 
 Whether the Jinan-1 profile becomes the satellite page's default downlink is the owner's choice after the figures.
+
+## Addendum, 2026-11-26, before any comparison was run
+
+Two definitions the text above left open, fixed while writing `scripts/measure_jinan1_pass.py` and before it ran.
+**The model's QBER** at a second is the signal state's observed error rate at that second's range (`signal_qber` in
+`qsh.qkd.bb84`), the quantity a receiver measures; the page's analytic baseline (`intrinsic_qber`) is reported beside
+it. **The model's key** is the page's own pass key: the asymptotic key that `simulatePass` in
+`web/src/lib/satNetwork.ts` sums over one pass at the profile's top elevation, as the test above compares it, run by
+the page's code in node; the finite key over the same pass (`finite_key_over`) is reported beside it.

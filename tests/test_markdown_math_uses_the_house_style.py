@@ -178,9 +178,10 @@ FROZEN = {
     # Federated learning across 5G-NIDD's two base stations: committed 2026-11-26 before any of its models was trained.
     "references/telecom-nidd-federated-preregistration.md":
         "5e3a137bfb4c0382ce626bb733531f94b9a505b7ec93e8500bdad8122affff0d",
-    # The downlink against Jinan-1's measured pass: committed 2026-11-26 before any model figure was set beside the data.
+    # The downlink against Jinan-1's measured pass: committed 2026-11-26 (054aaab) before any model figure was set beside
+    # the data, and its addendum the same day before the comparison ran.
     "references/satellite-jinan1-pass-preregistration.md":
-        "ffed43dc806f56e83f06dc9e2a118854ed52132b5adf2338d385c9e94b25fe4c",
+        "ec5b8b0c0c3c8441bb5e3c84a71fa52591e8af5351d8e3e778681278844531b6",
 }
 
 
