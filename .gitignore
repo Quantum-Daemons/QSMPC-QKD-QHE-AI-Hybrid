@@ -102,6 +102,10 @@ logs/
 !data/finance/**
 !data/genomics/**
 !data/satellite/**
+# Round 86, batch 6: the lending page's Aave V3 preset comes from raw chain reads (facts, no licence instrument;
+# DATA_LICENSES.md section 2), tracked so CI's preset test and check_lending.mjs read the same file.
+!data/defi/
+!data/defi/**
 # but keep small fixture/sample files explicitly added with `git add -f`
 
 # ============================================================================

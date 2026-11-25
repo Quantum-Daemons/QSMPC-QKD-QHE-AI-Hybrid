@@ -240,6 +240,26 @@
     "ltv_min": 0.4,
     "margin_mask_bits": 36,
     "margin_scale_bits": 16,
+    "market_presets": {
+      "aave_v3_core": {
+        "base_rate": 0.0,
+        "block": 26492593,
+        "initial_prices": [
+          1631.72303377,
+          58177.02335814
+        ],
+        "label": "Aave V3 Ethereum Core, read on chain at block 26,492,593 (2026-11-25)",
+        "liquidation_bonus": 0.05,
+        "liquidation_thresholds": [
+          0.84,
+          0.85
+        ],
+        "optimal_utilisation": 0.94,
+        "reserve_factor": 0.1,
+        "slope1": 0.046,
+        "slope2": 0.1
+      }
+    },
     "max_borrowers": 48,
     "max_workers": 4,
     "optimal_utilisation": 0.8,
@@ -2834,7 +2854,7 @@
           "display": "AUROC (European ancestry)",
           "name": "auroc_eur"
         },
-        "notes": "WHAT RUNS UNDER CKKS: the full score, in both tiers. One person's effect-allele dosages at every variant are encrypted together in one CKKS ciphertext; the effect weights stay in plaintext and are applied by one multiply-plain; rotate-and-add sums the products into one slot, and the decrypted score is compared with a cut, the 90th percentile of the plaintext score over the bundled panel (the browser's 30 individuals, or the individuals the Python loader reads), by linear interpolation between order statistics. A demo cut, not a clinical threshold. Both tiers also score every panel individual encrypted and report the largest score deviation and how often the high-risk flag agrees with the plaintext one. Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: 1000 Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is computable from it and genomics_prs.py records auroc=null rather than inventing one. PGS000072 is the breast-cancer score of Graff et al. (Nat Commun 12:970, 2021; CC BY 4.0): 187 genome-wide significant variants weighted by their log odds ratios. 183 of them have a 1000 Genomes phase 3 genotype for every one of the 2,504 individuals and are scored; the other 4 are left out, never filled in, and the dosage files and the payload name each with its reason. The finding is the by_super_population.*.frac_above_global_cut rows listed above: one globally-set high-risk cut flags a far larger share of one ancestry group than of another, a gap that allele-frequency and linkage-disequilibrium differences between the groups can produce on their own (Martin et al., Nat Genet 51:584, 2019), and which this panel, carrying no case/control status, cannot split into frequency and risk. Read those rows, not this sentence - they are recomputed on every training run, so no figure quoted in prose here can drift away from them. The published European AUROC comes from a phenotyped UK Biobank cohort, which is why it cannot be reproduced on this page.",
+        "notes": "WHAT RUNS UNDER CKKS: the full score, in both tiers. One person's effect-allele dosages at every variant are encrypted together in one CKKS ciphertext; the effect weights stay in plaintext and are applied by one multiply-plain; rotate-and-add sums the products into one slot, and the decrypted score is compared with a cut, the 90th percentile of the plaintext score within the person's own 1000 Genomes super-population (since Round 86's batch 6: in the browser from statistics over all 2,504 individuals, which the payload carries as aggregates; in Python over the individuals of that super-population the loader reads), by linear interpolation between order statistics; the pooled cut over every super-population is reported beside it, not used, because pgsc_calc asks for ancestry-normalised outputs. A demo cut, not a clinical threshold. Both tiers also score every panel individual encrypted and report the largest score deviation and how often the high-risk flag agrees with the plaintext one. Not a neural network, and presenting a genomic foundation model as a PRS method would be the most obvious credibility hole available. Evaluation must be stratified by genetic ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: 1000 Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is computable from it and genomics_prs.py records auroc=null rather than inventing one. PGS000072 is the breast-cancer score of Graff et al. (Nat Commun 12:970, 2021; CC BY 4.0): 187 genome-wide significant variants weighted by their log odds ratios. 183 of them have a 1000 Genomes phase 3 genotype for every one of the 2,504 individuals and are scored; the other 4 are left out, never filled in, and the dosage files and the payload name each with its reason. The finding is the by_super_population.*.frac_above_global_cut rows listed above: one globally-set high-risk cut flags a far larger share of one ancestry group than of another, a gap that allele-frequency and linkage-disequilibrium differences between the groups can produce on their own (Martin et al., Nat Genet 51:584, 2019), and which this panel, carrying no case/control status, cannot split into frequency and risk. Read those rows, not this sentence - they are recomputed on every training run, so no figure quoted in prose here can drift away from them. The published European AUROC comes from a phenotyped UK Biobank cohort, which is why it cannot be reproduced on this page.",
         "onnx_domains": [],
         "params": null,
         "pin_withdrawn_reason": null,

@@ -66,8 +66,9 @@ export interface RealInput {
   bySpace?: Record<string, number[]>;
   names: string[];                           // feature names (mirror the backend / real rsIDs)
   provenance: string;                        // human label for the event log + UI badge
-  model?: { W: number[][]; b: number[] };    // a REAL model (trained LR / PRS weights) for faithful SHAP
-  metrics?: Record<string, number>;          // extra real metrics, e.g. polygenic_risk_score
+  model?: { W: number[][]; b: number[]; corpusBias?: number[][] };    // a REAL model (trained LR / PRS weights) for faithful SHAP;
+  // `corpusBias`, where present, is the bias of each row of `realInputCorpus`, in its order (genomics: each individual's own cut)
+  metrics?: Record<string, number | string>; // extra real metrics, e.g. polygenic_risk_score (genomics adds its reference population's label)
   /** Column means E[x] over the shipped sample, for the SHAP reference point.
    *
    *  Without this `linearShap` defaults its baseline to the ZERO vector, and the attributions are
@@ -146,15 +147,29 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       const p = await prsPanel();
       const k = Math.floor(u() * p.rows.length) % p.rows.length;   // a REAL 1000G individual
       const n = p.weights.length;
+      // SINCE BATCH 6 the decision is against the person's own super-population's cut (`rowCut`), and every bundled row
+      // of the panel figure against its own (`corpusBias`); the pooled cut over the bundled rows is reported beside it.
+      const g = p.superPop[k], ref = p.reference[g];
+      const within = percentileWithin(p.scores[k], p.referencePercentilesAt, ref.percentiles);
       return {
         values: p.rows[k].slice(), names: p.keys.slice(), provenance: p.provenance,
-        model: { W: [new Array(n).fill(0), p.weights.slice()], b: [0, -p.cut] },
+        model: { W: [new Array(n).fill(0), p.weights.slice()], b: [0, -p.rowCut[k]],
+                 corpusBias: p.rowCut.map((c) => [0, -c]) },
         metrics: {
           polygenic_risk_score: Number(p.scores[k].toFixed(4)),     // the score in the clear
           prs_variants: n,
           prs_high_risk_percentile: p.percentile,
-          prs_high_risk_cut: Number(p.cut.toFixed(6)),
-          prs_cut_population: p.rows.length,
+          prs_high_risk_cut: Number(p.rowCut[k].toFixed(6)),
+          prs_reference_super_population: g,
+          prs_cut_population: ref.n,
+          prs_z_in_super_population: Number(((p.scores[k] - ref.mean) / ref.sd).toFixed(4)),
+          prs_percentile_in_super_population: Number(within.percentile.toFixed(1)),
+          prs_percentile_in_super_population_bound: within.bound,
+          prs_pooled_cut: Number(p.cut.toFixed(6)),
+          prs_pooled_cut_population: p.rows.length,
+          prs_pooled_flag: p.scores[k] > p.cut ? 1 : 0,
+          prs_pooled_cut_all: Number(p.pooledAll.cut.toFixed(6)),
+          prs_pooled_cut_all_population: p.pooledAll.n,
         },
         // Population mean dosage at every variant. The zero vector would mean "an individual carrying
         // no effect allele anywhere", which is not a typical genome and at several of these loci is
@@ -275,6 +290,17 @@ export interface PrsPanel {
   meanDosage: number[];
   /** Individuals behind `meanDosage`. */
   meanDosageOver: number;
+  /** Each bundled row's 1000 Genomes super-population, the label of the population it was sampled in (batch 6). */
+  superPop: string[];
+  /** Aggregate statistics of the full score over ALL the panel's individuals, by super-population: the reference a
+   *  person is read against (pgsc_calc's guide asks for ancestry-normalised outputs; references/genomics-real-data-2026-11.md). */
+  reference: Record<string, { n: number; mean: number; sd: number; cut: number; percentiles: number[] }>;
+  /** The percentiles `reference[g].percentiles` are at (1 to 99). */
+  referencePercentilesAt: number[];
+  /** The pooled cut over all the panel's individuals, every super-population together, and how many they are. */
+  pooledAll: { n: number; cut: number };
+  /** Each bundled row's own cut: the `percentile`-th percentile of its super-population's scores. */
+  rowCut: number[];
 }
 
 /** Load the genomics payload as a `PrsPanel`. Generic over the number of variants and individuals:
@@ -299,13 +325,43 @@ export async function prsPanel(): Promise<PrsPanel> {
   const scores = rows.map((d) => weights.reduce((a, wi, i) => a + wi * (d[i] ?? 0), 0));
   const pop = prs.population_mean_dosage as number[] | undefined;
   const popOk = Array.isArray(pop) && pop.length === m;
+  // THE REFERENCE A PERSON IS READ AGAINST (batch 6). A pooled cut over mixed ancestries is not current practice, so each
+  // row is judged against its own super-population's percentile over the whole panel; the pooled cut stays as `cut`.
+  const superPop = (prs.sample_super_population as string[] | undefined) ?? [];
+  const reference = (prs.reference_by_super_population ?? {}) as PrsPanel["reference"];
+  if (superPop.length !== rows.length || superPop.some((g) => !reference[g])) {
+    throw new Error(`the genomics payload gives ${superPop.length} super-population labels for ${rows.length} rows, `
+      + `or a label without reference statistics`);
+  }
+  if (Number(prs.reference_percentile) !== PRS_HIGH_RISK_PERCENTILE) {
+    throw new Error(`the payload's reference cut is at percentile ${prs.reference_percentile}, not ${PRS_HIGH_RISK_PERCENTILE}`);
+  }
   return {
     scoreId: String(prs.score_id ?? ""), provenance: String(prs.provenance ?? ""),
     keys, weights, rows, scores, percentile: PRS_HIGH_RISK_PERCENTILE,
     cut: percentileLinear(scores, PRS_HIGH_RISK_PERCENTILE),
     meanDosage: popOk ? pop : columnMeans(rows, m),
     meanDosageOver: popOk ? Number(prs.n_individuals_available ?? rows.length) : rows.length,
+    superPop, reference,
+    referencePercentilesAt: (prs.reference_percentiles_at as number[] | undefined) ?? [],
+    pooledAll: prs.reference_pooled as { n: number; cut: number },
+    rowCut: superPop.map((g) => reference[g].cut),
   };
+}
+
+/** Where `score` falls among a super-population's scores, from its 1st to 99th percentiles: linear between them, and
+ *  "below 1" or "above 99" outside. An aggregate reading, not the person's rank among individuals the page holds. */
+export function percentileWithin(score: number, at: number[], values: number[]): { percentile: number; bound: "within" | "below" | "above" } {
+  if (!values.length || values.length !== at.length) return { percentile: Number.NaN, bound: "within" };
+  if (score < values[0]) return { percentile: at[0], bound: "below" };
+  if (score > values[values.length - 1]) return { percentile: at[at.length - 1], bound: "above" };
+  for (let i = 1; i < values.length; i++) {
+    if (score <= values[i]) {
+      const span = values[i] - values[i - 1];
+      return { percentile: at[i - 1] + (span > 0 ? ((score - values[i - 1]) / span) * (at[i] - at[i - 1]) : 0), bound: "within" };
+    }
+  }
+  return { percentile: at[at.length - 1], bound: "within" };
 }
 
 /** The OPS-SAT-AD segments the satellite page scores, and the file they come from. */

@@ -84,6 +84,54 @@ _META = {
 CC_BY_4 = "https://creativecommons.org/licenses/by/4.0/"
 
 
+#: 1000 Genomes phase 3's sample -> population and super-population table (tracked; from IGSR's panel file).
+PANEL = REPO / "data" / "genomics" / "g1k_panel.tsv"
+
+#: The percentiles a person's score is read against within a super-population: 1 to 99.
+REFERENCE_PERCENTILES = list(range(1, 100))
+
+
+def reference_by_super_population(dosages, w, samples, take) -> dict:
+    """Aggregate reference statistics of the full score over ALL 2,504 individuals, by super-population (batch 6).
+
+    A pooled cut over mixed ancestries is not current practice: pgsc_calc v2.3.0's guide says to "Use ancestry-normalised
+    or Z-score outputs when applying PGS to individuals of diverse ancestries" (docs/explanation/interpret.rst, read
+    2026-11-25; references/genomics-real-data-2026-11.md). So the page compares a person with the 90th percentile of the
+    super-population that person was sampled in, from these statistics, and keeps the pooled cut beside it as the
+    cautionary one. Only aggregates ship here (counts, means, deviations and percentiles), no genotype cell and no
+    individual's score; each shipped individual carries its own super-population label, which IGSR publishes.
+    """
+    from qsh.usecases.genomics import HIGH_RISK_PERCENTILE
+    labels = {}
+    for line in PANEL.read_text().splitlines():
+        if line.startswith("#") or not line.strip():
+            continue
+        parts = line.split("\t")
+        if parts[0] == "sample":
+            continue
+        labels[parts[0]] = parts[2]
+    scores = np.asarray(dosages, dtype=float) @ np.asarray(w, dtype=float)
+    groups = np.array([labels[s] for s in samples])
+    ref = {}
+    for g in sorted(set(groups)):
+        x = scores[groups == g]
+        ref[g] = {
+            "n": int(x.size), "mean": round(float(x.mean()), 6), "sd": round(float(x.std(ddof=0)), 6),
+            "cut": round(float(np.percentile(x, HIGH_RISK_PERCENTILE)), 6),
+            "percentiles": [round(float(v), 6) for v in np.percentile(x, REFERENCE_PERCENTILES)],
+        }
+    return {
+        "sample_super_population": [str(groups[i]) for i in take],
+        "reference_percentile": HIGH_RISK_PERCENTILE,
+        "reference_percentiles_at": REFERENCE_PERCENTILES,
+        "reference_by_super_population": ref,
+        "reference_pooled": {"n": int(scores.size), "cut": round(float(np.percentile(scores, HIGH_RISK_PERCENTILE)), 6)},
+        "reference_note": ("Each shipped individual's super-population is the 1000 Genomes label of the population it was "
+                           "sampled in (IGSR's panel), not one inferred from its genotypes. The statistics are over all "
+                           f"{int(scores.size)} individuals of the panel, the scored person included."),
+    }
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -151,6 +199,7 @@ def main() -> int:
         # provenance is `BUNDLED_DEMO_SAMPLES[usecase][0]` verbatim.
         "provenance": _registry_provenance(payload_name),
     }
+    payload.update(reference_by_super_population(dosages, w, samples, take))
 
     out = WEB / payload_name
     out.parent.mkdir(parents=True, exist_ok=True)

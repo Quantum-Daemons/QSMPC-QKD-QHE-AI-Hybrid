@@ -30,6 +30,13 @@ depends on which ran, and that check is real only with the module:
     private-inference stage scores.
 
 On the base commit this fails at the first assertion: the row is 8 values wide.
+
+BATCH 6 (2026-11-25): the cut is the person's own super-population's. A pooled 90th percentile over mixed ancestries is
+not current practice (pgsc_calc v2.3.0: "Use ancestry-normalised or Z-score outputs"; references/genomics-real-data-2026-11.md),
+so the model's bias is the 90th percentile of the person's super-population over all 2,504 individuals (aggregate
+statistics the payload carries and the Models card measured), every panel row is judged against its own, and the pooled
+cut over the bundled rows is reported beside it as `prs_pooled_cut`. Below, `_cut_and_flags` therefore counts each row
+against its own cut, and the pooled cut keeps its own check.
 """
 
 from __future__ import annotations
@@ -106,9 +113,11 @@ const run = (config) => new Promise((done) => {
   });
 });
 const out = { mpcReal: existsSync(mpcWasm), auto: await run({ seed: 0 }), small: await run({ seed: 0, prime: 11 }) };
-// The scored person changes with the seed; over a few seeds the encrypted flag must come out both ways.
+// The scored person changes with the seed; over enough seeds the encrypted flag must come out both ways. Since batch 6
+// each person meets their own super-population's cut, which few of the 30 exceed, so the loop runs until it has seen both.
 out.seeds = [];
-for (let seed = 1; seed <= 12; seed++) {
+for (let seed = 1; seed <= 120; seed++) {
+  if (seed > 12 && new Set(out.seeds.map((r) => r.enc)).size === 2) break;
   const r = await run({ seed });
   out.seeds.push({ seed, score: r.metrics.polygenic_risk_score, cut: r.metrics.prs_high_risk_cut,
                    enc: r.metrics.prs_high_risk_flag, plain: r.metrics.prs_high_risk_flag_plaintext,
@@ -126,7 +135,8 @@ for (let k = 0; out.percentile && k < 60; k++) {
 }
 const panel = has("prsPanel") ? await m.realData.prsPanel() : null;
 out.panel = panel && { cut: panel.cut, percentile: panel.percentile, rows: panel.rows.length,
-                       variants: panel.weights.length };
+                       variants: panel.weights.length, rowCut: panel.rowCut, superPop: panel.superPop,
+                       pooledAll: panel.pooledAll };
 out.corpusWidth = ((await m.realData.realInputCorpus("genomics")) ?? []).map((r) => r.length);
 console.log(JSON.stringify(out));
 """
@@ -163,13 +173,19 @@ def _payload() -> tuple[np.ndarray, np.ndarray, dict]:
     return np.asarray(d["dosage_samples"], dtype=float), np.asarray(d["weights"], dtype=float), d
 
 
-def _cut_and_flags() -> tuple[float, int]:
+def _pooled_cut() -> float:
     from qsh.usecases.genomics import HIGH_RISK_PERCENTILE
 
     x, w, _ = _payload()
-    scores = x @ w
-    cut = float(np.percentile(scores, HIGH_RISK_PERCENTILE))
-    return cut, int(np.sum(scores > cut))
+    return float(np.percentile(x @ w, HIGH_RISK_PERCENTILE))
+
+
+def _cut_and_flags() -> tuple[np.ndarray, int]:
+    """Each bundled row's own cut, its super-population's, and how many rows are above theirs (batch 6)."""
+    x, w, d = _payload()
+    ref = d["reference_by_super_population"]
+    cuts = np.asarray([ref[g]["cut"] for g in d["sample_super_population"]], dtype=float)
+    return cuts, int(np.sum(x @ w > cuts))
 
 
 def test_ckks_evaluates_the_full_score_not_eight_variants(run: dict) -> None:
@@ -180,7 +196,9 @@ def test_ckks_evaluates_the_full_score_not_eight_variants(run: dict) -> None:
     assert run["corpusWidth"] and set(run["corpusWidth"]) == {len(w)}, (
         f"the panel rows are {sorted(set(run['corpusWidth']))} wide, not every variant ({len(w)})")
     assert run["panel"], "realData.ts exports no prsPanel: the cut has no stated source"
-    assert run["panel"]["rows"] == len(x) == m["prs_cut_population"]
+    assert run["panel"]["rows"] == len(x) == m["prs_pooled_cut_population"]
+    ref = d["reference_by_super_population"][m["prs_reference_super_population"]]
+    assert m["prs_cut_population"] == ref["n"] and m["prs_pooled_cut_all_population"] == d["reference_pooled"]["n"] == 2504
     # The explanation is of the same model: every variant is a candidate driver, not eight of them.
     assert run["auto"]["explanation"]["top_features"][0]["feature"] in set(d["keys"])
     assert abs(run["auto"]["explanation"]["efficiency_gap"]) < 1e-9
@@ -189,12 +207,24 @@ def test_ckks_evaluates_the_full_score_not_eight_variants(run: dict) -> None:
 def test_the_cut_is_the_stated_percentile_of_the_bundled_scores(run: dict) -> None:
     from qsh.usecases.genomics import HIGH_RISK_PERCENTILE
 
-    cut, _ = _cut_and_flags()
+    pooled = _pooled_cut()
+    _, _, d = _payload()
     m = run["auto"]["metrics"]
     assert run["panel"], "realData.ts exports no prsPanel"
-    assert m["prs_high_risk_percentile"] == HIGH_RISK_PERCENTILE == run["panel"]["percentile"]
-    assert math.isclose(run["panel"]["cut"], cut, rel_tol=0, abs_tol=1e-12), (run["panel"]["cut"], cut)
-    assert math.isclose(m["prs_high_risk_cut"], round(cut, 6), abs_tol=1e-12)
+    assert m["prs_high_risk_percentile"] == HIGH_RISK_PERCENTILE == run["panel"]["percentile"] == d["reference_percentile"]
+    # The pooled cut over the bundled rows, as before, now the cautionary one beside the decision.
+    assert math.isclose(run["panel"]["cut"], pooled, rel_tol=0, abs_tol=1e-12), (run["panel"]["cut"], pooled)
+    assert math.isclose(m["prs_pooled_cut"], round(pooled, 6), abs_tol=1e-12)
+    # The decision's cut is the person's super-population's, and each super-population's is the Models card's own
+    # measurement over all 2,504 (the full matrix is local only, so the card is the independent record of it).
+    card = json.loads((REPO / "models" / "metrics.json").read_text())["genomics.prs"]["measured"]
+    g = m["prs_reference_super_population"]
+    assert math.isclose(m["prs_high_risk_cut"], d["reference_by_super_population"][g]["cut"], abs_tol=1e-12)
+    for grp, ref in d["reference_by_super_population"].items():
+        c = card["by_super_population"][grp]
+        assert (ref["n"], ref["cut"], ref["mean"], ref["sd"]) == (c["n"], c["p90"], c["mean"], c["sd"]), grp
+    assert d["reference_pooled"]["cut"] == card["global_high_risk_cut"]
+    assert run["panel"]["rowCut"] == [d["reference_by_super_population"][x]["cut"] for x in d["sample_super_population"]]
 
 
 def test_the_browser_percentile_is_numpys(run: dict) -> None:
@@ -222,7 +252,7 @@ def test_every_bundled_individual_is_scored_and_the_flag_agrees(run: dict) -> No
     # The figure plots the decision logit, score minus cut, so a flagged row sits above zero.
     assert plot["scoreKind"] == "logit" and plot["flipBoundFactor"] == 1
     assert sum(1 for p in plot["points"] if p["plain"] > 0) == flagged
-    assert "full score" in plot["rowsAre"]
+    assert "full score" in plot["rowsAre"] and "its own super-population" in plot["rowsAre"]
 
 
 def test_the_log_says_what_is_encrypted_and_what_is_decrypted(run: dict) -> None:

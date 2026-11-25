@@ -972,7 +972,7 @@ class LendingConfig:
     max_borrowers: int = 48             # the Parameters panel's ceiling: about 40,000 of opening debt each, inside the supply
     supply: float = 1_500_000.0         # what Alice's pool holds in the stable asset at the start, for `borrowers` borrowers: sized so a run starts near the optimal utilisation
     initial_prices: tuple = (3000.0, 60000.0)
-    liquidation_thresholds: tuple = (0.83, 0.78)
+    liquidation_thresholds: tuple = (0.83, 0.78)   # illustrative, like every value here; the `aave_v3_core` preset below carries Aave's own
     liquidation_bonus: float = 0.05
     close_factor: float = 0.5
     full_close_at_or_below_hf: float = 0.95
@@ -988,6 +988,25 @@ class LendingConfig:
     reserve_factor: float = 0.10
     annual_vol: tuple = (0.80, 0.60)
     price_correlation: float = 0.70
+    # A second market, picked on the Parameters panel (Round 86, batch 6, the owner's choice of 2026-11-25): Aave V3 Ethereum
+    # Core's own parameters for the page's two collateral assets (WETH, WBTC) and its debt asset (USDC), read on chain at one
+    # pinned block (data/defi/aave_v3_core_reads.json, raw; tests/test_r86_lending_aave_preset.py derives these from it, and
+    # web/scripts/check_lending.mjs reproduces Aave's stored rates from its totals). The prices, the borrowers and the
+    # shock stay generated, so a run under it is "Aave's parameters, simulated market", never Aave's market.
+    market_presets: dict = field(default_factory=lambda: {
+        "aave_v3_core": {
+            "label": "Aave V3 Ethereum Core, read on chain at block 26,492,593 (2026-11-25)",
+            "block": 26492593,
+            "liquidation_thresholds": (0.84, 0.85),
+            "liquidation_bonus": 0.05,
+            "base_rate": 0.0,
+            "optimal_utilisation": 0.94,
+            "slope1": 0.046,
+            "slope2": 0.10,
+            "reserve_factor": 0.10,
+            "initial_prices": (1631.72303377, 58177.02335814),
+        },
+    })
     jumps_per_year: float = 6.0
     jump_mean: float = -0.08
     jump_sd: float = 0.05

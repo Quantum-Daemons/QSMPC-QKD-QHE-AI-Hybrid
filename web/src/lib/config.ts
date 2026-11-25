@@ -86,6 +86,13 @@ export interface LendingCfg {
   shock_hour: number; shock_fraction: number; adjust_probability: number; adjust_fraction: number;
   check_points: number; margin_scale_bits: number; margin_mask_bits: number; custody: "keyholder" | "borrower" | "committee";
   max_workers: number; sweep_multipliers: number[]; sweep_seeds: number;
+  /** Real markets' parameters a run may pick instead of the illustrative ones (batch 6): `aave_v3_core`, read on chain. */
+  market_presets: Record<string, LendingMarketPreset>;
+}
+/** One real market's parameters for the lending page, as `LendingConfig.market_presets` derives them from its raw reads. */
+export interface LendingMarketPreset {
+  label: string; block: number; liquidation_thresholds: number[]; liquidation_bonus: number;
+  base_rate: number; optimal_utilisation: number; slope1: number; slope2: number; reserve_factor: number; initial_prices: number[];
 }
 export const webCfg = () => CONFIG.web;
 

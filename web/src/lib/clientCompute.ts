@@ -1258,7 +1258,7 @@ async function publishedStudentWeights(usecase: string | undefined): Promise<Cnn
 export async function realClientHybrid(features: number[],
                                       convolve = false,
                                       usecase?: string,
-                                      realModel?: { W: number[][]; b: number[] } | null,
+                                      realModel?: { W: number[][]; b: number[]; corpusBias?: number[][] } | null,
                                       corpus?: number[][] | null,
                                       seed = 0,
                                       square?: { net: FinanceSquare; raw: number[] } | null,
@@ -1379,7 +1379,7 @@ export async function realClientHybrid(features: number[],
     let batch: RealHybridRun["batch"] = null;
     if (usingRealModel && corpus?.length) {
       const bt = await encryptedLinearBatch(W, b, corpus.map((r) => r.slice(0, n)),
-                                            { maxCiphertexts: corpus.length });
+                                            { maxCiphertexts: corpus.length, rowBias: realModel?.corpusBias });
       const encCls = bt.logits.map(argmax), plainCls = bt.plainLogits.map(argmax);
       // A top-1 mismatch is NOT automatically a precision failure, and reporting the count alone
       // says it is. Genomics' former sign test is the case that forced this: its model was the
@@ -3776,7 +3776,7 @@ export function runClientPipeline(
               rowsAre: usecase === "genomics"
                 ? "external reference-panel individuals (1000 Genomes genotypes; PGS000072 was not "
                   + "fitted on them, and there is no split), whose decision logit on both axes is the "
-                  + "full score minus the cut"
+                  + "full score minus the 90th percentile of its own super-population over the whole panel"
                 : undefined,
             };
             emit("log", stage, `encrypted tier over the page's own corpus: ${bt.rows} of `
@@ -3836,13 +3836,19 @@ export function runClientPipeline(
               + `|difference| ${scoreErr.toExponential(3)}); every other slot is zeroed by the output mask and `
               + `flooded (+/-2^${CKKS_FLOOD_BITS}) before decryption, so it shows none of the partial sums. The cut ${(-bCut).toFixed(4)} is the `
               + `${realIn.metrics?.prs_high_risk_percentile}th percentile of the plaintext score over the `
-              + `${realIn.metrics?.prs_cut_population} bundled 1000 Genomes individuals, this one included `
-              + `(linear interpolation between order statistics). Score minus cut, beside a class-0 logit `
-              + `of 0, goes to the garbled-circuit argmax: high risk = ${real.prediction} (plaintext: `
-              + `${plainFlag}).`
-              + (bt ? ` Over all ${bt.rows} bundled individuals, in ${bt.ciphertexts} ciphertext(s): the `
-                + `flag agrees on ${bt.rows - bt.mismatches} of ${bt.rows} (${flaggedEnc} above the cut `
-                + `encrypted, ${flaggedPlain} in plaintext), max |decrypted - plaintext score| `
+              + `${realIn.metrics?.prs_cut_population} 1000 Genomes individuals of this person's super-population, `
+              + `${realIn.metrics?.prs_reference_super_population} (the label of the population it was sampled in), from the payload's `
+              + `statistics over all ${realIn.metrics?.prs_pooled_cut_all_population}; there this score is at about the `
+              + `${realIn.metrics?.prs_percentile_in_super_population}th percentile, Z ${realIn.metrics?.prs_z_in_super_population}. `
+              + `Score minus cut, beside a class-0 logit of 0, goes to the garbled-circuit argmax: high risk = ${real.prediction} `
+              + `(plaintext: ${plainFlag}). Beside it, the pooled cut over the ${realIn.metrics?.prs_pooled_cut_population} bundled `
+              + `individuals of every super-population, ${Number(realIn.metrics?.prs_pooled_cut).toFixed(4)}, would read `
+              + `${realIn.metrics?.prs_pooled_flag === 1 ? "high risk" : "not high risk"}; a pooled cut is not a fair reference across `
+              + `ancestries, which the PGS Catalog's calculator says (use ancestry-normalised outputs), and the Models card measures `
+              + `how unevenly it falls on each super-population.`
+              + (bt ? ` Over all ${bt.rows} bundled individuals, each against its own super-population's cut, in `
+                + `${bt.ciphertexts} ciphertext(s): the flag agrees on ${bt.rows - bt.mismatches} of ${bt.rows} (${flaggedEnc} above `
+                + `the cut encrypted, ${flaggedPlain} in plaintext), max |decrypted - plaintext score| `
                 + `${bt.maxAbsError.toExponential(3)}.` : ""));
           }
           const ho = held ? await emitHeldOutAgreement(stage, held) : null;
@@ -4398,8 +4404,19 @@ export function runClientPipeline(
         metric(stage, "lending_bob_min_health", Math.min(...run.bobHealth));
         metric(stage, "lending_bob_liquidations", bobEvents);
         metric(stage, "lending_books_gap", run.maxAccountingGap);
+        // Which market's parameters (batch 6): the illustrative ones, or a real market's read on chain at a pinned block.
+        const preset = typeof config.lending_market === "string" ? base.market_presets?.[config.lending_market] : undefined;
+        metric(stage, "lending_market", preset ? String(config.lending_market) : "illustrative");
+        metric(stage, "lending_market_label", preset ? preset.label : "illustrative parameters");
         emit("log", stage, `market simulated in this tab: ${run.hours} hours, ${run.borrowers} borrowers, generated prices with one stated fall `
-          + `of ${(cfg.shock_fraction * 100).toFixed(0)}% at hour ${cfg.shock_hour}; ${run.events.length} liquidations, ${bobEvents} of them Bob's. No chain is involved.`);
+          + `of ${(cfg.shock_fraction * 100).toFixed(0)}% at hour ${cfg.shock_hour}; ${run.events.length} liquidations, ${bobEvents} of them Bob's. `
+          + (preset
+            ? `Parameters: ${preset.label}: liquidation thresholds ${cfg.liquidation_thresholds.map((t) => (t * 100).toFixed(0) + "%").join(" and ")}, `
+              + `bonus ${(cfg.liquidation_bonus * 100).toFixed(1)}%, the debt asset's rate curve ${(cfg.optimal_utilisation * 100).toFixed(0)}% optimal, `
+              + `slopes ${(cfg.slope1 * 100).toFixed(1)}% and ${(cfg.slope2 * 100).toFixed(1)}%, opening prices the oracle's at that block; the borrowers, `
+              + `the price path and the fall are generated, so this is Aave's parameters on a simulated market, not Aave's market. `
+            : "Parameters: illustrative, no live market's. ")
+          + "No chain is involved.");
         // The sweep moves only volatility, from the configured one, so this run's multiplier does not move the curve's axis.
         const sweepCfg = { ...cfg, annual_vol: base.annual_vol };
         const seeds = Array.from({ length: cfg.sweep_seeds }, (_, i) => seed + i);

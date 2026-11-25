@@ -322,6 +322,28 @@ def load_opssat_segments(path: Path | None = None) -> OpsSatSegments:
         licence_url=str(d.get("licence_url") or ""), attribution=str(d.get("attribution", "")))
 
 
+def genomic_prs_super_populations(n_individuals: int = 400, name: str = ACTIVE_PRS):
+    """The 1000 Genomes super-population of each row `load_genomic_prs` returns, in its order (Round 86, batch 6).
+
+    Read from the same dosage file the loader reads (the full matrix, else the committed slice), whose
+    `super_population` column is IGSR's label of the population each individual was sampled in. The genomics use case
+    judges a person against the 90th percentile of their own super-population, not a pooled cut over mixed ancestries
+    (references/genomics-real-data-2026-11.md). None when no dosage file is present, which is the loader's
+    Hardy-Weinberg fallback: those rows describe no sampled individual.
+    """
+    _, dosage_file = _PRS_FILES[name]
+    root = Path(__file__).resolve().parents[3] / "data" / "genomics"
+    g1k = root / dosage_file
+    if not g1k.exists():
+        g1k = root / f"{Path(dosage_file).stem}_slice.tsv"
+        if not g1k.exists():
+            return None
+    rows = [ln for ln in g1k.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
+    col = rows[0].split("\t").index("super_population")
+    labels = np.asarray([ln.split("\t")[col] for ln in rows[1:]])
+    return labels[:n_individuals] if n_individuals and len(labels) > n_individuals else labels
+
+
 def load_genomic_prs(n_individuals: int = 400, seed: int = 0, name: str = ACTIVE_PRS):
     """Real PRS model + a cohort of **real 1000 Genomes** genotype dosages.
 

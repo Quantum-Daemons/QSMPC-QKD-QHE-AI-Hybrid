@@ -11,11 +11,14 @@ product, with no surrogate: a person's dosages at every scored variant in one ci
 the plaintext weights, summed by rotation, and the decrypted score compared with a high-risk cut.
 Per-SNP SHAP shows which loci drive the score.
 
-THE CUT IS STATED, NOT BORROWED. It is the ``HIGH_RISK_PERCENTILE``-th percentile of the plaintext
-score over the individuals this run's loader read (numpy's default linear interpolation between order
-statistics, the scored person included), so it comes from the bundled panel alone. A demo cut, not a
-clinical threshold. The browser computes the same percentile the same way over the 30 individuals it
-bundles.
+THE CUT IS STATED, NOT BORROWED, AND IT IS THE PERSON'S OWN SUPER-POPULATION'S (Round 86, batch 6). It is the
+``HIGH_RISK_PERCENTILE``-th percentile of the plaintext score over the individuals of the scored person's 1000 Genomes
+super-population among those this run's loader read (numpy's default linear interpolation between order statistics,
+the scored person included), and every panel row is judged against its own super-population's. A pooled cut over mixed
+ancestries is not current practice (pgsc_calc v2.3.0 asks for ancestry-normalised outputs;
+references/genomics-real-data-2026-11.md), so the pooled cut is reported beside it, not used. A demo cut, not a
+clinical threshold. The browser applies the same percentile to each super-population's statistics over all 2,504
+individuals, which the payload carries.
 
 The dosages are real 1000 Genomes phase-3 effect-allele counts; Hardy-Weinberg sampling is only the
 loudly-logged offline fallback.
@@ -126,8 +129,9 @@ class FullScoreInferenceStage(PrivateInferenceStage):
         if ctx.config.get("inference", "ckks") != "ckks" or panel is None:
             return
         cut, n = float(panel["cut"]), len(panel["dosages"])
+        row_cut = np.asarray(panel["row_cut"], dtype=float)
         r = encrypted_scores(reg.get("fhe", ctx.config.get("fhe"))(), panel["dosages"], panel["weights"])
-        enc_flag, plain_flag = r["encrypted"] > cut, r["plaintext"] > cut
+        enc_flag, plain_flag = r["encrypted"] > row_cut, r["plaintext"] > row_cut
         agree = int(np.sum(enc_flag == plain_flag))
         subject = int(panel["subject_index"])
         subject_plain = int(plain_flag[subject])
@@ -135,9 +139,12 @@ class FullScoreInferenceStage(PrivateInferenceStage):
             "rows": n, "ciphertexts": r["ciphertexts"], "rows_per_ciphertext": r["rows_per_ciphertext"],
             "packed": r["packed"], "max_abs_error": r["max_abs_error"], "flags_agree": agree,
             "flagged_encrypted": int(enc_flag.sum()), "flagged_plaintext": int(plain_flag.sum()),
-            "cut": cut, "percentile": HIGH_RISK_PERCENTILE}
+            "cut": cut, "row_cut": row_cut.tolist(), "pooled_cut": float(panel["pooled_cut"]),
+            "percentile": HIGH_RISK_PERCENTILE}
         for key, value in (("prs_high_risk_percentile", HIGH_RISK_PERCENTILE),
-                           ("prs_high_risk_cut", round(cut, 6)), ("prs_cut_population", n),
+                           ("prs_high_risk_cut", round(cut, 6)), ("prs_cut_population", int(panel["cut_population"])),
+                           ("prs_reference_super_population", panel["super_population"]),
+                           ("prs_pooled_cut", round(float(panel["pooled_cut"]), 6)), ("prs_pooled_cut_population", n),
                            ("prs_subject_flag_plaintext", subject_plain),
                            ("prs_subject_flags_agree", int(ctx.artifacts.get("private_prediction") == subject_plain)),
                            ("prs_panel_rows", n), ("prs_panel_ciphertexts", r["ciphertexts"]),
@@ -154,12 +161,15 @@ class FullScoreInferenceStage(PrivateInferenceStage):
             f"dosages, together in one ciphertext ({layout}). In plaintext: the {r['variants']} effect "
             f"weights, applied by one multiply-plain; rotate-and-add then sums each block into its first "
             f"slot. Decrypted: the result ciphertext, read at that slot, which holds the score; the cut "
-            f"{cut:.4f} is the {HIGH_RISK_PERCENTILE:.0f}th percentile of the plaintext score over the {n} "
-            f"panel individuals this run loaded (linear interpolation between order statistics). Scored "
+            f"{cut:.4f} is the {HIGH_RISK_PERCENTILE:.0f}th percentile of the plaintext score over the "
+            f"{int(panel['cut_population'])} panel individuals of the scored person's super-population, "
+            f"{panel['super_population']}, among the {n} this run loaded (linear interpolation between order "
+            f"statistics); the pooled cut over all {n}, {float(panel['pooled_cut']):.4f}, is not used. Scored "
             f"person: class {ctx.artifacts.get('private_prediction')} encrypted, {subject_plain} in "
-            f"plaintext. Panel: {n} people in {r['ciphertexts']} ciphertext(s), max |decrypted - "
-            f"plaintext score| {r['max_abs_error']:.3e}; the high-risk flag agrees on {agree} of {n} "
-            f"({int(enc_flag.sum())} above the cut encrypted, {int(plain_flag.sum())} in plaintext).",
+            f"plaintext. Panel: {n} people in {r['ciphertexts']} ciphertext(s), each against its own "
+            f"super-population's cut, max |decrypted - plaintext score| {r['max_abs_error']:.3e}; the high-risk "
+            f"flag agrees on {agree} of {n} ({int(enc_flag.sum())} above the cut encrypted, "
+            f"{int(plain_flag.sum())} in plaintext).",
             self.name)
 
 
@@ -170,7 +180,7 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     # stopped being Hardy-Weinberg samples, which is the same staleness the docstring carried.
 
     from ...config import get_config
-    from ...data.loaders import load_genomic_prs
+    from ...data.loaders import genomic_prs_super_populations, load_genomic_prs
     from ...fhe.ckks_inference import LinearModel
 
     cfg = get_config()
@@ -182,17 +192,24 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     dosages, weights, rsids, eff_alleles, _freq = load_genomic_prs(
         n_individuals=max(d.genomics_n // 3, 200), seed=seed, name=prs_name)
 
-    # The full score of every individual the loader read, and the cut over them (see the docstring):
-    # the HIGH_RISK_PERCENTILE-th percentile, from this bundled panel only.
+    # The full score of every individual the loader read, and each one's cut (see the docstring): the
+    # HIGH_RISK_PERCENTILE-th percentile of their own super-population's scores in this panel; the pooled cut beside it.
     scores = dosages @ weights
-    threshold = high_risk_cut(scores)
+    pooled = high_risk_cut(scores)
+    labels = genomic_prs_super_populations(n_individuals=len(scores), name=prs_name)
+    if labels is None or len(labels) != len(scores):
+        labels = np.asarray(["panel"] * len(scores))   # the Hardy-Weinberg fallback: no sampled population to read
+    cuts = {g: high_risk_cut(scores[labels == g]) for g in sorted(set(labels.tolist()))}
+    row_cut = np.asarray([cuts[g] for g in labels], dtype=float)
     # 2-class LinearModel for argmax(W x + b): class 1 (high genetic risk) iff score > cut. Class 0's
     # row is zero, so the encrypted computation is the score itself, and the cut is subtracted from
     # the decrypted value in the clear.
-    w2 = np.vstack([np.zeros_like(weights), weights])
-    b2 = np.array([0.0, -threshold])
     subject_index = int(np.argmax(scores))
     subject = dosages[subject_index].astype(float)       # a high-PRS individual to score privately
+    group = str(labels[subject_index])
+    threshold = float(row_cut[subject_index])
+    w2 = np.vstack([np.zeros_like(weights), weights])
+    b2 = np.array([0.0, -threshold])
 
     # per-biobank allele counts for SNP 0 (real dosage sums) -> secure-summed pooled count
     n_biobanks = config.get("biobanks", d.genomics_biobanks)
@@ -230,11 +247,13 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     ctx.data["feature_names"] = list(rsids)                         # per-SNP SHAP (which loci drive risk)
     ctx.data["_prs"] = {"name": prs_name, "n_snps": len(weights), "threshold": round(threshold, 4),
                         "high_risk_percentile": HIGH_RISK_PERCENTILE,
-                        "cut_population": int(dosages.shape[0]),
+                        "cut_population": int(np.sum(labels == group)),
+                        "super_population": group, "pooled_cut": round(pooled, 4),
                         "subject_score": round(float(subject @ weights), 4),
                         "subject_flag_plaintext": int(float(subject @ weights) > threshold)}
-    ctx.data["_prs_panel"] = {"dosages": dosages, "weights": weights, "cut": threshold,
-                              "subject_index": subject_index}
+    ctx.data["_prs_panel"] = {"dosages": dosages, "weights": weights, "cut": threshold, "row_cut": row_cut,
+                              "pooled_cut": pooled, "super_population": group,
+                              "cut_population": int(np.sum(labels == group)), "subject_index": subject_index}
     ctx.data["_ground_truth_total"] = sum(per_cohort)
     ctx.data["_qsms_field"] = {"prime": prime, "max_possible_total": max_total, "parties": n_parties,
                                "field_within_paper_bound": bool(n_parties <= prime <= 2 * n_parties)}

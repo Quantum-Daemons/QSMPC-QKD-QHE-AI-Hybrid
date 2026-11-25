@@ -47,8 +47,17 @@ export function withRunParams(c: LendingCfg, p: Record<string, unknown>): Lendin
   const num = (v: unknown, fallback: number) => (v != null && Number.isFinite(Number(v)) ? Number(v) : fallback);
   const borrowers = num(p.lending_borrowers, c.borrowers);
   const volatility = num(p.lending_vol_mult, 1);
+  // A real market's parameters, where the panel picks one (batch 6): its thresholds, bonus, rate curve, reserve factor and
+  // opening prices replace the illustrative ones; the borrowers, the price path and the shock stay generated.
+  const preset = typeof p.lending_market === "string" ? c.market_presets?.[p.lending_market] : undefined;
+  const market = preset
+    ? { liquidation_thresholds: preset.liquidation_thresholds.slice(), liquidation_bonus: preset.liquidation_bonus,
+        base_rate: preset.base_rate, optimal_utilisation: preset.optimal_utilisation, slope1: preset.slope1, slope2: preset.slope2,
+        reserve_factor: preset.reserve_factor, initial_prices: preset.initial_prices.slice() }
+    : {};
   return {
     ...c,
+    ...market,
     borrowers,
     supply: c.supply * borrowers / c.borrowers,       // the pool grows with its borrowers, so the utilisation a run starts at does not depend on how many there are
     bob_initial_ltv: num(p.lending_bob_ltv_pct, c.bob_initial_ltv * 100) / 100,
