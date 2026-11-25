@@ -5,8 +5,9 @@ On the owner's choice (2026-11-24: "compute it later", in batch 4). The probabil
 was scored from: `scripts/train/ibm_multignn/dump_logits.py` wrote each seed's validation and test windows with the
 fit-window batch-norm statistics (`pna_project_fitbn_seed<k>/{val,test}.npz`), and this script refuses a dump whose test
 AUPRC, row count or positive count differs from `models/metrics.json`'s `finance_aml.gnn` seed, so no new inference runs
-and no GPU is needed. Nothing published changes: the record goes to docs/measurements, not to the model's own record,
-whose Hub card would otherwise lag it.
+and no GPU is needed. The record goes to docs/measurements. With `--metrics` (the owner's choice of 2026-11-25: the finance
+page and the Hub card both), the published seed's map is also written into the model's own record in the other finance
+records' form, which the page's model card and the Hub card are built from; the card is then republished with it.
 
 For each seed, on the scored test edges:
 
@@ -20,6 +21,7 @@ For each seed, on the scored test edges:
   miscalibration term is reported beside it, as in the other finance records.
 
     python scripts/measure_finance_gnn_calibration.py --dumps <qsh-gnn-work> -o docs/measurements/finance-gnn-calibration-<date>.json
+    python scripts/measure_finance_gnn_calibration.py --dumps <qsh-gnn-work> -o <the same file> --metrics
 """
 
 from __future__ import annotations
@@ -38,9 +40,48 @@ sys.path.insert(0, str(REPO / "src"))
 
 from qsh.models import calibration as cal  # noqa: E402
 
+#: The logit of a probability float32 rounded to exactly 0 (100 of the published seed's test rows): small enough to leave
+#: every other probability as dumped, so the record's figures and the block's are scored on the same numbers.
+UNDERFLOW_EPS = 1e-45
+
 
 def _sha(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
+
+
+def metrics_block(dumps: Path, seed: int, threshold: float, platt, raw_table: list[dict], record: str) -> dict:
+    """The published seed's map in the finance records' form (`finance_aml.student_calibration`), for `models/metrics.json`.
+
+    `network_calibration`, which writes the finance MLP's and compact GNN's, says their tuned threshold is folded into the
+    last bias so that the operating point is 0.5; IBM's Multi-PNA+EU compares its probability with a threshold tuned on
+    validation instead, so the shared function is called with this model's own wording, and with the map fitted for the
+    record, so the two carry the same floats.
+    """
+    sys.path.insert(0, str(REPO / "scripts" / "train"))
+    from finance_aml import student_calibration
+
+    v, t = (np.load(dumps / f"pna_project_fitbn_seed{seed}" / f"{w}.npz") for w in ("val", "test"))
+    pv, pt = v["probs"].astype(np.float64), t["probs"].astype(np.float64)
+    zeros = int((pt == 0).sum())
+    # What the raw probability is, from the record's own table: the occupied bins above 0.1 whose mean prediction lies
+    # above the 95 % interval of the observed rate.
+    upper = [r for r in raw_table if r["from"] >= 0.1 and r["rows"]]
+    over = sum(r["mean_prediction"] > r["observed_ci95"][1] for r in upper)
+    where = (f"in every one of the {len(upper)} occupied bins above 0.1" if over == len(upper)
+             else f"in {over} of the {len(upper)} occupied bins above 0.1")
+    block = student_calibration(
+        cal.logit(pv, eps=UNDERFLOW_EPS), v["labels"].astype(int), cal.logit(pt, eps=UNDERFLOW_EPS), t["labels"].astype(int),
+        fitted_by="scripts/measure_finance_gnn_calibration.py --metrics, from the dumps the published record was scored from",
+        argument=(r"the GNN's P(laundering), $q = \sigma(z_1 - z_0)$, the softmax of its two logits $z_0, z_1$, as IBM's "
+                  f"`dump_logits.py` writes it. Its decision compares $q$ with the threshold tuned on validation, "
+                  f"{threshold:.6f} for the published seed, not with 0.5"),
+        raw_is=(f"the published checkpoint's own float32 softmax probability, the one its record was scored from. It is "
+                f"exactly 0 on {zeros:,} of the {len(pt):,} test rows, where float32 underflows, and their logit is taken at "
+                f"{UNDERFLOW_EPS:g}. In the record's ten-bin reliability table its mean lies above the 95 % interval of the "
+                f"observed rate {where}, so it is not a risk."),
+        why_tail="and it is the method of the other finance records, so they differ by the model and not by the map.",
+        noun="GNN", platt=platt)
+    return {"page_reads_this_map": False, "record": record, **block}
 
 
 def reliability(p: np.ndarray, y: np.ndarray, edges: np.ndarray) -> list[dict]:
@@ -90,11 +131,13 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--dumps", type=Path, required=True)
     ap.add_argument("-o", "--output", type=Path, required=True)
+    ap.add_argument("--metrics", action="store_true",
+                    help="also write the published seed's map into models/metrics.json (finance_aml.gnn's calibration)")
     args = ap.parse_args()
     from sklearn.metrics import average_precision_score
 
     rec = json.loads((REPO / "models" / "metrics.json").read_text())["finance_aml.gnn"]
-    seeds, sources = {}, {}
+    seeds, sources, platts = {}, {}, {}
     for s in rec["seeds"]:
         k = s["seed"]
         vf, tf = (args.dumps / f"pna_project_fitbn_seed{k}" / f"{w}.npz" for w in ("val", "test"))
@@ -108,6 +151,7 @@ def main() -> int:
         sources[f"pna_project_fitbn_seed{k}/val.npz"] = _sha(vf)
         sources[f"pna_project_fitbn_seed{k}/test.npz"] = _sha(tf)
         platt = cal.fit_platt(pv, yv, on_logit=True)
+        platts[str(k)] = platt
         pc = platt.apply(pt)
         seeds[str(k)] = {"test_rows_scored": int(len(yt)), "test_laundering": int(yt.sum()), "test_auprc": ap_,
                          "decision_threshold": s["decision_threshold"],
@@ -133,6 +177,31 @@ def main() -> int:
         "date": time.strftime("%Y-%m-%d"),
     }
     args.output.write_text(json.dumps(record, indent=1) + "\n")
+    if args.metrics:
+        from qsh.models import train
+
+        k = str(rec["selected_seed"])
+        out = args.output.resolve()
+        block = metrics_block(args.dumps, int(k), seeds[k]["decision_threshold"], platts[k],
+                              seeds[k]["raw"]["reliability_10_equal_width"],
+                              str(out.relative_to(REPO)) if out.is_relative_to(REPO) else out.name)
+        raw, calibrated = seeds[k]["raw"], seeds[k]["calibrated"]
+        # The block is scored by the shared function and the record by `summary`, on the same probabilities: they agree.
+        for name, got, want in (("brier_raw", block["brier_raw"], raw["brier"]),
+                                ("brier_calibrated", block["brier_calibrated"], calibrated["brier"]),
+                                ("log_loss_raw", block["log_loss_raw"], raw["log_loss"]),
+                                ("log_loss_calibrated", block["log_loss_calibrated"], calibrated["log_loss"]),
+                                ("mcb_raw", block["corp_raw"]["mcb"], raw["corp"]["mcb"]),
+                                ("mcb_calibrated", block["corp_calibrated"]["mcb"], calibrated["corp"]["mcb"]),
+                                ("auprc_raw", round(block["auprc_raw"], 6), seeds[k]["test_auprc"])):
+            if got != want:
+                raise SystemExit(f"{name}: the block's {got} is not the record's {want}")
+        payload = dict(rec)
+        payload["calibration"] = block
+        train.record_metrics("finance_aml.gnn", payload)
+        print(f"  models/metrics.json: finance_aml.gnn's calibration from seed {k} ({block['test_rows_clipped_by_logit']:,} "
+              f"test rows tied at the logit clip; AUPRC {block['auprc_raw']:.8f} raw, {block['auprc_calibrated']:.8f} "
+              "calibrated)", flush=True)
     return 0
 
 

@@ -807,7 +807,7 @@ def student_calibration(logit_val, y_val, logit_te, y_te, *, fitted_by: str, arg
             f"Measured on this {noun}'s windows, not carried from the gradient-boosting teacher's record. Isotonic's Brier {brier_iso:.8f} is "
             f"{_vs(brier_iso, brier_cal)} Platt's {brier_cal:.8f} and its log-loss {ll_iso:.8f} is {_vs(ll_iso, ll_cal)} "
             f"{ll_cal:.8f}; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly "
-            "monotone, so the curve ranks rows as the student does (AUPRC "
+            f"monotone, so the curve ranks rows as the {noun} does (AUPRC "
             f"{auprc['calibrated']:.8f} against the raw {auprc['raw']:.8f}"
             + (f", with {clipped:,} test rows tied at the logit clip" if clipped else ", no row tied at the logit clip")
             + f"; isotonic's {auprc['isotonic']:.8f} comes from the test window's scores tied at {distinct} values, "

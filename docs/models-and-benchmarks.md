@@ -105,7 +105,11 @@ above 0.1 (in the 0.1 to 0.2 bin the mean prediction is 0.135 and the observed r
 error of $`2.5 \times 10^{-3}`$ over fifteen equal-mass bins; the map brings it to $`1.3 \times 10^{-4}`$ and CORP's
 miscalibration term from $`2.2 \times 10^{-4}`$ to $`9.9 \times 10^{-6}`$, with the discrimination term unchanged, as a
 monotone map must leave it. The other four seeds move the same way. The record holds each seed's ten-bin reliability
-table with a Wilson interval per bin; the model's own record and its Hub card are unchanged.
+table with a Wilson interval per bin. On the owner's choice of 2026-11-25, the published seed's map is also in the model's
+own record (`--metrics`), in the other finance records' form, so the finance page's model card and the Hub card show it.
+The page still shows the GNN's logits and its decision, which compares the probability with a threshold tuned on
+validation, and reads no score through the map. On test, 947,218 of the 1,522,629 scored rows lie below the map's logit
+clip of $`10^{-12}`$ and tie there, which moves AUPRC from 0.63182937 to 0.63182826.
 
 ### The trained QCNN under CKKS
 

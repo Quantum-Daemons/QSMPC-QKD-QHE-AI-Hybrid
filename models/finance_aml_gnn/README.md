@@ -67,6 +67,33 @@ threshold that maximises validation F1. The seed exported is the one with the be
 - **Published ceiling**: 0.7581 - Multi-FraudGT, the best AML Small HI row of Table 16 ('Minority class F1 scores (%) for six AML datasets') in Bilgi and Atasu, 'MEGA: Message Passing Neural Networks for Multigraphs with EdGe Attributes', TMLR (08/2026), arXiv:2412.00241v3: 75.81 +/- 0.75. In the same column the paper's own MEGA-PNA scores 74.01 +/- 1.55 and MEGA-GenAgg 74.48 +/- 0.84, and Multi-PNA 67.35 +/- 2.89; Small HI is the one AML dataset of the six where Multi-FraudGT is ahead of MEGA-PNA.
 - **Companion metric shown alongside**: `auprc` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
+## Calibration map
+
+The demo page shows this model's logits and its decision, not a probability, and reads no score through this map. It states what the score would mean as a risk, for a reader who needs one. Fitted on the validation split and scored on the held-out test split.
+
+$$p = \frac{1}{1 + \exp\!\big(a\,\operatorname{logit}\big(\operatorname{clip}(q,\ \varepsilon,\ 1-\varepsilon)\big) + b\big)}$$
+
+$$\operatorname{logit}(q) = \log\frac{q}{1-q},\qquad \varepsilon = 10^{-12}$$
+
+Here \\(q\\) is the GNN's P(laundering), \\(q = \sigma(z_1 - z_0)\\), the softmax of its two logits \\(z_0, z_1\\), as IBM's `dump_logits.py` writes it. Its decision compares \\(q\\) with the threshold tuned on validation, 0.637421 for the published seed, not with 0.5.
+
+| quantity | value |
+|---|---|
+| `a` | -0.8395144600770161 |
+| `b` | 2.0208491042546495 |
+| fitted on | 710969 validation rows, 801 positive |
+| scored on | 1522629 test rows, 2321 positive |
+| Brier score, raw to calibrated | 0.00096098 to 0.00074877 |
+| log-loss, raw to calibrated | 0.00594711 to 0.00418167 |
+| CORP miscalibration (MCB), raw to calibrated | 0.00022212 to 0.00000991 |
+| base-rate Brier score (CORP UNC) | 0.00152201 |
+
+Brier skill against the base rate, \\(1 - \mathrm{BS}/\mathrm{UNC}\\), is 0.5080.
+
+Raw is the published checkpoint's own float32 softmax probability, the one its record was scored from. It is exactly 0 on 100 of the 1,522,629 test rows, where float32 underflows, and their logit is taken at 1e-45. In the record's ten-bin reliability table its mean lies above the 95 % interval of the observed rate in every one of the 9 occupied bins above 0.1, so it is not a risk.
+
+Why Platt and not isotonic: Measured on this GNN's windows, not carried from the gradient-boosting teacher's record. Isotonic's Brier 0.00074634 is below Platt's 0.00074877 and its log-loss 0.00425546 is above 0.00418167; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly monotone, so the curve ranks rows as the GNN does (AUPRC 0.63182826 against the raw 0.63182937, with 947,218 test rows tied at the logit clip; isotonic's 0.61641266 comes from the test window's scores tied at 166 values, 1,126,562 of them exactly zero), and it is the method of the other finance records, so they differ by the model and not by the map.
+
 ## Training data
 
 - **Dataset**: IBM AMLworld HI-Small

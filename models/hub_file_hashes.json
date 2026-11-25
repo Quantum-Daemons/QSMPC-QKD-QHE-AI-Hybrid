@@ -12,7 +12,7 @@
    "eval_sample.json": "4e66c824e0b78f690c4c6bc4fe0397672af54f8ebe839800dfea27c38ada7bf7",
    "onnx/model.onnx": "c5bc68963c6deea0ad9ddf4e08f822faaf639eb8071ed47510de0e48840a51cd"
   },
-  "revision": "22cdddcd939aace1c4f7a1766d6c5cfa6578a6a0"
+  "revision": "efbea6a73eee1543e258432a46f616b49139ed9c"
  },
  "finance_aml.gnn_causal": {
   "files": {
