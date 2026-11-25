@@ -514,8 +514,10 @@ test rows decrypts within $`3.1 \times 10^{-6}`$ of the plaintext logits under A
 no decision changed (criterion 3 met), the largest plaintext logit 27.4 against A2's bound of $`2^{13}`$. A block of
 4,096 rows took 0.6 s to encrypt and 9.9 s to evaluate under A2, with ten node processes running at once, since
 node-seal's wasm is single-threaded. The square network is far ahead of the linear student it could replace in the
-fully encrypted path (0.500 against 0.184) and behind the same network with a ReLU; whether to pre-register it against
-the linear student instead is the owner's question, not a reading of this result.
+fully encrypted path (0.500 against 0.184) and behind the same network with a ReLU. On the owner's choice of 2026-11-25,
+that comparison is pre-registered as F7b (`references/finance-square-student-page-preregistration.md`) before any of its
+seeds was trained: its accuracy margins are stated as chosen after this result, and a new criterion asks for the page's
+time and memory in a browser.
 
 #### The PSI among banks under MPC
 
