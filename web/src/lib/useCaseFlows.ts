@@ -765,8 +765,8 @@ export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: Diag
         ? (bilateral(c)
           ? { ...sides("CKKS: encrypts its balances, decrypts the masked margin", "CKKS: adds the weights, masks the margin"), flow: "both", channel: "fhe" }
           : committee(c)
-            ? { a: "BGV: applies settlements, adds weights, masks the margin", b: "2 of 3 members re-encrypt it; Carol decrypts the masked margin", flow: "ab", channel: "fhe" }
-            : { a: "CKKS: applies settlements, adds weights, masks the margin", b: "CKKS: decrypts the masked margin", flow: "ab", channel: "fhe" })
+            ? { a: "BGV: settles, sums the weights, masks the margin", b: "2 of 3 members re-encrypt it; Carol decrypts the masked margin", flow: "ab", channel: "fhe" }
+            : { a: "CKKS: settles, sums the weights, masks the margin", b: "CKKS: decrypts the masked margin", flow: "ab", channel: "fhe" })
         : { ...sides("garbled circuit: holds a share", "garbled circuit: holds a share"), flow: "both", channel: "mpc" };
     case "qml_ids":
       // The encrypted tier (round86-batch3): CKKS for the student's dot products, every score masked before the key
