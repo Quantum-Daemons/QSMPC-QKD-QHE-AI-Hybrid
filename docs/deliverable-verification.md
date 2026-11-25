@@ -7458,7 +7458,12 @@ GitHub Support can drop; the owner holds a drafted request. Commit ids cited in 
 - ML-DSA verification rejects a public key of the wrong length, and an oversized signature, before
   liboqs sees them: advisory GHSA-w696-4vrr-x6x3 (2026-10-28) shows liboqs-python up to 0.16.0.1
   zero-padding a short key, and an ML-DSA key of 32 bytes or less accepting forged signatures. The
-  floor is liboqs-python 0.16.0.2 (`pyproject.toml`, `requirements-core.txt`).
+  floor is liboqs-python 0.16.0.2 (`pyproject.toml`, `requirements-core.txt`). **Read again on 2026-11-25** at the
+  repository's published advisories: the API image's liboqs 0.16.0 already has the fixes for GHSA-jr5q-r9qx-v738
+  (NTRU `encaps_derand`) and GHSA-5c97-hp95-vg56 (FrodoKEM's value barrier), both up to 0.15.0; GHSA-wh5q-mpc8-67wf
+  and GHSA-xv6c-h66p-6mfq (LMS verification and signing, up to 0.16.0, fixed in 0.17.0, not yet released) do not
+  reach it, since `docker/Dockerfile.api` builds with liboqs's defaults and 0.16.0's `.CMake/alg_support.cmake`
+  declares `OQS_ENABLE_SIG_STFL_LMS` OFF.
 - LICENSE is the official Apache License 2.0 text again (SHA-256 cfc7749b...); the file was a
   shortened copy that GitHub could not identify. A test pins it.
 - `make check-secrets` fails when reachable history holds a PDF the tree has dropped.
