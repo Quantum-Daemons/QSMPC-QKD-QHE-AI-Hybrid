@@ -575,6 +575,41 @@ ciphertexts, about 7.4 s, the largest logit error $`2.3 \times 10^{-7}`$, no dec
 `tests/test_r86_nidd_student_under_ckks.py`). The telecom page draws it as a figure of its own beside the QKD student's,
 which reads synthetic telemetry.
 
+#### 5G-NIDD's two base stations, federated: the first station's own model is the best
+
+On the owner's choice of 2026-11-26, pre-registered before any model was trained
+([`references/telecom-nidd-federated-preregistration.md`](../references/telecom-nidd-federated-preregistration.md);
+`scripts/train/telecom_nidd_federated.py`, `docs/measurements/telecom-nidd-federated-2026-11-26.json`). The corpus was
+captured at two base stations, whose files the CSV concatenates; each station's fit, validation and test rows are the
+student's that come from its file. Each station alone and both pooled run the student's own procedure; the federation
+runs FedAvg for 40 rounds of 20 local L-BFGS-B iterations under the page's pairwise masks (`SecureAggregator`, the
+browser's construction), each station weighted by its fit rows (0.478 and 0.522), the penalty and the temperature
+chosen from masked sums of the stations' validation losses: 270 masked messages, every one checked to cancel exactly.
+The stations exchanged only their row counts and each feature's mean and deviation in the clear, which reproduce the
+student's standardisation: the centres within $`3.5 \times 10^{-8}`$ of a deviation, the deviations within
+$`1.8 \times 10^{-7}`$ of themselves.
+
+| Model | Station 1's test flows | Station 2's | Mean (FLamby's metric) |
+|---|---|---|---|
+| Station 1 alone | 0.986 | 0.983 | 0.985 |
+| Station 2 alone | 0.935 | 0.983 | 0.959 |
+| Federated | 0.959 | 0.982 | 0.971 |
+| Pooled (the student) | 0.965 | 0.983 | 0.974 |
+
+Macro-F1 over the nine classes. Criterion 1 fails: the federated model is not above each station alone, because station
+1's own model is the best by the mean. It carries to station 2's flows as well as station 2's own model does, while
+station 2's model does not carry back (SYNFlood 0.83, SYNScan 0.89, UDPScan 0.89 on station 1's flows); a single linear
+model trained on both, federated or pooled, scores between the two on station 1's flows (SYNFlood 0.84 and 0.88). The
+gradient-boosted teacher shows the same asymmetry across stations (0.995 one way, 0.902 the other). Criterion 2 holds:
+the federation is 0.003 below pooling, and its pooled training objective 0.004 above the pooled fit's. Criterion 3
+holds: under CKKS in the browser, on the student's 2,048 held-out flows (955 from station 1, 1,093 from station 2), 32
+ciphertexts in about 7.4 s, the largest logit error $`2.1 \times 10^{-7}`$, no decision changed, and the accuracy by
+station is the plaintext one (98.74 and 98.44 percent). The page's card states the comparison and its reason in the
+record's figures, and after a run replays the last round's masked sum with fresh X25519 keys, 333 of 333 coordinates
+equal to the shipped global model bit for bit. What it does not show: with two stations each can compute the other's
+update from the global model and its own, so the masks hide the updates from the aggregator only; the mask seeds are
+not post-quantum; no differential privacy is applied.
+
 #### The finance QCNN on AMLworld, pre-registered (the page change waits for the owner's choice of seed)
 
 On the owner's choice of 2026-11-25, pre-registered before any input was scored

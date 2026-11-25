@@ -130,6 +130,7 @@ export default function NiddFederatedCard({ live }: { live: NiddFederatedLive | 
                 aria-describedby={captionId} margin={{ top: 10, right: 20, bottom: 8, left: 4 }}>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
                 <XAxis dataKey="round" type="number" domain={[1, fed.rounds]} tick={tick} allowDecimals={false}
+                  ticks={[1, ...Array.from({ length: Math.floor(fed.rounds / 10) }, (_, i) => (i + 1) * 10)]}
                   label={{ value: "round", position: "insideBottom", offset: -6, fill: "var(--muted)", fontSize: 11 }} />
                 <YAxis type="number" domain={[lo, hi]} ticks={yTicks} tick={tick} width={48} tickFormatter={(v: number) => v.toFixed(2)} />
                 <Tooltip content={<ReadoutTooltip labelName="round" labelFormatter={(l) => `round ${l}`}

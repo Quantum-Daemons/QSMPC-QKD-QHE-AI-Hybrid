@@ -202,6 +202,13 @@ against their own random-forest baseline on the same generated data. What remain
 caution about evaluation quality, not a universal ranking: arXiv:2512.05069 was withdrawn by its own
 authors for evaluation "insufficient to fully support the paper's conclusions".
 
+**Federating 5G-NIDD's two base stations did not beat the first station's own model** (Round 86, batch 6,
+pre-registered). FedAvg under the page's pairwise masks scores 0.971 by the mean of the two stations' macro-F1, 0.003
+below pooling and above station 2 alone (0.959), but below station 1 alone (0.985): station 1's linear model carries to
+station 2's flows, station 2's does not carry back, and one linear model trained on both sits between them on station
+1's flows. The page shows that comparison and its reason, replays the last masked sum in the tab and scores the
+federated model under CKKS ([models-and-benchmarks](models-and-benchmarks.md)).
+
 ---
 
 ## Concerns & recommendations
