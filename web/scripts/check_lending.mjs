@@ -41,7 +41,7 @@ try {
   try { m.twoSlopeRate(1.01, c); } catch { threw = true; }
   check(threw, "a utilisation above 1 is refused");
 
-  check(m.closeFactor(0.97, c) === c.close_factor && m.closeFactor(0.95, c) === 1 && m.closeFactor(0.94, c) === 1, "the close factor is 50% above 0.95 and 100% at or below it, as in LiquidationLogic.sol");
+  check(m.closeFactor(0.97, c) === c.close_factor && m.closeFactor(0.95, c) === 1 && m.closeFactor(0.94, c) === 1, "the close factor is 50% above 0.95 and 100% at or below it, as LiquidationLogic.sol sets it for positions of at least USD 2,000 on both sides (its rules for smaller positions are not modelled)");
   const params = m.withRunParams(c, { lending_borrowers: 12, lending_bob_ltv_pct: 50, lending_shock_hour: 100, lending_shock_pct: 20, lending_vol_mult: 2, lending_checks: 4 });
   check(params.borrowers === 12 && params.supply === c.supply / 2 && params.bob_initial_ltv === 0.5 && params.shock_hour === 100 && params.shock_fraction === 0.2
     && params.annual_vol.every((v, i) => v === c.annual_vol[i] * 2) && params.check_points === 4, "every control on the page reaches the simulation");
@@ -88,6 +88,17 @@ try {
   const positive = a.checkpoints.filter((k) => k.margin < 0);
   check(positive.length >= 1, "a checkpoint sits on the first hour Bob can be liquidated");
   check(a.checkpoints.every((k) => near(k.margin, m.margin(k.amounts, k.prices, k.thresholds, k.debtValue)) && near(k.debtValue, k.scaledDebt * k.index, 1e-6)), "each checkpoint's margin is its own inputs'");
+  // The garbled circuit's ring (privateCheck.ts, signOfMargin): its sign is exact only while |M| / 1000 < 2^(31 - margin_scale_bits).
+  const ringBound = 2 ** (31 - c.margin_scale_bits) * 1000;
+  let widest = 0;
+  for (const multiplier of c.sweep_multipliers) {
+    for (let s = 1; s <= 24; s++) {
+      const r = m.simulate({ ...c, annual_vol: c.annual_vol.map((v) => v * multiplier), shock_fraction: 0 }, s);
+      for (const k of r.checkpoints) widest = Math.max(widest, Math.abs(k.margin));
+    }
+  }
+  for (const k of a.checkpoints) widest = Math.max(widest, Math.abs(k.margin));
+  check(widest < ringBound, `every checkpoint's margin stays inside the garbled circuit's ring: largest |M| ${Math.round(widest).toLocaleString("en-US")} against ${ringBound.toLocaleString("en-US")} stable units`);
 } finally {
   rmSync(tmp, { recursive: true, force: true });
 }

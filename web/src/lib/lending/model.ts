@@ -1,9 +1,11 @@
 /**
  * A dynamic lending market, simulated hour by hour (Round 86). No chain, no real prices: a pool, borrowers and a synthetic price path.
  *
- * The mechanics follow what Aave V3's public contracts implement, re-derived rather than copied (the current ones, aave-v3-origin, are under the Business Source License until 2027-03-06 at the latest):
+ * The mechanics follow Aave V3's public contracts, re-derived rather than copied and simplified where stated (the current ones, aave-v3-origin, are under the Business Source License until 2027-03-06 at the latest):
  *   - a position's health factor is its collateral value, each asset weighted by its liquidation threshold, over its debt value;
- *   - below 1 it can be liquidated, up to 50% of the debt in one step, or 100% at or below 0.95;
+ *   - below 1 it can be liquidated, up to 50% of the debt in one step, or 100% at or below 0.95. That is V3's rule for a position whose collateral and debt
+ *     in the reserve are each at least USD 2,000 (`MIN_BASE_MAX_CLOSE_FACTOR_THRESHOLD`, LiquidationLogic.sol at v3.7.0, read 2026-11-25); V3 also lets a
+ *     smaller position be liquidated whole and refuses a liquidation that leaves less than USD 1,000 (`MIN_LEFTOVER_BASE`). Neither rule is modelled here;
  *   - the liquidator takes collateral worth the repaid debt plus a bonus;
  *   - the borrow rate is a two-slope function of utilisation, and debt grows through a public index, so a position is stored as a scaled balance.
  *
