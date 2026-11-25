@@ -304,7 +304,8 @@ def test_a_sample_without_the_declared_space_is_refused_not_fed(browser) -> None
 
 
 @pytest.mark.parametrize("name, stage, model, rows, ciphertexts", [
-    ("finance", "private_inference", "finance_aml.student", 8192, 256),
+    # Since F7b (Round 86): the square network, two A2 blocks of 4,096 rows, 114 input ciphertexts each.
+    ("finance", "private_inference", "finance_aml.square_network", 8192, 228),
     ("medical_qcnn", "private_inference", None, 171, 1),
     ("telecom_qcnn", "qml_ids", "telecom_ids.student", 600, 2),
 ])

@@ -36,9 +36,9 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from statistics import NormalDist
 
 import numpy as np
-from statistics import NormalDist
 
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO / "src"))

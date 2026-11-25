@@ -172,7 +172,7 @@ def test_the_checks_refuse_the_sentences_as_they_stood() -> None:
     assert len(retired_claims(as_they_stood)) == 3
     register = (REPO / "DATA_LICENSES.md").read_text(encoding="utf-8")
     stale = register.replace(
-        _flat_find(register, "All eighteen"), "All thirteen Hub\n  repos, seven teachers, four encrypted students")
+        _flat_find(register, "All nineteen"), "All thirteen Hub\n  repos, seven teachers, four encrypted students")
     assert count_problems(stale), "the count as it stood was not refused"
 
 

@@ -53,3 +53,26 @@ def test_the_map_fitted_on_validation_improves_calibration_on_test() -> None:
         assert cal["corp"]["mcb"] < raw["corp"]["mcb"], k
         # The map is monotone, so it cannot change how the model ranks transfers: discrimination is the same.
         assert abs(cal["corp"]["dsc"] - raw["corp"]["dsc"]) < 1e-6, k
+
+
+def test_the_model_s_own_record_carries_the_published_seed_s_map_from_this_record() -> None:
+    """The owner's choice of 2026-11-25 (the finance page and the Hub card both): `--metrics` writes the published seed's map
+    into `models/metrics.json` in the other finance records' form, which the page's model card and the Hub card read. It
+    must be this record's map and figures, and say what this model's decision is: IBM's checkpoints compare their
+    probability with a threshold tuned on validation, not with 0.5, so the MLP's wording (a threshold folded into the last
+    bias) would be false here."""
+    d = json.loads(RECORD.read_text())
+    pub = json.loads((REPO / "models" / "metrics.json").read_text())["finance_aml.gnn"]
+    c, s = pub["calibration"], d["seeds"][str(pub["selected_seed"])]
+    assert (c["method"], c["on_logit"], c["page_reads_this_map"]) == ("platt", True, False)
+    assert (c["a"], c["b"]) == (s["platt_fitted_on_validation"]["a"], s["platt_fitted_on_validation"]["b"])
+    assert (c["n_calibration"], c["positives_calibration"]) == (
+        s["platt_fitted_on_validation"]["validation_rows"], s["platt_fitted_on_validation"]["validation_laundering"])
+    assert (c["brier_raw"], c["brier_calibrated"]) == (s["raw"]["brier"], s["calibrated"]["brier"])
+    assert (c["log_loss_raw"], c["log_loss_calibrated"]) == (s["raw"]["log_loss"], s["calibrated"]["log_loss"])
+    assert (c["corp_raw"]["mcb"], c["corp_calibrated"]["mcb"]) == (s["raw"]["corp"]["mcb"], s["calibrated"]["corp"]["mcb"])
+    assert (c["corp_calibrated"]["n"], c["corp_calibrated"]["positives"]) == (s["test_rows_scored"], s["test_laundering"])
+    assert round(c["auprc_raw"], 6) == s["test_auprc"]
+    assert f"{s['decision_threshold']:.6f}" in c["argument"] and "not with 0.5" in c["argument"]
+    assert "folded" not in c["argument"] and "student" not in c["why_not_isotonic"]
+    assert c["record"] == str(RECORD.relative_to(REPO))

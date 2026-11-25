@@ -52,7 +52,7 @@ Zenodo's records of OPS-SAT-AD (both versions, with the sizes and MD5s above), E
 PANNs and MedMNIST+; Fairdata's Metax record of 5G-NIDD; UCI's pages of WDBC and Heart Disease;
 PhysioNet's pages of the 2016 Challenge and CirCor; Kaggle's Croissant metadata of AMLworld and
 PaySim; the PGS Catalog's REST record of PGS000072; gnomAD's terms, in the source of its browser's
-terms page; and the Hub cards of the Agentic AI panel's models and of the eighteen published repos.
+terms page; and the Hub cards of the Agentic AI panel's models and of the nineteen published repos.
 The same licences hold. What had gone stale was this file's own bookkeeping, corrected where it
 stood: the count of published repos (section 4), HEonGPU's upstream (section 6a), the MCP
 filesystem server's locked version (section 6) and two line numbers (section 8).
@@ -132,6 +132,7 @@ QCNN or student weights are a model fitted on one.
 | `web/public/data/finance/transaction_graphs.json` (Round 86) | **CDLA-Sharing-1.0 (SHARE-ALIKE)** | The finance page's transaction network figure: six laundering-labelled components of the AMLworld test window, chosen by a fixed rule, and up to 30 edges around each of the 16 rows the published MLP can score. Account identifiers are replaced by letters per graph and timestamps by minutes from each graph's first edge. Enhanced Data under the same agreement; the file states the licence, link, credit and changes. Built by `scripts/data/build_transaction_graphs.py`. |
 | `web/public/data/genomics/pgs000072_loci.json` (Round 86) | **CC BY 4.0** | The genomics page's locus plot: rsID, chromosome, GRCh37 position, effect allele and weight of the 183 variants the score uses, from the published scoring file (Graff et al., Nat Commun 12:970, 2021), with the credit, the link and the change note. Eight positions come from the scoring file's variant description, where its position column is blank. Built by `scripts/data/build_prs_loci.py`. |
 | `web/public/data/finance/student_weights.json` (Round 84) | as `models/finance_aml_student/weights.json` (section 5) | A byte-identical copy of the published student's weights, bundled so the encrypted path runs that model without a Hub fetch. Trained weights are Results under CDLA-Sharing-1.0 (sections 1.11 and 3.5), so no share-alike attaches. |
+| `web/public/data/finance/square_student_weights.json` (Round 86, F7b) | **CDLA-Sharing-1.0**, Results | F7b's square network, which replaced the linear student on the finance page on the owner's choice of 2026-11-25: the exported seed's fitted weights, the fit window's scaling and clip, a Platt map fitted on the validation window after the pre-registered run, and the record's figures; no rows. Fitted on AMLworld HI-Small, whose trained weights are Results under CDLA-Sharing-1.0 (sections 1.11 and 3.5), so no share-alike attaches. Written by `scripts/train/finance_square_student_page.py export`. |
 | `web/public/data/genomics/real_2d.json`, `data/genomics/gnomad_af_pgs000072.json`, `data/genomics/gnomad_af.json` | **CC0 1.0** | gnomAD genome allele frequencies, read through Ensembl's REST variation endpoint (release 116, populations `gnomADg:*`), not from any gnomAD service; Ensembl's response does not name the gnomAD release, so none is claimed here. `gnomad_af_pgs000072.json` is the **active** cache, written by `scripts/fetch_gnomad_af.py`: for each of the 183 PGS000072 variants the page scores, keyed by rsID, the frequencies of the allele the page's dosages count (resolved on the same Ensembl record), with that allele's frequency over 1000 Genomes' 503 Europeans beside them. `real_2d.json` plots 177 of the 183, gnomAD's East Asian against its non-Finnish European group: Ensembl lists no frequency of the effect allele in one of the two groups for the other 6, and every kept point's non-Finnish European frequency is within 0.1 of its 1000 Genomes European one. `gnomad_af.json` is the retired rsID-keyed cache for PGS000001's 77 variants, which nothing reads. CC0 waives attribution; the overlay credits gnomAD with the link back its terms ask for, states their one condition (that users not attempt to re-identify participants), and carries the CC0 link and a change note. It is a different thing from the page's own genotypes, 30 1000 Genomes individuals in the browser payload (section 4). |
 | `models/qcnn_medical/weights.json`, `web/public/data/medical/qcnn_weights.json` | **CC BY 4.0** | Variational QCNN angles (8 wires; the 9-wire artifacts were deleted in Round 84) fitted on 8 of the 30 WDBC features. Attribution-only, so publishing weights raises no reciprocity question; the files' `provenance` names the corpus, its licence with the link, and UCI's credit. |
 | `models/qcnn_finance/weights.json`, `web/public/data/finance/qcnn_weights.json` | **CC BY-SA 4.0 (ShareAlike), and this is a deliberate exception** | Fitted on the PaySim demo sample (since its Round 84 retrain, the four columns the finance linear model reads, at 4 wires; the 9-wire artifacts were deleted in Round 84), which is CC BY-SA. See the note below. The files' `provenance` names PaySim, its licence with the link, and the PaySim credit. |
@@ -231,8 +232,8 @@ this as synthetic; it is never presented as measured on real traffic.
 - **Published evaluation samples (`models/*/eval_sample.json`), committed and redistributed.** Each
   model's held-out sample ships inside that model's own Hugging Face repo at the same pinned
   revision as the weights, so a sample can never be paired with a different revision of the model it
-  scores; all eighteen repos ship one, the satellite student's a stretch of a timeline and the compact GNN's the
-  16 rows its weights carry. They carry their source
+  scores; all nineteen repos ship one, the satellite student's a stretch of a timeline, the compact GNN's the
+  16 rows its weights carry and the 3D nodule student's the twelve crops its card runs. They carry their source
   corpus's licence: AMLworld under CDLA-Sharing-1.0, BreastMNIST
   under CC BY 4.0 **as asserted by MedMNIST, the BUSI authors publishing no licence of their own** (see the
   medical rows in section 1 - this is the surface where that ambiguity actually binds, because the
@@ -245,7 +246,8 @@ this as synthetic; it is never presented as measured on real traffic.
 
 - **The encrypted-tier students are published too.** `finance_aml.student` (115 params),
   `medical_fl.student` (3226), `medical_fl.square_student` (434), `satellite_comms.student` (294),
-  `satellite_comms.opssat_student` (210) and `telecom_ids.student` (64) are the models sized for CKKS. They are distilled from the teachers on the same corpora and
+  `satellite_comms.opssat_student` (210), `telecom_ids.student` (64) and `medical_fl.nodule3d_square_student`
+  (22066, LIDC-IDRI under CC BY 3.0) are the models sized for CKKS. They are distilled from the teachers on the same corpora and
   inherit the same licences, and their small `weights.json` files are also tracked in git. Which of
   them CKKS evaluates in the browser is in
   [`docs/models-and-benchmarks.md`](docs/models-and-benchmarks.md#which-pages-encrypt).
@@ -270,9 +272,9 @@ this as synthetic; it is never presented as measured on real traffic.
   0.901 (`docs/measurements/medical-resnet18-seeds-2026-11-22.json`). Six runs of the pretrained
   variant, taken earlier, averaged $`0.8905 \pm 0.0198`$
   (`references/medical-student-collapse-investigation.md`); the two means are within one standard
-  deviation of each other, so these runs do not show whether dropping ImageNet cost AUC. All eighteen
-  Hub repos, ten teachers, six encrypted students, the finance MLP and the compact GNN, are public (the
-  Hub's API, 2026-11-22).
+  deviation of each other, so these runs do not show whether dropping ImageNet cost AUC. All nineteen
+  Hub repos, ten teachers, seven encrypted students, the finance MLP and the compact GNN, are public (the
+  Hub's API, 2026-11-22; the 3D nodule student's, staged privately and made public on the owner's approval, 2026-11-25, all nineteen read again that day).
 
 - **PGS Catalog is not blanket CC BY 4.0: a score's terms are its publication's.** The scoring-file
   format defines an optional `#license` line, and PGS000072's file has none. Its REST record carries
@@ -361,7 +363,7 @@ this as synthetic; it is never presented as measured on real traffic.
 The published models' graphs live on the Hugging Face Hub (repo ids in `src/qsh/models/registry.py`),
 pinned by 40-character commit sha, and never in git (`.gitignore` excludes `*.onnx`, `*.safetensors`,
 `*.pt`, `*.npy`; CI fails the build if one is staged). Small JSON weight files are a different matter and are tracked in
-git: the QCNN angles, the six Hub students' (the telecom student's also in section 2b), the finance MLP's and the compact GNN's `weights.json`, the
+git: the QCNN angles, the seven Hub students' (the telecom student's also in section 2b), the finance MLP's and the compact GNN's `weights.json`, the
 finance scorecard, and the PGS000072 effect weights the page scores (183 of them in
 `models/genomics_prs/weights.json` and in the browser payload
 `web/public/data/genomics/pgs000072_breast_cancer.json`; all 187 in the bundled scoring file). Those

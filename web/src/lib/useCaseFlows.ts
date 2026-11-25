@@ -237,6 +237,10 @@ const HYBRID_INFERENCE: Step[] = [
       // The decryption note is its own separator-delimited part, so the canvas lane (first two parts)
       // keeps the shape and the stage list below it carries the rest.
       const kindTxt = shape ? `CNN layers under CKKS ${shape} · decrypted between layers` : "CKKS dot product";
+      // Finance since F7b (Round 86): the square network, end to end under CKKS, no layer decrypted and no rotation.
+      if (m["inference_model"] === "finance_aml.square_network") {
+        return `FHE · square network under CKKS, end to end · ${f(m, "fhe_linear_ms")} ms, measured`;
+      }
       // The ms carry their cost-model scale: `fhe_linear_ms` is the measured time times
       // `fhe_bench_scale` (x9 on the generic demo, x1 where a student sets the size, and x1 on genomics,
       // which prices the weighted sum it runs),

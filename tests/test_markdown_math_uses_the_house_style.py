@@ -162,6 +162,10 @@ FROZEN = {
     # under it the same day.
     "references/finance-square-student-preregistration.md":
         "9ac9039309cbf6bfa53b76fcbe749f817a3d25839419670e99413eb14d49759e",
+    # F7b: committed 2026-11-25 before any of its seeds was trained. It needs no exemption (it passes the checks above)
+    # and is listed so that no edit reaches it before its trainer pins the same hash.
+    "references/finance-square-student-page-preregistration.md":
+        "388a1668b82b8e9011539511efcbc3887b053a2e0e60022040c4054eee60492f",
 }
 
 

@@ -39,7 +39,7 @@ export const dataCfg = () => CONFIG.data;
 export const qkdCfg = () => CONFIG.qkd;
 /** One declared decision curve (Round 86, `DecisionCurveConfig`): the published models it is drawn for, over the
  *  thresholds that are their shared decision context. */
-export type DecisionCurveEntry = { model_keys: string[]; thresholds: number[] };
+export type DecisionCurveEntry = { model_keys: string[]; page_model_keys?: string[]; thresholds: number[] };
 export const decisionCurveCfg = () => CONFIG.decision_curve as unknown as {
   curves: Record<string, DecisionCurveEntry>; grid_points: number; interval_coverage: number; interval_z: number;
 };

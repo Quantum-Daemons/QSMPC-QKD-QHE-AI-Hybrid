@@ -14,7 +14,10 @@ import {
   demoSample, federatedCfg, fheCfg, multiPartyPsiCfg, qsmpcCfg, quantumAdvantageCfg, studentModel, studentParamCount,
   tierArchitectures, webCfg, workloadMultipliers, modelsFor } from "./config";
 import { CKKS_FLOOD_BITS, encryptedConv2d, encryptedHeldOutAgreement, encryptedLinear, encryptedLinearBatch,
-  encryptedStudentInference, warmFHE, type CnnStudentWeights } from "./clientFHE";
+  encryptedStudentInference, warmFHE, type CnnStudentWeights, type FHEResult } from "./clientFHE";
+import { encryptedHeldOutAgreementSquare, type FinanceSquare, SQUARE_KEY, squareOneRow } from "./clientFinanceSquare";
+import { plainLogits } from "./clientFHESquareTabular";
+import { quadraticShap } from "./quadraticShap";
 import type { OcclusionMap } from "./cnnSaliency";
 import type { HybridCnnResult } from "./clientHybridCnn";
 import type { QcnnCkksResult } from "./clientQcnnCkks";
@@ -1258,6 +1261,7 @@ export async function realClientHybrid(features: number[],
                                       realModel?: { W: number[][]; b: number[] } | null,
                                       corpus?: number[][] | null,
                                       seed = 0,
+                                      square?: { net: FinanceSquare; raw: number[] } | null,
 ): Promise<RealHybridRun | HybridFailure> {
   let half: HybridFailure["failed"] = "fhe";       // which half is running, for the failure report
   try {
@@ -1289,7 +1293,16 @@ export async function realClientHybrid(features: number[],
     const b = usingRealModel
       ? W.map((_, j) => Number(realModel!.b?.[j] ?? 0))
       : [0, -0.05];
-    const fhe = await encryptedLinear(W, b, features);           // REAL CKKS, measured
+    // Finance since F7b (Round 86): the square network on the transaction, end to end under CKKS (A2) in a Web Worker, a
+    // block holding one row; no rotation and no Galois key. Its decrypted logits feed the same argmax below.
+    const fhe: FHEResult = square
+      ? await (async () => {
+          const r = await squareOneRow(square.net, square.raw);
+          return { logits: [r.logits[0], r.logits[1]], plainLogits: [r.plain[0], r.plain[1]], fheMs: r.totalMs,
+                   ctBytes: r.per_block.bytes.input / Math.max(1, square.net.n_in), maxAbsError: r.maxAbsError,
+                   rotations: 0, multiplies: 0, rotateMs: 0 };
+        })()
+      : await encryptedLinear(W, b, features);           // REAL CKKS, measured
     // The REAL garbled-circuit 2PC argmax below, measured, runs over logits the client has ALREADY
     // DECRYPTED. Both parties are in this tab and the key holder holds the cleartext logits, so the
     // protocol hides nothing here; it runs to measure the protocol, not to keep the logits from anyone.
@@ -1450,7 +1463,7 @@ export async function realClientHybrid(features: number[],
       commBytes: mpc.commBytes, ctBytes: fhe.ctBytes, featDim: n,
       maxAbsError: fhe.maxAbsError, plainLogits: fhe.plainLogits, logits: fhe.logits, conv,
       dense: { rotations: fhe.rotations, multiplies: fhe.multiplies, rotateMs: fhe.rotateMs },
-      encryptedRealModel: usingRealModel, batch, studentNotRun,
+      encryptedRealModel: usingRealModel || !!square, batch, studentNotRun,
     };
   } catch (e) {
     // Surface the cause (no-fallback policy: a fixable defect must not hide behind the representative
@@ -1863,9 +1876,17 @@ export function runClientPipeline(
    * telecom's student on its own 600-row held-out quarter. The figure used to call finance's and
    * medical's FITTING rows held-out, on finance for a PaySim surrogate the page does not name. */
   async function emitHeldOutAgreement(stage: string, held: HeldOutCorpus) {
-    const ho = await encryptedHeldOutAgreement(held);
+    // Finance since F7b (Round 86): the square network, end to end under CKKS in Web Workers, in place of the linear student.
+    const ho = held.square
+      ? await encryptedHeldOutAgreementSquare(held, held.square)
+      : await encryptedHeldOutAgreement(held);
     const bt = ho.batch;
     metric(stage, "encrypted_model", held.modelKey ?? held.modelLabel);
+    if (held.square) {
+      // Not a registry model: its record's figures travel with the run for the accuracy-cost plot and the caption.
+      metric(stage, "encrypted_model_test_auprc", held.square.figures.test_auprc);
+      metric(stage, "encrypted_model_param_set", "A2");
+    }
     metric(stage, "encrypted_rows_held_out", true);
     metric(stage, "encrypted_corpus", held.corpus);
     metric(stage, "encrypted_rows_scored", bt.rows);
@@ -3638,7 +3659,16 @@ export function runClientPipeline(
         const t = performance.now();
         // The bundled real linear model where one ships, else placeholder weights (the published ONNX
         // model runs separately, below). inf.provenance records which, and the UI shows it.
-        const inf = await privateInference(usecase, feats, realIn?.model ?? null);
+        // Finance since F7b (Round 86): the square network's plaintext logits on the scaled row, in float64.
+        const inf: InferenceResult = realIn?.square
+          ? (() => {
+              const logits = plainLogits(realIn.square, realIn.values);
+              return { logits, prediction: argmax(logits), backend: "js-square-network (F7b, site file)",
+                       provenance: "measured-js" as const, modelKey: SQUARE_KEY,
+                       note: "F7b's square network in plain JS float64, the reference its CKKS run is compared with" };
+            })()
+          : await privateInference(usecase, feats, realIn?.model ?? null);
+        if (realIn?.qcnnRowNote) emit("log", stage, `rows: ${realIn.qcnnRowNote}`);
         // Whether the class CKKS surfaces comes from the model the SHAP bars below explain (Round 84):
         // set where the CKKS class is, read where `explanation_is_of_reported_class` is.
         let ckksClassIsTheExplainedModels = false;
@@ -3684,10 +3714,12 @@ export function runClientPipeline(
         const held = await heldOutCorpus(usecase);
         const corpus = !held && realIn?.model?.W ? await realInputCorpus(usecase) : null;
         const real = await realClientHybrid(feats, usecase === "medical_fl", usecase,
-                                            realIn?.model ?? null, corpus, seed);
+                                            realIn?.model ?? null, corpus, seed,
+                                            realIn?.square && realIn.raw ? { net: realIn.square, raw: realIn.raw } : null);
         if (!("failed" in real)) {
           // A real encrypted convolution is not scaled by anything: its latency IS the measurement.
-          const bscale = real.conv
+          // The square network (finance since F7b) is the real model at its real size: its time is measured, not scaled.
+          const bscale = real.conv || realIn?.square
             ? 1
             : benchScale(usecase, BENCH_MODEL_SIZE, config.workload ?? "linear");
           artifacts.fhe_prediction = real.prediction;
@@ -3697,9 +3729,11 @@ export function runClientPipeline(
           // WHICH model the encryption evaluated. Until Round 38 this was always the demo pattern
           // while the class and the SHAP bars came from the bundled model, so every `fhe_*` figure
           // on finance and genomics described a weight vector that appeared nowhere else on the page.
-          metric(stage, "fhe_model", real.encryptedRealModel
-            ? "bundled real model - the same one the reported class and its explanation come from"
-            : "demo pattern (no bundled model ships for this use case)");
+          metric(stage, "fhe_model", realIn?.square
+            ? "F7b's square network (site file) - the same one the reported class and its explanation come from"
+            : real.encryptedRealModel
+              ? "bundled real model - the same one the reported class and its explanation come from"
+              : "demo pattern (no bundled model ships for this use case)");
           if (real.batch) {
             const bt = real.batch;
             const bits = bt.maxAbsError > 0 && bt.maxAbsError < 1
@@ -3943,7 +3977,8 @@ export function runClientPipeline(
             // Round 86: the CKKS time is stated on its own, because the 2PC half runs over scores the client has
             // already decrypted and so measures a protocol cost, not a protection (see `secureArgmax` above).
             emit("log", stage, `measured encrypted-tier latency, all parts together: ${r2(measuredMs)} ms `
-              + `(CKKS linear${real.conv ? " + convolution" : ""} ${r2(real.fheMs)} ms, the encrypted part on its own; `
+              + `(${realIn?.square ? "CKKS, the square network end to end on one row (a block of its own)" : `CKKS linear${real.conv ? " + convolution" : ""}`} `
+              + `${r2(real.fheMs)} ms, the encrypted part on its own; `
               + `garbled-circuit 2PC argmax ${r2(real.mpcMs)} ms over the scores the client has already decrypted, `
               + `so that part is the protocol's cost and hides nothing here), on WASM CPU in this tab. `
               + (withinWindow
@@ -4306,16 +4341,21 @@ export function runClientPipeline(
         // mean of 11.5, so its bar was read against "a transaction of log-amount zero" and inflated
         // against every other feature. `efficiency_gap` cannot detect this: completeness holds for
         // any baseline, which is exactly why it went unnoticed.
-        artifacts.explanation = linearShap(
-          realIn?.model?.W ?? PLACEHOLDER_W, realIn?.model?.b ?? PLACEHOLDER_B, feats, names, 5,
-          realIn?.baseline);
+        // Finance since F7b (Round 86): exact Shapley values of the square network, which is quadratic, not linear.
+        artifacts.explanation = realIn?.square
+          ? quadraticShap(realIn.square.w1, realIn.square.b1, realIn.square.w2, realIn.square.b2, feats, names, 5,
+                          realIn.baseline)
+          : linearShap(
+              realIn?.model?.W ?? PLACEHOLDER_W, realIn?.model?.b ?? PLACEHOLDER_B, feats, names, 5,
+              realIn?.baseline);
         artifacts.explanation_baseline = realIn?.baseline
           ? "sample mean E[x] over the shipped rows"
           : "zero vector (no sample mean available for this use case)";
         // SHAP is exact for the model it is given. With placeholder weights the attribution is
         // exact for weights that mean nothing, so say which case this is rather than let a reader
         // assume the explanation describes the industry model.
-        artifacts.explanation_provenance = realIn?.model?.W ? "real bundled model" : "placeholder weights";
+        artifacts.explanation_provenance = realIn?.square ? "F7b's square network (site file)"
+          : realIn?.model?.W ? "real bundled model" : "placeholder weights";
         // What each bar's feature is, when the payload says (PP14): the bars printed bare AML-style names for PaySim columns.
         artifacts.explanation_feature_definitions = realIn?.definitions ?? null;
         // FROM THE BACKEND THAT SURFACED THE CLASS (Round 84). Round 83 left this `false` on every

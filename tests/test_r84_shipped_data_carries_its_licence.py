@@ -42,6 +42,8 @@ LINKS = {
     "CC-BY-4.0": "https://creativecommons.org/licenses/by/4.0/",
     "CC-BY-SA-4.0": "https://creativecommons.org/licenses/by-sa/4.0/",
     "CC-BY-3.0-IGO": "https://creativecommons.org/licenses/by/3.0/igo/",
+    # LIDC-IDRI's (TCIA's collection page, read 2026-11-25): the 3D nodule student's evaluation sample on the Hub.
+    "CC-BY-3.0": "https://creativecommons.org/licenses/by/3.0/",
     "CDLA-Sharing-1.0": "https://cdla.dev/sharing-1-0/",
     "CC0-1.0": "https://creativecommons.org/publicdomain/zero/1.0/",
     "Apache-2.0": "https://www.apache.org/licenses/LICENSE-2.0",

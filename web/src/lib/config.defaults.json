@@ -115,6 +115,9 @@
           "finance_aml.gbm",
           "finance_aml.student"
         ],
+        "page_model_keys": [
+          "finance_aml.square_network"
+        ],
         "thresholds": [
           0.002,
           0.005,
@@ -1770,6 +1773,61 @@
             "test_decisions_at_0_5_changed": 178,
             "why": "IBM's loop never calls model.eval(), so the checkpoint it saves carries statistics last set by the test pass"
           },
+          "calibration": {
+            "a": -0.8395144600770161,
+            "argument": "the GNN's P(laundering), $q = \\sigma(z_1 - z_0)$, the softmax of its two logits $z_0, z_1$, as IBM's `dump_logits.py` writes it. Its decision compares $q$ with the threshold tuned on validation, 0.637421 for the published seed, not with 0.5",
+            "auprc_calibrated": 0.63182826,
+            "auprc_raw": 0.63182937,
+            "b": 2.0208491042546495,
+            "brier_calibrated": 0.00074877,
+            "brier_raw": 0.00096098,
+            "corp_calibrated": {
+              "base_rate": 0.00152434,
+              "brier": 0.00074877,
+              "brier_recalibrated": 0.00073886,
+              "dsc": 0.00078315,
+              "mcb": 9.91e-06,
+              "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+              "n": 1522629,
+              "positives": 2321,
+              "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118",
+              "unc": 0.00152201
+            },
+            "corp_raw": {
+              "base_rate": 0.00152434,
+              "brier": 0.00096098,
+              "brier_recalibrated": 0.00073886,
+              "dsc": 0.00078315,
+              "mcb": 0.00022212,
+              "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+              "n": 1522629,
+              "positives": 2321,
+              "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118",
+              "unc": 0.00152201
+            },
+            "fitted_by": "scripts/measure_finance_gnn_calibration.py --metrics, from the dumps the published record was scored from",
+            "fitted_on": "validation split; scored on the held-out test split",
+            "formula": "p = 1 / (1 + exp(a * logit(clip(score, logit_clip_eps, 1 - logit_clip_eps)) + b)), logit(q) = log(q / (1 - q))",
+            "isotonic_measured": {
+              "auprc": 0.61641266,
+              "brier": 0.00074634,
+              "distinct_outputs": 166,
+              "log_loss": 0.00425546,
+              "rows_at_zero": 1126562
+            },
+            "log_loss_calibrated": 0.00418167,
+            "log_loss_raw": 0.00594711,
+            "logit_clip_eps": 1e-12,
+            "method": "platt",
+            "n_calibration": 710969,
+            "on_logit": true,
+            "page_reads_this_map": false,
+            "positives_calibration": 801,
+            "raw_is": "the published checkpoint's own float32 softmax probability, the one its record was scored from. It is exactly 0 on 100 of the 1,522,629 test rows, where float32 underflows, and their logit is taken at 1e-45. In the record's ten-bin reliability table its mean lies above the 95 % interval of the observed rate in every one of the 9 occupied bins above 0.1, so it is not a risk.",
+            "record": "docs/measurements/finance-gnn-calibration-2026-11-25.json",
+            "test_rows_clipped_by_logit": 947218,
+            "why_not_isotonic": "Measured on this GNN's windows, not carried from the gradient-boosting teacher's record. Isotonic's Brier 0.00074634 is below Platt's 0.00074877 and its log-loss 0.00425546 is above 0.00418167; lower is better on both. Platt is kept as a choice, not as the better score: it is strictly monotone, so the curve ranks rows as the GNN does (AUPRC 0.63182826 against the raw 0.63182937, with 947,218 test rows tied at the logit clip; isotonic's 0.61641266 comes from the test window's scores tied at 166 values, 1,126,562 of them exactly zero), and it is the method of the other finance records, so they differ by the model and not by the map."
+          },
           "code": {
             "commit": "252b0252afca109d1d216c411c59ff70753b25fc",
             "licence": "Apache-2.0",
@@ -1827,7 +1885,7 @@
             }
           },
           "git_sha": "a7ea883-dirty",
-          "hf_revision": "22cdddcd939aace1c4f7a1766d6c5cfa6578a6a0",
+          "hf_revision": "efbea6a73eee1543e258432a46f616b49139ed9c",
           "kept_epoch": 33,
           "logged_test_f1": 0.6751,
           "logged_validation_f1": 0.6208,
@@ -2012,7 +2070,7 @@
           "onnx/model.onnx": "c5bc68963c6deea0ad9ddf4e08f822faaf639eb8071ed47510de0e48840a51cd"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gnn",
-        "hf_revision": "22cdddcd939aace1c4f7a1766d6c5cfa6578a6a0",
+        "hf_revision": "efbea6a73eee1543e258432a46f616b49139ed9c",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "finance_aml.gnn",
@@ -3236,6 +3294,142 @@
           "ai.onnx"
         ],
         "params": null,
+        "pin_withdrawn_reason": null,
+        "runs_encrypted": true,
+        "tier": "t1_crypto"
+      },
+      {
+        "achieved": {
+          "auc": 0.892568,
+          "auc_ci95_high": 0.933242,
+          "auc_ci95_low": 0.847758,
+          "balanced_accuracy": 0.846003,
+          "bootstrap_resamples": 2000,
+          "ckks": {
+            "A2": {
+              "N": 8192,
+              "coeff_mod_bits": [
+                48,
+                34,
+                34,
+                34,
+                52
+              ],
+              "crops": 347,
+              "decisions_differ": 0,
+              "max_abs_logit_error": 3.23760016416319e-05,
+              "median_ms": 1705.214958000055,
+              "modulus_bits": 202,
+              "scale_bits": 34
+            },
+            "B": {
+              "N": 16384,
+              "coeff_mod_bits": [
+                60,
+                40,
+                40,
+                40,
+                60
+              ],
+              "crops": 347,
+              "decisions_differ": 0,
+              "max_abs_logit_error": 1.593019118872885e-05,
+              "median_ms": 2211.903121999989,
+              "modulus_bits": 240,
+              "scale_bits": 40
+            }
+          },
+          "export_seed": 5,
+          "five_seeds_test_auc": {
+            "control_mean": 0.882052,
+            "control_sd": 0.026806,
+            "mean": 0.907301,
+            "sd": 0.008946,
+            "seeds": {
+              "1": 0.914733,
+              "2": 0.909645,
+              "3": 0.905905,
+              "4": 0.913654,
+              "5": 0.892568
+            }
+          },
+          "hf_revision": "f44b3c6799fc4a39ee5e4ee31d6c614ab2aa2c40",
+          "majority_class_rate": 0.685879,
+          "metric_name": "auc",
+          "metric_note": "`auc` is the exported seed's test AUC on all 347 test nodules, chosen by validation AUC as pre-registered; `five_seeds_test_auc` is the pre-registered comparison with the same network with a ReLU, and `ckks` the record's run of the page's module on every test crop.",
+          "n_eval": 347,
+          "preregistration": {
+            "file": "references/medical-nodule3d-square-student-preregistration.md",
+            "sha256": "9f6ec0871b5c3aa2c1d2064923c1f61fcf556d30485d0f35f6a01f1c97c8c7e5"
+          },
+          "scoring_unit": "nodules",
+          "split_counts": {
+            "test": {
+              "benign": 238,
+              "malignant": 109,
+              "nodules": 347,
+              "patients": 148
+            },
+            "train": {
+              "benign": 797,
+              "malignant": 381,
+              "nodules": 1178,
+              "patients": 518
+            },
+            "val": {
+              "benign": 115,
+              "malignant": 55,
+              "nodules": 170,
+              "patients": 74
+            }
+          },
+          "student_params": 22066,
+          "teacher": "resnet3d18, the best of three pre-registered candidates scored out of fold over the training patients; not published",
+          "val_auc": 0.838577
+        },
+        "architecture": "1 conv block (1->4ch, 3x3x3, batch norm folded), x^2, 2x2x2 avg-pool, dense 4*14^3->2, 28x28x28 input (a 28 mm cube at 1 mm)",
+        "artifacts": [
+          {
+            "browser_runnable": false,
+            "fmt": "json",
+            "path": "weights.json",
+            "precision": "none",
+            "serves": "browser"
+          }
+        ],
+        "browser_runnable": false,
+        "dataset": {
+          "attribution": "Armato III, S. G., et al. (2015). Data From LIDC-IDRI [Data set]. The Cancer Imaging Archive. doi:10.7937/K9/TCIA.2015.LO9QL9SX; Armato et al., 'The Lung Image Database Consortium (LIDC) and Image Database Resource Initiative (IDRI)', Medical Physics 38(2), 915-931 (2011), doi:10.1118/1.3528204. The authors acknowledge the National Cancer Institute and the Foundation for the National Institutes of Health, and their critical role in the creation of the free publicly available LIDC/IDRI Database used in this study.",
+          "licence": "CC-BY-3.0",
+          "name": "LIDC-IDRI (The Cancer Imaging Archive)",
+          "publishable": true,
+          "url": "https://www.cancerimagingarchive.net/collection/lidc-idri/"
+        },
+        "eval_sample_reason": null,
+        "eval_split": "twelve of the 347 test nodules of the 148 held-out patients: the first six labelled malignant and the first six benign in the records' order, fixed by the 3D addendum's section 4 before any model was trained",
+        "file_sha256": {
+          "eval_sample.json": "47b94d562cba35a7f28bf7cb32988d57fa694947d2a34d7a796791efc61a854a",
+          "weights.json": "537996790f32637f15dbf1e4c5e2e96917cc57b49e61137aaf9f1b459379641f"
+        },
+        "hf_repo_id": "Daemons-Q/qsh-medical-lidc-nodule3d-ckks-square-student",
+        "hf_revision": "f44b3c6799fc4a39ee5e4ee31d6c614ab2aa2c40",
+        "hf_revision_stale": null,
+        "int8_withheld_reason": null,
+        "key": "medical_fl.nodule3d_square_student",
+        "label": "Fully encrypted LIDC-IDRI 3D nodule CNN student (square activation)",
+        "metric": {
+          "baseline": null,
+          "baseline_source": "none on this split. NoduleMNIST3D's official-split test AUCs (MedMNIST v2, Yang et al., Scientific Data 10:41, 2023: ResNet-18 3D 0.863, ResNet-50 3D 0.875, auto-sklearn 0.914) are cited for context and not compared: that split shares scans across its parts and labels differently",
+          "ceiling": null,
+          "ceiling_source": "",
+          "companion": "balanced_accuracy",
+          "comparison_caveat": "",
+          "display": "AUC, malignant against benign nodules, on the 347 test nodules of 148 held-out patients",
+          "name": "auc"
+        },
+        "notes": "End to end under CKKS, with no layer decrypted in between: the client encrypts a crop's 27 convolution taps, the evaluator convolves, squares and applies the pooled dense layer on the ciphertexts, and the client decrypts two logits; multiplicative depth 3, under N=8192 with 48+34+34+34+52 bits (A2) or N=16384 with 60+40+40+40+60 (B), both within the HomomorphicEncryption.org standard's 128-bit post-quantum bound. Distilled with soft labels from the best of three pre-registered teacher candidates, each scored out of fold over the training patients (a 3D ResNet-18 trained from scratch 0.874, TotalSegmentator's nodule size 0.786, CT-FM's linear probe 0.641; the ResNet-18 taught; no teacher is published). Pre-registered criteria, five seeds: test AUC 0.907 (sd 0.009) against 0.882 (sd 0.027) for the same network with a ReLU, the margin of criterion 1 being the control's mean minus 0.03. The exported seed, 5, chosen by validation AUC as pre-registered, scores 0.893 on test (95 % interval over test patients 0.848 to 0.933), the lowest of the five square seeds there. Under CKKS on all 347 test crops the decrypted logits are within 3.2e-5 (A2) and 1.6e-5 (B) of the plaintext ones, with no decision changed. The labels are the readers' median malignancy rating, not a diagnosis. For research and demonstration only, not for clinical use.",
+        "onnx_domains": [],
+        "params": 22066,
         "pin_withdrawn_reason": null,
         "runs_encrypted": true,
         "tier": "t1_crypto"

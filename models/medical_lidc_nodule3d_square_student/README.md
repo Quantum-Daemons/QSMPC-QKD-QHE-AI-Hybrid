@@ -1,88 +1,62 @@
-# 3D nodule student (square activation) - LIDC-IDRI chest CT
+---
+license: cc-by-3.0
+pipeline_tag: image-classification
+tags:
+  - quantum-safe
+  - privacy-preserving
+  - medical-fl
+---
 
-NOT PUBLISHED TO HUGGING FACE, AND NOT IN THE MODEL REGISTRY. A browser-side network for the medical page of
-[QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid), served from the site
-(`web/public/data/medical/nodule3d_square_student.json`). Pre-registered before any image was fetched
-(`references/medical-nodule3d-square-student-preregistration.md`) with an addendum before any model was trained, and
-trained, scored and exported by `scripts/train/medical_nodule3d_student.py` and `scripts/export_nodule3d_student.py`.
-For research and demonstration only, not for clinical use.
+# Fully encrypted LIDC-IDRI 3D nodule CNN student (square activation)
 
-## What it is
+1 conv block (1->4ch, 3x3x3, batch norm folded), x^2, 2x2x2 avg-pool, dense 4*14^3->2, 28x28x28 input (a 28 mm cube at 1 mm)
 
-One 3 x 3 x 3 convolution with four filters (batch norm folded in), the square $x^2$ as its activation, a 2 x 2 x 2
-average pool and a dense layer from $4 \cdot 14^3$ to two logits, on a 28 mm cube at 1 mm around a nodule's centre.
-The square makes the whole network a polynomial of depth 3, so it runs end to end under CKKS with no layer decrypted
-in between (`web/src/lib/clientFHESquare3d.ts`). It was distilled with soft labels from the best of three pre-registered
-teacher candidates, each scored out of fold over the training patients; the decision is Platt scaling of the logit
-difference and the threshold that maximises balanced accuracy on validation, both fitted on the validation part.
-
-## Data and split
-
-LIDC-IDRI (TCIA, CC BY 3.0; Armato III et al. 2015, doi:10.7937/K9/TCIA.2015.LO9QL9SX; Armato et al., Medical Physics
-38(2), 915-931, 2011, doi:10.1118/1.3528204), every file checked against TCIA's MD5 and every series against its image
-count (`docs/measurements/lidc-stream-2026-11-24.json`). One crop per pylidc cluster of the readers' marks (Hancock and
-Magnan, Journal of Medical Imaging 3(4), 044504, 2016): 2,651 crops of 875 patients, HU clipped to [-1000, 400] and
-scaled to uint8. The label is the readers' median malignancy rating, above 3 malignant and below 3 benign, exactly 3 left
-out. The split is by patient, stratified, drawn once from the records before any image was fetched
-(`docs/measurements/medical-nodule3d-split.json`): 1,178 labelled training nodules of 518 patients, 170 validation of
-74, 347 test of 148; 31.4 % of the test nodules are malignant.
+Part of [QSMPC-QKD-QHE-AI-Hybrid](https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid),
+a quantum-safe orchestration demo.
+This is the **3D encrypted-tier** model for the `medical_fl` use case: a network small enough to
+evaluate end to end under CKKS, distilled with soft labels from an out-of-fold teacher that is not published.
+The medical page runs it in a Web Worker on twelve held-out test crops that ship with the site, from the
+site's own copy of these weights, and draws each crop as three orthogonal planes; its fidelity under CKKS on
+all 347 test crops was measured offline, by the page's own module under node-seal. The notes below give the
+pre-registered comparison and the parameter sets.
 
 ## Measured performance
 
-The exported seed's figures as `weights.json` records them, from the record
-`docs/measurements/medical-nodule3d-square-student.json`, on the 347 test nodules.
-
-| quantity | value |
+| metric | value |
 |---|---|
-| test AUC, the exported seed's folded float64 network | 0.892568 |
-| its 95 % interval over test patients, low (2,000 resamples, seed 0) | 0.847758 |
-| its 95 % interval, high | 0.933242 |
-| validation AUC (which chose the seed) | 0.838577 |
-| balanced accuracy at the validation threshold | 0.846003 |
-| mean test AUC of the five square seeds | 0.907301 |
-| mean test AUC of the five control seeds (ReLU, same recipe) | 0.882052 |
-| majority-class rate on test | 0.685879 |
+| `auc` | 0.892568 |
+| `auc_ci95_high` | 0.933242 |
+| `auc_ci95_low` | 0.847758 |
+| `balanced_accuracy` | 0.846003 |
+| `bootstrap_resamples` | 2000 |
+| `export_seed` | 5 |
+| `majority_class_rate` | 0.685879 |
+| `n_eval` | 347 |
+| `student_params` | 22066 |
+| `val_auc` | 0.838577 |
 
-**Seed position:** the exported seed, 5, has the best validation AUC of the five, which is the pre-registration's rule,
-fixed before any run; on test it is the lowest of the five square seeds (0.893 against 0.906 to 0.915). No seed was
-picked on test figures.
+## Published baselines this is measured against
 
-## The pre-registered comparison
+- **Target metric**: AUC, malignant against benign nodules, on the 347 test nodules of 148 held-out patients
+- **Baseline**: none on this split. NoduleMNIST3D's official-split test AUCs (MedMNIST v2, Yang et al., Scientific Data 10:41, 2023: ResNet-18 3D 0.863, ResNet-50 3D 0.875, auto-sklearn 0.914) are cited for context and not compared: that split shares scans across its parts and labels differently
+- **Companion metric shown alongside**: `balanced_accuracy` - reported together because the aggregate figure can look healthy while the class that matters is not.
 
-| | test AUC, five seeds | criterion |
-|---|---|---|
-| square student | $0.907 \pm 0.009$ | 1, accuracy: at least the control's mean minus 0.03 - met |
-| control (ReLU) | $0.882 \pm 0.027$ | 2, no collapse: every square seed at least 0.60 and predicting both classes - met |
+## Training data
 
-The teacher candidates, each scored out of fold over the training patients: the 3D ResNet-18 trained from scratch
-0.874, TotalSegmentator's nodule size 0.786, and CT-FM's linear probe 0.641; the ResNet-18 taught. CT-FM's probe reads
-its features averaged over the whole 64 mm cube, of which the nodule is a small part; that is the pre-registered probe,
-reported as measured, not tuned after the fact. NoduleMNIST3D's official-split figures (test AUC: ResNet-18 3D 0.863,
-ResNet-50 3D 0.875, auto-sklearn 0.914) are cited for context and not compared: that split shares scans across its
-parts and labels differently.
+- **Dataset**: LIDC-IDRI (The Cancer Imaging Archive)
+- **Licence**: CC-BY-3.0
+- **Source**: https://www.cancerimagingarchive.net/collection/lidc-idri/ (licence read 2026-11-25)
+- **Attribution (CC-BY-3.0)**: Armato III, S. G., et al. (2015). Data From LIDC-IDRI [Data set]. The Cancer Imaging Archive. doi:10.7937/K9/TCIA.2015.LO9QL9SX; Armato et al., 'The Lung Image Database Consortium (LIDC) and Image Database Resource Initiative (IDRI)', Medical Physics 38(2), 915-931 (2011), doi:10.1118/1.3528204. The authors acknowledge the National Cancer Institute and the Foundation for the National Institutes of Health, and their critical role in the creation of the free publicly available LIDC/IDRI Database used in this study.
 
-## How it runs on the page
+Thoracic CT of 1,010 patients with lesions marked by up to four radiologists; TCIA states CC BY 3.0 for the images and for the radiologists' annotations, and asks for the data citation with its DOI, the publication citation and the NCI and FNIH acknowledgement (its collection page, read 2026-11-25). This project fetched the 883 CT series of the 875 patients whose scans hold at least one nodule cluster (215,912 files) through TCIA's REST interface, every file checked against TCIA's MD5 and every series against its image count, the training patients' series twice (`docs/measurements/lidc-stream-2026-11-24.json`). One 28 mm crop at 1 mm per pylidc cluster of the readers' marks (Hancock and Magnan, Journal of Medical Imaging 3(4), 044504, 2016); the label is the readers' median malignancy rating, above 3 malignant and below 3 benign, exactly 3 left out: a rating, not a diagnosis. The split is by patient, drawn once from the records before any image was fetched (`docs/measurements/medical-nodule3d-split.json`).
 
-The card on the medical page decodes one of twelve test crops (the addendum's section 4: the first six labelled
-malignant and the first six benign, in the records' order, fixed before any model was trained; no patient or series
-identifier is shipped), draws it as three orthogonal planes with the exact contribution map, and runs it under CKKS in
-a Web Worker, under the parameter sets that met the pre-registered limit.
+## Notes and limitations
 
-## Under CKKS, every test crop (the record)
+End to end under CKKS, with no layer decrypted in between: the client encrypts a crop's 27 convolution taps, the evaluator convolves, squares and applies the pooled dense layer on the ciphertexts, and the client decrypts two logits; multiplicative depth 3, under N=8192 with 48+34+34+34+52 bits (A2) or N=16384 with 60+40+40+40+60 (B), both within the HomomorphicEncryption.org standard's 128-bit post-quantum bound. Distilled with soft labels from the best of three pre-registered teacher candidates, each scored out of fold over the training patients (a 3D ResNet-18 trained from scratch 0.874, TotalSegmentator's nodule size 0.786, CT-FM's linear probe 0.641; the ResNet-18 taught; no teacher is published). Pre-registered criteria, five seeds: test AUC 0.907 (sd 0.009) against 0.882 (sd 0.027) for the same network with a ReLU, the margin of criterion 1 being the control's mean minus 0.03. The exported seed, 5, chosen by validation AUC as pre-registered, scores 0.893 on test (95 % interval over test patients 0.848 to 0.933), the lowest of the five square seeds there. Under CKKS on all 347 test crops the decrypted logits are within 3.2e-5 (A2) and 1.6e-5 (B) of the plaintext ones, with no decision changed. The labels are the readers' median malignancy rating, not a diagnosis. For research and demonstration only, not for clinical use.
 
-`scripts/train/medical_nodule3d_student.py ckks` ran the page's own module under node-seal on all 347 labelled test
-crops, under both pre-registered sets, in node on this project's machine (load average about 1).
+## Honest scope
 
-| parameter set | $N$ | modulus bits | scale | largest logit error | decisions changed | median time a crop | ciphertexts up, back | bytes up, back |
-|---|---|---|---|---|---|---|---|---|
-| A2 | 8,192 | 48+34+34+34+52 (202) | $2^{34}$ | $3.2 \times 10^{-5}$ | 0 of 347 | 1.7 s | 162, 2 | 85.0 MB, 262 kB |
-| B | 16,384 | 60+40+40+40+60 (240) | $2^{40}$ | $1.6 \times 10^{-5}$ | 0 of 347 | 2.2 s | 81, 2 | 84.9 MB, 525 kB |
-
-Both sets met criterion 3 (every decrypted logit within the pre-registered $10^{-3}$ of the plaintext one, no
-decision changed) and both are offered; both are within the HomomorphicEncryption.org standard's 128-bit post-quantum
-bound for a ternary secret (202 bits at $N = 8192$, 411 at $N = 16384$). The input travels as the 27 taps of the
-convolution, packed over $28^3 = 21{,}952$ voxels in 6 blocks under A2 and 3 under B.
-
-Retrain: `scripts/data/lidc_stream.py` (fetch, verify, cut), then `scripts/train/medical_nodule3d_student.py teachers`,
-the CT-FM and TotalSegmentator candidates' own scripts, `students` and `ckks` (the 3D ResNet-18 and the students on the
-GPU), then `scripts/export_nodule3d_student.py`.
+This model is published as part of a research proof of concept, not as a production system.
+Numbers above are what this repository measured on the split described, with the code in
+`scripts/train/`. Where a figure is carried from the literature rather than measured here,
+it is labelled as such.

@@ -23,6 +23,8 @@
 // above feed the page's one-row explanation and the federated demo. What the private-inference figure
 // encrypts is a published model on rows it was never fitted on, each with its own payload naming the
 // split, the licence and its link.
+import { type FinanceSquare, loadFinanceSquare, SQUARE_KEY, squareLabel } from "./financeSquareData";
+import { scaleRow } from "./squareTabularMath";
 import { modelsFor } from "./config";
 
 /** One row in every space the payload declares, keyed by that space's own name.
@@ -77,6 +79,12 @@ export interface RealInput {
   /** What each feature IS, in the payload's words, when it says (PP14, Round 86): finance's four are AML-style names
    *  for PaySim quantities (`cross_border` is the TRANSFER/CASH_OUT type; PaySim records no geography). */
   definitions?: Record<string, string>;
+  /** Finance since F7b (Round 86): the square network that scores this row, the row in raw units, its label, and why the
+   *  QCNN's row (`bySpace`) is another transaction. `values` is then the row scaled and clipped as the network reads it. */
+  square?: FinanceSquare;
+  raw?: number[];
+  label?: number;
+  qcnnRowNote?: string;
 }
 
 /** Column means over the sample rows - the reference point SHAP attributions are measured from. */
@@ -155,32 +163,32 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       };
     }
     if (usecase === "finance_aml") {
-      // PaySim SIMULATOR output - synthetic transactions (Kaggle ealaxi/paysim1, CC-BY-SA-4.0) - and
-      // a logistic surrogate distilled from a gradient-boosting teacher, both fitted on these bundled
-      // rows; it is NOT the AMLworld student the private-inference figure encrypts. The model reads
-      // the FOUR columns in `names`, AML-style labels for PaySim quantities that the payload defines
-      // in `feature_definitions`: amount is log(1 + amount), cross_border the TRANSFER/CASH_OUT type
-      // (PaySim records no geography), night_tx a step in hours 0 to 5, new_payee the first row
-      // naming that destination. `excluded_features` says why the bundled TSV's other four are not
-      // inputs: device_risk and geo_mismatch are built from PaySim's balance columns, which the
-      // dataset's description says must not be used for fraud detection because fraudulent
-      // transactions are cancelled; amount_zscore copies amount; velocity_24h is constant here.
-      const ds = await fetchJSON("/data/finance/paysim_sample.json");
-      const rows = ds.samples as number[][];
-      const width = (ds.names as string[]).length;
-      const idx = Math.floor(u() * rows.length) % rows.length;
-      const row = rows[idx];                                           // a PaySim simulator row (synthetic)
-      // The same transaction in raw units, for any consumer whose artifact declares `raw`. Indexed,
-      // not re-drawn: a second random pick would hand the QCNN a different transaction from the one
-      // the CKKS tier and the SHAP panel are describing, and the page would attribute one row's
-      // explanation to another row's prediction. `raw` is the same four columns as `zscore`, in
-      // `names` order, unstandardised: what the finance QCNN artifact reads since its Round 84
-      // retrain, in the order its `feature_names` lists and the circuit reads by position. Each
-      // space keeps the width the file ships rather than this one, so a raw block of another width
-      // reaches the QCNN branch whole and is refused there instead of being cut to its first columns.
-      return { values: row.slice(0, width), bySpace: rowBySpace(ds, idx, Number.MAX_SAFE_INTEGER),
-               names: ds.names, provenance: ds.provenance, model: ds.model,
-               baseline: columnMeans(rows, width), definitions: ds.feature_definitions ?? undefined };
+      // SINCE F7b (Round 86; the owner's choice of 2026-11-25): an AMLworld test-window transaction, one of the 8,192
+      // rows the private-inference figure scores, scored by F7b's square network on its 114 inputs, end to end under
+      // CKKS; the SHAP bars are its exact quadratic Shapley values. Until then this stage scored a PaySim simulator row
+      // with a four-feature logistic surrogate, a different model on different data from the AMLworld student the
+      // figure encrypted. The finance QCNN was trained on PaySim's four columns and cannot read AMLworld's 114, so it
+      // reads a PaySim transaction of its own (`bySpace.raw`, drawn by the same number): another row and another
+      // model, which the run says.
+      const [ds, net, pay] = await Promise.all([fetchJSON("/data/finance/student_heldout.json"), loadFinanceSquare(),
+                                                fetchJSON("/data/finance/paysim_sample.json")]);
+      const raw = ds.samples as number[][];
+      const v = u();
+      const idx = Math.floor(v * raw.length) % raw.length;
+      const scaled = raw.map((r) => scaleRow(net, r));
+      const baseline = Array.from({ length: net.n_in }, (_, j) => scaled.reduce((a, r) => a + r[j], 0) / scaled.length);
+      const payRows = pay.samples as number[][];
+      const pIdx = Math.floor(v * payRows.length) % payRows.length;
+      return {
+        values: Array.from(scaled[idx]), bySpace: rowBySpace(pay, pIdx, Number.MAX_SAFE_INTEGER),
+        names: ds.feature_names as string[],
+        provenance: `AMLworld HI-Small test-window transaction ${idx + 1} of ${raw.length} (${String(ds.licence)}, `
+          + `synthetic), scored by ${squareLabel(net)}`,
+        baseline, square: net, raw: raw[idx], label: Number(ds.labels?.[idx]),
+        definitions: net.feature_definitions,
+        qcnnRowNote: `the QCNN backend reads PaySim transaction ${pIdx + 1} of ${payRows.length} (${String(pay.licence ?? "CC-BY-SA-4.0")}): `
+          + "it was trained on PaySim's four columns, so it scores another transaction with another model",
+      };
     }
   } catch (e) {
     console.warn("[realData] real dataset unavailable → synthetic fallback:", e);
@@ -469,6 +477,10 @@ export interface HeldOutCorpus {
   licence: DataLicence;
   /** The plaintext figures the payload's builder computed, for the run to reproduce. */
   expected: Record<string, unknown> | null;
+  /** The rows as shipped, before any model's preprocessing (F7b's square network scales them itself). */
+  raw?: number[][];
+  /** Finance since F7b (Round 86): the square network that replaced the linear student; `model` is then unused. */
+  square?: FinanceSquare | null;
 }
 
 /** Apply the preprocessing a weights file declares, step by step, refusing an unknown step. */
@@ -540,15 +552,16 @@ async function publishedStudentHeldOut(usecase: string, path: string): Promise<H
     classNames: (ds.class_names as string[]) ?? model.W.map((_, j) => `class ${j}`),
     plane: ds.plane ? planeFromColumns(raw, names, ds.plane) : null,
     corpus: String(ds.corpus ?? ""), split: String(ds.split ?? ""), fitNote: String(ds.fit_note ?? ""),
-    licence: licenceOf(ds), expected: (ds.expected as Record<string, unknown>) ?? null,
+    licence: licenceOf(ds), expected: (ds.expected as Record<string, unknown>) ?? null, raw,
   };
 }
 
 /**
  * The private-inference figure's rows for a use case: a model and rows it was never fitted on.
  *
- *   finance_aml  the published 115-parameter AMLworld student (`finance_aml.student`) on the 8,192
- *                test-window rows `finance/real_2d.json` draws, through its own z-scoring.
+ *   finance_aml  F7b's square network (`data/finance/square_student_weights.json`, Round 86), which replaced the
+ *                published 115-parameter linear student on the owner's choice of 2026-11-25, on the 8,192 test-window
+ *                rows `finance/real_2d.json` draws, through its own scaling and clip.
  *   medical_fl   the page's bundled WDBC regression on the 171 rows held out from its fit.
  *   telecom_ids  the published 64-parameter student (`telecom_ids.student`, pinned since 2026-11-13, read from
  *                its bundled copy) on the 600 rows of its own held-out quarter.
@@ -561,7 +574,11 @@ async function publishedStudentHeldOut(usecase: string, path: string): Promise<H
  */
 export async function heldOutCorpus(usecase: string): Promise<HeldOutCorpus | null> {
   try {
-    if (usecase === "finance_aml") return await publishedStudentHeldOut(usecase, "/data/finance/student_heldout.json");
+    if (usecase === "finance_aml") {
+      const [held, net] = await Promise.all([publishedStudentHeldOut(usecase, "/data/finance/student_heldout.json"),
+                                             loadFinanceSquare()]);
+      return held && { ...held, modelKey: SQUARE_KEY, modelLabel: squareLabel(net), square: net };
+    }
     if (usecase === "telecom_ids") return await publishedStudentHeldOut(usecase, "/data/telecom/student_heldout.json");
     if (usecase === "satellite_comms") return await publishedStudentHeldOut(usecase, "/data/satellite/student_heldout.json");
     if (usecase === "medical_fl") {

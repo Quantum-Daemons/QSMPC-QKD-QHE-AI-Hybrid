@@ -44,7 +44,8 @@ const { build } = createRequire(WEB + "/package.json")("esbuild");
 const wasm = resolve(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
 await build({
   stdin: { contents: `export { heldOutCorpus, realInputCorpus } from ${JSON.stringify(resolve(WEB, "src/lib/realData"))};
-export { encryptedHeldOutAgreement } from ${JSON.stringify(resolve(WEB, "src/lib/clientFHE"))};`,
+export { encryptedHeldOutAgreement } from ${JSON.stringify(resolve(WEB, "src/lib/clientFHE"))};
+export { encryptedHeldOutAgreementSquare } from ${JSON.stringify(resolve(WEB, "src/lib/clientFinanceSquare"))};`,
            resolveDir: WEB, loader: "ts" },
   bundle: true, format: "esm", platform: "node", outfile: OUT, logLevel: "error",
   // The one Vite-only specifier: the SEAL wasm's `?url` import becomes its path on disk.
@@ -64,12 +65,13 @@ const out = {};
 for (const uc of ["finance_aml", "medical_fl", "telecom_ids", "satellite_comms"]) {
   const held = await m.heldOutCorpus(uc);
   if (!held) { out[uc] = null; continue; }
-  const r = await m.encryptedHeldOutAgreement(held);
+  // As the page dispatches (clientCompute's emitHeldOutAgreement): finance's square network since F7b, linear elsewhere.
+  const r = held.square ? await m.encryptedHeldOutAgreementSquare(held, held.square) : await m.encryptedHeldOutAgreement(held);
   const p = r.plot;
   out[uc] = {
     corpusRows: held.rows.length, modelKey: held.modelKey,
     rows: p.rows, rowsOffered: p.rowsOffered, ciphertexts: p.ciphertexts,
-    rowsPerCiphertext: p.rowsPerCiphertext, msPerCiphertext: p.msPerCiphertext,
+    rowsPerCiphertext: p.rowsPerCiphertext, msPerCiphertext: p.msPerCiphertext, fheMs: p.fheMs,
     heldOut: p.heldOut, fitNote: p.fitNote, licence: p.licence, scoreKind: p.scoreKind,
     planePoints: p.points.filter((q) => typeof q.x === "number" && typeof q.y === "number").length,
     plane: p.plane, mismatches: r.mismatches, maxAbsError: r.batch.maxAbsError,
@@ -118,7 +120,8 @@ def _payload(rel: str) -> dict:
 
 
 @pytest.mark.parametrize("usecase, rows, ciphertexts", [
-    ("finance_aml", 8192, 256), ("medical_fl", 171, 1), ("telecom_ids", 600, 2), ("satellite_comms", 529, 34)])
+    # Finance since F7b: two A2 blocks of 4,096 rows, one input ciphertext per feature a block (114 x 2).
+    ("finance_aml", 8192, 228), ("medical_fl", 171, 1), ("telecom_ids", 600, 2), ("satellite_comms", 529, 34)])
 def test_every_held_out_row_is_scored(run: dict, usecase: str, rows: int, ciphertexts: int) -> None:
     r = run[usecase]
     assert r is not None, f"{usecase}: heldOutCorpus returned nothing"
@@ -129,7 +132,11 @@ def test_every_held_out_row_is_scored(run: dict, usecase: str, rows: int, cipher
     assert r["ciphertexts"] == ciphertexts, (
         f"{usecase}: {r['ciphertexts']} ciphertexts for {rows} rows; at "
         f"{r['rowsPerCiphertext']} rows each it takes {ciphertexts}")
-    assert r["msPerCiphertext"] and r["msPerCiphertext"] > 0, "the per-ciphertext cost is not reported"
+    if usecase == "finance_aml":
+        # The square network's unit is a block of rows, not a packed ciphertext; the batch's time is reported.
+        assert r["msPerCiphertext"] is None and r["fheMs"] and r["fheMs"] > 0, "the batch's time is not reported"
+    else:
+        assert r["msPerCiphertext"] and r["msPerCiphertext"] > 0, "the per-ciphertext cost is not reported"
 
 
 @pytest.mark.parametrize("usecase", ["finance_aml", "medical_fl", "telecom_ids", "satellite_comms"])
@@ -149,20 +156,31 @@ def test_the_figure_says_held_out_and_names_its_licence(run: dict, usecase: str)
 def test_encryption_moves_no_decision_and_says_why(run: dict, usecase: str) -> None:
     r = run[usecase]
     assert r["mismatches"] == 0, f"{usecase}: {r['mismatches']} encrypted decisions differ from plaintext"
-    assert 0 < r["maxAbsError"] < 1e-6, f"{usecase}: CKKS error {r['maxAbsError']} is out of its range"
+    # The square network evaluates a depth-3 polynomial under A2, so its error sits near 1e-6, inside F7b's pre-registered
+    # 1e-3; the linear students' packed dot products stay below 1e-6.
+    limit = 1e-3 if usecase == "finance_aml" else 1e-6
+    assert 0 < r["maxAbsError"] < limit, f"{usecase}: CKKS error {r['maxAbsError']} is out of its range"
     assert r["medianAbsError"] is not None and r["medianAbsError"] <= r["maxAbsError"]
     assert r["flipImpossible"] is True and r["smallestMargin"] > r["maxAbsError"], (
         f"{usecase}: smallest margin {r['smallestMargin']} against worst error {r['maxAbsError']}")
 
 
-def test_finance_scores_the_published_student_and_reproduces_its_decisions(run: dict) -> None:
+def test_finance_scores_the_square_network_and_reproduces_its_decisions(run: dict) -> None:
+    """Since F7b (Round 86): the figure scores the square network, and its plaintext decisions in the browser are NumPy's on
+    the shipped weights and rows, which the encrypted run reproduces."""
+    import numpy as np
+
     r = run["finance_aml"]
-    exp = _payload("finance/student_heldout.json")["expected"]
-    assert r["modelKey"] == "finance_aml.student"
+    assert r["modelKey"] == "finance_aml.square_network"
     assert r["scoreKind"] == "logit"
-    # The plaintext student in the browser flags exactly the rows the Python builder's student does,
-    # and the encrypted one agrees with it.
-    assert r["plainFlagged"] == r["encFlagged"] == exp["plaintext_flagged"], (r, exp)
+    net = _payload("finance/square_student_weights.json")
+    x = np.asarray(_payload("finance/student_heldout.json")["samples"], dtype=np.float64)
+    scale = np.where(np.asarray(net["scale"]) == 0, 1.0, np.asarray(net["scale"]))
+    z = np.clip((x - np.asarray(net["centre"])) / scale, -net["clip"], net["clip"])
+    h = z @ np.asarray(net["w1"]).T + np.asarray(net["b1"])
+    logits = (h * h) @ np.asarray(net["w2"]).T + np.asarray(net["b2"])
+    flagged = int((logits[:, 1] > logits[:, 0]).sum())
+    assert r["plainFlagged"] == r["encFlagged"] == flagged, (r["plainFlagged"], r["encFlagged"], flagged)
 
 
 def test_satellite_scores_the_published_student_and_reproduces_its_decisions(run: dict) -> None:

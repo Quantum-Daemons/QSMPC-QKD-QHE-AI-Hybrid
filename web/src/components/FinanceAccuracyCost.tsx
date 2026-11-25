@@ -1,7 +1,8 @@
 // Accuracy against cost on the finance page (Round 86, the owner's choice of 2026-11-23). Each model's AUPRC on the
-// 1,523,504-transfer test window is its record (models/metrics.json, through the page's config); its cost is this tab's
-// run: the student's encrypted batch over its held-out rows divided by the rows, and one transaction each for the MLP and
-// the compact GNN under CKKS and garbled circuits. The gradient-boosted model has no encrypted path here, so it is a line
+// 1,523,504-transfer test window is its record (models/metrics.json, through the page's config; for F7b's square network,
+// which replaced the linear student on the owner's choice of 2026-11-25, its site file's record, through the run's
+// metrics); its cost is this tab's run: the square network's encrypted batch over its held-out rows divided by the rows,
+// and one transaction each for the MLP and the compact GNN under CKKS and garbled circuits. The gradient-boosted model has no encrypted path here, so it is a line
 // with no cost. A model whose encrypted run did not happen in this run has no point, and the caption says so.
 import { useId, useMemo } from "react";
 import {
@@ -9,6 +10,7 @@ import {
 } from "recharts";
 import { ChartReadout, HINT_POINTER, ReadoutTooltip } from "./ChartReadout";
 import { MarksHidden } from "./VerificationChart";
+import { SQUARE_KEY } from "../lib/clientFinanceSquare";
 import { modelsFor } from "../lib/config";
 
 type Metrics = Record<string, unknown>;
@@ -16,7 +18,7 @@ export interface CostPoint { key: string; name: string; auprc: number; ms: numbe
 
 /** The three encrypted paths this plot prices, and where the run reports each one's time. */
 export const PRICED = [
-  { key: "finance_aml.student", name: "student (CKKS, batched)" },
+  { key: SQUARE_KEY, name: "square network (CKKS end to end, batched)" },
   { key: "finance_aml.mlp_large", name: "MLP (CKKS and garbled circuits)" },
   { key: "finance_aml.gnn_compact", name: "compact GNN (CKKS and garbled circuits)" },
 ] as const;
@@ -37,9 +39,10 @@ const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : n
 export function costPoints(metrics: Metrics, auprcOf: (key: string) => number | null): { points: CostPoint[]; missing: string[] } {
   const points: CostPoint[] = [], missing: string[] = [];
   for (const m of PRICED) {
-    const auprc = auprcOf(m.key);
+    // The square network is not a registry model: the figure's stage reports its record's AUPRC with the batch.
+    const auprc = m.key === SQUARE_KEY ? num(metrics.encrypted_model_test_auprc) : auprcOf(m.key);
     if (auprc == null) { missing.push(`${m.name}: no AUPRC in its record`); continue; }
-    if (m.key === "finance_aml.student") {
+    if (m.key === SQUARE_KEY) {
       const rows = num(metrics.encrypted_rows_scored), ms = num(metrics.encrypted_batch_ms);
       if (metrics.encrypted_model !== m.key || rows == null || rows <= 0 || ms == null) {
         missing.push(`${m.name}: its encrypted batch did not run`);
@@ -75,9 +78,9 @@ const yLabel = (value: string) => ({
   },
 });
 /** Where each name sits beside its point: the MLP and the compact GNN score within 0.03 of each other and of the GBM's
- *  line, and cost within a decade, so one name goes above and one below; the student's goes to its right. */
+ *  line, and cost within a decade, so one name goes above and one below; the square network's goes to its right. */
 const PLACE: Record<string, "right" | "above" | "below"> = {
-  "finance_aml.student": "right", "finance_aml.mlp_large": "below", "finance_aml.gnn_compact": "above",
+  [SQUARE_KEY]: "right", "finance_aml.mlp_large": "below", "finance_aml.gnn_compact": "above",
 };
 function pointName({ cx, cy, value }: { cx?: number | string; cy?: number | string; value?: unknown }) {
   const x = Number(cx), y = Number(cy);
@@ -94,9 +97,9 @@ function lineName({ viewBox, value }: { viewBox?: unknown; value?: unknown }) {
   return <text x={x + 4} y={y - 6} fill="var(--muted)" fontSize={11}>{String(value ?? "")}</text>;
 }
 const COLOURS: Record<string, string> = {
-  "finance_aml.student": "var(--warn)", "finance_aml.mlp_large": "var(--accent-2)", "finance_aml.gnn_compact": "var(--accent)",
+  [SQUARE_KEY]: "var(--warn)", "finance_aml.mlp_large": "var(--accent-2)", "finance_aml.gnn_compact": "var(--accent)",
 };
-const SHORT: Record<string, string> = { "finance_aml.student": "student", "finance_aml.mlp_large": "MLP", "finance_aml.gnn_compact": "compact GNN" };
+const SHORT: Record<string, string> = { [SQUARE_KEY]: "square network", "finance_aml.mlp_large": "MLP", "finance_aml.gnn_compact": "compact GNN" };
 
 export default function FinanceAccuracyCost({ metrics }: { metrics: Metrics }) {
   const captionId = useId();
@@ -124,7 +127,7 @@ export default function FinanceAccuracyCost({ metrics }: { metrics: Metrics }) {
           record&apos;s, on the same{testRows ? ` ${testRows.toLocaleString("en-US")}-transfer` : ""} test window{chance != null
             ? <>, where a random ranking scores {chance.toFixed(4)}, the share of transfers that are laundering</> : null}. The
           times were measured in this tab, {when}, and are not
-          comparable as protocols: the student&apos;s is its batch divided by the transfers it packed together, while the
+          comparable as protocols: the square network&apos;s is its batch divided by the transfers it packed together, while the
           MLP&apos;s and the compact GNN&apos;s are one transfer each, its ReLUs and argmax in garbled circuits.
           {gbm != null ? <> The dashed line is the {PLAINTEXT_ONLY.name} (GBM), which has no encrypted path on this page and so no cost.</> : null}
           {missing.length ? <> No point: {missing.join("; ")}.</> : null}

@@ -17,29 +17,17 @@
  * WHAT THIS IS NOT. The weights are public and the evaluator knows the network; it is the threat model of the medical
  * page's CKKS students. Both parties run in one process here.
  *
- * NOT ON THE PAGE. The pre-registered candidate did not meet its accuracy criterion (its mean test AUPRC was more than
- * 0.02 below the same network with a ReLU), so the finance page does not change. This module is what the page would have
- * run: `scripts/train/finance_square_student.py ckks` runs it on every test row for the record, and
- * tests/test_r86_finance_square_ckks_in_node.py holds it to a NumPy reference.
+ * ON THE FINANCE PAGE SINCE F7b. F7 (references/finance-square-student-preregistration.md) did not adopt this network
+ * against the same network with a ReLU; F7b (references/finance-square-student-page-preregistration.md) adopted it
+ * against the linear student under parameter set A2, and on the owner's choice of 2026-11-25 it replaces the linear
+ * student on the finance page, through `runSquareTabularOffThread` below. The trainers run this module on every test row
+ * for the records (`scripts/train/finance_square_student.py ckks`, `scripts/train/finance_square_student_page.py ckks`),
+ * and tests/test_r86_finance_square_ckks_in_node.py holds it to a NumPy reference.
  */
 import sealWasmUrl from "/node_modules/node-seal/dist/seal_throws.wasm?url";
-
-export interface SquareTabParams { N: number; coeff_mod_bits: number[]; scale_bits: number }
-
-/** `weights.json` of the finance square student, as scripts/train/finance_square_student.py writes it. */
-export interface SquareTabWeights {
-  kind: "dense-bn-square-dense";
-  n_in: number; width: number;
-  /** The fit window's standardisation and the clip, applied by the client before encryption. */
-  centre: number[]; scale: number[]; clip: number;
-  /** width x n_in and width, batch norm folded. */
-  w1: number[][]; b1: number[];
-  /** 2 x width and 2, the validation threshold folded into b2. */
-  w2: number[][]; b2: number[];
-  classes: string[];
-  /** Each parameter set that met the pre-registered fidelity criterion, by name. */
-  ckks: Record<string, SquareTabParams>;
-}
+import { plainLogits, scaleRow, type SquareTabParams, type SquareTabWeights } from "./squareTabularMath";
+export { plainLogits, scaleRow } from "./squareTabularMath";
+export type { SquareTabParams, SquareTabWeights } from "./squareTabularMath";
 
 export interface SquareTabRun {
   set: string; rows: number; blocks: number;
@@ -60,30 +48,6 @@ function check(w: SquareTabWeights): void {
       || w.scale.length !== w.n_in) {
     throw new Error("these weights are not the finance square student's layout");
   }
-}
-
-/** One raw row, standardised by the fit window's moments and clipped, as the client encrypts it. */
-export function scaleRow(w: SquareTabWeights, x: ArrayLike<number>): Float64Array {
-  const z = new Float64Array(w.n_in);
-  for (let j = 0; j < w.n_in; j++) {
-    const v = (Number(x[j]) - w.centre[j]) / (w.scale[j] || 1);
-    z[j] = Math.max(-w.clip, Math.min(w.clip, v));
-  }
-  return z;
-}
-
-/** The network in the clear, float64, on one scaled row starting at `at` in a flat array. */
-export function plainLogits(w: SquareTabWeights, z: ArrayLike<number>, at = 0): [number, number] {
-  const out: [number, number] = [w.b2[0], w.b2[1]];
-  for (let k = 0; k < w.width; k++) {
-    let h = w.b1[k];
-    const row = w.w1[k];
-    for (let j = 0; j < w.n_in; j++) h += row[j] * z[at + j];
-    const s = h * h;
-    out[0] += w.w2[0][k] * s;
-    out[1] += w.w2[1][k] * s;
-  }
-  return out;
 }
 
 let _seal: Promise<any> | null = null;
@@ -273,4 +237,92 @@ export async function runSquareTabular(w: SquareTabWeights, z: ArrayLike<number>
     for (const o of groupLive.reverse()) free(o);
     for (const o of live.reverse()) free(o);
   }
+}
+
+
+/** One run over many raw rows: each worker's block, put back in row order. */
+export interface SquareTabBatch {
+  set: string; rows: number; blocks: number;
+  /** Row-major, [2 r] licit and [2 r + 1] laundering: decrypted, and in the clear in float64. */
+  logits: Float64Array; plain: Float64Array;
+  maxAbsError: number; decisionsDiffer: number;
+  /** The slowest worker's time from its key generation to its last decryption, and its key generation alone. */
+  totalMs: number; keyMs: number; keyBytes: number;
+  per_block: SquareTabRun["per_block"];
+  /** Where it ran, for the caption: "a Web Worker", "2 Web Workers at once", or "the calling thread". */
+  ranIn: string;
+}
+
+/** How many blocks run at once: half the logical cores, at most four, never more than the blocks; one below 8 GB. */
+export function tabularPoolSize(blocks: number, logicalCores: number, deviceMemoryGb?: number): number {
+  if (deviceMemoryGb != null && deviceMemoryGb < 8) return 1;
+  return Math.max(1, Math.min(blocks, 4, Math.floor(logicalCores / 2)));
+}
+
+/** The raw rows under CKKS, a block of N / 2 rows to a Web Worker, as the finance page runs the square network. */
+export async function runSquareTabularOffThread(w: SquareTabWeights, rows: number[][], set: string,
+                                                onBlock?: (done: number, total: number) => void): Promise<SquareTabBatch> {
+  const p = w.ckks[set];
+  if (!p) throw new Error(`parameter set ${set} is not one these weights offer`);
+  const slots = p.N / 2;
+  const blocks: number[][][] = [];
+  for (let i = 0; i < rows.length; i += slots) blocks.push(rows.slice(i, i + slots));
+  type Part = { run: SquareTabRun; totalMs: number };
+  let parts: Part[];
+  let ranIn: string;
+  if (typeof window === "undefined" || typeof Worker === "undefined") {
+    parts = [];
+    for (const block of blocks) {
+      const z = new Float64Array(block.length * w.n_in);
+      block.forEach((x, i) => z.set(scaleRow(w, x), i * w.n_in));
+      const t0 = performance.now();
+      parts.push({ run: await runSquareTabular(w, z, block.length, set, () => {}), totalMs: performance.now() - t0 });
+      onBlock?.(parts.length, blocks.length);
+    }
+    ranIn = "the calling thread";
+  } else {
+    const n = tabularPoolSize(blocks.length, navigator.hardwareConcurrency || 1,
+                              (navigator as { deviceMemory?: number }).deviceMemory);
+    parts = new Array(blocks.length);
+    let next = 0, finished = 0;
+    // Vite bundles the worker from exactly this form: `new URL(...)` written inside `new Worker(...)`.
+    const workers = Array.from({ length: n },
+      () => new Worker(new URL("./clientFHESquareTabular.worker.ts", import.meta.url), { type: "module" }));
+    try {
+      await Promise.all(workers.map((worker) => (async () => {
+        while (next < blocks.length) {
+          const k = next++;
+          parts[k] = await new Promise<Part>((resolve, reject) => {
+            worker.onmessage = (e: MessageEvent<{ ok: boolean; run?: SquareTabRun; totalMs?: number; error?: string }>) => {
+              if (e.data.ok && e.data.run) resolve({ run: e.data.run, totalMs: e.data.totalMs ?? 0 });
+              else reject(new Error(`in its worker: ${e.data.error ?? "no result"}`));
+            };
+            worker.onerror = (e) => reject(new Error(`its worker failed: ${e.message || "the worker could not be loaded"}`));
+            worker.onmessageerror = () => reject(new Error("its worker's result could not be read back"));
+            worker.postMessage({ id: k + 1, rows: blocks[k], weights: w, set });
+          });
+          onBlock?.(++finished, blocks.length);
+        }
+      })()));
+    } finally {
+      // Every worker, also one still running when another failed: each frees its own wasm heap.
+      for (const worker of workers) worker.terminate();
+    }
+    ranIn = workers.length === 1 ? "a Web Worker" : `${workers.length} Web Workers at once`;
+  }
+  const logits = new Float64Array(rows.length * 2), plain = new Float64Array(rows.length * 2);
+  let at = 0;
+  for (const { run } of parts) {
+    logits.set(run.logits, at);
+    plain.set(run.plain, at);
+    at += run.rows * 2;
+  }
+  const first = parts[0].run;
+  return {
+    set, rows: rows.length, blocks: parts.length, logits, plain,
+    maxAbsError: Math.max(...parts.map((q) => q.run.maxAbsError)),
+    decisionsDiffer: parts.reduce((a, q) => a + q.run.decisionsDiffer, 0),
+    totalMs: Math.max(...parts.map((q) => q.totalMs)), keyMs: Math.max(...parts.map((q) => q.run.keyMs)),
+    keyBytes: first.keyBytes, per_block: first.per_block, ranIn,
+  };
 }

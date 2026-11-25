@@ -173,6 +173,90 @@ def write(crops_dir: Path, work: Path) -> int:
     return 0
 
 
+SAMPLE = MODEL_DIR / "eval_sample.json"
+#: The registry's `eval_split` for this model, which the sample states as its own `split`.
+SAMPLE_SPLIT = ("twelve of the 347 test nodules of the 148 held-out patients: the first six labelled malignant and the "
+                "first six benign in the records' order, fixed by the 3D addendum's section 4 before any model was trained")
+
+
+def eval_sample(shipped: dict) -> dict:
+    """The Hub repo's evaluation sample: the twelve crops the site ships, with their labels, SHA-256 and the folded
+    network's plaintext logits, under the corpus's licence and credit, so the repo can be checked without the site."""
+    crops = shipped["crops"]
+    return {
+        "_generated_by": "scripts/export_nodule3d_student.py --metrics; do not edit by hand",
+        "task": "classification",
+        "provenance": ("LIDC-IDRI chest CT (The Cancer Imaging Archive): " + SAMPLE_SPLIT + ". " + shipped["attribution"]),
+        "split": SAMPLE_SPLIT,
+        "licence": shipped["licence"], "licence_url": shipped["licence_url"], "attribution": shipped["attribution"],
+        "modifications": shipped["modifications"], "data_usage_policy": shipped["data_usage_policy"],
+        "input": {"shape": [1, 1, s.SIDE, s.SIDE, s.SIDE], "dtype": "uint8",
+                  "preprocessing": ["x / 255", "(x - 0.5) / 0.5"],
+                  "layout": "samples[i] is one crop's 28^3 voxels, base64 of uint8, axes z, y, x"},
+        "classes": {"0": "benign", "1": "malignant"},
+        "samples": [c["u8_base64"] for c in crops],
+        "labels": [int(c["label"]) for c in crops],
+        "expected": {"sha256": [c["sha256"] for c in crops], "plain_logits": [c["plain_logits"] for c in crops],
+                     "note": ("The folded float64 network's logits on each crop, as the medical page's card shows them "
+                              "beside its CKKS run; the decision is the weights' Platt map of the logit difference "
+                              "against the validation threshold.")},
+    }
+
+
+def registry_record() -> dict:
+    """What `models/metrics.json` records for `medical_fl.nodule3d_square_student` (the owner's choice of 2026-11-25 to
+    stage it on the Hub): the exported seed's figures as `weights.json` carries them, the pre-registered comparison and
+    the CKKS record, all copied from `docs/measurements/medical-nodule3d-square-student.json`, so the card and the
+    registry state the record's numbers and no other."""
+    record = json.loads(s.RECORD.read_text())
+    w = json.loads(WEIGHTS.read_text())
+    m, c = w["metrics"], record["criteria"]
+    square = record["arms"]["square"]
+    return {
+        "auc": m["test_auc"], "auc_ci95_low": m["test_auc_ci95_low"], "auc_ci95_high": m["test_auc_ci95_high"],
+        "bootstrap_resamples": m["bootstrap_resamples"], "val_auc": m["val_auc"],
+        "balanced_accuracy": m["test_balanced_accuracy"], "majority_class_rate": m["majority_class_rate_test"],
+        "n_eval": m["test_nodules"], "scoring_unit": "nodules", "export_seed": int(c["export_seed"]),
+        "student_params": int(params_count(w)), "metric_name": "auc",
+        "metric_note": ("`auc` is the exported seed's test AUC on all 347 test nodules, chosen by validation AUC as "
+                        "pre-registered; `five_seeds_test_auc` is the pre-registered comparison with the same network "
+                        "with a ReLU, and `ckks` the record's run of the page's module on every test crop."),
+        "five_seeds_test_auc": {"mean": c["mean_test_auc"]["square"], "sd": c["sd_test_auc"]["square"],
+                                "control_mean": c["mean_test_auc"]["control"], "control_sd": c["sd_test_auc"]["control"],
+                                "seeds": {k: v["test_auc"] for k, v in square.items()}},
+        "teacher": (f"{record['teacher']}, the best of three pre-registered candidates scored out of fold over the training "
+                    "patients; not published"),
+        "ckks": {k: {kk: v[kk] for kk in ("N", "coeff_mod_bits", "scale_bits", "modulus_bits", "crops",
+                                          "max_abs_logit_error", "decisions_differ", "median_ms")}
+                 for k, v in record["ckks"].items()},
+        "preregistration": record["preregistration"], "split_counts": record["split"]["counts"],
+    }
+
+
+def params_count(w: dict) -> int:
+    conv = w["conv"]
+    n = int(np.asarray(conv["weight"]).size + np.asarray(conv["bias"]).size)
+    for layer in w["dense"]:
+        n += sum(int(np.asarray(v).size) for v in layer.values() if isinstance(v, list))
+    return n
+
+
+def write_metrics() -> int:
+    from qsh.models import train
+
+    payload = registry_record()
+    prev = json.loads((REPO / "models" / "metrics.json").read_text()).get("medical_fl.nodule3d_square_student") or {}
+    # A pin written by a publish is kept: the record's numbers do not change the weights the pin names.
+    for k in ("hf_revision",):
+        if k in prev:
+            payload[k] = prev[k]
+    train.record_metrics("medical_fl.nodule3d_square_student", payload)
+    SAMPLE.write_text(json.dumps(eval_sample(json.loads(WEB.read_text())), separators=(",", ":")) + "\n")
+    print(f"models/metrics.json: medical_fl.nodule3d_square_student, test AUC {payload['auc']} on {payload['n_eval']} "
+          f"nodules; {SAMPLE.relative_to(REPO)}")
+    return 0
+
+
 def check() -> int:
     shipped = json.loads(WEB.read_text())
     weights_text = WEIGHTS.read_text()
@@ -189,6 +273,9 @@ def check() -> int:
     text = json.dumps(build(weights_text, shipped["crops"]), separators=(",", ":")) + "\n"
     if WEB.read_text() != text:
         problems.append(f"{WEB.relative_to(REPO)} is not what this script writes from the weights and the record")
+    sample = json.dumps(eval_sample(shipped), separators=(",", ":")) + "\n"
+    if not SAMPLE.exists() or SAMPLE.read_text() != sample:
+        problems.append(f"{SAMPLE.relative_to(REPO)} is not what this script writes from the site's crops")
     for msg in problems:
         print(msg, file=sys.stderr)
     return 1 if problems else 0
@@ -199,9 +286,13 @@ def main() -> int:
     ap.add_argument("--crops", type=Path)
     ap.add_argument("--work", type=Path)
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--metrics", action="store_true",
+                    help="write the registry's record (models/metrics.json) from the record and the shipped weights")
     args = ap.parse_args()
     if args.check:
         return check()
+    if args.metrics:
+        return write_metrics()
     if not (args.crops and args.work):
         raise SystemExit("--crops and --work are needed to write")
     s.check_preregistration()

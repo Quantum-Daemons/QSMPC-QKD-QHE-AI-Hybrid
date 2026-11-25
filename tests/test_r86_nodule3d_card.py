@@ -130,7 +130,7 @@ def test_the_pages_module_runs_a_crop_of_each_label_under_every_offered_set() ->
         out = subprocess.run(["node", str(t / "harness.mjs"), str(WEB), str(t / "bundle.mjs"), str(t)],
                              check=True, capture_output=True, text=True, cwd=WEB, timeout=900)
     runs = json.loads(out.stdout.strip().splitlines()[-1])
-    for c, r in zip(picks, runs):
+    for c, r in zip(picks, runs, strict=True):
         np.testing.assert_allclose(r["plain"], c["plain_logits"], rtol=1e-12, atol=1e-9)
         for name, run in r["runs"].items():
             assert run["maxAbsError"] <= 1e-3, (name, run["maxAbsError"])

@@ -93,6 +93,45 @@ def linear_shap(weight, bias, x, *, baseline=None, feature_names=None,
                        attributions=attrs, top=top, method="exact-linear-shap")
 
 
+def quadratic_shap(w1, b1, w2, b2, x, *, baseline=None, feature_names=None, top_k: int = 5,
+                   positive_class: int = 1) -> Explanation:
+    """Exact Shapley attributions for the square network ``logits = W2 (W1 x + b1)^2 + b2`` (Round 86, F7b).
+
+    The margin of ``positive_class`` over the other is a quadratic form, ``f(x) = c + a.x + x^T Q x`` with
+    ``v = W2[positive] - W2[other]``, ``Q = sum_k v_k w_k w_k^T`` and ``a = 2 sum_k v_k b1_k w_k``. Its interventional
+    Shapley values against a ``baseline`` have a closed form: a pair's joint term is split equally between its two
+    features, so ``phi = (x - baseline) * (a + Q (x + baseline))``, and ``sum(phi) = f(x) - f(baseline)`` exactly.
+    ``baseline`` is the reference ``E[x]`` (defaults to zeros), as in :func:`linear_shap`.
+    """
+    W1 = np.atleast_2d(np.asarray(w1, dtype=float))
+    beta = np.asarray(b1, dtype=float).ravel()
+    W2 = np.atleast_2d(np.asarray(w2, dtype=float))
+    bias2 = np.asarray(b2, dtype=float).ravel()
+    n_in = W1.shape[1]
+    x = np.asarray(x, dtype=float).ravel()[:n_in]
+    base_x = (np.zeros(n_in) if baseline is None
+              else np.asarray(baseline, dtype=float).ravel()[:n_in])
+    other = 1 - positive_class
+    v = W2[positive_class] - W2[other]
+    a = 2.0 * (W1.T @ (v * beta))
+    Q = (W1.T * v) @ W1
+
+    def margin_of(z: np.ndarray) -> float:
+        h = W1 @ z + beta
+        return float(v @ (h * h) + bias2[positive_class] - bias2[other])
+
+    phi = (x - base_x) * (a + Q @ (x + base_x))
+    margin, base_value = margin_of(x), margin_of(base_x)
+    logits = W2 @ ((W1 @ x + beta) ** 2) + bias2
+    names = list(feature_names) if feature_names else [f"feature_{i}" for i in range(n_in)]
+    attrs = [{"feature": names[i] if i < len(names) else f"feature_{i}",
+              "value": float(x[i]), "contribution": float(phi[i])}
+             for i in range(n_in)]
+    top = sorted(attrs, key=lambda a_: abs(a_["contribution"]), reverse=True)[:top_k]
+    return Explanation(prediction=int(np.argmax(logits)), base_value=base_value, margin=margin,
+                       attributions=attrs, top=top, method="exact-quadratic-shap")
+
+
 def explain_linear_model(model, x, *, baseline=None, feature_names=None,
                          top_k: int = 5) -> Explanation:
     """Convenience wrapper for :class:`qsh.fhe.ckks_inference.LinearModel` (``weight``, ``bias``)."""

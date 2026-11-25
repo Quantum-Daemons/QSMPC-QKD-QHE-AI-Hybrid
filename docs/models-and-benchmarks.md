@@ -105,7 +105,11 @@ above 0.1 (in the 0.1 to 0.2 bin the mean prediction is 0.135 and the observed r
 error of $`2.5 \times 10^{-3}`$ over fifteen equal-mass bins; the map brings it to $`1.3 \times 10^{-4}`$ and CORP's
 miscalibration term from $`2.2 \times 10^{-4}`$ to $`9.9 \times 10^{-6}`$, with the discrimination term unchanged, as a
 monotone map must leave it. The other four seeds move the same way. The record holds each seed's ten-bin reliability
-table with a Wilson interval per bin; the model's own record and its Hub card are unchanged.
+table with a Wilson interval per bin. On the owner's choice of 2026-11-25, the published seed's map is also in the model's
+own record (`--metrics`), in the other finance records' form, so the finance page's model card and the Hub card show it.
+The page still shows the GNN's logits and its decision, which compares the probability with a threshold tuned on
+validation, and reads no score through the map. On test, 947,218 of the 1,522,629 scored rows lie below the map's logit
+clip of $`10^{-12}`$ and tie there, which moves AUPRC from 0.63182937 to 0.63182826.
 
 ### The trained QCNN under CKKS
 
@@ -514,8 +518,48 @@ test rows decrypts within $`3.1 \times 10^{-6}`$ of the plaintext logits under A
 no decision changed (criterion 3 met), the largest plaintext logit 27.4 against A2's bound of $`2^{13}`$. A block of
 4,096 rows took 0.6 s to encrypt and 9.9 s to evaluate under A2, with ten node processes running at once, since
 node-seal's wasm is single-threaded. The square network is far ahead of the linear student it could replace in the
-fully encrypted path (0.500 against 0.184) and behind the same network with a ReLU; whether to pre-register it against
-the linear student instead is the owner's question, not a reading of this result.
+fully encrypted path (0.500 against 0.184) and behind the same network with a ReLU. On the owner's choice of 2026-11-25,
+that comparison is pre-registered as F7b (`references/finance-square-student-page-preregistration.md`) before any of its
+seeds was trained: its accuracy margins are stated as chosen after this result, and a new criterion asks for the page's
+time and memory in a browser.
+
+#### The square network on the finance page's fully encrypted path (F7b), adopted under A2
+
+Pre-registered before any of its seeds was trained (`references/finance-square-student-page-preregistration.md`; record
+`docs/measurements/finance-square-student-page-2026-11-25.json`): F7's network and recipe on new seeds 5 to 9, against
+the published linear student on the same test window. F7's record had already given that comparison, so the accuracy
+margins were chosen after F7 and say so; the new criterion was the page's own budget.
+
+| criterion | result |
+|---|---|
+| 1, accuracy: mean test AUPRC at least the linear student's (0.184) plus 0.15, each seed plus 0.10 | $`0.500 \pm 0.018`$ (0.475 to 0.525): met |
+| 2, no collapse | met |
+| 3, fidelity under CKKS on every test row (1,523,504) | A2 within $`4.2 \times 10^{-6}`$, B within $`1.7 \times 10^{-7}`$, no decision changed: met |
+| 4, one block of the shipped rows in a Web Worker in headless Chrome, at most 30 s and 1.5 GB, three runs | A2 (4,096 rows) 17.0 to 17.4 s, 0.087 GB: met; B (8,192 rows) 35.5 to 35.6 s: not met |
+
+So the network is adopted under A2 and B is not offered. The exported seed, 9, scores 0.497 (95 % interval 0.476 to
+0.519 over test rows). The browser harness (`web/scripts/measure_square_tabular_browser.mjs`) was smoke-tested once on
+F7's exported seed after the pre-registration was committed and before F7b's seeds were trained; its A2 and B times
+already sat on either side of the budget, which the record could not have changed, since time does not depend on the
+seed.
+
+On the owner's choices of 2026-11-25, after the result, the network replaces the linear student on the finance page,
+and it ships with the site (`web/public/data/finance/square_student_weights.json`), not from the Hub. A Platt map was
+fitted on the validation window after the run (`scripts/train/finance_square_student_page.py export`; Brier 0.00166 to
+0.00109, CORP MCB $`6.5 \times 10^{-4}`$ to $`8.7 \times 10^{-5}`$, AUPRC unchanged, 5,862 test rows tied at the logit
+clip) and is not part of the pre-registration. On the page:
+
+- the private-inference figure scores the 8,192 shipped test-window rows through it, two A2 blocks in two Web Workers,
+  about 17 s in this project's Chrome, and its decision curve reads the decrypted logits through that map;
+- the pipeline's transaction is an AMLworld test-window row, not a PaySim row: the network evaluates it under CKKS in a
+  Web Worker (a block of its own, about 17 s, since the work does not shrink with the rows), the garbled-circuit argmax
+  runs over its decrypted logits, and the SHAP bars are its exact quadratic Shapley values
+  (`web/src/lib/quadraticShap.ts`, held to the definition by brute force in `tests/test_explainability.py`). The finance
+  QCNN was trained on PaySim's four columns, so it reads a PaySim transaction of its own, and the run says so;
+- the accuracy-against-cost plot prices the network's batch in place of the linear student's.
+
+The linear student stays published on the Hub, and its record stays the comparison the BFV scorecard and
+`scripts/measure_decision_curve.py` read.
 
 #### The PSI among banks under MPC
 

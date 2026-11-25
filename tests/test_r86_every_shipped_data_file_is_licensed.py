@@ -57,6 +57,8 @@ AGGREGATES = {
 WEIGHTS = {
     "finance/qcnn_weights.json", "finance/student_weights.json", "medical/qcnn_weights.json", "telecom/qcnn_weights.json",
     "telecom/qcnn_weights_q7.json", "telecom/student_weights.json", "satellite/student_weights.json",
+    # F7b's square network (Round 86), the finance page's fully encrypted model since 2026-11-25.
+    "finance/square_student_weights.json",
 }
 
 

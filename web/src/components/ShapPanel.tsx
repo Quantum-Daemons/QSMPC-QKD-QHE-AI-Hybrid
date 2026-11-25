@@ -16,7 +16,8 @@
 import { AI_ACT_CAVEAT, AI_ACT_SCOPE } from "../lib/aiActScope";
 
 /** The label a bar shows where the column's name would mislead. `cross_border` is PaySim's transaction-type flag (TRANSFER or CASH_OUT), and PaySim
- *  records no geography, so a bar reading "cross_border +1.465" reads as a geography effect. The column keeps its name in the data and the models. */
+ *  records no geography, so a bar reading "cross_border +1.465" reads as a geography effect. The column keeps its name in the data and the models.
+ *  Finance's bars read PaySim's columns until F7b (Round 86); since then they are AMLworld's own 114 input names, which this map does not touch. */
 const BAR_LABEL: Record<string, string> = { cross_border: "transfer_or_cash_out" };
 
 export default function ShapPanel({ explanation, provenance, baseline, publishedModel, surfacedBackend,
@@ -108,9 +109,9 @@ export default function ShapPanel({ explanation, provenance, baseline, published
           <span className="mono" style={{ width: 66, fontSize: 12, textAlign: "right" }}>{t.contribution >= 0 ? "+" : ""}{Number(t.contribution).toFixed(3)}</span>
         </div>
       ))}
-      {/* WHAT EACH BAR IS (PP14). Finance's names are AML-style labels for PaySim quantities, and `cross_border` in
-          particular is a transaction type, because PaySim records no geography. The payload defines them; the bars
-          printed the bare names. */}
+      {/* WHAT EACH BAR IS (PP14). Until F7b (Round 86) finance's names were AML-style labels for PaySim quantities, and
+          `cross_border` in particular is a transaction type, because PaySim records no geography; that payload defines
+          them, and any payload that does is shown here. Finance's bars now name AMLworld's own inputs. */}
       {definitions && tops.some((t) => definitions[t.feature]) ? (
         <dl className="muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
           {tops.filter((t) => definitions[t.feature]).map((t) => (

@@ -36,7 +36,12 @@ CORPORA = {"opssat": "satellite_opssat", "esa": "satellite_esa"}
 
 def scored(y_val, s_val, y_te, s_te) -> dict:
     """Average precision on test; F1 and balanced accuracy at the validation threshold that maximises F1."""
-    from sklearn.metrics import average_precision_score, balanced_accuracy_score, f1_score, precision_recall_curve
+    from sklearn.metrics import (
+        average_precision_score,
+        balanced_accuracy_score,
+        f1_score,
+        precision_recall_curve,
+    )
 
     p, r, t = precision_recall_curve(y_val, s_val)
     f1 = np.where(p[:-1] + r[:-1] > 0, 2 * p[:-1] * r[:-1] / np.maximum(p[:-1] + r[:-1], 1e-300), 0.0)

@@ -12,7 +12,7 @@
    "eval_sample.json": "4e66c824e0b78f690c4c6bc4fe0397672af54f8ebe839800dfea27c38ada7bf7",
    "onnx/model.onnx": "c5bc68963c6deea0ad9ddf4e08f822faaf639eb8071ed47510de0e48840a51cd"
   },
-  "revision": "22cdddcd939aace1c4f7a1766d6c5cfa6578a6a0"
+  "revision": "efbea6a73eee1543e258432a46f616b49139ed9c"
  },
  "finance_aml.gnn_causal": {
   "files": {
@@ -55,6 +55,13 @@
    "onnx/model_int8.onnx": "b20dad2c613facdda1b4b43c8e0115470c5ade6bc12f4d6dba531b2dc99b452e"
   },
   "revision": "dff90e809f691ed2978953f5c16b279186ca02c7"
+ },
+ "medical_fl.nodule3d_square_student": {
+  "files": {
+   "eval_sample.json": "47b94d562cba35a7f28bf7cb32988d57fa694947d2a34d7a796791efc61a854a",
+   "weights.json": "537996790f32637f15dbf1e4c5e2e96917cc57b49e61137aaf9f1b459379641f"
+  },
+  "revision": "f44b3c6799fc4a39ee5e4ee31d6c614ab2aa2c40"
  },
  "medical_fl.resnet18": {
   "files": {

@@ -48,3 +48,39 @@ def test_gradient_x_input_fallback_runs():
     assert len(exp.top) == 2
     # feature 0 (coef +2) should be among the strongest drivers
     assert any(t["feature"] == "feature_0" for t in exp.top)
+
+
+def test_quadratic_shap_is_the_brute_force_shapley_value_of_the_square_network() -> None:
+    """F7b's square network (Round 86): the closed form against Shapley's definition, every coalition enumerated, on a
+    small random network, with the interventional value v(S) = f(x on S, the baseline elsewhere)."""
+    from itertools import combinations
+    from math import comb
+
+    from qsh.ai.explainability import quadratic_shap
+
+    rng = np.random.default_rng(7)
+    n, width = 6, 4
+    w1, b1 = rng.normal(size=(width, n)), rng.normal(size=width)
+    w2, b2 = rng.normal(size=(2, width)), rng.normal(size=2)
+    x, base = rng.normal(size=n), rng.normal(size=n)
+
+    def margin(z: np.ndarray) -> float:
+        out = w2 @ ((w1 @ z + b1) ** 2) + b2
+        return float(out[1] - out[0])
+
+    def value(S: tuple[int, ...]) -> float:
+        z = base.copy()
+        z[list(S)] = x[list(S)]
+        return margin(z)
+
+    brute = np.zeros(n)
+    for i in range(n):
+        rest = [j for j in range(n) if j != i]
+        for size in range(n):
+            for S in combinations(rest, size):
+                brute[i] += (value(S + (i,)) - value(S)) / (n * comb(n - 1, size))
+    e = quadratic_shap(w1, b1, w2, b2, x, baseline=base)
+    got = np.array([a["contribution"] for a in e.attributions])
+    assert np.allclose(got, brute, atol=1e-12, rtol=0), (got, brute)
+    assert abs(e.margin - margin(x)) < 1e-12 and abs(e.base_value - margin(base)) < 1e-12
+    assert e.efficiency_gap() < 1e-10 and e.method == "exact-quadratic-shap"

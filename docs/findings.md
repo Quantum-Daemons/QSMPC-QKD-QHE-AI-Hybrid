@@ -345,9 +345,10 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   student, Linear was the only fabricated option left - an 8-feature dot product with a hand-written
   weight pattern matching no trained model. For finance, satellite and OPS-SAT the students genuinely
   ARE linear, which is why the selector only ever appeared on the medical page.
-- **Every published model is re-scored when the page runs, and the two that are not published say why.** All
-  eighteen carry a held-out sample, and the Models panel re-scores each on it during the run (it has no Run
-  button); the other two are in states that are never collapsed into one message - never trained (the telecom
+- **Every published model is checked on its held-out sample, and the two that are not published say why.** All
+  nineteen carry one. The Models panel re-scores eighteen of them on it during the run (it has no Run
+  button); the nineteenth, the 3D nodule student, is run by its own card on the medical page, under CKKS on
+  the same twelve crops beside their plaintext logits. The other two are in states that are never collapsed into one message - never trained (the telecom
   Transformer) and served with the page rather than from the Hub (the PRS, whose weights are PGS000072's own,
   CC BY 4.0).
 - **`finance_aml.gnn` was a decision until Round 86, and it is now published.** On AMLworld HI-Small the published GNNs are the stronger models: the registry
@@ -371,9 +372,9 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   distilled student sized for CKKS: 115 parameters for finance against a 123,956-parameter teacher,
   3,226 against 11,171,266 for medical, 294 against 84,860 for satellite. Which of them CKKS
   evaluates in the browser, page by page, is under
-  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All eighteen repos are public, and
-  eighteen are pinned, the chest X-ray model's among them since 2026-11-15, IBM's two models since 2026-11-18 and
-  the fully encrypted medical student since 2026-11-19. The evaluation sample
+  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All nineteen repos are public, and
+  nineteen are pinned, the chest X-ray model's among them since 2026-11-15, IBM's two models since 2026-11-18,
+  the fully encrypted medical student since 2026-11-19 and the 3D nodule student since 2026-11-25. The evaluation sample
   for each lives in that model's own repo at the same revision as its weights. Since Round 86 that
   includes the satellite student's, which is a stretch of a timeline rather than independent rows,
   because its metric is defined over a timeline.
@@ -828,7 +829,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   Diagnostic Breast-Cancer sample (UCI dataset 17 via sklearn, **CC BY 4.0 - attribution required**) + a real logistic-regression model;
   **genomics** uses the real PGS-Catalog PGS000072 weights (Graff et al., Nat Commun 12:970, 2021, **CC BY 4.0**; 183 of its 187 variants have a 1000 Genomes genotype and are scored) over real 1000 Genomes
   genotypes -> a **Polygenic Risk Score** over those 183 variants with per-SNP signed SHAP, and its CKKS step evaluates that full score: all 183 dosages in one ciphertext, the plaintext weights applied by one multiply-plain and a rotation sum, the decrypted score compared with the 90th percentile of the score over the 30 bundled individuals; **finance** uses a
-  **PaySim** simulator sample (synthetic transactions, CC-BY-SA-4.0) + a linear surrogate over four of its columns (none built from PaySim's balance columns), which is what the finance page's one-row CKKS step evaluates (the 115-parameter AMLworld student is encrypted on 8,192 held-out test-window rows for the agreement figure since Round 84); and **satellite** scores
+  AMLworld HI-Small test-window transactions (synthetic, CDLA-Sharing-1.0) and, since F7b (2026-11-25), F7b's square network on their 114 inputs, end to end under CKKS: on the one-row step, in the agreement figure over the 8,192 shipped rows and in the SHAP bars, in place of the 115-parameter linear student (encrypted in that figure from Round 84) and of the linear surrogate over four columns of the **PaySim** simulator sample (CC-BY-SA-4.0) that the one-row step evaluated until then; the PaySim sample now feeds only the finance QCNN, which was trained on it; and **satellite** scores
   **real OPS-SAT-AD telemetry segments** (CC BY 4.0, since Round 84; the NASA SMAP/MSL windows before them had no licence from any provider - see DATA_LICENSES.md) with a plaintext demo anomaly regression - all tiny static JSON
   under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](../web/src/lib/realData.ts). The finance, medical, genomics and DeFi lending pages compute with the
   real in-browser node-seal CKKS + Polytune garbled circuits (notional parties); the telecom page runs its student under CKKS on one held-out row with its argmax in a garbled circuit, on the shares of the masked scores, and both the telecom and satellite pages run a CKKS check of each published student they carry, with no garbled circuit in that check ([which pages encrypt](models-and-benchmarks.md#which-pages-encrypt)). Only **telecom** has no commercial-OK real attack dataset
