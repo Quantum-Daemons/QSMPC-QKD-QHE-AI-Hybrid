@@ -179,9 +179,10 @@ FROZEN = {
     "references/telecom-nidd-federated-preregistration.md":
         "5e3a137bfb4c0382ce626bb733531f94b9a505b7ec93e8500bdad8122affff0d",
     # The downlink against Jinan-1's measured pass: committed 2026-11-26 (054aaab) before any model figure was set beside
-    # the data, and its addendum the same day before the comparison ran.
+    # the data, its addendum (df2bae4) before the comparison ran, and addendum 2 after it, saying the windows failed and
+    # naming the post-hoc analysis as post hoc.
     "references/satellite-jinan1-pass-preregistration.md":
-        "ec5b8b0c0c3c8441bb5e3c84a71fa52591e8af5351d8e3e778681278844531b6",
+        "11665e2b800dd3f921d9b4bf5122252354e95d85fe773e64130c4ae284ae1984",
 }
 
 

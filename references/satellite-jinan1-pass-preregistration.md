@@ -72,3 +72,24 @@ Two definitions the text above left open, fixed while writing `scripts/measure_j
 it. **The model's key** is the page's own pass key: the asymptotic key that `simulatePass` in
 `web/src/lib/satNetwork.ts` sums over one pass at the profile's top elevation, as the test above compares it, run by
 the page's code in node; the finite key over the same pass (`finite_key_over`) is reported beside it.
+
+## Addendum 2, 2026-11-26, after the run: the windows did not hold
+
+The run (`docs/measurements/satellite-jinan1-pass-2026-11-26.json`, kept) showed that the two windows above do not
+describe the pass. Sheet `4c`'s QBER is one value per key block, held over the block's seconds: it is first recorded
+about 75 seconds after the counts leave the background (near 1,660 km, where they jump from about 730 to 5,750 per
+second), and it keeps the last block's value for about 50 seconds after the counts have fallen back (from about
+1,500 km). So the background window held the link's first 65 seconds or so, and its median, 6,910 per second, is about
+ten times the counts outside the link; the link window lost the link's start and kept seconds without it. The figures
+on those windows answer nothing the text asked, and no rule above is applied from them: rule 1 would replace the
+constant with a fit to a wrong background.
+
+What follows was chosen after those figures were seen, and is labelled post hoc wherever it is shown:
+
+- background: the median count rate over the file's first and its last 30 seconds, both outside the link by the counts
+  themselves;
+- link seconds: those whose counts exceed five times that background;
+- the rest as above, with the QBER compared over the link seconds that carry a block's value, block by block.
+
+Rules 1 to 3 are not applied to the post-hoc figures either. Whether the profile takes a post-hoc fit, and whether the
+page shows the post-hoc comparison, are the owner's choices.
