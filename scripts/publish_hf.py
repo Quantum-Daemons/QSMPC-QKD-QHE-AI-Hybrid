@@ -64,6 +64,9 @@ IBM_MODELS = {"finance_aml.gnn": "IBM's protocol, which samples each transfer's 
 #: features the layer reads (Round 86, the medical page's split inference). Without this the card said "No code path
 #: evaluates this model under encryption", which stopped being true when the page began to.
 SPLIT_MODELS = {"medical_fl.cxr_fedavg": "its 512 pooled features"}
+#: The 3D nodule student (Round 86, batch 4): its teacher is not published and no agreement with it is recorded, so the
+#: encrypted tier's generic paragraph, which says one was measured, is not this model's.
+NODULE3D_MODELS = {"medical_fl.nodule3d_square_student"}
 
 
 def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool = False) -> str:
@@ -130,6 +133,13 @@ def model_card(spec: registry.ModelSpec, achieved: dict | None, *, private: bool
                  f"network up to {SPLIT_MODELS[spec.key]} in the clear on the data owner's side (the visitor's tab), and",
                  "its own last layer under CKKS on those features, encrypted. Nothing else of it is evaluated under",
                  "encryption; what each use case encrypts, if anything, is stated in the notes below."]
+    elif spec.key in NODULE3D_MODELS:
+        body += [f"This is the **3D encrypted-tier** model for the `{spec.usecase}` use case: a network small enough to",
+                 "evaluate end to end under CKKS, distilled with soft labels from an out-of-fold teacher that is not published.",
+                 "The medical page runs it in a Web Worker on twelve held-out test crops that ship with the site, from the",
+                 "site's own copy of these weights, and draws each crop as three orthogonal planes; its fidelity under CKKS on",
+                 "all 347 test crops was measured offline, by the page's own module under node-seal. The notes below give the",
+                 "pre-registered comparison and the parameter sets."]
     elif spec.runs_encrypted:
         # "and the demo runs it that way" was true of some students only. The public page encrypts the medical CNN
         # student and, on held-out rows, the finance, telecom and OPS-SAT students (finance since Round 84, when it
@@ -467,7 +477,7 @@ REPO_URL = "https://github.com/Quantum-Daemons/QSMPC-QKD-QHE-AI-Hybrid"
 
 #: Licences the Hub lists by identifier: a card naming one of these uses it directly, so the Hub
 #: indexes the repo under that licence instead of "other" (Round 84; Hub model-card specification).
-_HUB_LICENCE_IDS = {"CDLA-Sharing-1.0": "cdla-sharing-1.0", "CC-BY-4.0": "cc-by-4.0",
+_HUB_LICENCE_IDS = {"CDLA-Sharing-1.0": "cdla-sharing-1.0", "CC-BY-4.0": "cc-by-4.0", "CC-BY-3.0": "cc-by-3.0",
                     "Apache-2.0": "apache-2.0"}
 
 #: For the rest, `license: other` takes a name and a link (the Hub's documented practice).

@@ -219,7 +219,7 @@ def test_the_readme_counts_the_published_repos_and_their_one_exception() -> None
     and it rotted again: "All ten repos" with eleven published, and "the evaluation sample for each"
     with one published by design without one."""
     words = {"nine": 9, "ten": 10, "eleven": 11, "twelve": 12, "thirteen": 13, "fourteen": 14, "fifteen": 15,
-             "sixteen": 16, "seventeen": 17, "eighteen": 18}
+             "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19}
     # The sentence moved from the README to docs/findings.md in Round 80, with the findings it
     # belongs to; the README now links there.
     readme = (REPO / "docs" / "findings.md").read_text()
@@ -242,7 +242,7 @@ def test_the_readme_counts_the_published_repos_and_their_one_exception() -> None
 def test_the_other_copies_of_the_count_follow_the_registry() -> None:
     """The README's models row said "thirteen published models" and DATA_LICENSES.md "all thirteen repos ship one" with
     fifteen published (Round 86, found 2026-11-15): only docs/findings.md's copy had a gate."""
-    words = {"thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18}
+    words = {"thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19}
     n = len(_published())
     row = re.search(r"\| Models \| (\w+) published models: (\w+) run with ONNX Runtime in the browser, (\w+) from their "
                     r"weights files", (REPO / "README.md").read_text())

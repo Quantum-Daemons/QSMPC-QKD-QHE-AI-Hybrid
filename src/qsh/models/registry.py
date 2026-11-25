@@ -380,6 +380,35 @@ DS_BREASTMNIST = DatasetSpec(
         "28:104863 (2020)."
     ),
 )
+#: LIDC-IDRI (Round 86, batch 4): the 3D nodule student's corpus. The licence, the citations and the acknowledgement were
+#: read on TCIA's collection page on 2026-11-25; the fetch and its checks are `docs/measurements/lidc-stream-2026-11-24.json`.
+DS_LIDC_IDRI = DatasetSpec(
+    name="LIDC-IDRI (The Cancer Imaging Archive)",
+    licence="CC-BY-3.0",
+    url="https://www.cancerimagingarchive.net/collection/lidc-idri/",
+    licence_checked="2026-11-25",
+    publishable=True,
+    notes=(
+        "Thoracic CT of 1,010 patients with lesions marked by up to four radiologists; TCIA states CC BY 3.0 for the "
+        "images and for the radiologists' annotations, and asks for the data citation with its DOI, the publication "
+        "citation and the NCI and FNIH acknowledgement (its collection page, read 2026-11-25). This project fetched the 883 CT "
+        "series of the 875 patients whose scans hold at least one nodule cluster (215,912 files) through TCIA's REST "
+        "interface, every file checked against TCIA's MD5 and every series against its image count, the training "
+        "patients' series twice "
+        "(`docs/measurements/lidc-stream-2026-11-24.json`). One 28 mm crop at 1 mm per pylidc cluster of the readers' "
+        "marks (Hancock and Magnan, Journal of Medical Imaging 3(4), 044504, 2016); the label is the readers' median "
+        "malignancy rating, above 3 malignant and below 3 benign, exactly 3 left out: a rating, not a diagnosis. The split "
+        "is by patient, drawn once from the records before any image was fetched "
+        "(`docs/measurements/medical-nodule3d-split.json`)."
+    ),
+    attribution=(
+        "Armato III, S. G., et al. (2015). Data From LIDC-IDRI [Data set]. The Cancer Imaging Archive. "
+        "doi:10.7937/K9/TCIA.2015.LO9QL9SX; Armato et al., 'The Lung Image Database Consortium (LIDC) and Image Database "
+        "Resource Initiative (IDRI)', Medical Physics 38(2), 915-931 (2011), doi:10.1118/1.3528204. The authors "
+        "acknowledge the National Cancer Institute and the Foundation for the National Institutes of Health, and their "
+        "critical role in the creation of the free publicly available LIDC/IDRI Database used in this study."
+    ),
+)
 #: NIH ChestX-ray14 (Round 86): the medical page's chest X-ray federation, and its FedAvg ResNet-18 prepared for the Hub.
 #: Every figure in the notes is this project's (`docs/measurements/cxr-fl-2026-11-14.json`) or read in full at the source
 #: (`references/chest-xray-fl-prior-work.md`).
@@ -827,6 +856,17 @@ M_BREASTMNIST_STUDENT = replace(M_BREASTMNIST, comparison_caveat=(
     "reads 14 x 14 images, downsampled from the 28 x 28 the baseline's ResNet-18 reads, and it is a single-convolution "
     "CNN distilled for CKKS, not a ResNet. The gap is what the encrypted tier's size costs, not two methods compared "
     "on one input."))
+#: The 3D nodule student's metric (Round 86, batch 4): no published figure is on this split, so none is a baseline.
+M_LIDC_NODULE3D = MetricSpec(
+    name="auc",
+    display="AUC, malignant against benign nodules, on the 347 test nodules of 148 held-out patients",
+    baseline=None,
+    baseline_source=(
+        "none on this split. NoduleMNIST3D's official-split test AUCs (MedMNIST v2, Yang et al., Scientific Data 10:41, "
+        "2023: ResNet-18 3D 0.863, ResNet-50 3D 0.875, auto-sklearn 0.914) are cited for context and not compared: that "
+        "split shares scans across its parts and labels differently"),
+    companion="balanced_accuracy",
+)
 #: The chest X-ray model's metric (Round 86). The baseline was read in full (`references/chest-xray-fl-prior-work.md`).
 M_CXR_EFFUSION = MetricSpec(
     name="auroc",
@@ -1382,6 +1422,42 @@ _SPECS: tuple[ModelSpec, ...] = (
                "answering benign; the CKKS student's argmax flags 42 (recall 0.571, specificity 0.842). MedMNIST "
                "states that its dataset is NOT intended for clinical use, and neither is this model."),
     ),
+    # The 3D nodule student (Round 86, batch 4; the owner's choice of 2026-11-25 to stage it on the Hub, privately first).
+    # Pre-registered in `references/medical-nodule3d-square-student-preregistration.md` and its addendum, trained, run
+    # under CKKS and exported by `scripts/train/medical_nodule3d_student.py` and `scripts/export_nodule3d_student.py`.
+    # After the 2D students, so the medical page's default model and headline do not move. The page runs it from the
+    # site's own copy with twelve test crops (`web/public/data/medical/nodule3d_square_student.json`), not from the Hub.
+    ModelSpec(
+        usecase="medical_fl",
+        tier="t1_crypto",
+        key="medical_fl.nodule3d_square_student",
+        label="Fully encrypted LIDC-IDRI 3D nodule CNN student (square activation)",
+        architecture=("1 conv block (1->4ch, 3x3x3, batch norm folded), x^2, 2x2x2 avg-pool, dense 4*14^3->2, "
+                      "28x28x28 input (a 28 mm cube at 1 mm)"),
+        params=22066,
+        dataset=DS_LIDC_IDRI,
+        metric=M_LIDC_NODULE3D,
+        runs_encrypted=True,
+        artifacts=(ArtifactSpec("weights.json", "json", "none", "browser"),),
+        hf_repo="qsh-medical-lidc-nodule3d-ckks-square-student",
+        # `scripts/export_nodule3d_student.py` writes the sample and states this split in it (SAMPLE_SPLIT).
+        eval_split=("twelve of the 347 test nodules of the 148 held-out patients: the first six labelled malignant and "
+                    "the first six benign in the records' order, fixed by the 3D addendum's section 4 before any model "
+                    "was trained"),
+        notes=("End to end under CKKS, with no layer decrypted in between: the client encrypts a crop's 27 convolution "
+               "taps, the evaluator convolves, squares and applies the pooled dense layer on the ciphertexts, and the client "
+               "decrypts two logits; multiplicative depth 3, under N=8192 with 48+34+34+34+52 bits (A2) or N=16384 with "
+               "60+40+40+40+60 (B), both within the HomomorphicEncryption.org standard's 128-bit post-quantum bound. "
+               "Distilled with soft labels from the best of three pre-registered teacher candidates, each scored out of fold "
+               "over the training patients (a 3D ResNet-18 trained from scratch 0.874, TotalSegmentator's nodule size 0.786, "
+               "CT-FM's linear probe 0.641; the ResNet-18 taught; no teacher is published). Pre-registered criteria, five "
+               "seeds: test AUC 0.907 (sd 0.009) against 0.882 (sd 0.027) for the same network with a ReLU, the margin of "
+               "criterion 1 being the control's mean minus 0.03. The exported seed, 5, chosen by validation AUC as "
+               "pre-registered, scores 0.893 on test (95 % interval over test patients 0.848 to 0.933), the lowest of the "
+               "five square seeds there. Under CKKS on all 347 test crops the decrypted logits are within 3.2e-5 (A2) and "
+               "1.6e-5 (B) of the plaintext ones, with no decision changed. The labels are the readers' median malignancy "
+               "rating, not a diagnosis. For research and demonstration only, not for clinical use."),
+    ),
     # The chest X-ray federation's FedAvg ResNet-18 (Round 86). Exported by `scripts/train/export_cxr_fedavg.py` and checked
     # by `scripts/data/check_cxr_preupload.py` before any upload, as the owner asks. Uploaded to a private repository for the
     # owner's review (2026-11-14) and made public with the owner's approval on 2026-11-15.
@@ -1830,6 +1906,7 @@ ARTIFACT_DIRS: dict[str, str] = {
     "finance_aml.student": "models/finance_aml_student",
     "medical_fl.student": "models/medical_breastmnist_student",   # already on disk from training
     "medical_fl.square_student": "models/medical_breastmnist_square_student",
+    "medical_fl.nodule3d_square_student": "models/medical_lidc_nodule3d_square_student",
     "medical_fl.cxr_fedavg": "models/medical_cxr14_fedavg_resnet18",
     "satellite_comms.student": "models/satellite_telemanom_student",
 }

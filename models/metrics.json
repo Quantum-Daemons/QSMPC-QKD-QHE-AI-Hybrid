@@ -1592,6 +1592,94 @@
     "transfer_learning": "none: trained from random initialisation, so the weights carry no ImageNet terms (DATA_LICENSES.md)",
     "wall_clock_s": 7513.3
   },
+  "medical_fl.nodule3d_square_student": {
+    "auc": 0.892568,
+    "auc_ci95_high": 0.933242,
+    "auc_ci95_low": 0.847758,
+    "balanced_accuracy": 0.846003,
+    "bootstrap_resamples": 2000,
+    "ckks": {
+      "A2": {
+        "N": 8192,
+        "coeff_mod_bits": [
+          48,
+          34,
+          34,
+          34,
+          52
+        ],
+        "crops": 347,
+        "decisions_differ": 0,
+        "max_abs_logit_error": 3.23760016416319e-05,
+        "median_ms": 1705.214958000055,
+        "modulus_bits": 202,
+        "scale_bits": 34
+      },
+      "B": {
+        "N": 16384,
+        "coeff_mod_bits": [
+          60,
+          40,
+          40,
+          40,
+          60
+        ],
+        "crops": 347,
+        "decisions_differ": 0,
+        "max_abs_logit_error": 1.593019118872885e-05,
+        "median_ms": 2211.903121999989,
+        "modulus_bits": 240,
+        "scale_bits": 40
+      }
+    },
+    "export_seed": 5,
+    "five_seeds_test_auc": {
+      "control_mean": 0.882052,
+      "control_sd": 0.026806,
+      "mean": 0.907301,
+      "sd": 0.008946,
+      "seeds": {
+        "1": 0.914733,
+        "2": 0.909645,
+        "3": 0.905905,
+        "4": 0.913654,
+        "5": 0.892568
+      }
+    },
+    "hf_revision": "f44b3c6799fc4a39ee5e4ee31d6c614ab2aa2c40",
+    "majority_class_rate": 0.685879,
+    "metric_name": "auc",
+    "metric_note": "`auc` is the exported seed's test AUC on all 347 test nodules, chosen by validation AUC as pre-registered; `five_seeds_test_auc` is the pre-registered comparison with the same network with a ReLU, and `ckks` the record's run of the page's module on every test crop.",
+    "n_eval": 347,
+    "preregistration": {
+      "file": "references/medical-nodule3d-square-student-preregistration.md",
+      "sha256": "9f6ec0871b5c3aa2c1d2064923c1f61fcf556d30485d0f35f6a01f1c97c8c7e5"
+    },
+    "scoring_unit": "nodules",
+    "split_counts": {
+      "test": {
+        "benign": 238,
+        "malignant": 109,
+        "nodules": 347,
+        "patients": 148
+      },
+      "train": {
+        "benign": 797,
+        "malignant": 381,
+        "nodules": 1178,
+        "patients": 518
+      },
+      "val": {
+        "benign": 115,
+        "malignant": 55,
+        "nodules": 170,
+        "patients": 74
+      }
+    },
+    "student_params": 22066,
+    "teacher": "resnet3d18, the best of three pre-registered candidates scored out of fold over the training patients; not published",
+    "val_auc": 0.838577
+  },
   "medical_fl.resnet18": {
     "accuracy": 0.8653846153846154,
     "auc": 0.9146825396825395,

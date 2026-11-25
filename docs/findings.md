@@ -345,9 +345,10 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   student, Linear was the only fabricated option left - an 8-feature dot product with a hand-written
   weight pattern matching no trained model. For finance, satellite and OPS-SAT the students genuinely
   ARE linear, which is why the selector only ever appeared on the medical page.
-- **Every published model is re-scored when the page runs, and the two that are not published say why.** All
-  eighteen carry a held-out sample, and the Models panel re-scores each on it during the run (it has no Run
-  button); the other two are in states that are never collapsed into one message - never trained (the telecom
+- **Every published model is checked on its held-out sample, and the two that are not published say why.** All
+  nineteen carry one. The Models panel re-scores eighteen of them on it during the run (it has no Run
+  button); the nineteenth, the 3D nodule student, is run by its own card on the medical page, under CKKS on
+  the same twelve crops beside their plaintext logits. The other two are in states that are never collapsed into one message - never trained (the telecom
   Transformer) and served with the page rather than from the Hub (the PRS, whose weights are PGS000072's own,
   CC BY 4.0).
 - **`finance_aml.gnn` was a decision until Round 86, and it is now published.** On AMLworld HI-Small the published GNNs are the stronger models: the registry
@@ -371,9 +372,9 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   distilled student sized for CKKS: 115 parameters for finance against a 123,956-parameter teacher,
   3,226 against 11,171,266 for medical, 294 against 84,860 for satellite. Which of them CKKS
   evaluates in the browser, page by page, is under
-  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All eighteen repos are public, and
-  eighteen are pinned, the chest X-ray model's among them since 2026-11-15, IBM's two models since 2026-11-18 and
-  the fully encrypted medical student since 2026-11-19. The evaluation sample
+  [which pages encrypt](models-and-benchmarks.md#which-pages-encrypt). All nineteen repos are public, and
+  nineteen are pinned, the chest X-ray model's among them since 2026-11-15, IBM's two models since 2026-11-18,
+  the fully encrypted medical student since 2026-11-19 and the 3D nodule student since 2026-11-25. The evaluation sample
   for each lives in that model's own repo at the same revision as its weights. Since Round 86 that
   includes the satellite student's, which is a stretch of a timeline rather than independent rows,
   because its metric is defined over a timeline.

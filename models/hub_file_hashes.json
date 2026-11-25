@@ -56,6 +56,13 @@
   },
   "revision": "dff90e809f691ed2978953f5c16b279186ca02c7"
  },
+ "medical_fl.nodule3d_square_student": {
+  "files": {
+   "eval_sample.json": "47b94d562cba35a7f28bf7cb32988d57fa694947d2a34d7a796791efc61a854a",
+   "weights.json": "537996790f32637f15dbf1e4c5e2e96917cc57b49e61137aaf9f1b459379641f"
+  },
+  "revision": "f44b3c6799fc4a39ee5e4ee31d6c614ab2aa2c40"
+ },
  "medical_fl.resnet18": {
   "files": {
    "eval_sample.json": "e9eaaef46f473ca632a49a5563ce3d662f1e5383ba45763aacf3cdc242d69e5c",
