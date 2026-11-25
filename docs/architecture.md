@@ -355,7 +355,7 @@ cost - genomics and the generic demo - and labels it so):
   It serves `tools/call` only, so it is not a complete MCP implementation.
 - **Per-industry real data/models** - finance: an XGBoost teacher on AMLworld, distilled to a
   115-parameter CKKS-linear student on its 114 inputs; since F7b (2026-11-25) the browser's CKKS steps run F7b's square
-  network on those inputs end to end, and the PaySim demo sample feeds only the finance QCNN; medical: a MedMNIST CNN; **genomics: the PGS-Catalog polygenic risk score**
+  network on those inputs end to end, and the PaySim demo sample feeds the finance QCNN and the federated step; medical: a MedMNIST CNN; **genomics: the PGS-Catalog polygenic risk score**
   PGS000072, whose full 183-variant dot product runs under CKKS in the browser and in the full
   deployment, against a 90th-percentile cut over the bundled panel; telecom: synthetic QKD-attack data,
   whose published `telecom_ids.qml` is a random forest

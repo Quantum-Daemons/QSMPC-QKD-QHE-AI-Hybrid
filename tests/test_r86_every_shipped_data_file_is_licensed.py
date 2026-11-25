@@ -54,6 +54,9 @@ AGGREGATES = {
     "satellite/vus_pr.json": "ESA-ADB",
     # The pre-registered threshold comparison (Round 86, batch 6), shown on the page on the owner's choice of 2026-11-26.
     "satellite/thresholds.json": "ESA-ADB",
+    # The federation of 5G-NIDD's two base stations (Round 86, batch 6; the owner's choice of 2026-11-26): figures computed
+    # from 5G-NIDD beside the fitted numbers, and each shipped held-out flow's station.
+    "telecom_nidd/federated.json": "5G-NIDD",
 }
 #: Fitted numbers.
 WEIGHTS = {

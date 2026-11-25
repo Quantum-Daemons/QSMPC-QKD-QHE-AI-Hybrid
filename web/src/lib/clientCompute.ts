@@ -22,7 +22,7 @@ import type { OcclusionMap } from "./cnnSaliency";
 import type { HybridCnnResult } from "./clientHybridCnn";
 import type { QcnnCkksResult } from "./clientQcnnCkks";
 import { clientTrainScoreIDS } from "./clientIDS";
-import { clientQFL } from "./clientQFL";
+import { clientQFL, secaggClientSeeds, secaggKeyPairs, secureAggregate } from "./clientQFL";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { randomBelow } from "./csprng";
 import { optimizeQKD } from "./clientOptiQKD";
@@ -45,7 +45,7 @@ import { FED_HEART, fedHeart, fedHeartComparisons, fedHeartDp, loadHeartSites } 
 import { dpCount, GENOMICS_DP, genomicsDp } from "./clientDp";
 import { recordRelease } from "./dpLedger";
 import { heldOutCorpus, realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
-  type HeldOutCorpus, niddStudentHeldOut, type RealInput, realAlleleCounts } from "./realData";
+  type HeldOutCorpus, niddFederated, niddStudentHeldOut, type RealInput, realAlleleCounts } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
 import { isClientDemo } from "./demoMode";
 import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
@@ -677,7 +677,8 @@ export function linearShap(
 
 // Per-use-case feature names for the XAI attribution chart (mirror the backend).
 const FEATURE_NAMES: Record<string, string[]> = {
-  // The four columns the finance model reads (registry.PAYSIM_MODEL_FEATURES; no balance-derived one).
+  // The four PaySim columns the full deployment's finance model reads (registry.PAYSIM_MODEL_FEATURES; no balance-derived
+  // one). Since F7b the browser's bars take AMLworld's 114 names from the payload, so this is the fallback without one.
   finance_aml: ["amount", "cross_border", "night_tx", "new_payee"],
   medical_fl: ["mean_radius", "mean_texture", "mean_perimeter", "mean_area",
     "mean_smoothness", "worst_radius", "worst_concavity", "worst_symmetry"],
@@ -1858,8 +1859,9 @@ export function runClientPipeline(
    * rather than the protocol.
    *
    * This is a SECOND inference, not a replacement for the stage's own. The stage runs the page's
-   * explainable path over real Wisconsin / PGS / PaySim / CIC-IDS features, which is what the SHAP
-   * attribution and the CKKS evaluation both depend on. The published model is trained on a
+   * explainable path over the page's own rows (WDBC, the 1000 Genomes panel, AMLworld's test window
+   * since F7b, the synthetic QKD telemetry, OPS-SAT-AD), which is what the SHAP attribution and the
+   * CKKS evaluation both depend on. The published model is trained on a
    * different corpus (BreastMNIST 28x28, AMLworld 32-feature, ESA 250x6), so feeding it the stage's
    * features would be the category error this project refuses elsewhere. Both are real, both are
    * measured, and each says which corpus it is on.
@@ -2005,6 +2007,71 @@ export function runClientPipeline(
       + `Criterion 2 of its pre-registration ${criterion2 ? "holds" : "FAILS"}. Rows: ${held.licence.name}.`);
   }
 
+  /** The model 5G-NIDD's two base stations federated (Round 86, batch 6; the owner's choice of 2026-11-26).
+   *
+   * Two things run here, in this tab. The last round's secure aggregation is replayed: two notional stations draw fresh
+   * X25519 key pairs, agree their pair seed, mask their last local models weighted by their shares of the fit rows, and
+   * the aggregator's sum is checked against the shipped global model coordinate by coordinate, bit for bit in the masks'
+   * 2^-20 fixed point (the offline run's global model IS that sum, so any difference is a fault of this path). Then the
+   * global model is scored under CKKS on the student's 2,048 held-out flows, each named by its station, and criterion 3
+   * of the pre-registration is checked as the student's criterion 2 is. The comparison with each station alone and with
+   * pooling is the offline record's, which the card reads from the same file. */
+  async function scoreNiddFederated(stage: string) {
+    const fed = await niddFederated();
+    if (!fed) {
+      emit("log", stage, "5G-NIDD federation: its file could not be read, so neither the replay nor the encrypted figure runs");
+      return;
+    }
+    const flat = (m: { W: number[][]; b: number[] }) => [...m.W.flat(), ...m.b];
+    const t0 = performance.now();
+    const keyPairs = secaggKeyPairs(2);
+    const publicKeys = keyPairs.map((kp) => kp.publicKey);
+    const pairSeeds = await Promise.all(keyPairs.map((kp, c) => secaggClientSeeds(c, kp.privateKey, publicKeys)));
+    const { aggregate, maskedShares } = secureAggregate(fed.lastLocal.map(flat), fed.weights, pairSeeds, 0);
+    const replayMs = performance.now() - t0;
+    const want = flat(fed.global);
+    const exact = aggregate.filter((v, i) => v === want[i]).length;
+    const hex = (w: number) => w.toString(16).padStart(8, "0");
+    const ho = await encryptedHeldOutAgreement(fed.held);
+    const bt = ho.batch;
+    let decidedFlips = 0;
+    ho.plot.points.forEach((q) => { if (!q.agree && Math.abs(q.plain) > 2 * bt.maxAbsError) decidedFlips++; });
+    const criterion3 = decidedFlips === 0 && bt.maxAbsError < 1e-3;
+    const perStation = [0, 1].map((s) => {
+      const pts = ho.plot.points.filter((_, i) => fed.station[i] === s);
+      const n = pts.length;
+      return {
+        station: fed.stations[s], rows: n,
+        encryptedAccuracy: n ? pts.filter((q) => q.encCls === q.label).length / n : null,
+        plaintextAccuracy: n ? pts.filter((q) => q.plainCls === q.label).length / n : null,
+        decisionsThatDiffer: pts.filter((q) => !q.agree).length,
+      };
+    });
+    metric(stage, "nidd_fed_replay_coordinates", want.length);
+    metric(stage, "nidd_fed_replay_bit_exact", exact);
+    metric(stage, "nidd_fed_replay_ms", r2(replayMs));
+    metric(stage, "nidd_fed_encrypted_rows", bt.rows);
+    metric(stage, "nidd_fed_encrypted_max_abs_error", bt.maxAbsError);
+    metric(stage, "nidd_fed_encrypted_flips_beyond_twice_the_error", decidedFlips);
+    metric(stage, "nidd_fed_criterion_3", criterion3 ? 1 : 0);
+    perStation.forEach((p, s) => {
+      metric(stage, `nidd_fed_station_${s + 1}_encrypted_accuracy`, p.encryptedAccuracy);
+      metric(stage, `nidd_fed_station_${s + 1}_plaintext_accuracy`, p.plaintextAccuracy);
+    });
+    artifacts.nidd_federated = {
+      replay: { coordinates: want.length, bitExact: exact, ms: replayMs, publicKeys: publicKeys.map((pk) => hexPrefix(pk)),
+                firstWords: maskedShares.map((sh) => sh.slice(0, 3).map(hex)), weights: fed.weights },
+      encrypted: { rows: bt.rows, ciphertexts: bt.ciphertexts, ms: bt.fheMs, maxAbsError: bt.maxAbsError, decidedFlips,
+                   criterion3, perStation },
+    };
+    emit("log", stage, `5G-NIDD federation: the last round's masked sum replayed in this tab with fresh X25519 keys, `
+      + `${exact} of ${want.length} coordinates equal to the shipped global model bit for bit; that model under CKKS over `
+      + `${bt.rows.toLocaleString("en-US")} held-out flows (${perStation.map((p) => `${p.rows} from ${p.station}`).join(", ")}), `
+      + `max |decrypted - plaintext logit| ${bt.maxAbsError.toExponential(3)}, ${decidedFlips} decision(s) flipped beyond twice that; `
+      + `criterion 3 of its pre-registration ${criterion3 ? "holds" : "FAILS"}. With two stations each could compute the `
+      + `other's update from the global model and its own, so the masks hide the updates from the aggregator only.`);
+  }
+
   /** Evaluate the published telecom student's 8 class scores under REAL CKKS, in this tab.
    *
    * This is the verification figure for telecom's encrypted tier, and the numbers it reports are the
@@ -2103,6 +2170,8 @@ export function runClientPipeline(
       await scoreHeldOutStudent(stage, "telecom_ids", "data/telecom/student_heldout.json");
       // AND THE REAL-DATA DETECTOR'S STUDENT (Round 86, batch 6): 5G-NIDD's flows under CKKS, a figure of its own.
       await scoreNiddStudent(stage);
+      // AND THE MODEL ITS TWO BASE STATIONS FEDERATED (Round 86, batch 6): the replayed last aggregation and CKKS over the same rows.
+      await scoreNiddFederated(stage);
       emit("log", stage, `the ARGMAX ran in a garbled circuit: the key holder decrypted only masked scores, and `
         + `only the class left the circuit. Both parties are in this tab, so the separation is notional here. `
         + `The held-out check above decrypts every row's ${w.W.length} scores, because it measures the CKKS `
@@ -2337,8 +2406,9 @@ export function runClientPipeline(
     switch (stage) {
       case "data": {
         // These describe the BUNDLED DEMO SAMPLE, which is not always the corpus the published model
-        // was trained on — finance is the clearest case: the demo ships PaySim while the published
-        // model is trained on IBM AMLworld. The registry (ModelPanel below) shows the training
+        // was trained on — finance was the clearest case: the demo shipped PaySim alone while the published
+        // model is trained on IBM AMLworld (since F7b its encrypted steps score AMLworld rows, which the
+        // finance line below names). The registry (ModelPanel below) shows the training
         // corpus; this line shows what is being scored in the browser right now.
         //
         // Five of these strings were wrong and had to be corrected against the primary sources,
@@ -2359,6 +2429,14 @@ export function runClientPipeline(
           + (ds.attribution ? ` Credit: ${ds.attribution}` : "")
           + (ds.file ? ` Licence link and changes made: the \`licence_url\` and \`modifications\` fields of ${ds.file}.` : ""));
         else emit("log", stage, "synthetic dataset prepared (client-side; no real sample is bundled for this use case's pipeline)");
+        // Finance since F7b (Round 86): the encrypted steps score AMLworld test-window rows, and the PaySim sample the line
+        // above names feeds the QCNN and the federated step. After F7b this stage named PaySim alone, on the line a visitor
+        // reads about what is scored (found in batch 6's sweep of the PaySim mentions, 2026-11-26).
+        if (usecase === "finance_aml") {
+          const aml = await heldOutCorpus("finance_aml");
+          if (aml) emit("log", stage, `dataset (the rows the encrypted steps score, since F7b): ${aml.corpus}, ${aml.split}. `
+            + `Credit: ${aml.licence.attribution} The PaySim sample above feeds the QCNN and the federated step.`);
+        }
         break;
       }
       case "pqc_handshake": {
@@ -3685,9 +3763,9 @@ export function runClientPipeline(
       case "private_inference": {
         // Use REAL data + a REAL model where one is shipped (medical = Wisconsin breast-cancer + a real
         // logistic regression; genomics = PGS Catalog PRS weights over 1000 Genomes genotypes, see
-        // realData.ts for their terms; finance = the PaySim simulator sample, synthetic rows under
-        // CC BY-SA 4.0, with its four-feature surrogate) - matching the full deployment. The other use
-        // cases ship no real sample for this stage: synthetic features, logged as such.
+        // realData.ts for their terms; finance = an AMLworld HI-Small test-window row through F7b's square
+        // network since F7b, where the full deployment scores PaySim simulator rows with its four-feature
+        // model). The other use cases ship no real sample for this stage: synthetic features, logged as such.
         const realIn: RealInput | null = await realInput(usecase, u);
         const feats = realIn ? realIn.values : Array.from({ length: 8 }, () => u() * 2 - 1);
         emit("log", stage, realIn

@@ -1,11 +1,11 @@
 // Datasets shipped to the CLIENT-SIDE demo (web/public/data/), so the demo scores real inputs with
 // real models rather than sampling noise — matching the FULL deployment. Coverage: medical (Wisconsin
 // breast-cancer, real measurements), genomics (published PGS000072 weights over real 1000 Genomes
-// genotypes), finance (PaySim SIMULATOR output, i.e. synthetic rows) and satellite (real OPS-SAT-AD
-// telemetry segments since Round 84; the NASA SMAP/MSL windows it replaced carry no data licence from
-// any provider and are no longer served). Only telecom stays fully synthetic - no network-attack corpus with an
-// affirmative commercial grant exists (UNSW-NB15 needs the authors' agreement; CIC-IDS2017 states no
-// licence at all) — and the demo logs that rather than quietly substituting. Tiny static JSON,
+// genotypes), finance (AMLworld HI-Small test-window rows since F7b, synthetic by IBM's statement, and PaySim
+// SIMULATOR output for its QCNN and federated step) and satellite (real OPS-SAT-AD telemetry segments since Round 84;
+// the NASA SMAP/MSL windows it replaced carry no data licence from any provider and are no longer served). Telecom's
+// pipeline steps stay synthetic (QKD telemetry); its real-data detector reads 5G-NIDD (CC BY 4.0) in figures of its own
+// (`niddStudentHeldOut`, `niddFederated`) - and the demo logs which is which rather than quietly substituting. Tiny static JSON,
 // fetched and cached once.
 //
 // These are BUNDLED SAMPLES, not the corpora the published models were trained on, and they are not
@@ -108,7 +108,8 @@ async function fetchJSON(url: string): Promise<any> {
 
 /**
  * Returns REAL input + a REAL model where a real sample ships: medical (WDBC, CC BY 4.0), finance
- * (PaySim simulator rows) and genomics, whose PGS000072 weights are CC BY 4.0 and whose 1000 Genomes
+ * (an AMLworld test-window row since F7b, with a PaySim row for its QCNN) and genomics, whose PGS000072 weights are
+ * CC BY 4.0 and whose 1000 Genomes
  * genotypes carry no licence instrument (DATA_LICENSES.md sections 4 and 5). `null` for
  * everything else (the caller keeps its synthetic features and logs that honestly).
  * `u` is the pipeline's seeded RNG so a run is deterministic.
@@ -597,6 +598,47 @@ export async function niddStudentHeldOut(): Promise<HeldOutCorpus | null> {
     plane: null, corpus: String(ds.corpus ?? ""), split: String(ds.split ?? ""),
     fitNote: "the student was fitted on the teacher's training split; these rows are from its test split",
     licence: licenceOf(ds), expected: null,
+  };
+}
+
+/** The federation of 5G-NIDD's two base stations (Round 86, batch 6; the owner's choice of 2026-11-26,
+ *  references/telecom-nidd-federated-preregistration.md): its global model over the student's 2,048 held-out rows, which
+ *  `heldout_station` names row by row, and the two stations' last local models, from which the page replays the last
+ *  round's masked sum. */
+export interface NiddFederated {
+  held: HeldOutCorpus;
+  /** 0 or 1 for each held-out row: the base station whose file it comes from. */
+  station: number[];
+  stations: string[];
+  /** Each station's share of the fit rows: the FedAvg weights its masked share carries. */
+  weights: number[];
+  lastLocal: { W: number[][]; b: number[] }[];
+  global: { W: number[][]; b: number[] };
+  rounds: number;
+}
+
+export async function niddFederated(): Promise<NiddFederated | null> {
+  let f: any;
+  try {
+    f = await fetchJSON("/data/telecom_nidd/federated.json");
+  } catch {
+    return null;
+  }
+  const base = await niddStudentHeldOut();
+  const fed = f?.federated;
+  const station = f?.heldout_station as number[] | undefined;
+  if (!base || !Array.isArray(fed?.W) || !Array.isArray(fed?.last_local) || fed.last_local.length !== 2
+      || !Array.isArray(station) || station.length !== base.rows.length) return null;
+  const W = fed.W as number[][], b = fed.b as number[];
+  return {
+    held: {
+      ...base, modelKey: "telecom_ids.nidd_federated", model: { W, b },
+      modelLabel: `the ${W.length * W[0].length + b.length}-parameter model the two base stations federated (site file, pre-registered)`,
+      fitNote: "the federated model was fitted on the two stations' training rows without pooling them; these rows are from the test split",
+    },
+    station: station.map((v) => Number(v) | 0), stations: (f.stations as string[]) ?? ["station 1", "station 2"],
+    weights: fed.weights as number[], lastLocal: fed.last_local as { W: number[][]; b: number[] }[], global: { W, b },
+    rounds: Number(fed.rounds),
   };
 }
 

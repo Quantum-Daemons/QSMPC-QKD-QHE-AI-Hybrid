@@ -118,7 +118,7 @@ deployment differs. Open a section to see its flowchart.
 <!-- figure: uc-finance_aml -->
 ```mermaid
 flowchart TB
-  D["Data: AMLworld HI-Small test-window transactions, synthetic; a PaySim row for the QCNN"]
+  D["Data: AMLworld HI-Small test-window transactions, synthetic; PaySim rows for the QCNN and the federated step"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
   Q{"Key possible? BB84 and E91: secure key bits above 0"}
