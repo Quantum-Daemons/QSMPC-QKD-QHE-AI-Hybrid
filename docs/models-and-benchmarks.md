@@ -561,6 +561,28 @@ clip) and is not part of the pre-registration. On the page:
 The linear student stays published on the Hub, and its record stays the comparison the BFV scorecard and
 `scripts/measure_decision_curve.py` read.
 
+#### Calibrated thresholds for the satellite forecaster, not adopted
+
+On the owner's choice of 2026-11-25, pre-registered before any threshold was fitted
+([`references/satellite-threshold-calibration-preregistration.md`](../references/satellite-threshold-calibration-preregistration.md)):
+the shipped CKKS student's forecasts on ESA-ADB's Mission1 lightweight channels, its errors smoothed as Telemanom
+smooths them, and three rules that turn them into flags, each fitted on the validation months alone and scored once on
+the test period's 29 anomalies (`scripts/measure_satellite_thresholds.py`,
+`docs/measurements/satellite-thresholds-2026-11-25.json`).
+
+| Rule | Corrected event-wise $`F_{0.5}`$, anomalies | tp / fp / fn | Share of test steps flagged |
+|---|---|---|---|
+| Telemanom's NDT with ESA-ADB's pruning (the page's) | 0.940 | 22 / 0 / 7 | 0.09 % |
+| POT, $`\alpha = 10^{-4}`$ (primary) | 0.260 | 4 / 8 / 25 | 0.65 % |
+| Weighted conformal, $`\alpha = 10^{-4}`$ (primary) | 0.044 | 7 / 182 / 22 | 1.22 % |
+
+At $`\alpha = 10^{-3}`$ and $`10^{-5}`$ the extreme-value rule scores 0.228 and 0.270 and the conformal one 0.001 and
+0.140. The NDT arm reproduces the student's record (0.93977). A threshold fixed on three months does not carry across
+seven years of telemetry whose nominal level drifts, which is what Telemanom's windowed, pruned threshold is built for;
+the extreme-value pipeline this compared against recomputes its threshold monthly (arXiv:2609.10017), and this did not.
+None of the calibrated rules approaches NDT on the primary metric, so the page's rule is unchanged; whether the page
+shows this comparison is the owner's choice, as the pre-registration says. VUS-PR of the same score, which no threshold changes, is 0.656 (VUS-ROC 0.980, window 97).
+
 #### The PSI among banks under MPC
 
 The finance page runs a private set intersection among three to five banks as one garbled circuit under Polytune, in a Web Worker (`wasm/qsh-mpc`, `web/src/lib/clientMultiPsi.ts`). Each bank brings eight generated accounts, hashed to 32 bits, and three are shared by construction. The circuit costs $`k((n-1)k \cdot 31 + (n-1)(k-1) + (n-2) + 32)`$ AND gates for $`n`$ banks of $`k`$ accounts. Measured in a browser tab on 2026-11-08, on a build of this tree, while other work ran on the machine:
