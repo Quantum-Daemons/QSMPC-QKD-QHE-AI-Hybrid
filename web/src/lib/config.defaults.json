@@ -115,6 +115,9 @@
           "finance_aml.gbm",
           "finance_aml.student"
         ],
+        "page_model_keys": [
+          "finance_aml.square_network"
+        ],
         "thresholds": [
           0.002,
           0.005,

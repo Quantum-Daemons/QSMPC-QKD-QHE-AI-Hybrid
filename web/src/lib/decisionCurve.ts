@@ -147,12 +147,13 @@ const median = (xs: number[]) => {
  * probabilities nor logits, and `operatingRaw` is the threshold the page classifies at, on the same scale.
  */
 export function publishedDecisionCurve(
-  usecase: string, spec: ModelSpec | undefined, score: ((i: number) => number) | null,
+  usecase: string, spec: Pick<ModelSpec, "key" | "achieved"> | undefined, score: ((i: number) => number) | null,
   labels: ArrayLike<number>, n: number, operatingRaw: number | null,
 ): { curve: DecisionCurve } | { withheld: string } | null {
   const cfg = decisionCurveCfg();
   const entry = cfg.curves[usecase];
-  if (!entry || !spec || !entry.model_keys.includes(spec.key)) return null;
+  // A registry model, or one the page reads from a site file (F7b's square network): the same record fields either way.
+  if (!entry || !spec || !(entry.model_keys.includes(spec.key) || (entry.page_model_keys ?? []).includes(spec.key))) return null;
   if (!score) return { withheld: "the graph's output says neither probabilities nor logits, so it has no risk to compare with a threshold" };
   const rec = (spec.achieved ?? {}) as Record<string, unknown>;
   const cal = rec.calibration as (PlattMap & { corp_calibrated?: { positives?: number; n?: number } }) | undefined;

@@ -6678,3 +6678,34 @@ On the owner's choices of 2026-11-24 and 2026-11-25.
 `tests/test_r86_finance_gnn_calibration.py`, `tests/test_r86_square_worker_pool.py`, `tests/test_r86_satellite_qcnn.py`
 (the card draws its circuit from the weights; no fixed circuit SVG), the footer test and `scripts/check_secrets.sh` with
 the deploy values.
+
+### Batch five: the GNN's calibration on the page and its card, the 3D student on the Hub, F7b adopted and on the finance page (2026-11-25)
+
+On the owner's choices of 2026-11-25.
+
+- **The published IBM GNN's calibration, on the finance page and on its Hub card.** The published seed's map is now in
+  the model's own record (`scripts/measure_finance_gnn_calibration.py --metrics`), in the other finance records' form,
+  so the model card's calibration table and the Hub card show it; the card alone was republished
+  (`Daemons-Q/qsh-finance-aml-gnn` at `efbea6a`, `README.md` the only file changed). The model compares its probability
+  with a threshold tuned on validation (0.637421), so the block says that rather than the MLP's "folded into the last
+  bias"; 947,218 of its 1,522,629 test rows lie below the logit clip and tie there.
+- **The 3D nodule student on the Hub.** A registry entry (LIDC-IDRI under CC BY 3.0 with TCIA's citations, read on its
+  collection page that day), a card generated from it, an evaluation sample of the twelve crops the page runs, uploaded
+  private and made public on the owner's approval; all nineteen registry repos read public through the Hub's API without
+  a token, and their files' hashes are pinned.
+- **F7b, pre-registered, adopted under A2.** Seeds 5 to 9: mean test AUPRC 0.500 against the linear student's 0.184;
+  every test row under CKKS within $`4.2 \times 10^{-6}`$ (A2) and $`1.7 \times 10^{-7}`$ (B), no decision changed; one
+  block of the shipped rows in a Web Worker in headless Chrome in 17.0 to 17.4 s under A2 and 35.5 to 35.6 s under B,
+  against a 30 s budget, so A2 is offered and B is not
+  (`docs/measurements/finance-square-student-page-2026-11-25.json`).
+- **The square network replaces the linear student on the finance page** (the owner's choice after the result). The
+  private-inference figure, its decision curve (through a Platt map fitted after the run and labelled so), the
+  pipeline's transaction, now an AMLworld test-window row, its encrypted step, the garbled-circuit argmax and the SHAP
+  bars (exact quadratic Shapley values) all read it; the finance QCNN, trained on PaySim's columns, reads a PaySim row of
+  its own and the run says so. In the preview: the figure's 8,192 rows in two Web Workers in 17.2 s with no mismatch, the
+  transaction's encrypted step in 17.4 s (a block of its own), the argmax agreeing with the plaintext class, and the
+  accuracy-against-cost plot pricing the network.
+
+**Checks.** `tests/test_explainability.py` (the quadratic attribution against Shapley's definition, every coalition
+enumerated), `tests/test_r86_quadratic_shap_in_node.py` (the browser's against the Python's on the page's network and
+rows), `tests/test_r86_finance_gnn_calibration.py`, the registry, card, licence and pin tests, and the preview run.

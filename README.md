@@ -118,7 +118,7 @@ deployment differs. Open a section to see its flowchart.
 <!-- figure: uc-finance_aml -->
 ```mermaid
 flowchart TB
-  D["Data: PaySim simulator sample, 400 transactions, synthetic"]
+  D["Data: AMLworld HI-Small test-window transactions, synthetic; a PaySim row for the QCNN"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
   Q{"Key possible? BB84 and E91: secure key bits above 0"}
@@ -127,9 +127,9 @@ flowchart TB
   P["PSI: OPRF (RFC 9497, ristretto255-SHA512) over two banks' generated account lists"]
   MP["PSI among 3 to 5 banks under MPC: one garbled circuit (Polytune), 8 generated accounts each"]
   FL["Federated training, in the browser: 4 clients, 6 rounds of FedAvg, pairwise masks"]
-  I["Private inference: CKKS linear layer (node-seal), garbled-circuit argmax (Polytune)"]
+  I["Private inference: F7b's square network end to end under CKKS (node-seal, A2, Web Workers), garbled-circuit argmax (Polytune)"]
   MM["The published MLP on one held-out row: CKKS layers, ReLUs and argmax in garbled circuits"]
-  X["Explainability: exact linear SHAP, signed"]
+  X["Explainability: exact quadratic SHAP of the square network, signed"]
   M["Published model: finance_aml.gbm on ONNX Runtime Web"]
   C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]
   S["Result signed with ML-DSA-65"]

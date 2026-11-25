@@ -134,9 +134,12 @@ def test_the_qrng_line_names_its_tests_and_its_generator() -> None:
 # ---- PP14 ------------------------------------------------------------------------------------------------------------
 
 def test_the_shap_bars_say_what_each_feature_is() -> None:
-    payload = json.loads(_read("web/public/data/finance/paysim_sample.json"))
-    assert set(payload["feature_definitions"]) == set(payload["names"])
-    assert "definitions: ds.feature_definitions ?? undefined" in _code("web/src/lib/realData.ts")
+    """PP14. Finance's bars explain F7b's square network on AMLworld's 114 inputs since Round 86: its file defines every
+    one of them (`scripts/train/finance_square_student_page.py`, `feature_definitions`), and the row hands them on."""
+    net = json.loads(_read("web/public/data/finance/square_student_weights.json"))
+    names = json.loads(_read("web/public/data/finance/student_heldout.json"))["feature_names"]
+    assert set(net["feature_definitions"]) == set(names) and all(net["feature_definitions"].values())
+    assert "definitions: net.feature_definitions," in _code("web/src/lib/realData.ts")
     assert "artifacts.explanation_feature_definitions = realIn?.definitions ?? null;" in _code("web/src/lib/clientCompute.ts")
     assert "definitions={artifacts?.explanation_feature_definitions ?? null}" in _code("web/src/pages/UseCasePage.tsx")
     panel = _code("web/src/components/ShapPanel.tsx")

@@ -523,6 +523,44 @@ that comparison is pre-registered as F7b (`references/finance-square-student-pag
 seeds was trained: its accuracy margins are stated as chosen after this result, and a new criterion asks for the page's
 time and memory in a browser.
 
+#### The square network on the finance page's fully encrypted path (F7b), adopted under A2
+
+Pre-registered before any of its seeds was trained (`references/finance-square-student-page-preregistration.md`; record
+`docs/measurements/finance-square-student-page-2026-11-25.json`): F7's network and recipe on new seeds 5 to 9, against
+the published linear student on the same test window. F7's record had already given that comparison, so the accuracy
+margins were chosen after F7 and say so; the new criterion was the page's own budget.
+
+| criterion | result |
+|---|---|
+| 1, accuracy: mean test AUPRC at least the linear student's (0.184) plus 0.15, each seed plus 0.10 | $`0.500 \pm 0.018`$ (0.475 to 0.525): met |
+| 2, no collapse | met |
+| 3, fidelity under CKKS on every test row (1,523,504) | A2 within $`4.2 \times 10^{-6}`$, B within $`1.7 \times 10^{-7}`$, no decision changed: met |
+| 4, one block of the shipped rows in a Web Worker in headless Chrome, at most 30 s and 1.5 GB, three runs | A2 (4,096 rows) 17.0 to 17.4 s, 0.087 GB: met; B (8,192 rows) 35.5 to 35.6 s: not met |
+
+So the network is adopted under A2 and B is not offered. The exported seed, 9, scores 0.497 (95 % interval 0.476 to
+0.519 over test rows). The browser harness (`web/scripts/measure_square_tabular_browser.mjs`) was smoke-tested once on
+F7's exported seed after the pre-registration was committed and before F7b's seeds were trained; its A2 and B times
+already sat on either side of the budget, which the record could not have changed, since time does not depend on the
+seed.
+
+On the owner's choices of 2026-11-25, after the result, the network replaces the linear student on the finance page,
+and it ships with the site (`web/public/data/finance/square_student_weights.json`), not from the Hub. A Platt map was
+fitted on the validation window after the run (`scripts/train/finance_square_student_page.py export`; Brier 0.00166 to
+0.00109, CORP MCB $`6.5 \times 10^{-4}`$ to $`8.7 \times 10^{-5}`$, AUPRC unchanged, 5,862 test rows tied at the logit
+clip) and is not part of the pre-registration. On the page:
+
+- the private-inference figure scores the 8,192 shipped test-window rows through it, two A2 blocks in two Web Workers,
+  about 17 s in this project's Chrome, and its decision curve reads the decrypted logits through that map;
+- the pipeline's transaction is an AMLworld test-window row, not a PaySim row: the network evaluates it under CKKS in a
+  Web Worker (a block of its own, about 17 s, since the work does not shrink with the rows), the garbled-circuit argmax
+  runs over its decrypted logits, and the SHAP bars are its exact quadratic Shapley values
+  (`web/src/lib/quadraticShap.ts`, held to the definition by brute force in `tests/test_explainability.py`). The finance
+  QCNN was trained on PaySim's four columns, so it reads a PaySim transaction of its own, and the run says so;
+- the accuracy-against-cost plot prices the network's batch in place of the linear student's.
+
+The linear student stays published on the Hub, and its record stays the comparison the BFV scorecard and
+`scripts/measure_decision_curve.py` read.
+
 #### The PSI among banks under MPC
 
 The finance page runs a private set intersection among three to five banks as one garbled circuit under Polytune, in a Web Worker (`wasm/qsh-mpc`, `web/src/lib/clientMultiPsi.ts`). Each bank brings eight generated accounts, hashed to 32 bits, and three are shared by construction. The circuit costs $`k((n-1)k \cdot 31 + (n-1)(k-1) + (n-2) + 32)`$ AND gates for $`n`$ banks of $`k`$ accounts. Measured in a browser tab on 2026-11-08, on a build of this tree, while other work ran on the machine:

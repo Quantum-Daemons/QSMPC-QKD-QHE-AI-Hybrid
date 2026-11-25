@@ -218,7 +218,77 @@ def stage_browser(work: Path) -> int:
     return 0
 
 
-def page_file(w: dict, record: dict, calibration: dict) -> dict:
+#: What each of the 114 inputs is (the SHAP bars' definitions, PP14), from `finance_aml.graph_features`,
+#: `finance_aml.causal_account_features` and `finance_aml_fan`. Fixed names first, then the window families.
+_FIXED = {
+    "amount_paid_log": "log(1 + the amount paid in this transfer)",
+    "amount_ratio": "the amount received divided by the amount paid (1 when nothing was paid)",
+    "currency_mismatch": "1 when the currency received differs from the currency paid",
+    "is_self_transfer": "1 when the sender and the receiver are the same account",
+    "hour_of_day": "the hour of the transfer's timestamp, 0 to 23",
+    "day_of_week": "the transfer's weekday, 0 (Monday) to 6 (Sunday)",
+    "is_round_amount": "1 when the amount paid is a positive multiple of 1,000",
+    "format_risk": "the training window's laundering rate for this transfer's payment format (fitted on that window only)",
+    "is_cross_bank": "1 when the sender's and the receiver's banks differ",
+    "src_out_degree": "the sender's outgoing transfers before this one",
+    "src_unique_dst": "the distinct accounts the sender paid before this transfer",
+    "dst_in_degree": "the receiver's incoming transfers before this one",
+    "dst_unique_src": "the distinct accounts that paid the receiver before this transfer",
+    "src_fan_out_ratio": "the sender's distinct payees divided by its outgoing transfers, both before this one",
+    "dst_fan_in_ratio": "the receiver's distinct payers divided by its incoming transfers, both before this one",
+    "src_amount_mean_log": "log(1 + the mean amount the sender paid before this transfer)",
+    "src_amount_max_log": "log(1 + the largest amount the sender paid before this transfer)",
+    "dst_amount_mean_log": "log(1 + the mean amount the receiver was paid before this transfer)",
+    "amount_z_src": "the amount paid less the sender's earlier mean, over the sender's earlier standard deviation (at least 1)",
+    "amount_share_of_src_total": "the amount paid over the total the sender paid before this transfer (at least 1)",
+    "is_reciprocal": "1 when the receiver paid the sender in the training window",
+    "two_cycle_count": "the smaller of the pair's transfer counts in each direction, in the training window",
+    "scatter_gather_src": "the sender's distinct payees over the receiver's distinct payers, in the training window",
+    "scatter_gather_dst": "the receiver's distinct payers over the sender's distinct payees, in the training window",
+    "src_bank_diversity": "the distinct banks the sender paid into, in the training window",
+    "dst_bank_diversity": "the distinct banks the receiver was paid from, in the training window",
+    "onward_hops": "the receiver's outgoing transfers in the training window: how much further the value can travel",
+    "src_burst_fanout": "the sender's most distinct payees in one calendar day of the training window",
+    "dst_burst_fanin": "the receiver's most distinct payers in one calendar day of the training window",
+    "pair_log_same_direction": "log(1 + the pair's other transfers in this direction, up to this transfer's horizon)",
+    "pair_log_reverse_direction": "log(1 + the pair's transfers in the reverse direction, up to this transfer's horizon)",
+    "pair_first_contact": "1 when the pair has no other transfer either way up to this transfer's horizon",
+}
+_SIDE = {"src_out": "the sender's outgoing", "src_in": "the sender's incoming", "dst_in": "the receiver's incoming",
+         "dst_out": "the receiver's outgoing"}
+_STAT = {"cnt": "count of {side} transfers", "sum": "summed log amounts of {side} transfers",
+         "uniq": "distinct counterparties of {side} transfers", "mean": "mean amount of {side} transfers",
+         "std": "standard deviation of the amounts of {side} transfers"}
+
+
+def feature_definitions(names: list[str]) -> dict[str, str]:
+    """A definition for every input name, or a SystemExit naming the ones the patterns above do not cover."""
+    import re
+
+    out, unknown = {}, []
+    for name in names:
+        if name in _FIXED:
+            out[name] = _FIXED[name]
+            continue
+        if (m := re.fullmatch(r"closes_cycle_(\d)", name)):
+            k = int(m.group(1))
+            out[name] = f"1 when the receiver reaches the sender in {k} hops on the training window's graph: a {k + 1}-cycle"
+        elif (m := re.fullmatch(r"(src_out|src_in|dst_in|dst_out)_(cnt|sum|uniq|mean|std)_(\d+)", name)):
+            out[name] = (f"the {_STAT[m.group(2)].format(side=_SIDE[m.group(1)])} in the {m.group(3)} minutes ending at "
+                         "this transfer's batch (log-compressed)")
+        elif (m := re.fullmatch(r"(src_out|src_in|dst_in|dst_out)_recency", name)):
+            out[name] = f"the time since {_SIDE[m.group(1)]} transfer before this one, up to its batch (log-compressed)"
+        elif (m := re.fullmatch(r"scatter_gather_(\d+)", name)):
+            out[name] = (f"the accounts the sender paid that paid the receiver, in the {m.group(1)} minutes ending at this "
+                         "transfer's batch (log-compressed)")
+        else:
+            unknown.append(name)
+    if unknown:
+        raise SystemExit(f"no definition for {unknown}")
+    return out
+
+
+def page_file(w: dict, record: dict, calibration: dict, features: list[str]) -> dict:
     """The finance page's copy of the exported seed: what `clientFHESquareTabular.ts` reads, the sets the criteria
     offered, the calibration fitted after the run, and the record's figures the page quotes."""
     c, b = record["criteria"], record["browser"]["sets"]
@@ -229,6 +299,7 @@ def page_file(w: dict, record: dict, calibration: dict) -> dict:
         "_generated_by": "scripts/train/finance_square_student_page.py export; do not edit by hand",
         **{k: w[k] for k in keep},
         "ckks": {k: w["ckks"][k] for k in c["sets_offered"]},
+        "feature_definitions": feature_definitions(features),
         "export_seed": int(seed),
         "calibration": calibration,
         "record": str(RECORD.relative_to(REPO)),
@@ -293,7 +364,7 @@ def stage_export(work: Path) -> int:
         "calibration": calibration}
     RECORD.write_text(json.dumps(record, indent=1) + "\n")
     w = json.loads((work / "page_weights.json").read_text())
-    PAGE_FILE.write_text(json.dumps(page_file(w, record, calibration), separators=(",", ":")) + "\n")
+    PAGE_FILE.write_text(json.dumps(page_file(w, record, calibration, features), separators=(",", ":")) + "\n")
     print(f"wrote {PAGE_FILE.relative_to(REPO)} ({PAGE_FILE.stat().st_size / 1e3:.0f} kB); Brier "
           f"{calibration['brier_raw']:.8f} -> {calibration['brier_calibrated']:.8f}, MCB "
           f"{calibration['corp_raw']['mcb']:.3e} -> {calibration['corp_calibrated']['mcb']:.3e}")

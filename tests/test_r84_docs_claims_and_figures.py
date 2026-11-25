@@ -45,6 +45,8 @@ REPO = Path(__file__).resolve().parents[1]
 README = REPO / "README.md"
 
 EXPLAIN = "Explainability: exact linear SHAP, signed"
+#: Finance's figure since F7b (Round 86): its explanation is the square network's exact quadratic Shapley values.
+EXPLAIN_BY_KEY = {"uc-finance_aml": "Explainability: exact quadratic SHAP of the square network, signed"}
 UC_KEYS = ("uc-finance_aml", "uc-medical_fl", "uc-genomics", "uc-telecom_ids", "uc-satellite_comms")
 
 
@@ -77,12 +79,17 @@ def test_the_flowcharts_gate_bb84_on_the_key_bits_the_code_reads() -> None:
 
 def test_every_use_case_figure_draws_the_explanation_the_browser_signs() -> None:
     cc = (REPO / "web" / "src" / "lib" / "clientCompute.ts").read_text()
-    assert cc.count("artifacts.explanation = linearShap(") >= 3, (
-        "the browser no longer computes linear SHAP at the telecom, satellite and private-inference sites")
+    assert cc.count("artifacts.explanation = linearShap(") >= 2, (
+        "the browser no longer computes linear SHAP at the telecom and satellite sites")
+    # The private-inference site: the square network's exact quadratic SHAP on finance (F7b), linear SHAP elsewhere.
+    assert re.search(r"artifacts\.explanation = realIn\?\.square\s*\?\s*quadraticShap\(", cc), (
+        "the private-inference site no longer explains finance's square network with its quadratic SHAP")
+    assert re.search(r":\s*linearShap\(\s*realIn\?\.model\?\.W", cc), (
+        "the private-inference site no longer explains the other pages' linear models")
     assert re.search(r'signed_fields:\s*\[[^\]]*"explanation"', cc), "the explanation is no longer signed"
     readme = _readme_figures()
     for key in UC_KEYS:
-        assert EXPLAIN in readme[key], f"README {key} does not draw the browser's explanation"
+        assert EXPLAIN_BY_KEY.get(key, EXPLAIN) in readme[key], f"README {key} does not draw the browser's explanation"
         assert "-.->" not in readme[key] and "classDef full" not in readme[key], (
             f"README {key} still draws a full-deployment-only (dashed) stage")
 

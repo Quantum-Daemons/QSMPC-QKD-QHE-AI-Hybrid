@@ -927,15 +927,22 @@ class DecisionCurveConfig:
     the DECISION CONTEXT, the exchange rates a reviewer could plausibly act at. It is chosen from that context and never
     from the data (``metrics.area_under_net_benefit``). Keyed by use case; ``model_keys`` names the published models the page
     draws a curve for, over the same thresholds, and each one's record must carry its calibration map and the event count
-    of the window its sample was drawn from. Finance draws two: the teacher from its evaluation sample, and the CKKS
-    student from its decrypted logits on the same rows. Read by the page (``web/src/lib/decisionCurve.ts``), the BFV
-    scorecard's trainer and ``scripts/measure_decision_curve.py``.
+    of the window its sample was drawn from. Finance draws two on the page: the teacher from its evaluation sample, and,
+    since F7b, the square network from its decrypted logits on the same rows (``page_model_keys``: its map is in its site
+    file, not in a registry record). The linear student stays in ``model_keys`` for the BFV scorecard's trainer and
+    ``scripts/measure_decision_curve.py``, which compare against its record. Read by the page
+    (``web/src/lib/decisionCurve.ts``) and those two.
     """
 
     curves: dict = field(default_factory=lambda: {
         "finance_aml": {
-            # The teacher in the model panel, and the student in the private-inference figure (Round 86).
+            # Registry models whose records carry a map: the teacher in the model panel, and the linear student, whose record
+            # the BFV scorecard's trainer and scripts/measure_decision_curve.py compare against (Round 86).
             "model_keys": ["finance_aml.gbm", "finance_aml.student"],
+            # Models the page draws from a site file rather than a registry record: F7b's square network, which replaced the
+            # linear student in the private-inference figure on the owner's choice of 2026-11-25; its map is in
+            # web/public/data/finance/square_student_weights.json (scripts/train/finance_square_student_page.py export).
+            "page_model_keys": ["finance_aml.square_network"],
             # Review a 1-in-500 suspicion to a 1-in-20 one: at the test window's 1-in-656 base rate an alerting threshold
             # above a few percent reviews almost nothing. The BFV scorecard is fitted over these five and reports at their
             # median; its trainer held them as its own literal until Round 86.

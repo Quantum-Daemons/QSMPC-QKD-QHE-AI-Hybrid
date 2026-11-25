@@ -90,10 +90,12 @@ globalThis.fetch = async (url) => {
 };
 const m = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
-// A fixed draw: realInput takes the run's seeded uniform, so u = 0.37 picks row floor(0.37 * 400).
+// A fixed draw: realInput takes the run's seeded uniform, so u = 0.37 picks row floor(0.37 * 8192) of AMLworld's rows
+// and row floor(0.37 * 400) of PaySim's for the QCNN.
 const one = await m.realInput("finance_aml", () => 0.37);
 const result = { realInput: { values: one.values, names: one.names, baseline: one.baseline,
-                              bySpace: one.bySpace, model: one.model } };
+                              bySpace: one.bySpace, model: one.model, raw: one.raw, label: one.label,
+                              qcnnRowNote: one.qcnnRowNote, definitions: one.definitions } };
 for (const run of [{ name: "ckks", config: { seed: 0, qfl: true } },
                    { name: "qcnn", config: { seed: 0, qfl: true, inference: "qcnn" } }]) {
   const logs = [], metrics = {};
@@ -138,40 +140,47 @@ def run(tmp_path_factory) -> dict:
     return json.loads(proc.stdout.strip().splitlines()[-1])
 
 
-def test_real_input_is_the_models_four_columns_and_the_qcnns_four(run) -> None:
-    """The QCNN half updated in Round 84 (qcnnfin): `raw` is the artifact's four columns, which are
-    the model's four, so it is as wide as `values` and named by the same `names`."""
+def test_real_input_is_the_square_networks_row_and_the_qcnns_own_four(run) -> None:
+    """Since F7b (Round 86; the owner's choice of 2026-11-25): the transaction is an AMLworld test-window row, scaled and
+    clipped as F7b's square network reads it, and the QCNN, trained on PaySim's four columns, reads a PaySim row of its own
+    drawn by the same number (`bySpace.raw`), which the run says. Until then both were the PaySim row and its surrogate."""
+    held = json.loads((WEB / "public" / "data" / "finance" / "student_heldout.json").read_text())
+    net = json.loads((WEB / "public" / "data" / "finance" / "square_student_weights.json").read_text())
     d = json.loads(PAYLOAD.read_text())
     w = json.loads((WEB / "public" / "data" / "finance" / "qcnn_weights.json").read_text())
     one = run["realInput"]
-    idx = int(0.37 * len(d["samples"]))
-    assert one["names"] == FOUR == w["feature_names"]
-    assert one["values"] == d["samples"][idx] and len(one["values"]) == 4
-    assert one["bySpace"]["zscore"] == one["values"]
-    assert one["bySpace"]["raw"] == d["samples_by_space"]["raw"][idx]
-    assert len(one["bySpace"]["raw"]) == 4 == w["n_features"] == w["n_qubits"]
-    assert len(one["baseline"]) == 4
-    assert [len(r) for r in one["model"]["W"]] == [4, 4]
+    idx, p_idx = int(0.37 * len(held["samples"])), int(0.37 * len(d["samples"]))
+    assert one["names"] == held["feature_names"] and len(one["values"]) == 114 == net["n_in"]
+    raw = held["samples"][idx]
+    want = [max(-net["clip"], min(net["clip"], (x - c) / (s or 1))) for x, c, s in zip(raw, net["centre"], net["scale"], strict=True)]
+    assert max(abs(a - b) for a, b in zip(one["values"], want, strict=True)) < 1e-12
+    assert one["raw"] == raw and one["label"] == held["labels"][idx]
+    assert len(one["baseline"]) == 114 and "model" not in one
+    assert one["bySpace"]["raw"] == d["samples_by_space"]["raw"][p_idx]
+    assert len(one["bySpace"]["raw"]) == 4 == w["n_features"] == w["n_qubits"] and w["feature_names"] == FOUR
+    assert "another transaction with another model" in one["qcnnRowNote"]
+    assert set(one["definitions"]) == set(held["feature_names"])
 
 
-def test_the_ckks_run_encrypts_and_explains_the_four_column_model(run) -> None:
+def test_the_ckks_run_encrypts_and_explains_the_square_network(run) -> None:
     r = run["ckks"]
     pi = r["metrics"]["private_inference"]
-    assert pi["explanation_model"] == "real bundled model"
-    assert str(pi["fhe_model"]).startswith("bundled real model")
+    assert pi["explanation_model"] == "F7b's square network (site file)"
+    assert str(pi["fhe_model"]).startswith("F7b's square network")
     assert pi["primary_inference_backend"] == "ckks"
+    assert pi["inference_model"] == "finance_aml.square_network" and pi["fhe_bench_scale"] == 1
+    names = run["realInput"]["names"]
     exp = r["explanation"]
-    assert exp and exp["method"] == "exact-linear-shap"
-    assert sorted(f["feature"] for f in exp["top_features"]) == sorted(FOUR)
-    assert exp["efficiency_gap"] < 1e-9
+    assert exp and exp["method"] == "exact-quadratic-shap"
+    assert all(f["feature"] in names for f in exp["top_features"])
+    assert exp["efficiency_gap"] < 1e-8
     driver = next(m for s, m in r["logs"] if m.startswith("XAI: top driver = "))
     # The name, then its signed contribution and direction (Round 86).
     name, _, tail = driver.removeprefix("XAI: top driver = ").partition(" (contribution ")
-    assert name in FOUR, driver
+    assert name in names, driver
     assert tail.endswith(("toward class 1)", "toward class 0)")), driver
-    # Nothing on the run's log names a balance-derived column.
-    assert not [m for _, m in r["logs"] if "device_risk" in m or "geo_mismatch" in m]
-    # The federated stage federates over the same four-column rows.
+    assert any(m.startswith("rows: the QCNN backend reads PaySim transaction") for _, m in r["logs"])
+    # The federated stage still federates over the bundled PaySim sample.
     fed = r["metrics"]["federated_training"]
     assert fed["federated_accuracy_source"] == "bundled finance_aml sample, 400 rows"
 
@@ -194,7 +203,7 @@ def test_the_explanation_flag_follows_the_backend_that_surfaced_the_class(run) -
     """
     ckks, qcnn = run["ckks"], run["qcnn"]
     assert ckks["primary"]["backend"] == "ckks"
-    assert ckks["metrics"]["private_inference"]["fhe_model"].startswith("bundled real model")
+    assert ckks["metrics"]["private_inference"]["fhe_model"].startswith("F7b's square network")
     assert ckks["explainsClass"] is True
     assert qcnn["primary"]["backend"] == "qcnn-trained"
     assert qcnn["explainsClass"] is False
