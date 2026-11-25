@@ -175,6 +175,9 @@ FROZEN = {
         "b356193c073606ffa2ef8aa66b2cfa5ac3b9dcf679bd3b558ce4d0c44de5d34d",
     "references/finance-qcnn-amlworld-preregistration.md":
         "5a411b05d7e1984306d08397d95b147ab2a09796a4bfa4a6b624cf515253edd0",
+    # Federated learning across 5G-NIDD's two base stations: committed 2026-11-26 before any of its models was trained.
+    "references/telecom-nidd-federated-preregistration.md":
+        "5e3a137bfb4c0382ce626bb733531f94b9a505b7ec93e8500bdad8122affff0d",
 }
 
 
