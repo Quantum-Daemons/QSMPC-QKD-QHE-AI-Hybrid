@@ -19,7 +19,7 @@ Fixes land on `main` and in the next release; the release notes credit the repor
 
 ## Scope
 
-In scope: the code in this repository and the public demo at <https://qsmpc-qkd-qhe-ai-hybrid.daemons.jp/>.
+In scope: the code in this repository and the public demo linked from the repository's About section.
 
 Out of scope: vulnerabilities in third-party dependencies (please report them upstream, for example to Microsoft SEAL,
 node-seal, @noble/post-quantum, ONNX Runtime, Lattigo (the threshold FHE module) or Polytune (the garbled circuits)),

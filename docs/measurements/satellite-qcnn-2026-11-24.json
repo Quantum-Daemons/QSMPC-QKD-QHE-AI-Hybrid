@@ -1,0 +1,240 @@
+{
+ "what": "the satellite QCNNs and their comparators on the pre-registered splits and metrics",
+ "preregistration": "references/satellite-qcnn-tn-preregistration.md (824c814 and its addenda)",
+ "opssat": {
+  "usecase": "satellite_opssat",
+  "features": [
+   "n_peaks",
+   "kurtosis",
+   "smooth10_n_peaks",
+   "len",
+   "diff2_peaks",
+   "var_div_len",
+   "var_div_duration",
+   "sampling"
+  ],
+  "data": "OPS-SAT-AD (Ruszczak, Kotowski, Evans and Nalepa; Zenodo 12588359, CC BY 4.0, https://creativecommons.org/licenses/by/4.0/), real telemetry segments of the ESA OPS-SAT mission, the benchmark's own train/test partition; eight of the nineteen features, chosen on the training partition by |AUC - 0.5|: n_peaks 0.3358, kurtosis 0.2156, smooth10_n_peaks 0.2006, len 0.1913, diff2_peaks 0.1788, var_div_len 0.1785, var_div_duration 0.1593, sampling 0.1572.",
+  "rows": {
+   "fit": 1354,
+   "validation": 240,
+   "test": 529,
+   "test_positive": 113,
+   "validation_positive": 48
+  },
+  "qcnn_by_seed": {
+   "0": {
+    "average_precision": 0.933257,
+    "minority_f1": 0.893023,
+    "balanced_accuracy": 0.917567,
+    "validation_threshold": -0.6169207074040735,
+    "validation_f1": 0.879121,
+    "trainer_rule_minority_f1": 0.859903,
+    "artifact_sha256": "900a3392c419981e38051ddaf050cf3d41930fa96409b79c8c76d8ce9fdee537",
+    "command": "python scripts/train/qcnn_variational.py --usecase satellite_opssat --layers 3 --epochs 120 --seed 0 --threads 1 --qubits 8 --arch tree --encoding-scale 0.5"
+   },
+   "1": {
+    "average_precision": 0.93459,
+    "minority_f1": 0.893023,
+    "balanced_accuracy": 0.917567,
+    "validation_threshold": -0.6466458502530357,
+    "validation_f1": 0.879121,
+    "trainer_rule_minority_f1": 0.859903,
+    "artifact_sha256": "5d94486a0ea3f7fdf8f2f1a223bccc1066041fa1b3b71398722ec49728da4b8a",
+    "command": "python scripts/train/qcnn_variational.py --usecase satellite_opssat --layers 3 --epochs 120 --seed 1 --threads 1 --qubits 8 --arch tree --encoding-scale 0.5"
+   },
+   "2": {
+    "average_precision": 0.93017,
+    "minority_f1": 0.880734,
+    "balanced_accuracy": 0.913961,
+    "validation_threshold": -0.7168553047617734,
+    "validation_f1": 0.879121,
+    "trainer_rule_minority_f1": 0.843137,
+    "artifact_sha256": "281e3e98f144a7b390190e19409394c607ec2c67cba6f3d544962972efded703",
+    "command": "python scripts/train/qcnn_variational.py --usecase satellite_opssat --layers 3 --epochs 120 --seed 2 --threads 1 --qubits 8 --arch tree --encoding-scale 0.5"
+   },
+   "3": {
+    "average_precision": 0.928604,
+    "minority_f1": 0.855769,
+    "balanced_accuracy": 0.886594,
+    "validation_threshold": -0.3902183287026615,
+    "validation_f1": 0.863636,
+    "trainer_rule_minority_f1": 0.831683,
+    "artifact_sha256": "ed1cb863ad70bd2d0e718b7986726fb99b3cb4e5bf3e23ae529d690af66e9c60",
+    "command": "python scripts/train/qcnn_variational.py --usecase satellite_opssat --layers 3 --epochs 120 --seed 3 --threads 1 --qubits 8 --arch tree --encoding-scale 0.5"
+   },
+   "4": {
+    "average_precision": 0.92939,
+    "minority_f1": 0.885845,
+    "balanced_accuracy": 0.918386,
+    "validation_threshold": -0.7522410294102397,
+    "validation_f1": 0.879121,
+    "trainer_rule_minority_f1": 0.843137,
+    "artifact_sha256": "514abccbb7196f3bbe287b50c721252d316d49188f9942512c90476971c5e81d",
+    "command": "python scripts/train/qcnn_variational.py --usecase satellite_opssat --layers 3 --epochs 120 --seed 4 --threads 1 --qubits 8 --arch tree --encoding-scale 0.5"
+   }
+  },
+  "qcnn_spread": {
+   "average_precision": {
+    "mean": 0.931202,
+    "sd": 0.002588,
+    "min": 0.928604,
+    "max": 0.93459
+   },
+   "minority_f1": {
+    "mean": 0.881679,
+    "sd": 0.015386,
+    "min": 0.855769,
+    "max": 0.893023
+   },
+   "balanced_accuracy": {
+    "mean": 0.910815,
+    "sd": 0.013648,
+    "min": 0.886594,
+    "max": 0.918386
+   }
+  },
+  "logistic_regression_z": {
+   "average_precision": 0.880856,
+   "minority_f1": 0.764479,
+   "balanced_accuracy": 0.881563,
+   "validation_threshold": -1.690167928545069,
+   "validation_f1": 0.75
+  },
+  "classical_surrogate": {
+   "n_features": 6561,
+   "average_precision": 0.943246,
+   "minority_f1": 0.910798,
+   "balanced_accuracy": 0.925598,
+   "validation_threshold": 1.5187124760936375,
+   "validation_f1": 0.909091
+  },
+  "reference_rows": {
+   "satellite_comms.opssat": {
+    "auc_pr": 0.968107105684616,
+    "minority_class_f1": null,
+    "note": "nineteen features, the shipped model's own threshold: not like for like"
+   },
+   "satellite_comms.opssat_student": {
+    "auc_pr": 0.968055,
+    "minority_class_f1": null,
+    "note": "nineteen features, the shipped model's own threshold: not like for like"
+   }
+  }
+ },
+ "esa": {
+  "usecase": "satellite_esa",
+  "features": [
+   "std_channel_41",
+   "std_channel_42",
+   "std_channel_43",
+   "std_channel_44",
+   "std_channel_45",
+   "std_channel_46",
+   "max_abs_step",
+   "max_abs_value"
+  ],
+  "data": "ESA Anomalies Dataset, Mission1 (Kotowski et al., ESA-ADB; Zenodo 12528696, CC BY 3.0 IGO, https://creativecommons.org/licenses/by/3.0/igo/), real telemetry of channels 41-46: 64-step windows of the 30 s grid, positive when an Anomaly interval overlaps; eight features a window.",
+  "rows": {
+   "fit": 3560,
+   "validation": 4139,
+   "test": 115064,
+   "test_positive": 1077,
+   "validation_positive": 2
+  },
+  "qcnn_by_seed": {
+   "0": {
+    "average_precision": 0.853873,
+    "minority_f1": 0.108867,
+    "balanced_accuracy": 0.528784,
+    "validation_threshold": 3.5012514382523703,
+    "validation_f1": 1.0,
+    "trainer_rule_minority_f1": 0.715854,
+    "artifact_sha256": "e7cc24a15548f490496a51df16070c439f88c032e44effaf5052d481d3aeb33f",
+    "command": "python scripts/train/qcnn_variational.py --usecase satellite_esa --layers 3 --epochs 120 --seed 0 --threads 1 --qubits 8 --arch tree --encoding-scale 0.5 --keep-last-epoch"
+   },
+   "1": {
+    "average_precision": 0.868408,
+    "minority_f1": 0.394933,
+    "balanced_accuracy": 0.623027,
+    "validation_threshold": 3.1137015371082803,
+    "validation_f1": 1.0,
+    "trainer_rule_minority_f1": 0.717031,
+    "artifact_sha256": "a35cf480ea6f700e47f68bb31ce4eb4111301882160b4a4751d2d9ba9d0beed8",
+    "command": "python scripts/train/qcnn_variational.py --usecase satellite_esa --layers 3 --epochs 120 --seed 1 --threads 1 --qubits 8 --arch tree --encoding-scale 0.5 --keep-last-epoch"
+   },
+   "2": {
+    "average_precision": 0.862831,
+    "minority_f1": 0.144703,
+    "balanced_accuracy": 0.538997,
+    "validation_threshold": 3.1538206266464592,
+    "validation_f1": 1.0,
+    "trainer_rule_minority_f1": 0.7163,
+    "artifact_sha256": "6280e5907cb125803e8abf51a621fd1870df5915469d75fd6c31602087c968f0",
+    "command": "python scripts/train/qcnn_variational.py --usecase satellite_esa --layers 3 --epochs 120 --seed 2 --threads 1 --qubits 8 --arch tree --encoding-scale 0.5 --keep-last-epoch"
+   },
+   "3": {
+    "average_precision": 0.869758,
+    "minority_f1": 0.64443,
+    "balanced_accuracy": 0.737697,
+    "validation_threshold": 2.963032122982506,
+    "validation_f1": 1.0,
+    "trainer_rule_minority_f1": 0.718464,
+    "artifact_sha256": "4c2cc34d4c119202976a8e0602cb2c07e4dc405eb69afeafded7bcbf7427d48c",
+    "command": "python scripts/train/qcnn_variational.py --usecase satellite_esa --layers 3 --epochs 120 --seed 3 --threads 1 --qubits 8 --arch tree --encoding-scale 0.5 --keep-last-epoch"
+   },
+   "4": {
+    "average_precision": 0.86733,
+    "minority_f1": 0.526676,
+    "balanced_accuracy": 0.678737,
+    "validation_threshold": 2.966025697286428,
+    "validation_f1": 1.0,
+    "trainer_rule_minority_f1": 0.714536,
+    "artifact_sha256": "d552131d28b4068c06d4a6f84b8e411cbfdbcb42ff3e120a696aa8dbef346ec4",
+    "command": "python scripts/train/qcnn_variational.py --usecase satellite_esa --layers 3 --epochs 120 --seed 4 --threads 1 --qubits 8 --arch tree --encoding-scale 0.5 --keep-last-epoch"
+   }
+  },
+  "qcnn_spread": {
+   "average_precision": {
+    "mean": 0.86444,
+    "sd": 0.006454,
+    "min": 0.853873,
+    "max": 0.869758
+   },
+   "minority_f1": {
+    "mean": 0.363922,
+    "sd": 0.234118,
+    "min": 0.108867,
+    "max": 0.64443
+   },
+   "balanced_accuracy": {
+    "mean": 0.621448,
+    "sd": 0.089698,
+    "min": 0.528784,
+    "max": 0.737697
+   }
+  },
+  "logistic_regression_z": {
+   "average_precision": 0.856962,
+   "minority_f1": 0.823594,
+   "balanced_accuracy": 0.850046,
+   "validation_threshold": 6.18745732752257,
+   "validation_f1": 0.666667
+  },
+  "classical_surrogate": {
+   "n_features": 6561,
+   "average_precision": 0.892426,
+   "minority_f1": 0.471671,
+   "balanced_accuracy": 0.654587,
+   "validation_threshold": 12.542552361079533,
+   "validation_f1": 1.0
+  },
+  "note": "Addendum 2: average precision leads; the thresholded figures rest on the validation months' 2 positive windows."
+ },
+ "seconds": 21.2,
+ "environment": {
+  "git": "e8f2581",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-24"
+ }
+}

@@ -122,7 +122,178 @@ def opssat_student() -> dict:
                        "C_weights_solved_to_the_optimum": route_c}}
 
 
-TARGETS = {"opssat_student": opssat_student}
+def _multinomial_rows(Z: np.ndarray, coef: np.ndarray, intercept: np.ndarray, soft: np.ndarray, C: float,
+                      kept: np.ndarray) -> tuple[np.ndarray, float]:
+    """Each row rebuilt from all the others and a multinomial soft-target logistic model at its optimum.
+
+    The student is fitted on each row once per class, weighted by the teacher's probability for that class (copies under
+    1e-6 dropped, as the trainer drops them). Grouped by row, the gradient for class k is sum_i c_ik z_i + W_k / C with
+    c_ik = s_ik * (sum of row i's kept weights) - (row i's kept weight for k), and the unpenalised intercepts give
+    sum_i c_ik = 0 for every k. So the missing row's coefficients are minus the others' sums, its term for each class is
+    -W_k / C less the others' terms, and the row is their least-squares quotient over the classes.
+    """
+    logits = Z @ coef.T + intercept
+    logits -= logits.max(axis=1, keepdims=True)
+    s = np.exp(logits)
+    s /= s.sum(axis=1, keepdims=True)
+    w = np.where(kept, soft, 0.0)
+    c = s * w.sum(axis=1, keepdims=True) - w                      # (n, K)
+    G = c.T @ Z                                                   # (K, d): sum_i c_ik z_i
+    R = c.sum(axis=0)                                             # (K,)
+    g = -coef[None, :, :] / C - (G[None, :, :] - c[:, :, None] * Z[:, None, :])   # (n, K, d)
+    cj = -(R[None, :] - c)                                        # (n, K)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        z_hat = np.einsum("nk,nkd->nd", cj, g) / (cj ** 2).sum(axis=1, keepdims=True)
+    residual = float(np.linalg.norm(coef / C + G) / max(np.linalg.norm(coef), 1e-12))
+    return z_hat, residual
+
+
+def telecom_student() -> dict:
+    """The QKD-attack student (scripts/train/telecom_ids.py's `distil_linear_student`), retrained by its own recipe."""
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import train_test_split
+
+    from qsh.qml_ids.attacks import generate
+
+    X, y, _ = generate(n_per_class=300, seed=42)
+    X, y = np.asarray(X, dtype=float), np.asarray(y, dtype=int)
+    Xtr, _, ytr, _ = train_test_split(X, y, test_size=0.25, random_state=42, stratify=y)
+    n, d = Xtr.shape
+    published = json.loads((REPO / "models" / "telecom_ids_student" / "weights.json").read_text(encoding="utf-8"))
+    pub_mean = np.asarray(published["input"]["mean"], dtype=float)
+
+    route_a = _errors(n * pub_mean - (Xtr.sum(axis=0)[None, :] - Xtr), Xtr)
+    route_a["published_mean_max_abs_diff"] = float(np.max(np.abs(pub_mean - Xtr.mean(axis=0))))
+
+    rf = RandomForestClassifier(n_estimators=200, random_state=42, n_jobs=4).fit(Xtr, ytr)
+    soft = rf.predict_proba(Xtr)
+    K = soft.shape[1]
+    mean, scale = Xtr.mean(axis=0), Xtr.std(axis=0)
+    scale[scale == 0] = 1.0
+    Z = (Xtr - mean) / scale
+    kept = soft > 1e-6
+    rep_X, rep_y, rep_w = np.repeat(Z, K, axis=0), np.tile(np.arange(K), n), soft.reshape(-1)
+    keep = rep_w > 1e-6
+    out = {}
+    for label, kw in (("B_weights_at_the_optimum", {"max_iter": 4000}),
+                      ("C_weights_solved_to_the_optimum", {"max_iter": 100000, "tol": 1e-12})):
+        lr = LogisticRegression(C=10.0, random_state=42, **kw).fit(rep_X[keep], rep_y[keep], sample_weight=rep_w[keep])
+        z_hat, residual = _multinomial_rows(Z, lr.coef_, lr.intercept_, soft, 10.0, kept)
+        route = _errors(z_hat * scale + mean, Xtr)
+        route["stationarity_residual"] = residual
+        route["solver_iterations"] = int(np.max(lr.n_iter_))
+        if label.startswith("B"):
+            route["published_weights_max_abs_diff"] = float(np.max(np.abs(lr.coef_ - np.asarray(published["W"]))))
+        out[label] = route
+    return {"target": "telecom_ids.student", "training_records": int(n), "features": int(d),
+            "data": "QKD-attack telemetry this repository generates (qsh.qml_ids.attacks, 8 classes x 300, seed 42), the "
+                    "trainer's 75 percent training split",
+            "routes": {"A_published_preprocessing_mean": route_a, **out}}
+
+
+def _logistic_rows(Z: np.ndarray, y: np.ndarray, theta: np.ndarray) -> tuple[np.ndarray, float]:
+    """Each row rebuilt from the others and an unregularised logistic model at its optimum: sum_i (s_i - y_i) z_i = 0 and,
+    from the intercept, sum_i (s_i - y_i) = 0, so the missing row's coefficient and term are minus the others'."""
+    w, b = theta[:-1], theta[-1]
+    c = 1 / (1 + np.exp(-(Z @ w + b))) - y
+    G, R = c @ Z, c.sum()
+    with np.errstate(divide="ignore", invalid="ignore"):
+        z_hat = -(G[None, :] - c[:, None] * Z) / (-(R - c))[:, None]
+    scale = max(float(np.abs(c).sum()), 1e-12)
+    return z_hat, float(np.linalg.norm(np.append(G, R)) / scale)
+
+
+def fedheart() -> dict:
+    """The heart federation's models as the page trains them (`qsh.ai.fed_heart`, seed 0), on the hospitals' training rows.
+
+    Each hospital publishes the mean and deviation of its training rows with the sample (the page standardises with
+    them), so route A is per hospital; the models see the standardised rows, and a row is rebuilt in that space and
+    mapped back with its hospital's statistics, which an informed adversary knows. The DP arms are not here: noise is
+    what stands against this adversary, and it is audited by the canary game (scripts/audit_dp_one_run.py).
+    """
+    sys.path.insert(0, str(REPO / "scripts"))
+    from audit_membership_inference import fedheart_federated
+    from scipy.optimize import minimize
+
+    from qsh.ai import fed_heart
+
+    sample = json.loads(fed_heart.SAMPLE.read_text(encoding="utf-8"))
+    cs = sample["centres"]
+    Z = np.array([r for c in cs for r in c["train"]["X"]], dtype=float)
+    y = np.array([v for c in cs for v in c["train"]["y"]], dtype=float)
+    site = np.array([k for k, c in enumerate(cs) for _ in c["train"]["y"]])
+    mean = np.array([cs[k]["mean"] for k in site], dtype=float)
+    std = np.array([cs[k]["std"] for k in site], dtype=float) + 1e-9
+    X = Z * std + mean                                             # the rows as recorded, up to the sample's rounding
+
+    hat_a = np.zeros_like(X)
+    for k, c in enumerate(cs):
+        rows = site == k
+        n_k = int(rows.sum())
+        hat_a[rows] = n_k * np.asarray(c["mean"], dtype=float) - (X[rows].sum(axis=0)[None, :] - X[rows])
+    route_a = _errors(hat_a, X)
+
+    theta0 = fed_heart.init_theta(0)
+    pooled = np.asarray(fed_heart.train_adam(theta0, Z.tolist(), y.astype(int).tolist(), fed_heart.mulberry32(300)))
+    parts = [(cs[k]["train"]["X"], cs[k]["train"]["y"]) for k in range(len(cs))]
+    federated = np.asarray(fedheart_federated(parts, 0))
+
+    def loss(theta: np.ndarray) -> tuple[float, np.ndarray]:
+        z = Z @ theta[:-1] + theta[-1]
+        p = 1 / (1 + np.exp(-z))
+        f = float(np.sum(np.logaddexp(0, z) - y * z))
+        g = np.append(Z.T @ (p - y), (p - y).sum())
+        return f, g
+
+    opt = minimize(loss, pooled, jac=True, method="L-BFGS-B", options={"maxiter": 100000, "gtol": 1e-12, "ftol": 1e-15})
+    routes = {"A_published_preprocessing_mean": route_a}
+    for label, theta in (("B_pooled_as_the_page_trains_it", pooled), ("B_fedavg_as_the_page_trains_it", federated),
+                         ("C_pooled_solved_to_the_optimum", opt.x)):
+        z_hat, residual = _logistic_rows(Z, y, theta)
+        r = _errors(z_hat * std + mean, X)
+        r["stationarity_residual"] = residual
+        routes[label] = r
+    routes["C_pooled_solved_to_the_optimum"]["solver_iterations"] = int(opt.nit)
+    return {"target": "medical_fl.fed_heart (the page's pooled and FedAvg models, seed 0)", "training_records": int(len(y)),
+            "features": int(Z.shape[1]),
+            "data": f"{sample['corpus']}: UCI Heart Disease's four hospitals as FLamby prepares them ({sample['licence']}), "
+                    "the training rows",
+            "routes": routes}
+
+
+def finance_student() -> dict:
+    """The AML student's training statistics: route A only.
+
+    The student publishes the mean its client standardises with (`input.mean`, the StandardScaler fitted on the fit
+    window, scripts/train/finance_aml.py at degree 1), so route A is the OPS-SAT student's. Routes B and C need the
+    teacher's probabilities on every fit row; the pinned teacher's file is not in this machine's cache and a retrained
+    booster (the trainer fits it on the GPU) would not be the published one, so they are not run: the closed form is the
+    same as for the OPS-SAT student, where it is shown.
+    """
+    sys.path.insert(0, str(REPO / "scripts" / "train"))
+    from finance_aml import causal_account_features, load_sorted, model_inputs, temporal_windows
+
+    df = load_sorted()
+    fit, val, te, tr = temporal_windows(df)
+    (Xfit, _, _), names, _ = model_inputs(df, fit, val, te, tr, causal_account_features(df))
+    X = np.asarray(Xfit, dtype=np.float64)
+    n, d = X.shape
+    published = json.loads((REPO / "models" / "finance_aml_student" / "weights.json").read_text(encoding="utf-8"))
+    pub_mean = np.asarray(published["input"]["mean"], dtype=float)
+    if len(pub_mean) != d or published["n_features"] != len(names):
+        raise SystemExit(f"the published mean has {len(pub_mean)} entries, the fit window {d} features")
+    route_a = _errors(n * pub_mean - (X.sum(axis=0)[None, :] - X), X)
+    route_a["published_mean_max_abs_diff"] = float(np.max(np.abs(pub_mean - X.mean(axis=0))))
+    return {"target": "finance_aml.student", "training_records": int(n), "features": int(d),
+            "data": "AMLworld HI-Small (synthetic; CDLA-Sharing-1.0, Kaggle version 8), the trainer's fit window, its 114 inputs",
+            "routes": {"A_published_preprocessing_mean": route_a},
+            "not_run": "routes B and C: the pinned teacher's file is not cached here, and a booster retrained on this "
+                       "machine would not be the published one; the closed form is shown on the OPS-SAT student"}
+
+
+TARGETS = {"opssat_student": opssat_student, "telecom_student": telecom_student, "fedheart": fedheart,
+           "finance_student": finance_student}
 
 
 def main() -> int:

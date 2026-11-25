@@ -164,7 +164,7 @@
   },
   "federated": {
     "browser_lr": 0.15,
-    "browser_override_reason": "the browser runs a lighter schedule so a federated round completes inside a page interaction; the server-side values above are what the full deployment trains with",
+    "browser_override_reason": "the browser runs a lighter schedule so a federated round completes inside a page interaction; the full deployment's medical stage runs its own fixed schedule and does not read these values",
     "browser_rounds": 6,
     "hospitals": 4,
     "local_epochs": 1,
@@ -5969,43 +5969,51 @@
     "webllm_models": [
       {
         "bytes": 205844887,
+        "config_sri": "sha384-q5g7Vr8NPimskWQfkKEHbD/LHSezXA8Jd/6026NLSMR2rWz/4RoTUK9HsuC3seC4",
         "context_window_size": 4096,
         "id": "SmolLM2-360M-Instruct-q4f16_1-MLC",
         "label": "SmolLM2-360M",
         "lib": "SmolLM2-360M-Instruct-q4f16_1_cs1k-webgpu.wasm",
         "lib_sri": "sha256-OLk4LS2tFnLJYIo2DsVwgcckQoNyWAG4pHfGUkFjius=",
         "requires": "shader-f16",
-        "revision": "3a622fd89e0216e8bb10c410c007c786baa8a033"
+        "revision": "3a622fd89e0216e8bb10c410c007c786baa8a033",
+        "tokenizer_sri": "sha384-TYQ9bvLe/Vytaer+YyXqKp0FA6bauwU+PxOlTcHSoLqTCPKrQwSHApOPo4MCLoB0"
       },
       {
         "bytes": 205844887,
+        "config_sri": "sha384-3JoT21tYfd6w4oqvk68b5bk2eOE4VrLROnNU0XboZgpOMhn5SXz3MKAoABros1Yg",
         "context_window_size": 4096,
         "id": "SmolLM2-360M-Instruct-q4f32_1-MLC",
         "label": "SmolLM2-360M f32",
         "lib": "SmolLM2-360M-Instruct-q4f32_1_cs1k-webgpu.wasm",
         "lib_sri": "sha256-ySTaMbQk0QFoWdMKy6WLCDB+fxKQFg4yWBSAL3EAd6Y=",
         "requires": "",
-        "revision": "1e6b2ca3684e2bc8a6d39eb36e8d6cd51eb12bda"
+        "revision": "1e6b2ca3684e2bc8a6d39eb36e8d6cd51eb12bda",
+        "tokenizer_sri": "sha384-TYQ9bvLe/Vytaer+YyXqKp0FA6bauwU+PxOlTcHSoLqTCPKrQwSHApOPo4MCLoB0"
       },
       {
         "bytes": 285132405,
+        "config_sri": "sha384-WgLJ/WbEHhF9cv1KwSDlI9RYpxrZ6dhA4SbE1G7I/DlKGOUKjHqEJTIiDo+bhowR",
         "context_window_size": 4096,
         "id": "Qwen2.5-0.5B-Instruct-q4f16_1-MLC",
         "label": "Qwen2.5-0.5B",
         "lib": "Qwen2.5-0.5B-Instruct-q4f16_1_cs1k-webgpu.wasm",
         "lib_sri": "sha256-Jkn8TDUJiwz1wEF17fYrak5QheKHkt0F5Ia5pJnIj8M=",
         "requires": "shader-f16",
-        "revision": "32ff081fe7e4dfe4ffb167b94c66fdf11e02b8ad"
+        "revision": "32ff081fe7e4dfe4ffb167b94c66fdf11e02b8ad",
+        "tokenizer_sri": "sha384-l5K5CpBtbywB5lTHysuesWqCadOP0PqIM5CaLYNPn2xpBA30Q5pAgRo4L1K2EjDM"
       },
       {
         "bytes": 2151632945,
+        "config_sri": "sha384-Q8D87PAbdAFaa7A+BCySOMlNtO1F1h+J7RM671cZ/ds4wkfvpduQ4YZ7+aga/tcR",
         "context_window_size": 4096,
         "id": "Phi-3-mini-4k-instruct-q4f16_1-MLC",
         "label": "Phi-3-mini-4k",
         "lib": "Phi-3-mini-4k-instruct-q4f16_1_cs1k-webgpu.wasm",
         "lib_sri": "sha256-BcDA7G7G4az9x443HX+j541fQK4RK0ztaCMqNh8iTQs=",
         "requires": "shader-f16",
-        "revision": "7ecdc19b399efd7e967025c02496353e0dc50500"
+        "revision": "7ecdc19b399efd7e967025c02496353e0dc50500",
+        "tokenizer_sri": "sha384-S4RV348Dbq2RiQ+znMPpRanZvs0Tfez2ErGijnVRDX1uL3EL3DYnIUkIXIyhUQSN"
       }
     ]
   }

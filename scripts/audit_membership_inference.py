@@ -443,8 +443,167 @@ def dp_bound_check(results: dict, delta: float) -> dict:
     return out
 
 
+class _Indexed:
+    """predict_proba over a trained 3D network for pool records named by their index, softmax in float64. The 3D
+    targets hand the shared loop indices, not crops, so each fit can look up its members' soft labels."""
+
+    def __init__(self, model, x_pool: np.ndarray, dev) -> None:
+        self.model, self.x, self.dev = model.eval(), x_pool, dev
+
+    def predict_proba(self, idx) -> np.ndarray:
+        import torch
+
+        idx = np.asarray(idx, dtype=np.int64)
+        out = []
+        with torch.no_grad():
+            for i in range(0, len(idx), 128):
+                xb = torch.from_numpy(np.ascontiguousarray(self.x[idx[i:i + 128]])).to(self.dev)
+                out.append(torch.softmax(self.model(xb).double(), 1).cpu().numpy())
+        return np.concatenate(out)
+
+
+def _nodule3d(args):
+    """The 3D nodule student's pool: the training patients' labelled crops, their patients, and the validation part
+    that selects every model's epoch, read by the pre-registered script's own functions (which refuse to run under any
+    other pre-registration)."""
+    import importlib.util
+
+    if args is None or args.crops is None or args.work is None:
+        raise SystemExit("--crops (the merged LIDC-IDRI crops) and --work (the 3D run's folder) are required")
+    spec = importlib.util.spec_from_file_location("nodule3d", REPO / "scripts" / "train" / "medical_nodule3d_student.py")
+    st = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(st)
+    st.check_preregistration()
+    split = st.read_split()
+    cubes, records = st.load_crops(args.crops)
+    xtr, ytr, ptr = st.labelled(cubes, records, split["parts"], "train")
+    xva, yva, _ = st.labelled(cubes, records, split["parts"], "val")
+    have = {n: json.loads((args.work / "teachers" / f"{n}.json").read_text()) for n in st.TEACHERS}
+    chosen = max(have, key=lambda n: have[n]["oof_auc"])
+    if have[chosen]["patients"] != ptr or have[chosen]["labels"] != ytr.tolist():
+        raise SystemExit(f"{chosen}'s out-of-fold labels were scored on other training crops")
+    return st, xtr, ytr, ptr, xva, yva, chosen, have[chosen]
+
+
+def _nodule3d_distil(st, xtr, soft, idx, xva, yva, seed, tmp, dev) -> dict:
+    """Both pre-registered arms distilled on the members `idx` from soft labels, by stage_students' own recipe."""
+    import torch
+    from safetensors.torch import load_file
+    from torch.utils.data import DataLoader, TensorDataset
+
+    from qsh.models import metrics, train
+
+    target = np.stack([1 - soft, soft], 1).astype(np.float32)
+    out = {}
+    for arm in ("control", "square"):
+        train.seed_everything(seed)
+        model = st.student(arm)
+        res = train.train_torch(
+            f"mia.nodule3d.{arm}", model,
+            DataLoader(st.Augmented(xtr[idx], target), batch_size=32, shuffle=True),
+            DataLoader(TensorDataset(torch.tensor(xva), torch.tensor(yva)), batch_size=128),
+            metric_fn=lambda a, b: metrics.auroc(a, b), metric_name="auc", loss_fn=torch.nn.CrossEntropyLoss(),
+            cfg=train.TrainConfig(epochs=120, batch_size=32, lr=2e-3, patience=25, seed=seed),
+            out_dir=Path(tmp) / arm)
+        model.load_state_dict(load_file(res.checkpoint))
+        out[arm] = _Indexed(model.to(dev), xtr, dev)
+    return out
+
+
+_NODULE3D_MODELS = {
+    "control": "the control arm: conv 1->4 (3x3x3), batch norm, ReLU, avg-pool 2, dense 4*14^3 -> 2",
+    "square": "the shipped arm: conv 1->4 (3x3x3), batch norm, x^2, avg-pool 2, dense 4*14^3 -> 2",
+}
+_NODULE3D_DATA = ("LIDC-IDRI (TCIA, CC BY 3.0): the 1,178 labelled 28 mm crops of the 518 training patients of "
+                  "docs/measurements/medical-nodule3d-split.json; the validation part selects every model's epoch, as in "
+                  "training; the test part is not touched")
+
+
+def _nodule3d_students(args):
+    """The 3D students with the teacher's labels held fixed (the owner's choice of 2026-11-25, with the whole pipeline
+    beside it): every shadow distils both arms on its members from the real run's out-of-fold probabilities of the
+    chosen teacher, by stage_students' recipe, on the GPU. So this measures what the students' own training adds."""
+    import tempfile
+
+    from qsh.models import train
+
+    st, xtr, ytr, ptr, xva, yva, chosen, teacher = _nodule3d(args)
+    soft = np.asarray(teacher["oof"], dtype=np.float32)
+    dev = train._device()
+
+    def fit(idx, ys, seed):
+        idx = np.asarray(idx, dtype=np.int64)
+        with tempfile.TemporaryDirectory(prefix="qsh-mia3d-") as tmp:
+            return _nodule3d_distil(st, xtr, soft[idx], idx, xva, yva, seed, tmp, dev)
+
+    return np.arange(len(ytr)), ytr, fit, {
+        "data": _NODULE3D_DATA, "device": str(dev),
+        "teacher": {"name": chosen, "oof_auc": teacher["oof_auc"],
+                    "held_fixed": "every shadow distils from the real run's out-of-fold probabilities, each computed by a "
+                                  "teacher fold that did not see that crop but saw the other training patients, shadow "
+                                  "members and non-members alike"},
+        "label": "the readers' label (median malignancy rating), on which every model is scored",
+        "models": _NODULE3D_MODELS, "_groups": ptr}
+
+
+def _nodule3d_pipeline(args):
+    """The 3D pipeline for every shadow (the owner's choice of 2026-11-25): the chosen teacher retrained out of fold on
+    the shadow's members only (five folds over its patients, the inner stop on the next fold, stage_teachers' recipe),
+    its out-of-fold probabilities as the soft labels, then both arms distilled from them. The choice among the three
+    candidates is held at the real run's: re-running the CT-FM probe and the TotalSegmentator size for every shadow
+    would only re-decide a choice the real run made by 0.088 of AUC."""
+    import tempfile
+
+    import torch
+    from safetensors.torch import load_file
+    from torch.utils.data import DataLoader, TensorDataset
+
+    from qsh.models import metrics, train
+
+    st, xtr, ytr, ptr, xva, yva, chosen, teacher = _nodule3d(args)
+    if chosen != "resnet3d18":
+        raise SystemExit(f"the real run chose {chosen}; this pipeline retrains the 3D ResNet-18 only")
+    dev = train._device()
+
+    def fit(idx, ys, seed):
+        idx = np.asarray(idx, dtype=np.int64)
+        x, yy = xtr[idx], ytr[idx]
+        pts = [ptr[i] for i in idx]
+        fold = st.folds_of(pts, yy)
+        f = np.array([fold[p] for p in pts])
+        oof = np.full(len(idx), np.nan)
+        with tempfile.TemporaryDirectory(prefix="qsh-mia3d-") as tmp:
+            for k in range(st.FOLDS):
+                inner = (k + 1) % st.FOLDS
+                tr, va, te = (f != k) & (f != inner), f == inner, f == k
+                train.seed_everything(seed * 10 + k)
+                model = st.resnet3d18()
+                res = train.train_torch(
+                    f"mia.nodule3d.teacher.fold{k}", model,
+                    DataLoader(st.Augmented(x[tr], np.eye(2, dtype=np.float32)[yy[tr]]), batch_size=32, shuffle=True),
+                    DataLoader(TensorDataset(torch.tensor(x[va]), torch.tensor(yy[va])), batch_size=128),
+                    metric_fn=lambda a, b: metrics.auroc(a, b), metric_name="auc", loss_fn=torch.nn.CrossEntropyLoss(),
+                    cfg=train.TrainConfig(epochs=120, batch_size=32, lr=2e-3, patience=25, seed=seed * 10 + k),
+                    out_dir=Path(tmp) / f"teacher{k}")
+                model.load_state_dict(load_file(res.checkpoint))
+                probs = train.predict_loader(model, DataLoader(TensorDataset(torch.tensor(x[te]), torch.tensor(yy[te])),
+                                                               batch_size=128))[1]
+                oof[te] = np.asarray(probs)[:, 1]
+            assert not np.isnan(oof).any()
+            return _nodule3d_distil(st, xtr, oof.astype(np.float32), idx, xva, yva, seed, tmp, dev)
+
+    return np.arange(len(ytr)), ytr, fit, {
+        "data": _NODULE3D_DATA, "device": str(dev),
+        "teacher": {"name": chosen, "oof_auc_real_run": teacher["oof_auc"],
+                    "retrained": "for every shadow, out of fold over its members' patients by stage_teachers' recipe; "
+                                 "the choice among the three candidates held at the real run's"},
+        "label": "the readers' label (median malignancy rating), on which every model is scored",
+        "models": _NODULE3D_MODELS, "_groups": ptr}
+
+
 TARGETS = {"opssat": _opssat, "telecom_qml": _telecom_qml, "breastmnist_students": _breastmnist_students,
-           "breastmnist_pipeline": _breastmnist_pipeline, "fedheart": _fedheart}
+           "breastmnist_pipeline": _breastmnist_pipeline, "fedheart": _fedheart,
+           "nodule3d_students": _nodule3d_students, "nodule3d_pipeline": _nodule3d_pipeline}
 
 
 # --------------------------------------------------------------------------------------------- attacks
@@ -513,6 +672,8 @@ def main() -> int:
     ap.add_argument("--mlpm", required=True, type=Path, help="an ml_privacy_meter checkout at commit " + MLPM_COMMIT)
     ap.add_argument("--teacher", type=Path, default=None, help="breastmnist_students: the published ResNet-18 graph")
     ap.add_argument("--threads", type=int, default=4, help="breastmnist_students: torch's CPU threads")
+    ap.add_argument("--crops", type=Path, default=None, help="nodule3d_*: the merged LIDC-IDRI crops' folder")
+    ap.add_argument("--work", type=Path, default=None, help="nodule3d_*: the 3D run's folder (its teachers/)")
     ap.add_argument("-o", "--output", required=True)
     args = ap.parse_args()
 
@@ -524,19 +685,37 @@ def main() -> int:
     from modules.mia.attacks.rmia import run_rmia
 
     X, y, fit, about = TARGETS[args.target](args)
+    # A target whose records come in groups (the 3D nodules: several to a patient) draws the population and the halves
+    # by group, so no patient's nodules sit on both sides of a model's membership. Without groups the draws are the
+    # ones every earlier record was made with, call for call.
+    groups = about.pop("_groups", None)
     rng = np.random.default_rng(args.seed)
     n = len(y)
-    order = rng.permutation(n)
-    pop_idx = order[: int(round(args.population * n))]
-    aud_idx = order[int(round(args.population * n)):]
+    if groups is None:
+        order = rng.permutation(n)
+        pop_idx = order[: int(round(args.population * n))]
+        aud_idx = order[int(round(args.population * n)):]
+    else:
+        groups = np.asarray(groups)
+        names_g = np.unique(groups)
+        g_order = names_g[rng.permutation(len(names_g))]
+        pop_g = set(g_order[: int(round(args.population * len(names_g)))].tolist())
+        in_pop = np.array([g in pop_g for g in groups])
+        pop_idx, aud_idx = np.flatnonzero(in_pop), np.flatnonzero(~in_pop)
     K = args.models - args.models % 2
     # Complementary pairs: models 2s and 2s+1 split the audit records between them, so every record is a member of
     # exactly half of the models; a target's references exclude itself and its partner, so every record is IN for
     # exactly (K - 2) / 2 of them, the balanced reference set the attacks assume.
     M = np.zeros((len(aud_idx), K), dtype=bool)
     for s in range(K // 2):
-        half = rng.permutation(len(aud_idx))[: len(aud_idx) // 2]
-        M[half, 2 * s] = True
+        if groups is None:
+            half = rng.permutation(len(aud_idx))[: len(aud_idx) // 2]
+            M[half, 2 * s] = True
+        else:
+            aud_g = groups[aud_idx]
+            names_a = np.unique(aud_g)
+            pick = set(names_a[rng.permutation(len(names_a))[: len(names_a) // 2]].tolist())
+            M[:, 2 * s] = np.array([g in pick for g in aud_g])
         M[:, 2 * s + 1] = ~M[:, 2 * s]
 
     t0 = time.time()
@@ -597,6 +776,8 @@ def main() -> int:
         "what": "membership inference against the training procedure, over shadow models",
         "target": args.target, **about,
         "design": {"pool": int(n), "audit_records": int(len(aud_idx)), "population_records": int(len(pop_idx)),
+                   **({"membership_unit": "patient", "audit_patients": int(len(np.unique(groups[aud_idx]))),
+                       "population_patients": int(len(np.unique(groups[pop_idx])))} if groups is not None else {}),
                    "shadow_models": K, "membership": "complementary pairs: each record a member of exactly half the models",
                    "references_per_target": K - 2,
                    "seed": args.seed, "rmia_offline_a": args.offline_a, "fit_seconds": round(fit_seconds, 1)},

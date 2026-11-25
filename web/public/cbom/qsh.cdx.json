@@ -1,7 +1,7 @@
 {
  "bomFormat": "CycloneDX",
  "specVersion": "1.7",
- "serialNumber": "urn:uuid:f7ec414b-d70f-5e19-b13f-d8953098e894",
+ "serialNumber": "urn:uuid:6ab85d6c-17dd-5b84-8195-6fb417604537",
  "version": 1,
  "metadata": {
   "component": {
@@ -463,7 +463,7 @@
    "type": "cryptographic-asset",
    "bom-ref": "crypto/sha-256",
    "name": "SHA-256",
-   "description": "Inside HKDF and HMAC; digests of published files, including the check of every model file fetched from the Hub against its recorded digest; the account hashes of the PSI among banks",
+   "description": "Inside HKDF and HMAC; digests of published files, including the check of every model file fetched from the Hub against its recorded digest and WebLLM's check of each model library against its recorded SRI digest; the account hashes of the PSI among banks",
    "cryptoProperties": {
     "assetType": "algorithm",
     "algorithmProperties": {
@@ -500,6 +500,9 @@
      },
      {
       "location": "web/src/lib/pinnedFetch.ts"
+     },
+     {
+      "location": "web/src/lib/clientAI.ts"
      }
     ]
    }
@@ -508,7 +511,7 @@
    "type": "cryptographic-asset",
    "bom-ref": "crypto/sha-384",
    "name": "SHA-384",
-   "description": "The IKEv2 key schedule test",
+   "description": "The IKEv2 key schedule test; WebLLM's check of each model's config and tokenizer against their recorded SRI digests",
    "cryptoProperties": {
     "assetType": "algorithm",
     "algorithmProperties": {
@@ -539,6 +542,9 @@
     "occurrences": [
      {
       "location": "web/src/lib/netkeys/ikev2.ts"
+     },
+     {
+      "location": "web/src/lib/clientAI.ts"
      }
     ]
    }
@@ -720,6 +726,7 @@
      "cryptoFunctions": [
       "other"
      ],
+     "parameterSetIdentifier": "suite ristretto255-SHA512, mode 0x00 (OPRF); elements 32 bytes, outputs 64 (RFC 9497 section 4.1)",
      "nistQuantumSecurityLevel": 0,
      "classicalSecurityLevel": 128
     }
@@ -749,7 +756,7 @@
    "type": "cryptographic-asset",
    "bom-ref": "crypto/ckks",
    "name": "CKKS",
-   "description": "Homomorphic evaluation of linear layers, and of the trained QCNN's readout as a linear form, on Microsoft SEAL (node-seal in the browser; TenSEAL, OpenFHE or HEonGPU in the full deployment)",
+   "description": "Homomorphic evaluation of linear layers, of the square-activation students' convolution, square and dense layer, of the trained QCNN's readout as a linear form, and of the satellite QCNN's tree network stage by stage, on Microsoft SEAL (node-seal in the browser; TenSEAL, OpenFHE or HEonGPU in the full deployment)",
    "cryptoProperties": {
     "assetType": "algorithm",
     "algorithmProperties": {
@@ -763,7 +770,7 @@
       "encrypt",
       "decrypt"
      ],
-     "parameterSetIdentifier": "browser: N = 8192, coefficient moduli {60, 40, 40, 60} bits, scale 2^40; the medical page's shared-key aggregation, NVIDIA FLARE's TenSEAL settings: N = 8192, coefficient moduli {60, 40, 40} bits, scale 2^40",
+     "parameterSetIdentifier": "browser: N = 8192, coefficient moduli {60, 40, 40, 60} bits, scale 2^40; the square-activation students (BreastMNIST and the 3D nodules), by the set the reader picks: N = 8192, coefficient moduli {48, 34, 34, 34, 52} bits, scale 2^34, or N = 16384, coefficient moduli {60, 40, 40, 40, 60} bits, scale 2^40; the satellite QCNN's tree network, one row a slot: N = 16384, coefficient moduli {60, 40, 40, 40, 40, 40, 40, 60} bits, scale 2^40; the medical page's shared-key aggregation, NVIDIA FLARE's TenSEAL settings: N = 8192, coefficient moduli {60, 40, 40} bits, scale 2^40",
      "classicalSecurityLevel": 128
     }
    },
@@ -793,6 +800,18 @@
      },
      {
       "location": "web/src/lib/clientFedAgg.ts"
+     },
+     {
+      "location": "web/src/lib/clientHybridCnn.ts"
+     },
+     {
+      "location": "web/src/lib/clientFHESquare.ts"
+     },
+     {
+      "location": "web/src/lib/clientFHESquare3d.ts"
+     },
+     {
+      "location": "web/src/lib/clientQcnnTreeCkks.ts"
      }
     ]
    }

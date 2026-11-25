@@ -18,9 +18,11 @@ import FedHeartPanel, { type FedHeartSitesMeta } from "../components/FedHeartPan
 import CxrFlCard from "../components/CxrFlCard";
 import CxrSplitInference from "../components/CxrSplitInference";
 import SquareStudentCkks from "../components/SquareStudentCkks";
+import Nodule3dCard from "../components/Nodule3dCard";
 import PcgFlCard from "../components/PcgFlCard";
 import MurmurDpCard from "../components/MurmurDpCard";
 import SatBoundaryCard from "../components/SatBoundaryCard";
+import SatelliteQcnnCard from "../components/SatelliteQcnnCard";
 import SatVusPrCard from "../components/SatVusPrCard";
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
@@ -28,7 +30,8 @@ import FinanceAccuracyCost from "../components/FinanceAccuracyCost";
 import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCard";
 import VerificationsCard from "../components/VerificationsCard";
 import PublishedComparisonCard from "../components/PublishedComparisonCard";
-import { flambyRows, modelRows, PAGE_NOTES } from "../lib/publishedComparisons";
+import { flambyRows, modelRows, PAGE_NOTES, qcnnRows } from "../lib/publishedComparisons";
+import { useQcnnRecord } from "../lib/qcnnRecord";
 import MpcGnnPanel from "../components/MpcGnnPanel";
 import SatForecastResidual from "../components/SatForecastResidual";
 import { ConfusionCard, PrsLocusCard } from "../components/ModelExplanations";
@@ -92,6 +95,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
   const meta = USECASE_META[usecase];
   const diagramRef = useRef<HTMLDivElement>(null);
   const run = usePipelineRun(usecase, diagramRef);
+  // The trained QCNN's recorded headline, for the published-figure table's QCNN rows (checklist CS13).
+  const qcnnRecord = useQcnnRecord(usecase);
   // Before a run there is nothing to export: GIF silently did nothing (the recorder is only
   // built by launch()) and Metrics wrote an empty CSV. BenchmarkPanel already gates on
   // rows.length; these now match it.
@@ -397,6 +402,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       <PublishedComparisonCard usecase={usecase} note={PAGE_NOTES[usecase]} rows={[
         ...modelRows(modelsFor(usecase), artifacts?.verifications as VerificationSummary[] | undefined),
         ...(usecase === "medical_fl" && artifacts?.fedHeart ? flambyRows(artifacts.fedHeart as FedHeartResult) : []),
+        ...qcnnRows(usecase, qcnnRecord, (artifacts?.qcnn_rescore as QcnnRescore | undefined) ?? null),
       ]} />
 
       {/* `surfacedBackend` is the backend that RAN, not the control that was set. Passing
@@ -422,10 +428,12 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && <CxrFlCard />}
       {usecase === "medical_fl" && <CxrSplitInference />}
       {usecase === "medical_fl" && <SquareStudentCkks />}
+      {usecase === "medical_fl" && <Nodule3dCard />}
       {usecase === "medical_fl" && <PcgFlCard />}
       {usecase === "medical_fl" && <MurmurDpCard />}
       {usecase === "satellite_comms" && <SatVusPrCard />}
       {usecase === "satellite_comms" && <SatBoundaryCard />}
+      {usecase === "satellite_comms" && <SatelliteQcnnCard />}
       {usecase === "satellite_comms" && artifacts?.forecast_residual ? <SatForecastResidual report={artifacts.forecast_residual as ForecastResidualReport} /> : null}
       {usecase === "genomics" && artifacts?.genomicsDp ? <GenomicsDpCard dp={artifacts.genomicsDp as GenomicsDpArtifact} /> : null}
       {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} rescore={(artifacts.qcnn_rescore as QcnnRescore | undefined) ?? null} /> : null}

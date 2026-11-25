@@ -149,10 +149,48 @@ On the owner's choices of 2026-11-22 (the CPU phase first; GPU jobs asked one by
   preprocessing a CKKS client needs is a release of training statistics, and a model on private data would need them
   and its weights computed under differential privacy; this telemetry is public, so it shows the mechanism.
 
-The CPU phase is complete as run, with two parts of the plan above not done: the informed reconstruction ran on the
-OPS-SAT student only (`docs/measurements/reconstruction-opssat-student-2026-11-23.json`), not on the other published
-students or the heart federation, and the k-candidate canary game with riskcal's bound was not built. The GPU jobs, on
-the owner's approval of 2026-11-23:
+- **Reconstruction by an informed adversary, the QKD-attack student and the heart federation** (2026-11-24, the
+  owner's choice that day; `reconstruction-telecom-student-2026-11-24.json`, `reconstruction-fedheart-2026-11-24.json`).
+  The QKD-attack student, a multinomial logistic model fitted on the forest's soft labels (1,800 generated rows): from
+  the published preprocessing mean, all 1,800 within 0.1 percent; from the weights solved to the optimum,
+  87.39 percent within 0.1 and 97.94 percent within 1; from the weights as the trainer's solver left them (34
+  iterations), 8.39 percent within 10. The retrained student is the published one to within 0.0003 in every weight.
+  The heart federation (486 training rows over four hospitals): from each hospital's published mean, every row within
+  0.1 percent; from the pooled model solved to the optimum, every row within 0.1 percent; from the pooled model as the
+  page trains it (Adam, 50 epochs), 13.37 percent within 10; from the FedAvg model as the page trains it, none within
+  10. The closed form needs the exact optimum, which an early-stopped or federated model does not reach; that is not a
+  defence, because a release of training statistics already gives every record back, and the DP arms are audited by the
+  one-run audit instead. The AML student (`reconstruction-finance-student-2026-11-24.json`): from the published
+  preprocessing mean, all 2,843,872 fit rows within 0.1 percent, the recomputed mean equal to the published one in
+  every feature; routes B and C were not run, the pinned teacher's file not being cached here and a booster retrained
+  on this machine not being the published one.
+
+- **A guessing game in one run** (2026-11-24, the owner's choice that day; `dp-kcandidate-audit-2026-11-24.json`,
+  `scripts/audit_dp_kcandidate.py` and `scripts/audit_dp_kcandidate_bound.py`): Mahloujifar, Melis and Chaudhuri,
+  *Auditing f-Differential Privacy in One Run* (ICML 2025, arXiv:2410.22235), Theorem 3.1 and Algorithm 3 as the
+  paper's appendix code, reimplemented and checked on an idealised Gaussian game, where its bound never passed the
+  true $`\mu`$; Gaussian-DP hypotheses, rejected at 95 percent. Each slot holds one of k canaries and the adversary
+  names it or abstains. With k = 2 (adding or removing a canary, the canaries of the earlier one-run audit) the heart
+  federation's lower bounds are $`\mu`$ 0.974, 0.442, 0.243 and 0.127 against its accountant's 1.451, 0.789, 0.420
+  and 0.221 at epsilon 8, 4, 2 and 1; with k = 7 one-hot canaries, where a slot's change swaps one record for another,
+  0.965, 0.512, 0.245 and 0.110 against 2.902, 1.578, 0.840 and 0.441 (twice the accountant's, by group privacy). The
+  murmur DP-SGD is not Gaussian DP, so its bound is read inside the Gaussian family, as the paper's Definition 7 does,
+  and compared by epsilon: 2.77 against 5.66 and 1.15 against 2.61. Every honest arm's accuracy at naming every slot
+  is inside Kulynych et al.'s bound on a reconstruction's success, $`1 - f(1/k)`$ (NeurIPS 2025, arXiv:2507.06969,
+  Theorem 3.1), with f from riskcal 1.5.1 (the heart federation's zCDP, 4 rho for a swap; the murmur study's
+  privacy-loss distribution): at epsilon 8, 77.04 percent against a bound of 96.31 for k = 2 and 58.90 against 99.54
+  for k = 7. Both seeded bugs are caught by both measures: a sixteenth of the variance gives $`\mu`$ 0.585 against
+  0.221 and 66.17 percent against a bound of 60.89; every person in every step gives epsilon 9.10 against 5.66 and
+  99.38 percent against 85.95. Beside the earlier one-run audit (Steinke, Nasr and Jagielski) the bounds are tighter,
+  as the paper reports: epsilon 4.74 against 2.99 at the heart federation's epsilon 8, 2.77 against 1.97 at the
+  murmur study's first noise multiplier. A bound under the accountant's is consistent with the accounting and proves
+  nothing more.
+
+The CPU phase of 2026-11-23 left two parts of the plan above undone: the informed reconstruction had run on the
+OPS-SAT student only (`docs/measurements/reconstruction-opssat-student-2026-11-23.json`), and the k-candidate canary
+game with riskcal's bound was not built. On the owner's choice of 2026-11-24 the reconstruction now covers the
+QKD-attack student, the heart federation and the AML student, and the canary game is run (both above). The
+GPU jobs, on the owner's approval of 2026-11-23:
 
 - **Membership inference, BreastMNIST's whole pipeline** (`mia-breastmnist-pipeline-2026-11-23.json`, 64 shadows): each
   shadow retrains the ResNet-18 teacher by its published recipe on its members, then distils both students from it,
@@ -163,6 +201,18 @@ the owner's approval of 2026-11-23:
   shadows gave the same figures bit for bit (cuDNN deterministic). The teacher's figure is the one that matters for a
   deployment: it is the model trained on the patients' images, and a pipeline that publishes it publishes this.
 
+- **Membership inference, the 3D nodule students** (`mia-nodule3d-students-2026-11-25.json`, 64 shadows on the GPU, the
+  owner's choice of 2026-11-25): the LIDC-IDRI training patients' 1,178 labelled crops, members drawn by PATIENT so no
+  patient's nodules sit on both sides of a shadow (956 audited nodules of 414 patients; a population of 222 of 104).
+  With the teacher's out-of-fold labels held fixed, the shipped square student: LiRA AUC 0.544, 0.41 percent of members
+  at a false-positive rate of 0.1 percent, 1.74 at 1 and 13.12 at 10, no nodule exposed in most targets; the ReLU
+  control 0.551, 0.48, 2.37 and 13.85, one nodule. RMIA matches ML Privacy Meter's exactly and is not resolvable at 0.1
+  percent. Through the whole pipeline (`mia-nodule3d-pipeline-2026-11-25.json`; the 3D ResNet-18 retrained out of fold
+  on each shadow's members, five folds, before both arms are distilled from its probabilities; 2 h 11 min on the GPU)
+  the students leak less: the square student LiRA AUC 0.514, 0.17 percent at 0.1, 1.33 at 1 and 11.26 at 10; the
+  control 0.515, 0.15, 1.30 and 11.47; no nodule exposed in most targets; RMIA matches ML Privacy Meter's exactly.
+  No teacher is scored here, unlike BreastMNIST's pipeline: every soft label comes from a fold that did not see that
+  nodule, so there is no one teacher trained on all of a shadow's members, and none is published.
 - **Gradient inversion, the chest X-ray federation** (`gradient-inversion-cxr-2026-11-23.json`): Geiping et al.'s
   attack (NeurIPS 2020; cosine gradient matching, a total-variation prior, signed Adam), reimplemented, on one gradient
   step at the published weights, which first reproduce all 16 sample rows' classes of the published graph (margins
@@ -178,16 +228,53 @@ the owner's approval of 2026-11-23:
 The BitcoinTemporalGraph check, asked and approved, ran on 2026-11-23 and shipped in #90: entity types predicted from
 a labelled node's own features and, by a GNN, from its one-hop neighbourhood too (`docs/measurements/btg-check-2026-11-23.json`).
 
-## What each use case could add
+## What each use case could add (status on 2026-11-24)
 
-| Use case | Membership-inference audit | DP audit | Note |
-|---|---|---|---|
-| Finance | the GBM, MLP, compact GNN and the two Multi-PNA+EU models, on AMLworld | the counting release (`dp_count`) | the training data is synthetic, so the figure measures memorisation, not exposure of people |
-| Medical | the BreastMNIST ResNets and students; the chest X-ray FedAvg model, where a server sees every client's update | the murmur DP-SGD model; the federated heart model's noise | the one use case on records of real patients, all public |
-| Genomics | none: the score's weights are published, not trained here | the discrete-Gaussian counts | |
-| Telecom | the 5G-NIDD classifier (real flows, CC BY 4.0) | none | the QKD-attack model trains on generated rows |
-| Satellite | the OPS-SAT and Telemanom models | none | telemetry, not personal data |
-| DeFi | none | none | the liquidation check is arithmetic on balances and the hour's public prices, not a trained model |
+| Use case | Membership-inference audit | DP audit | Other | Note |
+|---|---|---|---|---|
+| Finance | not run: the GBM, MLP, compact GNN and the two Multi-PNA+EU models, on AMLworld | not run: the counting release (`dp_count`) | done: informed reconstruction of the student through its published mean (2026-11-24) | the training data is synthetic, so a figure measures memorisation, not exposure of people |
+| Medical, 2D | done: BreastMNIST's students (teacher fixed) and the whole pipeline (teacher retrained, GPU); the heart federation's five arms | done: the one-run audit of the heart federation's noise and of the murmur DP-SGD | done: attribute inference (heart), gradient inversion (chest X-ray); informed reconstruction of the heart models and the one-run guessing game (2026-11-24) | records of real patients, all public |
+| Medical, 3D (LIDC-IDRI) | to be chosen after one teacher fit is timed (the owner's choice of 2026-11-24): 64 retrained shadows as for BreastMNIST, or fewer | none: not trained under DP | none | CT scans of real patients, public (TCIA, CC BY 3.0) |
+| Genomics | none: the score's weights are published, not trained here | the discrete-Gaussian counts: not audited | | |
+| Telecom | done: the QKD-attack forest (generated rows); not run: the 5G-NIDD classifier (real flows, CC BY 4.0) | none | done: informed reconstruction of the QKD-attack student (2026-11-24) | |
+| Satellite | done: OPS-SAT's teacher and student; not run: Telemanom | none | done: informed reconstruction of the OPS-SAT student | telemetry, not personal data |
+| DeFi | none | none | | the liquidation check is arithmetic on balances and the hour's public prices, not a trained model |
+
+Every recorded result is shown on the Validations page from 2026-11-24 (the owner's choice that day): the card
+`web/src/components/PrivacyAudits.tsx` draws `web/src/lib/privacyAudits.json`, which `scripts/export_privacy_audits.py`
+copies from the records with each record's SHA-256, and `tests/test_r86_privacy_audits_card.py` holds the card to the
+file and the file to the records. Metrics only, as above.
 
 Not adopted: CrypTen, archived since 2024; MP-SPDZ, TenSEAL, OpenFHE's Python binding, Opacus and the
 estimator on the public page, all server-side; and any attack aimed at a system that is not this project's.
+
+## Re-checked on 2026-11-24
+
+On the owner's instruction of 2026-11-24 the memo's four sections were read again against the repository and at source.
+
+- **Still as written above.** OWASP Dependency-Track's issues #3145 and #6191 are open; cdxgen's newest release is
+  v13.8.0 (2026-11-14); OSV-Scanner's is still v2.7.1; ML Privacy Meter's newest commit is still 2025-04-26 (each read
+  through the GitHub API).
+- **The HE parameter check, and an ISO standard on its way.** The ISO/IEC 28033 series, *Information security - Fully
+  homomorphic encryption* (ISO/IEC JTC 1/SC 27), read on iso.org in a browser on 2026-11-24: Part 1, *General*, FDIS,
+  stage 50.00; Part 2, BGV and BFV "and parameter selection for various security levels", DIS, stage 40.60 (close of
+  voting); Part 3, CKKS with the same, stage 60.00 (under publication); Part 4, arithmetic by look-up-table evaluation,
+  stage 60.00; Part 5, scheme switching, a working draft. None is published, so
+  `tests/test_r86_cbom_he_parameters.py` still rests on the HE Standard (2018) and on Bossuat et al. (2025). When
+  Part 3 is published, holding the CKKS sets to its tables needs the standard bought (ISO sells it; it is not
+  redistributed here), which is the owner's decision. NIST's threshold call (NIST IR 8214C) lists FHE as its category
+  S5, with preview talks in 2026; no submission deadline for full packages was found.
+- **A cheaper membership attack, for models too costly to retrain 64 times.** Bertran et al., *Scalable Membership
+  Inference Attacks via Quantile Regression* (NeurIPS 2023, arXiv:2307.03694; code `amazon-science/quantile-mia`,
+  Apache-2.0, last pushed 2024-04-04): one quantile regressor fitted to the scores of non-members, no shadow models;
+  its authors report it competitive with shadow-model attacks. A candidate for the 3D pipeline if retraining its teacher
+  64 times is too long.
+- **The CBOM's parameters, entry by entry.** The memo asks for every primitive's parameters in `cryptoProperties`.
+  On 2026-11-24 the square students' two CKKS sets and the tree network's set were added (each inside the HE
+  standard's post-quantum bound), and the OPRF's RFC 9497 suite and mode. Still without a `parameterSetIdentifier`:
+  the WRK17b garbling (Polytune: its computational and statistical security parameters) and Shamir sharing in the
+  full deployment (MPyC: its field and threshold), which need their values read from those libraries' code before they
+  are written.
+- **The repository's own settings.** On the owner's choice of 2026-11-24, secret scanning, push protection and
+  Dependabot security updates were turned on (the GitHub API confirms each); Dependabot alerts and private
+  vulnerability reporting were on already.

@@ -1,0 +1,102 @@
+{
+ "what": "the satellite QCNNs' tree network under CKKS on every test row, and the Pauli-form path on the first 40 of them",
+ "preregistration": "references/satellite-qcnn-tn-preregistration.md, D and addendum 3",
+ "criterion": {
+  "max_abs_readout_error": 0.001,
+  "decisions_differing": 0
+ },
+ "params": {
+  "N": 16384,
+  "coeff_mod_bits": [
+   60,
+   40,
+   40,
+   40,
+   40,
+   40,
+   40,
+   60
+  ],
+  "scale_bits": 40
+ },
+ "cases": [
+  {
+   "name": "opssat",
+   "rows": 529,
+   "blocks": 1,
+   "clear_twin_max_difference": 3.3306690738754696e-16,
+   "tree": {
+    "max_abs_readout_error": 4.258623387265459e-08,
+    "decisions_differing": 0,
+    "ciphertexts_up": 16,
+    "up_bytes": 29361936,
+    "down_bytes": 262257,
+    "key_bytes": 16778184,
+    "key_ms": 1277.576781,
+    "encrypt_ms": 266.3726469999999,
+    "evaluate_ms": 1875.136619,
+    "decrypt_ms": 1.780297000000246,
+    "total_ms": 3433.130361
+   },
+   "pauli": {
+    "rows": 40,
+    "maxError": 2.6672184461062898e-09,
+    "flipped": 0,
+    "totalMs": 6597.510732000003,
+    "upBytes": 31466320,
+    "downBytes": 15733160,
+    "keyBytes": 19468429
+   },
+   "criterion_met": true,
+   "per_row": {
+    "tree_ms": 6.4898,
+    "tree_bytes_up": 55504.6,
+    "pauli_ms": 164.94,
+    "pauli_bytes_up": 786658.0
+   }
+  },
+  {
+   "name": "esa",
+   "rows": 115064,
+   "blocks": 15,
+   "clear_twin_max_difference": 5.551115123125783e-16,
+   "tree": {
+    "max_abs_readout_error": 8.482552166233503e-08,
+    "decisions_differing": 0,
+    "ciphertexts_up": 240,
+    "up_bytes": 440429040,
+    "down_bytes": 3933855,
+    "key_bytes": 16778184,
+    "key_ms": 1241.5910439999989,
+    "encrypt_ms": 3879.248526999996,
+    "evaluate_ms": 27108.060770000007,
+    "decrypt_ms": 10.20024499999272,
+    "total_ms": 32271.213944
+   },
+   "pauli": {
+    "rows": 40,
+    "maxError": 3.155096406359803e-09,
+    "flipped": 0,
+    "totalMs": 6549.971991000013,
+    "upBytes": 31466320,
+    "downBytes": 15733160,
+    "keyBytes": 19468429
+   },
+   "criterion_met": true,
+   "per_row": {
+    "tree_ms": 0.2805,
+    "tree_bytes_up": 3827.7,
+    "pauli_ms": 163.75,
+    "pauli_bytes_up": 786658.0
+   }
+  }
+ ],
+ "node": "v22.23.2",
+ "machine": "x86_64",
+ "seconds": 51.2,
+ "environment": {
+  "git": "9d94b0e",
+  "python": "3.12.15",
+  "date": "2026-11-24"
+ }
+}

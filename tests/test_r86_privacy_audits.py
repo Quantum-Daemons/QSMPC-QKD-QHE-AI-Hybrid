@@ -85,6 +85,26 @@ def note_problems(note: str) -> list[str]:
         lr = pipe[key]["lira_online"]
         want.append(f"{label}, LiRA AUC {lr['auc']:.3f}")
         want.append(f"{_pct(lr['tpr_at_fpr_0.001'])[:-8]}")
+    tel = _load("reconstruction-telecom-student-2026-11-24.json")["routes"]
+    heart = _load("reconstruction-fedheart-2026-11-24.json")["routes"]
+    want.append(f"{_pct(tel['C_weights_solved_to_the_optimum']['share_below_0.001'])[:-8]} percent within 0.1 and "
+                f"{_pct(tel['C_weights_solved_to_the_optimum']['share_below_0.01'])[:-8]} percent within 1")
+    want.append(f"({tel['B_weights_at_the_optimum']['solver_iterations']} iterations), "
+                f"{_pct(tel['B_weights_at_the_optimum']['share_below_0.1'])[:-8]} percent within 10")
+    want.append(f"(Adam, 50 epochs), {_pct(heart['B_pooled_as_the_page_trains_it']['share_below_0.1'])[:-8]} percent within 10")
+    kc = _load("dp-kcandidate-audit-2026-11-24.json")
+    hk = [kc["fedheart"][f"epsilon_{e}"]["k2_add_remove"] for e in (8, 4, 2, 1)]
+    want.append("lower bounds are $`\\mu`$ " + ", ".join(f"{a['mu_lower_bound']:.3f}" for a in hk[:3])
+                + f" and {hk[3]['mu_lower_bound']:.3f} against its accountant's "
+                + ", ".join(f"{a['mu_accounted']:.3f}" for a in hk[:3]) + f" and {hk[3]['mu_accounted']:.3f}")
+    want.append(f"{100 * hk[0]['every_slot']['accuracy']:.2f} percent against a bound of "
+                f"{100 * hk[0]['reconstruction_bound']:.2f} for k = 2")
+    bug = kc["seeded_checks"]["fedheart_a_sixteenth_of_the_variance"]["k2_add_remove"]
+    want.append(f"{100 * bug['every_slot']['accuracy']:.2f} percent against a bound of {100 * bug['reconstruction_bound']:.2f}")
+    fin = _load("reconstruction-finance-student-2026-11-24.json")
+    want.append(f"all {fin['training_records']:,} fit rows within 0.1 percent")
+    if heart["B_fedavg_as_the_page_trains_it"]["share_below_0.1"] == 0:
+        want.append("from the FedAvg model as the page trains it, none within 10")
     return [f"the note does not quote {w!r}" for w in want if w not in flat]
 
 
@@ -126,6 +146,25 @@ def test_the_reconstruction_record_holds_its_own_checks() -> None:
     assert C["stationarity_residual"] < 1e-3
     assert C["share_below_0.1"] > B["share_below_0.1"]
 
+
+
+def test_the_reconstruction_records_of_2026_11_24_hold_their_own_checks() -> None:
+    """The QKD-attack student and the heart federation (the owner's choice of 2026-11-24): a published training mean
+    gives every record back; the weights do only at the optimum the closed form assumes."""
+    tel = _load("reconstruction-telecom-student-2026-11-24.json")["routes"]
+    assert tel["A_published_preprocessing_mean"]["share_below_0.001"] == 1.0
+    assert tel["B_weights_at_the_optimum"]["published_weights_max_abs_diff"] < 1e-3      # the retrained student is the published one
+    assert tel["C_weights_solved_to_the_optimum"]["stationarity_residual"] < 1e-3
+    assert tel["C_weights_solved_to_the_optimum"]["share_below_0.01"] > 0.95
+    assert tel["C_weights_solved_to_the_optimum"]["share_below_0.1"] > tel["B_weights_at_the_optimum"]["share_below_0.1"]
+    heart = _load("reconstruction-fedheart-2026-11-24.json")["routes"]
+    assert heart["A_published_preprocessing_mean"]["share_below_0.001"] == 1.0
+    assert heart["C_pooled_solved_to_the_optimum"]["share_below_0.001"] == 1.0
+    assert heart["C_pooled_solved_to_the_optimum"]["stationarity_residual"] < 1e-6
+    assert heart["B_pooled_as_the_page_trains_it"]["share_below_0.1"] < 0.5
+    assert heart["B_fedavg_as_the_page_trains_it"]["share_below_0.1"] <= heart["B_pooled_as_the_page_trains_it"]["share_below_0.1"]
+    fin = _load("reconstruction-finance-student-2026-11-24.json")["routes"]["A_published_preprocessing_mean"]
+    assert fin["share_below_0.001"] == 1.0 and fin["published_mean_max_abs_diff"] == 0.0
 
 def test_the_note_quotes_the_records() -> None:
     assert note_problems(NOTE.read_text(encoding="utf-8")) == []

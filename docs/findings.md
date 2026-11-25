@@ -167,6 +167,8 @@ tables. Only labels whose ESA-ADB Category is `Anomaly` count as positives. The 
 *nominal* events on these six channels do not; there are 78 in all of Mission1, and until Round 86
 this said 690, which neither of ESA-ADB's label files supports.
 
+A QCNN on the same telemetry (Round 86, pre-registered; `models/qcnn_satellite_opssat` and `_esa`) is scored by average precision on both benchmarks' own splits: on OPS-SAT-AD 0.931 against 0.943 for a classical model with the circuit's own hypothesis class, on ESA-ADB 0.864 against 0.892. The classical surrogate leads on both, and the page says so beside the circuit.
+
 ### Telecom: the classical forest wins
 
 **Telecom reproduces the metric trap in-house.** The variational QNN scores **accuracy 0.875 but
@@ -829,7 +831,7 @@ authors for evaluation "insufficient to fully support the paper's conclusions".
   **PaySim** simulator sample (synthetic transactions, CC-BY-SA-4.0) + a linear surrogate over four of its columns (none built from PaySim's balance columns), which is what the finance page's one-row CKKS step evaluates (the 115-parameter AMLworld student is encrypted on 8,192 held-out test-window rows for the agreement figure since Round 84); and **satellite** scores
   **real OPS-SAT-AD telemetry segments** (CC BY 4.0, since Round 84; the NASA SMAP/MSL windows before them had no licence from any provider - see DATA_LICENSES.md) with a plaintext demo anomaly regression - all tiny static JSON
   under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](../web/src/lib/realData.ts). The finance, medical, genomics and DeFi lending pages compute with the
-  real in-browser node-seal CKKS + Polytune garbled circuits (notional parties); the telecom and satellite pages run a CKKS check of each published student they carry and no garbled circuit ([which pages encrypt](models-and-benchmarks.md#which-pages-encrypt)). Only **telecom** has no commercial-OK real attack dataset
+  real in-browser node-seal CKKS + Polytune garbled circuits (notional parties); the telecom page runs its student under CKKS on one held-out row with its argmax in a garbled circuit, on the shares of the masked scores, and both the telecom and satellite pages run a CKKS check of each published student they carry, with no garbled circuit in that check ([which pages encrypt](models-and-benchmarks.md#which-pages-encrypt)). Only **telecom** has no commercial-OK real attack dataset
   - the narrower and correct statement, since **5G-NIDD is CC BY 4.0 and commercially usable**, and this repository trains on it. What does not exist is a commercial-OK corpus of QKD-LAYER attacks, which is a different problem needing a physical QKD testbed under attack - so the QKD IDS uses representative synthetic features (logged as such in the run).
   The bundled sets are public / de-identified, so no real *personal* data leaves the browser - the privacy property
   is demonstrated on real or realistic inputs.

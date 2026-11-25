@@ -41,7 +41,7 @@ const out = join(dir, "bundle.mjs");
 const sealWasm = resolve(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
 await build({
   stdin: { contents: `export { encryptedLinear } from ${JSON.stringify(resolve(WEB, "src/lib/clientFHE"))};
-export { headLogit, decide, filmInput, filmRgba, filmsSummary } from ${JSON.stringify(resolve(WEB, "src/lib/cxrSplit"))};`,
+export { headLogit, decide, filmInput, filmRgba, filmsSummary, logitAxis } from ${JSON.stringify(resolve(WEB, "src/lib/cxrSplit"))};`,
            resolveDir: WEB, loader: "ts" },
   bundle: true, format: "esm", platform: "node", outfile: out, logLevel: "error",
   define: { "import.meta.env": '{"BASE_URL":"/","VITE_CLIENT_ONLY":"1"}', "process.env.NODE_ENV": '"production"' },
@@ -73,7 +73,10 @@ const films = m.filmsSummary(head, [
   { film: 1, zPlain: t - 1, zEnc: t - 1 - 1e-9, effusion: false, label: 1, recorded: 0 },
   { film: 2, zPlain: t - 2, zEnc: t - 2, effusion: false, label: null, recorded: null },
 ]);
-console.log(JSON.stringify({ runs, input: Array.from(m.filmInput(px)), rgba: Array.from(m.filmRgba(px)), films }));
+// The plot's axis: on the deployed site's 16 films (2026-11-24) the logits spanned about -5.1 to 1.2, with the operating
+// point at -2.285; recharts labelled -5.5, -3.5, -1.5 and 1.5. A narrow span takes a finer step.
+const axes = [m.logitAxis([-5.1, 1.2, -2.285]), m.logitAxis([-2.4, -2.2, -2.285])];
+console.log(JSON.stringify({ runs, input: Array.from(m.filmInput(px)), rgba: Array.from(m.filmRgba(px)), films, axes }));
 """
 
 
@@ -114,6 +117,12 @@ def test_the_page_s_ckks_layer_evaluates_this_head(tmp_path: Path) -> None:
     f = out["films"]
     assert f["films"] == 3 and abs(f["worst"] - 2e-9) < 1e-12, f
     assert (f["sameDecision"], f["recorded"], f["agreeRecorded"], f["labelled"], f["agreeLabel"]) == (3, 2, 2, 2, 1), f
+    wide, narrow = out["axes"]
+    assert (wide["lo"], wide["hi"], wide["ticks"], wide["decimals"]) == (-6, 2, [-6, -4, -2, 0, 2], 0), wide
+    for ax in (wide, narrow):
+        steps = {round(b - a, 9) for a, b in zip(ax["ticks"], ax["ticks"][1:])}
+        assert len(steps) == 1 and ax["ticks"][0] == ax["lo"] and ax["ticks"][-1] == ax["hi"], ax
+        assert 4 <= len(ax["ticks"]) <= 7, ax
 
 
 def test_the_medical_page_mounts_the_card_and_the_card_reads_its_files() -> None:

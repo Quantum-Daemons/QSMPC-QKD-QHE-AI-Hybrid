@@ -5,7 +5,7 @@
 import { version } from "../../package.json";
 
 /** When the pages were last read against the code and the records. Change it when they are next reviewed. */
-export const PAGES_LAST_REVIEWED = "22 November 2026";
+export const PAGES_LAST_REVIEWED = "25 November 2026";
 
 const ext = { target: "_blank", rel: "noopener noreferrer" } as const;
 

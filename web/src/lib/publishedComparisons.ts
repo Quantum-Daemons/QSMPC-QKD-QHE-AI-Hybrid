@@ -153,6 +153,71 @@ export function flambyRows(r: FedHeartResult): ComparisonRow[] {
   return rows;
 }
 
+/** A trained QCNN's headline as its weights file records it, and the re-scoring a QCNN run in this tab makes. */
+export interface QcnnRecord { metric: string; value: number }
+export interface QcnnRunRescore { label: string; headline: number; rows: number; matchesRecord: boolean }
+
+const QCNN_METRIC: Record<string, string> = { minority_class_f1: "minority-class F1", accuracy: "accuracy", macro_f1: "macro F1" };
+
+/**
+ * Published quantum classifiers beside each page's trained QCNN (checklist CS13; the owner's choice of 2026-11-24:
+ * same-split classical baselines for both techniques, literature figures only as labelled references). The QCNN is in
+ * neither the registry nor the Hub, so `modelRows` never draws it, and its same-split baseline, logistic regression, is
+ * in its run's own log line. Every figure here was read at its source on 2026-11-24. None is a QCNN on the page's own
+ * data and split, so none can be a reproduction: the same data with another method or split is a reference, and other
+ * data is not comparable.
+ */
+export const QCNN_REFERENCES: Record<string, { source: string; published: string; verdict: Verdict; why: string }[]> = {
+  finance_aml: [{
+    source: "Douros et al., arXiv:2607.21449 (accepted at IEEE QCE 2026)",
+    published: "0.9210",
+    verdict: "not comparable",
+    why: "A hybrid network with a variational quantum layer, not a QCNN, trained federated: the F1 averaged over six "
+      + "settings (its text beside Table I), with its classical baseline at 0.9170. The data are PaySim by the paper's "
+      + "footnote link, but its split, fraud rate and any rebalancing are not reported, so the figure cannot stand beside "
+      + "a held-out F1 at PaySim's own rate",
+  }],
+  medical_fl: [{
+    source: "Xiang et al., Sci. Rep. 14:24699 (2024), doi:10.1038/s41598-024-74778-7",
+    published: "0.9616",
+    verdict: "reference",
+    why: "A quantum-classical hybrid CNN on the same data (WDBC), its accuracy averaged over training iterations on a 30% "
+      + "validation set with no separate test set (Table 4; the best iteration reads 0.9766, logistic regression's "
+      + "average 0.9118): a different method and split on the same data",
+  }, {
+    source: "Yadav et al., PeerJ Comput. Sci. (2026), doi:10.7717/peerj-cs.3600",
+    published: "0.9474 to 0.9561",
+    verdict: "reference",
+    why: "A hybrid QSVM-QNN, simulated, on the same data (WDBC) with seven selected features: held-out accuracy over three "
+      + "repeats on a stratified 20% split of 114 rows: a different method and split on the same data",
+  }],
+  telecom_ids: [{
+    source: "Al-Kuwari et al., IET Quantum Commun. (2026), doi:10.1049/qtc2.70028 (arXiv:2509.14282v2)",
+    published: "0.947",
+    verdict: "not comparable",
+    why: "A hybrid quantum LSTM (9 qubits, simulated) on the authors' own simulated decoy-state BB84 telemetry, eight "
+      + "balanced classes, at 50 epochs (Table VIII): the closest published task, on other data, and the paper does not "
+      + "say how its F1 averages the classes",
+  }],
+};
+
+/** One row per published reference, carrying the page's own QCNN figure and this tab's re-scoring when a QCNN ran. */
+export function qcnnRows(usecase: string, record: QcnnRecord | null, rescore: QcnnRunRescore | null): ComparisonRow[] {
+  const metric = record ? (QCNN_METRIC[record.metric] ?? record.metric) : rescore?.label ?? "its headline metric";
+  return (QCNN_REFERENCES[usecase] ?? []).map((r) => ({
+    figure: `QCNN (trained, not encrypted): ${metric}`,
+    source: r.source,
+    published: r.published,
+    offline: record ? f4(record.value) : "not loaded",
+    thisRun: rescore
+      ? `re-scored ${f4(rescore.headline)} on ${rescore.rows} rows of the trainer's test split, `
+        + (rescore.matchesRecord ? "equal to the record" : "not the record")
+      : "not run in this tab: choose QCNN under Parameters",
+    verdict: r.verdict,
+    why: r.why,
+  }));
+}
+
 /** What a page with no model and no benchmark says instead of an empty table. */
 export const PAGE_NOTES: Record<string, string> = {
   defi_lending: "The lending page publishes no result to reproduce: its pool follows Aave V3's published parameters (a close factor of 0.5 above a health factor of 0.95, and of 1 at or below it), which are inputs here, labelled illustrative, and the private check is compared with the same check in the clear on the page itself.",

@@ -1,0 +1,91 @@
+{
+ "what": "membership inference against the training procedure, over shadow models",
+ "target": "nodule3d_pipeline",
+ "data": "LIDC-IDRI (TCIA, CC BY 3.0): the 1,178 labelled 28 mm crops of the 518 training patients of docs/measurements/medical-nodule3d-split.json; the validation part selects every model's epoch, as in training; the test part is not touched",
+ "device": "cuda",
+ "teacher": {
+  "name": "resnet3d18",
+  "oof_auc_real_run": 0.874421,
+  "retrained": "for every shadow, out of fold over its members' patients by stage_teachers' recipe; the choice among the three candidates held at the real run's"
+ },
+ "label": "the readers' label (median malignancy rating), on which every model is scored",
+ "models": {
+  "control": "the control arm: conv 1->4 (3x3x3), batch norm, ReLU, avg-pool 2, dense 4*14^3 -> 2",
+  "square": "the shipped arm: conv 1->4 (3x3x3), batch norm, x^2, avg-pool 2, dense 4*14^3 -> 2"
+ },
+ "design": {
+  "pool": 1178,
+  "audit_records": 956,
+  "population_records": 222,
+  "membership_unit": "patient",
+  "audit_patients": 414,
+  "population_patients": 104,
+  "shadow_models": 64,
+  "membership": "complementary pairs: each record a member of exactly half the models",
+  "references_per_target": 62,
+  "seed": 0,
+  "rmia_offline_a": 0.3,
+  "fit_seconds": 7835.5
+ },
+ "attacks": {
+  "lira_online": "Carlini et al., IEEE S&P 2022 (arXiv:2112.03570); implemented here",
+  "rmia_offline": "Zarifzadeh, Liu and Shokri, ICML 2024 (arXiv:2312.03262); implemented here and checked against ML Privacy Meter's run_rmia at e384af8fd931"
+ },
+ "results": {
+  "control": {
+   "lira_online": {
+    "auc": 0.515,
+    "members": 30592,
+    "non_members": 30592,
+    "tpr_at_fpr_0.001": 0.0015,
+    "tpr_at_fpr_0.01": 0.013,
+    "tpr_at_fpr_0.1": 0.1147
+   },
+   "rmia_offline": {
+    "auc": 0.5195,
+    "members": 30592,
+    "non_members": 30592,
+    "tpr_at_fpr_0.001": null,
+    "not_resolvable": [
+     "fpr 0.001: 0.0065 of non-members tie at the top score"
+    ],
+    "tpr_at_fpr_0.01": 0.0093,
+    "tpr_at_fpr_0.1": 0.1151
+   },
+   "rmia_matches_ml_privacy_meter_max_abs_diff": 0.0,
+   "records_exposed_in_most_targets_at_fpr_1e-3": 0,
+   "audit_records": 956
+  },
+  "square": {
+   "lira_online": {
+    "auc": 0.5144,
+    "members": 30592,
+    "non_members": 30592,
+    "tpr_at_fpr_0.001": 0.0017,
+    "tpr_at_fpr_0.01": 0.0133,
+    "tpr_at_fpr_0.1": 0.1126
+   },
+   "rmia_offline": {
+    "auc": 0.5239,
+    "members": 30592,
+    "non_members": 30592,
+    "tpr_at_fpr_0.001": null,
+    "not_resolvable": [
+     "fpr 0.001: 0.0055 of non-members tie at the top score"
+    ],
+    "tpr_at_fpr_0.01": 0.0082,
+    "tpr_at_fpr_0.1": 0.1213
+   },
+   "rmia_matches_ml_privacy_meter_max_abs_diff": 0.0,
+   "records_exposed_in_most_targets_at_fpr_1e-3": 0,
+   "audit_records": 956
+  }
+ },
+ "reading": "TPR at a fixed low FPR is the measure; an AUC near 0.5 with TPR near the FPR means the attack learns little about membership from this model's outputs. An attack gives a lower bound on leakage, not a proof of its absence.",
+ "environment": {
+  "git": "1aacc01",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-25"
+ }
+}

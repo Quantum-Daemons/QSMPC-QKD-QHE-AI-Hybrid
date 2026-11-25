@@ -37,7 +37,7 @@ export interface TfjsModel {
 /** A WebLLM model as the config records it: its weights' pinned revision and the library this site serves. */
 export interface WebLlmModel {
   id: string; label: string; revision: string; bytes: number; requires: string;
-  lib: string; lib_sri: string; context_window_size: number;
+  lib: string; lib_sri: string; config_sri: string; tokenizer_sri: string; context_window_size: number;
 }
 
 /** What a picker shows: the name, the bytes a first run downloads, and the adapter feature it needs. */
@@ -230,7 +230,10 @@ async function runWebLLM(
     model_lib: new URL(`${import.meta.env.BASE_URL}${webCfg().webllm_lib_dir}/${spec.lib}`, location.href).href,
     required_features: spec.requires ? [spec.requires] : undefined,
     overrides: { context_window_size: spec.context_window_size },
-    integrity: { model_lib: spec.lib_sri },
+    // Every file WebLLM can check: the chat config and the tokenizer it fetches (`tokenizer.json`, which each
+    // pinned config lists) as well as the library; a mismatch throws. The weight shards have no entry to check.
+    integrity: { config: spec.config_sri, model_lib: spec.lib_sri, tokenizer: { "tokenizer.json": spec.tokenizer_sri },
+                 onFailure: "error" as const },
   };
   // One engine at a time. A loaded model holds its weights on the GPU until it is unloaded, and each run built a
   // new engine, so a second run held two. The same model is reused; another one replaces it.

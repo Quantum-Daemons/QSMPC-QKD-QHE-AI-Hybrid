@@ -1,0 +1,1497 @@
+{
+ "what": "calibration of the published IBM Multi-PNA+EU checkpoints (finance_aml.gnn) on the test window",
+ "model": "finance_aml.gnn",
+ "selected_seed": 4,
+ "probabilities": "the published record's own, as dump_logits.py wrote them with fit-window batch-norm statistics; each dump's test AUPRC, rows and positives checked against models/metrics.json",
+ "window": "the project's temporal test window, the edges the neighbour sampler scored (1,523,504 transfers, of which a seed scores about 1,522,620)",
+ "seeds": {
+  "1": {
+   "test_rows_scored": 1522619,
+   "test_laundering": 2321,
+   "test_auprc": 0.639675,
+   "decision_threshold": 0.715978,
+   "platt_fitted_on_validation": {
+    "a": -0.8829249481918877,
+    "b": 2.1020407685062494,
+    "validation_rows": 710969,
+    "validation_laundering": 801
+   },
+   "raw": {
+    "brier": 0.00106594,
+    "log_loss": 0.00638387,
+    "corp": {
+     "brier": 0.00106594,
+     "mcb": 0.00032278,
+     "dsc": 0.00077887,
+     "unc": 0.00152202,
+     "brier_recalibrated": 0.00074316,
+     "base_rate": 0.00152435,
+     "n": 1522619,
+     "positives": 2321,
+     "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+     "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118"
+    },
+    "ece_10_equal_width": 0.00307012,
+    "ece_15_equal_width": 0.00307012,
+    "ece_15_equal_mass": 0.00311329,
+    "reliability_10_equal_width": [
+     {
+      "from": 0.0,
+      "to": 0.1,
+      "rows": 1509446,
+      "laundering": 516,
+      "mean_prediction": 0.00214465,
+      "observed_rate": 0.00034185,
+      "observed_ci95": [
+       0.0003136,
+       0.00037264
+      ]
+     },
+     {
+      "from": 0.1,
+      "to": 0.2,
+      "rows": 8712,
+      "laundering": 224,
+      "mean_prediction": 0.13490958,
+      "observed_rate": 0.02571166,
+      "observed_ci95": [
+       0.02259135,
+       0.02925006
+      ]
+     },
+     {
+      "from": 0.2,
+      "to": 0.3,
+      "rows": 1614,
+      "laundering": 72,
+      "mean_prediction": 0.23987226,
+      "observed_rate": 0.04460967,
+      "observed_ci95": [
+       0.03557331,
+       0.05580861
+      ]
+     },
+     {
+      "from": 0.3,
+      "to": 0.4,
+      "rows": 459,
+      "laundering": 27,
+      "mean_prediction": 0.33845523,
+      "observed_rate": 0.05882353,
+      "observed_ci95": [
+       0.04073872,
+       0.08423163
+      ]
+     },
+     {
+      "from": 0.4,
+      "to": 0.5,
+      "rows": 218,
+      "laundering": 25,
+      "mean_prediction": 0.44703418,
+      "observed_rate": 0.1146789,
+      "observed_ci95": [
+       0.07889422,
+       0.1638082
+      ]
+     },
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "rows": 182,
+      "laundering": 30,
+      "mean_prediction": 0.54597298,
+      "observed_rate": 0.16483516,
+      "observed_ci95": [
+       0.11797095,
+       0.22555552
+      ]
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "rows": 147,
+      "laundering": 27,
+      "mean_prediction": 0.6502089,
+      "observed_rate": 0.18367347,
+      "observed_ci95": [
+       0.1294129,
+       0.25404573
+      ]
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "rows": 193,
+      "laundering": 69,
+      "mean_prediction": 0.74883647,
+      "observed_rate": 0.35751295,
+      "observed_ci95": [
+       0.29328327,
+       0.42730405
+      ]
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "rows": 172,
+      "laundering": 66,
+      "mean_prediction": 0.85103125,
+      "observed_rate": 0.38372093,
+      "observed_ci95": [
+       0.3143403,
+       0.45818206
+      ]
+     },
+     {
+      "from": 0.9,
+      "to": 1.0,
+      "rows": 1476,
+      "laundering": 1265,
+      "mean_prediction": 0.98729963,
+      "observed_rate": 0.85704607,
+      "observed_ci95": [
+       0.8382615,
+       0.87397696
+      ]
+     }
+    ]
+   },
+   "calibrated": {
+    "brier": 0.00075209,
+    "log_loss": 0.00405461,
+    "corp": {
+     "brier": 0.00075209,
+     "mcb": 8.93e-06,
+     "dsc": 0.00077887,
+     "unc": 0.00152202,
+     "brier_recalibrated": 0.00074316,
+     "base_rate": 0.00152435,
+     "n": 1522619,
+     "positives": 2321,
+     "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+     "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118"
+    },
+    "ece_10_equal_width": 0.00012932,
+    "ece_15_equal_width": 0.00013917,
+    "ece_15_equal_mass": 0.00012135,
+    "reliability_10_equal_width": [
+     {
+      "from": 0.0,
+      "to": 0.1,
+      "rows": 1520395,
+      "laundering": 860,
+      "mean_prediction": 0.00062016,
+      "observed_rate": 0.00056564,
+      "observed_ci95": [
+       0.00052909,
+       0.00060472
+      ]
+     },
+     {
+      "from": 0.1,
+      "to": 0.2,
+      "rows": 371,
+      "laundering": 59,
+      "mean_prediction": 0.14001628,
+      "observed_rate": 0.15902965,
+      "observed_ci95": [
+       0.12533797,
+       0.19971001
+      ]
+     },
+     {
+      "from": 0.2,
+      "to": 0.3,
+      "rows": 216,
+      "laundering": 72,
+      "mean_prediction": 0.24503453,
+      "observed_rate": 0.33333333,
+      "observed_ci95": [
+       0.27386341,
+       0.39862785
+      ]
+     },
+     {
+      "from": 0.3,
+      "to": 0.4,
+      "rows": 116,
+      "laundering": 38,
+      "mean_prediction": 0.35042773,
+      "observed_rate": 0.32758621,
+      "observed_ci95": [
+       0.24890298,
+       0.41732271
+      ]
+     },
+     {
+      "from": 0.4,
+      "to": 0.5,
+      "rows": 84,
+      "laundering": 44,
+      "mean_prediction": 0.45276534,
+      "observed_rate": 0.52380952,
+      "observed_ci95": [
+       0.41832106,
+       0.62721553
+      ]
+     },
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "rows": 87,
+      "laundering": 59,
+      "mean_prediction": 0.54969902,
+      "observed_rate": 0.67816092,
+      "observed_ci95": [
+       0.57426109,
+       0.76699279
+      ]
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "rows": 69,
+      "laundering": 40,
+      "mean_prediction": 0.65218709,
+      "observed_rate": 0.57971014,
+      "observed_ci95": [
+       0.46207405,
+       0.68893885
+      ]
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "rows": 102,
+      "laundering": 78,
+      "mean_prediction": 0.75076372,
+      "observed_rate": 0.76470588,
+      "observed_ci95": [
+       0.67371798,
+       0.83647907
+      ]
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "rows": 157,
+      "laundering": 132,
+      "mean_prediction": 0.85852676,
+      "observed_rate": 0.84076433,
+      "observed_ci95": [
+       0.77549641,
+       0.88975496
+      ]
+     },
+     {
+      "from": 0.9,
+      "to": 1.0,
+      "rows": 1022,
+      "laundering": 939,
+      "mean_prediction": 0.97640259,
+      "observed_rate": 0.91878669,
+      "observed_ci95": [
+       0.9004292,
+       0.93400774
+      ]
+     }
+    ]
+   }
+  },
+  "2": {
+   "test_rows_scored": 1522639,
+   "test_laundering": 2320,
+   "test_auprc": 0.651,
+   "decision_threshold": 0.778155,
+   "platt_fitted_on_validation": {
+    "a": -0.7422121187346444,
+    "b": 2.6094555157819554,
+    "validation_rows": 710969,
+    "validation_laundering": 801
+   },
+   "raw": {
+    "brier": 0.00134841,
+    "log_loss": 0.00727701,
+    "corp": {
+     "brier": 0.00134841,
+     "mcb": 0.00061974,
+     "dsc": 0.00079267,
+     "unc": 0.00152135,
+     "brier_recalibrated": 0.00072868,
+     "base_rate": 0.00152367,
+     "n": 1522639,
+     "positives": 2320,
+     "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+     "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118"
+    },
+    "ece_10_equal_width": 0.00364663,
+    "ece_15_equal_width": 0.00364663,
+    "ece_15_equal_mass": 0.00368034,
+    "reliability_10_equal_width": [
+     {
+      "from": 0.0,
+      "to": 0.1,
+      "rows": 1504708,
+      "laundering": 428,
+      "mean_prediction": 0.00183122,
+      "observed_rate": 0.00028444,
+      "observed_ci95": [
+       0.00025874,
+       0.00031269
+      ]
+     },
+     {
+      "from": 0.1,
+      "to": 0.2,
+      "rows": 11471,
+      "laundering": 201,
+      "mean_prediction": 0.13868142,
+      "observed_rate": 0.01752245,
+      "observed_ci95": [
+       0.01527787,
+       0.02009007
+      ]
+     },
+     {
+      "from": 0.2,
+      "to": 0.3,
+      "rows": 2529,
+      "laundering": 76,
+      "mean_prediction": 0.23770763,
+      "observed_rate": 0.0300514,
+      "observed_ci95": [
+       0.02407715,
+       0.03745117
+      ]
+     },
+     {
+      "from": 0.3,
+      "to": 0.4,
+      "rows": 718,
+      "laundering": 25,
+      "mean_prediction": 0.34339421,
+      "observed_rate": 0.03481894,
+      "observed_ci95": [
+       0.02369399,
+       0.05089504
+      ]
+     },
+     {
+      "from": 0.4,
+      "to": 0.5,
+      "rows": 352,
+      "laundering": 20,
+      "mean_prediction": 0.44451414,
+      "observed_rate": 0.05681818,
+      "observed_ci95": [
+       0.03707875,
+       0.08612628
+      ]
+     },
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "rows": 261,
+      "laundering": 17,
+      "mean_prediction": 0.54716469,
+      "observed_rate": 0.0651341,
+      "observed_ci95": [
+       0.04106074,
+       0.1018227
+      ]
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "rows": 257,
+      "laundering": 30,
+      "mean_prediction": 0.65134695,
+      "observed_rate": 0.11673152,
+      "observed_ci95": [
+       0.08300201,
+       0.16174995
+      ]
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "rows": 276,
+      "laundering": 52,
+      "mean_prediction": 0.75327138,
+      "observed_rate": 0.1884058,
+      "observed_ci95": [
+       0.1466688,
+       0.23869747
+      ]
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "rows": 284,
+      "laundering": 69,
+      "mean_prediction": 0.85215068,
+      "observed_rate": 0.24295775,
+      "observed_ci95": [
+       0.19672489,
+       0.29605144
+      ]
+     },
+     {
+      "from": 0.9,
+      "to": 1.0,
+      "rows": 1783,
+      "laundering": 1402,
+      "mean_prediction": 0.98818331,
+      "observed_rate": 0.7863152,
+      "observed_ci95": [
+       0.76668372,
+       0.8047156
+      ]
+     }
+    ]
+   },
+   "calibrated": {
+    "brier": 0.00073572,
+    "log_loss": 0.00383874,
+    "corp": {
+     "brier": 0.00073572,
+     "mcb": 7.05e-06,
+     "dsc": 0.00079267,
+     "unc": 0.00152135,
+     "brier_recalibrated": 0.00072868,
+     "base_rate": 0.00152367,
+     "n": 1522639,
+     "positives": 2320,
+     "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+     "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118"
+    },
+    "ece_10_equal_width": 0.00016889,
+    "ece_15_equal_width": 0.00016665,
+    "ece_15_equal_mass": 0.00014822,
+    "reliability_10_equal_width": [
+     {
+      "from": 0.0,
+      "to": 0.1,
+      "rows": 1520120,
+      "laundering": 774,
+      "mean_prediction": 0.0006087,
+      "observed_rate": 0.00050917,
+      "observed_ci95": [
+       0.00047455,
+       0.00054632
+      ]
+     },
+     {
+      "from": 0.1,
+      "to": 0.2,
+      "rows": 556,
+      "laundering": 97,
+      "mean_prediction": 0.14154981,
+      "observed_rate": 0.17446043,
+      "observed_ci95": [
+       0.14517851,
+       0.20820986
+      ]
+     },
+     {
+      "from": 0.2,
+      "to": 0.3,
+      "rows": 218,
+      "laundering": 63,
+      "mean_prediction": 0.24370675,
+      "observed_rate": 0.28899083,
+      "observed_ci95": [
+       0.23288346,
+       0.35240596
+      ]
+     },
+     {
+      "from": 0.3,
+      "to": 0.4,
+      "rows": 120,
+      "laundering": 42,
+      "mean_prediction": 0.34501397,
+      "observed_rate": 0.35,
+      "observed_ci95": [
+       0.270519,
+       0.43878675
+      ]
+     },
+     {
+      "from": 0.4,
+      "to": 0.5,
+      "rows": 101,
+      "laundering": 58,
+      "mean_prediction": 0.44960865,
+      "observed_rate": 0.57425743,
+      "observed_ci95": [
+       0.47685015,
+       0.66622303
+      ]
+     },
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "rows": 101,
+      "laundering": 60,
+      "mean_prediction": 0.55353314,
+      "observed_rate": 0.59405941,
+      "observed_ci95": [
+       0.49654987,
+       0.68467614
+      ]
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "rows": 116,
+      "laundering": 68,
+      "mean_prediction": 0.64179351,
+      "observed_rate": 0.5862069,
+      "observed_ci95": [
+       0.49522201,
+       0.67166515
+      ]
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "rows": 158,
+      "laundering": 114,
+      "mean_prediction": 0.75127062,
+      "observed_rate": 0.72151899,
+      "observed_ci95": [
+       0.64700142,
+       0.78552063
+      ]
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "rows": 201,
+      "laundering": 158,
+      "mean_prediction": 0.85649673,
+      "observed_rate": 0.78606965,
+      "observed_ci95": [
+       0.72429197,
+       0.83711782
+      ]
+     },
+     {
+      "from": 0.9,
+      "to": 1.0,
+      "rows": 948,
+      "laundering": 886,
+      "mean_prediction": 0.97163299,
+      "observed_rate": 0.93459916,
+      "observed_ci95": [
+       0.9170414,
+       0.94864899
+      ]
+     }
+    ]
+   }
+  },
+  "3": {
+   "test_rows_scored": 1522633,
+   "test_laundering": 2321,
+   "test_auprc": 0.596986,
+   "decision_threshold": 0.579118,
+   "platt_fitted_on_validation": {
+    "a": -0.7788998259376909,
+    "b": 2.220839829819932,
+    "validation_rows": 710969,
+    "validation_laundering": 801
+   },
+   "raw": {
+    "brier": 0.00119405,
+    "log_loss": 0.00670995,
+    "corp": {
+     "brier": 0.00119405,
+     "mcb": 0.00038885,
+     "dsc": 0.00071681,
+     "unc": 0.00152201,
+     "brier_recalibrated": 0.0008052,
+     "base_rate": 0.00152433,
+     "n": 1522633,
+     "positives": 2321,
+     "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+     "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118"
+    },
+    "ece_10_equal_width": 0.00276943,
+    "ece_15_equal_width": 0.00276943,
+    "ece_15_equal_mass": 0.00286073,
+    "reliability_10_equal_width": [
+     {
+      "from": 0.0,
+      "to": 0.1,
+      "rows": 1504819,
+      "laundering": 537,
+      "mean_prediction": 0.00128729,
+      "observed_rate": 0.00035685,
+      "observed_ci95": [
+       0.00032793,
+       0.00038833
+      ]
+     },
+     {
+      "from": 0.1,
+      "to": 0.2,
+      "rows": 11049,
+      "laundering": 182,
+      "mean_prediction": 0.13853139,
+      "observed_rate": 0.01647208,
+      "observed_ci95": [
+       0.01426129,
+       0.01901897
+      ]
+     },
+     {
+      "from": 0.2,
+      "to": 0.3,
+      "rows": 3526,
+      "laundering": 131,
+      "mean_prediction": 0.2423984,
+      "observed_rate": 0.03715258,
+      "observed_ci95": [
+       0.03139658,
+       0.043916
+      ]
+     },
+     {
+      "from": 0.3,
+      "to": 0.4,
+      "rows": 943,
+      "laundering": 72,
+      "mean_prediction": 0.33262113,
+      "observed_rate": 0.07635207,
+      "observed_ci95": [
+       0.06106872,
+       0.09507301
+      ]
+     },
+     {
+      "from": 0.4,
+      "to": 0.5,
+      "rows": 305,
+      "laundering": 41,
+      "mean_prediction": 0.44600647,
+      "observed_rate": 0.13442623,
+      "observed_ci95": [
+       0.10065959,
+       0.17728709
+      ]
+     },
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "rows": 185,
+      "laundering": 33,
+      "mean_prediction": 0.54593395,
+      "observed_rate": 0.17837838,
+      "observed_ci95": [
+       0.12992858,
+       0.23991319
+      ]
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "rows": 196,
+      "laundering": 55,
+      "mean_prediction": 0.64356079,
+      "observed_rate": 0.28061224,
+      "observed_ci95": [
+       0.22239372,
+       0.34726515
+      ]
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "rows": 129,
+      "laundering": 59,
+      "mean_prediction": 0.7488502,
+      "observed_rate": 0.45736434,
+      "observed_ci95": [
+       0.37387207,
+       0.54332246
+      ]
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "rows": 151,
+      "laundering": 74,
+      "mean_prediction": 0.84625474,
+      "observed_rate": 0.49006623,
+      "observed_ci95": [
+       0.4115735,
+       0.56905185
+      ]
+     },
+     {
+      "from": 0.9,
+      "to": 1.0,
+      "rows": 1330,
+      "laundering": 1137,
+      "mean_prediction": 0.98807082,
+      "observed_rate": 0.85488722,
+      "observed_ci95": [
+       0.83493573,
+       0.87279456
+      ]
+     }
+    ]
+   },
+   "calibrated": {
+    "brier": 0.00082992,
+    "log_loss": 0.00451578,
+    "corp": {
+     "brier": 0.00082992,
+     "mcb": 2.472e-05,
+     "dsc": 0.00071681,
+     "unc": 0.00152201,
+     "brier_recalibrated": 0.0008052,
+     "base_rate": 0.00152433,
+     "n": 1522633,
+     "positives": 2321,
+     "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+     "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118"
+    },
+    "ece_10_equal_width": 0.00015737,
+    "ece_15_equal_width": 0.00018967,
+    "ece_15_equal_mass": 0.0001639,
+    "reliability_10_equal_width": [
+     {
+      "from": 0.0,
+      "to": 0.1,
+      "rows": 1520663,
+      "laundering": 966,
+      "mean_prediction": 0.00066367,
+      "observed_rate": 0.00063525,
+      "observed_ci95": [
+       0.00059644,
+       0.00067658
+      ]
+     },
+     {
+      "from": 0.1,
+      "to": 0.2,
+      "rows": 417,
+      "laundering": 108,
+      "mean_prediction": 0.13936932,
+      "observed_rate": 0.25899281,
+      "observed_ci95": [
+       0.21928029,
+       0.30310517
+      ]
+     },
+     {
+      "from": 0.2,
+      "to": 0.3,
+      "rows": 170,
+      "laundering": 81,
+      "mean_prediction": 0.2485947,
+      "observed_rate": 0.47647059,
+      "observed_ci95": [
+       0.40274494,
+       0.55123612
+      ]
+     },
+     {
+      "from": 0.3,
+      "to": 0.4,
+      "rows": 79,
+      "laundering": 45,
+      "mean_prediction": 0.35359526,
+      "observed_rate": 0.56962025,
+      "observed_ci95": [
+       0.45972199,
+       0.67306177
+      ]
+     },
+     {
+      "from": 0.4,
+      "to": 0.5,
+      "rows": 72,
+      "laundering": 48,
+      "mean_prediction": 0.44976489,
+      "observed_rate": 0.66666667,
+      "observed_ci95": [
+       0.55179604,
+       0.76465357
+      ]
+     },
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "rows": 63,
+      "laundering": 44,
+      "mean_prediction": 0.54883711,
+      "observed_rate": 0.6984127,
+      "observed_ci95": [
+       0.57639628,
+       0.79762309
+      ]
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "rows": 87,
+      "laundering": 70,
+      "mean_prediction": 0.64855579,
+      "observed_rate": 0.8045977,
+      "observed_ci95": [
+       0.70916786,
+       0.87426618
+      ]
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "rows": 132,
+      "laundering": 102,
+      "mean_prediction": 0.74743071,
+      "observed_rate": 0.77272727,
+      "observed_ci95": [
+       0.69412171,
+       0.83590793
+      ]
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "rows": 153,
+      "laundering": 130,
+      "mean_prediction": 0.85448494,
+      "observed_rate": 0.8496732,
+      "observed_ci95": [
+       0.7845247,
+       0.89769288
+      ]
+     },
+     {
+      "from": 0.9,
+      "to": 1.0,
+      "rows": 797,
+      "laundering": 727,
+      "mean_prediction": 0.97241487,
+      "observed_rate": 0.91217064,
+      "observed_ci95": [
+       0.89049064,
+       0.92989646
+      ]
+     }
+    ]
+   }
+  },
+  "4": {
+   "test_rows_scored": 1522629,
+   "test_laundering": 2321,
+   "test_auprc": 0.631829,
+   "decision_threshold": 0.637421,
+   "platt_fitted_on_validation": {
+    "a": -0.8395144600770161,
+    "b": 2.0208491042546495,
+    "validation_rows": 710969,
+    "validation_laundering": 801
+   },
+   "raw": {
+    "brier": 0.00096098,
+    "log_loss": 0.00594711,
+    "corp": {
+     "brier": 0.00096098,
+     "mcb": 0.00022212,
+     "dsc": 0.00078315,
+     "unc": 0.00152201,
+     "brier_recalibrated": 0.00073886,
+     "base_rate": 0.00152434,
+     "n": 1522629,
+     "positives": 2321,
+     "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+     "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118"
+    },
+    "ece_10_equal_width": 0.00240167,
+    "ece_15_equal_width": 0.00240167,
+    "ece_15_equal_mass": 0.00246674,
+    "reliability_10_equal_width": [
+     {
+      "from": 0.0,
+      "to": 0.1,
+      "rows": 1511530,
+      "laundering": 592,
+      "mean_prediction": 0.00177985,
+      "observed_rate": 0.00039166,
+      "observed_ci95": [
+       0.00036136,
+       0.00042449
+      ]
+     },
+     {
+      "from": 0.1,
+      "to": 0.2,
+      "rows": 7341,
+      "laundering": 176,
+      "mean_prediction": 0.13548344,
+      "observed_rate": 0.02397494,
+      "observed_ci95": [
+       0.02071668,
+       0.02773112
+      ]
+     },
+     {
+      "from": 0.2,
+      "to": 0.3,
+      "rows": 1365,
+      "laundering": 62,
+      "mean_prediction": 0.23839097,
+      "observed_rate": 0.04542125,
+      "observed_ci95": [
+       0.03559264,
+       0.05780128
+      ]
+     },
+     {
+      "from": 0.3,
+      "to": 0.4,
+      "rows": 293,
+      "laundering": 27,
+      "mean_prediction": 0.34442422,
+      "observed_rate": 0.09215017,
+      "observed_ci95": [
+       0.06410416,
+       0.13075225
+      ]
+     },
+     {
+      "from": 0.4,
+      "to": 0.5,
+      "rows": 152,
+      "laundering": 29,
+      "mean_prediction": 0.44805555,
+      "observed_rate": 0.19078947,
+      "observed_ci95": [
+       0.1362524,
+       0.26057049
+      ]
+     },
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "rows": 114,
+      "laundering": 21,
+      "mean_prediction": 0.54824949,
+      "observed_rate": 0.18421053,
+      "observed_ci95": [
+       0.12376031,
+       0.26524929
+      ]
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "rows": 95,
+      "laundering": 28,
+      "mean_prediction": 0.65085964,
+      "observed_rate": 0.29473684,
+      "observed_ci95": [
+       0.21247932,
+       0.39294941
+      ]
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "rows": 96,
+      "laundering": 36,
+      "mean_prediction": 0.75421183,
+      "observed_rate": 0.375,
+      "observed_ci95": [
+       0.28472608,
+       0.47489282
+      ]
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "rows": 158,
+      "laundering": 74,
+      "mean_prediction": 0.84968698,
+      "observed_rate": 0.46835443,
+      "observed_ci95": [
+       0.39222398,
+       0.54598716
+      ]
+     },
+     {
+      "from": 0.9,
+      "to": 1.0,
+      "rows": 1485,
+      "laundering": 1276,
+      "mean_prediction": 0.98825816,
+      "observed_rate": 0.85925926,
+      "observed_ci95": [
+       0.84064373,
+       0.87602089
+      ]
+     }
+    ]
+   },
+   "calibrated": {
+    "brier": 0.00074877,
+    "log_loss": 0.00418167,
+    "corp": {
+     "brier": 0.00074877,
+     "mcb": 9.91e-06,
+     "dsc": 0.00078315,
+     "unc": 0.00152201,
+     "brier_recalibrated": 0.00073886,
+     "base_rate": 0.00152434,
+     "n": 1522629,
+     "positives": 2321,
+     "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+     "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118"
+    },
+    "ece_10_equal_width": 0.00014897,
+    "ece_15_equal_width": 0.00016286,
+    "ece_15_equal_mass": 0.00013233,
+    "reliability_10_equal_width": [
+     {
+      "from": 0.0,
+      "to": 0.1,
+      "rows": 1520607,
+      "laundering": 870,
+      "mean_prediction": 0.00063969,
+      "observed_rate": 0.00057214,
+      "observed_ci95": [
+       0.00053537,
+       0.00061143
+      ]
+     },
+     {
+      "from": 0.1,
+      "to": 0.2,
+      "rows": 269,
+      "laundering": 59,
+      "mean_prediction": 0.14127662,
+      "observed_rate": 0.21933086,
+      "observed_ci95": [
+       0.17402435,
+       0.2725407
+      ]
+     },
+     {
+      "from": 0.2,
+      "to": 0.3,
+      "rows": 114,
+      "laundering": 44,
+      "mean_prediction": 0.25075137,
+      "observed_rate": 0.38596491,
+      "observed_ci95": [
+       0.30170763,
+       0.47765695
+      ]
+     },
+     {
+      "from": 0.3,
+      "to": 0.4,
+      "rows": 114,
+      "laundering": 54,
+      "mean_prediction": 0.34710198,
+      "observed_rate": 0.47368421,
+      "observed_ci95": [
+       0.38438779,
+       0.56469635
+      ]
+     },
+     {
+      "from": 0.4,
+      "to": 0.5,
+      "rows": 68,
+      "laundering": 35,
+      "mean_prediction": 0.44835407,
+      "observed_rate": 0.51470588,
+      "observed_ci95": [
+       0.39834753,
+       0.62949155
+      ]
+     },
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "rows": 76,
+      "laundering": 49,
+      "mean_prediction": 0.5507947,
+      "observed_rate": 0.64473684,
+      "observed_ci95": [
+       0.53256386,
+       0.74298221
+      ]
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "rows": 95,
+      "laundering": 63,
+      "mean_prediction": 0.65404538,
+      "observed_rate": 0.66315789,
+      "observed_ci95": [
+       0.5634261,
+       0.75020748
+      ]
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "rows": 120,
+      "laundering": 87,
+      "mean_prediction": 0.75324885,
+      "observed_rate": 0.725,
+      "observed_ci95": [
+       0.63907034,
+       0.79697103
+      ]
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "rows": 179,
+      "laundering": 148,
+      "mean_prediction": 0.8590874,
+      "observed_rate": 0.82681564,
+      "observed_ci95": [
+       0.76467212,
+       0.87522652
+      ]
+     },
+     {
+      "from": 0.9,
+      "to": 1.0,
+      "rows": 987,
+      "laundering": 912,
+      "mean_prediction": 0.97627112,
+      "observed_rate": 0.92401216,
+      "observed_ci95": [
+       0.90578761,
+       0.93894894
+      ]
+     }
+    ]
+   }
+  },
+  "5": {
+   "test_rows_scored": 1522639,
+   "test_laundering": 2320,
+   "test_auprc": 0.579145,
+   "decision_threshold": 0.481617,
+   "platt_fitted_on_validation": {
+    "a": -0.9262109954181788,
+    "b": 1.91228108341983,
+    "validation_rows": 710969,
+    "validation_laundering": 801
+   },
+   "raw": {
+    "brier": 0.00113812,
+    "log_loss": 0.00707196,
+    "corp": {
+     "brier": 0.00113812,
+     "mcb": 0.00031754,
+     "dsc": 0.00070077,
+     "unc": 0.00152135,
+     "brier_recalibrated": 0.00082058,
+     "base_rate": 0.00152367,
+     "n": 1522639,
+     "positives": 2320,
+     "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+     "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118"
+    },
+    "ece_10_equal_width": 0.00340822,
+    "ece_15_equal_width": 0.00340822,
+    "ece_15_equal_mass": 0.00346921,
+    "reliability_10_equal_width": [
+     {
+      "from": 0.0,
+      "to": 0.1,
+      "rows": 1507348,
+      "laundering": 626,
+      "mean_prediction": 0.00237823,
+      "observed_rate": 0.0004153,
+      "observed_ci95": [
+       0.00038402,
+       0.00044912
+      ]
+     },
+     {
+      "from": 0.1,
+      "to": 0.2,
+      "rows": 10154,
+      "laundering": 205,
+      "mean_prediction": 0.13580391,
+      "observed_rate": 0.02018909,
+      "observed_ci95": [
+       0.01762941,
+       0.02311168
+      ]
+     },
+     {
+      "from": 0.2,
+      "to": 0.3,
+      "rows": 2345,
+      "laundering": 94,
+      "mean_prediction": 0.24003559,
+      "observed_rate": 0.04008529,
+      "observed_ci95": [
+       0.03286902,
+       0.04880591
+      ]
+     },
+     {
+      "from": 0.3,
+      "to": 0.4,
+      "rows": 724,
+      "laundering": 65,
+      "mean_prediction": 0.34197108,
+      "observed_rate": 0.08977901,
+      "observed_ci95": [
+       0.07106375,
+       0.11282446
+      ]
+     },
+     {
+      "from": 0.4,
+      "to": 0.5,
+      "rows": 274,
+      "laundering": 30,
+      "mean_prediction": 0.44207845,
+      "observed_rate": 0.10948905,
+      "observed_ci95": [
+       0.07777749,
+       0.15199909
+      ]
+     },
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "rows": 155,
+      "laundering": 40,
+      "mean_prediction": 0.54774161,
+      "observed_rate": 0.25806452,
+      "observed_ci95": [
+       0.19561677,
+       0.33221431
+      ]
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "rows": 137,
+      "laundering": 42,
+      "mean_prediction": 0.64427194,
+      "observed_rate": 0.30656934,
+      "observed_ci95": [
+       0.23551634,
+       0.38817401
+      ]
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "rows": 94,
+      "laundering": 43,
+      "mean_prediction": 0.75223247,
+      "observed_rate": 0.45744681,
+      "observed_ci95": [
+       0.36038955,
+       0.55784552
+      ]
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "rows": 148,
+      "laundering": 92,
+      "mean_prediction": 0.8580684,
+      "observed_rate": 0.62162162,
+      "observed_ci95": [
+       0.54134345,
+       0.69574595
+      ]
+     },
+     {
+      "from": 0.9,
+      "to": 1.0,
+      "rows": 1260,
+      "laundering": 1083,
+      "mean_prediction": 0.98670178,
+      "observed_rate": 0.85952381,
+      "observed_ci95": [
+       0.83924269,
+       0.87761938
+      ]
+     }
+    ]
+   },
+   "calibrated": {
+    "brier": 0.00083499,
+    "log_loss": 0.00462699,
+    "corp": {
+     "brier": 0.00083499,
+     "mcb": 1.441e-05,
+     "dsc": 0.00070077,
+     "unc": 0.00152135,
+     "brier_recalibrated": 0.00082058,
+     "base_rate": 0.00152367,
+     "n": 1522639,
+     "positives": 2320,
+     "method": "CORP (pool-adjacent-violators); no bin count is chosen",
+     "source": "Dimitriadis, Gneiting and Jordan, arXiv:2008.03033, PNAS 118 e2016191118"
+    },
+    "ece_10_equal_width": 0.00020679,
+    "ece_15_equal_width": 0.00022323,
+    "ece_15_equal_mass": 0.0002016,
+    "reliability_10_equal_width": [
+     {
+      "from": 0.0,
+      "to": 0.1,
+      "rows": 1520667,
+      "laundering": 998,
+      "mean_prediction": 0.00076007,
+      "observed_rate": 0.00065629,
+      "observed_ci95": [
+       0.00061683,
+       0.00069828
+      ]
+     },
+     {
+      "from": 0.1,
+      "to": 0.2,
+      "rows": 395,
+      "laundering": 78,
+      "mean_prediction": 0.13925567,
+      "observed_rate": 0.19746835,
+      "observed_ci95": [
+       0.1612051,
+       0.23955931
+      ]
+     },
+     {
+      "from": 0.2,
+      "to": 0.3,
+      "rows": 123,
+      "laundering": 48,
+      "mean_prediction": 0.23797806,
+      "observed_rate": 0.3902439,
+      "observed_ci95": [
+       0.30861148,
+       0.47852436
+      ]
+     },
+     {
+      "from": 0.3,
+      "to": 0.4,
+      "rows": 86,
+      "laundering": 44,
+      "mean_prediction": 0.3472339,
+      "observed_rate": 0.51162791,
+      "observed_ci95": [
+       0.40776721,
+       0.61449423
+      ]
+     },
+     {
+      "from": 0.4,
+      "to": 0.5,
+      "rows": 73,
+      "laundering": 45,
+      "mean_prediction": 0.45004328,
+      "observed_rate": 0.61643836,
+      "observed_ci95": [
+       0.50174083,
+       0.7194939
+      ]
+     },
+     {
+      "from": 0.5,
+      "to": 0.6,
+      "rows": 84,
+      "laundering": 58,
+      "mean_prediction": 0.54097727,
+      "observed_rate": 0.69047619,
+      "observed_ci95": [
+       0.58511191,
+       0.77918076
+      ]
+     },
+     {
+      "from": 0.6,
+      "to": 0.7,
+      "rows": 70,
+      "laundering": 41,
+      "mean_prediction": 0.64708811,
+      "observed_rate": 0.58571429,
+      "observed_ci95": [
+       0.46881212,
+       0.69369821
+      ]
+     },
+     {
+      "from": 0.7,
+      "to": 0.8,
+      "rows": 112,
+      "laundering": 81,
+      "mean_prediction": 0.75258207,
+      "observed_rate": 0.72321429,
+      "observed_ci95": [
+       0.6340022,
+       0.7976222
+      ]
+     },
+     {
+      "from": 0.8,
+      "to": 0.9,
+      "rows": 126,
+      "laundering": 102,
+      "mean_prediction": 0.8529641,
+      "observed_rate": 0.80952381,
+      "observed_ci95": [
+       0.73220593,
+       0.86852669
+      ]
+     },
+     {
+      "from": 0.9,
+      "to": 1.0,
+      "rows": 903,
+      "laundering": 825,
+      "mean_prediction": 0.9838599,
+      "observed_rate": 0.91362126,
+      "observed_ci95": [
+       0.89350146,
+       0.93023679
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "sources": {
+  "pna_project_fitbn_seed1/val.npz": "ffedd3dd3c06e9ec642b99b5a16714f2014e36aa4a47c1fc602bad3242e4572b",
+  "pna_project_fitbn_seed1/test.npz": "6d53faba93f498acd73918b54b2433ee47faf8d2d155cfae48365b03178f1440",
+  "pna_project_fitbn_seed2/val.npz": "7363556362cf3dc60ec6f9b2b7758e6b495dd6c3c7a83905861607bf14ac163d",
+  "pna_project_fitbn_seed2/test.npz": "0d23a1513aa17df268058781079eeb0c4e078a2f957ceb0787b36f0c0977c6ed",
+  "pna_project_fitbn_seed3/val.npz": "c2b15f4bba448e3511686ca305361e751a696e5eccf74513b90998726d966539",
+  "pna_project_fitbn_seed3/test.npz": "a1fe234b3ac9b3afdbb19a82d77934c71e6372820f83713413f50d3f9e9788ab",
+  "pna_project_fitbn_seed4/val.npz": "097c43840d29b4b1a6f8e45c529a083481eb4f8e9ce0a84d64a850dc5be9804d",
+  "pna_project_fitbn_seed4/test.npz": "07f9198ad29761c11022bb0a634f5b8fddb129776ac00faba1e9029890039f86",
+  "pna_project_fitbn_seed5/val.npz": "8a95cfb19b042cc008580d6317f1816c81bcbe04cc8f38e2c6eef9b87d1420d6",
+  "pna_project_fitbn_seed5/test.npz": "2e18d1dd6320be35dc3ec9a37691a89b5420397bf2d30cbf3a49cc27cda041e4"
+ },
+ "methods": {
+  "platt": "qsh.models.calibration.fit_platt(on_logit=True), fitted on validation, scored on test",
+  "ece": "sum over bins of (rows in bin / rows) x |observed rate - mean prediction|; equal-width (Guo et al., ICML 2017) and equal-mass (Nixon et al., CVPR Workshops 2019) bins",
+  "corp": "Dimitriadis, Gneiting and Jordan, PNAS 118 e2016191118 (2021): pool-adjacent-violators, no bin count chosen; MCB is its miscalibration term"
+ },
+ "date": "2026-11-25"
+}

@@ -34,7 +34,10 @@ const W = 980;
 const COL_W = 300;                           // a party's column
 const LEFT_X = 8, RIGHT_X = W - 8 - COL_W;   // 8 .. 308 and 672 .. 972
 const COMP_X_A = LEFT_X + 30, COMP_X_B = RIGHT_X + 22;
-const COMP_W = 248, COMP_H = 54;
+// Three lines of a step's label at the 12 px floor (12.5 px, line height 1.3) with the node's padding and border:
+// 3 x 16.25 + 12 + 3 = 63.75. At 54, two lines, DeFi's settlement step and its BGV peer's decryption ran out of the
+// node in DejaVu Sans, the CI runners' font, and the peer's in Noto too.
+const COMP_W = 248, COMP_H = 66;
 const BUS_X_A = LEFT_X + 14, BUS_X_B = RIGHT_X + COL_W - 14;
 const HEAD_H = 70;                           // the party's name and role, above its components
 const ROW_GAP = 20;

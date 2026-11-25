@@ -1,0 +1,54 @@
+{
+ "what": "an informed adversary's reconstruction of each training record from the rest and the published student",
+ "attack": "Balle, Cherubin and Hayes, IEEE S&P 2022 (doi:10.1109/SP46214.2022.9833677); reimplemented here",
+ "target": "medical_fl.fed_heart (the page's pooled and FedAvg models, seed 0)",
+ "training_records": 486,
+ "features": 13,
+ "data": "UCI Heart Disease: four hospitals, as FLamby's Fed-Heart-Disease prepares them: UCI Heart Disease's four hospitals as FLamby prepares them (CC-BY-4.0), the training rows",
+ "routes": {
+  "A_published_preprocessing_mean": {
+   "records": 486,
+   "relative_error_median": 4.878979936785129e-06,
+   "relative_error_p90": 6.231096663210719e-06,
+   "share_below_0.001": 1.0,
+   "share_below_0.01": 1.0,
+   "share_below_0.1": 1.0
+  },
+  "B_pooled_as_the_page_trains_it": {
+   "records": 486,
+   "relative_error_median": 0.2439359407006932,
+   "relative_error_p90": 1.5053489684526693,
+   "share_below_0.001": 0.0,
+   "share_below_0.01": 0.0,
+   "share_below_0.1": 0.1337,
+   "stationarity_residual": 0.027634292290327517
+  },
+  "B_fedavg_as_the_page_trains_it": {
+   "records": 486,
+   "relative_error_median": 0.5652402009161358,
+   "relative_error_p90": 0.9137779532733694,
+   "share_below_0.001": 0.0,
+   "share_below_0.01": 0.0,
+   "share_below_0.1": 0.0,
+   "stationarity_residual": 0.6052786255171698
+  },
+  "C_pooled_solved_to_the_optimum": {
+   "records": 486,
+   "relative_error_median": 3.6322960914635577e-07,
+   "relative_error_p90": 1.8614311259294436e-06,
+   "share_below_0.001": 1.0,
+   "share_below_0.01": 1.0,
+   "share_below_0.1": 1.0,
+   "stationarity_residual": 5.963671557738143e-09,
+   "solver_iterations": 13
+  }
+ },
+ "reading": "Relative L2 error of each reconstructed row against the true one. The informed adversary is the worst case differential privacy is defined against; nothing here is a DP-trained model, so an exact reconstruction is the expected outcome, and the training statistics a client must have are a release.",
+ "seconds": 1.0,
+ "environment": {
+  "git": "b049621",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-24"
+ }
+}

@@ -96,7 +96,7 @@ flowchart TB
 | Use case | Industry | Its own stages |
 |---|---|---|
 | `finance_aml` | finance, AML | PSI over cross-bank blacklists (the count of shared accounts, as it would be published, with differential privacy at $`\varepsilon = 1`$), federated training, FHE fraud inference |
-| `medical_fl` | healthcare | federated training across four real hospitals (UCI Heart Disease, FLamby's benchmark: each alone, federated, pooled) with pairwise masks whose seeds each pair of hospitals agrees by X25519 (no dropout recovery, no public-key authentication), and on request the same federation aggregated under CKKS with one shared key (NVIDIA FLARE's design) and under threshold CKKS and BGV (Lattigo, compiled to WebAssembly), side by side, and a record-level differential-privacy arm (distributed discrete Gaussian inside the masks, $`\varepsilon`$ from 8 to 1, and once more inside threshold BGV on request); private inference: the encrypted CNN reads a held-out BreastMNIST image in the browser, and the square student reads one with no layer decrypted in between |
+| `medical_fl` | healthcare | federated training across four real hospitals (UCI Heart Disease, FLamby's benchmark: each alone, federated, pooled) with pairwise masks whose seeds each pair of hospitals agrees by X25519 (no dropout recovery, no public-key authentication), and on request the same federation aggregated under CKKS with one shared key (NVIDIA FLARE's design) and under threshold CKKS and BGV (Lattigo, compiled to WebAssembly), side by side, and a record-level differential-privacy arm (distributed discrete Gaussian inside the masks, $`\varepsilon`$ from 8 to 1, and once more inside threshold BGV on request); private inference: the encrypted CNN reads a held-out BreastMNIST image in the browser, and the square student reads one with no layer decrypted in between, as a 3D student does with a 28 mm chest CT nodule from LIDC-IDRI (drawn as three planes with its exact contribution map) |
 | `genomics` | genomics | secure summation of pooled allele counts, released with differential privacy at an $`\varepsilon`$ chosen on the page (the cohorts' exact discrete Gaussian noise inside the sum, and on request the same contributions summed under threshold BGV), FHE |
 | `telecom_ids` | telecom, defence | simulated QKD with an optional eavesdropper, a QML intrusion detector |
 | `satellite_comms` | satellite | simulated free-space QKD over a model of the Micius downlink, a two-way QSDC feasibility check with an inline eavesdrop check, and one-way quasi-QSDC under a pre-shared key where that check cannot close |
@@ -327,7 +327,7 @@ flowchart LR
   U --- F["Finance - AML"]
   U --- M["Medical - FL"]
   U --- G["Genomics"]
-  U --- T["Telecom / Defence"]
+  U --- T["Telecom / Defense"]
   U --- ST["Satellite: Downlink and Network tabs"]
 ```
 
@@ -359,7 +359,7 @@ flowchart LR
 <td><img src="docs/images/usecase-genomics.jpg" alt="Genomics use case after a run" width="420"><br>Genomics</td>
 </tr>
 <tr>
-<td><img src="docs/images/usecase-telecom.jpg" alt="Telecom and defence use case after a run" width="420"><br>Telecom / Defence</td>
+<td><img src="docs/images/usecase-telecom.jpg" alt="Telecom and defense use case after a run" width="420"><br>Telecom / Defense</td>
 <td><img src="docs/images/usecase-satellite.jpg" alt="Satellite use case after a run" width="420"><br>Satellite, Downlink tab</td>
 </tr>
 <tr>

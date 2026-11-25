@@ -1,0 +1,1109 @@
+{
+ "_generated_by": "scripts/export_privacy_audits.py from docs/measurements; do not edit by hand",
+ "fprs": [
+  0.001,
+  0.01,
+  0.1
+ ],
+ "sources": {
+  "mia-breastmnist-pipeline-2026-11-23.json": "2f8847e25b8d8fbb1fe3992245ccdf5b67a35e5a68674680d841527d371dd34a",
+  "mia-breastmnist-students-2026-11-23.json": "79d05443f1e2b29782ce4548b4a4e1084d259f67201fd1982789bbcb352b9765",
+  "mia-nodule3d-pipeline-2026-11-25.json": "05f8f35f3fd946d62f299452607ddd42e785931fb3cc0e9ed2255362e7867f26",
+  "mia-nodule3d-students-2026-11-25.json": "42c1c0b5a01e9a0d63dd85b95f0797be3e181902afa48ffe0724591e7f25577d",
+  "mia-fedheart-2026-11-23.json": "b2f322e3db537dae62a37b9152a6194efc4fff07fdf0c75d93ddca63db06fdb1",
+  "mia-opssat-2026-11-23.json": "526d65125abfd19e4311cbe7639d70886b32f99f3c69f35bba381e109b733c02",
+  "mia-telecom-qml-2026-11-23.json": "a94eab067aee495c96b22e265aaa9ed10abfd96cefe3c05fc501659ea52baf66",
+  "dp-one-run-audit-2026-11-23.json": "279d2deeadfe3354fc70484e6c472349e17fd75ea29f5bdc7d0fd3830e0eab4a",
+  "dp-kcandidate-audit-2026-11-24.json": "bbb2d2eaeafb011c3ca700f8b54d86e30f813446e6e59f6ccc0a36adc934b5dc",
+  "reconstruction-opssat-student-2026-11-23.json": "24f9f3eb168839027ad4948238b7d127a7e063a2c37c0ae66cc9ab3a683663b8",
+  "reconstruction-telecom-student-2026-11-24.json": "6b6a74bfccb6f7cc9ea079e0b73470faf9ad44ac6af8531e7467a15d3d54a8d3",
+  "reconstruction-finance-student-2026-11-24.json": "dd5fad6aff94156269890843bd866679cfc19acc66264ab85d05466565cf8fd5",
+  "reconstruction-fedheart-2026-11-24.json": "5810d4537bffa5973d09ea92e1af5f9bc7ab14727e2337041ac39a457d6d61b2",
+  "attribute-inference-fedheart-2026-11-23.json": "077c20d35db50877ac38e50a5c4b721eeeced805a64f0890bbcf039ef057f61c",
+  "gradient-inversion-cxr-2026-11-23.json": "3aa16f56cfd05f8dbc870e98c2bf9ebfabab32d928312e98250584aeb15f07da"
+ },
+ "membership": [
+  {
+   "file": "mia-breastmnist-pipeline-2026-11-23.json",
+   "use_case": "Medical",
+   "title": "BreastMNIST, the whole pipeline",
+   "unit": "an ultrasound image",
+   "data": "MedMNIST v2 BreastMNIST at 28 px, train and test splits (CC BY 4.0 as MedMNIST states it; the BUSI authors publish no licence; DATA_LICENSES.md); the val split selects every model's epoch, as in training",
+   "shadow_models": 64,
+   "audit_records": 562,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "teacher",
+     "label": "ResNet-18 teacher",
+     "description": "medical_fl.resnet18's recipe, retrained on each shadow's members (random init, 60 epochs at most, AUC selection on val)",
+     "lira": {
+      "auc": 0.7702,
+      "tpr": [
+       0.0872,
+       0.181,
+       0.4094
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.6918,
+      "tpr": [
+       null,
+       0.1036,
+       0.2716
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0052 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 44,
+     "audit_records": 562
+    },
+    {
+     "key": "student",
+     "label": "CNN student",
+     "description": "medical_fl.student's recipe, distilled from that shadow's teacher, the net-benefit cut folded into the head",
+     "lira": {
+      "auc": 0.5938,
+      "tpr": [
+       0.0047,
+       0.0324,
+       0.174
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5947,
+      "tpr": [
+       null,
+       0.0284,
+       0.1691
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0083 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 1,
+     "audit_records": 562
+    },
+    {
+     "key": "square_student",
+     "label": "square-activation student",
+     "description": "medical_fl.square_student's recipe, distilled from that shadow's teacher",
+     "lira": {
+      "auc": 0.6186,
+      "tpr": [
+       0.0036,
+       0.0286,
+       0.1898
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.6286,
+      "tpr": [
+       null,
+       0.033,
+       0.1879
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0095 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 2,
+     "audit_records": 562
+    }
+   ]
+  },
+  {
+   "file": "mia-breastmnist-students-2026-11-23.json",
+   "use_case": "Medical",
+   "title": "BreastMNIST students, the teacher held fixed",
+   "unit": "an ultrasound image",
+   "data": "MedMNIST v2 BreastMNIST at 28 px, train and test splits (CC BY 4.0 as MedMNIST states it; the BUSI authors publish no licence; DATA_LICENSES.md), downsampled to 14 px as the students see them; the val split selects each student's epoch, as in training",
+   "shadow_models": 64,
+   "audit_records": 562,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "student",
+     "label": "CNN student",
+     "description": "medical_fl.student: conv 1->4, ReLU, avg-pool, dense 196->16, ReLU, dense 16->2, the net-benefit cut folded into the head",
+     "lira": {
+      "auc": 0.6105,
+      "tpr": [
+       0.0027,
+       0.034,
+       0.1813
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.6119,
+      "tpr": [
+       null,
+       null,
+       0.1813
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0106 of non-members tie at the top score",
+       "fpr 0.01: 0.0106 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 562
+    },
+    {
+     "key": "square_student",
+     "label": "square-activation student",
+     "description": "medical_fl.square_student: conv 1->4, batch norm, x^2, avg-pool, dense 196->2",
+     "lira": {
+      "auc": 0.6171,
+      "tpr": [
+       0.0043,
+       0.0293,
+       0.1888
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.6307,
+      "tpr": [
+       null,
+       null,
+       0.1929
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0102 of non-members tie at the top score",
+       "fpr 0.01: 0.0102 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 2,
+     "audit_records": 562
+    }
+   ]
+  },
+  {
+   "file": "mia-nodule3d-pipeline-2026-11-25.json",
+   "use_case": "Medical",
+   "title": "LIDC-IDRI 3D nodules, the whole pipeline",
+   "unit": "a nodule's 28 mm crop, members drawn by patient",
+   "data": "LIDC-IDRI (TCIA, CC BY 3.0): the 1,178 labelled 28 mm crops of the 518 training patients of docs/measurements/medical-nodule3d-split.json; the validation part selects every model's epoch, as in training; the test part is not touched",
+   "shadow_models": 64,
+   "audit_records": 956,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "control",
+     "label": "ReLU control",
+     "description": "the control arm: conv 1->4 (3x3x3), batch norm, ReLU, avg-pool 2, dense 4*14^3 -> 2",
+     "lira": {
+      "auc": 0.515,
+      "tpr": [
+       0.0015,
+       0.013,
+       0.1147
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5195,
+      "tpr": [
+       null,
+       0.0093,
+       0.1151
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0065 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 956
+    },
+    {
+     "key": "square",
+     "label": "3D square student",
+     "description": "the shipped arm: conv 1->4 (3x3x3), batch norm, x^2, avg-pool 2, dense 4*14^3 -> 2",
+     "lira": {
+      "auc": 0.5144,
+      "tpr": [
+       0.0017,
+       0.0133,
+       0.1126
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5239,
+      "tpr": [
+       null,
+       0.0082,
+       0.1213
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0055 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 956
+    }
+   ]
+  },
+  {
+   "file": "mia-nodule3d-students-2026-11-25.json",
+   "use_case": "Medical",
+   "title": "LIDC-IDRI 3D nodule students, the teacher held fixed",
+   "unit": "a nodule's 28 mm crop, members drawn by patient",
+   "data": "LIDC-IDRI (TCIA, CC BY 3.0): the 1,178 labelled 28 mm crops of the 518 training patients of docs/measurements/medical-nodule3d-split.json; the validation part selects every model's epoch, as in training; the test part is not touched",
+   "shadow_models": 64,
+   "audit_records": 956,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "control",
+     "label": "ReLU control",
+     "description": "the control arm: conv 1->4 (3x3x3), batch norm, ReLU, avg-pool 2, dense 4*14^3 -> 2",
+     "lira": {
+      "auc": 0.5512,
+      "tpr": [
+       0.0048,
+       0.0237,
+       0.1385
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5168,
+      "tpr": [
+       null,
+       0.0092,
+       0.1143
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0056 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 1,
+     "audit_records": 956
+    },
+    {
+     "key": "square",
+     "label": "3D square student",
+     "description": "the shipped arm: conv 1->4 (3x3x3), batch norm, x^2, avg-pool 2, dense 4*14^3 -> 2",
+     "lira": {
+      "auc": 0.5442,
+      "tpr": [
+       0.0041,
+       0.0174,
+       0.1312
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5218,
+      "tpr": [
+       null,
+       0.0096,
+       0.1168
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0062 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 956
+    }
+   ]
+  },
+  {
+   "file": "mia-fedheart-2026-11-23.json",
+   "use_case": "Medical",
+   "title": "The heart federation (four hospitals)",
+   "unit": "a patient's record",
+   "data": "UCI Heart Disease: four hospitals, as FLamby's Fed-Heart-Disease prepares them: UCI Heart Disease's four hospitals as FLamby prepares them (CC-BY-4.0), train and test rows pooled within each hospital, 740 rows",
+   "shadow_models": 64,
+   "audit_records": 592,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "federated",
+     "label": "FedAvg",
+     "description": "the page's FedAvg: 15 rounds of 100 local SGD steps at lr 0.001, the secure sum's ring",
+     "lira": {
+      "auc": 0.5042,
+      "tpr": [
+       0.0021,
+       0.0122,
+       0.1022
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5115,
+      "tpr": [
+       null,
+       0.0067,
+       0.1022
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0056 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 592
+    },
+    {
+     "key": "pooled",
+     "label": "pooled, one model on all rows",
+     "description": "the four hospitals' rows together, Adam (lr 0.001, batches of 4, 50 epochs)",
+     "lira": {
+      "auc": 0.5413,
+      "tpr": [
+       0.0036,
+       0.0199,
+       0.1315
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5282,
+      "tpr": [
+       null,
+       0.0079,
+       0.1093
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0059 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 592
+    },
+    {
+     "key": "dp_clip_only",
+     "label": "record-level DP, clipping only",
+     "description": "record-level DP federation, 50 rounds of full-batch descent, clipping at 1, no noise",
+     "lira": {
+      "auc": 0.5481,
+      "tpr": [
+       0.0011,
+       0.0146,
+       0.1278
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5379,
+      "tpr": [
+       null,
+       0.0102,
+       0.1255
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0072 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 592
+    },
+    {
+     "key": "dp_epsilon_8",
+     "label": "record-level DP, epsilon 8",
+     "description": "the same with the page's discrete Gaussian noise for epsilon 8, delta 1e-6",
+     "lira": {
+      "auc": 0.5444,
+      "tpr": [
+       0.0006,
+       0.0136,
+       0.1271
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5365,
+      "tpr": [
+       null,
+       0.0092,
+       0.1255
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0053 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 592
+    },
+    {
+     "key": "dp_epsilon_1",
+     "label": "record-level DP, epsilon 1",
+     "description": "the same for epsilon 1",
+     "lira": {
+      "auc": 0.507,
+      "tpr": [
+       0.0008,
+       0.0116,
+       0.0977
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5194,
+      "tpr": [
+       null,
+       0.0083,
+       0.1075
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0058 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 0,
+     "audit_records": 592
+    }
+   ]
+  },
+  {
+   "file": "mia-opssat-2026-11-23.json",
+   "use_case": "Satellite",
+   "title": "OPS-SAT-AD anomaly detection",
+   "unit": "a telemetry segment",
+   "data": "OPS-SAT-AD, train and test partitions (CC BY 4.0, Zenodo 12588359)",
+   "shadow_models": 64,
+   "audit_records": 1698,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "teacher",
+     "label": "gradient-boosted teacher",
+     "description": "satellite_comms.opssat: HistGradientBoostingClassifier, the trainer's settings",
+     "lira": {
+      "auc": 0.5825,
+      "tpr": [
+       0.0255,
+       0.0562,
+       0.1729
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5995,
+      "tpr": [
+       null,
+       0.0538,
+       0.1822
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0020 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 44,
+     "audit_records": 1698
+    },
+    {
+     "key": "student",
+     "label": "CKKS student",
+     "description": "satellite_comms.opssat_student: soft logistic on the degree-2 expansion",
+     "lira": {
+      "auc": 0.5317,
+      "tpr": [
+       0.003,
+       0.0218,
+       0.1266
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.5252,
+      "tpr": [
+       null,
+       0.0181,
+       0.1173
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0017 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 4,
+     "audit_records": 1698
+    }
+   ]
+  },
+  {
+   "file": "mia-telecom-qml-2026-11-23.json",
+   "use_case": "Telecom",
+   "title": "The QKD-attack classifier (generated rows)",
+   "unit": "a generated row",
+   "data": "QKD-attack telemetry this repository generates (qsh.qml_ids.attacks, 8 classes x 300, seed 42; Apache-2.0)",
+   "shadow_models": 64,
+   "audit_records": 1920,
+   "membership": "complementary pairs: each record a member of exactly half the models",
+   "models": [
+    {
+     "key": "forest",
+     "label": "random forest",
+     "description": "telecom_ids.qml: RandomForestClassifier(n_estimators=200), the trainer's settings",
+     "lira": {
+      "auc": 0.7045,
+      "tpr": [
+       0.0061,
+       0.0502,
+       0.1806
+      ],
+      "not_resolvable": []
+     },
+     "rmia": {
+      "auc": 0.8671,
+      "tpr": [
+       null,
+       0.2264,
+       0.5822
+      ],
+      "not_resolvable": [
+       "fpr 0.001: 0.0024 of non-members tie at the top score"
+      ]
+     },
+     "exposed": 7,
+     "audit_records": 1920
+    }
+   ]
+  }
+ ],
+ "dp_one_run": {
+  "file": "dp-one-run-audit-2026-11-23.json",
+  "method": "Steinke, Nasr and Jagielski, Privacy Auditing with One (1) Training Run, NeurIPS 2023 (arXiv:2305.08846): Corollary 5.4 and Appendix D, implemented here",
+  "confidence": 0.95,
+  "arms": [
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 8",
+    "accounted": 8.0,
+    "lower_bound": 2.9951,
+    "canaries": 14000,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 4",
+    "accounted": 4.0,
+    "lower_bound": 1.7629,
+    "canaries": 14000,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 2",
+    "accounted": 2.0,
+    "lower_bound": 0.7418,
+    "canaries": 14000,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 1",
+    "accounted": 1.0,
+    "lower_bound": 0.3789,
+    "canaries": 14000,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "bug: a sixteenth of the variance",
+    "accounted": 1.0,
+    "lower_bound": 2.2074,
+    "canaries": 14000,
+    "seeded_bug": true
+   },
+   {
+    "study": "Murmur study, DP-SGD",
+    "arm": "noise multiplier 1.89138",
+    "accounted": 5.6644,
+    "lower_bound": 1.9764,
+    "canaries": 5160,
+    "seeded_bug": false
+   },
+   {
+    "study": "Murmur study, DP-SGD",
+    "arm": "noise multiplier 3.45294",
+    "accounted": 2.6083,
+    "lower_bound": 1.115,
+    "canaries": 5160,
+    "seeded_bug": false
+   },
+   {
+    "study": "Murmur study, DP-SGD",
+    "arm": "bug: every person, every step",
+    "accounted": 5.6644,
+    "lower_bound": 6.1727,
+    "canaries": 5160,
+    "seeded_bug": true
+   }
+  ]
+ },
+ "dp_kcandidate": {
+  "file": "dp-kcandidate-audit-2026-11-24.json",
+  "method": "Mahloujifar, Melis and Chaudhuri, Auditing f-Differential Privacy in One Run, ICML 2025 (arXiv:2410.22235): Theorem 3.1 and Algorithm 3 as the appendix's audit_rh_with_cap, reimplemented; mu-GDP hypotheses",
+  "bound": "Kulynych et al., NeurIPS 2025 (arXiv:2507.06969), Theorem 3.1: success <= 1 - f(1/k), f from riskcal (zCDP for the heart federation, 4 rho for a swap; the PLD of the Poisson-subsampled Gaussian for the murmur study)",
+  "riskcal": "1.5.1",
+  "rows": [
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 8",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 14000,
+    "mu_lower_bound": 0.974,
+    "mu_accounted": 1.4508,
+    "epsilon_lower_bound": 4.7423,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.770357,
+    "interval_95": [
+     0.763298,
+     0.777303
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.963054,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 8",
+    "game": "swap, k = 7",
+    "k": 7,
+    "slots": 2000,
+    "mu_lower_bound": 0.965,
+    "mu_accounted": 2.9015,
+    "epsilon_lower_bound": 4.6926,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.589,
+    "interval_95": [
+     0.567069,
+     0.610669
+    ],
+    "baseline": 0.142857,
+    "reconstruction_bound": 0.995432,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 4",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 14000,
+    "mu_lower_bound": 0.442,
+    "mu_accounted": 0.7888,
+    "epsilon_lower_bound": 1.9691,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.650643,
+    "interval_95": [
+     0.642679,
+     0.658544
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.837238,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 4",
+    "game": "swap, k = 7",
+    "k": 7,
+    "slots": 2000,
+    "mu_lower_bound": 0.512,
+    "mu_accounted": 1.5775,
+    "epsilon_lower_bound": 2.3136,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.3285,
+    "interval_95": [
+     0.30793,
+     0.349574
+    ],
+    "baseline": 0.142857,
+    "reconstruction_bound": 0.847105,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 2",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 14000,
+    "mu_lower_bound": 0.243,
+    "mu_accounted": 0.4199,
+    "epsilon_lower_bound": 1.0287,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.586929,
+    "interval_95": [
+     0.578719,
+     0.595102
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.700354,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 2",
+    "game": "swap, k = 7",
+    "k": 7,
+    "slots": 2000,
+    "mu_lower_bound": 0.245,
+    "mu_accounted": 0.8398,
+    "epsilon_lower_bound": 1.0378,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.247,
+    "interval_95": [
+     0.228231,
+     0.266513
+    ],
+    "baseline": 0.142857,
+    "reconstruction_bound": 0.491125,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 1",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 14000,
+    "mu_lower_bound": 0.127,
+    "mu_accounted": 0.2207,
+    "epsilon_lower_bound": 0.5125,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.539929,
+    "interval_95": [
+     0.531629,
+     0.548211
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.608916,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "epsilon 1",
+    "game": "swap, k = 7",
+    "k": 7,
+    "slots": 2000,
+    "mu_lower_bound": 0.11,
+    "mu_accounted": 0.4414,
+    "epsilon_lower_bound": 0.4394,
+    "epsilon_accounted": null,
+    "under_the_accountant": true,
+    "accuracy": 0.2005,
+    "interval_95": [
+     0.183152,
+     0.21873
+    ],
+    "baseline": 0.142857,
+    "reconstruction_bound": 0.300161,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Heart federation, record-level DP",
+    "arm": "bug: a sixteenth of the variance",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 14000,
+    "mu_lower_bound": 0.585,
+    "mu_accounted": 0.2207,
+    "epsilon_lower_bound": 2.6798,
+    "epsilon_accounted": null,
+    "under_the_accountant": false,
+    "accuracy": 0.661714,
+    "interval_95": [
+     0.653808,
+     0.669553
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.608916,
+    "within_the_bound": false,
+    "seeded_bug": true
+   },
+   {
+    "study": "Murmur study, DP-SGD",
+    "arm": "noise multiplier 1.89138",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 5160,
+    "mu_lower_bound": 0.67,
+    "mu_accounted": null,
+    "epsilon_lower_bound": 2.769,
+    "epsilon_accounted": 5.6644,
+    "under_the_accountant": true,
+    "accuracy": 0.691279,
+    "interval_95": [
+     0.678472,
+     0.70387
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.859504,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Murmur study, DP-SGD",
+    "arm": "noise multiplier 3.45294",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 5160,
+    "mu_lower_bound": 0.304,
+    "mu_accounted": null,
+    "epsilon_lower_bound": 1.1484,
+    "epsilon_accounted": 2.6083,
+    "under_the_accountant": true,
+    "accuracy": 0.601744,
+    "interval_95": [
+     0.588236,
+     0.615137
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.715557,
+    "within_the_bound": true,
+    "seeded_bug": false
+   },
+   {
+    "study": "Murmur study, DP-SGD",
+    "arm": "bug: every person, every step",
+    "game": "add or remove, k = 2",
+    "k": 2,
+    "slots": 5160,
+    "mu_lower_bound": 1.853,
+    "mu_accounted": null,
+    "epsilon_lower_bound": 9.1036,
+    "epsilon_accounted": 5.6644,
+    "under_the_accountant": false,
+    "accuracy": 0.993798,
+    "interval_95": [
+     0.991256,
+     0.995754
+    ],
+    "baseline": 0.5,
+    "reconstruction_bound": 0.859504,
+    "within_the_bound": false,
+    "seeded_bug": true
+   }
+  ]
+ },
+ "reconstruction": [
+  {
+   "file": "reconstruction-opssat-student-2026-11-23.json",
+   "use_case": "Satellite",
+   "title": "OPS-SAT-AD CKKS student",
+   "records": 1594,
+   "routes": [
+    {
+     "label": "from the published preprocessing mean",
+     "median_relative_error": 7.13596873785859e-05,
+     "share_within": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "label": "from the weights, as the trainer's solver left them",
+     "median_relative_error": 0.5996974725089099,
+     "share_within": [
+      0.0,
+      0.0,
+      0.0226
+     ]
+    },
+    {
+     "label": "from the weights, solved to the optimum",
+     "median_relative_error": 0.0015409021735668358,
+     "share_within": [
+      0.3814,
+      0.894,
+      0.9893
+     ]
+    }
+   ]
+  },
+  {
+   "file": "reconstruction-telecom-student-2026-11-24.json",
+   "use_case": "Telecom",
+   "title": "the QKD-attack CKKS student (generated rows)",
+   "records": 1800,
+   "routes": [
+    {
+     "label": "from the published preprocessing mean",
+     "median_relative_error": 0.00046340480897808173,
+     "share_within": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "label": "from the weights, as the trainer's solver left them",
+     "median_relative_error": 0.24689260131302726,
+     "share_within": [
+      0.0,
+      0.0,
+      0.0839
+     ]
+    },
+    {
+     "label": "from the weights, solved to the optimum",
+     "median_relative_error": 6.429010513917213e-05,
+     "share_within": [
+      0.8739,
+      0.9794,
+      0.9961
+     ]
+    }
+   ]
+  },
+  {
+   "file": "reconstruction-finance-student-2026-11-24.json",
+   "use_case": "Finance",
+   "title": "the AML CKKS student (synthetic transactions)",
+   "records": 2843872,
+   "routes": [
+    {
+     "label": "from the published preprocessing mean",
+     "median_relative_error": 1.8487813950842844e-06,
+     "share_within": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   ]
+  },
+  {
+   "file": "reconstruction-fedheart-2026-11-24.json",
+   "use_case": "Medical",
+   "title": "the heart federation's models",
+   "records": 486,
+   "routes": [
+    {
+     "label": "from each hospital's published mean",
+     "median_relative_error": 4.878979936785129e-06,
+     "share_within": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    },
+    {
+     "label": "from the pooled model, as the page trains it",
+     "median_relative_error": 0.2439359407006932,
+     "share_within": [
+      0.0,
+      0.0,
+      0.1337
+     ]
+    },
+    {
+     "label": "from the FedAvg model, as the page trains it",
+     "median_relative_error": 0.5652402009161358,
+     "share_within": [
+      0.0,
+      0.0,
+      0.0
+     ]
+    },
+    {
+     "label": "from the pooled model, solved to the optimum",
+     "median_relative_error": 3.6322960914635577e-07,
+     "share_within": [
+      1.0,
+      1.0,
+      1.0
+     ]
+    }
+   ]
+  }
+ ],
+ "attribute_inference": {
+  "file": "attribute-inference-fedheart-2026-11-23.json",
+  "attribute": "sex (UCI: 1 male, 0 female), read back from the standardised column with each hospital's published mean and deviation",
+  "rows": [
+   {
+    "model": "federated",
+    "attack": "model inversion (Fredrikson et al.)",
+    "members": 0.7572,
+    "non_members": 0.7795
+   },
+   {
+    "model": "federated",
+    "attack": "loss attack (Yeom et al.)",
+    "members": 0.3539,
+    "non_members": 0.3819
+   },
+   {
+    "model": "federated",
+    "attack": "imputation from the diagnosis alone",
+    "members": 0.7572,
+    "non_members": 0.7795
+   },
+   {
+    "model": "federated",
+    "attack": "imputation from every other feature, no model",
+    "members": 0.7675,
+    "non_members": 0.7795
+   },
+   {
+    "model": "pooled",
+    "attack": "model inversion (Fredrikson et al.)",
+    "members": 0.7551,
+    "non_members": 0.7717
+   },
+   {
+    "model": "pooled",
+    "attack": "loss attack (Yeom et al.)",
+    "members": 0.6461,
+    "non_members": 0.6181
+   },
+   {
+    "model": "pooled",
+    "attack": "imputation from the diagnosis alone",
+    "members": 0.7572,
+    "non_members": 0.7795
+   },
+   {
+    "model": "pooled",
+    "attack": "imputation from every other feature, no model",
+    "members": 0.7675,
+    "non_members": 0.7795
+   }
+  ]
+ },
+ "gradient_inversion": {
+  "file": "gradient-inversion-cxr-2026-11-23.json",
+  "rows": [
+   {
+    "setting": "4 films, 4 gradients",
+    "ssim_median": 0.2151,
+    "flat_grey_ssim_median": 0.3911,
+    "nearest_other_film_ssim_median": 0.4441,
+    "films_closer_to_themselves": 0
+   },
+   {
+    "setting": "4 films, 1 gradient",
+    "ssim_median": 0.17,
+    "flat_grey_ssim_median": 0.3911,
+    "nearest_other_film_ssim_median": 0.4441,
+    "films_closer_to_themselves": 0
+   }
+  ]
+ }
+}

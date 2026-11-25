@@ -136,6 +136,15 @@ _RETIRED = [
     # Round 70: the browser's OptiQKD runs coordinate ascent over the analytic decoy-state model;
     # scikit-learn is the full deployment's surrogate.
     ("OptiQKD</b> (scikit-learn surrogate", "the browser optimises the analytic decoy-state model"),
+    # Round 86 (batch 4): telecom's student takes its class by a garbled-circuit argmax on the shares of its masked
+    # scores since round86-batch3, and the deployed walk of 2026-11-24 found these still saying it runs no 2PC.
+    ("Telecom and satellite run a CKKS check of a student and no 2PC", "telecom's argmax runs in a garbled circuit"),
+    ("telecom and satellite each run a CKKS check of a student and no MPC", "telecom's argmax runs in a garbled circuit"),
+    ("telecom and satellite run a CKKS check of a published student and no 2PC", "telecom's argmax runs in a garbled circuit"),
+    ("the telecom and satellite pages run a CKKS check of each published student they carry and no garbled circuit",
+     "telecom's argmax runs in a garbled circuit"),
+    ('u.id === "telecom_ids" || u.id === "satellite_comms" ? "CKKS check of the student"',
+     "the Use Cases table's telecom cell; telecom's argmax runs in a garbled circuit"),
 ]
 
 

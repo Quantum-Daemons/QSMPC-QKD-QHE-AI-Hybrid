@@ -141,8 +141,8 @@ The web image builds `/walkthrough/` in its own stage, with `scripts/build_walkt
 ### On an origin of its own (`QSH_WALKTHROUGH_ORIGIN`)
 
 The walkthrough runs under a looser policy than the app (inline scripts, `'unsafe-eval'`). Set
-`QSH_WALKTHROUGH_ORIGIN` to an origin of its own, scheme, host and optional port with no path (the demo uses
-`https://qsh.walkthrough.daemons.jp`), and the container splits the two:
+`QSH_WALKTHROUGH_ORIGIN` to an origin of its own, scheme, host and optional port with no path (the demo uses a
+second name for the same box, not recorded here), and the container splits the two:
 
 - a request for that host and port gets the walkthrough at its root, and nothing of the app (an app page there is a 404);
 - `/walkthrough/<rest>` on any other host answers 301 to `<origin>/<rest>`, query kept, under the app's policy, so the

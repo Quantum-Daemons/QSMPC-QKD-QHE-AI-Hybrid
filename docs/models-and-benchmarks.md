@@ -97,6 +97,16 @@ Against the published figures on this corpus: on HI-Small the Graph Feature Prep
 
 The pages show each network's logits and its decision, not a probability. Trained with class weights towards soft targets, the networks' raw probabilities are not risks: their Brier scores on test, 0.00177 for the MLP and 0.00181 for the GNN, are worse than giving every row the window's rate (0.00152). Each record carries a Platt map fitted on validation, as the teacher's and the student's do, and on the two networks it brings CORP's miscalibration term down 13- and 20-fold, to $`7.4 \times 10^{-5}`$ for the MLP and $`5.3 \times 10^{-5}`$ for the GNN. By CORP's discrimination term the GNN (0.000783) leads the teacher (0.000763) and the MLP (0.000741).
 
+IBM's own Multi-PNA+EU (`finance_aml.gnn`) carried no such map until batch 4 (2026-11-25):
+`docs/measurements/finance-gnn-calibration-2026-11-25.json` (`scripts/measure_finance_gnn_calibration.py`) reads the
+probabilities its record was scored from, each seed's test AUPRC, rows and positives checked against the record, and
+fits the same Platt map on validation. On the published seed, 4, its raw probabilities are overconfident in every bin
+above 0.1 (in the 0.1 to 0.2 bin the mean prediction is 0.135 and the observed rate 0.024), with an expected calibration
+error of $`2.5 \times 10^{-3}`$ over fifteen equal-mass bins; the map brings it to $`1.3 \times 10^{-4}`$ and CORP's
+miscalibration term from $`2.2 \times 10^{-4}`$ to $`9.9 \times 10^{-6}`$, with the discrimination term unchanged, as a
+monotone map must leave it. The other four seeds move the same way. The record holds each seed's ten-bin reliability
+table with a Wilson interval per bin; the model's own record and its Hub card are unchanged.
+
 ### The trained QCNN under CKKS
 
 Finance, medical and telecom offer `QCNN (trained, under CKKS)` beside the plaintext `QCNN (trained, not encrypted)`. The readout is exactly $`\langle O\rangle = \sum_P c_P\,\phi_P(x)`$ over $`P \in \{I, X, Z\}^{\otimes n}`$, because the encoding is a product of real states ($`\phi_I = 1`$, $`\phi_X = \sin\theta`$, $`\phi_Z = \cos\theta`$ per wire, $`c_P = 2^{-n}\operatorname{Tr}(AP)`$ with $`A`$ the real part of $`U^\dagger O U`$ on the encoded basis states). So the client encrypts $`3^n`$ products and the server takes one inner product per readout: one multiplicative level at the frozen parameters, power-of-two rotation keys only, no relinearisation key.
@@ -110,6 +120,8 @@ Measured in Node on the shipped weights (`npm run check:qcnn-ckks`, the module t
 | Medical (8 wires) | accuracy | 0.9535 | 0.9535 | 0.9419 |
 | Finance (4 wires) | minority-class F1 | 0.2286 | 0.4390 | 0.4889 |
 | Telecom (8 wires) | macro F1 | 0.9444 | 0.9764 | 0.9723 |
+
+**The satellite circuits** (Round 86, pre-registered in `references/satellite-qcnn-tn-preregistration.md`; `docs/measurements/satellite-qcnn-2026-11-24.json`) are scored on the benchmarks' own splits by average precision, five seeds each. OPS-SAT-AD, eight of nineteen features: QCNN 0.931 $`\pm`$ 0.003, logistic regression on the same inputs 0.881, the same estimator on the circuit's 6,561 products 0.943. ESA-ADB Mission1, 64-step windows of channels 41-46: 0.864 $`\pm`$ 0.006, 0.857 and 0.892. The surrogate leads on both, as on the other pages. Their tree network also runs under CKKS one row a slot (`clientQcnnTreeCkks.ts`; N = 16384, 360 bits): on all 115,064 ESA-ADB test windows the largest readout error was $`8.5 \times 10^{-8}`$ with no decision changed, at 0.28 ms and 3.8 kB a row on node, against 164 ms and 787 kB a row for the per-row form above (`docs/measurements/satellite-qcnn-tree-ckks-2026-11-24.json`).
 
 The classical comparators are level or ahead on all three, which matches Bowles, Ahmed and Schuld (arXiv:2403.07059). Nothing here claims a quantum advantage. The circuit diagram on each of those pages (`Quantum circuits on this page`) is drawn from a recording of the circuit function, and the gates it draws are replayed against the simulator in the same check.
 
@@ -404,8 +416,8 @@ probability read as a risk, negative from $`t \approx 0.015`$, is why the map is
 #### Which pages encrypt
 
 In the browser, the finance, medical, genomics and DeFi lending pages run node-seal CKKS and Polytune
-garbled circuits between notional parties in one tab, and on request the medical, genomics and lending pages run Lattigo's threshold CKKS or BGV, compiled to WebAssembly; the telecom and satellite pages run a CKKS check of each
-published student they carry and no garbled circuit. The satellite page's anomaly verdict and SHAP explanation are a separate demo regression,
+garbled circuits between notional parties in one tab, and on request the medical, genomics and lending pages run Lattigo's threshold CKKS or BGV, compiled to WebAssembly; the telecom page runs its
+student under CKKS on one held-out row with its argmax in a garbled circuit, on the shares of the masked scores, and both the telecom and satellite pages run a CKKS check of each published student they carry, with no garbled circuit in that check. The satellite page's anomaly verdict and SHAP explanation are a separate demo regression,
 computed in plaintext on a bundled OPS-SAT-AD segment; its check scores `satellite_comms.opssat_student` on the benchmark's
 529 test-partition segments, through the quadratic expansion and the scaler its ONNX graph applies, and the forecaster's student, `satellite_comms.student`, is re-scored under CKKS on its whole published stretch, 8,640 forecasts. The full deployment scores one of those
 segments, with the same demo regression, under CKKS (TenSEAL), and reports how far the decrypted
@@ -444,6 +456,66 @@ Both offered sets are within the HomomorphicEncryption.org standard's 128-bit po
 the depth-3 chain has no level left for the 0/1 mask `clientFHE.ts` uses. At its argmax, the pre-registered operating
 point, it flags 66 of the 156 test images malignant (recall 0.738, specificity 0.693; accuracy 0.705, below the 0.731
 of always answering benign). `tests/test_r86_square_student_ckks_in_node.py` runs the module under the real node-seal.
+
+#### The 3D nodule student
+
+The same design in three dimensions (Round 86, batch 4, on the owner's choices of 2026-11-24), on LIDC-IDRI chest CT
+from TCIA (CC BY 3.0): one 3 x 3 x 3 convolution with four filters, batch norm folded, $`x^2`$, a 2 x 2 x 2 average
+pool and a dense layer from $`4 \cdot 14^3`$ to two logits, on a 28 mm cube at 1 mm around a nodule. Pre-registered
+before any image was fetched (`references/medical-nodule3d-square-student-preregistration.md`), with an addendum before
+any model was trained (how the scans were fetched and verified, the training patients fetched a second time after a
+naming bug, and the rule that picks the page's twelve test crops). Every file was checked against TCIA's MD5 and every
+series against its image count (`docs/measurements/lidc-stream-2026-11-24.json`); the split is by patient
+(1,178 labelled training nodules of 518 patients, 170 validation, 347 test). Record:
+`docs/measurements/medical-nodule3d-square-student.json`.
+
+| teacher candidate, out of fold over the training patients | AUC |
+|---|---|
+| 3D ResNet-18 from scratch (taught: the best of the three) | 0.874 |
+| TotalSegmentator's nodule volume, a one-feature logistic regression | 0.786 |
+| CT-FM's linear probe on its features averaged over a 64 mm cube | 0.641 |
+
+| | test AUC, five seeds | exported seed |
+|---|---|---|
+| 3D square student | $`0.907 \pm 0.009`$ | 0.893 (95 % interval 0.848 to 0.933 over test patients) |
+| the same network with ReLU (control) | $`0.882 \pm 0.027`$ | - |
+
+| parameter set | $`N`$ | modulus bits | largest logit error, 347 test crops | decisions changed | median time a crop | bytes up, back |
+|---|---|---|---|---|---|---|
+| A2 | 8,192 | 48+34+34+34+52 (202) | $`3.2 \times 10^{-5}`$ | 0 | 1.7 s | 85.0 MB, 262 kB |
+| B | 16,384 | 60+40+40+40+60 (240) | $`1.6 \times 10^{-5}`$ | 0 | 2.2 s | 84.9 MB, 525 kB |
+
+All three pre-registered criteria are met. The exported seed is the best on validation, the rule fixed before any run,
+and the lowest of the five on test. CT-FM's probe is reported as measured: its features are averaged over the whole
+cube, of which the nodule is a small part, and the pre-registered probe was not tuned after the fact. The card on the
+medical page (`Nodule3dCard.tsx`) draws one of twelve test crops as three planes with the exact contribution map and
+runs it under CKKS in a Web Worker; in the preview a crop took 1.9 s under A2 and 2.4 s under B, keys included.
+NoduleMNIST3D's official-split figures (ResNet-18 3D 0.863, ResNet-50 3D 0.875, auto-sklearn 0.914) are cited for
+context and not compared: that split shares scans across its parts and labels differently. Membership inference
+against these students is in `docs/measurements/mia-nodule3d-*.json`.
+
+#### A fully encrypted finance student, not adopted (F7)
+
+The finance page runs two private paths: the linear student, which CKKS evaluates alone (test AUPRC 0.184, minority-class
+F1 0.309), and the MLP, whose ReLUs run in garbled circuits (0.629 to 0.650 over its five seeds). Pre-registered before
+any training (`references/finance-square-student-preregistration.md`; the owner's choices of 2026-11-25: one hidden
+layer 128 wide, a ReLU control, every test row, the GPU), a network whose only non-linearity is a square, so that CKKS
+evaluates it end to end, was trained by the MLP's recipe on its windows and 114 inputs. Record:
+`docs/measurements/finance-square-student-2026-11-25.json`.
+
+| | test AUPRC, five seeds | criterion |
+|---|---|---|
+| square: dense 114 -> 128, batch norm folded, $`x^2`$, dense 128 -> 2 | $`0.500 \pm 0.019`$ | 1, accuracy: at least the control's mean minus 0.02 - **not met** |
+| control: the same network with a ReLU | $`0.549 \pm 0.017`$ | 2, no collapse: every square seed at least 0.15 and predicting both classes - met |
+
+So the candidate is not adopted and the page does not change. Reported as pre-registered: the exported square seed
+scores 0.521 (95 % interval 0.499 to 0.544 over test rows), and under CKKS, one row a slot, every one of the 1,523,504
+test rows decrypts within $`3.1 \times 10^{-6}`$ of the plaintext logits under A2 and $`1.1 \times 10^{-7}`$ under B with
+no decision changed (criterion 3 met), the largest plaintext logit 27.4 against A2's bound of $`2^{13}`$. A block of
+4,096 rows took 0.6 s to encrypt and 9.9 s to evaluate under A2, with ten node processes running at once, since
+node-seal's wasm is single-threaded. The square network is far ahead of the linear student it could replace in the
+fully encrypted path (0.500 against 0.184) and behind the same network with a ReLU; whether to pre-register it against
+the linear student instead is the owner's question, not a reading of this result.
 
 #### The PSI among banks under MPC
 

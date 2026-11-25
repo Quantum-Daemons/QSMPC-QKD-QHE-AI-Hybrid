@@ -719,7 +719,66 @@ def load(usecase: str):
                             "https://creativecommons.org/licenses/by-sa/4.0/. Credit: E. A. Lopez-Rojas, "
                             "A. Elmir and S. Axelsson, 'PaySim: A financial mobile money simulator for "
                             "fraud detection', EMSS 2016.")
+    if usecase == "satellite_opssat":
+        # references/satellite-qcnn-tn-preregistration.md, section A: eight of OPS-SAT-AD's nineteen features, each
+        # scored alone by |AUC - 0.5| on the benchmark's TRAINING partition only (ties by name). No test row is read.
+        import pandas as pd
+        from sklearn.metrics import roc_auc_score
+
+        from qsh.models import datasets
+        df = pd.read_csv(datasets.opssat_csv())
+        train = df["train"].to_numpy() == 1
+        y = df["anomaly"].to_numpy(int)
+        score = {f: abs(roc_auc_score(y[train], df.loc[train, f].to_numpy(float)) - 0.5) for f in datasets.OPSSAT_FEATURES}
+        cols = sorted(score, key=lambda f: (-score[f], f))[:8]
+        return df[cols].to_numpy(float), y, cols, (
+            "OPS-SAT-AD (Ruszczak, Kotowski, Evans and Nalepa; Zenodo 12588359, CC BY 4.0, "
+            "https://creativecommons.org/licenses/by/4.0/), real telemetry segments of the ESA OPS-SAT mission, the "
+            "benchmark's own train/test partition; eight of the nineteen features, chosen on the training partition "
+            "by |AUC - 0.5|: " + ", ".join(f"{f} {score[f]:.4f}" for f in cols) + ".")
+    if usecase == "satellite_esa":
+        # Section B: scripts/data/esa_qcnn_windows.py's windows (run it first).
+        from qsh.models import datasets
+        f = datasets.artifacts("esa_qcnn_windows_w64.npz")
+        if not f.exists():
+            raise SystemExit(f"{f} is missing: run scripts/data/esa_qcnn_windows.py first")
+        meta = json.loads(f.with_suffix(".json").read_text())
+        d = np.load(f)
+        return d["X"], d["y"].astype(int), list(meta["features"]), (
+            "ESA Anomalies Dataset, Mission1 (Kotowski et al., ESA-ADB; Zenodo 12528696, CC BY 3.0 IGO, "
+            "https://creativecommons.org/licenses/by/3.0/igo/), real telemetry of channels 41-46: 64-step windows of "
+            "the 30 s grid, positive when an Anomaly interval overlaps; eight features a window.")
     raise SystemExit(f"no loader for {usecase!r}")
+
+
+#: The corpora whose split is fixed by the data, not drawn by `shuffled_split`: OPS-SAT-AD's own partition and
+#: ESA-ADB's dates (references/satellite-qcnn-tn-preregistration.md). The validation rows and ESA's sampled fit
+#: negatives use seed 0 whatever `--seed` is, so the seeds vary the circuit's initial weights only.
+FIXED_SPLIT = ("satellite_opssat", "satellite_esa")
+
+
+def split_for(usecase: str, y: np.ndarray, seed: int) -> tuple[np.ndarray, int, int]:
+    """(order, fit cut, validation cut): rows `order[:cut]` fit, `order[cut:vcut]` validate, `order[vcut:]` test."""
+    if usecase not in FIXED_SPLIT:
+        return shuffled_split(len(y), seed)
+    if usecase == "satellite_opssat":
+        import pandas as pd
+        from sklearn.model_selection import train_test_split
+
+        from qsh.models import datasets
+        train = pd.read_csv(datasets.opssat_csv())["train"].to_numpy() == 1
+        tr_idx, te_idx = np.flatnonzero(train), np.flatnonzero(~train)
+        fit_idx, val_idx = train_test_split(tr_idx, test_size=0.15, stratify=y[tr_idx], random_state=0)
+        fit_idx, val_idx = np.sort(fit_idx), np.sort(val_idx)
+    else:
+        from qsh.models import datasets
+        part = np.load(datasets.artifacts("esa_qcnn_windows_w64.npz"))["part"]
+        pos = np.flatnonzero((part == 0) & (y == 1))
+        neg = np.flatnonzero((part == 0) & (y == 0))
+        take = np.random.default_rng(0).choice(neg, size=min(len(neg), 4 * len(pos)), replace=False)
+        fit_idx, val_idx, te_idx = np.sort(np.concatenate([pos, take])), np.flatnonzero(part == 1), np.flatnonzero(part == 2)
+    order = np.concatenate([fit_idx, val_idx, te_idx])
+    return order, len(fit_idx), len(fit_idx) + len(val_idx)
 
 
 #: What each circuit is, in the words an artifact ships with it (`circuit` in weights.json).
@@ -775,6 +834,10 @@ def main() -> int:
     #: file from an ablation run cannot be mistaken for a shipped one.
     ap.add_argument("--no-entangle", action="store_true",
                     help="drop the CNOT ring: identical parameters, no entanglement (ablation)")
+    #: Keep the last epoch's weights instead of the best validation score's: for ESA-ADB, whose validation months hold
+    #: two positive windows (references/satellite-qcnn-tn-preregistration.md, addendum 2), as ESA-ADB's own runs do.
+    ap.add_argument("--keep-last-epoch", action="store_true",
+                    help="ship the last epoch, not the best on validation")
     ap.add_argument("--arch", choices=ARCHS, default="tree",
                     help="tree: the 8-angle filter on disjoint pairs; hur-su4: Hur et al.'s SU(4) "
                          "block on every nearest-neighbour bond")
@@ -826,7 +889,7 @@ def main() -> int:
     # Both false leads shared a premise worth naming: they assumed the training ran on the CPU,
     # which nothing had checked.
     torch.set_num_threads(a.threads)
-    perm, cut, vcut = shuffled_split(len(y), a.seed)
+    perm, cut, vcut = split_for(a.usecase, y, a.seed)
     X, y = X[perm], y[perm]
     # THREE-WAY SPLIT. An earlier version selected the best epoch on the same rows it then reported,
     # which is test-set leakage and makes every published figure optimistic by construction. Epoch
@@ -868,7 +931,8 @@ def main() -> int:
     # Either way the encoding is RY(c*tanh(z)*pi): bounded, smooth, order-preserving. tanh on a raw
     # log-amount of 14 would saturate at 1.0 and throw the column away, which is why standardising
     # first is not optional for finance.
-    INPUT_SPACE = {"medical": "raw", "finance": "raw", "telecom": "raw"}[a.usecase]
+    INPUT_SPACE = {"medical": "raw", "finance": "raw", "telecom": "raw", "satellite_opssat": "raw",
+                   "satellite_esa": "raw"}[a.usecase]
     mu, sd = X[:cut].mean(0), X[:cut].std(0)
     sd = np.where(sd == 0, 1.0, sd)
     Xs = np.tanh((X - mu) / sd)
@@ -972,7 +1036,7 @@ def main() -> int:
                     f1 = 0.0 if tp == 0 else 2 * tp / (2 * tp + fp + fn)
                     prev = float(yt[va].mean())
                     score = f1 if min(prev, 1 - prev) < 0.25 else acc
-                if score > best:
+                if a.keep_last_epoch or score > best:
                     best, best_ep = score, ep
                     best_state = (theta.detach().cpu().numpy().copy(),
                                   scale.detach().cpu().numpy().copy(),
@@ -1090,7 +1154,8 @@ def main() -> int:
     command = (f"python scripts/train/qcnn_variational.py --usecase {a.usecase} "
                f"--layers {a.layers} --epochs {a.epochs} --seed {a.seed} "
                f"--threads {a.threads} --qubits {nq} --arch {a.arch} --encoding-scale {c_enc:g}"
-               + (" --no-entangle" if not entangle else ""))
+               + (" --no-entangle" if not entangle else "")
+               + (" --keep-last-epoch" if a.keep_last_epoch else ""))
     shapes = param_shapes(nq, readout_q, a.layers, a.arch)
     (out / "weights.json").write_text(json.dumps({
         "usecase": a.usecase, "n_qubits": nq, "layers": a.layers,

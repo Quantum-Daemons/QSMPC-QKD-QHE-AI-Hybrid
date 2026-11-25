@@ -5878,7 +5878,7 @@ file's relative URL against its `data:` URL, and storage still threw. Chrome loa
 but the HTML Standard says a conforming browser must refuse it (section 7.4.5, "create navigation params by fetching",
 step 12.3); dropping COOP drops cross-origin isolation. The owner chose a host name of its own instead.
 
-**The name.** The owner pointed `qsh.walkthrough.daemons.jp` at the demo's host. It is a separate origin from the app,
+**The name.** The owner pointed a second name at the demo's host. It is a separate origin from the app,
 the same site. On the owner's instruction, a site for it was added to the host's front proxy, which had none (TLS
 answered with an internal-error alert): a separate site file proxying to the same QSH container, with the app name's
 treatment (no `Server` header, the isolation headers), validated in the running proxy, then a graceful reload under
@@ -5940,14 +5940,14 @@ send no Report-Only header while the Caddyfile sets none (a stale image would), 
 ### #75 on the deployed site: the walkthrough on its own origin (2026-11-20)
 
 The order the owner approved, so that no visitor met a redirect loop: the front proxy's site for
-`qsh.walkthrough.daemons.jp` went back from the interim 302 (which had sent the name to the app's `/walkthrough/`
+the new name went back from the interim 302 (which had sent the name to the app's `/walkthrough/`
 while it showed the whole app) to forwarding, under the testbed's watchdog lock, with the two existing names' headers
-unchanged; then #75 (merged as fa649d3) was deployed with `QSH_WALKTHROUGH_ORIGIN=https://qsh.walkthrough.daemons.jp`
-in the deploy's environment. The deploy's own split checks passed on the box. From outside: the new name's root
+unchanged; then #75 (merged as fa649d3) was deployed with `QSH_WALKTHROUGH_ORIGIN` set to that
+name in the deploy's environment. The deploy's own split checks passed on the box. From outside: the new name's root
 answered 200 with the walkthrough, its policy, COOP and no Report-Only header; an app page and `/walkthrough/` there
 answered 404; the app's `/`, pages and policy were unchanged, and its `/walkthrough/` and `/walkthrough/?x=1` answered
 301 to the new name's `/` and `/?x=1`, under the app's policy. In the owner's Chrome the app's `/walkthrough/` landed
-on `https://qsh.walkthrough.daemons.jp/`, cross-origin isolated, with `SharedArrayBuffer`, its own storage, the same
+on the new name's root, cross-origin isolated, with `SharedArrayBuffer`, its own storage, the same
 4482 characters rendered as on the app's origin, no traceback and no CSP report (buffered `ReportingObserver`).
 `npm run check:csp` on the deployed site passed all 13 pages, the walkthrough through the 301, with no violation and
 nothing from the Report-Only candidate.
@@ -6522,8 +6522,9 @@ floor carried to two labels under it; the records a sweep found stale; #91's and
 
 - The BFV meter built SEAL's `BFVDefault(8192)`, a 218-bit modulus: inside the HomomorphicEncryption.org standard's
   classical bound for 128 bits at $`N = 8192`$, but over its post-quantum bound of 202 bits, and the CBOM listed no BFV
-  at all. The meter now builds $`40 + 40 + 40 + 41 + 41 = 202`$ bits; its ladder reads 133, 101, 68, 35, 2 and 0 bits, the
-  fifth decryption wrong as before. The CBOM's 25th asset is `crypto/bfv`, read against NIST IR 8547 in both rule
+  at all. The meter now builds $`40 + 40 + 40 + 41 + 41 = 202`$ bits; in one run its ladder read 133, 101, 68, 35, 2 and 0 bits, the
+  fifth decryption wrong as before. A budget depends on the fresh encryption's noise, so another run can differ by a
+  bit: on the deployed site on 2026-11-24 it read 133, 101, 68, 36, 3 and 0, the fifth decryption wrong. The CBOM's 25th asset is `crypto/bfv`, read against NIST IR 8547 in both rule
   tables, its import check reads node-seal's schemes, and sbom-tools' record was run again (13 agree, 3 reviewed
   differences, 9 without a verdict).
 - Telecom's key holder decrypted all 8 class scores to take their argmax, and Cho et al. (ePrint 2026/2349) show that
@@ -6571,3 +6572,109 @@ maximum is the logged figure, and the changed rows as many as the count); `tests
 figures on stated films, and one function for one film and for all sixteen); the CBOM, IR 8547 and sbom-tools tests for
 the BFV entry; the node checks for telecom's garbled-circuit argmax; `tests/test_r86_polytune_watch.py` (the transpose
 file at the version read passes, any other version of it or any other source file fails).
+
+### Batch four, the work done before the 3D series: privacy audits on the page, the satellite QCNNs, and CBOM gaps (2026-11-24)
+
+On the owner's instruction of 2026-11-24 the design memo's four sections (a three-layer PETs evaluation) were read
+again against the repository and at source (`references/pets-evaluation-2026-11.md`, "Re-checked on 2026-11-24"), and
+the owner chose what to add, in panels that day.
+
+- **The recorded privacy audits on the Validations page.** `web/src/components/PrivacyAudits.tsx` draws
+  `web/src/lib/privacyAudits.json`, which `scripts/export_privacy_audits.py` copies from the records in
+  `docs/measurements` with each record's SHA-256: membership inference as true-positive rates at false-positive rates
+  of 0.1, 1 and 10 percent on log-log axes beside the line of a guess, the one-run DP audit beside each accountant, the
+  guessing game, and the reconstruction, attribute-inference and gradient-inversion tables. Metrics only: no record or
+  image.
+- **Informed reconstruction of the other published students and the heart federation.** A published training mean
+  gives every record back (the QKD-attack student's 1,800 rows, the heart federation's 486, the AML student's 2,843,872
+  fit rows, each within 0.1 percent); the weights give them back only at the optimum the closed form assumes.
+- **A guessing game in one run** (Mahloujifar, Melis and Chaudhuri, ICML 2025; riskcal 1.5.1 for Kulynych et al.'s
+  bound, installed in the separate audit environment on the owner's approval): every honest arm under its accountant
+  and inside the reconstruction bound, both seeded bugs past both.
+- **The satellite QCNNs**, pre-registered before any training (`references/satellite-qcnn-tn-preregistration.md` and
+  four addenda), on OPS-SAT-AD and ESA-ADB Mission1, five seeds each: the classical surrogate leads on both, and the
+  page says so. Their tree network is exact in numpy and in ONNX, and under CKKS one row a slot it met its criterion on
+  every test row (all 115,064 ESA-ADB windows within 8.5e-8, no decision changed), at 0.28 ms and 3.8 kB a row against
+  164 ms and 787 kB for the per-row form. The satellite page shows both circuits and runs the encrypted tree network in a
+  Web Worker.
+- **CBOM gaps closed.** WebLLM's integrity checks (SHA-384 and SHA-256), the square students' two CKKS sets, which had
+  shipped without an entry, and the tree network's set (N = 16384, 360 bits), each held inside the HE standard's
+  post-quantum bound by `tests/test_r86_cbom_he_parameters.py`.
+- **Repository settings.** Secret scanning, push protection and Dependabot security updates turned on (the owner's
+  choice; the GitHub API confirms each).
+- **Stale text.** The 3D pre-registration's two deviations recorded in an addendum (883 series fetched, the ones that
+  hold a nodule; TotalSegmentator run during the fetch); node-seal 7.0.0 still npm's newest on 2026-11-24; the
+  use-case canvas's labels at the 12 px floor.
+
+**Checks.** `tests/test_r86_privacy_audits_card.py`, `tests/test_r86_privacy_audits.py` (the plan quotes the records),
+`tests/test_r86_qcnn_tree.py`, `tests/test_r86_satellite_qcnn.py` (the card's data equals the artifacts and the records,
+the ONNX graphs rebuild byte for byte, the encrypted path on 256 shipped rows of each corpus on the real node-seal), and
+the CBOM tests.
+
+### Batch four, the 3D nodule student: LIDC-IDRI fetched and verified, trained as pre-registered, on the medical page (2026-11-25)
+
+On the owner's choices of 2026-11-24 (the full LIDC-IDRI collection from TCIA, streamed through the system disk after
+the data drive failed; canvas 2D for the 3D view; one batch) and 2026-11-25 (the training patients fetched again; the
+membership audit both with the teacher held fixed and through the whole pipeline).
+
+- **The data, complete and genuine.** `docs/measurements/lidc-stream-2026-11-24.json`: 875 patients, 883 series,
+  215,912 files, each file matched to the MD5 TCIA's API lists and each series to its ImageCount. A naming bug
+  (`Path.with_suffix`) let the training patients' 64 mm HU cubes overwrite their 28 mm crops; the 518 training
+  patients' 522 series were fetched and checked again (127,372 files) and their 1,719 crops re-cut, each crop's records
+  equal to the cluster records and each within one uint8 level of its HU cube's centre. The merged crops give the
+  split's counts in every part. The pre-registration's addendum records both fetches, and the rule for the page's twelve
+  crops, before any model was trained.
+- **Teachers, out of fold over the training patients.** 3D ResNet-18 from scratch 0.874 (it taught), TotalSegmentator's
+  nodule volume 0.786, CT-FM's linear probe 0.641, the last reported as measured, not tuned.
+- **The students.** Test AUC over five seeds: square $`0.907 \pm 0.009`$, ReLU control $`0.882 \pm 0.027`$; criteria 1
+  and 2 met. The exported seed is the best on validation and the lowest of the five on test: 0.893, 95 % interval 0.848
+  to 0.933 over test patients.
+- **Under CKKS, every test crop.** The page's module under node-seal on all 347: A2 largest logit error
+  $`3.2 \times 10^{-5}`$, B $`1.6 \times 10^{-5}`$, no decision changed, 1.7 s and 2.2 s a crop; criterion 3 met under
+  both sets, so both are offered.
+- **The card.** `Nodule3dCard.tsx` on the medical page: twelve test crops, three planes and the exact contribution map,
+  a crop under CKKS in a Web Worker. In the preview at 1280 and 375 px: crop 1 under A2 (error 1.26e-5, 1.9 s with keys)
+  and crop 6 under B (4.83e-6, 2.4 s), the decision unchanged on both, redraw median 1.8 ms; fixed there, the select
+  pushed past the card on a phone, a plural, the seed's test rank beside "best on validation", and a double fetch.
+- **Membership inference, the teacher held fixed** (`docs/measurements/mia-nodule3d-students-2026-11-25.json`, 64
+  shadows, members drawn by patient): the shipped student's LiRA TPR is 0.41 % at 0.1 % FPR and 1.74 % at 1 % (AUC
+  0.544); the control's 0.48 % and 2.37 % (0.551). Through the whole pipeline
+  (`docs/measurements/mia-nodule3d-pipeline-2026-11-25.json`, the 3D ResNet-18 retrained out of fold for every shadow)
+  the students leak less: the shipped student 0.17 % at 0.1 % FPR and 1.33 % at 1 % (AUC 0.514). Both on the privacy
+  card.
+
+**Checks.** `tests/test_r86_lidc_stream_parts.py`, `tests/test_r86_nodule3d_card.py` (the exporter's `--check`, the
+twelve crops and no identifier, the offered sets, the credit, and a crop of each label under both sets on the real
+node-seal), `tests/test_r86_nodule3d_square_ckks_in_node.py`, `tests/test_r86_nodule3d_student_rules.py`, the model-card,
+licence-register and math-style tests, and `tests/test_r86_privacy_audits_card.py`.
+
+### Batch four, the rest: F7 not adopted, the IBM GNN's calibration, a worker pool, the satellite circuits (2026-11-25)
+
+On the owner's choices of 2026-11-24 and 2026-11-25.
+
+- **F7, a fully encrypted finance student, pre-registered and not adopted.** A square network (dense 114 -> 128, batch
+  norm folded, $`x^2`$, dense 128 -> 2) against the same network with a ReLU, by the published MLP's recipe: mean test
+  AUPRC 0.500 against 0.549, so criterion 1 fails and the finance page does not change. Under CKKS, one row a slot,
+  every one of the 1,523,504 test rows within $`3.1 \times 10^{-6}`$ under A2 and $`1.1 \times 10^{-7}`$ under B, no
+  decision changed (`docs/measurements/finance-square-student-2026-11-25.json`). The stage runs ten node processes at once
+  over whole blocks, 9 and 10 minutes per set; one process had taken over an hour for A2 alone.
+- **The published IBM GNN's calibration.** From the probabilities its record was scored from, each seed's dump checked
+  against `models/metrics.json`: the published seed's ECE over fifteen equal-mass bins is $`2.47 \times 10^{-3}`$ raw and
+  $`1.32 \times 10^{-4}`$ after the Platt map fitted on validation
+  (`docs/measurements/finance-gnn-calibration-2026-11-25.json`). The model's own record and its Hub card are unchanged.
+- **The square student's batches on a worker pool.** node-seal's wasm is single-threaded, so the 156-image run is cut
+  into contiguous chunks across up to four workers, each with its own keys. In the preview under A2: 3.8 s on four
+  workers and 13.6 s on one, the same 156 decisions and accuracy 0.7051.
+- **The satellite circuits drawn from their weights.** The satellite card draws each corpus's trained circuit with the
+  block view the other pages use (`recordQcnn` on the shipped weights), so a retrain redraws it; checked in the preview for
+  both corpora and at 375 px.
+- **The box's host names out of tracked files.** With the deploy values present, the secret scan found the demo's and
+  the walkthrough's host names in five places already on main; each reworded, and the scan passes with the values loaded.
+- **Client-side compute, read in the preview.** Running the 3D card, the satellite tree network and the telecom hybrid
+  under CKKS made only same-origin GET requests for static files, wasm and worker scripts; no POST and no third-party
+  origin.
+
+**Checks.** `tests/test_r86_finance_square_ckks_in_node.py` (the module against a NumPy reference under both sets),
+`tests/test_r86_finance_gnn_calibration.py`, `tests/test_r86_square_worker_pool.py`, `tests/test_r86_satellite_qcnn.py`
+(the card draws its circuit from the weights; no fixed circuit SVG), the footer test and `scripts/check_secrets.sh` with
+the deploy values.

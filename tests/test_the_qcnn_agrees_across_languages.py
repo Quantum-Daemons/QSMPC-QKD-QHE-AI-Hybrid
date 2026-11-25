@@ -355,6 +355,9 @@ def test_every_qcnn_implementation_is_pinned_to_another() -> None:
         "scripts/train/qcnn_variational.py": "the reference; every other check compares against it",
         "web/src/lib/quantumSim.ts": "test_the_browser_and_the_trainer_compute_the_same_circuit",
         "src/qsh/qhe/qcnn_trained.py": "test_the_numpy_inference_path_computes_the_same_circuit",
+        "src/qsh/qhe/qcnn_tree.py": "tests/test_r86_qcnn_tree.py: the tree contraction equals qcnn_trained's state vector to "
+                                    "1e-12 on every row of the shipped medical circuit (and tests/test_r86_satellite_qcnn.py "
+                                    "on the satellite circuits)",
     }
     #: files the pattern matches that are not this circuit: what each is, and what pins it (Round 86).
     NOT_THE_QCNN = {
@@ -367,6 +370,10 @@ def test_every_qcnn_implementation_is_pinned_to_another() -> None:
                                                  "tests/test_r86_heart_privacy_audits.py",
         "scripts/audit_attribute_inference.py": "the same logistic theta, through the membership script's arms; "
                                                 "tests/test_r86_heart_privacy_audits.py",
+        "scripts/audit_reconstruction_informed.py": "the same logistic theta: the heart federation's pooled model from "
+                                                    "qsh.ai.fed_heart's own train_adam and its FedAvg arm from the "
+                                                    "membership script (pinned by tests/test_r86_heart_privacy_audits.py), "
+                                                    "for the informed-reconstruction audit; not a QCNN",
     }
     assert all(f in tracked for f in NOT_THE_QCNN), "an exemption names a file that is gone; remove it"
     unpinned = []

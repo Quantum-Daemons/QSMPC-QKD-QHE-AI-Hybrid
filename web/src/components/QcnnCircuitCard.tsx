@@ -37,7 +37,9 @@ function BlockGlyph({ p, stageLabel }: { p: PlacedBlock; stageLabel: string }) {
   return <g><rect x={cx - 16} y={y(low) - 11} width={32} height={y(high) - y(low) + 22} rx={3} fill="var(--panel)" stroke={quantum} /><text x={cx} y={(y(low) + y(high)) / 2 + 4} textAnchor="middle" fontSize={11} fill={ink} style={halo}>{label}</text><title>{`${stageLabel}: convolutional block, stage ${(block.stage ?? 0) + 1}, round ${(block.round ?? 0) + 1}, on wires ${block.wires.join(" and ")}. ${block.gates.length} gates, angles shared by every block of the stage.`}</title></g>;
 }
 
-function BlockDiagram({ r, weights }: { r: RecordedQcnn; weights: QcnnWeights }) {
+/** The trained circuit's block view, from `recordQcnn` on its weights: exported so a page whose QCNN is not the
+ *  pipeline's backend (the satellite card) draws its circuit the same way, and a retrain redraws it. */
+export function BlockDiagram({ r, weights }: { r: RecordedQcnn; weights: QcnnWeights }) {
   const { placed, columns } = useMemo(() => layoutBlocks(r.blocks, r.nQubits), [r]);
   setColumnWidth(columns);
   const lastUse = useMemo(() => { const m = new Array(r.nQubits).fill(columns); placed.forEach((p) => { if (p.block.kind === "pool") m[p.block.discarded!] = p.column; }); return m; }, [placed, columns, r.nQubits]);

@@ -3,6 +3,7 @@ import CbomPanel from "../components/CbomPanel";
 import MpcNetBench from "../components/MpcNetBench";
 import NetKeyCards from "../components/NetKeyCards";
 import NetworkPositioning from "../components/NetworkPositioning";
+import PrivacyAudits from "../components/PrivacyAudits";
 import { EveSweepChart } from "../components/QkdCharts";
 import { api } from "../lib/api";
 import { mldsaDemo, mlkemDemo } from "../lib/crypto";
@@ -265,6 +266,11 @@ export default function Validations() {
 
       <h2 style={{ marginTop: 28 }}>The cryptography this project calls</h2>
       <CbomPanel />
+
+      {/* Recorded, not run in the tab (the owner's choice of 2026-11-24): what the models' outputs leak, the third
+          layer of references/pets-evaluation-2026-11.md. */}
+      <h2 style={{ marginTop: 28 }}>What the models' outputs leak: privacy audits (recorded)</h2>
+      <PrivacyAudits />
 
       <ResultsDownload results={{ kem, sig, pqc, qkd, mcp }} />
     </div>

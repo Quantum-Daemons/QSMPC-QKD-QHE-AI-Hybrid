@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import { ChartReadout, HINT_POINTER, ReadoutTooltip } from "./ChartReadout";
 import { MarksHidden } from "./VerificationChart";
+import { errorDomain } from "../lib/logAxis";
 
 interface SetFigures {
   N: number; bits: number[]; scale_bits: number; modulus_bits: number; pq_bound_bits: number; images: number;
@@ -44,15 +45,6 @@ function pointName({ cx, cy, value }: { cx?: number | string; cy?: number | stri
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
   return <text x={x + 9} y={y} dominantBaseline="central" fill="var(--text)" fontSize={11}>{String(value ?? "")}</text>;
 }
-const decade = (v: number, up: boolean) => 10 ** (up ? Math.ceil(Math.log10(v)) : Math.floor(Math.log10(v)));
-
-/** The decades an error axis needs to hold every point and the limit, at least 1e-5 to 1e-2. */
-export function errorDomain(errors: number[], limit: number): [number, number] {
-  const finite = errors.filter((e) => Number.isFinite(e) && e > 0);
-  const lo = Math.min(1e-5, limit, ...finite), hi = Math.max(1e-2, limit, ...finite);
-  return [decade(lo, false), decade(hi, true)];
-}
-
 export default function SquareStudentSetsChart({ run }: { run: SquareTabPoint | null }) {
   const [file, setFile] = useState<SetsFile | null>(null);
   const [failed, setFailed] = useState<string | null>(null);

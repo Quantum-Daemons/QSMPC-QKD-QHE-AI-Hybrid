@@ -305,7 +305,7 @@ so this is not a stale pin here - but the gap to upstream SEAL is wide and widen
 is at **4.7.2 (2026-10-28)**. node-seal's main branch merged SEAL 4.7.2 on 2026-10-31 (PR #168; its
 `CHANGES.md` names the release 7.1.0, which also rejects NaN and infinities at CKKS encode and
 renames `jsArrayFromVecModulus` and `correctionFactor`, neither of which `clientFHE.ts` calls); npm
-still served 7.0.0 on 2026-11-02. `bash scripts/audit_deps.sh seal`, which the audit workflow runs
+still served 7.0.0 on 2026-11-24 (`npm view node-seal`). `bash scripts/audit_deps.sh seal`, which the audit workflow runs
 daily, fails once npm's newest node-seal is not the one locked, and the upgrade is owed then: move
 `web/`, then rerun `tests/test_r84_medtel_ckks_decrypts_only_outputs.py` and
 `tests/test_r86_private_inference_review.py` (Round 86). One check belongs to the upgrade itself

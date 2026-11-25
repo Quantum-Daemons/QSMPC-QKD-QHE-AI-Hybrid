@@ -57,6 +57,25 @@ export interface FilmRun {
   label: number | null; recorded: number | null;
 }
 
+/** The all-films plot's square axis, shared by both logits: a round step (1, 2, 2.5 or 5 times a power of ten) giving
+ *  four to six ticks, with both ends snapped to it, so every tick is labelled and evenly spaced. Until 2026-11-24
+ *  recharts chose the ticks for ends at half-integers, and on the deployed site the domain [-5.5, 1.5] was labelled
+ *  -5.5, -3.5, -1.5 and 1.5: a step of 2 and then a gap of 3. */
+export function logitAxis(zs: readonly number[]): { lo: number; hi: number; ticks: number[]; decimals: number } {
+  const min = Math.min(...zs), max = Math.max(...zs);
+  const pad = Math.max(0.25, (max - min) * 0.08);
+  const want = (max - min + 2 * pad) / 5;
+  const pow = 10 ** Math.floor(Math.log10(want));
+  const step = ([1, 2, 2.5, 5, 10].find((k) => k * pow >= want) ?? 10) * pow;
+  const round = (v: number) => +v.toPrecision(10);
+  const lo = round(Math.floor((min - pad) / step) * step), hi = round(Math.ceil((max + pad) / step) * step);
+  const ticks = Array.from({ length: Math.round((hi - lo) / step) + 1 }, (_, i) => round(lo + i * step));
+  // The fewest decimal places that print the step exactly: 0 for 2 or 25, 1 for 0.2 or 2.5, 2 for 0.25.
+  let decimals = 0;
+  while (decimals < 6 && Math.abs(step * 10 ** decimals - Math.round(step * 10 ** decimals)) > 1e-9) decimals++;
+  return { lo, hi, ticks, decimals };
+}
+
 /** What the all-films plot states: the largest decrypted-minus-plaintext difference, and the decisions compared. */
 export function filmsSummary(head: CxrHead, runs: readonly FilmRun[]): {
   films: number; worst: number; sameDecision: number; recorded: number; agreeRecorded: number; labelled: number; agreeLabel: number;

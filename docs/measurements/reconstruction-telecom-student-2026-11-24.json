@@ -1,0 +1,48 @@
+{
+ "what": "an informed adversary's reconstruction of each training record from the rest and the published student",
+ "attack": "Balle, Cherubin and Hayes, IEEE S&P 2022 (doi:10.1109/SP46214.2022.9833677); reimplemented here",
+ "target": "telecom_ids.student",
+ "training_records": 1800,
+ "features": 7,
+ "data": "QKD-attack telemetry this repository generates (qsh.qml_ids.attacks, 8 classes x 300, seed 42), the trainer's 75 percent training split",
+ "routes": {
+  "A_published_preprocessing_mean": {
+   "records": 1800,
+   "relative_error_median": 0.00046340480897808173,
+   "relative_error_p90": 0.0005063135504894721,
+   "share_below_0.001": 1.0,
+   "share_below_0.01": 1.0,
+   "share_below_0.1": 1.0,
+   "published_mean_max_abs_diff": 9.106265175251593e-08
+  },
+  "B_weights_at_the_optimum": {
+   "records": 1800,
+   "relative_error_median": 0.24689260131302726,
+   "relative_error_p90": 0.562818952089583,
+   "share_below_0.001": 0.0,
+   "share_below_0.01": 0.0,
+   "share_below_0.1": 0.0839,
+   "stationarity_residual": 0.03545743550766955,
+   "solver_iterations": 34,
+   "published_weights_max_abs_diff": 0.00029178410681163225
+  },
+  "C_weights_solved_to_the_optimum": {
+   "records": 1800,
+   "relative_error_median": 6.429010513917213e-05,
+   "relative_error_p90": 0.001527237665971658,
+   "share_below_0.001": 0.8739,
+   "share_below_0.01": 0.9794,
+   "share_below_0.1": 0.9961,
+   "stationarity_residual": 1.515329420097283e-06,
+   "solver_iterations": 197
+  }
+ },
+ "reading": "Relative L2 error of each reconstructed row against the true one. The informed adversary is the worst case differential privacy is defined against; nothing here is a DP-trained model, so an exact reconstruction is the expected outcome, and the training statistics a client must have are a release.",
+ "seconds": 1.0,
+ "environment": {
+  "git": "b049621",
+  "python": "3.12.15",
+  "numpy": "2.5.1",
+  "date": "2026-11-24"
+ }
+}
