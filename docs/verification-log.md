@@ -6647,3 +6647,34 @@ membership audit both with the teacher held fixed and through the whole pipeline
 twelve crops and no identifier, the offered sets, the credit, and a crop of each label under both sets on the real
 node-seal), `tests/test_r86_nodule3d_square_ckks_in_node.py`, `tests/test_r86_nodule3d_student_rules.py`, the model-card,
 licence-register and math-style tests, and `tests/test_r86_privacy_audits_card.py`.
+
+### Batch four, the rest: F7 not adopted, the IBM GNN's calibration, a worker pool, the satellite circuits (2026-11-25)
+
+On the owner's choices of 2026-11-24 and 2026-11-25.
+
+- **F7, a fully encrypted finance student, pre-registered and not adopted.** A square network (dense 114 -> 128, batch
+  norm folded, $`x^2`$, dense 128 -> 2) against the same network with a ReLU, by the published MLP's recipe: mean test
+  AUPRC 0.500 against 0.549, so criterion 1 fails and the finance page does not change. Under CKKS, one row a slot,
+  every one of the 1,523,504 test rows within $`3.1 \times 10^{-6}`$ under A2 and $`1.1 \times 10^{-7}`$ under B, no
+  decision changed (`docs/measurements/finance-square-student-2026-11-25.json`). The stage runs ten node processes at once
+  over whole blocks, 9 and 10 minutes per set; one process had taken over an hour for A2 alone.
+- **The published IBM GNN's calibration.** From the probabilities its record was scored from, each seed's dump checked
+  against `models/metrics.json`: the published seed's ECE over fifteen equal-mass bins is $`2.47 \times 10^{-3}`$ raw and
+  $`1.32 \times 10^{-4}`$ after the Platt map fitted on validation
+  (`docs/measurements/finance-gnn-calibration-2026-11-25.json`). The model's own record and its Hub card are unchanged.
+- **The square student's batches on a worker pool.** node-seal's wasm is single-threaded, so the 156-image run is cut
+  into contiguous chunks across up to four workers, each with its own keys. In the preview under A2: 3.8 s on four
+  workers and 13.6 s on one, the same 156 decisions and accuracy 0.7051.
+- **The satellite circuits drawn from their weights.** The satellite card draws each corpus's trained circuit with the
+  block view the other pages use (`recordQcnn` on the shipped weights), so a retrain redraws it; checked in the preview for
+  both corpora and at 375 px.
+- **The box's host names out of tracked files.** With the deploy values present, the secret scan found the demo's and
+  the walkthrough's host names in five places already on main; each reworded, and the scan passes with the values loaded.
+- **Client-side compute, read in the preview.** Running the 3D card, the satellite tree network and the telecom hybrid
+  under CKKS made only same-origin GET requests for static files, wasm and worker scripts; no POST and no third-party
+  origin.
+
+**Checks.** `tests/test_r86_finance_square_ckks_in_node.py` (the module against a NumPy reference under both sets),
+`tests/test_r86_finance_gnn_calibration.py`, `tests/test_r86_square_worker_pool.py`, `tests/test_r86_satellite_qcnn.py`
+(the card draws its circuit from the weights; no fixed circuit SVG), the footer test and `scripts/check_secrets.sh` with
+the deploy values.

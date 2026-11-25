@@ -494,6 +494,29 @@ NoduleMNIST3D's official-split figures (ResNet-18 3D 0.863, ResNet-50 3D 0.875, 
 context and not compared: that split shares scans across its parts and labels differently. Membership inference
 against these students is in `docs/measurements/mia-nodule3d-*.json`.
 
+#### A fully encrypted finance student, not adopted (F7)
+
+The finance page runs two private paths: the linear student, which CKKS evaluates alone (test AUPRC 0.184, minority-class
+F1 0.309), and the MLP, whose ReLUs run in garbled circuits (0.629 to 0.650 over its five seeds). Pre-registered before
+any training (`references/finance-square-student-preregistration.md`; the owner's choices of 2026-11-25: one hidden
+layer 128 wide, a ReLU control, every test row, the GPU), a network whose only non-linearity is a square, so that CKKS
+evaluates it end to end, was trained by the MLP's recipe on its windows and 114 inputs. Record:
+`docs/measurements/finance-square-student-2026-11-25.json`.
+
+| | test AUPRC, five seeds | criterion |
+|---|---|---|
+| square: dense 114 -> 128, batch norm folded, $`x^2`$, dense 128 -> 2 | $`0.500 \pm 0.019`$ | 1, accuracy: at least the control's mean minus 0.02 - **not met** |
+| control: the same network with a ReLU | $`0.549 \pm 0.017`$ | 2, no collapse: every square seed at least 0.15 and predicting both classes - met |
+
+So the candidate is not adopted and the page does not change. Reported as pre-registered: the exported square seed
+scores 0.521 (95 % interval 0.499 to 0.544 over test rows), and under CKKS, one row a slot, every one of the 1,523,504
+test rows decrypts within $`3.1 \times 10^{-6}`$ of the plaintext logits under A2 and $`1.1 \times 10^{-7}`$ under B with
+no decision changed (criterion 3 met), the largest plaintext logit 27.4 against A2's bound of $`2^{13}`$. A block of
+4,096 rows took 0.6 s to encrypt and 9.9 s to evaluate under A2, with ten node processes running at once, since
+node-seal's wasm is single-threaded. The square network is far ahead of the linear student it could replace in the
+fully encrypted path (0.500 against 0.184) and behind the same network with a ReLU; whether to pre-register it against
+the linear student instead is the owner's question, not a reading of this result.
+
 #### The PSI among banks under MPC
 
 The finance page runs a private set intersection among three to five banks as one garbled circuit under Polytune, in a Web Worker (`wasm/qsh-mpc`, `web/src/lib/clientMultiPsi.ts`). Each bank brings eight generated accounts, hashed to 32 bits, and three are shared by construction. The circuit costs $`k((n-1)k \cdot 31 + (n-1)(k-1) + (n-2) + 32)`$ AND gates for $`n`$ banks of $`k`$ accounts. Measured in a browser tab on 2026-11-08, on a build of this tree, while other work ran on the machine:
