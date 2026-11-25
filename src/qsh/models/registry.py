@@ -1861,7 +1861,7 @@ _SPECS: tuple[ModelSpec, ...] = (
         usecase="telecom_ids",
         tier="t1_crypto",
         key="telecom_ids.nidd_federated",
-        label="CKKS-linear 5G-NIDD detector, federated across two base stations",
+        label="Federated 5G-NIDD detector",
         architecture=("multinomial logistic regression, 9x36 + 9, on 36 standardised and clipped flow features, trained "
                       "by FedAvg across the corpus's two base stations under pairwise masks"),
         params=333,

@@ -5889,7 +5889,7 @@
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "telecom_ids.nidd_federated",
-        "label": "CKKS-linear 5G-NIDD detector, federated across two base stations",
+        "label": "Federated 5G-NIDD detector",
         "metric": {
           "baseline": null,
           "baseline_source": "No published figure on this split: no peer-reviewed federation of 5G-NIDD by base station was found (2026-11-26). The comparison is the pre-registered one in references/telecom-nidd-federated-preregistration.md, on the same rows and by the same metric: station 1's own model 0.985, pooling every flow in one place (the page's CKKS student) 0.974, station 2's own model 0.959 (docs/measurements/telecom-nidd-federated-2026-11-26.json).",
