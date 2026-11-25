@@ -275,11 +275,14 @@ def weights_json(p: dict, centre: np.ndarray, scale: np.ndarray, clip: float, se
             "export_seed": seed}
 
 
-def stage_ckks(work: Path) -> int:
-    """Every test row under each pre-registered set, through the page's module, one row a slot."""
+def stage_ckks(work: Path, record_path: Path | None = None) -> int:
+    """Every test row under each pre-registered set, through the page's module, one row a slot.
+
+    `record_path` is F7b's (scripts/train/finance_square_student_page.py), which runs this same stage on its own seeds."""
     from finance_aml_mlp import CLIP
 
-    record = json.loads(RECORD.read_text())
+    record_path = record_path or RECORD
+    record = json.loads(record_path.read_text())
     seed = record["criteria"]["export_seed"]
     arm = record["arms"]["square"][str(seed)]
     p = dict(np.load(work / f"square_seed{seed}_folded.npz"))
@@ -337,7 +340,7 @@ def stage_ckks(work: Path) -> int:
         print(f"  CKKS {name}: max |err| {res['max_abs_logit_error']:.3e}, decisions differ {differ} of {len(dec):,}, "
               f"{res['seconds']:.0f} s", flush=True)
     record["criteria"]["3_fidelity"] = {k: v["criterion_3"] for k, v in record["ckks"].items()}
-    RECORD.write_text(json.dumps(record, indent=1) + "\n")
+    record_path.write_text(json.dumps(record, indent=1) + "\n")
     return 0
 
 
