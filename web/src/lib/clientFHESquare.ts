@@ -311,6 +311,27 @@ export interface SquareBatch { runs: SquareRun[]; ranIn: string }
  * student (`forecastStudent.ts`), this runs in a dedicated worker in a browser and on the calling thread elsewhere, and a
  * worker that fails is reported as the failure it is, never retried on the page's thread.
  */
+/** Workers for a batch of images: `gcPoolSize`'s rule (half the logical cores, at most four), no more than the items, and
+ *  one where the device reports under 8 GB, since each worker holds a node-seal heap of its own. node-seal ships one
+ *  single-threaded wasm build, so a batch is parallel only across workers, each with its own keys (owner, 2026-11-25). */
+export function squarePoolSize(items: number, logicalCores: number, deviceMemoryGb?: number): number {
+  if (deviceMemoryGb !== undefined && deviceMemoryGb < 8) return 1;
+  // clientGcPool's gcPoolSize(4, cores), written out: importing it would bundle the garbling worker into this one.
+  return Math.max(1, Math.min(items, 4, Math.floor(logicalCores / 2)));
+}
+
+/** Contiguous chunks, sizes differing by at most one, in order: the runs come back in the images' own order. */
+export function chunksOf<T>(rows: T[], n: number): T[][] {
+  const out: T[][] = [];
+  let at = 0;
+  for (let k = 0; k < n; k++) {
+    const size = Math.floor(rows.length / n) + (k < rows.length % n ? 1 : 0);
+    out.push(rows.slice(at, at + size));
+    at += size;
+  }
+  return out.filter((c) => c.length > 0);
+}
+
 export async function runSquareStudentOffThread(rows: number[][], w: SquareWeights, set: string,
                                                 onProgress?: (done: number) => void): Promise<SquareBatch> {
   if (typeof window === "undefined" || typeof Worker === "undefined") {
@@ -318,21 +339,28 @@ export async function runSquareStudentOffThread(rows: number[][], w: SquareWeigh
     for (const x of rows) { runs.push(await runSquareStudent(x, w, set)); onProgress?.(runs.length); }
     return { runs, ranIn: "the calling thread" };
   }
+  const n = squarePoolSize(rows.length, navigator.hardwareConcurrency || 1,
+                           (navigator as { deviceMemory?: number }).deviceMemory);
+  const chunks = chunksOf(rows, n);
+  const done = chunks.map(() => 0);
   // Vite bundles the worker from exactly this form: `new URL(...)` written inside `new Worker(...)`.
-  const worker = new Worker(new URL("./clientFHESquare.worker.ts", import.meta.url), { type: "module" });
+  const workers = chunks.map(() => new Worker(new URL("./clientFHESquare.worker.ts", import.meta.url), { type: "module" }));
   try {
-    return await new Promise<SquareBatch>((resolve, reject) => {
+    const parts = await Promise.all(chunks.map((chunk, k) => new Promise<SquareRun[]>((resolve, reject) => {
+      const worker = workers[k];
       worker.onmessage = (e: MessageEvent<{ id: number; done?: number; ok?: boolean; runs?: SquareRun[]; error?: string }>) => {
         const d = e.data;
-        if (d.done != null && d.ok == null) { onProgress?.(d.done); return; }
-        if (d.ok && d.runs) resolve({ runs: d.runs, ranIn: "a Web Worker" });
+        if (d.done != null && d.ok == null) { done[k] = d.done; onProgress?.(done.reduce((a, b) => a + b, 0)); return; }
+        if (d.ok && d.runs) resolve(d.runs);
         else reject(new Error(`in its worker: ${d.error ?? "no result"}`));
       };
       worker.onerror = (e) => reject(new Error(`its worker failed: ${e.message || "the worker could not be loaded"}`));
       worker.onmessageerror = () => reject(new Error("its worker's result could not be read back"));
-      worker.postMessage({ id: 1, rows, weights: w, set });
-    });
+      worker.postMessage({ id: k + 1, rows: chunk, weights: w, set });
+    })));
+    return { runs: parts.flat(), ranIn: workers.length === 1 ? "a Web Worker" : `${workers.length} Web Workers at once` };
   } finally {
-    worker.terminate();
+    // Every worker, also the ones still running when another failed: each frees its own wasm heap.
+    for (const worker of workers) worker.terminate();
   }
 }
