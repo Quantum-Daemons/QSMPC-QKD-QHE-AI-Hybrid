@@ -49,7 +49,7 @@ N_QUBITS = 8
 #: identical metrics at five of five seeds on finance and on medical
 #: (references/qcnn-width-ablation.md). Finance encodes four features since Round 84, so its artifact
 #: is four wires, a power of two that pools four wires to two and two to one with no orphan.
-SHIPPED_WIDTH = {"finance": 4}
+SHIPPED_WIDTH = {"finance": 4, "finance_amlworld_k4": 4}
 
 #: The circuits this trainer builds, by the name an artifact records in `circuit.name`. Both share
 #: the encoding, `layer_plan`, the pooling pattern (survivor `a` of each pair, orphan into the first
@@ -617,26 +617,44 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
     return (p * sign).sum(1)
 
 
-def classical_surrogate(Xs: np.ndarray, y: np.ndarray, tr, te, c_enc: float, readout_q: int) -> dict:
+def _pauli_products(theta: np.ndarray) -> np.ndarray:
+    """The 3^n products of 1, sin and cos of each wire's angle, in the order the surrogate has always used."""
+    phi = np.ones((len(theta), 1))
+    for q in range(theta.shape[1]):
+        phi = np.hstack([phi, phi * np.sin(theta[:, q:q + 1]), phi * np.cos(theta[:, q:q + 1])])
+    return phi
+
+
+def classical_surrogate(Xs: np.ndarray, y: np.ndarray, tr, te, c_enc: float, readout_q: int,
+                        auprc: bool = False) -> dict:
     """Logistic regression on the 3^n products of sines and cosines of the encoded angles: the classical model with the QCNN's own hypothesis class.
 
     `Xs` is the bounded input the circuit encodes, tanh(z); the wire angle is c pi tanh(z). The figures use the conventions of the raw logistic regression above, on the same rows.
+    The features are built for the fit rows, and for the test rows in blocks (batch 6): AMLworld's 1.5 million test rows at
+    eight wires would be 6,561 columns of them at once. Blocks change no prediction.
     """
     from sklearn.linear_model import LogisticRegression
-    from sklearn.metrics import f1_score
+    from sklearn.metrics import average_precision_score, f1_score
 
     theta = c_enc * np.pi * Xs
-    phi = np.ones((len(Xs), 1))
-    for q in range(theta.shape[1]):
-        phi = np.hstack([phi, phi * np.sin(theta[:, q:q + 1]), phi * np.cos(theta[:, q:q + 1])])
-    m = LogisticRegression(max_iter=2000).fit(phi[tr], y[tr])
-    pred = m.predict(phi[te])
+    m = LogisticRegression(max_iter=2000).fit(_pauli_products(theta[tr]), y[tr])
+    idx = np.arange(len(Xs))[te]
+    preds, scores = [], []
+    for i in range(0, len(idx), 50_000):
+        phi = _pauli_products(theta[idx[i:i + 50_000]])
+        preds.append(m.predict(phi))
+        if auprc:
+            scores.append(m.decision_function(phi))
+    pred = np.concatenate(preds)
+    extra = {"test_auprc": round(float(average_precision_score(y[te], np.concatenate(scores))), 6)} if auprc else {}
+    phi = _pauli_products(theta[:1])
     return {
         "model": f"logistic regression on the {phi.shape[1]} Pauli products of the same encoded angles, same split, same estimator as the raw comparator",
         "n_features": int(phi.shape[1]),
         "test_accuracy": round(float((pred == y[te]).mean()), 6),
         "test_macro_f1": round(float(f1_score(y[te], pred, average="macro", zero_division=0)), 6) if readout_q else None,
         "test_minority_f1": None if readout_q else round(float(f1_score(y[te], pred, zero_division=0)), 6),
+        **extra,
     }
 
 
@@ -748,13 +766,29 @@ def load(usecase: str):
             "ESA Anomalies Dataset, Mission1 (Kotowski et al., ESA-ADB; Zenodo 12528696, CC BY 3.0 IGO, "
             "https://creativecommons.org/licenses/by/3.0/igo/), real telemetry of channels 41-46: 64-step windows of "
             "the 30 s grid, positive when an Anomaly interval overlaps; eight features a window.")
+    if usecase in ("finance_amlworld", "finance_amlworld_k4"):
+        # references/finance-qcnn-amlworld-preregistration.md: scripts/data/aml_qcnn_inputs.py's rows (run it first),
+        # eight of the 114 inputs chosen on the fit window, already standardised by it and clipped at 10; the four-wire
+        # arm reads the first four of the same ranking.
+        from qsh.models import datasets
+        f = datasets.artifacts("aml_qcnn_inputs.npz")
+        if not f.exists():
+            raise SystemExit(f"{f} is missing: run scripts/data/aml_qcnn_inputs.py first")
+        meta = json.loads(f.with_suffix(".json").read_text())
+        d = np.load(f)
+        k = 4 if usecase.endswith("_k4") else 8
+        return d["X"][:, :k].astype(np.float64), d["y"].astype(int), list(meta["features"][:k]), (
+            "IBM AMLworld HI-Small (Altman et al., NeurIPS 2023 Datasets and Benchmarks; Kaggle, CDLA-Sharing-1.0, "
+            "https://cdla.dev/sharing-1-0/), SYNTHETIC transactions; the published MLP's temporal windows, the fit "
+            f"window's every laundering transaction and four others each; {k} of the 114 inputs, chosen on the fit "
+            "window by |AUC - 0.5|: " + ", ".join(meta["features"][:k]) + ".")
     raise SystemExit(f"no loader for {usecase!r}")
 
 
 #: The corpora whose split is fixed by the data, not drawn by `shuffled_split`: OPS-SAT-AD's own partition and
 #: ESA-ADB's dates (references/satellite-qcnn-tn-preregistration.md). The validation rows and ESA's sampled fit
 #: negatives use seed 0 whatever `--seed` is, so the seeds vary the circuit's initial weights only.
-FIXED_SPLIT = ("satellite_opssat", "satellite_esa")
+FIXED_SPLIT = ("satellite_opssat", "satellite_esa", "finance_amlworld", "finance_amlworld_k4")
 
 
 def split_for(usecase: str, y: np.ndarray, seed: int) -> tuple[np.ndarray, int, int]:
@@ -770,6 +804,11 @@ def split_for(usecase: str, y: np.ndarray, seed: int) -> tuple[np.ndarray, int, 
         tr_idx, te_idx = np.flatnonzero(train), np.flatnonzero(~train)
         fit_idx, val_idx = train_test_split(tr_idx, test_size=0.15, stratify=y[tr_idx], random_state=0)
         fit_idx, val_idx = np.sort(fit_idx), np.sort(val_idx)
+    elif usecase.startswith("finance_amlworld"):
+        # The fit rows are already the pre-registered sample (every laundering transaction and four others each, seed 0).
+        from qsh.models import datasets
+        part = np.load(datasets.artifacts("aml_qcnn_inputs.npz"))["part"]
+        fit_idx, val_idx, te_idx = np.flatnonzero(part == 0), np.flatnonzero(part == 1), np.flatnonzero(part == 2)
     else:
         from qsh.models import datasets
         part = np.load(datasets.artifacts("esa_qcnn_windows_w64.npz"))["part"]
@@ -932,9 +971,14 @@ def main() -> int:
     # log-amount of 14 would saturate at 1.0 and throw the column away, which is why standardising
     # first is not optional for finance.
     INPUT_SPACE = {"medical": "raw", "finance": "raw", "telecom": "raw", "satellite_opssat": "raw",
-                   "satellite_esa": "raw"}[a.usecase]
+                   "satellite_esa": "raw", "finance_amlworld": "standardised", "finance_amlworld_k4": "standardised"}[a.usecase]
     mu, sd = X[:cut].mean(0), X[:cut].std(0)
     sd = np.where(sd == 0, 1.0, sd)
+    if INPUT_SPACE == "standardised":
+        # The AMLworld rows come standardised by the WHOLE fit window and clipped (the pre-registration's z), so the
+        # circuit encodes them as they are: re-standardising by the fit sample, which is a fifth laundering, would
+        # encode another z.
+        mu, sd = np.zeros(X.shape[1]), np.ones(X.shape[1])
     Xs = np.tanh((X - mu) / sd)
     # Pad to the wire count. telecom has 7 features on 8 wires, and the pad is ZERO because
     # RY(tanh(0)*pi) = RY(0) = identity - the wire is genuinely unencoded rather than carrying a
@@ -1053,7 +1097,7 @@ def main() -> int:
     # 0.0983 - a 2.3x lift, and a very different sentence. Both are recorded; the imbalanced case
     # leads with F1.
     from sklearn.linear_model import LogisticRegression
-    from sklearn.metrics import f1_score
+    from sklearn.metrics import average_precision_score, f1_score
     lr = LogisticRegression(max_iter=2000).fit(Xs[tr], y[tr])
     lr_acc = lr.score(Xs[te], y[te])
     # Majority-class ACCURACY. For multiclass that is the largest class share, not
@@ -1157,7 +1201,7 @@ def main() -> int:
                + (" --no-entangle" if not entangle else "")
                + (" --keep-last-epoch" if a.keep_last_epoch else ""))
     shapes = param_shapes(nq, readout_q, a.layers, a.arch)
-    (out / "weights.json").write_text(json.dumps({
+    artifact = {
         "usecase": a.usecase, "n_qubits": nq, "layers": a.layers,
         # How many wires actually carry data. It equalled n_qubits until telecom brought 7
         # features to 8 wires, and the spare wire is left UNENCODED - RY(tanh(0)*pi) is the
@@ -1290,14 +1334,22 @@ def main() -> int:
         # Last before the note, where `qcnn_classical_surrogate.py` put it into the four shipped artifacts without
         # retraining them. Written after `classical_lr_accuracy` until Round 86, the same values in another order,
         # so the recorded command no longer regenerated the shipped file byte for byte.
-        "classical_surrogate": classical_surrogate(Xs[:, :X.shape[1]], y, tr, te, c_enc, readout_q),
+        "classical_surrogate": classical_surrogate(Xs[:, :X.shape[1]], y, tr, te, c_enc, readout_q,
+                                                   auprc=a.usecase.startswith("finance_amlworld")),
         "note": ("Variational QCNN trained by backpropagation through a dense state vector. The "
                  "prediction path applies NO QOTP mask: undoing a Pauli frame through Clifford+T is "
                  "not implemented here (T X T-dagger is not Pauli), so hiding and prediction are "
                  "kept separate rather than claiming a correction that does not exist. Simulated, "
                  "not hardware; the classical baseline above is reported so no quantum advantage is "
                  "implied."),
-    }, indent=1) + "\n")
+    }
+    if a.usecase.startswith("finance_amlworld"):
+        # AUC-PR, the finance models' metric, for the AMLworld corpora only (batch 6; their pre-registration's headline),
+        # appended after the literal so the shipped artifacts keep their keys and their recorded commands still
+        # regenerate them byte for byte (tests/test_r86_qcnn_artifact_key_order.py).
+        artifact["test_auprc"] = round(float(average_precision_score(y[te], logits_all.reshape(-1).cpu().numpy())), 6)
+        artifact["classical_lr_auprc"] = round(float(average_precision_score(y[te], lr.decision_function(Xs[te]))), 6)
+    (out / "weights.json").write_text(json.dumps(artifact, indent=1) + "\n")
     shown = out / "weights.json"
     print(f"  wrote {shown.relative_to(REPO) if shown.is_relative_to(REPO) else shown}")
     return 0
