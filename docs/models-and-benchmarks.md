@@ -561,6 +561,42 @@ clip) and is not part of the pre-registration. On the page:
 The linear student stays published on the Hub, and its record stays the comparison the BFV scorecard and
 `scripts/measure_decision_curve.py` read.
 
+#### The 5G-NIDD detector's CKKS student: telecom's encrypted path on real traffic
+
+On the owner's choice of 2026-11-25, pre-registered before any student was trained, with two addenda before training
+([`references/telecom-nidd-ckks-student-preregistration.md`](../references/telecom-nidd-ckks-student-preregistration.md);
+`scripts/train/telecom_nidd_student.py`, `docs/measurements/telecom-nidd-student-2026-11-25.json`): a temperature-scaled
+multinomial logistic regression on the 36 numeric 5G-NIDD features, standardised on the teacher's training split and
+clipped to $`[-20, 20]`$. The distilled arm was dropped on the owner's choice of 2026-11-26, since it needed a download
+the owner declined. On the 233,591 test flows: macro-F1 0.974 (criterion 1 asks 0.95; the gradient-boosted teacher
+scores 0.997 on all 46 features, the repository's earlier linear probe 0.969), expected calibration error 0.0042 after a
+temperature of 0.840. Under CKKS in the browser, on the 2,048 test flows the page ships (stratified, CC BY 4.0): 32
+ciphertexts, about 7.4 s, the largest logit error $`2.3 \times 10^{-7}`$, no decision changed (criterion 2,
+`tests/test_r86_nidd_student_under_ckks.py`). The telecom page draws it as a figure of its own beside the QKD student's,
+which reads synthetic telemetry.
+
+#### The finance QCNN on AMLworld, pre-registered (the page change waits for the owner's choice of seed)
+
+On the owner's choice of 2026-11-25, pre-registered before any input was scored
+([`references/finance-qcnn-amlworld-preregistration.md`](../references/finance-qcnn-amlworld-preregistration.md)):
+eight of the 114 AMLworld inputs chosen on the fit window by $`|\mathrm{AUC} - 0.5|`$ (`format_risk` leads at 0.379),
+the tree circuit's recipe on seeds 0 to 4, every laundering transaction of the fit window and four others each to fit
+on, and the whole validation and test windows (`scripts/data/aml_qcnn_inputs.py`, the trainer's `finance_amlworld`
+corpus; `docs/measurements/finance-qcnn-amlworld-2026-11-26.json`). Seed 0 at eight wires ran on the CPU; the other nine
+ran on the GPU on the owner's choice of 2026-11-26.
+
+| Wires | Test AUPRC by seed | Mean | Logistic regression, same inputs | Pauli surrogate |
+|---|---|---|---|---|
+| 8 | 0.267, 0.391, 0.262, 0.117, 0.029 | 0.213 | 0.370 | 0.111 |
+| 4 | 0.064, 0.038, 0.037, 0.037, 0.073 | 0.050 | 0.031 | 0.042 |
+
+Criterion 1 holds: every seed's test AUPRC is at least twice the test window's prevalence ($`0.0030`$; the lowest is
+$`0.029`$). At eight wires the circuit trails logistic regression on the same inputs on average and varies widely by
+seed; at four it is ahead of both comparators. The seed best on validation at eight wires is seed 3 (validation F1
+0.179, test minority F1 0.193, the best of the five, test AUPRC 0.117). Criterion 2, the page's clear contraction
+against the state vector, is checked on the seed the owner chooses to ship, and the PaySim QCNN stays on the page
+until then. For scale, not like for like: F7b's square network on all 114 inputs scores 0.500.
+
 #### Calibrated thresholds for the satellite forecaster, not adopted
 
 On the owner's choice of 2026-11-25, pre-registered before any threshold was fitted

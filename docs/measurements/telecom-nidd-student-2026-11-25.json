@@ -1,0 +1,118 @@
+{
+ "preregistration": {
+  "file": "references/telecom-nidd-ckks-student-preregistration.md",
+  "sha256": "b356193c073606ffa2ef8aa66b2cfa5ac3b9dcf679bd3b558ce4d0c44de5d34d"
+ },
+ "teacher_reference": {
+  "key": "telecom_ids.nidd",
+  "from": "models/metrics.json",
+  "not_run_here": true,
+  "test_macro_f1": 0.997244,
+  "test_per_class_f1": {
+   "Benign": 0.99998,
+   "HTTPFlood": 0.99342,
+   "ICMPFlood": 0.998273,
+   "SYNFlood": 1.0,
+   "SYNScan": 0.998603,
+   "SlowrateDoS": 0.98727,
+   "TCPConnectScan": 0.998902,
+   "UDPFlood": 1.0,
+   "UDPScan": 0.998744
+  }
+ },
+ "rows": {
+  "fit": 630693,
+  "validation": 70077,
+  "test": 233591
+ },
+ "features": [
+  "Dur",
+  "sTos",
+  "dTos",
+  "sTtl",
+  "dTtl",
+  "sHops",
+  "dHops",
+  "TotPkts",
+  "SrcPkts",
+  "DstPkts",
+  "TotBytes",
+  "SrcBytes",
+  "DstBytes",
+  "sMeanPktSz",
+  "dMeanPktSz",
+  "Load",
+  "SrcLoad",
+  "DstLoad",
+  "Loss",
+  "SrcLoss",
+  "DstLoss",
+  "pLoss",
+  "SrcGap",
+  "DstGap",
+  "Rate",
+  "SrcRate",
+  "DstRate",
+  "SrcWin",
+  "DstWin",
+  "sVid",
+  "dVid",
+  "SrcTCPBase",
+  "DstTCPBase",
+  "TcpRtt",
+  "SynAck",
+  "AckDat"
+ ],
+ "clip": 20.0,
+ "arms": {
+  "direct": {
+   "penalty_table": [
+    {
+     "l2": 1e-06,
+     "validation_log_loss": 0.04611114
+    },
+    {
+     "l2": 1e-05,
+     "validation_log_loss": 0.06071776
+    },
+    {
+     "l2": 0.0001,
+     "validation_log_loss": 0.09282047
+    },
+    {
+     "l2": 0.001,
+     "validation_log_loss": 0.15401275
+    },
+    {
+     "l2": 0.01,
+     "validation_log_loss": 0.29432161
+    },
+    {
+     "l2": 0.1,
+     "validation_log_loss": 0.596205
+    }
+   ],
+   "l2": 1e-06,
+   "temperature": 0.8403537536326385,
+   "validation_macro_f1": 0.971119,
+   "test_macro_f1": 0.974439,
+   "test_per_class_f1": {
+    "Benign": 0.990495,
+    "HTTPFlood": 0.968369,
+    "ICMPFlood": 0.984668,
+    "SYNFlood": 0.940896,
+    "SYNScan": 0.996712,
+    "SlowrateDoS": 0.937332,
+    "TCPConnectScan": 0.95679,
+    "UDPFlood": 0.999602,
+    "UDPScan": 0.995091
+   },
+   "test_accuracy": 0.986515,
+   "test_ece": 0.004218
+  }
+ },
+ "chosen": "direct",
+ "criterion_1_test_macro_f1_at_least_0_95": true,
+ "wall_clock_s": 128.5,
+ "device": "cpu"
+}

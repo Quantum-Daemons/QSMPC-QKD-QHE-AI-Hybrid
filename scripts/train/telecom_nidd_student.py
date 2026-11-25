@@ -27,6 +27,7 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
 from qsh.models import datasets as D  # noqa: E402
+from qsh.models.registry import DS_5G_NIDD  # noqa: E402
 
 PREREG = REPO / "references" / "telecom-nidd-ckks-student-preregistration.md"
 PREREG_SHA256 = "b356193c073606ffa2ef8aa66b2cfa5ac3b9dcf679bd3b558ce4d0c44de5d34d"
@@ -169,8 +170,7 @@ def main() -> int:
     take = np.sort(np.asarray(take[:HELD_OUT_ROWS]))
     WEB.mkdir(parents=True, exist_ok=True)
     licence = {"licence": "CC-BY-4.0", "licence_url": "https://creativecommons.org/licenses/by/4.0/",
-               "attribution": ("5G-NIDD: Samarakoon et al., '5G-NIDD: A Comprehensive Network Intrusion Detection Dataset "
-                               "Generated over 5G Wireless Network', Fairdata, doi:10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361, CC BY 4.0"),
+               "attribution": DS_5G_NIDD.attribution,     # the registry's credit, the one every 5G-NIDD file carries
                "modifications": ("The flows published twice under contradictory labels lose their Benign copy; 36 numeric columns "
                                  f"are standardised by the training rows and clipped to [-{CLIP:g}, {CLIP:g}]; {len(take)} rows of the "
                                  "test split, stratified by class, ship.")}

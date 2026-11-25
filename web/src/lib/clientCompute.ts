@@ -45,7 +45,7 @@ import { FED_HEART, fedHeart, fedHeartComparisons, fedHeartDp, loadHeartSites } 
 import { dpCount, GENOMICS_DP, genomicsDp } from "./clientDp";
 import { recordRelease } from "./dpLedger";
 import { heldOutCorpus, realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
-  type HeldOutCorpus, type RealInput, realAlleleCounts } from "./realData";
+  type HeldOutCorpus, niddStudentHeldOut, type RealInput, realAlleleCounts } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
 import { isClientDemo } from "./demoMode";
 import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
@@ -1969,6 +1969,42 @@ export function runClientPipeline(
     }
   }
 
+  /** The 5G-NIDD detector's pre-registered CKKS student over the 2,048 held-out flows the page ships (Round 86, batch 6).
+   *
+   * Real traffic from a 5G test network, where the page's other encrypted student reads synthetic QKD telemetry. Its own
+   * metrics (`nidd_*`) and figure (`encrypted_agreement_plot_nidd`), so neither is mistaken for the QKD student's. The
+   * pre-registration's criterion 2: every decision on a row whose plaintext top-two margin exceeds twice the largest CKKS
+   * deviation equals the plaintext one, and that deviation is below 1e-3. */
+  async function scoreNiddStudent(stage: string) {
+    const held = await niddStudentHeldOut();
+    if (!held) {
+      emit("log", stage, "5G-NIDD encrypted tier: its held-out rows could not be read, so no figure is drawn");
+      return;
+    }
+    const ho = await encryptedHeldOutAgreement(held);
+    const bt = ho.batch;
+    const margins = ho.plot.points.map((q) => Math.abs(q.plain));
+    let decidedFlips = 0;
+    ho.plot.points.forEach((q, i) => { if (!q.agree && margins[i] > 2 * bt.maxAbsError) decidedFlips++; });
+    const criterion2 = decidedFlips === 0 && bt.maxAbsError < 1e-3;
+    metric(stage, "nidd_encrypted_model", held.modelKey);
+    metric(stage, "nidd_encrypted_rows", bt.rows);
+    metric(stage, "nidd_encrypted_ciphertexts", bt.ciphertexts);
+    metric(stage, "nidd_encrypted_ms", r2(bt.fheMs));
+    metric(stage, "nidd_encrypted_max_abs_error", bt.maxAbsError);
+    metric(stage, "nidd_encrypted_mismatches", ho.mismatches);
+    metric(stage, "nidd_encrypted_flips_beyond_twice_the_error", decidedFlips);
+    metric(stage, "nidd_encrypted_accuracy", ho.encryptedAccuracy);
+    metric(stage, "nidd_plaintext_accuracy", ho.plaintextAccuracy);
+    metric(stage, "nidd_criterion_2", criterion2 ? 1 : 0);
+    artifacts.encrypted_agreement_plot_nidd = ho.plot;
+    emit("log", stage, `5G-NIDD detector under CKKS: ${held.modelLabel}, over ${bt.rows.toLocaleString("en-US")} held-out flows of real 5G traffic in `
+      + `${bt.ciphertexts} ciphertext(s), ${r2(bt.fheMs)} ms; max |decrypted - plaintext logit| ${bt.maxAbsError.toExponential(3)}; `
+      + `${ho.mismatches} class(es) differ, ${decidedFlips} of them where the plaintext margin exceeds twice that error; `
+      + `accuracy ${ho.encryptedAccuracy?.toFixed(4)} encrypted, ${ho.plaintextAccuracy?.toFixed(4)} in plaintext. `
+      + `Criterion 2 of its pre-registration ${criterion2 ? "holds" : "FAILS"}. Rows: ${held.licence.name}.`);
+  }
+
   /** Evaluate the published telecom student's 8 class scores under REAL CKKS, in this tab.
    *
    * This is the verification figure for telecom's encrypted tier, and the numbers it reports are the
@@ -2065,6 +2101,8 @@ export function runClientPipeline(
       // student was evaluated on and never fitted on. Every row is scored (two ciphertexts at width
       // 8), so the 88-row cap disclosure no longer applies here.
       await scoreHeldOutStudent(stage, "telecom_ids", "data/telecom/student_heldout.json");
+      // AND THE REAL-DATA DETECTOR'S STUDENT (Round 86, batch 6): 5G-NIDD's flows under CKKS, a figure of its own.
+      await scoreNiddStudent(stage);
       emit("log", stage, `the ARGMAX ran in a garbled circuit: the key holder decrypted only masked scores, and `
         + `only the class left the circuit. Both parties are in this tab, so the separation is notional here. `
         + `The held-out check above decrypts every row's ${w.W.length} scores, because it measures the CKKS `

@@ -578,6 +578,28 @@ function licenceOf(ds: any): DataLicence {
            attribution: String(ds.attribution ?? ""), modifications: String(ds.modifications ?? "") };
 }
 
+/** The 5G-NIDD detector's CKKS student and the 2,048 held-out rows the page ships (Round 86, batch 6; the owner's choice of
+ *  an encrypted path for the real-data detector). Both files come from `scripts/train/telecom_nidd_student.py`, pre-registered
+ *  (references/telecom-nidd-ckks-student-preregistration.md): a temperature-scaled direct multinomial logistic regression on
+ *  the 36 numeric features, the rows standardised by the training rows and clipped to [-20, 20] as the model reads them.
+ *  The temperature changes no class, so the encrypted logits are the model's own; it only calibrates the probabilities. */
+export async function niddStudentHeldOut(): Promise<HeldOutCorpus | null> {
+  const [w, ds] = await Promise.all([fetchJSON("/data/telecom_nidd/student_weights.json"),
+                                     fetchJSON("/data/telecom_nidd/student_heldout.json")]);
+  const rows = ds?.rows as number[][] | undefined;
+  if (!rows?.length || !Array.isArray(w?.W) || rows[0].length !== (w.features as string[]).length) return null;
+  const params = (w.W as number[][]).length * (w.W as number[][])[0].length + (w.b as number[]).length;
+  return {
+    usecase: "telecom_ids", modelKey: "telecom_ids.nidd_student",
+    modelLabel: `the ${params}-parameter CKKS-linear student of the 5G-NIDD detector (site file, pre-registered)`,
+    model: { W: w.W as number[][], b: w.b as number[] }, rows,
+    labels: (ds.labels as number[]).map((v) => Number(v) | 0), classNames: w.classes as string[],
+    plane: null, corpus: String(ds.corpus ?? ""), split: String(ds.split ?? ""),
+    fitNote: "the student was fitted on the teacher's training split; these rows are from its test split",
+    licence: licenceOf(ds), expected: null,
+  };
+}
+
 /** A published student and its held-out rows from the two payloads `build_heldout_payloads.py`
  *  writes: the rows file names its weights file, so the pair cannot be mismatched by a caller. */
 async function publishedStudentHeldOut(usecase: string, path: string): Promise<HeldOutCorpus | null> {

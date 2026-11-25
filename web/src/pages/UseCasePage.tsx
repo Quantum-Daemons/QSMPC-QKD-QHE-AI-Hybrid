@@ -27,6 +27,7 @@ import SatVusPrCard from "../components/SatVusPrCard";
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
 import FinanceAccuracyCost from "../components/FinanceAccuracyCost";
+import GenomicsReferenceCurves from "../components/GenomicsReferenceCurves";
 import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCard";
 import VerificationsCard from "../components/VerificationsCard";
 import PublishedComparisonCard from "../components/PublishedComparisonCard";
@@ -328,6 +329,14 @@ function UseCaseView({ usecase }: { usecase: string }) {
       ) : hasRun && !lending ? (
         <NoEncryptedComparison />
       ) : null}
+      {/* Telecom's real-data detector (Round 86, batch 6): 5G-NIDD's pre-registered CKKS student on real 5G traffic, a figure
+          of its own beside the QKD student's, which reads synthetic telemetry. */}
+      {artifacts?.encrypted_agreement_plot_nidd ? (
+        <div className="card">
+          <h3 style={{ margin: "0 0 4px" }}>The 5G-NIDD detector&apos;s student under CKKS, real 5G traffic, this run</h3>
+          <EncryptedAgreementChart plot={artifacts.encrypted_agreement_plot_nidd as EncryptedAgreementPlot} />
+        </div>
+      ) : null}
 
       {artifacts?.verification?.plot ? (
         <div className="card">
@@ -440,6 +449,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "finance_aml" && artifacts?.mpc_mlp ? <MpcMlpPanel report={artifacts.mpc_mlp as MpcMlpReport} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_gnn ? <MpcGnnPanel report={artifacts.mpc_gnn as MpcGnnReport} /> : null}
       {usecase === "finance_aml" && state === "done" ? <FinanceAccuracyCost metrics={metrics} /> : null}
+      {usecase === "genomics" && state === "done" ? <GenomicsReferenceCurves metrics={metrics} /> : null}
       {usecase === "finance_aml" && <TransactionGraphCard scoredRow={artifacts?.mpc_mlp ? (artifacts.mpc_mlp as MpcMlpReport).rowIndex : null} />}
       {usecase === "finance_aml" && artifacts?.financeDp ? <FinanceDpCard dp={artifacts.financeDp as FinanceDpArtifact} /> : null}
       {usecase === "finance_aml" && artifacts?.multi_party_psi ? <MultiPsiPanel report={artifacts.multi_party_psi as MultiPsiReport} /> : null}

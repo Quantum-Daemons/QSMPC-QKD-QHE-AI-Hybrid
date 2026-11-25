@@ -59,6 +59,8 @@ WEIGHTS = {
     "telecom/qcnn_weights_q7.json", "telecom/student_weights.json", "satellite/student_weights.json",
     # F7b's square network (Round 86), the finance page's fully encrypted model since 2026-11-25.
     "finance/square_student_weights.json",
+    # The 5G-NIDD detector's pre-registered CKKS student (Round 86, batch 6); its rows' credit is in student_heldout.json.
+    "telecom_nidd/student_weights.json",
 }
 
 
