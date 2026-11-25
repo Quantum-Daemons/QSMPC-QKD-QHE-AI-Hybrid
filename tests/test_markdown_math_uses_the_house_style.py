@@ -166,6 +166,9 @@ FROZEN = {
     # and is listed so that no edit reaches it before its trainer pins the same hash.
     "references/finance-square-student-page-preregistration.md":
         "388a1668b82b8e9011539511efcbc3887b053a2e0e60022040c4054eee60492f",
+    # The finance QCNN on AMLworld: committed 2026-11-25 before any input was scored for selection or any circuit trained.
+    "references/finance-qcnn-amlworld-preregistration.md":
+        "5a411b05d7e1984306d08397d95b147ab2a09796a4bfa4a6b624cf515253edd0",
 }
 
 
