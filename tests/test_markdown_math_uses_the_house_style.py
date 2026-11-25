@@ -170,6 +170,9 @@ FROZEN = {
     # The satellite threshold comparison: committed 2026-11-25 before any threshold was fitted or any test window scored.
     "references/satellite-threshold-calibration-preregistration.md":
         "a2436cde71d939c32b7d67f895f892fd0012262f1c7a1fb3a39505d85a153d65",
+    # The 5G-NIDD CKKS student: committed 2026-11-25 before any student was trained.
+    "references/telecom-nidd-ckks-student-preregistration.md":
+        "18f3ebb69eb654da17df91534770625a158f9c32dd5049bf2074275f488366a1",
     "references/finance-qcnn-amlworld-preregistration.md":
         "5a411b05d7e1984306d08397d95b147ab2a09796a4bfa4a6b624cf515253edd0",
 }
