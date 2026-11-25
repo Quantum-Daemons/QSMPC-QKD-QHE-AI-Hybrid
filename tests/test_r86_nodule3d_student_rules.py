@@ -91,7 +91,7 @@ def test_the_folds_cover_every_training_patient_once_and_are_stratified() -> Non
     assert set(fold) == set(patients) and set(fold.values()) == set(range(s.FOLDS))
     sizes = np.bincount(list(fold.values()), minlength=s.FOLDS)
     assert sizes.max() - sizes.min() <= 1, sizes
-    malignant = {p for p, v in zip(patients, y) if v}
+    malignant = {p for p, v in zip(patients, y, strict=True) if v}
     per_fold = np.bincount([fold[p] for p in malignant], minlength=s.FOLDS)
     assert per_fold.max() - per_fold.min() <= 1, per_fold
 

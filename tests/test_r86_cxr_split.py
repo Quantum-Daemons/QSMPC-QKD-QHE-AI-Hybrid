@@ -120,7 +120,7 @@ def test_the_page_s_ckks_layer_evaluates_this_head(tmp_path: Path) -> None:
     wide, narrow = out["axes"]
     assert (wide["lo"], wide["hi"], wide["ticks"], wide["decimals"]) == (-6, 2, [-6, -4, -2, 0, 2], 0), wide
     for ax in (wide, narrow):
-        steps = {round(b - a, 9) for a, b in zip(ax["ticks"], ax["ticks"][1:])}
+        steps = {round(b - a, 9) for a, b in zip(ax["ticks"], ax["ticks"][1:], strict=False)}
         assert len(steps) == 1 and ax["ticks"][0] == ax["lo"] and ax["ticks"][-1] == ax["hi"], ax
         assert 4 <= len(ax["ticks"]) <= 7, ax
 

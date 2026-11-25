@@ -91,8 +91,8 @@ def build(weights: dict):
 
 def main() -> int:
     import onnxruntime as ort
-
     from qcnn_variational import load, split_for
+
     from qsh.qhe.qcnn_trained import _run_circuit
 
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
