@@ -51,7 +51,7 @@ figures.
 
 ## Addendum, 2026-11-25, before any student was trained or any 5G-NIDD row read for it
 
-Two choices the text above left open, fixed while writing `scripts/train/telecom_nidd_student.py` and before it ran.
+Three choices the text above left open, fixed while writing `scripts/train/telecom_nidd_student.py` and before it ran.
 **The penalty** of each arm is the one with the lowest validation log loss against that arm's own target (the
 teacher's probabilities for the distilled arm, the labels for the direct one); the arm the page shows is still chosen
 by validation macro-F1, as criterion 1 says. **The input range:** after standardisation every input is clipped to

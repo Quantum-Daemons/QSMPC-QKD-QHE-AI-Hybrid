@@ -172,7 +172,7 @@ FROZEN = {
         "a2436cde71d939c32b7d67f895f892fd0012262f1c7a1fb3a39505d85a153d65",
     # The 5G-NIDD CKKS student: committed 2026-11-25 before any student was trained.
     "references/telecom-nidd-ckks-student-preregistration.md":
-        "3d8c0d66f521710e4f5e765282ac018b475d0a2e2a4e8a1eff89ac48d4937ac5",
+        "20b710a2329a24c828e1c02b535a17bff7ef54e51abad8587a8127abe037a9d1",
     "references/finance-qcnn-amlworld-preregistration.md":
         "5a411b05d7e1984306d08397d95b147ab2a09796a4bfa4a6b624cf515253edd0",
 }
