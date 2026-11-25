@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 """Train the 5G-NIDD CKKS student exactly as pre-registered (Round 86, batch 6).
 
-references/telecom-nidd-ckks-student-preregistration.md (and its addendum) fixed everything below before this ran: the
-teacher's split, the 36 numeric features standardised on the training rows and clipped to [-20, 20], a distilled and a
-direct multinomial logistic regression, each penalty chosen by validation log loss against the arm's own target, a
-temperature for the direct arm, and the page's arm chosen by validation macro-F1. The teacher is the published graph
-(`Daemons-Q/qsh-telecom-5g-nidd-gbm`, `onnx/model.onnx`) at its pinned revision, refused unless its SHA-256 is the pin.
+references/telecom-nidd-ckks-student-preregistration.md (and its two addenda) fixed everything below before this ran:
+the teacher's split, the 36 numeric features standardised on the training rows and clipped to [-20, 20], a direct
+multinomial logistic regression with its penalty chosen by validation log loss and a temperature fitted on validation.
+Addendum 2 (the owner's choice of 2026-11-26) dropped the distilled arm, which needed a download the owner declined: the
+teacher is a reference row from its own record (models/metrics.json), not run here.
 
 CPU only. Writes docs/measurements/telecom-nidd-student-2026-11-25.json, and, when criterion 1 holds,
 web/public/data/telecom_nidd/student_weights.json and student_heldout.json for the page.
 
-Usage: QSH_DATA_ROOT=<data root> python -I scripts/train/telecom_nidd_student.py --teacher <path to the pinned model.onnx>
+Usage: QSH_DATA_ROOT=<data root> python -I scripts/train/telecom_nidd_student.py
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ sys.path.insert(0, str(REPO / "src"))
 from qsh.models import datasets as D  # noqa: E402
 
 PREREG = REPO / "references" / "telecom-nidd-ckks-student-preregistration.md"
-PREREG_SHA256 = "20b710a2329a24c828e1c02b535a17bff7ef54e51abad8587a8127abe037a9d1"
+PREREG_SHA256 = "b356193c073606ffa2ef8aa66b2cfa5ac3b9dcf679bd3b558ce4d0c44de5d34d"
 RECORD = REPO / "docs" / "measurements" / "telecom-nidd-student-2026-11-25.json"
 WEB = REPO / "web" / "public" / "data" / "telecom_nidd"
 L2_GRID = (1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1)
@@ -87,31 +87,13 @@ def ece(P: np.ndarray, y: np.ndarray, bins: int = ECE_BINS) -> float:
     return float(total)
 
 
-def teacher_proba(path: Path, x: np.ndarray) -> np.ndarray:
-    import onnxruntime as ort
-
-    sess = ort.InferenceSession(str(path), providers=["CPUExecutionProvider"])
-    name = sess.get_inputs()[0].name
-    outs = []
-    for i in range(0, len(x), 65_536):
-        res = sess.run(None, {name: x[i:i + 65_536].astype(np.float32)})
-        prob = next(r for r in res if isinstance(r, np.ndarray) and r.ndim == 2)
-        outs.append(np.asarray(prob, dtype=np.float64))
-    return np.concatenate(outs)
-
-
 def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--teacher", type=Path, required=True)
-    args = ap.parse_args()
+    argparse.ArgumentParser(description=__doc__).parse_args()
     started = time.time()
     got = hashlib.sha256(PREREG.read_bytes()).hexdigest()
     if got != PREREG_SHA256:
         raise SystemExit(f"{PREREG.name} hashes to {got}, not the committed {PREREG_SHA256}: run nothing")
-    pins = json.loads((REPO / "models" / "hub_file_hashes.json").read_text())["telecom_ids.nidd"]
-    tsha = hashlib.sha256(args.teacher.read_bytes()).hexdigest()
-    if tsha != pins["files"]["onnx/model.onnx"]:
-        raise SystemExit(f"the teacher graph hashes to {tsha}, not the pinned {pins['files']['onnx/model.onnx']}")
+    teacher = json.loads((REPO / "models" / "metrics.json").read_text())["telecom_ids.nidd"]
 
     from sklearn.model_selection import train_test_split
 
@@ -129,11 +111,10 @@ def main() -> int:
     Zf, Zv, Zt = z(xtr[fi]), z(xtr[vi]), z(xte)
     yf, yv = ytr[fi], ytr[vi]
     print(f"  {len(fi):,} fit, {len(vi):,} validation, {len(yte):,} test rows; {len(numeric)} numeric features")
-    Pt_f, Pt_v, Pt_t = (teacher_proba(args.teacher, a) for a in (xtr[fi], xtr[vi], xte))
     onehot = np.eye(k)
 
     arms = {}
-    for arm, Tf, Tv in (("distilled", Pt_f, Pt_v), ("direct", onehot[yf], onehot[yv])):
+    for arm, Tf, Tv in (("direct", onehot[yf], onehot[yv]),):
         table, fits = [], {}
         for l2 in L2_GRID:
             W, b = fit(Zf, Tf, l2)
@@ -160,18 +141,15 @@ def main() -> int:
                      "test_per_class_f1": dict(zip(classes, [round(v, 6) for v in per], strict=True)),
                      "test_accuracy": round(float(np.mean(Pt.argmax(1) == yte)), 6),
                      "test_ece": round(ece(Pt, yte), 6),
-                     "test_agreement_with_teacher": round(float(np.mean(Pt.argmax(1) == Pt_t.argmax(1))), 6),
                      "W": W, "b": b}
         print(f"  {arm:9s} l2 {best:g} T {temperature:.4f}  val macro-F1 {val_f1:.4f}  test {test_f1:.4f}  "
-              f"ECE {arms[arm]['test_ece']:.4f}  agreement {arms[arm]['test_agreement_with_teacher']:.4f}")
-    t_f1, t_per = macro_f1(yte, Pt_t.argmax(1), k)
-    chosen = max(arms, key=lambda a: (arms[a]["validation_macro_f1"], a == "direct"))
+              f"ECE {arms[arm]['test_ece']:.4f}")
+    chosen = "direct"
     criterion_1 = arms[chosen]["test_macro_f1"] >= 0.95
     record = {
         "preregistration": {"file": str(PREREG.relative_to(REPO)), "sha256": got},
-        "teacher": {"repo": "Daemons-Q/qsh-telecom-5g-nidd-gbm", "revision": pins["revision"], "sha256": tsha,
-                    "test_macro_f1": round(t_f1, 6), "test_per_class_f1": dict(zip(classes, [round(v, 6) for v in t_per], strict=True)),
-                    "test_ece": round(ece(Pt_t, yte), 6)},
+        "teacher_reference": {"key": "telecom_ids.nidd", "from": "models/metrics.json", "not_run_here": True,
+                              "test_macro_f1": teacher.get("macro_f1"), "test_per_class_f1": teacher.get("per_class_f1")},
         "rows": {"fit": int(len(fi)), "validation": int(len(vi)), "test": int(len(yte))},
         "features": [D.NIDD_FEATURES[i] for i in numeric], "clip": CLIP,
         "arms": {a: {kk: vv for kk, vv in v.items() if kk not in ("W", "b")} for a, v in arms.items()},
@@ -204,8 +182,7 @@ def main() -> int:
         "licence": "Apache-2.0", "note": "fitted numbers; the corpus's credit is in student_heldout.json"}, indent=1) + "\n")
     (WEB / "student_heldout.json").write_text(json.dumps({
         "corpus": "5G-NIDD (real traffic from a 5G test network, University of Oulu)", "split": "the teacher's test split",
-        "rows": np.round(Zt[take], 6).tolist(), "labels": yte[take].astype(int).tolist(),
-        "teacher_class": Pt_t[take].argmax(1).astype(int).tolist(), **licence}) + "\n")
+        "rows": np.round(Zt[take], 6).tolist(), "labels": yte[take].astype(int).tolist(), **licence}) + "\n")
     print(f"wrote {WEB.relative_to(REPO)}/student_weights.json and student_heldout.json ({len(take)} rows)")
     return 0
 

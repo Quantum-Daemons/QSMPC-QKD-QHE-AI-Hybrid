@@ -58,3 +58,11 @@ by validation macro-F1, as criterion 1 says. **The input range:** after standard
 $`[-20, 20]`$, in training and on the page alike, because a flow's byte and packet counts reach tens of thousands of
 deviations and CKKS needs a bounded input. **The teacher** is the published graph at its pinned revision
 (`models/hub_file_hashes.json`), checked by its SHA-256 before use.
+
+## Addendum 2, 2026-11-26, before any student was trained
+
+The owner chose to train **the direct arm only**: distilling needs the published teacher graph at its pinned revision,
+whose local copy is an older version, and the owner declined to download it. So only the direct arm is trained, with
+its penalty and temperature chosen as above, and criterion 1 applies to it. The teacher stays a reference row, from its
+own record (`models/metrics.json`, `telecom_ids.nidd`), and the share of rows on which the student agrees with the
+teacher is not measured.
