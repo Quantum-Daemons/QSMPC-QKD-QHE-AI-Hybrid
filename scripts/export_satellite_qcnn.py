@@ -10,6 +10,10 @@ labels, and the figures the card quotes, copied from the records with their SHA-
 
     python scripts/export_satellite_qcnn.py            # writes both files
     python scripts/export_satellite_qcnn.py --check    # exits 1 if either is not what this writes
+
+`--check` re-derives the rows, labels and feature names from the corpus when it is present. Where it is absent (CI has
+no corpus), it takes those three from the shipped file, checks everything else against the artifacts and the records,
+and says on stderr that the rows' selection went unchecked.
 """
 
 from __future__ import annotations
@@ -49,7 +53,12 @@ def _sha(p: Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
-def build(short: str) -> dict:
+def _shown(p: Path) -> str:
+    return str(p.relative_to(REPO)) if p.is_relative_to(REPO) else str(p)
+
+
+def build(short: str, shipped: dict | None = None) -> dict:
+    """The file for one corpus; with `shipped`, its rows, labels and feature names instead of the corpus's."""
     from qcnn_variational import load, split_for
 
     from qsh.qhe import qcnn_tree
@@ -57,11 +66,15 @@ def build(short: str) -> dict:
     spec = CORPORA[short]
     wpath = REPO / "models" / f"qcnn_satellite_{short}" / "weights.json"
     w = json.loads(wpath.read_text())
-    X, y, cols, _ = load(spec["usecase"])
-    order, _, vcut = split_for(spec["usecase"], y, 0)
-    te = order[vcut:]
-    if spec["rows"]:
-        te = te[:spec["rows"]]
+    if shipped is None:
+        X, y, cols, _ = load(spec["usecase"])
+        order, _, vcut = split_for(spec["usecase"], y, 0)
+        te = order[vcut:]
+        if spec["rows"]:
+            te = te[:spec["rows"]]
+        rows, labels = X[te].tolist(), y[te].astype(int).tolist()
+    else:
+        cols, rows, labels = shipped["features"], shipped["rows"], shipped["labels"]
     net = qcnn_tree.network(w)
     scores = json.loads(SCORES.read_text())[short]
     ckks = next(c for c in json.loads(CKKS.read_text())["cases"] if c["name"] == short)
@@ -71,7 +84,7 @@ def build(short: str) -> dict:
         "_generated_by": "scripts/export_satellite_qcnn.py; do not edit by hand",
         "corpus": short, "title": spec["title"], "features": cols, "weights": w,
         "tree": {"maps": [m.tolist() for m in net["maps"]], "readout": net["readout"].tolist()},
-        "rows_about": spec["rows_about"], "rows": X[te].tolist(), "labels": y[te].astype(int).tolist(),
+        "rows_about": spec["rows_about"], "rows": rows, "labels": labels,
         "figures": {"qcnn_seed0": pick(scores["qcnn_by_seed"]["0"]), "qcnn_spread": scores["qcnn_spread"],
                     "logistic_regression": pick(scores["logistic_regression_z"]),
                     "classical_surrogate": pick(scores["classical_surrogate"]),
@@ -101,15 +114,27 @@ def main() -> int:
     args = ap.parse_args()
     bad = 0
     for short in CORPORA:
-        text = json.dumps(build(short), separators=(",", ":")) + "\n"
         f = OUT / f"satellite_qcnn_{short}.json"
+        try:
+            data = build(short)
+        except (FileNotFoundError, SystemExit) as e:
+            # The two loaders' words for an absent input: OPS-SAT's corpus (qsh.models.datasets.require) and ESA-ADB's
+            # windows (qcnn_variational.load). Any other error is raised as it is.
+            first = (str(e).splitlines() or [""])[0]
+            absent = first.startswith("missing corpus: ") or " is missing: run scripts/data/" in first
+            if not (args.check and absent and f.exists()):
+                raise
+            print(f"{short}: {first}; the rows, labels and feature names are taken from {_shown(f)}, so "
+                  "their selection is unchecked; the rest is checked", file=sys.stderr)
+            data = build(short, json.loads(f.read_text(encoding="utf-8")))
+        text = json.dumps(data, separators=(",", ":")) + "\n"
         if args.check:
             if not f.exists() or f.read_text(encoding="utf-8") != text:
-                print(f"{f.relative_to(REPO)} is not what scripts/export_satellite_qcnn.py writes", file=sys.stderr)
+                print(f"{_shown(f)} is not what scripts/export_satellite_qcnn.py writes", file=sys.stderr)
                 bad += 1
         else:
             f.write_text(text, encoding="utf-8")
-            print(f"wrote {f.relative_to(REPO)} ({len(text) / 1e3:.0f} kB)")
+            print(f"wrote {_shown(f)} ({len(text) / 1e3:.0f} kB)")
     return 1 if bad else 0
 
 
