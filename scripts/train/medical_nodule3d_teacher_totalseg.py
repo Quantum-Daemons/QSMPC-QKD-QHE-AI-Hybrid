@@ -108,7 +108,7 @@ def worker(queue: Path, cache: Path, device: str) -> int:
                 try:
                     vols, info = nearest_volumes(Path(j["series_dir"]), [c["lps_mm"] for c in j["centres"]], device)
                     done[series] = {"patient": j["patient"],
-                                    "clusters": {str(c["cluster"]): v for c, v in zip(j["centres"], vols)}, **info}
+                                    "clusters": {str(c["cluster"]): v for c, v in zip(j["centres"], vols, strict=True)}, **info}
                 except Exception as e:  # noqa: BLE001 - reported to the stream, which records it
                     done[series] = {"patient": j["patient"], "error": f"{type(e).__name__}: {e}"}
                 tmp = cache.with_suffix(".tmp")

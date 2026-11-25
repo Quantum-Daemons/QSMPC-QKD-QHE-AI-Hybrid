@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import os
 import platform
 import subprocess
@@ -64,9 +65,8 @@ def environment() -> dict:
 
 def network(arm: str):
     """dense 114 -> 128, batch norm, x^2 (square) or ReLU (control), dense 128 -> 2."""
-    from torch import nn
-
     from finance_aml_mlp import N_FEATURES
+    from torch import nn
 
     class Square(nn.Module):
         def forward(self, x):
@@ -80,10 +80,9 @@ def fit(arm: str, zf, yf, zv, yv: np.ndarray, seed: int):
     """`finance_aml_mlp.fit_one`'s loop with this network: class-weighted cross-entropy on the labels, AdamW, early
     stopping on validation AUPRC. The same constants, imported, so the recipes cannot drift apart."""
     import torch
+    from finance_aml_mlp import BATCH, DEVICE, EPOCHS, LR, PATIENCE, WEIGHT_DECAY, _positive_scores
     from sklearn.metrics import average_precision_score
     from torch import nn
-
-    from finance_aml_mlp import BATCH, DEVICE, EPOCHS, LR, PATIENCE, WEIGHT_DECAY, _positive_scores
 
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -135,10 +134,16 @@ def plain_logits(z: np.ndarray, p: dict) -> np.ndarray:
 
 def stage_train(work: Path) -> int:
     import torch
+    from finance_aml import (
+        _best_threshold,
+        causal_account_features,
+        load_sorted,
+        model_inputs,
+        temporal_windows,
+    )
+    from finance_aml_mlp import CLIP, DEVICE, N_FEATURES, _positive_scores, _scaled, scaling_of
     from sklearn.metrics import average_precision_score
 
-    from finance_aml import _best_threshold, causal_account_features, load_sorted, model_inputs, temporal_windows
-    from finance_aml_mlp import CLIP, DEVICE, N_FEATURES, _positive_scores, _scaled, scaling_of
     from qsh.models import distil, metrics
 
     started = time.time()
@@ -181,7 +186,7 @@ def stage_train(work: Path) -> int:
                 row["decisions_at_argmax_equal_threshold"] = bool(np.array_equal(mine.argmax(1) == 1, pred))
             record["arms"][arm][str(seed)] = row
             print(f"  {arm} seed {seed}: {row}", flush=True)
-    sq, ct = record["arms"]["square"], record["arms"]["control"]
+    sq = record["arms"]["square"]
     means = {a: float(np.mean([r["test_auprc"] for r in record["arms"][a].values()])) for a in ("control", "square")}
     sds = {a: float(np.std([r["test_auprc"] for r in record["arms"][a].values()], ddof=1)) for a in ("control", "square")}
     export = max(sq, key=lambda s: sq[s]["val_auprc"])
@@ -294,7 +299,7 @@ def stage_ckks(work: Path) -> int:
             # node process of its own with its own keys, all at once. Every row is still decrypted and compared.
             block = PARAMS[name]["N"] // 2
             n = len(z)
-            per = -(-(-(-n // block)) // SHARDS) * block
+            per = math.ceil(math.ceil(n / block) / SHARDS) * block
             cuts = [(o, min(per, n - o)) for o in range(0, n, per)]
             procs = [subprocess.Popen(["node", "--max-old-space-size=8192", str(d / "harness.mjs"), str(REPO / "web"),
                                        str(d / f"bundle_{k}.mjs"), str(d), name, str(work / "z_test.npy.f32"), str(o),

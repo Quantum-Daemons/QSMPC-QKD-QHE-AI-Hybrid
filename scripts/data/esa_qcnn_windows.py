@@ -42,8 +42,9 @@ def window_features(z: np.ndarray) -> np.ndarray:
 
 
 def main() -> int:
-    from qsh.models import datasets
     from satellite_telemanom import ESA_ADB_SPLIT, ESA_ADB_VALIDATION, prepare
+
+    from qsh.models import datasets
 
     t0 = time.time()
     prep = prepare("30s", ESA_ADB_SPLIT, ESA_ADB_VALIDATION, hold="last")

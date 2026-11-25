@@ -27,7 +27,6 @@ import platform
 import subprocess
 import sys
 import tempfile
-import time
 from pathlib import Path
 
 import numpy as np
@@ -137,7 +136,7 @@ def folds_of(patients: list[str], y: np.ndarray) -> dict[str, int]:
     """Five folds over the training patients, stratified as the split is: each stratum's patients sorted by ID,
     permuted by the default generator seeded 0, and dealt round-robin."""
     by: dict[str, list[int]] = {}
-    for p, v in zip(patients, y):
+    for p, v in zip(patients, y, strict=True):
         by.setdefault(p, []).append(int(v))
     strata = {0: [], 1: []}
     for p in sorted(by):
@@ -569,7 +568,7 @@ def stage_ckks(crops: Path, work: Path) -> int:
     a, b = arm["platt"]
     t = arm["threshold"]
     p = dict(np.load(work / f"square_seed{seed}_folded.npz"))
-    decide = lambda l: 1 / (1 + np.exp(-(a * (l[1] - l[0]) + b))) >= t      # noqa: E731
+    decide = lambda lg: 1 / (1 + np.exp(-(a * (lg[1] - lg[0]) + b))) >= t      # noqa: E731
     record["ckks"] = {}
     for name in PARAMS:
         with tempfile.TemporaryDirectory() as tmp:
