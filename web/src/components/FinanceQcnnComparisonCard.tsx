@@ -73,8 +73,7 @@ export default function FinanceQcnnComparisonCard() {
         {spread && ens && (
           <li>
             The seed is not the method: over {spread.seeds} seeds the circuit scores {f4(spread.mean_test_ap)} &plusmn; {f4(spread.sd_test_ap)},
-            and their mean probability {f4(ens.test_ap)} ({ci(ens)})
-            {lrEnc ? <>, {ens.ap_ci95[1] < lrEnc.ap_ci95[0] ? "below" : ens.ap_ci95[0] > lrEnc.ap_ci95[1] ? "above" : "overlapping"} logistic
+            and their mean probability {f4(ens.test_ap)} ({ci(ens)}){lrEnc ? <>, {ens.ap_ci95[1] < lrEnc.ap_ci95[0] ? "below" : ens.ap_ci95[0] > lrEnc.ap_ci95[1] ? "above" : "overlapping"} logistic
               regression on the circuit&apos;s own tanh-encoded inputs, {f4(lrEnc.test_ap)} ({ci(lrEnc)}). That row is not an arm: it is the
               trainer&apos;s baseline as the served weights file records it, added after the record was written; the arms&apos; logistic regression
               reads the standardised inputs instead.</> : "."}
