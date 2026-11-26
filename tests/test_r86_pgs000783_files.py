@@ -42,7 +42,7 @@ def _fetcher():
 def test_the_active_score_is_pgs000783_everywhere_it_is_chosen() -> None:
     from qsh.config import get_config
     from qsh.data.loaders import _PRS_FILES, ACTIVE_PRS
-    from qsh.models.registry import DEMO_SAMPLE_FILES, DS_PGS000072, DS_PGS_CATALOG, _SPECS
+    from qsh.models.registry import _SPECS, DEMO_SAMPLE_FILES, DS_PGS000072, DS_PGS_CATALOG
 
     assert ACTIVE_PRS == get_config().data.genomics_prs_score == "breast_cancer_pgs000783"
     assert _PRS_FILES[ACTIVE_PRS] == ("pgs000783_breast_cancer.tsv", "g1k_dosages_pgs000783.tsv")

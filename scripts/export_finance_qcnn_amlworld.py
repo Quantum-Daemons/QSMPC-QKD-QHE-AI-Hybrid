@@ -79,10 +79,10 @@ def pauli(theta: np.ndarray) -> np.ndarray:
 
 
 def main() -> int:
+    import qcnn_variational as Q
     import torch
     from sklearn.linear_model import LogisticRegression
 
-    import qcnn_variational as Q
     from qsh.models import datasets
     from qsh.qhe import qcnn_tree
 

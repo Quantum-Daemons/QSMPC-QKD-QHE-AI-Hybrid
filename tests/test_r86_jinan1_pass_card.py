@@ -10,6 +10,7 @@ it is.
 from __future__ import annotations
 
 import json
+from itertools import pairwise
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -43,7 +44,7 @@ def test_the_per_second_series_hold_together() -> None:
     for k in ("range_km", "measured_detections_per_s", "model_detections_per_s", "model_detections_per_s_refitted",
               "measured_qber", "model_qber"):
         assert len(site[k]) == n, k
-    assert all(b > a for a, b in zip(site["seconds"], site["seconds"][1:]))
+    assert all(b > a for a, b in pairwise(site["seconds"]))
     assert min(site["measured_detections_per_s"]) > 0 and min(site["model_detections_per_s"]) > 0
 
 

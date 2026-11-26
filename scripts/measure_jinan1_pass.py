@@ -31,8 +31,8 @@ import statistics
 import subprocess
 import sys
 import tempfile
-import zipfile
 import xml.etree.ElementTree as ET
+import zipfile
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -41,10 +41,19 @@ sys.path.insert(0, str(REPO / "src"))
 from qsh.models import datasets as D  # noqa: E402
 from qsh.orchestration.stages import Context  # noqa: E402
 from qsh.qkd.bb84 import signal_qber  # noqa: E402
-from qsh.qkd.channel import air_mass, elevation_deg, intrinsic_qber, link_elevation_deg  # noqa: E402
+from qsh.qkd.channel import (  # noqa: E402
+    air_mass,
+    elevation_deg,
+    intrinsic_qber,
+    link_elevation_deg,
+)
 from qsh.qkd.finite_key import finite_key_over  # noqa: E402
 from qsh.qkd.satellite_pass import simulate_pass  # noqa: E402
-from qsh.usecases.satellite_comms import _sat_channel, _sat_finite_key_params, _sat_source  # noqa: E402
+from qsh.usecases.satellite_comms import (  # noqa: E402
+    _sat_channel,
+    _sat_finite_key_params,
+    _sat_source,
+)
 
 PREREG = REPO / "references" / "satellite-jinan1-pass-preregistration.md"
 PREREG_SHA256 = "11665e2b800dd3f921d9b4bf5122252354e95d85fe773e64130c4ae284ae1984"
@@ -72,12 +81,12 @@ def sheets(path: Path) -> dict[str, list[list[str | None]]]:
     shared = []
     if "xl/sharedStrings.xml" in z.namelist():
         for si in ET.fromstring(z.read("xl/sharedStrings.xml")).findall("m:si", NS):
-            shared.append("".join(t.text or "" for t in si.iter("{%s}t" % NS["m"])))
+            shared.append("".join(t.text or "" for t in si.iter(f"{{{NS['m']}}}t")))
     names = [s.get("name") for s in ET.fromstring(z.read("xl/workbook.xml")).find("m:sheets", NS)]
     out = {}
     for i, name in enumerate(names, 1):
         rows = []
-        for r in ET.fromstring(z.read(f"xl/worksheets/sheet{i}.xml")).iter("{%s}row" % NS["m"]):
+        for r in ET.fromstring(z.read(f"xl/worksheets/sheet{i}.xml")).iter(f"{{{NS['m']}}}row"):
             cells = {}
             for c in r.findall("m:c", NS):
                 v = c.find("m:v", NS)
