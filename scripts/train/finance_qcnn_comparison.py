@@ -33,7 +33,7 @@ REPO = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO / "src"))
 
 PREREG = REPO / "references" / "finance-qcnn-amlworld-comparison-preregistration.md"
-PREREG_SHA256 = "dc56325772e004894575ba59e71faf7e50d40f8250ac46c81f0d27a6b8322d2c"
+PREREG_SHA256 = "d9badf51de4834ca2e07e386447d34513a24bc61f32bb1169f3256a16bbc9d31"  # with its addendum (arm 5 on the GPU); dc563257... before it
 WORK = REPO.parent / "tools_external" / "finance_qcnn_comparison_work"
 RECORD = REPO / "docs" / "measurements" / "finance-qcnn-amlworld-comparison-2026-11-26.json"
 #: The finance page's summary of the record (criterion 2: every arm's figure with its interval, whatever ships).
@@ -61,7 +61,9 @@ COMMON = ["--usecase", "finance_amlworld", "--arch", "tree", "--layers", "3", "-
 ARMS = {
     "qcnn1": {"flags": ["--encoding-scale", "0.5"], "device": "gpu"},
     "qcnn2": {"flags": ["--encoding-scale", "1", "--encoding", "quantile", "--reupload", "2"], "device": "gpu"},
-    "noent": {"flags": ["--encoding-scale", "0.5", "--no-entangle"], "device": "cpu"},
+    # The pre-registration's addendum of 2026-11-26: on the GPU after arm 2 (on the shared CPU two seeds ran 85 minutes
+    # unfinished; those runs were stopped and set aside unread).
+    "noent": {"flags": ["--encoding-scale", "0.5", "--no-entangle"], "device": "gpu"},
 }
 
 
@@ -81,7 +83,7 @@ def run_arm(arm: str, seeds: list[int]) -> int:
     spec = ARMS[arm]
     env = dict(os.environ)
     if spec["device"] == "cpu":
-        env["CUDA_VISIBLE_DEVICES"] = ""                 # arm 5 is pre-registered on the CPU
+        env["CUDA_VISIBLE_DEVICES"] = ""                 # no arm runs on the CPU since the addendum
     for s in seeds:
         out = WORK / arm / f"seed{s}"
         out.mkdir(parents=True, exist_ok=True)

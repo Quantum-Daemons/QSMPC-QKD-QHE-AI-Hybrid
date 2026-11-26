@@ -64,3 +64,10 @@ the arm-1 seed that would ship and each other arm.
    is reported and does not ship: the page's three circuit implementations do not carry its encoding.
 2. Whatever ships, the page states every arm's figure with its interval and the prevalence, says the circuit is
    classically simulable with no quantum advantage claimed, and says which comparators score above it.
+
+## Addendum, 2026-11-26, before any figure of arm 5
+
+Arm 5 was to run on the CPU because arms 1 and 2 held the GPU. On the shared CPU its first two seeds had run for 85
+minutes without finishing, so on the owner's approval of 2026-11-26 those runs were stopped, their partial output set
+aside unread, and arm 5 runs on the GPU after arm 2, seeds 0 to 4, with nothing else changed. The device does not change
+the circuit, its recipe or its selection; the record states the device of every run.
