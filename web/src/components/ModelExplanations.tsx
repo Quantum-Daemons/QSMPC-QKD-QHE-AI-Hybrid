@@ -31,15 +31,23 @@ export function CnnOcclusion({ e, className }: { e: OcclusionMap; className: str
   );
 }
 
-interface Locus { rsid: string; chr: string; pos: number; effect_allele: string; beta: number }
+// `weight` since Round 86's batch 6, when the score became PGS000783, whose weights are beta/SE rather than log odds
+// ratios; the file names what its weights are (`weight_label`, `weight_meaning`), so the plot labels them from it.
+interface Locus { rsid: string; chr: string; pos: number; effect_allele: string; weight: number }
+interface LociFile {
+  name: string; score_id: string; build: string; licence: string; licence_url: string; citation: string;
+  weight_label: string; weight_meaning: string; positions_from_description: number; loci: Locus[];
+}
+/** The file the locus plot reads: the active score's, beside its payload (scripts/data/build_prs_loci.py writes it). */
+export const PRS_LOCI_PATH = "data/genomics/pgs000783_loci.json";
 
 /** A locus plot of a polygenic score: each variant at its place on the genome, at its effect size. */
 export function PrsLocusCard() {
   const [open, setOpen] = useState(false);
-  const [data, setData] = useState<{ name: string; build: string; licence: string; licence_url: string; loci: Locus[] } | null>(null);
+  const [data, setData] = useState<LociFile | null>(null);
   useEffect(() => {
     if (!open || data) return;
-    fetch(`${import.meta.env.BASE_URL}data/genomics/pgs000072_loci.json`).then((r) => r.json()).then(setData).catch(() => undefined);
+    fetch(`${import.meta.env.BASE_URL}${PRS_LOCI_PATH}`).then((r) => r.json()).then(setData).catch(() => undefined);
   }, [open, data]);
   const plot = useMemo(() => {
     if (!data) return null;
@@ -49,16 +57,19 @@ export function PrsLocusCard() {
     const start: Record<string, number> = {};
     for (const c of chroms) { start[c] = cumulative; cumulative += extent[c] * 1.03; }
     const W = 760, H = 240, left = 50, right = 12, top = 14, bottom = 34;
-    const max = Math.max(...data.loci.map((l) => Math.abs(l.beta))) * 1.1;
+    // The axis spans what the weights take: PGS000783's are all positive, so the zero line sits at the bottom rather than
+    // halving the plot for a sign no weight has. A score with weights of both signs keeps the symmetric axis.
+    const big = Math.max(...data.loci.map((l) => Math.abs(l.weight))) * 1.1;
+    const hi = data.loci.some((l) => l.weight > 0) ? big : 0, lo = data.loci.some((l) => l.weight < 0) ? -big : 0;
     const X = (l: Locus) => left + ((start[l.chr] + l.pos) / cumulative) * (W - left - right);
-    const Y = (b: number) => top + ((max - b) / (2 * max)) * (H - top - bottom);
+    const Y = (b: number) => top + ((hi - b) / (hi - lo)) * (H - top - bottom);
     // The five names, placed greedily, largest effect first: beside the point on whichever side keeps the name inside the plot and clear of the names already placed. Staggering by a
     // fixed step still overprinted two neighbours on chromosomes 8 and 9 and ran the chromosome-20 name past the right edge, on the deployed page. Widths are an upper estimate, in
     // viewBox units, that also covers DejaVu Sans.
     const CHAR = 6.2, LINE = 12;
     const placed: { x1: number; x2: number; y1: number; y2: number }[] = [];
-    const top5 = [...data.loci].sort((a, b) => Math.abs(b.beta) - Math.abs(a.beta)).slice(0, 5).map((l) => {
-      const px = X(l), py = Y(l.beta), w = l.rsid.length * CHAR;
+    const top5 = [...data.loci].sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight)).slice(0, 5).map((l) => {
+      const px = X(l), py = Y(l.weight), w = l.rsid.length * CHAR;
       const options = [[5, -4, "start"], [5, 12, "start"], [-5, -4, "end"], [-5, 12, "end"], [5, -18, "start"], [-5, -18, "end"], [5, 26, "start"], [-5, 26, "end"]] as const;
       for (const [dx, dy, anchor] of options) {
         const x1 = anchor === "start" ? px + dx : px + dx - w, x2 = x1 + w, y2 = py + dy + 2, y1 = y2 - LINE;
@@ -84,7 +95,7 @@ export function PrsLocusCard() {
       ends[row] = x + half;
       chromLabels.push({ c, x, row });
     });
-    return { chroms, start, cumulative, W, H, left, right, top, bottom, max, X, Y, top5, chromLabels };
+    return { chroms, start, cumulative, W, H, left, right, top, bottom, hi, lo, X, Y, top5, chromLabels };
   }, [data]);
   return (
     <details className="card details" style={{ marginTop: 14 }} id="prs-locus" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
@@ -92,9 +103,9 @@ export function PrsLocusCard() {
       <div className="details-body">
         {data && plot && (
           <>
-            <p>Each point is one of the {data.loci.length} variants {data.name} scores, at its GRCh37 position, with its published effect size: positive raises the score, negative lowers it. The five largest by magnitude are named.</p>
+            <p>Each point is one of the {data.loci.length} variants {data.name} scores, at its GRCh37 position, with its published weight, {data.weight_meaning}: a positive weight raises the score, a negative one lowers it. The five largest by magnitude are named.</p>
             <div style={{ overflowX: "auto" }}>
-              <svg role="img" aria-label="Effect size of each scored variant by genomic position" viewBox={`0 0 ${plot.W} ${plot.H}`} style={{ width: "100%", minWidth: 560, height: "auto", display: "block" }}>
+              <svg role="img" aria-label="Weight of each scored variant by genomic position" viewBox={`0 0 ${plot.W} ${plot.H}`} style={{ width: "100%", minWidth: 560, height: "auto", display: "block" }}>
                 {plot.chroms.map((c, i) => (
                   <g key={c}>
                     {i % 2 === 0 && <rect x={plot.left + (plot.start[c] / plot.cumulative) * (plot.W - plot.left - plot.right)} y={plot.top} width={(((plot.start[plot.chroms[i + 1] ?? ""] ?? plot.cumulative) - plot.start[c]) / plot.cumulative) * (plot.W - plot.left - plot.right)} height={plot.H - plot.top - plot.bottom} fill={edge} opacity={0.25} />}
@@ -104,14 +115,16 @@ export function PrsLocusCard() {
                   <text key={`label-${c}`} x={x} y={plot.H - plot.bottom + 14 + row * 11} textAnchor="middle" fontSize={10} fill={muted}>{c}</text>
                 ))}
                 <line x1={plot.left} x2={plot.W - plot.right} y1={plot.Y(0)} y2={plot.Y(0)} stroke={muted} strokeDasharray="3 3" />
-                {[plot.max, -plot.max].map((b) => <text key={b} x={plot.left - 6} y={plot.Y(b) + 8} textAnchor="end" fontSize={10} fill={muted}>{b.toFixed(2)}</text>)}
-                <text x={12} y={plot.Y(0) - 6} fontSize={10} fill={muted}>effect</text>
-                <text x={12} y={plot.Y(0) + 8} fontSize={10} fill={muted}>ln(OR)</text>
-                {data.loci.map((l) => <circle key={l.rsid} cx={plot.X(l)} cy={plot.Y(l.beta)} r={3} fill={l.beta >= 0 ? danger : accent} opacity={0.85}><title>{`${l.rsid}, chromosome ${l.chr}, position ${l.pos.toLocaleString()}, effect allele ${l.effect_allele}, ln(OR) ${l.beta.toFixed(4)}`}</title></circle>)}
+                {[plot.hi, plot.lo].filter((b) => b !== 0).map((b) => <text key={b} x={plot.left - 6} y={plot.Y(b) + 8} textAnchor="end" fontSize={10} fill={muted}>{b.toFixed(2)}</text>)}
+                {/* The axis title sits at the zero line when weights take both signs, and halfway up when they take one,
+                    where the zero line is the plot's floor and the chromosome names run just below it. */}
+                <text x={12} y={(plot.lo === 0 ? (plot.top + plot.Y(0)) / 2 : plot.Y(0)) - 6} fontSize={10} fill={muted}>weight</text>
+                <text x={12} y={(plot.lo === 0 ? (plot.top + plot.Y(0)) / 2 : plot.Y(0)) + 8} fontSize={10} fill={muted}>{data.weight_label}</text>
+                {data.loci.map((l) => <circle key={l.rsid} cx={plot.X(l)} cy={plot.Y(l.weight)} r={3} fill={l.weight >= 0 ? danger : accent} opacity={0.85}><title>{`${l.rsid}, chromosome ${l.chr}, position ${l.pos.toLocaleString()}, effect allele ${l.effect_allele}, ${data.weight_label} ${l.weight.toFixed(4)}`}</title></circle>)}
                 {plot.top5.map(({ l, x, y, anchor }) => <text key={l.rsid} x={x} y={y} textAnchor={anchor} fontSize={10} fill={ink} style={{ paintOrder: "stroke", stroke: "var(--panel)", strokeWidth: 6 }}>{l.rsid}</text>)}
               </svg>
             </div>
-            <p className="small muted">Weights: PGS Catalog score PGS000072, Graff et al., Nat Commun 12:970 (2021), <a href={data.licence_url}>{data.licence}</a>. Eight of the positions are the UK Biobank coordinates the scoring file gives in its variant description.</p>
+            <p className="small muted">Weights: PGS Catalog score {data.score_id}, {data.citation}, <a href={data.licence_url}>{data.licence}</a>.{data.positions_from_description > 0 ? ` ${data.positions_from_description} of the positions are the UK Biobank coordinates the scoring file gives in its variant description.` : ""}</p>
           </>
         )}
       </div>

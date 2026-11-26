@@ -2,9 +2,10 @@
 """Evaluate the breast-cancer polygenic risk score across genetic ancestries.
 
 There is nothing to train here, and that is the point. A PRS is a published per-variant effect-weight
-vector - PGS000072 is the 187-variant breast-cancer score of Graff et al. (Nat Commun 12:970, 2021;
-CC BY 4.0), genome-wide significant variants weighted by their log odds ratios - applied as a dot
-product. It is a published polygenic score and FHE-native, because a
+vector - PGS000783 is the 162-variant breast-cancer score of Kachuri et al. (Nat Commun 11:6084, 2020;
+CC BY 3.0 IGO), PGS000072's variants that reached P < 5e-8 in the BCAC meta-analysis, each weighted by
+beta/SE - applied as a dot product. (PGS000072 itself, weighted by log odds ratios, was the score from
+Round 84 until the owner's choice of 2026-11-26, and is retired.) It is a published polygenic score and FHE-native, because a
 dot product is exactly what CKKS evaluates well. Presenting a genomic foundation model as a PRS method
 would be the most obvious credibility hole available, so this script does not.
 
@@ -12,7 +13,7 @@ WHAT CANNOT BE MEASURED HERE, AND WHY IT IS STILL REPORTED
     1000 Genomes is a reference panel. It has no breast-cancer case/control status, so no AUROC can
     be computed from it, and no supervised model can be trained from it either - which is why this use
     case has no QCNN and will not have one until a labelled cohort with usable terms exists. The
-    published AUROC comes from a UK Biobank cohort this project cannot reach (PPM002038, n=216,273).
+    published AUROC comes from a UK Biobank cohort this project cannot reach (PPM002070, n=216,273).
     Any AUROC this repository printed from 1000 Genomes would be fabricated, so the published figure is
     carried as a citation from `MetricSpec.baseline` - not restated here, so the two cannot drift -
     and is labelled external, never as something this run measured.
@@ -22,8 +23,8 @@ WHAT IS MEASURED
     transport to another: allele frequencies differ, linkage disequilibrium differs, and the same
     absolute score means a different percentile in a different group. A single global "high risk"
     threshold therefore selects very different fractions of each population, and that is directly
-    computable from real genotypes without any phenotype. PGS000072's own three Catalog performance
-    records are all in European-ancestry samples (read 2026-10-31), so its published record says
+    computable from real genotypes without any phenotype. PGS000783's own two Catalog performance
+    records are both in European-ancestry samples (read 2026-11-26), so its published record says
     nothing about other ancestries; the stratification below shows from genotypes alone why it cannot
     be assumed to transport.
 
@@ -51,12 +52,19 @@ from qsh.models.registry import get as get_spec  # noqa: E402
 #: applied globally on purpose, because one threshold for everyone is what breaks across ancestries.
 HIGH_RISK_PERCENTILE = 90.0
 
-#: What `weights.json` says about genotypes and about the weights' own terms.
-WEIGHTS_NOTE = ("Effect weights only, as PGS000072 publishes them (Graff et al., Nat Commun 12:970, 2021, "
-                "CC BY 4.0): this file carries no per-sample genotype. Per-sample effect-allele dosages "
-                "are redistributed elsewhere, in the slices DATA_LICENSES.md section 4 lists (30 "
-                "individuals in the browser payload), with the 1000 Genomes consortium citation IGSR "
-                "asks for; IGSR attaches no licence instrument to them.")
+#: Each score's publication and licence, for the note `weights.json` carries.
+SCORE_SOURCES = {
+    "PGS000783": "Kachuri et al., Nat Commun 11:6084, 2020, CC BY 3.0 IGO; the weights are beta/SE",
+    "PGS000072": "Graff et al., Nat Commun 12:970, 2021, CC BY 4.0; the weights are log odds ratios",
+}
+
+
+def weights_note(score_id: str) -> str:
+    """What `weights.json` says about genotypes and about the weights' own terms."""
+    return (f"Effect weights only, as {score_id} publishes them ({SCORE_SOURCES[score_id]}): this file carries "
+            "no per-sample genotype. Per-sample effect-allele dosages are redistributed elsewhere, in the slices "
+            "DATA_LICENSES.md section 4 lists (30 individuals in the browser payload), with the 1000 Genomes "
+            "consortium citation IGSR asks for; IGSR attaches no licence instrument to them.")
 
 
 def load_dosages(path: Path, keys: list[str]) -> tuple[list[str], list[str], np.ndarray]:
@@ -281,7 +289,7 @@ def main() -> int:
         "high_risk_percentile": HIGH_RISK_PERCENTILE,
         "global_cut": cut,
         "licence_audit": licence,
-        "note": WEIGHTS_NOTE,
+        "note": weights_note(score_id),
     }, indent=2) + "\n")
 
     train.record_metrics("genomics.prs", {

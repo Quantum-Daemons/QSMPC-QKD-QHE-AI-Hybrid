@@ -8,8 +8,10 @@ and audit83/datasets-licences-2d.md findings 10, 12, 15 and 17)
     property the page disclaims; realData.ts called genomics "commercial-OK".
   - Three texts said no per-sample genotype is, or may be, published, while the browser payload
     serves 30 people's dosages.
-  - The ceiling was not the Catalog's own maximum for the score in use; for PGS000072 it is the one
-    AUROC among its three Catalog performance records (PPM002038, 0.637; read 2026-10-31).
+  - The ceiling was not the Catalog's own maximum for the score in use; for PGS000072 it was the one
+    AUROC among its three Catalog performance records (PPM002038, 0.637; read 2026-10-31), and for
+    PGS000783, the score since Round 86's batch 6, it is the higher of its two (PPM002054, 0.637;
+    read 2026-11-26), above the baseline PPM002070's 0.626.
   - The gnomAD overlay plotted variants whose coordinate lookup hit another record. It now reads each
     variant by rsID from the same Ensembl record the dosages come from, for the allele they count.
 
@@ -28,7 +30,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 OVERLAY = REPO / "web" / "public" / "data" / "genomics" / "real_2d.json"
-PAYLOAD = REPO / "web" / "public" / "data" / "genomics" / "pgs000072_breast_cancer.json"
+PAYLOAD = REPO / "web" / "public" / "data" / "genomics" / "pgs000783_breast_cancer.json"
 
 
 def _module(path: Path, name: str):
@@ -60,7 +62,7 @@ def test_the_overlay_carries_gnomads_terms_and_link() -> None:
 
 def test_every_plotted_point_is_the_scores_effect_allele() -> None:
     p2d = _module(REPO / "scripts" / "prep_real_data_2d.py", "prep_real_data_2d_points")
-    cache = json.loads((REPO / "data" / "genomics" / "gnomad_af_pgs000072.json").read_text())
+    cache = json.loads((REPO / "data" / "genomics" / "gnomad_af_pgs000783.json").read_text())
     payload = json.loads(PAYLOAD.read_text())
     d = json.loads(OVERLAY.read_text())
     r = p2d._round
@@ -89,17 +91,17 @@ def test_the_genotype_texts_say_what_is_served() -> None:
     assert f"serves {p['n_individuals_shipped']} of the {p['n_individuals_available']:,} individuals" in notes
     weights = json.loads((REPO / "models" / "genomics_prs" / "weights.json").read_text())["note"]
     gp = _module(REPO / "scripts" / "train" / "genomics_prs.py", "genomics_prs")
-    assert weights == gp.WEIGHTS_NOTE, "weights.json's note is not the trainer's"
+    assert weights == gp.weights_note(p["score_id"]), "weights.json's note is not the trainer's"
     assert "none may be published" not in weights and "30 individuals in the browser payload" in weights
 
 
 def test_the_ceiling_is_the_catalogs_current_maximum() -> None:
     from qsh.models.registry import M_PRS
 
-    assert M_PRS.baseline == M_PRS.ceiling == 0.637
-    for fact in ("PPM002038", "the only one", "own three Catalog performance records", "read 2026-10-31"):
+    assert (M_PRS.baseline, M_PRS.ceiling) == (0.626, 0.637)
+    for fact in ("PPM002054", "The higher AUROC of PGS000783's two Catalog performance records", "read 2026-11-26"):
         assert fact in M_PRS.ceiling_source, f"{fact!r} missing from the ceiling source"
-    for fact in ("PPM002038", "only 162 of the original 187 SNPs", "AUC at 5 years", "WITH COVARIATES",
+    for fact in ("PPM002070", "PPM002038", "only 162 of the original 187 SNPs", "AUC at 5 years", "WITH COVARIATES",
                  "doi:10.1038/s41467-020-19600-4"):
         assert fact in M_PRS.baseline_source, f"{fact!r} missing from the baseline source"
     for stale in ("PGS000004", "PPM001647", "PPM038141", "0.633"):
@@ -137,7 +139,7 @@ def test_the_page_text_says_what_runs() -> None:
 def test_no_source_line_calls_genomics_commercial_ok() -> None:
     ts = (REPO / "web" / "src" / "lib" / "realData.ts").read_text()
     assert "backed by a commercial-OK dataset (medical, genomics)" not in ts
-    assert "genomics, whose PGS000072 weights are CC BY 4.0" in ts
+    assert "genomics, whose PGS000783 weights are CC BY 3.0 IGO" in ts
     cc = (REPO / "web" / "src" / "lib" / "clientCompute.ts").read_text()
     assert "Use REAL commercial-OK data" not in cc
     py = (REPO / "src" / "qsh" / "usecases" / "genomics" / "__init__.py").read_text()

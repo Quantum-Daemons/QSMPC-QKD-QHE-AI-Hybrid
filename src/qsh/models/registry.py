@@ -22,10 +22,11 @@ Every use case has up to three model tiers, and the *relationship between them* 
                    AND IT DOES NOT HOLD FOR EVERY USE CASE. Round 32 found the citation that falsifies
                    it for genomics specifically: Knight et al., Cell Reports Methods 6(1):101271
                    (2026-01-26), run polygenic risk scoring under HE over **110,000 SNPs** and describe
-                   it as "practical to use on a single CPU" - roughly 600x the 183 variants this
+                   it as "practical to use on a single CPU" - roughly 700x the 158 variants this
                    project scores. So `genomics.prs` is not small because homomorphic evaluation is
-                   expensive. It is small because PGS000072 HAS 187 variants, which is a property of
-                   Graff et al. 2021 and not of CKKS.
+                   expensive. It is small because PGS000783 HAS 162 variants, which is a property of
+                   Kachuri et al. 2020 (and of Graff et al. 2021, whose variants it re-weights) and not
+                   of CKKS.
 
                    The cost argument survives where the model is not a bare dot product - finance,
                    medical and satellite all evaluate something with depth. Applying it to a linear
@@ -435,7 +436,62 @@ DS_NIH_CXR14 = DatasetSpec(
         "Classification and Localization of Common Thorax Diseases. CVPR 2017. The data is provided by the NIH Clinical "
         "Center."),
 )
+#: The genomics score since Round 86's batch 6 (the owner's choice of 2026-11-26): PGS000783, PGS000072's
+#: variants with the inverse-variance weights of Kachuri et al. 2020. The record keeps its old name because every
+#: reader of it means "the score the page scores".
 DS_PGS_CATALOG = DatasetSpec(
+    name="PGS Catalog score PGS000783",
+    licence=("CC-BY-3.0-IGO (the score's source publication, Kachuri et al. 2020); the PGS Catalog record adds "
+             "the EMBL-EBI Terms of Use"),
+    url="https://www.pgscatalog.org/score/PGS000783/",
+    licence_checked="2026-11-26",
+    # Cleared for publication with credit: CC BY 3.0 IGO on the article page, read 2026-11-26 (Crossref's
+    # metadata records CC BY 4.0, which the article page does not). `genomics.prs` has no Hub repo; the weights
+    # ship with the page.
+    publishable=True,
+    notes=(
+        "The score's licence is its publication's: PGS000783 (CC_Breast_IV) is a breast-cancer score of Kachuri "
+        "et al., Nat Commun 11:6084 (2020), whose article page states CC BY 3.0 IGO (read 2026-11-26; Crossref's "
+        "metadata records CC BY 4.0, which the article page does not). The Catalog's method is '162 variants from "
+        "Graff et al (PGS000072) with inverse variant weights': the 162 of PGS000072's 187 variants that reached "
+        "P < 5e-8 in the BCAC meta-analysis (Michailidou et al., Nature 551:92-94, 2017; GWAS Catalog GCST004988), "
+        "each weighted by beta/SE, its log odds ratio there over that estimate's standard error, as the article's "
+        "PRS_IV. The weights are numbers the article publishes in its Supplementary Data 1, and the authors "
+        "deposited the score in the Catalog; BCAC's term not to repost its summary results to a third-party "
+        "website binds those who download them from BCAC, which this project did not (BCAC's summary-results "
+        "page, read 2026-11-26; this project's reading, not legal advice). The PGS Catalog REST "
+        "record (read 2026-11-26) asks users to cite the score and observe 'any licensing restrictions set by the "
+        "authors', with the EMBL-EBI Terms of Use for the rest. The scoring file carries no '#license' line; its "
+        "'#citation' line names the Nat Commun article. The bundled file's first line, written by this project, "
+        "records all of this; `scripts/train/genomics_prs.py` re-reads it at run time (`audit_licence()`). "
+        "Nothing here uses the name or emblem of an intergovernmental organisation. PGS000072 (CC BY 4.0), which the page scored from Round 84, is retired and kept; "
+        "PGS000004 (PRS313) is not used: its weights appear only in the supplementary data of an article licensed "
+        "CC BY-NC-ND 4.0, and none of them is in the repository."
+    ),
+    # CC BY 3.0 IGO s.4(b): the author, the title, the URI and, for an adaptation, a credit for the use. The
+    # Catalog's own citation is the one `/rest/info` names; IGSR asks for the 1000 Genomes consortium paper; BCAC
+    # is credited for the meta-analysis the weights come from.
+    attribution=(
+        "Score: Kachuri L, Graff RE, Smith-Byrne K, Meyers TJ, Rashkin SR, Ziv E, Witte JS, Johansson M, "
+        "'Pan-cancer analysis demonstrates that integrating polygenic risk scores with modifiable risk factors "
+        "improves risk prediction', Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4, CC BY 3.0 IGO "
+        "(https://creativecommons.org/licenses/by/3.0/igo/); its weights as the PGS Catalog distributes them "
+        "(PGS000783), from the Breast Cancer Association Consortium (BCAC) meta-analysis of Michailidou K et al., "
+        "'Association analysis identifies 65 new breast cancer risk loci', Nature 551:92-94 (2017), "
+        "doi:10.1038/nature24284. PGS Catalog: Lambert, Wingfield et al., 'Enhancing the Polygenic Score Catalog "
+        "with tools for score calculation and ancestry normalization', Nat Genet 56:1989-1994 (2024), "
+        "doi:10.1038/s41588-024-01937-x. Genotypes: The 1000 Genomes Project Consortium, 'A global reference for "
+        "human genetic variation', Nature 526:68-74 (2015), doi:10.1038/nature15393. Changes: 158 of the 162 "
+        "variants are scored, with their weights unchanged; the 4 that Ensembl's 1000 Genomes phase 3 records do "
+        "not resolve are left out (DATA_LICENSES.md section 4)."
+    ),
+)
+#: PGS000072, the genomics score from Round 84 to Round 86's batch 6, RETIRED on the owner's choice of 2026-11-26
+#: for PGS000783 (`DS_PGS_CATALOG`, above). Kept, with its scoring file, its dosage slice (the source of PGS000783's)
+#: and its browser payload, moved out of `web/public/` to `data/genomics/pgs000072_prs_retired.json` so the page no
+#: longer serves it, so its licence record stays checked and dated while its files are in the tree; referenced by no
+#: ModelSpec.
+DS_PGS000072 = DatasetSpec(
     name="PGS Catalog score PGS000072",
     licence=("CC-BY-4.0 (the score's source publication, Graff et al. 2021); the PGS Catalog record "
              "adds the EMBL-EBI Terms of Use"),
@@ -490,8 +546,8 @@ DS_1000G = DatasetSpec(
         "data vary'; no licence instrument attaches to the genotypes, which the participants consented "
         "to release openly. Per-sample genotypes ARE redistributed, as effect-allele dosages at the "
         "score's variants, read through the Ensembl REST API's genotype endpoint: the browser payload "
-        "serves 30 of the 2,504 individuals, and three more tracked files hold slices for CI and the "
-        "retired score; DATA_LICENSES.md section 4 lists each file and its genotype-cell count. The "
+        "serves 30 of the 2,504 individuals, and five more tracked files hold slices for CI and the "
+        "retired scores; DATA_LICENSES.md section 4 lists each file and its genotype-cell count. The "
         "2,504-individual matrices stay local and are not committed."
     ),
     attribution=(
@@ -735,8 +791,8 @@ BUNDLED_DEMO_SAMPLES: dict[str, tuple[str, DatasetSpec]] = {
     "genomics": (
         "real 1000 Genomes phase-3 genotypes (no licence instrument: open-consent data, per IGSR's "
         "disclaimer; The 1000 Genomes Project Consortium, Nature 526:68-74, 2015) + the published "
-        "PGS000072 effect weights (PGS Catalog; Graff et al., Nat Commun 12:970, 2021, CC BY 4.0). 183 "
-        "of its 187 variants are scored: the 4 that Ensembl's 1000 Genomes records do not resolve are "
+        "PGS000783 effect weights (PGS Catalog; Kachuri et al., Nat Commun 11:6084, 2020, CC BY 3.0 IGO). "
+        "158 of its 162 variants are scored: the 4 that Ensembl's 1000 Genomes records do not resolve are "
         "left out, not filled in. 30 of 2,504 individuals ship in the browser payload - DATA_LICENSES "
         "section 4 justifies a slice of that size, not the full matrix.",
         DS_PGS_CATALOG,
@@ -760,7 +816,7 @@ BUNDLED_DEMO_SAMPLES: dict[str, tuple[str, DatasetSpec]] = {
 DEMO_SAMPLE_FILES: dict[str, str] = {
     "finance_aml": "web/public/data/finance/paysim_sample.json",
     "medical_fl": "web/public/data/medical/breast_cancer_sample.json",
-    "genomics": "web/public/data/genomics/pgs000072_breast_cancer.json",
+    "genomics": "web/public/data/genomics/pgs000783_breast_cancer.json",
     "satellite_comms": "web/public/data/satellite/opssat_segments.json",
 }
 
@@ -884,33 +940,30 @@ M_CXR_EFFUSION = MetricSpec(
 M_PRS = MetricSpec(
     name="auroc_eur",
     display="AUROC (European ancestry)",
-    baseline=0.637,
-    # Read at the PGS Catalog REST API on 2026-10-31 (/rest/performance/search?pgs_id=PGS000072: three
-    # records; Catalog release 2026-10-23).
+    baseline=0.626,
+    # Read at the PGS Catalog REST API on 2026-11-26 (/rest/performance/search?pgs_id=PGS000783: two records).
+    # Until Round 86's batch 6 this was PGS000072's PPM002038, 0.637, a record evaluated on 162 of that score's 187
+    # variants, PGS000783's variants.
     baseline_source=(
-        "A citation and not a target: PGS Catalog PPM002038 gives PGS000072 an AUROC of 0.637 for a model "
-        "fitted WITH COVARIATES, on a cohort that used only 162 of the score's 187 SNPs. "
-        "The record (no confidence interval recorded) is incident "
-        "breast cancer in n=216,273 European-ancestry women in UK Biobank - 4,760 cases and 211,513 "
-        "controls - from Kachuri et al., Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. "
-        "Three reasons, all from the record itself: the model is fitted WITH "
-        "COVARIATES (age at assessment, family history of breast cancer, genotyping array, PCs 1-15, "
-        "parity, age at menarche, body mass index, menopausal status, hormone replacement therapy, oral "
-        "contraceptive use, alcohol intake, and body mass index by menopausal status), which a bare "
-        "weighted dot product does not have; it used 'only 162 of the original 187 SNPs'; and it is an "
-        "AUC at 5 years. It is the only AUROC among the score's three Catalog performance records; the "
-        "other two report an odds ratio per standard deviation of 1.26 (95% CI 1.24-1.28; PPM000192, "
-        "GERA and UK Biobank, n=237,549, Graff et al. 2021) and a hazard ratio of 1.26 (1.20-1.32; "
-        "PPM017165, post-menopausal breast cancer, UK Biobank, n=1,990; Byrne et al., Int J Epidemiol "
-        "52:817-826, 2023)."
+        "A citation and not a target: PGS Catalog PPM002070 gives PGS000783 an AUROC of 0.626 for a model fitted "
+        "WITH COVARIATES, the fewer of its two records' sets: age, genotyping array and PCs 1-15. The record (no "
+        "confidence interval recorded; C-index 0.62, SE 0.005) is incident breast cancer in n=216,273 "
+        "European-ancestry women in UK Biobank - 4,760 cases and 211,513 controls - from Kachuri et al., Nat "
+        "Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. Two reasons, both from the record itself: the "
+        "model is fitted WITH COVARIATES, which a bare weighted dot product does not have, and it is an AUC at 5 "
+        "years. The score's other record, PPM002054, adds family history of breast cancer, parity, age at "
+        "menarche, body mass index, menopausal status, hormone replacement therapy, oral contraceptive use, "
+        "alcohol intake and body mass index by menopausal status, and reports an AUROC of 0.637 and a hazard "
+        "ratio of 1.52 (95% CI 1.47-1.56) on the same cohort. PGS000072's record PPM002038, from the same article "
+        "and cohort, carries the same two figures for 'only 162 of the original 187 SNPs', the variants of "
+        "PGS000783; the records do not say whether they are one evaluation filed twice."
     ),
     ceiling=0.637,
     ceiling_source=(
-        "The highest AUROC among PGS000072's own three Catalog performance records, and the only one: "
-        "PPM002038, 0.637, with the covariates the baseline source lists (read 2026-10-31). All three "
-        "are in European-ancestry samples, so the Catalog holds no figure for this "
-        "score in any other ancestry: the ancestry gap this page shows is measured from genotypes, not "
-        "read from a published AUROC."
+        "The higher AUROC of PGS000783's two Catalog performance records: PPM002054, 0.637, with the risk-factor "
+        "covariates the baseline source lists (read 2026-11-26). Both are in European-ancestry women in UK "
+        "Biobank, so the Catalog holds no figure for this score in any other ancestry: the ancestry gap this page "
+        "shows is measured from genotypes, not read from a published AUROC."
     ),
     companion="",
     # Any germline-SNP PRS claiming much above ~0.70 discrimination is measuring something else.
@@ -1526,16 +1579,17 @@ _SPECS: tuple[ModelSpec, ...] = (
         tier="t2_industry",
         key="genomics.prs",
         label="Polygenic risk score (published effect weights)",
-        # PGS000072's development method per the PGS Catalog REST record (method_name and
-        # method_params), read 2026-10-31.
-        architecture=("per-variant effect-weight vector over 183 of PGS000072's 187 variants "
-                      "(genome-wide significant variants: P < 5e-8, MAF > 1%, LD-thinned at r2 > 0.3; "
-                      "weights are log odds ratios)"),
+        # PGS000783's development method per the PGS Catalog REST record (method_name, read 2026-11-26) and the
+        # score's article; PGS000072's variants were chosen at P < 5e-8, MAF > 1% and r2 > 0.3 (its record, read
+        # 2026-10-31).
+        architecture=("per-variant effect-weight vector over 158 of PGS000783's 162 variants (PGS000072's "
+                      "variants that reached P < 5e-8 in the BCAC meta-analysis; weights are inverse-variance, "
+                      "beta/SE)"),
         params=None,
         dataset=DS_PGS_CATALOG,
         metric=M_PRS,
         artifacts=(ArtifactSpec("weights.json", "json", "none", "both"),),
-        hf_repo=None,          # no Hub repo: the weights are PGS000072's published ones, served with the page
+        hf_repo=None,          # no Hub repo: the weights are PGS000783's published ones, served with the page
         runs_encrypted=True,   # a dot product: the rare case that is both clinical standard and FHE-native
         notes=(
             "WHAT RUNS UNDER CKKS: the full score, in both tiers. One person's effect-allele dosages "
@@ -1555,11 +1609,14 @@ _SPECS: tuple[ModelSpec, ...] = (
             "ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: 1000 "
             "Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is "
             "computable from it and genomics_prs.py records auroc=null rather than inventing one. "
-            "PGS000072 is the breast-cancer score of Graff et al. (Nat Commun 12:970, 2021; CC BY 4.0): "
-            "187 genome-wide significant variants weighted by their log odds ratios. 183 of them have "
-            "a 1000 Genomes phase 3 genotype for every one of the 2,504 individuals and are scored; the "
-            "other 4 are left out, never filled in, and the dosage files and the payload name each with "
-            "its reason. The finding is the by_super_population.*.frac_above_global_cut rows listed "
+            "PGS000783 is a breast-cancer score of Kachuri et al. (Nat Commun 11:6084, 2020; CC BY 3.0 IGO): "
+            "the 162 of PGS000072's genome-wide significant variants that reached P < 5e-8 in the BCAC "
+            "meta-analysis, each weighted by beta/SE, so a score is a sum of z-statistics rather than of log "
+            "odds; a person is read against percentiles of their own group, which that scale does not change. "
+            "158 of them have a 1000 Genomes phase 3 genotype for every one of the 2,504 individuals and are "
+            "scored; the other 4 are left out, never filled in, and the dosage files and the payload name each "
+            "with its reason. PGS000072, the score from Round 84 until the owner's choice of 2026-11-26, is "
+            "retired and its files are kept. The finding is the by_super_population.*.frac_above_global_cut rows listed "
             "above: one globally-set high-risk cut flags a far larger share of one ancestry group than "
             "of another, a gap that allele-frequency and linkage-disequilibrium differences between the "
             "groups can produce on their own (Martin et al., Nat Genet 51:584, 2019), and which this "

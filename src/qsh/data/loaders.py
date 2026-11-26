@@ -155,27 +155,34 @@ def load_genomic(n: int = 1000, n_snps: int = 64, seed: int = 0
 # "HE-applied-to-PRS" pattern; FHE-native, no surrogate).
 #: name -> (scoring file, dosage file).
 #:
+#: `breast_cancer_pgs000783` is PGS000783 (CC_Breast_IV; Kachuri et al., Nat Commun 11:6084, 2020,
+#: CC BY 3.0 IGO; 162 of PGS000072's variants with inverse-variance weights, keyed by rsID) and is
+#: **ACTIVE** since Round 86's batch 6 (the owner's choice of 2026-11-26) - what the pipeline, the
+#: browser payload, the trainer and the registry all score. The score in force is
+#: `DataConfig.genomics_prs_score`, not a default written into any call site. Its dosage files are
+#: PGS000072's columns for the same variants (scripts/data/derive_g1k_dosages.py).
+#:
 #: `breast_cancer_pgs000072` is PGS000072 (CC_Breast; Graff et al., Nat Commun 12:970, 2021, CC BY 4.0;
-#: 187 variants, keyed by rsID) and is **ACTIVE** - what the pipeline, the browser payload, the trainer
-#: and the registry all score. The score in force is `DataConfig.genomics_prs_score`, not a default
-#: written into any call site.
+#: 187 variants, keyed by rsID), active from Round 84 and **RETIRED** now: kept, with its committed
+#: slice, because PGS000783's dosage files are derived from its files.
 #:
 #: `breast_cancer` is PGS000001 / PRS77_BC, keyed by rsID, and is **RETIRED**: kept because its
 #: 400-individual dosage file is committed in full and CI exercises it.
 #:
 #: A score variant may lack a dosage column only where the dosage file declares it `#unscored`, with
 #: the reason (`unscored_variants`); the score is then evaluated over the variants that have one, never
-#: with a filled-in value. PGS000072's file declares the variants Ensembl's 1000 Genomes records do not
-#: resolve (scripts/data/fetch_g1k_dosages.py).
+#: with a filled-in value. PGS000072's and PGS000783's files declare the variants Ensembl's 1000 Genomes
+#: records do not resolve (scripts/data/fetch_g1k_dosages.py, scripts/data/derive_g1k_dosages.py).
 #:
 #: Kept as a literal rather than read from ``DataConfig`` so these loaders stay pure functions with no
 #: config dependency; ``tests/test_prs_pipeline_parity.py`` asserts the two agree, so there is one
 #: authority and a check rather than two authorities and a hope.
-ACTIVE_PRS = "breast_cancer_pgs000072"
+ACTIVE_PRS = "breast_cancer_pgs000783"
 
 _PRS_FILES = {
     "breast_cancer": ("pgs000001_breast_cancer.tsv", "g1k_dosages.tsv"),
     "breast_cancer_pgs000072": ("pgs000072_breast_cancer.tsv", "g1k_dosages_pgs000072.tsv"),
+    "breast_cancer_pgs000783": ("pgs000783_breast_cancer.tsv", "g1k_dosages_pgs000783.tsv"),
 }
 
 
@@ -200,8 +207,8 @@ def unscored_variants(dosage_path) -> dict[str, str]:
 def load_prs(name: str = ACTIVE_PRS) -> tuple[list[str], list[str], np.ndarray]:
     """Load a real PGS-Catalog Polygenic Risk Score -> ``(keys, effect_alleles, effect_weights)``.
 
-    The weights are the real published effect sizes, every variant of the published score (PGS000072:
-    187 breast-cancer variants, Graff et al., Nat Commun 12:970, 2021, CC BY 4.0). Bundled under
+    The weights are the real published effect weights, every variant of the published score (PGS000783:
+    162 breast-cancer variants, Kachuri et al., Nat Commun 11:6084, 2020, CC BY 3.0 IGO). Bundled under
     ``data/genomics/`` so it runs offline; the attribution each score's licence asks for is in
     DATA_LICENSES. ``load_genomic_prs`` returns the variants that have a genotype column.
 

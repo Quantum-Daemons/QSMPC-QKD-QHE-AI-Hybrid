@@ -52,8 +52,10 @@ ring degree should show, and it is why this is the portable figure. (The telecom
 its reported per-rotation figure times its rotation count rather than a separately displayed total;
 the per-rotation value itself is measured.)
 
-The genomics row is the sign test the page ran until Round 84. The page now scores PGS000072's 183
-variants in full; the row stays because a rotation's cost does not depend on which model asked for it.
+The genomics row is the sign test the page ran until Round 84. The page then scored PGS000072's 183
+variants in full, and since Round 86's batch 6 scores PGS000783's 158; the row stays because a rotation's cost does
+not depend on which model asked for it, and summing 158 slots takes the same 8 rotations as 183 (both pad to 256). It
+was not measured again for PGS000783.
 Measured on the deployed demo on 2026-11-01, in Chrome 152.0.0.0 (WASM CPU, Linux x86_64, 20 logical
 cores, `crossOriginIsolated` true), with the same ring:
 

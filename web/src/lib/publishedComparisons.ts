@@ -44,7 +44,7 @@ export const MODEL_RELATION: Record<string, Relation> = {
   "finance_aml.student": { relation: "reference", why: "a logistic regression distilled from the gradient-boosting model, beside the published GFP+XGBoost" },
   "finance_aml.mlp_large": { relation: "reference", why: "an MLP over this project's features, beside the published GFP+XGBoost" },
   "finance_aml.gnn_compact": { relation: "reference", why: "a compact message-passing model distilled from Multi-PNA+EU, beside Multi-PNA+EU itself" },
-  "genomics.prs": { relation: "citation", why: "the published AUROC is for a model fitted with covariates on UK Biobank, with 162 of the score's 187 variants; this page scores 30 public individuals, so it is a citation and not a target" },
+  "genomics.prs": { relation: "citation", why: "the published AUROC is for a model fitted with covariates (age, genotyping array and PCs) on UK Biobank women, at 5 years; this page scores 30 public individuals with no phenotype, so it is a citation and not a target" },
   "medical_fl.resnet18": { relation: "same", why: "ResNet-18 at 28 px on BreastMNIST's official split, as in MedMNIST v2" },
   "medical_fl.resnet50": { relation: "reference", why: "ResNet-50 at 28 px under a training regime that differs from the benchmark table's" },
   "medical_fl.student": { relation: "citation", why: "a single-convolution CNN reading 14 x 14 images, distilled for CKKS, beside the benchmark's ResNet-18 at 28 x 28" },

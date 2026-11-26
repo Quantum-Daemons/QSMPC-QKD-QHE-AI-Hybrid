@@ -53,7 +53,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 WEB = REPO / "web"
-PAYLOAD = WEB / "public" / "data" / "genomics" / "pgs000072_breast_cancer.json"
+PAYLOAD = WEB / "public" / "data" / "genomics" / "pgs000783_breast_cancer.json"
 
 HARNESS = r"""
 import { createRequire } from "node:module";

@@ -3,10 +3,11 @@
 Several biobanks pool a SNP's allele counts without revealing per-cohort counts (QSMS secure
 summation, over a field that holds every total the counts can reach), then a clinician evaluates a
 **polygenic risk score (PRS)** over an *encrypted* genotype vector. The model is a **real published
-PRS** (PGS Catalog PGS000072, the 187-variant breast-cancer score of Graff et al., Nat Commun 12:970,
-2021, CC BY 4.0): ``PRS = sum_i effect_weight_i * dosage_i``, over the 183 variants that have a 1000
-Genomes phase 3 genotype (the other four are declared ``#unscored`` by the dosage files and left out,
-never filled in). That is a *linear* model, so CKKS evaluates the whole score as one approximate dot
+PRS** (PGS Catalog PGS000783, the 162-variant breast-cancer score of Kachuri et al., Nat Commun 11:6084,
+2020, CC BY 3.0 IGO, which re-weights PGS000072's variants by beta/SE; PGS000072 itself was the score until
+Round 86's batch 6 and is retired): ``PRS = sum_i effect_weight_i * dosage_i``, over the 158 variants that
+have a 1000 Genomes phase 3 genotype (the other four are declared ``#unscored`` by the dosage files and left
+out, never filled in). That is a *linear* model, so CKKS evaluates the whole score as one approximate dot
 product, with no surrogate: a person's dosages at every scored variant in one ciphertext, multiplied by
 the plaintext weights, summed by rotation, and the decrypted score compared with a high-risk cut.
 Per-SNP SHAP shows which loci drive the score.

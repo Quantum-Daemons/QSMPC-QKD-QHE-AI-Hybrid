@@ -84,7 +84,7 @@ fall short:
 |---|---|---|---|---|
 | **finance** | XGBoost over this project's own graph features: 32 causal per-account aggregates, 79 per-transaction fan-in, fan-out, vertex-statistic and scatter-gather features in the Graph Feature Preprocessor's style, and 3 pair counts (IBM's preprocessor itself is not used) | IBM **AMLworld HI-Small**, 5,078,345 transactions, 1 laundering in 981 (CDLA-Sharing-1.0) | minority-class F1 **0.6161**, AUPRC **0.6428** vs a 0.0015 prevalence baseline (the test window's positive rate; the corpus's is 1 in 981) | 0.6323, GFP + XGBoost (NeurIPS 2023 D&B), on another split - see the note below |
 | **medical** | **ResNet-18** trained from random initialisation (no ImageNet weights, so no ImageNet terms attach) | MedMNIST v2 **BreastMNIST** (CC BY 4.0 **asserted by MedMNIST**; the BUSI authors **publish no licence** - see [DATA_LICENSES.md](../DATA_LICENSES.md)) | AUC **0.9147** from one run (DeLong 95% 0.858 to 0.971); six seeds average $`0.8905 \pm 0.0198`$ | 0.901 (Yang et al., Scientific Data 10:41, 2023), the mean of at least three trials, so the comparable figure is the six-seed mean, below it |
-| **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000072** (Graff et al. 2021, CC BY 4.0; 183 of its 187 variants scored) over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.637 - *external citation, not measurable here: a reference panel carries no phenotype. Fitted WITH covariates a dot product does not have, on 162 of the 187 variants and at 5 years, so it is a citation and not a target* |
+| **genomics** | published **PRS** effect-weight vector - not a neural network | PGS Catalog **PGS000783** (Kachuri et al. 2020, CC BY 3.0 IGO; PGS000072's variants re-weighted by $`\beta / \mathrm{SE}`$; 158 of its 162 variants scored) over **2,504 real 1000 Genomes samples** | ancestry portability, below | AUROC 0.626 - *external citation, not measurable here: a reference panel carries no phenotype. Fitted WITH covariates a dot product does not have (age, genotyping array, PCs 1-15) and at 5 years, so it is a citation and not a target; 0.637 with the risk factors as well* |
 | **satellite** | **Telemanom** 2xLSTM(80), seq 250, a 10-step forecast served by its first step, non-parametric dynamic threshold + pruning, by ESA-ADB's Telemanom-ESA recipe | **ESA-ADB Mission1** lightweight channels 41-46, multi-year real telemetry (CC-BY-3.0-IGO) | corrected event-wise F0.5 **0.950** over **29 anomalies** (tp=23 fp=0 fn=6); 0.968 with ESA-ADB's label-reading preparation and the paper's floor | 0.968 (ESA-ADB Supp. Table 9, anomalies only) |
 | **telecom** | RF baseline + quantum-kernel SVC + variational QNN | literature-grounded synthetic QKD-attack telemetry (7 attack types + normal) | macro F1 over the eight classes, **RF 0.987**; the two quantum models are binary, each on its own draw: quantum-kernel SVC **0.832** against a forest's 1.000, variational QNN **0.467** (it predicts attack for every row) against 0.990 | no trustworthy single number exists - see below |
 
@@ -131,12 +131,16 @@ argued: every feature is bit-identical whether or not later rows exist.
 
 Genomics cannot produce an AUROC here, so it does not print one. 1000 Genomes is a reference
 panel with no case/control status; the published AUROC comes from a phenotyped UK Biobank
-cohort (PPM002038, $`n = 216{,}273`$). What *is* computable from real genotypes is the portability failure,
+cohort (PPM002070, $`n = 216{,}273`$). What *is* computable from real genotypes is the portability failure,
 and it is stark:
-**a single global 90th-percentile "high risk" threshold flags 39.1% of East Asian-ancestry samples
-against 4.0% of European and 1.7% to 2.9% of the other three super-populations - driven entirely
-by ancestry, with no phenotype involved.** That is the clinically important finding, not a
-footnote. The figures are recomputed on every training run, so read
+**under PGS000783, the score since Round 86's batch 6, a single global 90th-percentile "high risk"
+threshold flags 15.5% of East Asian-ancestry samples against 3.2% of European ones, with the other
+three super-populations at 6.5% to 13.8% - driven entirely by ancestry, with no phenotype involved.**
+Under PGS000072, the score until then, the same cut flagged 39.1% of East Asian samples against 4.0%
+of European ones. The variant with the largest share of that gap, rs10979327 (42% of the East Asian
+against European mean difference), is not among PGS000783's 162, and the rest are re-weighted by
+$`\beta / \mathrm{SE}`$. That is the clinically
+important finding, not a footnote. The figures are recomputed on every training run, so read
 `by_super_population.*.frac_above_global_cut` in `models/metrics.json` rather than this
 sentence.
 
@@ -356,8 +360,8 @@ federated model under CKKS ([models-and-benchmarks](models-and-benchmarks.md)).
   twenty carry one. The Models panel re-scores nineteen of them on it during the run (it has no Run
   button); the twentieth, the 3D nodule student, is run by its own card on the medical page, under CKKS on
   the same twelve crops beside their plaintext logits. The other two are in states that are never collapsed into one message - never trained (the telecom
-  Transformer) and served with the page rather than from the Hub (the PRS, whose weights are PGS000072's own,
-  CC BY 4.0).
+  Transformer) and served with the page rather than from the Hub (the PRS, whose weights are PGS000783's own,
+  CC BY 3.0 IGO).
 - **`finance_aml.gnn` was a decision until Round 86, and it is now published.** On AMLworld HI-Small the published GNNs are the stronger models: the registry
   records GFP + XGBoost at minority-class F1 63.23 (Altman et al., NeurIPS 2023 D&B) against
   Multi-PNA+EU at 68.16 (AAAI 2024) and, in MEGA's published table (TMLR 08/2026, arXiv:2412.00241v3, Table 16), MEGA-PNA at 74.01 and Multi-FraudGT at 75.81, and the
@@ -832,10 +836,10 @@ federated model under CKKS ([models-and-benchmarks](models-and-benchmarks.md)).
   publish publicly at all when the registry marks the training data non-publishable.
 
 - **Public-demo data (real or simulator output, and one payload without a licence grant)** - the client-side demo loads
-  real or simulated datasets, mirroring the full deployment. Every one carries a licence that permits redistribution except the genomics payload's 1000 Genomes dosage slice, which has no licence instrument (IGSR's disclaimer; it ships under the cell budget of DATA_LICENSES.md section 4); the payload's PGS000072 weights are CC BY 4.0, with the credits that licence asks for. **medical** uses a real Wisconsin
+  real or simulated datasets, mirroring the full deployment. Every one carries a licence that permits redistribution except the genomics payload's 1000 Genomes dosage slice, which has no licence instrument (IGSR's disclaimer; it ships under the cell budget of DATA_LICENSES.md section 4); the payload's PGS000783 weights are CC BY 3.0 IGO, with the credits that licence asks for. **medical** uses a real Wisconsin
   Diagnostic Breast-Cancer sample (UCI dataset 17 via sklearn, **CC BY 4.0 - attribution required**) + a real logistic-regression model;
-  **genomics** uses the real PGS-Catalog PGS000072 weights (Graff et al., Nat Commun 12:970, 2021, **CC BY 4.0**; 183 of its 187 variants have a 1000 Genomes genotype and are scored) over real 1000 Genomes
-  genotypes -> a **Polygenic Risk Score** over those 183 variants with per-SNP signed SHAP, and its CKKS step evaluates that full score: all 183 dosages in one ciphertext, the plaintext weights applied by one multiply-plain and a rotation sum, the decrypted score compared with the 90th percentile of the score in the person's own 1000 Genomes super-population (since Round 86's batch 6, from aggregate statistics over all 2,504 individuals; the pooled cut over the 30 bundled individuals is reported beside it, because a pooled cut is not a fair reference across ancestries, [`references/genomics-real-data-2026-11.md`](../references/genomics-real-data-2026-11.md)); **finance** uses a
+  **genomics** uses the real PGS-Catalog PGS000783 weights (Kachuri et al., Nat Commun 11:6084, 2020, **CC BY 3.0 IGO**; since Round 86's batch 6, in place of PGS000072; 158 of its 162 variants have a 1000 Genomes genotype and are scored) over real 1000 Genomes
+  genotypes -> a **Polygenic Risk Score** over those 158 variants with per-SNP signed SHAP, and its CKKS step evaluates that full score: all 158 dosages in one ciphertext, the plaintext weights applied by one multiply-plain and a rotation sum, the decrypted score compared with the 90th percentile of the score in the person's own 1000 Genomes super-population (since Round 86's batch 6, from aggregate statistics over all 2,504 individuals; the pooled cut over the 30 bundled individuals is reported beside it, because a pooled cut is not a fair reference across ancestries, [`references/genomics-real-data-2026-11.md`](../references/genomics-real-data-2026-11.md)); **finance** uses a
   AMLworld HI-Small test-window transactions (synthetic, CDLA-Sharing-1.0) and, since F7b (2026-11-25), F7b's square network on their 114 inputs, end to end under CKKS: on the one-row step, in the agreement figure over the 8,192 shipped rows and in the SHAP bars, in place of the 115-parameter linear student (encrypted in that figure from Round 84) and of the linear surrogate over four columns of the **PaySim** simulator sample (CC-BY-SA-4.0) that the one-row step evaluated until then; the PaySim sample now feeds only the finance QCNN, which was trained on it; and **satellite** scores
   **real OPS-SAT-AD telemetry segments** (CC BY 4.0, since Round 84; the NASA SMAP/MSL windows before them had no licence from any provider - see DATA_LICENSES.md) with a plaintext demo anomaly regression - all tiny static JSON
   under `web/public/data/`, loaded by [`web/src/lib/realData.ts`](../web/src/lib/realData.ts). The finance, medical, genomics and DeFi lending pages compute with the

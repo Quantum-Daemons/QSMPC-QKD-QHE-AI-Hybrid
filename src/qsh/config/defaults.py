@@ -654,8 +654,9 @@ class DataConfig:
     #: run, and cannot be compared against what the browser fetched. A value that selects a model
     #: belongs here beside the KEM and the FHE backend. Valid names are the keys of
     #: `qsh.data.loaders._PRS_FILES`; `tests/test_prs_pipeline_parity.py` pins this against the
-    #: browser payload the registry points at. PGS000072 (Graff et al. 2021, CC BY 4.0).
-    genomics_prs_score: str = "breast_cancer_pgs000072"
+    #: browser payload the registry points at. PGS000783 (Kachuri et al. 2020, CC BY 3.0 IGO) since Round 86's
+    #: batch 6; PGS000072 (Graff et al. 2021, CC BY 4.0) before it, retired and kept.
+    genomics_prs_score: str = "breast_cancer_pgs000783"
 
 
 @dataclass

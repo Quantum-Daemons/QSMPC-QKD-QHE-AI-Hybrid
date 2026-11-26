@@ -433,11 +433,26 @@ def finance() -> dict:
 GNOMAD_AF_TOLERANCE = 0.1
 
 #: The two gnomAD genome groups the overlay draws. East Asian against non-Finnish European because that
-#: is the gap the ancestry-strata chart shows for PGS000072: one global cut flags 39.1% of 1000 Genomes'
-#: EAS individuals against 1.7% to 4.0% of the other four groups (models/metrics.json).
+#: is the widest gap the ancestry-strata chart shows: for PGS000072 one global cut flagged 39.1% of 1000
+#: Genomes' EAS individuals against 1.7% to 4.0% of the other four groups, and for PGS000783, the score
+#: since Round 86's batch 6, it flags 15.5% of EAS against 3.2% of EUR (models/metrics.json).
 GNOMAD_X, GNOMAD_Y = "eas", "nfe"
+
+#: What a weight is, per the scoring file's `#weight_type`, for the overlay's note: the median the variants
+#: are split at, in the weights' own units, and (for log odds ratios) the odds ratio it is.
+WEIGHT_UNITS = {"log(OR)": "|log OR|", "Inverse-variance weighting": "|beta/SE|"}
 GNOMAD_GROUP_NAMES = {"eas": "East Asian (eas)", "nfe": "non-Finnish European (nfe)",
                       "afr": "African/African American (afr)"}
+
+
+#: The share of the GWAS samples behind each score's weights that are of European ancestry, from the PGS
+#: Catalog's ancestry distribution for the score (`ancestry_distribution.gwas`): PGS000072's read 2026-10-31,
+#: PGS000783's read 2026-11-26 (one GWAS, GCST004988, 139,274 individuals, 100% European).
+GWAS_EUROPEAN_SHARE = {"PGS000072": "98.1%", "PGS000783": "All"}
+
+
+def _gwas_european_share(score_id: str) -> str:
+    return GWAS_EUROPEAN_SHARE[score_id]
 
 
 def _effect_allele_frequencies(path: Path) -> dict[str, float]:
@@ -465,18 +480,28 @@ def genomics() -> dict:
     The class split is effect size, not disease: variants at or above the median weight carry more of
     the score, so an off-diagonal point in that class moves the distribution more.
     """
-    src = REPO / "web" / "public" / "data" / "genomics" / "pgs000072_breast_cancer.json"
-    af_path = REPO / "data" / "genomics" / "gnomad_af_pgs000072.json"
-    scoring = REPO / "data" / "genomics" / "pgs000072_breast_cancer.tsv"
+    # The active score's files (PGS000783 since Round 86's batch 6), named by the registry and the loaders.
+    sys.path.insert(0, str(REPO / "src"))
+    from qsh.data.loaders import _PRS_FILES, ACTIVE_PRS  # noqa: PLC0415
+    from qsh.models.registry import DEMO_SAMPLE_FILES  # noqa: PLC0415
+
+    src = REPO / DEMO_SAMPLE_FILES["genomics"]
+    scoring = REPO / "data" / "genomics" / _PRS_FILES[ACTIVE_PRS][0]
+    af_path = REPO / "data" / "genomics" / f"gnomad_af_{scoring.stem.replace('_breast_cancer', '')}.json"
     if not src.exists() or not af_path.exists() or not scoring.exists():
         print("  genomics: SKIP, run scripts/fetch_gnomad_af.py and "
               "scripts/data/build_prs_browser_payload.py first")
         return {}
     prs = json.loads(src.read_text())
     af = json.loads(af_path.read_text())
+    score_id = prs["score_id"]
+    head = scoring.read_text().splitlines()
+    weight_type = next(ln.split("=", 1)[1] for ln in head if ln.startswith("#weight_type="))
+    gwas_eur = _gwas_european_share(score_id)
     release = af.get("_source", {}).get("ensembl_release")
     w = {k: abs(float(x)) for k, x in zip(prs["keys"], prs["weights"], strict=True)}
     med = float(np.median(list(w.values())))
+    ties = sum(1 for v in w.values() if v == med)
     pts, diverged_big, diverged_small, missing, mismatched = [], 0, 0, 0, 0
     for key in prs["keys"]:
         rec = af.get(key)
@@ -513,7 +538,7 @@ def genomics() -> dict:
         "provenance": (f"gnomAD genome allele frequencies of the effect allele, as Ensembl's REST "
                        f"variation endpoint lists them (release {release}; populations "
                        f"gnomADg:{GNOMAD_X} and gnomADg:{GNOMAD_Y}; Ensembl does not name the gnomAD "
-                       f"release), for the variants of PGS000072 this page scores. The page's own "
+                       f"release), for the variants of {score_id} this page scores. The page's own "
                        f"genotypes are 30 1000 Genomes individuals; this draws population-scale "
                        f"frequencies of the same alleles from a CC0 source (gnomAD's terms also have "
                        f"every user agree not to attempt to reidentify participants). Each point is "
@@ -548,12 +573,15 @@ def genomics() -> dict:
                  # ancestries", while the smaller-effect ones diverge MORE often (26 of 69 against 31 of 108),
                  # and "larger" was half the score in name only: the weights are rounded, so ties at the
                  # median put 108 of 177 at or above it. Both rates are printed now, and neither is ranked.
-                 f"The variants are split by absolute effect weight at the median, |log OR| {med:.4f} (an odds "
-                 f"ratio of {float(np.exp(med)):.2f}); the published weights are rounded, so ties put {n_big} of "
-                 f"the {len(pts)} at or above it. {diverged_big} of those {n_big} differ by at least 0.20 in "
+                 f"The variants are split by absolute effect weight at the median of the {n_score} scored, "
+                 f"{WEIGHT_UNITS[weight_type]} {med:.4g}"
+                 + (f" (an odds ratio of {float(np.exp(med)):.2f})" if weight_type == "log(OR)" else "")
+                 + f"; {n_big} of the {len(pts)} drawn are at or above it"
+                 + ("; the published weights are rounded, so several tie at it" if ties > 1 else "")
+                 + f". {diverged_big} of those {n_big} differ by at least 0.20 in "
                  f"frequency between the two groups, and {diverged_small} of the other {len(pts) - n_big}; a "
-                 f"variant's pull on a score across groups is its weight times that gap. 98.1% of the GWAS "
-                 f"samples behind PGS000072's weights are of European ancestry (the PGS Catalog's ancestry "
+                 f"variant's pull on a score across groups is its weight times that gap. {gwas_eur} of the GWAS "
+                 f"samples behind {score_id}'s weights are of European ancestry (the PGS Catalog's ancestry "
                  f"distribution for the score). This is the mechanism behind the ancestry-strata chart above, "
                  f"not a second finding."),
         "points": pts,
@@ -702,7 +730,16 @@ def telecom_nidd() -> dict:
 
 
 def main() -> int:
-    for fn in (satellite, medical, finance, genomics, telecom, telecom_nidd):
+    import argparse  # noqa: PLC0415
+
+    every = (satellite, medical, finance, genomics, telecom, telecom_nidd)
+    ap = argparse.ArgumentParser(description="Write the real-data 2D projections the use-case pages draw.")
+    ap.add_argument("--only", choices=[fn.__name__ for fn in every], action="append",
+                    help="rebuild only these projections (repeatable); default: every one whose inputs are present")
+    a = ap.parse_args()
+    for fn in every:
+        if a.only and fn.__name__ not in a.only:
+            continue
         payload = fn()
         if not payload:
             continue

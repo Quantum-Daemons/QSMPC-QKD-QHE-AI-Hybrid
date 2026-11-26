@@ -33,9 +33,10 @@ import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-#: PGS000072's first scored variant (rs616488), the full 2,504-sample panel's first 400 people in
-#: four contiguous cohorts (`np.array_split`), as `genomics.build` splits them. Measured 2026-10-31 on
-#: the local matrix scripts/data/fetch_g1k_dosages.py writes; CI builds a cohort to these counts.
+#: The score's first scored variant (rs616488, first in PGS000072 and in PGS000783, the score since Round 86's
+#: batch 6, whose dosage columns are PGS000072's), the full 2,504-sample panel's first 400 people in four
+#: contiguous cohorts (`np.array_split`), as `genomics.build` splits them. Measured 2026-10-31 on the local
+#: matrix scripts/data/fetch_g1k_dosages.py writes; CI builds a cohort to these counts.
 COUNTS_FULL_PANEL = [141, 131, 138, 118]
 TOTAL_FULL_PANEL = 528
 

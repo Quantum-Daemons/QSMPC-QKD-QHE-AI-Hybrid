@@ -3890,7 +3890,7 @@ export function runClientPipeline(
               flipBoundFactor: bt.flipBoundFactor, medianAbsError: bt.medianAbsError,
               noisyScores: bt.noisyScores, scoreKind: bt.scoreKind,
               rowsAre: usecase === "genomics"
-                ? "external reference-panel individuals (1000 Genomes genotypes; PGS000072 was not "
+                ? "external reference-panel individuals (1000 Genomes genotypes; PGS000783 was not "
                   + "fitted on them, and there is no split), whose decision logit on both axes is the "
                   + "full score minus the 90th percentile of its own super-population over the whole panel"
                 : undefined,
