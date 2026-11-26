@@ -9,6 +9,14 @@ re-read, it says so.
 
 ## What the page uses today
 
+**2026-11-26: the score is PGS000783** (`CC_Breast_IV`; Kachuri et al., Nat Commun 11:6084, 2020, CC BY 3.0 IGO), the
+162 of PGS000072's variants that reached $`P < 5 \times 10^{-8}`$ in the BCAC meta-analysis, re-weighted by
+$`\beta / \mathrm{SE}`$, on the owner's choice of that day; 158 are scored. Its Catalog records give an AUROC of 0.626
+(PPM002070: age, array and PCs as covariates) and 0.637 (PPM002054: the risk factors as well), both in UK Biobank, and
+PGS000072's own 0.637 (PPM002038) was evaluated on those 162 variants. Under PGS000783 the pooled cut over all 2,504
+individuals is exceeded by 15.5 % of EAS, 13.8 % of AMR, 11.6 % of AFR, 6.5 % of SAS and 3.2 % of EUR
+(`models/metrics.json`). The bullets below describe the page as the survey found it on 2026-11-25.
+
 - PGS000072 (`CC_Breast`, 187 variants; Graff et al., Nat Commun 12:970, 2021, CC BY 4.0) scored under CKKS over the
   183 variants with a 1000 Genomes phase 3 genotype, for one person among the **30** of 2,504 individuals the payload
   ships (`DATA_LICENSES.md` section 4 sets the slice).
@@ -22,8 +30,8 @@ re-read, it says so.
 
 - The PGS Catalog's own calculator, pgsc_calc (v2.3.0, 2026-06-03, Apache-2.0), produces ancestry-aware outputs
   (`Z_MostSimilarPop`, `Z_norm1`, `Z_norm2`) and its guide says to *"Use ancestry-normalised or Z-score outputs when
-  applying PGS to individuals of diverse ancestries"* (`docs/explanation/interpret.rst`, line 125 at v2.3.0). The next
-  line asks that groups be described by similarity to a reference, *"e.g. 1KG-EUR-like"* (NASEM 2023), not as
+  applying PGS to individuals of diverse ancestries"* (`docs/explanation/interpret.rst`, line 125 at v2.3.0). Line 127
+  asks that groups be described by similarity to a reference, *"e.g. 1KG-EUR-like"* (NASEM 2023), not as
   ancestry labels.
 - The method, as the survey read pgsc_calc's source: project the person onto a reference PCA; report the percentile
   within the most similar reference population; $`Z_{\mathrm{norm1}}`$, the residual of a regression of the score on

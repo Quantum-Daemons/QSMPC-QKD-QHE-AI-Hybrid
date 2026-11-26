@@ -1,0 +1,114 @@
+{
+ "_what": "Aave V3 Ethereum Core market parameters, rate curves, stored rates, totals and oracle prices, read on 2026-11-25 with read-only eth_call at one pinned block through a public Ethereum node. Raw values as the contracts return them (basis points, ray = 1e27, token base units, USD with 8 decimals); nothing derived.",
+ "source": {
+  "chain": "Ethereum mainnet",
+  "market": "Aave V3 Ethereum Core",
+  "block": 26492593,
+  "block_timestamp_utc": "2026-11-25T13:48:11Z",
+  "contracts": {
+   "AaveProtocolDataProvider": "0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD",
+   "Pool": "0x87870Bca3F3fD6335C3F4ce8392D69350B4fA4E2",
+   "DefaultReserveInterestRateStrategyV2": "0x9ec6F08190DeA04A54f8Afc53Db96134e5E3FdFB",
+   "AaveOracle": "0x54586bE62E3c3580375aE3723C145253060Ca0C2"
+  },
+  "addresses_from": "bgd-labs/aave-address-book (MIT), src/AaveV3Ethereum.sol at commit dae05ac (2026-11-16)",
+  "calls": [
+   "AaveProtocolDataProvider.getReserveConfigurationData",
+   "AaveProtocolDataProvider.getReserveData",
+   "DefaultReserveInterestRateStrategyV2.getInterestRateDataBps",
+   "Pool.getVirtualUnderlyingBalance",
+   "Pool.getReserveDeficit",
+   "AaveOracle.getAssetPrice"
+  ],
+  "terms": "Facts read from public chain state, which carry no licence instrument of their own; the addresses are from an MIT-licensed address book. Aave's contracts (aave-v3-origin, Business Source License) are not copied: the page re-derives the mechanics."
+ },
+ "reserves": {
+  "WETH": {
+   "asset": "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+   "decimals": 18,
+   "ltv_bps": 8100,
+   "liquidation_threshold_bps": 8400,
+   "liquidation_bonus_bps": 10500,
+   "reserve_factor_bps": 1500,
+   "rate_bps": {
+    "optimal_usage_ratio": 9200,
+    "base_variable_borrow_rate": 0,
+    "variable_rate_slope1": 210,
+    "variable_rate_slope2": 600
+   },
+   "reserve_data": {
+    "unbacked": 0,
+    "accrued_to_treasury_scaled": 4320488066722741235,
+    "total_a_token": 2164896950621101814817243,
+    "total_stable_debt": 0,
+    "total_variable_debt": 1807930444853036227155224,
+    "liquidity_rate_ray": 13870597012307886201822061,
+    "variable_borrow_rate_ray": 19540354453508877390645946,
+    "liquidity_index_ray": 1073674154063035402393394928,
+    "variable_borrow_index_ray": 1111139175938195214363708052,
+    "last_update_timestamp": 1795614419
+   },
+   "virtual_underlying_balance": 304005517144409682286061,
+   "deficit": 52964453912595963038573,
+   "oracle_price_usd_8dp": 163172303377
+  },
+  "WBTC": {
+   "asset": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
+   "decimals": 8,
+   "ltv_bps": 8100,
+   "liquidation_threshold_bps": 8500,
+   "liquidation_bonus_bps": 10500,
+   "reserve_factor_bps": 5000,
+   "rate_bps": {
+    "optimal_usage_ratio": 8000,
+    "base_variable_borrow_rate": 25,
+    "variable_rate_slope1": 250,
+    "variable_rate_slope2": 30000
+   },
+   "reserve_data": {
+    "unbacked": 0,
+    "accrued_to_treasury_scaled": 391712,
+    "total_a_token": 3669153967313,
+    "total_stable_debt": 0,
+    "total_variable_debt": 83164878976,
+    "liquidity_rate_ray": 36359711431696793393217,
+    "variable_borrow_rate_ray": 3208311021063449627146945,
+    "liquidity_index_ray": 1003444405163021970643304414,
+    "variable_borrow_index_ray": 1027887264517560062171991456,
+    "last_update_timestamp": 1795614479
+   },
+   "virtual_underlying_balance": 3585989472149,
+   "deficit": 146505,
+   "oracle_price_usd_8dp": 5817702335814
+  },
+  "USDC": {
+   "asset": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+   "decimals": 6,
+   "ltv_bps": 0,
+   "liquidation_threshold_bps": 7800,
+   "liquidation_bonus_bps": 10450,
+   "reserve_factor_bps": 1000,
+   "rate_bps": {
+    "optimal_usage_ratio": 9400,
+    "base_variable_borrow_rate": 0,
+    "variable_rate_slope1": 460,
+    "variable_rate_slope2": 1000
+   },
+   "reserve_data": {
+    "unbacked": 0,
+    "accrued_to_treasury_scaled": 8795854666,
+    "total_a_token": 4131211486944865,
+    "total_stable_debt": 0,
+    "total_variable_debt": 3208594077935060,
+    "liquidity_rate_ray": 26567153518664582277938074,
+    "variable_borrow_rate_ray": 38007232458071910509137751,
+    "liquidity_index_ray": 1195188407995406505923116277,
+    "variable_borrow_index_ray": 1260897012517206052578734177,
+    "last_update_timestamp": 1795614455
+   },
+   "virtual_underlying_balance": 922627646595319,
+   "deficit": 1753002,
+   "oracle_price_usd_8dp": 99988512
+  }
+ }
+}

@@ -33,8 +33,8 @@ def test_genomics_secure_sum_exact():
 
 
 def test_genomics_real_prs_under_ckks():
-    """The genomics use case runs a REAL published Polygenic Risk Score (PGS Catalog PGS000072, the
-    187-variant breast-cancer score, 183 of them with a 1000 Genomes genotype) under CKKS - a published
+    """The genomics use case runs a REAL published Polygenic Risk Score (PGS Catalog PGS000783, the
+    162-variant breast-cancer score, 158 of them with a 1000 Genomes genotype) under CKKS - a published
     model that is FHE-native (linear)."""
     import numpy as np
 
@@ -47,9 +47,10 @@ def test_genomics_real_prs_under_ckks():
 
     score = get_config().data.genomics_prs_score
     dosages, weights, keys, eff, freq = load_genomic_prs(n_individuals=200, seed=0, name=score)
-    # The scored variants: every published one with a dosage column. PGS000072 publishes 187 and its
-    # dosage files declare 4 #unscored (no complete 1000 Genomes genotype), so 183 are scored.
-    n_expected = {"breast_cancer": 77, "breast_cancer_pgs000072": 183}[score]
+    # The scored variants: every published one with a dosage column. PGS000783 publishes 162 and its
+    # dosage files declare 4 #unscored (no complete 1000 Genomes genotype), so 158 are scored (PGS000072,
+    # retired: 187 and 183).
+    n_expected = {"breast_cancer": 77, "breast_cancer_pgs000072": 183, "breast_cancer_pgs000783": 158}[score]
     assert len(weights) == n_expected and len(keys) == n_expected     # real PGS Catalog variants
     # Both bundled scores publish rsIDs and are keyed by them.
     assert all(k.startswith("rs") for k in keys)

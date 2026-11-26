@@ -44,7 +44,7 @@ export const MODEL_RELATION: Record<string, Relation> = {
   "finance_aml.student": { relation: "reference", why: "a logistic regression distilled from the gradient-boosting model, beside the published GFP+XGBoost" },
   "finance_aml.mlp_large": { relation: "reference", why: "an MLP over this project's features, beside the published GFP+XGBoost" },
   "finance_aml.gnn_compact": { relation: "reference", why: "a compact message-passing model distilled from Multi-PNA+EU, beside Multi-PNA+EU itself" },
-  "genomics.prs": { relation: "citation", why: "the published AUROC is for a model fitted with covariates on UK Biobank, with 162 of the score's 187 variants; this page scores 30 public individuals, so it is a citation and not a target" },
+  "genomics.prs": { relation: "citation", why: "the published AUROC is for a model fitted with covariates (age, genotyping array and PCs) on UK Biobank women, at 5 years; this page scores 30 public individuals with no phenotype, so it is a citation and not a target" },
   "medical_fl.resnet18": { relation: "same", why: "ResNet-18 at 28 px on BreastMNIST's official split, as in MedMNIST v2" },
   "medical_fl.resnet50": { relation: "reference", why: "ResNet-50 at 28 px under a training regime that differs from the benchmark table's" },
   "medical_fl.student": { relation: "citation", why: "a single-convolution CNN reading 14 x 14 images, distilled for CKKS, beside the benchmark's ResNet-18 at 28 x 28" },
@@ -155,7 +155,9 @@ export function flambyRows(r: FedHeartResult): ComparisonRow[] {
 
 /** A trained QCNN's headline as its weights file records it, and the re-scoring a QCNN run in this tab makes. */
 export interface QcnnRecord { metric: string; value: number }
-export interface QcnnRunRescore { label: string; headline: number; rows: number; matchesRecord: boolean }
+/** `recordedBy: "heldout"`: the rows are a sample of the trainer's test split, held to the sample's own recorded value (finance since
+ *  Round 86's batch 6); absent or "weights": they are the whole split, held to the weights file. */
+export interface QcnnRunRescore { label: string; headline: number; rows: number; matchesRecord: boolean; recordedBy?: "weights" | "heldout" }
 
 const QCNN_METRIC: Record<string, string> = { minority_class_f1: "minority-class F1", accuracy: "accuracy", macro_f1: "macro F1" };
 
@@ -174,8 +176,8 @@ export const QCNN_REFERENCES: Record<string, { source: string; published: string
     verdict: "not comparable",
     why: "A hybrid network with a variational quantum layer, not a QCNN, trained federated: the F1 averaged over six "
       + "settings (its text beside Table I), with its classical baseline at 0.9170. The data are PaySim by the paper's "
-      + "footnote link, but its split, fraud rate and any rebalancing are not reported, so the figure cannot stand beside "
-      + "a held-out F1 at PaySim's own rate",
+      + "footnote link, with its split, fraud rate and any rebalancing not reported, and this page's circuit reads "
+      + "AMLworld since Round 86's batch 6, another corpus at another rate, so the figure cannot stand beside its held-out F1",
   }],
   medical_fl: [{
     source: "Xiang et al., Sci. Rep. 14:24699 (2024), doi:10.1038/s41598-024-74778-7",
@@ -209,10 +211,12 @@ export function qcnnRows(usecase: string, record: QcnnRecord | null, rescore: Qc
     source: r.source,
     published: r.published,
     offline: record ? f4(record.value) : "not loaded",
-    thisRun: rescore
-      ? `re-scored ${f4(rescore.headline)} on ${rescore.rows} rows of the trainer's test split, `
-        + (rescore.matchesRecord ? "equal to the record" : "not the record")
-      : "not run in this tab: choose QCNN under Parameters",
+    thisRun: !rescore ? "not run in this tab: choose QCNN under Parameters"
+      : rescore.recordedBy === "heldout"
+        ? `re-scored ${f4(rescore.headline)} on the page's sample of ${rescore.rows} of the trainer's test-split rows, `
+          + (rescore.matchesRecord ? "equal to the value recorded for that sample" : "not the value recorded for that sample")
+        : `re-scored ${f4(rescore.headline)} on ${rescore.rows} rows of the trainer's test split, `
+          + (rescore.matchesRecord ? "equal to the record" : "not the record"),
     verdict: r.verdict,
     why: r.why,
   }));

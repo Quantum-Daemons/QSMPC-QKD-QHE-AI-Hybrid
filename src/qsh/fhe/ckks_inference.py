@@ -3,7 +3,9 @@
 The client encrypts its feature vector once; for each output row ``w_j`` the evaluator computes
 the encrypted dot product ``<w_j, x>`` with ``dot_plain`` (a ciphertext-plaintext multiply and a
 rotate-and-sum), adds the bias ``b_j`` to slot 0 and an independent mask to every other slot, and the
-key holder decrypts it (:func:`qsh.fhe.masking.masked_decrypt`). Nothing else is
+key holder decrypts it (:func:`qsh.fhe.masking.masked_decrypt`). A bias the key holder keeps
+(``LinearModel.bias_after_decryption``) never reaches the evaluator: slot 0 gets nothing, and the key holder adds the
+bias to the value it decrypts. Nothing else is
 evaluated: there is no activation here, polynomial or otherwise, and the argmax over the decrypted
 logits is taken in plaintext. The hybrid that also evaluates non-linear layers, under MPC, is
 :mod:`qsh.mpc.secret_inference`. This is the linear CKKS path the classical MPC-FHE benchmark
@@ -21,10 +23,17 @@ from .backends import CKKSBackend, get_backend
 
 @dataclass
 class LinearModel:
-    """A plaintext linear classifier W x + b (logits). Owned by the server."""
+    """A plaintext linear classifier W x + b (logits). Owned by the server, unless the bias is the key holder's.
+
+    ``bias_after_decryption`` (Round 86, batch 6; the owner's choice of 2026-11-26): the bias belongs to the KEY HOLDER
+    and is never handed to the evaluator. Genomics' is the scored person's own super-population's cut, which names that
+    group, so the evaluator masks the dot product alone and the key holder adds the bias to what it decrypts, here and in
+    the MPC hybrid (:class:`qsh.mpc.layers.DenseSpec`'s ``key_holder_bias``).
+    """
 
     weight: np.ndarray   # (out, in)
     bias: np.ndarray     # (out,)
+    bias_after_decryption: bool = False
 
     @property
     def n_in(self) -> int:
@@ -58,13 +67,21 @@ def encrypted_linear_inference(
     backend = backend or get_backend("tenseal")
     bits = _mask_bits(64)
     x = np.asarray(x, dtype=float).ravel()[: model.n_in]
+    after = bool(model.bias_after_decryption)
+    if after and not np.all(np.isfinite(np.asarray(model.bias, dtype=float))):
+        # Added in the clear, a non-finite bias would give NaN logits, which every comparison fails silently.
+        raise ValueError(f"the key holder's bias {np.asarray(model.bias).tolist()} is not finite numbers")
     ct = backend.encrypt(x)
     logits = []
     for j in range(model.n_out):
         row = model.weight[j]
         enc_dot = backend.dot_plain(ct, row)        # encrypted <w_j, x>
-        # bias into slot 0 under encryption, an independent mask into every other slot, then decrypt
-        logits.append(masked_decrypt(backend, enc_dot, float(model.bias[j]), bits))
+        if after:
+            # the key holder's bias: nothing into slot 0, every other slot masked, then the key holder adds it in the clear
+            logits.append(masked_decrypt(backend, enc_dot, 0.0, bits) + float(model.bias[j]))
+        else:
+            # bias into slot 0 under encryption, an independent mask into every other slot, then decrypt
+            logits.append(masked_decrypt(backend, enc_dot, float(model.bias[j]), bits))
     plain = (model.weight @ x + model.bias).tolist()
     err = float(np.max(np.abs(np.array(logits) - np.array(plain)))) if plain else 0.0
     return {
@@ -73,4 +90,5 @@ def encrypted_linear_inference(
         "plain_logits": plain,
         "max_abs_error": err,
         "prediction": int(np.argmax(logits)),
+        "bias_after_decryption": after,
     }

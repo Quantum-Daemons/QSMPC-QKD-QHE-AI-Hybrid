@@ -18,6 +18,12 @@ sample-ID order).
 
 On the base commit every test here fails: the slice, the payload and `fetch_g1k_dosages.resolve` do
 not exist.
+
+ROUND 86, BATCH 6 (the owner's choice of 2026-11-26). The page scores PGS000783, 162 of PGS000072's variants
+re-weighted, and its dosage files are PGS000072's columns for those variants (`scripts/data/derive_g1k_dosages.py`;
+tests/test_r86_pgs000783_files.py checks the derivation). So PGS000072's files stay the fetched source and are checked
+here as before, and the payload checks read PGS000783's payload against PGS000783's slice. The four unscored variants
+are all among the 162, so the same four are unscored, and 158 are scored.
 """
 
 from __future__ import annotations
@@ -33,7 +39,9 @@ REPO = Path(__file__).resolve().parents[1]
 GEN = REPO / "data" / "genomics"
 SLICE = GEN / "g1k_dosages_pgs000072_slice.tsv"
 FULL = GEN / "g1k_dosages_pgs000072.tsv"
-PAYLOAD = REPO / "web" / "public" / "data" / "genomics" / "pgs000072_breast_cancer.json"
+ACTIVE_SLICE = GEN / "g1k_dosages_pgs000783_slice.tsv"
+ACTIVE_FULL = GEN / "g1k_dosages_pgs000783.tsv"
+PAYLOAD = REPO / "web" / "public" / "data" / "genomics" / "pgs000783_breast_cancer.json"
 
 #: The browser payload's 30 individuals, the same as the PGS000004 payload's: the seed-0 draw of 30
 #: rows from the 2,504-sample panel sorted by sample ID, recovered on 2026-10-31 by replaying that
@@ -62,24 +70,26 @@ def _panel() -> dict[str, tuple[str, str]]:
     return _fetcher().read_panel(GEN / "g1k_panel.tsv")
 
 
-def test_the_ci_slice_is_the_same_97_individuals_by_its_stated_rule() -> None:
-    header, rows = _read(SLICE)
+@pytest.mark.parametrize(("path", "variants", "cells"), [(SLICE, 183, 17_751), (ACTIVE_SLICE, 158, 15_326)],
+                         ids=["pgs000072", "pgs000783"])
+def test_the_ci_slice_is_the_same_97_individuals_by_its_stated_rule(path: Path, variants: int, cells: int) -> None:
+    header, rows = _read(path)
     panel = _panel()
     ordered = sorted(panel)
     expected = ([s for s in ordered if panel[s][1] == "AFR"][:48]
                 + [s for s in ordered if panel[s][1] == "EUR"][:49])
     assert [r[0] for r in rows] == expected
-    assert header[:3] == ["sample", "population", "super_population"] and len(header) - 3 == 183
+    assert header[:3] == ["sample", "population", "super_population"] and len(header) - 3 == variants
     assert all(v in {"0", "1", "2"} for r in rows for v in r[3:]), "a dosage is not 0, 1 or 2"
-    assert len(rows) * (len(header) - 3) == 17_751 <= 30_800, "outside DATA_LICENSES section 4's cell budget"
+    assert len(rows) * (len(header) - 3) == cells <= 30_800, "outside DATA_LICENSES section 4's cell budget"
 
 
 def test_the_payload_ships_the_same_30_individuals_and_their_real_rows() -> None:
     p = json.loads(PAYLOAD.read_text())
     assert p["sample_ids"] == BROWSER_30 and p["n_individuals_shipped"] == 30
     assert p["n_individuals_available"] == 2504
-    # The two committed genotype files agree wherever they hold the same person.
-    header, rows = _read(SLICE)
+    # The two committed genotype files of the score agree wherever they hold the same person.
+    header, rows = _read(ACTIVE_SLICE)
     col = {k: j for j, k in enumerate(header)}
     by_id = {r[0]: r for r in rows}
     shared = [s for s in p["sample_ids"] if s in by_id]
@@ -92,10 +102,10 @@ def test_the_payload_ships_the_same_30_individuals_and_their_real_rows() -> None
 def test_the_unscored_variants_are_declared_with_reasons_and_left_out() -> None:
     from qsh.data.loaders import load_prs, unscored_variants
 
-    keys, _, _ = load_prs("breast_cancer_pgs000072")
-    declared = unscored_variants(SLICE)
-    assert set(declared) == UNSCORED and all(declared.values())
-    header, _ = _read(SLICE)
+    keys, _, _ = load_prs("breast_cancer_pgs000783")
+    declared = unscored_variants(ACTIVE_SLICE)
+    assert declared == unscored_variants(SLICE) and set(declared) == UNSCORED and all(declared.values())
+    header, _ = _read(ACTIVE_SLICE)
     assert [k for k in keys if k not in header] == [k for k in keys if k in UNSCORED]
     p = json.loads(PAYLOAD.read_text())
     assert {u["key"]: u["reason"] for u in p["variants_unscored"]} == declared
@@ -175,13 +185,15 @@ def test_the_resolver_rejects_a_wrong_frequency_and_a_constant_column() -> None:
     assert f.AF_TOLERANCE == 0.1
 
 
-@pytest.mark.skipif(not FULL.exists(), reason="the 2,504-individual matrix is local only (gitignored)")
-def test_the_full_matrix_where_present() -> None:
-    header, rows = _read(FULL)
+@pytest.mark.parametrize(("path", "variants"), [(FULL, 183), (ACTIVE_FULL, 158)], ids=["pgs000072", "pgs000783"])
+def test_the_full_matrix_where_present(path: Path, variants: int) -> None:
+    if not path.exists():
+        pytest.skip("the 2,504-individual matrix is local only (gitignored)")
+    header, rows = _read(path)
     panel = _panel()
     assert [r[0] for r in rows] == sorted(panel) and len(rows) == 2504
     x = np.asarray([[int(v) for v in r[3:]] for r in rows])
-    assert x.shape == (2504, 183) and all(len(set(x[:, j])) > 1 for j in range(x.shape[1])), "a constant column"
+    assert x.shape == (2504, variants) and all(len(set(x[:, j])) > 1 for j in range(x.shape[1])), "a constant column"
     # The cohorts the Python secure sum pools on a maintainer's run, as test_r84_genomics_full_score
     # pins them: the first scored variant, the first 400 people, four contiguous cohorts.
     assert header[3] == "rs616488"

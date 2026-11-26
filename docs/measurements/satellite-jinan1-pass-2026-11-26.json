@@ -1,0 +1,204 @@
+{
+ "preregistration": {
+  "file": "references/satellite-jinan1-pass-preregistration.md",
+  "sha256": "11665e2b800dd3f921d9b4bf5122252354e95d85fe773e64130c4ae284ae1984"
+ },
+ "windows": "as pre-registered: link seconds by the QBER column, background from the seconds outside them",
+ "data": {
+  "record": "10.5281/zenodo.14732295",
+  "licence": "CC-BY-4.0",
+  "files_md5_checked": [
+   "Data_Extented_Figure2.xlsx",
+   "Data_Figure2.xlsx",
+   "Data_Figure4.xlsx"
+  ],
+  "alignment": {
+   "counts_rows": 449,
+   "range_rows": 450,
+   "qkd_rows": 449,
+   "repeated_seconds": {
+    "counts": 6,
+    "range": 0,
+    "qkd": 6
+   },
+   "seconds_joined": 443,
+   "seconds_without_a_match": 7
+  }
+ },
+ "link_seconds": {
+  "count": 333,
+  "used": 282,
+  "duration_s": 335,
+  "range_km": [
+   823.811536,
+   1470.311071
+  ]
+ },
+ "background_per_s": 6910.0,
+ "background_seconds": 104,
+ "profile_efficiency": 0.1683,
+ "fitted_efficiency": 0.11370290893450803,
+ "fit_minus_profile_db": -1.7031254031144374,
+ "residuals_before": {
+  "mean_db": -1.6716106907692023,
+  "sd_db": 1.0027763599828559,
+  "rms_db": 1.9493185295467634
+ },
+ "residuals_after": {
+  "mean_db": -8.955298379208466e-13,
+  "sd_db": 1.0184178502749797,
+  "rms_db": 1.0184178502749797
+ },
+ "trend_after_db_per_air_mass": -1.5989010598698568,
+ "falls": {
+  "first": {
+   "seconds": [
+    0,
+    11
+   ],
+   "mean_range_km": 1181.2752993,
+   "measured_db": 5.591866342547988,
+   "model_db": 4.038197674302573,
+   "measured_minus_model_db": 1.5536686682454146,
+   "within_0_5_db": false
+  },
+  "last": {
+   "seconds": [
+    274,
+    283
+   ],
+   "mean_range_km": 1442.898354,
+   "measured_db": 10.990682599041769,
+   "model_db": 6.694837185358288,
+   "measured_minus_model_db": 4.29584541368348,
+   "within_0_5_db": false
+  }
+ },
+ "qber": {
+  "seconds_with_a_block_qber": 282,
+  "blocks": [
+   {
+    "qber": 0.01481,
+    "seconds": 23,
+    "model_signal_mean": 0.009981637400818089
+   },
+   {
+    "qber": 0.01129,
+    "seconds": 18,
+    "model_signal_mean": 0.008846710678248446
+   },
+   {
+    "qber": 0.00956,
+    "seconds": 15,
+    "model_signal_mean": 0.008208055989859643
+   },
+   {
+    "qber": 0.00871,
+    "seconds": 13,
+    "model_signal_mean": 0.007799503516939726
+   },
+   {
+    "qber": 0.00846,
+    "seconds": 13,
+    "model_signal_mean": 0.007516135896254845
+   },
+   {
+    "qber": 0.00816,
+    "seconds": 10,
+    "model_signal_mean": 0.007333089330505416
+   },
+   {
+    "qber": 0.00847,
+    "seconds": 10,
+    "model_signal_mean": 0.0072242448196128154
+   },
+   {
+    "qber": 0.00844,
+    "seconds": 9,
+    "model_signal_mean": 0.007160994337773904
+   },
+   {
+    "qber": 0.00758,
+    "seconds": 8,
+    "model_signal_mean": 0.00713701995020752
+   },
+   {
+    "qber": 0.00804,
+    "seconds": 8,
+    "model_signal_mean": 0.007142582019660822
+   },
+   {
+    "qber": 0.00845,
+    "seconds": 9,
+    "model_signal_mean": 0.007178449796324305
+   },
+   {
+    "qber": 0.00869,
+    "seconds": 10,
+    "model_signal_mean": 0.007255267660479963
+   },
+   {
+    "qber": 0.00933,
+    "seconds": 12,
+    "model_signal_mean": 0.007394660757410771
+   },
+   {
+    "qber": 0.00898,
+    "seconds": 12,
+    "model_signal_mean": 0.007610374019724332
+   },
+   {
+    "qber": 0.00899,
+    "seconds": 13,
+    "model_signal_mean": 0.007913016430109925
+   },
+   {
+    "qber": 0.00997,
+    "seconds": 17,
+    "model_signal_mean": 0.008394952842775208
+   },
+   {
+    "qber": 0.0107,
+    "seconds": 19,
+    "model_signal_mean": 0.009167438064720815
+   },
+   {
+    "qber": 0.01106,
+    "seconds": 25,
+    "model_signal_mean": 0.01048287826873719
+   },
+   {
+    "qber": 0.01301,
+    "seconds": 34,
+    "model_signal_mean": 0.013164042033964376
+   },
+   {
+    "qber": 0.01656,
+    "seconds": 4,
+    "model_signal_mean": 0.01557338431008979
+   }
+  ],
+  "measured_mean": 0.010408120567375887,
+  "model_signal_mean": 0.009022086919524918,
+  "model_baseline_mean": 0.006642031949664748,
+  "model_signal_minus_measured": -0.001386033647850969,
+  "noise_share_extended_data_fig_2": {
+   "rows": 244,
+   "mean": 0.015573770491803278,
+   "min": 0.00675,
+   "max": 0.035250000000000004
+  }
+ },
+ "key": {
+  "measured_bits": 406784.0,
+  "model_pass_key_bits": 1210791.404182369,
+  "model_finite_key_bits": 560912.5534929463,
+  "model_over_measured": 2.976497119312384,
+  "finite_over_measured": 1.378895319120089,
+  "top_elevation_deg": 34.51980554947138
+ },
+ "rules": {
+  "1_profile_takes_the_fit": true,
+  "2_falls_within_0_5_db": false
+ }
+}

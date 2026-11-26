@@ -99,6 +99,29 @@ try {
   }
   for (const k of a.checkpoints) widest = Math.max(widest, Math.abs(k.margin));
   check(widest < ringBound, `every checkpoint's margin stays inside the garbled circuit's ring: largest |M| ${Math.round(widest).toLocaleString("en-US")} against ${ringBound.toLocaleString("en-US")} stable units`);
+
+  // A REAL MARKET'S PARAMETERS (batch 6): Aave V3 Ethereum Core, read on chain at one pinned block (data/defi/aave_v3_core_reads.json).
+  const reads = JSON.parse(readFileSync(join(WEB, "..", "data", "defi", "aave_v3_core_reads.json"), "utf8"));
+  const preset = c.market_presets.aave_v3_core;
+  check(preset.block === reads.source.block, `the preset is the reads' block (${preset.block})`);
+  // The page's two-slope rate, fed each reserve's own curve and its utilisation from the read totals, reproduces the rate Aave stored.
+  for (const [name, r] of Object.entries(reads.reserves)) {
+    const debt = r.reserve_data.total_variable_debt + r.reserve_data.total_stable_debt;
+    const u = debt / (r.virtual_underlying_balance + debt);
+    const q = { base_rate: r.rate_bps.base_variable_borrow_rate / 1e4, optimal_utilisation: r.rate_bps.optimal_usage_ratio / 1e4,
+                slope1: r.rate_bps.variable_rate_slope1 / 1e4, slope2: r.rate_bps.variable_rate_slope2 / 1e4 };
+    const stored = r.reserve_data.variable_borrow_rate_ray / 1e27, mine = m.twoSlopeRate(u, q);
+    check(Math.abs(mine - stored) <= 1e-6 * stored, `${name}: the two-slope rate at utilisation ${u.toFixed(6)} is Aave's stored ${stored.toFixed(8)} (relative ${(Math.abs(mine - stored) / stored).toExponential(1)})`);
+  }
+  const aave = m.withRunParams(c, { lending_market: "aave_v3_core" });
+  check(aave.liquidation_thresholds[0] === 0.84 && aave.liquidation_thresholds[1] === 0.85 && aave.liquidation_bonus === 0.05
+    && aave.optimal_utilisation === 0.94 && aave.slope1 === 0.046 && aave.slope2 === 0.10 && aave.initial_prices[0] === preset.initial_prices[0],
+    "the Aave preset reaches the simulation: thresholds, bonus, the USDC curve and the opening prices");
+  check(JSON.stringify(m.withRunParams(c, { lending_market: "nonsense" })) === JSON.stringify(c), "an unknown market keeps the illustrative parameters");
+  const ra = m.simulate(aave, 7);
+  check(ra.maxAccountingGap < 1e-6 * aave.supply && ra.utilisation.every((v) => v >= 0 && v <= 1), "under Aave's parameters the pool's books still balance");
+  check(ra.bobHealth[0] > 1 && ra.events.some((e) => e.hour === aave.shock_hour), `under Aave's parameters Bob starts healthy (${ra.bobHealth[0].toFixed(3)}) and the fall liquidates positions`);
+  check(ra.checkpoints.every((k) => Math.abs(k.margin) < ringBound), "and every checkpoint's margin stays inside the ring");
 } finally {
   rmSync(tmp, { recursive: true, force: true });
 }

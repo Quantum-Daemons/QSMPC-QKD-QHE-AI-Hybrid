@@ -33,9 +33,10 @@ import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
-#: PGS000072's first scored variant (rs616488), the full 2,504-sample panel's first 400 people in
-#: four contiguous cohorts (`np.array_split`), as `genomics.build` splits them. Measured 2026-10-31 on
-#: the local matrix scripts/data/fetch_g1k_dosages.py writes; CI builds a cohort to these counts.
+#: The score's first scored variant (rs616488, first in PGS000072 and in PGS000783, the score since Round 86's
+#: batch 6, whose dosage columns are PGS000072's), the full 2,504-sample panel's first 400 people in four
+#: contiguous cohorts (`np.array_split`), as `genomics.build` splits them. Measured 2026-10-31 on the local
+#: matrix scripts/data/fetch_g1k_dosages.py writes; CI builds a cohort to these counts.
 COUNTS_FULL_PANEL = [141, 131, 138, 118]
 TOTAL_FULL_PANEL = 528
 
@@ -61,6 +62,18 @@ def _cohort():
     return x, w
 
 
+def _row_cuts(x, w):
+    """Each row's cut since batch 6: the 90th percentile of its own super-population's scores in this panel."""
+    from qsh.config import get_config
+    from qsh.data.loaders import genomic_prs_super_populations
+    from qsh.usecases.genomics import HIGH_RISK_PERCENTILE
+
+    labels = genomic_prs_super_populations(n_individuals=len(x), name=get_config().data.genomics_prs_score)
+    scores = x @ w
+    cuts = {g: float(np.percentile(scores[labels == g], HIGH_RISK_PERCENTILE)) for g in set(labels.tolist())}
+    return labels, np.asarray([cuts[g] for g in labels])
+
+
 def test_one_percentile_in_both_languages_and_on_the_models_card() -> None:
     import importlib.util
 
@@ -79,11 +92,16 @@ def test_the_cut_is_the_stated_percentile_of_the_panel(demo: dict) -> None:
     from qsh.usecases.genomics import HIGH_RISK_PERCENTILE
 
     x, w = _cohort()
-    cut = float(np.percentile(x @ w, HIGH_RISK_PERCENTILE))
+    labels, row_cut = _row_cuts(x, w)
+    subject = int(np.argmax(x @ w))
+    cut, group = float(row_cut[subject]), str(labels[subject])
+    pooled = float(np.percentile(x @ w, HIGH_RISK_PERCENTILE))
     prs = demo["ctx"].data["_prs"]
-    assert prs["threshold"] == round(cut, 4) and prs["cut_population"] == len(x)
+    assert prs["threshold"] == round(cut, 4) and prs["cut_population"] == int(np.sum(labels == group))
+    assert prs["super_population"] == group and prs["pooled_cut"] == round(pooled, 4)
     assert prs["high_risk_percentile"] == HIGH_RISK_PERCENTILE
     assert demo["metrics"]["prs_high_risk_cut"] == round(cut, 6)
+    assert demo["metrics"]["prs_pooled_cut"] == round(pooled, 6) and demo["metrics"]["prs_pooled_cut_population"] == len(x)
     model = demo["ctx"].data["linear_model"]
     assert np.allclose(model.bias, [0.0, -cut]) and not model.weight[0].any()
     assert np.array_equal(model.weight[1], w), "the encrypted model is not the full weight vector"
@@ -92,8 +110,10 @@ def test_the_cut_is_the_stated_percentile_of_the_panel(demo: dict) -> None:
 def test_every_panel_individual_is_scored_and_the_flag_agrees(demo: dict) -> None:
     x, w = _cohort()
     scores = x @ w
-    flagged = int(np.sum(scores > demo["ctx"].artifacts["prs_panel"]["cut"]))
+    _, row_cut = _row_cuts(x, w)
+    flagged = int(np.sum(scores > row_cut))
     p = demo["ctx"].artifacts["prs_panel"]
+    assert np.allclose(p["row_cut"], row_cut), "the panel rows are not judged against their own super-population's cut"
     assert p["rows"] == len(x) and p["flags_agree"] == len(x), p
     assert 0 < p["max_abs_error"] < 1e-6
     assert p["flagged_encrypted"] == p["flagged_plaintext"] == flagged

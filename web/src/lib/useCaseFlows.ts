@@ -430,7 +430,8 @@ export const USECASE_SPECS: Record<string, Spec> = {
     steps: [
       { stageId: "pqc_handshake", kind: "c-bidir", label: (_m, c) => bilateral(c) ? `PQC handshake — ${kemName(c)}` : `PQC handshakes, Bob with the pool and the pool with Carol — ${kemName(c)}` },
       { stageId: "lending_market", kind: "local-wide",
-        label: (m) => `Simulated market · ${f(m, "lending_hours")} h · ${f(m, "lending_liquidations")} liquidations · generated prices` },
+        label: (m) => `Simulated market · ${f(m, "lending_hours")} h · ${f(m, "lending_liquidations")} liquidations · generated prices`
+          + (m.lending_market && m.lending_market !== "illustrative" ? " · Aave V3 Core parameters" : "") },
       { stageId: "private_liquidation", kind: "local-wide", hidden: bilateral,
         label: (m, c) => `Bob encrypts once under ${committee(c) ? "the committee's" : "Carol's"} key, then goes offline · ${f(m, "lending_bob_submissions")} submission` },
       { stageId: "private_liquidation", kind: "fhe-arrow",

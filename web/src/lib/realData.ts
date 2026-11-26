@@ -1,15 +1,15 @@
 // Datasets shipped to the CLIENT-SIDE demo (web/public/data/), so the demo scores real inputs with
 // real models rather than sampling noise — matching the FULL deployment. Coverage: medical (Wisconsin
-// breast-cancer, real measurements), genomics (published PGS000072 weights over real 1000 Genomes
-// genotypes), finance (PaySim SIMULATOR output, i.e. synthetic rows) and satellite (real OPS-SAT-AD
-// telemetry segments since Round 84; the NASA SMAP/MSL windows it replaced carry no data licence from
-// any provider and are no longer served). Only telecom stays fully synthetic - no network-attack corpus with an
-// affirmative commercial grant exists (UNSW-NB15 needs the authors' agreement; CIC-IDS2017 states no
-// licence at all) — and the demo logs that rather than quietly substituting. Tiny static JSON,
+// breast-cancer, real measurements), genomics (published PGS000783 weights over real 1000 Genomes
+// genotypes), finance (AMLworld HI-Small test-window rows since F7b, synthetic by IBM's statement, which the QCNN reads
+// too since Round 86's batch 6, and PaySim SIMULATOR output for its federated step) and satellite (real OPS-SAT-AD telemetry segments since Round 84;
+// the NASA SMAP/MSL windows it replaced carry no data licence from any provider and are no longer served). Telecom's
+// pipeline steps stay synthetic (QKD telemetry); its real-data detector reads 5G-NIDD (CC BY 4.0) in figures of its own
+// (`niddStudentHeldOut`, `niddFederated`) - and the demo logs which is which rather than quietly substituting. Tiny static JSON,
 // fetched and cached once.
 //
 // These are BUNDLED SAMPLES, not the corpora the published models were trained on, and they are not
-// uniformly commercial-OK: the genomics payload's PGS000072 effect weights are CC BY 4.0, while its 30
+// uniformly commercial-OK: the genomics payload's PGS000783 effect weights are CC BY 3.0 IGO, while its 30
 // individuals' 1000 Genomes dosages carry no licence instrument (IGSR's disclaimer); both are served
 // here and neither goes to the Hub. Licensing prose lives in
 // DATA_LICENSES.md and the machine-readable authority is
@@ -66,8 +66,11 @@ export interface RealInput {
   bySpace?: Record<string, number[]>;
   names: string[];                           // feature names (mirror the backend / real rsIDs)
   provenance: string;                        // human label for the event log + UI badge
-  model?: { W: number[][]; b: number[] };    // a REAL model (trained LR / PRS weights) for faithful SHAP
-  metrics?: Record<string, number>;          // extra real metrics, e.g. polygenic_risk_score
+  model?: { W: number[][]; b: number[]; corpusBias?: number[][]; biasAfterDecryption?: boolean };    // a REAL model (trained LR / PRS weights) for faithful SHAP;
+  // `corpusBias`, where present, is the bias of each row of `realInputCorpus`, in its order (genomics: each individual's own cut).
+  // `biasAfterDecryption` (genomics, Round 86 batch 6): `b` and `corpusBias` are the key holder's, added to the DECRYPTED logits.
+  // CKKS scores the row with no bias, so the evaluator is never given a person's cut, which would name their super-population.
+  metrics?: Record<string, number | string>; // extra real metrics, e.g. polygenic_risk_score (genomics adds its reference population's label)
   /** Column means E[x] over the shipped sample, for the SHAP reference point.
    *
    *  Without this `linearShap` defaults its baseline to the ZERO vector, and the attributions are
@@ -86,6 +89,10 @@ export interface RealInput {
   label?: number;
   qcnnRowNote?: string;
 }
+
+/** Small counts in words, for sentences a visitor reads ("at its eight inputs"); a count past the table prints as digits. */
+const COUNT_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+  "thirteen", "fourteen", "fifteen", "sixteen"];
 
 /** Column means over the sample rows - the reference point SHAP attributions are measured from. */
 function columnMeans(rows: number[][], n: number): number[] {
@@ -107,7 +114,8 @@ async function fetchJSON(url: string): Promise<any> {
 
 /**
  * Returns REAL input + a REAL model where a real sample ships: medical (WDBC, CC BY 4.0), finance
- * (PaySim simulator rows) and genomics, whose PGS000072 weights are CC BY 4.0 and whose 1000 Genomes
+ * (an AMLworld test-window row since F7b, which the QCNN reads too since Round 86's batch 6) and
+ * genomics, whose PGS000783 weights are CC BY 3.0 IGO and whose 1000 Genomes
  * genotypes carry no licence instrument (DATA_LICENSES.md sections 4 and 5). `null` for
  * everything else (the caller keeps its synthetic features and logs that honestly).
  * `u` is the pipeline's seeded RNG so a run is deterministic.
@@ -134,7 +142,8 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
                provenance: ds.provenance, model: ds.model, baseline: columnMeans(rows, 8) };
     }
     if (usecase === "genomics") {
-      // REAL PGS-Catalog PGS000072 effect weights (Graff et al., Nat Commun 12:970, 2021, CC BY 4.0)
+      // REAL PGS-Catalog PGS000783 effect weights (Kachuri et al., Nat Commun 11:6084, 2020, CC BY 3.0 IGO;
+      // PGS000072's variants re-weighted by beta/SE, since Round 86's batch 6)
       // + REAL 1000 Genomes phase-3 genotypes (read through Ensembl; IGSR attaches no licence
       // instrument). No synthetic sampling; real genotypes throughout.
       //
@@ -142,19 +151,36 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       // model is the published weights in the two-logit form W = [0, w], b = [0, -cut], so CKKS
       // evaluates the whole score in one ciphertext and the class is "score above the cut". A sign
       // test on a few large-weight variants, which this replaced, cannot answer for the score.
-      // The cut comes from the bundled panel alone - see `prsPanel`.
+      // THE CUT IS ADDED AFTER DECRYPTION (`biasAfterDecryption`, the owner's choice of 2026-11-26). It is the person's own
+      // super-population's, so an evaluator given it would learn which super-population that is: the ciphertext is scored
+      // with no bias and this tab compares the decrypted score with the cut, as the blurb says.
       const p = await prsPanel();
       const k = Math.floor(u() * p.rows.length) % p.rows.length;   // a REAL 1000G individual
       const n = p.weights.length;
+      // SINCE BATCH 6 the decision is against the person's own super-population's cut (`rowCut`, from the payload's
+      // statistics over all the panel's individuals - see `prsPanel`), and every bundled row of the panel figure against
+      // its own (`corpusBias`); the pooled cut over the bundled rows is reported beside it.
+      const g = p.superPop[k], ref = p.reference[g];
+      const within = percentileWithin(p.scores[k], p.referencePercentilesAt, ref.percentiles);
       return {
         values: p.rows[k].slice(), names: p.keys.slice(), provenance: p.provenance,
-        model: { W: [new Array(n).fill(0), p.weights.slice()], b: [0, -p.cut] },
+        model: { W: [new Array(n).fill(0), p.weights.slice()], b: [0, -p.rowCut[k]],
+                 corpusBias: p.rowCut.map((c) => [0, -c]), biasAfterDecryption: true },
         metrics: {
           polygenic_risk_score: Number(p.scores[k].toFixed(4)),     // the score in the clear
           prs_variants: n,
           prs_high_risk_percentile: p.percentile,
-          prs_high_risk_cut: Number(p.cut.toFixed(6)),
-          prs_cut_population: p.rows.length,
+          prs_high_risk_cut: Number(p.rowCut[k].toFixed(6)),
+          prs_reference_super_population: g,
+          prs_cut_population: ref.n,
+          prs_z_in_super_population: Number(((p.scores[k] - ref.mean) / ref.sd).toFixed(4)),
+          prs_percentile_in_super_population: Number(within.percentile.toFixed(1)),
+          prs_percentile_in_super_population_bound: within.bound,
+          prs_pooled_cut: Number(p.cut.toFixed(6)),
+          prs_pooled_cut_population: p.rows.length,
+          prs_pooled_flag: p.scores[k] > p.cut ? 1 : 0,
+          prs_pooled_cut_all: Number(p.pooledAll.cut.toFixed(6)),
+          prs_pooled_cut_all_population: p.pooledAll.n,
         },
         // Population mean dosage at every variant. The zero vector would mean "an individual carrying
         // no effect allele anywhere", which is not a typical genome and at several of these loci is
@@ -167,27 +193,33 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       // rows the private-inference figure scores, scored by F7b's square network on its 114 inputs, end to end under
       // CKKS; the SHAP bars are its exact quadratic Shapley values. Until then this stage scored a PaySim simulator row
       // with a four-feature logistic surrogate, a different model on different data from the AMLworld student the
-      // figure encrypted. The finance QCNN was trained on PaySim's four columns and cannot read AMLworld's 114, so it
-      // reads a PaySim transaction of its own (`bySpace.raw`, drawn by the same number): another row and another
-      // model, which the run says.
-      const [ds, net, pay] = await Promise.all([fetchJSON("/data/finance/student_heldout.json"), loadFinanceSquare(),
-                                                fetchJSON("/data/finance/paysim_sample.json")]);
+      // figure encrypted.
+      //
+      // THE QCNN READS THE SAME TRANSACTION since Round 86's batch 6 (the owner's choice of 2026-11-26): the finance QCNN
+      // is the AMLworld circuit of the pre-registered comparison (references/finance-qcnn-amlworld-comparison-
+      // preregistration.md), which takes eight of the same 114 inputs in raw units (its weights fold the fit window's
+      // standardisation into `feature_mean` and `feature_std`). `bySpace.raw` is this row at those eight, by name. Until
+      // then the QCNN was trained on PaySim's four columns and read a PaySim transaction of its own.
+      const [ds, net, qw] = await Promise.all([fetchJSON("/data/finance/student_heldout.json"), loadFinanceSquare(),
+                                               fetchJSON("/data/finance/qcnn_weights.json")]);
       const raw = ds.samples as number[][];
       const v = u();
       const idx = Math.floor(v * raw.length) % raw.length;
       const scaled = raw.map((r) => scaleRow(net, r));
       const baseline = Array.from({ length: net.n_in }, (_, j) => scaled.reduce((a, r) => a + r[j], 0) / scaled.length);
-      const payRows = pay.samples as number[][];
-      const pIdx = Math.floor(v * payRows.length) % payRows.length;
+      const names = ds.feature_names as string[];
+      const cols = ((qw.feature_names ?? []) as string[]).map((n) => names.indexOf(n));
+      const qcnnRow = cols.length && cols.every((j) => j >= 0) ? cols.map((j) => raw[idx][j]) : undefined;
       return {
-        values: Array.from(scaled[idx]), bySpace: rowBySpace(pay, pIdx, Number.MAX_SAFE_INTEGER),
-        names: ds.feature_names as string[],
+        values: Array.from(scaled[idx]), bySpace: qcnnRow ? { [String(qw.input_space)]: qcnnRow } : {},
+        names,
         provenance: `AMLworld HI-Small test-window transaction ${idx + 1} of ${raw.length} (${String(ds.licence)}, `
           + `synthetic), scored by ${squareLabel(net)}`,
         baseline, square: net, raw: raw[idx], label: Number(ds.labels?.[idx]),
         definitions: net.feature_definitions,
-        qcnnRowNote: `the QCNN backend reads PaySim transaction ${pIdx + 1} of ${payRows.length} (${String(pay.licence ?? "CC-BY-SA-4.0")}): `
-          + "it was trained on PaySim's four columns, so it scores another transaction with another model",
+        qcnnRowNote: qcnnRow
+          ? `the QCNN backend reads the same transaction at its ${COUNT_WORDS[cols.length] ?? cols.length} inputs (${(qw.feature_names as string[]).join(", ")})`
+          : "the QCNN's inputs are not among this row's columns, so it is not run on it",
       };
     }
   } catch (e) {
@@ -226,9 +258,9 @@ export async function realAlleleCounts(
   }
 }
 
-/** The genomics payload: PGS000072's scored variants, 30 1000 Genomes individuals, and their credits.
+/** The genomics payload: PGS000783's scored variants, 30 1000 Genomes individuals, and their credits.
  *  Generated by `scripts/data/build_prs_browser_payload.py`; the registry's `DEMO_SAMPLE_FILES` names it. */
-export const PRS_PAYLOAD_PATH = "/data/genomics/pgs000072_breast_cancer.json";
+export const PRS_PAYLOAD_PATH = "/data/genomics/pgs000783_breast_cancer.json";
 
 /** The percentile of the full score the genomics page calls high risk (Round 84).
  *
@@ -257,7 +289,7 @@ export function percentileLinear(values: number[], percentile: number): number {
 export interface PrsPanel {
   scoreId: string;
   provenance: string;
-  /** Variant identifiers in the scoring file's order (rsIDs for PGS000072). */
+  /** Variant identifiers in the scoring file's order (rsIDs for PGS000783). */
   keys: string[];
   weights: number[];
   /** Every bundled individual's effect-allele dosage at every variant, in `keys` order. */
@@ -275,6 +307,17 @@ export interface PrsPanel {
   meanDosage: number[];
   /** Individuals behind `meanDosage`. */
   meanDosageOver: number;
+  /** Each bundled row's 1000 Genomes super-population, the label of the population it was sampled in (batch 6). */
+  superPop: string[];
+  /** Aggregate statistics of the full score over ALL the panel's individuals, by super-population: the reference a
+   *  person is read against (pgsc_calc's guide asks for ancestry-normalised outputs; references/genomics-real-data-2026-11.md). */
+  reference: Record<string, { n: number; mean: number; sd: number; cut: number; percentiles: number[] }>;
+  /** The percentiles `reference[g].percentiles` are at (1 to 99). */
+  referencePercentilesAt: number[];
+  /** The pooled cut over all the panel's individuals, every super-population together, and how many they are. */
+  pooledAll: { n: number; cut: number };
+  /** Each bundled row's own cut: the `percentile`-th percentile of its super-population's scores. */
+  rowCut: number[];
 }
 
 /** Load the genomics payload as a `PrsPanel`. Generic over the number of variants and individuals:
@@ -288,7 +331,7 @@ export interface PrsPanel {
 export async function prsPanel(): Promise<PrsPanel> {
   const prs = await fetchJSON(PRS_PAYLOAD_PATH);
   const weights = (prs.weights as number[] | undefined) ?? [];
-  // `keys` (the scoring file's identifiers; rsIDs for PGS000072), or `rsids` in an older payload.
+  // `keys` (the scoring file's identifiers; rsIDs for PGS000783), or `rsids` in an older payload.
   const keys = ((prs.keys ?? prs.rsids) as string[] | undefined) ?? [];
   const rows = (prs.dosage_samples as number[][] | undefined) ?? [];
   const m = weights.length;
@@ -299,13 +342,44 @@ export async function prsPanel(): Promise<PrsPanel> {
   const scores = rows.map((d) => weights.reduce((a, wi, i) => a + wi * (d[i] ?? 0), 0));
   const pop = prs.population_mean_dosage as number[] | undefined;
   const popOk = Array.isArray(pop) && pop.length === m;
+  // THE REFERENCE A PERSON IS READ AGAINST (batch 6). A pooled cut over mixed ancestries is not current practice, so each
+  // row is judged against its own super-population's percentile over the whole panel; the pooled cut stays as `cut`.
+  const superPop = (prs.sample_super_population as string[] | undefined) ?? [];
+  const reference = (prs.reference_by_super_population ?? {}) as PrsPanel["reference"];
+  // A cut that is not a finite number would be added after decryption as NaN (`biasAfterDecryption`), so it is refused here.
+  if (superPop.length !== rows.length || superPop.some((g) => !reference[g] || !Number.isFinite(reference[g].cut))) {
+    throw new Error(`the genomics payload gives ${superPop.length} super-population labels for ${rows.length} rows, `
+      + `or a label without reference statistics or a finite cut`);
+  }
+  if (Number(prs.reference_percentile) !== PRS_HIGH_RISK_PERCENTILE) {
+    throw new Error(`the payload's reference cut is at percentile ${prs.reference_percentile}, not ${PRS_HIGH_RISK_PERCENTILE}`);
+  }
   return {
     scoreId: String(prs.score_id ?? ""), provenance: String(prs.provenance ?? ""),
     keys, weights, rows, scores, percentile: PRS_HIGH_RISK_PERCENTILE,
     cut: percentileLinear(scores, PRS_HIGH_RISK_PERCENTILE),
     meanDosage: popOk ? pop : columnMeans(rows, m),
     meanDosageOver: popOk ? Number(prs.n_individuals_available ?? rows.length) : rows.length,
+    superPop, reference,
+    referencePercentilesAt: (prs.reference_percentiles_at as number[] | undefined) ?? [],
+    pooledAll: prs.reference_pooled as { n: number; cut: number },
+    rowCut: superPop.map((g) => reference[g].cut),
   };
+}
+
+/** Where `score` falls among a super-population's scores, from its 1st to 99th percentiles: linear between them, and
+ *  "below 1" or "above 99" outside. An aggregate reading, not the person's rank among individuals the page holds. */
+export function percentileWithin(score: number, at: number[], values: number[]): { percentile: number; bound: "within" | "below" | "above" } {
+  if (!values.length || values.length !== at.length) return { percentile: Number.NaN, bound: "within" };
+  if (score < values[0]) return { percentile: at[0], bound: "below" };
+  if (score > values[values.length - 1]) return { percentile: at[at.length - 1], bound: "above" };
+  for (let i = 1; i < values.length; i++) {
+    if (score <= values[i]) {
+      const span = values[i] - values[i - 1];
+      return { percentile: at[i - 1] + (span > 0 ? ((score - values[i - 1]) / span) * (at[i] - at[i - 1]) : 0), bound: "within" };
+    }
+  }
+  return { percentile: at[at.length - 1], bound: "within" };
 }
 
 /** The OPS-SAT-AD segments the satellite page scores, and the file they come from. */
@@ -417,7 +491,7 @@ export async function realFederatedSet(
  * surrogate's fitting rows, and its private-inference figure is now the published AMLworld student on
  * its held-out test window (`heldOutCorpus`), which is a different model in a different feature
  * space and so cannot come through this 8-feature path. Genomics keeps its 30 reference-panel
- * individuals, which PGS000072 was not fitted on either.
+ * individuals, which PGS000783 was not fitted on either.
  */
 export async function realInputCorpus(usecase: string): Promise<number[][] | null> {
   try {
@@ -520,6 +594,69 @@ function planeFromColumns(rows: number[][], names: string[], plane: { x: PlaneAx
 function licenceOf(ds: any): DataLicence {
   return { name: String(ds.licence ?? ""), url: (ds.licence_url as string | null | undefined) ?? null,
            attribution: String(ds.attribution ?? ""), modifications: String(ds.modifications ?? "") };
+}
+
+/** The 5G-NIDD detector's CKKS student and the 2,048 held-out rows the page ships (Round 86, batch 6; the owner's choice of
+ *  an encrypted path for the real-data detector). Both files come from `scripts/train/telecom_nidd_student.py`, pre-registered
+ *  (references/telecom-nidd-ckks-student-preregistration.md): a temperature-scaled direct multinomial logistic regression on
+ *  the 36 numeric features, the rows standardised by the training rows and clipped to [-20, 20] as the model reads them.
+ *  The temperature changes no class, so the encrypted logits are the model's own; it only calibrates the probabilities. */
+export async function niddStudentHeldOut(): Promise<HeldOutCorpus | null> {
+  const [w, ds] = await Promise.all([fetchJSON("/data/telecom_nidd/student_weights.json"),
+                                     fetchJSON("/data/telecom_nidd/student_heldout.json")]);
+  const rows = ds?.rows as number[][] | undefined;
+  if (!rows?.length || !Array.isArray(w?.W) || rows[0].length !== (w.features as string[]).length) return null;
+  const params = (w.W as number[][]).length * (w.W as number[][])[0].length + (w.b as number[]).length;
+  return {
+    usecase: "telecom_ids", modelKey: "telecom_ids.nidd_student",
+    modelLabel: `the ${params}-parameter CKKS-linear student of the 5G-NIDD detector (site file, pre-registered)`,
+    model: { W: w.W as number[][], b: w.b as number[] }, rows,
+    labels: (ds.labels as number[]).map((v) => Number(v) | 0), classNames: w.classes as string[],
+    plane: null, corpus: String(ds.corpus ?? ""), split: String(ds.split ?? ""),
+    fitNote: "the student was fitted on the teacher's training split; these rows are from its test split",
+    licence: licenceOf(ds), expected: null,
+  };
+}
+
+/** The federation of 5G-NIDD's two base stations (Round 86, batch 6; the owner's choice of 2026-11-26,
+ *  references/telecom-nidd-federated-preregistration.md): its global model over the student's 2,048 held-out rows, which
+ *  `heldout_station` names row by row, and the two stations' last local models, from which the page replays the last
+ *  round's masked sum. */
+export interface NiddFederated {
+  held: HeldOutCorpus;
+  /** 0 or 1 for each held-out row: the base station whose file it comes from. */
+  station: number[];
+  stations: string[];
+  /** Each station's share of the fit rows: the FedAvg weights its masked share carries. */
+  weights: number[];
+  lastLocal: { W: number[][]; b: number[] }[];
+  global: { W: number[][]; b: number[] };
+  rounds: number;
+}
+
+export async function niddFederated(): Promise<NiddFederated | null> {
+  let f: any;
+  try {
+    f = await fetchJSON("/data/telecom_nidd/federated.json");
+  } catch {
+    return null;
+  }
+  const base = await niddStudentHeldOut();
+  const fed = f?.federated;
+  const station = f?.heldout_station as number[] | undefined;
+  if (!base || !Array.isArray(fed?.W) || !Array.isArray(fed?.last_local) || fed.last_local.length !== 2
+      || !Array.isArray(station) || station.length !== base.rows.length) return null;
+  const W = fed.W as number[][], b = fed.b as number[];
+  return {
+    held: {
+      ...base, modelKey: "telecom_ids.nidd_federated", model: { W, b },
+      modelLabel: `the ${W.length * W[0].length + b.length}-parameter model the two base stations federated (site file, pre-registered)`,
+      fitNote: "the federated model was fitted on the two stations' training rows without pooling them; these rows are from the test split",
+    },
+    station: station.map((v) => Number(v) | 0), stations: (f.stations as string[]) ?? ["station 1", "station 2"],
+    weights: fed.weights as number[], lastLocal: fed.last_local as { W: number[][]; b: number[] }[], global: { W, b },
+    rounds: Number(fed.rounds),
+  };
 }
 
 /** A published student and its held-out rows from the two payloads `build_heldout_payloads.py`

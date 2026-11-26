@@ -5,12 +5,12 @@
 Bundled samples are real measurements or simulator output. Every one the browser serves carries a
 licence that permits redistribution except the genomics payload's 1000 Genomes dosage slice, which
 has no licence instrument at all (IGSR's disclaimer; it ships under the cell budget of
-[DATA_LICENSES.md](../DATA_LICENSES.md) section 4); its PGS000072 weights are CC BY 4.0 (Graff et al.,
-Nat Commun 12:970, 2021). The synthetic
+[DATA_LICENSES.md](../DATA_LICENSES.md) section 4); its PGS000783 weights are CC BY 3.0 IGO (Kachuri et al.,
+Nat Commun 11:6084, 2020). The synthetic
 generators are an offline-CI fallback only (logged as such, never a silent substitute):
-- **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) -> eight AML-named columns, of which the demo's linear model reads four (amount, cross_border, night_tx, new_payee) and none built from PaySim's balance columns, which the dataset's description says must not be used for fraud detection. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus of the AMLworld models is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 transactions at 1 laundering in 981; the finance QCNN and the page's four-column linear surrogate are fitted on the PaySim sample. **AMLworld is synthetic too** - IBM generates it with a multi-agent virtual-world model and states "Everything is synthetic"; the NeurIPS 2023 D&B paper is titled *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is used because it is calibrated to real transaction statistics and its CDLA-Sharing terms permit publishing derived weights - **not** because it is real data. No real laundering-labelled corpus under a permissive licence was found (2026-11-22): Elliptic and Elliptic2 are CC BY-NC-ND 4.0, and the one real bank set found is GPL-3.0 with differentially private PCA features (arXiv:2507.08835); [`DATA_LICENSES.md`](../DATA_LICENSES.md#7-rejected-as-not-commercial-ok) lists what was checked.
+- **Finance/AML** (demo sample): **PaySim simulator output** (Kaggle `ealaxi/paysim1`, CC-BY-SA-4.0) -> eight AML-named columns, of which the full deployment's linear surrogate reads four (amount, cross_border, night_tx, new_payee) and none built from PaySim's balance columns, which the dataset's description says must not be used for fraud detection. PaySim is a *simulator*: these are synthetic transactions from aggregated real mobile-money logs, not real transactions. The **training** corpus of the AMLworld models is IBM AMLworld HI-Small (CDLA-Sharing-1.0), 5,078,345 transactions at 1 laundering in 981; the finance QCNN and the full deployment's four-column linear surrogate are fitted on the PaySim sample, and the page's federated step trains on its rows; since F7b the page's encrypted steps score AMLworld test-window rows (below). **AMLworld is synthetic too** - IBM generates it with a multi-agent virtual-world model and states "Everything is synthetic"; the NeurIPS 2023 D&B paper is titled *Realistic Synthetic Financial Transactions for Anti-Money Laundering Models*. It is used because it is calibrated to real transaction statistics and its CDLA-Sharing terms permit publishing derived weights - **not** because it is real data. No real laundering-labelled corpus under a permissive licence was found (2026-11-22): Elliptic and Elliptic2 are CC BY-NC-ND 4.0, and the one real bank set found is GPL-3.0 with differentially private PCA features (arXiv:2507.08835); [`DATA_LICENSES.md`](../DATA_LICENSES.md#7-rejected-as-not-commercial-ok) lists what was checked.
 - **Medical**: MedMNIST v2 BreastMNIST for the BreastMNIST models (CC BY 4.0 asserted by MedMNIST; the BUSI authors publish no licence - see [DATA_LICENSES.md](../DATA_LICENSES.md)), NIH ChestX-ray14 for the federated chest X-ray model (`medical_fl.cxr_fedavg`, under NIH's terms), UCI Heart Disease for the four-hospital federation and its differential-privacy arm, PhysioNet/CinC 2016 and CirCor for the heart-sound cards, BreastMNIST also for the full deployment's CNN path (`benchmark.medical_cnn`; PneumoniaMNIST until Round 86), Wisconsin breast-cancer (bundled demo sample; UCI, CC BY 4.0 - attribution required). MedMNIST states that its data "is NOT intended for clinical use", and nothing here is either.
-- **Genomics**: **real 1000 Genomes** phase-3 genotypes, read through the Ensembl REST API (open *access*, but IGSR attaches **no licence instrument**: "rights claimed on pieces of data vary"; cite The 1000 Genomes Project Consortium, Nature 526:68-74, 2015) + the **real PGS-Catalog** PGS000072 weights (Graff et al., Nat Commun 12:970, 2021, **CC BY 4.0**; 183 of the 187 variants have a 1000 Genomes genotype and are scored, the other 4 are left out). The weights are cleared for redistribution with credit; the genotypes are shipped as a slice under the cell budget, not under a licence. See [DATA_LICENSES.md](../DATA_LICENSES.md).
+- **Genomics**: **real 1000 Genomes** phase-3 genotypes, read through the Ensembl REST API (open *access*, but IGSR attaches **no licence instrument**: "rights claimed on pieces of data vary"; cite The 1000 Genomes Project Consortium, Nature 526:68-74, 2015) + the **real PGS-Catalog** PGS000783 weights (Kachuri et al., Nat Commun 11:6084, 2020, **CC BY 3.0 IGO**; since Round 86's batch 6, on the owner's choice of 2026-11-26, in place of PGS000072, whose 162 variants they re-weight by $`\beta / \mathrm{SE}`$; 158 of the 162 variants have a 1000 Genomes genotype and are scored, the other 4 are left out). The weights are cleared for redistribution with credit; the genotypes are shipped as a slice under the cell budget, not under a licence. See [DATA_LICENSES.md](../DATA_LICENSES.md).
 - **Satellite**: the browser demo scores **real OPS-SAT-AD** telemetry segments (ESA OPS-SAT; Ruszczak et al., Scientific Data 2025; CC BY 4.0) since Round 84, with a demo anomaly regression fitted on 370 test-partition segments and verdicts drawn from the other 159. The **real NASA SMAP/MSL** spacecraft telemetry it served before (Telemanom; Hundman et al. 2018; NASA JPL) has **no licence granted by any provider** (checked at each source on 2026-10-30), so it is neither served nor kept in the repository; the full deployment's CKKS telemetry stage scores one of the same OPS-SAT-AD segments per run, with the same demo regression as the browser ([which pages encrypt](#which-pages-encrypt)). Telemanom's `LICENSE.txt` is a Caltech copyright assertion covering the *code*; the Kaggle mirror is labelled "Data files (c) Original Authors". 17 U.S.C. 105 removes US copyright only, covers works of federal employees (JPL staff are Caltech employees), and is not a grant. Bundled demo sample only - the satellite forecaster and its student are trained on ESA-ADB (CC BY 3.0 IGO), and the segment classifier and its student on OPS-SAT-AD. See [DATA_LICENSES.md](../DATA_LICENSES.md).
 - **Telecom/defense**: synthetic QKD-attack telemetry for the QKD-layer detectors, and real 5G-NIDD traffic (CC BY 4.0) for `telecom_ids.nidd`. The class list comes from the literature; the signature values are this project's own illustrative design and are not fitted to any measurement (no public real capture of **QKD-layer** attacks was found: arXiv:2508.12749 reports anomalies recorded on an experimental receiver and states no data release).
 
@@ -265,7 +265,8 @@ both kinds in one sentence):
 - the full deployment counts TenSEAL's `serialize()`, which compresses: about 334,000 bytes at
   $`N = 8192`$, so about 1393x at 30 features in 4,096 slots and about 5222x at 8;
 - the browser counts node-seal's `saveToArray(ComprModeType.none)`, uncompressed: 393,329 bytes, so
-  about 6146x at 8 features, 12,292x at the 4 of finance's PaySim row and 269x at genomics' 183.
+  about 6146x at 8 features, 12,292x at 4 and 311x at genomics' 158 (269x at the 183 of PGS000072, the score until
+  2026-11-26).
 
 At full packing the uncompressed ratio is 12x (Cheon, Kim, Kim and Song, ASIACRYPT 2017), and about
 10x compressed. Measured on 2026-11-02 with TenSEAL 0.3.16 and node-seal 7.0.0. The 1483x the client
@@ -428,10 +429,10 @@ segments, with the same demo regression, under CKKS (TenSEAL), and reports how f
 logits are from the plaintext ones. What CKKS evaluates in the browser: on the medical page the
 Wisconsin logistic regression, whose logits the 2PC argmax then compares, and the published medical
 student's convolution and both dense layers; the fully encrypted square student end to end, in its own
-CKKS context (below); the chest X-ray model's own last layer over its 512 pooled features; the telecom student; the full 183-variant genomics
-score; on finance, a linear surrogate over four columns of the PaySim demo sample, and the published MLP and the compact GNN on one held-out transaction each, their ReLUs and argmax in garbled circuits, while the
-115-parameter AMLworld student is encrypted on 8,192 held-out test-window rows for its agreement
-figure; on the lending page, each check's margin; and, where a trained QCNN is chosen under CKKS, its input as a linear form. What each step hides, in either tier, is in
+CKKS context (below); the chest X-ray model's own last layer over its 512 pooled features; the telecom student; the full 158-variant genomics
+score; on finance, since F7b, the square network end to end on an AMLworld test-window transaction and on the 8,192
+shipped test-window rows for its agreement figure (below), and the published MLP and the compact GNN on one held-out
+transaction each, their ReLUs and argmax in garbled circuits; on the lending page, each check's margin; and, where a trained QCNN is chosen under CKKS, its input as a linear form. What each step hides, in either tier, is in
 [the threat model's table](threat-model.md#what-each-step-protects-in-the-browser-and-in-the-full-deployment).
 
 #### The fully encrypted square student
@@ -555,11 +556,151 @@ clip) and is not part of the pre-registration. On the page:
   Web Worker (a block of its own, about 17 s, since the work does not shrink with the rows), the garbled-circuit argmax
   runs over its decrypted logits, and the SHAP bars are its exact quadratic Shapley values
   (`web/src/lib/quadraticShap.ts`, held to the definition by brute force in `tests/test_explainability.py`). The finance
-  QCNN was trained on PaySim's four columns, so it reads a PaySim transaction of its own, and the run says so;
+  QCNN reads the same transaction at its eight inputs since Round 86's batch 6 (a PaySim transaction of its own until
+  then, in PaySim's four columns), and the run says so;
 - the accuracy-against-cost plot prices the network's batch in place of the linear student's.
 
 The linear student stays published on the Hub, and its record stays the comparison the BFV scorecard and
 `scripts/measure_decision_curve.py` read.
+
+#### The 5G-NIDD detector's CKKS student: telecom's encrypted path on real traffic
+
+On the owner's choice of 2026-11-25, pre-registered before any student was trained, with two addenda before training
+([`references/telecom-nidd-ckks-student-preregistration.md`](../references/telecom-nidd-ckks-student-preregistration.md);
+`scripts/train/telecom_nidd_student.py`, `docs/measurements/telecom-nidd-student-2026-11-25.json`): a temperature-scaled
+multinomial logistic regression on the 36 numeric 5G-NIDD features, standardised on the teacher's training split and
+clipped to $`[-20, 20]`$. The distilled arm was dropped on the owner's choice of 2026-11-26, since it needed a download
+the owner declined. On the 233,591 test flows: macro-F1 0.974 (criterion 1 asks 0.95; the gradient-boosted teacher
+scores 0.997 on all 46 features, the repository's earlier linear probe 0.969), expected calibration error 0.0042 after a
+temperature of 0.840. Under CKKS in the browser, on the 2,048 test flows the page ships (stratified, CC BY 4.0): 32
+ciphertexts, about 7.4 s, the largest logit error $`2.3 \times 10^{-7}`$, no decision changed (criterion 2,
+`tests/test_r86_nidd_student_under_ckks.py`). The telecom page draws it as a figure of its own beside the QKD student's,
+which reads synthetic telemetry.
+
+#### 5G-NIDD's two base stations, federated: the first station's own model is the best
+
+On the owner's choice of 2026-11-26, pre-registered before any model was trained
+([`references/telecom-nidd-federated-preregistration.md`](../references/telecom-nidd-federated-preregistration.md);
+`scripts/train/telecom_nidd_federated.py`, `docs/measurements/telecom-nidd-federated-2026-11-26.json`). The corpus was
+captured at two base stations, whose files the CSV concatenates; each station's fit, validation and test rows are the
+student's that come from its file. Each station alone and both pooled run the student's own procedure; the federation
+runs FedAvg for 40 rounds of 20 local L-BFGS-B iterations under the page's pairwise masks (`SecureAggregator`, the
+browser's construction), each station weighted by its fit rows (0.478 and 0.522), the penalty and the temperature
+chosen from masked sums of the stations' validation losses: 270 masked messages, every one checked to cancel exactly.
+The stations exchanged only their row counts and each feature's mean and deviation in the clear, which reproduce the
+student's standardisation: the centres within $`3.5 \times 10^{-8}`$ of a deviation, the deviations within
+$`1.8 \times 10^{-7}`$ of themselves.
+
+| Model | Station 1's test flows | Station 2's | Mean (FLamby's metric) |
+|---|---|---|---|
+| Station 1 alone | 0.986 | 0.983 | 0.985 |
+| Station 2 alone | 0.935 | 0.983 | 0.959 |
+| Federated | 0.959 | 0.982 | 0.971 |
+| Pooled (the student) | 0.965 | 0.983 | 0.974 |
+
+Macro-F1 over the nine classes. Criterion 1 fails: the federated model is not above each station alone, because station
+1's own model is the best by the mean. It carries to station 2's flows as well as station 2's own model does, while
+station 2's model does not carry back (SYNFlood 0.83, SYNScan 0.89, UDPScan 0.89 on station 1's flows); a single linear
+model trained on both, federated or pooled, scores between the two on station 1's flows (SYNFlood 0.84 and 0.88). The
+gradient-boosted teacher shows the same asymmetry across stations (0.995 one way, 0.902 the other). Criterion 2 holds:
+the federation is 0.003 below pooling, and its pooled training objective 0.004 above the pooled fit's. Criterion 3
+holds: under CKKS in the browser, on the student's 2,048 held-out flows (955 from station 1, 1,093 from station 2), 32
+ciphertexts in about 7.4 s, the largest logit error $`2.1 \times 10^{-7}`$, no decision changed, and the accuracy by
+station is the plaintext one (98.74 and 98.44 percent). The page's card states the comparison and its reason in the
+record's figures, and after a run replays the last round's masked sum with fresh X25519 keys, 333 of 333 coordinates
+equal to the shipped global model bit for bit. What it does not show: with two stations each can compute the other's
+update from the global model and its own, so the masks hide the updates from the aggregator only; the mask seeds are
+not post-quantum; no differential privacy is applied.
+
+#### The finance QCNN on AMLworld, pre-registered, and on the page since Round 86's batch 6
+
+On the owner's choice of 2026-11-25, pre-registered before any input was scored
+([`references/finance-qcnn-amlworld-preregistration.md`](../references/finance-qcnn-amlworld-preregistration.md)):
+eight of the 114 AMLworld inputs chosen on the fit window by $`|\mathrm{AUC} - 0.5|`$ (`format_risk` leads at 0.379),
+the tree circuit's recipe on seeds 0 to 4, every laundering transaction of the fit window and four others each to fit
+on, and the whole validation and test windows (`scripts/data/aml_qcnn_inputs.py`, the trainer's `finance_amlworld`
+corpus; `docs/measurements/finance-qcnn-amlworld-2026-11-26.json`). Seed 0 at eight wires ran on the CPU; the other nine
+ran on the GPU on the owner's choice of 2026-11-26.
+
+| Wires | Test AUPRC by seed | Mean | Logistic regression, same inputs | Pauli surrogate |
+|---|---|---|---|---|
+| 8 | 0.267, 0.391, 0.262, 0.117, 0.029 | 0.213 | 0.370 | 0.111 |
+| 4 | 0.064, 0.038, 0.037, 0.037, 0.073 | 0.050 | 0.031 | 0.042 |
+
+Criterion 1 holds: every seed's test AUPRC is at least twice the test window's prevalence ($`0.0030`$; the lowest is
+$`0.029`$). At eight wires the circuit trails logistic regression on the same inputs on average and varies widely by
+seed; at four it is ahead of both comparators. The seed best on validation at eight wires is seed 3 (validation F1
+0.179, test minority F1 0.193, the best of the five, test AUPRC 0.117). Criterion 2, the page's clear contraction
+against the state vector, is checked on the seed the owner chooses to ship, and the PaySim QCNN stays on the page
+until then. For scale, not like for like: F7b's square network on all 114 inputs scores 0.500.
+
+That run selected each checkpoint and seed by a validation F1 at a logit of 0, a threshold the four-to-one fit sample
+sets, so the comparison that followed re-ran the circuit selected by validation average precision, over twenty seeds,
+beside the comparators the same inputs allow
+([`references/finance-qcnn-amlworld-comparison-preregistration.md`](../references/finance-qcnn-amlworld-comparison-preregistration.md);
+the finance page's comparison card states every arm with its interval). The seed best on validation, seed 6, scores test
+average precision 0.442, at least twice the prevalence, and the page's tree contraction equals the state vector within
+$`2.1 \times 10^{-6}`$ on all 1,523,504 test transactions with no decision changed, so criterion 1 holds, and on the
+owner's choice of 2026-11-26 it is the finance page's QCNN (`scripts/export_finance_qcnn_amlworld.py`; the card is
+[`models/qcnn_finance/README.md`](../models/qcnn_finance/README.md)). Its served file folds the fit window's
+standardisation into its own moments, so the page feeds raw inputs, and the validation-best threshold into its bias:
+minority-class F1 0.509 on the test window, against 0.497 for logistic regression on the same encoded inputs at its
+own threshold.
+
+The comparison on the test window (average precision with its 95 percent stratified bootstrap interval;
+`docs/measurements/finance-qcnn-amlworld-comparison-2026-11-26.json`, written by
+`scripts/train/finance_qcnn_comparison.py --record`):
+
+| Model | Kind | Test average precision (95 % interval) |
+|---|---|---|
+| QCNN-1, the seed best on validation (seed 6) | simulated quantum circuit | 0.442 (0.421 to 0.463) |
+| Logistic regression on the circuit's tanh-encoded inputs - not an arm | classical | 0.370 (0.347 to 0.392) |
+| Quantum kernel SVM: the product encoding's fidelity | quantum kernel, computed classically | 0.330 (0.309 to 0.352) |
+| QCNN-1, the 20 seeds' mean probability | simulated quantum circuit | 0.296 (0.276 to 0.315) |
+| QCNN-2 (quantile encoding, encoded twice), the 20 seeds' mean | simulated quantum circuit | 0.275 (0.257 to 0.295) |
+| Gradient-boosted trees | classical | 0.270 (0.250 to 0.292) |
+| RBF support vector machine | classical | 0.262 (0.244 to 0.282) |
+| Matrix-product-state classifier | classical tensor network | 0.256 (0.237 to 0.276) |
+| Quantum kernel SVM: the ZZ feature map's fidelity | quantum kernel, computed classically | 0.195 (0.179 to 0.214) |
+| QCNN-1 without its entangling gates, the 5 seeds' mean | simulated quantum circuit | 0.140 (0.130 to 0.154) |
+| Gradient-boosted trees on the whole fit window | classical | 0.116 (0.105 to 0.129) |
+| Quantum kernel SVM: the ZZ map's projected kernel | quantum kernel, computed classically | 0.109 (0.097 to 0.123) |
+| Logistic regression on the standardised inputs, the whole fit window | classical | 0.036 (0.035 to 0.037) |
+| Logistic regression on the standardised inputs | classical | 0.035 (0.034 to 0.036) |
+
+Over its twenty seeds the circuit scores $`0.253 \pm 0.090`$, so the shipped seed is the
+rule's pick, not the method's typical figure. The row that is not an arm, logistic regression on the circuit's own
+tanh-encoded inputs, is the trainer's baseline as the served weights file records it, set beside the arms on the owner's
+choice of 2026-11-26 after the record was first written (the arms' logistic regression reads the standardised inputs):
+the shipped seed is ahead of it (paired difference 0.059 to 0.086), and it is ahead of the twenty seeds' mean
+probability, whose interval lies below its own. Without its entangling gates the circuit scores 0.140 against
+0.296; Bowles, Ahmed and Schuld's benchmark of quantum classifiers (arXiv:2403.07059, 2024) found
+removing entanglement often as good or better on their small tasks, and classical models ahead overall; here removing
+it lowers the figure, and one classical model, logistic regression on the encoded inputs, is ahead of the seed average,
+while no classical arm scores above it. The circuit's largest Schmidt rank, every seed, cut and layer, traced in double
+precision on 1,000 test rows, is 8 of the 16 an eight-wire state can reach.
+
+#### Calibrated thresholds for the satellite forecaster, not adopted
+
+On the owner's choice of 2026-11-25, pre-registered before any threshold was fitted
+([`references/satellite-threshold-calibration-preregistration.md`](../references/satellite-threshold-calibration-preregistration.md)):
+the shipped CKKS student's forecasts on ESA-ADB's Mission1 lightweight channels, its errors smoothed as Telemanom
+smooths them, and three rules that turn them into flags, each fitted on the validation months alone and scored once on
+the test period's 29 anomalies (`scripts/measure_satellite_thresholds.py`,
+`docs/measurements/satellite-thresholds-2026-11-25.json`).
+
+| Rule | Corrected event-wise $`F_{0.5}`$, anomalies | tp / fp / fn | Share of test steps flagged |
+|---|---|---|---|
+| Telemanom's NDT with ESA-ADB's pruning (the page's) | 0.940 | 22 / 0 / 7 | 0.09 % |
+| POT, $`\alpha = 10^{-4}`$ (primary) | 0.260 | 4 / 8 / 25 | 0.65 % |
+| Weighted conformal, $`\alpha = 10^{-4}`$ (primary) | 0.044 | 7 / 182 / 22 | 1.22 % |
+
+At $`\alpha = 10^{-3}`$ and $`10^{-5}`$ the extreme-value rule scores 0.228 and 0.270 and the conformal one 0.001 and
+0.140. The NDT arm reproduces the student's record (0.93977). A threshold fixed on three months does not carry across
+seven years of telemetry whose nominal level drifts, which is what Telemanom's windowed, pruned threshold is built for;
+the extreme-value pipeline this compared against recomputes its threshold monthly (arXiv:2609.10017), and this did not.
+None of the calibrated rules approaches NDT on the primary metric, so the page's rule is unchanged; whether the page
+shows this comparison is the owner's choice, as the pre-registration says. VUS-PR of the same score, which no threshold changes, is 0.656 (VUS-ROC 0.980, window 97).
 
 #### The PSI among banks under MPC
 
@@ -662,6 +803,21 @@ satellite, ground station or quantum channel is involved.
   whole-pass key is within a factor of 2.5 of the published key under Hoeffding, and 1.35 to 2.62
   times it under the default; Jinan-1 computes its keys on 500-kbit blocks inside a pass, which a
   whole-pass key is not held to.
+- **Jinan-1's pass of 25 September 2022, second by second (Round 86, batch 6, post hoc).** From the paper's source
+  data (Zenodo 14732295, CC BY 4.0: Fig. 4b's counts and slant range, Fig. 4c's QBER and key), 353 link seconds,
+  background off, against the `jinan1_2022_jinan` profile at each second's range. The comparison was pre-registered
+  ([`references/satellite-jinan1-pass-preregistration.md`](../references/satellite-jinan1-pass-preregistration.md)),
+  but its windows failed, because Fig. 4c's QBER is one value per key block; the windows the satellite card uses were
+  chosen after those figures were seen (its addendum 2), and the card says so. The profile's one constant, the
+  station efficiency 0.1683, against the data's fit of 0.1667: $`-0.04`$ dB, so it stays. After that fit the
+  per-second residuals deviate by 0.29 dB with a trend of $`+0.07`$ dB per air mass, and the fall with elevation is
+  within 0.15 and 0.26 dB of the model's at the link's two ends; over 18 choices of the background window, the link
+  threshold and the model's own background term the mean residual stays within 0.07 dB. QBER over the key blocks:
+  1.04 percent measured, 0.90 percent for the model's signal state. The model's finite key over the simulated pass
+  is 1.38 times the pass's 406,784 bits, before the 800-ps gate (about 80 percent of the signal kept) and the 10
+  percent of detections sampled for the QBER, which the second analysis adds
+  ([`references/satellite-jinan1-pass-v2-preregistration.md`](../references/satellite-jinan1-pass-v2-preregistration.md),
+  committed before any of its figures).
 
 ## State-vector simulators, measured
 

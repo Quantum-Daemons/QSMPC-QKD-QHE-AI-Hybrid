@@ -38,6 +38,15 @@ export const FHEVM_SOURCES = {
 /** The releases current on FHEVM_READ (GitHub's latest release and the npm registry). */
 export const FHEVM_RELEASES = "fhevm v0.13.9 (2026-11-20) and @zama-fhe/sdk 3.8.0 (2026-11-16)";
 
+/** A newer stable line than the one GitHub marks latest (batch 6, `gh api repos/zama-ai/fhevm/releases`, 2026-11-25). */
+export const FHEVM_NEWER_LINE = "v0.14.7 (2026-11-16)";
+
+/** The limits on Ethereum mainnet, read with getMaxHCUPerTx and getMaxHCUDepthPerTx on its HCULimit contract (batch 6). */
+export const FHEVM_MAINNET_LIMITS = {
+  contract: "0x3b4da65e45fda2caa0285a735ab4361a44f171e2", block: 26_492_404, read: "2026-11-25",
+  perTransaction: 20_000_000, sequentialPerTransaction: 5_000_000,
+} as const;
+
 export type Width = "euint64" | "euint128";
 
 /** HCU per operation, from Zama's table (FHEVM_SOURCES.hcu): `mulScalar` multiplies by a plaintext, `add` and `lt` take two ciphertexts. */
@@ -46,7 +55,8 @@ export const HCU: Record<Width, { mulScalar: number; add: number; lt: number }> 
   euint128: { mulScalar: 696_000, add: 259_000, lt: 215_000 },
 };
 
-/** The limits the documentation gives for its devnet: HCU per transaction in all, and in operations that must run in order. */
+/** The limits the documentation gives for its devnet: HCU per transaction in all, and in operations that must run in order. Ethereum mainnet's
+ *  HCULimit contract returns the same two (`FHEVM_MAINNET_LIMITS`, read on chain 2026-11-25), so they are the production limits too. */
 export const HCU_LIMIT = { perTransaction: 20_000_000, sequentialPerTransaction: 5_000_000 } as const;
 
 /**
@@ -89,7 +99,7 @@ export const FHEVM_SPEC: Spec = {
         const c64 = checkCost("euint64"), c128 = checkCost("euint128");
         const runs = Number(m.lending_checks);
         return `The check under FHE · ${n(c64.total)} HCU a check on 64-bit integers, ${n(c128.total)} on 128-bit (Zama's table) · `
-          + `at most ${c64.perTransaction} or ${c128.perTransaction} checks to a transaction under the devnet's ${n(HCU_LIMIT.perTransaction)}`
+          + `at most ${c64.perTransaction} or ${c128.perTransaction} checks to a transaction under the ${n(HCU_LIMIT.perTransaction)} HCU a transaction may use, on devnet and Ethereum mainnet alike`
           + (Number.isFinite(runs) && runs > 0 ? ` · this run's ${n(runs)} checks: ${n(runs * c64.total)} HCU on 64-bit integers` : "");
       } },
     { stageId: "fhevm_publish", kind: "local-a",

@@ -73,7 +73,7 @@
   "dataset": "Heart Disease: the processed Cleveland, Hungarian, Switzerland and VA Long Beach files, one hospital each",
   "download": "https://archive.ics.uci.edu/dataset/45/heart+disease",
   "dataset_doi": "10.24432/C52P4X",
-  "citation": "Janosi, A., Steinbrunn, W., Pfisterer, M. and Detrano, R. (1988). Heart Disease. UCI Machine Learning Repository. https://doi.org/10.24432/C52P4X",
+  "citation": "Janosi, A., Steinbrunn, W., Pfisterer, M. and Detrano, R. (1989). Heart Disease. UCI Machine Learning Repository. https://doi.org/10.24432/C52P4X",
   "licence": "CC BY 4.0",
   "licence_url": "https://creativecommons.org/licenses/by/4.0/"
  }

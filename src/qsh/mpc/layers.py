@@ -30,10 +30,15 @@ class DenseSpec:
     weight: np.ndarray            # (out, in)
     bias: np.ndarray              # (out,)
     activation: str = "relu"      # "relu" (under MPC) | "none"
+    #: The bias is the KEY HOLDER'S (Round 86, batch 6; `LinearModel.bias_after_decryption`): the server masks the dot
+    #: product alone and the key holder adds the bias to its own share after decrypting, so the server never holds it.
+    key_holder_bias: bool = False
 
     def __post_init__(self) -> None:
         self.weight = np.atleast_2d(np.asarray(self.weight, dtype=float))
         self.bias = np.asarray(self.bias, dtype=float).ravel()
+        if self.key_holder_bias and not np.all(np.isfinite(self.bias)):
+            raise ValueError(f"the key holder's bias {self.bias.tolist()} is not finite numbers")
 
 
 @dataclass

@@ -17,8 +17,9 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 WEB = REPO / "web"
 GRAPHS = json.loads((WEB / "public/data/finance/transaction_graphs.json").read_text())
-LOCI = json.loads((WEB / "public/data/genomics/pgs000072_loci.json").read_text())
-PRS = json.loads((WEB / "public/data/genomics/pgs000072_breast_cancer.json").read_text())
+# The active score's files: PGS000783's since Round 86's batch 6 (PGS000072's stay in the tree, retired).
+LOCI = json.loads((WEB / "public/data/genomics/pgs000783_loci.json").read_text())
+PRS = json.loads((WEB / "public/data/genomics/pgs000783_breast_cancer.json").read_text())
 
 
 def _node(body: str, tmp_path: Path) -> object:
@@ -140,9 +141,15 @@ console.log(JSON.stringify(m.confusion(JSON.parse(readFileSync({json.dumps(str(h
 
 
 def test_the_loci_are_the_scored_variants() -> None:
-    assert [x["rsid"] for x in LOCI["loci"]] == PRS["keys"] and [x["beta"] for x in LOCI["loci"]] == pytest.approx(PRS["weights"], abs=1e-9)
+    assert [x["rsid"] for x in LOCI["loci"]] == PRS["keys"] and [x["weight"] for x in LOCI["loci"]] == pytest.approx(PRS["weights"], abs=1e-9)
     assert all(x["pos"] > 0 and x["chr"] in {str(c) for c in range(1, 23)} for x in LOCI["loci"])
-    assert LOCI["licence"].startswith("CC-BY-4.0") and LOCI["attribution"] and LOCI["modifications"]
+    assert LOCI["licence"].startswith("CC-BY-3.0-IGO") and LOCI["attribution"] and LOCI["modifications"]
+    # The plot labels the weights as what they are: PGS000783's are beta/SE, not log odds ratios.
+    assert (LOCI["weight_type"], LOCI["weight_label"]) == ("Inverse-variance weighting", "beta/SE")
+    assert LOCI["score_id"] == PRS["score_id"] == "PGS000783" and LOCI["positions_from_description"] == 4
+    card = (WEB / "src/components/ModelExplanations.tsx").read_text()
+    assert 'PRS_LOCI_PATH = "data/genomics/pgs000783_loci.json"' in card and "data.weight_label" in card
+    assert "ln(OR)" not in card and "PGS000072" not in card
 
 
 def test_each_page_shows_its_figure() -> None:

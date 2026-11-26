@@ -49,7 +49,26 @@ def test_a_file_the_graph_cannot_express_is_refused() -> None:
     from qsh.models.linear_onnx import linear_student_graph
 
     w = json.loads(WEIGHTS.read_text())
-    with pytest.raises(ValueError, match="standardisation only"):
+    with pytest.raises(ValueError, match="standardisation and an optional clip"):
         linear_student_graph({**w, "input": {**w["input"], "preprocessing": ["quadratic expansion"]}})
+    with pytest.raises(ValueError, match="positive bound"):
+        linear_student_graph({**w, "input": {**w["input"], "preprocessing": ["subtract mean", "divide by scale", "clip"],
+                                             "clip": 0}})
     with pytest.raises(ValueError, match="not a linear multiclass student"):
         linear_student_graph({**w, "kind": "something else"})
+
+
+def test_a_declared_clip_is_in_the_graph() -> None:
+    """Round 86, batch 6: a file that declares a clip after standardising gets a Clip node, and one that does not gets
+    exactly the graph it always had (the telecom student's above)."""
+    from qsh.models.linear_onnx import linear_student_graph
+
+    w = json.loads(WEIGHTS.read_text())
+    assert [n.op_type for n in linear_student_graph(w).graph.node] == ["Sub", "Div", "MatMul", "Add"]
+    clipped = {**w, "input": {**w["input"], "preprocessing": ["subtract mean", "divide by scale", "clip"], "clip": 0.5}}
+    model = linear_student_graph(clipped)
+    assert [n.op_type for n in model.graph.node] == ["Sub", "Div", "Clip", "MatMul", "Add"]
+    rows = np.asarray(json.loads(HELDOUT.read_text())["samples"], dtype=np.float64)
+    z = np.clip((rows - np.asarray(w["input"]["mean"])) / np.asarray(w["input"]["scale"]), -0.5, 0.5)
+    want = z @ np.asarray(w["W"]).T + np.asarray(w["b"])
+    np.testing.assert_allclose(_run(model, rows), want, rtol=1e-5, atol=1e-5)

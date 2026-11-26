@@ -22,7 +22,7 @@ import type { OcclusionMap } from "./cnnSaliency";
 import type { HybridCnnResult } from "./clientHybridCnn";
 import type { QcnnCkksResult } from "./clientQcnnCkks";
 import { clientTrainScoreIDS } from "./clientIDS";
-import { clientQFL } from "./clientQFL";
+import { clientQFL, secaggClientSeeds, secaggKeyPairs, secureAggregate } from "./clientQFL";
 import { secureArgmax, warmMPC } from "./clientMPC";
 import { randomBelow } from "./csprng";
 import { optimizeQKD } from "./clientOptiQKD";
@@ -45,7 +45,7 @@ import { FED_HEART, fedHeart, fedHeartComparisons, fedHeartDp, loadHeartSites } 
 import { dpCount, GENOMICS_DP, genomicsDp } from "./clientDp";
 import { recordRelease } from "./dpLedger";
 import { heldOutCorpus, realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
-  type HeldOutCorpus, type RealInput, realAlleleCounts } from "./realData";
+  type HeldOutCorpus, niddFederated, niddStudentHeldOut, type RealInput, realAlleleCounts } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
 import { isClientDemo } from "./demoMode";
 import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
@@ -677,7 +677,8 @@ export function linearShap(
 
 // Per-use-case feature names for the XAI attribution chart (mirror the backend).
 const FEATURE_NAMES: Record<string, string[]> = {
-  // The four columns the finance model reads (registry.PAYSIM_MODEL_FEATURES; no balance-derived one).
+  // The four PaySim columns the full deployment's finance model reads (registry.PAYSIM_MODEL_FEATURES; no balance-derived
+  // one). Since F7b the browser's bars take AMLworld's 114 names from the payload, so this is the fallback without one.
   finance_aml: ["amount", "cross_border", "night_tx", "new_payee"],
   medical_fl: ["mean_radius", "mean_texture", "mean_perimeter", "mean_area",
     "mean_smoothness", "worst_radius", "worst_concavity", "worst_symmetry"],
@@ -850,6 +851,9 @@ export interface RealHybridRun extends MeasuredHybrid {
    *  Reported because the two are indistinguishable in the output otherwise, and the page spent
    *  several rounds encrypting one model while reporting and explaining another. */
   encryptedRealModel: boolean;
+  /** Whether the model's bias was added after decryption, in the clear, rather than under encryption (Round 86, batch 6:
+   *  genomics' `biasAfterDecryption`). Reported so the log states where the cut went from what ran, not from a sentence. */
+  biasAfterDecryption: boolean;
   /** The rows the batched agreement figure was built from, where a corpus was supplied. */
   batch?: { rows: number; rowsOffered: number; rowsPerCiphertext: number; fheMs: number;
             maxAbsError: number; mismatches: number;
@@ -1027,11 +1031,35 @@ export async function rescoreTrainedQcnn(usecase: string, w: QcnnWeights): Promi
   return held ? rescoreQcnn(w, held) : null;
 }
 
-/** What both sites say about the circuit's held-out figure: re-scored here and equal to the record, re-scored and different, or not re-scored. */
+/** What both sites say about the circuit's held-out figure: re-scored here and equal to the record, re-scored and different, or not re-scored.
+ *  Where the served rows are a SAMPLE of the trainer's split (`recordedBy: "heldout"`, finance since Round 86's batch 6: 8,192 of the
+ *  1,523,504 test-window transactions), the figure set beside the comparators is the whole split's, and the re-score is held to the
+ *  sample's own recorded value. The preview of 2026-11-26 printed the sample's 0.5304 beside logistic regression's whole-window 0.4968
+ *  and called the 8,192 rows "the trainer's test split". */
 function rescoreSentence(r: QcnnRescore | null, recorded: number | null | undefined): string {
   if (!r) return "recorded at training time and shipped in the weights file; the held-out rows could not be read, so this tab did not re-score it";
+  if (r.recordedBy === "heldout") {
+    return `recorded at training time on the trainer's whole test split; this tab re-scored this circuit over the page's sample of ${r.rows} `
+      + `of that split's rows: ${r.headline.toFixed(4)}, `
+      + (r.matchesRecord ? "the value recorded for these rows" : `which DIFFERS from the ${r.recorded ?? "missing value"} recorded for these rows`);
+  }
   return `re-scored in this tab by this circuit over the ${r.rows} rows of the trainer's test split: ${r.headline.toFixed(4)}, `
     + (r.matchesRecord ? "the value the weights file records" : `which DIFFERS from the ${recorded ?? "missing value"} the weights file records`);
+}
+
+/** The circuit's figure to set beside the comparators: this tab's re-score where its rows are the trainer's whole test split, else the
+ *  weights file's whole-split figure, so the two sides of a verdict are always over the same rows. */
+function figureBesideComparators(r: QcnnRescore | null, recorded: number | null | undefined): number | null | undefined {
+  return r && r.recordedBy === "weights" ? Math.round(r.headline * 1e6) / 1e6 : recorded;
+}
+
+/** Which seed the artifact is and how it was chosen, where it records that (finance since Round 86's batch 6, the owner's choice of
+ *  2026-11-26): a seed chosen as the best of many on validation is not the method, so a verdict about it names it. */
+function seedSelectionClause(w: QcnnWeights): string {
+  const s = w.selection;
+  if (s?.seed == null || !s.on) return "";
+  const of = s.of_seeds ? ` of ${s.of_seeds}` : "";
+  return ` for seed ${s.seed}, the best${of} on ${s.on}; the comparison card on this page shows the seeds' spread`;
 }
 
 /**
@@ -1255,10 +1283,42 @@ async function publishedStudentWeights(usecase: string | undefined): Promise<Cnn
   return out;
 }
 
+/** A bias added after decryption is one finite number per class, or the run stops here. Under encryption the encoder
+ *  refused a non-finite bias by name (`encodeFinite` in clientFHE.ts); added in the clear, a NaN would sail through every
+ *  comparison (each fails, so a NaN row "agrees") and a missing class would quietly count as 0. */
+function finiteBias(bias: readonly number[] | undefined, classes: number, what: string): readonly number[] {
+  if (!Array.isArray(bias) || bias.length !== classes || bias.some((v) => !Number.isFinite(v))) {
+    const shown = Array.isArray(bias) ? `[${bias.join(", ")}]` : String(bias);
+    throw new Error(`${what}, added after decryption, is ${shown}: it must be ${classes} finite numbers`);
+  }
+  return bias;
+}
+
+/** Add a bias the key holder keeps to decrypted logits and to the plaintext logits beside them, in the clear (Round 86,
+ *  batch 6; `biasAfterDecryption`). The same constant on both leaves their difference, and with it `maxAbsError`, as CKKS
+ *  left it. `null` returns the result unchanged. */
+function addAfterDecryption<T extends { logits: number[]; plainLogits: number[] }>(r: T, bias: number[] | null): T {
+  if (!bias) return r;
+  const bv = finiteBias(bias, r.logits.length, "the model's bias");
+  return { ...r, logits: r.logits.map((v, j) => v + bv[j]), plainLogits: r.plainLogits.map((v, j) => v + bv[j]) };
+}
+
+/** The batch's form of `addAfterDecryption`: row i of both logit matrices takes `biasOf(i)`, checked as above. */
+function addRowsAfterDecryption<T extends { logits: number[][]; plainLogits: number[][] }>(
+  r: T, biasOf: (i: number) => readonly number[] | undefined,
+): T {
+  const add = (rows: number[][]) => rows.map((row, i) => {
+    const bi = finiteBias(biasOf(i), row.length, `row ${i}'s bias`);
+    return row.map((v, j) => v + bi[j]);
+  });
+  return { ...r, logits: add(r.logits), plainLogits: add(r.plainLogits) };
+}
+
 export async function realClientHybrid(features: number[],
                                       convolve = false,
                                       usecase?: string,
-                                      realModel?: { W: number[][]; b: number[] } | null,
+                                      realModel?: { W: number[][]; b: number[]; corpusBias?: number[][];
+                                                    biasAfterDecryption?: boolean } | null,
                                       corpus?: number[][] | null,
                                       seed = 0,
                                       square?: { net: FinanceSquare; raw: number[] } | null,
@@ -1293,6 +1353,16 @@ export async function realClientHybrid(features: number[],
     const b = usingRealModel
       ? W.map((_, j) => Number(realModel!.b?.[j] ?? 0))
       : [0, -0.05];
+    // A BIAS THE KEY HOLDER KEEPS (Round 86, batch 6; the owner's choice of 2026-11-26). Genomics judges each person
+    // against their own super-population's cut, so a bias added under encryption would hand the evaluator a number that
+    // names the person's super-population. Such a model (`biasAfterDecryption`) is scored under CKKS with no bias, and `b`,
+    // or each row's `corpusBias` in the batch, is added in the clear to the decrypted logits and to the plaintext logits
+    // they are checked against, before any argmax. The decision is the same; only who holds the cut changes.
+    const biasAfter = usingRealModel && realModel!.biasAfterDecryption === true;
+    if (usingRealModel && realModel!.corpusBias && !biasAfter) {
+      throw new Error("a per-row bias (corpusBias) is added after decryption only; this model does not say biasAfterDecryption");
+    }
+    const bEval = biasAfter ? b.map(() => 0) : b;
     // Finance since F7b (Round 86): the square network on the transaction, end to end under CKKS (A2) in a Web Worker, a
     // block holding one row; no rotation and no Galois key. Its decrypted logits feed the same argmax below.
     const fhe: FHEResult = square
@@ -1302,7 +1372,7 @@ export async function realClientHybrid(features: number[],
                    ctBytes: r.per_block.bytes.input / Math.max(1, square.net.n_in), maxAbsError: r.maxAbsError,
                    rotations: 0, multiplies: 0, rotateMs: 0 };
         })()
-      : await encryptedLinear(W, b, features);           // REAL CKKS, measured
+      : addAfterDecryption(await encryptedLinear(W, bEval, features), biasAfter ? b : null);   // REAL CKKS, measured
     // The REAL garbled-circuit 2PC argmax below, measured, runs over logits the client has ALREADY
     // DECRYPTED. Both parties are in this tab and the key holder holds the cleartext logits, so the
     // protocol hides nothing here; it runs to measure the protocol, not to keep the logits from anyone.
@@ -1378,8 +1448,18 @@ export async function realClientHybrid(features: number[],
     // row count can never exceed, so the batch fills as many ciphertexts as the rows need and says so.
     let batch: RealHybridRun["batch"] = null;
     if (usingRealModel && corpus?.length) {
-      const bt = await encryptedLinearBatch(W, b, corpus.map((r) => r.slice(0, n)),
-                                            { maxCiphertexts: corpus.length });
+      // Row i of the batch is corpus row i (the batch scores a prefix), so it takes `corpusBias[i]`, after decryption. A
+      // `corpusBias` of another length would judge rows against other people's cuts, so it is refused before anything is
+      // encrypted, and no row is padded with the scored person's `b`.
+      const rowBias = realModel!.corpusBias;
+      if (rowBias && rowBias.length !== corpus.length) {
+        throw new Error(`corpusBias gives ${rowBias.length} rows' biases for a corpus of ${corpus.length}`);
+      }
+      const btEval = await encryptedLinearBatch(W, bEval, corpus.map((r) => r.slice(0, n)),
+                                                { maxCiphertexts: corpus.length });
+      const bt = biasAfter
+        ? addRowsAfterDecryption(btEval, (i) => (rowBias ? rowBias[i] : b))
+        : btEval;
       const encCls = bt.logits.map(argmax), plainCls = bt.plainLogits.map(argmax);
       // A top-1 mismatch is NOT automatically a precision failure, and reporting the count alone
       // says it is. Genomics' former sign test is the case that forced this: its model was the
@@ -1463,7 +1543,8 @@ export async function realClientHybrid(features: number[],
       commBytes: mpc.commBytes, ctBytes: fhe.ctBytes, featDim: n,
       maxAbsError: fhe.maxAbsError, plainLogits: fhe.plainLogits, logits: fhe.logits, conv,
       dense: { rotations: fhe.rotations, multiplies: fhe.multiplies, rotateMs: fhe.rotateMs },
-      encryptedRealModel: usingRealModel || !!square, batch, studentNotRun,
+      // The square network applies no `b` at all, so it reports no bias added after decryption.
+      encryptedRealModel: usingRealModel || !!square, biasAfterDecryption: biasAfter && !square, batch, studentNotRun,
     };
   } catch (e) {
     // Surface the cause (no-fallback policy: a fixable defect must not hide behind the representative
@@ -1858,8 +1939,9 @@ export function runClientPipeline(
    * rather than the protocol.
    *
    * This is a SECOND inference, not a replacement for the stage's own. The stage runs the page's
-   * explainable path over real Wisconsin / PGS / PaySim / CIC-IDS features, which is what the SHAP
-   * attribution and the CKKS evaluation both depend on. The published model is trained on a
+   * explainable path over the page's own rows (WDBC, the 1000 Genomes panel, AMLworld's test window
+   * since F7b, the synthetic QKD telemetry, OPS-SAT-AD), which is what the SHAP attribution and the
+   * CKKS evaluation both depend on. The published model is trained on a
    * different corpus (BreastMNIST 28x28, AMLworld 32-feature, ESA 250x6), so feeding it the stage's
    * features would be the category error this project refuses elsewhere. Both are real, both are
    * measured, and each says which corpus it is on.
@@ -1969,6 +2051,107 @@ export function runClientPipeline(
     }
   }
 
+  /** The 5G-NIDD detector's pre-registered CKKS student over the 2,048 held-out flows the page ships (Round 86, batch 6).
+   *
+   * Real traffic from a 5G test network, where the page's other encrypted student reads synthetic QKD telemetry. Its own
+   * metrics (`nidd_*`) and figure (`encrypted_agreement_plot_nidd`), so neither is mistaken for the QKD student's. The
+   * pre-registration's criterion 2: every decision on a row whose plaintext top-two margin exceeds twice the largest CKKS
+   * deviation equals the plaintext one, and that deviation is below 1e-3. */
+  async function scoreNiddStudent(stage: string) {
+    const held = await niddStudentHeldOut();
+    if (!held) {
+      emit("log", stage, "5G-NIDD encrypted tier: its held-out rows could not be read, so no figure is drawn");
+      return;
+    }
+    const ho = await encryptedHeldOutAgreement(held);
+    const bt = ho.batch;
+    const margins = ho.plot.points.map((q) => Math.abs(q.plain));
+    let decidedFlips = 0;
+    ho.plot.points.forEach((q, i) => { if (!q.agree && margins[i] > 2 * bt.maxAbsError) decidedFlips++; });
+    const criterion2 = decidedFlips === 0 && bt.maxAbsError < 1e-3;
+    metric(stage, "nidd_encrypted_model", held.modelKey);
+    metric(stage, "nidd_encrypted_rows", bt.rows);
+    metric(stage, "nidd_encrypted_ciphertexts", bt.ciphertexts);
+    metric(stage, "nidd_encrypted_ms", r2(bt.fheMs));
+    metric(stage, "nidd_encrypted_max_abs_error", bt.maxAbsError);
+    metric(stage, "nidd_encrypted_mismatches", ho.mismatches);
+    metric(stage, "nidd_encrypted_flips_beyond_twice_the_error", decidedFlips);
+    metric(stage, "nidd_encrypted_accuracy", ho.encryptedAccuracy);
+    metric(stage, "nidd_plaintext_accuracy", ho.plaintextAccuracy);
+    metric(stage, "nidd_criterion_2", criterion2 ? 1 : 0);
+    artifacts.encrypted_agreement_plot_nidd = ho.plot;
+    emit("log", stage, `5G-NIDD detector under CKKS: ${held.modelLabel}, over ${bt.rows.toLocaleString("en-US")} held-out flows of real 5G traffic in `
+      + `${bt.ciphertexts} ciphertext(s), ${r2(bt.fheMs)} ms; max |decrypted - plaintext logit| ${bt.maxAbsError.toExponential(3)}; `
+      + `${ho.mismatches} class(es) differ, ${decidedFlips} of them where the plaintext margin exceeds twice that error; `
+      + `accuracy ${ho.encryptedAccuracy?.toFixed(4)} encrypted, ${ho.plaintextAccuracy?.toFixed(4)} in plaintext. `
+      + `Criterion 2 of its pre-registration ${criterion2 ? "holds" : "FAILS"}. Rows: ${held.licence.name}.`);
+  }
+
+  /** The model 5G-NIDD's two base stations federated (Round 86, batch 6; the owner's choice of 2026-11-26).
+   *
+   * Two things run here, in this tab. The last round's secure aggregation is replayed: two notional stations draw fresh
+   * X25519 key pairs, agree their pair seed, mask their last local models weighted by their shares of the fit rows, and
+   * the aggregator's sum is checked against the shipped global model coordinate by coordinate, bit for bit in the masks'
+   * 2^-20 fixed point (the offline run's global model IS that sum, so any difference is a fault of this path). Then the
+   * global model is scored under CKKS on the student's 2,048 held-out flows, each named by its station, and criterion 3
+   * of the pre-registration is checked as the student's criterion 2 is. The comparison with each station alone and with
+   * pooling is the offline record's, which the card reads from the same file. */
+  async function scoreNiddFederated(stage: string) {
+    const fed = await niddFederated();
+    if (!fed) {
+      emit("log", stage, "5G-NIDD federation: its file could not be read, so neither the replay nor the encrypted figure runs");
+      return;
+    }
+    const flat = (m: { W: number[][]; b: number[] }) => [...m.W.flat(), ...m.b];
+    const t0 = performance.now();
+    const keyPairs = secaggKeyPairs(2);
+    const publicKeys = keyPairs.map((kp) => kp.publicKey);
+    const pairSeeds = await Promise.all(keyPairs.map((kp, c) => secaggClientSeeds(c, kp.privateKey, publicKeys)));
+    const { aggregate, maskedShares } = secureAggregate(fed.lastLocal.map(flat), fed.weights, pairSeeds, 0);
+    const replayMs = performance.now() - t0;
+    const want = flat(fed.global);
+    const exact = aggregate.filter((v, i) => v === want[i]).length;
+    const hex = (w: number) => w.toString(16).padStart(8, "0");
+    const ho = await encryptedHeldOutAgreement(fed.held);
+    const bt = ho.batch;
+    let decidedFlips = 0;
+    ho.plot.points.forEach((q) => { if (!q.agree && Math.abs(q.plain) > 2 * bt.maxAbsError) decidedFlips++; });
+    const criterion3 = decidedFlips === 0 && bt.maxAbsError < 1e-3;
+    const perStation = [0, 1].map((s) => {
+      const pts = ho.plot.points.filter((_, i) => fed.station[i] === s);
+      const n = pts.length;
+      return {
+        station: fed.stations[s], rows: n,
+        encryptedAccuracy: n ? pts.filter((q) => q.encCls === q.label).length / n : null,
+        plaintextAccuracy: n ? pts.filter((q) => q.plainCls === q.label).length / n : null,
+        decisionsThatDiffer: pts.filter((q) => !q.agree).length,
+      };
+    });
+    metric(stage, "nidd_fed_replay_coordinates", want.length);
+    metric(stage, "nidd_fed_replay_bit_exact", exact);
+    metric(stage, "nidd_fed_replay_ms", r2(replayMs));
+    metric(stage, "nidd_fed_encrypted_rows", bt.rows);
+    metric(stage, "nidd_fed_encrypted_max_abs_error", bt.maxAbsError);
+    metric(stage, "nidd_fed_encrypted_flips_beyond_twice_the_error", decidedFlips);
+    metric(stage, "nidd_fed_criterion_3", criterion3 ? 1 : 0);
+    perStation.forEach((p, s) => {
+      metric(stage, `nidd_fed_station_${s + 1}_encrypted_accuracy`, p.encryptedAccuracy);
+      metric(stage, `nidd_fed_station_${s + 1}_plaintext_accuracy`, p.plaintextAccuracy);
+    });
+    artifacts.nidd_federated = {
+      replay: { coordinates: want.length, bitExact: exact, ms: replayMs, publicKeys: publicKeys.map((pk) => hexPrefix(pk)),
+                firstWords: maskedShares.map((sh) => sh.slice(0, 3).map(hex)), weights: fed.weights },
+      encrypted: { rows: bt.rows, ciphertexts: bt.ciphertexts, ms: bt.fheMs, maxAbsError: bt.maxAbsError, decidedFlips,
+                   criterion3, perStation },
+    };
+    emit("log", stage, `5G-NIDD federation: the last round's masked sum replayed in this tab with fresh X25519 keys, `
+      + `${exact} of ${want.length} coordinates equal to the shipped global model bit for bit; that model under CKKS over `
+      + `${bt.rows.toLocaleString("en-US")} held-out flows (${perStation.map((p) => `${p.rows} from ${p.station}`).join(", ")}), `
+      + `max |decrypted - plaintext logit| ${bt.maxAbsError.toExponential(3)}, ${decidedFlips} decision(s) flipped beyond twice that; `
+      + `criterion 3 of its pre-registration ${criterion3 ? "holds" : "FAILS"}. With two stations each could compute the `
+      + `other's update from the global model and its own, so the masks hide the updates from the aggregator only.`);
+  }
+
   /** Evaluate the published telecom student's 8 class scores under REAL CKKS, in this tab.
    *
    * This is the verification figure for telecom's encrypted tier, and the numbers it reports are the
@@ -2065,6 +2248,10 @@ export function runClientPipeline(
       // student was evaluated on and never fitted on. Every row is scored (two ciphertexts at width
       // 8), so the 88-row cap disclosure no longer applies here.
       await scoreHeldOutStudent(stage, "telecom_ids", "data/telecom/student_heldout.json");
+      // AND THE REAL-DATA DETECTOR'S STUDENT (Round 86, batch 6): 5G-NIDD's flows under CKKS, a figure of its own.
+      await scoreNiddStudent(stage);
+      // AND THE MODEL ITS TWO BASE STATIONS FEDERATED (Round 86, batch 6): the replayed last aggregation and CKKS over the same rows.
+      await scoreNiddFederated(stage);
       emit("log", stage, `the ARGMAX ran in a garbled circuit: the key holder decrypted only masked scores, and `
         + `only the class left the circuit. Both parties are in this tab, so the separation is notional here. `
         + `The held-out check above decrypts every row's ${w.W.length} scores, because it measures the CKKS `
@@ -2299,8 +2486,9 @@ export function runClientPipeline(
     switch (stage) {
       case "data": {
         // These describe the BUNDLED DEMO SAMPLE, which is not always the corpus the published model
-        // was trained on — finance is the clearest case: the demo ships PaySim while the published
-        // model is trained on IBM AMLworld. The registry (ModelPanel below) shows the training
+        // was trained on — finance was the clearest case: the demo shipped PaySim alone while the published
+        // model is trained on IBM AMLworld (since F7b its encrypted steps score AMLworld rows, which the
+        // finance line below names). The registry (ModelPanel below) shows the training
         // corpus; this line shows what is being scored in the browser right now.
         //
         // Five of these strings were wrong and had to be corrected against the primary sources,
@@ -2321,6 +2509,17 @@ export function runClientPipeline(
           + (ds.attribution ? ` Credit: ${ds.attribution}` : "")
           + (ds.file ? ` Licence link and changes made: the \`licence_url\` and \`modifications\` fields of ${ds.file}.` : ""));
         else emit("log", stage, "synthetic dataset prepared (client-side; no real sample is bundled for this use case's pipeline)");
+        // Finance since F7b (Round 86): the encrypted steps score AMLworld test-window rows, and the PaySim sample the line
+        // above names feeds the federated step. After F7b this stage named PaySim alone, on the line a visitor reads about
+        // what is scored (found in batch 6's sweep of the PaySim mentions, 2026-11-26). Since batch 6 the QCNN reads the
+        // scored AMLworld transaction itself, at eight of its inputs (`realInput`); this line said PaySim fed it until the
+        // licence audit of 2026-11-26.
+        if (usecase === "finance_aml") {
+          const aml = await heldOutCorpus("finance_aml");
+          if (aml) emit("log", stage, `dataset (the rows the encrypted steps score, since F7b): ${aml.corpus}, ${aml.split}. `
+            + `Credit: ${aml.licence.attribution} The PaySim sample above feeds the federated step; the QCNN reads the scored `
+            + `AMLworld transaction itself, at eight of its inputs.`);
+        }
         break;
       }
       case "pqc_handshake": {
@@ -3620,7 +3819,7 @@ export function runClientPipeline(
             // RE-SCORED IN THIS TAB since Round 86: the circuit's figure is computed here over the test split's rows and the
             // verdict uses it; logistic regression's is still read from the weights file, and the line says which is which.
             const rescore = await rescoreQcnnInTab(stage, usecase, w, metric, artifacts);
-            const mine = rescore ? Math.round(rescore.headline * 1e6) / 1e6 : w.test_macro_f1, theirs = w.classical_lr_macro_f1;
+            const mine = figureBesideComparators(rescore, w.test_macro_f1), theirs = w.classical_lr_macro_f1;
             if (typeof mine === "number" && typeof theirs === "number") {
               const behind = mine < theirs, level = mine === theirs;
               emit("log", stage, `and it ${behind ? "LOSES" : level ? "TIES" : "WINS"}: macro F1 ${mine} `
@@ -3647,9 +3846,9 @@ export function runClientPipeline(
       case "private_inference": {
         // Use REAL data + a REAL model where one is shipped (medical = Wisconsin breast-cancer + a real
         // logistic regression; genomics = PGS Catalog PRS weights over 1000 Genomes genotypes, see
-        // realData.ts for their terms; finance = the PaySim simulator sample, synthetic rows under
-        // CC BY-SA 4.0, with its four-feature surrogate) - matching the full deployment. The other use
-        // cases ship no real sample for this stage: synthetic features, logged as such.
+        // realData.ts for their terms; finance = an AMLworld HI-Small test-window row through F7b's square
+        // network since F7b, where the full deployment scores PaySim simulator rows with its four-feature
+        // model). The other use cases ship no real sample for this stage: synthetic features, logged as such.
         const realIn: RealInput | null = await realInput(usecase, u);
         const feats = realIn ? realIn.values : Array.from({ length: 8 }, () => u() * 2 - 1);
         emit("log", stage, realIn
@@ -3774,9 +3973,9 @@ export function runClientPipeline(
               flipBoundFactor: bt.flipBoundFactor, medianAbsError: bt.medianAbsError,
               noisyScores: bt.noisyScores, scoreKind: bt.scoreKind,
               rowsAre: usecase === "genomics"
-                ? "external reference-panel individuals (1000 Genomes genotypes; PGS000072 was not "
+                ? "external reference-panel individuals (1000 Genomes genotypes; PGS000783 was not "
                   + "fitted on them, and there is no split), whose decision logit on both axes is the "
-                  + "full score minus the cut"
+                  + "full score minus the 90th percentile of its own super-population over the whole panel"
                 : undefined,
             };
             emit("log", stage, `encrypted tier over the page's own corpus: ${bt.rows} of `
@@ -3803,8 +4002,9 @@ export function runClientPipeline(
           }
           // THE FULL SCORE, SAID IN FULL (Round 84): what is encrypted, what stays in plaintext, what
           // is decrypted, and how the flag is decided, with the score and the flag against the clear.
-          // The model is W = [0, w], b = [0, -cut] (`realInput`), so slot 0 of the summed ciphertext
-          // is the score and the cut is subtracted after decryption.
+          // The model is W = [0, w], b = [0, -cut] (`realInput`), scored under CKKS with no bias (`biasAfterDecryption`,
+          // since Round 86's batch 6; until then the cut went in under encryption while this comment said otherwise), so slot 0
+          // of the summed ciphertext is the score and this tab subtracts the cut after decryption.
           if (usecase === "genomics" && realIn?.model) {
             const bCut = realIn.model.b[1] ?? 0;
             const encScore = real.logits[1] - bCut, plainScore = real.plainLogits[1] - bCut;
@@ -3834,15 +4034,28 @@ export function runClientPipeline(
               + `then sum the products into slot 0. Decrypted: the result ciphertext, read at slot 0, `
               + `which holds the score ${encScore.toFixed(6)} (in the clear ${plainScore.toFixed(6)}, `
               + `|difference| ${scoreErr.toExponential(3)}); every other slot is zeroed by the output mask and `
-              + `flooded (+/-2^${CKKS_FLOOD_BITS}) before decryption, so it shows none of the partial sums. The cut ${(-bCut).toFixed(4)} is the `
+              + `flooded (+/-2^${CKKS_FLOOD_BITS}) before decryption, so it shows none of the partial sums. `
+              + (real.biasAfterDecryption
+                ? `No bias goes in under encryption: this tab subtracts the cut after decryption, so the evaluator never holds it `
+                  + `or the super-population it names. `
+                : `This run did not keep the cut from the evaluator: ${real.encryptedRealModel
+                    ? "the model's bias went into the ciphertext before decryption"
+                    : "the page's model was not the one encrypted (the demo pattern ran)"}. `)
+              + `The cut ${(-bCut).toFixed(4)} is the `
               + `${realIn.metrics?.prs_high_risk_percentile}th percentile of the plaintext score over the `
-              + `${realIn.metrics?.prs_cut_population} bundled 1000 Genomes individuals, this one included `
-              + `(linear interpolation between order statistics). Score minus cut, beside a class-0 logit `
-              + `of 0, goes to the garbled-circuit argmax: high risk = ${real.prediction} (plaintext: `
-              + `${plainFlag}).`
-              + (bt ? ` Over all ${bt.rows} bundled individuals, in ${bt.ciphertexts} ciphertext(s): the `
-                + `flag agrees on ${bt.rows - bt.mismatches} of ${bt.rows} (${flaggedEnc} above the cut `
-                + `encrypted, ${flaggedPlain} in plaintext), max |decrypted - plaintext score| `
+              + `${realIn.metrics?.prs_cut_population} 1000 Genomes individuals of this person's super-population, `
+              + `${realIn.metrics?.prs_reference_super_population} (the label of the population it was sampled in), from the payload's `
+              + `statistics over all ${realIn.metrics?.prs_pooled_cut_all_population}; there this score is at about the `
+              + `${realIn.metrics?.prs_percentile_in_super_population}th percentile, Z ${realIn.metrics?.prs_z_in_super_population}. `
+              + `Score minus cut, beside a class-0 logit of 0, goes to the garbled-circuit argmax: high risk = ${real.prediction} `
+              + `(plaintext: ${plainFlag}). Beside it, the pooled cut over the ${realIn.metrics?.prs_pooled_cut_population} bundled `
+              + `individuals of every super-population, ${Number(realIn.metrics?.prs_pooled_cut).toFixed(4)}, would read `
+              + `${realIn.metrics?.prs_pooled_flag === 1 ? "high risk" : "not high risk"}; a pooled cut is not a fair reference across `
+              + `ancestries, which the PGS Catalog's calculator says (use ancestry-normalised outputs), and the Models card measures `
+              + `how unevenly it falls on each super-population.`
+              + (bt ? ` Over all ${bt.rows} bundled individuals, each against its own super-population's cut, in `
+                + `${bt.ciphertexts} ciphertext(s): the flag agrees on ${bt.rows - bt.mismatches} of ${bt.rows} (${flaggedEnc} above `
+                + `the cut encrypted, ${flaggedPlain} in plaintext), max |decrypted - plaintext score| `
                 + `${bt.maxAbsError.toExponential(3)}.` : ""));
           }
           const ho = held ? await emitHeldOutAgreement(stage, held) : null;
@@ -4278,7 +4491,7 @@ export function runClientPipeline(
             // RE-SCORED IN THIS TAB since Round 86, by the same function as `qml_ids`; the baseline and logistic
             // regression are still read from the weights file.
             const rescore = await rescoreQcnnInTab(stage, usecase, w, metric, artifacts);
-            const mine = rescore ? Math.round(rescore.headline * 1e6) / 1e6 : recordedMine;
+            const mine = figureBesideComparators(rescore, recordedMine);
             const theirs = macroLed ? w.classical_lr_macro_f1
                          : f1Led ? w.classical_lr_minority_f1 : w.classical_lr_accuracy;
             const base = macroLed ? w.macro_f1_floors?.uniform_random
@@ -4310,7 +4523,7 @@ export function runClientPipeline(
               // measured here and the sentence says so, and the baseline's and logistic regression's still come from the file.
               + `Held-out ${label} ${(mine ?? 0).toFixed(4)} against a baseline of `
               + `${(base ?? 0).toFixed(4)} and logistic regression at ${(theirs ?? 0).toFixed(4)} on `
-              + `the same split - ${ahead}. The circuit's figure was ${rescoreSentence(rescore, recordedMine)}; the `
+              + `the same split - ${ahead}${seedSelectionClause(w)}. The circuit's figure was ${rescoreSentence(rescore, recordedMine)}; the `
               + `baseline and logistic regression were recorded at training time. Test rows were never used to pick the checkpoint.`);
           } else {
             // No trained weights for this use case: refuse to surface a class rather than pass off
@@ -4398,8 +4611,19 @@ export function runClientPipeline(
         metric(stage, "lending_bob_min_health", Math.min(...run.bobHealth));
         metric(stage, "lending_bob_liquidations", bobEvents);
         metric(stage, "lending_books_gap", run.maxAccountingGap);
+        // Which market's parameters (batch 6): the illustrative ones, or a real market's read on chain at a pinned block.
+        const preset = typeof config.lending_market === "string" ? base.market_presets?.[config.lending_market] : undefined;
+        metric(stage, "lending_market", preset ? String(config.lending_market) : "illustrative");
+        metric(stage, "lending_market_label", preset ? preset.label : "illustrative parameters");
         emit("log", stage, `market simulated in this tab: ${run.hours} hours, ${run.borrowers} borrowers, generated prices with one stated fall `
-          + `of ${(cfg.shock_fraction * 100).toFixed(0)}% at hour ${cfg.shock_hour}; ${run.events.length} liquidations, ${bobEvents} of them Bob's. No chain is involved.`);
+          + `of ${(cfg.shock_fraction * 100).toFixed(0)}% at hour ${cfg.shock_hour}; ${run.events.length} liquidations, ${bobEvents} of them Bob's. `
+          + (preset
+            ? `Parameters: ${preset.label}: liquidation thresholds ${cfg.liquidation_thresholds.map((t) => (t * 100).toFixed(0) + "%").join(" and ")}, `
+              + `bonus ${(cfg.liquidation_bonus * 100).toFixed(1)}%, the debt asset's rate curve ${(cfg.optimal_utilisation * 100).toFixed(0)}% optimal, `
+              + `slopes ${(cfg.slope1 * 100).toFixed(1)}% and ${(cfg.slope2 * 100).toFixed(1)}%, opening prices the oracle's at that block; the borrowers, `
+              + `the price path and the fall are generated, so this is Aave's parameters on a simulated market, not Aave's market. `
+            : "Parameters: illustrative, no live market's. ")
+          + "No chain is involved.");
         // The sweep moves only volatility, from the configured one, so this run's multiplier does not move the curve's axis.
         const sweepCfg = { ...cfg, annual_vol: base.annual_vol };
         const seeds = Array.from({ length: cfg.sweep_seeds }, (_, i) => seed + i);

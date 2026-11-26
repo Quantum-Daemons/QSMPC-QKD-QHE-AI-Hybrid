@@ -1,0 +1,247 @@
+{
+ "preregistration": "references/finance-qcnn-amlworld-comparison-preregistration.md",
+ "record": "docs/measurements/finance-qcnn-amlworld-comparison-2026-11-26.json",
+ "test_rows": 1523504,
+ "test_positive": 2321,
+ "prevalence": 0.00152346,
+ "twice_prevalence": 0.00304692,
+ "rows": [
+  {
+   "key": "qcnn1_shipped",
+   "label": "QCNN-1, the seed best on validation (seed 6)",
+   "kind": "simulated quantum circuit",
+   "test_ap": 0.442021,
+   "ap_ci95": [
+    0.421036,
+    0.463311
+   ],
+   "shipped_minus_this_ci95": null
+  },
+  {
+   "key": "qcnn1_ensemble",
+   "label": "QCNN-1, the 20 seeds' mean probability",
+   "kind": "simulated quantum circuit",
+   "test_ap": 0.295552,
+   "ap_ci95": [
+    0.275997,
+    0.315124
+   ],
+   "shipped_minus_this_ci95": [
+    0.132577,
+    0.160752
+   ]
+  },
+  {
+   "key": "qcnn2_ensemble",
+   "label": "QCNN-2 (quantile encoding, encoded twice), the 20 seeds' mean",
+   "kind": "simulated quantum circuit",
+   "test_ap": 0.275165,
+   "ap_ci95": [
+    0.256782,
+    0.295244
+   ],
+   "shipped_minus_this_ci95": [
+    0.152167,
+    0.181662
+   ]
+  },
+  {
+   "key": "noent_ensemble",
+   "label": "QCNN-1 without its entangling gates, the 5 seeds' mean",
+   "kind": "simulated quantum circuit",
+   "test_ap": 0.139919,
+   "ap_ci95": [
+    0.12955,
+    0.154059
+   ],
+   "shipped_minus_this_ci95": [
+    0.282276,
+    0.3193
+   ]
+  },
+  {
+   "key": "product",
+   "label": "Quantum kernel SVM: the product encoding's fidelity",
+   "kind": "quantum kernel, computed classically",
+   "test_ap": 0.3301,
+   "ap_ci95": [
+    0.309177,
+    0.351534
+   ],
+   "shipped_minus_this_ci95": [
+    0.09766,
+    0.126637
+   ]
+  },
+  {
+   "key": "zz",
+   "label": "Quantum kernel SVM: the ZZ feature map's fidelity",
+   "kind": "quantum kernel, computed classically",
+   "test_ap": 0.195423,
+   "ap_ci95": [
+    0.178569,
+    0.213843
+   ],
+   "shipped_minus_this_ci95": [
+    0.22757,
+    0.264344
+   ]
+  },
+  {
+   "key": "projected",
+   "label": "Quantum kernel SVM: the ZZ map's projected kernel",
+   "kind": "quantum kernel, computed classically",
+   "test_ap": 0.109348,
+   "ap_ci95": [
+    0.097484,
+    0.122765
+   ],
+   "shipped_minus_this_ci95": [
+    0.311733,
+    0.35299
+   ]
+  },
+  {
+   "key": "logistic_regression",
+   "label": "Logistic regression on the standardised inputs",
+   "kind": "classical",
+   "test_ap": 0.035037,
+   "ap_ci95": [
+    0.034045,
+    0.036235
+   ],
+   "shipped_minus_this_ci95": [
+    0.386555,
+    0.427672
+   ]
+  },
+  {
+   "key": "gradient_boosting",
+   "label": "Gradient-boosted trees",
+   "kind": "classical",
+   "test_ap": 0.26955,
+   "ap_ci95": [
+    0.250208,
+    0.291515
+   ],
+   "shipped_minus_this_ci95": [
+    0.154703,
+    0.189631
+   ]
+  },
+  {
+   "key": "rbf_svm",
+   "label": "RBF support vector machine",
+   "kind": "classical",
+   "test_ap": 0.26249,
+   "ap_ci95": [
+    0.243903,
+    0.28245
+   ],
+   "shipped_minus_this_ci95": [
+    0.162212,
+    0.196579
+   ]
+  },
+  {
+   "key": "mps",
+   "label": "Matrix-product-state classifier",
+   "kind": "classical tensor network",
+   "test_ap": 0.256148,
+   "ap_ci95": [
+    0.237237,
+    0.276393
+   ],
+   "shipped_minus_this_ci95": [
+    0.168824,
+    0.202
+   ]
+  },
+  {
+   "key": "logistic_regression_whole_fit_window",
+   "label": "Logistic regression on the standardised inputs, the whole fit window",
+   "kind": "classical",
+   "test_ap": 0.035618,
+   "ap_ci95": [
+    0.034572,
+    0.03688
+   ],
+   "shipped_minus_this_ci95": [
+    0.386008,
+    0.427044
+   ]
+  },
+  {
+   "key": "gradient_boosting_whole_fit_window",
+   "label": "Gradient-boosted trees on the whole fit window",
+   "kind": "classical",
+   "test_ap": 0.115997,
+   "ap_ci95": [
+    0.104565,
+    0.128762
+   ],
+   "shipped_minus_this_ci95": [
+    0.30631,
+    0.34529
+   ]
+  },
+  {
+   "key": "logistic_regression_encoded",
+   "label": "Logistic regression on the circuit's tanh-encoded inputs",
+   "kind": "classical; not an arm of the pre-registration",
+   "not_an_arm": true,
+   "test_ap": 0.369531,
+   "ap_ci95": [
+    0.347425,
+    0.391682
+   ],
+   "shipped_minus_this_ci95": [
+    0.05856,
+    0.085685
+   ]
+  }
+ ],
+ "spreads": {
+  "qcnn1": {
+   "mean_test_ap": 0.25301,
+   "sd_test_ap": 0.089974,
+   "seeds": 20
+  },
+  "qcnn2": {
+   "mean_test_ap": 0.211302,
+   "sd_test_ap": 0.067654,
+   "seeds": 20
+  },
+  "noent": {
+   "mean_test_ap": 0.133852,
+   "sd_test_ap": 0.035058,
+   "seeds": 5
+  }
+ },
+ "shipped_seed": {
+  "seed": 6,
+  "test_ap": 0.442021,
+  "minority_f1": 0.509493
+ },
+ "criterion_1_signal": true,
+ "criterion_1_met": true,
+ "export_check": {
+  "test_rows": 1523504,
+  "page_vs_state_vector": {
+   "max_abs_readout_difference": 2.113294585215364e-06,
+   "decisions_differing": 0
+  },
+  "criterion_met": true
+ },
+ "comparators_above_the_shipped_seed": [],
+ "schmidt": {
+  "largest": 8,
+  "bound": 16,
+  "rows": 1000
+ },
+ "statement": "Every circuit here acts on eight wires, so its state is 256 amplitudes and is simulated exactly on a classical computer; QCNNs on classical data of this kind are classically simulable (Bermejo et al., PRX Quantum 7, 020304, 2026). No quantum advantage is claimed.",
+ "licence": "CDLA-Sharing-1.0",
+ "licence_url": "https://cdla.dev/sharing-1-0/",
+ "attribution": "IBM AMLworld HI-Small (Altman et al., Realistic Synthetic Financial Transactions for Anti-Money Laundering Models, NeurIPS 2023 Datasets and Benchmarks), CDLA-Sharing-1.0; synthetic transactions.",
+ "modifications": "Figures on the test window of the published MLP's temporal split, from models fitted here on eight of its 114 inputs; no rows are shipped."
+}

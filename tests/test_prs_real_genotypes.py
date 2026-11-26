@@ -116,15 +116,17 @@ def test_every_score_variant_has_a_dosage_column(name: str) -> None:
 
 
 def test_both_bundled_scores_are_keyed_by_the_rsids_they_publish() -> None:
-    """PRS77 (77 SNPs) and PGS000072 (187 variants) both publish rsIDs, and the join uses them.
+    """PRS77 (77 SNPs), PGS000072 (187 variants) and PGS000783 (162) all publish rsIDs, and the join uses them.
 
     The scoring file's own rsID is the key, not the current name Ensembl may have merged it into, so
     the dosage columns are named exactly as the score names its variants.
     """
     rs_keys, _, _ = load_prs("breast_cancer")
     keys, _, _ = load_prs("breast_cancer_pgs000072")
+    keys783, _, _ = load_prs("breast_cancer_pgs000783")
     assert all(k.startswith("rs") for k in rs_keys) and len(rs_keys) == 77
     assert all(k.startswith("rs") for k in keys) and len(keys) == len(set(keys)) == 187
+    assert all(k.startswith("rs") for k in keys783) and len(keys783) == len(set(keys783)) == 162
 
 
 def test_at_least_one_score_has_committed_dosages() -> None:

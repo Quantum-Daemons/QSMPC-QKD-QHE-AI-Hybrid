@@ -4,8 +4,8 @@
  *
  * `scripts/data/build_qcnn_heldout.py` writes `public/data/<dir>/qcnn_heldout.json` only after the trainer's circuit reproduces every
  * recorded metric from those rows. This runs the BROWSER's circuit over the same rows and asserts the page's headline equals the
- * weights file's to six decimals for every served artifact, and that the check would notice a wrong re-score: one label flipped must
- * move the figure off the record.
+ * weights file's to six decimals for every served artifact (for a sample of the split, its own recorded figures: finance since Round
+ * 86's batch 6), and that the check would notice a wrong re-score: one label flipped must move the figure off the record.
  *
  * Run: npm run check:qcnn-rescore
  */
@@ -37,10 +37,15 @@ try {
     if (!existsSync(heldPath)) { check(false, `${dir}/${file}: no ${dir}/qcnn_heldout.json beside it`); continue; }
     const w = JSON.parse(readFileSync(join(PUB, dir, file), "utf8"));
     const held = JSON.parse(readFileSync(heldPath, "utf8"));
-    check(held.rows.length === w.n_test, `${dir}/${file}: ${held.rows.length} held-out rows, the artifact's n_test ${w.n_test}`);
+    // A SAMPLE of the trainer's split carries `expected`, its own figures (finance since Round 86's batch 6: 8,192 of the 1,523,504
+    // test-window transactions); the re-score is held to those and the weights file keeps the whole split's.
+    const sample = held.expected != null, rec = sample ? held.expected : w;
+    check(sample ? held.rows.length < w.n_test : held.rows.length === w.n_test,
+      `${dir}/${file}: ${held.rows.length} held-out rows, ${sample ? "a sample of " : ""}the artifact's n_test ${w.n_test}`);
     const r = m.rescoreQcnn(w, held);
+    check(r.recordedBy === (sample ? "heldout" : "weights"), `${dir}/${file}: the re-score is held to the ${r.recordedBy} file's figures`);
     check(r.matchesRecord, `${dir}/${file}: ${r.label} re-scored ${r.headline.toFixed(6)} over ${r.rows} rows, recorded ${r.recorded} (${r.ms.toFixed(0)} ms)`);
-    check(Math.abs(r.accuracy - w.test_accuracy) < 5e-7, `${dir}/${file}: accuracy ${r.accuracy.toFixed(6)}, recorded ${w.test_accuracy}`);
+    check(Math.abs(r.accuracy - rec.test_accuracy) < 5e-7, `${dir}/${file}: accuracy ${r.accuracy.toFixed(6)}, recorded ${rec.test_accuracy}${sample ? " for these rows" : ""}`);
     // Seeded: the first row's label moved to another class. A comparison that cannot see this is not checking the re-score.
     const flipped = { ...held, labels: held.labels.map((v, i) => (i === 0 ? (v === 0 ? 1 : 0) : v)) };
     check(!m.rescoreQcnn(w, flipped).matchesRecord, `${dir}/${file}: one flipped label moves the figure off the record`);

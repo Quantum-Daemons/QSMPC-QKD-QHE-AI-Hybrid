@@ -449,7 +449,9 @@ export function EncryptedAgreementChart({ plot }: { plot: EncryptedAgreementPlot
                    label={{ value: logit ? "plaintext logit" : "plaintext score", position: "insideBottom",
                             offset: -10, fill: "#8a94a6", fontSize: 12 }} />
             {/* The corner is the lower bound of both axes, and both labelled it: the two "-24.03" met at the origin. The x axis keeps it. */}
-            <YAxis type="number" dataKey="enc" name="encrypted" domain={[lo, hi]} tick={AXIS}
+            {/* `Y_AXIS_W`, as on this file's other charts: at recharts' default 60 px, PGS000783's scores (Round 86's batch 6)
+                tick as "-161.63", whose left end met the rotated title in DejaVu Sans (the gate's layout check). */}
+            <YAxis type="number" dataKey="enc" name="encrypted" domain={[lo, hi]} tick={AXIS} width={Y_AXIS_W}
                    tickFormatter={(v: number) => (Math.abs(v - lo) < 1e-9 ? "" : v.toFixed(2))}
                    label={yAxisTitle(logit ? "encrypted logit (decrypted)" : "encrypted score (decrypted)", 14)} />
             <ReferenceLine segment={[{ x: lo, y: lo }, { x: hi, y: hi }]} stroke="#8a94a6"

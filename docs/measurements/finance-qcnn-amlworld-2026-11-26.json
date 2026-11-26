@@ -1,0 +1,205 @@
+{
+ "preregistration": {
+  "file": "references/finance-qcnn-amlworld-preregistration.md",
+  "sha256": "5a411b05d7e1984306d08397d95b147ab2a09796a4bfa4a6b624cf515253edd0"
+ },
+ "inputs": {
+  "features": [
+   "format_risk",
+   "pair_log_same_direction",
+   "pair_first_contact",
+   "dst_in_uniq_4320",
+   "dst_bank_diversity",
+   "src_out_uniq_60",
+   "src_out_mean_60",
+   "src_out_mean_360"
+  ],
+  "abs_auc_minus_half_on_fit": {
+   "format_risk": 0.378988,
+   "pair_log_same_direction": 0.243853,
+   "pair_first_contact": 0.219494,
+   "dst_in_uniq_4320": 0.186073,
+   "dst_bank_diversity": 0.178954,
+   "src_out_uniq_60": 0.158155,
+   "src_out_mean_60": 0.154802,
+   "src_out_mean_360": 0.154092
+  },
+  "counts": {
+   "fit_window": 2843872,
+   "fit_window_laundering": 2055,
+   "fit_sample": 10275,
+   "validation": 710969,
+   "validation_laundering": 801,
+   "test": 1523504,
+   "test_laundering": 2321
+  }
+ },
+ "test_prevalence": 0.00152346,
+ "criterion_1_floor": 0.00304692,
+ "runs": {
+  "k8": {
+   "seeds": [
+    {
+     "seed": 0,
+     "device": "cpu",
+     "device_name": "cpu",
+     "threads": 4,
+     "best_epoch": 119,
+     "validation_f1": 0.079027,
+     "test_auprc": 0.267019,
+     "test_minority_f1": 0.093421,
+     "test_accuracy": 0.976139,
+     "weights_sha256": "1ca84df9585fc74fec62c483cd32ace7d4da7e5ed62cd26d74de9030a18fe4fd"
+    },
+    {
+     "seed": 1,
+     "device": "cuda",
+     "device_name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+     "threads": 4,
+     "best_epoch": 119,
+     "validation_f1": 0.07704,
+     "test_auprc": 0.390583,
+     "test_minority_f1": 0.082147,
+     "test_accuracy": 0.971134,
+     "weights_sha256": "a0b04019b43be6f7180ad3a82036ad74a4ef57d0421b89b697d95eb7a023babf"
+    },
+    {
+     "seed": 2,
+     "device": "cuda",
+     "device_name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+     "threads": 4,
+     "best_epoch": 119,
+     "validation_f1": 0.079113,
+     "test_auprc": 0.261979,
+     "test_minority_f1": 0.09406,
+     "test_accuracy": 0.976356,
+     "weights_sha256": "02c6c30678c51be46ce338ea3ffbad49ad8818613f6487966cda26c036771a09"
+    },
+    {
+     "seed": 3,
+     "device": "cuda",
+     "device_name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+     "threads": 4,
+     "best_epoch": 20,
+     "validation_f1": 0.179303,
+     "test_auprc": 0.117459,
+     "test_minority_f1": 0.192732,
+     "test_accuracy": 0.992549,
+     "weights_sha256": "4432f3b2dc78108839cbf6f2d348c9259c06a91e14c4ebecb5ec6fe98c22845e"
+    },
+    {
+     "seed": 4,
+     "device": "cuda",
+     "device_name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+     "threads": 4,
+     "best_epoch": 60,
+     "validation_f1": 0.076937,
+     "test_auprc": 0.029286,
+     "test_minority_f1": 0.06788,
+     "test_accuracy": 0.964289,
+     "weights_sha256": "89eec613abf194af24309abfb48720e0cb8d1ad4ed97c205af60002fac7644fd"
+    }
+   ],
+   "mean_test_auprc": 0.213265,
+   "min_test_auprc": 0.029286,
+   "max_test_auprc": 0.390583,
+   "criterion_1_every_seed_at_least_twice_prevalence": true,
+   "best_on_validation": 3,
+   "comparators": {
+    "logistic_regression_auprc": 0.369531,
+    "logistic_regression_minority_f1": 0.08687,
+    "pauli_surrogate": {
+     "n_features": 6561,
+     "test_accuracy": 0.966019,
+     "test_macro_f1": null,
+     "test_minority_f1": 0.068114,
+     "test_auprc": 0.111407
+    }
+   }
+  },
+  "k4": {
+   "seeds": [
+    {
+     "seed": 0,
+     "device": "cuda",
+     "device_name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+     "threads": 4,
+     "best_epoch": 50,
+     "validation_f1": 0.074602,
+     "test_auprc": 0.0635,
+     "test_minority_f1": 0.091392,
+     "test_accuracy": 0.975503,
+     "weights_sha256": "7e52bbb9429d8a23ddf0b9f1a93d6a57d2d9e6aaaf95f43239f4ae0d3e79c53e"
+    },
+    {
+     "seed": 1,
+     "device": "cuda",
+     "device_name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+     "threads": 4,
+     "best_epoch": 20,
+     "validation_f1": 0.076851,
+     "test_auprc": 0.038135,
+     "test_minority_f1": 0.067277,
+     "test_accuracy": 0.963891,
+     "weights_sha256": "f8d9ba9ae8eac75b0195a0631b9819e48a26311c519788b65c2a6101efb34ddd"
+    },
+    {
+     "seed": 2,
+     "device": "cuda",
+     "device_name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+     "threads": 4,
+     "best_epoch": 40,
+     "validation_f1": 0.076851,
+     "test_auprc": 0.03709,
+     "test_minority_f1": 0.067277,
+     "test_accuracy": 0.963891,
+     "weights_sha256": "330b21a634e7099144da1203856ce05bbbacf70c52f60127e288fe6be4b14ee6"
+    },
+    {
+     "seed": 3,
+     "device": "cuda",
+     "device_name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+     "threads": 4,
+     "best_epoch": 20,
+     "validation_f1": 0.076851,
+     "test_auprc": 0.037323,
+     "test_minority_f1": 0.067277,
+     "test_accuracy": 0.963891,
+     "weights_sha256": "48f3fa21199a43ba252ee0a86ebc0de3679a5b8050540cf88557cd72d04b8192"
+    },
+    {
+     "seed": 4,
+     "device": "cuda",
+     "device_name": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+     "threads": 4,
+     "best_epoch": 50,
+     "validation_f1": 0.076851,
+     "test_auprc": 0.072768,
+     "test_minority_f1": 0.067277,
+     "test_accuracy": 0.963891,
+     "weights_sha256": "044e151e2ee20f929c5a0045d64c1ab0327b1b615053c9c17ec6422a9a945bbe"
+    }
+   ],
+   "mean_test_auprc": 0.049763,
+   "min_test_auprc": 0.03709,
+   "max_test_auprc": 0.072768,
+   "criterion_1_every_seed_at_least_twice_prevalence": true,
+   "best_on_validation": 1,
+   "comparators": {
+    "logistic_regression_auprc": 0.031007,
+    "logistic_regression_minority_f1": 0.081487,
+    "pauli_surrogate": {
+     "n_features": 81,
+     "test_accuracy": 0.967467,
+     "test_macro_f1": null,
+     "test_minority_f1": 0.072565,
+     "test_auprc": 0.042365
+    }
+   }
+  }
+ },
+ "notes": [
+  "Seed 0 at eight wires ran on the CPU (4 threads); the other nine on the GPU, on the owner's choice of 2026-11-26 to move the remaining runs there. A CPU run of seed 1 at eight wires had started and was stopped after 18 minutes, before it wrote anything; seed 1 then ran from the start on the GPU.",
+  "Reference rows, not like for like (114 inputs against k): F7b's square network, mean test AUPRC 0.500 over seeds 5 to 9, and the published linear student, 0.184."
+ ]
+}

@@ -364,12 +364,19 @@ def test_every_qcnn_implementation_is_pinned_to_another() -> None:
         "src/qsh/ai/fed_heart.py": "logistic regression's theta, beside 'pooled' training; the Python half of the "
                                    "four-hospital twin, pinned to the page by tests/test_r86_fed_heart_twin.py",
         "web/src/lib/clientFedHeart.ts": "the browser half of the same twin",
+        "scripts/train/telecom_nidd_federated.py": ("a multinomial logistic regression's theta, FedAvg'd across 5G-NIDD's "
+                                                    "two base stations; held to the page by tests/test_r86_nidd_federated.py"),
         "scripts/audit_membership_inference.py": "the same logistic theta, the heart federation's arms re-implemented for "
                                                  "the membership audit ('pooled' its pooled arm, 'pool' the audit pool); "
                                                  "pinned to the twin weight for weight by "
                                                  "tests/test_r86_heart_privacy_audits.py",
         "scripts/audit_attribute_inference.py": "the same logistic theta, through the membership script's arms; "
                                                 "tests/test_r86_heart_privacy_audits.py",
+        "scripts/export_finance_qcnn_amlworld.py": ("its `theta` is the encoded angles c pi tanh(z) of the comparison's "
+                                                    "inputs, fed to the classical surrogate's Pauli products; the circuit "
+                                                    "itself runs through the trainer's circuit() and qsh.qhe.qcnn_tree, and "
+                                                    "the served file is pinned to the trainer's circuit on every row of the "
+                                                    "page's sample by tests/test_r86_finance_qcnn_amlworld_served.py"),
         "scripts/audit_reconstruction_informed.py": "the same logistic theta: the heart federation's pooled model from "
                                                     "qsh.ai.fed_heart's own train_adam and its FedAvg arm from the "
                                                     "membership script (pinned by tests/test_r86_heart_privacy_audits.py), "

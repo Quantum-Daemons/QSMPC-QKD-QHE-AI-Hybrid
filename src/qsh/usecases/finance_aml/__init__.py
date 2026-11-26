@@ -23,6 +23,8 @@ Run:  ``python -m qsh.orchestration.pipeline --usecase finance_aml``
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 
 from ...fhe.ckks_inference import LinearModel
@@ -48,8 +50,8 @@ def _fraud_model(seed: int = 0, n_tx: int | None = None
     Both models read the four columns of ``registry.PAYSIM_MODEL_FEATURES``, selected by name from
     the loader's eight. Returns ``(surrogate, flagged_tx, model_meta, baseline, flagged_raw)``:
     ``flagged_tx`` is the scored transaction in those four columns, and ``flagged_raw`` the SAME
-    transaction in all eight of the loader's columns, from which ``_qcnn_features`` takes the
-    finance QCNN artifact's own columns by name (since its Round 84 retrain, these same four).
+    transaction in all eight of the loader's columns. The finance QCNN reads AMLworld since Round 86's
+    batch 6 and takes its row from ``_qcnn_features`` instead.
     """
     import xgboost as xgb
     from sklearn.linear_model import LogisticRegression
@@ -85,28 +87,39 @@ def _fraud_model(seed: int = 0, n_tx: int | None = None
             X.mean(axis=0).astype(float), X_all[flagged_at].astype(float))
 
 
-def _qcnn_features(raw_row: np.ndarray) -> np.ndarray | None:
-    """The scored transaction in the finance QCNN artifact's own columns, in raw units.
+#: The finance QCNN's held-out sample, a byte-identical copy of `web/public/data/finance/qcnn_heldout.json` (the full
+#: deployment's image ships `data/` and not `web/public/`): 8,192 AMLworld test-window transactions at the circuit's eight
+#: inputs, raw, with their labels. Written by `scripts/export_finance_qcnn_amlworld.py`; a test fails the moment the two
+#: copies differ by a byte.
+QCNN_HELDOUT = Path(__file__).resolve().parents[4] / "data" / "finance" / "qcnn_heldout.json"
 
-    The artifact names its columns in `feature_names` (since its Round 84 retrain, the linear
-    model's four) and declares `input_space: "raw"`; the stage falls back to `features` when this
-    is absent, which is right only while the artifact reads exactly the model's columns in order. Mapped by the artifact's `feature_names`, so a reordered
-    artifact is read correctly and an unknown column is refused. None when no artifact ships.
+
+def _qcnn_features(seed: int) -> tuple[np.ndarray, str] | None:
+    """An AMLworld test-window transaction in the finance QCNN artifact's own columns, raw, and which one it is.
+
+    Since Round 86's batch 6 (the owner's choice of 2026-11-26) the finance QCNN is the AMLworld circuit of the
+    pre-registered comparison, which reads eight of AMLworld's 114 inputs; this deployment's other finance models read
+    PaySim's four columns, so the QCNN scores a transaction of its own, drawn by the run's seed from the held-out sample,
+    and the run says which. Until then it read the PaySim transaction the surrogate flagged, in PaySim's four columns.
+    The artifact's `feature_names` must be the sample's, in order, and its `input_space` raw; otherwise it is refused.
+    None when no artifact ships.
     """
-    from ...models.registry import PAYSIM_SAMPLE_COLUMNS
+    import json
+
     from ...qhe.qcnn_trained import load_weights
 
     w = load_weights("finance_aml")
     if not w:
         return None
-    if w.get("input_space") != "raw":
-        raise ValueError(f"the finance QCNN declares input_space {w.get('input_space')!r}; "
-                         "this use case supplies raw PaySim-sample values only")
-    unknown = [n for n in w["feature_names"] if n not in PAYSIM_SAMPLE_COLUMNS]
-    if unknown:
-        raise ValueError(f"the finance QCNN reads columns the bundled sample does not have: {unknown}")
-    return np.asarray([raw_row[PAYSIM_SAMPLE_COLUMNS.index(n)] for n in w["feature_names"]],
-                      dtype=float)
+    held = json.loads(QCNN_HELDOUT.read_text())
+    if w.get("input_space") != held["input_space"] or list(w["feature_names"]) != list(held["feature_names"]):
+        raise ValueError(f"the finance QCNN reads {w['feature_names']} ({w.get('input_space')}); the held-out sample "
+                         f"ships {held['feature_names']} ({held['input_space']})")
+    i = int(np.random.default_rng(seed).integers(len(held["rows"])))
+    note = (f"AMLworld test-window transaction {i + 1} of {len(held['rows'])} of the QCNN's held-out sample "
+            f"({held['licence']}), label {held['labels'][i]}: the QCNN reads AMLworld's inputs, so it scores a "
+            "transaction of its own, not the PaySim one the surrogate flagged")
+    return np.asarray(held["rows"][i], dtype=float), note
 
 
 def _bank_blacklists(seed: int = 0) -> tuple[list[str], list[str], set[str]]:
@@ -149,12 +162,12 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     from ...models.registry import PAYSIM_MODEL_FEATURES
 
     ctx.data["feature_names"] = list(PAYSIM_MODEL_FEATURES)
-    # The same transaction in the trained QCNN's own raw columns (its `feature_names`), only where it will be read: a run
-    # that selects the QCNN (as `usecases/medical_fl` does for its own artifact).
+    # The trained QCNN's row, only where it will be read: a run that selects the QCNN (as `usecases/medical_fl` does for its
+    # own artifact). Since Round 86's batch 6 an AMLworld transaction of its own, in its own raw columns (`_qcnn_features`).
     if ctx.config.get("inference") in ("qcnn", "qcnn-ckks"):
-        qcnn_row = _qcnn_features(flagged_raw)
+        qcnn_row = _qcnn_features(seed)
         if qcnn_row is not None:
-            ctx.data["qcnn_features"] = qcnn_row
+            ctx.data["qcnn_features"], ctx.data["qcnn_row_note"] = qcnn_row
     ctx.data["_ground_truth_shared"] = len(shared)
     return Pipeline(name="finance-aml", stages=standard_stages()), ctx
 

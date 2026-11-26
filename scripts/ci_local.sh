@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Run every BLOCKING gate .github/workflows/ci.yml runs, locally, in CI's own order.
+# Run every BLOCKING gate .github/workflows/ci.yml runs, locally, in CI's own order (with QSH_GATE_PARALLEL=1 the test
+# suite runs beside steps 8 and 8b instead: see step 1).
 #
 # Why this exists: for a whole round the local gate was `pytest -m "not slow"` + `tsc --noEmit` +
 # `npm run build`, all three green, while CI was RED on every push. The failure was a single ruff
@@ -25,9 +26,21 @@ step "1/18 test suite (pytest -m 'not slow')"
 # through. This machine HAS esbuild, so the variable costs nothing and turns a silent skip - from a
 # stray `npm ci` failure, a pruned node_modules, a renamed binary - into a failure.
 # QSH_REQUIRE_LIBSODIUM=1, also as ci.yml sets it, does the same for the OPRF's libsodium (Round 85).
-HF_HUB_OFFLINE=1 QSH_REQUIRE_BROWSER_GATES=1 QSH_REQUIRE_LIBSODIUM=1 "$PY" -m pytest -m "not slow" -q -p no:warnings \
-    >/tmp/ci_pytest.log 2>&1 \
-  && ok "tests" || { bad "tests"; tail -20 /tmp/ci_pytest.log; }
+# QSH_GATE_PARALLEL=1 (the owner's choice of 2026-11-26): the suite starts in step 8 instead, in the background, after
+# every step that writes a file it reads (the generated config and prose, the wasm, the web build and its notices, the
+# scan's own build) and beside the two text-layout scans, which then run at once, the README diagrams and the CSP check.
+# Its verdict prints after step 8b, before step 9. The checks are the same; unset, the order is CI's, as above.
+run_pytest() {
+  HF_HUB_OFFLINE=1 QSH_REQUIRE_BROWSER_GATES=1 QSH_REQUIRE_LIBSODIUM=1 "$PY" -m pytest -m "not slow" -q -p no:warnings \
+    >/tmp/ci_pytest.log 2>&1
+}
+PYTEST_PID=""
+start_suite() { if [ "${QSH_GATE_PARALLEL:-0}" = 1 ] && [ -z "$PYTEST_PID" ]; then run_pytest & PYTEST_PID=$!; fi; }
+if [ "${QSH_GATE_PARALLEL:-0}" = 1 ]; then
+  printf '  ....  deferred to step 8 (QSH_GATE_PARALLEL=1); its verdict prints after step 8b\n'
+else
+  run_pytest && ok "tests" || { bad "tests"; tail -20 /tmp/ci_pytest.log; }
+fi
 
 step "2/18 config parity (defaults.py -> config.defaults.json)"
 # THE GENERATOR'S EXIT STATUS IS TESTED, because it decides what the diff below means.
@@ -129,19 +142,34 @@ elif ( cd web && VITE_CLIENT_ONLY=1 npx vite build --outDir "$SCAN_OUT" >/tmp/ci
   BUILT=$(grep -o 'assets/index-[A-Za-z0-9_-]*\.js' "$SCAN_OUT/index.html" | head -1)
   curl -sf http://localhost:4182/ | grep -q "$BUILT" \
     || bad "text layout: the page on port 4182 is not the build just made"
-  ( cd web && timeout 1500 node scripts/check_text_overlap.mjs http://localhost:4182 1280 720 >/tmp/ci_textlayout.log 2>&1 ) \
-    && ok "no text over text, out of its box or clipped, no table wider than its box, no text under WCAG contrast, no table without a header cell, no layout shift of 0.1 while loading, on any page" \
-    || { bad "text layout (web/scripts/check_text_overlap.mjs)"; grep -E "FAIL|^ +\[" /tmp/ci_textlayout.log | head -20; }
+  # Each scan runs its own headless Chrome on its own debugging port (CDP_PORT, check_text_overlap.mjs), so with
+  # QSH_GATE_PARALLEL=1 the two run at once against the one preview server, beside the suite; unset, one after the other.
+  scan_system() { ( cd web && CDP_PORT=9355 timeout 1500 node scripts/check_text_overlap.mjs http://localhost:4182 1280 720 >/tmp/ci_textlayout.log 2>&1 ); }
   # Round 84: and again in DejaVu Sans, the CI runners' system-ui. The telecom plane charts' ticks met
   # their rotated title there while this machine's Noto passed, so the push was the first run that
   # saw it. `web/scripts/fonts-dejavu.conf` prepends DejaVu Sans to system-ui and the sans families.
-  ( cd web && FONTCONFIG_FILE="$PWD/scripts/fonts-dejavu.conf" timeout 1500 node scripts/check_text_overlap.mjs http://localhost:4182 1280 720 >/tmp/ci_textlayout_dejavu.log 2>&1 ) \
+  scan_dejavu() { ( cd web && CDP_PORT=9358 FONTCONFIG_FILE="$PWD/scripts/fonts-dejavu.conf" timeout 1500 node scripts/check_text_overlap.mjs http://localhost:4182 1280 720 >/tmp/ci_textlayout_dejavu.log 2>&1 ); }
+  start_suite
+  if [ "${QSH_GATE_PARALLEL:-0}" = 1 ]; then
+    scan_system & scan_system_pid=$!
+    scan_dejavu & scan_dejavu_pid=$!
+    wait "$scan_system_pid"; scan_system_rc=$?
+    wait "$scan_dejavu_pid"; scan_dejavu_rc=$?
+  else
+    scan_system; scan_system_rc=$?
+    scan_dejavu; scan_dejavu_rc=$?
+  fi
+  [ "$scan_system_rc" = 0 ] \
+    && ok "no text over text, out of its box or clipped, no table wider than its box, no text under WCAG contrast, no table without a header cell, no layout shift of 0.1 while loading, on any page" \
+    || { bad "text layout (web/scripts/check_text_overlap.mjs)"; grep -E "FAIL|^ +\[" /tmp/ci_textlayout.log | head -20; }
+  [ "$scan_dejavu_rc" = 0 ] \
     && ok "the same layout scan in DejaVu Sans, the CI runners' font" \
     || { bad "text layout in DejaVu Sans (web/scripts/check_text_overlap.mjs, FONTCONFIG_FILE=web/scripts/fonts-dejavu.conf)"; grep -E "FAIL|^ +\[|page font" /tmp/ci_textlayout_dejavu.log | head -20; }
   pkill -f "vite preview --outDir $SCAN_OUT" 2>/dev/null
 else
   bad "client-only build for the text-layout scan"; tail -8 /tmp/ci_scanbuild.log
 fi
+start_suite                                         # the branches above that did not reach the scans: the suite still runs
 # Round 80, by the owner's choice: the README's Mermaid diagrams, laid out and fitting GitHub's column.
 ( cd web && npm run --silent check:readme-mermaid >/tmp/ci_mermaid.log 2>&1 ) \
   && ok "README diagrams: no label out of its node, over another or crossed; each fits 830 px" \
@@ -217,6 +245,11 @@ else
   bad "CSP: could not assemble the site with its walkthrough"; tail -8 /tmp/ci_csp_walkthrough.log
 fi
 rm -rf "$CSP_DIR"
+
+if [ -n "$PYTEST_PID" ]; then
+  printf '\n=== 1/18 test suite (pytest -m %s): its verdict, run beside steps 8 and 8b ===\n' "'not slow'"
+  if wait "$PYTEST_PID"; then ok "tests"; else bad "tests"; tail -20 /tmp/ci_pytest.log; fi
+fi
 
 step "9/18 PQC conformance (FIPS 203 s7.2 negatives + FIPS 204 sizes)"
 # Offline by design: reads the vendored CC0 snapshot in web/scripts/vectors. It was ungated for

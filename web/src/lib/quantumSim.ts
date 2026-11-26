@@ -908,8 +908,11 @@ export interface QcnnWeights {
   test_macro_f1?: number | null; classical_lr_macro_f1?: number | null;
   all_positive_f1?: number; headline_metric?: string;
   test_accuracy: number; classical_lr_accuracy: number; majority_baseline: number;
-  /** Rows in the trainer's test split, the rows `public/data/<dir>/qcnn_heldout.json` ships for the in-tab re-score. */
+  /** Rows in the trainer's test split. `public/data/<dir>/qcnn_heldout.json` ships all of them for the in-tab re-score, or, where it
+   *  carries `expected` (finance since Round 86's batch 6), a sample of them with the figures the trainer's circuit gives on it. */
   n_test?: number;
+  /** How the shipped seed was chosen, where it was one of several (finance since Round 86's batch 6). */
+  selection?: { on?: string; seed?: number; of_seeds?: number; rule?: string; best_val_average_precision?: number } | null;
   /** Logistic regression on the same 3^n Pauli products, same split: the classical model with this circuit's hypothesis class. */
   classical_surrogate?: { model: string; n_features: number; test_accuracy: number; test_macro_f1: number | null; test_minority_f1: number | null };
 }

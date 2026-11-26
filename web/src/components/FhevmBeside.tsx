@@ -4,7 +4,7 @@
 // canvas's "FHEVM, modelled" view draws the same flow. This project uses none of Zama's code (fhevmModel.ts says why), so nothing here is a
 // measurement of FHEVM; the page's own column is what this tab runs.
 import type { ReactNode } from "react";
-import { FHEVM_READ, FHEVM_RELEASES, FHEVM_SOURCES, HCU_LIMIT, checkCost } from "../lib/fhevmModel";
+import { FHEVM_MAINNET_LIMITS, FHEVM_NEWER_LINE, FHEVM_READ, FHEVM_RELEASES, FHEVM_SOURCES, HCU_LIMIT, checkCost } from "../lib/fhevmModel";
 import StageBadge from "./StageBadge";
 
 const n = (v: number) => v.toLocaleString("en-US");
@@ -29,7 +29,7 @@ export default function FhevmBeside({ custody }: { custody: string }) {
       "None: nothing proves Bob encrypted his real balances, which takes commitments and zero-knowledge proofs"],
     ["The result", <>The contract makes the bit publicly decryptable, for good; the KMS returns the cleartext with its signatures, and the contract verifies them with FHE.checkSignatures{src(FHEVM_SOURCES.publicDecryption, "public decryption")}</>,
       "The bit, signed with ML-DSA under a key made for this run: the signature shows the record is unchanged, not who signed it"],
-    ["One check's cost", <>{n(c64.total)} HCU on 64-bit integers or {n(c128.total)} on 128-bit, Zama&apos;s table applied to three multiplications by a public scalar, an addition and a comparison; at most {c64.perTransaction} or {c128.perTransaction} checks to a transaction under the devnet&apos;s {n(HCU_LIMIT.perTransaction)} HCU{src(FHEVM_SOURCES.hcu, "HCU")}</>,
+    ["One check's cost", <>{n(c64.total)} HCU on 64-bit integers or {n(c128.total)} on 128-bit, Zama&apos;s table applied to three multiplications by a public scalar, an addition and a comparison; at most {c64.perTransaction} or {c128.perTransaction} checks to a transaction under the {n(HCU_LIMIT.perTransaction)} HCU a transaction may use, the limit the documentation gives for its devnet and the one Ethereum mainnet&apos;s HCULimit contract returns (read on chain {FHEVM_MAINNET_LIMITS.read}, block {n(FHEVM_MAINNET_LIMITS.block)}){src(FHEVM_SOURCES.hcu, "HCU")}</>,
       "Measured in this tab: the private-check card gives the run's time and bytes per check"],
     ["Limits", <>Division and remainder by a plaintext only, signed integers not yet, and arithmetic that can overflow{src(FHEVM_SOURCES.operations, "operations")}{src(FHEVM_SOURCES.roadmap, "roadmap")}</>,
       "CKKS is approximate and the mask hides the margin statistically; the circuit's oblivious transfers rest on discrete logs"],
@@ -42,7 +42,7 @@ export default function FhevmBeside({ custody }: { custody: string }) {
       <p className="muted small">
         On Zama&apos;s FHEVM the same check would run on a public chain, with the borrower&apos;s balances encrypted on chain and a
         threshold network releasing only the bit. This table sets its design, as its documentation states it on {FHEVM_READ}, beside what
-        this page runs; the canvas&apos;s <b>FHEVM, modelled</b> view draws the flow. The releases current that day were {FHEVM_RELEASES}.
+        this page runs; the canvas&apos;s <b>FHEVM, modelled</b> view draws the flow. The releases current that day were {FHEVM_RELEASES}; on 2026-11-25 a higher stable line, {FHEVM_NEWER_LINE}, had appeared beside the one GitHub marks latest.
       </p>
       <div style={{ overflowX: "auto" }}>
         <table className="table small">

@@ -1,0 +1,389 @@
+{
+ "preregistration": {
+  "file": "references/satellite-jinan1-pass-preregistration.md",
+  "sha256": "11665e2b800dd3f921d9b4bf5122252354e95d85fe773e64130c4ae284ae1984"
+ },
+ "windows": "addendum 2, POST HOC: background from the file's first and last 30 seconds, link seconds by the counts; chosen after the pre-registered windows' figures were seen",
+ "data": {
+  "record": "10.5281/zenodo.14732295",
+  "licence": "CC-BY-4.0",
+  "files_md5_checked": [
+   "Data_Extented_Figure2.xlsx",
+   "Data_Figure2.xlsx",
+   "Data_Figure4.xlsx"
+  ],
+  "alignment": {
+   "counts_rows": 449,
+   "range_rows": 450,
+   "qkd_rows": 449,
+   "repeated_seconds": {
+    "counts": 6,
+    "range": 0,
+    "qkd": 6
+   },
+   "seconds_joined": 443,
+   "seconds_without_a_match": 7
+  }
+ },
+ "link_seconds": {
+  "count": 353,
+  "used": 353,
+  "duration_s": 360,
+  "range_km": [
+   823.811536,
+   1656.054963
+  ]
+ },
+ "background_per_s": 644.0,
+ "background_seconds": 60,
+ "profile_efficiency": 0.1683,
+ "fitted_efficiency": 0.16672910514688927,
+ "fit_minus_profile_db": -0.04072696703588966,
+ "residuals_before": {
+  "mean_db": -0.03990552928033847,
+  "sd_db": 0.28670263728890216,
+  "rms_db": 0.2894664980538434
+ },
+ "residuals_after": {
+  "mean_db": 6.493737840175232e-13,
+  "sd_db": 0.28659559275247676,
+  "rms_db": 0.28659559275247676
+ },
+ "trend_after_db_per_air_mass": 0.06848913701836344,
+ "falls": {
+  "first": {
+   "seconds": [
+    0,
+    9
+   ],
+   "mean_range_km": 1627.3630865999999,
+   "measured_db": 8.464406127957297,
+   "model_db": 8.612709107138151,
+   "measured_minus_model_db": -0.14830297918085478,
+   "within_0_5_db": true
+  },
+  "last": {
+   "seconds": [
+    350,
+    359
+   ],
+   "mean_range_km": 1448.979853,
+   "measured_db": 7.012455452143527,
+   "model_db": 6.7565721544230755,
+   "measured_minus_model_db": 0.2558832977204517,
+   "within_0_5_db": true
+  }
+ },
+ "qber": {
+  "seconds_with_a_block_qber": 283,
+  "blocks": [
+   {
+    "qber": 0.01481,
+    "seconds": 23,
+    "model_signal_mean": 0.009981637400818089
+   },
+   {
+    "qber": 0.01129,
+    "seconds": 18,
+    "model_signal_mean": 0.008846710678248446
+   },
+   {
+    "qber": 0.00956,
+    "seconds": 15,
+    "model_signal_mean": 0.008208055989859643
+   },
+   {
+    "qber": 0.00871,
+    "seconds": 13,
+    "model_signal_mean": 0.007799503516939726
+   },
+   {
+    "qber": 0.00846,
+    "seconds": 13,
+    "model_signal_mean": 0.007516135896254845
+   },
+   {
+    "qber": 0.00816,
+    "seconds": 10,
+    "model_signal_mean": 0.007333089330505416
+   },
+   {
+    "qber": 0.00847,
+    "seconds": 10,
+    "model_signal_mean": 0.0072242448196128154
+   },
+   {
+    "qber": 0.00844,
+    "seconds": 9,
+    "model_signal_mean": 0.007160994337773904
+   },
+   {
+    "qber": 0.00758,
+    "seconds": 8,
+    "model_signal_mean": 0.00713701995020752
+   },
+   {
+    "qber": 0.00804,
+    "seconds": 8,
+    "model_signal_mean": 0.007142582019660822
+   },
+   {
+    "qber": 0.00845,
+    "seconds": 9,
+    "model_signal_mean": 0.007178449796324305
+   },
+   {
+    "qber": 0.00869,
+    "seconds": 10,
+    "model_signal_mean": 0.007255267660479963
+   },
+   {
+    "qber": 0.00933,
+    "seconds": 12,
+    "model_signal_mean": 0.007394660757410771
+   },
+   {
+    "qber": 0.00898,
+    "seconds": 12,
+    "model_signal_mean": 0.007610374019724332
+   },
+   {
+    "qber": 0.00899,
+    "seconds": 13,
+    "model_signal_mean": 0.007913016430109925
+   },
+   {
+    "qber": 0.00997,
+    "seconds": 17,
+    "model_signal_mean": 0.008394952842775208
+   },
+   {
+    "qber": 0.0107,
+    "seconds": 19,
+    "model_signal_mean": 0.009167438064720815
+   },
+   {
+    "qber": 0.01106,
+    "seconds": 25,
+    "model_signal_mean": 0.01048287826873719
+   },
+   {
+    "qber": 0.01301,
+    "seconds": 34,
+    "model_signal_mean": 0.013164042033964376
+   },
+   {
+    "qber": 0.01656,
+    "seconds": 5,
+    "model_signal_mean": 0.01565189898913437
+   }
+  ],
+  "measured_mean": 0.010429858657243815,
+  "model_signal_mean": 0.009046623565411093,
+  "model_baseline_mean": 0.006652240376652324,
+  "model_signal_minus_measured": -0.001383235091832722,
+  "noise_share_extended_data_fig_2": {
+   "rows": 244,
+   "mean": 0.015573770491803278,
+   "min": 0.00675,
+   "max": 0.035250000000000004
+  }
+ },
+ "key": {
+  "measured_bits": 406784.0,
+  "model_pass_key_bits": 1210791.404182369,
+  "model_finite_key_bits": 560912.5534929463,
+  "model_over_measured": 2.976497119312384,
+  "finite_over_measured": 1.378895319120089,
+  "top_elevation_deg": 34.51980554947138
+ },
+ "rules": {
+  "1_profile_takes_the_fit": false,
+  "2_falls_within_0_5_db": true
+ },
+ "robustness": {
+  "note": "post hoc: the background's end seconds and the link threshold varied, and the model with and without its own background term (the measured side has the whole background off)",
+  "grid": [
+   {
+    "end_seconds": 20,
+    "link_multiple": 3.0,
+    "model_with_its_background_term": {
+     "background_per_s": 613.0,
+     "link_seconds": 354,
+     "mean_db": -0.0408560917348688,
+     "sd_db": 0.3349830221827867,
+     "fall_first_minus_model_db": 0.1845117369960434,
+     "fall_last_minus_model_db": 0.2409546544443728
+    },
+    "model_signal_only": {
+     "background_per_s": 613.0,
+     "link_seconds": 354,
+     "mean_db": 0.0480422256198813,
+     "sd_db": 0.3454324560507692,
+     "fall_first_minus_model_db": -0.04803524057374631,
+     "fall_last_minus_model_db": 0.10625168167170784
+    }
+   },
+   {
+    "end_seconds": 20,
+    "link_multiple": 5.0,
+    "model_with_its_background_term": {
+     "background_per_s": 613.0,
+     "link_seconds": 353,
+     "mean_db": -0.031564990365451365,
+     "sd_db": 0.28630860078919373,
+     "fall_first_minus_model_db": -0.16856872769010067,
+     "fall_last_minus_model_db": 0.2409546544443728
+    },
+    "model_signal_only": {
+     "background_per_s": 613.0,
+     "link_seconds": 353,
+     "mean_db": 0.05676896048036304,
+     "sd_db": 0.30447072070688747,
+     "fall_first_minus_model_db": -0.39677900380638675,
+     "fall_last_minus_model_db": 0.10625168167170784
+    }
+   },
+   {
+    "end_seconds": 20,
+    "link_multiple": 10.0,
+    "model_with_its_background_term": {
+     "background_per_s": 613.0,
+     "link_seconds": 348,
+     "mean_db": -0.018763309187446973,
+     "sd_db": 0.16325747235312996,
+     "fall_first_minus_model_db": -0.14250432378631928,
+     "fall_last_minus_model_db": -0.20839535863526493
+    },
+    "model_signal_only": {
+     "background_per_s": 613.0,
+     "link_seconds": 348,
+     "mean_db": 0.0671410439518503,
+     "sd_db": 0.19889053441184293,
+     "fall_first_minus_model_db": -0.3542565224397478,
+     "fall_last_minus_model_db": -0.34065109116723846
+    }
+   },
+   {
+    "end_seconds": 30,
+    "link_multiple": 3.0,
+    "model_with_its_background_term": {
+     "background_per_s": 644.0,
+     "link_seconds": 354,
+     "mean_db": -0.04933549557180126,
+     "sd_db": 0.33668452390209186,
+     "fall_first_minus_model_db": 0.20835920289017906,
+     "fall_last_minus_model_db": 0.2558832977204517
+    },
+    "model_signal_only": {
+     "background_per_s": 644.0,
+     "link_seconds": 354,
+     "mean_db": 0.039562821782948836,
+     "sd_db": 0.3461042308545938,
+     "fall_first_minus_model_db": -0.02418777467961064,
+     "fall_last_minus_model_db": 0.12118032494778674
+    }
+   },
+   {
+    "end_seconds": 30,
+    "link_multiple": 5.0,
+    "model_with_its_background_term": {
+     "background_per_s": 644.0,
+     "link_seconds": 353,
+     "mean_db": -0.03990552928033847,
+     "sd_db": 0.28670263728890216,
+     "fall_first_minus_model_db": -0.14830297918085478,
+     "fall_last_minus_model_db": 0.2558832977204517
+    },
+    "model_signal_only": {
+     "background_per_s": 644.0,
+     "link_seconds": 353,
+     "mean_db": 0.04842842156547593,
+     "sd_db": 0.30381488692941944,
+     "fall_first_minus_model_db": -0.37651325529714086,
+     "fall_last_minus_model_db": 0.12118032494778674
+    }
+   },
+   {
+    "end_seconds": 30,
+    "link_multiple": 10.0,
+    "model_with_its_background_term": {
+     "background_per_s": 644.0,
+     "link_seconds": 347,
+     "mean_db": -0.027407906207280872,
+     "sd_db": 0.16064633750046986,
+     "fall_first_minus_model_db": -0.11251313459359125,
+     "fall_last_minus_model_db": -0.19676019685071822
+    },
+    "model_signal_only": {
+     "background_per_s": 644.0,
+     "link_seconds": 347,
+     "mean_db": 0.05797951615755603,
+     "sd_db": 0.1946703958466812,
+     "fall_first_minus_model_db": -0.32036068979805066,
+     "fall_last_minus_model_db": -0.32901592938269175
+    }
+   },
+   {
+    "end_seconds": 40,
+    "link_multiple": 3.0,
+    "model_with_its_background_term": {
+     "background_per_s": 723.5,
+     "link_seconds": 354,
+     "mean_db": -0.07119811368215069,
+     "sd_db": 0.3416923006907193,
+     "fall_first_minus_model_db": 0.2704104627301689,
+     "fall_last_minus_model_db": 0.2946154399001628
+    },
+    "model_signal_only": {
+     "background_per_s": 723.5,
+     "link_seconds": 354,
+     "mean_db": 0.017700203672599415,
+     "sd_db": 0.3484618827061567,
+     "fall_first_minus_model_db": 0.037863485160379184,
+     "fall_last_minus_model_db": 0.15991246712749785
+    }
+   },
+   {
+    "end_seconds": 40,
+    "link_multiple": 5.0,
+    "model_with_its_background_term": {
+     "background_per_s": 723.5,
+     "link_seconds": 352,
+     "mean_db": -0.04842909666589284,
+     "sd_db": 0.15472629915083713,
+     "fall_first_minus_model_db": -0.09574475511668368,
+     "fall_last_minus_model_db": -0.16669488308233582
+    },
+    "model_signal_only": {
+     "background_per_s": 723.5,
+     "link_seconds": 352,
+     "mean_db": 0.039640558540951734,
+     "sd_db": 0.18667369106413975,
+     "fall_first_minus_model_db": -0.32395503123296976,
+     "fall_last_minus_model_db": -0.29895061561430936
+    }
+   },
+   {
+    "end_seconds": 40,
+    "link_multiple": 10.0,
+    "model_with_its_background_term": {
+     "background_per_s": 723.5,
+     "link_seconds": 337,
+     "mean_db": -0.05067149509216985,
+     "sd_db": 0.15154136253316816,
+     "fall_first_minus_model_db": -0.016761616354308728,
+     "fall_last_minus_model_db": -0.16669488308233582
+    },
+    "model_signal_only": {
+     "background_per_s": 723.5,
+     "link_seconds": 337,
+     "mean_db": 0.030034804495632006,
+     "sd_db": 0.17963713579817192,
+     "fall_first_minus_model_db": -0.18959266980745326,
+     "fall_last_minus_model_db": -0.29895061561430936
+    }
+   }
+  ]
+ }
+}

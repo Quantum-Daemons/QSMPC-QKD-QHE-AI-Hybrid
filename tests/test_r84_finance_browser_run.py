@@ -1,5 +1,7 @@
 """Round 84: the browser's finance run encrypts and explains the four-column model, and the QCNN
-gets its own columns: since its Round 84 retrain, the same four.
+gets its own columns: since its Round 84 retrain, the same four. Since F7b (Round 86) the encrypted
+steps score an AMLworld transaction, and since Round 86's batch 6 the QCNN reads eight of that same
+transaction's inputs.
 
 WHY THIS EXISTS
 
@@ -40,11 +42,10 @@ import pytest
 REPO = Path(__file__).resolve().parents[1]
 WEB = REPO / "web"
 ESBUILD = WEB / "node_modules" / ".bin" / "esbuild"
-PAYLOAD = WEB / "public" / "data" / "finance" / "paysim_sample.json"
-#: The model's four columns. Written out, not read from the registry, so this module still collects
-#: (and its tests fail one by one) on a tree that predates `registry.PAYSIM_MODEL_FEATURES`;
-#: tests/test_r84_finance_paysim_model.py pins the registry to the same list.
-FOUR = ["amount", "cross_border", "night_tx", "new_payee"]
+#: The finance QCNN's inputs since Round 86's batch 6: eight of AMLworld's 114, chosen on the fit window before any circuit
+#: was trained (references/finance-qcnn-amlworld-preregistration.md).
+EIGHT = ["format_risk", "pair_log_same_direction", "pair_first_contact", "dst_in_uniq_4320", "dst_bank_diversity",
+         "src_out_uniq_60", "src_out_mean_60", "src_out_mean_360"]
 
 HARNESS = r"""
 import { createRequire } from "node:module";
@@ -140,25 +141,26 @@ def run(tmp_path_factory) -> dict:
     return json.loads(proc.stdout.strip().splitlines()[-1])
 
 
-def test_real_input_is_the_square_networks_row_and_the_qcnns_own_four(run) -> None:
+def test_real_input_is_the_square_networks_row_and_the_qcnns_eight_inputs_of_it(run) -> None:
     """Since F7b (Round 86; the owner's choice of 2026-11-25): the transaction is an AMLworld test-window row, scaled and
-    clipped as F7b's square network reads it, and the QCNN, trained on PaySim's four columns, reads a PaySim row of its own
-    drawn by the same number (`bySpace.raw`), which the run says. Until then both were the PaySim row and its surrogate."""
+    clipped as F7b's square network reads it. Since Round 86's batch 6 (the owner's choice of 2026-11-26) the QCNN reads
+    the same transaction, at the eight of its inputs the circuit was trained on, in raw units and in the circuit's order
+    (`bySpace.raw`), which the run says. From F7b until then it read a PaySim row of its own, drawn by the same number."""
     held = json.loads((WEB / "public" / "data" / "finance" / "student_heldout.json").read_text())
     net = json.loads((WEB / "public" / "data" / "finance" / "square_student_weights.json").read_text())
-    d = json.loads(PAYLOAD.read_text())
     w = json.loads((WEB / "public" / "data" / "finance" / "qcnn_weights.json").read_text())
     one = run["realInput"]
-    idx, p_idx = int(0.37 * len(held["samples"])), int(0.37 * len(d["samples"]))
+    idx = int(0.37 * len(held["samples"]))
     assert one["names"] == held["feature_names"] and len(one["values"]) == 114 == net["n_in"]
     raw = held["samples"][idx]
     want = [max(-net["clip"], min(net["clip"], (x - c) / (s or 1))) for x, c, s in zip(raw, net["centre"], net["scale"], strict=True)]
     assert max(abs(a - b) for a, b in zip(one["values"], want, strict=True)) < 1e-12
     assert one["raw"] == raw and one["label"] == held["labels"][idx]
     assert len(one["baseline"]) == 114 and "model" not in one
-    assert one["bySpace"]["raw"] == d["samples_by_space"]["raw"][p_idx]
-    assert len(one["bySpace"]["raw"]) == 4 == w["n_features"] == w["n_qubits"] and w["feature_names"] == FOUR
-    assert "another transaction with another model" in one["qcnnRowNote"]
+    assert w["input_space"] == "raw" and set(one["bySpace"]) == {"raw"}
+    assert one["bySpace"]["raw"] == [raw[held["feature_names"].index(n)] for n in w["feature_names"]]
+    assert len(one["bySpace"]["raw"]) == 8 == w["n_features"] == w["n_qubits"] and w["feature_names"] == EIGHT
+    assert "the same transaction at its eight inputs" in one["qcnnRowNote"]
     assert set(one["definitions"]) == set(held["feature_names"])
 
 
@@ -179,17 +181,18 @@ def test_the_ckks_run_encrypts_and_explains_the_square_network(run) -> None:
     name, _, tail = driver.removeprefix("XAI: top driver = ").partition(" (contribution ")
     assert name in names, driver
     assert tail.endswith(("toward class 1)", "toward class 0)")), driver
-    assert any(m.startswith("rows: the QCNN backend reads PaySim transaction") for _, m in r["logs"])
+    assert any(m.startswith("rows: the QCNN backend reads the same transaction at its eight inputs") for _, m in r["logs"])
     # The federated stage still federates over the bundled PaySim sample.
     fed = r["metrics"]["federated_training"]
     assert fed["federated_accuracy_source"] == "bundled finance_aml sample, 400 rows"
 
 
-def test_the_trained_qcnn_still_runs_on_its_own_four_raw_columns(run) -> None:
-    """Updated in Round 84 (qcnnfin): the artifact the page loads is the four-wire retrain."""
+def test_the_trained_qcnn_runs_on_its_eight_raw_inputs(run) -> None:
+    """Updated in Round 84 (qcnnfin) for the four-wire PaySim retrain, and in Round 86's batch 6 for the AMLworld circuit
+    the page loads since the owner's choice of 2026-11-26: eight wires."""
     pi = run["qcnn"]["metrics"]["private_inference"]
     assert pi["primary_inference_backend"] == "qcnn-trained", pi
-    assert pi["qcnn_qubits"] == 4
+    assert pi["qcnn_qubits"] == 8
     assert run["qcnn"]["primary"]["backend"] == "qcnn-trained"
 
 

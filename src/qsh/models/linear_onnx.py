@@ -21,15 +21,18 @@ OPSET = 17
 
 
 def linear_student_graph(weights: dict):
-    """The ONNX model for a `logistic-linear-multiclass` weights file: standardise, then 8 dot products."""
+    """The ONNX model for a `logistic-linear-multiclass` weights file: standardise, clip if it says so, then C dot products."""
     import onnx
     from onnx import TensorProto, helper, numpy_helper
 
     if weights.get("kind") != "logistic-linear-multiclass":
         raise ValueError(f"not a linear multiclass student: kind {weights.get('kind')!r}")
     steps = weights["input"]["preprocessing"]
-    if steps != ["subtract mean", "divide by scale"]:
-        raise ValueError(f"the graph builds standardisation only, and this file declares {steps}")
+    # Standardisation, and optionally a symmetric clip after it (Round 86, batch 6: the 5G-NIDD federated model's inputs
+    # are clipped to [-20, 20] in training and on the page). A file that declares no clip gets the graph it always had.
+    clip = steps == ["subtract mean", "divide by scale", "clip"]
+    if steps != ["subtract mean", "divide by scale"] and not clip:
+        raise ValueError(f"the graph builds standardisation and an optional clip, and this file declares {steps}")
     W = np.asarray(weights["W"], dtype=np.float32)              # C x F
     b = np.asarray(weights["b"], dtype=np.float32)
     mean = np.asarray(weights["input"]["mean"], dtype=np.float32)
@@ -40,9 +43,16 @@ def linear_student_graph(weights: dict):
     inits = [numpy_helper.from_array(mean, "mean"), numpy_helper.from_array(scale, "scale"),
              numpy_helper.from_array(np.ascontiguousarray(W.T), "W_t"), numpy_helper.from_array(b, "b")]
     nodes = [helper.make_node("Sub", ["input", "mean"], ["centred"]),
-             helper.make_node("Div", ["centred", "scale"], ["z"]),
-             helper.make_node("MatMul", ["z", "W_t"], ["scores"]),
-             helper.make_node("Add", ["scores", "b"], ["logits"])]
+             helper.make_node("Div", ["centred", "scale"], ["z" if not clip else "z_raw"])]
+    if clip:
+        bound = float(weights["input"]["clip"])
+        if not bound > 0:
+            raise ValueError(f"a clip must be a positive bound, not {bound}")
+        inits += [numpy_helper.from_array(np.asarray(-bound, dtype=np.float32), "clip_lo"),
+                  numpy_helper.from_array(np.asarray(bound, dtype=np.float32), "clip_hi")]
+        nodes.append(helper.make_node("Clip", ["z_raw", "clip_lo", "clip_hi"], ["z"]))
+    nodes += [helper.make_node("MatMul", ["z", "W_t"], ["scores"]),
+              helper.make_node("Add", ["scores", "b"], ["logits"])]
     graph = helper.make_graph(
         nodes, str(weights.get("student_key", "linear_student")),
         [helper.make_tensor_value_info("input", TensorProto.FLOAT, ["n", n_features])],

@@ -102,6 +102,10 @@ logs/
 !data/finance/**
 !data/genomics/**
 !data/satellite/**
+# Round 86, batch 6: the lending page's Aave V3 preset comes from raw chain reads (facts, no licence instrument;
+# DATA_LICENSES.md section 2), tracked so CI's preset test and check_lending.mjs read the same file.
+!data/defi/
+!data/defi/**
 # but keep small fixture/sample files explicitly added with `git add -f`
 
 # ============================================================================
@@ -160,9 +164,11 @@ data/genomics/g1k_dosages_full.tsv
 # would silently widen that scope, so it stays local; a tracked artefact for PRS313 would need its own
 # entry in section 4 and a subset matching the justification's shape.
 data/genomics/g1k_dosages_prs313.tsv
-# The active score's 2,504-individual matrix (PGS000072), the same reasoning: the committed artefact is
-# its 97-individual slice, written beside it by scripts/data/fetch_g1k_dosages.py.
+# The 2,504-individual matrices of the retired PGS000072 and of the active PGS000783 (Round 86), the same
+# reasoning: the committed artefact of each is its 97-individual slice, written beside it by
+# scripts/data/fetch_g1k_dosages.py (PGS000072) and scripts/data/derive_g1k_dosages.py (PGS000783).
 data/genomics/g1k_dosages_pgs000072.tsv
+data/genomics/g1k_dosages_pgs000783.tsv
 # pysam caches remote tabix indexes in the CWD, so a dosage fetch leaves ALL.chr*.tbi in the repo root.
 *.vcf.gz.tbi
 

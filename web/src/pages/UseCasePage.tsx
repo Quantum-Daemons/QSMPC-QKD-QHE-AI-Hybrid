@@ -24,9 +24,14 @@ import MurmurDpCard from "../components/MurmurDpCard";
 import SatBoundaryCard from "../components/SatBoundaryCard";
 import SatelliteQcnnCard from "../components/SatelliteQcnnCard";
 import SatVusPrCard from "../components/SatVusPrCard";
+import SatThresholdsCard from "../components/SatThresholdsCard";
+import SatJinanPassCard from "../components/SatJinanPassCard";
+import NiddFederatedCard, { type NiddFederatedLive } from "../components/NiddFederatedCard";
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
 import FinanceAccuracyCost from "../components/FinanceAccuracyCost";
+import GenomicsReferenceCurves from "../components/GenomicsReferenceCurves";
+import FinanceQcnnComparisonCard from "../components/FinanceQcnnComparisonCard";
 import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCard";
 import VerificationsCard from "../components/VerificationsCard";
 import PublishedComparisonCard from "../components/PublishedComparisonCard";
@@ -328,6 +333,17 @@ function UseCaseView({ usecase }: { usecase: string }) {
       ) : hasRun && !lending ? (
         <NoEncryptedComparison />
       ) : null}
+      {/* Telecom's real-data detector (Round 86, batch 6): 5G-NIDD's pre-registered CKKS student on real 5G traffic, a figure
+          of its own beside the QKD student's, which reads synthetic telemetry. */}
+      {artifacts?.encrypted_agreement_plot_nidd ? (
+        <div className="card">
+          <h3 style={{ margin: "0 0 4px" }}>The 5G-NIDD detector&apos;s student under CKKS, real 5G traffic, this run</h3>
+          <EncryptedAgreementChart plot={artifacts.encrypted_agreement_plot_nidd as EncryptedAgreementPlot} />
+        </div>
+      ) : null}
+      {/* The model 5G-NIDD's two base stations federated (Round 86, batch 6; the owner's choice of 2026-11-26): the offline
+          comparison always, this run's replayed aggregation and CKKS figures once the pipeline has run. */}
+      {usecase === "telecom_ids" && <NiddFederatedCard live={(artifacts?.nidd_federated as NiddFederatedLive | undefined) ?? null} />}
 
       {artifacts?.verification?.plot ? (
         <div className="card">
@@ -432,6 +448,9 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && <PcgFlCard />}
       {usecase === "medical_fl" && <MurmurDpCard />}
       {usecase === "satellite_comms" && <SatVusPrCard />}
+      {usecase === "satellite_comms" && <SatThresholdsCard />}
+      {/* Jinan-1's measured pass against the downlink model (Round 86, batch 6): a post-hoc comparison, and it says so. */}
+      {usecase === "satellite_comms" && <SatJinanPassCard />}
       {usecase === "satellite_comms" && <SatBoundaryCard />}
       {usecase === "satellite_comms" && <SatelliteQcnnCard />}
       {usecase === "satellite_comms" && artifacts?.forecast_residual ? <SatForecastResidual report={artifacts.forecast_residual as ForecastResidualReport} /> : null}
@@ -440,7 +459,9 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "finance_aml" && artifacts?.mpc_mlp ? <MpcMlpPanel report={artifacts.mpc_mlp as MpcMlpReport} /> : null}
       {usecase === "finance_aml" && artifacts?.mpc_gnn ? <MpcGnnPanel report={artifacts.mpc_gnn as MpcGnnReport} /> : null}
       {usecase === "finance_aml" && state === "done" ? <FinanceAccuracyCost metrics={metrics} /> : null}
+      {usecase === "genomics" && state === "done" ? <GenomicsReferenceCurves metrics={metrics} /> : null}
       {usecase === "finance_aml" && <TransactionGraphCard scoredRow={artifacts?.mpc_mlp ? (artifacts.mpc_mlp as MpcMlpReport).rowIndex : null} />}
+      {usecase === "finance_aml" && <FinanceQcnnComparisonCard />}
       {usecase === "finance_aml" && artifacts?.financeDp ? <FinanceDpCard dp={artifacts.financeDp as FinanceDpArtifact} /> : null}
       {usecase === "finance_aml" && artifacts?.multi_party_psi ? <MultiPsiPanel report={artifacts.multi_party_psi as MultiPsiReport} /> : null}
 

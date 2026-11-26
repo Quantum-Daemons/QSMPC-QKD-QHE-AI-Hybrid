@@ -35,7 +35,7 @@ and is not new, the positioning (quantum-safe, not quantum-advantage) and the fo
 | Private inference | CKKS linear layers (node-seal) and a garbled-circuit 2PC for the argmax (Polytune); on the medical CNN's layer-by-layer path ReLU and pooling run in plaintext between its encrypted layers, and a separate run puts one held-out image through the same CNN with its ReLUs and argmax in garbled circuits; the published chest X-ray model runs split, its network up to the 512 pooled features in the clear and its own last layer under CKKS; and a square-activation student runs end to end under CKKS with no layer decrypted, in its own context ($`N = 8{,}192`$ or $`16{,}384`$) | real protocols, notional parties | plaintext against CKKS on the same inputs |
 | QSMPC | a semi-honest set intersection on RFC 9497's OPRF over ristretto255 (not post-quantum) and secure summation; quantum forms in the full deployment | computed in the browser with both parties in one tab (notional parties), simulated quantum forms | the plaintext result; the RFC 9496 and RFC 9497 test vectors, in Python and in the browser |
 | QHE and QML | quantum one-time pad, an untrained Clifford+T comparison circuit, trained QCNNs (run in the clear, or with their input under CKKS as a linear form), a QML intrusion detector | simulated circuits | the QCNNs against a logistic-regression baseline on the same split |
-| Models | nineteen published models: sixteen run with ONNX Runtime in the browser, three from their weights files (the satellite student under CKKS, the compact GNN under CKKS and garbled circuits, the 3D nodule student under CKKS from the site's copy), and the finance MLP under CKKS and garbled circuits as well | real inference | per-model metrics and model cards |
+| Models | twenty published models: seventeen run with ONNX Runtime in the browser, three from their weights files (the satellite student under CKKS, the compact GNN under CKKS and garbled circuits, the 3D nodule student under CKKS from the site's copy), and the finance MLP under CKKS and garbled circuits as well | real inference | per-model metrics and model cards |
 | Agentic AI | a small language model in the browser over a quantum-safe MCP channel | real | a signed, sealed `tools/call` request in the browser (no tool runs); signed tool results in the full deployment |
 
 What each step hides, in the browser and in the full deployment:
@@ -118,7 +118,7 @@ deployment differs. Open a section to see its flowchart.
 <!-- figure: uc-finance_aml -->
 ```mermaid
 flowchart TB
-  D["Data: AMLworld HI-Small test-window transactions, synthetic; a PaySim row for the QCNN"]
+  D["Data: AMLworld HI-Small test-window transactions, synthetic; PaySim rows for the federated step"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
   Q{"Key possible? BB84 and E91: secure key bits above 0"}
@@ -192,14 +192,14 @@ flowchart TB
 <!-- figure: uc-genomics -->
 ```mermaid
 flowchart TB
-  D["Data: 30 real 1000 Genomes individuals, PGS000072 weights over 183 of its 187 variants"]
+  D["Data: 30 real 1000 Genomes individuals, PGS000783 weights over 158 of its 162 variants"]
   H["PQC handshake: ML-KEM-768 + X25519, HKDF-SHA256"]
   K["QKD: simulated BB84 decoy-state, or E91, over fibre"]
   Q{"Key possible? BB84 and E91: secure key bits above 0"}
   N["No QKD key: the session rests on PQC"]
   L["Key length: BB84 finite key of a 1e7-bit block, E91 asymptotic; the full deployment mixes 256 bits or more into the session key"]
   P["Secure sum of 4 cohorts' allele counts at one variant, in a field above any total they can reach: additive shares mod p in the browser, QSMS with analytically sampled outcomes in the full deployment"]
-  I["Private inference: the full 183-variant score under CKKS (node-seal), then the 90th-percentile cut by a garbled-circuit argmax"]
+  I["Private inference: the full 158-variant score under CKKS (node-seal), then the 90th-percentile cut by a garbled-circuit argmax"]
   X["Explainability: exact linear SHAP, signed"]
   M["Published model: none registered for genomics"]
   C["QSMPC-FHE comparison: untrained QOTP and Clifford+T circuit, T-gates counted"]

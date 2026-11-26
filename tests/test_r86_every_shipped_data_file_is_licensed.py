@@ -52,6 +52,14 @@ AGGREGATES = {
     "medical/fedheart_dp_sweep.json": "UCI Heart Disease",
     "medical/square_student_sets.json": "MedMNIST v2 BreastMNIST",
     "satellite/vus_pr.json": "ESA-ADB",
+    # The pre-registered threshold comparison (Round 86, batch 6), shown on the page on the owner's choice of 2026-11-26.
+    "satellite/thresholds.json": "ESA-ADB",
+    # The federation of 5G-NIDD's two base stations (Round 86, batch 6; the owner's choice of 2026-11-26): figures computed
+    # from 5G-NIDD beside the fitted numbers, and each shipped held-out flow's station.
+    "telecom_nidd/federated.json": "5G-NIDD",
+    # The QCNNs' tensor-network checks (Round 86, batch 6; the owner's choice of 2026-11-26): figures computed from the
+    # medical, telecom and satellite QCNNs' corpora, one credit each, from the registry's dataset records.
+    "qcnn_tn_checks.json": "WDBC, the synthetic QKD-attack rows, OPS-SAT-AD and ESA-ADB",
 }
 #: Fitted numbers.
 WEIGHTS = {
@@ -59,6 +67,8 @@ WEIGHTS = {
     "telecom/qcnn_weights_q7.json", "telecom/student_weights.json", "satellite/student_weights.json",
     # F7b's square network (Round 86), the finance page's fully encrypted model since 2026-11-25.
     "finance/square_student_weights.json",
+    # The 5G-NIDD detector's pre-registered CKKS student (Round 86, batch 6); its rows' credit is in student_heldout.json.
+    "telecom_nidd/student_weights.json",
 }
 
 

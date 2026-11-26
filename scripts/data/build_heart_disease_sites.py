@@ -112,12 +112,12 @@ def build() -> dict:
     return {
         "corpus": "UCI Heart Disease: four hospitals, as FLamby's Fed-Heart-Disease prepares them",
         "provenance": ("The processed Cleveland, Hungarian, Switzerland and VA Long Beach files of the UCI Heart Disease "
-                       "dataset (Janosi, Steinbrunn, Pfisterer and Detrano, 1988), each checked against the MD5 "
+                       "dataset (Janosi, Steinbrunn, Pfisterer and Detrano, 1989), each checked against the MD5 "
                        "FLamby's download script checks, prepared as FLamby's Fed-Heart-Disease prepares them "
                        "(du Terrail et al., NeurIPS 2022 Datasets and Benchmarks). Each centre is one real hospital."),
         "licence": "CC-BY-4.0",
         "licence_url": "https://creativecommons.org/licenses/by/4.0/",
-        "attribution": ("Janosi, A., Steinbrunn, W., Pfisterer, M. and Detrano, R. (1988). Heart Disease. UCI Machine "
+        "attribution": ("Janosi, A., Steinbrunn, W., Pfisterer, M. and Detrano, R. (1989). Heart Disease. UCI Machine "
                         "Learning Repository. https://doi.org/10.24432/C52P4X"),
         "modifications": ("Columns slope, ca and thal dropped and rows with a missing value removed; chest-pain type "
                           "and resting ECG dummy-coded with the first level dropped; the diagnosis binarised (0 against "

@@ -58,8 +58,8 @@ SHIPPED = sorted(glob.glob(str(REPO / "models" / "*" / "eval_sample.json"))) + [
     str(PUBLIC / rel) for rel in (
         "medical/breast_cancer_sample.json", "medical/real_2d.json", "satellite/real_2d.json",
         "satellite/opssat_segments.json", "finance/real_2d.json", "finance/student_heldout.json",
-        "finance/paysim_sample.json", "genomics/real_2d.json", "genomics/pgs000072_breast_cancer.json",
-        "telecom/real_2d.json", "telecom/student_heldout.json", "telecom_nidd/real_2d.json", "finance/transaction_graphs.json", "finance/degree-f1.json", "genomics/pgs000072_loci.json",
+        "finance/paysim_sample.json", "genomics/real_2d.json", "genomics/pgs000783_breast_cancer.json",
+        "telecom/real_2d.json", "telecom/student_heldout.json", "telecom_nidd/real_2d.json", "finance/transaction_graphs.json", "finance/degree-f1.json", "genomics/pgs000783_loci.json",
         "medical/cxr_head.json")] + [
     str(REPO / "walkthroughs" / "public" / "nidd_copies_excerpt.json")] + [
     # A weights file holds fitted numbers, which raise no such question, unless it also holds the rows they are checked on. Those are data like any other (Round 86).
@@ -123,8 +123,9 @@ def test_the_paysim_tsv_and_the_qcnn_weights_carry_link_and_credit() -> None:
     assert LINKS["CC-BY-SA-4.0"] in text and "Lopez-Rojas" in text and "Changes:" in text
     for f, link, credit in (("models/qcnn_medical/weights.json", LINKS["CC-BY-4.0"], "doi:10.24432/C5DW2B"),
                             ("web/public/data/medical/qcnn_weights.json", LINKS["CC-BY-4.0"], "doi:10.24432/C5DW2B"),
-                            ("models/qcnn_finance/weights.json", LINKS["CC-BY-SA-4.0"], "Lopez-Rojas"),
-                            ("web/public/data/finance/qcnn_weights.json", LINKS["CC-BY-SA-4.0"], "Lopez-Rojas")):
+                            # Since Round 86's batch 6 the finance QCNN is the AMLworld circuit (CDLA-Sharing-1.0, Results).
+                            ("models/qcnn_finance/weights.json", LINKS["CDLA-Sharing-1.0"], "Altman"),
+                            ("web/public/data/finance/qcnn_weights.json", LINKS["CDLA-Sharing-1.0"], "Altman")):
         prov = json.loads((REPO / f).read_text())["provenance"]
         assert link in prov and credit in prov, f
 

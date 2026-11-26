@@ -5,6 +5,7 @@ import { gateCounts, layoutBlocks, layoutGates, type PlacedBlock, type RecordedQ
 import { loadQcnnWeights, rescoreTrainedQcnn } from "../lib/clientCompute";
 import type { QcnnRescore } from "../lib/qcnnRescore";
 import { QOTP_COMPARISON_ROUNDS, type QcnnWeights } from "../lib/quantumSim";
+import QcnnTnCheck, { tnKeyFor } from "./QcnnTnCheck";
 
 const WIRE = 30, LEFT = 96, TOP = 22;
 let COL = 44;
@@ -155,10 +156,12 @@ export default function QcnnCircuitCard({ usecase, qubits, hasComparison }: { us
           <h3 style={{ marginTop: 12 }}>One U block, gate by gate</h3>
           <GateDiagram r={recorded} />
           {w.circuit?.simulability && <p>{w.circuit.simulability}.</p>}
+          {tnKeyFor(usecase, w.n_qubits) && <QcnnTnCheck artifactKey={tnKeyFor(usecase, w.n_qubits)!} />}
           <h3 style={{ marginTop: 12 }}>Its held-out figure, re-scored here</h3>
           <p>
-            The weights file records the circuit&apos;s figure on the trainer&apos;s test split. This runs the circuit above, in this tab, over the {w.n_test ?? "held-out"} rows of that split and
-            computes the same metric.{" "}
+            The weights file records the circuit&apos;s figure on the trainer&apos;s test split{w.n_test ? `, ${w.n_test.toLocaleString("en-US")} rows` : ""}. This runs
+            the circuit above, in this tab, over the held-out rows the page ships, the whole split or, where it is too large to ship, a
+            sample of it with its own recorded figure, and computes the same metric.{" "}
             <button className="btn ghost" type="button" disabled={rescore === "running"} onClick={() => runRescore(w)}>
               {rescore === "running" ? "Re-scoring..." : "Re-score on the held-out rows"}
             </button>
@@ -168,7 +171,9 @@ export default function QcnnCircuitCard({ usecase, qubits, hasComparison }: { us
             : <p id="qcnn-rescore-result">
                 {rescore.label} <b>{rescore.headline.toFixed(4)}</b> over {rescore.rows} rows in {rescore.ms.toFixed(0)} ms{rescore.label === "accuracy" ? "" : ` (accuracy ${rescore.accuracy.toFixed(4)})`}:{" "}
                 <span className={`badge-state ${rescore.matchesRecord ? "done" : "error"}`} style={{ display: "inline-block" }}>
-                  {rescore.matchesRecord ? "the value the weights file records" : `DIFFERS from the recorded ${rescore.recorded ?? "n/a"}`}
+                  {rescore.matchesRecord
+                    ? (rescore.recordedBy === "heldout" ? "the value recorded for these rows" : "the value the weights file records")
+                    : `DIFFERS from the recorded ${rescore.recorded ?? "n/a"}`}
                 </span>
               </p>)}
         </>)}

@@ -36,7 +36,9 @@ export { recordQcnn, gateCounts } from ${JSON.stringify(join(WEB, "src/lib/circu
   const m = await import(pathToFileURL(join(tmp, "b.mjs")).href);
   const pub = (p) => JSON.parse(readFileSync(join(WEB, "public/data", p), "utf8"));
   const cases = [
-    ["finance", "models/qcnn_finance/weights.json", pub("finance/paysim_sample.json").samples_by_space.raw ?? pub("finance/paysim_sample.json").samples],
+    // Since Round 86's batch 6 the finance circuit reads eight of AMLworld's inputs: its rows are the page's held-out sample of them. The
+    // PaySim rows this read until then carry four columns, so the 8-wire circuit saw half its inputs and the replay below disagreed.
+    ["finance", "models/qcnn_finance/weights.json", pub("finance/qcnn_heldout.json").rows],
     ["medical", "models/qcnn_medical/weights.json", pub("medical/breast_cancer_sample.json").samples_by_space.raw ?? pub("medical/breast_cancer_sample.json").samples],
     ["telecom 7 wires", "models/qcnn_telecom_q7/weights.json", pub("telecom/student_heldout.json").samples],
     ["telecom 8 wires", "models/qcnn_telecom/weights.json", pub("telecom/student_heldout.json").samples],
@@ -44,6 +46,8 @@ export { recordQcnn, gateCounts } from ${JSON.stringify(join(WEB, "src/lib/circu
   for (const [name, rel, samples] of cases) {
     const w = JSON.parse(readFileSync(join(REPO, rel), "utf8"));
     const nf = w.n_features ?? w.n_qubits, nTerms = 3 ** nf, outputs = w.readout?.readout_qubits ? 1 << w.readout.readout_qubits : 1;
+    // Rows narrower than the circuit's inputs pass the identity below on both sides alike and mean nothing; refuse them first.
+    check(samples.length > 0 && samples.every((r) => r.length >= nf), `${name}: every row carries the circuit's ${nf} inputs`);
     // Every row through the form, in the clear: the identity holds for every input, not only the ones CKKS happens to be run on.
     const form = m.pauliForm(w);
     let idMax = 0;

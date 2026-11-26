@@ -22,10 +22,11 @@ Every use case has up to three model tiers, and the *relationship between them* 
                    AND IT DOES NOT HOLD FOR EVERY USE CASE. Round 32 found the citation that falsifies
                    it for genomics specifically: Knight et al., Cell Reports Methods 6(1):101271
                    (2026-01-26), run polygenic risk scoring under HE over **110,000 SNPs** and describe
-                   it as "practical to use on a single CPU" - roughly 600x the 183 variants this
+                   it as "practical to use on a single CPU" - roughly 700x the 158 variants this
                    project scores. So `genomics.prs` is not small because homomorphic evaluation is
-                   expensive. It is small because PGS000072 HAS 187 variants, which is a property of
-                   Graff et al. 2021 and not of CKKS.
+                   expensive. It is small because PGS000783 HAS 162 variants, which is a property of
+                   Kachuri et al. 2020 (and of Graff et al. 2021, whose variants it re-weights) and not
+                   of CKKS.
 
                    The cost argument survives where the model is not a bare dot product - finance,
                    medical and satellite all evaluate something with depth. Applying it to a linear
@@ -282,7 +283,8 @@ DS_PAYSIM = DatasetSpec(
 
 #: The eight columns of the bundled PaySim sample, `data/finance/paysim_sample.tsv`, in file order.
 #: Since Round 84 no shipped model reads all eight; the finance QCNN artifact (`models/qcnn_finance`)
-#: was the last, until its retrain on PAYSIM_MODEL_FEATURES. The names are this project's AML-style
+#: was the last, until its retrain on PAYSIM_MODEL_FEATURES, and since Round 86's batch 6 it reads no PaySim
+#: column at all (the AMLworld circuit; see PAYSIM_MODEL_FEATURES below). The names are this project's AML-style
 #: labels for quantities computed from PaySim fields by `scripts/prep_real_kaggle_data.py`
 #: (`_paysim_features`); PaySim records no geography and no device.
 PAYSIM_SAMPLE_COLUMNS: tuple[str, ...] = (
@@ -293,8 +295,8 @@ PAYSIM_SAMPLE_COLUMNS: tuple[str, ...] = (
 #: The four columns the demo's linear model reads (the bundled PaySim surrogate that the finance page
 #: encrypts for its one-row step and explains with exact linear SHAP, and the full deployment's
 #: `usecases/finance_aml` model), each with what it is in PaySim's terms. The finance QCNN artifact
-#: (`models/qcnn_finance`) reads the same four since Round 84, one per wire in this order (its
-#: `feature_names`).
+#: (`models/qcnn_finance`) read the same four, one per wire, from Round 84 until Round 86's batch 6, when it became
+#: the AMLworld circuit of the pre-registered comparison, which reads eight of AMLworld's inputs (its `feature_names`).
 PAYSIM_MODEL_FEATURES: dict[str, str] = {
     "amount": "log(1 + amount), the transaction amount in local currency",
     "cross_border": ("1 if the PaySim transaction type is TRANSFER or CASH_OUT, else 0; PaySim records "
@@ -435,7 +437,67 @@ DS_NIH_CXR14 = DatasetSpec(
         "Classification and Localization of Common Thorax Diseases. CVPR 2017. The data is provided by the NIH Clinical "
         "Center."),
 )
+#: The genomics score since Round 86's batch 6 (the owner's choice of 2026-11-26): PGS000783, PGS000072's
+#: variants with the inverse-variance weights of Kachuri et al. 2020. The record keeps its old name because every
+#: reader of it means "the score the page scores".
 DS_PGS_CATALOG = DatasetSpec(
+    name="PGS Catalog score PGS000783",
+    licence=("CC-BY-3.0-IGO (the score's source publication, Kachuri et al. 2020); the PGS Catalog record adds "
+             "the EMBL-EBI Terms of Use"),
+    url="https://www.pgscatalog.org/score/PGS000783/",
+    licence_checked="2026-11-26",
+    # Cleared for publication with credit: CC BY 3.0 IGO on the article page, read 2026-11-26 (Crossref's
+    # metadata records CC BY 4.0, which the article page does not). `genomics.prs` has no Hub repo; the weights
+    # ship with the page.
+    publishable=True,
+    notes=(
+        "The score's licence is its publication's: PGS000783 (CC_Breast_IV) is a breast-cancer score of Kachuri "
+        "et al., Nat Commun 11:6084 (2020), whose article page states CC BY 3.0 IGO (read 2026-11-26; Crossref's "
+        "metadata records CC BY 4.0, which the article page does not). The Catalog's method is '162 variants from "
+        "Graff et al (PGS000072) with inverse variant weights': the 162 of PGS000072's 187 variants that reached "
+        "P < 5e-8 in the BCAC meta-analysis (Michailidou et al., Nature 551:92-94, 2017; GWAS Catalog GCST004988), "
+        "each weighted by beta/SE, its log odds ratio there over that estimate's standard error, as the article's "
+        "PRS_IV. The weights are numbers the article publishes in its Supplementary Data 1, and the authors "
+        "deposited the score in the Catalog; BCAC's term not to repost its summary results to a third-party "
+        "website binds those who download them from BCAC, which this project did not (BCAC's summary-results "
+        "page, read 2026-11-26; this project's reading, not legal advice). The PGS Catalog REST "
+        "record (read 2026-11-26) asks users to cite the score and observe 'any licensing restrictions set by the "
+        "authors', with the EMBL-EBI Terms of Use for the rest. The scoring file carries no '#license' line; its "
+        "'#citation' line names the Nat Commun article. The bundled file's first line, written by this project, "
+        "records all of this; `scripts/train/genomics_prs.py` re-reads it at run time (`audit_licence()`). "
+        "The article licenses its content 'as long as you give appropriate credit to the World Health Organization' "
+        "(two authors are at IARC, WHO's cancer agency), so every credit for the score names WHO; the same "
+        "paragraph reserves any other use of WHO's name or logo to a separate written licence, so nothing else here "
+        "uses either and no credit implies WHO's endorsement (read 2026-11-26; until then this record said nothing "
+        "here used an intergovernmental organisation's name, and the credit left WHO out). PGS000072 (CC BY 4.0), which the page scored from Round 84, is retired and kept; "
+        "PGS000004 (PRS313) is not used: its weights appear only in the supplementary data of an article licensed "
+        "CC BY-NC-ND 4.0, and none of them is in the repository."
+    ),
+    # CC BY 3.0 IGO s.4(b): the author, the title, the URI and, for an adaptation, a credit for the use. The
+    # Catalog's own citation is the one `/rest/info` names; IGSR asks for the 1000 Genomes consortium paper; BCAC
+    # is credited for the meta-analysis the weights come from.
+    attribution=(
+        "Score: Kachuri L, Graff RE, Smith-Byrne K, Meyers TJ, Rashkin SR, Ziv E, Witte JS, Johansson M, "
+        "'Pan-cancer analysis demonstrates that integrating polygenic risk scores with modifiable risk factors "
+        "improves risk prediction', Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4, (c) 2020 The "
+        "Author(s), CC BY 3.0 IGO (https://creativecommons.org/licenses/by/3.0/igo/), with credit to the World Health "
+        "Organization as that licence's terms on the article ask, which implies no endorsement by it; its weights as the PGS Catalog distributes them "
+        "(PGS000783), from the Breast Cancer Association Consortium (BCAC) meta-analysis of Michailidou K et al., "
+        "'Association analysis identifies 65 new breast cancer risk loci', Nature 551:92-94 (2017), "
+        "doi:10.1038/nature24284. PGS Catalog: Lambert, Wingfield et al., 'Enhancing the Polygenic Score Catalog "
+        "with tools for score calculation and ancestry normalization', Nat Genet 56:1989-1994 (2024), "
+        "doi:10.1038/s41588-024-01937-x. Genotypes: The 1000 Genomes Project Consortium, 'A global reference for "
+        "human genetic variation', Nature 526:68-74 (2015), doi:10.1038/nature15393. Changes: 158 of the 162 "
+        "variants are scored, with their weights unchanged; the 4 that Ensembl's 1000 Genomes phase 3 records do "
+        "not resolve are left out (DATA_LICENSES.md section 4)."
+    ),
+)
+#: PGS000072, the genomics score from Round 84 to Round 86's batch 6, RETIRED on the owner's choice of 2026-11-26
+#: for PGS000783 (`DS_PGS_CATALOG`, above). Kept, with its scoring file, its dosage slice (the source of PGS000783's)
+#: and its browser payload, moved out of `web/public/` to `data/genomics/pgs000072_prs_retired.json` so the page no
+#: longer serves it, so its licence record stays checked and dated while its files are in the tree; referenced by no
+#: ModelSpec.
+DS_PGS000072 = DatasetSpec(
     name="PGS Catalog score PGS000072",
     licence=("CC-BY-4.0 (the score's source publication, Graff et al. 2021); the PGS Catalog record "
              "adds the EMBL-EBI Terms of Use"),
@@ -490,8 +552,8 @@ DS_1000G = DatasetSpec(
         "data vary'; no licence instrument attaches to the genotypes, which the participants consented "
         "to release openly. Per-sample genotypes ARE redistributed, as effect-allele dosages at the "
         "score's variants, read through the Ensembl REST API's genotype endpoint: the browser payload "
-        "serves 30 of the 2,504 individuals, and three more tracked files hold slices for CI and the "
-        "retired score; DATA_LICENSES.md section 4 lists each file and its genotype-cell count. The "
+        "serves 30 of the 2,504 individuals, and five more tracked files hold slices for CI and the "
+        "retired scores; DATA_LICENSES.md section 4 lists each file and its genotype-cell count. The "
         "2,504-individual matrices stay local and are not committed."
     ),
     attribution=(
@@ -735,8 +797,8 @@ BUNDLED_DEMO_SAMPLES: dict[str, tuple[str, DatasetSpec]] = {
     "genomics": (
         "real 1000 Genomes phase-3 genotypes (no licence instrument: open-consent data, per IGSR's "
         "disclaimer; The 1000 Genomes Project Consortium, Nature 526:68-74, 2015) + the published "
-        "PGS000072 effect weights (PGS Catalog; Graff et al., Nat Commun 12:970, 2021, CC BY 4.0). 183 "
-        "of its 187 variants are scored: the 4 that Ensembl's 1000 Genomes records do not resolve are "
+        "PGS000783 effect weights (PGS Catalog; Kachuri et al., Nat Commun 11:6084, 2020, CC BY 3.0 IGO). "
+        "158 of its 162 variants are scored: the 4 that Ensembl's 1000 Genomes records do not resolve are "
         "left out, not filled in. 30 of 2,504 individuals ship in the browser payload - DATA_LICENSES "
         "section 4 justifies a slice of that size, not the full matrix.",
         DS_PGS_CATALOG,
@@ -760,7 +822,7 @@ BUNDLED_DEMO_SAMPLES: dict[str, tuple[str, DatasetSpec]] = {
 DEMO_SAMPLE_FILES: dict[str, str] = {
     "finance_aml": "web/public/data/finance/paysim_sample.json",
     "medical_fl": "web/public/data/medical/breast_cancer_sample.json",
-    "genomics": "web/public/data/genomics/pgs000072_breast_cancer.json",
+    "genomics": "web/public/data/genomics/pgs000783_breast_cancer.json",
     "satellite_comms": "web/public/data/satellite/opssat_segments.json",
 }
 
@@ -884,33 +946,30 @@ M_CXR_EFFUSION = MetricSpec(
 M_PRS = MetricSpec(
     name="auroc_eur",
     display="AUROC (European ancestry)",
-    baseline=0.637,
-    # Read at the PGS Catalog REST API on 2026-10-31 (/rest/performance/search?pgs_id=PGS000072: three
-    # records; Catalog release 2026-10-23).
+    baseline=0.626,
+    # Read at the PGS Catalog REST API on 2026-11-26 (/rest/performance/search?pgs_id=PGS000783: two records).
+    # Until Round 86's batch 6 this was PGS000072's PPM002038, 0.637, a record evaluated on 162 of that score's 187
+    # variants, PGS000783's variants.
     baseline_source=(
-        "A citation and not a target: PGS Catalog PPM002038 gives PGS000072 an AUROC of 0.637 for a model "
-        "fitted WITH COVARIATES, on a cohort that used only 162 of the score's 187 SNPs. "
-        "The record (no confidence interval recorded) is incident "
-        "breast cancer in n=216,273 European-ancestry women in UK Biobank - 4,760 cases and 211,513 "
-        "controls - from Kachuri et al., Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. "
-        "Three reasons, all from the record itself: the model is fitted WITH "
-        "COVARIATES (age at assessment, family history of breast cancer, genotyping array, PCs 1-15, "
-        "parity, age at menarche, body mass index, menopausal status, hormone replacement therapy, oral "
-        "contraceptive use, alcohol intake, and body mass index by menopausal status), which a bare "
-        "weighted dot product does not have; it used 'only 162 of the original 187 SNPs'; and it is an "
-        "AUC at 5 years. It is the only AUROC among the score's three Catalog performance records; the "
-        "other two report an odds ratio per standard deviation of 1.26 (95% CI 1.24-1.28; PPM000192, "
-        "GERA and UK Biobank, n=237,549, Graff et al. 2021) and a hazard ratio of 1.26 (1.20-1.32; "
-        "PPM017165, post-menopausal breast cancer, UK Biobank, n=1,990; Byrne et al., Int J Epidemiol "
-        "52:817-826, 2023)."
+        "A citation and not a target: PGS Catalog PPM002070 gives PGS000783 an AUROC of 0.626 for a model fitted "
+        "WITH COVARIATES, the fewer of its two records' sets: age, genotyping array and PCs 1-15. The record (no "
+        "confidence interval recorded; C-index 0.62, SE 0.005) is incident breast cancer in n=216,273 "
+        "European-ancestry women in UK Biobank - 4,760 cases and 211,513 controls - from Kachuri et al., Nat "
+        "Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. Two reasons, both from the record itself: the "
+        "model is fitted WITH COVARIATES, which a bare weighted dot product does not have, and it is an AUC at 5 "
+        "years. The score's other record, PPM002054, adds family history of breast cancer, parity, age at "
+        "menarche, body mass index, menopausal status, hormone replacement therapy, oral contraceptive use, "
+        "alcohol intake and body mass index by menopausal status, and reports an AUROC of 0.637 and a hazard "
+        "ratio of 1.52 (95% CI 1.47-1.56) on the same cohort. PGS000072's record PPM002038, from the same article "
+        "and cohort, carries the same two figures for 'only 162 of the original 187 SNPs', the variants of "
+        "PGS000783; the records do not say whether they are one evaluation filed twice."
     ),
     ceiling=0.637,
     ceiling_source=(
-        "The highest AUROC among PGS000072's own three Catalog performance records, and the only one: "
-        "PPM002038, 0.637, with the covariates the baseline source lists (read 2026-10-31). All three "
-        "are in European-ancestry samples, so the Catalog holds no figure for this "
-        "score in any other ancestry: the ancestry gap this page shows is measured from genotypes, not "
-        "read from a published AUROC."
+        "The higher AUROC of PGS000783's two Catalog performance records: PPM002054, 0.637, with the risk-factor "
+        "covariates the baseline source lists (read 2026-11-26). Both are in European-ancestry women in UK "
+        "Biobank, so the Catalog holds no figure for this score in any other ancestry: the ancestry gap this page "
+        "shows is measured from genotypes, not read from a published AUROC."
     ),
     companion="",
     # Any germline-SNP PRS claiming much above ~0.70 discrimination is measuring something else.
@@ -1062,6 +1121,21 @@ M_NIDD = MetricSpec(
         "anchor and not a target that has been beaten or missed."
     ),
     companion="aggregate_accuracy",
+)
+
+#: The 5G-NIDD federation's metric (Round 86, batch 6). Its comparison is this project's own pre-registered one, not a
+#: published figure, so `baseline` is None as for M_NIDD and the numbers are in `baseline_source`.
+M_NIDD_FED = MetricSpec(
+    name="flamby_macro_f1",
+    display="macro F1 across 9 network-attack classes, the mean of the two base stations' test flows (FLamby's metric)",
+    baseline=None,
+    baseline_source=(
+        "No published figure on this split: no peer-reviewed federation of 5G-NIDD by base station was found "
+        "(2026-11-26). The comparison is the pre-registered one in references/telecom-nidd-federated-preregistration.md, "
+        "on the same rows and by the same metric: station 1's own model 0.985, pooling every flow in one place (the "
+        "page's CKKS student) 0.974, station 2's own model 0.959 (docs/measurements/telecom-nidd-federated-2026-11-26.json)."),
+    companion="pooled_flamby_macro_f1",
+    companion_note="the same procedure on every flow in one place, the page's CKKS student, scored by the same metric",
 )
 
 
@@ -1511,24 +1585,28 @@ _SPECS: tuple[ModelSpec, ...] = (
         tier="t2_industry",
         key="genomics.prs",
         label="Polygenic risk score (published effect weights)",
-        # PGS000072's development method per the PGS Catalog REST record (method_name and
-        # method_params), read 2026-10-31.
-        architecture=("per-variant effect-weight vector over 183 of PGS000072's 187 variants "
-                      "(genome-wide significant variants: P < 5e-8, MAF > 1%, LD-thinned at r2 > 0.3; "
-                      "weights are log odds ratios)"),
+        # PGS000783's development method per the PGS Catalog REST record (method_name, read 2026-11-26) and the
+        # score's article; PGS000072's variants were chosen at P < 5e-8, MAF > 1% and r2 > 0.3 (its record, read
+        # 2026-10-31).
+        architecture=("per-variant effect-weight vector over 158 of PGS000783's 162 variants (PGS000072's "
+                      "variants that reached P < 5e-8 in the BCAC meta-analysis; weights are inverse-variance, "
+                      "beta/SE)"),
         params=None,
         dataset=DS_PGS_CATALOG,
         metric=M_PRS,
         artifacts=(ArtifactSpec("weights.json", "json", "none", "both"),),
-        hf_repo=None,          # no Hub repo: the weights are PGS000072's published ones, served with the page
+        hf_repo=None,          # no Hub repo: the weights are PGS000783's published ones, served with the page
         runs_encrypted=True,   # a dot product: the rare case that is both clinical standard and FHE-native
         notes=(
             "WHAT RUNS UNDER CKKS: the full score, in both tiers. One person's effect-allele dosages "
             "at every variant are encrypted together in one CKKS ciphertext; the effect weights stay "
             "in plaintext and are applied by one multiply-plain; rotate-and-add sums the products "
             "into one slot, and the decrypted score is compared with a cut, the 90th percentile of "
-            "the plaintext score over the bundled panel (the browser's 30 individuals, or the "
-            "individuals the Python loader reads), by linear interpolation between order statistics. "
+            "the plaintext score within the person's own 1000 Genomes super-population (since Round 86's "
+            "batch 6: in the browser from statistics over all 2,504 individuals, which the payload carries "
+            "as aggregates; in Python over the individuals of that super-population the loader reads), by "
+            "linear interpolation between order statistics; the pooled cut over every super-population is "
+            "reported beside it, not used, because pgsc_calc asks for ancestry-normalised outputs. "
             "A demo cut, not a clinical threshold. Both tiers also score every panel individual "
             "encrypted and report the largest score deviation and how often the high-risk flag "
             "agrees with the plaintext one. "
@@ -1537,11 +1615,14 @@ _SPECS: tuple[ModelSpec, ...] = (
             "ancestry, and what is measured here is a distribution shift, NOT an AUROC drop: 1000 "
             "Genomes is a reference panel carrying no breast-cancer case/control status, so no AUROC is "
             "computable from it and genomics_prs.py records auroc=null rather than inventing one. "
-            "PGS000072 is the breast-cancer score of Graff et al. (Nat Commun 12:970, 2021; CC BY 4.0): "
-            "187 genome-wide significant variants weighted by their log odds ratios. 183 of them have "
-            "a 1000 Genomes phase 3 genotype for every one of the 2,504 individuals and are scored; the "
-            "other 4 are left out, never filled in, and the dosage files and the payload name each with "
-            "its reason. The finding is the by_super_population.*.frac_above_global_cut rows listed "
+            "PGS000783 is a breast-cancer score of Kachuri et al. (Nat Commun 11:6084, 2020; CC BY 3.0 IGO): "
+            "the 162 of PGS000072's genome-wide significant variants that reached P < 5e-8 in the BCAC "
+            "meta-analysis, each weighted by beta/SE, so a score is a sum of z-statistics rather than of log "
+            "odds; a person is read against percentiles of their own group, which that scale does not change. "
+            "158 of them have a 1000 Genomes phase 3 genotype for every one of the 2,504 individuals and are "
+            "scored; the other 4 are left out, never filled in, and the dosage files and the payload name each "
+            "with its reason. PGS000072, the score from Round 84 until the owner's choice of 2026-11-26, is "
+            "retired and its files are kept. The finding is the by_super_population.*.frac_above_global_cut rows listed "
             "above: one globally-set high-risk cut flags a far larger share of one ancestry group than "
             "of another, a gap that allele-frequency and linkage-disequilibrium differences between the "
             "groups can produce on their own (Martin et al., Nat Genet 51:584, 2019), and which this "
@@ -1782,8 +1863,10 @@ _SPECS: tuple[ModelSpec, ...] = (
             "identifiers or the file label takes accuracy to about 1.0000, a shortcut of the kind "
             "Engelen et al. (WTMC 2021) found in CIC-IDS2017. See M_NIDD's baseline_source for what "
             "that means for the published figures on these rows. "
-            "NO STUDENT IS DISTILLED FROM THIS MODEL: the page's encrypted tier runs "
-            "telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml)."
+            "NO STUDENT IS DISTILLED FROM THIS MODEL: the page's QKD-layer encrypted tier runs "
+            "telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml). Since Round 86 the "
+            "page also scores 5G-NIDD flows under CKKS, with a linear model trained on the labels and with one the "
+            "corpus's two base stations federated (telecom_ids.nidd_federated), neither distilled from this model."
         ),
     ),
     #: Telecom's T1 tier, added in Round 33. Until then `runs_encrypted=True` held on five specs and
@@ -1833,6 +1916,44 @@ _SPECS: tuple[ModelSpec, ...] = (
             "about as many queries as it has parameters per class (Tramer et al., USENIX Security 2016). The ONNX "
             "graph is built from weights.json (qsh.models.linear_onnx), not refitted, so the page's plaintext "
             "re-score and its encrypted tier evaluate the same model."),
+    ),
+    #: 5G-NIDD's two base stations, federated (Round 86, batch 6; the owner's choices of 2026-11-26: the federation, then
+    #: the page and the Hub). Pre-registered in `references/telecom-nidd-federated-preregistration.md`, trained by
+    #: `scripts/train/telecom_nidd_federated.py`, exported by `scripts/export_nidd_federated.py`: its weights.json and a
+    #: graph built from it (`qsh.models.linear_onnx`, with the clip the inputs carry). After the telecom student, so the
+    #: page's default model does not move.
+    ModelSpec(
+        usecase="telecom_ids",
+        tier="t1_crypto",
+        key="telecom_ids.nidd_federated",
+        label="Federated 5G-NIDD detector",
+        architecture=("multinomial logistic regression, 9x36 + 9, on 36 standardised and clipped flow features, trained "
+                      "by FedAvg across the corpus's two base stations under pairwise masks"),
+        params=333,
+        dataset=DS_5G_NIDD,
+        metric=M_NIDD_FED,
+        runs_encrypted=True,
+        artifacts=_STUDENT_ARTIFACTS,
+        hf_repo="qsh-telecom-5g-nidd-federated-ckks",
+        eval_split=("the CKKS student's 2,048 held-out flows, a class-stratified draw from the seed-42 test split, each "
+                    "named by its base station"),
+        notes=(
+            "FEDERATED, NOT DISTILLED. The corpus's two base-station files are two clients: each round, each runs 20 "
+            "L-BFGS-B iterations on its own training flows from the global model, and the aggregator sums their "
+            "parameters, weighted by their shares of the training flows and masked with pairwise masks whose seeds each "
+            "pair agrees by X25519 (the page's secure aggregation), for 40 rounds; the penalty and the temperature were "
+            "chosen from masked sums of the stations' validation losses. The stations exchanged their row counts and each "
+            "feature's mean and deviation in the clear, to standardise alike. "
+            "THE PRE-REGISTERED COMPARISON IT DOES NOT WIN. By the mean of the two stations' test macro F1, station 1's own "
+            "model scores 0.985, pooling 0.974, this model 0.971 and station 2's own 0.959: station 1's model carries to "
+            "station 2's flows while station 2's does not carry back (SYNFlood 0.83 on station 1's flows), and one linear "
+            "model trained on both sits between them. It is 0.003 below pooling. "
+            "Under CKKS in the browser, on the 2,048 held-out flows, the largest logit error is about 2e-7 and no decision "
+            "changes; all 9 scores are decrypted and the argmax is taken in the clear, as for the other linear students. "
+            "LIMITS: with two stations each can compute the other's update from the global model and its own, so the masks "
+            "hide the updates from the aggregator only; X25519 is not post-quantum; one process played both stations and "
+            "the aggregator, offline and once; no differential privacy is applied; the split is random, so a station's "
+            "test flows share attack sessions with its training flows."),
     ),
 )
 
@@ -1909,6 +2030,7 @@ ARTIFACT_DIRS: dict[str, str] = {
     "medical_fl.nodule3d_square_student": "models/medical_lidc_nodule3d_square_student",
     "medical_fl.cxr_fedavg": "models/medical_cxr14_fedavg_resnet18",
     "satellite_comms.student": "models/satellite_telemanom_student",
+    "telecom_ids.nidd_federated": "models/telecom_nidd_federated",
 }
 
 #: Repo root, so ARTIFACT_DIRS resolves regardless of the caller's working directory.

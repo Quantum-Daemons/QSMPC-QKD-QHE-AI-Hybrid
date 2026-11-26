@@ -67,6 +67,11 @@ def usecase_arch_layers(usecase, model_size: str, *, workload: str = "linear", s
     arch = bcfg.tier_architectures.get(usecase)
     if model_size == "lightweight" and base is not None:
         layers = [(np.atleast_2d(base.weight), np.asarray(base.bias))]
+        if getattr(base, "bias_after_decryption", False):
+            # The key holder's bias (genomics' cut, Round 86 batch 6) stays the key holder's in the hybrid too.
+            from ..mpc.layers import DenseSpec
+
+            layers = [DenseSpec(np.atleast_2d(base.weight), np.asarray(base.bias), activation="none", key_holder_bias=True)]
         return layers, (arch["label"] if arch else "linear model") + " · logistic (1 layer)", _params(layers)
     mw = bcfg.workload_multipliers.get(workload) or bcfg.workload_multipliers["linear"]
     mult, wtag = float(mw[0]), str(mw[1])

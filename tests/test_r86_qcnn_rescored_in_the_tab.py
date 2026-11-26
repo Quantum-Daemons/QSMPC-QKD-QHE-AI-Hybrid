@@ -23,6 +23,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
 import pytest
 
 REPO = Path(__file__).resolve().parents[1]
@@ -36,15 +37,44 @@ def test_the_shipped_rows_are_the_trainer_s_split_and_reproduce_every_recorded_f
     r = subprocess.run([sys.executable, str(REPO / "scripts" / "data" / "build_qcnn_heldout.py"), "--check"],
                        capture_output=True, text=True, env=env, cwd=REPO, timeout=900)
     assert r.returncode == 0, f"build_qcnn_heldout.py --check failed:\n{r.stdout[-2000:]}\n{r.stderr[-2000:]}"
-    assert r.stdout.count("as built") == 3 and r.stdout.count("rows reproduce") == 4, r.stdout
+    # Medical and telecom: finance's file is written by scripts/export_finance_qcnn_amlworld.py since Round 86's batch 6,
+    # because its corpus is not in the repository; the test below holds it to its figures.
+    assert r.stdout.count("as built") == 2 and r.stdout.count("rows reproduce") == 3, r.stdout
+
+
+def test_the_finance_sample_reproduces_the_figures_it_records() -> None:
+    """Finance since Round 86's batch 6: the page's 8,192 test-window transactions, a sample of the circuit's 1,523,504, at
+    its eight inputs. The re-score is held to `expected`, the trainer's circuit on these rows at the served threshold, and
+    this recomputes it with the Python tier's contraction; the copy the Python pipeline reads is the page's, byte for byte."""
+    from sklearn.metrics import accuracy_score, f1_score
+
+    sys.path.insert(0, str(REPO / "src"))
+    from qsh.qhe import qcnn_tree
+
+    web = PUBLIC / "finance" / "qcnn_heldout.json"
+    assert web.read_bytes() == (REPO / "data" / "finance" / "qcnn_heldout.json").read_bytes()
+    held, w = json.loads(web.read_text()), json.loads((PUBLIC / "finance" / "qcnn_weights.json").read_text())
+    assert held["feature_names"] == w["feature_names"] and held["input_space"] == w["input_space"] == "raw"
+    X, y = np.asarray(held["rows"], dtype=np.float64), np.asarray(held["labels"])
+    pred = (qcnn_tree.readout(w, X) * float(w["scale"]) + float(w["bias"]) > 0).astype(int)
+    assert round(float(f1_score(y, pred)), 6) == held["expected"]["test_minority_f1"]
+    assert round(float(accuracy_score(y, pred)), 6) == held["expected"]["test_accuracy"]
+    assert w["n_test"] > len(y) == 8192
 
 
 @pytest.mark.parametrize("data_dir", ["finance", "medical", "telecom"])
 def test_each_file_carries_its_licence_and_says_which_split_it_is(data_dir: str) -> None:
     held = json.loads((PUBLIC / data_dir / "qcnn_heldout.json").read_text())
     assert held["licence"] and held["licence_url"].startswith("https://") and held["attribution"]
-    assert "shuffled with seed" in held["split"] and "never trained or chose a checkpoint on them" in held["split"]
     assert len(held["rows"]) == len(held["labels"]) > 0
+    if "expected" in held:
+        # A sample of the split, not the split (finance since Round 86's batch 6): it says so, and whose figures are whose.
+        assert "test-window transactions" in held["split"] and "never trained, chose a checkpoint or a threshold on them" in held["split"]
+        assert "whole test window" in held["split"] and "weights file's" in held["split"]
+        for ref in held["reads"]:
+            assert json.loads((PUBLIC / ref).read_text())["n_test"] > len(held["labels"]), ref
+        return
+    assert "shuffled with seed" in held["split"] and "never trained or chose a checkpoint on them" in held["split"]
     for ref in held["reads"]:
         assert json.loads((PUBLIC / ref).read_text())["n_test"] == len(held["labels"]), ref
 

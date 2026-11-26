@@ -12,10 +12,12 @@ THE REDISTRIBUTION BUDGET IS A HARD CONSTRAINT, NOT A DEFAULT.
     writes that number plus the total available into the payload, so the page can say what it is
     showing and what it is not. The full matrix stays local and gitignored; nothing here uploads it.
 
-THE CREDITS TRAVEL WITH THE FILE. The weights are PGS000072's, from Graff et al., Nat Commun 12:970
-(2021), licensed CC BY 4.0, which asks for credit, a link to the licence and a note of changes; the
-PGS Catalog asks to be cited by the paper its REST `/rest/info` names; IGSR asks for the 1000 Genomes
-consortium paper. The payload carries all three, the licence link and the changes.
+THE CREDITS TRAVEL WITH THE FILE. The weights are PGS000783's (Round 86, batch 6; PGS000072's before it),
+from Kachuri et al., Nat Commun 11:6084 (2020), licensed CC BY 3.0 IGO, which asks for credit, the licence's
+URI and a credit for the use, and on that article for credit to the World Health Organization (the registry's
+`DS_PGS_CATALOG.attribution` names it, and nothing else uses WHO's name); the PGS Catalog asks to be cited by the paper its REST `/rest/info` names;
+IGSR asks for the 1000 Genomes consortium paper. The payload carries all three, the licence link and the
+changes.
 
 Usage:
     .venv/bin/python scripts/data/build_prs_browser_payload.py
@@ -43,6 +45,7 @@ from qsh.models.registry import (  # noqa: E402
     BUNDLED_DEMO_SAMPLES,
     DEMO_SAMPLE_FILES,
     DS_1000G,
+    DS_PGS000072,
     DS_PGS_CATALOG,
 )
 
@@ -68,20 +71,86 @@ def _registry_provenance(payload_name: str) -> str:
 WEB = REPO / "web" / "public" / "data" / "genomics"
 
 #: Payload filename per score. Explicit, so switching the browser to another score is a visible change
-#: in the registry's `DEMO_SAMPLE_FILES`, which this name must match.
+#: in the registry's `DEMO_SAMPLE_FILES`, which this name must match. PGS000072's payload was moved out of
+#: `web/public/` when the score retired (Round 86, batch 6), to `data/genomics/pgs000072_prs_retired.json`, as
+#: PGS000001's was: the page no longer serves its 5,490 genotype cells. `_registry_provenance` refuses to rewrite it.
 _PAYLOAD = {
     "breast_cancer_pgs000072": "pgs000072_breast_cancer.json",
+    "breast_cancer_pgs000783": "pgs000783_breast_cancer.json",
 }
 
+CC_BY_4 = "https://creativecommons.org/licenses/by/4.0/"
+CC_BY_3_IGO = "https://creativecommons.org/licenses/by/3.0/igo/"
+
+#: Per score: its names, the weights' licence and the dataset record whose credit line travels with it. The
+#: retired PGS000072 keeps its entry so the file it wrote stays reproducible; `_registry_provenance` refuses to
+#: stamp the registry's current provenance on it.
 _META = {
     "breast_cancer_pgs000072": {
         "name": "PGS000072 (CC_Breast, breast cancer)",
         "score_id": "PGS000072",
         "keyed_by": "rsID, as the scoring file gives it",
+        "licence": "CC-BY-4.0 (the effect weights); none (the 1000 Genomes genotypes)",
+        "licence_url": CC_BY_4,
+        "dataset": DS_PGS000072,
+    },
+    "breast_cancer_pgs000783": {
+        "name": "PGS000783 (CC_Breast_IV, breast cancer)",
+        "score_id": "PGS000783",
+        "keyed_by": "rsID, as the scoring file gives it",
+        "licence": "CC-BY-3.0-IGO (the effect weights); none (the 1000 Genomes genotypes)",
+        "licence_url": CC_BY_3_IGO,
+        "dataset": DS_PGS_CATALOG,
     },
 }
 
-CC_BY_4 = "https://creativecommons.org/licenses/by/4.0/"
+
+#: 1000 Genomes phase 3's sample -> population and super-population table (tracked; from IGSR's panel file).
+PANEL = REPO / "data" / "genomics" / "g1k_panel.tsv"
+
+#: The percentiles a person's score is read against within a super-population: 1 to 99.
+REFERENCE_PERCENTILES = list(range(1, 100))
+
+
+def reference_by_super_population(dosages, w, samples, take) -> dict:
+    """Aggregate reference statistics of the full score over ALL 2,504 individuals, by super-population (batch 6).
+
+    A pooled cut over mixed ancestries is not current practice: pgsc_calc v2.3.0's guide says to "Use ancestry-normalised
+    or Z-score outputs when applying PGS to individuals of diverse ancestries" (docs/explanation/interpret.rst, read
+    2026-11-25; references/genomics-real-data-2026-11.md). So the page compares a person with the 90th percentile of the
+    super-population that person was sampled in, from these statistics, and keeps the pooled cut beside it as the
+    cautionary one. Only aggregates ship here (counts, means, deviations and percentiles), no genotype cell and no
+    individual's score; each shipped individual carries its own super-population label, which IGSR publishes.
+    """
+    from qsh.usecases.genomics import HIGH_RISK_PERCENTILE
+    labels = {}
+    for line in PANEL.read_text().splitlines():
+        if line.startswith("#") or not line.strip():
+            continue
+        parts = line.split("\t")
+        if parts[0] == "sample":
+            continue
+        labels[parts[0]] = parts[2]
+    scores = np.asarray(dosages, dtype=float) @ np.asarray(w, dtype=float)
+    groups = np.array([labels[s] for s in samples])
+    ref = {}
+    for g in sorted(set(groups)):
+        x = scores[groups == g]
+        ref[g] = {
+            "n": int(x.size), "mean": round(float(x.mean()), 6), "sd": round(float(x.std(ddof=0)), 6),
+            "cut": round(float(np.percentile(x, HIGH_RISK_PERCENTILE)), 6),
+            "percentiles": [round(float(v), 6) for v in np.percentile(x, REFERENCE_PERCENTILES)],
+        }
+    return {
+        "sample_super_population": [str(groups[i]) for i in take],
+        "reference_percentile": HIGH_RISK_PERCENTILE,
+        "reference_percentiles_at": REFERENCE_PERCENTILES,
+        "reference_by_super_population": ref,
+        "reference_pooled": {"n": int(scores.size), "cut": round(float(np.percentile(scores, HIGH_RISK_PERCENTILE)), 6)},
+        "reference_note": ("Each shipped individual's super-population is the 1000 Genomes label of the population it was "
+                           "sampled in (IGSR's panel), not one inferred from its genotypes. The statistics are over all "
+                           f"{int(scores.size)} individuals of the panel, the scored person included."),
+    }
 
 
 def main() -> int:
@@ -124,7 +193,7 @@ def main() -> int:
         "keyed_by": meta["keyed_by"],
         "effect_alleles": list(eff),
         # Full precision, as the scoring file publishes them: rounding would be a change to the work
-        # that CC BY 4.0 asks to be noted, and the Python tier scores the file's own values.
+        # that the licence asks to be credited, and the Python tier scores the file's own values.
         "weights": [float(x) for x in w],
         "variants_published": len(published_keys),
         # Score variants with no 1000 Genomes genotype column, each with the fetcher's reason. They are
@@ -137,11 +206,11 @@ def main() -> int:
         # Over ALL available individuals, not the shipped slice: `realData.ts` uses it as the SHAP
         # reference point, and the zero vector is not a typical genome.
         "population_mean_dosage": [round(float(x), 6) for x in dosages.mean(axis=0)],
-        "licence": "CC-BY-4.0 (the effect weights); none (the 1000 Genomes genotypes)",
-        "licence_url": CC_BY_4,
-        "attribution": DS_PGS_CATALOG.attribution,
+        "licence": meta["licence"],
+        "licence_url": meta["licence_url"],
+        "attribution": meta["dataset"].attribution,
         "genotypes_attribution": DS_1000G.attribution,
-        "modifications": (f"The {len(keys)} of PGS000072's {len(published_keys)} published variants that "
+        "modifications": (f"The {len(keys)} of {meta['score_id']}'s {len(published_keys)} published variants that "
                           f"Ensembl's 1000 Genomes phase 3 records resolve are scored, with their weights "
                           f"unchanged; the other {len(unscored)} are listed in variants_unscored and left "
                           f"out. The dosages are effect-allele counts from 1000 Genomes phase 3 genotypes "
@@ -151,6 +220,7 @@ def main() -> int:
         # provenance is `BUNDLED_DEMO_SAMPLES[usecase][0]` verbatim.
         "provenance": _registry_provenance(payload_name),
     }
+    payload.update(reference_by_super_population(dosages, w, samples, take))
 
     out = WEB / payload_name
     out.parent.mkdir(parents=True, exist_ok=True)

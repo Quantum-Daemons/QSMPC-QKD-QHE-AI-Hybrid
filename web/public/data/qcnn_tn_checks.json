@@ -1,0 +1,108 @@
+{
+ "preregistration": "references/qcnn-tensor-network-checks-preregistration.md",
+ "record": "docs/measurements/qcnn-tn-checks-2026-11-26.json",
+ "statement": "Every circuit here acts on at most eight wires, so its state is at most 256 amplitudes and is simulated exactly on a classical computer; QCNNs on classical data of this kind are classically simulable (Bermejo et al., PRX Quantum 7, 020304, 2026). No quantum advantage is claimed.",
+ "artifacts": {
+  "medical": {
+   "circuit": "tree",
+   "wires": 8,
+   "largest_schmidt_rank": 8,
+   "bound": 16,
+   "schmidt_rows": 86,
+   "headline": "test_minority_f1",
+   "qcnn": 0.939394,
+   "logistic_regression": 0.939394,
+   "mps": 0.939394,
+   "mps_bond_dimension": 4,
+   "mps_average_precision": 0.982111,
+   "mps_minority_f1_at_validation_best_threshold": 0.939394,
+   "mps_balanced_accuracy_at_validation_best_threshold": 0.942857
+  },
+  "telecom": {
+   "circuit": "hur-su4",
+   "wires": 8,
+   "largest_schmidt_rank": 16,
+   "bound": 16,
+   "schmidt_rows": 480,
+   "headline": "test_macro_f1",
+   "qcnn": 0.944439,
+   "logistic_regression": 0.976447,
+   "mps": 0.9659,
+   "mps_bond_dimension": 8,
+   "mps_average_precision": null,
+   "mps_minority_f1_at_validation_best_threshold": null,
+   "mps_balanced_accuracy_at_validation_best_threshold": null
+  },
+  "telecom_q7": {
+   "circuit": "hur-su4",
+   "wires": 7,
+   "largest_schmidt_rank": 8,
+   "bound": 8,
+   "schmidt_rows": 480,
+   "headline": "test_macro_f1",
+   "qcnn": 0.967932,
+   "logistic_regression": 0.976447,
+   "mps": 0.9659,
+   "mps_bond_dimension": 8,
+   "mps_average_precision": null,
+   "mps_minority_f1_at_validation_best_threshold": null,
+   "mps_balanced_accuracy_at_validation_best_threshold": null
+  },
+  "satellite_opssat": {
+   "circuit": "tree",
+   "wires": 8,
+   "largest_schmidt_rank": 8,
+   "bound": 16,
+   "schmidt_rows": 529,
+   "headline": "test_minority_f1",
+   "qcnn": 0.859903,
+   "logistic_regression": 0.769231,
+   "mps": 0.888889,
+   "mps_bond_dimension": 8,
+   "mps_average_precision": 0.960012,
+   "mps_minority_f1_at_validation_best_threshold": 0.884956,
+   "mps_balanced_accuracy_at_validation_best_threshold": 0.926853
+  },
+  "satellite_esa": {
+   "circuit": "tree",
+   "wires": 8,
+   "largest_schmidt_rank": 8,
+   "bound": 16,
+   "schmidt_rows": 1000,
+   "headline": "test_minority_f1",
+   "qcnn": 0.715854,
+   "logistic_regression": 0.716418,
+   "mps": 0.065128,
+   "mps_bond_dimension": 4,
+   "mps_average_precision": 0.655901,
+   "mps_minority_f1_at_validation_best_threshold": 0.254457,
+   "mps_balanced_accuracy_at_validation_best_threshold": 0.572888
+  }
+ },
+ "attribution": {
+  "medical": {
+   "dataset": "Wisconsin Diagnostic Breast Cancer (UCI / sklearn)",
+   "download": "https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic",
+   "citation": "Wolberg, Mangasarian, Street & Street, 'Breast Cancer Wisconsin (Diagnostic)', UCI Machine Learning Repository (1993), doi:10.24432/C5DW2B, CC BY 4.0.",
+   "licence": "CC-BY-4.0"
+  },
+  "telecom": {
+   "dataset": "QKD attack telemetry (synthetic, signatures of this project's own design)",
+   "download": "https://arxiv.org/abs/2509.14282",
+   "citation": "8 classes = 7 attack types + normal, per Al-Kuwari et al. (IET Quantum Communication 7(1), e70028, 2026). The class list follows the paper; the 7 features and their signature values are this project's own design: illustrative, not fitted to any measurement. No public real QKD-attack capture was found (arXiv:2508.12749 reports anomalies recorded on an experimental QKD receiver and states no data release); this is labelled synthetic everywhere it is reported. The rows are written by this repository's generator (qsh.qml_ids.attacks), and they and the weights trained on them are released under the repository's licence, Apache-2.0.",
+   "licence": "Apache-2.0"
+  },
+  "satellite_opssat": {
+   "dataset": "OPS-SAT-AD",
+   "download": "https://doi.org/10.5281/zenodo.12588359",
+   "citation": "Ruszczak, Kotowski, Evans & Nalepa, 'The OPS-SAT benchmark for detecting anomalies in satellite telemetry', Scientific Data 12, 710 (2025), doi:10.1038/s41597-025-05035-3, CC BY 4.0. Data: Ruszczak, B., Kotowski, K., Nalepa, J. & Evans, D., 'OPSSAT-AD - anomaly detection dataset for satellite telemetry', Zenodo (2024), doi:10.5281/zenodo.12588359 (version 1).",
+   "licence": "CC-BY-4.0"
+  },
+  "satellite_esa": {
+   "dataset": "ESA Anomaly Dataset (ESA-ADB), Mission1 lightweight channels 41-46",
+   "download": "https://zenodo.org/records/12528696",
+   "citation": "Kotowski et al., 'European Space Agency Dataset and Benchmark for Real-World Anomaly Detection in Spacecraft Time Series', Journal of Data-centric Machine Learning Research (DMLR), 2026 (earlier version: arXiv:2406.17826). Data: De Canio, Kotowski & Haskamp, 'ESA Anomaly Dataset', Zenodo record 12528696 (2024), CC BY 3.0 IGO.",
+   "licence": "CC-BY-3.0-IGO"
+  }
+ }
+}

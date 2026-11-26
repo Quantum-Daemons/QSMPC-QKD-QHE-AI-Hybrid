@@ -73,7 +73,7 @@ def test_the_loader_claims_no_licence_nothing_grants() -> None:
                       r"genomics[^.\n]{0,60}\bis commercial-OK"):
             assert not re.search(claim, text), f"{rel}: /{claim}/"
     ts = (REPO / "web" / "src" / "lib" / "realData.ts").read_text()
-    assert "PGS000072 effect weights are CC BY 4.0" in ts and "carry no licence instrument" in ts
+    assert "PGS000783 effect weights are CC BY 3.0 IGO" in ts and "carry no licence instrument" in ts
 
 
 def test_the_page_says_the_weights_are_served_not_withheld() -> None:
@@ -88,11 +88,12 @@ def test_the_page_says_the_weights_are_served_not_withheld() -> None:
 
 #: The genomics flowchart's nodes, and what they said before. Module level so the technical report's
 #: own tests (outside this repository since Round 86) hold its copy of the flowchart to the same.
-GENOMICS_NODES = ("Data: 30 real 1000 Genomes individuals, PGS000072 weights over 183 of its 187 variants",
-                  "Private inference: the full 183-variant score under CKKS (node-seal), then the "
+GENOMICS_NODES = ("Data: 30 real 1000 Genomes individuals, PGS000783 weights over 158 of its 162 variants",
+                  "Private inference: the full 158-variant score under CKKS (node-seal), then the "
                   "90th-percentile cut by a garbled-circuit argmax",
                   "in a field above any total they can reach")
-STALE_GENOMICS_NODES = ("PGS000004 weights over 313", "sign test on 8 of the 313", "QSMS over a GHZ state")
+STALE_GENOMICS_NODES = ("PGS000004 weights over 313", "sign test on 8 of the 313", "QSMS over a GHZ state",
+                        "PGS000072 weights over 183")
 
 
 def test_the_flowchart_nodes_name_the_score_that_runs() -> None:
@@ -112,7 +113,7 @@ def test_make_data_lists_only_committed_genomics_files() -> None:
     ignored = [f"{rel} ({label})" for label, rel in listed
                if subprocess.run(["git", "check-ignore", "-q", rel], cwd=REPO).returncode == 0]
     assert not ignored, "`make data` lists gitignored files as committed samples: " + ", ".join(ignored)
-    assert any("pgs000072" in rel for _, rel in listed)
+    assert any("pgs000783" in rel for _, rel in listed) and any("pgs000072" in rel for _, rel in listed)
 
 
 def test_the_overlay_tolerance_is_the_dosage_resolvers() -> None:

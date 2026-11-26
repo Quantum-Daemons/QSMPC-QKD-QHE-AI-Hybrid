@@ -166,6 +166,39 @@ FROZEN = {
     # and is listed so that no edit reaches it before its trainer pins the same hash.
     "references/finance-square-student-page-preregistration.md":
         "388a1668b82b8e9011539511efcbc3887b053a2e0e60022040c4054eee60492f",
+    # The finance QCNN on AMLworld: committed 2026-11-25 before any input was scored for selection or any circuit trained.
+    # The satellite threshold comparison: committed 2026-11-25 before any threshold was fitted or any test window scored.
+    "references/satellite-threshold-calibration-preregistration.md":
+        "a2436cde71d939c32b7d67f895f892fd0012262f1c7a1fb3a39505d85a153d65",
+    # The 5G-NIDD CKKS student: committed 2026-11-25 before any student was trained.
+    "references/telecom-nidd-ckks-student-preregistration.md":
+        "b356193c073606ffa2ef8aa66b2cfa5ac3b9dcf679bd3b558ce4d0c44de5d34d",
+    "references/finance-qcnn-amlworld-preregistration.md":
+        "5a411b05d7e1984306d08397d95b147ab2a09796a4bfa4a6b624cf515253edd0",
+    # Federated learning across 5G-NIDD's two base stations: committed 2026-11-26 before any of its models was trained.
+    "references/telecom-nidd-federated-preregistration.md":
+        "5e3a137bfb4c0382ce626bb733531f94b9a505b7ec93e8500bdad8122affff0d",
+    # The downlink against Jinan-1's measured pass: committed 2026-11-26 (054aaab) before any model figure was set beside
+    # the data, its addendum (df2bae4) before the comparison ran, and addendum 2 after it, saying the windows failed and
+    # naming the post-hoc analysis as post hoc.
+    "references/satellite-jinan1-pass-preregistration.md":
+        "11665e2b800dd3f921d9b4bf5122252354e95d85fe773e64130c4ae284ae1984",
+    # The Jinan-1 pass's second analysis: committed 2026-11-26 before any of its figures was computed.
+    "references/satellite-jinan1-pass-v2-preregistration.md":
+        "ddaea49f1f277ef457af9d41c1a775b4134daf0c8aec0dec73ee40b8b338292e",
+    # The finance QCNN's fair comparison: committed 2026-11-26 (dbe2d52) before any of its arms ran, and its addendum
+    # (arm 5 on the GPU) before any figure of that arm.
+    "references/finance-qcnn-amlworld-comparison-preregistration.md":
+        "d9badf51de4834ca2e07e386447d34513a24bc61f32bb1169f3256a16bbc9d31",
+    # The tensor-network checks of the medical, telecom and satellite QCNNs: committed 2026-11-26 (362cfc6) before any
+    # ran, and its addendum the same day after the first run, which traced in single precision (see the addendum).
+    "references/qcnn-tensor-network-checks-preregistration.md":
+        "07647cb60c7d3b8430eec6fd516c75ca4ec27e2885f3ce1abebd6e623c81aebf",
+    # The encrypted predictor of 3D folding divergence (D1): committed 2026-11-26 (d3543cb) before any model was fitted
+    # or any genotype fetched; its addenda (individuals with no value in a window, 8c3606c; variants with no effect)
+    # before any figure was computed.
+    "references/genomics-3d-divergence-preregistration.md":
+        "2e93f4fab32d8f2852c7b5be59284460e3d5488533adc2cd491e0261222884c2",
 }
 
 

@@ -1276,11 +1276,27 @@ belongs in this file rather than only in a comment.
   score: the article is CC BY-NC-ND 4.0 and the weights appear only in its supplementary data.
 - **Graff et al., "Cross-cancer evaluation of polygenic risk scores for 16 cancer types in two large
   cohorts", *Nat Commun* 12:970 (2021).** DOI 10.1038/s41467-021-21288-z, CC BY 4.0. The paper behind
-  **PGS000072**, the breast-cancer score the genomics use case scores (187 variants; the score sums
-  risk-allele counts times the log odds ratio from each source GWAS). Its external baseline is **AUROC
-  0.637** from PGS Catalog **PPM002038** (Kachuri et al., *Nat Commun* 11:6084, 2020,
-  doi:10.1038/s41467-020-19600-4; n=216,273 UK Biobank women, with covariates, 162 of the 187 SNPs, AUC
-  at 5 years), cited and explicitly not measured here. Added: 2026-10-31.
+  **PGS000072**, the breast-cancer score the genomics use case scored from Round 84 until Round 86's
+  batch 6 (187 variants; the score sums risk-allele counts times the log odds ratio from each source
+  GWAS), retired and kept. Its Catalog record **PPM002038** (AUROC 0.637; Kachuri et al. 2020, below;
+  n=216,273 UK Biobank women, with covariates, AUC at 5 years) was evaluated on "only 162 of the
+  original 187 SNPs", the variants of PGS000783, and carries the same figures as PGS000783's PPM002054.
+  Added: 2026-10-31; corrected 2026-11-26.
+- **Kachuri L, Graff RE, Smith-Byrne K et al., "Pan-cancer analysis demonstrates that integrating
+  polygenic risk scores with modifiable risk factors improves risk prediction", *Nat Commun* 11:6084
+  (2020).** DOI 10.1038/s41467-020-19600-4, PMID 33247094, CC BY 3.0 IGO on the publisher's article page
+  (Crossref's metadata records CC BY 4.0, which the article page does not; read 2026-11-26). The paper
+  behind **PGS000783** (`CC_Breast_IV`), the breast-cancer score the genomics use case scores since Round
+  86's batch 6, on the owner's choice of 2026-11-26: the 162 of PGS000072's variants that reached
+  $`P < 5 \times 10^{-8}`$ in the BCAC meta-analysis, each weighted by $`\beta / \mathrm{SE}`$, numbers in
+  its Supplementary Data 1. Its external baseline is **AUROC 0.626** from PGS Catalog **PPM002070**
+  (age, genotyping array and PCs 1-15 as covariates) and its ceiling **0.637** from **PPM002054** (the
+  risk factors as well), both n=216,273 UK Biobank women and AUC at 5 years, cited and explicitly not
+  measured here. Added: 2026-11-26.
+- **Michailidou K et al., "Association analysis identifies 65 new breast cancer risk loci", *Nature*
+  551:92-94 (2017).** DOI 10.1038/nature24284, PMID 29059683, GWAS Catalog GCST004988. The Breast Cancer
+  Association Consortium's meta-analysis whose estimates give PGS000783 its $`\beta / \mathrm{SE}`$
+  weights; credited on the genomics page, as BCAC asks of its data's users. Added: 2026-11-26.
 - **Lambert, Wingfield et al., "Enhancing the Polygenic Score Catalog with tools for score calculation
   and ancestry normalization", *Nat Genet* 56:1989-1994 (2024).** DOI 10.1038/s41588-024-01937-x. The
   citation the PGS Catalog's REST `/rest/info` asks for. Added: 2026-10-31.
@@ -1797,6 +1813,9 @@ project is a browser tab.
 - **Real telecom data, read 2026-11-25**: no public QKD telemetry with real attacks, the real honest QKD records (IrelandQCI, KTH, CTU; CC BY 4.0), three 5G and O-RAN attack sets beside 5G-NIDD (CC BY 4.0) and the options for an encrypted 5G-NIDD path, in [`telecom-real-data-2026-11.md`](telecom-real-data-2026-11.md).
 - **Real genomics reference data, read 2026-11-25**: why a pooled 90th percentile is not current practice (pgsc_calc v2.3.0 asks for ancestry-normalised outputs), how its normalisation fits the CKKS path, the open data that needs no access application and the options for the page, in [`genomics-real-data-2026-11.md`](genomics-real-data-2026-11.md).
 - **Real DeFi and FHEVM facts, read 2026-11-25**: Aave V3's live thresholds and close-factor rules at their source, the price data a public repository may ship, Zama's mainnet HCU limits and releases, and the options for the lending page, in [`defi-real-data-2026-11.md`](defi-real-data-2026-11.md).
+- **The finance QCNN on AMLworld, pre-registered 2026-11-25**: eight (and four) of the 114 inputs chosen on the fit window, the tree circuit's recipe, the comparators and the criteria for the page change, in [`finance-qcnn-amlworld-preregistration.md`](finance-qcnn-amlworld-preregistration.md).
+- **The satellite forecaster's thresholds, pre-registered 2026-11-25**: the page's NDT against an extreme-value and a weighted conformal threshold, each fitted on the validation window only, scored once on the 29 test anomalies, in [`satellite-threshold-calibration-preregistration.md`](satellite-threshold-calibration-preregistration.md).
+- **A CKKS student for the 5G-NIDD detector, pre-registered 2026-11-25**: a distilled and a temperature-scaled direct linear student on the 36 numeric features, the criteria for the telecom page's first encrypted path on real traffic, in [`telecom-nidd-ckks-student-preregistration.md`](telecom-nidd-ckks-student-preregistration.md).
 - **The research sweep of 2026-11-21**: the August to November 2026 work searched for each use case, what it changed on the pages and what was read and left uncited, with reasons, is in [`research-sweep-2026-11.md`](research-sweep-2026-11.md).
   Its last section (2026-11-21) carries Zama's FHEVM documentation, licence and releases, read for the lending page's modelled FHEVM view and comparison card.
 - **Flood, Engelen, Aspinall and Desmet, "Bad Design Smells in Benchmark NIDS Datasets"**, IEEE EuroS&P 2024, pp. 658-675 `[link]`
@@ -1935,10 +1954,11 @@ makes**, in the direction of understating what is possible.
   Open-source HEPRS; three-party model (clinician / model developer / evaluator); tested on a
   schizophrenia model with **110,000 SNPs**; encrypted and plaintext PRSs "agree closely"; **"practical
   to use on a single CPU"**.
-  **This is the citation that scopes the registry's T1 argument.** `genomics.prs` scores 183 variants, and
-  `registry.py` explains T1 smallness by homomorphic cost. For this use case that is the wrong reason:
-  HEPRS runs roughly 600x more variants on one CPU, so the score is small because **PGS000072 has 187
-  variants** - a property of Graff et al. 2021, not of CKKS. The cost argument still holds for
+  **This is the citation that scopes the registry's T1 argument.** `genomics.prs` scores 158 variants
+  (183 until Round 86's batch 6), and `registry.py` explains T1 smallness by homomorphic cost. For this
+  use case that is the wrong reason: HEPRS runs roughly 700x more variants on one CPU, so the score is
+  small because **PGS000783 has 162 variants** - a property of Kachuri et al. 2020 (and of Graff et al.
+  2021, whose variants it re-weights), not of CKKS. The cost argument still holds for
   finance, medical and satellite, where the model is not a bare dot product.
 - **Provatas, Galanopoulos and Georgakopoulos-Soares, "bioETH-PRS: Confidential Polygenic Risk Scoring
   without a Trusted Evaluator via Fully Homomorphic Encryption on a Programmable Blockchain."**

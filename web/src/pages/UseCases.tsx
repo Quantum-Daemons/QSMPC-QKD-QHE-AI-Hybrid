@@ -82,7 +82,7 @@ export default function UseCases() {
           // "scaffold" used to be hardcoded to !inference, which understated telecom and satellite:
           // both now carry trained, published, pinned models. Earn it from registry state instead.
           // "measured", not "trained": the one unpublished model with recorded results is genomics'
-          // PRS, whose weights are PGS000072's published ones, measured here and trained by no one.
+          // PRS, whose weights are PGS000783's published ones, measured here and trained by no one.
           const depth = u.id === "defi_lending" ? "simulated market" : pinned.length > 0 ? "published" : teacher?.achieved ? "measured" : "scaffold";
           return (
             <Link key={u.id} to={`/usecase/${u.id}`} className="card" style={{ textDecoration: "none", color: "inherit", display: "block" }}>

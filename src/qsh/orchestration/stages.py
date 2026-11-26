@@ -541,6 +541,10 @@ class PrivateInferenceStage(Stage):
             # radius) and are not in the raw units the artifact declares. `medical_fl.build` stores
             # the patient's raw values in the artifact's `feature_names` order as `qcnn_features`.
             x_qcnn = ctx.data.get("qcnn_features", x)
+            if ctx.data.get("qcnn_row_note"):
+                # Which transaction the QCNN scored, where it is not the row the other models scored (finance since Round
+                # 86's batch 6: an AMLworld transaction of its own), as the browser's run log says it.
+                bus.log(f"rows: {ctx.data['qcnn_row_note']}", self.name)
 
             # TRAINED circuit where weights exist. The untrained QCNN is not a classifier: measured
             # over 200 random UNIFORM[0,1) inputs at 4 and 8 qubits `predict_proba` peaks at 0.239
@@ -690,10 +694,16 @@ class PrivateInferenceStage(Stage):
             ctx.data["linear_model"] = model
             ctx.data["features"] = np.asarray(x)
             bus.metric("fhe_max_abs_error", out["max_abs_error"], self.name)
+            # Where the bias went, from what ran: a model whose bias is the key holder's (genomics' cut, Round 86 batch 6)
+            # is evaluated with nothing in slot 0, and the key holder adds the bias after decrypting.
+            where = ("each logit decrypted with nothing added in slot 0 and every other slot masked, its bias the key "
+                     "holder's own, added after decryption, so the evaluator never holds it"
+                     if out.get("bias_after_decryption") else
+                     "each logit decrypted with its bias added under "
+                     "encryption and every other slot masked, so the key holder reads the logits and "
+                     "nothing else")
             bus.log(f"CKKS private inference: class={out['prediction']}{f' ({label})' if label else ''} (backend={out['backend']}, "
-                    f"err={out['max_abs_error']:.2e}); each logit decrypted with its bias added under "
-                    f"encryption and every other slot masked, so the key holder reads the logits and "
-                    f"nothing else", self.name)
+                    f"err={out['max_abs_error']:.2e}); {where}", self.name)
             # --- Unified benchmark (Round 7): run the REAL hybrid (linear->FHE + non-linear->MPC)
             # at the selected model size so the live run IS the MPC-FHE benchmark row. lightweight ===
             # the trained linear model (SHAP above explains the same decision); medium/large add

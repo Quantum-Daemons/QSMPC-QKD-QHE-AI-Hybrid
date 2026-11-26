@@ -1,0 +1,310 @@
+{
+ "preregistration": {
+  "file": "references/genomics-3d-divergence-preregistration.md",
+  "sha256": "2e93f4fab32d8f2852c7b5be59284460e3d5488533adc2cd491e0261222884c2"
+ },
+ "inputs": {
+  "individuals": 2457,
+  "fit": 1719,
+  "validation": 369,
+  "test": 369,
+  "variants": 120,
+  "declared": 4
+ },
+ "declared_variants": [
+  {
+   "window": 5,
+   "chr": "10",
+   "pos": 1755677,
+   "rsid": "rs144540975",
+   "reason": "Ensembl returns 1000 Genomes phase 3 genotypes for 0 of the 2457 individuals"
+  },
+  {
+   "window": 7,
+   "chr": "2",
+   "pos": 82135363,
+   "rsid": "rs7566266",
+   "reason": "Ensembl returns 1000 Genomes phase 3 genotypes for 0 of the 2457 individuals"
+  },
+  {
+   "window": 7,
+   "chr": "2",
+   "pos": 82135329,
+   "rsid": "rs797008652",
+   "reason": "Ensembl returns 1000 Genomes phase 3 genotypes for 0 of the 2457 individuals"
+  },
+  {
+   "window": 7,
+   "chr": "2",
+   "pos": 82135357,
+   "rsid": "rs75883807",
+   "reason": "Ensembl returns 1000 Genomes phase 3 genotypes for 0 of the 2457 individuals"
+  }
+ ],
+ "windows": [
+  {
+   "chr": "chr19",
+   "start": 19922944,
+   "variants": 10,
+   "alpha": 0.001,
+   "validation_r2": {
+    "0.001": 0.014892,
+    "0.01": 0.014888,
+    "0.1": 0.014856,
+    "1.0": 0.014618,
+    "10.0": 0.012967
+   },
+   "test_rows": 369,
+   "test_r2": 0.011422,
+   "test_spearman": 0.070771,
+   "super_population_r2": 0.113694,
+   "qualifies": false,
+   "no_value": []
+  },
+  {
+   "chr": "chr9",
+   "start": 22544384,
+   "variants": 10,
+   "alpha": 1.0,
+   "validation_r2": {
+    "0.001": 0.093789,
+    "0.01": 0.093789,
+    "0.1": 0.09379,
+    "1.0": 0.0938,
+    "10.0": 0.093686
+   },
+   "test_rows": 369,
+   "test_r2": 0.106415,
+   "test_spearman": -0.022574,
+   "super_population_r2": 0.069911,
+   "qualifies": false,
+   "no_value": []
+  },
+  {
+   "chr": "chr7",
+   "start": 125829120,
+   "variants": 10,
+   "alpha": 10.0,
+   "validation_r2": {
+    "0.001": 0.549419,
+    "0.01": 0.549421,
+    "0.1": 0.549446,
+    "1.0": 0.54969,
+    "10.0": 0.551528
+   },
+   "test_rows": 369,
+   "test_r2": 0.70244,
+   "test_spearman": 0.737029,
+   "super_population_r2": 0.00866,
+   "qualifies": true,
+   "no_value": []
+  },
+  {
+   "chr": "chr8",
+   "start": 83361792,
+   "variants": 10,
+   "alpha": 0.001,
+   "validation_r2": {
+    "0.001": 0.306888,
+    "0.01": 0.306887,
+    "0.1": 0.306876,
+    "1.0": 0.306765,
+    "10.0": 0.305848
+   },
+   "test_rows": 369,
+   "test_r2": 0.412626,
+   "test_spearman": 0.615621,
+   "super_population_r2": 0.157009,
+   "qualifies": false,
+   "no_value": []
+  },
+  {
+   "chr": "chr1",
+   "start": 92798976,
+   "variants": 10,
+   "alpha": 10.0,
+   "validation_r2": {
+    "0.001": 0.104796,
+    "0.01": 0.104802,
+    "0.1": 0.104857,
+    "1.0": 0.105377,
+    "10.0": 0.108615
+   },
+   "test_rows": 369,
+   "test_r2": 0.077085,
+   "test_spearman": 0.322572,
+   "super_population_r2": 0.052338,
+   "qualifies": false,
+   "no_value": []
+  },
+  {
+   "chr": "chr10",
+   "start": 1572864,
+   "variants": 10,
+   "alpha": 10.0,
+   "validation_r2": {
+    "0.001": 0.040439,
+    "0.01": 0.04044,
+    "0.1": 0.04045,
+    "1.0": 0.040551,
+    "10.0": 0.041492
+   },
+   "test_rows": 369,
+   "test_r2": 0.078242,
+   "test_spearman": 0.396488,
+   "super_population_r2": 0.038643,
+   "qualifies": false,
+   "no_value": []
+  },
+  {
+   "chr": "chr18",
+   "start": 52953088,
+   "variants": 10,
+   "alpha": 0.001,
+   "validation_r2": {
+    "0.001": 0.730845,
+    "0.01": 0.730832,
+    "0.1": 0.730703,
+    "1.0": 0.729601,
+    "10.0": 0.724527
+   },
+   "test_rows": 369,
+   "test_r2": 0.713381,
+   "test_spearman": 0.699497,
+   "super_population_r2": 0.039844,
+   "qualifies": true,
+   "no_value": [
+    "HG04060"
+   ]
+  },
+  {
+   "chr": "chr2",
+   "start": 81788928,
+   "variants": 10,
+   "alpha": 10.0,
+   "validation_r2": {
+    "0.001": 0.245887,
+    "0.01": 0.245889,
+    "0.1": 0.245912,
+    "1.0": 0.246141,
+    "10.0": 0.248063
+   },
+   "test_rows": 369,
+   "test_r2": 0.330062,
+   "test_spearman": 0.642136,
+   "super_population_r2": 0.072366,
+   "qualifies": false,
+   "no_value": []
+  },
+  {
+   "chr": "chr7",
+   "start": 51904512,
+   "variants": 10,
+   "alpha": 10.0,
+   "validation_r2": {
+    "0.001": 0.180623,
+    "0.01": 0.180624,
+    "0.1": 0.180637,
+    "1.0": 0.180762,
+    "10.0": 0.181274
+   },
+   "test_rows": 369,
+   "test_r2": 0.199677,
+   "test_spearman": 0.55159,
+   "super_population_r2": -0.000179,
+   "qualifies": false,
+   "no_value": []
+  },
+  {
+   "chr": "chr5",
+   "start": 18350080,
+   "variants": 10,
+   "alpha": 0.001,
+   "validation_r2": {
+    "0.001": 0.998104,
+    "0.01": 0.998104,
+    "0.1": 0.998104,
+    "1.0": 0.998086,
+    "10.0": 0.996719
+   },
+   "test_rows": 369,
+   "test_r2": 0.998961,
+   "test_spearman": 0.700356,
+   "super_population_r2": 0.009087,
+   "qualifies": true,
+   "no_value": []
+  },
+  {
+   "chr": "chr22",
+   "start": 48234496,
+   "variants": 10,
+   "alpha": 0.001,
+   "validation_r2": {
+    "0.001": 0.395988,
+    "0.01": 0.395987,
+    "0.1": 0.395983,
+    "1.0": 0.395936,
+    "10.0": 0.395207
+   },
+   "test_rows": 369,
+   "test_r2": 0.437632,
+   "test_spearman": 0.644363,
+   "super_population_r2": 0.024817,
+   "qualifies": false,
+   "no_value": [
+    "HG02462",
+    "NA18629"
+   ]
+  },
+  {
+   "chr": "chr13",
+   "start": 68681728,
+   "variants": 10,
+   "alpha": 1.0,
+   "validation_r2": {
+    "0.001": 0.961126,
+    "0.01": 0.961127,
+    "0.1": 0.961134,
+    "1.0": 0.961195,
+    "10.0": 0.960574
+   },
+   "test_rows": 369,
+   "test_r2": 0.97948,
+   "test_spearman": 0.68311,
+   "super_population_r2": 0.099042,
+   "qualifies": true,
+   "no_value": []
+  }
+ ],
+ "qualifying_windows": [
+  2,
+  6,
+  9,
+  11
+ ],
+ "card_shown": false,
+ "criteria": {
+  "r2_floor": 0.5,
+  "min_windows": 6,
+  "ckks_tolerance": 0.0001
+ },
+ "ckks_python": {
+  "backend": "tenseal",
+  "individuals": 369,
+  "outputs": 12,
+  "max_abs_error": 1.586756947072332e-06,
+  "criterion_met": true,
+  "seconds": 154.2
+ },
+ "genotype_caveat": "The teacher was built from the 1000 Genomes 20190312 GRCh38 release; these carrier indicators are Ensembl's phase 3 genotypes, which can differ for some individuals and variants. Not measured here.",
+ "attribution": {
+  "provider": "Gilbertson, Erin (Zenodo record creator)",
+  "dataset": "Machine learning reveals the diversity of human 3D chromatin contact patterns (example predictions genome wide)",
+  "download": "https://doi.org/10.5281/zenodo.13900918",
+  "licence": "CC-BY-4.0",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "citation": "Gilbertson, Brand, McArthur, Rinker, Kuang, Pollard and Capra, 'Machine learning reveals the diversity of human 3D chromatin contact patterns', Mol Biol Evol 41(10):msae209 (2024). Data: Zenodo doi:10.5281/zenodo.13900918, CC BY 4.0. The article is CC BY-NC 4.0, and nothing of it is used.",
+  "modifications": "Each individual's predicted divergence in twelve 1 Mb windows is the label of a ridge regression per window on carrier indicators; the record holds only the fitted figures, no prediction or genotype."
+ },
+ "wall_clock_s": 154.5
+}

@@ -1429,15 +1429,15 @@
     "teacher_scored_zero": false
   },
   "genomics.prs": {
-    "dataset": "PGS Catalog score PGS000072",
-    "git_sha": "dfa93b1-dirty",
+    "dataset": "PGS Catalog score PGS000783",
+    "git_sha": "fc79ca5-dirty",
     "licence_audit": {
       "checked": "read from the bundled scoring file at run time",
       "declares_restriction": false,
       "declares_terms": true,
       "header": [
-        "# PGS000072 (CC_Breast) - breast-cancer polygenic score, 187 variants, GRCh37, weights ln(OR). Source: PGS Catalog scoring file https://ftp.ebi.ac.uk/pub/databases/spot/pgs/scores/PGS000072/ScoringFiles/PGS000072.txt.gz, downloaded 2026-10-31 (Last-Modified 2026-04-13; sha256 of the .gz 10dd9c64df7c21a29f8be4f3efd33e503e1f6247f2b5b98e97c5e870ed4cd748, of the text after this line f3626961a7efdb38197ac733e124be1eefb368c73e1447e8da0f12e11db24dde). Score publication: Graff RE et al., Cross-cancer evaluation of polygenic risk scores for 16 cancer types in two large cohorts, Nat Commun 12, 970 (2021), doi:10.1038/s41467-021-21288-z, licensed CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/; Crossref and Europe PMC, read 2026-10-31); the #citation line below names its bioRxiv preprint, for which Crossref and Europe PMC record no licence. Cite the PGS Catalog as Lambert, Wingfield et al., Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x. Change: this line was added; every line after it is the Catalog's file, unchanged. See DATA_LICENSES.md.",
-        "###PGS CATALOG SCORING FILE - see https://www.pgscatalog.org/downloads/#dl_ftp_scoring for additional information",
+        "# PGS000783 (CC_Breast_IV) - breast-cancer polygenic score, 162 variants, GRCh37, inverse-variance weights (beta/SE). Source: PGS Catalog scoring file https://ftp.ebi.ac.uk/pub/databases/spot/pgs/scores/PGS000783/ScoringFiles/PGS000783.txt.gz, downloaded 2026-11-26 (Last-Modified 2026-04-13; sha256 of the .gz 1a59eed44f4c38b032a40bca1418a657164a29a5ece9824f52319bdd12b585d0, of the text after this line c045c0c420cc4180818cb4c5fa865e4f04e0ba4f306f52bc5e6417cad723b6c6). Score publication: Kachuri L et al., Pan-cancer analysis demonstrates that integrating polygenic risk scores with modifiable risk factors improves risk prediction, Nat Commun 11, 6084 (2020), doi:10.1038/s41467-020-19600-4, licensed CC BY 3.0 IGO (https://creativecommons.org/licenses/by/3.0/igo/; the publisher's article page, read 2026-11-26; Crossref's metadata records CC BY 4.0, which the article page does not), (c) 2020 The Author(s), with credit to the World Health Organization as that licence's terms on the article ask, which implies no endorsement by it. The article weights each variant by beta/SE, its log odds ratio over that estimate's standard error in the BCAC meta-analysis (Michailidou K et al., Nature 551:92-94, 2017, doi:10.1038/nature24284; GWAS Catalog GCST004988), over the 162 of PGS000072's 187 variants that reached P < 5e-8 there. Cite the PGS Catalog as Lambert, Wingfield et al., Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x. Change: this line was added; every line after it is the Catalog's file, unchanged. See DATA_LICENSES.md.",
+        "###PGS CATALOG SCORING FILE - see https://https://www.pgscatalog.org/downloads/#dl_ftp_scoring for additional information",
         "#format_version=2.0"
       ],
       "no_restriction_found_but_terms_absent": false,
@@ -1446,54 +1446,54 @@
     "measured": {
       "by_super_population": {
         "AFR": {
-          "frac_above_global_cut": 0.02118,
-          "mean": 20.374579,
+          "frac_above_global_cut": 0.11649,
+          "mean": 1296.328971,
           "n": 661,
-          "p90": 21.693418,
-          "sd": 1.042049
+          "p90": 1379.89,
+          "sd": 66.369916
         },
         "AMR": {
-          "frac_above_global_cut": 0.017291,
-          "mean": 20.133905,
+          "frac_above_global_cut": 0.138329,
+          "mean": 1279.461499,
           "n": 347,
-          "p90": 21.711376,
-          "sd": 1.283454
+          "p90": 1386.098,
+          "sd": 80.14799
         },
         "EAS": {
-          "frac_above_global_cut": 0.390873,
-          "mean": 22.252985,
+          "frac_above_global_cut": 0.154762,
+          "mean": 1296.926567,
           "n": 504,
-          "p90": 24.103023,
-          "sd": 1.440805
+          "p90": 1391.652,
+          "sd": 73.315798
         },
         "EUR": {
-          "frac_above_global_cut": 0.039761,
-          "mean": 19.816252,
+          "frac_above_global_cut": 0.031809,
+          "mean": 1236.850815,
           "n": 503,
-          "p90": 21.612154,
-          "sd": 1.468938
+          "p90": 1333.884,
+          "sd": 75.435723
         },
         "SAS": {
-          "frac_above_global_cut": 0.02863,
-          "mean": 20.341618,
+          "frac_above_global_cut": 0.06544,
+          "mean": 1250.056421,
           "n": 489,
-          "p90": 21.870458,
-          "sd": 1.211468
+          "p90": 1358.58,
+          "sd": 76.656506
         }
       },
-      "global_high_risk_cut": 22.641088,
+      "global_high_risk_cut": 1373.925,
       "n_samples": 2504,
-      "n_variants": 183,
-      "score_mean": 20.600716,
-      "score_sd": 1.54361
+      "n_variants": 158,
+      "score_mean": 1273.127448,
+      "score_sd": 77.817328
     },
     "not_measured": {
       "auroc": null,
-      "published_auroc_eur": 0.637,
-      "published_source": "PGS Catalog PPM002038 for PGS000072: AUROC 0.637 (no confidence interval recorded), incident breast cancer in n=216,273 European-ancestry women in UK Biobank - 4,760 cases and 211,513 controls - from Kachuri et al., Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. A CITATION AND NOT A TARGET, for three reasons the record itself gives: the model is fitted WITH COVARIATES (age at assessment, family history of breast cancer, genotyping array, PCs 1-15, parity, age at menarche, body mass index, menopausal status, hormone replacement therapy, oral contraceptive use, alcohol intake, and body mass index by menopausal status), which a bare weighted dot product does not have; it used 'only 162 of the original 187 SNPs'; and it is an AUC at 5 years. It is the only AUROC among the score's three Catalog performance records; the other two report an odds ratio per standard deviation of 1.26 (95% CI 1.24-1.28; PPM000192, GERA and UK Biobank, n=237,549, Graff et al. 2021) and a hazard ratio of 1.26 (1.20-1.32; PPM017165, post-menopausal breast cancer, UK Biobank, n=1,990; Byrne et al., Int J Epidemiol 52:817-826, 2023).",
-      "reason": "1000 Genomes is a reference panel with no breast-cancer case/control status. AUROC requires a phenotyped cohort, so the published figure is carried as a citation, not as a measurement from this run: 0.637 (AUROC (European ancestry))."
+      "published_auroc_eur": 0.626,
+      "published_source": "A citation and not a target: PGS Catalog PPM002070 gives PGS000783 an AUROC of 0.626 for a model fitted WITH COVARIATES, the fewer of its two records' sets: age, genotyping array and PCs 1-15. The record (no confidence interval recorded; C-index 0.62, SE 0.005) is incident breast cancer in n=216,273 European-ancestry women in UK Biobank - 4,760 cases and 211,513 controls - from Kachuri et al., Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4. Two reasons, both from the record itself: the model is fitted WITH COVARIATES, which a bare weighted dot product does not have, and it is an AUC at 5 years. The score's other record, PPM002054, adds family history of breast cancer, parity, age at menarche, body mass index, menopausal status, hormone replacement therapy, oral contraceptive use, alcohol intake and body mass index by menopausal status, and reports an AUROC of 0.637 and a hazard ratio of 1.52 (95% CI 1.47-1.56) on the same cohort. PGS000072's record PPM002038, from the same article and cohort, carries the same two figures for 'only 162 of the original 187 SNPs', the variants of PGS000783; the records do not say whether they are one evaluation filed twice.",
+      "reason": "1000 Genomes is a reference panel with no breast-cancer case/control status. AUROC requires a phenotyped cohort, so the published figure is carried as a citation, not as a measurement from this run: 0.626 (AUROC (European ancestry))."
     },
-    "wall_clock_s": 0.6
+    "wall_clock_s": 0.4
   },
   "medical_fl.cxr_fedavg": {
     "auroc": 0.80645222636351,
@@ -3167,7 +3167,7 @@
     },
     "framing": "Real 5G network traffic, 9 attack classes, 46 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. TWO CORRECTIONS MADE IN ROUND 86 EXPLAIN THE NUMBERS. The published file holds one attacker's UDP flood twice, the same 281,529 flows labelled Benign in one base station's file and UDPFlood in the other's; the Benign copies are removed, leaving 934,361 flows. And the model no longer reads `IdleTime`, which names the attack-session file a flow came from. Accuracy is 0.9979 and macro F1 0.9972. On the rows as published the same fit scores accuracy 0.7616, and no model reading these columns could pass 0.7685 there (`contradictory_copies`). `file_label_counterfactual` and `leak_counterfactual_accuracy` restore bookkeeping columns and reach about 1.0000, which is not a better model but a leak. `cross_base_station` trains on one base station and tests on the other: accuracy 0.9973 and 0.9877, against 0.4199 and 0.6059 on the rows as published. Two weak spots remain. Trained on the second base station, SYNFlood on the first scores F1 0.22. And without the TTL and hop columns, UDPScan across base stations falls to F1 0.05 (`without_ttl_and_hops`).",
     "git_sha": "9377d27-dirty",
-    "hf_revision": "9fb901e3f4fa685c2e6dd5cd431f68f8c82b372e",
+    "hf_revision": "1764db4648b70449023dcd8226b770ebdb2e2190",
     "leak_counterfactual_accuracy": 0.999987,
     "leak_counterfactual_accuracy_gain": 0.002055,
     "leak_counterfactual_features": [
@@ -3421,6 +3421,52 @@
         "dHops"
       ]
     }
+  },
+  "telecom_ids.nidd_federated": {
+    "ckks": {
+      "ciphertexts": 32,
+      "decisions_differ": 0,
+      "encrypted_accuracy": 0.98583984375,
+      "flips_beyond_twice_the_error": 0,
+      "max_abs_logit_error": 1.738424497688129e-07,
+      "rows": 2048
+    },
+    "criteria": {
+      "1_federated_above_each_station_alone": false,
+      "2_within_0_01_of_pooled": true,
+      "federated_minus_best_alone": -0.013901,
+      "federated_minus_pooled": -0.00312
+    },
+    "ece_station_1": 0.004095,
+    "ece_station_2": 0.004994,
+    "eval_sample": {
+      "accuracy": 0.98583984375,
+      "macro_f1": 0.9796104135992275,
+      "same_class_as_the_page": 2048
+    },
+    "flamby_macro_f1": 0.970821,
+    "hf_revision": "c17d719aa2358fd86f10685237d7300a3f774da3",
+    "l2": 1e-06,
+    "local_iterations": 20,
+    "masked_messages": 270,
+    "metric_name": "flamby_macro_f1",
+    "metric_note": "`flamby_macro_f1` is the mean of the two base stations' test macro F1, each station weighted equally; the `*_alone_*` and `pooled_*` figures are the pre-registered comparison on the same rows. `ckks` is the page's own module in node on the 2,048 held-out flows.",
+    "n_eval": 233591,
+    "pooled_flamby_macro_f1": 0.973941,
+    "preregistration": {
+      "file": "references/telecom-nidd-federated-preregistration.md",
+      "sha256": "5e3a137bfb4c0382ce626bb733531f94b9a505b7ec93e8500bdad8122affff0d"
+    },
+    "rounds": 40,
+    "scoring_unit": "flows",
+    "station_1_alone_flamby_macro_f1": 0.984722,
+    "station_1_macro_f1": 0.959339,
+    "station_2_alone_flamby_macro_f1": 0.958705,
+    "station_2_macro_f1": 0.982303,
+    "student_params": 333,
+    "temperature": 0.9312519672407261,
+    "union_accuracy": 0.986078,
+    "union_macro_f1": 0.97163
   },
   "telecom_ids.qml": {
     "aggregate_accuracy": 0.986667,

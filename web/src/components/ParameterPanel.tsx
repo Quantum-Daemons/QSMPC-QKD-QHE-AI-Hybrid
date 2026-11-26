@@ -147,7 +147,19 @@ export default function ParameterPanel({ run }: { run: Run }) {
           <button className="btn ghost" onClick={resetParams} style={{ fontSize: 12 }}>Reset to defaults</button>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
-          {fieldset("Market", market.map(numField))}
+          {fieldset("Market", [
+            ...market.map(numField),
+            <div key="lending_market" style={{ minWidth: 220, flex: "1 1 220px" }}>
+              <label className="muted" htmlFor="pp-lending-market" style={{ fontSize: 12 }}
+                title="Illustrative parameters, or Aave V3 Ethereum Core's own for WETH and WBTC as collateral and USDC as debt, read on chain at one pinned block: liquidation thresholds, bonus, the USDC rate curve, the reserve factor and the opening oracle prices. The borrowers, the price path and the fall stay generated.">
+                Market parameters</label>
+              <select id="pp-lending-market" name="lending_market" value={String(p.lending_market ?? "illustrative")} style={{ width: "100%" }}
+                onChange={(e) => setParams({ ...params, lending_market: e.target.value })}>
+                <option value="illustrative">Illustrative (no live market's)</option>
+                <option value="aave_v3_core">Aave V3 Ethereum Core, block 26,492,593</option>
+              </select>
+            </div>,
+          ])}
           {fieldset("Who holds the key", (
             <div style={{ minWidth: 220, flex: "1 1 220px" }}>
               <label className="muted" htmlFor="pp-custody" style={{ fontSize: 12 }}

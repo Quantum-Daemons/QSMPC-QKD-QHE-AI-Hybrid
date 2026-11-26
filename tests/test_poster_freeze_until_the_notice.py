@@ -38,3 +38,18 @@ def test_the_parameters_the_poster_states() -> None:
 def test_the_node_seal_release_the_poster_names() -> None:
     lock = json.loads((REPO / "web" / "package-lock.json").read_text())
     assert lock["packages"]["node_modules/node-seal"]["version"] == "7.0.0"
+
+
+#: web/src/lib/clientFHE.ts as `main` has had it since 82d326a (2026-11-06), pinned on the owner's choice of 2026-11-26.
+#: The checks above read only the numbers the poster states, so an edit that leaves them alone passed every gate: Round
+#: 86's batch 6 changed this file once (a per-row bias) and restored it. Lifted with the rest of this gate after the notice.
+CLIENT_FHE_SHA256 = "b60c6e86dc2065ea1ea69ce3c4e4ea92eec511b85529332a9148408161f104f8"
+
+
+def test_client_fhe_is_unchanged_until_the_notice() -> None:
+    import hashlib
+
+    got = hashlib.sha256((REPO / "web" / "src" / "lib" / "clientFHE.ts").read_bytes()).hexdigest()
+    assert got == CLIENT_FHE_SHA256, (
+        "web/src/lib/clientFHE.ts changed during the FHE.org poster freeze (notification due 2026-12-18; the register's "
+        "BLOCKED UNTIL 2026-12-19 line lifts this gate). Keep the change out of main until then, or ask the owner.")

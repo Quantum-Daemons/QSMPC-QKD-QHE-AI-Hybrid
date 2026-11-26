@@ -30,6 +30,20 @@ depends on which ran, and that check is real only with the module:
     private-inference stage scores.
 
 On the base commit this fails at the first assertion: the row is 8 values wide.
+
+BATCH 6 (2026-11-25): the cut is the person's own super-population's. A pooled 90th percentile over mixed ancestries is
+not current practice (pgsc_calc v2.3.0: "Use ancestry-normalised or Z-score outputs"; references/genomics-real-data-2026-11.md),
+so the model's bias is the 90th percentile of the person's super-population over all 2,504 individuals (aggregate
+statistics the payload carries and the Models card measured), every panel row is judged against its own, and the pooled
+cut over the bundled rows is reported beside it as `prs_pooled_cut`. Below, `_cut_and_flags` therefore counts each row
+against its own cut, and the pooled cut keeps its own check.
+
+THE CUT AFTER DECRYPTION (2026-11-26, the owner's choice). A person's cut names their super-population, so the page adds it
+to the decrypted logits instead of handing it to the evaluator, and web/src/lib/clientFHE.ts stays as the FHE.org poster
+cites it. The harness routes clientFHE through a wrapper that records every call the page makes into it;
+`test_the_evaluator_is_never_given_a_persons_cut` asserts that no run enters an evaluation other than the two linear ones,
+that each of those is handed a zero bias and no per-row bias, and, on seed 0's run, the published weights and the bundled
+rows, so the cut is folded into nothing the evaluator sees.
 """
 
 from __future__ import annotations
@@ -46,7 +60,7 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 WEB = REPO / "web"
-PAYLOAD = WEB / "public" / "data" / "genomics" / "pgs000072_breast_cancer.json"
+PAYLOAD = WEB / "public" / "data" / "genomics" / "pgs000783_breast_cancer.json"
 
 HARNESS = r"""
 import { createRequire } from "node:module";
@@ -84,6 +98,35 @@ export * as realData from ${JSON.stringify(resolve(WEB, "src/lib/realData"))};`,
     // for those .wasm files (2026-11-20, a gate run in a worktree whose wasm an earlier run had built).
     b.onResolve({ filter: /\?url$/ }, (a) => ({ path: resolve(a.resolveDir, a.path.slice(0, -"?url".length)), namespace: "fileurl" }));
     b.onLoad({ filter: /.*/, namespace: "fileurl" }, (a) => ({ contents: `export default ${JSON.stringify(a.path)};`, loader: "js" }));
+    // WHAT THE EVALUATOR IS HANDED (2026-11-26). Every import of the CKKS module resolves to a wrapper that re-exports it
+    // and records each call into each of its exported functions, and whether the call completed; for the two linear
+    // evaluations it also keeps the bias, the per-row bias and, on a detailed run, the weights and rows. The wrapper's own
+    // import of the module names the file, which this filter does not match. Calls clientFHE makes inside itself are not
+    // seen, which is why the test also requires that the run enters it through no other evaluation.
+    const realFhe = resolve(WEB, "src/lib/clientFHE.ts");
+    const fheFns = [...readFileSync(realFhe, "utf8").matchAll(/^export (?:async )?function (\w+)/gm)].map((x) => x[1]);
+    b.onResolve({ filter: /(^|\/)clientFHE$/ }, () => ({ path: "fhespy", namespace: "fhespy" }));
+    b.onLoad({ filter: /.*/, namespace: "fhespy" }, () => ({ loader: "js", resolveDir: WEB, contents: `
+      import * as real from ${JSON.stringify(realFhe)};
+      export * from ${JSON.stringify(realFhe)};
+      const rec = (e) => { (globalThis.__ckksCalls ??= []).push(e); return e; };
+      const linear = (fn, [W, b, x, opts]) => {
+        const d = { b: Array.from(b ?? []), rowBias: fn === "encryptedLinearBatch" ? (opts?.rowBias ?? null) : null };
+        if (globalThis.__ckksDetail) {
+          d.W = W.map((r) => Array.from(r));
+          d.x = fn === "encryptedLinear" ? Array.from(x) : x.map((r) => Array.from(r));
+        }
+        return d;
+      };
+      ${fheFns.map((f) => `export function ${f}(...args) {
+        const e = rec({ fn: ${JSON.stringify(f)}, ok: false,
+                        ...(${JSON.stringify(f)} === "encryptedLinear" || ${JSON.stringify(f)} === "encryptedLinearBatch"
+                            ? linear(${JSON.stringify(f)}, args) : {}) });
+        const r = real.${f}(...args);
+        if (r && typeof r.then === "function") return r.then((v) => { e.ok = true; return v; });
+        e.ok = true;
+        return r;
+      }`).join("\n")}` }));
   } }],
 });
 globalThis.fetch = async (url) => {
@@ -92,27 +135,33 @@ globalThis.fetch = async (url) => {
     return new Response(readFileSync(mpcWasm), { headers: { "Content-Type": "application/wasm" } });
   }
   const p = join(WEB, "public", u.replace(/^\/+/, ""));
-  try { const t = readFileSync(p, "utf8"); return { ok: true, status: 200, json: async () => JSON.parse(t) }; }
+  // The genomics payload's parsed object is kept: realData caches that same object, so a check below can edit one value.
+  const keep = (j) => { if (u.endsWith("data/genomics/pgs000783_breast_cancer.json")) globalThis.__prsPayload = j; return j; };
+  try { const t = readFileSync(p, "utf8"); return { ok: true, status: 200, json: async () => keep(JSON.parse(t)) }; }
   catch { return { ok: false, status: 404, json: async () => { throw new Error("404 " + u); } }; }
 };
 const m = await import(`file://${OUT}`);
-const run = (config) => new Promise((done) => {
+const run = (config, detail = false) => new Promise((done) => {
   const logs = [];
+  globalThis.__ckksCalls = [];
+  globalThis.__ckksDetail = detail;
   m.runClientPipeline("genomics", config, {
     onEvent: (e) => { if (e.type === "log") logs.push({ stage: e.stage, message: e.message }); },
     onEnd: (r) => done({ metrics: r.metrics, logs, plot: r.artifacts.encrypted_agreement_plot ?? null,
-                         explanation: r.artifacts.explanation ?? null,
+                         explanation: r.artifacts.explanation ?? null, ckks: globalThis.__ckksCalls.slice(),
                          bench: m.assembleBenchmark("genomics", config, { metrics: r.metrics, artifacts: r.artifacts }) }),
   });
 });
-const out = { mpcReal: existsSync(mpcWasm), auto: await run({ seed: 0 }), small: await run({ seed: 0, prime: 11 }) };
-// The scored person changes with the seed; over a few seeds the encrypted flag must come out both ways.
+const out = { mpcReal: existsSync(mpcWasm), auto: await run({ seed: 0 }, true), small: await run({ seed: 0, prime: 11 }) };
+// The scored person changes with the seed; over enough seeds the encrypted flag must come out both ways. Since batch 6
+// each person meets their own super-population's cut, which few of the 30 exceed, so the loop runs until it has seen both.
 out.seeds = [];
-for (let seed = 1; seed <= 12; seed++) {
+for (let seed = 1; seed <= 120; seed++) {
+  if (seed > 12 && new Set(out.seeds.map((r) => r.enc)).size === 2) break;
   const r = await run({ seed });
   out.seeds.push({ seed, score: r.metrics.polygenic_risk_score, cut: r.metrics.prs_high_risk_cut,
                    enc: r.metrics.prs_high_risk_flag, plain: r.metrics.prs_high_risk_flag_plaintext,
-                   mpc: r.metrics.mpc_matches_clear });
+                   mpc: r.metrics.mpc_matches_clear, ckks: r.ckks });
 }
 // numpy's default percentile, reproduced: random vectors and percentiles, checked in Python.
 const rnd = (() => { let s = 84; return () => { s = (s * 1103515245 + 12345) % 2147483648; return s / 2147483648; }; })();
@@ -126,8 +175,20 @@ for (let k = 0; out.percentile && k < 60; k++) {
 }
 const panel = has("prsPanel") ? await m.realData.prsPanel() : null;
 out.panel = panel && { cut: panel.cut, percentile: panel.percentile, rows: panel.rows.length,
-                       variants: panel.weights.length };
+                       variants: panel.weights.length, rowCut: panel.rowCut, superPop: panel.superPop,
+                       pooledAll: panel.pooledAll };
 out.corpusWidth = ((await m.realData.realInputCorpus("genomics")) ?? []).map((r) => r.length);
+// A bundled row's reference cut that is not a number is refused when the panel is read (2026-11-26): added after
+// decryption it would be NaN, which every comparison fails. The value is restored after.
+const pay = globalThis.__prsPayload;
+if (pay && pay.sample_super_population?.length) {
+  const g = pay.sample_super_population[0], ref = pay.reference_by_super_population[g], cut = ref.cut;
+  ref.cut = null;
+  out.nonFiniteCut = await m.realData.prsPanel().then(() => "accepted", (e) => String(e?.message ?? e));
+  ref.cut = cut;
+} else {
+  out.nonFiniteCut = null;
+}
 console.log(JSON.stringify(out));
 """
 
@@ -163,13 +224,19 @@ def _payload() -> tuple[np.ndarray, np.ndarray, dict]:
     return np.asarray(d["dosage_samples"], dtype=float), np.asarray(d["weights"], dtype=float), d
 
 
-def _cut_and_flags() -> tuple[float, int]:
+def _pooled_cut() -> float:
     from qsh.usecases.genomics import HIGH_RISK_PERCENTILE
 
     x, w, _ = _payload()
-    scores = x @ w
-    cut = float(np.percentile(scores, HIGH_RISK_PERCENTILE))
-    return cut, int(np.sum(scores > cut))
+    return float(np.percentile(x @ w, HIGH_RISK_PERCENTILE))
+
+
+def _cut_and_flags() -> tuple[np.ndarray, int]:
+    """Each bundled row's own cut, its super-population's, and how many rows are above theirs (batch 6)."""
+    x, w, d = _payload()
+    ref = d["reference_by_super_population"]
+    cuts = np.asarray([ref[g]["cut"] for g in d["sample_super_population"]], dtype=float)
+    return cuts, int(np.sum(x @ w > cuts))
 
 
 def test_ckks_evaluates_the_full_score_not_eight_variants(run: dict) -> None:
@@ -180,7 +247,9 @@ def test_ckks_evaluates_the_full_score_not_eight_variants(run: dict) -> None:
     assert run["corpusWidth"] and set(run["corpusWidth"]) == {len(w)}, (
         f"the panel rows are {sorted(set(run['corpusWidth']))} wide, not every variant ({len(w)})")
     assert run["panel"], "realData.ts exports no prsPanel: the cut has no stated source"
-    assert run["panel"]["rows"] == len(x) == m["prs_cut_population"]
+    assert run["panel"]["rows"] == len(x) == m["prs_pooled_cut_population"]
+    ref = d["reference_by_super_population"][m["prs_reference_super_population"]]
+    assert m["prs_cut_population"] == ref["n"] and m["prs_pooled_cut_all_population"] == d["reference_pooled"]["n"] == 2504
     # The explanation is of the same model: every variant is a candidate driver, not eight of them.
     assert run["auto"]["explanation"]["top_features"][0]["feature"] in set(d["keys"])
     assert abs(run["auto"]["explanation"]["efficiency_gap"]) < 1e-9
@@ -189,12 +258,24 @@ def test_ckks_evaluates_the_full_score_not_eight_variants(run: dict) -> None:
 def test_the_cut_is_the_stated_percentile_of_the_bundled_scores(run: dict) -> None:
     from qsh.usecases.genomics import HIGH_RISK_PERCENTILE
 
-    cut, _ = _cut_and_flags()
+    pooled = _pooled_cut()
+    _, _, d = _payload()
     m = run["auto"]["metrics"]
     assert run["panel"], "realData.ts exports no prsPanel"
-    assert m["prs_high_risk_percentile"] == HIGH_RISK_PERCENTILE == run["panel"]["percentile"]
-    assert math.isclose(run["panel"]["cut"], cut, rel_tol=0, abs_tol=1e-12), (run["panel"]["cut"], cut)
-    assert math.isclose(m["prs_high_risk_cut"], round(cut, 6), abs_tol=1e-12)
+    assert m["prs_high_risk_percentile"] == HIGH_RISK_PERCENTILE == run["panel"]["percentile"] == d["reference_percentile"]
+    # The pooled cut over the bundled rows, as before, now the cautionary one beside the decision.
+    assert math.isclose(run["panel"]["cut"], pooled, rel_tol=0, abs_tol=1e-12), (run["panel"]["cut"], pooled)
+    assert math.isclose(m["prs_pooled_cut"], round(pooled, 6), abs_tol=1e-12)
+    # The decision's cut is the person's super-population's, and each super-population's is the Models card's own
+    # measurement over all 2,504 (the full matrix is local only, so the card is the independent record of it).
+    card = json.loads((REPO / "models" / "metrics.json").read_text())["genomics.prs"]["measured"]
+    g = m["prs_reference_super_population"]
+    assert math.isclose(m["prs_high_risk_cut"], d["reference_by_super_population"][g]["cut"], abs_tol=1e-12)
+    for grp, ref in d["reference_by_super_population"].items():
+        c = card["by_super_population"][grp]
+        assert (ref["n"], ref["cut"], ref["mean"], ref["sd"]) == (c["n"], c["p90"], c["mean"], c["sd"]), grp
+    assert d["reference_pooled"]["cut"] == card["global_high_risk_cut"]
+    assert run["panel"]["rowCut"] == [d["reference_by_super_population"][x]["cut"] for x in d["sample_super_population"]]
 
 
 def test_the_browser_percentile_is_numpys(run: dict) -> None:
@@ -222,7 +303,7 @@ def test_every_bundled_individual_is_scored_and_the_flag_agrees(run: dict) -> No
     # The figure plots the decision logit, score minus cut, so a flagged row sits above zero.
     assert plot["scoreKind"] == "logit" and plot["flipBoundFactor"] == 1
     assert sum(1 for p in plot["points"] if p["plain"] > 0) == flagged
-    assert "full score" in plot["rowsAre"]
+    assert "full score" in plot["rowsAre"] and "its own super-population" in plot["rowsAre"]
 
 
 def test_the_log_says_what_is_encrypted_and_what_is_decrypted(run: dict) -> None:
@@ -233,6 +314,7 @@ def test_the_log_says_what_is_encrypted_and_what_is_decrypted(run: dict) -> None
     assert line, "no log line describes the full-score evaluation"
     for part in (f"Encrypted: this person's {len(w)} effect-allele dosages", "In plaintext:",
                  "Decrypted: the result ciphertext, read at slot 0", "90th percentile of the plaintext score",
+                 "No bias goes in under encryption: this tab subtracts the cut after decryption",
                  f"the flag agrees on {len(x)} of {len(x)}"):
         assert part in line, f"{part!r} missing from: {line}"
     names = " ".join(run["auto"]["metrics"])
@@ -274,3 +356,50 @@ def test_the_scored_person_is_flagged_both_ways(run: dict) -> None:
     for r in seeds:
         assert r["enc"] == r["plain"] == int(r["score"] > r["cut"]) and r["mpc"] == 1, r
     assert {r["enc"] for r in seeds} == {0, 1}, f"over {len(seeds)} seeds the flag never changed: {seeds}"
+
+
+#: The calls into clientFHE a genomics run may make: its setup, its plaintext argmax and the two linear evaluations whose
+#: inputs the test reads. Any other entry point is an evaluation this test cannot see inside, so it fails until checked.
+GENOMICS_FHE_CALLS = {"warmFHE", "argmax", "encryptedLinear", "encryptedLinearBatch"}
+
+
+def test_the_evaluator_is_never_given_a_persons_cut(run: dict) -> None:
+    """Each person's cut is their super-population's, so it is added after decryption (the owner's choice of 2026-11-26).
+
+    The harness records every call the page makes into clientFHE. On the run of seed 0, which scores the person and the
+    whole panel, on the GF(11) run and on every seed's run, each call completes, none enters an evaluation other than the
+    two linear ones, and each linear one is handed a zero bias and no per-row bias. On seed 0's run the cut is folded into
+    nothing else the evaluator sees either: the weights are [0, w] as published and the rows are the bundled dosages. The
+    decisions still meet numpy's against each person's own cut (the tests above), so the cut did arrive, after decryption.
+    """
+    x, w, _ = _payload()
+    auto = run["auto"]["ckks"]
+    assert {c["fn"] for c in auto} >= {"encryptedLinear", "encryptedLinearBatch"}, (
+        f"the run asked for {sorted({c['fn'] for c in auto})}: one person and the panel should both be scored under CKKS")
+    runs = [("seed 0", auto), ("the GF(11) run", run["small"]["ckks"])]
+    runs += [(f"seed {r['seed']}", r["ckks"]) for r in run["seeds"]]
+    for label, calls in runs:
+        assert any(c["fn"] == "encryptedLinear" for c in calls), f"{label}: the person was not scored under CKKS"
+        for c in calls:
+            assert c["ok"], f"{label}: clientFHE.{c['fn']} did not complete"
+            assert c["fn"] in GENOMICS_FHE_CALLS, (
+                f"{label}: the genomics run called clientFHE.{c['fn']}; check what it hands the evaluator, then allow it")
+            if c["fn"] in ("encryptedLinear", "encryptedLinearBatch"):
+                assert all(v == 0 for v in c["b"]), f"{label}: {c['fn']} was handed the bias {c['b']}"
+                assert c["rowBias"] is None, f"{label}: {c['fn']} was handed a per-row bias"
+    model = np.vstack([np.zeros_like(w), w])
+    for c in (c for c in auto if c["fn"] in ("encryptedLinear", "encryptedLinearBatch")):
+        assert np.array_equal(np.asarray(c["W"], dtype=float), model), f"{c['fn']} was handed weights other than [0, w]"
+    single = next(c for c in auto if c["fn"] == "encryptedLinear")
+    assert any(np.array_equal(np.asarray(single["x"], dtype=float), row) for row in x), (
+        "the row encrypted for the person is not one of the bundled individuals' dosages")
+    batch = next(c for c in auto if c["fn"] == "encryptedLinearBatch")
+    assert np.array_equal(np.asarray(batch["x"], dtype=float), x), "the panel's encrypted rows are not the bundled dosages"
+
+
+def test_a_reference_cut_that_is_not_a_number_is_refused(run: dict) -> None:
+    """Under encryption the encoder refused a non-finite bias by name; added after decryption, a NaN cut would pass as a
+    row that agrees and is never flagged. So the panel refuses it when read (the harness nulls one bundled row's cut)."""
+    msg = run["nonFiniteCut"]
+    assert msg is not None, "the harness did not capture the genomics payload, so the refusal was not exercised"
+    assert msg != "accepted" and "finite cut" in msg, f"a null reference cut was not refused: {msg}"

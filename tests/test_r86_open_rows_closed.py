@@ -34,7 +34,9 @@ def test_sc23_the_satellite_summary_says_simulated():
 def test_ux6_the_sentence_the_page_shows_carries_the_covariates_and_the_snps():
     # The regular expression is RegistryNote's: the first sentence stays visible and the rest folds.
     first = re.match(r"^([\s\S]{40,}?[.!?])\s+(?=[A-Z(`\"])", registry.M_PRS.baseline_source).group(1)
-    assert "0.637" in first and "WITH COVARIATES" in first and "162 of the score's 187" in first
+    # PGS000783 since Round 86's batch 6: its record's covariates are in the first sentence. The SNP caveat PGS000072's
+    # sentence carried ("162 of the score's 187") does not apply: PGS000783 is those 162 variants.
+    assert "0.626" in first and "WITH COVARIATES" in first and "age, genotyping array and PCs 1-15" in first
 
 
 def test_sc10_the_signed_number_is_not_called_a_capacity():
