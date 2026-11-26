@@ -66,7 +66,7 @@ export default function GenomicsReferenceCurves({ metrics }: { metrics: Metrics 
         <ChartReadout hint={HINT_POINTER}>
           <MarksHidden>
             <ResponsiveContainer width="100%" height={300}>
-              <LineChart role="img" title="Share of each super-population at or below a polygenic score" aria-describedby={captionId}
+              <LineChart accessibilityLayer role="img" title="Share of each super-population at or below a polygenic score" aria-describedby={captionId}
                 margin={{ top: 12, right: 24, bottom: 8, left: 4 }}>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
                 <XAxis type="number" dataKey="x" domain={[lo, hi]} tick={tick} allowDataOverflow

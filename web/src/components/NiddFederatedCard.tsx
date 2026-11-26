@@ -126,7 +126,7 @@ export default function NiddFederatedCard({ live }: { live: NiddFederatedLive | 
         <ChartReadout hint={HINT_POINTER}>
           <MarksHidden>
             <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={d.per_round} role="img" title="Macro-F1 of the federated model by round, by base station"
+              <LineChart accessibilityLayer data={d.per_round} role="img" title="Macro-F1 of the federated model by round, by base station"
                 aria-describedby={captionId} margin={{ top: 10, right: 20, bottom: 8, left: 4 }}>
                 <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
                 <XAxis dataKey="round" type="number" domain={[1, fed.rounds]} tick={tick} allowDecimals={false}

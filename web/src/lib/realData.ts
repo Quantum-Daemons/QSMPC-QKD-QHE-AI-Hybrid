@@ -108,8 +108,8 @@ async function fetchJSON(url: string): Promise<any> {
 
 /**
  * Returns REAL input + a REAL model where a real sample ships: medical (WDBC, CC BY 4.0), finance
- * (an AMLworld test-window row since F7b, with a PaySim row for its QCNN) and genomics, whose PGS000072 weights are
- * CC BY 4.0 and whose 1000 Genomes
+ * (an AMLworld test-window row since F7b, with a PaySim row for its QCNN) and
+ * genomics, whose PGS000072 weights are CC BY 4.0 and whose 1000 Genomes
  * genotypes carry no licence instrument (DATA_LICENSES.md sections 4 and 5). `null` for
  * everything else (the caller keeps its synthetic features and logs that honestly).
  * `u` is the pipeline's seeded RNG so a run is deterministic.
