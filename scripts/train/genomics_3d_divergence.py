@@ -29,6 +29,20 @@ PREREG = REPO / "references" / "genomics-3d-divergence-preregistration.md"
 PREREG_SHA256 = "2e93f4fab32d8f2852c7b5be59284460e3d5488533adc2cd491e0261222884c2"  # with its two addenda (empty cells; NA effects)
 RECORD = REPO / "docs" / "measurements" / "genomics-3d-divergence-2026-11-26.json"
 SITE = REPO / "web" / "public" / "data" / "genomics" / "folding_divergence.json"
+#: The teacher's corpus: Zenodo 13900918, CC BY 4.0, creator Gilbertson, Erin (both read 2026-11-26 from the record's
+#: API). Its article is CC BY-NC 4.0 and nothing of it is used (the preregistration).
+TEACHER_ATTRIBUTION = {
+    "provider": "Gilbertson, Erin (Zenodo record creator)",
+    "dataset": ("Machine learning reveals the diversity of human 3D chromatin contact patterns (example predictions "
+                "genome wide)"),
+    "download": "https://doi.org/10.5281/zenodo.13900918",
+    "licence": "CC-BY-4.0", "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+    "citation": ("Gilbertson, Brand, McArthur, Rinker, Kuang, Pollard and Capra, 'Machine learning reveals the diversity of "
+                 "human 3D chromatin contact patterns', Mol Biol Evol 41(10):msae209 (2024). Data: Zenodo "
+                 "doi:10.5281/zenodo.13900918, CC BY 4.0. The article is CC BY-NC 4.0, and nothing of it is used."),
+    "modifications": ("Each individual's predicted divergence in twelve 1 Mb windows is the label of a ridge regression per "
+                      "window on carrier indicators; the record holds only the fitted figures, no prediction or genotype."),
+}
 ALPHAS = (1e-3, 1e-2, 1e-1, 1.0, 10.0)
 R2_FLOOR, MIN_WINDOWS, CKKS_TOL = 0.5, 6, 1e-4
 ZENODO = "https://doi.org/10.5281/zenodo.13900918"
@@ -128,6 +142,9 @@ def main() -> int:
         "genotype_caveat": ("The teacher was built from the 1000 Genomes 20190312 GRCh38 release; these carrier indicators "
                             "are Ensembl's phase 3 genotypes, which can differ for some individuals and variants. Not "
                             "measured here."),
+        # The teacher's corpus, credited in the record as the other aggregate records credit theirs (the licence audit of
+        # 2026-11-26 found this record without it; DATA_LICENSES.md section 1 names it too).
+        "attribution": TEACHER_ATTRIBUTION,
         "wall_clock_s": round(time.time() - started, 1),
     }
     RECORD.write_text(json.dumps(record, indent=1) + "\n")

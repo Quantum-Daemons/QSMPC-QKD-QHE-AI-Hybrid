@@ -2671,6 +2671,6 @@
  },
  "licence": "CC-BY-4.0",
  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
- "attribution": "Li et al., 'Microsatellite-based real-time quantum key distribution', Nature 640, 47-54 (2025), arXiv:2408.10994. Data: its source data, Zenodo doi:10.5281/zenodo.14732295, CC BY 4.0.",
+ "attribution": "Li et al., 'Microsatellite-based real-time quantum key distribution', Nature 640, 47-54 (2025), arXiv:2408.10994. Data: its source data, Liao, Sheng-Kai, Zenodo doi:10.5281/zenodo.14732295, CC BY 4.0.",
  "modifications": "Counts and slant ranges per second from Fig. 4b and QBER from Fig. 4c, joined on the second (the first row of a repeated second kept); the 353 seconds with a QBER and counts above the background; the background, 644 per second, subtracted; the model's figures beside them are this project's."
 }

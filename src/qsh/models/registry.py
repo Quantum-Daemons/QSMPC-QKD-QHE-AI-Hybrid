@@ -283,7 +283,8 @@ DS_PAYSIM = DatasetSpec(
 
 #: The eight columns of the bundled PaySim sample, `data/finance/paysim_sample.tsv`, in file order.
 #: Since Round 84 no shipped model reads all eight; the finance QCNN artifact (`models/qcnn_finance`)
-#: was the last, until its retrain on PAYSIM_MODEL_FEATURES. The names are this project's AML-style
+#: was the last, until its retrain on PAYSIM_MODEL_FEATURES, and since Round 86's batch 6 it reads no PaySim
+#: column at all (the AMLworld circuit; see PAYSIM_MODEL_FEATURES below). The names are this project's AML-style
 #: labels for quantities computed from PaySim fields by `scripts/prep_real_kaggle_data.py`
 #: (`_paysim_features`); PaySim records no geography and no device.
 PAYSIM_SAMPLE_COLUMNS: tuple[str, ...] = (
@@ -294,8 +295,8 @@ PAYSIM_SAMPLE_COLUMNS: tuple[str, ...] = (
 #: The four columns the demo's linear model reads (the bundled PaySim surrogate that the finance page
 #: encrypts for its one-row step and explains with exact linear SHAP, and the full deployment's
 #: `usecases/finance_aml` model), each with what it is in PaySim's terms. The finance QCNN artifact
-#: (`models/qcnn_finance`) reads the same four since Round 84, one per wire in this order (its
-#: `feature_names`).
+#: (`models/qcnn_finance`) read the same four, one per wire, from Round 84 until Round 86's batch 6, when it became
+#: the AMLworld circuit of the pre-registered comparison, which reads eight of AMLworld's inputs (its `feature_names`).
 PAYSIM_MODEL_FEATURES: dict[str, str] = {
     "amount": "log(1 + amount), the transaction amount in local currency",
     "cross_border": ("1 if the PaySim transaction type is TRANSFER or CASH_OUT, else 0; PaySim records "
@@ -464,7 +465,11 @@ DS_PGS_CATALOG = DatasetSpec(
         "authors', with the EMBL-EBI Terms of Use for the rest. The scoring file carries no '#license' line; its "
         "'#citation' line names the Nat Commun article. The bundled file's first line, written by this project, "
         "records all of this; `scripts/train/genomics_prs.py` re-reads it at run time (`audit_licence()`). "
-        "Nothing here uses the name or emblem of an intergovernmental organisation. PGS000072 (CC BY 4.0), which the page scored from Round 84, is retired and kept; "
+        "The article licenses its content 'as long as you give appropriate credit to the World Health Organization' "
+        "(two authors are at IARC, WHO's cancer agency), so every credit for the score names WHO; the same "
+        "paragraph reserves any other use of WHO's name or logo to a separate written licence, so nothing else here "
+        "uses either and no credit implies WHO's endorsement (read 2026-11-26; until then this record said nothing "
+        "here used an intergovernmental organisation's name, and the credit left WHO out). PGS000072 (CC BY 4.0), which the page scored from Round 84, is retired and kept; "
         "PGS000004 (PRS313) is not used: its weights appear only in the supplementary data of an article licensed "
         "CC BY-NC-ND 4.0, and none of them is in the repository."
     ),
@@ -474,8 +479,9 @@ DS_PGS_CATALOG = DatasetSpec(
     attribution=(
         "Score: Kachuri L, Graff RE, Smith-Byrne K, Meyers TJ, Rashkin SR, Ziv E, Witte JS, Johansson M, "
         "'Pan-cancer analysis demonstrates that integrating polygenic risk scores with modifiable risk factors "
-        "improves risk prediction', Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4, CC BY 3.0 IGO "
-        "(https://creativecommons.org/licenses/by/3.0/igo/); its weights as the PGS Catalog distributes them "
+        "improves risk prediction', Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4, (c) 2020 The "
+        "Author(s), CC BY 3.0 IGO (https://creativecommons.org/licenses/by/3.0/igo/), with credit to the World Health "
+        "Organization as that licence's terms on the article ask, which implies no endorsement by it; its weights as the PGS Catalog distributes them "
         "(PGS000783), from the Breast Cancer Association Consortium (BCAC) meta-analysis of Michailidou K et al., "
         "'Association analysis identifies 65 new breast cancer risk loci', Nature 551:92-94 (2017), "
         "doi:10.1038/nature24284. PGS Catalog: Lambert, Wingfield et al., 'Enhancing the Polygenic Score Catalog "

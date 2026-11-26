@@ -297,5 +297,14 @@
   "seconds": 154.2
  },
  "genotype_caveat": "The teacher was built from the 1000 Genomes 20190312 GRCh38 release; these carrier indicators are Ensembl's phase 3 genotypes, which can differ for some individuals and variants. Not measured here.",
+ "attribution": {
+  "provider": "Gilbertson, Erin (Zenodo record creator)",
+  "dataset": "Machine learning reveals the diversity of human 3D chromatin contact patterns (example predictions genome wide)",
+  "download": "https://doi.org/10.5281/zenodo.13900918",
+  "licence": "CC-BY-4.0",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "citation": "Gilbertson, Brand, McArthur, Rinker, Kuang, Pollard and Capra, 'Machine learning reveals the diversity of human 3D chromatin contact patterns', Mol Biol Evol 41(10):msae209 (2024). Data: Zenodo doi:10.5281/zenodo.13900918, CC BY 4.0. The article is CC BY-NC 4.0, and nothing of it is used.",
+  "modifications": "Each individual's predicted divergence in twelve 1 Mb windows is the label of a ridge regression per window on carrier indicators; the record holds only the fitted figures, no prediction or genotype."
+ },
  "wall_clock_s": 154.5
 }

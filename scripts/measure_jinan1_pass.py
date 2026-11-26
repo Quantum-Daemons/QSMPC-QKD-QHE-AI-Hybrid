@@ -72,7 +72,7 @@ RULE_2_DB = 0.5
 NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 EXCEL_EPOCH = dt.datetime(1899, 12, 30)
 CITATION = ("Li et al., 'Microsatellite-based real-time quantum key distribution', Nature 640, 47-54 (2025), "
-            "arXiv:2408.10994. Data: its source data, Zenodo doi:10.5281/zenodo.14732295, CC BY 4.0.")
+            "arXiv:2408.10994. Data: its source data, Liao, Sheng-Kai, Zenodo doi:10.5281/zenodo.14732295, CC BY 4.0.")
 
 
 def sheets(path: Path) -> dict[str, list[list[str | None]]]:

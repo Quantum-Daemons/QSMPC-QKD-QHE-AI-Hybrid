@@ -122,12 +122,15 @@ and the authors deposited the score in the Catalog. The Catalog's REST record ad
 term not to repost its summary results to a third-party website binds those who download them from
 BCAC, which this project did not; the meta-analysis is credited all the same (this project's reading of
 BCAC's page, 2026-11-26, not legal advice). The licence asks for the credit, its URI and a credit for the
-use, so all three travel with the browser payload:
+use, so all three travel with the browser payload. The article's licence paragraph also asks for "appropriate
+credit to the World Health Organization" (two authors are at IARC, WHO's cancer agency), so the credit names
+WHO; the same paragraph reserves any other use of WHO's name or logo to a separate written licence, so this
+card makes none and implies no endorsement by WHO:
 
 > Kachuri L, Graff RE, Smith-Byrne K, Meyers TJ, Rashkin SR, Ziv E, Witte JS, Johansson M, *Pan-cancer
 > analysis demonstrates that integrating polygenic risk scores with modifiable risk factors improves risk
-> prediction*, Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4, CC BY 3.0 IGO,
-> https://creativecommons.org/licenses/by/3.0/igo/
+> prediction*, Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4, (c) 2020 The Author(s), CC BY 3.0
+> IGO, https://creativecommons.org/licenses/by/3.0/igo/, with credit to the World Health Organization
 
 The weights come from the BCAC meta-analysis of Michailidou K et al., *Association analysis identifies 65
 new breast cancer risk loci*, Nature 551:92-94 (2017), doi:10.1038/nature24284. The Catalog asks to be

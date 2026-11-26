@@ -174,12 +174,20 @@ def main() -> int:
                "modifications": ("The flows published twice under contradictory labels lose their Benign copy; 36 numeric columns "
                                  f"are standardised by the training rows and clipped to [-{CLIP:g}, {CLIP:g}]; {len(take)} rows of the "
                                  "test split, stratified by class, ship.")}
+    # Fitted on 5G-NIDD (CC BY 4.0), so the weights carry the corpus's licence and credit, as every set of weights fitted on a
+    # CC BY corpus here does (the owner's choice of 2026-11-26; this file said Apache-2.0 and pointed to the held-out rows).
+    weights_licence = {"licence": "CC-BY-4.0", "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+                       "attribution": DS_5G_NIDD.attribution,
+                       "modifications": ("Fitted on the training flows, after the flows published twice under contradictory labels "
+                                         f"lose their Benign copy; 36 numeric columns standardised by the training rows and clipped "
+                                         f"to [-{CLIP:g}, {CLIP:g}]. No flow ships in this file; the held-out rows are "
+                                         "student_heldout.json's.")}
     (WEB / "student_weights.json").write_text(json.dumps({
         "_generated_by": "scripts/train/telecom_nidd_student.py; do not edit by hand", "arm": chosen,
         "features": record["features"], "classes": list(classes), "centre": centre.round(9).tolist(),
         "scale": scale.round(9).tolist(), "clip": CLIP, "W": W.round(9).tolist(), "b": b.round(9).tolist(),
         "temperature": temperature, "record": str(RECORD.relative_to(REPO)), "preregistration": record["preregistration"],
-        "licence": "Apache-2.0", "note": "fitted numbers; the corpus's credit is in student_heldout.json"}, indent=1) + "\n")
+        **weights_licence}, indent=1) + "\n")
     (WEB / "student_heldout.json").write_text(json.dumps({
         "corpus": "5G-NIDD (real traffic from a 5G test network, University of Oulu)", "split": "the teacher's test split",
         "rows": np.round(Zt[take], 6).tolist(), "labels": yte[take].astype(int).tolist(), **licence}) + "\n")

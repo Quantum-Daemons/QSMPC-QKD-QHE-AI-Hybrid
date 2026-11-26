@@ -96,7 +96,14 @@ def weights_file(site: dict, p: dict) -> dict:
         "trained": {"algorithm": "FedAvg under pairwise masks agreed by X25519", "rounds": f["rounds"],
                     "local_iterations": f["local_iterations"], "station_weights": f["weights"], "l2": f["l2"],
                     "preregistration": site["preregistration"], "record": site["record"]},
-        "licence": "Apache-2.0",
+        # Fitted on 5G-NIDD (CC BY 4.0), so the weights carry the corpus's licence and credit, as every set of weights fitted
+        # on a CC BY corpus here does and as the card always said (the owner's choice of 2026-11-26; this said Apache-2.0).
+        "licence": "CC-BY-4.0", "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+        "attribution": DS_5G_NIDD.attribution,
+        "modifications": ("Fitted by FedAvg across the corpus's two base stations on its training flows, after the flows "
+                          "published twice under contradictory labels lose their Benign copy; the 36 numeric columns are "
+                          "standardised by the two stations' combined statistics and clipped to [-20, 20]. No flow ships in "
+                          "this file."),
     }
 
 

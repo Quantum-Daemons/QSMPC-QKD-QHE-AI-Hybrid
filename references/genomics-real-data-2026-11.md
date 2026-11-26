@@ -30,8 +30,8 @@ individuals is exceeded by 15.5 % of EAS, 13.8 % of AMR, 11.6 % of AFR, 6.5 % of
 
 - The PGS Catalog's own calculator, pgsc_calc (v2.3.0, 2026-06-03, Apache-2.0), produces ancestry-aware outputs
   (`Z_MostSimilarPop`, `Z_norm1`, `Z_norm2`) and its guide says to *"Use ancestry-normalised or Z-score outputs when
-  applying PGS to individuals of diverse ancestries"* (`docs/explanation/interpret.rst`, line 125 at v2.3.0). The next
-  line asks that groups be described by similarity to a reference, *"e.g. 1KG-EUR-like"* (NASEM 2023), not as
+  applying PGS to individuals of diverse ancestries"* (`docs/explanation/interpret.rst`, line 125 at v2.3.0). Line 127
+  asks that groups be described by similarity to a reference, *"e.g. 1KG-EUR-like"* (NASEM 2023), not as
   ancestry labels.
 - The method, as the survey read pgsc_calc's source: project the person onto a reference PCA; report the percentile
   within the most similar reference population; $`Z_{\mathrm{norm1}}`$, the residual of a regression of the score on

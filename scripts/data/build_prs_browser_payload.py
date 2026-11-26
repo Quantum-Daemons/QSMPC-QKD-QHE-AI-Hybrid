@@ -14,7 +14,8 @@ THE REDISTRIBUTION BUDGET IS A HARD CONSTRAINT, NOT A DEFAULT.
 
 THE CREDITS TRAVEL WITH THE FILE. The weights are PGS000783's (Round 86, batch 6; PGS000072's before it),
 from Kachuri et al., Nat Commun 11:6084 (2020), licensed CC BY 3.0 IGO, which asks for credit, the licence's
-URI and a credit for the use; the PGS Catalog asks to be cited by the paper its REST `/rest/info` names;
+URI and a credit for the use, and on that article for credit to the World Health Organization (the registry's
+`DS_PGS_CATALOG.attribution` names it, and nothing else uses WHO's name); the PGS Catalog asks to be cited by the paper its REST `/rest/info` names;
 IGSR asks for the 1000 Genomes consortium paper. The payload carries all three, the licence link and the
 changes.
 

@@ -141,7 +141,7 @@
       "url": "https://www.kaggle.com/datasets/ealaxi/paysim1"
     },
     "genomics": {
-      "attribution": "Score: Kachuri L, Graff RE, Smith-Byrne K, Meyers TJ, Rashkin SR, Ziv E, Witte JS, Johansson M, 'Pan-cancer analysis demonstrates that integrating polygenic risk scores with modifiable risk factors improves risk prediction', Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4, CC BY 3.0 IGO (https://creativecommons.org/licenses/by/3.0/igo/); its weights as the PGS Catalog distributes them (PGS000783), from the Breast Cancer Association Consortium (BCAC) meta-analysis of Michailidou K et al., 'Association analysis identifies 65 new breast cancer risk loci', Nature 551:92-94 (2017), doi:10.1038/nature24284. PGS Catalog: Lambert, Wingfield et al., 'Enhancing the Polygenic Score Catalog with tools for score calculation and ancestry normalization', Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x. Genotypes: The 1000 Genomes Project Consortium, 'A global reference for human genetic variation', Nature 526:68-74 (2015), doi:10.1038/nature15393. Changes: 158 of the 162 variants are scored, with their weights unchanged; the 4 that Ensembl's 1000 Genomes phase 3 records do not resolve are left out (DATA_LICENSES.md section 4).",
+      "attribution": "Score: Kachuri L, Graff RE, Smith-Byrne K, Meyers TJ, Rashkin SR, Ziv E, Witte JS, Johansson M, 'Pan-cancer analysis demonstrates that integrating polygenic risk scores with modifiable risk factors improves risk prediction', Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4, (c) 2020 The Author(s), CC BY 3.0 IGO (https://creativecommons.org/licenses/by/3.0/igo/), with credit to the World Health Organization as that licence's terms on the article ask, which implies no endorsement by it; its weights as the PGS Catalog distributes them (PGS000783), from the Breast Cancer Association Consortium (BCAC) meta-analysis of Michailidou K et al., 'Association analysis identifies 65 new breast cancer risk loci', Nature 551:92-94 (2017), doi:10.1038/nature24284. PGS Catalog: Lambert, Wingfield et al., 'Enhancing the Polygenic Score Catalog with tools for score calculation and ancestry normalization', Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x. Genotypes: The 1000 Genomes Project Consortium, 'A global reference for human genetic variation', Nature 526:68-74 (2015), doi:10.1038/nature15393. Changes: 158 of the 162 variants are scored, with their weights unchanged; the 4 that Ensembl's 1000 Genomes phase 3 records do not resolve are left out (DATA_LICENSES.md section 4).",
       "file": "/data/genomics/pgs000783_breast_cancer.json",
       "licence": "CC-BY-3.0-IGO (the score's source publication, Kachuri et al. 2020); the PGS Catalog record adds the EMBL-EBI Terms of Use",
       "licence_checked": "2026-11-26",
@@ -2829,7 +2829,7 @@
         ],
         "browser_runnable": false,
         "dataset": {
-          "attribution": "Score: Kachuri L, Graff RE, Smith-Byrne K, Meyers TJ, Rashkin SR, Ziv E, Witte JS, Johansson M, 'Pan-cancer analysis demonstrates that integrating polygenic risk scores with modifiable risk factors improves risk prediction', Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4, CC BY 3.0 IGO (https://creativecommons.org/licenses/by/3.0/igo/); its weights as the PGS Catalog distributes them (PGS000783), from the Breast Cancer Association Consortium (BCAC) meta-analysis of Michailidou K et al., 'Association analysis identifies 65 new breast cancer risk loci', Nature 551:92-94 (2017), doi:10.1038/nature24284. PGS Catalog: Lambert, Wingfield et al., 'Enhancing the Polygenic Score Catalog with tools for score calculation and ancestry normalization', Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x. Genotypes: The 1000 Genomes Project Consortium, 'A global reference for human genetic variation', Nature 526:68-74 (2015), doi:10.1038/nature15393. Changes: 158 of the 162 variants are scored, with their weights unchanged; the 4 that Ensembl's 1000 Genomes phase 3 records do not resolve are left out (DATA_LICENSES.md section 4).",
+          "attribution": "Score: Kachuri L, Graff RE, Smith-Byrne K, Meyers TJ, Rashkin SR, Ziv E, Witte JS, Johansson M, 'Pan-cancer analysis demonstrates that integrating polygenic risk scores with modifiable risk factors improves risk prediction', Nat Commun 11:6084 (2020), doi:10.1038/s41467-020-19600-4, (c) 2020 The Author(s), CC BY 3.0 IGO (https://creativecommons.org/licenses/by/3.0/igo/), with credit to the World Health Organization as that licence's terms on the article ask, which implies no endorsement by it; its weights as the PGS Catalog distributes them (PGS000783), from the Breast Cancer Association Consortium (BCAC) meta-analysis of Michailidou K et al., 'Association analysis identifies 65 new breast cancer risk loci', Nature 551:92-94 (2017), doi:10.1038/nature24284. PGS Catalog: Lambert, Wingfield et al., 'Enhancing the Polygenic Score Catalog with tools for score calculation and ancestry normalization', Nat Genet 56:1989-1994 (2024), doi:10.1038/s41588-024-01937-x. Genotypes: The 1000 Genomes Project Consortium, 'A global reference for human genetic variation', Nature 526:68-74 (2015), doi:10.1038/nature15393. Changes: 158 of the 162 variants are scored, with their weights unchanged; the 4 that Ensembl's 1000 Genomes phase 3 records do not resolve are left out (DATA_LICENSES.md section 4).",
           "licence": "CC-BY-3.0-IGO (the score's source publication, Kachuri et al. 2020); the PGS Catalog record adds the EMBL-EBI Terms of Use",
           "name": "PGS Catalog score PGS000783",
           "publishable": true,
@@ -5834,7 +5834,7 @@
             "same_class_as_the_page": 2048
           },
           "flamby_macro_f1": 0.970821,
-          "hf_revision": "2d622985acdbba1ac9cfda7ab3722aed1465107a",
+          "hf_revision": "c17d719aa2358fd86f10685237d7300a3f774da3",
           "l2": 1e-06,
           "local_iterations": 20,
           "masked_messages": 270,
@@ -5887,10 +5887,10 @@
         "file_sha256": {
           "eval_sample.json": "57e65e1356f26320a88ef8e5554061a43f7bb6dd71cbbf9d91e7c4a94a15651a",
           "onnx/model.onnx": "8cf293bb89a07692128c160f6e153c8f6f9fda3f6dd989c1463e6e26ed2206df",
-          "weights.json": "2d691208ec31be967d40ba0143b6fa0c322015e5ae4027545d95ac635137cce7"
+          "weights.json": "f0f9a21d46c38bc510ffe86d16568e380e7ea26d3aa674f016db6611e2a8d3d2"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-federated-ckks",
-        "hf_revision": "2d622985acdbba1ac9cfda7ab3722aed1465107a",
+        "hf_revision": "c17d719aa2358fd86f10685237d7300a3f774da3",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "telecom_ids.nidd_federated",

@@ -488,6 +488,8 @@
   "file": "references/telecom-nidd-ckks-student-preregistration.md",
   "sha256": "b356193c073606ffa2ef8aa66b2cfa5ac3b9dcf679bd3b558ce4d0c44de5d34d"
  },
- "licence": "Apache-2.0",
- "note": "fitted numbers; the corpus's credit is in student_heldout.json"
+ "licence": "CC-BY-4.0",
+ "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+ "attribution": "Y. Siriwardhana et al., 'Descriptor: 5G Wireless Network Intrusion Detection Dataset (5G-NIDD)', in IEEE Data Descriptions, doi:10.1109/IEEEDATA.2025.3592888. Dataset: doi:10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361, CC BY 4.0.",
+ "modifications": "Fitted on the training flows, after the flows published twice under contradictory labels lose their Benign copy; 36 numeric columns standardised by the training rows and clipped to [-20, 20]. No flow ships in this file; the held-out rows are student_heldout.json's."
 }

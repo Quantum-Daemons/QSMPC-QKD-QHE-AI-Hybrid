@@ -363,7 +363,10 @@ def main() -> int:
         "shipped_rows_accuracy_by_station": shipped_by_station,
         "attribution": {"dataset": "5G-NIDD", "licence": "CC-BY-4.0", "licence_url": "https://creativecommons.org/licenses/by/4.0/",
                         "citation": DS_5G_NIDD.attribution, "download": DS_5G_NIDD.url},
-        "licence": "Apache-2.0", "note": "fitted numbers and figures computed from 5G-NIDD; the held-out rows are student_heldout.json's",
+        # Fitted numbers and figures computed from 5G-NIDD (CC BY 4.0), so under the corpus's licence, with its credit above (the
+        # owner's choice of 2026-11-26; this said Apache-2.0).
+        "licence": "CC-BY-4.0",
+        "note": "fitted numbers and figures computed from 5G-NIDD, under its licence with the credit above; the held-out rows are student_heldout.json's",
     }, indent=1) + "\n")
     print(f"wrote {(WEB / 'federated.json').relative_to(REPO)}")
     return 0
