@@ -31,6 +31,8 @@ import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
 import FinanceAccuracyCost from "../components/FinanceAccuracyCost";
 import GenomicsReferenceCurves from "../components/GenomicsReferenceCurves";
+import FoldingDivergenceCard from "../components/FoldingDivergenceCard";
+import FinanceQcnnComparisonCard from "../components/FinanceQcnnComparisonCard";
 import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCard";
 import VerificationsCard from "../components/VerificationsCard";
 import PublishedComparisonCard from "../components/PublishedComparisonCard";
@@ -459,7 +461,9 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "finance_aml" && artifacts?.mpc_gnn ? <MpcGnnPanel report={artifacts.mpc_gnn as MpcGnnReport} /> : null}
       {usecase === "finance_aml" && state === "done" ? <FinanceAccuracyCost metrics={metrics} /> : null}
       {usecase === "genomics" && state === "done" ? <GenomicsReferenceCurves metrics={metrics} /> : null}
+      {usecase === "genomics" && <FoldingDivergenceCard />}
       {usecase === "finance_aml" && <TransactionGraphCard scoredRow={artifacts?.mpc_mlp ? (artifacts.mpc_mlp as MpcMlpReport).rowIndex : null} />}
+      {usecase === "finance_aml" && <FinanceQcnnComparisonCard />}
       {usecase === "finance_aml" && artifacts?.financeDp ? <FinanceDpCard dp={artifacts.financeDp as FinanceDpArtifact} /> : null}
       {usecase === "finance_aml" && artifacts?.multi_party_psi ? <MultiPsiPanel report={artifacts.multi_party_psi as MultiPsiReport} /> : null}
 
