@@ -144,6 +144,15 @@ important finding, not a footnote. The figures are recomputed on every training 
 `by_super_population.*.frac_above_global_cut` in `models/metrics.json` rather than this
 sentence.
 
+**Predicted 3D folding divergence (D1): pre-registered, and not shown.** On the owner's option of 2026-11-26, a ridge
+regression per 1 Mb window on the carrier indicators of ten variants was taught the folding divergence Akita predicts
+for each of 2,457 1000 Genomes individuals, from Gilbertson et al.'s data (Zenodo 13900918, CC BY 4.0;
+[pre-registration](../references/genomics-3d-divergence-preregistration.md) and its two addenda). Four of its twelve
+windows reached a test $`R^2`$ of at least 0.5 above the comparator that knows only the super-population (0.70, 0.71,
+0.98 and 1.00); the pre-registered bar was six, so the page shows nothing new. Under CKKS the twelve outputs matched
+the plaintext ones within $`1.6 \times 10^{-6}`$ for all 369 test individuals. The record is
+`docs/measurements/genomics-3d-divergence-2026-11-26.json`.
+
 ### Satellite: scored event-wise, never point-adjusted
 
 Satellite reports ESA-ADB's corrected event-wise F-beta at $`\beta = 0.5`$, never point-adjusted F1:
