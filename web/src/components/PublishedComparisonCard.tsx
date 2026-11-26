@@ -4,6 +4,10 @@
 import type { ComparisonRow } from "../lib/publishedComparisons";
 import CardExport from "./CardExport";
 
+/** A reason at least this long that repeats a row above is pointed to rather than drawn again; a short one ("none") is
+ *  clearer repeated than replaced by a longer pointer. */
+const SHARED_REASON_MIN = 120;
+
 const VERDICT_CLASS: Record<ComparisonRow["verdict"], string> = {
   reproduced: "done", differs: "error", "no spread": "idle", reference: "idle", "not comparable": "idle",
 };
@@ -41,7 +45,14 @@ export default function PublishedComparisonCard({ usecase, rows, note }: {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {rows.map((r, i) => {
+                // A long reason shared word for word with a row above is drawn once and pointed to after (the page review
+                // of 2026-11-26: telecom's QKD-attack forest and its CKKS student cite one comparison, and the same
+                // 2,817-character note filled both rows). The downloads keep every row whole.
+                const first = rows.findIndex((q) => q.why === r.why);
+                const why = first < i && r.why.length >= SHARED_REASON_MIN
+                  ? `The same reasons as the ${rows[first].figure.split(":")[0]} row above.` : r.why;
+                return (
                 // Figure and source together: two published references can stand beside one figure (the medical QCNN's
                 // two), and a key on the figure alone left a stale row behind when the figure's name loaded.
                 <tr key={`${r.figure} | ${r.source}`}>
@@ -51,9 +62,10 @@ export default function PublishedComparisonCard({ usecase, rows, note }: {
                   <td>{r.offline}</td>
                   <td style={{ textAlign: "left" }}>{r.thisRun}</td>
                   <td><span className={`badge-state ${VERDICT_CLASS[r.verdict]}`}>{r.verdict}</span></td>
-                  <td style={{ textAlign: "left" }} className="small">{r.why}</td>
+                  <td style={{ textAlign: "left" }} className="small">{why}</td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>
