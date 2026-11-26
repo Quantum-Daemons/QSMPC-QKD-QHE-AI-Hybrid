@@ -391,7 +391,7 @@ def _unpack(theta: torch.Tensor, nq: int, readout_qubits: int, layers: int, arch
 
 def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
             readout_qubits: int = 0, entangle: bool = True, layers: int = 1,
-            arch: str = "tree", trace: list | None = None) -> torch.Tensor:
+            arch: str = "tree", trace: list | None = None, reupload: int = 1) -> torch.Tensor:
     """(batch, nq) features + a FLAT shared-weight vector -> a readout. State FLAT as (batch, 2**nq).
 
     `x` is the ENCODED input: the angle on wire q is `x[q] * pi`. The caller supplies
@@ -401,6 +401,10 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
     `arch` picks the convolution and the pool (see `ARCHS`); everything else below is shared.
     `trace`, if a list, receives `(stage, survivors, state)` after every pooling stage - read-only,
     for the structural check that tells a tree from a circuit that is not one.
+
+    `reupload = 2` (Round 86, batch 6; references/finance-qcnn-amlworld-comparison-preregistration.md, arm 2) encodes the
+    data a second time, on every wire, right after the first convolution round of the first stage and before any pooling,
+    so a trainable filter sits between the two encodings. The default, 1, is the circuit every artifact was trained on.
 
     `theta` is no longer `(layers, nq)`. It is the flat concatenation of the conv, pool and
     fully-connected blocks that `param_shapes()` describes, none of whose axes is the qubit count -
@@ -449,15 +453,23 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
     state = torch.zeros((b, 1 << nq), dtype=cdt, device=dev)
     state[:, 0] = 1.0                                     # |0...0>
 
-    for q in range(nq):                                   # data encode, per-row angle
-        i0, i1 = _pair_index(nq, q, dev)
-        th = (x[:, q] * torch.pi).reshape(-1, 1)
-        c, s = torch.cos(th / 2).to(cdt), torch.sin(th / 2).to(cdt)
-        a, bb = state[:, i0], state[:, i1]
-        nxt = state.clone()
-        nxt[:, i0] = c * a - s * bb
-        nxt[:, i1] = s * a + c * bb
-        state = nxt
+    if reupload not in (1, 2):
+        raise ValueError(f"reupload is 1 or 2, not {reupload}")
+
+    def encode(state: torch.Tensor) -> torch.Tensor:
+        for q in range(nq):                               # data encode, per-row angle
+            i0, i1 = _pair_index(nq, q, dev)
+            th = (x[:, q] * torch.pi).reshape(-1, 1)
+            c, s = torch.cos(th / 2).to(cdt), torch.sin(th / 2).to(cdt)
+            a, bb = state[:, i0], state[:, i1]
+            nxt = state.clone()
+            nxt[:, i0] = c * a - s * bb
+            nxt[:, i1] = s * a + c * bb
+            state = nxt
+        return state
+
+    state = encode(state)
+    reencode_after_first_conv = reupload == 2
 
     # ---- QCNN proper: conv (shared filter) -> pool (measurement-conditioned) -> reduce ----
     #
@@ -504,6 +516,9 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
                 for wire, iy, iz in ((a, 4, 5), (b, 6, 7)):
                     state = apply_1q(state, wire, _rz(w[iz], cdt), nq)
                     state = apply_1q(state, wire, _ry(w[iy], cdt), nq)
+            if reencode_after_first_conv:
+                state = encode(state)                     # the second encoding (arm 2), once
+                reencode_after_first_conv = False
         elif step["kind"] == "pool":
             pairs = list(zip(active[0::2], active[1::2], strict=False))
             if arch == "hur-su4":
@@ -895,6 +910,18 @@ def main() -> int:
     #: Exploration only: write the artifact somewhere other than the models/ directory it ships
     #: from, so a check run cannot overwrite a published file. Never part of a recorded command.
     ap.add_argument("--out", default=None, help="output directory (default models/qcnn_<usecase>[_qN])")
+    # Round 86, batch 6: the finance QCNN's fair comparison (references/finance-qcnn-amlworld-comparison-preregistration.md).
+    # Every default is the behaviour every artifact so far was trained with.
+    ap.add_argument("--select-on", choices=("auto", "ap"), default="auto",
+                    help="binary checkpoint selection: auto = F1 when the minority is under a quarter, else accuracy; "
+                         "ap = validation average precision")
+    ap.add_argument("--encoding", choices=("tanh", "quantile"), default="tanh",
+                    help="tanh: RY(c pi tanh z); quantile: RY(c pi F(z)), F each input's empirical distribution on the "
+                         "training rows")
+    ap.add_argument("--reupload", type=int, choices=(1, 2), default=1,
+                    help="2 encodes the data again after the first convolution round, before any pooling")
+    ap.add_argument("--save-scores", action="store_true",
+                    help="also write the selected checkpoint's validation and test logits (val_logits.npy, test_logits.npy)")
     a = ap.parse_args()
     c_enc = float(a.encoding_scale)
     # Bounded away from both ends on purpose: c = 0 encodes nothing, and c > 1 lets |angle| pass pi,
@@ -980,6 +1007,13 @@ def main() -> int:
         # encode another z.
         mu, sd = np.zeros(X.shape[1]), np.ones(X.shape[1])
     Xs = np.tanh((X - mu) / sd)
+    if a.encoding == "quantile":
+        # Each input's empirical distribution on the TRAINING rows (the fit sample), so the angle spreads the inputs by
+        # rank and no tail saturates: F(v) = (number of training values <= v) / n, in [0, 1]. Nothing from the
+        # validation or test rows enters it.
+        ref = np.sort(X[:cut], axis=0)
+        Xs = np.stack([np.searchsorted(ref[:, j], X[:, j], side="right") / len(ref) for j in range(X.shape[1])],
+                      axis=1).astype(Xs.dtype)
     # Pad to the wire count. telecom has 7 features on 8 wires, and the pad is ZERO because
     # RY(tanh(0)*pi) = RY(0) = identity - the wire is genuinely unencoded rather than carrying a
     # constant. A constant would be a zero-variance feature the entangling layers still rotate, which
@@ -1043,7 +1077,7 @@ def main() -> int:
     for ep in range(a.epochs):
         opt.zero_grad()
         z = circuit(xt[tr], theta, nq, readout_qubits=readout_q, entangle=entangle, layers=a.layers,
-                    arch=a.arch)
+                    arch=a.arch, reupload=a.reupload)
         loss = (lossf(z * scale + bias, yt[tr].long()) if readout_q
                 else lossf(z * scale + bias, yt[tr]))
         loss.backward()
@@ -1051,7 +1085,7 @@ def main() -> int:
         if ep % 10 == 0 or ep == a.epochs - 1:
             with torch.no_grad():
                 zt = circuit(xt[va], theta, nq, readout_qubits=readout_q, entangle=entangle,
-                             layers=a.layers, arch=a.arch)
+                             layers=a.layers, arch=a.arch, reupload=a.reupload)
                 logits = zt * scale + bias
                 pred = (logits.argmax(1).float() if readout_q else (logits > 0).float())
                 acc = (pred == yt[va]).float().mean().item()
@@ -1080,6 +1114,9 @@ def main() -> int:
                     f1 = 0.0 if tp == 0 else 2 * tp / (2 * tp + fp + fn)
                     prev = float(yt[va].mean())
                     score = f1 if min(prev, 1 - prev) < 0.25 else acc
+                    if a.select_on == "ap":
+                        from sklearn.metrics import average_precision_score as _ap
+                        score = float(_ap(yt[va].cpu().numpy(), logits.cpu().numpy()))
                 if a.keep_last_epoch or score > best:
                     best, best_ep = score, ep
                     best_state = (theta.detach().cpu().numpy().copy(),
@@ -1119,7 +1156,7 @@ def main() -> int:
         sc_t = torch.tensor(best_state[1], dtype=torch.float32, device=dev)
         bi_t = torch.tensor(best_state[2], dtype=torch.float32, device=dev)
         z_all = circuit(xt[te], th_t, nq, readout_qubits=readout_q, entangle=entangle,
-                        layers=a.layers, arch=a.arch)
+                        layers=a.layers, arch=a.arch, reupload=a.reupload)
         logits_all = z_all * sc_t + bi_t
         qcnn_pred = ((logits_all.argmax(1) if readout_q else (logits_all > 0))
                      .int().cpu().numpy())
@@ -1192,6 +1229,14 @@ def main() -> int:
     # exists becomes the naming the trainer produces. See `artifact_dir` for the unsuffixed width.
     out = Path(a.out) if a.out else artifact_dir(a.usecase, nq)
     out.mkdir(parents=True, exist_ok=True)
+    if a.save_scores:
+        # The selected checkpoint's logits on every validation and test row, for the comparison's seed ensembles and
+        # thresholds (Round 86, batch 6). float32; a work directory's, never an artifact's.
+        with torch.no_grad():
+            zv_best = circuit(xt[va], th_t, nq, readout_qubits=readout_q, entangle=entangle, layers=a.layers,
+                              arch=a.arch, reupload=a.reupload)
+            np.save(out / "val_logits.npy", (zv_best * sc_t + bi_t).cpu().numpy().astype(np.float32))
+        np.save(out / "test_logits.npy", logits_all.cpu().numpy().astype(np.float32))
     # The flags that change the weights, and only those - `--out` moves the file, not the model.
     # `--arch` and `--encoding-scale` are written out even at their defaults so the command an
     # artifact carries does not depend on what a later revision chooses as the default.
@@ -1199,7 +1244,10 @@ def main() -> int:
                f"--layers {a.layers} --epochs {a.epochs} --seed {a.seed} "
                f"--threads {a.threads} --qubits {nq} --arch {a.arch} --encoding-scale {c_enc:g}"
                + (" --no-entangle" if not entangle else "")
-               + (" --keep-last-epoch" if a.keep_last_epoch else ""))
+               + (" --keep-last-epoch" if a.keep_last_epoch else "")
+               + (f" --select-on {a.select_on}" if a.select_on != "auto" else "")
+               + (f" --encoding {a.encoding}" if a.encoding != "tanh" else "")
+               + (f" --reupload {a.reupload}" if a.reupload != 1 else ""))
     shapes = param_shapes(nq, readout_q, a.layers, a.arch)
     artifact = {
         "usecase": a.usecase, "n_qubits": nq, "layers": a.layers,
@@ -1349,6 +1397,14 @@ def main() -> int:
         # regenerate them byte for byte (tests/test_r86_qcnn_artifact_key_order.py).
         artifact["test_auprc"] = round(float(average_precision_score(y[te], logits_all.reshape(-1).cpu().numpy())), 6)
         artifact["classical_lr_auprc"] = round(float(average_precision_score(y[te], lr.decision_function(Xs[te]))), 6)
+    # The comparison's options (Round 86, batch 6), after the literal so the key order every artifact has stays; written
+    # only when a run sets one, so an artifact trained without them is the artifact it always was.
+    if a.select_on != "auto":
+        artifact["selection"] = {"on": "validation average precision", "best_val_average_precision": round(float(best), 6)}
+    if a.encoding != "tanh":
+        artifact["encoding"] = "RY(c pi F(z)), F each input's empirical distribution on the training rows"
+    if a.reupload != 1:
+        artifact["reupload"] = a.reupload
     (out / "weights.json").write_text(json.dumps(artifact, indent=1) + "\n")
     shown = out / "weights.json"
     print(f"  wrote {shown.relative_to(REPO) if shown.is_relative_to(REPO) else shown}")
