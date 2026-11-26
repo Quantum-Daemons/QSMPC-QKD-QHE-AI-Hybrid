@@ -194,9 +194,10 @@ FROZEN = {
     "references/qcnn-tensor-network-checks-preregistration.md":
         "07647cb60c7d3b8430eec6fd516c75ca4ec27e2885f3ce1abebd6e623c81aebf",
     # The encrypted predictor of 3D folding divergence (D1): committed 2026-11-26 (d3543cb) before any model was fitted
-    # or any genotype fetched, and its addendum (individuals with no value in a window) before any figure was computed.
+    # or any genotype fetched; its addenda (individuals with no value in a window, 8c3606c; variants with no effect)
+    # before any figure was computed.
     "references/genomics-3d-divergence-preregistration.md":
-        "a386a37da4bca12a6504f815b51c7102fc7b7c8f65a80a62d0aa747d21e50fcd",
+        "2e93f4fab32d8f2852c7b5be59284460e3d5488533adc2cd491e0261222884c2",
 }
 
 
