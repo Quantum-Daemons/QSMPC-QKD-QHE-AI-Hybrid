@@ -392,7 +392,7 @@ def _unpack(theta: torch.Tensor, nq: int, readout_qubits: int, layers: int, arch
 def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
             readout_qubits: int = 0, entangle: bool = True, layers: int = 1,
             arch: str = "tree", trace: list | None = None, reupload: int = 1,
-            layer_trace: list | None = None) -> torch.Tensor:
+            layer_trace: list | None = None, complex_dtype: torch.dtype = torch.complex64) -> torch.Tensor:
     """(batch, nq) features + a FLAT shared-weight vector -> a readout. State FLAT as (batch, 2**nq).
 
     `x` is the ENCODED input: the angle on wire q is `x[q] * pi`. The caller supplies
@@ -409,6 +409,11 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
 
     `layer_trace`, if a list, receives `(label, state)` after the encoding and after every convolution round, pooling stage
     and the fully connected block - read-only, for the comparison's Schmidt-rank check (arm 6).
+
+    `complex_dtype` is the state's precision. complex64, the default, is the precision every artifact was trained in and
+    every page runs. The Schmidt-rank checks trace in complex128 (with `x` and `theta` in float64): in single precision
+    the round-off leaves singular values near 1e-7 of the largest, which a rank counted at 1e-10 of it reads as
+    entanglement, so even the encoding's product state read the bound (Round 86, batch 6).
 
     `theta` is no longer `(layers, nq)`. It is the flat concatenation of the conv, pool and
     fully-connected blocks that `param_shapes()` describes, none of whose axes is the qubit count -
@@ -453,7 +458,7 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
         # circuit under the second one's name.
         raise ValueError("entangle=False is an ablation of the tree circuit only")
     b = x.shape[0]
-    dev, cdt = x.device, torch.complex64
+    dev, cdt = x.device, complex_dtype
     state = torch.zeros((b, 1 << nq), dtype=cdt, device=dev)
     state[:, 0] = 1.0                                     # |0...0>
 
@@ -488,7 +493,7 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
     # Reference architecture: Hur, Kim & Park, "Quantum convolutional neural network for classical
     # data classification", Quantum Machine Intelligence 4, 3 (2022), arXiv:2108.00661.
     conv, pool, fc = _unpack(theta, nq, readout_qubits, layers, arch)
-    cdt = torch.complex64
+    cdt = complex_dtype
     active = list(range(nq))
     stage = 0
     for step in layer_plan(nq, readout_qubits, layers):
@@ -502,6 +507,8 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
                 # the survivors are no longer a product state: this is what stops it being a tree.
                 for a, b in su4_bonds(active):
                     state = su4_block(state, a, b, w, nq, cdt)
+                if layer_trace is not None:               # read-only, as on the tree path below
+                    layer_trace.append((f"conv {stage}.{r}", state.detach().clone()))
                 continue
             # strict=False on purpose: an ODD register leaves an orphan, which is
             # dropped here and pooled into the first survivor below.
@@ -539,6 +546,8 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
                 stage += 1
                 if trace is not None:
                     trace.append((stage, list(active), state.detach().clone()))
+                if layer_trace is not None:
+                    layer_trace.append((f"pool {stage}", state.detach().clone()))
                 continue
             for a, b in pairs:
                 state = apply_cry(state, b, a, pool[stage], nq)   # condition survivor a on b

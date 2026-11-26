@@ -9,6 +9,7 @@ import { recordQcnn } from "../lib/circuitDiagram";
 import { clearReadout, treeReadoutCkksOffThread, type TreeCkksRun, type TreeNetwork } from "../lib/clientQcnnTreeCkks";
 import { qcnnInferCkks, type QcnnCkksResult } from "../lib/clientQcnnCkks";
 import { qcnnInferTrained, type QcnnWeights } from "../lib/quantumSim";
+import { schmidtSentence, useTnChecks } from "./QcnnTnCheck";
 
 type Three = { average_precision: number; minority_f1: number; balanced_accuracy: number };
 type Spread = Record<keyof Three, { mean: number; sd: number; min: number; max: number }>;
@@ -37,6 +38,20 @@ export default function SatelliteQcnnCard() {
   const [one, setOne] = useState<QcnnCkksResult | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The tensor-network checks (references/qcnn-tensor-network-checks-preregistration.md): the MPS row and the Schmidt line.
+  const tn = useTnChecks()?.artifacts[`satellite_${corpus}`];
+  /** The row with the highest average precision, and what it is, for the sentence under the table. */
+  const leadOf = (f: CorpusFile["figures"]) => {
+    const rows: { name: string; ap: number; why: string }[] = [
+      { name: "The trained circuit", ap: f.qcnn_seed0.average_precision, why: "" },
+      { name: "Logistic regression", ap: f.logistic_regression.average_precision, why: " on the same eight inputs" },
+      { name: "The classical surrogate", ap: f.classical_surrogate.average_precision,
+        why: ": a classical model with the circuit's own hypothesis class beats the trained circuit" },
+      ...(tn?.mps_average_precision != null ? [{ name: "The MPS classifier", ap: tn.mps_average_precision,
+        why: ", a classical tensor network on the same eight inputs" }] : []),
+    ];
+    return rows.reduce((b, r) => (r.ap > b.ap ? r : b));
+  };
   useEffect(() => {
     let live = true;
     setFile(null); setRun(null); setOne(null); setError(null);
@@ -73,6 +88,7 @@ export default function SatelliteQcnnCard() {
   if (failed) return <div className="card" style={{ marginTop: 14 }}><h3>A QCNN on real telemetry</h3><p className="small" style={{ color: "var(--danger)" }}>Its data did not load: {failed}.</p></div>;
   if (!file || !net || !clear || !counts) return null;
   const fig = file.figures;
+  const lead = leadOf(fig);
   const worst = run ? Math.max(...Array.from(run.run.readouts, (v, i) => Math.abs(v - clear[i]))) : null;
   const flips = run ? Array.from(run.run.readouts).filter((v, i) => (v * net.scale + net.bias > 0) !== (clear[i] * net.scale + net.bias > 0)).length : null;
 
@@ -125,15 +141,28 @@ export default function SatelliteQcnnCard() {
                 <td key={k}>{f3(fig.qcnn_spread[k].mean)} &plusmn; {f3(fig.qcnn_spread[k].sd)}</td>))}</tr>
             <tr><td>Logistic regression, the same eight inputs</td><td>{f3(fig.logistic_regression.average_precision)}</td><td>{f3(fig.logistic_regression.minority_f1)}</td><td>{f3(fig.logistic_regression.balanced_accuracy)}</td></tr>
             <tr><td><b>Classical surrogate</b>: logistic regression on the circuit&apos;s own features</td><td><b>{f3(fig.classical_surrogate.average_precision)}</b></td><td>{f3(fig.classical_surrogate.minority_f1)}</td><td>{f3(fig.classical_surrogate.balanced_accuracy)}</td></tr>
+            {tn && tn.mps_average_precision != null ? (
+              <tr><td>An MPS classifier on the same eight inputs (bond dimension {tn.mps_bond_dimension}, chosen on validation)</td>
+                <td>{f3(tn.mps_average_precision)}</td><td>{f3(tn.mps_minority_f1_at_validation_best_threshold ?? NaN)}</td>
+                <td>{f3(tn.mps_balanced_accuracy_at_validation_best_threshold ?? NaN)}</td></tr>) : null}
           </tbody>
         </table>
       </div>
       <p className="small" style={{ margin: "4px 0 0" }}>
-        <b>The classical surrogate leads</b> on average precision: a classical model with the circuit&apos;s own
-        hypothesis class beats the trained circuit, which is ahead of plain logistic regression on the same inputs.
+        {/* Which model leads, and whether the circuit beats plain logistic regression, are read from the figures: the
+            sentence was fixed text until the MPS row (2026-11-26), and on ESA the circuit's 0.854 sits just under the
+            regression's 0.857, which "ahead of plain logistic regression" had said for both corpora. */}
+        <b>{lead.name} leads</b> on average precision{lead.why}. The trained circuit is
+        {fig.qcnn_seed0.average_precision >= fig.logistic_regression.average_precision ? " ahead of" : " behind"} plain logistic
+        regression on the same inputs.
         {fig.reference_rows ? <> The shipped OPS-SAT models read all nineteen features (average precision {Object.values(fig.reference_rows).map((r) => (r.auc_pr ?? 0).toFixed(3)).join(" and ")}): not like for like.</> : null}
         {fig.note ? <> {fig.note} At its own rule, a positive logit, seed 0 scores a minority F1 of {f3(fig.trainer_rule_minority_f1)}, reported, not chosen.</> : null}
       </p>
+      {tn ? (
+        <p className="small" id="sat-qcnn-tn" style={{ margin: "6px 0 0" }}>
+          Classically simulable, and checked (<code>references/qcnn-tensor-network-checks-preregistration.md</code>):{" "}
+          {schmidtSentence(tn)} No quantum advantage is claimed.
+        </p>) : null}
       <p className="small" style={{ margin: "8px 0 0" }}>
         In this tab, on {file.rows_about}: the tree contraction gives {counts.tp} true and {counts.fp} false alarms, {counts.fn} missed
         and {counts.tn} correctly quiet, at the circuit&apos;s own threshold. On the first row it equals the state vector

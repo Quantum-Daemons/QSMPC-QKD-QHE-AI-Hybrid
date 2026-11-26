@@ -58,6 +58,27 @@ on the same eight inputs. The shipped OPS-SAT models use all nineteen features a
 **Seed position:** seed 0 is the second of five by average precision (0.933; the five range from 0.929 to 0.935), shipped
 because the pre-registration fixed seed 0 before any run; no seed was picked on test figures.
 
+## Tensor-network checks (2026-11-26)
+
+Pre-registered in `references/qcnn-tensor-network-checks-preregistration.md`, recorded in
+`docs/measurements/qcnn-tn-checks-2026-11-26.json` (`scripts/train/qcnn_tn_checks.py`). The circuit acts on
+8 wires, so its state is at most 256 amplitudes and is simulated exactly on a classical computer;
+QCNNs on classical data of this kind are classically simulable (Bermejo et al., PRX Quantum 7, 020304, 2026), and no
+quantum advantage is claimed.
+
+- **Entanglement.** Traced in double precision over all 529 test rows, after the encoding and after every layer, the
+  largest Schmidt rank across any cut of the wire order is 8 of the 16 any 8-wire state can reach.
+  By layer: encode 1, conv 0.0 2, conv 0.1 2, conv 0.2 2, pool 1 2, conv 1.0 2, conv 1.1 4, conv 1.2 4, pool 2 4, conv 2.0 4, conv 2.1 8, conv 2.2 8, pool 3 8, fc 8.
+- **A classical tensor network on the same inputs.** A matrix-product-state classifier (bond dimension
+  8, chosen on validation average precision) scores test average precision
+  0.9600; at a logit of 0, minority-class F1 0.8889 and accuracy
+  0.9546, against this circuit's 0.8599 and 0.9452 and logistic
+  regression's 0.7692 and 0.9149; at the threshold
+  best on validation, minority-class F1 0.8850 and balanced accuracy
+  0.9269.
+- **The circuit traced is the circuit shipped.** Its test figures recomputed from the same forward pass equal
+  the ones this card records.
+
 ## How it runs on the page
 
 - In the clear: the state vector, or its tree contraction.

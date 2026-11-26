@@ -65,3 +65,14 @@ beside the QCNN's and the logistic regression's, saying which is higher. Nothing
 
 The record is `docs/measurements/qcnn-tn-checks-2026-11-26.json`, written by `scripts/train/qcnn_tn_checks.py`, with
 the page's summary in `web/public/data/qcnn_tn_checks.json`. Everything runs on the CPU.
+
+## Addendum, 2026-11-26, after the first run
+
+The first run traced each state in single precision (complex64, the precision the artifacts are trained in and the
+pages run). Its round-off leaves singular values near $`10^{-7}`$ of the largest, above the $`10^{-10}`$ that section 1
+counts at, so every point read the bound, the encoding's product state included: 16 of 16 right after the encoding on
+the medical circuit, where the rank is 1. Those figures measure round-off, not entanglement; the record keeps them
+under `invalid_single_precision_run` and nothing reads them. Section 1 is run again with the states in double precision
+(complex128, the inputs and angles in float64) and the tolerance unchanged; on the medical weights the encoding then
+reads rank 1. Section 2 does not depend on the precision of the trace and is recomputed in the same run. The finance
+comparison's arm 6, which had not run, traces in double precision for the same reason.

@@ -189,9 +189,10 @@ FROZEN = {
     # The finance QCNN's fair comparison: committed 2026-11-26 before any of its arms ran.
     "references/finance-qcnn-amlworld-comparison-preregistration.md":
         "dc56325772e004894575ba59e71faf7e50d40f8250ac46c81f0d27a6b8322d2c",
-    # The tensor-network checks of the medical, telecom and satellite QCNNs: committed 2026-11-26 before any ran.
+    # The tensor-network checks of the medical, telecom and satellite QCNNs: committed 2026-11-26 (362cfc6) before any
+    # ran, and its addendum the same day after the first run, which traced in single precision (see the addendum).
     "references/qcnn-tensor-network-checks-preregistration.md":
-        "361e9d33866d8bfa9f7eab08aecfc67a1db167cdd062c48e0e91d5fda05e5f65",
+        "07647cb60c7d3b8430eec6fd516c75ca4ec27e2885f3ce1abebd6e623c81aebf",
 }
 
 

@@ -110,6 +110,24 @@ and 0.541894, at five seeds 0.5309 on average, to the tree after the dead angles
 is what shipped until Round 84. Its zero-F1 class moved from `rng_manipulation` to
 `wavelength_trojan` when the dead angles became live; on this circuit no class scores below 0.89.
 
+## Tensor-network checks (2026-11-26)
+
+Pre-registered in `references/qcnn-tensor-network-checks-preregistration.md`, recorded in
+`docs/measurements/qcnn-tn-checks-2026-11-26.json` (`scripts/train/qcnn_tn_checks.py`). The circuit acts on
+7 wires, so its state is at most 128 amplitudes and is simulated exactly on a classical computer;
+QCNNs on classical data of this kind are classically simulable (Bermejo et al., PRX Quantum 7, 020304, 2026), and no
+quantum advantage is claimed.
+
+- **Entanglement.** Traced in double precision over all 480 test rows, after the encoding and after every layer, the
+  largest Schmidt rank across any cut of the wire order is 8 of the 8 any 7-wire state can reach: the trained circuit builds as much entanglement as its width allows.
+  By layer: encode 1, conv 0.0 8, conv 0.1 8, conv 0.2 8, conv 0.3 8, conv 0.4 8, conv 0.5 8, pool 1 8, fc 8.
+- **A classical tensor network on the same inputs.** A matrix-product-state classifier (bond dimension
+  8, chosen on validation macro F1) scores test macro F1 0.9659 and accuracy
+  0.9667, against this circuit's 0.9679 and logistic regression's
+  0.9764.
+- **The circuit traced is the circuit shipped.** Its test figures recomputed from the same forward pass equal
+  the ones this card records.
+
 ## Reproducing
 
     python scripts/train/qcnn_variational.py --usecase telecom --layers 6 --epochs 400 --seed 0 --threads 1 --qubits 7 --arch hur-su4 --encoding-scale 0.5

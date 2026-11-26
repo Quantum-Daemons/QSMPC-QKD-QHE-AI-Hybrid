@@ -1,0 +1,433 @@
+{
+ "preregistration": {
+  "file": "references/qcnn-tensor-network-checks-preregistration.md",
+  "sha256": "07647cb60c7d3b8430eec6fd516c75ca4ec27e2885f3ce1abebd6e623c81aebf"
+ },
+ "artifacts": {
+  "medical": {
+   "weights": "models/qcnn_medical/weights.json",
+   "circuit": "tree",
+   "usecase": "medical",
+   "features": [
+    "mean radius",
+    "mean texture",
+    "mean perimeter",
+    "mean area",
+    "mean smoothness",
+    "worst radius",
+    "worst concavity",
+    "worst symmetry"
+   ],
+   "split": {
+    "fit": 398,
+    "validation": 85,
+    "test": 86
+   },
+   "schmidt": {
+    "rows": 86,
+    "of_test_rows": 86,
+    "wires": 8,
+    "bound": 16,
+    "largest_rank": 8,
+    "by_point": {
+     "encode": 1,
+     "conv 0.0": 2,
+     "conv 0.1": 2,
+     "conv 0.2": 2,
+     "pool 1": 2,
+     "conv 1.0": 2,
+     "conv 1.1": 4,
+     "conv 1.2": 4,
+     "pool 2": 4,
+     "conv 2.0": 4,
+     "conv 2.1": 8,
+     "conv 2.2": 8,
+     "pool 3": 8,
+     "fc": 8
+    },
+    "recomputed": {
+     "test_accuracy": 0.953488,
+     "test_minority_f1": 0.939394
+    },
+    "recorded": {
+     "test_accuracy": 0.953488,
+     "test_minority_f1": 0.939394
+    }
+   },
+   "mps": {
+    "chosen_bond_dimension": 4,
+    "validation_by_bond_dimension": {
+     "2": 0.979992,
+     "4": 0.991673,
+     "8": 0.989171
+    },
+    "selected_on": "validation average precision",
+    "test_accuracy": 0.953488,
+    "test_minority_f1": 0.939394,
+    "test_average_precision": 0.982111,
+    "validation_best_threshold": 0.344535,
+    "test_minority_f1_at_validation_best_threshold": 0.939394,
+    "test_balanced_accuracy_at_validation_best_threshold": 0.942857
+   },
+   "qcnn": {
+    "test_accuracy": 0.953488,
+    "test_minority_f1": 0.939394
+   },
+   "logistic_regression": {
+    "test_accuracy": 0.953488,
+    "test_minority_f1": 0.939394
+   },
+   "headline": "test_minority_f1"
+  },
+  "telecom": {
+   "weights": "models/qcnn_telecom/weights.json",
+   "circuit": "hur-su4",
+   "usecase": "telecom",
+   "features": [
+    "qber_mean",
+    "qber_std",
+    "sift_ratio",
+    "multiphoton_rate",
+    "timing_jitter",
+    "dark_count_rate",
+    "click_asymmetry"
+   ],
+   "split": {
+    "fit": 2240,
+    "validation": 480,
+    "test": 480
+   },
+   "schmidt": {
+    "rows": 480,
+    "of_test_rows": 480,
+    "wires": 8,
+    "bound": 16,
+    "largest_rank": 16,
+    "by_point": {
+     "encode": 1,
+     "conv 0.0": 8,
+     "conv 0.1": 16,
+     "conv 0.2": 16,
+     "conv 0.3": 16,
+     "conv 0.4": 16,
+     "conv 0.5": 16,
+     "pool 1": 16,
+     "fc": 16
+    },
+    "recomputed": {
+     "test_accuracy": 0.945833,
+     "test_macro_f1": 0.944439
+    },
+    "recorded": {
+     "test_accuracy": 0.945833,
+     "test_macro_f1": 0.944439
+    }
+   },
+   "mps": {
+    "chosen_bond_dimension": 8,
+    "validation_by_bond_dimension": {
+     "2": 0.892094,
+     "4": 0.963234,
+     "8": 0.978777
+    },
+    "selected_on": "validation macro F1",
+    "test_accuracy": 0.966667,
+    "test_macro_f1": 0.9659
+   },
+   "qcnn": {
+    "test_accuracy": 0.945833,
+    "test_macro_f1": 0.944439
+   },
+   "logistic_regression": {
+    "test_accuracy": 0.977083,
+    "test_macro_f1": 0.976447
+   },
+   "headline": "test_macro_f1"
+  },
+  "telecom_q7": {
+   "weights": "models/qcnn_telecom_q7/weights.json",
+   "circuit": "hur-su4",
+   "usecase": "telecom",
+   "features": [
+    "qber_mean",
+    "qber_std",
+    "sift_ratio",
+    "multiphoton_rate",
+    "timing_jitter",
+    "dark_count_rate",
+    "click_asymmetry"
+   ],
+   "split": {
+    "fit": 2240,
+    "validation": 480,
+    "test": 480
+   },
+   "schmidt": {
+    "rows": 480,
+    "of_test_rows": 480,
+    "wires": 7,
+    "bound": 8,
+    "largest_rank": 8,
+    "by_point": {
+     "encode": 1,
+     "conv 0.0": 8,
+     "conv 0.1": 8,
+     "conv 0.2": 8,
+     "conv 0.3": 8,
+     "conv 0.4": 8,
+     "conv 0.5": 8,
+     "pool 1": 8,
+     "fc": 8
+    },
+    "recomputed": {
+     "test_accuracy": 0.96875,
+     "test_macro_f1": 0.967932
+    },
+    "recorded": {
+     "test_accuracy": 0.96875,
+     "test_macro_f1": 0.967932
+    }
+   },
+   "mps": {
+    "chosen_bond_dimension": 8,
+    "validation_by_bond_dimension": {
+     "2": 0.892094,
+     "4": 0.963234,
+     "8": 0.978777
+    },
+    "selected_on": "validation macro F1",
+    "test_accuracy": 0.966667,
+    "test_macro_f1": 0.9659
+   },
+   "qcnn": {
+    "test_accuracy": 0.96875,
+    "test_macro_f1": 0.967932
+   },
+   "logistic_regression": {
+    "test_accuracy": 0.977083,
+    "test_macro_f1": 0.976447
+   },
+   "headline": "test_macro_f1"
+  },
+  "satellite_opssat": {
+   "weights": "models/qcnn_satellite_opssat/weights.json",
+   "circuit": "tree",
+   "usecase": "satellite_opssat",
+   "features": [
+    "n_peaks",
+    "kurtosis",
+    "smooth10_n_peaks",
+    "len",
+    "diff2_peaks",
+    "var_div_len",
+    "var_div_duration",
+    "sampling"
+   ],
+   "split": {
+    "fit": 1354,
+    "validation": 240,
+    "test": 529
+   },
+   "schmidt": {
+    "rows": 529,
+    "of_test_rows": 529,
+    "wires": 8,
+    "bound": 16,
+    "largest_rank": 8,
+    "by_point": {
+     "encode": 1,
+     "conv 0.0": 2,
+     "conv 0.1": 2,
+     "conv 0.2": 2,
+     "pool 1": 2,
+     "conv 1.0": 2,
+     "conv 1.1": 4,
+     "conv 1.2": 4,
+     "pool 2": 4,
+     "conv 2.0": 4,
+     "conv 2.1": 8,
+     "conv 2.2": 8,
+     "pool 3": 8,
+     "fc": 8
+    },
+    "recomputed": {
+     "test_accuracy": 0.94518,
+     "test_minority_f1": 0.859903
+    },
+    "recorded": {
+     "test_accuracy": 0.94518,
+     "test_minority_f1": 0.859903
+    }
+   },
+   "mps": {
+    "chosen_bond_dimension": 8,
+    "validation_by_bond_dimension": {
+     "2": 0.906034,
+     "4": 0.934908,
+     "8": 0.936721
+    },
+    "selected_on": "validation average precision",
+    "test_accuracy": 0.954631,
+    "test_minority_f1": 0.888889,
+    "test_average_precision": 0.960012,
+    "validation_best_threshold": -0.929585,
+    "test_minority_f1_at_validation_best_threshold": 0.884956,
+    "test_balanced_accuracy_at_validation_best_threshold": 0.926853
+   },
+   "qcnn": {
+    "test_accuracy": 0.94518,
+    "test_minority_f1": 0.859903
+   },
+   "logistic_regression": {
+    "test_accuracy": 0.914934,
+    "test_minority_f1": 0.769231
+   },
+   "headline": "test_minority_f1"
+  },
+  "satellite_esa": {
+   "weights": "models/qcnn_satellite_esa/weights.json",
+   "circuit": "tree",
+   "usecase": "satellite_esa",
+   "features": [
+    "std_channel_41",
+    "std_channel_42",
+    "std_channel_43",
+    "std_channel_44",
+    "std_channel_45",
+    "std_channel_46",
+    "max_abs_step",
+    "max_abs_value"
+   ],
+   "split": {
+    "fit": 3560,
+    "validation": 4139,
+    "test": 115064
+   },
+   "schmidt": {
+    "rows": 1000,
+    "of_test_rows": 115064,
+    "wires": 8,
+    "bound": 16,
+    "largest_rank": 8,
+    "by_point": {
+     "encode": 1,
+     "conv 0.0": 2,
+     "conv 0.1": 2,
+     "conv 0.2": 2,
+     "pool 1": 2,
+     "conv 1.0": 2,
+     "conv 1.1": 4,
+     "conv 1.2": 4,
+     "pool 2": 4,
+     "conv 2.0": 4,
+     "conv 2.1": 8,
+     "conv 2.2": 8,
+     "pool 3": 8,
+     "fc": 8
+    }
+   },
+   "mps": {
+    "chosen_bond_dimension": 4,
+    "validation_by_bond_dimension": {
+     "2": 0.833333,
+     "4": 1.0,
+     "8": 1.0
+    },
+    "selected_on": "validation average precision",
+    "test_accuracy": 0.740266,
+    "test_minority_f1": 0.065128,
+    "test_average_precision": 0.655901,
+    "validation_best_threshold": 4.575727,
+    "test_minority_f1_at_validation_best_threshold": 0.254457,
+    "test_balanced_accuracy_at_validation_best_threshold": 0.572888
+   },
+   "qcnn": {
+    "test_accuracy": 0.994377,
+    "test_minority_f1": 0.715854
+   },
+   "logistic_regression": {
+    "test_accuracy": 0.994386,
+    "test_minority_f1": 0.716418
+   },
+   "headline": "test_minority_f1"
+  }
+ },
+ "wall_clock_s": 30.6,
+ "statement": "Every circuit here acts on at most eight wires, so its state is at most 256 amplitudes and is simulated exactly on a classical computer; QCNNs on classical data of this kind are classically simulable (Bermejo et al., PRX Quantum 7, 020304, 2026). No quantum advantage is claimed.",
+ "invalid_single_precision_run": {
+  "note": "The first run's ranks, traced in complex64: round-off read as rank (the pre-registration's addendum of 2026-11-26). Not a measurement of entanglement; nothing reads them.",
+  "artifacts": {
+   "medical": {
+    "largest_rank": 16,
+    "by_point": {
+     "encode": 16,
+     "conv 0.0": 16,
+     "conv 0.1": 16,
+     "conv 0.2": 16,
+     "pool 1": 16,
+     "conv 1.0": 16,
+     "conv 1.1": 16,
+     "conv 1.2": 16,
+     "pool 2": 16,
+     "conv 2.0": 16,
+     "conv 2.1": 16,
+     "conv 2.2": 16,
+     "pool 3": 16,
+     "fc": 16
+    }
+   },
+   "telecom": {
+    "largest_rank": 16,
+    "by_point": {
+     "encode": 8,
+     "fc": 16
+    }
+   },
+   "telecom_q7": {
+    "largest_rank": 8,
+    "by_point": {
+     "encode": 8,
+     "fc": 8
+    }
+   },
+   "satellite_opssat": {
+    "largest_rank": 16,
+    "by_point": {
+     "encode": 16,
+     "conv 0.0": 16,
+     "conv 0.1": 16,
+     "conv 0.2": 16,
+     "pool 1": 16,
+     "conv 1.0": 16,
+     "conv 1.1": 16,
+     "conv 1.2": 16,
+     "pool 2": 16,
+     "conv 2.0": 16,
+     "conv 2.1": 16,
+     "conv 2.2": 16,
+     "pool 3": 16,
+     "fc": 16
+    }
+   },
+   "satellite_esa": {
+    "largest_rank": 16,
+    "by_point": {
+     "encode": 16,
+     "conv 0.0": 16,
+     "conv 0.1": 16,
+     "conv 0.2": 16,
+     "pool 1": 16,
+     "conv 1.0": 16,
+     "conv 1.1": 16,
+     "conv 1.2": 16,
+     "pool 2": 16,
+     "conv 2.0": 16,
+     "conv 2.1": 16,
+     "conv 2.2": 16,
+     "pool 3": 16,
+     "fc": 16
+    }
+   }
+  }
+ }
+}

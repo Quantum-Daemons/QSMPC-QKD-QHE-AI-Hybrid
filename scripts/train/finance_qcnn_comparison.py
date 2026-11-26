@@ -364,17 +364,21 @@ def run_schmidt() -> int:
 
     d = load_inputs()
     rows = np.random.default_rng(0).permutation(d["te"])[:1000]
-    x = torch.tensor(0.5 * np.tanh(d["X"][rows]), dtype=torch.float32)      # arm 1's encoding, c = 0.5
+    # Arm 1's encoding, c = 0.5, traced in double precision: in single precision the round-off leaves singular values
+    # near 1e-7 of the largest, which a rank counted at 1e-10 of it reads as entanglement (found on the other pages'
+    # checks, references/qcnn-tensor-network-checks-preregistration.md, addendum of 2026-11-26, before this arm ran).
+    x = torch.tensor(0.5 * np.tanh(d["X"][rows]), dtype=torch.float64)
     result = {}
     for s in range(20):
         w = json.loads((WORK / "qcnn1" / f"seed{s}" / "weights.json").read_text())
         trace: list = []
         with torch.no_grad():
-            Q.circuit(x, torch.tensor(w["theta"], dtype=torch.float32), 8, readout_qubits=0, entangle=True,
-                      layers=w["layers"], arch="tree", layer_trace=trace)
-        result[f"seed{s}"] = {label: int(schmidt_ranks(st.numpy().astype(np.complex128)).max()) for label, st in trace}
+            Q.circuit(x, torch.tensor(w["theta"], dtype=torch.float64), 8, readout_qubits=0, entangle=True,
+                      layers=w["layers"], arch="tree", layer_trace=trace, complex_dtype=torch.complex128)
+        result[f"seed{s}"] = {label: int(schmidt_ranks(st.numpy()).max()) for label, st in trace}
     largest = max(max(v.values()) for v in result.values())
-    out = {"rows": 1000, "bound": 16, "largest_rank_over_seeds_layers_cuts_and_rows": largest, "by_seed": result}
+    out = {"rows": 1000, "bound": 16, "precision": "complex128", "tolerance": "singular values above 1e-10 of the largest",
+           "largest_rank_over_seeds_layers_cuts_and_rows": largest, "by_seed": result}
     (WORK / "schmidt.json").write_text(json.dumps(out, indent=1) + "\n")
     print(f"largest Schmidt rank {largest} of the bound 16; wrote {WORK / 'schmidt.json'}")
     return 0

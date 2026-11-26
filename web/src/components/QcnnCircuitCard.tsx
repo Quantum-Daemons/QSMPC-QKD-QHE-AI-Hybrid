@@ -5,6 +5,7 @@ import { gateCounts, layoutBlocks, layoutGates, type PlacedBlock, type RecordedQ
 import { loadQcnnWeights, rescoreTrainedQcnn } from "../lib/clientCompute";
 import type { QcnnRescore } from "../lib/qcnnRescore";
 import { QOTP_COMPARISON_ROUNDS, type QcnnWeights } from "../lib/quantumSim";
+import QcnnTnCheck, { tnKeyFor } from "./QcnnTnCheck";
 
 const WIRE = 30, LEFT = 96, TOP = 22;
 let COL = 44;
@@ -155,6 +156,7 @@ export default function QcnnCircuitCard({ usecase, qubits, hasComparison }: { us
           <h3 style={{ marginTop: 12 }}>One U block, gate by gate</h3>
           <GateDiagram r={recorded} />
           {w.circuit?.simulability && <p>{w.circuit.simulability}.</p>}
+          {tnKeyFor(usecase, w.n_qubits) && <QcnnTnCheck artifactKey={tnKeyFor(usecase, w.n_qubits)!} />}
           <h3 style={{ marginTop: 12 }}>Its held-out figure, re-scored here</h3>
           <p>
             The weights file records the circuit&apos;s figure on the trainer&apos;s test split. This runs the circuit above, in this tab, over the {w.n_test ?? "held-out"} rows of that split and
