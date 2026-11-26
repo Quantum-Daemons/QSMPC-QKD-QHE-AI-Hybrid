@@ -48,11 +48,11 @@ ARM_LABELS = {
     "product": ("Quantum kernel SVM: the product encoding's fidelity", "quantum kernel, computed classically"),
     "zz": ("Quantum kernel SVM: the ZZ feature map's fidelity", "quantum kernel, computed classically"),
     "projected": ("Quantum kernel SVM: the ZZ map's projected kernel", "quantum kernel, computed classically"),
-    "logistic_regression": ("Logistic regression", "classical"),
+    "logistic_regression": ("Logistic regression on the standardised inputs", "classical"),
     "gradient_boosting": ("Gradient-boosted trees", "classical"),
     "rbf_svm": ("RBF support vector machine", "classical"),
     "mps": ("Matrix-product-state classifier", "classical tensor network"),
-    "logistic_regression_whole_fit_window": ("Logistic regression on the whole fit window", "classical"),
+    "logistic_regression_whole_fit_window": ("Logistic regression on the standardised inputs, the whole fit window", "classical"),
     "gradient_boosting_whole_fit_window": ("Gradient-boosted trees on the whole fit window", "classical"),
 }
 TRAINER = REPO / "scripts" / "train" / "qcnn_variational.py"
@@ -496,6 +496,25 @@ def run_record() -> int:
         arms[name] = {**comp.get(name, {}), "test_ap": round(float(ap(yt, st)), 6),
                       "minority_f1": round(f1_at_val_best(yv, sv, yt, st), 6)}
         scores[name] = st
+    # NOT AN ARM (the owner's choice of 2026-11-26, made after this record was first written): the trainer's own baseline,
+    # logistic regression on the circuit's tanh-encoded inputs, refitted exactly as scripts/export_finance_qcnn_amlworld.py
+    # refits it for the served weights file. The arms' logistic regression reads the standardised inputs and scores far
+    # lower; this one scores above every arm but the shipped seed, so the page sets it beside them, labelled. It is kept out
+    # of `arms`, so no pre-registered figure or criterion changes, and the bootstrap draws depend on the labels alone, so
+    # every arm's interval is the one it had without it.
+    from sklearn.linear_model import LogisticRegression
+    Xs = np.tanh(d["X"])
+    lr_enc = LogisticRegression(max_iter=2000).fit(Xs[d["fit"]], d["y"][d["fit"]])
+    lv, lt = lr_enc.decision_function(Xs[d["val"]]), lr_enc.decision_function(Xs[d["te"]])
+    post_hoc = {"logistic_regression_encoded": {
+        "test_ap": round(float(ap(yt, lt)), 6), "minority_f1": round(f1_at_val_best(yv, lv, yt, lt), 6),
+        "what": ("logistic regression on tanh of the standardised inputs, the bounded values the circuit encodes, on the same "
+                 "fit sample, thresholded on validation: the trainer's own baseline, as the served weights file records it"),
+        "not_an_arm": "added on the owner's choice of 2026-11-26, after the record was first written; not pre-registered"}}
+    served = json.loads((REPO / "models" / "qcnn_finance" / "weights.json").read_text())
+    if round(float(served["classical_lr_auprc"]), 6) != post_hoc["logistic_regression_encoded"]["test_ap"]:
+        raise SystemExit("the refitted baseline is not the one the served weights file records")
+    scores["logistic_regression_encoded"] = lt
     ci = intervals(yt, scores, "qcnn1_shipped")
     export = json.loads((WORK / "export_check.json").read_text()) if (WORK / "export_check.json").exists() else None
     prevalence = float(yt.mean())
@@ -503,7 +522,7 @@ def run_record() -> int:
     record = {
         "preregistration": {"file": str(PREREG.relative_to(REPO)), "sha256": got},
         "test_prevalence": round(prevalence, 8), "twice_prevalence": round(2 * prevalence, 8),
-        "arms": arms, "intervals": ci,
+        "arms": arms, "post_hoc": post_hoc, "intervals": ci,
         "schmidt": json.loads((WORK / "schmidt.json").read_text()) if (WORK / "schmidt.json").exists() else None,
         "criteria": {"1_shipped_seed_at_least_twice_prevalence": bool(ship["test_ap"] >= 2 * prevalence),
                      # scripts/check_finance_qcnn_export.py: the page's clearReadout in node against the state vector.
@@ -525,6 +544,11 @@ def run_record() -> int:
         rows.append({"key": key, "label": label + (f" (seed {ship['seed']})" if key == "qcnn1_shipped" else ""), "kind": kind,
                      "test_ap": test_ap, "ap_ci95": ci[key]["ap_ci95"],
                      "shipped_minus_this_ci95": ci[key]["ship_minus_this_ci95"]})
+    rows.append({"key": "logistic_regression_encoded", "label": "Logistic regression on the circuit's tanh-encoded inputs",
+                 "kind": "classical; not an arm of the pre-registration", "not_an_arm": True,
+                 "test_ap": post_hoc["logistic_regression_encoded"]["test_ap"],
+                 "ap_ci95": ci["logistic_regression_encoded"]["ap_ci95"],
+                 "shipped_minus_this_ci95": ci["logistic_regression_encoded"]["ship_minus_this_ci95"]})
     sch = record["schmidt"]
     SITE.write_text(json.dumps({
         "preregistration": record["preregistration"]["file"], "record": str(RECORD.relative_to(REPO)),

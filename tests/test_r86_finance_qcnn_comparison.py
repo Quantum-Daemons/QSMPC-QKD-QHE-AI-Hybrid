@@ -64,3 +64,24 @@ def test_the_page_summary_states_every_arm_with_its_interval() -> None:
     assert site["prevalence"] == r["test_prevalence"] and "No quantum advantage is claimed" in site["statement"]
     page = (REPO / "web" / "src" / "pages" / "UseCasePage.tsx").read_text()
     assert 'usecase === "finance_aml" && <FinanceQcnnComparisonCard />' in page
+
+
+def test_the_row_that_is_not_an_arm_is_labelled_and_is_the_weights_files_baseline() -> None:
+    """The owner's choice of 2026-11-26, after the record was first written: logistic regression on the circuit's own
+    tanh-encoded inputs, which leads the circuit's seed average, stands beside the arms, labelled as not one of them. It
+    is the served weights file's own baseline, it is outside `arms`, so no pre-registered figure or criterion can move with
+    it, and the card says what it is in its table and in its summary."""
+    r, site = _record(), json.loads(SITE_PATH.read_text())
+    extra = [row for row in site["rows"] if row.get("not_an_arm")]
+    assert [row["key"] for row in extra] == ["logistic_regression_encoded"], extra
+    row = extra[0]
+    assert "tanh-encoded" in row["label"] and "not an arm" in row["kind"], row
+    assert "logistic_regression_encoded" not in r["arms"] and "logistic_regression_encoded" in r["post_hoc"]
+    assert "not pre-registered" in r["post_hoc"]["logistic_regression_encoded"]["not_an_arm"]
+    served = json.loads((REPO / "models" / "qcnn_finance" / "weights.json").read_text())
+    assert row["test_ap"] == round(served["classical_lr_auprc"], 6) == r["post_hoc"]["logistic_regression_encoded"]["test_ap"]
+    assert row["ap_ci95"] == r["intervals"]["logistic_regression_encoded"]["ap_ci95"]
+    assert "Logistic regression on the circuit's tanh-encoded inputs" not in r["criteria"]["comparators_above_the_shipped_seed"]
+    card = (REPO / "web" / "src" / "components" / "FinanceQcnnComparisonCard.tsx").read_text()
+    assert "r.not_an_arm" in card and "That row is not an arm" in card
+    assert "arXiv:2403.07059" in card, "the card names the benchmark study whose checks it runs"
