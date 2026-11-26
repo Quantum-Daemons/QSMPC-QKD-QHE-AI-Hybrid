@@ -57,6 +57,9 @@ AGGREGATES = {
     # The federation of 5G-NIDD's two base stations (Round 86, batch 6; the owner's choice of 2026-11-26): figures computed
     # from 5G-NIDD beside the fitted numbers, and each shipped held-out flow's station.
     "telecom_nidd/federated.json": "5G-NIDD",
+    # The QCNNs' tensor-network checks (Round 86, batch 6; the owner's choice of 2026-11-26): figures computed from the
+    # medical, telecom and satellite QCNNs' corpora, one credit each, from the registry's dataset records.
+    "qcnn_tn_checks.json": "WDBC, the synthetic QKD-attack rows, OPS-SAT-AD and ESA-ADB",
 }
 #: Fitted numbers.
 WEIGHTS = {

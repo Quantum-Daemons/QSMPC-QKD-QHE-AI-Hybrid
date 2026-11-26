@@ -234,9 +234,23 @@ def main() -> int:
     record["statement"] = ("Every circuit here acts on at most eight wires, so its state is at most 256 amplitudes and is "
                            "simulated exactly on a classical computer; QCNNs on classical data of this kind are classically "
                            "simulable (Bermejo et al., PRX Quantum 7, 020304, 2026). No quantum advantage is claimed.")
+    # The first run's single-precision ranks stay in the record as invalid (the addendum), whoever reruns it.
+    if RECORD.exists():
+        prior = json.loads(RECORD.read_text()).get("invalid_single_precision_run")
+        if prior:
+            record["invalid_single_precision_run"] = prior
     RECORD.write_text(json.dumps(record, indent=1) + "\n")
+    # The corpora behind the figures, credited from the registry's dataset records (an aggregate's credit object per
+    # corpus, as tests/test_r86_every_shipped_data_file_is_licensed.py asks of figures computed from a corpus).
+    from qsh.models import registry as R
+
+    def credit(ds) -> dict:
+        return {"dataset": ds.name, "download": ds.url, "citation": ds.attribution or ds.notes, "licence": ds.licence}
+
     site = {"preregistration": record["preregistration"]["file"], "record": str(RECORD.relative_to(REPO)),
-            "statement": record["statement"], "artifacts": {}}
+            "statement": record["statement"], "artifacts": {},
+            "attribution": {"medical": credit(R.DS_WDBC), "telecom": credit(R.DS_QKD_ATTACK_SYNTH),
+                            "satellite_opssat": credit(R.DS_OPSSAT_AD), "satellite_esa": credit(R.DS_ESA_ADB)}}
     for key, r in record["artifacts"].items():
         h = r["headline"]
         site["artifacts"][key] = {
