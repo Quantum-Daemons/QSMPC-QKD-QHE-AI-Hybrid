@@ -193,10 +193,10 @@ FROZEN = {
     # ran, and its addendum the same day after the first run, which traced in single precision (see the addendum).
     "references/qcnn-tensor-network-checks-preregistration.md":
         "07647cb60c7d3b8430eec6fd516c75ca4ec27e2885f3ce1abebd6e623c81aebf",
-    # The encrypted predictor of 3D folding divergence (D1): committed 2026-11-26 before any model was fitted or any
-    # genotype fetched.
+    # The encrypted predictor of 3D folding divergence (D1): committed 2026-11-26 (d3543cb) before any model was fitted
+    # or any genotype fetched, and its addendum (individuals with no value in a window) before any figure was computed.
     "references/genomics-3d-divergence-preregistration.md":
-        "79af8f16625603e237e315ca915daeff89c58d092cc4cff97d62e3696ca9c0f0",
+        "a386a37da4bca12a6504f815b51c7102fc7b7c8f65a80a62d0aa747d21e50fcd",
 }
 
 

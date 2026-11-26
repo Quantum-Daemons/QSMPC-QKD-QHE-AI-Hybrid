@@ -69,3 +69,11 @@ the plaintext ones over every test individual.
    the 30 individuals the payload already ships, at the qualifying windows' variants: no new individual.
 
 The record is `docs/measurements/genomics-3d-divergence-2026-11-26.json`.
+
+## Addendum, 2026-11-26, before any figure
+
+The first run of the input step stopped on reading the table: 171 of its 4,873 windows (134 on chromosome 18, 37 on
+chromosome 22) have one or two individuals with no value, 16 of them among the 392 divergent windows, a count read
+before any divergence figure was computed. An individual with no value in a window is left out of that window's
+figures (its spread, fit, validation and test) and nothing is filled in; every model still scores every individual,
+and the card shows no teacher value where the table has none. Nothing else changes.
