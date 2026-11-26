@@ -194,10 +194,6 @@ export interface BatchOptions {
    *  split raises it, and the result reports `ciphertexts` and `msPerCiphertext` so the extra cost
    *  is a number on the page, not a factor hidden inside one total. */
   maxCiphertexts?: number;
-  /** A bias per row, `rowBias[r][j]` for row `r` and class `j`, in place of `b` for that row (Round 86, batch 6). Added under
-   *  encryption at the row's output slot exactly as `b` is. The genomics panel needs it: each 1000 Genomes individual is
-   *  judged against the 90th percentile of its own super-population, so the cut differs from row to row. */
-  rowBias?: number[][];
 }
 
 /** Let the page repaint between ciphertexts. SEAL runs synchronously on the main thread, and 64
@@ -333,9 +329,7 @@ function decryptOutputs(c: SealCtx, acc: any, stride: number, count: number,
  *  `slots / sumWidth`; the caller chunks. Returns per-class decrypted scores and its own counters. */
 async function batchCiphertext(
   c: SealCtx, W: number[][], b: number[], rows: number[][], n: number, sumWidth: number,
-  rowBias?: number[][],
 ) {
-  const biasOf = (j: number) => (i: number) => rowBias?.[i]?.[j] ?? b[j] ?? 0;
   const { seal, encoder, encryptor, evaluator, galois, slots, scale } = c;
   const t0 = performance.now();
   const xPad = new Float64Array(slots);
@@ -355,7 +349,7 @@ async function batchCiphertext(
     let rotations = 0, multiplies = 0, rotateMs = 0;   // see `encryptedLinear` for why rotations are timed
     for (let j = 0; j < W.length; j++) {
       if (W[j].every((v) => v === 0)) {
-        perClass.push(rows.map((_, i) => biasOf(j)(i)));  // all-zero row: the logit is the bias
+        perClass.push(rows.map(() => b[j] ?? 0));      // all-zero row: the logit is the bias
         continue;
       }
       const wPad = new Float64Array(slots);
@@ -379,7 +373,7 @@ async function batchCiphertext(
         rotations++;
       }
       // The class's bias goes in under encryption, and only the rows' output slots decrypt.
-      perClass.push(decryptOutputs(c, acc, sumWidth, rows.length, biasOf(j)));
+      perClass.push(decryptOutputs(c, acc, sumWidth, rows.length, () => b[j] ?? 0));
       multiplies++;                                    // the output mask
       sc.drop(acc); sc.drop(ptW);
     }
@@ -441,8 +435,7 @@ export async function encryptedLinearBatch(
   let ctBytes: number | null = null;
   for (let start = 0; start < used.length; start += rowsPerCiphertext) {
     if (ciphertexts > 0) await yieldToPage();          // outside the timed region, see `fheMs`
-    const part = await batchCiphertext(c, W, b, used.slice(start, start + rowsPerCiphertext), n, sumWidth,
-                                       opts.rowBias?.slice(start, start + rowsPerCiphertext));
+    const part = await batchCiphertext(c, W, b, used.slice(start, start + rowsPerCiphertext), n, sumWidth);
     for (const row of part.logits) logits.push(row);
     fheMs += part.ms; rotations += part.rotations; multiplies += part.multiplies;
     rotateMs += part.rotateMs;
@@ -450,8 +443,8 @@ export async function encryptedLinearBatch(
     ciphertexts++;
   }
 
-  const plainLogits = used.map((row, r) =>
-    W.map((wr, j) => wr.reduce((a, w, i) => a + w * (row[i] ?? 0), 0) + (opts.rowBias?.[r]?.[j] ?? b[j] ?? 0)));
+  const plainLogits = used.map((row) =>
+    W.map((wr, j) => wr.reduce((a, w, i) => a + w * (row[i] ?? 0), 0) + (b[j] ?? 0)));
   // A loop, not `Math.max(...spread)`: 8,192 rows x 2 classes is past what an argument list holds
   // in some engines, and a RangeError here would read as a CKKS failure.
   let maxAbsError = 0;

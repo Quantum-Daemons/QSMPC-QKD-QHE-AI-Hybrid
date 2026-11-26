@@ -364,11 +364,16 @@ def _masked_forward(specs, x, backend, arch_class: str, *, bits: int = 64) -> di
             c_in = hc.ravel()[:n_in]
             s_in = None if hs is None else hs.ravel()[:n_in]
             r = _masks((n_out,), mb)
+            # A bias the key holder keeps (genomics' cut, Round 86 batch 6) is not handed to the server: it masks the
+            # dot product alone, and the key holder adds the bias to its own share below, in the clear.
+            server_bias = np.zeros_like(s.bias) if s.key_holder_bias else s.bias
             t = time.perf_counter()
-            y = np.asarray(_fhe_linear(backend, c_in, s.weight, s.bias, server_share=s_in, mask=r,
+            y = np.asarray(_fhe_linear(backend, c_in, s.weight, server_bias, server_share=s_in, mask=r,
                                        view=view, mask_bits=mb))
             fhe_ms += (time.perf_counter() - t) * 1000
             track(y - r)                            # the linear output, masked on its way out
+            if s.key_holder_bias:
+                y = y + s.bias                      # the key holder's share, its own bias added after decryption
             if s.activation == "relu":
                 hc, hs = relu(y, r, (n_out,))
             else:                                   # logits, held as shares (y, -r)

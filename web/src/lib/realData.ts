@@ -66,8 +66,10 @@ export interface RealInput {
   bySpace?: Record<string, number[]>;
   names: string[];                           // feature names (mirror the backend / real rsIDs)
   provenance: string;                        // human label for the event log + UI badge
-  model?: { W: number[][]; b: number[]; corpusBias?: number[][] };    // a REAL model (trained LR / PRS weights) for faithful SHAP;
-  // `corpusBias`, where present, is the bias of each row of `realInputCorpus`, in its order (genomics: each individual's own cut)
+  model?: { W: number[][]; b: number[]; corpusBias?: number[][]; biasAfterDecryption?: boolean };    // a REAL model (trained LR / PRS weights) for faithful SHAP;
+  // `corpusBias`, where present, is the bias of each row of `realInputCorpus`, in its order (genomics: each individual's own cut).
+  // `biasAfterDecryption` (genomics, Round 86 batch 6): `b` and `corpusBias` are the key holder's, added to the DECRYPTED logits.
+  // CKKS scores the row with no bias, so the evaluator is never given a person's cut, which would name their super-population.
   metrics?: Record<string, number | string>; // extra real metrics, e.g. polygenic_risk_score (genomics adds its reference population's label)
   /** Column means E[x] over the shipped sample, for the SHAP reference point.
    *
@@ -149,18 +151,21 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       // model is the published weights in the two-logit form W = [0, w], b = [0, -cut], so CKKS
       // evaluates the whole score in one ciphertext and the class is "score above the cut". A sign
       // test on a few large-weight variants, which this replaced, cannot answer for the score.
-      // The cut comes from the bundled panel alone - see `prsPanel`.
+      // THE CUT IS ADDED AFTER DECRYPTION (`biasAfterDecryption`, the owner's choice of 2026-11-26). It is the person's own
+      // super-population's, so an evaluator given it would learn which super-population that is: the ciphertext is scored
+      // with no bias and this tab compares the decrypted score with the cut, as the blurb says.
       const p = await prsPanel();
       const k = Math.floor(u() * p.rows.length) % p.rows.length;   // a REAL 1000G individual
       const n = p.weights.length;
-      // SINCE BATCH 6 the decision is against the person's own super-population's cut (`rowCut`), and every bundled row
-      // of the panel figure against its own (`corpusBias`); the pooled cut over the bundled rows is reported beside it.
+      // SINCE BATCH 6 the decision is against the person's own super-population's cut (`rowCut`, from the payload's
+      // statistics over all the panel's individuals - see `prsPanel`), and every bundled row of the panel figure against
+      // its own (`corpusBias`); the pooled cut over the bundled rows is reported beside it.
       const g = p.superPop[k], ref = p.reference[g];
       const within = percentileWithin(p.scores[k], p.referencePercentilesAt, ref.percentiles);
       return {
         values: p.rows[k].slice(), names: p.keys.slice(), provenance: p.provenance,
         model: { W: [new Array(n).fill(0), p.weights.slice()], b: [0, -p.rowCut[k]],
-                 corpusBias: p.rowCut.map((c) => [0, -c]) },
+                 corpusBias: p.rowCut.map((c) => [0, -c]), biasAfterDecryption: true },
         metrics: {
           polygenic_risk_score: Number(p.scores[k].toFixed(4)),     // the score in the clear
           prs_variants: n,
@@ -341,9 +346,10 @@ export async function prsPanel(): Promise<PrsPanel> {
   // row is judged against its own super-population's percentile over the whole panel; the pooled cut stays as `cut`.
   const superPop = (prs.sample_super_population as string[] | undefined) ?? [];
   const reference = (prs.reference_by_super_population ?? {}) as PrsPanel["reference"];
-  if (superPop.length !== rows.length || superPop.some((g) => !reference[g])) {
+  // A cut that is not a finite number would be added after decryption as NaN (`biasAfterDecryption`), so it is refused here.
+  if (superPop.length !== rows.length || superPop.some((g) => !reference[g] || !Number.isFinite(reference[g].cut))) {
     throw new Error(`the genomics payload gives ${superPop.length} super-population labels for ${rows.length} rows, `
-      + `or a label without reference statistics`);
+      + `or a label without reference statistics or a finite cut`);
   }
   if (Number(prs.reference_percentile) !== PRS_HIGH_RISK_PERCENTILE) {
     throw new Error(`the payload's reference cut is at percentile ${prs.reference_percentile}, not ${PRS_HIGH_RISK_PERCENTILE}`);

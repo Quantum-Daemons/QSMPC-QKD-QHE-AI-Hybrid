@@ -851,6 +851,9 @@ export interface RealHybridRun extends MeasuredHybrid {
    *  Reported because the two are indistinguishable in the output otherwise, and the page spent
    *  several rounds encrypting one model while reporting and explaining another. */
   encryptedRealModel: boolean;
+  /** Whether the model's bias was added after decryption, in the clear, rather than under encryption (Round 86, batch 6:
+   *  genomics' `biasAfterDecryption`). Reported so the log states where the cut went from what ran, not from a sentence. */
+  biasAfterDecryption: boolean;
   /** The rows the batched agreement figure was built from, where a corpus was supplied. */
   batch?: { rows: number; rowsOffered: number; rowsPerCiphertext: number; fheMs: number;
             maxAbsError: number; mismatches: number;
@@ -1280,10 +1283,42 @@ async function publishedStudentWeights(usecase: string | undefined): Promise<Cnn
   return out;
 }
 
+/** A bias added after decryption is one finite number per class, or the run stops here. Under encryption the encoder
+ *  refused a non-finite bias by name (`encodeFinite` in clientFHE.ts); added in the clear, a NaN would sail through every
+ *  comparison (each fails, so a NaN row "agrees") and a missing class would quietly count as 0. */
+function finiteBias(bias: readonly number[] | undefined, classes: number, what: string): readonly number[] {
+  if (!Array.isArray(bias) || bias.length !== classes || bias.some((v) => !Number.isFinite(v))) {
+    const shown = Array.isArray(bias) ? `[${bias.join(", ")}]` : String(bias);
+    throw new Error(`${what}, added after decryption, is ${shown}: it must be ${classes} finite numbers`);
+  }
+  return bias;
+}
+
+/** Add a bias the key holder keeps to decrypted logits and to the plaintext logits beside them, in the clear (Round 86,
+ *  batch 6; `biasAfterDecryption`). The same constant on both leaves their difference, and with it `maxAbsError`, as CKKS
+ *  left it. `null` returns the result unchanged. */
+function addAfterDecryption<T extends { logits: number[]; plainLogits: number[] }>(r: T, bias: number[] | null): T {
+  if (!bias) return r;
+  const bv = finiteBias(bias, r.logits.length, "the model's bias");
+  return { ...r, logits: r.logits.map((v, j) => v + bv[j]), plainLogits: r.plainLogits.map((v, j) => v + bv[j]) };
+}
+
+/** The batch's form of `addAfterDecryption`: row i of both logit matrices takes `biasOf(i)`, checked as above. */
+function addRowsAfterDecryption<T extends { logits: number[][]; plainLogits: number[][] }>(
+  r: T, biasOf: (i: number) => readonly number[] | undefined,
+): T {
+  const add = (rows: number[][]) => rows.map((row, i) => {
+    const bi = finiteBias(biasOf(i), row.length, `row ${i}'s bias`);
+    return row.map((v, j) => v + bi[j]);
+  });
+  return { ...r, logits: add(r.logits), plainLogits: add(r.plainLogits) };
+}
+
 export async function realClientHybrid(features: number[],
                                       convolve = false,
                                       usecase?: string,
-                                      realModel?: { W: number[][]; b: number[]; corpusBias?: number[][] } | null,
+                                      realModel?: { W: number[][]; b: number[]; corpusBias?: number[][];
+                                                    biasAfterDecryption?: boolean } | null,
                                       corpus?: number[][] | null,
                                       seed = 0,
                                       square?: { net: FinanceSquare; raw: number[] } | null,
@@ -1318,6 +1353,16 @@ export async function realClientHybrid(features: number[],
     const b = usingRealModel
       ? W.map((_, j) => Number(realModel!.b?.[j] ?? 0))
       : [0, -0.05];
+    // A BIAS THE KEY HOLDER KEEPS (Round 86, batch 6; the owner's choice of 2026-11-26). Genomics judges each person
+    // against their own super-population's cut, so a bias added under encryption would hand the evaluator a number that
+    // names the person's super-population. Such a model (`biasAfterDecryption`) is scored under CKKS with no bias, and `b`,
+    // or each row's `corpusBias` in the batch, is added in the clear to the decrypted logits and to the plaintext logits
+    // they are checked against, before any argmax. The decision is the same; only who holds the cut changes.
+    const biasAfter = usingRealModel && realModel!.biasAfterDecryption === true;
+    if (usingRealModel && realModel!.corpusBias && !biasAfter) {
+      throw new Error("a per-row bias (corpusBias) is added after decryption only; this model does not say biasAfterDecryption");
+    }
+    const bEval = biasAfter ? b.map(() => 0) : b;
     // Finance since F7b (Round 86): the square network on the transaction, end to end under CKKS (A2) in a Web Worker, a
     // block holding one row; no rotation and no Galois key. Its decrypted logits feed the same argmax below.
     const fhe: FHEResult = square
@@ -1327,7 +1372,7 @@ export async function realClientHybrid(features: number[],
                    ctBytes: r.per_block.bytes.input / Math.max(1, square.net.n_in), maxAbsError: r.maxAbsError,
                    rotations: 0, multiplies: 0, rotateMs: 0 };
         })()
-      : await encryptedLinear(W, b, features);           // REAL CKKS, measured
+      : addAfterDecryption(await encryptedLinear(W, bEval, features), biasAfter ? b : null);   // REAL CKKS, measured
     // The REAL garbled-circuit 2PC argmax below, measured, runs over logits the client has ALREADY
     // DECRYPTED. Both parties are in this tab and the key holder holds the cleartext logits, so the
     // protocol hides nothing here; it runs to measure the protocol, not to keep the logits from anyone.
@@ -1403,8 +1448,18 @@ export async function realClientHybrid(features: number[],
     // row count can never exceed, so the batch fills as many ciphertexts as the rows need and says so.
     let batch: RealHybridRun["batch"] = null;
     if (usingRealModel && corpus?.length) {
-      const bt = await encryptedLinearBatch(W, b, corpus.map((r) => r.slice(0, n)),
-                                            { maxCiphertexts: corpus.length, rowBias: realModel?.corpusBias });
+      // Row i of the batch is corpus row i (the batch scores a prefix), so it takes `corpusBias[i]`, after decryption. A
+      // `corpusBias` of another length would judge rows against other people's cuts, so it is refused before anything is
+      // encrypted, and no row is padded with the scored person's `b`.
+      const rowBias = realModel!.corpusBias;
+      if (rowBias && rowBias.length !== corpus.length) {
+        throw new Error(`corpusBias gives ${rowBias.length} rows' biases for a corpus of ${corpus.length}`);
+      }
+      const btEval = await encryptedLinearBatch(W, bEval, corpus.map((r) => r.slice(0, n)),
+                                                { maxCiphertexts: corpus.length });
+      const bt = biasAfter
+        ? addRowsAfterDecryption(btEval, (i) => (rowBias ? rowBias[i] : b))
+        : btEval;
       const encCls = bt.logits.map(argmax), plainCls = bt.plainLogits.map(argmax);
       // A top-1 mismatch is NOT automatically a precision failure, and reporting the count alone
       // says it is. Genomics' former sign test is the case that forced this: its model was the
@@ -1488,7 +1543,8 @@ export async function realClientHybrid(features: number[],
       commBytes: mpc.commBytes, ctBytes: fhe.ctBytes, featDim: n,
       maxAbsError: fhe.maxAbsError, plainLogits: fhe.plainLogits, logits: fhe.logits, conv,
       dense: { rotations: fhe.rotations, multiplies: fhe.multiplies, rotateMs: fhe.rotateMs },
-      encryptedRealModel: usingRealModel || !!square, batch, studentNotRun,
+      // The square network applies no `b` at all, so it reports no bias added after decryption.
+      encryptedRealModel: usingRealModel || !!square, biasAfterDecryption: biasAfter && !square, batch, studentNotRun,
     };
   } catch (e) {
     // Surface the cause (no-fallback policy: a fixable defect must not hide behind the representative
@@ -2454,12 +2510,15 @@ export function runClientPipeline(
           + (ds.file ? ` Licence link and changes made: the \`licence_url\` and \`modifications\` fields of ${ds.file}.` : ""));
         else emit("log", stage, "synthetic dataset prepared (client-side; no real sample is bundled for this use case's pipeline)");
         // Finance since F7b (Round 86): the encrypted steps score AMLworld test-window rows, and the PaySim sample the line
-        // above names feeds the QCNN and the federated step. After F7b this stage named PaySim alone, on the line a visitor
-        // reads about what is scored (found in batch 6's sweep of the PaySim mentions, 2026-11-26).
+        // above names feeds the federated step. After F7b this stage named PaySim alone, on the line a visitor reads about
+        // what is scored (found in batch 6's sweep of the PaySim mentions, 2026-11-26). Since batch 6 the QCNN reads the
+        // scored AMLworld transaction itself, at eight of its inputs (`realInput`); this line said PaySim fed it until the
+        // licence audit of 2026-11-26.
         if (usecase === "finance_aml") {
           const aml = await heldOutCorpus("finance_aml");
           if (aml) emit("log", stage, `dataset (the rows the encrypted steps score, since F7b): ${aml.corpus}, ${aml.split}. `
-            + `Credit: ${aml.licence.attribution} The PaySim sample above feeds the QCNN and the federated step.`);
+            + `Credit: ${aml.licence.attribution} The PaySim sample above feeds the federated step; the QCNN reads the scored `
+            + `AMLworld transaction itself, at eight of its inputs.`);
         }
         break;
       }
@@ -3943,8 +4002,9 @@ export function runClientPipeline(
           }
           // THE FULL SCORE, SAID IN FULL (Round 84): what is encrypted, what stays in plaintext, what
           // is decrypted, and how the flag is decided, with the score and the flag against the clear.
-          // The model is W = [0, w], b = [0, -cut] (`realInput`), so slot 0 of the summed ciphertext
-          // is the score and the cut is subtracted after decryption.
+          // The model is W = [0, w], b = [0, -cut] (`realInput`), scored under CKKS with no bias (`biasAfterDecryption`,
+          // since Round 86's batch 6; until then the cut went in under encryption while this comment said otherwise), so slot 0
+          // of the summed ciphertext is the score and this tab subtracts the cut after decryption.
           if (usecase === "genomics" && realIn?.model) {
             const bCut = realIn.model.b[1] ?? 0;
             const encScore = real.logits[1] - bCut, plainScore = real.plainLogits[1] - bCut;
@@ -3974,7 +4034,14 @@ export function runClientPipeline(
               + `then sum the products into slot 0. Decrypted: the result ciphertext, read at slot 0, `
               + `which holds the score ${encScore.toFixed(6)} (in the clear ${plainScore.toFixed(6)}, `
               + `|difference| ${scoreErr.toExponential(3)}); every other slot is zeroed by the output mask and `
-              + `flooded (+/-2^${CKKS_FLOOD_BITS}) before decryption, so it shows none of the partial sums. The cut ${(-bCut).toFixed(4)} is the `
+              + `flooded (+/-2^${CKKS_FLOOD_BITS}) before decryption, so it shows none of the partial sums. `
+              + (real.biasAfterDecryption
+                ? `No bias goes in under encryption: this tab subtracts the cut after decryption, so the evaluator never holds it `
+                  + `or the super-population it names. `
+                : `This run did not keep the cut from the evaluator: ${real.encryptedRealModel
+                    ? "the model's bias went into the ciphertext before decryption"
+                    : "the page's model was not the one encrypted (the demo pattern ran)"}. `)
+              + `The cut ${(-bCut).toFixed(4)} is the `
               + `${realIn.metrics?.prs_high_risk_percentile}th percentile of the plaintext score over the `
               + `${realIn.metrics?.prs_cut_population} 1000 Genomes individuals of this person's super-population, `
               + `${realIn.metrics?.prs_reference_super_population} (the label of the population it was sampled in), from the payload's `

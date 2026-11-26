@@ -203,8 +203,11 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
     cuts = {g: high_risk_cut(scores[labels == g]) for g in sorted(set(labels.tolist()))}
     row_cut = np.asarray([cuts[g] for g in labels], dtype=float)
     # 2-class LinearModel for argmax(W x + b): class 1 (high genetic risk) iff score > cut. Class 0's
-    # row is zero, so the encrypted computation is the score itself, and the cut is subtracted from
-    # the decrypted value in the clear.
+    # row is zero, so the encrypted computation is the score itself. The cut is the subject's own
+    # super-population's, which names that group, so it is the key holder's bias (`bias_after_decryption`,
+    # the owner's choice of 2026-11-26): the evaluator masks the score alone and the key holder subtracts
+    # the cut from the decrypted value in the clear, in the CKKS stage and in the MPC-FHE row's hybrid.
+    # Until then the CKKS stage added it under encryption while this comment said otherwise.
     subject_index = int(np.argmax(scores))
     subject = dosages[subject_index].astype(float)       # a high-PRS individual to score privately
     group = str(labels[subject_index])
@@ -239,7 +242,7 @@ def build(config: dict | None = None) -> tuple[Pipeline, Context]:
         config={"qsmpc_op": "sum", "inference": "ckks", "seed": seed, **config, "prime": prime},
     )
     ctx.data["secrets"] = per_cohort
-    ctx.data["linear_model"] = LinearModel(w2.astype(float), b2)
+    ctx.data["linear_model"] = LinearModel(w2.astype(float), b2, bias_after_decryption=True)
     ctx.data["features"] = subject
     # Population mean dosage as the SHAP reference. Attributions then read as "this subject against
     # the cohort", which is the clinically meaningful comparison; against a zero vector they read as
