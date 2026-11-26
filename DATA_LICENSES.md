@@ -52,7 +52,7 @@ Zenodo's records of OPS-SAT-AD (both versions, with the sizes and MD5s above), E
 PANNs and MedMNIST+; Fairdata's Metax record of 5G-NIDD; UCI's pages of WDBC and Heart Disease;
 PhysioNet's pages of the 2016 Challenge and CirCor; Kaggle's Croissant metadata of AMLworld and
 PaySim; the PGS Catalog's REST record of PGS000072; gnomAD's terms, in the source of its browser's
-terms page; and the Hub cards of the Agentic AI panel's models and of the nineteen published repos.
+terms page; and the Hub cards of the Agentic AI panel's models and of the twenty published repos.
 The same licences hold. What had gone stale was this file's own bookkeeping, corrected where it
 stood: the count of published repos (section 4), HEonGPU's upstream (section 6a), the MCP
 filesystem server's locked version (section 6) and two line numbers (section 8).
@@ -237,8 +237,9 @@ this as synthetic; it is never presented as measured on real traffic.
 - **Published evaluation samples (`models/*/eval_sample.json`), committed and redistributed.** Each
   model's held-out sample ships inside that model's own Hugging Face repo at the same pinned
   revision as the weights, so a sample can never be paired with a different revision of the model it
-  scores; all nineteen repos ship one, the satellite student's a stretch of a timeline, the compact GNN's the
-  16 rows its weights carry and the 3D nodule student's the twelve crops its card runs. They carry their source
+  scores; all twenty repos ship one, the satellite student's a stretch of a timeline, the compact GNN's the
+  16 rows its weights carry, the 3D nodule student's the twelve crops its card runs and the federated 5G-NIDD
+  model's the 2,048 held-out flows the telecom page scores, as raw values. They carry their source
   corpus's licence: AMLworld under CDLA-Sharing-1.0, BreastMNIST
   under CC BY 4.0 **as asserted by MedMNIST, the BUSI authors publishing no licence of their own** (see the
   medical rows in section 1 - this is the surface where that ambiguity actually binds, because the
@@ -277,9 +278,10 @@ this as synthetic; it is never presented as measured on real traffic.
   0.901 (`docs/measurements/medical-resnet18-seeds-2026-11-22.json`). Six runs of the pretrained
   variant, taken earlier, averaged $`0.8905 \pm 0.0198`$
   (`references/medical-student-collapse-investigation.md`); the two means are within one standard
-  deviation of each other, so these runs do not show whether dropping ImageNet cost AUC. All nineteen
-  Hub repos, ten teachers, seven encrypted students, the finance MLP and the compact GNN, are public (the
-  Hub's API, 2026-11-22; the 3D nodule student's, staged privately and made public on the owner's approval, 2026-11-25, all nineteen read again that day).
+  deviation of each other, so these runs do not show whether dropping ImageNet cost AUC. All twenty
+  Hub repos, ten teachers, seven encrypted students, the finance MLP, the compact GNN and the federated 5G-NIDD model, are public (the
+  Hub's API, 2026-11-22; the 3D nodule student's, staged privately and made public on the owner's approval, 2026-11-25, all nineteen read again that day;
+  the federated 5G-NIDD model's the same way, 2026-11-26, all twenty read again that day without a token).
 
 - **PGS Catalog is not blanket CC BY 4.0: a score's terms are its publication's.** The scoring-file
   format defines an optional `#license` line, and PGS000072's file has none. Its REST record carries
@@ -376,7 +378,7 @@ this as synthetic; it is never presented as measured on real traffic.
 The published models' graphs live on the Hugging Face Hub (repo ids in `src/qsh/models/registry.py`),
 pinned by 40-character commit sha, and never in git (`.gitignore` excludes `*.onnx`, `*.safetensors`,
 `*.pt`, `*.npy`; CI fails the build if one is staged). Small JSON weight files are a different matter and are tracked in
-git: the QCNN angles, the seven Hub students' (the telecom student's also in section 2b), the finance MLP's and the compact GNN's `weights.json`, the
+git: the QCNN angles, the seven Hub students' (the telecom student's also in section 2b), the finance MLP's, the compact GNN's and the federated 5G-NIDD model's `weights.json`, the
 finance scorecard, and the PGS000072 effect weights the page scores (183 of them in
 `models/genomics_prs/weights.json` and in the browser payload
 `web/public/data/genomics/pgs000072_breast_cancer.json`; all 187 in the bundled scoring file). Those

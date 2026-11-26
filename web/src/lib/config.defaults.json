@@ -5412,7 +5412,7 @@
           },
           "framing": "Real 5G network traffic, 9 attack classes, 46 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. TWO CORRECTIONS MADE IN ROUND 86 EXPLAIN THE NUMBERS. The published file holds one attacker's UDP flood twice, the same 281,529 flows labelled Benign in one base station's file and UDPFlood in the other's; the Benign copies are removed, leaving 934,361 flows. And the model no longer reads `IdleTime`, which names the attack-session file a flow came from. Accuracy is 0.9979 and macro F1 0.9972. On the rows as published the same fit scores accuracy 0.7616, and no model reading these columns could pass 0.7685 there (`contradictory_copies`). `file_label_counterfactual` and `leak_counterfactual_accuracy` restore bookkeeping columns and reach about 1.0000, which is not a better model but a leak. `cross_base_station` trains on one base station and tests on the other: accuracy 0.9973 and 0.9877, against 0.4199 and 0.6059 on the rows as published. Two weak spots remain. Trained on the second base station, SYNFlood on the first scores F1 0.22. And without the TTL and hop columns, UDPScan across base stations falls to F1 0.05 (`without_ttl_and_hops`).",
           "git_sha": "9377d27-dirty",
-          "hf_revision": "9fb901e3f4fa685c2e6dd5cd431f68f8c82b372e",
+          "hf_revision": "1764db4648b70449023dcd8226b770ebdb2e2190",
           "leak_counterfactual_accuracy": 0.999987,
           "leak_counterfactual_accuracy_gain": 0.002055,
           "leak_counterfactual_features": [
@@ -5707,7 +5707,7 @@
           "onnx/model.onnx": "de6444c2af766a45a354f0e839f64db904fcbc6eb854a585ce6685ab6ec51213"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-gbm",
-        "hf_revision": "9fb901e3f4fa685c2e6dd5cd431f68f8c82b372e",
+        "hf_revision": "1764db4648b70449023dcd8226b770ebdb2e2190",
         "hf_revision_stale": null,
         "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "telecom_ids.nidd",
@@ -5722,7 +5722,7 @@
           "display": "macro F1 across 9 network-attack classes",
           "name": "macro_f1"
         },
-        "notes": "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from the QKD-layer attack classifier on this same page, with zero overlap in label space or feature space, so neither score is the other's baseline. REFITTED IN ROUND 86 ON CLEANED ROWS AND WITHOUT THE FILE LABEL, the two facts that explain every number here. The published file holds one attacker's UDP flood twice, the same 281,529 flows labelled Benign in one base station's file and UDPFlood in the other's, and the Benign copies are removed. From Round 50 the model also read `IdleTime`, which names the file a flow came from, not anything the flow did. ACCURACY IS 0.9979 AND MACRO F1 0.9972 on 934,361 flows. On the rows as published the same fit scores accuracy 0.7616, no model reading these 46 columns can pass 0.7685 there, and training on one base station and testing on the other gives 0.42 and 0.61. On the cleaned rows that test gives 0.9973 and 0.9877 (`cross_base_station`). A LINEAR MODEL ON THE NUMERIC COLUMNS REACHES ACCURACY 0.9838, because each attack class was produced by its own tool against its own service. Two weak spots remain: trained on the second base station, SYNFlood on the first scores F1 0.22, and without the TTL and hop columns UDPScan across base stations falls to F1 0.05, since nmap's raw probes carry a TTL of their own. THE LEAK COUNTERFACTUALS ARE RECORDED EVERY RUN. Restoring the corpus's integer row identifiers or the file label takes accuracy to about 1.0000, a shortcut of the kind Engelen et al. (WTMC 2021) found in CIC-IDS2017. See M_NIDD's baseline_source for what that means for the published figures on these rows. NO STUDENT IS DISTILLED FROM THIS MODEL: the page's encrypted tier runs telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml).",
+        "notes": "NETWORK-LAYER flow classification on real 5G traffic. This is a DIFFERENT TASK from the QKD-layer attack classifier on this same page, with zero overlap in label space or feature space, so neither score is the other's baseline. REFITTED IN ROUND 86 ON CLEANED ROWS AND WITHOUT THE FILE LABEL, the two facts that explain every number here. The published file holds one attacker's UDP flood twice, the same 281,529 flows labelled Benign in one base station's file and UDPFlood in the other's, and the Benign copies are removed. From Round 50 the model also read `IdleTime`, which names the file a flow came from, not anything the flow did. ACCURACY IS 0.9979 AND MACRO F1 0.9972 on 934,361 flows. On the rows as published the same fit scores accuracy 0.7616, no model reading these 46 columns can pass 0.7685 there, and training on one base station and testing on the other gives 0.42 and 0.61. On the cleaned rows that test gives 0.9973 and 0.9877 (`cross_base_station`). A LINEAR MODEL ON THE NUMERIC COLUMNS REACHES ACCURACY 0.9838, because each attack class was produced by its own tool against its own service. Two weak spots remain: trained on the second base station, SYNFlood on the first scores F1 0.22, and without the TTL and hop columns UDPScan across base stations falls to F1 0.05, since nmap's raw probes carry a TTL of their own. THE LEAK COUNTERFACTUALS ARE RECORDED EVERY RUN. Restoring the corpus's integer row identifiers or the file label takes accuracy to about 1.0000, a shortcut of the kind Engelen et al. (WTMC 2021) found in CIC-IDS2017. See M_NIDD's baseline_source for what that means for the published figures on these rows. NO STUDENT IS DISTILLED FROM THIS MODEL: the page's QKD-layer encrypted tier runs telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml). Since Round 86 the page also scores 5G-NIDD flows under CKKS, with a linear model trained on the labels and with one the corpus's two base stations federated (telecom_ids.nidd_federated), neither distilled from this model.",
         "onnx_domains": [
           "ai.onnx.ml"
         ],
@@ -5834,6 +5834,7 @@
             "same_class_as_the_page": 2048
           },
           "flamby_macro_f1": 0.970821,
+          "hf_revision": "2d622985acdbba1ac9cfda7ab3722aed1465107a",
           "l2": 1e-06,
           "local_iterations": 20,
           "masked_messages": 270,
@@ -5883,9 +5884,13 @@
         },
         "eval_sample_reason": null,
         "eval_split": "the CKKS student's 2,048 held-out flows, a class-stratified draw from the seed-42 test split, each named by its base station",
-        "file_sha256": {},
+        "file_sha256": {
+          "eval_sample.json": "57e65e1356f26320a88ef8e5554061a43f7bb6dd71cbbf9d91e7c4a94a15651a",
+          "onnx/model.onnx": "8cf293bb89a07692128c160f6e153c8f6f9fda3f6dd989c1463e6e26ed2206df",
+          "weights.json": "2d691208ec31be967d40ba0143b6fa0c322015e5ae4027545d95ac635137cce7"
+        },
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-federated-ckks",
-        "hf_revision": null,
+        "hf_revision": "2d622985acdbba1ac9cfda7ab3722aed1465107a",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "telecom_ids.nidd_federated",

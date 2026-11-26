@@ -30,8 +30,9 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 WORDS = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
          "thirteen", "fourteen", "fifteen", "sixteen", "seventeen", "eighteen", "nineteen", "twenty"]
-#: The two finance models published beside the teachers and the students, each with held-out rows in its weights.
-NEITHER = {"finance_aml.mlp_large", "finance_aml.gnn_compact"}
+#: The models published beside the teachers and the students: the two finance models, each with held-out rows in its
+#: weights, and the federated 5G-NIDD model (Round 86, batch 6), which is trained on labels and distilled from no teacher.
+NEITHER = {"finance_aml.mlp_large", "finance_aml.gnn_compact", "telecom_ids.nidd_federated"}
 #: The QKD-attack claim in each wording it shipped in, the network-attack one before it, and the finance cards'
 #: "no commercial-OK corpus of real laundering transactions exists", which a real GPL-3.0 bank set contradicts
 #: (references/aml-real-data-2026-11.md; reworded on the owner's choice of 2026-11-22).
@@ -58,7 +59,7 @@ def count_problems(register: str) -> list[str]:
     published, students, teachers = _published()
     flat = _flat(register)
     want = (f"All {WORDS[len(published)]} Hub repos, {WORDS[len(teachers)]} teachers, {WORDS[len(students)]} encrypted "
-            "students, the finance MLP and the compact GNN, are public")
+            "students, the finance MLP, the compact GNN and the federated 5G-NIDD model, are public")
     problems = [] if want in flat else [f"the register does not say {want!r}"]
     if f"the {WORDS[len(students)]} Hub students'" not in flat:
         problems.append(f"the tracked student weights are not counted as {WORDS[len(students)]}")
@@ -172,7 +173,7 @@ def test_the_checks_refuse_the_sentences_as_they_stood() -> None:
     assert len(retired_claims(as_they_stood)) == 3
     register = (REPO / "DATA_LICENSES.md").read_text(encoding="utf-8")
     stale = register.replace(
-        _flat_find(register, "All nineteen"), "All thirteen Hub\n  repos, seven teachers, four encrypted students")
+        _flat_find(register, "All twenty"), "All thirteen Hub\n  repos, seven teachers, four encrypted students")
     assert count_problems(stale), "the count as it stood was not refused"
 
 

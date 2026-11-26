@@ -1800,8 +1800,10 @@ _SPECS: tuple[ModelSpec, ...] = (
             "identifiers or the file label takes accuracy to about 1.0000, a shortcut of the kind "
             "Engelen et al. (WTMC 2021) found in CIC-IDS2017. See M_NIDD's baseline_source for what "
             "that means for the published figures on these rows. "
-            "NO STUDENT IS DISTILLED FROM THIS MODEL: the page's encrypted tier runs "
-            "telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml)."
+            "NO STUDENT IS DISTILLED FROM THIS MODEL: the page's QKD-layer encrypted tier runs "
+            "telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml). Since Round 86 the "
+            "page also scores 5G-NIDD flows under CKKS, with a linear model trained on the labels and with one the "
+            "corpus's two base stations federated (telecom_ids.nidd_federated), neither distilled from this model."
         ),
     ),
     #: Telecom's T1 tier, added in Round 33. Until then `runs_encrypted=True` held on five specs and
