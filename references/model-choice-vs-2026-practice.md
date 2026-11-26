@@ -4,7 +4,7 @@
 The question was whether this project's published models are credible representatives of
 privacy-preserving inference practice, or whether the field has moved on and the demo is showing
 something dated. Answered per vertical. All five are now checked. (Six use cases since Round 86; the re-check of
-2026-11-23 below covers them.)
+2026-11-23 below covers them, and that of 2026-11-26 the two models published since.)
 
 ## Re-checked on 2026-11-23: research from August to November 2026
 
@@ -19,6 +19,43 @@ landing page; a figure from a paper's body is marked as such.
 | telecom | a reasonable simplification, with one change worth making | Cho et al., ePrint 2026/2349 (2026-10-05): CKKS anomaly scores on three intrusion datasets. Released scores can reveal a private threshold; quantising them kept 99.864% of decisions; a surrogate trained on 128 decision-only responses reached balanced accuracy 0.817 under random splitting and about 0.5 once time and flow identifiers were separated. The student decrypted all 8 class scores until this re-check; the page now takes the argmax in a garbled circuit on the shares of the masked scores, so only the class leaves (`models/metrics.json`, `argmax_location`), which follows that paper's output policies. On QML, Chakraborty et al., arXiv:2611.12219 (XGBoost 98.94% and 99.41% against Pegasos-QSVC's 91.80% and 82.98%) and Gillani et al., arXiv:2608.18155 (two advantages survive false-discovery correction, one of them at the 1% false-positive point) agree with the page's forest-against-QNN result |
 | satellite | a reasonable simplification; no private-inference work on spacecraft telemetry was found in the window | - |
 | DeFi lending | equivalent: no model, a rule under encryption | Zama's FHEVM releases; Zama's Developer Program post describes the protocol's infrastructure as live on mainnet |
+
+## Re-checked on 2026-11-26: the two models published since
+
+Two models reached the Hub after the re-check above: the medical page's 3D square student on LIDC-IDRI nodules and the
+telecom page's federated 5G-NIDD detector. Each source was read at origin on 2026-11-26, at its abstract or landing
+page unless a section is named. The window is August to November 2026; a work from before it is dated as such, and
+none of the published figures below is compared with this project's, whose metrics and splits differ.
+
+| model | verdict | the nearest work |
+|---|---|---|
+| medical: the 3D square student (one 3 x 3 x 3 convolution, a square, a 2 x 2 x 2 average pool and a dense layer, under CKKS) | equivalent in method, without a direct peer: no encrypted inference on a CT or MRI volume was found in the window, and the nearest works are 2D | Lee et al., Radiology: Artificial Intelligence 7(6):e240798 (November 2025, before the window), doi:10.1148/ryai.240798: a ResNet on 12 446 kidney CT images in three steps, a reference CNN, an approximated one (ReLU replaced by a polynomial, max pooling by average pooling) and the CKKS one, with AUC from 0.89 to 0.99 and AUPRC from 0.67 to 0.99; one 256 x 256 image grows from 65 KB to 32 MB and takes 50 minutes on a CPU, 90 seconds on a GPU. Njungle and Kinsy, arXiv:2508.11575 (August 2025, before the window): the square activation works in a shallow LeNet-5 (99.4% at 128 s an image), and a polynomial ReLU in ResNet-20 reaches 83.8% at 1,145 s. In the window, Elkhatib et al., arXiv:2610.19325 (submitted 14 October 2026, accepted at IEEE GLOBECOM 2026): a polynomial activation chosen per dataset and model for ResNet-18 to ResNet-50 and ViT-S/16 to ViT-L/16, and convolutional models lose more accuracy under the polynomial as the task grows harder |
+| telecom: the federated 5G-NIDD detector (a 9 x 36 linear model, FedAvg across the corpus's two base stations under pairwise masks, the global model under CKKS) | ahead of the 5G-NIDD papers in cryptography but not of the window's threshold aggregation, and a simplification in model | In the window: Shamim et al., Sensors 26(17):5337 (23 August 2026), federated intrusion detection with distributed key generation and threshold CKKS, so that no client and no aggregation server decrypts alone, with 4, 8 and 12 clients on InSDN, CICDDoS2017 and CICDDoS2019, not 5G-NIDD; Demchig and Lee, IMIS-2026, LNDECT 305:87-99 (online 2 September 2026), a CKKS logistic-regression intrusion detector, about 56 times faster than encrypting one sample at a time and 2.5 times faster than batch-wise encryption, without federation. Before the window, on 5G-NIDD itself: Ilias et al., Electronics 15(5):1057 (3 March 2026), a mixture-of-experts network, federated, weighted F1 98.0440% under FedAvg and 98.1134% under FedTrimmedAvg, with no secure aggregation in its text; Jeong et al., CMC 87(1) (10 February 2026), section 5.3.1: a 1D CNN on eight nodes whose class proportions are drawn from a Dirichlet distribution at alpha = 0.3, accuracy 0.9711 federated and 0.9735 split-federated in its non-IID scenario and 0.8433 federated in its skewed one |
+
+**The 3D student.** Its parts are the field's: a square suits a shallow network (Njungle and Kinsy), and Lee et al.
+make the two substitutions this student makes, a polynomial where ReLU would be and average pooling where max pooling
+would be. Its costs are not comparable with Lee et al.'s, because one convolution without bootstrapping is far
+shallower than a ResNet: the record gives a median of 1.7 s a crop under the smaller parameter set, and about 85 MB of
+ciphertexts up a crop (162 ciphertexts at $`N = 8192`$), against their 32 MB for one 2D image. What is worth taking
+from Lee et al. is the reporting. They give AUC and AUPRC at each of their three steps; the record gives the teacher's
+AUC out of fold only, the plaintext student's test AUC (0.907 over five seeds, sd 0.009, against 0.882, sd 0.027, for
+the ReLU control) and the encrypted student's agreement with it (no decision changed on the 347 test crops, the largest
+logit error $`3.2 \times 10^{-5}`$). The suggestion: score the teacher on the same test part, add AUPRC beside every
+AUC (31% of the test crops are malignant), and give the AUC of the decrypted logits.
+
+**The federated detector.** The 5G-NIDD papers above use no secure aggregation, and Jeong et al. leave homomorphic
+encryption and differential privacy outside their scope; the page's masked FedAvg and its global model under CKKS go
+further, the latter of a kind with Demchig and Lee's encrypted logistic regression. Shamim et al. go further on the
+aggregation: under their threshold CKKS no single client or aggregation server can decrypt, with 4 to 12 clients, while
+each of the page's two stations can compute the other's update (below). The model is the simplification: the federated
+baselines on 5G-NIDD are neural networks, Jeong et al.'s a 1D CNN, where the page's is linear. The suggestion is their
+evaluation set-up beside the corpus's two real stations: the training flows split into eight clients by a Dirichlet
+draw at alpha = 0.3, as Jeong et al. do, with a plaintext 1D-CNN under FedAvg as the baseline and macro and weighted F1
+both reported. Eight clients would also change what the masks hide. With two, each station receives the sum and holds
+its own update and both weights, so it can compute the other's, and the masks hide an update from the aggregator only.
+The page states this on the card, in the run's log and on the Hub card, and the threat model's secure-aggregation row
+states it since this re-check; with eight, a client alone learns only the sum of the other seven. This is this
+project's reading, not a statement of any of these papers.
 
 ## Finance: the choices are validated, and more strongly than expected
 
