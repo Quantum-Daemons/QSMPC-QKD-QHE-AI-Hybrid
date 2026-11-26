@@ -183,6 +183,9 @@ FROZEN = {
     # naming the post-hoc analysis as post hoc.
     "references/satellite-jinan1-pass-preregistration.md":
         "11665e2b800dd3f921d9b4bf5122252354e95d85fe773e64130c4ae284ae1984",
+    # The Jinan-1 pass's second analysis: committed 2026-11-26 before any of its figures was computed.
+    "references/satellite-jinan1-pass-v2-preregistration.md":
+        "ddaea49f1f277ef457af9d41c1a775b4134daf0c8aec0dec73ee40b8b338292e",
 }
 
 
