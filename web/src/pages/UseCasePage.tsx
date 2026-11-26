@@ -25,6 +25,7 @@ import SatBoundaryCard from "../components/SatBoundaryCard";
 import SatelliteQcnnCard from "../components/SatelliteQcnnCard";
 import SatVusPrCard from "../components/SatVusPrCard";
 import SatThresholdsCard from "../components/SatThresholdsCard";
+import SatJinanPassCard from "../components/SatJinanPassCard";
 import NiddFederatedCard, { type NiddFederatedLive } from "../components/NiddFederatedCard";
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
@@ -447,6 +448,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && <MurmurDpCard />}
       {usecase === "satellite_comms" && <SatVusPrCard />}
       {usecase === "satellite_comms" && <SatThresholdsCard />}
+      {/* Jinan-1's measured pass against the downlink model (Round 86, batch 6): a post-hoc comparison, and it says so. */}
+      {usecase === "satellite_comms" && <SatJinanPassCard />}
       {usecase === "satellite_comms" && <SatBoundaryCard />}
       {usecase === "satellite_comms" && <SatelliteQcnnCard />}
       {usecase === "satellite_comms" && artifacts?.forecast_residual ? <SatForecastResidual report={artifacts.forecast_residual as ForecastResidualReport} /> : null}

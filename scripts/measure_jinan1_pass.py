@@ -353,9 +353,18 @@ def main() -> int:
         "model_detections_per_s": [round(detections(km[s], PROFILE_EFFICIENCY), 1) for s in used],
         "model_detections_per_s_refitted": [round(detections(km[s], fit), 1) for s in used],
         "measured_qber": [qkd[s][0] for s in used], "model_qber": [round(q_model[s], 6) for s in used],
-        "summary": {k: record[k] for k in ("background_per_s", "profile_efficiency", "fitted_efficiency",
-                                           "fit_minus_profile_db", "residuals_before", "residuals_after",
-                                           "trend_after_db_per_air_mass", "falls", "qber", "key", "rules")},
+        "summary": {**{k: record[k] for k in ("background_per_s", "profile_efficiency", "fitted_efficiency",
+                                              "fit_minus_profile_db", "residuals_before", "residuals_after",
+                                              "trend_after_db_per_air_mass", "falls", "qber", "key", "rules")},
+                    # The grid in brief, for the card: the spread of the mean residual and the largest fall difference.
+                    **({"robustness": {
+                        "choices": 2 * len(robustness["grid"]),
+                        "mean_residual_db": [min(g[m]["mean_db"] for g in robustness["grid"] for m in g if m.startswith("model_")),
+                                             max(g[m]["mean_db"] for g in robustness["grid"] for m in g if m.startswith("model_"))],
+                        "largest_fall_difference_db": max(abs(g[m][f]) for g in robustness["grid"] for m in g
+                                                          if m.startswith("model_") for f in ("fall_first_minus_model_db",
+                                                                                              "fall_last_minus_model_db"))}}
+                       if robustness else {})},
         "licence": "CC-BY-4.0", "licence_url": "https://creativecommons.org/licenses/by/4.0/", "attribution": CITATION,
         "modifications": (f"Counts and slant ranges per second from Fig. 4b and QBER from Fig. 4c, joined on the second "
                           f"(the first row of a repeated second kept); the {len(used)} seconds with a QBER and counts above "
