@@ -37,17 +37,33 @@ def _comparison():
 
 
 def page_readout(net: dict, X: np.ndarray, tmp: Path) -> np.ndarray:
-    """`clearReadout` from the page's module, in node, over every row, a chunk at a time."""
+    """`clearReadout` from the page's module, in node, over every row, a chunk at a time.
+
+    Bundled as `web/scripts/check_qcnn_tree_ckks.mjs` bundles it: esbuild's API with the node-seal wasm's `?url` import
+    resolved to its path and the MPC module stubbed (neither is reached by the clear contraction)."""
     (tmp / "x.bin").write_bytes(np.ascontiguousarray(X, dtype="<f8").tobytes())
     (tmp / "net.json").write_text(json.dumps(net))
-    entry, bundle = tmp / "entry.ts", tmp / "bundle.mjs"
-    entry.write_text(f'export {{ clearReadout }} from {json.dumps(str(WEB / "src" / "lib" / "clientQcnnTreeCkks.ts"))};\n')
-    subprocess.run([str(WEB / "node_modules" / ".bin" / "esbuild"), str(entry), "--bundle", "--format=esm", "--platform=node",
-                    f"--outfile={bundle}", "--log-level=error"], check=True, cwd=WEB)
     runner = tmp / "run.mjs"
+    seal = WEB / "node_modules" / "node-seal" / "dist" / "seal_throws.wasm"
     runner.write_text(f"""
+import {{ createRequire }} from "node:module";
 import {{ readFileSync, writeFileSync }} from "node:fs";
-import {{ clearReadout }} from {json.dumps(bundle.as_uri())};
+import {{ pathToFileURL }} from "node:url";
+const {{ build }} = createRequire({json.dumps(str(WEB / "package.json"))})("esbuild");
+await build({{
+  stdin: {{ contents: `export {{ clearReadout }} from ${{JSON.stringify({json.dumps(str(WEB / "src" / "lib" / "clientQcnnTreeCkks"))})}};`,
+           resolveDir: {json.dumps(str(WEB))}, loader: "ts" }},
+  bundle: true, format: "esm", platform: "node", outfile: {json.dumps(str(tmp / "b.mjs"))}, logLevel: "error",
+  define: {{ "import.meta.env": '{{"BASE_URL":"/"}}' }},
+  plugins: [{{ name: "wasm-url", setup(b) {{
+    b.onResolve({{ filter: /seal_throws\\.wasm\\?url$/ }}, () => ({{ path: "sealwasm", namespace: "wasmurl" }}));
+    b.onLoad({{ filter: /.*/, namespace: "wasmurl" }}, () => ({{ contents: `export default ${{JSON.stringify({json.dumps(str(seal))})}};`, loader: "js" }}));
+  }} }}, {{ name: "stub-mpc", setup(b) {{
+    b.onResolve({{ filter: /qsh_mpc\\.js$/ }}, (a) => ({{ path: a.path, namespace: "mpcstub" }}));
+    b.onLoad({{ filter: /.*/, namespace: "mpcstub" }}, () => ({{ loader: "js", contents: "export default () => {{ throw new Error('stub'); }};" }}));
+  }} }}],
+}});
+const {{ clearReadout }} = await import(pathToFileURL({json.dumps(str(tmp / "b.mjs"))}).href);
 const net = JSON.parse(readFileSync({json.dumps(str(tmp / "net.json"))}, "utf8"));
 const buf = readFileSync({json.dumps(str(tmp / "x.bin"))});
 const x = new Float64Array(buf.buffer, buf.byteOffset, buf.byteLength / 8);
