@@ -186,6 +186,9 @@ FROZEN = {
     # The Jinan-1 pass's second analysis: committed 2026-11-26 before any of its figures was computed.
     "references/satellite-jinan1-pass-v2-preregistration.md":
         "ddaea49f1f277ef457af9d41c1a775b4134daf0c8aec0dec73ee40b8b338292e",
+    # The finance QCNN's fair comparison: committed 2026-11-26 before any of its arms ran.
+    "references/finance-qcnn-amlworld-comparison-preregistration.md":
+        "dc56325772e004894575ba59e71faf7e50d40f8250ac46c81f0d27a6b8322d2c",
 }
 
 
