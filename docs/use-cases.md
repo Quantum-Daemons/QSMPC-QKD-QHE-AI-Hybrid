@@ -197,6 +197,19 @@ every neighbouring pair, which is not a tree: its survivors are entangled. It is
 $`2^n`$ amplitudes at 7 or 8 wires, so it is classically simulable at this size, and classical data
 in a product angle encoding is still that section's regime.
 
+**And measured, with a classical tensor network beside them** (Round 86, batch 6; pre-registered in
+[`references/qcnn-tensor-network-checks-preregistration.md`](../references/qcnn-tensor-network-checks-preregistration.md),
+recorded in `docs/measurements/qcnn-tn-checks-2026-11-26.json`). Traced in double precision over each circuit's test
+rows, the largest Schmidt rank of its state across any cut of the wire order, after any layer, is 8 of the 16 an
+eight-wire state can reach for the three tree circuits (medical and both satellite corpora) and the bound itself for
+telecom's SU(4) circuit, 16 at eight wires and 8 at seven: its survivors are as entangled as their width allows, and the
+state is still 256 amplitudes. A matrix-product-state classifier on each input's rank among the fit rows ties medical's
+circuit and logistic regression at minority-class F1 0.9394, sits between telecom's circuit and logistic regression
+(macro F1 0.9659 against 0.9444 and 0.9764), leads on OPS-SAT-AD (average precision 0.960 against the classical
+surrogate's 0.943) and trails on ESA-ADB (0.656). The first run counted single-precision round-off as rank, so even the
+encoding's product state read the bound; the pre-registration's addendum records it, and each card shows the corrected
+figures.
+
 **Logistic regression beats or ties every trained QCNN that decides a page's class, on the same split.** On the
 satellite card the order differs and the conclusion does not: there the circuit is ahead of logistic regression on its
 eight inputs (average precision 0.931 against 0.881 on OPS-SAT-AD, 0.864 against 0.857 on ESA-ADB) and behind the same

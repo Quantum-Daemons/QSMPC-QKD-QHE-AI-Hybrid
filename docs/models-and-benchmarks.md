@@ -756,6 +756,21 @@ satellite, ground station or quantum channel is involved.
   whole-pass key is within a factor of 2.5 of the published key under Hoeffding, and 1.35 to 2.62
   times it under the default; Jinan-1 computes its keys on 500-kbit blocks inside a pass, which a
   whole-pass key is not held to.
+- **Jinan-1's pass of 25 September 2022, second by second (Round 86, batch 6, post hoc).** From the paper's source
+  data (Zenodo 14732295, CC BY 4.0: Fig. 4b's counts and slant range, Fig. 4c's QBER and key), 353 link seconds,
+  background off, against the `jinan1_2022_jinan` profile at each second's range. The comparison was pre-registered
+  ([`references/satellite-jinan1-pass-preregistration.md`](../references/satellite-jinan1-pass-preregistration.md)),
+  but its windows failed, because Fig. 4c's QBER is one value per key block; the windows the satellite card uses were
+  chosen after those figures were seen (its addendum 2), and the card says so. The profile's one constant, the
+  station efficiency 0.1683, against the data's fit of 0.1667: $`-0.04`$ dB, so it stays. After that fit the
+  per-second residuals deviate by 0.29 dB with a trend of $`+0.07`$ dB per air mass, and the fall with elevation is
+  within 0.15 and 0.26 dB of the model's at the link's two ends; over 18 choices of the background window, the link
+  threshold and the model's own background term the mean residual stays within 0.07 dB. QBER over the key blocks:
+  1.04 percent measured, 0.90 percent for the model's signal state. The model's finite key over the simulated pass
+  is 1.38 times the pass's 406,784 bits, before the 800-ps gate (about 80 percent of the signal kept) and the 10
+  percent of detections sampled for the QBER, which the second analysis adds
+  ([`references/satellite-jinan1-pass-v2-preregistration.md`](../references/satellite-jinan1-pass-v2-preregistration.md),
+  committed before any of its figures).
 
 ## State-vector simulators, measured
 
