@@ -132,7 +132,7 @@ def test_the_threat_model_holds_one_table_of_what_each_step_protects() -> None:
     section = text[start:text.index("\n## ", start + 10)]
     assert "| Step | In the browser (the public demo) | In the full deployment |" in section
     rows = [line.split("|")[1].strip() for line in section.splitlines() if line.startswith("| ")][1:]
-    for step in ("Session key", "Agent (MCP) channel", "PSI (finance)", "Secure aggregation (finance, medical)",
+    for step in ("Session key", "Agent (MCP) channel", "PSI (finance)", "Secure aggregation (finance, medical, telecom)",
                  "Secure sum (genomics)", "Private inference"):
         assert step in rows, f"the table has no row for {step!r}: {rows}"
     flat = re.sub(r"\s+", " ", section)
@@ -143,6 +143,7 @@ def test_the_threat_model_holds_one_table_of_what_each_step_protects() -> None:
     for fact in ("No QKD bit enters it", "RFC 9497's OPRF, mode 0x00, suite ristretto255-SHA512",
                  '"Unconditional input secrecy"', "**No malicious security**", "**Not post-quantum**",
                  "derives its mask seed from their X25519 shared secret by HKDF-SHA256",
+                 "the masks hide an update from the aggregator only",
                  "Every CKKS slot the key holder can decode", "`masked_slots`"):
         assert fact in flat, f"the owner table no longer states {fact!r}"
     for retired in ("Pinkas, Schneider and Zohner", "OPRF-based protocol", "HMAC-SHA256 of both banks' lists"):
