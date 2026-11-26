@@ -167,7 +167,7 @@ def test_which_pages_encrypt_has_one_owner() -> None:
 def test_the_trained_qcnns_have_one_owner() -> None:
     owner = _flat("docs/use-cases.md")
     assert "## What the trained QCNNs are" in _read("docs/use-cases.md")
-    for fact in ("finance at 4 wires", "0.9705 against 0.9537", "Section IV.B"):
+    for fact in ("finance at 8 wires", "0.9705 against 0.9537", "Section IV.B"):
         assert fact in owner, fact
     assert _links_to("docs/findings.md", QCNN)
 

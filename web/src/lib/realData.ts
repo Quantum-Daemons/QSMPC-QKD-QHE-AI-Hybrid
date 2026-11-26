@@ -1,8 +1,8 @@
 // Datasets shipped to the CLIENT-SIDE demo (web/public/data/), so the demo scores real inputs with
 // real models rather than sampling noise — matching the FULL deployment. Coverage: medical (Wisconsin
 // breast-cancer, real measurements), genomics (published PGS000783 weights over real 1000 Genomes
-// genotypes), finance (AMLworld HI-Small test-window rows since F7b, synthetic by IBM's statement, and PaySim
-// SIMULATOR output for its QCNN and federated step) and satellite (real OPS-SAT-AD telemetry segments since Round 84;
+// genotypes), finance (AMLworld HI-Small test-window rows since F7b, synthetic by IBM's statement, which the QCNN reads
+// too since Round 86's batch 6, and PaySim SIMULATOR output for its federated step) and satellite (real OPS-SAT-AD telemetry segments since Round 84;
 // the NASA SMAP/MSL windows it replaced carry no data licence from any provider and are no longer served). Telecom's
 // pipeline steps stay synthetic (QKD telemetry); its real-data detector reads 5G-NIDD (CC BY 4.0) in figures of its own
 // (`niddStudentHeldOut`, `niddFederated`) - and the demo logs which is which rather than quietly substituting. Tiny static JSON,
@@ -88,6 +88,10 @@ export interface RealInput {
   qcnnRowNote?: string;
 }
 
+/** Small counts in words, for sentences a visitor reads ("at its eight inputs"); a count past the table prints as digits. */
+const COUNT_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten", "eleven", "twelve",
+  "thirteen", "fourteen", "fifteen", "sixteen"];
+
 /** Column means over the sample rows - the reference point SHAP attributions are measured from. */
 function columnMeans(rows: number[][], n: number): number[] {
   const out = new Array(n).fill(0);
@@ -108,7 +112,7 @@ async function fetchJSON(url: string): Promise<any> {
 
 /**
  * Returns REAL input + a REAL model where a real sample ships: medical (WDBC, CC BY 4.0), finance
- * (an AMLworld test-window row since F7b, with a PaySim row for its QCNN) and
+ * (an AMLworld test-window row since F7b, which the QCNN reads too since Round 86's batch 6) and
  * genomics, whose PGS000783 weights are CC BY 3.0 IGO and whose 1000 Genomes
  * genotypes carry no licence instrument (DATA_LICENSES.md sections 4 and 5). `null` for
  * everything else (the caller keeps its synthetic features and logs that honestly).
@@ -184,27 +188,33 @@ export async function realInput(usecase: string, u: () => number): Promise<RealI
       // rows the private-inference figure scores, scored by F7b's square network on its 114 inputs, end to end under
       // CKKS; the SHAP bars are its exact quadratic Shapley values. Until then this stage scored a PaySim simulator row
       // with a four-feature logistic surrogate, a different model on different data from the AMLworld student the
-      // figure encrypted. The finance QCNN was trained on PaySim's four columns and cannot read AMLworld's 114, so it
-      // reads a PaySim transaction of its own (`bySpace.raw`, drawn by the same number): another row and another
-      // model, which the run says.
-      const [ds, net, pay] = await Promise.all([fetchJSON("/data/finance/student_heldout.json"), loadFinanceSquare(),
-                                                fetchJSON("/data/finance/paysim_sample.json")]);
+      // figure encrypted.
+      //
+      // THE QCNN READS THE SAME TRANSACTION since Round 86's batch 6 (the owner's choice of 2026-11-26): the finance QCNN
+      // is the AMLworld circuit of the pre-registered comparison (references/finance-qcnn-amlworld-comparison-
+      // preregistration.md), which takes eight of the same 114 inputs in raw units (its weights fold the fit window's
+      // standardisation into `feature_mean` and `feature_std`). `bySpace.raw` is this row at those eight, by name. Until
+      // then the QCNN was trained on PaySim's four columns and read a PaySim transaction of its own.
+      const [ds, net, qw] = await Promise.all([fetchJSON("/data/finance/student_heldout.json"), loadFinanceSquare(),
+                                               fetchJSON("/data/finance/qcnn_weights.json")]);
       const raw = ds.samples as number[][];
       const v = u();
       const idx = Math.floor(v * raw.length) % raw.length;
       const scaled = raw.map((r) => scaleRow(net, r));
       const baseline = Array.from({ length: net.n_in }, (_, j) => scaled.reduce((a, r) => a + r[j], 0) / scaled.length);
-      const payRows = pay.samples as number[][];
-      const pIdx = Math.floor(v * payRows.length) % payRows.length;
+      const names = ds.feature_names as string[];
+      const cols = ((qw.feature_names ?? []) as string[]).map((n) => names.indexOf(n));
+      const qcnnRow = cols.length && cols.every((j) => j >= 0) ? cols.map((j) => raw[idx][j]) : undefined;
       return {
-        values: Array.from(scaled[idx]), bySpace: rowBySpace(pay, pIdx, Number.MAX_SAFE_INTEGER),
-        names: ds.feature_names as string[],
+        values: Array.from(scaled[idx]), bySpace: qcnnRow ? { [String(qw.input_space)]: qcnnRow } : {},
+        names,
         provenance: `AMLworld HI-Small test-window transaction ${idx + 1} of ${raw.length} (${String(ds.licence)}, `
           + `synthetic), scored by ${squareLabel(net)}`,
         baseline, square: net, raw: raw[idx], label: Number(ds.labels?.[idx]),
         definitions: net.feature_definitions,
-        qcnnRowNote: `the QCNN backend reads PaySim transaction ${pIdx + 1} of ${payRows.length} (${String(pay.licence ?? "CC-BY-SA-4.0")}): `
-          + "it was trained on PaySim's four columns, so it scores another transaction with another model",
+        qcnnRowNote: qcnnRow
+          ? `the QCNN backend reads the same transaction at its ${COUNT_WORDS[cols.length] ?? cols.length} inputs (${(qw.feature_names as string[]).join(", ")})`
+          : "the QCNN's inputs are not among this row's columns, so it is not run on it",
       };
     }
   } catch (e) {

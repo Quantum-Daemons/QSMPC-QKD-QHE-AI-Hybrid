@@ -541,6 +541,10 @@ class PrivateInferenceStage(Stage):
             # radius) and are not in the raw units the artifact declares. `medical_fl.build` stores
             # the patient's raw values in the artifact's `feature_names` order as `qcnn_features`.
             x_qcnn = ctx.data.get("qcnn_features", x)
+            if ctx.data.get("qcnn_row_note"):
+                # Which transaction the QCNN scored, where it is not the row the other models scored (finance since Round
+                # 86's batch 6: an AMLworld transaction of its own), as the browser's run log says it.
+                bus.log(f"rows: {ctx.data['qcnn_row_note']}", self.name)
 
             # TRAINED circuit where weights exist. The untrained QCNN is not a classifier: measured
             # over 200 random UNIFORM[0,1) inputs at 4 and 8 qubits `predict_proba` peaks at 0.239

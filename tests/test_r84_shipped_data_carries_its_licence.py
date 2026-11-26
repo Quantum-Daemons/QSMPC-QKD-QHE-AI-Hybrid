@@ -123,8 +123,9 @@ def test_the_paysim_tsv_and_the_qcnn_weights_carry_link_and_credit() -> None:
     assert LINKS["CC-BY-SA-4.0"] in text and "Lopez-Rojas" in text and "Changes:" in text
     for f, link, credit in (("models/qcnn_medical/weights.json", LINKS["CC-BY-4.0"], "doi:10.24432/C5DW2B"),
                             ("web/public/data/medical/qcnn_weights.json", LINKS["CC-BY-4.0"], "doi:10.24432/C5DW2B"),
-                            ("models/qcnn_finance/weights.json", LINKS["CC-BY-SA-4.0"], "Lopez-Rojas"),
-                            ("web/public/data/finance/qcnn_weights.json", LINKS["CC-BY-SA-4.0"], "Lopez-Rojas")):
+                            # Since Round 86's batch 6 the finance QCNN is the AMLworld circuit (CDLA-Sharing-1.0, Results).
+                            ("models/qcnn_finance/weights.json", LINKS["CDLA-Sharing-1.0"], "Altman"),
+                            ("web/public/data/finance/qcnn_weights.json", LINKS["CDLA-Sharing-1.0"], "Altman")):
         prov = json.loads((REPO / f).read_text())["provenance"]
         assert link in prov and credit in prov, f
 

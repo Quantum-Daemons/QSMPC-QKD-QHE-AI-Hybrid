@@ -177,7 +177,8 @@ for the full diagram.
 ## What the trained QCNNs are
 
 The trained QCNNs that decide a page's class when Inference is set to QCNN run on few qubits:
-finance at 4 wires, one per feature over the four columns its linear model reads; medical at 8; and
+finance at 8 wires, eight of AMLworld's 114 inputs (the pre-registered comparison's circuit since Round 86's batch 6;
+four PaySim columns at 4 wires until then); medical at 8; and
 telecom at 8 and at 7. No 9-wire artefact ships: the 9-wire finance and medical circuits were removed
 because their pad wire changed no class. The satellite page shows two more, 8-wire tree circuits on real telemetry
 (OPS-SAT-AD and ESA-ADB Mission1, pre-registered in

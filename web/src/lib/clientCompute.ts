@@ -1028,11 +1028,35 @@ export async function rescoreTrainedQcnn(usecase: string, w: QcnnWeights): Promi
   return held ? rescoreQcnn(w, held) : null;
 }
 
-/** What both sites say about the circuit's held-out figure: re-scored here and equal to the record, re-scored and different, or not re-scored. */
+/** What both sites say about the circuit's held-out figure: re-scored here and equal to the record, re-scored and different, or not re-scored.
+ *  Where the served rows are a SAMPLE of the trainer's split (`recordedBy: "heldout"`, finance since Round 86's batch 6: 8,192 of the
+ *  1,523,504 test-window transactions), the figure set beside the comparators is the whole split's, and the re-score is held to the
+ *  sample's own recorded value. The preview of 2026-11-26 printed the sample's 0.5304 beside logistic regression's whole-window 0.4968
+ *  and called the 8,192 rows "the trainer's test split". */
 function rescoreSentence(r: QcnnRescore | null, recorded: number | null | undefined): string {
   if (!r) return "recorded at training time and shipped in the weights file; the held-out rows could not be read, so this tab did not re-score it";
+  if (r.recordedBy === "heldout") {
+    return `recorded at training time on the trainer's whole test split; this tab re-scored this circuit over the page's sample of ${r.rows} `
+      + `of that split's rows: ${r.headline.toFixed(4)}, `
+      + (r.matchesRecord ? "the value recorded for these rows" : `which DIFFERS from the ${r.recorded ?? "missing value"} recorded for these rows`);
+  }
   return `re-scored in this tab by this circuit over the ${r.rows} rows of the trainer's test split: ${r.headline.toFixed(4)}, `
     + (r.matchesRecord ? "the value the weights file records" : `which DIFFERS from the ${recorded ?? "missing value"} the weights file records`);
+}
+
+/** The circuit's figure to set beside the comparators: this tab's re-score where its rows are the trainer's whole test split, else the
+ *  weights file's whole-split figure, so the two sides of a verdict are always over the same rows. */
+function figureBesideComparators(r: QcnnRescore | null, recorded: number | null | undefined): number | null | undefined {
+  return r && r.recordedBy === "weights" ? Math.round(r.headline * 1e6) / 1e6 : recorded;
+}
+
+/** Which seed the artifact is and how it was chosen, where it records that (finance since Round 86's batch 6, the owner's choice of
+ *  2026-11-26): a seed chosen as the best of many on validation is not the method, so a verdict about it names it. */
+function seedSelectionClause(w: QcnnWeights): string {
+  const s = w.selection;
+  if (s?.seed == null || !s.on) return "";
+  const of = s.of_seeds ? ` of ${s.of_seeds}` : "";
+  return ` for seed ${s.seed}, the best${of} on ${s.on}; the comparison card on this page shows the seeds' spread`;
 }
 
 /**
@@ -3736,7 +3760,7 @@ export function runClientPipeline(
             // RE-SCORED IN THIS TAB since Round 86: the circuit's figure is computed here over the test split's rows and the
             // verdict uses it; logistic regression's is still read from the weights file, and the line says which is which.
             const rescore = await rescoreQcnnInTab(stage, usecase, w, metric, artifacts);
-            const mine = rescore ? Math.round(rescore.headline * 1e6) / 1e6 : w.test_macro_f1, theirs = w.classical_lr_macro_f1;
+            const mine = figureBesideComparators(rescore, w.test_macro_f1), theirs = w.classical_lr_macro_f1;
             if (typeof mine === "number" && typeof theirs === "number") {
               const behind = mine < theirs, level = mine === theirs;
               emit("log", stage, `and it ${behind ? "LOSES" : level ? "TIES" : "WINS"}: macro F1 ${mine} `
@@ -4400,7 +4424,7 @@ export function runClientPipeline(
             // RE-SCORED IN THIS TAB since Round 86, by the same function as `qml_ids`; the baseline and logistic
             // regression are still read from the weights file.
             const rescore = await rescoreQcnnInTab(stage, usecase, w, metric, artifacts);
-            const mine = rescore ? Math.round(rescore.headline * 1e6) / 1e6 : recordedMine;
+            const mine = figureBesideComparators(rescore, recordedMine);
             const theirs = macroLed ? w.classical_lr_macro_f1
                          : f1Led ? w.classical_lr_minority_f1 : w.classical_lr_accuracy;
             const base = macroLed ? w.macro_f1_floors?.uniform_random
@@ -4432,7 +4456,7 @@ export function runClientPipeline(
               // measured here and the sentence says so, and the baseline's and logistic regression's still come from the file.
               + `Held-out ${label} ${(mine ?? 0).toFixed(4)} against a baseline of `
               + `${(base ?? 0).toFixed(4)} and logistic regression at ${(theirs ?? 0).toFixed(4)} on `
-              + `the same split - ${ahead}. The circuit's figure was ${rescoreSentence(rescore, recordedMine)}; the `
+              + `the same split - ${ahead}${seedSelectionClause(w)}. The circuit's figure was ${rescoreSentence(rescore, recordedMine)}; the `
               + `baseline and logistic regression were recorded at training time. Test rows were never used to pick the checkpoint.`);
           } else {
             // No trained weights for this use case: refuse to surface a class rather than pass off

@@ -556,7 +556,8 @@ clip) and is not part of the pre-registration. On the page:
   Web Worker (a block of its own, about 17 s, since the work does not shrink with the rows), the garbled-circuit argmax
   runs over its decrypted logits, and the SHAP bars are its exact quadratic Shapley values
   (`web/src/lib/quadraticShap.ts`, held to the definition by brute force in `tests/test_explainability.py`). The finance
-  QCNN was trained on PaySim's four columns, so it reads a PaySim transaction of its own, and the run says so;
+  QCNN reads the same transaction at its eight inputs since Round 86's batch 6 (a PaySim transaction of its own until
+  then, in PaySim's four columns), and the run says so;
 - the accuracy-against-cost plot prices the network's batch in place of the linear student's.
 
 The linear student stays published on the Hub, and its record stays the comparison the BFV scorecard and
@@ -611,7 +612,7 @@ equal to the shipped global model bit for bit. What it does not show: with two s
 update from the global model and its own, so the masks hide the updates from the aggregator only; the mask seeds are
 not post-quantum; no differential privacy is applied.
 
-#### The finance QCNN on AMLworld, pre-registered (the page change waits for the owner's choice of seed)
+#### The finance QCNN on AMLworld, pre-registered, and on the page since Round 86's batch 6
 
 On the owner's choice of 2026-11-25, pre-registered before any input was scored
 ([`references/finance-qcnn-amlworld-preregistration.md`](../references/finance-qcnn-amlworld-preregistration.md)):
@@ -632,6 +633,52 @@ seed; at four it is ahead of both comparators. The seed best on validation at ei
 0.179, test minority F1 0.193, the best of the five, test AUPRC 0.117). Criterion 2, the page's clear contraction
 against the state vector, is checked on the seed the owner chooses to ship, and the PaySim QCNN stays on the page
 until then. For scale, not like for like: F7b's square network on all 114 inputs scores 0.500.
+
+That run selected each checkpoint and seed by a validation F1 at a logit of 0, a threshold the four-to-one fit sample
+sets, so the comparison that followed re-ran the circuit selected by validation average precision, over twenty seeds,
+beside the comparators the same inputs allow
+([`references/finance-qcnn-amlworld-comparison-preregistration.md`](../references/finance-qcnn-amlworld-comparison-preregistration.md);
+the finance page's comparison card states every arm with its interval). The seed best on validation, seed 6, scores test
+average precision 0.442, at least twice the prevalence, and the page's tree contraction equals the state vector within
+$`2.1 \times 10^{-6}`$ on all 1,523,504 test transactions with no decision changed, so criterion 1 holds, and on the
+owner's choice of 2026-11-26 it is the finance page's QCNN (`scripts/export_finance_qcnn_amlworld.py`; the card is
+[`models/qcnn_finance/README.md`](../models/qcnn_finance/README.md)). Its served file folds the fit window's
+standardisation into its own moments, so the page feeds raw inputs, and the validation-best threshold into its bias:
+minority-class F1 0.509 on the test window, against 0.497 for logistic regression on the same encoded inputs at its
+own threshold.
+
+The comparison on the test window (average precision with its 95 percent stratified bootstrap interval;
+`docs/measurements/finance-qcnn-amlworld-comparison-2026-11-26.json`, written by
+`scripts/train/finance_qcnn_comparison.py --record`):
+
+| Model | Kind | Test average precision (95 % interval) |
+|---|---|---|
+| QCNN-1, the seed best on validation (seed 6) | simulated quantum circuit | 0.442 (0.421 to 0.463) |
+| Logistic regression on the circuit's tanh-encoded inputs - not an arm | classical | 0.370 (0.347 to 0.392) |
+| Quantum kernel SVM: the product encoding's fidelity | quantum kernel, computed classically | 0.330 (0.309 to 0.352) |
+| QCNN-1, the 20 seeds' mean probability | simulated quantum circuit | 0.296 (0.276 to 0.315) |
+| QCNN-2 (quantile encoding, encoded twice), the 20 seeds' mean | simulated quantum circuit | 0.275 (0.257 to 0.295) |
+| Gradient-boosted trees | classical | 0.270 (0.250 to 0.292) |
+| RBF support vector machine | classical | 0.262 (0.244 to 0.282) |
+| Matrix-product-state classifier | classical tensor network | 0.256 (0.237 to 0.276) |
+| Quantum kernel SVM: the ZZ feature map's fidelity | quantum kernel, computed classically | 0.195 (0.179 to 0.214) |
+| QCNN-1 without its entangling gates, the 5 seeds' mean | simulated quantum circuit | 0.140 (0.130 to 0.154) |
+| Gradient-boosted trees on the whole fit window | classical | 0.116 (0.105 to 0.129) |
+| Quantum kernel SVM: the ZZ map's projected kernel | quantum kernel, computed classically | 0.109 (0.097 to 0.123) |
+| Logistic regression on the standardised inputs, the whole fit window | classical | 0.036 (0.035 to 0.037) |
+| Logistic regression on the standardised inputs | classical | 0.035 (0.034 to 0.036) |
+
+Over its twenty seeds the circuit scores $`0.253 \pm 0.090`$, so the shipped seed is the
+rule's pick, not the method's typical figure. The row that is not an arm, logistic regression on the circuit's own
+tanh-encoded inputs, is the trainer's baseline as the served weights file records it, set beside the arms on the owner's
+choice of 2026-11-26 after the record was first written (the arms' logistic regression reads the standardised inputs):
+the shipped seed is ahead of it (paired difference 0.059 to 0.086), and it is ahead of the twenty seeds' mean
+probability, whose interval lies below its own. Without its entangling gates the circuit scores 0.140 against
+0.296; Bowles, Ahmed and Schuld's benchmark of quantum classifiers (arXiv:2403.07059, 2024) found
+removing entanglement often as good or better on their small tasks, and classical models ahead overall; here removing
+it lowers the figure, and one classical model, logistic regression on the encoded inputs, is ahead of the seed average,
+while no classical arm scores above it. The circuit's largest Schmidt rank, every seed, cut and layer, traced in double
+precision on 1,000 test rows, is 8 of the 16 an eight-wire state can reach.
 
 #### Calibrated thresholds for the satellite forecaster, not adopted
 

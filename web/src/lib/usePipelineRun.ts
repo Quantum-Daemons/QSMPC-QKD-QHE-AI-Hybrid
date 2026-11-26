@@ -102,7 +102,7 @@ export const hasTrainedQcnn = (usecase: string) => QCNN_USECASES.has(usecase);
  * of its widths because they are different trained circuits whose classes differ.
  */
 export const QCNN_WIDTHS: Record<string, number[]> = {
-  finance_aml: [4],
+  finance_aml: [8],
   medical_fl: [8],
   telecom_ids: [7, 8],
 };

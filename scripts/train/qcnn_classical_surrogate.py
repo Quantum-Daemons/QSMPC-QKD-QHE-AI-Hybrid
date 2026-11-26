@@ -30,7 +30,8 @@ from qcnn_variational import classical_surrogate, load, shuffled_split  # noqa: 
 
 ARTIFACTS = (
     ("medical", 8, "models/qcnn_medical/weights.json", "web/public/data/medical/qcnn_weights.json"),
-    ("finance", 4, "models/qcnn_finance/weights.json", "web/public/data/finance/qcnn_weights.json"),
+    # Finance left this list in Round 86's batch 6: its QCNN is the AMLworld circuit of the pre-registered comparison, whose
+    # surrogate scripts/export_finance_qcnn_amlworld.py refits at the circuit's own validation threshold.
     ("telecom", 8, "models/qcnn_telecom/weights.json", "web/public/data/telecom/qcnn_weights.json"),
     ("telecom", 7, "models/qcnn_telecom_q7/weights.json", "web/public/data/telecom/qcnn_weights_q7.json"),
 )

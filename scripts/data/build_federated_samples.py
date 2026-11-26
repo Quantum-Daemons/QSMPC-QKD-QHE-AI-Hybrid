@@ -46,10 +46,10 @@ the false-positive rate on the TSV's legitimate rows that were not drawn, so nei
 for the other.
 
 ``samples_by_space.raw`` holds the SAME four columns, in the same order, unstandardised. That block
-feeds the finance QCNN artifact (``models/qcnn_finance``), which since its Round 84 retrain reads
-these four in raw units, in this order (its ``feature_names``), and standardises them with its own
-training moments; it was trained on all eight until then, and the eight-wide block, with the
-``names_by_space`` and ``eda_by_space`` entries that named and described it, is gone.
+fed the PaySim finance QCNN artifact from its Round 84 retrain until Round 86's batch 6, when the
+finance QCNN became the AMLworld circuit of the pre-registered comparison, which reads AMLworld's
+inputs (``scripts/export_finance_qcnn_amlworld.py``); no shipped model reads the block now, and it
+stays with the rows it describes.
 
 Run:  .venv/bin/python scripts/data/build_federated_samples.py
 """

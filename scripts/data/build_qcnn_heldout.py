@@ -41,17 +41,16 @@ import qcnn_variational as q  # noqa: E402
 PUBLIC = REPO / "web" / "public" / "data"
 
 #: (the trainer's use case, the served data directory, the weights files in it that read these rows)
+#: Finance left this list in Round 86's batch 6: its QCNN is the AMLworld circuit of the pre-registered comparison, whose
+#: test split (1,523,504 transactions) is too large to ship, so scripts/export_finance_qcnn_amlworld.py writes a sample of it
+#: with the figures the trainer's circuit gives on that sample.
 TARGETS = (
-    ("finance", "finance", ("qcnn_weights.json",)),
     ("medical", "medical", ("qcnn_weights.json",)),
     ("telecom", "telecom", ("qcnn_weights.json", "qcnn_weights_q7.json")),
 )
 
 #: What each file is released under, from DATA_LICENSES.md's entries for the same rows.
 LICENCES = {
-    "finance": ("CC-BY-SA-4.0", "https://creativecommons.org/licenses/by-sa/4.0/",
-                "E. A. Lopez-Rojas, A. Elmir and S. Axelsson, 'PaySim: A financial mobile money simulator for fraud detection', "
-                "EMSS 2016; Kaggle ealaxi/paysim1. Rows from this repository's data/finance/paysim_sample.tsv."),
     "medical": ("CC-BY-4.0", "https://creativecommons.org/licenses/by/4.0/",
                 "W. Wolberg, O. Mangasarian, N. Street and W. Street, 'Breast Cancer Wisconsin (Diagnostic)', UCI Machine "
                 "Learning Repository (1993), doi:10.24432/C5DW2B."),

@@ -51,6 +51,12 @@ N_QUBITS = 8
 #: is four wires, a power of two that pools four wires to two and two to one with no orphan.
 SHIPPED_WIDTH = {"finance": 4, "finance_amlworld_k4": 4}
 
+#: The directory a use case's runs write under `models/` where it is not `qcnn_<usecase>`. The PaySim corpus, `finance`,
+#: shipped as `models/qcnn_finance` until Round 86's batch 6; that directory now holds the AMLworld circuit, which
+#: `scripts/export_finance_qcnn_amlworld.py` writes from the pre-registered comparison's arm 1, so a PaySim run writes
+#: beside it rather than over it, and a `finance_amlworld` run writes `models/qcnn_finance_amlworld`, which nothing serves.
+ARTIFACT_NAME = {"finance": "finance_paysim"}
+
 #: The circuits this trainer builds, by the name an artifact records in `circuit.name`. Both share
 #: the encoding, `layer_plan`, the pooling pattern (survivor `a` of each pair, orphan into the first
 #: survivor), the per-survivor F block and both heads; they differ in the convolution and the pool.
@@ -699,13 +705,14 @@ def artifact_dir(usecase: str, nq: int) -> Path:
 
     `models/qcnn_<usecase>` at the use case's shipped width (`SHIPPED_WIDTH`, else N_QUBITS) and
     `models/qcnn_<usecase>_q<nq>` at any other, so a run at another width cannot overwrite the
-    artifact the page serves. A function rather than an expression inside `main()`, so a test can
+    artifact the page serves; `<usecase>` is `ARTIFACT_NAME`'s name for it where it has one (the
+    PaySim corpus since Round 86's batch 6, whose old directory now holds the AMLworld circuit). A function rather than an expression inside `main()`, so a test can
     assert that every shipped artifact's recorded command writes the directory it ships from without
     running the trainer against `models/`: four wires for finance since Round 84 had to land in
     `models/qcnn_finance`, where an expression keyed to N_QUBITS alone wrote `qcnn_finance_q4`.
     """
     suffix = "" if nq == SHIPPED_WIDTH.get(usecase, N_QUBITS) else f"_q{nq}"
-    return REPO / "models" / f"qcnn_{usecase}{suffix}"
+    return REPO / "models" / f"qcnn_{ARTIFACT_NAME.get(usecase, usecase)}{suffix}"
 
 
 def shuffled_split(n: int, seed: int) -> tuple[np.ndarray, int, int]:

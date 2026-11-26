@@ -46,7 +46,9 @@ torch = pytest.importorskip("torch")
 #: What the two experiments chose, per shipped artifact: (circuit, encoding scale). Finance is the
 #: control - its c = 0.75 arm failed a confirmatory run on fresh seeds, so it keeps the tree at 1.
 CHOSEN = {
-    "finance/qcnn_weights.json": ("tree", 1.0),
+    # Since Round 86's batch 6: the AMLworld circuit, arm 1 of the pre-registered comparison (the tree at c = 0.5,
+    # references/finance-qcnn-amlworld-comparison-preregistration.md). The PaySim circuit before it was the tree at c = 1.
+    "finance/qcnn_weights.json": ("tree", 0.5),
     "medical/qcnn_weights.json": ("tree", 0.5),
     "telecom/qcnn_weights.json": ("hur-su4", 0.5),
     "telecom/qcnn_weights_q7.json": ("hur-su4", 0.5),
@@ -129,7 +131,15 @@ def _trainer_out(w: dict, rows: np.ndarray) -> np.ndarray:
 
 
 def _held_out(w: dict) -> tuple[np.ndarray, np.ndarray]:
-    """The artifact's own held-out rows, in raw units, through the trainer's own split."""
+    """The artifact's own held-out rows, in raw units, through the trainer's own split.
+
+    Finance since Round 86's batch 6 trains on AMLworld, whose 1,523,504 test-window transactions are not in the
+    repository: its rows here are the page's sample of them, the 8,192 `qcnn_heldout.json` ships, which
+    scripts/export_finance_qcnn_amlworld.py writes and tests/test_r86_qcnn_rescored_in_the_tab.py holds to its figures."""
+    if w.get("trained_as") == "finance_amlworld":
+        held = json.loads((PUBLIC / "finance" / "qcnn_heldout.json").read_text())
+        assert held["feature_names"] == w["feature_names"], "the sample's columns are not the circuit's"
+        return np.asarray(held["rows"], dtype=float), np.asarray(held["labels"])
     q = _q()
     X, y, _, _ = q.load(w["usecase"])
     perm, _, vcut = q.shuffled_split(len(y), int(w["training"]["seed"]))

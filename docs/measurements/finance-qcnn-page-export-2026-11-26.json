@@ -1,0 +1,60 @@
+{
+ "preregistration": {
+  "file": "references/finance-qcnn-amlworld-comparison-preregistration.md",
+  "sha256": "d9badf51de4834ca2e07e386447d34513a24bc61f32bb1169f3256a16bbc9d31"
+ },
+ "seed": 6,
+ "export_check": {
+  "seed": 6,
+  "test_rows": 1523504,
+  "tolerance": 1e-05,
+  "page_vs_state_vector": {
+   "max_abs_readout_difference": 2.113294585215364e-06,
+   "decisions_differing": 0
+  },
+  "python_vs_state_vector": {
+   "max_abs_readout_difference": 2.1132945851043416e-06,
+   "decisions_differing": 0
+  },
+  "page_vs_python": {
+   "max_abs_readout_difference": 7.216449660063518e-16
+  },
+  "state_vector": "the arm's test_logits.npy: the trainer's circuit in float32 on the GPU, through the seed's scale and bias",
+  "wall_clock_s": 15.9,
+  "criterion_met": true
+ },
+ "decision_threshold_logit": 1.4412704706192017,
+ "test_window": {
+  "qcnn": {
+   "accuracy": 0.998864,
+   "minority_f1": 0.509493,
+   "average_precision": 0.442021
+  },
+  "logistic_regression_tanh_features": {
+   "accuracy": 0.998819,
+   "minority_f1": 0.496783,
+   "average_precision": 0.369531
+  },
+  "classical_surrogate": {
+   "accuracy": 0.997533,
+   "minority_f1": 0.262797,
+   "average_precision": 0.103846
+  },
+  "prevalence": 0.00152346
+ },
+ "clip_effect": {
+  "test_rows_with_a_clipped_input": 864,
+  "largest_readout_change_up_to_the_limit": 3.734764790291022e-09,
+  "decisions_that_could_change": 0
+ },
+ "served_against_trained": {
+  "test_rows": 1523504,
+  "decisions_differing_from_the_trained_circuit_at_the_threshold": 0
+ },
+ "held_out_sample": {
+  "accuracy": 0.986816,
+  "minority_f1": 0.530435,
+  "average_precision": 0.634508
+ },
+ "wall_clock_s": 71.8
+}

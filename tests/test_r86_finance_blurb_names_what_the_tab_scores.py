@@ -3,8 +3,8 @@
 #94 put F7b's square network on the finance page in place of the linear student and moved the pipeline's transaction to
 an AMLworld test-window row, but left the blurb saying "The scored rows are PaySim simulator output, and the model
 reads four quantities ...", which the public demo showed until this batch. The blurb now says both: in the browser an
-AMLworld row through the square network under CKKS, the QCNN on a PaySim row of its own; in the full deployment's
-Python pipeline, PaySim rows and the four-column model. Each statement is held to the file it describes, so a retrain
+AMLworld row through the square network under CKKS, the QCNN on eight of that row's inputs (on a PaySim row of its own
+until Round 86's batch 6); in the full deployment's Python pipeline, PaySim rows and the four-column model. Each statement is held to the file it describes, so a retrain
 that changes one of them fails here instead of on the site.
 """
 from __future__ import annotations
@@ -39,12 +39,18 @@ def test_the_browser_half_matches_the_square_network_the_page_runs() -> None:
     assert 'SQUARE_KEY = "finance_aml.square_network"' in data
 
 
-def test_the_qcnn_clause_holds_while_the_qcnn_reads_paysim() -> None:
-    """When the QCNN is retrained on AMLworld (its pre-registration), this fails and the clause must change."""
+def test_the_qcnn_clause_matches_the_circuit_the_page_loads() -> None:
+    """Since Round 86's batch 6 (the owner's choice of 2026-11-26) the QCNN is the AMLworld circuit: the page feeds it eight
+    of the scored transaction's own inputs, and the Python pipeline, which scores PaySim rows, an AMLworld row of the page's
+    sample. Until then the clause said it encoded four columns of a PaySim row of its own, which was then true."""
     w = json.loads((WEB / "public" / "data" / "finance" / "qcnn_weights.json").read_text())
-    assert w["feature_names"] == ["amount", "cross_border", "night_tx", "new_payee"]
-    assert "PaySim" in w["provenance"]
-    assert "the QCNN beside it still encodes four columns of a PaySim row of its own" in _blurb()
+    assert len(w["feature_names"]) == w["n_qubits"] == 8 and "AMLworld" in w["provenance"] and "PaySim" not in w["provenance"]
+    blurb = _blurb()
+    assert "the QCNN beside it encodes eight of the same transaction's inputs" in blurb
+    assert "its QCNN reads an AMLworld transaction of its own, from the page's sample" in blurb
+    assert "PaySim row of its own" not in blurb
+    src = (REPO / "src" / "qsh" / "usecases" / "finance_aml" / "__init__.py").read_text()
+    assert "QCNN_HELDOUT" in src and "qcnn_heldout.json" in src
 
 
 def test_the_full_deployment_half_matches_the_python_pipeline() -> None:

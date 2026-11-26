@@ -1,44 +1,32 @@
-"""Round 84 (qcnnfin): the finance QCNN reads the four columns the finance linear model reads.
+"""Round 86, batch 6: the finance QCNN is the AMLworld circuit of the pre-registered comparison, served as trained.
 
-WHY THIS EXISTS
+WHY THIS EXISTS (the owner's choices of 2026-11-26; references/finance-qcnn-amlworld-comparison-preregistration.md)
 
-Round 84 refit the bundled PaySim linear model on four of the sample's eight columns
-(`registry.PAYSIM_MODEL_FEATURES`), because two of the eight, `device_risk` and `geo_mismatch`, are
-computed from PaySim's balance columns, which the dataset's description says must not be used for
-fraud detection: fraudulent transactions are cancelled, so the balances record the label. The finance
-QCNN artifact still learned from all eight, and its published figures (minority-class F1 0.735294
-against logistic regression's 0.865672) were measured with those two. DATA_LICENSES.md states that
-since its Round 84 retrain the artifact reads the four columns; these tests make that true and keep
-it true, in the trainer, the artifact, the served copy, the page's payload and the page itself.
+From Round 84 the finance page ran a PaySim circuit (four wires, PaySim's four columns), and this file, then
+`test_r84_qcnnfin_four_columns.py`, held it to its trainer, its payload and the page. The comparison's arm 1, seed 6,
+replaced it: eight wires reading eight of AMLworld's 114 inputs, written by `scripts/export_finance_qcnn_amlworld.py`
+with the fit window's standardisation folded into its moments and the validation-best threshold into its bias. The same
+chain is held here to the new circuit.
 
-WHAT IS ASSERTED, AND WHAT EACH FAILS ON AT THE BASE COMMIT (aa293ab)
+WHAT IS ASSERTED
 
-- The trainer's finance loader reads exactly the registry's four columns. Base: all eight.
-- The trained artifact and the copy the page serves read those four at four wires, with that
-  circuit's parameter count and the four columns' own training moments. Base: eight at eight wires.
-- Every artifact's recorded command writes the directory it ships from (`artifact_dir`), so the
-  four-wire finance run lands in `models/qcnn_finance`. Base: no `artifact_dir`; the expression it
-  replaced would have written `models/qcnn_finance_q4`.
-- The page's payload ships the artifact's four columns, in its order, as the TSV's own rows. Base:
-  an eight-wide raw block beside an eight-feature artifact.
-- The browser, handed each of the 400 bundled transactions the way the page selects it, computes the
-  trainer's readout and class on every one, and permuting the columns would change classes, so the
-  check sees order. Base: the artifact reads eight columns.
-- A bundled raw row of another width is refused rather than sliced to its first columns. Base: the
-  page sliced it and ran the circuit.
-- No parameter of the shipped four-wire circuit is dead. Base: the shipped circuit is eight wires.
-- The numpy path gives the trainer's class on every held-out row: a guard for the card's sentence,
-  which passes at the base on the eight-column artifact as well.
-- The card's paired comparison against logistic regression is what the shipped weights give on the
-  trainer's own split. Base: the card describes the eight-column circuit.
-- (slow) The recorded command regenerates the artifact, and the five-seed figures on the card are
-  what the same command gives at seeds 0 to 4.
+- The trained and served copies are one file: the pre-registered eight inputs at eight wires, the tree at c = 0.5 with
+  77 angles, raw inputs, and arm 1's training command at seed 6, the seed the record ships.
+- What the export changed is recorded, and changed no decision: the clip it does not carry moves no test decision, and
+  the threshold folded into the bias is the record's.
+- No trainer run can write over it: a PaySim run writes `models/qcnn_finance_paysim`, an AMLworld run
+  `models/qcnn_finance_amlworld`, and every other artifact's recorded command still writes the directory it ships from.
+- No parameter of the shipped circuit is dead, and the page declares the width it has.
+- The Python tier's implementation gives the trainer's class on every row of the page's sample.
+- The page feeds it the scored transaction's own eight inputs, in the circuit's order, and the order is load-bearing.
+- The page's pipeline runs the eight-wire circuit, and a transaction that lacks one of its inputs is refused, not
+  filled or sliced.
+- The card states the figures the weights file records.
 """
 
 from __future__ import annotations
 
 import json
-import math
 import os
 import re
 import shutil
@@ -56,17 +44,20 @@ PUBLIC = WEB / "public" / "data"
 ESBUILD = WEB / "node_modules" / ".bin" / "esbuild"
 TRAINED = REPO / "models" / "qcnn_finance" / "weights.json"
 SERVED = PUBLIC / "finance" / "qcnn_weights.json"
-PAYLOAD = PUBLIC / "finance" / "paysim_sample.json"
-TSV = REPO / "data" / "finance" / "paysim_sample.tsv"
+SAMPLE = PUBLIC / "finance" / "qcnn_heldout.json"
+STUDENT = PUBLIC / "finance" / "student_heldout.json"
 CARD = REPO / "models" / "qcnn_finance" / "README.md"
+FIRST_RECORD = REPO / "docs" / "measurements" / "finance-qcnn-amlworld-2026-11-26.json"
+COMPARISON = REPO / "docs" / "measurements" / "finance-qcnn-amlworld-comparison-2026-11-26.json"
+EXPORT = REPO / "scripts" / "export_finance_qcnn_amlworld.py"
 sys.path.insert(0, str(REPO / "scripts" / "train"))
 sys.path.insert(0, str(REPO / "src"))
 
 torch = pytest.importorskip("torch")
 
-#: Written out, so each check reads the ARTIFACT against a fixed list as well as against the registry.
-FOUR = ["amount", "cross_border", "night_tx", "new_payee"]
-LEAKY = {"device_risk", "geo_mismatch"}
+#: Written out, so each check reads the ARTIFACT against a fixed list as well as against the record.
+EIGHT = ["format_risk", "pair_log_same_direction", "pair_first_contact", "dst_in_uniq_4320", "dst_bank_diversity",
+         "src_out_uniq_60", "src_out_mean_60", "src_out_mean_360"]
 
 
 def _q():
@@ -79,11 +70,9 @@ def _w(path: Path = TRAINED) -> dict:
     return json.loads(path.read_text())
 
 
-def _tsv() -> tuple[np.ndarray, np.ndarray, list[str]]:
-    rows = [ln for ln in TSV.read_text().splitlines() if ln.strip() and not ln.startswith("#")]
-    header = rows[0].split("\t")
-    data = np.asarray([[float(v) for v in ln.split("\t")] for ln in rows[1:]])
-    return data, data[:, header.index("isFraud")].astype(int), header
+def _sample() -> tuple[np.ndarray, np.ndarray]:
+    held = json.loads(SAMPLE.read_text())
+    return np.asarray(held["rows"], dtype=float), np.asarray(held["labels"])
 
 
 def _trainer_readout(w: dict, raw: np.ndarray) -> np.ndarray:
@@ -107,87 +96,70 @@ def _require_node_or_skip() -> None:
     pytest.skip(msg)
 
 
-# --------------------------------------------------------------------------- the trainer
-def test_the_trainer_reads_the_four_registry_columns() -> None:
-    from qsh.models.registry import PAYSIM_MODEL_FEATURES
+# --------------------------------------------------------------------------- the artifact
+def test_the_trained_and_served_copies_are_one_file_at_eight_wires() -> None:
+    assert TRAINED.read_bytes() == SERVED.read_bytes(), "the page serves another file than the trained artifact"
+    q, w = _q(), _w()
+    assert w["feature_names"] == EIGHT == json.loads(FIRST_RECORD.read_text())["inputs"]["features"]
+    assert w["n_features"] == w["n_qubits"] == 8 and w["usecase"] == "finance" and w["trained_as"] == "finance_amlworld"
+    assert w["input_space"] == "raw" and w["circuit"]["name"] == "tree" and float(w["encoding_scale"]) == 0.5
+    assert len(w["theta"]) == q.param_count(8, 0, int(w["layers"]), "tree") == 77
+    assert "AMLworld" in w["provenance"] and "https://cdla.dev/sharing-1-0/" in w["provenance"]
+    cmd = w["training"]["command"]
+    for flag in ("--usecase finance_amlworld", "--qubits 8", "--arch tree", "--layers 3", "--encoding-scale 0.5",
+                 "--select-on ap", "--seed 6"):
+        assert flag in cmd, cmd
+    ship = json.loads(COMPARISON.read_text())["arms"]["qcnn1"]["shipped_seed"]
+    assert ship["seed"] == w["selection"]["seed"] == w["training"]["seed"] == 6
+    assert w["selection"]["of_seeds"] == len(json.loads(COMPARISON.read_text())["arms"]["qcnn1"]["seeds"]) == 20
 
-    X, y, names, prov = _q().load("finance")
-    assert names == FOUR == list(PAYSIM_MODEL_FEATURES), names
-    assert not LEAKY & set(names)
-    data, label, header = _tsv()
-    assert X.shape == (len(data), 4) == (4000, 4)
-    np.testing.assert_array_equal(X, data[:, [header.index(n) for n in FOUR]])
-    np.testing.assert_array_equal(y, label)
-    assert "four columns" in prov and "8 AML features" not in prov, prov
+
+def test_what_the_export_changed_is_recorded_and_moved_no_decision() -> None:
+    w = _w()
+    assert w["standardisation"]["clip"] == 10.0 and "not carried" in w["standardisation"]["folded"]
+    assert w["clip_effect"]["decisions_that_could_change"] == 0
+    assert w["clip_effect"]["largest_readout_change_up_to_the_limit"] < 1e-6
+    t = w["decision_threshold"]
+    assert t["folded_into_bias"] and "validation window" in t["rule"] and "never chosen on the test window" in t["rule"]
+    assert abs(float(w["bias"]) - (t["trainer_bias"] - t["logit"])) < 1e-9
+    check = json.loads(COMPARISON.read_text())["criteria"]["1_export_check"]
+    assert check["criterion_met"] and check["page_vs_state_vector"]["decisions_differing"] == 0
+    assert w["comparison"]["export_check"]["test_rows"] == check["test_rows"] == w["n_test"]
 
 
-def test_every_recorded_command_writes_the_directory_it_ships_from() -> None:
-    """The four-wire finance run must land in `models/qcnn_finance`, where the page's copy comes
-    from, and no other artifact's command may move: medical and telecom at 8, telecom also at 7."""
+def test_no_trainer_run_writes_over_the_served_circuit() -> None:
+    """The served circuit is written by the export from the comparison's work folder, so no command the trainer runs
+    without `--out` may land in `models/qcnn_finance`, and every other artifact's recorded command still writes the
+    directory it ships from."""
     q = _q()
-    assert q.SHIPPED_WIDTH["finance"] == 4
+    assert q.artifact_dir("finance", 4).name == "qcnn_finance_paysim"
+    assert q.artifact_dir("finance", 8).name == "qcnn_finance_paysim_q8"
+    assert q.artifact_dir("finance_amlworld", 8).name == "qcnn_finance_amlworld"
+    assert q.artifact_dir("telecom", 7).name == "qcnn_telecom_q7"
+    assert 'WEIGHTS = REPO / "models" / "qcnn_finance" / "weights.json"' in EXPORT.read_text(), "the export writes the served file"
     seen = 0
     for path in sorted((REPO / "models").glob("qcnn_*/weights.json")):
         cmd = _w(path)["training"]["command"]
         usecase = re.search(r"--usecase (\w+)", cmd).group(1)
         width = int(re.search(r"--qubits (\d+)", cmd).group(1))
         assert width == _w(path)["n_qubits"], f"{path.parent.name}: the command trains {width} wires"
-        assert q.artifact_dir(usecase, width) == path.parent, (
-            f"{path.parent.name}: its recorded command writes {q.artifact_dir(usecase, width)}")
+        if path == TRAINED:
+            assert q.artifact_dir(usecase, width) != path.parent, "a plain training run would overwrite the served file"
+        else:
+            assert q.artifact_dir(usecase, width) == path.parent, (
+                f"{path.parent.name}: its recorded command writes {q.artifact_dir(usecase, width)}")
         seen += 1
     assert seen >= 4
-    # A run at another width cannot overwrite the shipped one.
-    assert q.artifact_dir("finance", 8).name == "qcnn_finance_q8"
-    assert q.artifact_dir("telecom", 7).name == "qcnn_telecom_q7"
 
 
-def test_the_trainer_defaults_finance_to_its_shipped_width(tmp_path: Path) -> None:
-    """Without `--qubits`, finance trains its four features on four wires, not on N_QUBITS = 8 with
-    four unencoded. One epoch, written under tmp_path, never into models/."""
-    proc = subprocess.run([sys.executable, str(REPO / "scripts" / "train" / "qcnn_variational.py"),
-                           "--usecase", "finance", "--epochs", "1", "--out", str(tmp_path)],
-                          cwd=REPO, capture_output=True, text=True, timeout=900,
-                          env={**os.environ, "PYTHONPATH": str(REPO / "src")})
-    assert proc.returncode == 0, proc.stderr[-2000:]
-    w = json.loads((tmp_path / "weights.json").read_text())
-    assert w["n_qubits"] == w["n_features"] == 4 and "--qubits 4" in w["training"]["command"]
-    assert "unencoded" not in proc.stdout, "the default run padded wires the features do not fill"
-
-
-# --------------------------------------------------------------------------- the artifact
-@pytest.mark.parametrize("path", [TRAINED, SERVED], ids=["trained", "served"])
-def test_the_artifact_reads_the_four_columns_at_four_wires(path: Path) -> None:
-    q, w = _q(), _w(path)
-    assert w["feature_names"] == FOUR, w["feature_names"]
-    assert w["n_features"] == w["n_qubits"] == len(FOUR) == q.SHIPPED_WIDTH["finance"]
-    assert w["input_space"] == "raw" and w["circuit"]["name"] == "tree"
-    assert float(w["encoding_scale"]) == 1.0, "the finance scale was decided at c = 1 (the card)"
-    assert len(w["theta"]) == q.param_count(4, 0, int(w["layers"]), "tree") == 52
-    assert "four columns" in w["provenance"] and not any(n in w["provenance"] for n in LEAKY)
-    cmd = w["training"]["command"]
-    for flag in ("--usecase finance", "--qubits 4", "--arch tree", "--encoding-scale 1"):
-        assert flag in cmd, cmd
-    # The moments are the four columns' own, over the trainer's own training split.
-    X, y, _, _ = q.load("finance")
-    perm, cut, _ = q.shuffled_split(len(y), int(w["training"]["seed"]))
-    np.testing.assert_allclose(w["feature_mean"], X[perm][:cut].mean(0), rtol=0, atol=1e-12)
-    np.testing.assert_allclose(w["feature_std"], X[perm][:cut].std(0), rtol=0, atol=1e-12)
-
-
-def test_the_page_declares_the_width_the_artifact_has() -> None:
-    src = (WEB / "src" / "lib" / "usePipelineRun.ts").read_text()
-    m = re.search(r"QCNN_WIDTHS: Record<string, number\[\]> = \{.*?finance_aml: \[([^\]]*)\]", src, re.S)
-    assert m and [int(v) for v in re.findall(r"\d+", m.group(1))] == [_w(SERVED)["n_qubits"]] == [4]
-
-
-def test_no_parameter_of_the_shipped_four_wire_circuit_is_dead() -> None:
-    """The structure test's perturbation, at the layout finance now ships (4 wires, binary, 3 rounds),
-    which is not among the five it covers, on random angles and on the shipped ones."""
+def test_no_parameter_of_the_shipped_circuit_is_dead() -> None:
+    """The structure test's perturbation at the layout finance ships (8 wires, binary, 3 rounds), on random angles and on
+    the shipped ones."""
     q, w = _q(), _w()
     nq, layers = int(w["n_qubits"]), int(w["layers"])
-    assert (nq, layers) == (4, 3)
+    assert (nq, layers) == (8, 3)
     g = torch.Generator().manual_seed(0)
-    x = torch.tanh(torch.randn(8, nq, generator=g) * 0.7)
+    x = 0.5 * torch.tanh(torch.randn(8, nq, generator=g) * 0.7)
     for theta in (torch.randn(q.param_count(nq, 0, layers), generator=g) * 0.6,
                   torch.tensor(w["theta"], dtype=torch.float32)):
         base = q.circuit(x, theta, nq=nq, readout_qubits=0, layers=layers).detach()
@@ -201,39 +173,24 @@ def test_no_parameter_of_the_shipped_four_wire_circuit_is_dead() -> None:
         assert not dead, f"these angles cannot move the readout: {dead}"
 
 
-def test_the_numpy_path_gives_the_trainers_class_on_every_held_out_row() -> None:
-    """The Python pipeline's implementation (`qcnn_trained.infer`), fed the held-out rows raw as
-    `usecases/finance_aml` feeds it, against the trainer's circuit: the card says every class agrees.
-    A guard rather than a behaviour test: it holds at the base commit on the eight-column artifact
-    too, and is here so the card's sentence about this artifact is checked by code."""
+def test_the_page_declares_the_width_the_artifact_has() -> None:
+    src = (WEB / "src" / "lib" / "usePipelineRun.ts").read_text()
+    m = re.search(r"QCNN_WIDTHS: Record<string, number\[\]> = \{.*?finance_aml: \[([^\]]*)\]", src, re.S)
+    assert m and [int(v) for v in re.findall(r"\d+", m.group(1))] == [_w(SERVED)["n_qubits"]] == [8]
+
+
+def test_the_python_tier_gives_the_trainers_class_on_every_row_of_the_sample() -> None:
+    """`qcnn_trained.infer`, the Python pipeline's implementation, fed the page's sample raw as `usecases/finance_aml`
+    feeds it, against the trainer's circuit."""
     from qsh.qhe.qcnn_trained import infer
 
-    q, w = _q(), _w()
-    X, _, _, _ = q.load("finance")
-    perm, _, vcut = q.shuffled_split(len(X), int(w["training"]["seed"]))
-    held = X[perm][vcut:]
-    want = _trainer_readout(w, held)
-    got = np.asarray([infer(list(r), w)[0] for r in held])
-    assert float(np.abs(got - want).max()) < 1e-4
+    w = _w()
+    X, _ = _sample()
+    want = _trainer_readout(w, X)
+    got = [infer(list(r), w) for r in X]
+    assert float(np.abs(np.asarray([g[0] for g in got]) - want).max()) < 1e-4
     t_cls = (want * float(w["scale"]) + float(w["bias"]) > 0).astype(int)
-    assert [infer(list(r), w)[1] for r in held] == t_cls.tolist()
-
-
-# --------------------------------------------------------------------------- the payload
-def test_the_payload_ships_the_artifacts_four_columns_as_the_tsvs_own_rows() -> None:
-    d, w = json.loads(PAYLOAD.read_text()), _w(SERVED)
-    raw = np.asarray(d["samples_by_space"]["raw"], dtype=float)
-    assert d["names"] == w["feature_names"] == FOUR
-    assert raw.shape == (len(d["labels"]), w["n_features"]) == (400, 4)
-    data, label, header = _tsv()
-    tsv4 = np.round(data[:, [header.index(n) for n in FOUR]], 5)
-    labels_of: dict[tuple, set[int]] = {}
-    for r, lab in zip(tsv4.tolist(), label.tolist(), strict=True):
-        labels_of.setdefault(tuple(r), set()).add(int(lab))
-    missing = [i for i, r in enumerate(raw.tolist()) if tuple(r) not in labels_of]
-    assert not missing, f"{len(missing)} raw rows are not rows of the TSV's four columns"
-    wrong = [i for i, r in enumerate(raw.tolist()) if d["labels"][i] not in labels_of[tuple(r)]]
-    assert not wrong, f"{len(wrong)} raw rows carry a label no TSV row with those values has"
+    assert [g[1] for g in got] == t_cls.tolist()
 
 
 # --------------------------------------------------------------------------- the page
@@ -243,9 +200,9 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-const WEB = process.argv[2];
+const WEB = process.argv[2], STEP = Number(process.argv[3]);
 const { build } = createRequire(WEB + "/package.json")("esbuild");
-const dir = mkdtempSync(join(tmpdir(), "qsh-r84-qcnnfin-"));
+const dir = mkdtempSync(join(tmpdir(), "qsh-r86-qcnnfin-"));
 const out = join(dir, "bundle.mjs");
 await build({
   stdin: { contents: `export { realInput } from ${JSON.stringify(resolve(WEB, "src/lib/realData"))};
@@ -262,42 +219,42 @@ globalThis.fetch = async (url) => {
 const m = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 const w = JSON.parse(readFileSync(join(WEB, "public/data/finance/qcnn_weights.json"), "utf8"));
+const n = JSON.parse(readFileSync(join(WEB, "public/data/finance/student_heldout.json"), "utf8")).samples.length;
 const res = [];
-for (let i = 0; i < 400; i++) {
-  // The page's own selection (clientCompute, private_inference): the row in the space the artifact
-  // declares, sliced to its wires. `u` lands on row i exactly: floor(((i + 0.5) / 400) * 400) = i.
-  const one = await m.realInput("finance_aml", () => (i + 0.5) / 400);
+for (let i = 0; i < n; i += STEP) {
+  // The page's own selection: `u` lands on row i exactly, floor(((i + 0.5) / n) * n) = i.
+  const one = await m.realInput("finance_aml", () => (i + 0.5) / n);
   const fed = one.bySpace[w.input_space];
   const r = m.qcnnInferTrained(fed.slice(0, w.n_qubits), w);
-  res.push({ fed, expectation: r.expectation, cls: r.cls });
+  res.push({ i, raw: one.raw, fed, expectation: r.expectation, cls: r.cls, note: one.qcnnRowNote });
 }
 console.log(JSON.stringify(res));
 """
 
 
-def test_the_page_feeds_the_qcnn_its_four_columns_in_its_order() -> None:
+def test_the_page_feeds_the_qcnn_the_transactions_own_eight_inputs_in_its_order() -> None:
     _require_node_or_skip()
-    d, w = json.loads(PAYLOAD.read_text()), _w(SERVED)
-    # The contract the positional feed rests on: the payload's columns are the artifact's, in order.
-    assert d["names"] == w["feature_names"] == FOUR, (d["names"], w["feature_names"])
+    w, student = _w(SERVED), json.loads(STUDENT.read_text())
+    cols = [student["feature_names"].index(n) for n in w["feature_names"]]
     with tempfile.TemporaryDirectory() as tmp:
         script = Path(tmp) / "input.mjs"
         script.write_text(_INPUT_HARNESS)
-        proc = subprocess.run(["node", str(script), str(WEB)], cwd=WEB, capture_output=True,
-                              text=True, timeout=600)
+        proc = subprocess.run(["node", str(script), str(WEB), "16"], cwd=WEB, capture_output=True, text=True, timeout=600)
     assert proc.returncode == 0, proc.stderr[-3000:]
     got = json.loads(proc.stdout.strip().splitlines()[-1])
-    raw = np.asarray(d["samples_by_space"]["raw"], dtype=float)
+    assert len(got) == len(student["samples"]) // 16
+    raw = np.asarray([student["samples"][g["i"]] for g in got], dtype=float)
     fed = np.asarray([g["fed"] for g in got], dtype=float)
-    np.testing.assert_array_equal(fed, raw)          # row i is row i, all four columns, in order
-    want = _trainer_readout(w, raw)
+    np.testing.assert_array_equal(fed, raw[:, cols])          # the transaction's own inputs, all eight, in order
+    assert all("the same transaction at its eight inputs" in g["note"] for g in got)
+    want = _trainer_readout(w, fed)
     browser = np.asarray([g["expectation"] for g in got])
     assert float(np.abs(browser - want).max()) <= 1e-5
     t_cls = (want * float(w["scale"]) + float(w["bias"]) > 0).astype(int)
     assert [g["cls"] for g in got] == t_cls.tolist()
     # The order is load-bearing, so a feed in another order is something this check would see.
-    for perm in ([1, 0, 2, 3], [0, 1, 3, 2], [3, 2, 1, 0]):
-        moved = _trainer_readout(w, raw[:, perm])
+    for perm in ([1, 0, 2, 3, 4, 5, 6, 7], [0, 1, 2, 3, 4, 5, 7, 6], list(range(7, -1, -1))):
+        moved = _trainer_readout(w, fed[:, perm])
         assert float(np.abs(moved - want).max()) > 1e-2, perm
 
 
@@ -308,9 +265,9 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 const WEB = process.argv[2];
-const WIDEN = process.argv[3] === "widen";
+const NARROW = process.argv[3] === "narrow";
 const { build } = createRequire(WEB + "/package.json")("esbuild");
-const dir = mkdtempSync(join(tmpdir(), "qsh-r84-qcnnfin-"));
+const dir = mkdtempSync(join(tmpdir(), "qsh-r86-qcnnfin-"));
 const out = join(dir, "bundle.mjs");
 const sealWasm = resolve(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
 await build({
@@ -340,11 +297,10 @@ globalThis.fetch = async (url) => {
   if (/^[a-z]+:/i.test(p)) return miss;
   let text;
   try { text = readFileSync(join(WEB, "public", p.replace(/^\/+/, "")), "utf8"); } catch { return miss; }
-  if (WIDEN && p.replace(/^\/+/, "") === "data/finance/paysim_sample.json") {
-    // The eight-column layout the payload shipped while the artifact read eight: amount,
-    // velocity_24h, cross_border, night_tx, new_payee, amount_zscore, device_risk, geo_mismatch.
+  if (NARROW && p.replace(/^\/+/, "") === "data/finance/student_heldout.json") {
+    // One of the circuit's eight inputs renamed away: the row the page builds would lack it.
     const j = JSON.parse(text);
-    j.samples_by_space.raw = j.samples_by_space.raw.map(([a, cb, nt, np]) => [a, 0, cb, nt, np, 0, 0, 0]);
+    j.feature_names = j.feature_names.map((n) => (n === "src_out_mean_360" ? "src_out_mean_360_absent" : n));
     text = JSON.stringify(j);
   }
   return { ok: true, status: 200, headers: { get: () => "application/json" },
@@ -377,14 +333,13 @@ process.exit(0);
 
 @pytest.fixture(scope="module")
 def pipeline(tmp_path_factory) -> dict:
-    """The finance page through `private_inference` with the QCNN selected, on the shipped payload and
-    on one whose raw block is widened to the old eight-column layout. One node process each:
-    `realData` caches a payload for the tab's lifetime."""
+    """The finance page through `private_inference` with the QCNN selected, on the shipped files and on a student file
+    that lacks one of the circuit's inputs. One node process each: `realData` caches a payload for the tab's lifetime."""
     _require_node_or_skip()
-    script = tmp_path_factory.mktemp("r84qcnnfin") / "pipeline.mjs"
+    script = tmp_path_factory.mktemp("r86qcnnfin") / "pipeline.mjs"
     script.write_text(_PIPELINE_HARNESS)
     out = {}
-    for mode in ("shipped", "widen"):
+    for mode in ("shipped", "narrow"):
         proc = subprocess.run(["node", str(script), str(WEB), mode], cwd=WEB, capture_output=True,
                               text=True, timeout=900)
         assert proc.returncode == 0, f"the browser pipeline did not run ({mode}):\n{proc.stderr[-3000:]}"
@@ -392,118 +347,43 @@ def pipeline(tmp_path_factory) -> dict:
     return out
 
 
-def test_the_page_runs_the_four_wire_circuit_on_the_shipped_payload(pipeline) -> None:
+def test_the_page_runs_the_eight_wire_circuit_and_says_which_figures_are_whose(pipeline) -> None:
     run = pipeline["shipped"]
     assert "private_inference" in run["seen"], run["seen"]
     m = run["metrics"]["private_inference"]
-    assert m["primary_inference_backend"] == "qcnn-trained" and m["qcnn_qubits"] == 4, m
+    assert m["primary_inference_backend"] == "qcnn-trained" and m["qcnn_qubits"] == 8, m
+    held = json.loads(SAMPLE.read_text())
+    assert m["qcnn_rescored_rows"] == len(held["rows"]) and m["qcnn_rescore_matches_record"] == 1
     line = next(x for s, x in run["logs"] if x.startswith("inference backend = QCNN"))
     w = _w(SERVED)
-    assert f"{len(w['theta'])} trained angles" in line and "over 4 wires" in line, line
+    assert f"{len(w['theta'])} trained angles" in line and "over 8 wires" in line, line
+    # The figure beside the comparators is the whole test window's; the sample's re-score is held to its own record.
     assert f"Held-out minority-class F1 {w['test_minority_f1']:.4f}" in line, line
-    assert "the classical model is ahead" in line, line
+    assert f"logistic regression at {w['classical_lr_minority_f1']:.4f}" in line, line
+    assert f"the page's sample of {len(held['rows'])} of that split's rows" in line, line
+    assert f"{held['expected']['test_minority_f1']:.4f}, the value recorded for these rows" in line, line
+    assert "for seed 6, the best of 20 on validation average precision" in line, line
 
 
-def test_a_raw_row_of_another_width_is_refused_not_sliced(pipeline) -> None:
-    run = pipeline["widen"]
+def test_a_transaction_that_lacks_one_of_its_inputs_is_refused_not_filled(pipeline) -> None:
+    run = pipeline["narrow"]
     assert "private_inference" in run["seen"], run["seen"]
     m = run["metrics"]["private_inference"]
-    assert m["primary_inference_backend"] == "ckks", (
-        "the QCNN ran on an eight-value raw row: sliced to its four wires, that feeds it amount, "
-        "velocity_24h, cross_border and night_tx, not the four columns it names")
+    assert m["primary_inference_backend"] == "ckks", "the QCNN ran on a row missing one of the inputs it names"
     assert "qcnn_qubits" not in m
     logs = [x for s, x in run["logs"] if s == "private_inference"]
-    assert any("raw row has 8 values and the trained QCNN reads 4" in x for x in logs), logs
+    assert any("ships no rows in the space the trained QCNN declares (raw)" in x for x in logs), logs
 
 
 # --------------------------------------------------------------------------- the card
-def _paired(w: dict) -> dict:
-    """The trainer's own split and comparator, and the shipped weights' predictions on its test rows."""
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.metrics import f1_score
-
-    q = _q()
-    X, y, _, _ = q.load("finance")
-    perm, cut, vcut = q.shuffled_split(len(y), int(w["training"]["seed"]))
-    X, y = X[perm], y[perm]
-    mu, sd = X[:cut].mean(0), X[:cut].std(0)
-    Xs = np.tanh((X - mu) / np.where(sd == 0, 1.0, sd))
-    lr = LogisticRegression(max_iter=2000).fit(Xs[:cut], y[:cut])
-    yt, lr_pred = y[vcut:], lr.predict(Xs[vcut:])
-    qc_pred = (_trainer_readout(w, X[vcut:]) * float(w["scale"]) + float(w["bias"]) > 0).astype(int)
-    # The recomputation is the recorded one, or the counts below describe some other model.
-    assert round(float(f1_score(yt, qc_pred)), 6) == w["test_minority_f1"]
-    assert round(float(f1_score(yt, lr_pred)), 6) == w["classical_lr_minority_f1"]
-    b = int(((lr_pred == yt) & (qc_pred != yt)).sum())
-    c = int(((lr_pred != yt) & (qc_pred == yt)).sum())
-    n = b + c
-    p = min(1.0, 2 * sum(math.comb(n, k) for k in range(min(b, c) + 1)) / 2 ** n) if n else 1.0
-    return {"rows": len(yt), "fraud": int(yt.sum()), "qc_tp": int((qc_pred & yt).sum()),
-            "qc_fp": int((qc_pred & (1 - yt)).sum()), "lr_tp": int((lr_pred & yt).sum()),
-            "lr_fp": int((lr_pred & (1 - yt)).sum()), "b": b, "c": c, "p": p}
-
-
-def test_the_card_states_the_paired_comparison_the_shipped_weights_give() -> None:
-    pytest.importorskip("sklearn")
-    r = _paired(_w())
+def test_the_card_states_the_figures_the_weights_file_records() -> None:
+    w = _w()
     text = " ".join(CARD.read_text().split())
-    qc_fp = "no legitimate row" if r["qc_fp"] == 0 else f"{r['qc_fp']} legitimate rows"
-    for phrase in (
-        f"Of the {r['fraud']} fraud rows among the {r['rows']}, the circuit flags {r['qc_tp']} and "
-        f"logistic regression {r['lr_tp']}; the circuit flags {qc_fp} and logistic regression "
-        f"{r['lr_fp']}.",
-        f"The two disagree on {r['b'] + r['c']} of the {r['rows']} rows, logistic regression right on "
-        f"{r['b']} of them and the circuit on {r['c']}, so the exact McNemar test on the discordant "
-        f"rows gives p = {r['p']:.5f}",
-    ):
-        assert phrase in text, f"the card does not say: {phrase}"
-    assert "**At this seed logistic regression is ahead" in text
-    assert r["b"] > r["c"] and r["p"] > 0.05, "the card says the split does not separate them"
-
-
-# --------------------------------------------------------------------------- slow: regeneration
-def _train(tmp: Path, seed: int) -> dict:
-    args = _w()["training"]["command"].split()
-    assert args[:2] == ["python", "scripts/train/qcnn_variational.py"], args
-    args = args[2:]
-    args[args.index("--seed") + 1] = str(seed)
-    out = tmp / f"seed{seed}"
-    subprocess.run([sys.executable, str(REPO / "scripts" / "train" / "qcnn_variational.py"), *args,
-                    "--out", str(out)], cwd=REPO, check=True, capture_output=True, text=True,
-                   env={**os.environ, "PYTHONPATH": str(REPO / "src")}, timeout=3600)
-    return json.loads((out / "weights.json").read_text())
-
-
-@pytest.mark.slow
-def test_the_recorded_command_regenerates_the_artifact_and_the_cards_five_seeds(tmp_path) -> None:
-    from scipy import stats
-
-    shipped = _w()
-    runs = [_train(tmp_path, s) for s in range(5)]
-    on_cuda = runs[0]["training"]["device"] == shipped["training"]["device"] == "cuda"
-    if on_cuda:
-        assert (tmp_path / "seed0" / "weights.json").read_bytes() == TRAINED.read_bytes()
-    for k in ("test_minority_f1", "classical_lr_minority_f1", "test_accuracy", "classical_lr_accuracy"):
-        assert runs[0][k] == shipped[k], k
-    qc = [r["test_minority_f1"] for r in runs]
-    lr = [r["classical_lr_minority_f1"] for r in runs]
-    text = CARD.read_text()
-    row = next(ln for ln in text.splitlines() if ln.startswith("| **tree, four columns"))
-    lr_row = next(ln for ln in text.splitlines() if ln.startswith("| logistic regression, the same split"))
-    num = lambda line: [float(v) for v in re.findall(r"\d\.\d{4}", line)]   # noqa: E731
-    assert num(row) == [round(v, 4) for v in qc] + [round(float(np.mean(qc)), 4)], row
-    assert num(lr_row) == [round(v, 4) for v in lr] + [round(float(np.mean(lr)), 4)], lr_row
-    flat = " ".join(text.split())
-    diffs = np.asarray(qc) - np.asarray(lr)
-    t = stats.ttest_rel(qc, lr)
-    for phrase in (
-        f"sample sd {np.std(qc, ddof=1):.4f}",
-        f"+{diffs.mean():.4f} minority-class F1 on average",
-        f"spread by {np.std(diffs, ddof=1):.4f}",
-        f"paired t(4) = {t.statistic:.2f}, p = {t.pvalue:.2f}",
-        f"Wilcoxon signed-rank p is {stats.wilcoxon(qc, lr).pvalue:.2f}",
-        f"leads logistic regression on {int((diffs > 0).sum())} of the 5 and trails it on "
-        f"{int((diffs < 0).sum())}",
-    ):
-        assert phrase in flat, f"the card does not say: {phrase}"
-    assert qc[0] == min(qc), "the card calls seed 0 the lowest of the five"
+    for key in ("test_minority_f1", "test_auprc", "test_accuracy", "classical_lr_minority_f1", "classical_lr_auprc",
+                "majority_baseline", "all_positive_f1"):
+        assert f"| {key} | {w[key]:.6f} |" in CARD.read_text(), key
+    sur = w["classical_surrogate"]
+    assert sur["converged"] and sur["threads"] == 1
+    assert f"minority-class F1 {sur['test_minority_f1']:.6f} and average precision {sur['test_auprc']:.6f}" in text
+    assert "**Seed position:**" in CARD.read_text() and "NOT PUBLISHED TO HUGGING FACE" in text
+    assert f"{len(w['theta'])} trained angles" in text and "Nothing here is a claim of quantum advantage" in text

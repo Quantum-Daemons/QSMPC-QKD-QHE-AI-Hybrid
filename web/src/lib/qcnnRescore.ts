@@ -21,6 +21,10 @@ export interface QcnnHeldOut {
   licence: string;
   licence_url?: string;
   attribution?: string;
+  /** The figures the trainer's circuit gives on THESE rows, where they are a sample of its test split rather than the whole
+   *  of it (finance since Round 86's batch 6: 8,192 of the 1,523,504 test-window transactions). The re-score is then held
+   *  to these, and the weights file's figures stay the whole split's. */
+  expected?: { test_accuracy?: number; test_minority_f1?: number; test_macro_f1?: number };
 }
 
 export interface QcnnRescore {
@@ -31,6 +35,8 @@ export interface QcnnRescore {
   recorded: number | null;
   /** Equal to six decimals, the precision the trainer records. */
   matchesRecord: boolean;
+  /** Whose figure `recorded` is: the weights file's (the rows are its whole test split) or the held-out file's (a sample). */
+  recordedBy: "weights" | "heldout";
   accuracy: number;
   macroF1: number | null;
   minorityF1: number | null;
@@ -80,11 +86,13 @@ export function rescoreQcnn(w: QcnnWeights, held: QcnnHeldOut): QcnnRescore {
   const multiclass = Boolean(w.readout?.readout_qubits);
   const macro = multiclass ? macroF1(y, pred) : null, minority = multiclass ? null : minorityF1(y, pred);
   const head = w.headline_metric;
-  const [label, headline, recorded] = head === "macro_f1" ? ["macro F1", macro ?? 0, w.test_macro_f1 ?? null]
-    : head === "minority_class_f1" ? ["minority-class F1", minority ?? 0, w.test_minority_f1 ?? null]
-      : ["accuracy", accuracy, w.test_accuracy ?? null];
+  const src = held.expected ?? w;
+  const [label, headline, recorded] = head === "macro_f1" ? ["macro F1", macro ?? 0, src.test_macro_f1 ?? null]
+    : head === "minority_class_f1" ? ["minority-class F1", minority ?? 0, src.test_minority_f1 ?? null]
+      : ["accuracy", accuracy, src.test_accuracy ?? null];
   return {
     rows: y.length, label, headline, recorded, matchesRecord: recorded != null && round6(headline) === round6(recorded),
+    recordedBy: held.expected ? "heldout" : "weights",
     accuracy, macroF1: macro, minorityF1: minority, ms, split: held.split,
   };
 }

@@ -18,13 +18,14 @@ WHAT IS ASSERTED, AND WHAT EACH FAILS ON AT THE BASE COMMIT (de1111c)
 - The builder reproduces the shipped payload byte for byte. A drift guard, not a behaviour test:
   it holds at the base commit too, where the eight-column builder wrote the eight-column file.
 - The evaluation block and the model reproduce from the shipped rows. Base: no evaluation block.
-- The raw block the QCNN is fed is the artifact's own columns in its order: the same four as
-  `samples`, unstandardised, since the artifact's Round 84 retrain on those four (it was the eight,
-  named in `names_by_space` and described in `eda_by_space`, while the artifact read the eight).
-  Base: an eight-wide block beside an eight-feature artifact.
+- The raw block is the same four as `samples`, unstandardised. It fed the QCNN from the artifact's
+  Round 84 retrain on those four (it was the eight, named in `names_by_space` and described in
+  `eda_by_space`, while the artifact read the eight) until Round 86's batch 6, when the finance QCNN
+  became the AMLworld circuit; no shipped QCNN reads it now. Base: an eight-wide block beside an
+  eight-feature artifact.
 - The TSV header carries the balance-column note, written by the generator. Base: neither.
-- The Python use case reads the same four columns and hands the QCNN the same four, the artifact's
-  own, in its order. Base: eight.
+- The Python use case reads the same four columns; since Round 86's batch 6 it hands the QCNN an
+  AMLworld transaction of its own, in the circuit's eight raw columns, and says which. Base: eight.
 - Visitor text and the browser's fallback names. Base: the blurb names device_risk; FEATURE_NAMES
   lists the eight.
 """
@@ -155,15 +156,17 @@ def test_the_stated_fitting_row_figures_reproduce_from_the_shipped_rows() -> Non
     assert fit["accuracy"] < 0.95 and cv["accuracy"] < 0.95
 
 
-def test_the_qcnn_feed_is_the_artifacts_own_four_columns_in_its_order() -> None:
-    """Updated in Round 84 (qcnnfin): the artifact was retrained on the four model columns, so the
-    block it is fed is those four, named by `names`, and the eight-column fields that named and
-    described the old block (`names_by_space`, `eda_by_space`) are gone with it."""
+def test_the_raw_block_is_the_four_model_columns_and_no_qcnn_reads_it() -> None:
+    """Updated in Round 84 (qcnnfin), when the QCNN was retrained on the four model columns and fed this block, and in
+    Round 86's batch 6, when the finance QCNN became the AMLworld circuit (the owner's choice of 2026-11-26): the block
+    stays the same four columns unstandardised, and no shipped QCNN reads it any more, so none of its columns is one the
+    circuit names."""
     d, w = _payload(), json.loads(QCNN.read_text())
     raw = d["samples_by_space"]["raw"]
-    assert d["names"] == FOUR == w["feature_names"], (d["names"], w["feature_names"])
-    assert not LEAKY & set(w["feature_names"]), "the QCNN reads a balance-derived column again"
-    assert len(raw) == len(d["samples"]) and {len(r) for r in raw} == {w["n_features"]} == {4}
+    assert d["names"] == FOUR, d["names"]
+    assert not set(FOUR) & set(w["feature_names"]) and "AMLworld" in w["provenance"], w["feature_names"]
+    assert not LEAKY & set(d["names"]), "the payload names a balance-derived column again"
+    assert len(raw) == len(d["samples"]) and {len(r) for r in raw} == {4}
     assert "names_by_space" not in d and "eda_by_space" not in d, (
         "the payload still names or describes an eight-column raw block it no longer ships")
     # The SAME transactions in both spaces, column for column: the raw block, z-scored with the
@@ -172,7 +175,7 @@ def test_the_qcnn_feed_is_the_artifacts_own_four_columns_in_its_order() -> None:
     cut = int(len(R) * 0.7)
     Z = (R - R[:cut].mean(axis=0)) / R[:cut].std(axis=0)
     assert float(np.abs(Z - np.asarray(d["samples"])).max()) < 1e-4
-    # Nothing the wires carry is constant or a copy, in either space.
+    # Nothing the block carries is constant or a copy, in either space.
     assert d["eda"]["degenerate"] == [] and d["eda"]["duplicates"] == []
     assert float(R.std(axis=0).min()) > 0.1
 
@@ -204,12 +207,14 @@ def test_the_tsv_figures_the_registry_quotes_hold() -> None:
     assert np.corrcoef(a, z)[0, 1] > 0.99999
 
 
-def test_the_python_pipeline_reads_the_same_four_and_feeds_the_qcnn_the_same_four() -> None:
-    """Updated in Round 84 (qcnnfin): the artifact reads the model's four columns, so the QCNN's row
-    is the scored transaction's `features` themselves, in the artifact's order."""
+def test_the_python_pipeline_reads_the_same_four_and_feeds_the_qcnn_its_own_amlworld_row() -> None:
+    """Updated in Round 84 (qcnnfin), when the QCNN's row was the scored transaction's `features` themselves, and in Round
+    86's batch 6: the model reads PaySim's four columns, and the QCNN, the AMLworld circuit since the owner's choice of
+    2026-11-26, an AMLworld transaction of its own from the page's held-out sample, drawn by the run's seed, in its own
+    raw columns, and the run says which."""
     pytest.importorskip("xgboost")
     from qsh.qhe.qcnn_trained import load_weights
-    from qsh.usecases.finance_aml import build
+    from qsh.usecases.finance_aml import QCNN_HELDOUT, build
 
     _, ctx = build({"seed": 0, "inference": "qcnn"})
     assert ctx.data["feature_names"] == FOUR
@@ -218,11 +223,16 @@ def test_the_python_pipeline_reads_the_same_four_and_feeds_the_qcnn_the_same_fou
     assert np.asarray(ctx.data["explain_baseline"]).shape == (4,)
     assert ctx.data["_finance_model"]["features"] == FOUR
     w = load_weights("finance_aml")
-    assert w["feature_names"] == FOUR
+    held = json.loads(QCNN_HELDOUT.read_text())
+    assert w["feature_names"] == held["feature_names"] and len(w["feature_names"]) == 8
     q = np.asarray(ctx.data["qcnn_features"])
-    assert q.shape == (len(w["feature_names"]),) == (4,)
-    # The QCNN's row is the scored transaction itself, column for column, in raw units.
-    np.testing.assert_allclose(q, ctx.data["features"], rtol=0, atol=0)
+    i = int(np.random.default_rng(0).integers(len(held["rows"])))
+    np.testing.assert_array_equal(q, np.asarray(held["rows"][i], dtype=float))
+    assert f"transaction {i + 1} of {len(held['rows'])}" in ctx.data["qcnn_row_note"]
+    assert "not the PaySim one the surrogate flagged" in ctx.data["qcnn_row_note"]
+    # A run that does not select the QCNN does not read its row.
+    _, plain = build({"seed": 0})
+    assert "qcnn_features" not in plain.data
 
 
 def test_the_visitor_text_and_the_browser_fallback_names_follow_the_model() -> None:
