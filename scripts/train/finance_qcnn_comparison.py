@@ -341,18 +341,173 @@ def run_comparators() -> int:
     return 0
 
 
+# --------------------------------------------------------------------------- #
+#  Arm 6: Schmidt ranks
+# --------------------------------------------------------------------------- #
+def schmidt_ranks(states: np.ndarray, nq: int = 8, tol: float = 1e-10) -> np.ndarray:
+    """Rows x cuts: the Schmidt rank of each row's state across the cut after wire k (wires 0..k | k+1..nq-1).
+
+    Wire q is bit q of the index, so the low k+1 bits are the first side: reshape to (2**(nq-k-1), 2**(k+1))."""
+    out = np.zeros((len(states), nq - 1), dtype=np.int64)
+    for k in range(nq - 1):
+        m = states.reshape(len(states), 1 << (nq - k - 1), 1 << (k + 1))
+        s = np.linalg.svd(m, compute_uv=False)
+        out[:, k] = (s > tol * s[:, :1]).sum(axis=1)
+    return out
+
+
+def run_schmidt() -> int:
+    import torch
+
+    sys.path.insert(0, str(REPO / "scripts" / "train"))
+    import qcnn_variational as Q
+
+    d = load_inputs()
+    rows = np.random.default_rng(0).permutation(d["te"])[:1000]
+    x = torch.tensor(0.5 * np.tanh(d["X"][rows]), dtype=torch.float32)      # arm 1's encoding, c = 0.5
+    result = {}
+    for s in range(20):
+        w = json.loads((WORK / "qcnn1" / f"seed{s}" / "weights.json").read_text())
+        trace: list = []
+        with torch.no_grad():
+            Q.circuit(x, torch.tensor(w["theta"], dtype=torch.float32), 8, readout_qubits=0, entangle=True,
+                      layers=w["layers"], arch="tree", layer_trace=trace)
+        result[f"seed{s}"] = {label: int(schmidt_ranks(st.numpy().astype(np.complex128)).max()) for label, st in trace}
+    largest = max(max(v.values()) for v in result.values())
+    out = {"rows": 1000, "bound": 16, "largest_rank_over_seeds_layers_cuts_and_rows": largest, "by_seed": result}
+    (WORK / "schmidt.json").write_text(json.dumps(out, indent=1) + "\n")
+    print(f"largest Schmidt rank {largest} of the bound 16; wrote {WORK / 'schmidt.json'}")
+    return 0
+
+
+# --------------------------------------------------------------------------- #
+#  The record: intervals, ensembles, paired differences
+# --------------------------------------------------------------------------- #
+def ap_weighted(order_y: np.ndarray, w: np.ndarray) -> float:
+    """Average precision of rows already sorted by descending score, each row counted w times."""
+    tp = np.cumsum(w * order_y)
+    total = np.cumsum(w)
+    pos = tp[-1]
+    if pos == 0:
+        return float("nan")
+    prec = np.divide(tp, total, out=np.zeros_like(tp, dtype=np.float64), where=total > 0)
+    return float(np.sum(prec * w * order_y) / pos)
+
+
+def bootstrap_weights(y: np.ndarray, n: int, seed: int = 0):
+    """Stratified resamples by label, as counts per row (positives and negatives each resampled to their own size)."""
+    rng = np.random.default_rng(seed)
+    pos, neg = np.flatnonzero(y == 1), np.flatnonzero(y == 0)
+    for _ in range(n):
+        w = np.bincount(rng.choice(pos, size=len(pos)), minlength=len(y)) + \
+            np.bincount(rng.choice(neg, size=len(neg)), minlength=len(y))
+        yield w.astype(np.float64)
+
+
+def intervals(y: np.ndarray, scores: dict[str, np.ndarray], ship: str, n: int = 1000) -> dict:
+    """Each score's AP with a 95 percent stratified bootstrap interval, and its paired difference from `ship`."""
+    orders = {k: np.argsort(-v, kind="stable") for k, v in scores.items()}
+    draws = {k: [] for k in scores}
+    for w in bootstrap_weights(y, n):
+        for k, o in orders.items():
+            draws[k].append(ap_weighted(y[o], w[o]))
+    out = {}
+    for k in scores:
+        a = np.asarray(draws[k])
+        diff = np.asarray(draws[ship]) - a
+        out[k] = {"ap_ci95": [round(float(np.percentile(a, 2.5)), 6), round(float(np.percentile(a, 97.5)), 6)],
+                  "ship_minus_this_ci95": None if k == ship else
+                  [round(float(np.percentile(diff, 2.5)), 6), round(float(np.percentile(diff, 97.5)), 6)]}
+    return out
+
+
+def f1_at_val_best(yv, sv, yt, st) -> float:
+    from sklearn.metrics import f1_score, precision_recall_curve
+
+    p, r, thr = precision_recall_curve(yv, sv)
+    f = np.where(p + r > 0, 2 * p * r / np.maximum(p + r, 1e-12), 0)[:-1]
+    cut = thr[int(np.argmax(f))]
+    return float(f1_score(yt, (st >= cut).astype(int), zero_division=0))
+
+
+def run_record() -> int:
+    from sklearn.metrics import average_precision_score as ap
+
+    got = check_prereg()
+    d = load_inputs()
+    yv, yt = d["y"][d["val"]], d["y"][d["te"]]
+    sig = lambda z: 1.0 / (1.0 + np.exp(-z))  # noqa: E731
+    arms: dict = {}
+    scores: dict = {}
+    for arm, seeds in (("qcnn1", range(20)), ("qcnn2", range(20)), ("noent", range(5))):
+        per = []
+        val_p, test_p = [], []
+        for s in seeds:
+            o = WORK / arm / f"seed{s}"
+            w = json.loads((o / "weights.json").read_text())
+            vl, tl = np.load(o / "val_logits.npy").astype(np.float64), np.load(o / "test_logits.npy").astype(np.float64)
+            per.append({"seed": s, "val_ap": round(float(ap(yv, vl)), 6), "test_ap": round(float(ap(yt, tl)), 6),
+                        "selected": w.get("selection")})
+            val_p.append(sig(vl)), test_p.append(sig(tl))
+        ens_v, ens_t = np.mean(val_p, axis=0), np.mean(test_p, axis=0)
+        best = max(per, key=lambda r: (r["val_ap"], -r["seed"]))
+        arms[arm] = {"seeds": per, "mean_test_ap": round(float(np.mean([r["test_ap"] for r in per])), 6),
+                     "sd_test_ap": round(float(np.std([r["test_ap"] for r in per], ddof=1)), 6),
+                     "ensemble_test_ap": round(float(ap(yt, ens_t)), 6),
+                     "ensemble_minority_f1": round(f1_at_val_best(yv, ens_v, yt, ens_t), 6),
+                     "best_on_validation": best["seed"]}
+        scores[f"{arm}_ensemble"] = ens_t
+        if arm == "qcnn1":
+            o = WORK / arm / f"seed{best['seed']}"
+            vl, tl = np.load(o / "val_logits.npy").astype(np.float64), np.load(o / "test_logits.npy").astype(np.float64)
+            arms[arm]["shipped_seed"] = {"seed": best["seed"], "test_ap": best["test_ap"],
+                                         "minority_f1": round(f1_at_val_best(yv, vl, yt, tl), 6)}
+            scores["qcnn1_shipped"] = tl
+    comp = json.loads((WORK / "comparators" / "summary.json").read_text())
+    for name in [k for k in comp if k != "wall_clock_s"] + ["logistic_regression_whole_fit_window",
+                                                            "gradient_boosting_whole_fit_window"]:
+        st = np.load(WORK / "comparators" / f"{name}_test.npy").astype(np.float64)
+        sv = np.load(WORK / "comparators" / f"{name}_val.npy").astype(np.float64)
+        arms[name] = {**comp.get(name, {}), "test_ap": round(float(ap(yt, st)), 6),
+                      "minority_f1": round(f1_at_val_best(yv, sv, yt, st), 6)}
+        scores[name] = st
+    ci = intervals(yt, scores, "qcnn1_shipped")
+    prevalence = float(yt.mean())
+    ship = arms["qcnn1"]["shipped_seed"]
+    record = {
+        "preregistration": {"file": str(PREREG.relative_to(REPO)), "sha256": got},
+        "test_prevalence": round(prevalence, 8), "twice_prevalence": round(2 * prevalence, 8),
+        "arms": arms, "intervals": ci,
+        "schmidt": json.loads((WORK / "schmidt.json").read_text()) if (WORK / "schmidt.json").exists() else None,
+        "criteria": {"1_shipped_seed_at_least_twice_prevalence": bool(ship["test_ap"] >= 2 * prevalence),
+                     "1_export_check": "run by tests/test_r86_qcnn_under_ckks.py and the page's clear contraction on the shipped seed",
+                     "comparators_above_the_shipped_seed": sorted(k for k, v in arms.items()
+                                                                  if k not in ("qcnn1",) and
+                                                                  (v.get("test_ap", v.get("ensemble_test_ap", 0)) or 0) > ship["test_ap"])},
+    }
+    RECORD.write_text(json.dumps(record, indent=1) + "\n")
+    print(f"wrote {RECORD.relative_to(REPO)}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--arm", choices=sorted(ARMS))
     ap.add_argument("--seeds", default="0-19")
     ap.add_argument("--comparators", action="store_true")
+    ap.add_argument("--schmidt", action="store_true")
+    ap.add_argument("--record", action="store_true")
     args = ap.parse_args()
     check_prereg()
     if args.arm:
         return run_arm(args.arm, seeds_of(args.seeds))
     if args.comparators:
         return run_comparators()
-    ap.error("choose --arm or --comparators (the Schmidt check and the record follow in this file)")
+    if args.schmidt:
+        return run_schmidt()
+    if args.record:
+        return run_record()
+    ap.error("choose --arm, --comparators, --schmidt or --record")
     return 2
 
 

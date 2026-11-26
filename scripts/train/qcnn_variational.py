@@ -391,7 +391,8 @@ def _unpack(theta: torch.Tensor, nq: int, readout_qubits: int, layers: int, arch
 
 def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
             readout_qubits: int = 0, entangle: bool = True, layers: int = 1,
-            arch: str = "tree", trace: list | None = None, reupload: int = 1) -> torch.Tensor:
+            arch: str = "tree", trace: list | None = None, reupload: int = 1,
+            layer_trace: list | None = None) -> torch.Tensor:
     """(batch, nq) features + a FLAT shared-weight vector -> a readout. State FLAT as (batch, 2**nq).
 
     `x` is the ENCODED input: the angle on wire q is `x[q] * pi`. The caller supplies
@@ -405,6 +406,9 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
     `reupload = 2` (Round 86, batch 6; references/finance-qcnn-amlworld-comparison-preregistration.md, arm 2) encodes the
     data a second time, on every wire, right after the first convolution round of the first stage and before any pooling,
     so a trainable filter sits between the two encodings. The default, 1, is the circuit every artifact was trained on.
+
+    `layer_trace`, if a list, receives `(label, state)` after the encoding and after every convolution round, pooling stage
+    and the fully connected block - read-only, for the comparison's Schmidt-rank check (arm 6).
 
     `theta` is no longer `(layers, nq)`. It is the flat concatenation of the conv, pool and
     fully-connected blocks that `param_shapes()` describes, none of whose axes is the qubit count -
@@ -469,6 +473,8 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
         return state
 
     state = encode(state)
+    if layer_trace is not None:
+        layer_trace.append(("encode", state.detach().clone()))
     reencode_after_first_conv = reupload == 2
 
     # ---- QCNN proper: conv (shared filter) -> pool (measurement-conditioned) -> reduce ----
@@ -519,6 +525,8 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
             if reencode_after_first_conv:
                 state = encode(state)                     # the second encoding (arm 2), once
                 reencode_after_first_conv = False
+            if layer_trace is not None:
+                layer_trace.append((f"conv {stage}.{r}", state.detach().clone()))
         elif step["kind"] == "pool":
             pairs = list(zip(active[0::2], active[1::2], strict=False))
             if arch == "hur-su4":
@@ -550,6 +558,8 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
             stage += 1
             if trace is not None:
                 trace.append((stage, list(active), state.detach().clone()))
+            if layer_trace is not None:
+                layer_trace.append((f"pool {stage}", state.detach().clone()))
         else:                                                      # fully connected on survivors
             # A UNITARY ON THE REDUCED REGISTER, so each survivor carries its OWN angles. Sharing
             # one scalar across every survivor - what this did until Round 47 - makes F a single
@@ -587,6 +597,8 @@ def circuit(x: torch.Tensor, theta: torch.Tensor, nq: int = N_QUBITS,
             if entangle and len(active) > 1:
                 for j in range(len(active)):
                     state = apply_cnot(state, active[j], active[(j + 1) % len(active)], nq)
+            if layer_trace is not None:
+                layer_trace.append(("fc", state.detach().clone()))
 
     p = state.abs() ** 2
     idx = torch.arange(p.shape[1], device=dev)
