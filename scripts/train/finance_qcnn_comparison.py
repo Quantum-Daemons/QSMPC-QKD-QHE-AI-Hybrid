@@ -36,6 +36,25 @@ PREREG = REPO / "references" / "finance-qcnn-amlworld-comparison-preregistration
 PREREG_SHA256 = "dc56325772e004894575ba59e71faf7e50d40f8250ac46c81f0d27a6b8322d2c"
 WORK = REPO.parent / "tools_external" / "finance_qcnn_comparison_work"
 RECORD = REPO / "docs" / "measurements" / "finance-qcnn-amlworld-comparison-2026-11-26.json"
+#: The finance page's summary of the record (criterion 2: every arm's figure with its interval, whatever ships).
+SITE = REPO / "web" / "public" / "data" / "finance" / "qcnn_comparison.json"
+
+#: How the page names each arm, in the order it lists them.
+ARM_LABELS = {
+    "qcnn1_shipped": ("QCNN-1, the seed best on validation", "simulated quantum circuit"),
+    "qcnn1_ensemble": ("QCNN-1, the 20 seeds' mean probability", "simulated quantum circuit"),
+    "qcnn2_ensemble": ("QCNN-2 (quantile encoding, encoded twice), the 20 seeds' mean", "simulated quantum circuit"),
+    "noent_ensemble": ("QCNN-1 without its entangling gates, the 5 seeds' mean", "simulated quantum circuit"),
+    "product": ("Quantum kernel SVM: the product encoding's fidelity", "quantum kernel, computed classically"),
+    "zz": ("Quantum kernel SVM: the ZZ feature map's fidelity", "quantum kernel, computed classically"),
+    "projected": ("Quantum kernel SVM: the ZZ map's projected kernel", "quantum kernel, computed classically"),
+    "logistic_regression": ("Logistic regression", "classical"),
+    "gradient_boosting": ("Gradient-boosted trees", "classical"),
+    "rbf_svm": ("RBF support vector machine", "classical"),
+    "mps": ("Matrix-product-state classifier", "classical tensor network"),
+    "logistic_regression_whole_fit_window": ("Logistic regression on the whole fit window", "classical"),
+    "gradient_boosting_whole_fit_window": ("Gradient-boosted trees on the whole fit window", "classical"),
+}
 TRAINER = REPO / "scripts" / "train" / "qcnn_variational.py"
 COMMON = ["--usecase", "finance_amlworld", "--arch", "tree", "--layers", "3", "--epochs", "120", "--qubits", "8",
           "--threads", "4", "--select-on", "ap", "--save-scores"]
@@ -476,6 +495,7 @@ def run_record() -> int:
                       "minority_f1": round(f1_at_val_best(yv, sv, yt, st), 6)}
         scores[name] = st
     ci = intervals(yt, scores, "qcnn1_shipped")
+    export = json.loads((WORK / "export_check.json").read_text()) if (WORK / "export_check.json").exists() else None
     prevalence = float(yt.mean())
     ship = arms["qcnn1"]["shipped_seed"]
     record = {
@@ -484,13 +504,49 @@ def run_record() -> int:
         "arms": arms, "intervals": ci,
         "schmidt": json.loads((WORK / "schmidt.json").read_text()) if (WORK / "schmidt.json").exists() else None,
         "criteria": {"1_shipped_seed_at_least_twice_prevalence": bool(ship["test_ap"] >= 2 * prevalence),
-                     "1_export_check": "run by tests/test_r86_qcnn_under_ckks.py and the page's clear contraction on the shipped seed",
+                     # scripts/check_finance_qcnn_export.py: the page's clearReadout in node against the state vector.
+                     "1_export_check": export,
+                     "1_met": bool(ship["test_ap"] >= 2 * prevalence and export is not None and export["criterion_met"]
+                                   and export["seed"] == ship["seed"]),
                      "comparators_above_the_shipped_seed": sorted(k for k, v in arms.items()
                                                                   if k not in ("qcnn1",) and
                                                                   (v.get("test_ap", v.get("ensemble_test_ap", 0)) or 0) > ship["test_ap"])},
     }
     RECORD.write_text(json.dumps(record, indent=1) + "\n")
-    print(f"wrote {RECORD.relative_to(REPO)}")
+    rows = []
+    for key, (label, kind) in ARM_LABELS.items():
+        if key not in ci:
+            continue
+        arm = key.removesuffix("_ensemble").removesuffix("_shipped")
+        test_ap = (ship["test_ap"] if key == "qcnn1_shipped" else
+                   arms[arm]["ensemble_test_ap"] if key.endswith("_ensemble") else arms[key]["test_ap"])
+        rows.append({"key": key, "label": label + (f" (seed {ship['seed']})" if key == "qcnn1_shipped" else ""), "kind": kind,
+                     "test_ap": test_ap, "ap_ci95": ci[key]["ap_ci95"],
+                     "shipped_minus_this_ci95": ci[key]["ship_minus_this_ci95"]})
+    sch = record["schmidt"]
+    SITE.write_text(json.dumps({
+        "preregistration": record["preregistration"]["file"], "record": str(RECORD.relative_to(REPO)),
+        "test_rows": int(len(yt)), "test_positive": int(yt.sum()), "prevalence": record["test_prevalence"],
+        "twice_prevalence": record["twice_prevalence"], "rows": rows,
+        "spreads": {a: {"mean_test_ap": arms[a]["mean_test_ap"], "sd_test_ap": arms[a]["sd_test_ap"],
+                        "seeds": len(arms[a]["seeds"])} for a in ("qcnn1", "qcnn2", "noent")},
+        "shipped_seed": ship, "criterion_1_signal": record["criteria"]["1_shipped_seed_at_least_twice_prevalence"],
+        "criterion_1_met": record["criteria"]["1_met"],
+        "export_check": ({k: export[k] for k in ("test_rows", "page_vs_state_vector", "criterion_met")} if export else None),
+        "comparators_above_the_shipped_seed": [ARM_LABELS.get(k, (k,))[0] for k in
+                                               record["criteria"]["comparators_above_the_shipped_seed"]],
+        "schmidt": ({"largest": sch["largest_rank_over_seeds_layers_cuts_and_rows"], "bound": sch["bound"],
+                     "rows": sch["rows"]} if sch else None),
+        "statement": ("Every circuit here acts on eight wires, so its state is 256 amplitudes and is simulated exactly on a "
+                      "classical computer; QCNNs on classical data of this kind are classically simulable (Bermejo et al., "
+                      "PRX Quantum 7, 020304, 2026). No quantum advantage is claimed."),
+        "licence": "CDLA-Sharing-1.0", "licence_url": "https://cdla.dev/sharing-1-0/",
+        "attribution": ("IBM AMLworld HI-Small (Altman et al., Realistic Synthetic Financial Transactions for Anti-Money "
+                        "Laundering Models, NeurIPS 2023 Datasets and Benchmarks), CDLA-Sharing-1.0; synthetic transactions."),
+        "modifications": ("Figures on the test window of the published MLP's temporal split, from models fitted here on eight "
+                          "of its 114 inputs; no rows are shipped."),
+    }, indent=1) + "\n")
+    print(f"wrote {RECORD.relative_to(REPO)} and {SITE.relative_to(REPO)}")
     return 0
 
 
