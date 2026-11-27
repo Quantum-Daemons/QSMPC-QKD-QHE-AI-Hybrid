@@ -2963,5 +2963,104 @@
     "flamby_metric": 0.990121
    }
   }
+ },
+ "crosstestbed": {
+  "teacher/seed0": {
+   "shared_rows": 1399000,
+   "per_class_f1": {
+    "Benign": 0.305353,
+    "HTTPFlood": 3.8e-05,
+    "ICMPFlood": 0.001055,
+    "SYNFlood": 0.557355,
+    "SlowrateDoS": 0.244025,
+    "TCP scan": 5.9e-05,
+    "UDPFlood": 2.6e-05,
+    "UDPScan": 0.476313
+   },
+   "macro_f1": 0.198028,
+   "binary_attack_f1": 0.63313,
+   "binary_accuracy": 0.514882
+  },
+  "teacher/seed1": {
+   "shared_rows": 1399000,
+   "per_class_f1": {
+    "Benign": 0.304513,
+    "HTTPFlood": 3.1e-05,
+    "ICMPFlood": 0.001055,
+    "SYNFlood": 0.557383,
+    "SlowrateDoS": 0.25775,
+    "TCP scan": 6e-05,
+    "UDPFlood": 2.6e-05,
+    "UDPScan": 0.476395
+   },
+   "macro_f1": 0.199652,
+   "binary_attack_f1": 0.628968,
+   "binary_accuracy": 0.511026
+  },
+  "teacher/seed2": {
+   "shared_rows": 1399000,
+   "per_class_f1": {
+    "Benign": 0.264761,
+    "HTTPFlood": 3.1e-05,
+    "ICMPFlood": 0.001055,
+    "SYNFlood": 0.204875,
+    "SlowrateDoS": 0.249724,
+    "TCP scan": 8e-05,
+    "UDPFlood": 2.6e-05,
+    "UDPScan": 0.4778
+   },
+   "macro_f1": 0.149794,
+   "binary_attack_f1": 0.448509,
+   "binary_accuracy": 0.357721
+  },
+  "teacher/seed3": {
+   "shared_rows": 1399000,
+   "per_class_f1": {
+    "Benign": 0.260409,
+    "HTTPFlood": 4.6e-05,
+    "ICMPFlood": 0.001055,
+    "SYNFlood": 0.13655,
+    "SlowrateDoS": 0.26235,
+    "TCP scan": 9.9e-05,
+    "UDPFlood": 2.6e-05,
+    "UDPScan": 0.477886
+   },
+   "macro_f1": 0.142303,
+   "binary_attack_f1": 0.432508,
+   "binary_accuracy": 0.345737
+  },
+  "teacher/seed4": {
+   "shared_rows": 1399000,
+   "per_class_f1": {
+    "Benign": 0.301842,
+    "HTTPFlood": 3e-05,
+    "ICMPFlood": 0.001055,
+    "SYNFlood": 0.544895,
+    "SlowrateDoS": 0.261506,
+    "TCP scan": 4e-05,
+    "UDPFlood": 2.6e-05,
+    "UDPScan": 0.476676
+   },
+   "macro_f1": 0.198259,
+   "binary_attack_f1": 0.621822,
+   "binary_accuracy": 0.504174
+  },
+  "student": {
+   "shared_rows": 1399000,
+   "per_class_f1": {
+    "Benign": 0.444584,
+    "HTTPFlood": 0.547229,
+    "ICMPFlood": 0.0,
+    "SYNFlood": 0.144699,
+    "SlowrateDoS": 0.352364,
+    "TCP scan": 0.0,
+    "UDPFlood": 0.557927,
+    "UDPScan": 0.0
+   },
+   "macro_f1": 0.25585,
+   "binary_attack_f1": 0.867654,
+   "binary_accuracy": 0.782273,
+   "l2": 1e-06
+  }
  }
 }
