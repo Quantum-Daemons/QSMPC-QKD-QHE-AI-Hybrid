@@ -10,6 +10,7 @@ missing toolchain fails there instead of skipping, and `scripts/ci_local.sh` gat
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -19,7 +20,9 @@ import pytest
 WEB = Path(__file__).resolve().parents[1] / "web"
 CHECKS = ["check_control_plane", "check_relay_pass_pairs", "check_model_cards",
           "check_validations_download", "check_link_and_label_contrast", "check_student_cost_rows",
-          "check_finance_cost_plot", "check_sat_residual_plot"]
+          "check_finance_cost_plot", "check_sat_residual_plot",
+          # Round 86, batch 11: named only in a docstring until the run detection below required a quoted reference.
+          "check_qsms_field"]
 
 
 def _require_node_or_skip() -> None:
@@ -55,6 +58,9 @@ def test_every_round_84_check_with_an_npm_script_is_run_by_the_suite() -> None:
         if not name.startswith("check:"):
             continue
         mjs = cmd.split("scripts/")[-1].split(".mjs")[0] if "scripts/" in cmd else None
-        if mjs and mjs not in tests_text and f"npm run {name}" not in ci and f"scripts/{mjs}.mjs" not in ci:
+        # A QUOTED reference, not a mention: until Round 86's batch 11 any occurrence counted, so `check_qsms_field`
+        # passed on a docstring that named it and was run by nothing.
+        quoted = re.search(r"[\"'](?:[^\"'\s]*/)?" + re.escape(mjs) + r"(?:\.mjs)?[\"']", tests_text) if mjs else None
+        if mjs and not quoted and f"npm run {name}" not in ci and f"scripts/{mjs}.mjs" not in ci:
             unrun.append(name)
     assert not unrun, f"npm check scripts that nothing runs: {unrun}"
