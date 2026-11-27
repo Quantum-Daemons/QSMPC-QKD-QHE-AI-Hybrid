@@ -139,11 +139,11 @@
  },
  "telecom_ids.nidd_federated": {
   "files": {
-   "eval_sample.json": "57e65e1356f26320a88ef8e5554061a43f7bb6dd71cbbf9d91e7c4a94a15651a",
+   "eval_sample.json": "30117a628c0687eec8469f9ced6f60c0c6b8d89ce8d4c3f6dae8be0724b08f93",
    "onnx/model.onnx": "8cf293bb89a07692128c160f6e153c8f6f9fda3f6dd989c1463e6e26ed2206df",
    "weights.json": "f0f9a21d46c38bc510ffe86d16568e380e7ea26d3aa674f016db6611e2a8d3d2"
   },
-  "revision": "ec821ec914483e6b97fdf8a40ea5fff8de01f78f"
+  "revision": "3fc4f358ed7088265cee2d5970f7f92054f13fda"
  },
  "telecom_ids.qml": {
   "files": {

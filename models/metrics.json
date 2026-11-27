@@ -3445,7 +3445,7 @@
       "same_class_as_the_page": 2048
     },
     "flamby_macro_f1": 0.970821,
-    "hf_revision": "ec821ec914483e6b97fdf8a40ea5fff8de01f78f",
+    "hf_revision": "3fc4f358ed7088265cee2d5970f7f92054f13fda",
     "l2": 1e-06,
     "local_iterations": 20,
     "masked_messages": 270,
