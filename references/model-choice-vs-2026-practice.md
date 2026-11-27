@@ -14,7 +14,7 @@ landing page; a figure from a paper's body is marked as such.
 | use case | verdict | the nearest work in the window |
 |---|---|---|
 | finance | equivalent. The compact GNN and the MLP run under CKKS and garbled circuits in the tab; the 115-parameter linear student, the page's default, is the weakest encrypted model (macro F1 0.3088 against its teacher's 0.6161) | Bilgi et al., arXiv:2610.18054 (2026-10-13): CKKS GNN inference on the IBM AML benchmark, server side, 5.31 s per queried transaction on one consumer GPU, 1.65 s amortised. Keller, ePrint 2026/2457: secure sorting for graph pattern matching under MPC. OblivDGL, ePrint 2026/2655: secure GNN inference that hides the graph. A stronger public teacher now has code (MEGA-GNN-TMLR, MIT, created 2026-08-12) |
-| medical | a reasonable simplification for a browser tab; the chest X-ray split is current practice | Machado and Idalino, SBSeg 2026: an encrypted-CNN benchmark on a MedMNIST set with bootstrapping, which in its body reports an encrypted AUC close to the plaintext one at a cost per image far beyond a tab (figures read once by the sweep of 2026-11-23, to be re-read on the paper). Wei et al., Gecko, arXiv:2608.02378, and Nguyen et al., PRICE, arXiv:2610.25286: a public encoder in the clear and an encrypted head, the chest X-ray card's shape. Kim and Lee, arXiv:2609.12911: a Safhire-style ResNet-20's linear layers recovered with 5,712 queries; the weights here are public |
+| medical | a reasonable simplification for a browser tab; the chest X-ray split is current practice | Machado and Idalino, SBSeg 2026 (doi:10.5753/sbseg.2026.29325): an end-to-end benchmark of CKKS-encrypted CNN inference for pneumonia on PneumoniaMNIST, reported against Yanez and Yadav's seven-point checklist (its abstract, read 2026-11-27), which in its body reports an encrypted AUC close to the plaintext one at a cost per image far beyond a tab (figures read once by the sweep of 2026-11-23, to be re-read on the paper). Wei et al., Gecko, arXiv:2608.02378, and Nguyen et al., PRICE, arXiv:2610.25286: a public encoder in the clear and an encrypted head, the chest X-ray card's shape. Kim and Lee, arXiv:2609.12911: a Safhire-style ResNet-20's linear layers recovered with 5,712 queries; the weights here are public |
 | genomics | equivalent: a clinical score is still a weighted sum, which is what the page encrypts | Galanopoulos et al., arXiv:2609.16211: homomorphic inference for a genomic foundation model, 6,683 s and 9,839 MiB for one input |
 | telecom | a reasonable simplification, with one change worth making | Cho et al., ePrint 2026/2349 (2026-10-05): CKKS anomaly scores on three intrusion datasets. Released scores can reveal a private threshold; quantising them kept 99.864% of decisions; a surrogate trained on 128 decision-only responses reached balanced accuracy 0.817 under random splitting and about 0.5 once time and flow identifiers were separated. The student decrypted all 8 class scores until this re-check; the page now takes the argmax in a garbled circuit on the shares of the masked scores, so only the class leaves (`models/metrics.json`, `argmax_location`), which follows that paper's output policies. On QML, Chakraborty et al., arXiv:2611.12219 (XGBoost 98.94% and 99.41% against Pegasos-QSVC's 91.80% and 82.98%) and Gillani et al., arXiv:2608.18155 (two advantages survive false-discovery correction, one of them at the 1% false-positive point) agree with the page's forest-against-QNN result |
 | satellite | a reasonable simplification; no private-inference work on spacecraft telemetry was found in the window | - |
@@ -80,7 +80,11 @@ The cryptographic results do not depend on it: the CKKS and plaintext logits agr
 whatever the split. The accuracy levels do. The pre-registered re-run under stricter protocols (Round 86, batch 9;
 `references/telecom-nidd-clean-protocols-preregistration.md`) is reported in
 [`docs/models-and-benchmarks.md`](../docs/models-and-benchmarks.md#the-5g-nidd-models-under-leakage-aware-protocols-pre-registered-round-86-batch-9). This is this project's reading of the paper, read at the source
-on 2026-11-27, and not the paper's claim about these models.
+on 2026-11-27, and not the paper's claim about these models. Across corpora, Abraheem and Edhirig (Wadi Alshatti Univ. J.
+Pure Appl. Sci., 2026-08-07, "Bidirectional Cross-Dataset Generalization and Label-Efficient Adaptation for 5G Network
+Intrusion Detection"; its abstract, read 2026-11-27) find zero-shot XGBoost between 5G-NIDD and NetsLab-5GORAN-IDD
+near chance in at least one direction of each matched task (balanced accuracy 0.500 to 0.558) and a classifier that
+tells the two corpora apart at 0.993; the re-run's cross-testbed figures (macro-F1 0.178 and 0.256) agree with that.
 
 **Two more 2026 studies, and what the file allows.** Ozyilmaz and Okay, "Positional Feature Leakage in 5G-NIDD",
 ISCTurkiye 2026 (IEEE Xplore document 11779383; abstract read at the source), find that two Argus fields, a per-flow
@@ -166,7 +170,7 @@ search behind it - the second time this round that reading has been forced.
    | system | configuration | latency |
    |---|---|---|
    | Zama Concrete ML / TFHE (MSPN 2023) | 50 trees, depth 5, 6-bit | **0.95 - 81.9 s** per inference (477x - 40,969x slowdown) |
-   | SilentWood (arXiv:2411.15494 v2) | 100 trees, depth 7, BFV via SEAL | **4.37 s** CPU / **1.97 s** GPU |
+   | SilentWood (arXiv:2411.15494 v3, 2026-09-27) | 100 trees, depth 7, BFV via SEAL | **4.37 s** CPU / **1.97 s** GPU (Table 2's mean over 13 UCI datasets at 16-bit inputs; 5.41 s and 2.35 s at 32 bits) |
    | Kangaroo (NDSS 2026) | 969 trees, 411,825 nodes | **~60 ms per tree**, amortised |
 
    Note the Zama paper states no CPU model at all - "8 CPU cores" is the whole hardware disclosure
@@ -240,7 +244,7 @@ performance of logistic regression and 2PC training efficiency"*. So the binning
 simplification this project invented to make BFV work; it is what the secure-computation literature
 is optimising.
 
-**BFV for the exact tier is corroborated.** SilentWood (arXiv:2411.15494, v2 Jan 2026) evaluates
+**BFV for the exact tier is corroborated.** SilentWood (arXiv:2411.15494; v3 of 27 Sep 2026, retitled "Efficient Private Inference Over Gradient-Boosting Decision Forests", read 2026-11-27) evaluates
 gradient-boosted forests under **BFV via SEAL**, reporting 42.5x over RCC-PDTE and 27.8x over Zama's
 Concrete ML XGBoost. Kangaroo (arXiv:2509.03123, NDSS 2026) also uses packed BFV. The scheme choice
 recorded in `he-scheme-selection.md` matches practice.
@@ -670,7 +674,7 @@ mainnet; it evaluates contract logic, not a neural network, so this still holds.
 |---|---|---|
 | Finance | **No.** The US-UK PETs Prize Challenge (Track A, financial crime) concluded March 2023, its SWIFT data was never released, no leaderboard was published, and no successor exists. | Anchor on the plaintext AMLworld number: GFP+XGBoost minority-class F1 **0.6323** on HI-Small (NeurIPS 2023 D&B). This repository measures **0.1519** against it and does not close the gap - see the correction below. |
 | Medical | **No** privacy-preserving one. MedMNIST v2 has a real plaintext leaderboard; FeTS is federated with no cryptography; MedPerf is federated *evaluation* only. | Compare to MedMNIST plaintext. Every named production deployment is plain FL with no cryptographic guarantee, so adding CKKS puts this ahead of them rather than level. |
-| Genomics | **Yes, and it is the only one.** iDASH 2026 (held on 7 Nov 2026 at the University of Texas at Dallas; its page posted no results as of 13 Nov 2026) has a published rubric. Track 1 is homomorphic evaluation of a pretrained decoder, scored on a correlation term with a **60-minute disqualification**. | The one vertical where an external scoring rubric exists. Note that iDASH's site lists each track's top three teams but **not scores** (the 2025 page; the 2026 page shows no results yet), so the rubric is citable and a recent iDASH *number* is not. |
+| Genomics | **Yes, and it is the only one.** iDASH 2026 (held on 7 Nov 2026 at the University of Texas at Dallas; since 19 Nov 2026 its page names each track's winners, read 2026-11-27) has a published rubric. Track 1 is homomorphic evaluation of a pretrained decoder, scored on a correlation term with a **60-minute disqualification**. | The one vertical where an external scoring rubric exists. Note that iDASH's site lists each track's top three teams but **not scores** (the 2025 page, and the 2026 page since 19 Nov 2026), so the rubric is citable and a recent iDASH *number* is not. |
 | Telecom | **No.** Two 2026 surveys say so in their own words, one of them noting it "could not compare the papers it reviewed" for lack of standard protocols. | The synthetic-corpus decision looks better after this sweep, not worse - see below. |
 | Satellite | **No**, and no *cryptographic* privacy work at all. The closest is plain FedAvg on ESA-ADB (Atefrad & Karami 2025, F0.5 0.86, precision 0.93, AUC 0.85), which lists differential privacy and secure aggregation as **future** work - the same category the Medical row already discounts. ESA-ADB is the credible plaintext benchmark. | Genuinely novel, which cuts both ways: nothing to be judged against, and nothing to be validated by. |
 

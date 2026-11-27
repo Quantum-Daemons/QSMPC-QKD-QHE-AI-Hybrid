@@ -74,3 +74,26 @@ at the version the pages cite.
   FDIS is registered for formal approval (50.00), Part 2 is at DIS (40.60) and Part 5 at WD (20.60). None is
   published, so the CBOM check stays on the HE Standard v1.1 (2018) until Part 3 is; `docs/threat-model.md` carries the
   stages.
+
+## Additions of 2026-11-27 (each read at its source that day)
+
+A second pass over the window found three statements stale and eight works not cited before. The stale three are
+corrected where they stand: marimo 0.26.0 reached PyPI on 2026-11-24 (`notebook-walkthroughs.md`; the walkthrough
+stays on 0.25.2 until a bump is chosen), SilentWood's v3 of 2026-09-27 is retitled and its 4.37 s and 1.97 s are
+Table 2's means over 13 UCI datasets at 16-bit inputs, and the iDASH 2026 page names each track's winners since
+2026-11-19 (both in `model-choice-vs-2026-practice.md`).
+
+| Work | What it reports | Where it bears |
+|---|---|---|
+| Abraheem and Edhirig, Wadi Alshatti Univ. J. Pure Appl. Sci., 2026-08-07 | zero-shot XGBoost between 5G-NIDD and NetsLab-5GORAN-IDD near chance in at least one direction of each matched task (balanced accuracy 0.500 to 0.558); a classifier tells the corpora apart at 0.993 | cited beside the re-run's cross-testbed figures (`docs/models-and-benchmarks.md`, `model-choice-vs-2026-practice.md`) |
+| Luo, IACR ePrint 2026/3021, 2026-11-24 | one-shot secure aggregation under a lattice assumption, clients joining or dropping, a malicious server with abort | named in `docs/threat-model.md` beside the secure aggregation's omissions; not adopted |
+| Nguyen et al., arXiv:2611.09992, 2026-11-03 | a federated lightweight transformer for network-layer attack detection on O-RAN traffic | read, not cited: a federation on NetsLab's corpus, not an encrypted one |
+| Shokri and Tsoutsos, BIFOLD, IACR ePrint 2026/3054, 2026-11-26 | memory-efficient homomorphic CNN inference over bivariate rings, smaller evaluation keys | read, not cited: bears on the key sizes that keep encrypted CNNs out of a tab |
+| Cerasuolo et al., arXiv:2611.20812 (v2 2026-11-23) | a catalogue of 234 traffic datasets, 92 released in 2023 or later | read, not cited |
+| Bespalova et al., arXiv:2611.00255 | QCNNs and their classical surrogates on long-range strongly correlated quantum data | read, not cited: quantum data, not this project's classical inputs |
+| Mordarski et al., arXiv:2609.30581 | depth-one homomorphic federated learning of quantum neural networks | read, not cited |
+| Resende, El Mrabet and Kuhne, arXiv:2611.12367 | an agile homomorphic-encryption and ML-KEM scheme for health data | read, not cited |
+
+Withdrawn, so not cited: CipherGenome (arXiv:2609.35883), withdrawn by its authors on 2026-10-01 pending an
+institutional intellectual-property review.
+
