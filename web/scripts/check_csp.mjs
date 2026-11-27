@@ -141,7 +141,9 @@ try {
       const seen = [];
       for (let k = 0; k < 30; k++) {
         const label = await ev(`(() => {
-          const ok = /^(Run|Load|Compute|Check|Score|Aggregate|Train|Simulate|Fetch|Verify|Federate)\\b/i, no = /download|reset|stop|pause|cancel|clear/i;
+          // The two Lattigo worker buttons begin with neither verb above, so until Round 86's batch 11 no walk pressed them
+          // under the enforced policy (read live on 2026-11-28: both run clean, but nothing here would see them break).
+          const ok = /^(Run|Load|Compute|Check|Score|Aggregate|Train|Simulate|Fetch|Verify|Federate|Compare encrypted aggregation|Sum under threshold BGV)\b/i, no = /download|reset|stop|pause|cancel|clear/i;
           const seen = ${JSON.stringify(seen)};
           const b = [...document.querySelectorAll("main button")].find((x) => !x.disabled && ok.test(x.textContent.trim()) && !no.test(x.textContent)
             && !seen.includes(x.textContent.trim().slice(0, 80)));
