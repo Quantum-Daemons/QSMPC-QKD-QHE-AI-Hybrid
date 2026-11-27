@@ -97,3 +97,26 @@ owner's choices after the figures.
 
 Arms 2 and 3 and the selection on the CPU. Arm 1 on the GPU only with the owner's approval of that job, otherwise on the
 CPU; the device of every run is recorded and changes no rule above.
+
+## Addendum, 2026-11-27, after the download and before any label
+
+Read so far: the archive's file listing and the column headers (first lines) of `data/Borrow/Liquidated/data.csv`,
+`data/transactions.csv` and `data/users.csv`, and nothing else of them. The download: `data.zip`, 13,863,498,879 bytes,
+MD5 d9f43ce5010d10a1f836719e795c6db7, equal to the record above; 59 entries, 50.63 GB uncompressed.
+
+- **The table.** The archive holds FinSurvival's survival tables, one for each pair of index and outcome event,
+  `data/<index>/<outcome>/data.csv`, over Borrow, Deposit, Liquidated, Repay and Withdraw. The task's table is
+  `data/Borrow/Liquidated/data.csv` (1,487,673,105 bytes); no other file is read. It carries no training and test parts,
+  so the windows are by its `timestamp`: the first 70, next 15 and last 15 percent of the borrows.
+- **The label.** FinSurvival's columns `timeDiff`, the time from the borrow in seconds (FinSurvival's
+  `dataPreprocessing.R` divides it by 86,400 to compare it with a cutoff in days), and `status`, 1 for an observed
+  liquidation and 0 for censoring. As that code does, a row with `timeDiff` at or below 0 is left out as invalid. Then
+  the rule above, as that code writes it: a row censored at or before 30 days ($`\mathtt{timeDiff} \le 30 \times
+  86{,}400`$ with `status` 0) is left out; the label is 1 when `timeDiff` is at most $`30 \times 86{,}400`$, else 0.
+- **The inputs.** Of the 92 columns, left out: the label (`timeDiff`, `status`); the events' names (`Index Event`,
+  `Outcome Event`, `type`); the identifiers (`user`, `pool`, `reserve`); the raw `timestamp`; and the non-numeric
+  columns (`coinType`, `userCoinTypeMode`, `userReserveMode`), which FinSurvival's code one-hot encodes and this
+  pre-registration, taking numeric features only, leaves out. The other 80 are the candidate inputs, named in the
+  record; `isWeekend` and `userIsNew` are read as 0 and 1, and a column that does not parse as numbers on reading is
+  left out and named. By FinSurvival's construction (Green et al.) the features describe the account and the market at
+  the borrow; nothing in their names says otherwise.
