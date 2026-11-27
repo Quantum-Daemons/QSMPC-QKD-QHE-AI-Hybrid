@@ -30,7 +30,7 @@ A marimo notebook that fetches the demo's own `/data/telecom_nidd/real_2d.json` 
 
 **JupyterLite does not fit this demo.** It brings an editor and per-browser file storage. Those suit a teaching site where a reader writes code, and a verification page does not need them.
 
-**pyvista-wasm is not needed.** No use case here has volumetric or mesh data, and the 3D views the demo has (Bloch vectors and satellite geometry) are three.js and small.
+**pyvista-wasm is not needed.** Since Round 86's batch 4 one use case has volumetric data, the medical page's 28 x 28 x 28 chest-CT crops from LIDC-IDRI, and they are drawn as three orthogonal planes and their maximum-intensity projections on 2D canvases (`web/src/components/Nodule3dViewer.tsx`, each redraw timed against one frame); a VTK.wasm runtime (pyvista-wasm 0.17.0, classified pre-alpha on PyPI, read 2026-11-27) would be a large dependency for a view this small. No use case has mesh data, and the other 3D views (Bloch vectors and satellite geometry) are three.js and small.
 
 ## What was built
 
