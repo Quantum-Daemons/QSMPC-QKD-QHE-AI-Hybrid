@@ -188,8 +188,12 @@ export default function NiddFederatedCard({ live }: { live: NiddFederatedLive | 
         feature&apos;s mean and deviation in the clear, to standardise alike. The mask seeds come from X25519 alone, which is
         not post-quantum, and the masked updates are not sealed. One process played both stations and the aggregator,
         offline and once; no differential privacy is applied. The split is the student&apos;s random one, so a
-        station&apos;s test flows share attack sessions with its training flows; a station&apos;s model on the other
-        station&apos;s flows is the cross-station reading. Pre-registration: <code>{d.preregistration.file}</code>; record:{" "}
+        station&apos;s test flows share capture sessions with its training flows, and six inputs (sHops, dHops, sVid, dVid,
+        SrcTCPBase, DstTCPBase) are columns Hameed and Ibrahim (2026) find stand in for the label; their re-run baselines
+        lose 3.0 to 7.4 points of accuracy on their stricter protocol. Seq and Offset, which two other 2026 studies find
+        leak the most, are not inputs, and the Benign copies of one flood they turn on are removed. A station&apos;s model
+        on the other station&apos;s flows, whose sessions it never saw, is the cross-station reading. None is re-measured
+        under a stricter protocol yet; the masks&apos; exactness does not depend on the split. Pre-registration: <code>{d.preregistration.file}</code>; record:{" "}
         <code>{d.record}</code>. Data: {d.attribution.dataset},{" "}
         <a href={d.attribution.licence_url} target="_blank" rel="noreferrer">{d.attribution.licence}</a>; {d.attribution.citation}
       </p>

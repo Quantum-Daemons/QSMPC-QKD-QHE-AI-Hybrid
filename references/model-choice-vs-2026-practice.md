@@ -81,6 +81,28 @@ whatever the split. The accuracy levels do, and none has been re-measured under 
 pre-registered re-run of the telecom models under it. This is this project's reading of the paper, read at the source
 on 2026-11-27, and not the paper's claim about these models.
 
+**Two more 2026 studies, and what the file allows.** Ozyilmaz and Okay, "Positional Feature Leakage in 5G-NIDD",
+ISCTurkiye 2026 (IEEE Xplore document 11779383; abstract read at the source), find that two Argus fields, a per-flow
+sequence index and a byte offset, encode class identity as an artifact of how the per-attack capture files were
+concatenated, inflating Random Forest accuracy from 72.45% to 99.92%. Abraheem, Arhoumah, Fokla and Basheer, Wadi
+Alshatti Univ. J. Pure Appl. Sci. 4(2) (18 July 2026; read at waujpas.com, article 471, since its DOI did not resolve
+on 2026-11-27), find `Seq` and `Offset` the two highest-ranked predictors, holdout accuracy near 71% without them,
+and call for session-aware and base-station-aware validation. This project's loader drops both columns. It also
+removes the 281,529 flows that station 1's UDP-flood file holds labelled Benign and station 2's file holds labelled
+UDPFlood, keeping the UDPFlood copy; those copies differ only in their labels and file-position columns, and they
+cap any model that reads flow statistics at $`1 - 281{,}529 / 1{,}215{,}890 = 0.7685`$ on the file as published. That
+both studies' figures without the two columns sit just under this ceiling is this project's reading, not theirs.
+Checked on this project's copy of the file on 2026-11-27, with no model fitted: `Seq` restarts in most of the 17
+capture files and is monotone in none, so ordering a class by `Seq`, as LEAF does, holds no capture out; `StartTime`
+holds only minutes and seconds, so no true time split is possible; and each file holds Benign and one attack at one
+station, so training on one station and testing on the other is the capture-disjoint split the file allows. The
+owner's choices for the re-run (2026-11-27), to be pre-registered before any model is fitted: the cross-station split;
+the six columns removed, with `sTtl` and `dTtl` tested by putting them back (TTL is a known shortcut, Jacobs et al.,
+CCS 2022), after a single-feature check before any training; LEAF's split as a secondary protocol, for comparability
+with its Table 1; and a cross-dataset test on NetsLab-5GORAN-IDD (CC BY 4.0), its download asked for separately. No
+2025-2026 privacy-preserving intrusion-detection paper found pairs homomorphic encryption, MPC or secure aggregation
+with a leakage-aware split; the page's two cards state the limits meanwhile (the owner's choice of 2026-11-27).
+
 ## Finance: the choices are validated, and more strongly than expected
 
 Across verified 2025-2026 papers on encrypted inference labelled to finance, the architecture

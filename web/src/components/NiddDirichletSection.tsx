@@ -78,9 +78,8 @@ export default function NiddDirichletSection() {
         With {d.clients} clients a client learns from the sum only the sum of the other {d.clients - 1}, so the masks hide one
         client&apos;s update from each other client unless the {d.clients - 2} others collude; the 1D-CNN arms are baselines
         in the clear, neither masked nor encrypted, and the page&apos;s encrypted model stays the two-station linear one.
-        Like every 5G-NIDD figure on this page, these are on a random split of flows, with six inputs that Hameed and
-        Ibrahim (J. Cybersecur. Priv. 6(6):205, 2026) find stand in for the label; they report that the same models lose
-        roughly three to seven points of accuracy on their clean protocol, under which these have not been re-measured.
+        Like the two stations&apos; figures, these come from the student&apos;s random split and its six flagged inputs
+        (the card&apos;s note below).
         The 1D-CNN ran on {d.device_cnn === "cpu" ? "the CPU" : "the GPU"}. Pre-registration:{" "}
         <code>{d.preregistration.file}</code>; record: <code>{d.record}</code>.
       </p>

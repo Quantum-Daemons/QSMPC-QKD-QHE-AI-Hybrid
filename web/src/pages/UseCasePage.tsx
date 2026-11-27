@@ -342,6 +342,10 @@ function UseCaseView({ usecase }: { usecase: string }) {
         <div className="card">
           <h3 style={{ margin: "0 0 4px" }}>The 5G-NIDD detector&apos;s student under CKKS, real 5G traffic, this run</h3>
           <EncryptedAgreementChart plot={artifacts.encrypted_agreement_plot_nidd as EncryptedAgreementPlot} />
+          <p className="small muted" style={{ marginTop: 6 }}>
+            The agreement is between the encrypted and the plaintext student on the same flows and does not depend on the
+            split; the student&apos;s accuracy does (see the federation card&apos;s note).
+          </p>
         </div>
       ) : null}
       {/* The model 5G-NIDD's two base stations federated (Round 86, batch 6; the owner's choice of 2026-11-26): the offline

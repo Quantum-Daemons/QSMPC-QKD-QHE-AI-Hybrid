@@ -669,7 +669,8 @@ nodes dropped from each round, which is not done here; the 1D-CNN's 0.9948 is no
 like every 5G-NIDD figure on the page, are on the student's random split of flows, with six inputs (`sHops`, `dHops`,
 `sVid`, `dVid`, `SrcTCPBase`, `DstTCPBase`) that Hameed and Ibrahim (J. Cybersecur. Priv. 6(6):205, 15 November 2026)
 find stand in for the label; they report that the same models lose roughly three to seven points of accuracy on their
-clean protocol, which splits each class chronologically and removes eight such columns. The comparisons in this table
+clean protocol, which splits each class chronologically and removes eight such columns. `Seq` and `Offset`, which two
+other 2026 studies find leak the most, are not inputs here. The comparisons in this table
 are within one protocol, and their levels have not been re-measured under the clean one
 ([`references/model-choice-vs-2026-practice.md`](../references/model-choice-vs-2026-practice.md)). Neither
 comparison decides what ships: the page's encrypted federated model stays the two-station linear one, since no network
