@@ -3062,5 +3062,157 @@
    "binary_accuracy": 0.782273,
    "l2": 1e-06
   }
+ },
+ "federation": {
+  "F36": {
+   "penalty_table": [
+    {
+     "l2": 1e-06,
+     "validation_log_loss": 0.04517555
+    },
+    {
+     "l2": 1e-05,
+     "validation_log_loss": 0.05473328
+    },
+    {
+     "l2": 0.0001,
+     "validation_log_loss": 0.07659149
+    },
+    {
+     "l2": 0.001,
+     "validation_log_loss": 0.13354206
+    },
+    {
+     "l2": 0.01,
+     "validation_log_loss": 0.27331638
+    },
+    {
+     "l2": 0.1,
+     "validation_log_loss": 0.57617283
+    }
+   ],
+   "l2": 1e-06,
+   "temperature": 0.8858378175138949,
+   "masked_messages": 271,
+   "standardisation_max_relative_difference": 1.1325496096503684e-11,
+   "test": {
+    "macro_f1": 0.986043,
+    "weighted_f1": 0.9871,
+    "accuracy": 0.987166,
+    "classes_absent": [],
+    "station_macro_f1": {
+     "station_1": 0.985858,
+     "station_2": 0.98618
+    },
+    "flamby_metric": 0.986019
+   }
+  },
+  "F30": {
+   "penalty_table": [
+    {
+     "l2": 1e-06,
+     "validation_log_loss": 0.05929279
+    },
+    {
+     "l2": 1e-05,
+     "validation_log_loss": 0.08229733
+    },
+    {
+     "l2": 0.0001,
+     "validation_log_loss": 0.15513039
+    },
+    {
+     "l2": 0.001,
+     "validation_log_loss": 0.30413246
+    },
+    {
+     "l2": 0.01,
+     "validation_log_loss": 0.47122383
+    },
+    {
+     "l2": 0.1,
+     "validation_log_loss": 0.77618599
+    }
+   ],
+   "l2": 1e-06,
+   "temperature": 0.757006452043158,
+   "masked_messages": 267,
+   "standardisation_max_relative_difference": 1.1325496096503684e-11,
+   "test": {
+    "macro_f1": 0.969477,
+    "weighted_f1": 0.984521,
+    "accuracy": 0.984662,
+    "classes_absent": [],
+    "station_macro_f1": {
+     "station_1": 0.964629,
+     "station_2": 0.974928
+    },
+    "flamby_metric": 0.969778
+   }
+  },
+  "F28": {
+   "penalty_table": [
+    {
+     "l2": 1e-06,
+     "validation_log_loss": 0.11550999
+    },
+    {
+     "l2": 1e-05,
+     "validation_log_loss": 0.15367508
+    },
+    {
+     "l2": 0.0001,
+     "validation_log_loss": 0.27570534
+    },
+    {
+     "l2": 0.001,
+     "validation_log_loss": 0.49109745
+    },
+    {
+     "l2": 0.01,
+     "validation_log_loss": 0.72294617
+    },
+    {
+     "l2": 0.1,
+     "validation_log_loss": 1.02561283
+    }
+   ],
+   "l2": 1e-06,
+   "temperature": 0.8296346077990103,
+   "masked_messages": 266,
+   "standardisation_max_relative_difference": 1.1325496096503684e-11,
+   "test": {
+    "macro_f1": 0.863271,
+    "weighted_f1": 0.961156,
+    "accuracy": 0.969581,
+    "classes_absent": [],
+    "station_macro_f1": {
+     "station_1": 0.856468,
+     "station_2": 0.871505
+    },
+    "flamby_metric": 0.863986
+   }
+  }
+ },
+ "ckks_recheck": {
+  "rows": 2048,
+  "ciphertexts": 16,
+  "max_abs_logit_error": 2.2321180459528023e-07,
+  "decisions_differ": 0,
+  "encrypted_accuracy": 0.98193359375,
+  "plaintext_accuracy": 0.98193359375,
+  "plaintext_accuracy_numpy": 0.981934,
+  "class_counts": {
+   "Benign": 430,
+   "HTTPFlood": 309,
+   "ICMPFlood": 3,
+   "SYNFlood": 21,
+   "SYNScan": 44,
+   "SlowrateDoS": 160,
+   "TCPConnectScan": 44,
+   "UDPFlood": 1002,
+   "UDPScan": 35
+  },
+  "refit_is_the_record_s": true
  }
 }

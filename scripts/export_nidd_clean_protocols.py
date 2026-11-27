@@ -2,8 +2,8 @@
 
 Reads `docs/measurements/telecom-nidd-clean-protocols-2026-11-27.json` and writes
 `web/public/data/telecom_nidd/clean_protocols.json`: each arm's figure for each input set and split (the mean and
-standard deviation over seeds where an arm has seeds), the single-feature check's highest values, and the corpus's
-credit. No flow, threshold or weight is shipped. `--check` compares the page's file with what this would write.
+standard deviation over seeds where an arm has seeds), the single-feature check's highest values, the CKKS re-check's
+figures, and the corpora's credit. No flow, threshold or weight is shipped. `--check` compares the page's file with what this would write.
 """
 from __future__ import annotations
 
@@ -63,6 +63,10 @@ def build() -> dict:
                            "licence_url": "https://creativecommons.org/licenses/by/4.0/", "citation": DS_5G_NIDD.attribution,
                            "download": "https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361"},
            "modifications": "figures computed from 5G-NIDD by the pre-registered re-run; no flow, threshold or weight is shipped"}
+    if "ckks_recheck" in r:
+        out["ckks_recheck"] = {k: r["ckks_recheck"][k] for k in ("rows", "ciphertexts", "decisions_differ",
+                                                                 "max_abs_logit_error", "encrypted_accuracy",
+                                                                 "plaintext_accuracy")}
     if "crosstestbed" in r:
         ct = r["crosstestbed"]
         out["crosstestbed"] = {"teacher": {"macro_f1": cell([ct[f"teacher/seed{k}"]["macro_f1"] for k in range(5)]),

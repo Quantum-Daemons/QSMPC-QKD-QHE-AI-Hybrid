@@ -14,6 +14,8 @@ interface Clean {
     highest: Record<string, { input: string; class: string; f1: number }[]> };
   crosstestbed?: { teacher: { macro_f1: Cell; binary_attack_f1: Cell }; student: { macro_f1: Cell; binary_attack_f1: Cell };
     shared_rows: number; dataset: string; licence: string; source: string; citation: string };
+  ckks_recheck?: { rows: number; ciphertexts: number; decisions_differ: number; max_abs_logit_error: number;
+    encrypted_accuracy: number; plaintext_accuracy: number };
   attribution: { dataset: string; licence: string; licence_url: string; citation: string };
 }
 
@@ -37,7 +39,8 @@ export default function NiddCleanProtocolsCard() {
   }, []);
   if (!d) return null;
   const splits = Object.keys(d.splits);
-  const t = d.arms.teacher, s = d.arms.student;
+  const t = d.arms.teacher, s = d.arms.student, fed = d.arms.federation;
+  const fedSets = fed && s ? (["F36", "F30", "F28"] as const).filter((k) => fed[k]?.P2 && s[k]?.P2) : [];
   const p1 = (g: Record<string, Cell>) => (g.P1_train_1_test_2.mean + g.P1_train_2_test_1.mean) / 2;
   const flagged = Object.values(d.single_feature_check.flagged).reduce((n, v) => n + Object.keys(v).length, 0);
   const top = d.single_feature_check.highest.P2 ?? [];
@@ -81,6 +84,17 @@ export default function NiddCleanProtocolsCard() {
           <li>Without LEAF&apos;s six columns the teacher moves by {signed(t.T40.P2.mean - t.T46.P2.mean)} and the student by{" "}
             {signed(s.F30.P2.mean - s.F36.P2.mean)} on the time split; without TTL as well, by{" "}
             {signed(t.T38.P2.mean - t.T40.P2.mean)} and {signed(s.F28.P2.mean - s.F30.P2.mean)} more.</li>
+        ) : null}
+        {fed && s && fedSets.length ? (
+          <li>On the time split, the two-station federation, each station on its own parts and every masked message
+            cancelling exactly, scores {fedSets.map((k) => f4(fed[k].P2.mean)).join(", ")} against the pooled
+            student&apos;s {fedSets.map((k) => f4(s[k].P2.mean)).join(", ")} ({fedSets.map((k) => d.inputs[k] ?? k).join("; ")}).</li>
+        ) : null}
+        {d.ckks_recheck ? (
+          <li>Under CKKS, the student refitted on the time split without LEAF&apos;s six, on{" "}
+            {d.ckks_recheck.rows.toLocaleString("en-US")} of its test flows drawn as the shipped student&apos;s were, in{" "}
+            {d.ckks_recheck.ciphertexts} ciphertexts: {d.ckks_recheck.decisions_differ} decisions differ from the
+            plaintext student&apos;s, the largest logit error {d.ckks_recheck.max_abs_logit_error.toExponential(2)}.</li>
         ) : null}
         <li>Before any model, a single threshold on one input reaches an F1 of 0.99 for no class on any split
           ({flagged} flagged){top.length ? <>; the highest on the time split: {top.map((x) => `${x.input} for ${x.class} ${x.f1.toFixed(2)}`).join(", ")}</> : null}.</li>

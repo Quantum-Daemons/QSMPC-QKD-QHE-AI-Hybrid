@@ -205,6 +205,29 @@
      "runs": 5
     }
    }
+  },
+  "federation": {
+   "F36": {
+    "P2": {
+     "mean": 0.986,
+     "sd": null,
+     "runs": 1
+    }
+   },
+   "F30": {
+    "P2": {
+     "mean": 0.9698,
+     "sd": null,
+     "runs": 1
+    }
+   },
+   "F28": {
+    "P2": {
+     "mean": 0.864,
+     "sd": null,
+     "runs": 1
+    }
+   }
   }
  },
  "single_feature_check": {
@@ -313,6 +336,14 @@
   "download": "https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361"
  },
  "modifications": "figures computed from 5G-NIDD by the pre-registered re-run; no flow, threshold or weight is shipped",
+ "ckks_recheck": {
+  "rows": 2048,
+  "ciphertexts": 16,
+  "decisions_differ": 0,
+  "max_abs_logit_error": 2.2321180459528023e-07,
+  "encrypted_accuracy": 0.98193359375,
+  "plaintext_accuracy": 0.98193359375
+ },
  "crosstestbed": {
   "teacher": {
    "macro_f1": {

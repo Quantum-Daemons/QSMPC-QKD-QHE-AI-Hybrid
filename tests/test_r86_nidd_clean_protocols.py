@@ -108,7 +108,8 @@ def test_every_preregistered_cell_of_the_arms_is_in_the_record() -> None:
     teacher = {f"{s}/{p}/seed{k}" for s in ("T46", "T40", "T38") for p in SPLITS for k in range(5)}
     student = {f"{s}/{p}" for s in ("F36", "F30", "F28") for p in SPLITS}
     mlp = {f"F30/{p}/seed{k}" for p in ("P1_train_1_test_2", "P1_train_2_test_1", "P2") for k in range(5)}
-    for arm, want in (("teacher", teacher), ("student", student), ("mlp", mlp)):
+    federation = {"F36", "F30", "F28"}
+    for arm, want in (("teacher", teacher), ("student", student), ("mlp", mlp), ("federation", federation)):
         if arm in r:
             assert set(r[arm]) == want, arm
             for v in r[arm].values():
@@ -117,7 +118,8 @@ def test_every_preregistered_cell_of_the_arms_is_in_the_record() -> None:
 
 def test_each_student_penalty_is_the_grid_best_by_validation_loss() -> None:
     r, m = _r(), _m()
-    for key, v in r.get("student", {}).items():
+    fits = {**r.get("student", {}), **{f"federation/{s}": v for s, v in r.get("federation", {}).items()}}
+    for key, v in fits.items():
         assert [row["l2"] for row in v["penalty_table"]] == list(m.S.L2_GRID), key
         assert v["l2"] == min(v["penalty_table"], key=lambda row: (row["validation_log_loss"], row["l2"]))["l2"], key
         assert v["temperature"] > 0, key
@@ -147,3 +149,21 @@ def test_the_telecom_page_mounts_the_card() -> None:
     card = (REPO / "web" / "src" / "components" / "NiddCleanProtocolsCard.tsx").read_text()
     assert '{usecase === "telecom_ids" && <NiddCleanProtocolsCard />}' in page
     assert "data/telecom_nidd/clean_protocols.json" in card and "none decides what ships" in card
+
+def test_the_federation_ran_on_both_stations_with_masked_messages() -> None:
+    for key, v in _r().get("federation", {}).items():
+        # 40 rounds for each of the six penalties, one masked sum a round, then the validation sums: over 240 messages.
+        assert v["masked_messages"] > 240 and v["standardisation_max_relative_difference"] < 1e-6, key
+        assert set(v["test"]["station_macro_f1"]) == {"station_1", "station_2"}, key
+
+
+def test_the_ckks_recheck_is_the_record_s_student_under_the_page_s_module() -> None:
+    r = _r()
+    if "ckks_recheck" not in r:
+        return
+    c = r["ckks_recheck"]
+    assert c["refit_is_the_record_s"] is True and c["rows"] == 2048 and sum(c["class_counts"].values()) == 2048
+    assert isinstance(c["decisions_differ"], int) and 0 <= c["decisions_differ"] <= c["rows"]
+    assert 0 < c["max_abs_logit_error"] < 1e-3 and c["ciphertexts"] >= 1
+    # The page's plaintext pass and numpy's, on the same rounded rows and weights, take the same argmax on all but ties.
+    assert abs(c["plaintext_accuracy"] - c["plaintext_accuracy_numpy"]) <= 1 / 2048

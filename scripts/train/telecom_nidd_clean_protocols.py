@@ -6,7 +6,7 @@ check and the arms. Every recipe is the shipped one, imported, not re-implemente
 student's `fit`, the federation's `fit_from` and `Channel`. Each arm writes its part of the record as it ends.
 
   --check-only     the single-feature check (thresholds only, no model)
-  --arm NAME       student | federation | teacher | mlp | crosstestbed
+  --arm NAME       student | federation | teacher | mlp | crosstestbed | ckks_recheck (arm 2's re-check, after student)
 """
 from __future__ import annotations
 
@@ -332,10 +332,77 @@ def crosstestbed_arm(X, y, k, classes, feat, fit, val, path: Path, device: str) 
     return out
 
 
+HELD_OUT_ROWS = 2048
+# The page's own CKKS module, bundled for node as scripts/export_nidd_federated.py bundles it, run on one held-out file.
+CKKS_HARNESS = r"""
+import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+const WEB = process.argv[2], OUT = process.argv[3], HELD = process.argv[4];
+const { build } = createRequire(WEB + "/package.json")("esbuild");
+const wasm = resolve(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
+await build({
+  stdin: { contents: `export { encryptedHeldOutAgreement } from ${JSON.stringify(resolve(WEB, "src/lib/clientFHE"))};`,
+           resolveDir: WEB, loader: "ts" },
+  bundle: true, format: "esm", platform: "node", outfile: OUT, logLevel: "error",
+  plugins: [{ name: "wasm-url", setup(b) {
+    b.onResolve({ filter: /seal_throws\.wasm\?url$/ }, () => ({ path: "sealwasm", namespace: "wasmurl" }));
+    b.onLoad({ filter: /.*/, namespace: "wasmurl" }, () => ({ contents: `export default ${JSON.stringify(wasm)};`, loader: "js" }));
+  } }],
+});
+globalThis.fetch = async (url) => {
+  const p = join(WEB, "public", String(url).replace(/^\/+/, ""));
+  try { const t = readFileSync(p, "utf8"); return { ok: true, status: 200, json: async () => JSON.parse(t) }; }
+  catch { return { ok: false, status: 404, json: async () => { throw new Error("404"); } }; }
+};
+const m = await import(`file://${OUT}`);
+const r = await m.encryptedHeldOutAgreement(JSON.parse(readFileSync(HELD, "utf8")));
+console.log(JSON.stringify({ rows: r.plot.rows, ciphertexts: r.plot.ciphertexts, max_abs_logit_error: r.batch.maxAbsError,
+  decisions_differ: r.mismatches, encrypted_accuracy: r.encryptedAccuracy, plaintext_accuracy: r.plaintextAccuracy }));
+"""
+
+
+def ckks_recheck_arm(X, y, k, classes, cols, fit, val, test, station, recorded: dict) -> dict:
+    """Arm 2's CKKS re-check: the student refitted under P2 on F30, 2,048 rows of its test part drawn as the shipped
+    student's held-out rows were, through the page's own CKKS module in node; the refit must be the record's."""
+    import subprocess
+    import tempfile
+
+    st = student_arm(X, y, k, cols, fit, val, test, station, weights=True)
+    W, b, centre, scale = st.pop("_weights")
+    if st["test"] != recorded["test"] or st["l2"] != recorded["l2"]:
+        raise SystemExit("the refitted student is not the record's: run nothing")
+    yte = y[test]
+    rng = np.random.default_rng(0)
+    take = []
+    for c in range(k):                                   # the shipped draw: each class in its share of the test part
+        idx = np.flatnonzero(yte == c)
+        take.extend(rng.choice(idx, size=max(1, round(HELD_OUT_ROWS * len(idx) / len(yte))), replace=False).tolist())
+    take = np.sort(np.asarray(take[:HELD_OUT_ROWS]))
+    rows = np.round(np.clip((X[np.ix_(test[take], cols)] - centre) / scale, -S.CLIP, S.CLIP), 6)
+    Wr, br, labels = W.round(9), b.round(9), yte[take].astype(int)
+    held = {"usecase": "telecom_ids", "modelKey": None, "modelLabel": "the re-run's student, P2 on F30",
+            "model": {"W": Wr.tolist(), "b": br.tolist()}, "rows": rows.tolist(), "labels": labels.tolist(),
+            "classNames": list(classes), "plane": None, "corpus": "5G-NIDD", "split": "P2's test part",
+            "fitNote": "fitted on P2's training part", "licence": {"licence": "CC-BY-4.0"}, "expected": None}
+    web = REPO / "web"
+    with tempfile.TemporaryDirectory() as tmp:
+        (Path(tmp) / "harness.mjs").write_text(CKKS_HARNESS)
+        (Path(tmp) / "held.json").write_text(json.dumps(held))
+        out = subprocess.run(["node", str(Path(tmp) / "harness.mjs"), str(web), str(Path(tmp) / "bundle.mjs"),
+                              str(Path(tmp) / "held.json")], cwd=web, check=True, capture_output=True, text=True,
+                             timeout=1800).stdout
+    got = json.loads(out.strip().splitlines()[-1])
+    got["plaintext_accuracy_numpy"] = round(float(np.mean((rows @ Wr.T + br).argmax(1) == labels)), 6)
+    got["class_counts"] = {classes[c]: int(np.sum(labels == c)) for c in range(k)}
+    got["refit_is_the_record_s"] = True
+    return got
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--check-only", action="store_true")
-    ap.add_argument("--arm", choices=("student", "federation", "teacher", "mlp", "crosstestbed"))
+    ap.add_argument("--arm", choices=("student", "federation", "teacher", "mlp", "crosstestbed", "ckks_recheck"))
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--part", type=Path, default=None,
                     help="write this arm's result to its own file instead of the record, so two arms can run at once")
@@ -380,6 +447,9 @@ def main() -> int:
     elif args.arm == "crosstestbed":
         nl = Path(D.data_root()) / "raw" / "netslab-5goran-idd" / "Network_Dataset.csv"
         record["crosstestbed"] = crosstestbed_arm(X, y, k, classes, feat, parts["P2"][0], parts["P2"][1], nl, args.device)
+    elif args.arm == "ckks_recheck":
+        record["ckks_recheck"] = ckks_recheck_arm(X, y, k, classes, sets["F30"], *parts["P2"], station,
+                                                  record["student"]["F30/P2"])
     if args.part is not None:
         arm = "single_feature_check" if args.check_only else args.arm
         args.part.parent.mkdir(parents=True, exist_ok=True)
