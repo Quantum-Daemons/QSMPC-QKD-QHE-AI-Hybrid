@@ -41,7 +41,8 @@ from Lee et al. is the reporting. They give AUC and AUPRC at each of their three
 AUC out of fold only, the plaintext student's test AUC (0.907 over five seeds, sd 0.009, against 0.882, sd 0.027, for
 the ReLU control) and the encrypted student's agreement with it (no decision changed on the 347 test crops, the largest
 logit error $`3.2 \times 10^{-5}`$). The suggestion: score the teacher on the same test part, add AUPRC beside every
-AUC (31% of the test crops are malignant), and give the AUC of the decrypted logits.
+AUC (31% of the test crops are malignant), and give the AUC of the decrypted logits. Pre-registered on 2026-11-27, the owner's choice:
+`references/medical-nodule3d-reporting-preregistration.md`.
 
 **The federated detector.** The 5G-NIDD papers above use no secure aggregation, and Jeong et al. leave homomorphic
 encryption and differential privacy outside their scope; the page's masked FedAvg and its global model under CKKS go
@@ -55,7 +56,8 @@ both reported. Eight clients would also change what the masks hide. With two, ea
 its own update and both weights, so it can compute the other's, and the masks hide an update from the aggregator only.
 The page states this on the card, in the run's log and on the Hub card, and the threat model's secure-aggregation row
 states it since this re-check; with eight, a client alone learns only the sum of the other seven. This is this
-project's reading, not a statement of any of these papers.
+project's reading, not a statement of any of these papers. Pre-registered on 2026-11-27, the owner's choice:
+`references/telecom-nidd-dirichlet-preregistration.md`.
 
 ## Finance: the choices are validated, and more strongly than expected
 
