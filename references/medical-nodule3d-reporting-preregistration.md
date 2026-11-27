@@ -54,3 +54,15 @@ outside the repository; the record holds the figures only.
 Their reference network is their encrypted network's own architecture with ReLU and max pooling. The nearest here is the
 ReLU control, the same design with ReLU in place of the square; the teacher is a different network (a 3D ResNet-18) that
 the students were distilled from. Both are reported, each named for what it is.
+
+## Addendum, 2026-11-27, before any figure of this report was read
+
+The first run stopped where step 2 says it must: the square student's seed 3 gave a test AUC of 0.905867 on the CPU
+against the record's 0.905905. Its checkpoint's SHA-256 equals the record's `checkpoint_sha256`, so it is the recorded
+checkpoint; the record's test AUCs were computed from logits on the GPU, and the difference, $`3.8 \times 10^{-5}`$, is
+one of the test part's $`109 \times 238 = 25{,}942`$ malignant-benign pairs ordered the other way ($`1 / 25{,}942 \approx
+3.85 \times 10^{-5}`$), as the two devices' rounding of a near tie can. Nothing had been read but the seeds' AUCs the
+record already holds. So step 2's check becomes: each checkpoint's SHA-256 equals the record's, and each recomputed AUC
+is within two such pairs, $`2 / (109 \times 238)`$, of the record's; a larger difference still stops the run. The record
+gives both AUCs for every seed. The folded float64 network's check, the same arithmetic on the same device as the
+record's, stays at $`10^{-6}`$. Nothing else changes.
