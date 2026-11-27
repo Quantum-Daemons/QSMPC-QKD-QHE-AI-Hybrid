@@ -3,7 +3,10 @@
 - the autocorrelation equals statsmodels' definition summed directly: the mean removed, every lag divided by n;
 - the window rule finds a sine's period, and falls back to 125 as TSB-AD's does where the period is out of range;
 - the score is each channel's z-score against its validation errors, the largest of them;
-- with TSB-AD installed, a score that marks the anomalies ranks above the same score permuted and above a random walk.
+- with TSB-AD installed, a score that marks the anomalies ranks above the same score permuted and above a random walk;
+- the page's card is the record at the four significant digits the script writes, and both name the published
+  forecaster's pinned revision and graph (2026-11-28: the same-day sibling cards were held to their records and this
+  one to nothing).
 """
 
 from __future__ import annotations
@@ -16,6 +19,12 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[1]
 SCRIPT = REPO / "scripts" / "measure_satellite_vus_pr.py"
+CARD = REPO / "web" / "public" / "data" / "satellite" / "vus_pr.json"
+RECORD = REPO / "docs" / "measurements" / "satellite-vus-pr-2026-11-14.json"
+PINS = REPO / "models" / "hub_file_hashes.json"
+#: What the script copies from the record into the card (`main`, the `card = {...}` line).
+CARD_FIELDS = ("model", "hf_revision", "series", "score", "window", "thresholds", "version", "vus_pr", "vus_roc",
+               "point_wise_average_precision", "sensitivity", "no_skill", "event_wise_f0_5_corrected", "comparator")
 
 
 @pytest.fixture(scope="module")
@@ -62,3 +71,16 @@ def test_a_marking_score_ranks_above_no_skill(vp):
     assert got > 0.8
     assert base["permuted"]["max"] < 0.2 and base["random_walk"]["max"] < 0.5
     assert base["permuted"]["draws"] == 2
+
+
+def test_the_page_s_card_is_its_record_and_the_forecaster_s_pin(vp):
+    import json
+
+    card, record = json.loads(CARD.read_text()), json.loads(RECORD.read_text())
+    pin = json.loads(PINS.read_text())[record["model"]]
+    assert record["model"] == card["model"] == "satellite_comms.telemanom"
+    assert card["hf_revision"] == record["hf_revision"] == pin["revision"]
+    assert record["graph_sha256"] == pin["files"]["onnx/model.onnx"]
+    for key in CARD_FIELDS:
+        assert card[key] == vp.rounded(record[key], 4), key
+
