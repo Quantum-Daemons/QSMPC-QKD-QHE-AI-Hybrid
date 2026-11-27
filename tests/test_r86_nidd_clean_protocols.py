@@ -163,7 +163,8 @@ def test_the_ckks_recheck_is_the_record_s_student_under_the_page_s_module() -> N
         return
     c = r["ckks_recheck"]
     assert c["refit_is_the_record_s"] is True and c["rows"] == 2048 and sum(c["class_counts"].values()) == 2048
-    assert isinstance(c["decisions_differ"], int) and 0 <= c["decisions_differ"] <= c["rows"]
+    # The doc, the card and the two models' notes say no decision differs; a re-run that changes this changes them too.
+    assert isinstance(c["decisions_differ"], int) and c["decisions_differ"] == 0
     assert 0 < c["max_abs_logit_error"] < 1e-3 and c["ciphertexts"] >= 1
     # The page's plaintext pass and numpy's, on the same rounded rows and weights, take the same argmax on all but ties.
     assert abs(c["plaintext_accuracy"] - c["plaintext_accuracy_numpy"]) <= 1 / 2048
