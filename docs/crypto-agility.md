@@ -16,7 +16,7 @@ We use the definition from the EU NIS Cooperation Group,
 second.** The five families below (KEM, QKD, FHE, MPC, signature) are not hard-coded; they are resolved from a registry so the system
 survives a future PQC migration - or the withdrawal of a broken primitive - as a
 *configuration change*, not a rewrite. That is the modular-replaceability property. It is
-**not** cipher-suite negotiation. The other primitives (AES-256-GCM, HKDF, the OPRF, threshold BGV, the garbled circuits and the rest) are fixed in code, and the CBOM (`web/public/cbom/qsh.cdx.json`) lists all 24.
+**not** cipher-suite negotiation. The other primitives (AES-256-GCM, HKDF, the OPRF, threshold BGV, the garbled circuits and the rest) are fixed in code, and the CBOM (`web/public/cbom/qsh.cdx.json`) lists all 25.
 
 ### What "selectable" means here (and what it does not)
 
