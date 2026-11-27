@@ -5412,7 +5412,7 @@
           },
           "framing": "Real 5G network traffic, 9 attack classes, 46 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. TWO CORRECTIONS MADE IN ROUND 86 EXPLAIN THE NUMBERS. The published file holds one attacker's UDP flood twice, the same 281,529 flows labelled Benign in one base station's file and UDPFlood in the other's; the Benign copies are removed, leaving 934,361 flows. And the model no longer reads `IdleTime`, which names the attack-session file a flow came from. Accuracy is 0.9979 and macro F1 0.9972. On the rows as published the same fit scores accuracy 0.7616, and no model reading these columns could pass 0.7685 there (`contradictory_copies`). `file_label_counterfactual` and `leak_counterfactual_accuracy` restore bookkeeping columns and reach about 1.0000, which is not a better model but a leak. `cross_base_station` trains on one base station and tests on the other: accuracy 0.9973 and 0.9877, against 0.4199 and 0.6059 on the rows as published. Two weak spots remain. Trained on the second base station, SYNFlood on the first scores F1 0.22. And without the TTL and hop columns, UDPScan across base stations falls to F1 0.05 (`without_ttl_and_hops`).",
           "git_sha": "9377d27-dirty",
-          "hf_revision": "1764db4648b70449023dcd8226b770ebdb2e2190",
+          "hf_revision": "1dc49c4f0ff90ab3036905d4bd4e8ad9f0ce1231",
           "leak_counterfactual_accuracy": 0.999987,
           "leak_counterfactual_accuracy_gain": 0.002055,
           "leak_counterfactual_features": [
@@ -5707,7 +5707,7 @@
           "onnx/model.onnx": "de6444c2af766a45a354f0e839f64db904fcbc6eb854a585ce6685ab6ec51213"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-gbm",
-        "hf_revision": "1764db4648b70449023dcd8226b770ebdb2e2190",
+        "hf_revision": "1dc49c4f0ff90ab3036905d4bd4e8ad9f0ce1231",
         "hf_revision_stale": null,
         "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "telecom_ids.nidd",
@@ -5834,7 +5834,7 @@
             "same_class_as_the_page": 2048
           },
           "flamby_macro_f1": 0.970821,
-          "hf_revision": "c17d719aa2358fd86f10685237d7300a3f774da3",
+          "hf_revision": "ec821ec914483e6b97fdf8a40ea5fff8de01f78f",
           "l2": 1e-06,
           "local_iterations": 20,
           "masked_messages": 270,
@@ -5890,7 +5890,7 @@
           "weights.json": "f0f9a21d46c38bc510ffe86d16568e380e7ea26d3aa674f016db6611e2a8d3d2"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-federated-ckks",
-        "hf_revision": "c17d719aa2358fd86f10685237d7300a3f774da3",
+        "hf_revision": "ec821ec914483e6b97fdf8a40ea5fff8de01f78f",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "telecom_ids.nidd_federated",
