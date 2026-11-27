@@ -135,7 +135,7 @@
    "feature_spec.json": "584a6dd4ce618af8adf2544de61f7f5a15017f7cc3cad02a7275b56e302d6831",
    "onnx/model.onnx": "de6444c2af766a45a354f0e839f64db904fcbc6eb854a585ce6685ab6ec51213"
   },
-  "revision": "1764db4648b70449023dcd8226b770ebdb2e2190"
+  "revision": "1dc49c4f0ff90ab3036905d4bd4e8ad9f0ce1231"
  },
  "telecom_ids.nidd_federated": {
   "files": {
@@ -143,7 +143,7 @@
    "onnx/model.onnx": "8cf293bb89a07692128c160f6e153c8f6f9fda3f6dd989c1463e6e26ed2206df",
    "weights.json": "f0f9a21d46c38bc510ffe86d16568e380e7ea26d3aa674f016db6611e2a8d3d2"
   },
-  "revision": "c17d719aa2358fd86f10685237d7300a3f774da3"
+  "revision": "ec821ec914483e6b97fdf8a40ea5fff8de01f78f"
  },
  "telecom_ids.qml": {
   "files": {

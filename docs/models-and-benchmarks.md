@@ -732,7 +732,9 @@ record's student first. Across testbeds, on 1,399,000 flows of NetsLab-5GORAN-ID
 sharing authors with 5G-NIDD) of the classes both share, scored without retraining through this project's map of its
 Zeek fields to the Argus inputs (no TTL in either), the teacher on the mapped inputs reaches a macro-F1 of 0.178 (0.029
 over seeds) and the student 0.256, and as Benign against any attack 0.553 and 0.868: the models do not carry to
-another 5G testbed class by class. On the shipped split the student scores 0.9728 here against the shipped student's
+another 5G testbed class by class, as Abraheem and Edhirig (Wadi Alshatti Univ. J. Pure Appl. Sci., 2026-08-07) also
+find for zero-shot transfer between these two corpora (balanced accuracy 0.500 to 0.558 in at least one direction of
+each matched task; a classifier tells the corpora apart at 0.993). On the shipped split the student scores 0.9728 here against the shipped student's
 0.9739, because the re-run standardises on the fit rows, as the pre-registration's training part, where the shipped
 student used its fit and validation rows. Every student and federation fit chose the grid's smallest penalty, as
 before; 12 of the 15 MLP seeds chose an epoch from 27 to 30 of their 30. Stated as measured; nothing here changes the

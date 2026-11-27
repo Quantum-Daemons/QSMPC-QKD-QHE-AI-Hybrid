@@ -7,7 +7,7 @@ Read and tried 2026-11-09 (Round 86); the versions and Pyodide's package list re
 | | marimo `export html-wasm` | JupyterLite | pyvista-wasm |
 |---|---|---|---|
 | what it is | a reactive notebook exported as static files, Python on Pyodide | JupyterLab in the browser, kernels in a Web Worker on Pyodide or Xeus | a PyVista-like API over VTK.wasm, for 3D |
-| version read | 0.25.2 (PyPI, 2026-10-19; still the latest on 2026-11-22) | `jupyterlite-core` 0.8.7 (PyPI, 2026-10-30; classified "4 - Beta") | 0.17.0 (PyPI, 2026-11-14; classified "2 - Pre-Alpha") |
+| version read | 0.25.2 (PyPI, 2026-10-19), the walkthrough's pin; 0.26.0 reached PyPI on 2026-11-24 (Python 3.11 or later; read 2026-11-27), not adopted yet | `jupyterlite-core` 0.8.7 (PyPI, 2026-10-30; classified "4 - Beta") | 0.17.0 (PyPI, 2026-11-14; classified "2 - Pre-Alpha") |
 | hosting | static files over HTTP; a directory export needs its `assets` beside it | static files over HTTP | a library, used inside one of the others |
 | reader experience | one page, code locked or editable | a full notebook editor, files kept in the browser's own storage | not applicable |
 | stated limits | 2 GB of memory, no OS threads or shared memory, no PDB | not all JupyterLab features work | none stated |
@@ -30,7 +30,7 @@ A marimo notebook that fetches the demo's own `/data/telecom_nidd/real_2d.json` 
 
 **JupyterLite does not fit this demo.** It brings an editor and per-browser file storage. Those suit a teaching site where a reader writes code, and a verification page does not need them.
 
-**pyvista-wasm is not needed.** No use case here has volumetric or mesh data, and the 3D views the demo has (Bloch vectors and satellite geometry) are three.js and small.
+**pyvista-wasm is not needed.** Since Round 86's batch 4 one use case has volumetric data, the medical page's 28 x 28 x 28 chest-CT crops from LIDC-IDRI, and they are drawn as three orthogonal planes and their maximum-intensity projections on 2D canvases (`web/src/components/Nodule3dViewer.tsx`, each redraw timed against one frame); a VTK.wasm runtime (pyvista-wasm 0.17.0, classified pre-alpha on PyPI, read 2026-11-27) would be a large dependency for a view this small. No use case has mesh data, and the other 3D views (Bloch vectors and satellite geometry) are three.js and small.
 
 ## What was built
 
