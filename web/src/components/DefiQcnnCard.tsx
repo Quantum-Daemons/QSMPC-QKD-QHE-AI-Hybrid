@@ -76,8 +76,8 @@ export default function DefiQcnnCard() {
       <h3>A QCNN on Aave v3 liquidations, trained and not encrypted <StageBadge kind="offline" /></h3>
       <p className="small" style={{ marginTop: 4 }}>
         This page&apos;s private check computes Aave V3&apos;s own rule, a health factor below 1, so it has no learned classifier
-        for a QCNN to reproduce. This circuit answers a pre-registered question beside it (<code>{d.preregistration}</code>): is{" "}
-        {d.task}? It reads eight of the borrow&apos;s numeric inputs, chosen on the fit window alone ({d.features.join(", ")}), and
+        for a QCNN to reproduce. This circuit is a separate classifier, pre-registered beside it
+        (<code>{d.preregistration}</code>); its positive class is {d.task}. It reads eight of the borrow&apos;s numeric inputs, chosen on the fit window alone ({d.features.join(", ")}), and
         is scored on the {d.test_rows.toLocaleString("en-US")} borrows of the test window, {d.test_positive.toLocaleString("en-US")}{" "}
         of them liquidated: at that prevalence, {(d.prevalence * 100).toFixed(2)} percent, a random ranking scores an average
         precision of {f4(d.prevalence)}.
