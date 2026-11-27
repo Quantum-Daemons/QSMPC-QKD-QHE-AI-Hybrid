@@ -53,6 +53,7 @@ const ok = (b: boolean | null | undefined) => (
 export default function NetKeyCards() {
   const [busy, setBusy] = useState("");
   const [kat, setKat] = useState<any>(null);
+  const [dsa, setDsa] = useState<any>(null);
   const [wg, setWg] = useState<any>(null);
   const [ike, setIke] = useState<any>(null);
   const [err, setErr] = useState("");
@@ -83,6 +84,30 @@ export default function NetKeyCards() {
               ))}
               <tr><th scope="row">implementation</th><td className="mono">{kat.implementation}</td></tr>
               <tr><th scope="row">vectors</th><td>usnistgov/ACVP-Server at <span className="mono">{String(kat.source.commit).slice(0, 7)}</span>, copied verbatim with SHA-256</td></tr>
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="card">
+        <h3>ML-DSA-65 known-answer test (NIST ACVP) <StageBadge kind="real" /></h3>
+        <p>Runs NIST&apos;s ACVP cases for the signature every run record on this site carries - key generation from a
+          seed, and verification of signatures that must and must not verify, through the interface the site signs with
+          (a message and a context, no pre-hash). The gate also runs Project Wycheproof&apos;s malformed signatures and its
+          low-order X25519 keys against the same libraries.</p>
+        <button className="btn" disabled={busy === "dsa"}
+          onClick={() => run("dsa", async () => setDsa((await import("../lib/netkeys/mldsaKat")).runMlDsaAcvp()))}>
+          Run the ML-DSA ACVP cases
+        </button>
+        {dsa && (
+          <table className="facts-table small" style={{ marginTop: 10 }}>
+            <tbody>
+              <tr><th scope="row">result</th><td>{ok(dsa.allPassed)} - {dsa.passed}/{dsa.total} cases</td></tr>
+              {Object.entries(dsa.byFunction as Record<string, { passed: number; total: number }>).map(([fn, r]) => (
+                <tr key={fn}><th scope="row">{fn}</th><td>{r.passed}/{r.total}</td></tr>
+              ))}
+              <tr><th scope="row">implementation</th><td className="mono">{dsa.implementation}</td></tr>
+              <tr><th scope="row">vectors</th><td>usnistgov/ACVP-Server at <span className="mono">{String(dsa.source.commit).slice(0, 7)}</span>, copied verbatim with SHA-256</td></tr>
             </tbody>
           </table>
         )}

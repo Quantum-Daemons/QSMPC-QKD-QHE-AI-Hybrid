@@ -3,6 +3,8 @@
 // WHAT THIS COVERS
 //
 //   web/src/lib/netkeys/mlkemKat.ts     NIST ACVP ML-KEM-768 keyGen / encapsulation / decapsulation
+//   web/src/lib/netkeys/mldsaKat.ts     NIST ACVP ML-DSA-65 keyGen / sigVer (external, pure), Project Wycheproof's
+//                                       ML-DSA-65 verify classes and its X25519 low-order points (Round 86, batch 11)
 //   web/src/lib/netkeys/noiseIKpsk2.ts  cacophony's Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s vector
 //   web/src/lib/netkeys/ikev2.ts        NIST CAVP SP 800-135 IKEv2 KDF cases + RFC 5903 section 8.1
 //   web/src/lib/netkeys/wireguard.ts    NO handshake vector exists - structural checks, plus the one
@@ -83,6 +85,11 @@ const CORRUPTIONS = {
   ikev2: { file: "ikev2_cavp.json", path: ["cases", 0, "DKM"], label: "HMAC-SHA-384/g^ir1024/N64/COUNT0" },
   rfc5903: { file: "ikev2_cavp.json", path: ["ecp256Rfc5903", "cases", 0, "girx"], label: "RFC5903-8.1" },
   wginit: { file: "wireguard_initial_state.json", path: ["initialHash", "hex"], label: "WireGuard Hi = Hash(Ci || Identifier)" },
+  mldsa: { file: "mldsa65_acvp.json", path: ["keyGen", "cases", 0, "pk"], label: "ML-DSA keyGen tcId 26" },
+  // tcId 33 is a signature ACVP says must verify: one flipped byte must turn its verdict, the branch a
+  // check of only the failing cases never reaches.
+  mldsasig: { file: "mldsa65_acvp.json", path: ["sigVer", "cases", 2, "signature"], label: "ML-DSA sigVer tcId 33" },
+  wpx25519: { file: "wycheproof_mldsa65_x25519.json", path: ["x25519", "cases", 31, "shared"], label: "Wycheproof X25519 tcId 1" },
 };
 const corruptArg = process.argv.find((a) => a.startsWith("--corrupt="));
 const corrupt = corruptArg ? corruptArg.slice("--corrupt=".length) : (process.env.QSH_NETKEYS_CORRUPT || "");
@@ -96,6 +103,8 @@ const files = {
   "noise_ikpsk2.json": readJson("noise_ikpsk2.json"),
   "ikev2_cavp.json": readJson("ikev2_cavp.json"),
   "wireguard_initial_state.json": readJson("wireguard_initial_state.json"),
+  "mldsa65_acvp.json": readJson("mldsa65_acvp.json"),
+  "wycheproof_mldsa65_x25519.json": readJson("wycheproof_mldsa65_x25519.json"),
 };
 
 if (corrupt) {
@@ -121,6 +130,7 @@ function load() {
     `export * as noise from ${JSON.stringify(join(LIB, "noiseIKpsk2"))};`,
     `export * as wg from ${JSON.stringify(join(LIB, "wireguard"))};`,
     `export * as ike from ${JSON.stringify(join(LIB, "ikev2"))};`,
+    `export * as mldsa from ${JSON.stringify(join(LIB, "mldsaKat"))};`,
   ].join("\n") + "\n");
   const out = join(dir, "bundle.mjs");
   execFileSync("npx", ["esbuild", entry, "--bundle", "--format=esm", "--platform=node",
@@ -129,7 +139,7 @@ function load() {
 }
 
 const { out, dir } = load();
-const { mlkem, noise, wg, ike } = await import(`file://${out}`);
+const { mlkem, noise, wg, ike, mldsa } = await import(`file://${out}`);
 
 // ---------------------------------------------------------------------------------------------
 // 0. Provenance is recorded, and recorded where the bytes came from.
@@ -158,6 +168,14 @@ section("provenance", () => {
   check("wireguard initial-state provenance", isCommit(w.source.commit) && isSha(w.source.sha256)
         && w.source.url.includes(w.source.commit) && w.authoritative === false,
         "boringtun's constants need a commit-pinned URL, a SHA-256, and must stay marked non-authoritative");
+  const d = files["mldsa65_acvp.json"];
+  check("mldsa provenance", isCommit(d.source.commit) && d.source.files.length === 4
+        && d.source.files.every((x) => isSha(x.sha256) && x.url.startsWith(`https://raw.githubusercontent.com/usnistgov/ACVP-Server/${d.source.commit}/`)),
+        "every ACVP ML-DSA file needs a commit-pinned raw URL and a SHA-256");
+  const y = files["wycheproof_mldsa65_x25519.json"];
+  check("wycheproof provenance", isCommit(y.source.commit) && y.source.files.length === 2
+        && y.source.files.every((x) => isSha(x.sha256) && x.url.startsWith(`https://raw.githubusercontent.com/C2SP/wycheproof/${y.source.commit}/`)),
+        "every Wycheproof file needs a commit-pinned raw URL and a SHA-256");
 });
 
 // ---------------------------------------------------------------------------------------------
@@ -421,6 +439,79 @@ section("IKEv2 demo", () => {
         "the demo must carry its not-validated statements and the CAVP verdict");
 });
 
+// ---------------------------------------------------------------------------------------------
+// 6. ML-DSA-65 against NIST ACVP (Round 86, batch 11): the signature every run record carries.
+// ---------------------------------------------------------------------------------------------
+const hexEq = (a, b) => a.toUpperCase() === b.toUpperCase();
+const sha = (bytes) => createHash("sha256").update(bytes).digest("hex");
+let mldsaCount = 0;
+section("ML-DSA", () => {
+  const f = files["mldsa65_acvp.json"];
+  const mine = new Map();
+  for (const c of f.keyGen.cases) {
+    const { pk, sk } = mldsa.mldsaKeyGen(unhex(c.seed));
+    const ok = hexEq(hex(pk), c.pk) && hexEq(hex(sk), c.sk);
+    check(`ML-DSA keyGen tcId ${c.tcId}`, ok, "the derived key pair is not the stored one");
+    check(`ML-DSA keyGen tcId ${c.tcId} sizes`, pk.length === mldsa.MLDSA65_SIZES.pk && sk.length === mldsa.MLDSA65_SIZES.sk,
+          `pk ${pk.length} B, sk ${sk.length} B`);
+    mine.set(`keyGen/${c.tcId}`, { ok, digests: { pk: sha(pk), sk: sha(sk) } });
+    mldsaCount += 1;
+  }
+  const verdicts = new Set();
+  for (const c of f.sigVer.cases) {
+    const got = mldsa.mldsaVerify(unhex(c.pk), unhex(c.message), unhex(c.signature), unhex(c.context));
+    check(`ML-DSA sigVer tcId ${c.tcId}`, got === c.testPassed, `verify said ${got}, ACVP says ${c.testPassed}`);
+    mine.set(`sigVer/${c.tcId}`, { ok: got === c.testPassed });
+    verdicts.add(c.testPassed);
+    mldsaCount += 1;
+  }
+  check("ML-DSA sigVer coverage", verdicts.has(true) && verdicts.has(false), "both a signature that verifies and one that must not");
+  // The in-tab runner must reach the same verdicts and report the digests of what was COMPUTED.
+  const run = mldsa.runMlDsaAcvp(f);
+  check("runMlDsaAcvp count", run.total === mldsaCount, `runner ran ${run.total} cases, the file holds ${mldsaCount}`);
+  for (const rc of run.cases) {
+    const m = mine.get(`${rc.function}/${rc.tcId}`);
+    check(`runMlDsaAcvp ${rc.function} ${rc.tcId}`, m && m.ok === rc.passed, `runner says ${rc.passed}, this script says ${m?.ok}`);
+    for (const o of rc.outputs) {
+      check(`runMlDsaAcvp ${rc.function} ${rc.tcId} ${o.name} digest`, m && m.digests[o.name] === o.computedSha256,
+            "the runner's computedSha256 is not the digest of the computed output");
+    }
+  }
+  check("runMlDsaAcvp allPassed", run.allPassed === [...mine.values()].every((v) => v.ok), `runner allPassed=${run.allPassed}`);
+});
+
+// ---------------------------------------------------------------------------------------------
+// 7. Project Wycheproof: ML-DSA-65 verification classes and X25519 low-order points.
+// ---------------------------------------------------------------------------------------------
+let wpMldsa = 0, wpLow = 0, wpValid = 0;
+section("Wycheproof", () => {
+  const y = files["wycheproof_mldsa65_x25519.json"];
+  const classes = new Set();
+  for (const c of y.mldsa65Verify.cases) {
+    const got = mldsa.mldsaVerify(unhex(c.publicKey), unhex(c.msg), unhex(c.sig), unhex(c.ctx ?? ""));
+    if (c.result !== "acceptable") check(`Wycheproof ML-DSA tcId ${c.tcId} (${c.flags.join("+")})`, got === (c.result === "valid"),
+                                          `verify said ${got}, Wycheproof says ${c.result}`);
+    classes.add(`${c.result}/${c.flags.join("+")}`);
+    wpMldsa += 1;
+  }
+  check("Wycheproof ML-DSA coverage", classes.size === y.mldsa65Verify.classes && classes.size >= 12,
+        `${classes.size} classes stored, the file says ${y.mldsa65Verify.classes}`);
+  for (const c of y.x25519.cases) {
+    const s = mldsa.x25519Shared(unhex(c.private), unhex(c.public));
+    if (c.flags.includes("LowOrderPublic")) {
+      // Wycheproof calls these acceptable either way; this project requires them refused, so no all-zero secret
+      // ever reaches the hybrid combiner.
+      check(`Wycheproof X25519 tcId ${c.tcId} refused`, s === null, "a low-order public key yielded a shared secret");
+      wpLow += 1;
+    } else {
+      check(`Wycheproof X25519 tcId ${c.tcId}`, s !== null && hexEq(hex(s), c.shared), "the shared secret is not the stored one");
+      wpValid += 1;
+    }
+  }
+  check("Wycheproof X25519 coverage", wpLow === y.x25519.lowOrder && wpLow >= 12 && wpValid === y.x25519.valid,
+        `${wpLow} low-order and ${wpValid} valid cases`);
+});
+
 rmSync(dir, { recursive: true, force: true });
 
 if (failures.length) {
@@ -431,4 +522,5 @@ if (failures.length) {
 console.log(
   `check:netkeys OK (ML-KEM-768 ACVP ${mlkemCount} cases; Noise IKpsk2 cacophony ${noiseMessages} messages + handshake hash;`
   + ` IKEv2 CAVP ${cavpCases} cases x 5 values + RFC 5903 8.1; WireGuard Ci/Hi vs boringtun constants;`
+  + ` ML-DSA-65 ACVP ${mldsaCount} cases; Wycheproof ML-DSA-65 ${wpMldsa} cases, X25519 ${wpLow} low-order refused and ${wpValid} valid;`
   + " WireGuard framing and RFC 9370 / RFC 8784 layers: per spec only, no official vectors)");

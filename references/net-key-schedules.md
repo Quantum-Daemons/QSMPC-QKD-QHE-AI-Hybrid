@@ -15,6 +15,7 @@ Every file listed was downloaded on 2026-10-24 and hashed on arrival. The SHA-25
 | File | What it computes |
 |---|---|
 | `web/src/lib/netkeys/mlkemKat.ts` | `runMlKemAcvp()`: NIST ACVP ML-KEM-768 keyGen, encapsulation, decapsulation through `@noble/post-quantum` |
+| `web/src/lib/netkeys/mldsaKat.ts` | `runMlDsaAcvp()`: NIST ACVP ML-DSA-65 keyGen and sigVer (external, pure) through `@noble/post-quantum`, the library that signs every run record; `mldsaVerify` and `x25519Shared` for Project Wycheproof's ML-DSA-65 verification classes and X25519 low-order points (Round 86, batch 11) |
 | `web/src/lib/netkeys/noiseIKpsk2.ts` | Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s, initiator and responder, Split(); `runNoiseVectors()` |
 | `web/src/lib/netkeys/wireguard.ts` | `wireguardHandshake({ psk, seed })`: both peers in one tab on the Noise core |
 | `web/src/lib/netkeys/ikev2.ts` | prf+, SKEYSEED, SK_*, RFC 9370, RFC 8784; `runIkev2Cavp()`, `ikev2KeySchedule({ seed, ppk })` |
@@ -87,6 +88,44 @@ by NIST employees is not subject to copyright protection within the United State
 
 The 64-byte seed noble accepts is `d || z`. FIPS 203 passes d and z as an ordered pair, so the packing is
 a convention; the check asserts that `z || d` does not reproduce the answer.
+
+### NIST ACVP, ML-DSA (FIPS 204) - `mldsa65_acvp.json` (Round 86, batch 11)
+
+The same repository and commit as ML-KEM above (`975de31eb83d87039ec88934fdc47d8c312b892d`, v1.1.0.43), retrieved 2026-11-28 on the
+owner's choice of that day.
+
+| Path (under `gen-val/json-files/`) | Bytes | SHA-256 |
+|---|---|---|
+| `ML-DSA-keyGen-FIPS204/prompt.json` | 10062 | `43e81ad820e495dbcad086fe27c1008393a8c32100bbbff77c558c3f06dcefef` |
+| `ML-DSA-keyGen-FIPS204/expectedResults.json` | 873632 | `361f47ca19d592adcc66ff2cb591686ad785fea157b295648738bed6921a68df` |
+| `ML-DSA-sigVer-FIPS204/prompt.json` | 3125947 | `e2cba4589389756fa0bea1a7e6837138bf0a81f9d14234c9ee8f6d33caa1654e` |
+| `ML-DSA-sigVer-FIPS204/expectedResults.json` | 13956 | `e1d84ef1b2f35196278ab0b0ed6a46ec62cc03d2dfa92c564199e1999bfb8ea6` |
+
+Stored, all ML-DSA-65: keyGen tgId 2 tcIds 26, 27, 28, 29, 30, 31, 32, 33, 34, 35 (the first ten of the
+group: seed, and the public and secret keys it must derive); sigVer tgId 3, every case of the external,
+pure group, the interface the site signs with (a message and a context, no pre-hash), 3 that verify and
+12 that must not. Before the subset was cut, all 25 ML-DSA-65 keyGen cases and all 15 sigVer cases of
+that group were run through `@noble/post-quantum` 0.7.1 and all passed; the subset is a selection, not the survivors
+of one. The HashML-DSA and internal-interface groups are not stored: the site uses neither.
+
+### Project Wycheproof, ML-DSA-65 verification and X25519 - `wycheproof_mldsa65_x25519.json`
+
+Repository https://github.com/C2SP/wycheproof (Apache-2.0) at commit `65ca494727a52944c204441c860b039e6786b99b`
+(2026-11-11), `testvectors_v1/`, retrieved 2026-11-28.
+
+| Path | Bytes | SHA-256 |
+|---|---|---|
+| `testvectors_v1/mldsa_65_verify_test.json` | 1664284 | `1ca235f61928421a173a171780beb00264ae9155dc33c52a11e1766cc7979034` |
+| `testvectors_v1/x25519_test.json` | 253890 | `35c3f5231cf25cc640b524d403461deee9e49441d5d915a3a25b2c8ff5adbe7d` |
+
+Stored: the first two cases of each of the 16 (result, flags) classes of `mldsa_65_verify_test.json`
+(29 cases, each with its group's public key: valid signatures, and the invalid hint encodings,
+infinity-norm violations, wrong key and signature lengths and modified contexts a verifier must refuse); and every
+X25519 case whose public key has low order and whose shared secret is all zeros (31), with the first
+5 valid cases. Wycheproof marks the low-order cases acceptable either way; this project requires them refused,
+so that no all-zero X25519 secret reaches the hybrid combiner, and `@noble/curves` 2.4.0 refuses them by default.
+Before the subset was cut, all 210 ML-DSA-65 verification cases and all 518 X25519 cases were run: 210 of 210 as
+Wycheproof decides them, the 31 low-order cases refused and the other 487 as stated.
 
 ### Noise_IKpsk2_25519_ChaChaPoly_BLAKE2s - `noise_ikpsk2.json`
 
