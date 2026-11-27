@@ -954,6 +954,14 @@ satellite, ground station or quantum channel is involved.
   percent of detections sampled for the QBER, which the second analysis adds
   ([`references/satellite-jinan1-pass-v2-preregistration.md`](../references/satellite-jinan1-pass-v2-preregistration.md),
   committed before any of its figures).
+  The second analysis, run on 2026-11-27 (`docs/measurements/satellite-jinan1-pass-v2-2026-11-27.json`), changes
+  nothing. Fitting the station efficiency and the zenith loss together gives 0.1595 (se 0.0018) and
+  0.809 dB (se 0.017), correlated 0.95, against the profile's 0.1683 and 0.880 dB; the
+  residual deviation moves by $`-0.007`$ dB where rule 1 asked a fall of 0.05 dB, so the profile keeps its values. With
+  the gate and the sampling, the model's sifted bits are 1.35 times the measured 2,000,000, its packet
+  boundaries about 41 s ahead; each key block's measured key is 1.26 to 1.47 times the model's finite bound (mean
+  1.35); and the other three passes' packets are 2.16, 2.07, 2.39 times the published, where rule 2 asked within a
+  factor of 1.5, so the key model stays as it is. The satellite card shows the second analysis beside the first.
 
 ## State-vector simulators, measured
 
