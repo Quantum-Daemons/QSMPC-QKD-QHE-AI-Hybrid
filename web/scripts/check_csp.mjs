@@ -19,11 +19,22 @@ const BASE = (process.argv[2] ?? "http://localhost:4183").replace(/\/$/, "");
 const CHROME = process.env.CHROME ?? "google-chrome";
 const PORT = Number(process.env.CDP_PORT ?? 9356);
 const USE_CASES = ["finance_aml", "medical_fl", "genomics", "telecom_ids", "satellite_comms", "defi_lending"];
+// The buttons each page's walk must press (2026-11-28), each one that starts a worker or a WebAssembly module and is
+// there offline as in CI: a walk that presses none of them checked nothing there. Finance has no action button (its
+// work is the run itself), so it must press none. Each is matched as the start of a label ("Send " is the BB84 photon
+// run's "Send 400,000 pulses", and satellite's "Run all " its CKKS run over every row, whatever the counts).
+const MUST_PRESS = { finance_aml: [], medical_fl: ["Compare encrypted aggregation", "Run crop 1 under A2"],
+                     genomics: ["Sum under threshold BGV"], telecom_ids: ["Start the stream", "Send "],
+                     satellite_comms: ["Run all ", "Run the first row the per-row way"], defi_lending: ["Re-score the sample here"] };
 const PAGES = [
   { path: "/" }, { path: "/value" }, { path: "/usecases" },
-  { path: "/validations", click: ["Run ML-KEM", "Run ML-DSA", "Run handshake", "Run BB84"] },
+  // Each label as the page prints it, and a label not found is a failure (2026-11-28): "Run handshake" matched nothing
+  // ("Run the handshake" is the button), so neither it nor the other network-key buttons, each of which loads its own
+  // module on click, had been pressed under the enforced policy.
+  { path: "/validations", click: ["Run ML-KEM", "Run ML-DSA", "Run BB84", "Run the ACVP cases", "Run the ML-DSA ACVP cases",
+                                  "Run the handshake", "Run the key schedule"] },
   { path: "/orchestration", run: true, tabs: true },
-  ...USE_CASES.map((uc) => ({ path: `/usecase/${uc}`, run: true, tabs: true, actions: true })),
+  ...USE_CASES.map((uc) => ({ path: `/usecase/${uc}`, run: true, tabs: true, actions: true, mustPress: MUST_PRESS[uc] })),
   { path: "/walkthrough/", settle: 45000 },
   { path: "/no-such-page" },
 ].filter((p) => !process.env.CSP_PAGES || process.env.CSP_PAGES.split(",").includes(p.path));
@@ -117,8 +128,10 @@ try {
     await S("Page.navigate", { url: BASE + page.path });
     await sleep(page.settle ?? 4000);
     const notes = [];
+    let pressed = [];
     for (const label of page.click ?? []) {
-      await ev(`(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); })()`);
+      const pressed = await ev(`(() => { const b = [...document.querySelectorAll("button")].find((x) => x.textContent.trim() === ${JSON.stringify(label)}); if (b) b.click(); return !!b; })()`);
+      if (!pressed) found.push(`no button reads "${label}"`);
       await sleep(2500);
     }
     if (page.tabs) {
@@ -137,23 +150,39 @@ try {
       if (started && !done) failures++;
     }
     if (page.actions) {
-      // Each enabled button in <main> that runs or loads something, once (Load leads to Run, so re-query each time).
+      // Each enabled button in <main> that runs or loads something, once (Load leads to Run, so re-query each time), on
+      // every tab in turn (2026-11-28): the tabs are clicked through before the run, so this used to search the last tab
+      // only, where the run's cards are not, and pressed nothing on a tabbed page.
       const seen = [];
-      for (let k = 0; k < 30; k++) {
-        const label = await ev(`(() => {
-          const ok = /^(Run|Load|Compute|Check|Score|Aggregate|Train|Simulate|Fetch|Verify|Federate)\\b/i, no = /download|reset|stop|pause|cancel|clear/i;
-          const seen = ${JSON.stringify(seen)};
-          const b = [...document.querySelectorAll("main button")].find((x) => !x.disabled && ok.test(x.textContent.trim()) && !no.test(x.textContent)
-            && !seen.includes(x.textContent.trim().slice(0, 80)));
-          if (!b) return null; const t = b.textContent.trim().slice(0, 80); b.scrollIntoView(); b.click(); return t; })()`);
-        if (!label) break;
-        seen.push(label);
-        for (let t = 0; t < 120; t++) {
-          await sleep(1000);
-          if (!(await ev(`[...document.querySelectorAll("main button")].some((x) => x.disabled && /\\.\\.\\.|…/.test(x.textContent))`))) break;
+      const tabCount = page.tabs ? await ev(`document.querySelectorAll('[role=tab]').length`) : 0;
+      for (let tab = 0; tab < Math.max(1, tabCount); tab++) {
+        if (tabCount) { await ev(`document.querySelectorAll('[role=tab]')[${tab}]?.click()`); await sleep(1500); }
+        for (let k = 0; k < 30; k++) {
+          const label = await ev(`(() => {
+            // The two Lattigo worker buttons began with none of these verbs, so no walk pressed them under the enforced policy
+            // (read live on 2026-11-28: both run clean, but nothing here would see them break), nor four more the review
+            // found: the DeFi QCNN's re-score, the medical BFV budget meter, and the telecom QRNG stream and BB84 photon run.
+            // The word boundary is written with two backslashes: inside this template string one reaches the page, and
+            // written with one it reached the page as a backspace, so for one commit of 2026-11-28 nothing matched at all.
+            const ok = /^(Run|Load|Compute|Check|Score|Aggregate|Train|Simulate|Fetch|Verify|Federate|Compare encrypted aggregation|Sum under threshold BGV|Re-score the sample here|Encrypt and read the budget|Start the stream|Send [0-9,]+ pulses)\\b/i, no = /download|reset|stop|pause|cancel|clear/i;
+            const seen = ${JSON.stringify(seen)};
+            const b = [...document.querySelectorAll("main button")].find((x) => !x.disabled && ok.test(x.textContent.trim()) && !no.test(x.textContent)
+              && !seen.includes(x.textContent.trim().slice(0, 80)));
+            if (!b) return null; const t = b.textContent.trim().slice(0, 80); b.scrollIntoView(); b.click(); return t; })()`);
+          if (!label) break;
+          seen.push(label);
+          for (let t = 0; t < 120; t++) {
+            await sleep(1000);
+            if (!(await ev(`[...document.querySelectorAll("main button")].some((x) => x.disabled && /\\.\\.\\.|…/.test(x.textContent))`))) break;
+          }
         }
       }
       notes.push(`${seen.length} actions`);
+      pressed = seen;
+      // A button the page must offer that the walk did not press is a walk that did not check it.
+      for (const want of page.mustPress ?? []) {
+        if (!seen.some((s) => s.startsWith(want))) found.push(`the walk did not press "${want}"`);
+      }
     }
     const state = await ev(`({ csp: window.__csp || [], isolated: window.crossOriginIsolated, href: location.href })`);
     // A page that ended on Chrome's error page (an unreachable host, a refused redirect) has no policy to break and is
@@ -167,6 +196,8 @@ try {
     if (!state.isolated && page.path !== "/no-such-page") unique.push("the page is not cross-origin isolated");
     if (unique.length) { failures += unique.length; console.log(`  FAIL ${label}`); for (const f of unique) console.log(`       ${f}`); }
     else console.log(`  ok   ${label}`);
+    // Five spaces, so the gate's failure grep (seven) never takes this for a finding.
+    if (pressed.length) console.log(`     pressed: ${pressed.join("; ")}`);
   }
   if (wouldBlock.size) {
     console.log(`the Report-Only candidate would block ${wouldBlock.size} distinct thing(s) (not failures):`);

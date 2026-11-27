@@ -1,5 +1,5 @@
 {
- "marimo": "0.25.2",
+ "marimo": "0.26.0",
  "pyodide": "v314.0.0",
  "files": {
   "docutils-0.22.4-py3-none-any.whl": {
@@ -10,9 +10,9 @@
    "url": "https://cdn.jsdelivr.net/pyodide/v314.0.0/full/jedi-0.19.2-py2.py3-none-any.whl",
    "sha256": "6c13c4ecc241e49c4fea0fd165f766fc5f2d915c2a6729feed44e8cc199e2005"
   },
-  "marimo_base-0.25.2-py3-none-any.whl": {
-   "url": "https://files.pythonhosted.org/packages/76/f7/c8c4bea1b350d200378c53d3acee11e06d29634ebde9dffe7aac7dda8120/marimo_base-0.25.2-py3-none-any.whl",
-   "sha256": "9daea77b550c5954193b9c3f69405b4cddb5114e305d06b4a251a0c4fbaf5639"
+  "marimo_base-0.26.0-py3-none-any.whl": {
+   "url": "https://files.pythonhosted.org/packages/6d/af/c93ac78a32daca4d9a55a6a87a62c7fc36b5d317fef6f4f8f24ad8d3c8d0/marimo_base-0.26.0-py3-none-any.whl",
+   "sha256": "ed8c9e34464c6adc17ce50db5a3e8012038a75b3d38f231424cbf11533a8c3a4"
   },
   "markdown-3.10.2-py3-none-any.whl": {
    "url": "https://files.pythonhosted.org/packages/de/1f/77fa3081e4f66ca3576c896ae5d31c3002ac6607f9747d2e3aa49227e464/markdown-3.10.2-py3-none-any.whl",

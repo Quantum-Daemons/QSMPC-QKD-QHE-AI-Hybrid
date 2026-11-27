@@ -1,6 +1,6 @@
 import marimo
 
-__generated_with = "0.25.2"
+__generated_with = "0.26.0"
 app = marimo.App(width="medium", app_title="5G-NIDD: the flows it holds twice")
 
 

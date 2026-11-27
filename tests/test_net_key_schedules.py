@@ -54,6 +54,10 @@ CORRUPTIONS = {
     "ikev2": "HMAC-SHA-384/g^ir1024/N64/COUNT0 DKM",
     "rfc5903": "RFC5903-8.1 g^ir",
     "wginit": "Hi = Hash(Ci || Identifier)",
+    # Round 86, batch 11: ML-DSA-65 against ACVP and Wycheproof, the signature every run record carries.
+    "mldsa": "ML-DSA keyGen tcId 26",
+    "mldsasig": "ML-DSA sigVer tcId 33",
+    "wpx25519": "Wycheproof X25519 tcId 1",
 }
 
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")

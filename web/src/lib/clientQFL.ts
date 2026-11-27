@@ -298,6 +298,38 @@ export function aggregateMaskedShares(maskedShares: readonly number[][]): number
   return sumMaskedIntegers(maskedShares).map((s) => s / QFL_SCALE);
 }
 
+/** One masked share as the aggregator receives it: which client sent it. */
+export interface MaskedSubmission { client: number; share: number[] }
+
+/**
+ * The aggregator's round, refusing what it cannot finish (Round 86, batch 11; the owner's choice of 2026-11-28).
+ *
+ * There is no dropout recovery (see `secureAggregate`): a client that drops leaves its masks in the sum, and the sum
+ * of the other K - 1 shares then looks like any sum and is not the mean - a silent wrong answer. A client that submits
+ * twice, a retry, adds its masks twice, with the same result. Both are refused here, naming the client, rather than
+ * summed; recovering from them needs the Shamir-shared keys of Bonawitz et al., which this does not implement.
+ */
+export function aggregateRound(submissions: readonly MaskedSubmission[], K: number): number[] {
+  const P = submissions[0]?.share.length ?? 0;
+  const seen = new Set<number>();
+  for (const s of submissions) {
+    if (!Number.isInteger(s.client) || s.client < 0 || s.client >= K) {
+      throw new Error(`secagg: a share from client ${s.client}, who is not one of the round's ${K}`);
+    }
+    if (seen.has(s.client)) {
+      throw new Error(`secagg: client ${s.client} submitted twice; a repeated share adds its masks twice, so the round is refused`);
+    }
+    if (s.share.length !== P) throw new Error(`secagg: client ${s.client}'s share has ${s.share.length} words, not ${P}`);
+    seen.add(s.client);
+  }
+  const missing = Array.from({ length: K }, (_, u) => u).filter((u) => !seen.has(u));
+  if (missing.length) {
+    throw new Error(`secagg: client${missing.length > 1 ? "s" : ""} ${missing.join(", ")} dropped; without dropout recovery `
+      + "their masks cannot be removed, so the round is refused");
+  }
+  return aggregateMaskedShares([...submissions].sort((a, b) => a.client - b.client).map((s) => s.share));
+}
+
 /**
  * Size-weighted FedAvg under pairwise additive masking, with each pair's mask seed agreed by that
  * pair alone (Bonawitz et al., CCS 2017; the construction is spelled out above).
@@ -317,7 +349,8 @@ export function aggregateMaskedShares(maskedShares: readonly number[][]): number
  *     server can remove a dropped user's masks and finish the round, and add a second, per-user mask,
  *     shared the same way, so that this recovery cannot expose a user who did not drop (Protocols 1
  *     to 3 of the arXiv version). Neither is implemented, so a client that drops leaves its masks
- *     uncancelled and breaks the round.
+ *     uncancelled and breaks the round: `aggregateRound` then refuses the round, naming the client,
+ *     rather than return the sum of the others, which is not the mean (Round 86, batch 11).
  *   - No malicious security. The full version (IACR ePrint 2017/281) proves its protocol in the
  *     malicious setting as well; this is the honest-but-curious case only.
  *   - No authentication of the public keys. The aggregator relays them, so one that substitutes its
@@ -345,7 +378,7 @@ export function secureAggregate(
     throw new Error(`secagg: ${pairSeeds.length} clients' seeds for ${updates.length} updates`);
   }
   const maskedShares = updates.map((wl, u) => maskedShare(u, wl, weights[u], pairSeeds[u], round));
-  return { aggregate: aggregateMaskedShares(maskedShares), maskedShares };
+  return { aggregate: aggregateRound(maskedShares.map((share, client) => ({ client, share })), updates.length), maskedShares };
 }
 
 /**

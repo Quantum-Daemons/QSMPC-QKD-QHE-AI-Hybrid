@@ -111,6 +111,34 @@ class HybridCiphertext:
     x25519_ephemeral_public: bytes
 
 
+#: FIPS 203 Table 3 and RFC 7748: the widths the transcript's unprefixed concatenation relies on, per parameter set.
+HYBRID_WIDTHS = {"ML-KEM-768": {"c1": 1088, "ek1": 1184}, "ML-KEM-1024": {"c1": 1568, "ek1": 1568}}
+
+
+def check_hybrid_inputs(kem_name: str, ss_pq: bytes, ss_classical: bytes, c1: bytes, c2: bytes, ek1: bytes,
+                        ek2: bytes) -> None:
+    """The aborts RFC 10024 (August 2026) requires of a hybrid group's peer, as the browser's `checkHybridInputs`.
+
+    Section 4.2: a ciphertext whose length does not match the parameter set; section 4.3: an all-zero X25519 shared
+    secret; and every transcript field at its parameter set's width, which the unprefixed concatenation relies on.
+    liboqs and `cryptography` refuse most of these already; this is the second line, the same on both sides (Round 86,
+    batch 11). The combiner derives with HKDF, not TLS's key schedule, so it is not an RFC 10024 group.
+    """
+    w = HYBRID_WIDTHS.get(kem_name)
+    if w is None:
+        raise ValueError(f"hybrid KEM refused: unknown parameter set {kem_name}")
+    problems = [what for what, bad in (
+        (f"the {kem_name} ciphertext is {len(c1)} bytes, not {w['c1']} (RFC 10024 section 4.2)", len(c1) != w["c1"]),
+        (f"the {kem_name} encapsulation key is {len(ek1)} bytes, not {w['ek1']}", len(ek1) != w["ek1"]),
+        (f"an X25519 share is {len(c2)} or {len(ek2)} bytes, not 32", len(c2) != 32 or len(ek2) != 32),
+        (f"the ML-KEM shared secret is {len(ss_pq)} bytes, not 32", len(ss_pq) != 32),
+        (f"the X25519 shared secret is {len(ss_classical)} bytes, not 32", len(ss_classical) != 32),
+        ("the X25519 shared secret is all zeros (RFC 10024 section 4.3)", ss_classical == bytes(len(ss_classical))),
+    ) if bad]
+    if problems:
+        raise ValueError("hybrid KEM refused: " + "; ".join(problems))
+
+
 def _combine(ss_pq: bytes, ss_classical: bytes, transcript: bytes, length: int,
              info_prefix: bytes) -> bytes:
     """HKDF-SHA256 combiner binding both shared secrets + a transcript."""
@@ -145,6 +173,8 @@ class HybridKEMRecipient:
         # c1 || c2 || ek1 || ek2 - see the note on `encapsulate`.
         transcript = (ct.mlkem_ciphertext + ct.x25519_ephemeral_public
                       + self._mlkem_public + self._x_pub)
+        check_hybrid_inputs(self.kem_name, ss_pq, ss_classical, ct.mlkem_ciphertext, ct.x25519_ephemeral_public,
+                            self._mlkem_public, self._x_pub)
         return _combine(ss_pq, ss_classical, transcript, length,
                         _combiner_info(self.kem_name))
 
@@ -200,6 +230,7 @@ def encapsulate(pub: HybridPublicKey, *, length: int = 32) -> tuple[HybridCipher
     ss_classical = eph.exchange(recipient_x)
     # c1 || c2 || ek1 || ek2, matching SP 800-227 section 4.6.3's argument order after K1 and K2.
     transcript = mlkem_ct + eph_pub + pub.mlkem_public + pub.x25519_public
+    check_hybrid_inputs(pub.kem_name, ss_pq, ss_classical, mlkem_ct, eph_pub, pub.mlkem_public, pub.x25519_public)
     shared = _combine(ss_pq, ss_classical, transcript, length,
                       _combiner_info(pub.kem_name))
     return HybridCiphertext(mlkem_ct, eph_pub), shared

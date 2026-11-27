@@ -42,12 +42,12 @@
     "pymdown-extensions",
     "msgspec"
    ],
-   "file_name": "marimo_base-0.25.2-py3-none-any.whl",
+   "file_name": "marimo_base-0.26.0-py3-none-any.whl",
    "imports": [],
    "install_dir": "site",
    "name": "marimo",
-   "sha256": "9daea77b550c5954193b9c3f69405b4cddb5114e305d06b4a251a0c4fbaf5639",
-   "version": "0.25.2"
+   "sha256": "ed8c9e34464c6adc17ce50db5a3e8012038a75b3d38f231424cbf11533a8c3a4",
+   "version": "0.26.0"
   },
   "markdown": {
    "depends": [],

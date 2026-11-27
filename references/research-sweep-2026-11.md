@@ -79,7 +79,7 @@ at the version the pages cite.
 
 A second pass over the window found three statements stale and eight works not cited before. The stale three are
 corrected where they stand: marimo 0.26.0 reached PyPI on 2026-11-24 (`notebook-walkthroughs.md`; the walkthrough
-stays on 0.25.2 until a bump is chosen), SilentWood's v3 of 2026-09-27 is retitled and its 4.37 s and 1.97 s are
+moved to it on the owner's choice of 2026-11-27), SilentWood's v3 of 2026-09-27 is retitled and its 4.37 s and 1.97 s are
 Table 2's means over 13 UCI datasets at 16-bit inputs, and the iDASH 2026 page names each track's winners since
 2026-11-19 (both in `model-choice-vs-2026-practice.md`).
 

@@ -346,6 +346,31 @@ async function aggregatorView(keys, extra) {
     "one client reported a nonzero pair count");
 }
 
+// --------------------------------------------------------------------------------------------- //
+//  A dropped or repeated client is REFUSED, not summed (Round 86, batch 11; the owner's choice)
+// --------------------------------------------------------------------------------------------- //
+// There is no dropout recovery. Without this refusal a missing share leaves its masks in the sum and
+// the K - 1 shares add up to something that looks like any aggregate and is not the mean.
+{
+  const { aggregate, maskedShares } = m.secureAggregate(UPDATES, W, A.seeds, 0);
+  const all = maskedShares.map((share, client) => ({ client, share }));
+  const full = m.aggregateRound([...all].reverse(), K);
+  check("a-full-round-in-any-order-is-the-aggregate", full.every((v, k) => Object.is(v, aggregate[k])),
+    "aggregateRound over the same shares in another order differs from secureAggregate's aggregate");
+  const why = (f) => { try { f(); return ""; } catch (e) { return String(e?.message ?? e); } };
+  const dropped = why(() => m.aggregateRound(all.filter((s) => s.client !== 2), K));
+  check("a-dropped-client-is-refused-and-named", /client 2 dropped/.test(dropped), dropped || "a round without client 2 was summed");
+  const repeated = why(() => m.aggregateRound([...all, all[1]], K));
+  check("a-repeated-share-is-refused-and-named", /client 1 submitted twice/.test(repeated), repeated || "a repeated share was summed");
+  const stranger = why(() => m.aggregateRound([...all.slice(0, K - 1), { client: K, share: all[K - 1].share }], K));
+  check("a-share-from-outside-the-round-is-refused", /not one of the round/.test(stranger), stranger || "a share from client K was summed");
+  // What the refusal prevents: the plain sum of K - 1 shares, which nothing would flag.
+  const silent = m.aggregateMaskedShares(maskedShares.filter((_, u) => u !== 2));
+  const exact = UPDATES[0].map((_, k) => UPDATES.reduce((s, wl, u) => s + wl[k] * W[u], 0));
+  const off = Math.max(...silent.map((v, k) => Math.abs(v - exact[k])));
+  check("without-the-refusal-the-sum-is-silently-wrong", off > 1, `the K - 1 shares summed to within ${off} of the mean`);
+}
+
 rmSync(dir, { recursive: true, force: true });
 
 if (failures.length) {
@@ -355,4 +380,4 @@ if (failures.length) {
 }
 console.log("check:qfl OK - pairwise masks are applied, keyed by each pair's X25519 secret through HKDF, " +
             "untouched by the session key, fresh per round, and cancel to a bit-identical weighted mean; " +
-            "there is no plaintext path");
+            "a dropped, repeated or unknown client's share is refused, not summed; there is no plaintext path");
