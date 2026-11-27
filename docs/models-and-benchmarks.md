@@ -499,6 +499,26 @@ NoduleMNIST3D's official-split figures (ResNet-18 3D 0.863, ResNet-50 3D 0.875, 
 context and not compared: that split shares scans across its parts and labels differently. Membership inference
 against these students is in `docs/measurements/mia-nodule3d-*.json`.
 
+**At each step, as Lee et al. report theirs (Round 86, batch 8).** Pre-registered on the owner's choice of 2026-11-27
+(`references/medical-nodule3d-reporting-preregistration.md` and its addendum), computed on the CPU over the same 347
+test crops of 148 patients, each figure with a 95 percent interval over 2,000 resamples of the test patients
+(`docs/measurements/medical-nodule3d-reporting-2026-11-27.json`):
+
+| step | AUC | AUPRC |
+|---|---|---|
+| the teacher: the mean of the 3D ResNet-18's five fold networks | 0.941 (0.906 to 0.969) | 0.891 (0.819 to 0.946) |
+| the ReLU control, five seeds | 0.882 (sd 0.027) | 0.767 (sd 0.037) |
+| the square student, five seeds | 0.907 (sd 0.009) | 0.823 (sd 0.020) |
+| the shipped seed (5), in the clear | 0.893 (0.848 to 0.933) | 0.809 (0.719 to 0.890) |
+| the shipped seed under CKKS A2 or B, its decrypted logits | 0.893 (0.848 to 0.933) | 0.809 (0.719 to 0.890) |
+
+A model that ranks at random has an AUPRC of 0.314, the test part's malignant share. The distillation costs about
+0.03 of AUC against the teacher, whose five fold networks were each trained on three fifths of the training patients;
+the square beats the ReLU control at either measure; and encryption costs nothing measurable: under both parameter sets
+the decrypted logits give the clear ones' AUC and AUPRC to the sixth decimal, so no malignant-benign pair changed
+order (largest logit error $`3.9 \times 10^{-5}`$ under A2, $`1.5 \times 10^{-5}`$ under B). The recomputed students' test AUCs match the record's within two of its
+25,942 malignant-benign pairs, as the addendum allows: the record's came from GPU logits, these from the CPU.
+
 #### A fully encrypted finance student, not adopted (F7)
 
 The finance page runs two private paths: the linear student, which CKKS evaluates alone (test AUPRC 0.184, minority-class

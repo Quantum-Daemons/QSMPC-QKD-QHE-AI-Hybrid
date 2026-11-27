@@ -1,0 +1,281 @@
+{
+ "preregistration": {
+  "file": "references/medical-nodule3d-reporting-preregistration.md",
+  "sha256": "90bdaac561b78722626c50e7e5a414d1187d30b684753a10543ea9179432d268"
+ },
+ "of_record": {
+  "file": "docs/measurements/medical-nodule3d-square-student.json",
+  "sha256": "d43664f1be46801f5f029832616131f690f905c9efd5d3b48b316abf79f49d5e"
+ },
+ "test_part": {
+  "crops": 347,
+  "patients": 148,
+  "malignant": 109,
+  "malignant_share": 0.314121
+ },
+ "device": "cpu",
+ "environment": {
+  "python": "3.12.15",
+  "torch": "2.13.0+cu130",
+  "kernel": "5.14.0-687.66.2.el9_8.x86_64",
+  "cpu": "x86_64"
+ },
+ "teacher": {
+  "what": "the mean of the 3D ResNet-18 candidate's five fold networks' probabilities; each fold network trained on three fifths of the training patients and stopped on a fourth; none fitted on every training patient",
+  "auc": 0.940791,
+  "auc_ci95": [
+   0.905733,
+   0.969417
+  ],
+  "auprc": 0.891167,
+  "auprc_ci95": [
+   0.819031,
+   0.946257
+  ],
+  "resamples": 2000,
+  "per_fold_auc": [
+   0.911341,
+   0.9209,
+   0.929805,
+   0.909105,
+   0.907332
+  ]
+ },
+ "students": {
+  "square": {
+   "1": {
+    "auc": 0.914733,
+    "auc_ci95": [
+     0.874736,
+     0.949266
+    ],
+    "auprc": 0.848294,
+    "auprc_ci95": [
+     0.766001,
+     0.917757
+    ],
+    "resamples": 2000,
+    "recorded_test_auc_gpu": 0.914733
+   },
+   "2": {
+    "auc": 0.909645,
+    "auc_ci95": [
+     0.868142,
+     0.946088
+    ],
+    "auprc": 0.815694,
+    "auprc_ci95": [
+     0.721344,
+     0.905178
+    ],
+    "resamples": 2000,
+    "recorded_test_auc_gpu": 0.909645
+   },
+   "3": {
+    "auc": 0.905867,
+    "auc_ci95": [
+     0.861789,
+     0.943044
+    ],
+    "auprc": 0.803491,
+    "auprc_ci95": [
+     0.707913,
+     0.898369
+    ],
+    "resamples": 2000,
+    "recorded_test_auc_gpu": 0.905905
+   },
+   "4": {
+    "auc": 0.913654,
+    "auc_ci95": [
+     0.870776,
+     0.950498
+    ],
+    "auprc": 0.840576,
+    "auprc_ci95": [
+     0.756194,
+     0.911738
+    ],
+    "resamples": 2000,
+    "recorded_test_auc_gpu": 0.913654
+   },
+   "5": {
+    "auc": 0.892568,
+    "auc_ci95": [
+     0.847758,
+     0.933242
+    ],
+    "auprc": 0.808515,
+    "auprc_ci95": [
+     0.719063,
+     0.889704
+    ],
+    "resamples": 2000,
+    "recorded_test_auc_gpu": 0.892568
+   },
+   "mean": {
+    "auc": 0.907293,
+    "auc_sd": 0.008947,
+    "auprc": 0.823314,
+    "auprc_sd": 0.01995
+   }
+  },
+  "control": {
+   "1": {
+    "auc": 0.89862,
+    "auc_ci95": [
+     0.856337,
+     0.937869
+    ],
+    "auprc": 0.793366,
+    "auprc_ci95": [
+     0.705883,
+     0.883412
+    ],
+    "resamples": 2000,
+    "recorded_test_auc_gpu": 0.898659
+   },
+   "2": {
+    "auc": 0.887364,
+    "auc_ci95": [
+     0.84222,
+     0.926866
+    ],
+    "auprc": 0.789412,
+    "auprc_ci95": [
+     0.702776,
+     0.871762
+    ],
+    "resamples": 2000,
+    "recorded_test_auc_gpu": 0.887441
+   },
+   "3": {
+    "auc": 0.901627,
+    "auc_ci95": [
+     0.859048,
+     0.93835
+    ],
+    "auprc": 0.776828,
+    "auprc_ci95": [
+     0.679376,
+     0.871997
+    ],
+    "resamples": 2000,
+    "recorded_test_auc_gpu": 0.901627
+   },
+   "4": {
+    "auc": 0.835518,
+    "auc_ci95": [
+     0.781736,
+     0.885104
+    ],
+    "auprc": 0.701893,
+    "auprc_ci95": [
+     0.594144,
+     0.80437
+    ],
+    "resamples": 2000,
+    "recorded_test_auc_gpu": 0.835556
+   },
+   "5": {
+    "auc": 0.88694,
+    "auc_ci95": [
+     0.839623,
+     0.930218
+    ],
+    "auprc": 0.775556,
+    "auprc_ci95": [
+     0.677318,
+     0.871195
+    ],
+    "resamples": 2000,
+    "recorded_test_auc_gpu": 0.886979
+   },
+   "mean": {
+    "auc": 0.882014,
+    "auc_sd": 0.02681,
+    "auprc": 0.767411,
+    "auprc_sd": 0.037434
+   }
+  }
+ },
+ "shipped_seed": {
+  "seed": 5,
+  "folded_float64": {
+   "auc": 0.892568,
+   "auc_ci95": [
+    0.847758,
+    0.933242
+   ],
+   "auprc": 0.808515,
+   "auprc_ci95": [
+    0.719063,
+    0.889704
+   ],
+   "resamples": 2000
+  }
+ },
+ "encrypted": {
+  "A2": {
+   "decrypted": {
+    "auc": 0.892568,
+    "auc_ci95": [
+     0.847758,
+     0.933242
+    ],
+    "auprc": 0.808515,
+    "auprc_ci95": [
+     0.719063,
+     0.889704
+    ],
+    "resamples": 2000
+   },
+   "plaintext_same_run": {
+    "auc": 0.892568,
+    "auc_ci95": [
+     0.847758,
+     0.933242
+    ],
+    "auprc": 0.808515,
+    "auprc_ci95": [
+     0.719063,
+     0.889704
+    ],
+    "resamples": 2000
+   },
+   "max_abs_logit_error": 3.8978127099742466e-05,
+   "crops": 347
+  },
+  "B": {
+   "decrypted": {
+    "auc": 0.892568,
+    "auc_ci95": [
+     0.847758,
+     0.933242
+    ],
+    "auprc": 0.808515,
+    "auprc_ci95": [
+     0.719063,
+     0.889704
+    ],
+    "resamples": 2000
+   },
+   "plaintext_same_run": {
+    "auc": 0.892568,
+    "auc_ci95": [
+     0.847758,
+     0.933242
+    ],
+    "auprc": 0.808515,
+    "auprc_ci95": [
+     0.719063,
+     0.889704
+    ],
+    "resamples": 2000
+   },
+   "max_abs_logit_error": 1.4709803019763434e-05,
+   "crops": 347
+  }
+ },
+ "wall_clock_s": 2983.8
+}
