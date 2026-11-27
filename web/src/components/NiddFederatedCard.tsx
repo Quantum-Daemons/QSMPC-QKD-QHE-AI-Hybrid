@@ -9,6 +9,7 @@ import { CartesianGrid, Legend, Line, LineChart, ReferenceLine, ResponsiveContai
 import { ChartReadout, HINT_POINTER, ReadoutTooltip } from "./ChartReadout";
 import { MarksHidden } from "./VerificationChart";
 import StageBadge from "./StageBadge";
+import NiddDirichletSection from "./NiddDirichletSection";
 
 type ByStation = { station_1: number; station_2: number };
 interface Arm { test: ByStation; flamby_metric: number }
@@ -180,6 +181,7 @@ export default function NiddFederatedCard({ live }: { live: NiddFederatedLive | 
           Run the pipeline to replay the last aggregation in this tab and score the federated model under CKKS.
         </p>
       )}
+      <NiddDirichletSection />
       <p className="small muted" style={{ marginTop: 6 }}>
         What it is not: with two stations, each can compute the other&apos;s update from the global model it receives and its
         own, so the masks hide the updates from the aggregator only. The stations exchanged their row counts and each

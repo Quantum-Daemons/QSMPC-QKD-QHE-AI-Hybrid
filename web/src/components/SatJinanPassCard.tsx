@@ -4,6 +4,7 @@
 // seen (the pre-registration's addendum 2), and the card says so. Every figure is read from
 // web/public/data/satellite/jinan1_pass.json, which scripts/measure_jinan1_pass.py --post-hoc writes beside its record.
 import { useEffect, useId, useMemo, useState } from "react";
+import SatJinanV2Section from "./SatJinanV2Section";
 import { CartesianGrid, ComposedChart, Legend, Line, ResponsiveContainer, Scatter, Tooltip, XAxis, YAxis } from "recharts";
 import { ChartReadout, HINT_POINTER, ReadoutTooltip } from "./ChartReadout";
 import { MarksHidden } from "./VerificationChart";
@@ -114,6 +115,7 @@ export default function SatJinanPassCard() {
           model&apos;s own background term, the mean residual stays between {sign(r.mean_residual_db[0])} and
           {" "}{sign(r.mean_residual_db[1])} dB and every fall within {r.largest_fall_difference_db.toFixed(2)} dB.</li> : null}
       </ul>
+      <SatJinanV2Section />
       <p className="small muted" style={{ marginTop: 6 }}>
         Pre-registration and its addenda: <code>{d.preregistration.file}</code>; record: <code>{d.record}</code>. Data:{" "}
         <a href={d.licence_url} target="_blank" rel="noreferrer">{d.licence}</a>; {d.attribution}
