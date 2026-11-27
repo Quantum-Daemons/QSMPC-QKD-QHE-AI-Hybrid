@@ -28,7 +28,9 @@ from qsh.models import datasets as D  # noqa: E402
 
 PREREG = REPO / "references" / "telecom-nidd-clean-protocols-preregistration.md"
 PREREG_SHA256 = "7d4feebfdccb8c2626e614445999ef48ac23dff2c8071f20b2fb1140d5750aed"  # committed in 8e91b10
-RECORD = REPO / "docs" / "measurements" / f"telecom-nidd-clean-protocols-{time.strftime('%Y-%m-%d')}.json"
+# One record for every arm, named by the day the re-run began (the single-feature check, 2026-11-27); each arm adds
+# its part, so an arm run on a later day writes to the same file.
+RECORD = REPO / "docs" / "measurements" / "telecom-nidd-clean-protocols-2026-11-27.json"
 SIX = ("sHops", "dHops", "sVid", "dVid", "SrcTCPBase", "DstTCPBase")
 TTL = ("sTtl", "dTtl")
 FLAG_F1 = 0.99
