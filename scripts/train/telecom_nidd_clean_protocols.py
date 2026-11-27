@@ -337,7 +337,21 @@ def main() -> int:
     ap.add_argument("--check-only", action="store_true")
     ap.add_argument("--arm", choices=("student", "federation", "teacher", "mlp", "crosstestbed"))
     ap.add_argument("--device", default="cuda")
+    ap.add_argument("--part", type=Path, default=None,
+                    help="write this arm's result to its own file instead of the record, so two arms can run at once")
+    ap.add_argument("--merge-parts", type=Path, nargs="+", default=None,
+                    help="fold part files into the record, each under its arm's key; run nothing")
     args = ap.parse_args()
+    if args.merge_parts:
+        record = json.loads(RECORD.read_text())
+        for part in args.merge_parts:
+            got = json.loads(part.read_text())
+            if got["preregistration"]["sha256"] != PREREG_SHA256 or got["parts"] != record["parts"]:
+                raise SystemExit(f"{part} was not written under this pre-registration and these splits: merge nothing")
+            record[got["arm"]] = got["result"]
+        RECORD.write_text(json.dumps(record, indent=1) + "\n")
+        print(f"merged {[p.name for p in args.merge_parts]} into {RECORD.relative_to(REPO)}")
+        return 0
     got = hashlib.sha256(PREREG.read_bytes()).hexdigest()
     if got != PREREG_SHA256:
         raise SystemExit(f"{PREREG.name} hashes to {got}, not the committed {PREREG_SHA256}: run nothing")
@@ -346,6 +360,9 @@ def main() -> int:
     record = json.loads(RECORD.read_text()) if RECORD.exists() else {
         "preregistration": {"file": str(PREREG.relative_to(REPO)), "sha256": PREREG_SHA256}, "classes": classes,
         "rows": int(len(y)), "parts": {p: [int(len(a)) for a in v] for p, v in parts.items()}}
+    sizes = {p: [int(len(a)) for a in v] for p, v in parts.items()}
+    if record["parts"] != sizes or record["rows"] != int(len(y)):
+        raise SystemExit("the splits computed here differ from the record's: run nothing")
     if args.check_only:
         record["single_feature_check"] = single_feature_check(X, y, feat, parts)
     elif args.arm == "student":
@@ -363,6 +380,13 @@ def main() -> int:
     elif args.arm == "crosstestbed":
         nl = Path(D.data_root()) / "raw" / "netslab-5goran-idd" / "Network_Dataset.csv"
         record["crosstestbed"] = crosstestbed_arm(X, y, k, classes, feat, parts["P2"][0], parts["P2"][1], nl, args.device)
+    if args.part is not None:
+        arm = "single_feature_check" if args.check_only else args.arm
+        args.part.parent.mkdir(parents=True, exist_ok=True)
+        args.part.write_text(json.dumps({"arm": arm, "preregistration": record["preregistration"], "parts": record["parts"],
+                                         "result": record[arm]}, indent=1) + "\n")
+        print(f"wrote the {arm} part to {args.part}")
+        return 0
     RECORD.write_text(json.dumps(record, indent=1) + "\n")
     print(f"wrote {RECORD.relative_to(REPO)}")
     return 0
