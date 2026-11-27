@@ -21,6 +21,12 @@ against the same record on every visit (checklist PI25).
 The graphs are not in the repository (only their digests are), so on a machine without them this skips and names
 what is missing; `scripts/ci_local.sh` runs it where they are. `QSH_RESCORE_TRUST_LOCAL=1` replaces the digest check
 with a stand-in, for measuring a sample before it is published (the run prints the largest differences).
+
+A worktree has none of the gitignored graphs, so until 2026-11-28 this skipped in every worktree gate as it does in CI,
+and nothing said so but a skip line. `QSH_PUBLISHED_GRAPHS` names a checkout that holds them: a graph absent here is
+served from there, under the same digest check, so only the pinned bytes pass. `QSH_REQUIRE_PUBLISHED_GRAPHS=1` turns
+the skip into a failure. And a sample that names a graph but carries no per-row record was left out in silence; the
+last test below, which needs no graph and runs in CI, now requires every one to carry it.
 """
 
 from __future__ import annotations
@@ -82,7 +88,11 @@ await build({
 // Every Hub request is answered from the local copy of the file at that path; anything else is a 404.
 globalThis.fetch = async (url) => {
   const m = String(url).match(/^https:\/\/huggingface\.co\/([^/]+\/[^/]+)\/resolve\/[0-9a-f]{40}\/(.+)$/);
-  const local = m && plan.dirs[m[1]] ? join(plan.dirs[m[1]], decodeURIComponent(m[2])) : null;
+  let local = m && plan.dirs[m[1]] ? join(plan.dirs[m[1]], decodeURIComponent(m[2])) : null;
+  // A graph this checkout lacks, from the checkout QSH_PUBLISHED_GRAPHS names; the page's digest check still applies.
+  if (local && !existsSync(local) && (plan.graphDirs || {})[m[1]] && decodeURIComponent(m[2]).startsWith("onnx/")) {
+    local = join(plan.graphDirs[m[1]], decodeURIComponent(m[2]));
+  }
   if (!local || !existsSync(local)) return new Response("Entry not found", { status: 404 });
   const seed = plan.seed;
   if (seed && m[1] === seed.repo && m[2] === "eval_sample.json") {
@@ -113,14 +123,17 @@ process.exit(0);
 """
 
 
-def _plan() -> tuple[list[dict], dict[str, str], list[str]]:
+def _plan() -> tuple[list[dict], dict[str, str], dict[str, str], list[str], list[str]]:
+    """The models to re-score, their directories, where an absent graph is served from, what is absent, and the keys
+    whose sample names a graph without a per-row record."""
     import sys
 
     sys.path.insert(0, str(REPO / "src"))
     from qsh.models import registry
 
     pins = json.loads((REPO / "models" / "hub_file_hashes.json").read_text())
-    models, dirs, missing = [], {}, []
+    other = os.environ.get("QSH_PUBLISHED_GRAPHS")
+    models, dirs, graph_dirs, missing, unrecorded = [], {}, {}, [], []
     for usecase, specs in registry.frontend_models().items():
         for spec in specs:
             key = spec["key"]
@@ -130,22 +143,29 @@ def _plan() -> tuple[list[dict], dict[str, str], list[str]]:
             sample = directory / "eval_sample.json"
             if key not in pins or not sample.exists():
                 continue
-            data = json.loads(sample.read_text())
-            if "per_row" not in data.get("expected", {}):
+            expected = json.loads(sample.read_text()).get("expected", {})
+            if "per_row" not in expected:
+                if "graph" in expected:
+                    unrecorded.append(key)
                 continue
-            graph = directory / "onnx" / data["expected"]["graph"]
+            graph = directory / "onnx" / expected["graph"]
+            if not graph.exists() and other:
+                there = Path(other) / registry.ARTIFACT_DIRS[key]
+                if (there / "onnx" / expected["graph"]).exists():
+                    graph_dirs[spec["hf_repo_id"]] = str(there)
+                    graph = there / "onnx" / expected["graph"]
             if not graph.exists():
-                missing.append(str(graph.relative_to(REPO)))
+                missing.append(str((directory / "onnx" / expected["graph"]).relative_to(REPO)))
                 continue
             models.append({"usecase": usecase, "key": key})
             dirs[spec["hf_repo_id"]] = str(directory)
-    return models, dirs, missing
+    return models, dirs, graph_dirs, missing, unrecorded
 
 
-def _run(tmp_path, models: list[dict], dirs: dict[str, str], seed: dict | None = None,
+def _run(tmp_path, models: list[dict], dirs: dict[str, str], graph_dirs: dict[str, str], seed: dict | None = None,
          trust: bool = False) -> list[dict]:
     plan = tmp_path / "plan.json"
-    plan.write_text(json.dumps({"models": models, "dirs": dirs, "seed": seed}))
+    plan.write_text(json.dumps({"models": models, "dirs": dirs, "graphDirs": graph_dirs, "seed": seed}))
     script = tmp_path / "harness.mjs"
     script.write_text(HARNESS)
     env = {**os.environ, **({"QSH_RESCORE_TRUST_LOCAL": "1"} if trust else {})}
@@ -155,20 +175,25 @@ def _run(tmp_path, models: list[dict], dirs: dict[str, str], seed: dict | None =
     return json.loads(proc.stdout.strip().splitlines()[-1])
 
 
-def _ready() -> tuple[list[dict], dict[str, str]]:
+def _ready() -> tuple[list[dict], dict[str, str], dict[str, str]]:
     if not ESBUILD.exists() or shutil.which("node") is None:
         pytest.skip("node or web/node_modules is absent, so the page's re-scoring cannot run here")
-    models, dirs, missing = _plan()
+    models, dirs, graph_dirs, missing, _ = _plan()
     if missing:
-        pytest.skip("the published graphs are not in the repository; absent here: " + ", ".join(missing))
+        msg = ("the published graphs are not in the repository; absent here"
+               + (" and in QSH_PUBLISHED_GRAPHS" if os.environ.get("QSH_PUBLISHED_GRAPHS") else "") + ": "
+               + ", ".join(missing))
+        if os.environ.get("QSH_REQUIRE_PUBLISHED_GRAPHS") == "1":
+            pytest.fail(msg + ". QSH_REQUIRE_PUBLISHED_GRAPHS=1 is set, so this is a failure, not a skip.")
+        pytest.skip(msg)
     if not models:
         pytest.skip("no sample carries a per-row record yet")
-    return models, dirs
+    return models, dirs, graph_dirs
 
 
 def test_every_published_graph_reproduces_each_row_of_its_record(tmp_path) -> None:
-    models, dirs = _ready()
-    results = _run(tmp_path, models, dirs)
+    models, dirs, graph_dirs = _ready()
+    results = _run(tmp_path, models, dirs, graph_dirs)
     report = []
     for r in results:
         pr = r["perRow"] or {}
@@ -187,13 +212,20 @@ def test_every_published_graph_reproduces_each_row_of_its_record(tmp_path) -> No
 
 def test_a_record_altered_by_one_row_fails_the_verification(tmp_path) -> None:
     """Seeded: one decision flipped, then one margin moved by 0.01, in the telecom QML sample as served."""
-    models, dirs = _ready()
+    models, dirs, graph_dirs = _ready()
     qml = [m for m in models if m["key"] == "telecom_ids.qml"]
     if not qml:
         pytest.skip("the telecom QML graph is not here")
     repo = next(r for r, d in dirs.items() if d.endswith("telecom_qml_ids"))
-    flipped = _run(tmp_path, qml, dirs, seed={"repo": repo, "flip": 0}, trust=True)[0]
+    flipped = _run(tmp_path, qml, dirs, graph_dirs, seed={"repo": repo, "flip": 0}, trust=True)[0]
     assert flipped["perRow"]["mismatches"] == 1 and not flipped["matchesExpected"], flipped
-    nudged = _run(tmp_path, qml, dirs, seed={"repo": repo, "nudge": 1, "by": 0.01}, trust=True)[0]
+    nudged = _run(tmp_path, qml, dirs, graph_dirs, seed={"repo": repo, "nudge": 1, "by": 0.01}, trust=True)[0]
     assert nudged["perRow"]["mismatches"] == 0 and nudged["perRow"]["maxDiff"] > nudged["perRow"]["tolerance"], nudged
     assert not nudged["matchesExpected"], nudged
+
+
+def test_every_published_sample_that_names_a_graph_carries_its_per_row_record() -> None:
+    """Needs no graph, so it runs in CI: a sample without the record would be re-scored by one aggregate within 0.05."""
+    *_, unrecorded = _plan()
+    assert not unrecorded, f"these published samples name a graph and carry no per-row record: {unrecorded}"
+

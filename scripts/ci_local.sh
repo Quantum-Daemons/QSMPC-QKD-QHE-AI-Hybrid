@@ -30,6 +30,10 @@ step "1/18 test suite (pytest -m 'not slow')"
 # every step that writes a file it reads (the generated config and prose, the wasm, the web build and its notices, the
 # scan's own build) and beside the two text-layout scans, which then run at once, the README diagrams and the CSP check.
 # Its verdict prints after step 8b, before step 9. The checks are the same; unset, the order is CI's, as above.
+# QSH_PUBLISHED_GRAPHS names a checkout that holds the published ONNX graphs, which are gitignored and so absent from
+# every worktree; tests/test_r86_published_rescore.py serves a graph absent here from there, under the page's digest
+# check, and QSH_REQUIRE_PUBLISHED_GRAPHS=1 makes a graph found in neither a failure rather than a skip (2026-11-28:
+# until then the only test that runs the real runtime on every published graph skipped in every worktree gate).
 run_pytest() {
   HF_HUB_OFFLINE=1 QSH_REQUIRE_BROWSER_GATES=1 QSH_REQUIRE_LIBSODIUM=1 "$PY" -m pytest -m "not slow" -q -p no:warnings \
     >/tmp/ci_pytest.log 2>&1
