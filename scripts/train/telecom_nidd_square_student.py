@@ -127,6 +127,25 @@ def bootstrap(y_true: np.ndarray, pred: np.ndarray, station: np.ndarray, k: int)
                       "present in its resample, then their mean"}
 
 
+#: Found on 2026-11-28 before anything was trained, and why `train` records the BLAS threads: the control's L-BFGS-B
+#: stops by its relative-reduction test (135 iterations here, not its 1,000 cap) on a nearly flat objective (the
+#: grid's smallest penalty), so the summation order a thread count gives moves where it stops. Under four OpenBLAS
+#: threads the same procedure scored a test FLamby metric of 0.966538 against the re-run's 0.963155, and the guard
+#: below refused to train; under the default threads, as the re-run ran, it is the record's to every digit.
+CONTROL_THREADS_NOTE = ("the control is the re-run's linear student, refitted under the re-run's default BLAS threading and "
+                        "found equal to its record; under 4 OpenBLAS threads the same procedure stops elsewhere (test "
+                        "FLamby 0.966538 against 0.963155), since L-BFGS-B ends by its relative-reduction test on a "
+                        "nearly flat objective")
+
+
+def blas_threads() -> list[dict]:
+    try:
+        from threadpoolctl import threadpool_info
+    except ImportError:
+        return []
+    return [{k: d.get(k) for k in ("internal_api", "num_threads", "version")} for d in threadpool_info()]
+
+
 def stage_train(work: Path, device: str) -> int:
     import torch
 
@@ -182,9 +201,11 @@ def stage_train(work: Path, device: str) -> int:
                  "from": "the re-run's loader, splits and inputs (scripts/train/telecom_nidd_clean_protocols.py)"},
         "device": {"requested": device, "torch": torch.__version__,
                    "gpu": torch.cuda.get_device_name(0) if device.startswith("cuda") and torch.cuda.is_available() else None,
-                   "cuda": torch.version.cuda, "python": platform.python_version()},
+                   "cuda": torch.version.cuda, "python": platform.python_version(), "blas": blas_threads(),
+                   "thread_variables": {v: os.environ.get(v) for v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS",
+                                                                      "MKL_NUM_THREADS")}},
         "control": {"what": "the re-run's linear student under P2 on F30, refitted and found equal to its record",
-                    **control},
+                    "threads": CONTROL_THREADS_NOTE, **control},
         "arms": {"square": arms},
         "export_seed": int(export),
         "export_bootstrap": bootstrap(y[test], pred, station[test], k),
