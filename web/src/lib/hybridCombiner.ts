@@ -78,6 +78,38 @@ export function kemNameFor(sel: string | undefined | null): string {
 }
 
 /**
+ * FIPS 203 Table 3 and RFC 7748: the fixed widths the transcript's unprefixed concatenation relies on, per parameter
+ * set. The fields carry no length prefixes, which is unambiguous only while every field has its parameter set's width.
+ */
+export const HYBRID_WIDTHS: Record<string, { c1: number; ek1: number }> = {
+  "ML-KEM-768": { c1: 1088, ek1: 1184 },
+  "ML-KEM-1024": { c1: 1568, ek1: 1568 },
+};
+
+/**
+ * The aborts RFC 10024 (August 2026) requires of a hybrid group's peer, applied at the one place every path derives its
+ * key (Round 86, batch 11; the owner's choice of 2026-11-28): section 4.2, a ciphertext whose length does not match the
+ * parameter set; section 4.3, an all-zero X25519 shared secret. `@noble/curves` already refuses a low-order X25519 key
+ * (Wycheproof's cases, `check:netkeys`) and ML-KEM's decapsulation a ciphertext of the wrong length, so this is the
+ * second line, which also holds the transcript to its widths. The order of the two secrets, ML-KEM first, is the
+ * order section 4.3 gives X25519MLKEM768; this combiner then derives with HKDF rather than TLS's key schedule, so it is
+ * NOT that group, and nothing here claims it.
+ */
+export function checkHybridInputs(ssPq: Uint8Array, ssClassical: Uint8Array, tr: CombinerTranscript, kemName: string): void {
+  const w = HYBRID_WIDTHS[kemName];
+  const refuse = (what: string): never => {
+    throw new Error(`hybrid KEM refused: ${what}; RFC 10024 requires the exchange to abort`);
+  };
+  if (!w) refuse(`unknown parameter set ${kemName}`);
+  if (tr.c1.length !== w.c1) refuse(`the ${kemName} ciphertext is ${tr.c1.length} bytes, not ${w.c1} (section 4.2)`);
+  if (tr.ek1.length !== w.ek1) refuse(`the ${kemName} encapsulation key is ${tr.ek1.length} bytes, not ${w.ek1}`);
+  if (tr.c2.length !== 32 || tr.ek2.length !== 32) refuse(`an X25519 share is ${tr.c2.length} or ${tr.ek2.length} bytes, not 32`);
+  if (ssPq.length !== 32) refuse(`the ML-KEM shared secret is ${ssPq.length} bytes, not 32`);
+  if (ssClassical.length !== 32) refuse(`the X25519 shared secret is ${ssClassical.length} bytes, not 32`);
+  if (ssClassical.every((b) => b === 0)) refuse("the X25519 shared secret is all zeros (section 4.3)");
+}
+
+/**
  * Derive the hybrid shared secret. Byte-identical to `hybrid_kem._combine` for the same inputs.
  *
  * IKM is `ss_pq || ss_classical` and the transcript rides in `info`, which is what the Python side
@@ -88,6 +120,7 @@ export function hybridCombine(
   ssPq: Uint8Array, ssClassical: Uint8Array, tr: CombinerTranscript,
   kemName: string, length = 32,
 ): Uint8Array {
+  checkHybridInputs(ssPq, ssClassical, tr, kemName);
   const label = hybridCombinerInfo(kemName, length);
   const info = new Uint8Array(label.length + tr.c1.length + tr.c2.length + tr.ek1.length + tr.ek2.length);
   let o = 0;

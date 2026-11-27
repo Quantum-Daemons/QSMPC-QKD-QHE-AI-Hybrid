@@ -203,6 +203,29 @@ for (const v of vectors) {
   }
 }
 
+// ---------------------------------------------------------------------------------------------
+// 9. The aborts RFC 10024 requires (Round 86, batch 11): each refused, the valid vector still derived.
+// ---------------------------------------------------------------------------------------------
+let refusals = 0;
+{
+  const v = vectors.find((x) => x.kem === "ML-KEM-768" && x.length === 32);
+  const base = { c1: unhex(v.c1), c2: unhex(v.c2), ek1: unhex(v.ek1), ek2: unhex(v.ek2) };
+  const cases = [
+    ["a 1087-byte ML-KEM-768 ciphertext (section 4.2)", unhex(v.k1), unhex(v.k2), { ...base, c1: base.c1.slice(0, -1) }, "ML-KEM-768", /ciphertext is 1087 bytes/],
+    ["an ML-KEM-768-width ciphertext under the ML-KEM-1024 separator", unhex(v.k1), unhex(v.k2), base, "ML-KEM-1024", /ciphertext is 1088 bytes, not 1568/],
+    ["an all-zero X25519 shared secret (section 4.3)", unhex(v.k1), new Uint8Array(32), base, "ML-KEM-768", /all zeros/],
+    ["a 31-byte X25519 share", unhex(v.k1), unhex(v.k2), { ...base, c2: base.c2.slice(0, 31) }, "ML-KEM-768", /X25519 share/],
+  ];
+  for (const [what, k1, k2, tr, kem, want] of cases) {
+    let msg = "";
+    try { m.hybridCombine(k1, k2, tr, kem, 32); } catch (e) { msg = String(e?.message ?? e); }
+    check(`refuses ${what}`, want.test(msg), msg ? `refused with "${msg}"` : "derived a key instead of refusing");
+    if (want.test(msg)) refusals += 1;
+  }
+  check("the valid vector is still derived", hex(m.hybridCombine(unhex(v.k1), unhex(v.k2), base, "ML-KEM-768", 32)) === v.expected,
+        "a valid transcript no longer derives the committed key");
+}
+
 rmSync(dir, { recursive: true, force: true });
 
 if (failures.length) {
@@ -211,4 +234,4 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(`check:combiner OK (${vectors.length} hybrid-KEM vectors + the ITS combiner + the DEFAULT transport-HKDF combiner reproduced`
-            + " from the Python implementations)");
+            + ` from the Python implementations; ${refusals} RFC 10024 aborts refused)`);

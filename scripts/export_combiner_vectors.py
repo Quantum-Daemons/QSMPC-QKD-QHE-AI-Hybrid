@@ -49,7 +49,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-from qsh.pqc.hybrid_kem import _combine, _combiner_info  # noqa: E402
+from qsh.pqc.hybrid_kem import HYBRID_WIDTHS, _combine, _combiner_info, check_hybrid_inputs  # noqa: E402
 from qsh.pqc.transport import _mix_qkd, _mix_qkd_its  # noqa: E402
 
 OUT = ROOT / "web" / "scripts" / "vectors" / "hybrid_combiner_vectors.json"
@@ -70,13 +70,16 @@ CASES = [
 
 def main() -> int:
     k1, k2 = _pat(32, 3), _pat(32, 5)
-    # c1 || c2 || ek1 || ek2, the SP 800-227 s4.6.3 order. Sizes are ML-KEM-768's real ones
-    # (ct 1088, ek 1184) with X25519's 32-byte ephemeral and public.
-    c1, c2, ek1, ek2 = _pat(1088, 7), _pat(32, 11), _pat(1184, 13), _pat(32, 19)
-    transcript = c1 + c2 + ek1 + ek2
-
     vectors = []
     for case in CASES:
+        # c1 || c2 || ek1 || ek2, the SP 800-227 s4.6.3 order, at each parameter set's real widths (ML-KEM-768: ct
+        # 1088, ek 1184; ML-KEM-1024: 1568 and 1568) with X25519's 32-byte ephemeral and public. Until Round 86's
+        # batch 11 the ML-KEM-1024 case reused ML-KEM-768's widths, which the combiners now refuse, as RFC 10024
+        # section 4.2 requires of a ciphertext that does not match its parameter set.
+        w = HYBRID_WIDTHS[case["kem"]]
+        c1, c2, ek1, ek2 = _pat(w["c1"], 7), _pat(32, 11), _pat(w["ek1"], 13), _pat(32, 19)
+        check_hybrid_inputs(case["kem"], k1, k2, c1, c2, ek1, ek2)
+        transcript = c1 + c2 + ek1 + ek2
         info_prefix = _combiner_info(case["kem"])
         derived = _combine(k1, k2, transcript, case["length"], info_prefix)
         vectors.append({
