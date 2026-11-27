@@ -199,5 +199,11 @@
  },
  "licence": "CC-BY-4.0",
  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
- "attribution": "Li et al., 'Microsatellite-based real-time quantum key distribution', Nature 640, 47-54 (2025), arXiv:2408.10994. Data: its source data, Liao, Sheng-Kai, Zenodo doi:10.5281/zenodo.14732295, CC BY 4.0."
+ "attribution": {
+  "dataset": "Jinan-1 source data (Li et al., Nature 640, 47-54, 2025)",
+  "download": "https://doi.org/10.5281/zenodo.14732295",
+  "citation": "Li et al., 'Microsatellite-based real-time quantum key distribution', Nature 640, 47-54 (2025), arXiv:2408.10994. Data: its source data, Liao, Sheng-Kai, Zenodo doi:10.5281/zenodo.14732295, CC BY 4.0.",
+  "licence": "CC-BY-4.0"
+ },
+ "modifications": "Figures computed here from the source data's counts, ranges, QBER and key columns and from this project's model; no per-second row is shipped."
 }

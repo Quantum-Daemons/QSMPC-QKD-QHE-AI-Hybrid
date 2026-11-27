@@ -239,8 +239,11 @@ def run_record() -> int:
                       "exactly on a classical computer; QCNNs on classical data of this kind are classically simulable "
                       "(Bermejo et al., PRX Quantum 7, 020304, 2026). No quantum advantage is claimed."),
         "licence": "CC-BY-4.0", "licence_url": "https://creativecommons.org/licenses/by/4.0/",
-        "attribution": ("Spadea, F. and Seneviratne, O., From Risk to Rescue: An Agentic Survival Analysis Framework for "
-                        "Liquidation Prevention Dataset, Figshare, doi:10.6084/m9.figshare.31058368.v1, CC BY 4.0."),
+        "attribution": {"dataset": "From Risk to Rescue dataset (Aave v3, Polygon)",
+                        "download": "https://doi.org/10.6084/m9.figshare.31058368.v1", "licence": "CC-BY-4.0",
+                        "citation": ("Spadea, F. and Seneviratne, O., From Risk to Rescue: An Agentic Survival Analysis "
+                                     "Framework for Liquidation Prevention Dataset, Figshare, doi:10.6084/m9.figshare.31058368.v1, "
+                                     "CC BY 4.0.")},
         "modifications": ("Figures on the test window of a split by time of the archive's Borrow-to-Liquidated table, from "
                           "models fitted here on eight of its 80 numeric inputs; no rows, accounts or identifiers are shipped."),
     }, indent=1) + "\n")

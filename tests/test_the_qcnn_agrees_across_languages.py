@@ -366,6 +366,9 @@ def test_every_qcnn_implementation_is_pinned_to_another() -> None:
         "web/src/lib/clientFedHeart.ts": "the browser half of the same twin",
         "scripts/train/telecom_nidd_federated.py": ("a multinomial logistic regression's theta, FedAvg'd across 5G-NIDD's "
                                                     "two base stations; held to the page by tests/test_r86_nidd_federated.py"),
+        "scripts/train/telecom_nidd_dirichlet.py": ("the same logistic theta, FedAvg'd over eight Dirichlet-split clients "
+                                                    "with the federation's own local step (imported), and 'pooled' its "
+                                                    "1D-CNN reference arm (Round 86, batch 8); not a QCNN"),
         "scripts/audit_membership_inference.py": "the same logistic theta, the heart federation's arms re-implemented for "
                                                  "the membership audit ('pooled' its pooled arm, 'pool' the audit pool); "
                                                  "pinned to the twin weight for weight by "

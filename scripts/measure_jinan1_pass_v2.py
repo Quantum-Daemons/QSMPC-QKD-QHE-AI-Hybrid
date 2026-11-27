@@ -201,7 +201,12 @@ def main() -> int:
                                 **{k: record[k] for k in ("q1_atmosphere", "q2_sifted_bits", "q3_keys_by_block", "q4_other_passes",
                                                           "rules", "first_analysis")},
                                 "licence": "CC-BY-4.0", "licence_url": "https://creativecommons.org/licenses/by/4.0/",
-                                "attribution": J.CITATION}, indent=1) + "\n")
+                                "attribution": {"dataset": "Jinan-1 source data (Li et al., Nature 640, 47-54, 2025)",
+                                                "download": "https://doi.org/10.5281/zenodo.14732295",
+                                                "citation": J.CITATION, "licence": "CC-BY-4.0"},
+                                "modifications": ("Figures computed here from the source data's counts, ranges, QBER and key "
+                                                  "columns and from this project's model; no per-second row is shipped.")},
+                               indent=1) + "\n")
     print(json.dumps(record["rules"], indent=1))
     print(json.dumps({"q1": q1, "q2": {k: v for k, v in q2.items() if k in sets}}, indent=1))
     return 0

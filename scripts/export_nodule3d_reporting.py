@@ -33,6 +33,11 @@ def main() -> int:
                              "max_abs_logit_error": e["max_abs_logit_error"], "crops": e["crops"]}
                       for name, e in r["encrypted"].items()},
     }
+    student = json.loads((REPO / "web" / "public" / "data" / "medical" / "nodule3d_square_student.json").read_text())
+    payload["licence"], payload["licence_url"] = student["licence"], student["licence_url"]
+    payload["attribution"] = {"dataset": "LIDC-IDRI", "download": "https://doi.org/10.7937/K9/TCIA.2015.LO9QL9SX",
+                              "citation": student["attribution"], "licence": student["licence"]}
+    payload["modifications"] = "figures over the test part from the record; no crop, scan or patient is shipped"
     SITE.write_text(json.dumps(payload, indent=1) + "\n")
     print(f"wrote {SITE.relative_to(REPO)}")
     return 0

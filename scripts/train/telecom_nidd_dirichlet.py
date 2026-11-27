@@ -109,8 +109,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--seeds", type=int, nargs="+", default=[1, 2, 3, 4, 5])
+    ap.add_argument("--export-only", action="store_true", help="rewrite the page's file from the record; run nothing")
     args = ap.parse_args()
     started = time.time()
+    if args.export_only:
+        write_web(json.loads(RECORD.read_text()), json.loads(RECORD.read_text())["device_cnn"])
+        return 0
     got = hashlib.sha256(PREREG.read_bytes()).hexdigest()
     if got != PREREG_SHA256:
         raise SystemExit(f"{PREREG.name} hashes to {got}, not the committed {PREREG_SHA256}: run nothing")
@@ -304,16 +308,26 @@ def main() -> int:
     record["attribution"] = {"dataset": "5G-NIDD", "licence": DS_5G_NIDD.licence, "citation": DS_5G_NIDD.attribution}
     record["wall_clock_s"] = round(time.time() - started, 1)
     RECORD.write_text(json.dumps(record, indent=1) + "\n")
+    write_web(record, args.device)
+    print(json.dumps({"C1": record["C1"], "C2": record["C2"]}, indent=1))
+    return 0
+
+
+def write_web(record: dict, device: str) -> None:
+    """The page's file: the record's summaries and criteria, with the corpus's credit; no flow."""
     WEB.write_text(json.dumps({"_generated_by": "scripts/train/telecom_nidd_dirichlet.py; do not edit by hand",
                                "preregistration": record["preregistration"], "record": str(RECORD.relative_to(REPO)),
                                "clients": CLIENTS, "alpha": ALPHA, "summary": record["summary"], "C1": record["C1"],
-                               "C2": record["C2"], "references": record["references"], "device_cnn": args.device,
+                               "C2": record["C2"], "references": record["references"], "device_cnn": device,
                                "per_seed": {s: {arm: v[arm]["test"] for arm in ("linear_fedavg_masked", "cnn_fedavg", "cnn_pooled")}
                                             for s, v in record["seeds"].items()},
-                               "licence": DS_5G_NIDD.licence, "attribution": {"citation": DS_5G_NIDD.attribution}},
+                               "licence": DS_5G_NIDD.licence, "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+                               "attribution": {"dataset": "5G-NIDD", "licence": DS_5G_NIDD.licence,
+                                               "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+                                               "citation": DS_5G_NIDD.attribution,
+                                               "download": "https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361"},
+                               "modifications": "figures computed from 5G-NIDD by the pre-registered runs; no flow is shipped"},
                               indent=1) + "\n")
-    print(json.dumps({"C1": record["C1"], "C2": record["C2"]}, indent=1))
-    return 0
 
 
 if __name__ == "__main__":
