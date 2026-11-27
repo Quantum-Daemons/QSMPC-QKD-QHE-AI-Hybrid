@@ -740,6 +740,17 @@ student used its fit and validation rows. Every student and federation fit chose
 before; 12 of the 15 MLP seeds chose an epoch from 27 to 30 of their 30. Stated as measured; nothing here changes the
 page's models or the published ones, and the telecom page shows these figures on a card of their own.
 
+#### A square network for the telecom page's encrypted path, pre-registered (Round 86, batch 12)
+
+On the owner's choices of 2026-11-27 and 2026-11-28, whether the telecom page's encrypted 5G-NIDD path should offer the
+square MLP above (the time split, without the six) beside or in place of the linear student is pre-registered before
+any of its new seeds is trained
+([`references/telecom-nidd-square-student-preregistration.md`](../references/telecom-nidd-square-student-preregistration.md);
+`scripts/train/telecom_nidd_square_student.py`): the recipe unchanged on seeds 5 to 9, against the linear student by
+margins stated as chosen after the figures above; its fidelity under the page's own CKKS module, which takes any number
+of classes since this batch (`web/src/lib/clientFHESquareTabular.ts`, held to a NumPy reference for a nine-class
+network as for finance's two); and its time and memory in a Web Worker. The result is recorded whatever it is.
+
 #### The finance QCNN on AMLworld, pre-registered, and on the page since Round 86's batch 6
 
 On the owner's choice of 2026-11-25, pre-registered before any input was scored
