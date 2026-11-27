@@ -1866,7 +1866,19 @@ _SPECS: tuple[ModelSpec, ...] = (
             "NO STUDENT IS DISTILLED FROM THIS MODEL: the page's QKD-layer encrypted tier runs "
             "telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml). Since Round 86 the "
             "page also scores 5G-NIDD flows under CKKS, with a linear model trained on the labels and with one the "
-            "corpus's two base stations federated (telecom_ids.nidd_federated), neither distilled from this model."
+            "corpus's two base stations federated (telecom_ids.nidd_federated), neither distilled from this model. "
+            "UNDER LEAKAGE-AWARE PROTOCOLS (Round 86, batch 9). Hameed and Ibrahim (J. Cybersecur. Priv. 6(6):205, 2026) "
+            "find that random splits of flows and six identifier-like columns inflate 5G-NIDD scores, so this recipe was "
+            "run again, as pre-registered before any fit (references/telecom-nidd-clean-protocols-preregistration.md), "
+            "five seeds each. By the mean of the two stations' macro F1: 0.9972 on the random split, 0.9923 on a time "
+            "split in each capture file, 0.9619 on their own Seq rule. Trained on station 1 and tested on station 2, "
+            "macro F1 0.9957; trained on station 2 and tested on station 1, 0.903, the weak direction already seen above. "
+            "Their six columns change nothing here (within 0.0003 on every split). TTL is worth 0.11 to 0.12 on four of "
+            "the five splits; it may describe how this testbed's traffic was made rather than the attacks, which these "
+            "splits cannot separate. On another 5G testbed, NetsLab-5GORAN-IDD (Zenodo 18923275, CC BY 4.0), scored "
+            "without retraining through a fixed map of its Zeek fields to the Argus inputs, a model of this recipe "
+            "trained on the inputs both corpora share reaches a macro F1 of 0.18 on the classes they share (0.55 as "
+            "Benign against any attack): it does not carry to another network class by class."
         ),
     ),
     #: Telecom's T1 tier, added in Round 33. Until then `runs_encrypted=True` held on five specs and
@@ -1952,8 +1964,18 @@ _SPECS: tuple[ModelSpec, ...] = (
             "changes; all 9 scores are decrypted and the argmax is taken in the clear, as for the other linear students. "
             "LIMITS: with two stations each can compute the other's update from the global model and its own, so the masks "
             "hide the updates from the aggregator only; X25519 is not post-quantum; one process played both stations and "
-            "the aggregator, offline and once; no differential privacy is applied; the split is random, so a station's "
-            "test flows share attack sessions with its training flows."),
+            "the aggregator, offline and once; no differential privacy is applied; the published model's split is "
+            "random, so a station's test flows share attack sessions with its training flows; the time split below orders "
+            "them, and only the cross-station test holds whole capture files out. "
+            "UNDER A TIME SPLIT IN EACH CAPTURE FILE (Round 86, batch 9, pre-registered before any fit in "
+            "references/telecom-nidd-clean-protocols-preregistration.md). The same federation, each station on its own "
+            "time-ordered parts (the first 70 percent of each capture file's rows of each class to train, the last 15 "
+            "percent to test), scores 0.9860 by the mean of the stations' macro F1, within 0.007 of one linear model "
+            "trained on both (0.9867); without the six identifier-like columns 0.9698, and without TTL as well 0.8640; "
+            "every masked message cancelled. The linear model refitted on that split, without the six columns, agrees "
+            "with its plaintext under CKKS on 2,048 of its test flows (no decision changes; largest logit error 2.2e-7). "
+            "Trained on station 2 and tested on station 1, the linear model scores a macro F1 of 0.935; on "
+            "NetsLab-5GORAN-IDD, scored without retraining on the classes both corpora share, 0.26."),
     ),
 )
 
