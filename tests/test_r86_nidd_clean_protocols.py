@@ -90,3 +90,43 @@ def test_the_threshold_and_the_scores_on_synthetic_rows() -> None:
     assert m.best_threshold(np.repeat([0.0, 1.0], 500), t)[0] == 1.0
     s = m.scores(np.array([0, 0, 1, 1, 2]), np.array([0, 1, 1, 1, 2]), 4)
     assert s["classes_absent"] == [3] and abs(s["macro_f1"] - np.mean([2 / 3, 0.8, 1.0])) < 1e-6
+
+
+SPLITS = ("P0", "P1_train_1_test_2", "P1_train_2_test_1", "P2", "P3")
+
+
+def _consistent(t: dict) -> None:
+    """A test part's scores agree with each other: the FLamby metric is the mean of the stations' macro-F1."""
+    assert 0.0 <= t["macro_f1"] <= 1.0 and 0.0 <= t["accuracy"] <= 1.0 and 0.0 <= t["weighted_f1"] <= 1.0
+    st = t.get("station_macro_f1", {})
+    if st:
+        assert abs(t["flamby_metric"] - np.mean(list(st.values()))) <= 1e-6
+
+
+def test_every_preregistered_cell_of_the_arms_is_in_the_record() -> None:
+    r = _r()
+    teacher = {f"{s}/{p}/seed{k}" for s in ("T46", "T40", "T38") for p in SPLITS for k in range(5)}
+    student = {f"{s}/{p}" for s in ("F36", "F30", "F28") for p in SPLITS}
+    mlp = {f"F30/{p}/seed{k}" for p in ("P1_train_1_test_2", "P1_train_2_test_1", "P2") for k in range(5)}
+    for arm, want in (("teacher", teacher), ("student", student), ("mlp", mlp)):
+        if arm in r:
+            assert set(r[arm]) == want, arm
+            for v in r[arm].values():
+                _consistent(v["test"])
+
+
+def test_each_student_penalty_is_the_grid_best_by_validation_loss() -> None:
+    r, m = _r(), _m()
+    for key, v in r.get("student", {}).items():
+        assert [row["l2"] for row in v["penalty_table"]] == list(m.S.L2_GRID), key
+        assert v["l2"] == min(v["penalty_table"], key=lambda row: (row["validation_log_loss"], row["l2"]))["l2"], key
+        assert v["temperature"] > 0, key
+
+
+def test_the_seeded_arms_ran_where_the_preregistration_says() -> None:
+    r = _r()
+    for arm in ("teacher", "mlp"):
+        for key, v in r.get(arm, {}).items():
+            assert v["seed"] == int(key.rsplit("seed", 1)[1]) and v["device"] in ("cuda", "cpu"), key
+    for key, v in r.get("mlp", {}).items():
+        assert 1 <= v["epoch"] <= 30, key
