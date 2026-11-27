@@ -227,3 +227,19 @@ def test_the_two_thresholds_are_ordered_and_neither_is_the_s_gt_2_gate() -> None
     q_di, s_di = _di_threshold(_f_ec())
     # Device-independent certification needs MORE violation than the device-dependent rate needs.
     assert s_di > 2.27 > 2.0 and q_di < 0.0981, (q_di, s_di)
+
+
+def test_the_e91_chart_draws_the_thresholds_the_facts_state() -> None:
+    """Round 86, batch 12 (the review's gap 10): the chart bisected its own two thresholds, from Q unrounded, while the
+    facts round Q to four places first, so at 17 of 51 efficiencies from 1.00 to 1.50 the two captions would print
+    different CHSH values in the third decimal (equal at the shipped 1.16). Both now read `e91ZeroKeyPoints`, which
+    the facts above are checked against; this holds the chart to it and keeps a second bisection out."""
+    chart = (WEB / "src" / "components" / "QkdCharts.tsx").read_text()
+    facts = (WEB / "src" / "lib" / "clientCompute.ts").read_text()
+    sim = (WEB / "src" / "lib" / "quantumSim.ts").read_text()
+    assert "export function e91ZeroKeyPoints(" in sim
+    assert "const { sDi, sDd } = e91ZeroKeyPoints(fEC);" in chart
+    assert "const { qDd: e91ZeroKey, qDi: e91DiZeroKey, sDd, sDi } = e91ZeroKeyPoints(fEC);" in facts
+    for source, name in ((chart, "QkdCharts.tsx"), (facts, "clientCompute.ts")):
+        assert "(1 - Math.SQRT1_2) / 2" not in source, f"{name} bisects an E91 threshold of its own again"
+

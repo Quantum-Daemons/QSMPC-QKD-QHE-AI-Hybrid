@@ -31,7 +31,7 @@ import { outOfView, satBlock, satChannel } from "./satLink";
 import { blockCounts, blocksForPositiveKey, DEVIATION_LABELS, fibreBlockPulses, FINITE_KEY_BOUNDS, finiteKeySourceOf,
   keyLength, scaleCounts, type Deviation } from "./finiteKey";
 import { stikeRates, stikeSend } from "./stike";
-import { bb84, channelLossDb, e91, FIBER, fibreIntensities, h2, inView, intrinsicQber,
+import { bb84, channelLossDb, e91, e91ZeroKeyPoints, FIBER, fibreIntensities, h2, inView, intrinsicQber,
   keyRateWithClock, linkElevationDeg, qsdcLink, qsdcSecrecyCapacity, sourceOf, sourceRateHz, type ChannelParams,
   qcnnExpectation,
   qcnnInferTrained, qotpQcnnInfer, rng, taggedFraction,
@@ -290,22 +290,12 @@ export function securityFacts(config: any, metrics: Record<string, any>): Securi
   // E91 here has no decoy states, and its rate reaches zero at the point computed below, not at 0.11.
   const isE91 = String(config?.qkd_protocol ?? qkdCfg().protocol) === "e91";
   const fEC = qkdCfg().error_correction_eff;
-  // Where the E91 model's device-dependent rate 1 - h(e) - fEC h(e) reaches zero (0.0981 at 1.16).
-  const e91ZeroKey = (() => { let lo = 0, hi = 0.5;
-    for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (1 - (1 + fEC) * h2(m) > 0) lo = m; else hi = m; }
-    return Math.round(lo * 1e4) / 1e4; })();
-  // And where a DEVICE-INDEPENDENT analysis of the same noise model stops certifying key, at the SAME
-  // error-correction efficiency (Acin et al., PRL 98, 230501, 2007): r = 1 - fEC h(Q) -
-  // h((1 + sqrt((S/2)^2 - 1))/2) with S = 2 sqrt(2) (1 - 2Q). This caption used to quote S > 2.424 /
-  // Q < 0.0715 - the fEC = 1 figures - beside a device-dependent 0.0981 computed at fEC = 1.16, so the
-  // two thresholds it compared came from different error-correction assumptions.
-  const chshAt = (q: number) => 2 * Math.SQRT2 * (1 - 2 * q);
-  const e91DiZeroKey = (() => { let lo = 0, hi = (1 - Math.SQRT1_2) / 2;   // S = 2 at the upper end
-    const r = (q: number) => 1 - fEC * h2(q) - h2((1 + Math.sqrt(Math.max(0, (chshAt(q) / 2) ** 2 - 1))) / 2);
-    for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (r(m) > 0) lo = m; else hi = m; }
-    return Math.round(lo * 1e4) / 1e4; })();
-  const sDi = Math.round(chshAt(e91DiZeroKey) * 1000) / 1000;
-  const sDd = Math.round(chshAt(e91ZeroKey) * 1000) / 1000;
+  // Where the E91 model's device-dependent rate 1 - h(e) - fEC h(e) reaches zero (0.0981 at 1.16), and where a
+  // DEVICE-INDEPENDENT analysis of the same noise model stops certifying key, at the SAME error-correction efficiency
+  // (Acin et al., PRL 98, 230501, 2007). This caption used to quote S > 2.424 / Q < 0.0715 - the fEC = 1 figures -
+  // beside a device-dependent 0.0981 computed at fEC = 1.16, so the two thresholds it compared came from different
+  // error-correction assumptions. One function since Round 86's batch 12, which the E91 chart draws as well.
+  const { qDd: e91ZeroKey, qDi: e91DiZeroKey, sDd, sDi } = e91ZeroKeyPoints(fEC);
   // The channel this run used, and the eavesdropper fraction on it: both the decoy row (BB84) and the
   // E91 caption read them, so they are built once. See the decoy row for why the parameter reads have
   // to follow the use case.
