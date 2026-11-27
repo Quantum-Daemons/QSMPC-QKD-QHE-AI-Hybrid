@@ -1,0 +1,179 @@
+{
+ "preregistration": "references/defi-qcnn-aave-v3-preregistration.md",
+ "record": "docs/measurements/defi-qcnn-aave-v3-2026-11-27.json",
+ "task": "a borrow whose account is liquidated within 30 days, on Aave v3 (Polygon), windows by time",
+ "features": [
+  "userDepositCount",
+  "userLiquidationCount",
+  "userLiquidationSum",
+  "userLiquidationAvgAmount",
+  "userLiquidationSumUSD",
+  "userLiquidationAvgAmountUSD",
+  "userDepositSum",
+  "userDepositSumUSD"
+ ],
+ "test_rows": 182351,
+ "test_positive": 2253,
+ "prevalence": 0.01235529,
+ "twice_prevalence": 0.02471059,
+ "validation_rows": 182350,
+ "validation_positive": 1961,
+ "validation_prevalence": 0.01075404,
+ "rows": [
+  {
+   "key": "qcnn8_shipped",
+   "label": "QCNN, eight wires: the seed best on validation (seed 19)",
+   "kind": "quantum circuit, simulated classically",
+   "validation_ap": 0.272346,
+   "test_ap": 0.064208,
+   "ap_ci95": [
+    0.059233,
+    0.069894
+   ],
+   "shipped_minus_this_ci95": null
+  },
+  {
+   "key": "qcnn8_ensemble",
+   "label": "QCNN, eight wires: the 20 seeds' ensemble",
+   "kind": "quantum circuit, simulated classically",
+   "validation_ap": 0.20478,
+   "test_ap": 0.041072,
+   "ap_ci95": [
+    0.039077,
+    0.043318
+   ],
+   "shipped_minus_this_ci95": [
+    0.019334,
+    0.027346
+   ]
+  },
+  {
+   "key": "qcnn4_ensemble",
+   "label": "QCNN, four wires: the 20 seeds' ensemble",
+   "kind": "quantum circuit, simulated classically",
+   "validation_ap": 0.155885,
+   "test_ap": 0.081231,
+   "ap_ci95": [
+    0.074875,
+    0.088059
+   ],
+   "shipped_minus_this_ci95": [
+    -0.023269,
+    -0.010973
+   ]
+  },
+  {
+   "key": "noent_ensemble",
+   "label": "QCNN without entanglement: the 5 seeds' ensemble",
+   "kind": "product circuit, simulated classically",
+   "validation_ap": 0.201332,
+   "test_ap": 0.057534,
+   "ap_ci95": [
+    0.052551,
+    0.06298
+   ],
+   "shipped_minus_this_ci95": [
+    8.5e-05,
+    0.013107
+   ]
+  },
+  {
+   "key": "logistic_regression",
+   "label": "Logistic regression on the same inputs",
+   "kind": "classical",
+   "validation_ap": 0.14506,
+   "test_ap": 0.032193,
+   "ap_ci95": [
+    0.030374,
+    0.034146
+   ],
+   "shipped_minus_this_ci95": [
+    0.027438,
+    0.037064
+   ]
+  },
+  {
+   "key": "gradient_boosting",
+   "label": "Gradient-boosted trees on the same inputs",
+   "kind": "classical",
+   "validation_ap": 0.194853,
+   "test_ap": 0.023496,
+   "ap_ci95": [
+    0.021353,
+    0.02485
+   ],
+   "shipped_minus_this_ci95": [
+    0.036556,
+    0.046158
+   ]
+  },
+  {
+   "key": "classical_surrogate",
+   "label": "Logistic regression on the circuit's Pauli products",
+   "kind": "classical surrogate",
+   "validation_ap": 0.037216,
+   "test_ap": 0.014406,
+   "ap_ci95": [
+    0.013419,
+    0.015528
+   ],
+   "shipped_minus_this_ci95": [
+    0.044861,
+    0.055181
+   ]
+  },
+  {
+   "key": "gradient_boosting_all_inputs",
+   "label": "Gradient-boosted trees on all 80 inputs, the whole fit window (reference)",
+   "kind": "classical",
+   "validation_ap": 0.08853,
+   "test_ap": 0.171409,
+   "ap_ci95": [
+    0.155525,
+    0.187904
+   ],
+   "shipped_minus_this_ci95": [
+    -0.123615,
+    -0.092086
+   ]
+  }
+ ],
+ "spreads": {
+  "qcnn8": {
+   "mean_test_ap": 0.044512,
+   "sd_test_ap": 0.023784,
+   "seeds": 20
+  },
+  "qcnn4": {
+   "mean_test_ap": 0.060577,
+   "sd_test_ap": 0.030691,
+   "seeds": 20
+  },
+  "noent": {
+   "mean_test_ap": 0.039294,
+   "sd_test_ap": 0.024201,
+   "seeds": 5
+  }
+ },
+ "shipped_seed": {
+  "seed": 19,
+  "test_ap": 0.064208,
+  "test_auc": 0.778641,
+  "minority_f1": 0.09824
+ },
+ "criterion_1_signal": true,
+ "criteria_met": true,
+ "comparators_above_the_shipped_seed": [
+  "Gradient-boosted trees on all 80 inputs, the whole fit window (reference)"
+ ],
+ "statement": "Every circuit here acts on at most eight wires, so its state is at most 256 amplitudes and is simulated exactly on a classical computer; QCNNs on classical data of this kind are classically simulable (Bermejo et al., PRX Quantum 7, 020304, 2026). No quantum advantage is claimed.",
+ "licence": "CC-BY-4.0",
+ "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+ "attribution": {
+  "dataset": "From Risk to Rescue dataset (Aave v3, Polygon)",
+  "download": "https://doi.org/10.6084/m9.figshare.31058368.v1",
+  "licence": "CC-BY-4.0",
+  "citation": "Spadea, F. and Seneviratne, O., From Risk to Rescue: An Agentic Survival Analysis Framework for Liquidation Prevention Dataset, Figshare, doi:10.6084/m9.figshare.31058368.v1, CC BY 4.0."
+ },
+ "modifications": "Figures on the test window of a split by time of the archive's Borrow-to-Liquidated table, from models fitted here on eight of its 80 numeric inputs; no rows, accounts or identifiers are shipped."
+}

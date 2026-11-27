@@ -700,6 +700,69 @@ it lowers the figure, and one classical model, logistic regression on the encode
 while no classical arm scores above it. The circuit's largest Schmidt rank, every seed, cut and layer, traced in double
 precision on 1,000 test rows, is 8 of the 16 an eight-wire state can reach.
 
+#### The DeFi QCNN on Aave v3 liquidations, pre-registered (Round 86, batch 8)
+
+The DeFi page's private check computes Aave V3's own rule, a health factor below 1, so it has no learned classifier for
+a QCNN to reproduce; on the owner's choices of 2026-11-26 and 2026-11-27 this asks a question beside it instead,
+pre-registered before the archive was downloaded
+([`references/defi-qcnn-aave-v3-preregistration.md`](../references/defi-qcnn-aave-v3-preregistration.md), with an
+addendum after the download and before any label, and one moving its second arm to the GPU). A borrow on Aave v3
+(Polygon) is positive when its account is liquidated within 30 days, from FinSurvival's Borrow-to-Liquidated table in
+Spadea and Seneviratne's archive (CC BY 4.0), with windows by time (70, 15 and 15 percent of the borrows) and eight of
+the 80 numeric inputs chosen on the fit window alone by $`|\mathrm{AUC} - 0.5|`$. The arms follow the finance
+comparison's recipe: the tree circuit, three layers, 120 epochs and the checkpoint by validation average precision, 20
+seeds at eight wires and 20 at four, and 5 without the entangling gates, all on the GPU; beside them logistic regression,
+gradient-boosted trees, logistic regression on the circuit's own Pauli products, and, not like for like, the booster on
+all 80 inputs and the whole fit window (`scripts/data/defi_qcnn_inputs.py`, `scripts/train/defi_qcnn_comparison.py`;
+the record `docs/measurements/defi-qcnn-aave-v3-2026-11-27.json`).
+
+The eight inputs are counts and sums of the account's deposits and liquidations, so a model on them means something only
+if they describe the account before the borrow. FinSurvival's appendix B.4 describes them as the account's transactions
+in the past; Spadea and Seneviratne's paper does not define them. Checked on the table after the pre-registration, and
+not one of its criteria (`scripts/data/check_defi_inputs_are_prior_history.py`;
+`docs/measurements/defi-inputs-prior-history-2026-11-27.json`): along each account's borrows in time, no count of
+liquidations or deposits ever decreases; after each of the 27,307 liquidated borrows that the same account follows with
+another borrow, that later borrow counts at least one more liquidation, so no borrow's count already included its own
+outcome; and at an account's first borrow, a liquidation is already counted for 0.19 percent of the accounts liquidated
+later and 0.03 percent of the others, where a count over the whole history would be positive for every account
+liquidated later.
+
+The comparison, the validation window's average precision beside the test window's with its 95 percent stratified
+bootstrap interval; 1.08 percent of the validation window's 182,350 borrows are liquidated within 30 days and 1.24
+percent of the test window's 182,351:
+
+| Model | Kind | Validation | Test (95 % interval) |
+|---|---|---|---|
+| Gradient-boosted trees on all 80 inputs, the whole fit window (reference) | classical | 0.0885 | 0.1714 (0.1555 to 0.1879) |
+| QCNN, four wires: the 20 seeds' ensemble | quantum circuit, simulated classically | 0.1559 | 0.0812 (0.0749 to 0.0881) |
+| QCNN, eight wires: the seed best on validation (seed 19) | quantum circuit, simulated classically | 0.2723 | 0.0642 (0.0592 to 0.0699) |
+| QCNN without entanglement: the 5 seeds' ensemble | product circuit, simulated classically | 0.2013 | 0.0575 (0.0526 to 0.0630) |
+| QCNN, eight wires: the 20 seeds' ensemble | quantum circuit, simulated classically | 0.2048 | 0.0411 (0.0391 to 0.0433) |
+| Logistic regression on the same inputs | classical | 0.1451 | 0.0322 (0.0304 to 0.0341) |
+| Gradient-boosted trees on the same inputs | classical | 0.1949 | 0.0235 (0.0214 to 0.0249) |
+| Logistic regression on the circuit's Pauli products | classical surrogate | 0.0372 | 0.0144 (0.0134 to 0.0155) |
+
+Both criteria hold. The seed best on validation at eight wires, seed 19, scores test average precision 0.0642 (0.0592 to
+0.0699), above the $`0.0247`$ that twice the prevalence asks, and the page's tree contraction of it equals the state
+vector within $`2.5 \times 10^{-6}`$ on all 182,351 test borrows with no decision changed
+(`scripts/check_defi_qcnn_export.py`). What the figures do not carry is a ranking. Every model on these eight inputs
+scores lower on the later test window than on validation, the shipped seed from 0.272 to 0.064, logistic regression from
+0.145 to 0.032 and the booster from 0.195 to 0.023; only the booster on all 80 inputs scores higher, from 0.089 to 0.171.
+The test column ranks these models under a shift between the windows, not the methods, and no figure here says a quantum
+circuit is better at this task. Over its 20 seeds the eight-wire circuit scores $`0.045 \pm 0.024`$ and their mean
+probability 0.041, so the shipped seed is the rule's pick, not the method's typical figure. At four wires the 20 seeds'
+mean probability scores 0.081 and, without its entangling gates, the circuit's five seeds' scores 0.058, both above the
+eight-wire ensemble's: Bowles, Ahmed and Schuld's benchmark of quantum classifiers (arXiv:2403.07059, 2024) found
+removing entanglement often as good or better on their small tasks. Every circuit here acts on at most eight wires, so
+its state is at most 256 amplitudes and is simulated exactly on a classical computer; no quantum advantage is claimed.
+
+On the page, `DefiQcnnCard.tsx` below the lending panels reads `web/public/data/defi/qcnn_comparison.json` and
+`web/public/data/defi/defi_qcnn.json` (`scripts/export_defi_qcnn.py`: the seed's weights and tree network, and 4,096 of
+the test window's borrows drawn uniformly at seed 0, each its eight standardised inputs and its label, no account or other
+identifier), and re-scores that sample in the tab with the page's own contraction: average precision 0.0803 over its 51
+liquidated borrows, which the tab reproduces within $`10^{-9}`$ (`tests/test_r86_defi_qcnn.py`). Which seed ships, a
+Hub upload and the card's default view are the owner's choices after these figures, as the pre-registration leaves them.
+
 #### Calibrated thresholds for the satellite forecaster, not adopted
 
 On the owner's choice of 2026-11-25, pre-registered before any threshold was fitted

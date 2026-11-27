@@ -184,6 +184,7 @@ def run_record() -> int:
         best = max(per, key=lambda r: (r["val_ap"], -r["seed"]))
         arms[arm] = {"seeds": per, "mean_test_ap": round(float(np.mean([r["test_ap"] for r in per])), 6),
                      "sd_test_ap": round(float(np.std([r["test_ap"] for r in per], ddof=1)), 6),
+                     "ensemble_val_ap": round(float(ap(yv, ens_v)), 6),
                      "ensemble_test_ap": round(float(ap(yt, ens_t)), 6), "ensemble_test_auc": round(float(auc(yt, ens_t)), 6),
                      "ensemble_minority_f1": round(f1_at_val_best(yv, ens_v, yt, ens_t), 6), "best_on_validation": best["seed"]}
         scores[f"{arm}_ensemble"] = ens_t
@@ -209,6 +210,7 @@ def run_record() -> int:
         "preregistration": {"file": str(PREREG.relative_to(REPO)), "sha256": got},
         "inputs": {k: d["meta"][k] for k in ("features", "abs_auc_minus_half_on_fit", "counts", "fit_set_rule", "archive")},
         "test_prevalence": round(prevalence, 8), "twice_prevalence": round(2 * prevalence, 8),
+        "validation_prevalence": round(float(yv.mean()), 8),
         "arms": arms, "intervals": ci,
         "criteria": {"1_signal": signal, "2_export_check": export,
                      "met": bool(signal and export is not None and export.get("criterion_met") and export.get("seed") == ship["seed"]),
@@ -223,14 +225,21 @@ def run_record() -> int:
         arm = key.removesuffix("_ensemble").removesuffix("_shipped")
         test_ap = (ship["test_ap"] if key == "qcnn8_shipped" else
                    arms[arm]["ensemble_test_ap"] if key.endswith("_ensemble") else arms[key]["test_ap"])
+        # The validation window's figure beside it (2026-11-27, after the record was first written): every model on the
+        # eight inputs loses most of it on the later test window, which the test column alone does not show.
+        val_ap = (next(r["val_ap"] for r in arms["qcnn8"]["seeds"] if r["seed"] == ship["seed"]) if key == "qcnn8_shipped" else
+                  arms[arm]["ensemble_val_ap"] if key.endswith("_ensemble") else arms[key]["validation_ap"])
         rows.append({"key": key, "label": label + (f" (seed {ship['seed']})" if key == "qcnn8_shipped" else ""), "kind": kind,
-                     "test_ap": test_ap, "ap_ci95": ci[key]["ap_ci95"], "shipped_minus_this_ci95": ci[key]["ship_minus_this_ci95"]})
+                     "validation_ap": val_ap, "test_ap": test_ap, "ap_ci95": ci[key]["ap_ci95"],
+                     "shipped_minus_this_ci95": ci[key]["ship_minus_this_ci95"]})
     SITE.parent.mkdir(parents=True, exist_ok=True)
     SITE.write_text(json.dumps({
         "preregistration": record["preregistration"]["file"], "record": str(RECORD.relative_to(REPO)),
         "task": "a borrow whose account is liquidated within 30 days, on Aave v3 (Polygon), windows by time",
         "features": d["meta"]["features"], "test_rows": int(len(yt)), "test_positive": int(yt.sum()),
-        "prevalence": record["test_prevalence"], "twice_prevalence": record["twice_prevalence"], "rows": rows,
+        "prevalence": record["test_prevalence"], "twice_prevalence": record["twice_prevalence"],
+        "validation_rows": int(len(yv)), "validation_positive": int(yv.sum()),
+        "validation_prevalence": record["validation_prevalence"], "rows": rows,
         "spreads": {a: {"mean_test_ap": arms[a]["mean_test_ap"], "sd_test_ap": arms[a]["sd_test_ap"], "seeds": len(arms[a]["seeds"])}
                     for a in ("qcnn8", "qcnn4", "noent")},
         "shipped_seed": ship, "criterion_1_signal": signal, "criteria_met": record["criteria"]["met"],

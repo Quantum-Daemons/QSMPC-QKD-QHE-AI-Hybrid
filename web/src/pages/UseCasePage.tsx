@@ -36,6 +36,7 @@ import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCa
 import VerificationsCard from "../components/VerificationsCard";
 import PublishedComparisonCard from "../components/PublishedComparisonCard";
 import BackendCompareCard from "../components/BackendCompareCard";
+import DefiQcnnCard from "../components/DefiQcnnCard";
 import { flambyRows, modelRows, PAGE_NOTES, qcnnRows } from "../lib/publishedComparisons";
 import { useQcnnRecord } from "../lib/qcnnRecord";
 import MpcGnnPanel from "../components/MpcGnnPanel";
@@ -242,6 +243,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           check={artifacts?.lending_private as LendingPrivateReport | undefined} ran={hasRun} state={state}
           custody={String(run.params.lending_custody)} />
       )}
+      {lending && <DefiQcnnCard />}
       {/* What produced the inference on this page: the published ONNX model, the bundled real
           model, or placeholder weights. Read from the run's own metrics, not asserted. */}
       {/* BOTH inferences, because the run performs two and this panel used to name only one - the
