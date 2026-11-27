@@ -67,7 +67,8 @@ def test_a_record_for_another_marimo_is_refused(record: Path) -> None:
 
 def test_a_ruff_other_than_marimos_is_refused(record: Path) -> None:
     B.RUFF_LOCK.write_text(B.RUFF_LOCK.read_text().replace("ruff==0.15.18", "ruff==0.15.17"))
-    assert any("marimo 0.25.2 runs ruff 0.15.18" in p for p in B.check())
+    # The pinned marimo, not a version typed here: the message names whichever marimo requirements.lock pins.
+    assert any(f"marimo {B._marimo_version()} runs ruff 0.15.18" in p for p in B.check())
 
 
 def test_a_ruff_without_hashes_is_refused(record: Path) -> None:
