@@ -23,7 +23,8 @@ let failed = 0;
 const check = (ok, what) => { console.log(`${ok ? "ok  " : "FAIL"} ${what}`); if (!ok) failed++; };
 try {
   await build({
-    stdin: { contents: `export { rescoreQcnn, macroF1, minorityF1 } from ${JSON.stringify(join(WEB, "src/lib/qcnnRescore"))};`, resolveDir: WEB, loader: "ts" },
+    stdin: { contents: `export { rescoreQcnn, macroF1, minorityF1 } from ${JSON.stringify(join(WEB, "src/lib/qcnnRescore"))};
+export { validateQcnnWeights } from ${JSON.stringify(join(WEB, "src/lib/quantumSim"))};`, resolveDir: WEB, loader: "ts" },
     bundle: true, format: "esm", platform: "node", outfile: join(tmp, "b.mjs"), logLevel: "error",
     define: { "import.meta.env": '{"BASE_URL":"/"}' },
   });
@@ -49,6 +50,15 @@ try {
     // Seeded: the first row's label moved to another class. A comparison that cannot see this is not checking the re-score.
     const flipped = { ...held, labels: held.labels.map((v, i) => (i === 0 ? (v === 0 ? 1 : 0) : v)) };
     check(!m.rescoreQcnn(w, flipped).matchesRecord, `${dir}/${file}: one flipped label moves the figure off the record`);
+    // Checklist QC28: an artifact SHORTER than its declared circuit once returned class 0 with <Z0> NaN on the binary path,
+    // with no error. The served file must pass the weights check, the same file two angles short must be refused by it, and
+    // the page's re-score must refuse it too rather than report a class.
+    const why = (f) => { try { f(); return ""; } catch (e) { return String(e?.message ?? e); } };
+    check(why(() => m.validateQcnnWeights(w)) === "", `${dir}/${file}: the served artifact passes the weights check`);
+    const short = { ...w, theta: w.theta.slice(0, -2) };
+    const refusal = why(() => m.validateQcnnWeights(short));
+    check(/theta carries \d+ angles/.test(refusal), `${dir}/${file}: two angles short, it is refused (${refusal.slice(0, 70)})`);
+    check(why(() => m.rescoreQcnn(short, held)) !== "", `${dir}/${file}: two angles short, the page's re-score refuses it rather than reporting a class`);
   }
   // scikit-learn's conventions, on cases with known answers: macro F1 averages over the labels in the truth or the predictions.
   check(Math.abs(m.macroF1([0, 0, 1, 2], [0, 1, 1, 1]) - (2 / 3 + 0.5 + 0) / 3) < 1e-12, "macro F1 averages over the union of labels, zero for an absent class");
