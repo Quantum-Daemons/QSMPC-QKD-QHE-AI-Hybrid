@@ -40,7 +40,10 @@ const CHROME = process.env.CHROME ?? "google-chrome";
 const PORT = Number(process.env.CDP_PORT ?? 9355);   // set it to run two scans at once
 const PAGES = [
   { path: "/" }, { path: "/value" },
-  { path: "/validations", click: ["Run ML-KEM", "Run ML-DSA", "Run handshake", "Run BB84"] },
+  // Every result table on the page, each button by the label it carries, a label not found a finding (2026-11-28: "Run
+  // handshake" matched nothing, the button reads "Run the handshake", and the network-key cards' tables went unmeasured).
+  { path: "/validations", click: ["Run ML-KEM", "Run ML-DSA", "Run BB84", "Run the ACVP cases", "Run the ML-DSA ACVP cases",
+                                  "Run the handshake", "Run the key schedule"] },
   // The E2E page's two views (Round 81): the architecture canvas by default, the stage order on its
   // tab, and the canvas of the generic demo, which no use-case page draws.
   { path: "/orchestration", run: true }, { path: "/orchestration", run: true, tab: "Stage order" },
@@ -61,7 +64,8 @@ const PAGES = [
       ["telecom_ids", ["Transformer IDS", "Random forest (QKD attacks)", "5G-NIDD classifier", "CKKS student"]],
       ["satellite_comms", ["Telemanom LSTM", "Forecaster student", "OPS-SAT detector", "OPS-SAT student"]]]
     .flatMap(([uc, tabs]) => tabs.map((tab) => ({ path: `/usecase/${uc}`, tab }))),
-];
+// SCAN_PAGES=/a,/b scans those paths only, for a local check of one page (as check_csp.mjs's CSP_PAGES).
+].filter((p) => !process.env.SCAN_PAGES || process.env.SCAN_PAGES.split(",").includes(p.path));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -349,18 +353,26 @@ async function check(s, page) {
     if (!opened) return [...shifted, `[page] no tab named "${page.tab}"`];
     await sleep(2500);
   }
+  const missing = [];
   for (const label of page.click ?? []) {
-    await ev(s, `[...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(label)})?.click()`);
+    const pressed = await ev(s, `(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim() === ${JSON.stringify(label)}); b?.click(); return !!b; })()`);
+    if (!pressed) missing.push(`[page] no button reads "${label}", so what it draws was not measured`);
     await sleep(2500);
   }
+  let ended = null;
   if (page.run) {
     await ev(s, `[...document.querySelectorAll('button')].find(b => /^\\u25b6 Start$/.test(b.textContent.trim()))?.click()`);
     for (let i = 0; i < 90; i++) {
       await sleep(1000);
-      const done = await ev(s, `[...document.querySelectorAll('.badge-state')].some(b => /^(done|error|stopped)$/.test(b.textContent.trim()))`);
-      if (done && i > 3) break;
+      // The run controls' state badge (PipelineControls, Orchestration), which keeps the finished run's state; the
+      // sidebar's shows a run only while it is in flight. A result card's badges carry sentences, not one word.
+      ended = await ev(s, `(() => { const b = [...document.querySelectorAll('.badge-state')].find(x => !x.closest('.run-status') && /^[a-z]+$/.test(x.textContent.trim())); return b ? b.textContent.trim() : null; })()`);
+      if (/^(done|error|stopped)$/.test(ended ?? "") && i > 3) break;
     }
   }
+  // A run that errored, stopped or did not finish leaves its cards undrawn, and measuring the page without them passed
+  // (2026-11-28, the review's gap): it is a finding now.
+  const unfinished = page.run && ended !== "done" ? [`[page] the run ended ${ended ? `"${ended}"` : "without a state"}, not "done", so its cards were not measured`] : [];
   // Every disclosure open (Round 86): what sits inside a closed <details> is not laid out, so it was never measured, and the
   // finance page's transaction graphs and the QCNN circuit card went out with labels drawn over each other.
   await ev(s, "document.querySelectorAll('details').forEach((d) => { d.open = true; })");
@@ -369,7 +381,7 @@ async function check(s, page) {
   const height = await ev(s, "document.documentElement.scrollHeight");
   for (let y = 0; y < height; y += HEIGHT * 0.8) { await ev(s, `window.scrollTo(0, ${y})`); await sleep(350); }
   await sleep(1200);
-  return [...shifted, ...((await ev(s, MEASURE)) ?? []), ...((await ev(s, A11Y)) ?? [])];
+  return [...shifted, ...missing, ...unfinished, ...((await ev(s, MEASURE)) ?? []), ...((await ev(s, A11Y)) ?? [])];
 }
 
 const profile = mkdtempSync(join(tmpdir(), "qsh-overlap-"));
