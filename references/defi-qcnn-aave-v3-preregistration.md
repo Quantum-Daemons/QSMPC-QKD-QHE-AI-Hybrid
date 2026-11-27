@@ -120,3 +120,10 @@ MD5 d9f43ce5010d10a1f836719e795c6db7, equal to the record above; 59 entries, 50.
   record; `isWeekend` and `userIsNew` are read as 0 and 1, and a column that does not parse as numbers on reading is
   left out and named. By FinSurvival's construction (Green et al.) the features describe the account and the market at
   the borrow; nothing in their names says otherwise.
+
+## Addendum, 2026-11-27, before any QCNN run: arm 2 on the GPU
+
+On the owner's approval of 2026-11-27, arm 1 runs on the GPU, and so does arm 2, which "Compute" put on the CPU: the
+finance comparison's arm of the same circuit without entanglement ran 85 minutes on this machine's CPU for two seeds
+without finishing (`references/finance-qcnn-amlworld-comparison-preregistration.md`, its addendum). The device changes
+neither the circuit, its recipe nor its selection, and the record states the device of every run. Nothing else changes.
