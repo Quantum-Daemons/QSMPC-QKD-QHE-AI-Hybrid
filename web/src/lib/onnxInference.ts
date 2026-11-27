@@ -199,13 +199,28 @@ export async function hasWebGPU(): Promise<boolean> {
   }
 }
 
+/** GPUAdapterInfo's fields are accessors on its prototype, so `{ ...adapter.info }` copies none of them: in Chrome on
+ *  2026-11-27 it gave `{}` for an adapter whose `vendor` read "nvidia", and so the provenance badge named no adapter and
+ *  the agentic panel took a software rasteriser's empty copy for a usable GPU. Each field is read by name. */
+const ADAPTER_INFO_FIELDS = ["vendor", "architecture", "device", "description", "isFallbackAdapter",
+                             "subgroupMinSize", "subgroupMaxSize"] as const;
+export function adapterInfoOf(info: unknown): Record<string, unknown> | undefined {
+  if (!info) return undefined;
+  const out: Record<string, unknown> = {};
+  for (const k of ADAPTER_INFO_FIELDS) {
+    const v = (info as Record<string, unknown>)[k];
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
+}
+
 /** Adapter identity + features, for the provenance badge. Empty object when there is no adapter. */
 export async function webgpuInfo(): Promise<Record<string, unknown>> {
   try {
     const adapter = await (navigator as any)?.gpu?.requestAdapter?.();
     if (!adapter) return {};
     return {
-      info: adapter.info ? { ...adapter.info } : undefined,
+      info: adapterInfoOf(adapter.info),
       features: Array.from(adapter.features ?? []),
       shaderF16: adapter.features?.has?.("shader-f16") ?? false,
     };
@@ -831,7 +846,7 @@ export interface GraphSampleFile {
 
 /** One run of a graph sample through its published graph: the whole subgraph at once, then each seed transfer's two
  *  logits in the sample's order (Round 86). Shared by the whole-sample check and the pipeline's published-model stage. */
-async function graphSeedLogits(opened: OpenSession, file: GraphSampleFile):
+async function graphSeedLogits(opened: Pick<OpenSession, "ort" | "session">, file: GraphSampleFile):
   Promise<{ name: string; logits: Float32Array; latencyMs: number }> {
   const i = file.inputs, d = i.edge_attr_dim, nr = i.n_rev_edges ?? i.n_edges;
   const T = opened.ort.Tensor;
@@ -1528,5 +1543,184 @@ export async function runPublishedModel(
     const msg = e instanceof Error ? e.message : String(e);
     console.warn("[onnx] published-model run failed:", msg);
     return { kind: "failed", modelKey: key, error: msg };
+  }
+}
+
+// ---- WebGPU beside WASM, on each page's published fp32 graphs (Round 86, batch 8; the owner's choice of 2026-11-27) ----
+// Checklist CS23. Every page with a published ONNX graph already lets a visitor pick WebGPU, and until this only the
+// medical page had it measured. A comparison opens the model's fp32 graph twice in this tab, once on WASM and once on
+// WebGPU, runs every row of its published evaluation sample through both, and compares every value and every decision
+// (backendCompare.ts holds the rule, the tolerance and the timing protocol).
+
+import {
+  BATCH_REPEATS, ROW_REPEATS, type BackendTimes, compareOutputs, decider, fp32GraphFor, median, type OutputComparison,
+  pageGraphOf, webgpuInapplicable,
+} from "./backendCompare";
+
+/** A session a comparison runs on, with the ORT build that opened it: a tensor is made from its session's build. */
+export interface ComparedSession { ort: typeof OrtTypes; session: OrtTypes.InferenceSession }
+
+/** One backend's run of a sample: the score output over every row, read the page's way, and its times. */
+export interface ScoredSample { data: Float32Array; name: string; width: number; rows: number; times: BackendTimes }
+
+/** Every row of `file` through `s`: a first run, `BATCH_REPEATS` timed runs over every row (the comparison reads the
+ *  last), and `ROW_REPEATS` timed runs on the first row alone. Exported for the node test, which gives it two WASM
+ *  sessions; the page gives it one WASM and one WebGPU session. */
+export async function scoreAndTime(s: ComparedSession, file: ModelInputFile | GraphSampleFile,
+                                   createMs: number): Promise<ScoredSample> {
+  if ((file as GraphSampleFile).kind === "graph") {
+    const g = file as GraphSampleFile;
+    let t = performance.now();
+    let last = await graphSeedLogits(s, g);
+    const firstMs = performance.now() - t;
+    const batch: number[] = [];
+    for (let r = 0; r < BATCH_REPEATS; r++) {
+      t = performance.now();
+      last = await graphSeedLogits(s, g);
+      batch.push(performance.now() - t);
+    }
+    return { data: Float32Array.from(last.logits), name: last.name, width: 2, rows: g.seeds.positions_in_batch.length,
+             times: { createMs, firstMs, batchMs: median(batch), rowMs: null } };
+  }
+  const f = file as ModelInputFile;
+  const [, ...dims] = f.input.shape;
+  const per = dims.reduce((a, b) => a * b, 1);
+  const n = f.samples.length;
+  const flat = new Float32Array(n * per);
+  for (let i = 0; i < n; i++) {
+    const row = f.samples[i];
+    if (row.length !== per) {
+      throw new Error(`sample ${i} has ${row.length} values, the graph expects ${per} (${f.input.shape.join("x")})`);
+    }
+    for (let j = 0; j < per; j++) flat[i * per + j] = applyPreprocessing(row[j], f.input.preprocessing);
+  }
+  const input = s.session.inputNames[0];
+  const all = { [input]: new s.ort.Tensor("float32", flat, [n, ...dims]) };
+  const one = { [input]: new s.ort.Tensor("float32", flat.slice(0, per), [1, ...dims]) };
+  // The page's score output: the first float32 output with two or more dimensions, else the first.
+  const read = (out: OrtTypes.InferenceSession.ReturnType) => {
+    const outputs = s.session.outputNames.map((k) => out[k]);
+    const found = outputs.findIndex((o) => o && o.type === "float32" && (o.dims?.length ?? 0) >= 2);
+    const at = found >= 0 ? found : 0;
+    const data = Float32Array.from(outputs[at].data as Float32Array);
+    return { data, name: s.session.outputNames[at], width: Math.max(1, Math.floor(data.length / n)) };
+  };
+  let t = performance.now();
+  let got = read(await s.session.run(all));
+  const firstMs = performance.now() - t;
+  const batch: number[] = [], single: number[] = [];
+  for (let r = 0; r < BATCH_REPEATS; r++) {
+    t = performance.now();
+    got = read(await s.session.run(all));
+    batch.push(performance.now() - t);
+  }
+  for (let r = 0; r < ROW_REPEATS; r++) {
+    t = performance.now();
+    await s.session.run(one);
+    single.push(performance.now() - t);
+  }
+  return { ...got, rows: n, times: { createMs, firstMs, batchMs: median(batch), rowMs: median(single) } };
+}
+
+/** Two runs of one sample compared: every value, and, unless it is a forecast, each row's decision by the sample's own
+ *  rule on each run's own scores. */
+export function compareScored(wasm: ScoredSample, other: ScoredSample,
+                              file: ModelInputFile | GraphSampleFile): OutputComparison {
+  if (wasm.name !== other.name || wasm.width !== other.width || wasm.rows !== other.rows) {
+    throw new Error(`the two runs read different outputs (${wasm.name} ${wasm.rows}x${wasm.width}, `
+      + `${other.name} ${other.rows}x${other.width})`);
+  }
+  if ((file as ModelInputFile).task === "forecast") return compareOutputs(wasm.data, other.data, wasm.rows, null);
+  const thr = file.expected.decision_threshold ?? null;
+  const kind = outputKind(wasm.name);
+  const probOf = (s: ScoredSample) => (kind ? toProbabilities(s.data, s.rows, s.width, kind) : null);
+  return compareOutputs(wasm.data, other.data, wasm.rows, {
+    wasm: decider(wasm.data, wasm.width, thr, probOf(wasm)), other: decider(other.data, other.width, thr, probOf(other)),
+  });
+}
+
+/** One model's comparison, or why there is none. */
+export interface BackendComparison {
+  modelKey: string;
+  label: string;
+  /** The fp32 graph compared; null when the model has none. */
+  graph: string | null;
+  /** The graph the page loads by default when it is not the one compared: an int8 graph, which stays on WASM. */
+  pageGraph: string | null;
+  inapplicable: string | null;
+  error: string | null;
+  rows: number;
+  bytes: number | null;
+  /** The adapter WebGPU ran on, as the browser names it. */
+  adapter: string | null;
+  out: OutputComparison | null;
+  wasm: BackendTimes | null;
+  webgpu: BackendTimes | null;
+}
+
+/** One published model's fp32 graph on WASM and on WebGPU in this tab, every row of its evaluation sample through both.
+ *  The graph is fetched once and checked against its pinned SHA-256; the two sessions are this comparison's own and
+ *  are released after it, so the page's sessions and figures are untouched. */
+export async function compareBackends(usecase: string, modelKey: string): Promise<BackendComparison> {
+  const target = browserModels(usecase).find((m) => m.spec.key === modelKey);
+  const base: BackendComparison = {
+    modelKey, label: target?.spec.label ?? modelKey, graph: null, pageGraph: null, inapplicable: null, error: null,
+    rows: 0, bytes: null, adapter: null, out: null, wasm: null, webgpu: null,
+  };
+  if (!target) return { ...base, inapplicable: "it is not published and pinned" };
+  const spec = target.spec;
+  const graph = fp32GraphFor(spec.artifacts);
+  const page = pageGraphOf(spec.artifacts)?.path ?? null;
+  const head = { ...base, graph, pageGraph: page && page !== graph ? page : null };
+  const why = webgpuInapplicable((spec as { onnx_domains?: string[] }).onnx_domains, graph)
+    ?? (spec.eval_sample_reason ? `it publishes no evaluation sample, by design: ${spec.eval_sample_reason}` : null);
+  if (why) return { ...head, inapplicable: why };
+  if (!(await hasWebGPU())) {
+    return { ...head, inapplicable: "this browser has no usable WebGPU adapter (none, or a software rasteriser)" };
+  }
+  const opened: ComparedSession[] = [];
+  try {
+    const url = `https://huggingface.co/${spec.hf_repo_id}/resolve/${spec.hf_revision}/${graph}`;
+    const got = await evalSample(url, spec.file_sha256?.["eval_sample.json"]);
+    if (got.kind === "absent") return { ...head, inapplicable: "its evaluation sample is not on the Hub" };
+    if (got.kind === "error") return { ...head, error: `its evaluation sample could not be fetched: ${got.reason}` };
+    const file = got.file as unknown as ModelInputFile | GraphSampleFile;
+    if ((file as { task?: string }).task === "forecast_events") {
+      return { ...head, inapplicable: "its sample is scored by events, in float64 and under CKKS, not by one graph run" };
+    }
+    const res = await fetch(url, { mode: "cors", signal: AbortSignal.timeout(HF_FETCH_TIMEOUT_MS) });
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${res.statusText} for ${url}`);
+    const buf = new Uint8Array(await res.arrayBuffer());
+    await checkPinned(buf, spec.file_sha256?.[graph!], `${spec.key} ${graph}`);
+    const ai = ((await webgpuInfo()).info ?? {}) as Record<string, unknown>;
+    const adapter = [ai.vendor, ai.architecture, ai.description]
+      .filter((v): v is string => typeof v === "string" && v.length > 0).join(", ") || "an adapter that gives no name";
+    const open = async (gpu: boolean): Promise<{ s: ComparedSession; ms: number }> => {
+      const ort = await loadOrt(gpu);
+      ort.env.wasm.numThreads = resolveThreads();
+      ort.env.wasm.proxy = false;
+      const t = performance.now();
+      // WebGPU alone, not WebGPU then WASM: if the WebGPU backend cannot start, creation fails here rather than opening
+      // a WASM session that would be timed as WebGPU. Nodes the WebGPU provider has no kernel for still run on the CPU,
+      // one by one, as ONNX Runtime always places them.
+      const session = await withTimeout(
+        ort.InferenceSession.create(buf.slice(), { executionProviders: [gpu ? "webgpu" : "wasm"], logSeverityLevel: 3 }),
+        SESSION_CREATE_TIMEOUT_MS,
+        `ONNX session creation for ${graph} on ${gpu ? "WebGPU" : "WASM"} exceeded ${SESSION_CREATE_TIMEOUT_MS / 1000}s`);
+      const s = { ort, session };
+      opened.push(s);
+      return { s, ms: performance.now() - t };
+    };
+    const w = await open(false);
+    const a = await scoreAndTime(w.s, file, w.ms);
+    const g = await open(true);
+    const b = await scoreAndTime(g.s, file, g.ms);
+    return { ...head, rows: a.rows, bytes: buf.byteLength, adapter, out: compareScored(a, b, file),
+             wasm: a.times, webgpu: b.times };
+  } catch (e) {
+    return { ...head, error: (e as Error)?.message ?? String(e) };
+  } finally {
+    // Released, unlike the page's cached sessions: nothing else holds these two.
+    for (const s of opened) await s.session.release().catch(() => undefined);
   }
 }

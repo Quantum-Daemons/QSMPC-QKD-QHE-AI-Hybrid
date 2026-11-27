@@ -35,6 +35,7 @@ import FinanceQcnnComparisonCard from "../components/FinanceQcnnComparisonCard";
 import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCard";
 import VerificationsCard from "../components/VerificationsCard";
 import PublishedComparisonCard from "../components/PublishedComparisonCard";
+import BackendCompareCard from "../components/BackendCompareCard";
 import { flambyRows, modelRows, PAGE_NOTES, qcnnRows } from "../lib/publishedComparisons";
 import { useQcnnRecord } from "../lib/qcnnRecord";
 import MpcGnnPanel from "../components/MpcGnnPanel";
@@ -420,6 +421,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         ...(usecase === "medical_fl" && artifacts?.fedHeart ? flambyRows(artifacts.fedHeart as FedHeartResult) : []),
         ...qcnnRows(usecase, qcnnRecord, (artifacts?.qcnn_rescore as QcnnRescore | undefined) ?? null),
       ]} />
+      <BackendCompareCard usecase={usecase} />
 
       {/* `surfacedBackend` is the backend that RAN, not the control that was set. Passing
           `run.params.inference` here made the panel assert "the class comes from the quantum circuit"
