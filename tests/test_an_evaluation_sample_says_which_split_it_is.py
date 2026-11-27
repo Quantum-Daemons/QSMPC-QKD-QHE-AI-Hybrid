@@ -245,12 +245,17 @@ def test_the_other_copies_of_the_count_follow_the_registry() -> None:
     words = {"thirteen": 13, "fourteen": 14, "fifteen": 15, "sixteen": 16, "seventeen": 17, "eighteen": 18, "nineteen": 19,
              "twenty": 20}
     n = len(_published())
-    row = re.search(r"\| Models \| (\w+) published models: (\w+) run with ONNX Runtime in the browser, (\w+) from their "
-                    r"weights files", (REPO / "README.md").read_text())
+    row = re.search(r"\| Models \| (\w+) published models: (\w+) run with ONNX Runtime in the browser, (\w+) only from "
+                    r"their weights files", (REPO / "README.md").read_text())
     assert row, "README's models row moved; update this gate with it"
     assert words.get(row.group(1)) == n, f"README's models row says {row.group(1)}, the registry publishes {n}"
     words.update({"one": 1, "two": 2, "three": 3, "eleven": 11, "twelve": 12})
     assert words.get(row.group(2), -1) + words.get(row.group(3), -1) == n, row.groups()
+    # And the split is the page's (Round 86, batch 10): `browserModels` (web/src/lib/onnxInference.ts) fetches and re-scores
+    # every published model with an ONNX artifact served to the browser, whatever it also runs from its weights. The row
+    # said seventeen, counting the satellite student, whose graph the page re-scores on 8,640 rows, only under its weights.
+    onnx = sum(1 for s in _published() if any(a.fmt == "onnx" and a.serves in ("browser", "both") for a in s.artifacts))
+    assert words.get(row.group(2)) == onnx, f"README says {row.group(2)} run with ONNX Runtime; {onnx} have a browser graph"
     m = re.search(r"all (\w+) repos ship one", " ".join((REPO / "DATA_LICENSES.md").read_text().split()))
     assert m and words.get(m.group(1)) == n, f"DATA_LICENSES.md says {m and m.group(1)} repos ship a sample, of {n}"
 

@@ -4,7 +4,8 @@ Two had drifted unnoticed: `docs/threat-model.md` still said "eighteen published
 twenty, and `docs/crypto-agility.md` said the CBOM "lists all 24" when it listed 25. No test read either sentence, so
 each new model or algorithm left them behind. Each count below is read from the sentence and compared with the file
 it counts: the published models with `models/hub_file_hashes.json` (one entry per published model), the CBOM's
-algorithms with `web/public/cbom/qsh.cdx.json`.
+algorithms with `web/public/cbom/qsh.cdx.json`. README's counts are held by
+`tests/test_an_evaluation_sample_says_which_split_it_is.py`, not here.
 """
 from __future__ import annotations
 
@@ -39,13 +40,6 @@ def test_the_threat_model_counts_the_published_models() -> None:
     text = (REPO / "docs" / "threat-model.md").read_text()
     m = re.search(r"this project's ([a-z-]+) published models", text)
     assert m, "the threat model no longer states the published models' count in this form"
-    assert _number(m.group(1)) == _published_models(), (m.group(1), _published_models())
-
-
-def test_the_readme_counts_the_published_models() -> None:
-    text = (REPO / "README.md").read_text()
-    m = re.search(r"^\| Models \| ([a-z-]+) published models", text, flags=re.M)
-    assert m, "README's Models row no longer starts with the count"
     assert _number(m.group(1)) == _published_models(), (m.group(1), _published_models())
 
 
