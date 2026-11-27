@@ -891,6 +891,55 @@ one a timer reads the launch.
 - **A GPU is not where this project's inference runs.** The demo's pages encrypt in the visitor's browser (node-seal), and the
   full deployment's image has no GPU code. This is the full deployment's hybrid on a machine that has one.
 
+## The published graphs on WebGPU beside WASM, measured
+
+Every page with a published ONNX graph lets a visitor pick WebGPU for it (the Model backend select), and until Round 86's
+batch 8 only the medical page had that measured. Each use-case page now carries a card, "WebGPU beside WASM, on this
+page's fp32 graphs" (`web/src/components/BackendCompareCard.tsx`), that runs a model's fp32 graph in the tab on WASM and
+then on WebGPU over every row of its published evaluation sample, compares every output value and each row's decision by
+the sample's own rule, and times both (`compareBackends` in `web/src/lib/onnxInference.ts`, the rule and the tolerance in
+`web/src/lib/backendCompare.ts`). Within tolerance means every value within $`10^{-3}`$ of the WASM run's and no decision
+changed beyond a near tie; the tolerance was stated before any figure was measured.
+
+- **fp32 only, by the owner's choice.** The page loads a model's int8 graph where one ships, and ONNX Runtime Web's WebGPU
+  provider registers no kernel for an int8 graph's quantised nodes, so those nodes would run on the CPU and the time would
+  describe neither backend. An int8 graph is compared as its fp32 twin, pinned at the same revision and checked against its
+  SHA-256 as every graph is; the int8 graph stays on WASM.
+- **An `ai.onnx.ml` graph is not compared** (the tree ensembles and the ML-domain linear students): the WebGPU build
+  registers none of its operators, so it runs on WASM only, and the card says so on its row.
+- **The WebGPU session is opened with WebGPU alone,** so a backend that cannot start fails the comparison instead of opening
+  a WASM session that would be timed as WebGPU. Nodes the WebGPU provider has no kernel for still run on the CPU, one by
+  one, as ONNX Runtime places them; which nodes those are is not visible to the page.
+
+On a local client-only build of this branch in the owner's Chrome (NVIDIA RTX PRO 6000 Blackwell, as the browser names
+the adapter; cross-origin isolated), 2026-11-27, one comparison per model; times are medians of three runs over every row
+and of five on one row, after a first run, in milliseconds:
+
+| page | model (graph) | rows | largest difference (largest value) | decisions changed | all rows, WASM / WebGPU | one row, WASM / WebGPU |
+|---|---|---|---|---|---|---|
+| finance | MLP on per-transaction features | 8,192 | $`3.81 \times 10^{-6}`$ (13.7) | 0 | 4.1 / 6.6 | 0.025 / 2.9 |
+| finance | IBM Multi-PNA+EU, IBM's protocol (a graph sample) | 16 seeds | $`1.34 \times 10^{-5}`$ (25.0) | 0 | 50.2 / 30.8 | none: one graph |
+| finance | IBM Multi-PNA+EU, causal protocol (a graph sample) | 16 seeds | $`7.63 \times 10^{-6}`$ (17.4) | 0 | 47.0 / 28.5 | none: one graph |
+| medical | ResNet-18 on BreastMNIST (the fp32 twin) | 156 | $`1.72 \times 10^{-5}`$ (14.1) | 0 | 344 / 5.6 | 2.4 / 7.0 |
+| medical | ResNet-50 on BreastMNIST | 156 | $`4.67 \times 10^{-5}`$ (114) | 0 | 653 / 5.9 | 4.8 / 4.1 |
+| medical | CKKS-evaluable CNN student | 156 | $`1.67 \times 10^{-6}`$ (4.51) | 0 | 0.59 / 2.8 | 0.040 / 0.69 |
+| medical | fully encrypted CNN student (square) | 156 | $`1.67 \times 10^{-6}`$ (5.54) | 0 | 0.56 / 1.1 | 0.12 / 1.7 |
+| medical | ResNet-18 on ChestX-ray14, FedAvg (the fp32 twin) | 16 | $`3.10 \times 10^{-6}`$ (5.01) | 0 | 336 / 6.2 | 21.7 / 4.4 |
+| satellite | Telemanom LSTM forecaster (the fp32 twin) | 128 windows | $`2.74 \times 10^{-6}`$ (2.59) | none: a forecast | 39.1 / 16.2 | 1.2 / 12.5 |
+| telecom | CKKS-linear IDS student | 600 | $`3.81 \times 10^{-6}`$ (24.0) | 0 | 0.13 / 0.57 | 0.030 / 0.53 |
+| telecom | federated 5G-NIDD detector | 2,048 | $`3.81 \times 10^{-5}`$ (259) | 0 | 1.9 / 0.71 | 0.10 / 0.55 |
+
+- **Every graph agrees within the tolerance, and no decision changed.** The largest difference is
+  $`4.67 \times 10^{-5}`$, on ResNet-50, whose largest value is 114.
+- **Over a whole sample, WebGPU is the faster backend for the three ResNets,** by 54 to 111 times here (ResNet-50: 653
+  against 5.9 ms), for the graph networks and the LSTM by 1.6 to 2.4 times, and for the federated detector's 2,048 rows by
+  2.7 times. WASM is faster for the finance MLP's 8,192 rows (4.1 against 6.6 ms), the two medical CNN students and the
+  telecom student, and on one row for every model but ResNet-50 and the ChestX-ray14 ResNet: a WebGPU run pays for moving
+  the input to the GPU and the result back, which a small graph or a single row does not repay.
+- **One comparison per model, so the times are indicative.** The telecom student's WebGPU median over every row read 161 ms
+  on a first comparison and 0.57 ms on a second, minutes apart; the differences and the decisions were the same both times.
+- **On the deploy** the card runs the same way; its figures are in checklist CS23.
+
 ## Secret-shared matrix multiplication on the GPU, measured
 
 hpmpc (MIT), the MPC framework under PIGEON, multiplies two secret-shared $`N \times N`$ matrices twenty times under its
