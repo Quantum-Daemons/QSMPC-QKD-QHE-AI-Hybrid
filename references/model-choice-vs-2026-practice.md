@@ -77,8 +77,9 @@ protocol splits each class chronologically and removes those eight; moving the s
 federations use a random split of flows, and six of the eight columns are among their inputs (`sHops`, `dHops`, `sVid`,
 `dVid`, `SrcTCPBase`, `DstTCPBase`; the loader already drops `Seq` as an identifier and the file-naming `IdleTime`).
 The cryptographic results do not depend on it: the CKKS and plaintext logits agree, and the masks cancel exactly,
-whatever the split. The accuracy levels do, and none has been re-measured under the clean protocol. The suggestion: a
-pre-registered re-run of the telecom models under it. This is this project's reading of the paper, read at the source
+whatever the split. The accuracy levels do. The pre-registered re-run under stricter protocols (Round 86, batch 9;
+`references/telecom-nidd-clean-protocols-preregistration.md`) is reported in
+[`docs/models-and-benchmarks.md`](../docs/models-and-benchmarks.md#the-5g-nidd-models-under-leakage-aware-protocols-pre-registered-round-86-batch-9). This is this project's reading of the paper, read at the source
 on 2026-11-27, and not the paper's claim about these models.
 
 **Two more 2026 studies, and what the file allows.** Ozyilmaz and Okay, "Positional Feature Leakage in 5G-NIDD",

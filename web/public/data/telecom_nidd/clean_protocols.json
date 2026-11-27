@@ -1,0 +1,378 @@
+{
+ "_generated_by": "scripts/export_nidd_clean_protocols.py; do not edit by hand",
+ "preregistration": {
+  "file": "references/telecom-nidd-clean-protocols-preregistration.md",
+  "sha256": "7d4feebfdccb8c2626e614445999ef48ac23dff2c8071f20b2fb1140d5750aed"
+ },
+ "record": "docs/measurements/telecom-nidd-clean-protocols-2026-11-27.json",
+ "splits": {
+  "P0": "the shipped random split",
+  "P1_train_1_test_2": "station 1 to station 2",
+  "P1_train_2_test_1": "station 2 to station 1",
+  "P2": "a time split in each capture file",
+  "P3": "LEAF's Seq rule"
+ },
+ "inputs": {
+  "T46": "all 46 inputs",
+  "T40": "without LEAF's six",
+  "T38": "without the six and TTL",
+  "F36": "all 36 inputs",
+  "F30": "without LEAF's six",
+  "F28": "without the six and TTL"
+ },
+ "arms": {
+  "teacher": {
+   "T46": {
+    "P0": {
+     "mean": 0.9972,
+     "sd": 0.0001,
+     "runs": 5
+    },
+    "P1_train_1_test_2": {
+     "mean": 0.9957,
+     "sd": 0.0002,
+     "runs": 5
+    },
+    "P1_train_2_test_1": {
+     "mean": 0.9031,
+     "sd": 0.0006,
+     "runs": 5
+    },
+    "P2": {
+     "mean": 0.9923,
+     "sd": 0.0003,
+     "runs": 5
+    },
+    "P3": {
+     "mean": 0.9619,
+     "sd": 0.0004,
+     "runs": 5
+    }
+   },
+   "T40": {
+    "P0": {
+     "mean": 0.9972,
+     "sd": 0.0,
+     "runs": 5
+    },
+    "P1_train_1_test_2": {
+     "mean": 0.9955,
+     "sd": 0.0001,
+     "runs": 5
+    },
+    "P1_train_2_test_1": {
+     "mean": 0.9034,
+     "sd": 0.0004,
+     "runs": 5
+    },
+    "P2": {
+     "mean": 0.992,
+     "sd": 0.0002,
+     "runs": 5
+    },
+    "P3": {
+     "mean": 0.962,
+     "sd": 0.0005,
+     "runs": 5
+    }
+   },
+   "T38": {
+    "P0": {
+     "mean": 0.8879,
+     "sd": 0.0,
+     "runs": 5
+    },
+    "P1_train_1_test_2": {
+     "mean": 0.8848,
+     "sd": 0.0001,
+     "runs": 5
+    },
+    "P1_train_2_test_1": {
+     "mean": 0.8608,
+     "sd": 0.0005,
+     "runs": 5
+    },
+    "P2": {
+     "mean": 0.8836,
+     "sd": 0.0001,
+     "runs": 5
+    },
+    "P3": {
+     "mean": 0.8405,
+     "sd": 0.0002,
+     "runs": 5
+    }
+   }
+  },
+  "student": {
+   "F36": {
+    "P0": {
+     "mean": 0.9728,
+     "sd": null,
+     "runs": 1
+    },
+    "P1_train_1_test_2": {
+     "mean": 0.986,
+     "sd": null,
+     "runs": 1
+    },
+    "P1_train_2_test_1": {
+     "mean": 0.9351,
+     "sd": null,
+     "runs": 1
+    },
+    "P2": {
+     "mean": 0.9867,
+     "sd": null,
+     "runs": 1
+    },
+    "P3": {
+     "mean": 0.9756,
+     "sd": null,
+     "runs": 1
+    }
+   },
+   "F30": {
+    "P0": {
+     "mean": 0.9589,
+     "sd": null,
+     "runs": 1
+    },
+    "P1_train_1_test_2": {
+     "mean": 0.9734,
+     "sd": null,
+     "runs": 1
+    },
+    "P1_train_2_test_1": {
+     "mean": 0.9455,
+     "sd": null,
+     "runs": 1
+    },
+    "P2": {
+     "mean": 0.9632,
+     "sd": null,
+     "runs": 1
+    },
+    "P3": {
+     "mean": 0.9641,
+     "sd": null,
+     "runs": 1
+    }
+   },
+   "F28": {
+    "P0": {
+     "mean": 0.8557,
+     "sd": null,
+     "runs": 1
+    },
+    "P1_train_1_test_2": {
+     "mean": 0.8696,
+     "sd": null,
+     "runs": 1
+    },
+    "P1_train_2_test_1": {
+     "mean": 0.7366,
+     "sd": null,
+     "runs": 1
+    },
+    "P2": {
+     "mean": 0.8674,
+     "sd": null,
+     "runs": 1
+    },
+    "P3": {
+     "mean": 0.8498,
+     "sd": null,
+     "runs": 1
+    }
+   }
+  },
+  "mlp": {
+   "F30": {
+    "P1_train_1_test_2": {
+     "mean": 0.9883,
+     "sd": 0.0008,
+     "runs": 5
+    },
+    "P1_train_2_test_1": {
+     "mean": 0.9642,
+     "sd": 0.0004,
+     "runs": 5
+    },
+    "P2": {
+     "mean": 0.9902,
+     "sd": 0.0003,
+     "runs": 5
+    }
+   }
+  },
+  "federation": {
+   "F36": {
+    "P2": {
+     "mean": 0.986,
+     "sd": null,
+     "runs": 1
+    }
+   },
+   "F30": {
+    "P2": {
+     "mean": 0.9698,
+     "sd": null,
+     "runs": 1
+    }
+   },
+   "F28": {
+    "P2": {
+     "mean": 0.864,
+     "sd": null,
+     "runs": 1
+    }
+   }
+  }
+ },
+ "single_feature_check": {
+  "flagged": {
+   "P0": {},
+   "P1_train_1_test_2": {},
+   "P1_train_2_test_1": {},
+   "P2": {},
+   "P3": {}
+  },
+  "highest": {
+   "P0": [
+    {
+     "input": "sMeanPktSz",
+     "class": "UDPFlood",
+     "f1": 0.9453
+    },
+    {
+     "input": "sTtl",
+     "class": "Benign",
+     "f1": 0.9103
+    },
+    {
+     "input": "AckDat",
+     "class": "HTTPFlood",
+     "f1": 0.8955
+    }
+   ],
+   "P1_train_1_test_2": [
+    {
+     "input": "sMeanPktSz",
+     "class": "UDPFlood",
+     "f1": 0.8792
+    },
+    {
+     "input": "AckDat",
+     "class": "HTTPFlood",
+     "f1": 0.8786
+    },
+    {
+     "input": "TcpRtt",
+     "class": "HTTPFlood",
+     "f1": 0.8762
+    }
+   ],
+   "P1_train_2_test_1": [
+    {
+     "input": "sMeanPktSz",
+     "class": "UDPFlood",
+     "f1": 0.9382
+    },
+    {
+     "input": "Proto",
+     "class": "UDPFlood",
+     "f1": 0.9148
+    },
+    {
+     "input": "sTtl",
+     "class": "Benign",
+     "f1": 0.9114
+    }
+   ],
+   "P2": [
+    {
+     "input": "sMeanPktSz",
+     "class": "UDPFlood",
+     "f1": 0.9498
+    },
+    {
+     "input": "sTtl",
+     "class": "Benign",
+     "f1": 0.9309
+    },
+    {
+     "input": "AckDat",
+     "class": "HTTPFlood",
+     "f1": 0.89
+    }
+   ],
+   "P3": [
+    {
+     "input": "sMeanPktSz",
+     "class": "UDPFlood",
+     "f1": 0.9508
+    },
+    {
+     "input": "sTtl",
+     "class": "Benign",
+     "f1": 0.9468
+    },
+    {
+     "input": "AckDat",
+     "class": "HTTPFlood",
+     "f1": 0.8993
+    }
+   ]
+  }
+ },
+ "licence": "CC-BY-4.0",
+ "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+ "attribution": {
+  "dataset": "5G-NIDD",
+  "licence": "CC-BY-4.0",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "citation": "Y. Siriwardhana et al., 'Descriptor: 5G Wireless Network Intrusion Detection Dataset (5G-NIDD)', in IEEE Data Descriptions, doi:10.1109/IEEEDATA.2025.3592888. Dataset: doi:10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361, CC BY 4.0.",
+  "download": "https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361"
+ },
+ "modifications": "figures computed from 5G-NIDD by the pre-registered re-run; no flow, threshold or weight is shipped",
+ "ckks_recheck": {
+  "rows": 2048,
+  "ciphertexts": 16,
+  "decisions_differ": 0,
+  "max_abs_logit_error": 2.2321180459528023e-07,
+  "encrypted_accuracy": 0.98193359375,
+  "plaintext_accuracy": 0.98193359375
+ },
+ "crosstestbed": {
+  "teacher": {
+   "macro_f1": {
+    "mean": 0.1776,
+    "sd": 0.0289,
+    "runs": 5
+   },
+   "binary_attack_f1": {
+    "mean": 0.553,
+    "sd": 0.1029,
+    "runs": 5
+   }
+  },
+  "student": {
+   "macro_f1": {
+    "mean": 0.2559,
+    "sd": null,
+    "runs": 1
+   },
+   "binary_attack_f1": {
+    "mean": 0.8677,
+    "sd": null,
+    "runs": 1
+   }
+  },
+  "shared_rows": 1399000,
+  "dataset": "NetsLab-5GORAN-IDD",
+  "licence": "CC-BY-4.0",
+  "source": "https://zenodo.org/records/18923275",
+  "citation": "F. Abed Zadeh, A. Civciss, V. R. Wickrama Arachchilage, M. Liyanage and C. Sandeepa, '5G Open Radio Access Network Multi-Modal Intrusion Detection Dataset (NetsLab-5GORAN-IDD)', Zenodo 18923275, 2025, CC BY 4.0; figures computed from its flow CSV, no row shipped"
+ }
+}

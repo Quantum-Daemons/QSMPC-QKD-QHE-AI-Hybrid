@@ -140,8 +140,8 @@ export default function DefiQcnnCard() {
           Re-scored in this tab: an average precision of {f4(rescore.ap)} over the sample&apos;s {c.sample.rows.toLocaleString("en-US")}{" "}
           borrows ({c.sample.positive} liquidated), in {rescore.ms.toFixed(0)} ms;{" "}
           {Math.abs(rescore.ap - c.sample.average_precision) <= 1e-9
-            ? <>the value recorded for these rows.</>
-            : <>which DIFFERS from the {f4(c.sample.average_precision)} recorded for these rows.</>}
+            ? <>equal, within 1e-9, to the value recorded for these rows.</>
+            : <>it DIFFERS from the {f4(c.sample.average_precision)} recorded for these rows.</>}
         </p>
       ) : null}
       <p className="muted small" style={{ margin: "8px 0 0" }}>

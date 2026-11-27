@@ -210,6 +210,10 @@ FROZEN = {
     # second (9031341, arm 2 on the GPU) before any QCNN run.
     "references/defi-qcnn-aave-v3-preregistration.md":
         "af2cc309b6aa3d69b45c3474a6c8d39ce6eadd332baa87a502a98e2166902110",
+    # Round 86's batch 9, the owner's choices of 2026-11-27 (four panels): the 5G-NIDD models under leakage-aware
+    # protocols, committed before any model was fitted under them.
+    "references/telecom-nidd-clean-protocols-preregistration.md":
+        "7d4feebfdccb8c2626e614445999ef48ac23dff2c8071f20b2fb1140d5750aed",
 }
 
 

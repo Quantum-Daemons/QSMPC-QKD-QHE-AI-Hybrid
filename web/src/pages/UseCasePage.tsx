@@ -27,6 +27,7 @@ import SatVusPrCard from "../components/SatVusPrCard";
 import SatThresholdsCard from "../components/SatThresholdsCard";
 import SatJinanPassCard from "../components/SatJinanPassCard";
 import NiddFederatedCard, { type NiddFederatedLive } from "../components/NiddFederatedCard";
+import NiddCleanProtocolsCard from "../components/NiddCleanProtocolsCard";
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
 import FinanceAccuracyCost from "../components/FinanceAccuracyCost";
@@ -351,6 +352,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {/* The model 5G-NIDD's two base stations federated (Round 86, batch 6; the owner's choice of 2026-11-26): the offline
           comparison always, this run's replayed aggregation and CKKS figures once the pipeline has run. */}
       {usecase === "telecom_ids" && <NiddFederatedCard live={(artifacts?.nidd_federated as NiddFederatedLive | undefined) ?? null} />}
+      {/* The 5G-NIDD models re-run under leakage-aware protocols (Round 86, batch 9), pre-registered: figures only. */}
+      {usecase === "telecom_ids" && <NiddCleanProtocolsCard />}
 
       {artifacts?.verification?.plot ? (
         <div className="card">

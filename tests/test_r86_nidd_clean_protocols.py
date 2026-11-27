@@ -1,0 +1,169 @@
+"""The 5G-NIDD models under leakage-aware protocols (Round 86, batch 9; checklist MS33), held to their pre-registration.
+
+`references/telecom-nidd-clean-protocols-preregistration.md` fixed the four splits, the input sets, the single-feature
+check and the arms before any model was fitted under them; `scripts/train/telecom_nidd_clean_protocols.py` writes one
+record, `docs/measurements/telecom-nidd-clean-protocols-2026-11-27.json`, an arm at a time. The flows are not in CI, so
+what is held here is what the committed files say about each other, and the code on synthetic rows:
+
+  - the record ran under the committed pre-registration (its SHA-256 is the file's and the script's);
+  - the single-feature check's flags are exactly its values at or above the pre-registered 0.99;
+  - each split's parts add up as the pre-registration says (P0, P2 and P3 cover every row once; P1 tests on the other
+    station's rows);
+  - the splits and the check's threshold, on synthetic rows, do what the pre-registration says (disjoint parts, P2
+    time-ordered in each group, cuts rounded down, ties on one side of a threshold, absent classes left out).
+"""
+from __future__ import annotations
+
+import functools
+import hashlib
+import importlib.util
+import json
+from pathlib import Path
+
+import numpy as np
+
+REPO = Path(__file__).resolve().parents[1]
+SCRIPT = REPO / "scripts" / "train" / "telecom_nidd_clean_protocols.py"
+PROTOCOLS = REPO / "scripts" / "train" / "nidd_protocols.py"
+RECORD = REPO / "docs" / "measurements" / "telecom-nidd-clean-protocols-2026-11-27.json"
+
+
+def _load(name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(name, path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+@functools.cache
+def _m():
+    return _load("telecom_nidd_clean_protocols", SCRIPT)
+
+
+def _r() -> dict:
+    return json.loads(RECORD.read_text())
+
+
+def test_the_record_ran_under_the_committed_preregistration() -> None:
+    r, m = _r(), _m()
+    assert hashlib.sha256((REPO / r["preregistration"]["file"]).read_bytes()).hexdigest() == r["preregistration"]["sha256"]
+    assert r["preregistration"]["sha256"] == m.PREREG_SHA256
+    assert r["classes"][0] == "Benign" and len(r["classes"]) == 9
+
+
+def test_the_flags_are_the_values_at_the_preregistered_threshold() -> None:
+    r, m = _r(), _m()
+    assert m.FLAG_F1 == 0.99
+    for split, v in r["single_feature_check"].items():
+        values = v["validation_f1_at_least_0_5"]
+        expected = {n: {c: f for c, f in d.items() if f >= m.FLAG_F1} for n, d in values.items()}
+        expected = {n: d for n, d in expected.items() if d}
+        assert v["flagged"] == expected, split
+        assert all(0.5 <= f <= 1.0 for d in values.values() for f in d.values()), split
+
+
+def test_each_split_adds_up() -> None:
+    r = _r()
+    n = r["rows"]
+    for name in ("P0", "P2", "P3"):
+        assert sum(r["parts"][name]) == n, name
+    a, b = r["parts"]["P1_train_1_test_2"], r["parts"]["P1_train_2_test_1"]
+    # Train and validate on one station, test on every row of the other: the two directions' test parts are the stations.
+    assert a[0] + a[1] == b[2] and b[0] + b[1] == a[2] and a[2] + b[2] == n
+
+
+def test_the_splits_on_synthetic_rows() -> None:
+    P = _load("nidd_protocols", PROTOCOLS)
+    P._self_test()
+    assert P.cuts(10) == (7, 8) and P.cuts(3) == (2, 2) and P.cuts(1) == (0, 0)
+
+
+def test_the_threshold_and_the_scores_on_synthetic_rows() -> None:
+    m = _m()
+    rng = np.random.default_rng(1)
+    x = np.r_[rng.normal(0, 1, 500), rng.normal(5, 1, 500)]
+    t = np.r_[np.zeros(500, bool), np.ones(500, bool)]
+    f1, _, sign = m.best_threshold(x, t)
+    assert f1 > 0.99 and sign == 1
+    assert m.best_threshold(-x, t)[2] == -1
+    # Two tied values: the cut falls between them, never inside a run of equal values.
+    assert m.best_threshold(np.repeat([0.0, 1.0], 500), t)[0] == 1.0
+    s = m.scores(np.array([0, 0, 1, 1, 2]), np.array([0, 1, 1, 1, 2]), 4)
+    assert s["classes_absent"] == [3] and abs(s["macro_f1"] - np.mean([2 / 3, 0.8, 1.0])) < 1e-6
+
+
+SPLITS = ("P0", "P1_train_1_test_2", "P1_train_2_test_1", "P2", "P3")
+
+
+def _consistent(t: dict) -> None:
+    """A test part's scores agree with each other: the FLamby metric is the mean of the stations' macro-F1."""
+    assert 0.0 <= t["macro_f1"] <= 1.0 and 0.0 <= t["accuracy"] <= 1.0 and 0.0 <= t["weighted_f1"] <= 1.0
+    st = t.get("station_macro_f1", {})
+    if st:
+        assert abs(t["flamby_metric"] - np.mean(list(st.values()))) <= 1e-6
+
+
+def test_every_preregistered_cell_of_the_arms_is_in_the_record() -> None:
+    r = _r()
+    teacher = {f"{s}/{p}/seed{k}" for s in ("T46", "T40", "T38") for p in SPLITS for k in range(5)}
+    student = {f"{s}/{p}" for s in ("F36", "F30", "F28") for p in SPLITS}
+    mlp = {f"F30/{p}/seed{k}" for p in ("P1_train_1_test_2", "P1_train_2_test_1", "P2") for k in range(5)}
+    federation = {"F36", "F30", "F28"}
+    for arm, want in (("teacher", teacher), ("student", student), ("mlp", mlp), ("federation", federation)):
+        if arm in r:
+            assert set(r[arm]) == want, arm
+            for v in r[arm].values():
+                _consistent(v["test"])
+
+
+def test_each_student_penalty_is_the_grid_best_by_validation_loss() -> None:
+    r, m = _r(), _m()
+    fits = {**r.get("student", {}), **{f"federation/{s}": v for s, v in r.get("federation", {}).items()}}
+    for key, v in fits.items():
+        assert [row["l2"] for row in v["penalty_table"]] == list(m.S.L2_GRID), key
+        assert v["l2"] == min(v["penalty_table"], key=lambda row: (row["validation_log_loss"], row["l2"]))["l2"], key
+        assert v["temperature"] > 0, key
+
+
+def test_the_seeded_arms_ran_where_the_preregistration_says() -> None:
+    r = _r()
+    for arm in ("teacher", "mlp"):
+        for key, v in r.get(arm, {}).items():
+            assert v["seed"] == int(key.rsplit("seed", 1)[1]) and v["device"] in ("cuda", "cpu"), key
+    for key, v in r.get("mlp", {}).items():
+        assert 1 <= v["epoch"] <= 30, key
+
+
+def test_the_page_file_is_what_its_exporter_writes() -> None:
+    mod = _load("export_nidd_clean_protocols", REPO / "scripts" / "export_nidd_clean_protocols.py")
+    site = REPO / "web" / "public" / "data" / "telecom_nidd" / "clean_protocols.json"
+    assert json.dumps(mod.build(), indent=1) + "\n" == site.read_text()
+    page = json.loads(site.read_text())
+    assert page["licence"] == "CC-BY-4.0" and page["attribution"]["dataset"] == "5G-NIDD"
+    if "crosstestbed" in page:
+        assert "NetsLab-5GORAN-IDD" in page["crosstestbed"]["citation"] and page["crosstestbed"]["licence"] == "CC-BY-4.0"
+
+
+def test_the_telecom_page_mounts_the_card() -> None:
+    page = (REPO / "web" / "src" / "pages" / "UseCasePage.tsx").read_text()
+    card = (REPO / "web" / "src" / "components" / "NiddCleanProtocolsCard.tsx").read_text()
+    assert '{usecase === "telecom_ids" && <NiddCleanProtocolsCard />}' in page
+    assert "data/telecom_nidd/clean_protocols.json" in card and "none decides what ships" in card
+
+def test_the_federation_ran_on_both_stations_with_masked_messages() -> None:
+    for key, v in _r().get("federation", {}).items():
+        # 40 rounds for each of the six penalties, one masked sum a round, then the validation sums: over 240 messages.
+        assert v["masked_messages"] > 240 and v["standardisation_max_relative_difference"] < 1e-6, key
+        assert set(v["test"]["station_macro_f1"]) == {"station_1", "station_2"}, key
+
+
+def test_the_ckks_recheck_is_the_record_s_student_under_the_page_s_module() -> None:
+    r = _r()
+    if "ckks_recheck" not in r:
+        return
+    c = r["ckks_recheck"]
+    assert c["refit_is_the_record_s"] is True and c["rows"] == 2048 and sum(c["class_counts"].values()) == 2048
+    assert isinstance(c["decisions_differ"], int) and 0 <= c["decisions_differ"] <= c["rows"]
+    assert 0 < c["max_abs_logit_error"] < 1e-3 and c["ciphertexts"] >= 1
+    # The page's plaintext pass and numpy's, on the same rounded rows and weights, take the same argmax on all but ties.
+    assert abs(c["plaintext_accuracy"] - c["plaintext_accuracy_numpy"]) <= 1 / 2048

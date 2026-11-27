@@ -671,8 +671,8 @@ like every 5G-NIDD figure on the page, are on the student's random split of flow
 find stand in for the label; they report that the same models lose roughly three to seven points of accuracy on their
 clean protocol, which splits each class chronologically and removes eight such columns. `Seq` and `Offset`, which two
 other 2026 studies find leak the most, are not inputs here. The comparisons in this table
-are within one protocol, and their levels have not been re-measured under the clean one
-([`references/model-choice-vs-2026-practice.md`](../references/model-choice-vs-2026-practice.md)). Neither
+are within one protocol; the two-station models' re-run under stricter protocols is the next section (this eight-client
+run was not re-run). Neither
 comparison decides what ships: the page's encrypted federated model stays the two-station linear one, since no network
 here runs under CKKS. What the masks hide changes with eight clients: a client learns from the sum only the sum of the
 other seven, so one client's update is hidden from each other client unless the six others collude, as well as from
@@ -682,6 +682,61 @@ figures under a key that record does not have. The summaries and both comparison
 afterwards by `--summarise`, which trains nothing (the record's `summary_note`, its seeds unchanged field for field), so
 the run's wall clock is not recorded; its log's last timed step, the fifth seed's federated 1D-CNN, is at 11,485 s. The
 telecom page's federation card shows the table below the two stations'.
+
+#### The 5G-NIDD models under leakage-aware protocols, pre-registered (Round 86, batch 9)
+
+On the owner's choices of 2026-11-27, after Hameed and Ibrahim (J. Cybersecur. Priv. 6(6):205, 2026-11-15) found that
+random splits of flows and identifier-like columns inflate 5G-NIDD scores, pre-registered before any model was fitted
+under these protocols ([`references/telecom-nidd-clean-protocols-preregistration.md`](../references/telecom-nidd-clean-protocols-preregistration.md);
+`scripts/train/telecom_nidd_clean_protocols.py`, `docs/measurements/telecom-nidd-clean-protocols-2026-11-27.json`).
+The shipped recipes, unchanged, under the shipped split and three stricter ones: training on one base station and
+testing on every flow of the other (validation on the training station's last 15 percent of each class), a time split
+in each capture file (each file's rows of each class in file order, 70, 15 and 15 percent; the file's order is
+chronological, checked), and LEAF's own rule (each class ordered by `Seq`, which restarts in most capture files here,
+so it holds no capture out). Each on the shipped inputs, without LEAF's six flagged columns, and without TTL as well.
+FLamby's metric where the test part holds both stations, the macro-F1 where it holds one; five seeds where the arm
+has seeds, the standard deviation in brackets.
+
+| Model, inputs | Shipped random | Station 1 to 2 | Station 2 to 1 | Time split per file | LEAF's Seq rule |
+|---|---|---|---|---|---|
+| Teacher, all 46 | 0.9972 (0.0001) | 0.9957 (0.0002) | 0.9031 (0.0006) | 0.9923 (0.0003) | 0.9619 (0.0004) |
+| Teacher, without the six | 0.9972 (0.0000) | 0.9955 (0.0001) | 0.9034 (0.0004) | 0.9920 (0.0002) | 0.9620 (0.0005) |
+| Teacher, without the six and TTL | 0.8879 (0.0000) | 0.8848 (0.0001) | 0.8608 (0.0005) | 0.8836 (0.0001) | 0.8405 (0.0002) |
+| Student, all 36 | 0.9728 | 0.9860 | 0.9351 | 0.9867 | 0.9756 |
+| Student, without the six | 0.9589 | 0.9734 | 0.9455 | 0.9632 | 0.9641 |
+| Student, without the six and TTL | 0.8557 | 0.8696 | 0.7366 | 0.8674 | 0.8498 |
+| Square MLP (new), without the six | | 0.9883 (0.0008) | 0.9642 (0.0004) | 0.9902 (0.0003) | |
+| Two-station federation, all 36 | | | | 0.9860 | |
+| Two-station federation, without the six | | | | 0.9698 | |
+| Two-station federation, without the six and TTL | | | | 0.8640 | |
+
+Before any model, a single threshold on one input reaches an F1 of 0.99 for no class on any split; the highest are
+`sMeanPktSz` for UDPFlood (0.88 to 0.95) and `sTtl` for Benign (0.80 to 0.95), and LEAF's six reach 0.82 to 0.90
+alone. As measured: the stricter splits barely move the shipped inputs' figures (the teacher $`-0.0049`$ on the time
+split, the student $`+0.0139`$), but training on station 2 and testing on station 1 costs the teacher 0.094 and the
+student 0.038. That direction was already weak in the registry's cross-station check of the shipped teacher, trained
+on each whole station (0.9021, its fall SYNFlood's at an F1 of 0.22; the other direction 0.9954, as here;
+`models/metrics.json`, `cross_base_station`), and in the federation's comparison (station 2 alone 0.9587 against
+station 1 alone's 0.9847); the square MLP holds 0.9642 there. LEAF's six columns are worth nothing to the teacher
+(within 0.0003 on every split); to the linear student 0.011 to 0.024 on four splits, while from station 2 to station 1
+it scores 0.010 better without them. TTL is worth 0.10 to 0.12 to both on four splits, and from station 2 to station 1
+0.04 to the teacher and 0.21 to the student. A threshold on `sTtl` alone separates Benign at 0.80 to 0.95, so TTL may
+describe how this testbed's traffic was made rather than the attacks (Jacobs et al., CCS 2022, call it a known
+shortcut); these splits cannot tell the two apart. On the time split, the two-station federation, each station on its
+own parts and every masked message cancelling exactly, scores 0.9860, 0.9698 and 0.8640 on the three input sets,
+within 0.007 of the pooled student (0.9867, 0.9632 and 0.8674). Under CKKS, the student refitted on the time split
+without the six, on 2,048 of its test flows drawn as the shipped student's were, in 16 ciphertexts through the page's
+own module: no decision differs from the plaintext student's and the largest logit error is $`2.2 \times 10^{-7}`$ (the
+federation's model on the shipped held-out flows: none and $`1.7 \times 10^{-7}`$); the refit was checked to be the
+record's student first. Across testbeds, on 1,399,000 flows of NetsLab-5GORAN-IDD (Zenodo 18923275, CC BY 4.0,
+sharing authors with 5G-NIDD) of the classes both share, scored without retraining through this project's map of its
+Zeek fields to the Argus inputs (no TTL in either), the teacher on the mapped inputs reaches a macro-F1 of 0.178 (0.029
+over seeds) and the student 0.256, and as Benign against any attack 0.553 and 0.868: the models do not carry to
+another 5G testbed class by class. On the shipped split the student scores 0.9728 here against the shipped student's
+0.9739, because the re-run standardises on the fit rows, as the pre-registration's training part, where the shipped
+student used its fit and validation rows. Every student and federation fit chose the grid's smallest penalty, as
+before; 12 of the 15 MLP seeds chose an epoch from 27 to 30 of their 30. Stated as measured; nothing here changes the
+page's models or the published ones, and the telecom page shows these figures on a card of their own.
 
 #### The finance QCNN on AMLworld, pre-registered, and on the page since Round 86's batch 6
 
@@ -954,6 +1009,14 @@ satellite, ground station or quantum channel is involved.
   percent of detections sampled for the QBER, which the second analysis adds
   ([`references/satellite-jinan1-pass-v2-preregistration.md`](../references/satellite-jinan1-pass-v2-preregistration.md),
   committed before any of its figures).
+  The second analysis, run on 2026-11-27 (`docs/measurements/satellite-jinan1-pass-v2-2026-11-27.json`), changes
+  nothing. Fitting the station efficiency and the zenith loss together gives 0.1595 (se 0.0018) and
+  0.809 dB (se 0.017), correlated 0.95, against the profile's 0.1683 and 0.880 dB; the
+  residual deviation moves by $`-0.007`$ dB where rule 1 asked a fall of 0.05 dB, so the profile keeps its values. With
+  the gate and the sampling, the model's sifted bits are 1.35 times the measured 2,000,000, its packet
+  boundaries about 41 s ahead; each key block's measured key is 1.26 to 1.47 times the model's finite bound (mean
+  1.35); and the other three passes' packets are 2.16, 2.07, 2.39 times the published, where rule 2 asked within a
+  factor of 1.5, so the key model stays as it is. The satellite card shows the second analysis beside the first.
 
 ## State-vector simulators, measured
 

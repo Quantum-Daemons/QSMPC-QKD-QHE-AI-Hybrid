@@ -78,7 +78,11 @@ try {
     const err = Math.max(...r.logits.map((v, k) => Math.abs(v - want[k])));
     check(err < 5e-3, `the 8 scores from the shares are within 5e-3 of the clear student's (${err.toExponential(2)})`);
     check(r.reluCount === 0 && r.batches === 0, "no ReLU: only the argmax runs in garbled circuits");
-    check(r.clientViewMedianAbs > 2 ** cfg.logit_mask_bits / 8, `what the client decoded is masked (median |value| ${r.clientViewMedianAbs.toExponential(2)})`);
+    // The client sees only these 8 masked scores, each mask uniform on (-2^bits, 2^bits): their median falls below an eighth
+    // of that by chance once in about 810 rows (at least 5 of 8 draws there), which failed batch 9's gate on 2026-11-27 at
+    // 1.27e8. A 64th fails once in about 2e7 rows and still sits some 7e5 times above every clear score of the 600 held-out
+    // rows (at most 24), so it still tells masked values from unmasked ones.
+    check(r.clientViewMedianAbs > 2 ** cfg.logit_mask_bits / 64, `what the client decoded is masked (median |value| ${r.clientViewMedianAbs.toExponential(2)})`);
   }
 } finally {
   rmSync(tmp, { recursive: true, force: true });
