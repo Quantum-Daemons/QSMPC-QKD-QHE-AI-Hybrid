@@ -130,3 +130,20 @@ def test_the_seeded_arms_ran_where_the_preregistration_says() -> None:
             assert v["seed"] == int(key.rsplit("seed", 1)[1]) and v["device"] in ("cuda", "cpu"), key
     for key, v in r.get("mlp", {}).items():
         assert 1 <= v["epoch"] <= 30, key
+
+
+def test_the_page_file_is_what_its_exporter_writes() -> None:
+    mod = _load("export_nidd_clean_protocols", REPO / "scripts" / "export_nidd_clean_protocols.py")
+    site = REPO / "web" / "public" / "data" / "telecom_nidd" / "clean_protocols.json"
+    assert json.dumps(mod.build(), indent=1) + "\n" == site.read_text()
+    page = json.loads(site.read_text())
+    assert page["licence"] == "CC-BY-4.0" and page["attribution"]["dataset"] == "5G-NIDD"
+    if "crosstestbed" in page:
+        assert "NetsLab-5GORAN-IDD" in page["crosstestbed"]["citation"] and page["crosstestbed"]["licence"] == "CC-BY-4.0"
+
+
+def test_the_telecom_page_mounts_the_card() -> None:
+    page = (REPO / "web" / "src" / "pages" / "UseCasePage.tsx").read_text()
+    card = (REPO / "web" / "src" / "components" / "NiddCleanProtocolsCard.tsx").read_text()
+    assert '{usecase === "telecom_ids" && <NiddCleanProtocolsCard />}' in page
+    assert "data/telecom_nidd/clean_protocols.json" in card and "none decides what ships" in card

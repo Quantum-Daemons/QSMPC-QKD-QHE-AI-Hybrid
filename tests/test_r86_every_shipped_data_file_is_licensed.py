@@ -62,6 +62,9 @@ AGGREGATES = {
     "telecom_nidd/dirichlet.json": "5G-NIDD",
     "medical/nodule3d_reporting.json": "LIDC-IDRI",
     "defi/qcnn_comparison.json": "From Risk to Rescue dataset (Aave v3, Polygon)",
+    # Round 86's batch 9: the 5G-NIDD models under leakage-aware protocols, pre-registered; figures only, crediting 5G-NIDD,
+    # and NetsLab-5GORAN-IDD for the cross-testbed figures in their own block.
+    "telecom_nidd/clean_protocols.json": "5G-NIDD",
     # The QCNNs' tensor-network checks (Round 86, batch 6; the owner's choice of 2026-11-26): figures computed from the
     # medical, telecom and satellite QCNNs' corpora, one credit each, from the registry's dataset records.
     "qcnn_tn_checks.json": "WDBC, the synthetic QKD-attack rows, OPS-SAT-AD and ESA-ADB",
