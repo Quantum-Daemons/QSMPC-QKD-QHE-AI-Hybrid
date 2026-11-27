@@ -5,11 +5,13 @@ Reads `docs/measurements/medical-nodule3d-reporting-2026-11-27.json`, which `scr
 writes under `references/medical-nodule3d-reporting-preregistration.md`, and writes its figures, and nothing else, to
 `web/public/data/medical/nodule3d_reporting.json`: aggregates over the test part, no crop and no patient.
 
-Usage: python -I scripts/export_nodule3d_reporting.py
+Usage: python -I scripts/export_nodule3d_reporting.py [--check]
 """
 from __future__ import annotations
 
+import argparse
 import json
+import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
@@ -18,7 +20,7 @@ SITE = REPO / "web" / "public" / "data" / "medical" / "nodule3d_reporting.json"
 FIGS = ("auc", "auc_ci95", "auprc", "auprc_ci95")
 
 
-def main() -> int:
+def build() -> dict:
     r = json.loads(RECORD.read_text())
     pick = lambda d: {k: d[k] for k in FIGS}  # noqa: E731
     payload = {
@@ -38,7 +40,20 @@ def main() -> int:
     payload["attribution"] = {"dataset": "LIDC-IDRI", "download": "https://doi.org/10.7937/K9/TCIA.2015.LO9QL9SX",
                               "citation": student["attribution"], "licence": student["licence"]}
     payload["modifications"] = "figures over the test part from the record; no crop, scan or patient is shipped"
-    SITE.write_text(json.dumps(payload, indent=1) + "\n")
+    return payload
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--check", action="store_true", help="exit 1 unless the page file is what this writes")
+    args = ap.parse_args()
+    text = json.dumps(build(), indent=1) + "\n"
+    if args.check:
+        if not SITE.exists() or SITE.read_text() != text:
+            print(f"{SITE.relative_to(REPO)} is not what scripts/export_nodule3d_reporting.py writes", file=sys.stderr)
+            return 1
+        return 0
+    SITE.write_text(text)
     print(f"wrote {SITE.relative_to(REPO)}")
     return 0
 
