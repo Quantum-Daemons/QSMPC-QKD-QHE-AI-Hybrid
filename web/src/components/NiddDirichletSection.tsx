@@ -14,9 +14,10 @@ interface Dirichlet {
   references: { two_station_federated_flamby: number; pooled_flamby: number; alone_flamby: number[] };
 }
 
-const f3 = (v: number) => v.toFixed(3);
-const cell = (s: Stat) => (s.sd == null ? f3(s.mean) : `${f3(s.mean)} (${f3(s.sd)})`);
-const signed = (v: number) => `${v >= 0 ? "+" : ""}${f3(v)}`;
+// Four decimals: the pooled 1D-CNN's deviation over the five seeds is 0.0001, which three would print as zero.
+const f4 = (v: number) => v.toFixed(4);
+const cell = (s: Stat) => (s.sd == null ? f4(s.mean) : `${f4(s.mean)} (${f4(s.sd)})`);
+const signed = (v: number) => `${v >= 0 ? "+" : ""}${f4(v)}`;
 
 export default function NiddDirichletSection() {
   const [d, setD] = useState<Dirichlet | null>(null);
@@ -43,7 +44,8 @@ export default function NiddDirichletSection() {
         A pre-registered comparison, run offline: both stations&apos; fit rows divided among {d.clients} clients by class
         proportions drawn from a Dirichlet distribution at alpha {d.alpha} (Yurochkin et al.&apos;s partition, the
         set-up of Jeong et al., CMC 87(1), 2026, on 5G-NIDD), five partitions; the linear model and masked FedAvg above with{" "}
-        {d.clients} clients; and Jeong et al.&apos;s 1D-CNN, as this project reads it, under FedAvg in the clear and pooled.
+        {d.clients} clients; and a 1D-CNN after Jeong et al.&apos;s, as this project reads it (one fully connected layer of 128,
+        where their section 5.2 has two, of 128 and 64), under FedAvg in the clear and pooled.
         Each cell is the mean over the five seeds, with the standard deviation in brackets, on the same test flows.
       </p>
       <div style={{ overflowX: "auto" }}>
@@ -58,23 +60,27 @@ export default function NiddDirichletSection() {
                 <td style={{ textAlign: "center" }}>{cell(r.v.union_accuracy)}</td></tr>
             ))}
             <tr className="muted"><td>Linear, masked FedAvg, the two stations (above)</td>
-              <td style={{ textAlign: "center" }}>{f3(d.references.two_station_federated_flamby)}</td><td colSpan={3} /></tr>
+              <td style={{ textAlign: "center" }}>{f4(d.references.two_station_federated_flamby)}</td><td colSpan={3} /></tr>
             <tr className="muted"><td>Linear, pooled (above)</td>
-              <td style={{ textAlign: "center" }}>{f3(d.references.pooled_flamby)}</td><td colSpan={3} /></tr>
+              <td style={{ textAlign: "center" }}>{f4(d.references.pooled_flamby)}</td><td colSpan={3} /></tr>
           </tbody>
         </table>
       </div>
       <p className="small" style={{ marginTop: 6 }}>
         Over {d.clients} clients the linear model {d.C1.within_0_01
-          ? <>comes within 0.01 of pooling ({signed(-d.C1.gap)}).</>
-          : <>is {f3(d.C1.gap)} below pooling.</>}{" "}
+          ? <>comes within 0.01 of pooling ({signed(-d.C1.gap)}), as the pre-registration&apos;s first comparison asked.</>
+          : <>is {f4(d.C1.gap)} below pooling, outside the 0.01 the pre-registration&apos;s first comparison asked.</>}{" "}
         The 1D-CNN under FedAvg scores {signed(c2.cnn_minus_linear_mean_flamby)} against the linear model on the same
-        clients{c2.ci95 ? <> (95% interval {signed(c2.ci95[0])} to {signed(c2.ci95[1])} over the {c2.seeds} paired seeds)</> : null}.
+        clients{c2.ci95 ? <> (95% interval {signed(c2.ci95[0])} to {signed(c2.ci95[1])} over the {c2.seeds} paired seeds)</> : null},
+        the second comparison, stated as measured; neither decides what ships.
       </p>
       <p className="small muted" style={{ marginTop: 4 }}>
         With {d.clients} clients a client learns from the sum only the sum of the other {d.clients - 1}, so the masks hide one
         client&apos;s update from each other client unless the {d.clients - 2} others collude; the 1D-CNN arms are baselines
         in the clear, neither masked nor encrypted, and the page&apos;s encrypted model stays the two-station linear one.
+        Like every 5G-NIDD figure on this page, these are on a random split of flows, with six inputs that Hameed and
+        Ibrahim (J. Cybersecur. Priv. 6(6):205, 2026) find stand in for the label; they report that the same models lose
+        roughly three to seven points of accuracy on their clean protocol, under which these have not been re-measured.
         The 1D-CNN ran on {d.device_cnn === "cpu" ? "the CPU" : "the GPU"}. Pre-registration:{" "}
         <code>{d.preregistration.file}</code>; record: <code>{d.record}</code>.
       </p>

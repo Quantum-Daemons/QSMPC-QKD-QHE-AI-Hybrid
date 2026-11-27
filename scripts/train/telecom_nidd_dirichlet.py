@@ -110,10 +110,34 @@ def main() -> int:
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--seeds", type=int, nargs="+", default=[1, 2, 3, 4, 5])
     ap.add_argument("--export-only", action="store_true", help="rewrite the page's file from the record; run nothing")
+    ap.add_argument("--summarise", action="store_true",
+                    help="compute the summaries and both comparisons from the seeds the record holds, then rewrite the "
+                         "record and the page's file; train nothing")
     args = ap.parse_args()
     started = time.time()
     if args.export_only:
         write_web(json.loads(RECORD.read_text()), json.loads(RECORD.read_text())["device_cnn"])
+        return 0
+    if args.summarise:
+        record = json.loads(RECORD.read_text())
+        got = hashlib.sha256(PREREG.read_bytes()).hexdigest()
+        if not got == record["preregistration"]["sha256"] == PREREG_SHA256:
+            raise SystemExit(f"{PREREG.name} hashes to {got}, not the record's and the script's: summarise nothing")
+        fed_sha = hashlib.sha256(F.RECORD.read_bytes()).hexdigest()
+        if fed_sha != record["of_federation"]["sha256"]:
+            raise SystemExit(f"{F.RECORD.name} hashes to {fed_sha}, not the one the seeds ran against: summarise nothing")
+        if sorted(record["seeds"], key=int) != [str(s) for s in args.seeds]:
+            raise SystemExit(f"the record holds seeds {sorted(record['seeds'], key=int)}, not {args.seeds}: summarise nothing")
+        summarise(record, json.loads(F.RECORD.read_text()))
+        record["wall_clock_s"] = None
+        record["summary_note"] = (
+            "The run of 2026-11-27 trained and saved every seed, then stopped before its summary: the summary read the "
+            "two-station record's figures under a key that record does not have. The summaries and both comparisons were "
+            "then computed from the saved seeds by --summarise, which trains nothing; every seed's figures are the run's. "
+            "The run's wall clock was not recorded.")
+        RECORD.write_text(json.dumps(record, indent=1) + "\n")
+        write_web(record, record["device_cnn"])
+        print(json.dumps({"C1": record["C1"], "C2": record["C2"]}, indent=1))
         return 0
     got = hashlib.sha256(PREREG.read_bytes()).hexdigest()
     if got != PREREG_SHA256:
@@ -280,8 +304,18 @@ def main() -> int:
                                       "cnn_pooled": pooled_cnn}
         RECORD.write_text(json.dumps(record, indent=1) + "\n")
 
-    # ---- summaries and the two stated comparisons
-    fed = json.loads(F.RECORD.read_text())
+    summarise(record, json.loads(F.RECORD.read_text()))
+    record["wall_clock_s"] = round(time.time() - started, 1)
+    RECORD.write_text(json.dumps(record, indent=1) + "\n")
+    write_web(record, args.device)
+    print(json.dumps({"C1": record["C1"], "C2": record["C2"]}, indent=1))
+    return 0
+
+
+def summarise(record: dict, fed: dict) -> None:
+    """The summaries and the two stated comparisons, from the seeds the record holds and the two-station record `fed`,
+    whose federated, pooled and per-station figures are at its top level."""
+    from scipy import stats as st
 
     def summary(arm: str) -> dict:
         vals = {m: [record["seeds"][s][arm]["test"][m] for s in record["seeds"]]
@@ -290,44 +324,40 @@ def main() -> int:
                 for m, v in vals.items()}
 
     record["summary"] = {arm: summary(arm) for arm in ("linear_fedavg_masked", "cnn_fedavg", "cnn_pooled")}
-    pooled_flamby = fed["comparison"]["pooled"]["flamby_metric"]
+    pooled_flamby = fed["pooled"]["flamby_metric"]
     lin = record["summary"]["linear_fedavg_masked"]["flamby_metric"]["mean"]
     record["C1"] = {"linear_eight_clients_mean_flamby": lin, "pooled_flamby": pooled_flamby,
                     "gap": round(pooled_flamby - lin, 6), "within_0_01": bool(pooled_flamby - lin <= 0.01)}
-    from scipy import stats as st
-
     diffs = np.array([record["seeds"][s]["cnn_fedavg"]["test"]["flamby_metric"]
                       - record["seeds"][s]["linear_fedavg_masked"]["test"]["flamby_metric"] for s in record["seeds"]])
     half = float(st.t.ppf(0.975, len(diffs) - 1) * np.std(diffs, ddof=1) / np.sqrt(len(diffs))) if len(diffs) > 1 else None
     record["C2"] = {"cnn_minus_linear_mean_flamby": round(float(diffs.mean()), 6),
                     "ci95": [round(float(diffs.mean() - half), 6), round(float(diffs.mean() + half), 6)] if half is not None else None,
                     "seeds": len(diffs)}
-    record["references"] = {"two_station_federated_flamby": fed["comparison"]["federated"]["flamby_metric"],
+    record["references"] = {"two_station_federated_flamby": fed["federated"]["flamby_metric"],
                             "pooled_flamby": pooled_flamby,
-                            "alone_flamby": [a["flamby_metric"] for a in fed["comparison"]["alone"]]}
+                            "alone_flamby": [a["flamby_metric"] for a in fed["alone"]]}
     record["attribution"] = {"dataset": "5G-NIDD", "licence": DS_5G_NIDD.licence, "citation": DS_5G_NIDD.attribution}
-    record["wall_clock_s"] = round(time.time() - started, 1)
-    RECORD.write_text(json.dumps(record, indent=1) + "\n")
-    write_web(record, args.device)
-    print(json.dumps({"C1": record["C1"], "C2": record["C2"]}, indent=1))
-    return 0
+
+
+def web_payload(record: dict, device: str) -> dict:
+    """The page's file: the record's summaries and criteria, with the corpus's credit; no flow."""
+    return {"_generated_by": "scripts/train/telecom_nidd_dirichlet.py; do not edit by hand",
+            "preregistration": record["preregistration"], "record": str(RECORD.relative_to(REPO)),
+            "clients": CLIENTS, "alpha": ALPHA, "summary": record["summary"], "C1": record["C1"],
+            "C2": record["C2"], "references": record["references"], "device_cnn": device,
+            "per_seed": {s: {arm: v[arm]["test"] for arm in ("linear_fedavg_masked", "cnn_fedavg", "cnn_pooled")}
+                         for s, v in record["seeds"].items()},
+            "licence": DS_5G_NIDD.licence, "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+            "attribution": {"dataset": "5G-NIDD", "licence": DS_5G_NIDD.licence,
+                            "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+                            "citation": DS_5G_NIDD.attribution,
+                            "download": "https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361"},
+            "modifications": "figures computed from 5G-NIDD by the pre-registered runs; no flow is shipped"}
 
 
 def write_web(record: dict, device: str) -> None:
-    """The page's file: the record's summaries and criteria, with the corpus's credit; no flow."""
-    WEB.write_text(json.dumps({"_generated_by": "scripts/train/telecom_nidd_dirichlet.py; do not edit by hand",
-                               "preregistration": record["preregistration"], "record": str(RECORD.relative_to(REPO)),
-                               "clients": CLIENTS, "alpha": ALPHA, "summary": record["summary"], "C1": record["C1"],
-                               "C2": record["C2"], "references": record["references"], "device_cnn": device,
-                               "per_seed": {s: {arm: v[arm]["test"] for arm in ("linear_fedavg_masked", "cnn_fedavg", "cnn_pooled")}
-                                            for s, v in record["seeds"].items()},
-                               "licence": DS_5G_NIDD.licence, "licence_url": "https://creativecommons.org/licenses/by/4.0/",
-                               "attribution": {"dataset": "5G-NIDD", "licence": DS_5G_NIDD.licence,
-                                               "licence_url": "https://creativecommons.org/licenses/by/4.0/",
-                                               "citation": DS_5G_NIDD.attribution,
-                                               "download": "https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361"},
-                               "modifications": "figures computed from 5G-NIDD by the pre-registered runs; no flow is shipped"},
-                              indent=1) + "\n")
+    WEB.write_text(json.dumps(web_payload(record, device), indent=1) + "\n")
 
 
 if __name__ == "__main__":

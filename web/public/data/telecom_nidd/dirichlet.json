@@ -1,0 +1,261 @@
+{
+ "_generated_by": "scripts/train/telecom_nidd_dirichlet.py; do not edit by hand",
+ "preregistration": {
+  "file": "references/telecom-nidd-dirichlet-preregistration.md",
+  "sha256": "0551ea0242bd6a698991c6d555761fd78a147dfb0b29479f6d015c16ec3ebb19"
+ },
+ "record": "docs/measurements/telecom-nidd-dirichlet-2026-11-27.json",
+ "clients": 8,
+ "alpha": 0.3,
+ "summary": {
+  "linear_fedavg_masked": {
+   "flamby_metric": {
+    "mean": 0.957323,
+    "sd": 0.011112
+   },
+   "union_macro_f1": {
+    "mean": 0.958228,
+    "sd": 0.011028
+   },
+   "union_weighted_f1": {
+    "mean": 0.977873,
+    "sd": 0.006799
+   },
+   "union_accuracy": {
+    "mean": 0.978332,
+    "sd": 0.006413
+   }
+  },
+  "cnn_fedavg": {
+   "flamby_metric": {
+    "mean": 0.993093,
+    "sd": 0.001474
+   },
+   "union_macro_f1": {
+    "mean": 0.993111,
+    "sd": 0.001466
+   },
+   "union_weighted_f1": {
+    "mean": 0.994739,
+    "sd": 0.001261
+   },
+   "union_accuracy": {
+    "mean": 0.994762,
+    "sd": 0.001233
+   }
+  },
+  "cnn_pooled": {
+   "flamby_metric": {
+    "mean": 0.995403,
+    "sd": 5.8e-05
+   },
+   "union_macro_f1": {
+    "mean": 0.995413,
+    "sd": 5.8e-05
+   },
+   "union_weighted_f1": {
+    "mean": 0.996436,
+    "sd": 5.3e-05
+   },
+   "union_accuracy": {
+    "mean": 0.996442,
+    "sd": 5.2e-05
+   }
+  }
+ },
+ "C1": {
+  "linear_eight_clients_mean_flamby": 0.957323,
+  "pooled_flamby": 0.973941,
+  "gap": 0.016618,
+  "within_0_01": false
+ },
+ "C2": {
+  "cnn_minus_linear_mean_flamby": 0.03577,
+  "ci95": [
+   0.023485,
+   0.048055
+  ],
+  "seeds": 5
+ },
+ "references": {
+  "two_station_federated_flamby": 0.970821,
+  "pooled_flamby": 0.973941,
+  "alone_flamby": [
+   0.984722,
+   0.958705
+  ]
+ },
+ "device_cnn": "cuda",
+ "per_seed": {
+  "1": {
+   "linear_fedavg_masked": {
+    "station_macro_f1": {
+     "station_1": 0.930057,
+     "station_2": 0.949204
+    },
+    "flamby_metric": 0.939631,
+    "union_macro_f1": 0.940612,
+    "union_weighted_f1": 0.968715,
+    "union_accuracy": 0.969823
+   },
+   "cnn_fedavg": {
+    "station_macro_f1": {
+     "station_1": 0.991346,
+     "station_2": 0.991121
+    },
+    "flamby_metric": 0.991233,
+    "union_macro_f1": 0.991261,
+    "union_weighted_f1": 0.993169,
+    "union_accuracy": 0.993245
+   },
+   "cnn_pooled": {
+    "station_macro_f1": {
+     "station_1": 0.996108,
+     "station_2": 0.994741
+    },
+    "flamby_metric": 0.995424,
+    "union_macro_f1": 0.995434,
+    "union_weighted_f1": 0.996463,
+    "union_accuracy": 0.996468
+   }
+  },
+  "2": {
+   "linear_fedavg_masked": {
+    "station_macro_f1": {
+     "station_1": 0.951162,
+     "station_2": 0.974577
+    },
+    "flamby_metric": 0.96287,
+    "union_macro_f1": 0.963726,
+    "union_weighted_f1": 0.98061,
+    "union_accuracy": 0.980954
+   },
+   "cnn_fedavg": {
+    "station_macro_f1": {
+     "station_1": 0.992319,
+     "station_2": 0.99264
+    },
+    "flamby_metric": 0.992479,
+    "union_macro_f1": 0.992502,
+    "union_weighted_f1": 0.994219,
+    "union_accuracy": 0.994272
+   },
+   "cnn_pooled": {
+    "station_macro_f1": {
+     "station_1": 0.996107,
+     "station_2": 0.994844
+    },
+    "flamby_metric": 0.995475,
+    "union_macro_f1": 0.995485,
+    "union_weighted_f1": 0.996492,
+    "union_accuracy": 0.996498
+   }
+  },
+  "3": {
+   "linear_fedavg_masked": {
+    "station_macro_f1": {
+     "station_1": 0.954486,
+     "station_2": 0.976396
+    },
+    "flamby_metric": 0.965441,
+    "union_macro_f1": 0.966231,
+    "union_weighted_f1": 0.983802,
+    "union_accuracy": 0.983929
+   },
+   "cnn_fedavg": {
+    "station_macro_f1": {
+     "station_1": 0.995426,
+     "station_2": 0.994447
+    },
+    "flamby_metric": 0.994937,
+    "union_macro_f1": 0.994949,
+    "union_weighted_f1": 0.996246,
+    "union_accuracy": 0.99625
+   },
+   "cnn_pooled": {
+    "station_macro_f1": {
+     "station_1": 0.995971,
+     "station_2": 0.994742
+    },
+    "flamby_metric": 0.995356,
+    "union_macro_f1": 0.995365,
+    "union_weighted_f1": 0.996391,
+    "union_accuracy": 0.996395
+   }
+  },
+  "4": {
+   "linear_fedavg_masked": {
+    "station_macro_f1": {
+     "station_1": 0.953346,
+     "station_2": 0.977664
+    },
+    "flamby_metric": 0.965505,
+    "union_macro_f1": 0.966343,
+    "union_weighted_f1": 0.983517,
+    "union_accuracy": 0.983668
+   },
+   "cnn_fedavg": {
+    "station_macro_f1": {
+     "station_1": 0.994002,
+     "station_2": 0.994397
+    },
+    "flamby_metric": 0.9942,
+    "union_macro_f1": 0.994207,
+    "union_weighted_f1": 0.9958,
+    "union_accuracy": 0.995792
+   },
+   "cnn_pooled": {
+    "station_macro_f1": {
+     "station_1": 0.996076,
+     "station_2": 0.994585
+    },
+    "flamby_metric": 0.995331,
+    "union_macro_f1": 0.995342,
+    "union_weighted_f1": 0.996368,
+    "union_accuracy": 0.996378
+   }
+  },
+  "5": {
+   "linear_fedavg_masked": {
+    "station_macro_f1": {
+     "station_1": 0.943027,
+     "station_2": 0.96331
+    },
+    "flamby_metric": 0.953168,
+    "union_macro_f1": 0.954227,
+    "union_weighted_f1": 0.972723,
+    "union_accuracy": 0.973287
+   },
+   "cnn_fedavg": {
+    "station_macro_f1": {
+     "station_1": 0.991943,
+     "station_2": 0.993287
+    },
+    "flamby_metric": 0.992615,
+    "union_macro_f1": 0.992636,
+    "union_weighted_f1": 0.994263,
+    "union_accuracy": 0.994251
+   },
+   "cnn_pooled": {
+    "station_macro_f1": {
+     "station_1": 0.99609,
+     "station_2": 0.994765
+    },
+    "flamby_metric": 0.995428,
+    "union_macro_f1": 0.995438,
+    "union_weighted_f1": 0.996464,
+    "union_accuracy": 0.996472
+   }
+  }
+ },
+ "licence": "CC-BY-4.0",
+ "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+ "attribution": {
+  "dataset": "5G-NIDD",
+  "licence": "CC-BY-4.0",
+  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+  "citation": "Y. Siriwardhana et al., 'Descriptor: 5G Wireless Network Intrusion Detection Dataset (5G-NIDD)', in IEEE Data Descriptions, doi:10.1109/IEEEDATA.2025.3592888. Dataset: doi:10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361, CC BY 4.0.",
+  "download": "https://doi.org/10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361"
+ },
+ "modifications": "figures computed from 5G-NIDD by the pre-registered runs; no flow is shipped"
+}

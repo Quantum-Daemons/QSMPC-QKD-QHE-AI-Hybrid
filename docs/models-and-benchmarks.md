@@ -632,6 +632,56 @@ equal to the shipped global model bit for bit. What it does not show: with two s
 update from the global model and its own, so the masks hide the updates from the aggregator only; the mask seeds are
 not post-quantum; no differential privacy is applied.
 
+#### 5G-NIDD over eight Dirichlet-split clients: the linear model falls 0.017 short of pooling, a 1D-CNN gains 0.036
+
+On the owner's choice of 2026-11-27, the model review's second suggestion, pre-registered before any partition was drawn
+([`references/telecom-nidd-dirichlet-preregistration.md`](../references/telecom-nidd-dirichlet-preregistration.md);
+`scripts/train/telecom_nidd_dirichlet.py`, `docs/measurements/telecom-nidd-dirichlet-2026-11-27.json`). Both stations'
+630,693 fit and 70,077 validation flows are divided among eight clients, each class's rows in proportions drawn from
+$`\mathrm{Dir}(0.3 \cdot \mathbf{1}_8)`$: Yurochkin et al.'s per-class partition, this project's reading of the set-up
+Jeong et al. (CMC 87(1), 2026) use on 5G-NIDD without giving its procedure, for partition seeds 1 to 5. The 233,591
+test flows are the stations' as above. No seed needed a redraw: the clients hold 7,102 to 320,640 fit rows, each with 7
+to 9 of the nine classes. The linear model and its masked FedAvg are the two-station federation's with eight clients
+(258 to 273 masked messages a seed, each checked to cancel exactly), the clients' combined standardisation within
+$`2.7 \times 10^{-7}`$ of the federation's. Jeong et al.'s 1D-CNN, as this project reads it, runs on the GPU under
+FedAvg in the clear for 30 rounds and pooled for 30 epochs, the round or epoch reported chosen by the pooled validation
+macro-F1. Read at the source after the run, their section 5.2 has two fully connected layers, of 128 and 64, before the
+output, where this reading has one, of 128, and gives no kernel or pooling width (3 and 2 here); the figures are of the
+pre-registered network.
+
+| Model | FLamby's metric | Macro-F1, all test flows | Weighted F1 | Accuracy |
+|---|---|---|---|---|
+| Linear, masked FedAvg, 8 clients | 0.9573 (0.0111) | 0.9582 (0.0110) | 0.9779 (0.0068) | 0.9783 (0.0064) |
+| 1D-CNN, FedAvg in the clear, 8 clients | 0.9931 (0.0015) | 0.9931 (0.0015) | 0.9947 (0.0013) | 0.9948 (0.0012) |
+| 1D-CNN, pooled in the clear | 0.9954 (0.0001) | 0.9954 (0.0001) | 0.9964 (0.0001) | 0.9964 (0.0001) |
+| Linear, masked FedAvg, the two stations (above) | 0.9708 | | | |
+| Linear, pooled (the student, above) | 0.9739 | | | |
+
+The mean over the five partition seeds, with the standard deviation in brackets. C1 does not hold: over eight clients
+the linear model's mean FLamby metric is 0.0166 below pooling's, where the pre-registration asked within 0.01, and
+0.0135 below the two stations' federation. It loses most on station 1's flows (macro-F1 0.930 to 0.954 by seed, against
+0.959 for the two stations' federation). C2, as measured: the 1D-CNN under FedAvg scores 0.0358 above the linear model
+on the same clients (a 95 percent t interval of 0.0235 to 0.0481 over the five paired seeds), and 0.0023 below the same
+network pooled. Every linear fit here chose the grid's smallest penalty, $`10^{-6}`$, as every fit in the two-station
+record did; the grid is the student's and is not widened after these figures. Jeong et al. report accuracy 0.9711
+under federated learning in their non-IID scenario, on their own preprocessing and split and with a quarter of the
+nodes dropped from each round, which is not done here; the 1D-CNN's 0.9948 is not a ranking against it. These figures,
+like every 5G-NIDD figure on the page, are on the student's random split of flows, with six inputs (`sHops`, `dHops`,
+`sVid`, `dVid`, `SrcTCPBase`, `DstTCPBase`) that Hameed and Ibrahim (J. Cybersecur. Priv. 6(6):205, 15 November 2026)
+find stand in for the label; they report that the same models lose roughly three to seven points of accuracy on their
+clean protocol, which splits each class chronologically and removes eight such columns. The comparisons in this table
+are within one protocol, and their levels have not been re-measured under the clean one
+([`references/model-choice-vs-2026-practice.md`](../references/model-choice-vs-2026-practice.md)). Neither
+comparison decides what ships: the page's encrypted federated model stays the two-station linear one, since no network
+here runs under CKKS. What the masks hide changes with eight clients: a client learns from the sum only the sum of the
+other seven, so one client's update is hidden from each other client unless the six others collude, as well as from
+the aggregator. The seeds are still X25519's, which is not post-quantum, and the 1D-CNN arms are baselines in the
+clear. The run trained and saved every seed, then stopped before its summary, which read the two-station record's
+figures under a key that record does not have. The summaries and both comparisons were computed from the saved seeds
+afterwards by `--summarise`, which trains nothing (the record's `summary_note`, its seeds unchanged field for field), so
+the run's wall clock is not recorded; its log's last timed step, the fifth seed's federated 1D-CNN, is at 11,485 s. The
+telecom page's federation card shows the table below the two stations'.
+
 #### The finance QCNN on AMLworld, pre-registered, and on the page since Round 86's batch 6
 
 On the owner's choice of 2026-11-25, pre-registered before any input was scored

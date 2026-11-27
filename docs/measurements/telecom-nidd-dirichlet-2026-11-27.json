@@ -1,0 +1,1050 @@
+{
+ "preregistration": {
+  "file": "references/telecom-nidd-dirichlet-preregistration.md",
+  "sha256": "0551ea0242bd6a698991c6d555761fd78a147dfb0b29479f6d015c16ec3ebb19"
+ },
+ "of_federation": {
+  "file": "docs/measurements/telecom-nidd-federated-2026-11-26.json",
+  "sha256": "be24f1fd076aebf0b6ac849e616e7fa1e01962388f747ae4e66c24faa135d552"
+ },
+ "rows": {
+  "fit": 630693,
+  "validation": 70077,
+  "test": 233591
+ },
+ "clients": 8,
+ "alpha": 0.3,
+ "device_cnn": "cuda",
+ "environment": {
+  "python": "3.12.15",
+  "torch": "2.13.0+cu130",
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition"
+ },
+ "seeds": {
+  "1": {
+   "partition": {
+    "partition_seed_used": 1,
+    "seeds_tried": [
+     1
+    ],
+    "fit_rows_by_client": [
+     24152,
+     106306,
+     15624,
+     54414,
+     16094,
+     66809,
+     320640,
+     26654
+    ],
+    "validation_rows_by_client": [
+     2679,
+     11812,
+     1738,
+     6045,
+     1787,
+     7424,
+     35626,
+     2966
+    ],
+    "class_counts_by_client": [
+     [
+      4915,
+      101,
+      6,
+      61,
+      3321,
+      7232,
+      230,
+      192,
+      8094
+     ],
+     [
+      91268,
+      10650,
+      284,
+      774,
+      0,
+      0,
+      899,
+      876,
+      1555
+     ],
+     [
+      2610,
+      1479,
+      266,
+      0,
+      1934,
+      1239,
+      1986,
+      5362,
+      748
+     ],
+     [
+      2332,
+      25423,
+      2,
+      4077,
+      173,
+      14107,
+      2973,
+      5317,
+      10
+     ],
+     [
+      0,
+      3153,
+      199,
+      47,
+      1119,
+      6708,
+      12,
+      4856,
+      0
+     ],
+     [
+      5810,
+      38480,
+      8,
+      242,
+      6861,
+      268,
+      2553,
+      12264,
+      323
+     ],
+     [
+      22220,
+      14858,
+      12,
+      1056,
+      10,
+      1091,
+      4259,
+      277129,
+      5
+     ],
+     [
+      3285,
+      904,
+      2,
+      305,
+      111,
+      18714,
+      623,
+      2709,
+      1
+     ]
+    ],
+    "standardisation_max_relative_difference": 2.3585071014999743e-07
+   },
+   "linear_fedavg_masked": {
+    "penalty_table": [
+     {
+      "l2": 1e-06,
+      "validation_log_loss": 0.09775162
+     },
+     {
+      "l2": 1e-05,
+      "validation_log_loss": 0.14256191
+     },
+     {
+      "l2": 0.0001,
+      "validation_log_loss": 0.30249977
+     },
+     {
+      "l2": 0.001,
+      "validation_log_loss": 0.42890549
+     },
+     {
+      "l2": 0.01,
+      "validation_log_loss": 0.58531284
+     },
+     {
+      "l2": 0.1,
+      "validation_log_loss": 0.90270615
+     }
+    ],
+    "l2": 1e-06,
+    "temperature": 1.0846820458035031,
+    "masked_messages": 273,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.930057,
+      "station_2": 0.949204
+     },
+     "flamby_metric": 0.939631,
+     "union_macro_f1": 0.940612,
+     "union_weighted_f1": 0.968715,
+     "union_accuracy": 0.969823
+    }
+   },
+   "cnn_fedavg": {
+    "round": 24,
+    "validation_macro_f1": 0.991167,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.991346,
+      "station_2": 0.991121
+     },
+     "flamby_metric": 0.991233,
+     "union_macro_f1": 0.991261,
+     "union_weighted_f1": 0.993169,
+     "union_accuracy": 0.993245
+    }
+   },
+   "cnn_pooled": {
+    "epoch": 29,
+    "validation_macro_f1": 0.995507,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.996108,
+      "station_2": 0.994741
+     },
+     "flamby_metric": 0.995424,
+     "union_macro_f1": 0.995434,
+     "union_weighted_f1": 0.996463,
+     "union_accuracy": 0.996468
+    }
+   }
+  },
+  "2": {
+   "partition": {
+    "partition_seed_used": 2,
+    "seeds_tried": [
+     2
+    ],
+    "fit_rows_by_client": [
+     49152,
+     130795,
+     64695,
+     48340,
+     23973,
+     57795,
+     64139,
+     191804
+    ],
+    "validation_rows_by_client": [
+     5458,
+     14532,
+     7190,
+     5370,
+     2661,
+     6425,
+     7125,
+     21316
+    ],
+    "class_counts_by_client": [
+     [
+      1453,
+      3,
+      3,
+      4368,
+      3977,
+      1074,
+      3293,
+      28667,
+      6314
+     ],
+     [
+      72055,
+      42820,
+      1,
+      384,
+      5363,
+      8621,
+      1536,
+      14,
+      1
+     ],
+     [
+      23137,
+      3101,
+      140,
+      3,
+      3698,
+      7,
+      2634,
+      31953,
+      22
+     ],
+     [
+      482,
+      1022,
+      1,
+      0,
+      175,
+      26956,
+      1521,
+      17047,
+      1136
+     ],
+     [
+      1716,
+      11209,
+      15,
+      104,
+      14,
+      7222,
+      435,
+      32,
+      3226
+     ],
+     [
+      18623,
+      232,
+      309,
+      636,
+      17,
+      4966,
+      1162,
+      31830,
+      20
+     ],
+     [
+      7774,
+      2665,
+      83,
+      308,
+      240,
+      2,
+      0,
+      53052,
+      15
+     ],
+     [
+      7200,
+      33996,
+      227,
+      759,
+      45,
+      511,
+      2954,
+      146110,
+      2
+     ]
+    ],
+    "standardisation_max_relative_difference": 2.3528890139853662e-07
+   },
+   "linear_fedavg_masked": {
+    "penalty_table": [
+     {
+      "l2": 1e-06,
+      "validation_log_loss": 0.06678295
+     },
+     {
+      "l2": 1e-05,
+      "validation_log_loss": 0.11845398
+     },
+     {
+      "l2": 0.0001,
+      "validation_log_loss": 0.21407509
+     },
+     {
+      "l2": 0.001,
+      "validation_log_loss": 0.3225956
+     },
+     {
+      "l2": 0.01,
+      "validation_log_loss": 0.54613304
+     },
+     {
+      "l2": 0.1,
+      "validation_log_loss": 0.87237835
+     }
+    ],
+    "l2": 1e-06,
+    "temperature": 0.9275921553589774,
+    "masked_messages": 270,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.951162,
+      "station_2": 0.974577
+     },
+     "flamby_metric": 0.96287,
+     "union_macro_f1": 0.963726,
+     "union_weighted_f1": 0.98061,
+     "union_accuracy": 0.980954
+    }
+   },
+   "cnn_fedavg": {
+    "round": 27,
+    "validation_macro_f1": 0.992283,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.992319,
+      "station_2": 0.99264
+     },
+     "flamby_metric": 0.992479,
+     "union_macro_f1": 0.992502,
+     "union_weighted_f1": 0.994219,
+     "union_accuracy": 0.994272
+    }
+   },
+   "cnn_pooled": {
+    "epoch": 28,
+    "validation_macro_f1": 0.995638,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.996107,
+      "station_2": 0.994844
+     },
+     "flamby_metric": 0.995475,
+     "union_macro_f1": 0.995485,
+     "union_weighted_f1": 0.996492,
+     "union_accuracy": 0.996498
+    }
+   }
+  },
+  "3": {
+   "partition": {
+    "partition_seed_used": 3,
+    "seeds_tried": [
+     3
+    ],
+    "fit_rows_by_client": [
+     68667,
+     309888,
+     31036,
+     63671,
+     25560,
+     18054,
+     86268,
+     27549
+    ],
+    "validation_rows_by_client": [
+     7627,
+     34430,
+     3450,
+     7073,
+     2841,
+     2006,
+     9585,
+     3065
+    ],
+    "class_counts_by_client": [
+     [
+      33,
+      23892,
+      0,
+      749,
+      1099,
+      4482,
+      13,
+      37819,
+      580
+     ],
+     [
+      63228,
+      5444,
+      52,
+      1970,
+      399,
+      5952,
+      472,
+      232309,
+      62
+     ],
+     [
+      45,
+      3129,
+      2,
+      2926,
+      1644,
+      10437,
+      2429,
+      2265,
+      8159
+     ],
+     [
+      10389,
+      5457,
+      575,
+      768,
+      9915,
+      4493,
+      5057,
+      26492,
+      525
+     ],
+     [
+      5288,
+      10646,
+      0,
+      1,
+      333,
+      8199,
+      273,
+      432,
+      388
+     ],
+     [
+      7283,
+      1108,
+      68,
+      139,
+      4,
+      52,
+      0,
+      9357,
+      43
+     ],
+     [
+      44351,
+      29565,
+      81,
+      1,
+      134,
+      8752,
+      2773,
+      0,
+      611
+     ],
+     [
+      1823,
+      15807,
+      1,
+      8,
+      1,
+      6992,
+      2518,
+      31,
+      368
+     ]
+    ],
+    "standardisation_max_relative_difference": 2.28570966954665e-07
+   },
+   "linear_fedavg_masked": {
+    "penalty_table": [
+     {
+      "l2": 1e-06,
+      "validation_log_loss": 0.05622578
+     },
+     {
+      "l2": 1e-05,
+      "validation_log_loss": 0.07591438
+     },
+     {
+      "l2": 0.0001,
+      "validation_log_loss": 0.12256145
+     },
+     {
+      "l2": 0.001,
+      "validation_log_loss": 0.23368454
+     },
+     {
+      "l2": 0.01,
+      "validation_log_loss": 0.45451927
+     },
+     {
+      "l2": 0.1,
+      "validation_log_loss": 0.7994957
+     }
+    ],
+    "l2": 1e-06,
+    "temperature": 0.817979778156974,
+    "masked_messages": 264,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.954486,
+      "station_2": 0.976396
+     },
+     "flamby_metric": 0.965441,
+     "union_macro_f1": 0.966231,
+     "union_weighted_f1": 0.983802,
+     "union_accuracy": 0.983929
+    }
+   },
+   "cnn_fedavg": {
+    "round": 28,
+    "validation_macro_f1": 0.994721,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.995426,
+      "station_2": 0.994447
+     },
+     "flamby_metric": 0.994937,
+     "union_macro_f1": 0.994949,
+     "union_weighted_f1": 0.996246,
+     "union_accuracy": 0.99625
+    }
+   },
+   "cnn_pooled": {
+    "epoch": 21,
+    "validation_macro_f1": 0.995446,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.995971,
+      "station_2": 0.994742
+     },
+     "flamby_metric": 0.995356,
+     "union_macro_f1": 0.995365,
+     "union_weighted_f1": 0.996391,
+     "union_accuracy": 0.996395
+    }
+   }
+  },
+  "4": {
+   "partition": {
+    "partition_seed_used": 4,
+    "seeds_tried": [
+     4
+    ],
+    "fit_rows_by_client": [
+     90798,
+     20760,
+     26037,
+     283320,
+     57366,
+     12574,
+     75286,
+     64552
+    ],
+    "validation_rows_by_client": [
+     10085,
+     2308,
+     2892,
+     31479,
+     6374,
+     1396,
+     8365,
+     7178
+    ],
+    "class_counts_by_client": [
+     [
+      32213,
+      54579,
+      64,
+      128,
+      1114,
+      5,
+      136,
+      1112,
+      1447
+     ],
+     [
+      3342,
+      9788,
+      0,
+      2513,
+      3392,
+      149,
+      1258,
+      26,
+      292
+     ],
+     [
+      9259,
+      12567,
+      321,
+      12,
+      3220,
+      0,
+      114,
+      0,
+      544
+     ],
+     [
+      15092,
+      1403,
+      25,
+      67,
+      395,
+      31822,
+      375,
+      234133,
+      8
+     ],
+     [
+      19839,
+      747,
+      4,
+      1538,
+      14,
+      1469,
+      6008,
+      27723,
+      24
+     ],
+     [
+      1061,
+      1,
+      57,
+      6,
+      197,
+      6841,
+      136,
+      72,
+      4203
+     ],
+     [
+      51578,
+      5695,
+      288,
+      2297,
+      1148,
+      1179,
+      25,
+      13075,
+      1
+     ],
+     [
+      56,
+      10268,
+      20,
+      1,
+      4049,
+      7894,
+      5483,
+      32564,
+      4217
+     ]
+    ],
+    "standardisation_max_relative_difference": 1.847764632024938e-07
+   },
+   "linear_fedavg_masked": {
+    "penalty_table": [
+     {
+      "l2": 1e-06,
+      "validation_log_loss": 0.06342411
+     },
+     {
+      "l2": 1e-05,
+      "validation_log_loss": 0.11499023
+     },
+     {
+      "l2": 0.0001,
+      "validation_log_loss": 0.18844986
+     },
+     {
+      "l2": 0.001,
+      "validation_log_loss": 0.28500271
+     },
+     {
+      "l2": 0.01,
+      "validation_log_loss": 0.48277187
+     },
+     {
+      "l2": 0.1,
+      "validation_log_loss": 0.83995914
+     }
+    ],
+    "l2": 1e-06,
+    "temperature": 0.8128135587260149,
+    "masked_messages": 270,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.953346,
+      "station_2": 0.977664
+     },
+     "flamby_metric": 0.965505,
+     "union_macro_f1": 0.966343,
+     "union_weighted_f1": 0.983517,
+     "union_accuracy": 0.983668
+    }
+   },
+   "cnn_fedavg": {
+    "round": 30,
+    "validation_macro_f1": 0.994113,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.994002,
+      "station_2": 0.994397
+     },
+     "flamby_metric": 0.9942,
+     "union_macro_f1": 0.994207,
+     "union_weighted_f1": 0.9958,
+     "union_accuracy": 0.995792
+    }
+   },
+   "cnn_pooled": {
+    "epoch": 11,
+    "validation_macro_f1": 0.995512,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.996076,
+      "station_2": 0.994585
+     },
+     "flamby_metric": 0.995331,
+     "union_macro_f1": 0.995342,
+     "union_weighted_f1": 0.996368,
+     "union_accuracy": 0.996378
+    }
+   }
+  },
+  "5": {
+   "partition": {
+    "partition_seed_used": 5,
+    "seeds_tried": [
+     5
+    ],
+    "fit_rows_by_client": [
+     53967,
+     97594,
+     16529,
+     97758,
+     7102,
+     41580,
+     220955,
+     95208
+    ],
+    "validation_rows_by_client": [
+     5993,
+     10845,
+     1834,
+     10862,
+     789,
+     4620,
+     24550,
+     10584
+    ],
+    "class_counts_by_client": [
+     [
+      37732,
+      4246,
+      0,
+      1087,
+      1415,
+      0,
+      6105,
+      1866,
+      1516
+     ],
+     [
+      7727,
+      735,
+      145,
+      21,
+      3428,
+      2,
+      1167,
+      84068,
+      301
+     ],
+     [
+      5,
+      4580,
+      11,
+      47,
+      1,
+      29,
+      51,
+      11689,
+      116
+     ],
+     [
+      3561,
+      2865,
+      0,
+      4442,
+      29,
+      29,
+      5774,
+      79211,
+      1847
+     ],
+     [
+      3,
+      2882,
+      7,
+      666,
+      600,
+      2660,
+      5,
+      278,
+      1
+     ],
+     [
+      4391,
+      8,
+      6,
+      107,
+      45,
+      32151,
+      356,
+      332,
+      4184
+     ],
+     [
+      75905,
+      153,
+      291,
+      40,
+      7978,
+      5271,
+      44,
+      131257,
+      16
+     ],
+     [
+      3116,
+      79579,
+      319,
+      152,
+      33,
+      9217,
+      33,
+      4,
+      2755
+     ]
+    ],
+    "standardisation_max_relative_difference": 2.613836275825961e-07
+   },
+   "linear_fedavg_masked": {
+    "penalty_table": [
+     {
+      "l2": 1e-06,
+      "validation_log_loss": 0.08544827
+     },
+     {
+      "l2": 1e-05,
+      "validation_log_loss": 0.12299728
+     },
+     {
+      "l2": 0.0001,
+      "validation_log_loss": 0.18055439
+     },
+     {
+      "l2": 0.001,
+      "validation_log_loss": 0.30700588
+     },
+     {
+      "l2": 0.01,
+      "validation_log_loss": 0.57921505
+     },
+     {
+      "l2": 0.1,
+      "validation_log_loss": 1.02754116
+     }
+    ],
+    "l2": 1e-06,
+    "temperature": 0.9225384300984817,
+    "masked_messages": 258,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.943027,
+      "station_2": 0.96331
+     },
+     "flamby_metric": 0.953168,
+     "union_macro_f1": 0.954227,
+     "union_weighted_f1": 0.972723,
+     "union_accuracy": 0.973287
+    }
+   },
+   "cnn_fedavg": {
+    "round": 25,
+    "validation_macro_f1": 0.992676,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.991943,
+      "station_2": 0.993287
+     },
+     "flamby_metric": 0.992615,
+     "union_macro_f1": 0.992636,
+     "union_weighted_f1": 0.994263,
+     "union_accuracy": 0.994251
+    }
+   },
+   "cnn_pooled": {
+    "epoch": 20,
+    "validation_macro_f1": 0.995534,
+    "test": {
+     "station_macro_f1": {
+      "station_1": 0.99609,
+      "station_2": 0.994765
+     },
+     "flamby_metric": 0.995428,
+     "union_macro_f1": 0.995438,
+     "union_weighted_f1": 0.996464,
+     "union_accuracy": 0.996472
+    }
+   }
+  }
+ },
+ "summary": {
+  "linear_fedavg_masked": {
+   "flamby_metric": {
+    "mean": 0.957323,
+    "sd": 0.011112
+   },
+   "union_macro_f1": {
+    "mean": 0.958228,
+    "sd": 0.011028
+   },
+   "union_weighted_f1": {
+    "mean": 0.977873,
+    "sd": 0.006799
+   },
+   "union_accuracy": {
+    "mean": 0.978332,
+    "sd": 0.006413
+   }
+  },
+  "cnn_fedavg": {
+   "flamby_metric": {
+    "mean": 0.993093,
+    "sd": 0.001474
+   },
+   "union_macro_f1": {
+    "mean": 0.993111,
+    "sd": 0.001466
+   },
+   "union_weighted_f1": {
+    "mean": 0.994739,
+    "sd": 0.001261
+   },
+   "union_accuracy": {
+    "mean": 0.994762,
+    "sd": 0.001233
+   }
+  },
+  "cnn_pooled": {
+   "flamby_metric": {
+    "mean": 0.995403,
+    "sd": 5.8e-05
+   },
+   "union_macro_f1": {
+    "mean": 0.995413,
+    "sd": 5.8e-05
+   },
+   "union_weighted_f1": {
+    "mean": 0.996436,
+    "sd": 5.3e-05
+   },
+   "union_accuracy": {
+    "mean": 0.996442,
+    "sd": 5.2e-05
+   }
+  }
+ },
+ "C1": {
+  "linear_eight_clients_mean_flamby": 0.957323,
+  "pooled_flamby": 0.973941,
+  "gap": 0.016618,
+  "within_0_01": false
+ },
+ "C2": {
+  "cnn_minus_linear_mean_flamby": 0.03577,
+  "ci95": [
+   0.023485,
+   0.048055
+  ],
+  "seeds": 5
+ },
+ "references": {
+  "two_station_federated_flamby": 0.970821,
+  "pooled_flamby": 0.973941,
+  "alone_flamby": [
+   0.984722,
+   0.958705
+  ]
+ },
+ "attribution": {
+  "dataset": "5G-NIDD",
+  "licence": "CC-BY-4.0",
+  "citation": "Y. Siriwardhana et al., 'Descriptor: 5G Wireless Network Intrusion Detection Dataset (5G-NIDD)', in IEEE Data Descriptions, doi:10.1109/IEEEDATA.2025.3592888. Dataset: doi:10.23729/e80ac9df-d9fb-47e7-8d0d-01384a415361, CC BY 4.0."
+ },
+ "wall_clock_s": null,
+ "summary_note": "The run of 2026-11-27 trained and saved every seed, then stopped before its summary: the summary read the two-station record's figures under a key that record does not have. The summaries and both comparisons were then computed from the saved seeds by --summarise, which trains nothing; every seed's figures are the run's. The run's wall clock was not recorded."
+}
