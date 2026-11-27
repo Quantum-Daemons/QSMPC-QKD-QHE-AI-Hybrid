@@ -751,6 +751,21 @@ margins stated as chosen after the figures above; its fidelity under the page's 
 of classes since this batch (`web/src/lib/clientFHESquareTabular.ts`, held to a NumPy reference for a nine-class
 network as for finance's two); and its time and memory in a Web Worker. The result is recorded whatever it is.
 
+As measured on 2026-11-28 (`docs/measurements/telecom-nidd-square-student-2026-11-28.json`; the GPU for training, the
+default BLAS threads): the control, the re-run's linear student refitted and found equal to its record, scores a test
+FLamby metric of 0.9632. Seeds 5 to 9 score 0.9905 to 0.9919 (mean 0.9911), every class above an F1 of 0.95, each
+seed's epoch kept by validation macro-F1 (21 to 30 of 30); the exported seed, 9, best on validation, has a 95 percent
+interval of 0.9903 to 0.9915 over test flows, and its weights in float64, as the page computes them, decide every test
+flow as the trained network does. On 2,048 test flows drawn as the shipped student's were, through the page's own
+module in node, the largest logit error is $`4.1 \times 10^{-4}`$ under A2 and $`2.2 \times 10^{-5}`$ under B, and no
+decision differs; in a Web Worker in headless Chrome, three runs a set, the slowest takes 3.4 s from key generation to
+the last decryption under A2 and 6.9 s under B, the worker's memory 0.05 and 0.09 GB. Every criterion is met under
+both sets, so by the pre-registration the network may be offered on the page; whether beside or in place of the linear
+student is the owner's choice, and the page and the Hub do not change before it. The margins were chosen after the
+re-run's figures, as the pre-registration says. One thing found on the way: the control's refit depends on the BLAS
+thread count (L-BFGS-B stops by its relative-reduction test on a nearly flat objective; under four OpenBLAS threads it
+scored 0.9665), so the linear student's figures carry that much of the machine.
+
 #### The finance QCNN on AMLworld, pre-registered, and on the page since Round 86's batch 6
 
 On the owner's choice of 2026-11-25, pre-registered before any input was scored
