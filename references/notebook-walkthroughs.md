@@ -7,7 +7,7 @@ Read and tried 2026-11-09 (Round 86); the versions and Pyodide's package list re
 | | marimo `export html-wasm` | JupyterLite | pyvista-wasm |
 |---|---|---|---|
 | what it is | a reactive notebook exported as static files, Python on Pyodide | JupyterLab in the browser, kernels in a Web Worker on Pyodide or Xeus | a PyVista-like API over VTK.wasm, for 3D |
-| version read | 0.25.2 (PyPI, 2026-10-19), the walkthrough's pin; 0.26.0 reached PyPI on 2026-11-24 (Python 3.11 or later; read 2026-11-27), not adopted yet | `jupyterlite-core` 0.8.7 (PyPI, 2026-10-30; classified "4 - Beta") | 0.17.0 (PyPI, 2026-11-14; classified "2 - Pre-Alpha") |
+| version read | 0.26.0 (PyPI, 2026-11-24; Python 3.11 or later), the walkthrough's pin since 2026-11-27 (0.25.2 before it; both run ruff 0.15.18 and load Pyodide 314.0.0) | `jupyterlite-core` 0.8.7 (PyPI, 2026-10-30; classified "4 - Beta") | 0.17.0 (PyPI, 2026-11-14; classified "2 - Pre-Alpha") |
 | hosting | static files over HTTP; a directory export needs its `assets` beside it | static files over HTTP | a library, used inside one of the others |
 | reader experience | one page, code locked or editable | a full notebook editor, files kept in the browser's own storage | not applicable |
 | stated limits | 2 GB of memory, no OS threads or shared memory, no PDB | not all JupyterLab features work | none stated |

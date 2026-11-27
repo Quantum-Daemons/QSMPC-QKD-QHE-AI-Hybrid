@@ -43,7 +43,7 @@ REQUIREMENTS = HERE / "requirements.lock"
 RUFF_LOCK = HERE / "ruff.lock"
 #: The ruff each pinned marimo asks uv for (`_RUFF_REQUIREMENT` in marimo/_export/local_modules.py, read at its tag). A marimo
 #: bump fails --check until this is re-read, and the build compares it with the installed marimo as well.
-MARIMO_RUFF = {"0.25.2": "0.15.18"}
+MARIMO_RUFF = {"0.25.2": "0.15.18", "0.26.0": "0.15.18"}  # 0.26.0 read at its tag on 2026-11-27
 
 PYODIDE = "v314.0.0"
 BASE = f"https://cdn.jsdelivr.net/pyodide/{PYODIDE}/full/"

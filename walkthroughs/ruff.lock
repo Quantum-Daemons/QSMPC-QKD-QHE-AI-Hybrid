@@ -1,4 +1,4 @@
-# The ruff that marimo 0.25.2 runs for a WebAssembly export: `uv tool run --from ruff==0.15.18 ruff analyze graph`
+# The ruff that marimo 0.26.0 runs for a WebAssembly export, as 0.25.2 did: `uv tool run --from ruff==0.15.18 ruff analyze graph`
 # resolves the notebook's local imports (marimo/_export/local_modules.py, _RUFF_REQUIREMENT). docker/Dockerfile.web
 # downloads it against these hashes, one per file PyPI lists for the release (read from its JSON API on 2026-11-19),
 # and uv installs it from that folder with no network. ruff is MIT-licensed; nothing of it reaches the served files.
