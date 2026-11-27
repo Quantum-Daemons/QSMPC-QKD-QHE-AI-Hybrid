@@ -760,8 +760,10 @@ On the page, `DefiQcnnCard.tsx` below the lending panels reads `web/public/data/
 `web/public/data/defi/defi_qcnn.json` (`scripts/export_defi_qcnn.py`: the seed's weights and tree network, and 4,096 of
 the test window's borrows drawn uniformly at seed 0, each its eight standardised inputs and its label, no account or other
 identifier), and re-scores that sample in the tab with the page's own contraction: average precision 0.0803 over its 51
-liquidated borrows, which the tab reproduces within $`10^{-9}`$ (`tests/test_r86_defi_qcnn.py`). Which seed ships, a
-Hub upload and the card's default view are the owner's choices after these figures, as the pre-registration leaves them.
+liquidated borrows, which the tab reproduces within $`10^{-9}`$ (`tests/test_r86_defi_qcnn.py`). The pre-registration
+left three choices to the owner after these figures; on 2026-11-27: seed 19 ships, the card is shown open, and nothing
+goes to the Hugging Face Hub, since a Hub card would first need the inputs' EDA and calibration and the test figure is
+weak and tied to the shift between the windows.
 
 #### Calibrated thresholds for the satellite forecaster, not adopted
 
