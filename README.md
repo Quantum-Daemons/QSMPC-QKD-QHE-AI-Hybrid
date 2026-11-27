@@ -100,7 +100,7 @@ flowchart TB
 | `genomics` | genomics | secure summation of pooled allele counts, released with differential privacy at an $`\varepsilon`$ chosen on the page (the cohorts' exact discrete Gaussian noise inside the sum, and on request the same contributions summed under threshold BGV), FHE |
 | `telecom_ids` | telecom, defence | simulated QKD with an optional eavesdropper, a QML intrusion detector |
 | `satellite_comms` | satellite | simulated free-space QKD over a model of the Micius downlink, a two-way QSDC feasibility check with an inline eavesdrop check, and one-way quasi-QSDC under a pre-shared key where that check cannot close |
-| `defi_lending` | DeFi, lending | a simulated month of a lending pool with Aave V3's mechanics re-derived; at chosen hours the pool checks a borrower's margin under CKKS and takes its sign in a garbled circuit, with a separate key holder by default; and the same check on FHEVM, modelled from Zama's documentation (nothing of Zama's runs). Browser demo only: no QKD and no model |
+| `defi_lending` | DeFi, lending | a simulated month of a lending pool with Aave V3's mechanics re-derived; at chosen hours the pool checks a borrower's margin under CKKS and takes its sign in a garbled circuit, with a separate key holder by default; and the same check on FHEVM, modelled from Zama's documentation (nothing of Zama's runs). Browser demo only, no QKD; beside the check, on a card of its own, a pre-registered QCNN on Aave v3 liquidations, trained offline and not encrypted |
 
 Each use-case page also sets its published figures beside this project's offline measurement and the run, with a
 verdict whose rule is written in `web/src/lib/publishedComparisons.ts` (reproduced, differs, no spread, a reference

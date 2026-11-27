@@ -35,6 +35,8 @@ import FinanceQcnnComparisonCard from "../components/FinanceQcnnComparisonCard";
 import FinanceDpCard, { type FinanceDpArtifact } from "../components/FinanceDpCard";
 import VerificationsCard from "../components/VerificationsCard";
 import PublishedComparisonCard from "../components/PublishedComparisonCard";
+import BackendCompareCard from "../components/BackendCompareCard";
+import DefiQcnnCard from "../components/DefiQcnnCard";
 import { flambyRows, modelRows, PAGE_NOTES, qcnnRows } from "../lib/publishedComparisons";
 import { useQcnnRecord } from "../lib/qcnnRecord";
 import MpcGnnPanel from "../components/MpcGnnPanel";
@@ -241,6 +243,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
           check={artifacts?.lending_private as LendingPrivateReport | undefined} ran={hasRun} state={state}
           custody={String(run.params.lending_custody)} />
       )}
+      {lending && <DefiQcnnCard />}
       {/* What produced the inference on this page: the published ONNX model, the bundled real
           model, or placeholder weights. Read from the run's own metrics, not asserted. */}
       {/* BOTH inferences, because the run performs two and this panel used to name only one - the
@@ -339,6 +342,10 @@ function UseCaseView({ usecase }: { usecase: string }) {
         <div className="card">
           <h3 style={{ margin: "0 0 4px" }}>The 5G-NIDD detector&apos;s student under CKKS, real 5G traffic, this run</h3>
           <EncryptedAgreementChart plot={artifacts.encrypted_agreement_plot_nidd as EncryptedAgreementPlot} />
+          <p className="small muted" style={{ marginTop: 6 }}>
+            The agreement is between the encrypted and the plaintext student on the same flows and does not depend on the
+            split; the student&apos;s accuracy does (see the federation card&apos;s note).
+          </p>
         </div>
       ) : null}
       {/* The model 5G-NIDD's two base stations federated (Round 86, batch 6; the owner's choice of 2026-11-26): the offline
@@ -420,6 +427,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
         ...(usecase === "medical_fl" && artifacts?.fedHeart ? flambyRows(artifacts.fedHeart as FedHeartResult) : []),
         ...qcnnRows(usecase, qcnnRecord, (artifacts?.qcnn_rescore as QcnnRescore | undefined) ?? null),
       ]} />
+      <BackendCompareCard usecase={usecase} />
 
       {/* `surfacedBackend` is the backend that RAN, not the control that was set. Passing
           `run.params.inference` here made the panel assert "the class comes from the quantum circuit"

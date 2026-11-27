@@ -57,6 +57,11 @@ AGGREGATES = {
     # The federation of 5G-NIDD's two base stations (Round 86, batch 6; the owner's choice of 2026-11-26): figures computed
     # from 5G-NIDD beside the fitted numbers, and each shipped held-out flow's station.
     "telecom_nidd/federated.json": "5G-NIDD",
+    # Round 86's batch 8, the owner's choices of 2026-11-27: four pre-registered results, figures only, each crediting its corpus.
+    "satellite/jinan1_pass_v2.json": "Jinan-1 source data (Li et al.)",
+    "telecom_nidd/dirichlet.json": "5G-NIDD",
+    "medical/nodule3d_reporting.json": "LIDC-IDRI",
+    "defi/qcnn_comparison.json": "From Risk to Rescue dataset (Aave v3, Polygon)",
     # The QCNNs' tensor-network checks (Round 86, batch 6; the owner's choice of 2026-11-26): figures computed from the
     # medical, telecom and satellite QCNNs' corpora, one credit each, from the registry's dataset records.
     "qcnn_tn_checks.json": "WDBC, the synthetic QKD-attack rows, OPS-SAT-AD and ESA-ADB",

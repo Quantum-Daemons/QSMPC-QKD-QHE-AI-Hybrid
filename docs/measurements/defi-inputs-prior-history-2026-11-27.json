@@ -1,0 +1,46 @@
+{
+ "table": "data/Borrow/Liquidated/data.csv",
+ "rows": 1215785,
+ "accounts": 99545,
+ "accounts_with_two_or_more_borrows": 59307,
+ "features": [
+  "userDepositCount",
+  "userLiquidationCount",
+  "userLiquidationSum",
+  "userLiquidationAvgAmount",
+  "userLiquidationSumUSD",
+  "userLiquidationAvgAmountUSD",
+  "userDepositSum",
+  "userDepositSumUSD"
+ ],
+ "1_counts_along_each_account": {
+  "userLiquidationCount": {
+   "decreases": 0,
+   "increases": 7788
+  },
+  "userDepositCount": {
+   "decreases": 0,
+   "increases": 559827
+  }
+ },
+ "2_after_each_liquidation": {
+  "liquidated_borrows": 35777,
+  "with_a_later_borrow": 27307,
+  "count_one_or_more_higher": 27307,
+  "count_not_higher": 0,
+  "no_later_borrow": 8470
+ },
+ "3_first_borrow_with_a_liquidation_counted": {
+  "accounts_liquidated_later": {
+   "accounts": 2124,
+   "share": 0.001883
+  },
+  "accounts_never_liquidated_in_the_table": {
+   "accounts": 97421,
+   "share": 0.000298
+  }
+ },
+ "prior_history": true,
+ "script_sha256": "0f510b12c8f251b6196f704780a9d4b8bcabbe09343e9f02eff03bb47a08ab12",
+ "wall_clock_s": 12.4
+}

@@ -49,7 +49,15 @@ N_QUBITS = 8
 #: identical metrics at five of five seeds on finance and on medical
 #: (references/qcnn-width-ablation.md). Finance encodes four features since Round 84, so its artifact
 #: is four wires, a power of two that pools four wires to two and two to one with no orphan.
-SHIPPED_WIDTH = {"finance": 4, "finance_amlworld_k4": 4}
+SHIPPED_WIDTH = {"finance": 4, "finance_amlworld_k4": 4, "defi_aave_v3_k4": 4}
+
+#: The corpora whose rows come from a pre-registered input script as eight chosen inputs, already standardised on the
+#: fit window and clipped, with a fixed fit set, validation and test (`part`), and whose headline is AUC-PR: finance's
+#: AMLworld (scripts/data/aml_qcnn_inputs.py) and, since Round 86's batch 8, the DeFi page's Aave v3 borrows
+#: (scripts/data/defi_qcnn_inputs.py, references/defi-qcnn-aave-v3-preregistration.md). Their `_k4` arms read the
+#: first four of the same ranking.
+PART_CORPORA = {"finance_amlworld": "aml_qcnn_inputs.npz", "finance_amlworld_k4": "aml_qcnn_inputs.npz",
+                "defi_aave_v3": "defi_qcnn_inputs.npz", "defi_aave_v3_k4": "defi_qcnn_inputs.npz"}
 
 #: The directory a use case's runs write under `models/` where it is not `qcnn_<usecase>`. The PaySim corpus, `finance`,
 #: shipped as `models/qcnn_finance` until Round 86's batch 6; that directory now holds the AMLworld circuit, which
@@ -825,13 +833,29 @@ def load(usecase: str):
             "https://cdla.dev/sharing-1-0/), SYNTHETIC transactions; the published MLP's temporal windows, the fit "
             f"window's every laundering transaction and four others each; {k} of the 114 inputs, chosen on the fit "
             "window by |AUC - 0.5|: " + ", ".join(meta["features"][:k]) + ".")
+    if usecase in ("defi_aave_v3", "defi_aave_v3_k4"):
+        # references/defi-qcnn-aave-v3-preregistration.md: scripts/data/defi_qcnn_inputs.py's rows (run it first), eight
+        # of the 80 numeric inputs of Spadea and Seneviratne's Aave v3 borrows chosen on the fit window, standardised by it
+        # and clipped at 10; the label is a liquidation within 30 days of the borrow.
+        from qsh.models import datasets
+        f = datasets.artifacts("defi_qcnn_inputs.npz")
+        if not f.exists():
+            raise SystemExit(f"{f} is missing: run scripts/data/defi_qcnn_inputs.py first")
+        meta = json.loads(f.with_suffix(".json").read_text())
+        d = np.load(f)
+        k = 4 if usecase.endswith("_k4") else 8
+        return d["X"][:, :k].astype(np.float64), d["y"].astype(int), list(meta["features"][:k]), (
+            "Spadea and Seneviratne, From Risk to Rescue dataset (Figshare, doi:10.6084/m9.figshare.31058368.v1, CC BY 4.0, "
+            "https://creativecommons.org/licenses/by/4.0/): FinSurvival's Borrow-to-Liquidated table of Aave v3 on "
+            "Polygon; a borrow is positive when its account is liquidated within 30 days; windows by time; "
+            f"{k} of the 80 numeric inputs, chosen on the fit window by |AUC - 0.5|: " + ", ".join(meta["features"][:k]) + ".")
     raise SystemExit(f"no loader for {usecase!r}")
 
 
 #: The corpora whose split is fixed by the data, not drawn by `shuffled_split`: OPS-SAT-AD's own partition and
 #: ESA-ADB's dates (references/satellite-qcnn-tn-preregistration.md). The validation rows and ESA's sampled fit
 #: negatives use seed 0 whatever `--seed` is, so the seeds vary the circuit's initial weights only.
-FIXED_SPLIT = ("satellite_opssat", "satellite_esa", "finance_amlworld", "finance_amlworld_k4")
+FIXED_SPLIT = ("satellite_opssat", "satellite_esa", *PART_CORPORA)
 
 
 def split_for(usecase: str, y: np.ndarray, seed: int) -> tuple[np.ndarray, int, int]:
@@ -847,10 +871,11 @@ def split_for(usecase: str, y: np.ndarray, seed: int) -> tuple[np.ndarray, int, 
         tr_idx, te_idx = np.flatnonzero(train), np.flatnonzero(~train)
         fit_idx, val_idx = train_test_split(tr_idx, test_size=0.15, stratify=y[tr_idx], random_state=0)
         fit_idx, val_idx = np.sort(fit_idx), np.sort(val_idx)
-    elif usecase.startswith("finance_amlworld"):
-        # The fit rows are already the pre-registered sample (every laundering transaction and four others each, seed 0).
+    elif usecase in PART_CORPORA:
+        # The fit rows are already the pre-registered sample (AMLworld: every laundering transaction and four others each,
+        # seed 0; the DeFi borrows: by their pre-registration's fit-set rule).
         from qsh.models import datasets
-        part = np.load(datasets.artifacts("aml_qcnn_inputs.npz"))["part"]
+        part = np.load(datasets.artifacts(PART_CORPORA[usecase]))["part"]
         fit_idx, val_idx, te_idx = np.flatnonzero(part == 0), np.flatnonzero(part == 1), np.flatnonzero(part == 2)
     else:
         from qsh.models import datasets
@@ -1026,7 +1051,7 @@ def main() -> int:
     # log-amount of 14 would saturate at 1.0 and throw the column away, which is why standardising
     # first is not optional for finance.
     INPUT_SPACE = {"medical": "raw", "finance": "raw", "telecom": "raw", "satellite_opssat": "raw",
-                   "satellite_esa": "raw", "finance_amlworld": "standardised", "finance_amlworld_k4": "standardised"}[a.usecase]
+                   "satellite_esa": "raw", **{c: "standardised" for c in PART_CORPORA}}[a.usecase]
     mu, sd = X[:cut].mean(0), X[:cut].std(0)
     sd = np.where(sd == 0, 1.0, sd)
     if INPUT_SPACE == "standardised":
@@ -1411,7 +1436,7 @@ def main() -> int:
         # retraining them. Written after `classical_lr_accuracy` until Round 86, the same values in another order,
         # so the recorded command no longer regenerated the shipped file byte for byte.
         "classical_surrogate": classical_surrogate(Xs[:, :X.shape[1]], y, tr, te, c_enc, readout_q,
-                                                   auprc=a.usecase.startswith("finance_amlworld")),
+                                                   auprc=a.usecase in PART_CORPORA),
         "note": ("Variational QCNN trained by backpropagation through a dense state vector. The "
                  "prediction path applies NO QOTP mask: undoing a Pauli frame through Clifford+T is "
                  "not implemented here (T X T-dagger is not Pauli), so hiding and prediction are "
@@ -1419,7 +1444,7 @@ def main() -> int:
                  "not hardware; the classical baseline above is reported so no quantum advantage is "
                  "implied."),
     }
-    if a.usecase.startswith("finance_amlworld"):
+    if a.usecase in PART_CORPORA:
         # AUC-PR, the finance models' metric, for the AMLworld corpora only (batch 6; their pre-registration's headline),
         # appended after the literal so the shipped artifacts keep their keys and their recorded commands still
         # regenerate them byte for byte (tests/test_r86_qcnn_artifact_key_order.py).

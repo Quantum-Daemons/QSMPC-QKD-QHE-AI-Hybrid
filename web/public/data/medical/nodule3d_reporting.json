@@ -1,0 +1,117 @@
+{
+ "_generated_by": "scripts/export_nodule3d_reporting.py; do not edit by hand",
+ "preregistration": "references/medical-nodule3d-reporting-preregistration.md",
+ "record": "docs/measurements/medical-nodule3d-reporting-2026-11-27.json",
+ "test_part": {
+  "crops": 347,
+  "patients": 148,
+  "malignant": 109,
+  "malignant_share": 0.314121
+ },
+ "device": "cpu",
+ "resamples": 2000,
+ "teacher": {
+  "auc": 0.940791,
+  "auc_ci95": [
+   0.905733,
+   0.969417
+  ],
+  "auprc": 0.891167,
+  "auprc_ci95": [
+   0.819031,
+   0.946257
+  ],
+  "what": "the mean of the 3D ResNet-18 candidate's five fold networks' probabilities; each fold network trained on three fifths of the training patients and stopped on a fourth; none fitted on every training patient"
+ },
+ "students": {
+  "square": {
+   "auc": 0.907293,
+   "auc_sd": 0.008947,
+   "auprc": 0.823314,
+   "auprc_sd": 0.01995
+  },
+  "control": {
+   "auc": 0.882014,
+   "auc_sd": 0.02681,
+   "auprc": 0.767411,
+   "auprc_sd": 0.037434
+  }
+ },
+ "seeds": 5,
+ "shipped_seed": {
+  "seed": 5,
+  "auc": 0.892568,
+  "auc_ci95": [
+   0.847758,
+   0.933242
+  ],
+  "auprc": 0.808515,
+  "auprc_ci95": [
+   0.719063,
+   0.889704
+  ]
+ },
+ "encrypted": {
+  "A2": {
+   "auc": 0.892568,
+   "auc_ci95": [
+    0.847758,
+    0.933242
+   ],
+   "auprc": 0.808515,
+   "auprc_ci95": [
+    0.719063,
+    0.889704
+   ],
+   "plaintext_same_run": {
+    "auc": 0.892568,
+    "auc_ci95": [
+     0.847758,
+     0.933242
+    ],
+    "auprc": 0.808515,
+    "auprc_ci95": [
+     0.719063,
+     0.889704
+    ]
+   },
+   "max_abs_logit_error": 3.8978127099742466e-05,
+   "crops": 347
+  },
+  "B": {
+   "auc": 0.892568,
+   "auc_ci95": [
+    0.847758,
+    0.933242
+   ],
+   "auprc": 0.808515,
+   "auprc_ci95": [
+    0.719063,
+    0.889704
+   ],
+   "plaintext_same_run": {
+    "auc": 0.892568,
+    "auc_ci95": [
+     0.847758,
+     0.933242
+    ],
+    "auprc": 0.808515,
+    "auprc_ci95": [
+     0.719063,
+     0.889704
+    ]
+   },
+   "max_abs_logit_error": 1.4709803019763434e-05,
+   "crops": 347
+  }
+ },
+ "licence": "CC-BY-3.0",
+ "licence_url": "https://creativecommons.org/licenses/by/3.0/",
+ "attribution": {
+  "dataset": "LIDC-IDRI",
+  "download": "https://doi.org/10.7937/K9/TCIA.2015.LO9QL9SX",
+  "citation": "Armato III, S. G., et al. (2015). Data From LIDC-IDRI [Data set]. The Cancer Imaging Archive. doi:10.7937/K9/TCIA.2015.LO9QL9SX; Armato et al., The Lung Image Database Consortium (LIDC) and Image Database Resource Initiative (IDRI), Medical Physics 38(2), 915-931 (2011), doi:10.1118/1.3528204; nodule clusters by pylidc, Hancock and Magnan, Journal of Medical Imaging 3(4), 044504 (2016), doi:10.1117/1.JMI.3.4.044504. The authors acknowledge the National Cancer Institute and the Foundation for the National Institutes of Health, and their critical role in the creation of the free publicly available LIDC/IDRI Database used in this study.",
+  "licence": "CC-BY-3.0"
+ },
+ "modifications": "figures over the test part from the record; no crop, scan or patient is shipped"
+}

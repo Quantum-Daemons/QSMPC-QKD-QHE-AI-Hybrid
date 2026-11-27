@@ -499,6 +499,26 @@ NoduleMNIST3D's official-split figures (ResNet-18 3D 0.863, ResNet-50 3D 0.875, 
 context and not compared: that split shares scans across its parts and labels differently. Membership inference
 against these students is in `docs/measurements/mia-nodule3d-*.json`.
 
+**At each step, as Lee et al. report theirs (Round 86, batch 8).** Pre-registered on the owner's choice of 2026-11-27
+(`references/medical-nodule3d-reporting-preregistration.md` and its addendum), computed on the CPU over the same 347
+test crops of 148 patients, each figure with a 95 percent interval over 2,000 resamples of the test patients
+(`docs/measurements/medical-nodule3d-reporting-2026-11-27.json`):
+
+| step | AUC | AUPRC |
+|---|---|---|
+| the teacher: the mean of the 3D ResNet-18's five fold networks | 0.941 (0.906 to 0.969) | 0.891 (0.819 to 0.946) |
+| the ReLU control, five seeds | 0.882 (sd 0.027) | 0.767 (sd 0.037) |
+| the square student, five seeds | 0.907 (sd 0.009) | 0.823 (sd 0.020) |
+| the shipped seed (5), in the clear | 0.893 (0.848 to 0.933) | 0.809 (0.719 to 0.890) |
+| the shipped seed under CKKS A2 or B, its decrypted logits | 0.893 (0.848 to 0.933) | 0.809 (0.719 to 0.890) |
+
+A model that ranks at random has an AUPRC of 0.314, the test part's malignant share. The distillation costs about
+0.03 of AUC against the teacher, whose five fold networks were each trained on three fifths of the training patients;
+the square beats the ReLU control at either measure; and encryption costs nothing measurable: under both parameter sets
+the decrypted logits give the clear ones' AUC and AUPRC to the sixth decimal, so no malignant-benign pair changed
+order (largest logit error $`3.9 \times 10^{-5}`$ under A2, $`1.5 \times 10^{-5}`$ under B). The recomputed students' test AUCs match the record's within two of its
+25,942 malignant-benign pairs, as the addendum allows: the record's came from GPU logits, these from the CPU.
+
 #### A fully encrypted finance student, not adopted (F7)
 
 The finance page runs two private paths: the linear student, which CKKS evaluates alone (test AUPRC 0.184, minority-class
@@ -612,6 +632,57 @@ equal to the shipped global model bit for bit. What it does not show: with two s
 update from the global model and its own, so the masks hide the updates from the aggregator only; the mask seeds are
 not post-quantum; no differential privacy is applied.
 
+#### 5G-NIDD over eight Dirichlet-split clients: the linear model falls 0.017 short of pooling, a 1D-CNN gains 0.036
+
+On the owner's choice of 2026-11-27, the model review's second suggestion, pre-registered before any partition was drawn
+([`references/telecom-nidd-dirichlet-preregistration.md`](../references/telecom-nidd-dirichlet-preregistration.md);
+`scripts/train/telecom_nidd_dirichlet.py`, `docs/measurements/telecom-nidd-dirichlet-2026-11-27.json`). Both stations'
+630,693 fit and 70,077 validation flows are divided among eight clients, each class's rows in proportions drawn from
+$`\mathrm{Dir}(0.3 \cdot \mathbf{1}_8)`$: Yurochkin et al.'s per-class partition, this project's reading of the set-up
+Jeong et al. (CMC 87(1), 2026) use on 5G-NIDD without giving its procedure, for partition seeds 1 to 5. The 233,591
+test flows are the stations' as above. No seed needed a redraw: the clients hold 7,102 to 320,640 fit rows, each with 7
+to 9 of the nine classes. The linear model and its masked FedAvg are the two-station federation's with eight clients
+(258 to 273 masked messages a seed, each checked to cancel exactly), the clients' combined standardisation within
+$`2.7 \times 10^{-7}`$ of the federation's. Jeong et al.'s 1D-CNN, as this project reads it, runs on the GPU under
+FedAvg in the clear for 30 rounds and pooled for 30 epochs, the round or epoch reported chosen by the pooled validation
+macro-F1. Read at the source after the run, their section 5.2 has two fully connected layers, of 128 and 64, before the
+output, where this reading has one, of 128, and gives no kernel or pooling width (3 and 2 here); the figures are of the
+pre-registered network.
+
+| Model | FLamby's metric | Macro-F1, all test flows | Weighted F1 | Accuracy |
+|---|---|---|---|---|
+| Linear, masked FedAvg, 8 clients | 0.9573 (0.0111) | 0.9582 (0.0110) | 0.9779 (0.0068) | 0.9783 (0.0064) |
+| 1D-CNN, FedAvg in the clear, 8 clients | 0.9931 (0.0015) | 0.9931 (0.0015) | 0.9947 (0.0013) | 0.9948 (0.0012) |
+| 1D-CNN, pooled in the clear | 0.9954 (0.0001) | 0.9954 (0.0001) | 0.9964 (0.0001) | 0.9964 (0.0001) |
+| Linear, masked FedAvg, the two stations (above) | 0.9708 | | | |
+| Linear, pooled (the student, above) | 0.9739 | | | |
+
+The mean over the five partition seeds, with the standard deviation in brackets. C1 does not hold: over eight clients
+the linear model's mean FLamby metric is 0.0166 below pooling's, where the pre-registration asked within 0.01, and
+0.0135 below the two stations' federation. It loses most on station 1's flows (macro-F1 0.930 to 0.954 by seed, against
+0.959 for the two stations' federation). C2, as measured: the 1D-CNN under FedAvg scores 0.0358 above the linear model
+on the same clients (a 95 percent t interval of 0.0235 to 0.0481 over the five paired seeds), and 0.0023 below the same
+network pooled. Every linear fit here chose the grid's smallest penalty, $`10^{-6}`$, as every fit in the two-station
+record did; the grid is the student's and is not widened after these figures. Jeong et al. report accuracy 0.9711
+under federated learning in their non-IID scenario, on their own preprocessing and split and with a quarter of the
+nodes dropped from each round, which is not done here; the 1D-CNN's 0.9948 is not a ranking against it. These figures,
+like every 5G-NIDD figure on the page, are on the student's random split of flows, with six inputs (`sHops`, `dHops`,
+`sVid`, `dVid`, `SrcTCPBase`, `DstTCPBase`) that Hameed and Ibrahim (J. Cybersecur. Priv. 6(6):205, 15 November 2026)
+find stand in for the label; they report that the same models lose roughly three to seven points of accuracy on their
+clean protocol, which splits each class chronologically and removes eight such columns. `Seq` and `Offset`, which two
+other 2026 studies find leak the most, are not inputs here. The comparisons in this table
+are within one protocol, and their levels have not been re-measured under the clean one
+([`references/model-choice-vs-2026-practice.md`](../references/model-choice-vs-2026-practice.md)). Neither
+comparison decides what ships: the page's encrypted federated model stays the two-station linear one, since no network
+here runs under CKKS. What the masks hide changes with eight clients: a client learns from the sum only the sum of the
+other seven, so one client's update is hidden from each other client unless the six others collude, as well as from
+the aggregator. The seeds are still X25519's, which is not post-quantum, and the 1D-CNN arms are baselines in the
+clear. The run trained and saved every seed, then stopped before its summary, which read the two-station record's
+figures under a key that record does not have. The summaries and both comparisons were computed from the saved seeds
+afterwards by `--summarise`, which trains nothing (the record's `summary_note`, its seeds unchanged field for field), so
+the run's wall clock is not recorded; its log's last timed step, the fifth seed's federated 1D-CNN, is at 11,485 s. The
+telecom page's federation card shows the table below the two stations'.
+
 #### The finance QCNN on AMLworld, pre-registered, and on the page since Round 86's batch 6
 
 On the owner's choice of 2026-11-25, pre-registered before any input was scored
@@ -679,6 +750,71 @@ removing entanglement often as good or better on their small tasks, and classica
 it lowers the figure, and one classical model, logistic regression on the encoded inputs, is ahead of the seed average,
 while no classical arm scores above it. The circuit's largest Schmidt rank, every seed, cut and layer, traced in double
 precision on 1,000 test rows, is 8 of the 16 an eight-wire state can reach.
+
+#### The DeFi QCNN on Aave v3 liquidations, pre-registered (Round 86, batch 8)
+
+The DeFi page's private check computes Aave V3's own rule, a health factor below 1, so it has no learned classifier for
+a QCNN to reproduce; on the owner's choices of 2026-11-26 and 2026-11-27 this asks a question beside it instead,
+pre-registered before the archive was downloaded
+([`references/defi-qcnn-aave-v3-preregistration.md`](../references/defi-qcnn-aave-v3-preregistration.md), with an
+addendum after the download and before any label, and one moving its second arm to the GPU). A borrow on Aave v3
+(Polygon) is positive when its account is liquidated within 30 days, from FinSurvival's Borrow-to-Liquidated table in
+Spadea and Seneviratne's archive (CC BY 4.0), with windows by time (70, 15 and 15 percent of the borrows) and eight of
+the 80 numeric inputs chosen on the fit window alone by $`|\mathrm{AUC} - 0.5|`$. The arms follow the finance
+comparison's recipe: the tree circuit, three layers, 120 epochs and the checkpoint by validation average precision, 20
+seeds at eight wires and 20 at four, and 5 without the entangling gates, all on the GPU; beside them logistic regression,
+gradient-boosted trees, logistic regression on the circuit's own Pauli products, and, not like for like, the booster on
+all 80 inputs and the whole fit window (`scripts/data/defi_qcnn_inputs.py`, `scripts/train/defi_qcnn_comparison.py`;
+the record `docs/measurements/defi-qcnn-aave-v3-2026-11-27.json`).
+
+The eight inputs are counts and sums of the account's deposits and liquidations, so a model on them means something only
+if they describe the account before the borrow. FinSurvival's appendix B.4 describes them as the account's transactions
+in the past; Spadea and Seneviratne's paper does not define them. Checked on the table after the pre-registration, and
+not one of its criteria (`scripts/data/check_defi_inputs_are_prior_history.py`;
+`docs/measurements/defi-inputs-prior-history-2026-11-27.json`): along each account's borrows in time, no count of
+liquidations or deposits ever decreases; after each of the 27,307 liquidated borrows that the same account follows with
+another borrow, that later borrow counts at least one more liquidation, so no borrow's count already included its own
+outcome; and at an account's first borrow, a liquidation is already counted for 0.19 percent of the accounts liquidated
+later and 0.03 percent of the others, where a count over the whole history would be positive for every account
+liquidated later.
+
+The comparison, the validation window's average precision beside the test window's with its 95 percent stratified
+bootstrap interval; 1.08 percent of the validation window's 182,350 borrows are liquidated within 30 days and 1.24
+percent of the test window's 182,351:
+
+| Model | Kind | Validation | Test (95 % interval) |
+|---|---|---|---|
+| Gradient-boosted trees on all 80 inputs, the whole fit window (reference) | classical | 0.0885 | 0.1714 (0.1555 to 0.1879) |
+| QCNN, four wires: the 20 seeds' ensemble | quantum circuit, simulated classically | 0.1559 | 0.0812 (0.0749 to 0.0881) |
+| QCNN, eight wires: the seed best on validation (seed 19) | quantum circuit, simulated classically | 0.2723 | 0.0642 (0.0592 to 0.0699) |
+| QCNN without entanglement: the 5 seeds' ensemble | product circuit, simulated classically | 0.2013 | 0.0575 (0.0526 to 0.0630) |
+| QCNN, eight wires: the 20 seeds' ensemble | quantum circuit, simulated classically | 0.2048 | 0.0411 (0.0391 to 0.0433) |
+| Logistic regression on the same inputs | classical | 0.1451 | 0.0322 (0.0304 to 0.0341) |
+| Gradient-boosted trees on the same inputs | classical | 0.1949 | 0.0235 (0.0214 to 0.0249) |
+| Logistic regression on the circuit's Pauli products | classical surrogate | 0.0372 | 0.0144 (0.0134 to 0.0155) |
+
+Both criteria hold. The seed best on validation at eight wires, seed 19, scores test average precision 0.0642 (0.0592 to
+0.0699), above the $`0.0247`$ that twice the prevalence asks, and the page's tree contraction of it equals the state
+vector within $`2.5 \times 10^{-6}`$ on all 182,351 test borrows with no decision changed
+(`scripts/check_defi_qcnn_export.py`). What the figures do not carry is a ranking. Every model on these eight inputs
+scores lower on the later test window than on validation, the shipped seed from 0.272 to 0.064, logistic regression from
+0.145 to 0.032 and the booster from 0.195 to 0.023; only the booster on all 80 inputs scores higher, from 0.089 to 0.171.
+The test column ranks these models under a shift between the windows, not the methods, and no figure here says a quantum
+circuit is better at this task. Over its 20 seeds the eight-wire circuit scores $`0.045 \pm 0.024`$ and their mean
+probability 0.041, so the shipped seed is the rule's pick, not the method's typical figure. At four wires the 20 seeds'
+mean probability scores 0.081 and, without its entangling gates, the circuit's five seeds' scores 0.058, both above the
+eight-wire ensemble's: Bowles, Ahmed and Schuld's benchmark of quantum classifiers (arXiv:2403.07059, 2024) found
+removing entanglement often as good or better on their small tasks. Every circuit here acts on at most eight wires, so
+its state is at most 256 amplitudes and is simulated exactly on a classical computer; no quantum advantage is claimed.
+
+On the page, `DefiQcnnCard.tsx` below the lending panels reads `web/public/data/defi/qcnn_comparison.json` and
+`web/public/data/defi/defi_qcnn.json` (`scripts/export_defi_qcnn.py`: the seed's weights and tree network, and 4,096 of
+the test window's borrows drawn uniformly at seed 0, each its eight standardised inputs and its label, no account or other
+identifier), and re-scores that sample in the tab with the page's own contraction: average precision 0.0803 over its 51
+liquidated borrows, which the tab reproduces within $`10^{-9}`$ (`tests/test_r86_defi_qcnn.py`). The pre-registration
+left three choices to the owner after these figures; on 2026-11-27: seed 19 ships, the card is shown open, and nothing
+goes to the Hugging Face Hub, since a Hub card would first need the inputs' EDA and calibration and the test figure is
+weak and tied to the shift between the windows.
 
 #### Calibrated thresholds for the satellite forecaster, not adopted
 
@@ -890,6 +1026,55 @@ one a timer reads the launch.
     came out within 6 percent of their earlier figures.
 - **A GPU is not where this project's inference runs.** The demo's pages encrypt in the visitor's browser (node-seal), and the
   full deployment's image has no GPU code. This is the full deployment's hybrid on a machine that has one.
+
+## The published graphs on WebGPU beside WASM, measured
+
+Every page with a published ONNX graph lets a visitor pick WebGPU for it (the Model backend select), and until Round 86's
+batch 8 only the medical page had that measured. Each use-case page now carries a card, "WebGPU beside WASM, on this
+page's fp32 graphs" (`web/src/components/BackendCompareCard.tsx`), that runs a model's fp32 graph in the tab on WASM and
+then on WebGPU over every row of its published evaluation sample, compares every output value and each row's decision by
+the sample's own rule, and times both (`compareBackends` in `web/src/lib/onnxInference.ts`, the rule and the tolerance in
+`web/src/lib/backendCompare.ts`). Within tolerance means every value within $`10^{-3}`$ of the WASM run's and no decision
+changed beyond a near tie; the tolerance was stated before any figure was measured.
+
+- **fp32 only, by the owner's choice.** The page loads a model's int8 graph where one ships, and ONNX Runtime Web's WebGPU
+  provider registers no kernel for an int8 graph's quantised nodes, so those nodes would run on the CPU and the time would
+  describe neither backend. An int8 graph is compared as its fp32 twin, pinned at the same revision and checked against its
+  SHA-256 as every graph is; the int8 graph stays on WASM.
+- **An `ai.onnx.ml` graph is not compared** (the tree ensembles and the ML-domain linear students): the WebGPU build
+  registers none of its operators, so it runs on WASM only, and the card says so on its row.
+- **The WebGPU session is opened with WebGPU alone,** so a backend that cannot start fails the comparison instead of opening
+  a WASM session that would be timed as WebGPU. Nodes the WebGPU provider has no kernel for still run on the CPU, one by
+  one, as ONNX Runtime places them; which nodes those are is not visible to the page.
+
+On a local client-only build of this branch in the owner's Chrome (NVIDIA RTX PRO 6000 Blackwell, as the browser names
+the adapter; cross-origin isolated), 2026-11-27, one comparison per model; times are medians of three runs over every row
+and of five on one row, after a first run, in milliseconds:
+
+| page | model (graph) | rows | largest difference (largest value) | decisions changed | all rows, WASM / WebGPU | one row, WASM / WebGPU |
+|---|---|---|---|---|---|---|
+| finance | MLP on per-transaction features | 8,192 | $`3.81 \times 10^{-6}`$ (13.7) | 0 | 4.1 / 6.6 | 0.025 / 2.9 |
+| finance | IBM Multi-PNA+EU, IBM's protocol (a graph sample) | 16 seeds | $`1.34 \times 10^{-5}`$ (25.0) | 0 | 50.2 / 30.8 | none: one graph |
+| finance | IBM Multi-PNA+EU, causal protocol (a graph sample) | 16 seeds | $`7.63 \times 10^{-6}`$ (17.4) | 0 | 47.0 / 28.5 | none: one graph |
+| medical | ResNet-18 on BreastMNIST (the fp32 twin) | 156 | $`1.72 \times 10^{-5}`$ (14.1) | 0 | 344 / 5.6 | 2.4 / 7.0 |
+| medical | ResNet-50 on BreastMNIST | 156 | $`4.67 \times 10^{-5}`$ (114) | 0 | 653 / 5.9 | 4.8 / 4.1 |
+| medical | CKKS-evaluable CNN student | 156 | $`1.67 \times 10^{-6}`$ (4.51) | 0 | 0.59 / 2.8 | 0.040 / 0.69 |
+| medical | fully encrypted CNN student (square) | 156 | $`1.67 \times 10^{-6}`$ (5.54) | 0 | 0.56 / 1.1 | 0.12 / 1.7 |
+| medical | ResNet-18 on ChestX-ray14, FedAvg (the fp32 twin) | 16 | $`3.10 \times 10^{-6}`$ (5.01) | 0 | 336 / 6.2 | 21.7 / 4.4 |
+| satellite | Telemanom LSTM forecaster (the fp32 twin) | 128 windows | $`2.74 \times 10^{-6}`$ (2.59) | none: a forecast | 39.1 / 16.2 | 1.2 / 12.5 |
+| telecom | CKKS-linear IDS student | 600 | $`3.81 \times 10^{-6}`$ (24.0) | 0 | 0.13 / 0.57 | 0.030 / 0.53 |
+| telecom | federated 5G-NIDD detector | 2,048 | $`3.81 \times 10^{-5}`$ (259) | 0 | 1.9 / 0.71 | 0.10 / 0.55 |
+
+- **Every graph agrees within the tolerance, and no decision changed.** The largest difference is
+  $`4.67 \times 10^{-5}`$, on ResNet-50, whose largest value is 114.
+- **Over a whole sample, WebGPU is the faster backend for the three ResNets,** by 54 to 111 times here (ResNet-50: 653
+  against 5.9 ms), for the graph networks and the LSTM by 1.6 to 2.4 times, and for the federated detector's 2,048 rows by
+  2.7 times. WASM is faster for the finance MLP's 8,192 rows (4.1 against 6.6 ms), the two medical CNN students and the
+  telecom student, and on one row for every model but ResNet-50 and the ChestX-ray14 ResNet: a WebGPU run pays for moving
+  the input to the GPU and the result back, which a small graph or a single row does not repay.
+- **One comparison per model, so the times are indicative.** The telecom student's WebGPU median over every row read 161 ms
+  on a first comparison and 0.57 ms on a second, minutes apart; the differences and the decisions were the same both times.
+- **On the deploy** the card runs the same way; its figures are in checklist CS23.
 
 ## Secret-shared matrix multiplication on the GPU, measured
 

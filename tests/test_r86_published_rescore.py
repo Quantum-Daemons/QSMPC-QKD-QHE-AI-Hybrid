@@ -63,6 +63,10 @@ await build({
     b.onLoad({ filter: /.*/, namespace: "wasmurl" }, () => ({ contents: `export default ${JSON.stringify(sealWasm)};`, loader: "js" }));
     // The real runtime, loaded by node from its own directory so it finds its .wasm beside it.
     b.onResolve({ filter: /^onnxruntime-web\/(wasm|webgpu)$/ }, () => ({ path: ortPath, external: true }));
+    // ortSameOrigin.ts (2026-11-20) points the WebGPU build's files at the site's copies by `?url` imports, which only
+    // Vite resolves; without this the bundle failed to build, which the skip below hid wherever a graph was absent.
+    b.onResolve({ filter: /\.(wasm|mjs)\?url$/ }, (a) => ({ path: a.path, namespace: "url-stub" }));
+    b.onLoad({ filter: /.*/, namespace: "url-stub" }, () => ({ contents: "export default '';", loader: "js" }));
     if (trust) {
       b.onResolve({ filter: /(^|\/)pinnedFetch$/ }, () => ({ path: "pinned", namespace: "trust" }));
       b.onLoad({ filter: /.*/, namespace: "trust" }, () => ({ loader: "js", contents: `

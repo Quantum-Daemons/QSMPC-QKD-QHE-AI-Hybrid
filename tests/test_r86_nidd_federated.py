@@ -111,7 +111,8 @@ def test_the_held_out_flows_are_named_by_station(record: dict, site: dict) -> No
 def test_the_cards_text_states_its_limits() -> None:
     card = (WEB / "src" / "components" / "NiddFederatedCard.tsx").read_text()
     for phrase in ("hide the updates from the aggregator only", "in the clear", "not post-quantum",
-                   "no differential privacy is applied", "cross-station reading"):
+                   "no differential privacy is applied", "cross-station reading", "share capture sessions",
+                   "stand in for the label", "Seq and Offset", "does not depend on the split"):
         assert phrase in card.replace("&apos;", "'"), phrase
 
 

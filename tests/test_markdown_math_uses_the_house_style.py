@@ -199,6 +199,17 @@ FROZEN = {
     # before any figure was computed.
     "references/genomics-3d-divergence-preregistration.md":
         "2e93f4fab32d8f2852c7b5be59284460e3d5488533adc2cd491e0261222884c2",
+    # Round 86's batch 8, the owner's choices of 2026-11-27. The 3D nodule student at each step: committed (16abef9)
+    # before any figure, its addendum (5fef91e, the AUC check at two pairs' worth) before any of its figures was read.
+    "references/medical-nodule3d-reporting-preregistration.md":
+        "90bdaac561b78722626c50e7e5a414d1187d30b684753a10543ea9179432d268",
+    # 5G-NIDD over eight Dirichlet-split clients with a 1D-CNN baseline: committed (16abef9) before any partition.
+    "references/telecom-nidd-dirichlet-preregistration.md":
+        "0551ea0242bd6a698991c6d555761fd78a147dfb0b29479f6d015c16ec3ebb19",
+    # The DeFi QCNN on Aave v3: committed (28852e8) before the download, its addendum (20c8b2a) before any label and its
+    # second (9031341, arm 2 on the GPU) before any QCNN run.
+    "references/defi-qcnn-aave-v3-preregistration.md":
+        "af2cc309b6aa3d69b45c3474a6c8d39ce6eadd332baa87a502a98e2166902110",
 }
 
 

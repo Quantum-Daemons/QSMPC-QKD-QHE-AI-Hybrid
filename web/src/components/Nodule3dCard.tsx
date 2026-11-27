@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Nodule3dViewer from "./Nodule3dViewer";
 import StageBadge from "./StageBadge";
+import Nodule3dReportingSection from "./Nodule3dReportingSection";
 import { contributionMap, memoryNote, plainSquare3dLogits, runSquare3dOffThread, type Square3dRun,
   type Square3dWeights, VOXELS } from "../lib/clientFHESquare3d";
 
@@ -150,6 +151,8 @@ export default function Nodule3dCard() {
           ))}
         </tbody>
       </table>
+
+      <Nodule3dReportingSection />
 
       {/* A fieldset's min-width defaults to its content's, so without minWidth 0 the select's max-width: 100% would
           resolve against a box as wide as its longest option and push the card sideways on a phone. */}

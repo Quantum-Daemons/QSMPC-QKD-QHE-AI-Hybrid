@@ -132,7 +132,7 @@ Each use case shows a figure of the kind a reviewer expects beside its model, co
 | `genomics` | PQC -> QKD -> **QSMS secure summation** (pooled allele counts) -> FHE | genomics |
 | `telecom_ids` | PQC -> simulated QKD (optional eavesdropper) -> **QML-IDS** attack detection | telecom / defence |
 | `satellite_comms` | PQC -> simulated **free-space QKD** (BB84 downlink) -> two-way **QSDC** test with an inline eavesdrop check (it cannot close at the default link budget, and the run says why) -> one-way **quasi-QSDC** (STIKE) from a pre-shared key pool | satellite |
-| `defi_lending` | PQC -> simulated lending market -> **margin under CKKS, its sign in a garbled circuit** (threshold BGV in the committee mode). Browser demo only, no QKD and no model | DeFi |
+| `defi_lending` | PQC -> simulated lending market -> **margin under CKKS, its sign in a garbled circuit** (threshold BGV in the committee mode). Browser demo only, no QKD; a pre-registered QCNN on Aave v3 liquidations on a card of its own, trained offline and not encrypted | DeFi |
 
 `/orchestration?usecase=<id>` opens the end-to-end page on that use case. An id the page does not know selects the finance use case and says so on the page.
 
@@ -183,7 +183,11 @@ telecom at 8 and at 7. No 9-wire artefact ships: the 9-wire finance and medical 
 because their pad wire changed no class. The satellite page shows two more, 8-wire tree circuits on real telemetry
 (OPS-SAT-AD and ESA-ADB Mission1, pre-registered in
 [`references/satellite-qcnn-tn-preregistration.md`](../references/satellite-qcnn-tn-preregistration.md)), on a card
-of their own rather than through the Inference control. On the plaintext option nothing on the QCNN path is encrypted; the CKKS option evaluates its readout as a linear form
+of their own rather than through the Inference control. The DeFi page shows one more on a card of its own, an 8-wire
+tree circuit on Aave v3 liquidations (pre-registered in
+[`references/defi-qcnn-aave-v3-preregistration.md`](../references/defi-qcnn-aave-v3-preregistration.md)); its test
+figure does not carry from the validation window, which the card states
+([the DeFi QCNN](models-and-benchmarks.md#the-defi-qcnn-on-aave-v3-liquidations-pre-registered-round-86-batch-8)). On the plaintext option nothing on the QCNN path is encrypted; the CKKS option evaluates its readout as a linear form
 under CKKS ([the trained QCNN under CKKS](models-and-benchmarks.md#the-trained-qcnn-under-ckks)).
 
 **They are classically simulable.** Bermejo, Braccia, Rudolph, Holmes, Cincio and Cerezo show that
