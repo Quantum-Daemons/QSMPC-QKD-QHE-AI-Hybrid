@@ -4,7 +4,7 @@ import StageBadge from "../components/StageBadge";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 import { USECASES } from "../lib/useCases";
 import { modelsFor, teacherModel } from "../lib/config";
-import { primaryEncryptedModel } from "../lib/pageEncryptedModels";
+import { pageEncryptedModels } from "../lib/pageEncryptedModels";
 
 const DEMO = isClientDemo();
 
@@ -66,7 +66,8 @@ export default function UseCases() {
           // Everything below is read from the registry. A card cannot claim a model, a metric or a
           // licence this repository did not record, and it cannot go stale when one changes.
           const teacher = teacherModel(u.id);
-          const encrypted = primaryEncryptedModel(u.id);
+          // Every model the page encrypts, its primary first: telecom's QKD-layer student and, since batch 12, its 5G-NIDD square network.
+          const encrypted = pageEncryptedModels(u.id);
           const pinned = modelsFor(u.id).filter((m) => m.hf_repo_id && m.hf_revision);
           const achieved = teacher?.achieved as Record<string, number> | null | undefined;
           const headline = teacher?.metric?.name;
@@ -117,7 +118,7 @@ export default function UseCases() {
               {teacher && (
                 <p className="muted" style={{ fontSize: 12, marginBottom: 2 }}>
                   <b>Data</b> {teacher.dataset.name} · {teacher.dataset.licence}
-                  {encrypted && <> · encrypted {encrypted.kind === "square network" ? "square network" : "student"} {encrypted.params.toLocaleString("en-US")} params</>}
+                  {encrypted.length > 0 && <> · encrypted {encrypted.map((e) => `${e.kind === "square network" ? "square network" : "student"} ${e.params.toLocaleString("en-US")} params`).join(" + ")}</>}
                 </p>
               )}
               {u.id !== "defi_lending" && <p className="muted" style={{ fontSize: 12 }}>
