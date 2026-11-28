@@ -760,8 +760,15 @@ flow as the trained network does. On 2,048 test flows drawn as the shipped stude
 module in node, the largest logit error is $`4.1 \times 10^{-4}`$ under A2 and $`2.2 \times 10^{-5}`$ under B, and no
 decision differs; in a Web Worker in headless Chrome, three runs a set, the slowest takes 3.4 s from key generation to
 the last decryption under A2 and 6.9 s under B, the worker's memory 0.05 and 0.09 GB. Every criterion is met under
-both sets, so by the pre-registration the network may be offered on the page; whether beside or in place of the linear
-student is the owner's choice, and the page and the Hub do not change before it. The margins were chosen after the
+both sets, so by the pre-registration the network may be offered on the page, and on the owner's choice of 2026-11-28
+it replaced the linear student there: the telecom page's 5G-NIDD path encrypts this network on the 2,048 test flows its
+file carries (`web/public/data/telecom_nidd/square_network.json`, written from the record and the exported seed by
+`scripts/export_telecom_square_network.py`, whose `--check` rebuilds it), and the card's caption gives the run's figures
+from that file. It runs under B. The page encrypts afresh on every run, and under A2 the largest logit error was then
+found to vary from run to run across the page's $`10^{-3}`$ rule, which one encryption per set could not show; the
+owner chose B, and an addendum states it and the measurement of the spread
+(`references/telecom-nidd-square-student-preregistration-addendum-spread.md`). The linear student's files stay,
+because the federation card compares against it. The margins were chosen after the
 re-run's figures, as the pre-registration says. One thing found on the way: the control's refit depends on the BLAS
 thread count (L-BFGS-B stops by its relative-reduction test on a nearly flat objective; under four OpenBLAS threads it
 scored 0.9665), so the linear student's figures carry that much of the machine.

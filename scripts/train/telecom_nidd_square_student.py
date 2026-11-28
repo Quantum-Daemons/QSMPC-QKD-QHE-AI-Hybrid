@@ -44,7 +44,7 @@ sys.path.insert(0, str(REPO / "scripts" / "train"))
 import finance_square_student as f7  # noqa: E402  (the two parameter sets, unchanged)
 
 PREREG = REPO / "references" / "telecom-nidd-square-student-preregistration.md"
-PREREG_SHA256 = "e23f2515e064475d558ccf07fa6695071e10843d168caa88db1f0bfebd00cdb4"  # committed in 73f176f
+PREREG_SHA256 = "e23f2515e064475d558ccf07fa6695071e10843d168caa88db1f0bfebd00cdb4"  # the committed pre-registration
 RECORD = REPO / "docs" / "measurements" / "telecom-nidd-square-student-2026-11-28.json"
 SEEDS = (5, 6, 7, 8, 9)
 MEAN_MARGIN, EACH_MARGIN = 0.015, 0.010     # criterion 1, over the control's test FLamby metric

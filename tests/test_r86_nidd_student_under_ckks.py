@@ -1,11 +1,13 @@
-"""The 5G-NIDD detector's pre-registered CKKS student, run by the browser's own code against the real node-seal (Round 86, batch 6).
+"""The telecom page's encrypted 5G-NIDD path, run by the browser's own code against the real node-seal (Round 86).
 
-The owner chose an encrypted path for the telecom page's real-data detector; its pre-registration
-(references/telecom-nidd-ckks-student-preregistration.md) asks, as criterion 2, that under CKKS every decision on a row
-whose plaintext top-two margin exceeds twice the largest deviation equals the plaintext one, and that the deviation is
-below 1e-3, on the 2,048 held-out flows the page ships. `niddStudentHeldOut` (web/src/lib/realData.ts) into
-`encryptedHeldOutAgreement` (web/src/lib/clientFHE.ts) is the path the page's `scoreNiddStudent` takes; this runs it in
-node, as tests/test_r84_c3_encrypted_heldout_in_node.py runs the other held-out figures.
+Batch 6 gave the page's real-data detector an encrypted path, a pre-registered linear CKKS student
+(references/telecom-nidd-ckks-student-preregistration.md). Batch 12 replaced it there, on the owner's choice of
+2026-11-28, with the square network whose pre-registered run met every criterion
+(references/telecom-nidd-square-student-preregistration.md): `niddSquareHeldOut` (web/src/lib/realData.ts) into
+`squareHeldOutAgreement` (web/src/lib/clientSquareAgreement.ts) is now the path `scoreNiddStudent` takes, and this runs
+it in node, holding it to the pre-registration's criterion 3 on the 2,048 test flows the page ships and to the run's
+recorded accuracy. The linear student's two files stay on the site: the federation scores its model on their rows, and
+they are batch 6's record; the last two tests hold them to it.
 """
 
 from __future__ import annotations
@@ -32,8 +34,8 @@ const WEB = process.argv[2], OUT = process.argv[3];
 const { build } = createRequire(WEB + "/package.json")("esbuild");
 const wasm = resolve(WEB, "node_modules/node-seal/dist/seal_throws.wasm");
 await build({
-  stdin: { contents: `export { niddStudentHeldOut } from ${JSON.stringify(resolve(WEB, "src/lib/realData"))};
-export { encryptedHeldOutAgreement } from ${JSON.stringify(resolve(WEB, "src/lib/clientFHE"))};`,
+  stdin: { contents: `export { niddSquareHeldOut } from ${JSON.stringify(resolve(WEB, "src/lib/realData"))};
+export { squareHeldOutAgreement } from ${JSON.stringify(resolve(WEB, "src/lib/clientSquareAgreement"))};`,
            resolveDir: WEB, loader: "ts" },
   bundle: true, format: "esm", platform: "node", outfile: OUT, logLevel: "error",
   // The one Vite-only specifier: the SEAL wasm's `?url` import becomes its path on disk.
@@ -49,15 +51,17 @@ globalThis.fetch = async (url) => {
   catch { return { ok: false, status: 404, json: async () => { throw new Error("404"); } }; }
 };
 const m = await import(`file://${OUT}`);
-const held = await m.niddStudentHeldOut();
+const held = await m.niddSquareHeldOut();
 if (!held) { console.log(JSON.stringify(null)); process.exit(0); }
-const r = await m.encryptedHeldOutAgreement(held);
+const r = await m.squareHeldOutAgreement(held, held.squareK, held.squareK.default_set);
 const p = r.plot;
+const gaps = r.batch.plainLogits.map((l) => { const s = [...l].sort((x, y) => y - x); return s[0] - s[1]; });
 let decidedFlips = 0;
-p.points.forEach((q) => { if (!q.agree && Math.abs(q.plain) > 2 * r.batch.maxAbsError) decidedFlips++; });
+p.points.forEach((q, i) => { if (!q.agree && gaps[i] > 2 * r.batch.maxAbsError) decidedFlips++; });
 console.log(JSON.stringify({ rows: p.rows, ciphertexts: p.ciphertexts, maxAbsError: r.batch.maxAbsError, mismatches: r.mismatches,
   decidedFlips, plaintextAccuracy: r.plaintextAccuracy, encryptedAccuracy: r.encryptedAccuracy, modelKey: held.modelKey,
-  licence: p.licence, heldOut: p.heldOut, classes: held.classNames.length }));
+  licence: p.licence, heldOut: p.heldOut, classes: held.classNames.length, set: held.squareK.default_set,
+  scoreKind: p.scoreKind }));
 """
 
 
@@ -82,22 +86,28 @@ def run(tmp_path_factory) -> dict:
                           capture_output=True, text=True, timeout=600)
     assert proc.returncode == 0, "the 5G-NIDD encrypted path did not run:\n" + proc.stderr[-3000:]
     out = json.loads(proc.stdout.strip().splitlines()[-1])
-    assert out is not None, "niddStudentHeldOut returned nothing"
+    assert out is not None, "niddSquareHeldOut returned nothing"
     return out
 
 
 def test_every_shipped_flow_is_scored_under_ckks(run: dict) -> None:
-    assert run["rows"] == 2048 and run["ciphertexts"] == 32, run      # 36 inputs: 64-slot blocks, 64 rows a ciphertext
-    assert run["modelKey"] == "telecom_ids.nidd_student" and run["classes"] == 9
-    assert run["heldOut"] is True and run["licence"]["name"] == "CC-BY-4.0"
+    assert run["rows"] == 2048 and run["ciphertexts"] == 30, run      # one block of 4,096 slots, one ciphertext an input
+    assert run["modelKey"] == "telecom_ids.square_network" and run["classes"] == 9 and run["set"] == "B"
+    assert run["heldOut"] is True and run["licence"]["name"] == "CC-BY-4.0" and run["scoreKind"] == "winning-score"
 
 
-def test_criterion_2_holds(run: dict) -> None:
-    assert run["maxAbsError"] < 1e-3, run["maxAbsError"]
+def test_criterion_3_holds(run: dict) -> None:
+    assert run["maxAbsError"] <= 1e-3, run["maxAbsError"]
     assert run["decidedFlips"] == 0, run
 
 
-def test_the_plaintext_reference_is_the_site_files_own() -> None:
+def test_the_page_scores_the_accuracy_the_run_recorded(run: dict) -> None:
+    rec = json.loads((REPO / "docs" / "measurements" / "telecom-nidd-square-student-2026-11-28.json").read_text())
+    want = rec["ckks"]["sets"][run["set"]]
+    assert round(run["encryptedAccuracy"], 6) == want["encrypted_accuracy"] == round(run["plaintextAccuracy"], 6), run
+
+
+def test_the_linear_students_files_are_batch_6s_record() -> None:
     w = json.loads((PUBLIC / "student_weights.json").read_text())
     h = json.loads((PUBLIC / "student_heldout.json").read_text())
     z = np.asarray(h["rows"], dtype=float)
@@ -110,10 +120,9 @@ def test_the_plaintext_reference_is_the_site_files_own() -> None:
     assert w["preregistration"]["sha256"] == rec["preregistration"]["sha256"]
 
 
-def test_the_browser_accuracy_is_the_plaintext_one(run: dict) -> None:
-    w = json.loads((PUBLIC / "student_weights.json").read_text())
-    h = json.loads((PUBLIC / "student_heldout.json").read_text())
-    z = np.asarray(h["rows"], dtype=float)
-    pred = (z @ np.asarray(w["W"], dtype=float).T + np.asarray(w["b"], dtype=float)).argmax(1)
-    assert abs(run["plaintextAccuracy"] - float(np.mean(pred == np.asarray(h["labels"])))) < 1e-12
-    assert run["encryptedAccuracy"] == run["plaintextAccuracy"]
+def test_the_page_no_longer_runs_the_linear_student_on_this_path() -> None:
+    """The replacement is complete where it was chosen: the stage reads the square network and nothing else."""
+    src = (WEB / "src" / "lib" / "clientCompute.ts").read_text()
+    body = src[src.index("async function scoreNiddStudent("):src.index("async function scoreNiddFederated(")]
+    assert "niddSquareHeldOut()" in body and "squareHeldOutAgreement(" in body
+    assert "niddStudentHeldOut" not in body and "encryptedHeldOutAgreement(" not in body

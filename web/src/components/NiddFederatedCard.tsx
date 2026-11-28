@@ -1,7 +1,8 @@
 // 5G-NIDD's two base stations, federated (Round 86, batch 6; the owner's choice of 2026-11-26).
 // A pre-registered comparison (references/telecom-nidd-federated-preregistration.md), run offline by
-// scripts/train/telecom_nidd_federated.py: each station alone, FedAvg under the page's pairwise masks, and pooling (the
-// page's CKKS student), each scored on each station's test flows. Every offline figure is read from
+// scripts/train/telecom_nidd_federated.py: each station alone, FedAvg under the page's pairwise masks, and pooling (batch
+// 6's linear CKKS student, which the page ran until its square network replaced it in batch 12), each scored on each
+// station's test flows. Every offline figure is read from
 // web/public/data/telecom_nidd/federated.json; the run's figures (the replayed last aggregation and the global model under
 // CKKS) come from `scoreNiddFederated` in clientCompute.ts as `artifacts.nidd_federated`.
 import { useEffect, useId, useState } from "react";
@@ -60,7 +61,7 @@ export default function NiddFederatedCard({ live }: { live: NiddFederatedLive | 
     { label: "Station 1 alone", arm: c.alone[0] },
     { label: "Station 2 alone", arm: c.alone[1] },
     { label: "Federated: FedAvg under the page's pairwise masks", arm: c.federated, strong: true },
-    { label: "Pooled: every flow in one place (the page's CKKS student)", arm: c.pooled },
+    { label: "Pooled: every flow in one place (batch 6's linear student)", arm: c.pooled },
   ];
   // Why the comparison came out as it did, in the record's own figures, and only where they say it: when one station's
   // own model beats the federation by the mean, it is because that model carries to the other station's flows while

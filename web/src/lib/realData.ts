@@ -24,6 +24,7 @@
 // encrypts is a published model on rows it was never fitted on, each with its own payload naming the
 // split, the licence and its link.
 import { type FinanceSquare, loadFinanceSquare, SQUARE_KEY, squareLabel } from "./financeSquareData";
+import { loadTelecomSquare, TELECOM_SQUARE_KEY, type TelecomSquare, telecomSquareLabel } from "./telecomSquareData";
 import { scaleRow } from "./squareTabularMath";
 import { modelsFor } from "./config";
 
@@ -555,6 +556,9 @@ export interface HeldOutCorpus {
   raw?: number[][];
   /** Finance since F7b (Round 86): the square network that replaced the linear student; `model` is then unused. */
   square?: FinanceSquare | null;
+  /** Telecom's 5G-NIDD path since Round 86's batch 12: the k-class square network that replaced the linear student
+   *  there; `model` is then unused and `raw` holds the flows it scales itself. */
+  squareK?: TelecomSquare | null;
 }
 
 /** Apply the preprocessing a weights file declares, step by step, refusing an unknown step. */
@@ -615,6 +619,23 @@ export async function niddStudentHeldOut(): Promise<HeldOutCorpus | null> {
     plane: null, corpus: String(ds.corpus ?? ""), split: String(ds.split ?? ""),
     fitNote: "the student was fitted on the teacher's training split; these rows are from its test split",
     licence: licenceOf(ds), expected: null,
+  };
+}
+
+/** The 5G-NIDD detector's square network and the 2,048 test flows it ships with (Round 86, batch 12; the owner's choice of
+ *  2026-11-28 that it replace the linear student on this path, after its pre-registered run met every criterion under
+ *  both parameter sets). The flows are P2's test part, a time split in each capture file, on the 30 inputs without LEAF's
+ *  six columns, raw: the network's own centre, scale and clip are applied in the worker, as its client does. */
+export async function niddSquareHeldOut(): Promise<HeldOutCorpus | null> {
+  const net = await loadTelecomSquare();
+  const raw = net?.held_out?.raw;
+  if (!raw?.length || raw[0].length !== net.n_in || net.held_out.labels.length !== raw.length) return null;
+  return {
+    usecase: "telecom_ids", modelKey: TELECOM_SQUARE_KEY, modelLabel: telecomSquareLabel(net),
+    model: { W: [], b: [] }, rows: raw, raw, labels: net.held_out.labels.map((v) => Number(v) | 0),
+    classNames: net.classes, plane: null, corpus: net.corpus, split: net.split, fitNote: net.fitNote,
+    licence: { name: net.licence, url: net.licence_url, attribution: net.attribution, modifications: net.modifications },
+    expected: null, squareK: net,
   };
 }
 
@@ -693,6 +714,26 @@ async function publishedStudentHeldOut(usecase: string, path: string): Promise<H
   };
 }
 
+/** Finance since F7b: the held-out rows the square network scores, raw, read without the linear student. Until Round 86's
+ *  batch 12 this went through `publishedStudentHeldOut`, which fetched the linear student's weights and standardised all
+ *  8,192 rows with them on every call, a result nothing used, and the figure's fit note named the linear student and
+ *  its teacher as the model fitted on the earlier window. */
+async function squareHeldOut(usecase: string, path: string, net: FinanceSquare): Promise<HeldOutCorpus | null> {
+  const ds = await fetchJSON(path);
+  const names = ds.feature_names as string[];
+  const raw = ds.samples as number[][];
+  if (!raw?.length || names?.length !== net.n_in || raw[0].length !== net.n_in) return null;
+  return {
+    usecase, modelKey: SQUARE_KEY, modelLabel: squareLabel(net), model: { W: [], b: [] }, rows: raw, raw,
+    labels: (ds.labels as number[]).map((v) => Number(v) | 0), classNames: (ds.class_names as string[]) ?? net.classes,
+    plane: ds.plane ? planeFromColumns(raw, names, ds.plane) : null,
+    corpus: String(ds.corpus ?? ""), split: String(ds.split ?? ""),
+    fitNote: "F7b's square network was fitted on the earlier fit window, its threshold folded in and its probability map "
+      + "fitted on the validation window; it was not fitted, tuned or calibrated on these test-window rows",
+    licence: licenceOf(ds), expected: null, square: net,
+  };
+}
+
 /**
  * The private-inference figure's rows for a use case: a model and rows it was never fitted on.
  *
@@ -711,11 +752,7 @@ async function publishedStudentHeldOut(usecase: string, path: string): Promise<H
  */
 export async function heldOutCorpus(usecase: string): Promise<HeldOutCorpus | null> {
   try {
-    if (usecase === "finance_aml") {
-      const [held, net] = await Promise.all([publishedStudentHeldOut(usecase, "/data/finance/student_heldout.json"),
-                                             loadFinanceSquare()]);
-      return held && { ...held, modelKey: SQUARE_KEY, modelLabel: squareLabel(net), square: net };
-    }
+    if (usecase === "finance_aml") return await squareHeldOut(usecase, "/data/finance/student_heldout.json", await loadFinanceSquare());
     if (usecase === "telecom_ids") return await publishedStudentHeldOut(usecase, "/data/telecom/student_heldout.json");
     if (usecase === "satellite_comms") return await publishedStudentHeldOut(usecase, "/data/satellite/student_heldout.json");
     if (usecase === "medical_fl") {

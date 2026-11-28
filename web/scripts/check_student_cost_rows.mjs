@@ -5,6 +5,8 @@
 // encrypted-cost row sized telecom by an invented medium MLP, nine times the student's work, and multiplied the quantum
 // row's latency by that, while the other use cases priced their students at scale 1; and telecom's use-case card printed
 // no student size. `studentParamCount` reads either key, and this checks the RESULT at both sites, not the helper alone.
+// Since Round 86's batch 12 both sites read the model the page encrypts from `pageEncryptedModels.ts`, declared once:
+// finance's is F7b's square network, which the card and the row went on naming as the linear student after F7b.
 //
 // Run: node web/scripts/check_student_cost_rows.mjs   (npm run check:student-cost-rows; tests/test_r84_node_checks_run.py)
 
@@ -26,6 +28,7 @@ await esbuild.build({
     contents: [
       `export { benchScale } from ${src("src/lib/clientCompute")};`,
       `export { modelsFor, studentModel, studentParamCount } from ${src("src/lib/config")};`,
+      `export { primaryEncryptedModel } from ${src("src/lib/pageEncryptedModels")};`,
       `export { default as UseCases } from ${src("src/pages/UseCases")};`,
       `export { MemoryRouter } from "react-router";`,
       `export { createElement } from "react";`,
@@ -52,14 +55,20 @@ const html = m.renderToStaticMarkup(m.createElement(m.MemoryRouter, null, m.crea
   .replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
 const sized = [];
 for (const usecase of ["finance_aml", "medical_fl", "genomics", "telecom_ids", "satellite_comms"]) {
-  const n = m.studentParamCount(m.studentModel(usecase));
-  if (n == null) continue;
+  const enc = m.primaryEncryptedModel(usecase);
+  if (enc == null) continue;
+  const n = enc.params;
   sized.push(usecase);
-  // The student branch prices the student at every model size, so the scale against the lightweight row is 1.
+  // The student branch prices the model at every model size, so the scale against the lightweight row is 1.
   const scale = m.benchScale(usecase, "medium", "linear");
-  check(`${usecase} cost row`, scale === 1, `benchScale is ${scale}, not 1: the row is sized by an invented MLP, not its ${n}-parameter student`);
-  check(`${usecase} card`, html.includes(`encrypted student ${n} params`), `the use-case card does not print its ${n}-parameter student`);
+  check(`${usecase} cost row`, scale === 1, `benchScale is ${scale}, not 1: the row is sized by an invented MLP, not its ${n}-parameter model`);
+  const word = enc.kind === "square network" ? "square network" : "student";
+  check(`${usecase} card`, html.includes(`encrypted ${word} ${n.toLocaleString("en-US")} params`), `the use-case card does not print its ${n}-parameter ${word}`);
 }
+// Finance encrypts F7b's square network since 2026-11-25: neither site may name the replaced linear student's size.
+check("finance is the square network", m.primaryEncryptedModel("finance_aml")?.key === "finance_aml.square_network"
+  && !html.includes(`encrypted student ${m.studentParamCount(m.studentModel("finance_aml"))} params`),
+  "finance's card or declaration names the linear student F7b replaced");
 // Telecom is the case this exists for; if its student lost its count the loop above would skip it and pass.
 check("telecom is checked", sized.includes("telecom_ids"), `telecom's student has no recorded count; checked: ${sized.join(", ")}`);
 

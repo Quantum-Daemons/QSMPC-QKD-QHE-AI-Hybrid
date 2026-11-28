@@ -763,7 +763,10 @@ export function canvasRow(usecase: string, step: Step, kind: Kind, m: M, c: Diag
                        count: runCount(m, "qfl_clients", Number(cfg.federated?.hospitals ?? 4)) } };
     case "private_inference":
       if (kind === "fhe-arrow")
-        return { ...sides("CKKS: encrypts the input, decrypts the scores", "CKKS: evaluates the linear layers"), flow: "both", channel: "fhe" };
+        // Finance since F7b: the square network end to end, its square under CKKS too; the other pages a linear model.
+        return { ...sides("CKKS: encrypts the input, decrypts the scores",
+                          usecase === "finance_aml" ? "CKKS: evaluates the square network" : "CKKS: evaluates the linear layers"),
+                 flow: "both", channel: "fhe" };
       return { ...sides("MPC argmax: holds shares a", "MPC argmax: holds shares b"), flow: "both", channel: "mpc" };
     case "private_liquidation":
       return kind === "fhe-arrow"
@@ -837,7 +840,8 @@ export function captionOf(usecase: string, c: DiagramConfig = {}): string {
   const idsTier = visibleSteps(usecase, c).some((s) => s.stageId === "qml_ids" && kindOf(s, c) === "mpc-bidir");
   return [
     spec.meet(c),
-    infers ? "MPC-FHE hybrid: linear layers under CKKS, biases included, decrypted by the client, and the argmax as two-party MPC over the scores the client has decrypted, both parties in this tab, so the MPC measures the protocol's cost and hides nothing; the QSMPC-FHE bar is a simulated comparison circuit beside it, not a score." : "",
+    infers ? (usecase === "finance_aml" ? "MPC-FHE hybrid: the square network under CKKS end to end, its square included, decrypted by the client" : "MPC-FHE hybrid: linear layers under CKKS, biases included, decrypted by the client")
+      + ", and the argmax as two-party MPC over the scores the client has decrypted, both parties in this tab, so the MPC measures the protocol's cost and hides nothing; the QSMPC-FHE bar is a simulated comparison circuit beside it, not a score." : "",
     idsTier ? "The IDS stage's encrypted tier: the published student's dot products under CKKS on one held-out row, every score masked before the key holder decrypts, and the argmax in a garbled circuit on the two shares, so only the class leaves it; both parties are in this tab, drawn as the carrier and the remote site." : "",
     pqcOnly(c) || !quantum ? "This profile has no quantum channel, and the proof of concept runs in this tab."
       : "The quantum channel is simulated, and the proof of concept runs in this tab.",

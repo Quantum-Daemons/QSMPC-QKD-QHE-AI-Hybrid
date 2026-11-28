@@ -33,7 +33,8 @@ function runContextLine(usecase: string | undefined, rc?: RunContext | null): st
   if (!rc) return "";
   const m = rc.metrics || {};
   const bits: string[] = [];
-  if (m.fhe_linear_ms != null) bits.push(`FHE-linear ${m.fhe_linear_ms} ms`);
+  // `fhe_linear_ms` keeps its name; on finance since F7b it times the square network, so the words say layers, not linear.
+  if (m.fhe_linear_ms != null) bits.push(`FHE layers ${m.fhe_linear_ms} ms`);
   if (m.mpc_nonlinear_ms != null) bits.push(`MPC-non-linear ${m.mpc_nonlinear_ms} ms`);
   if (m.qber != null) bits.push(`QBER ${m.qber}`);
   // Qualified, because this string is fed to a language model as run context. "federated accuracy

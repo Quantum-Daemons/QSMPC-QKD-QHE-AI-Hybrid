@@ -16,6 +16,8 @@ import {
 import { CKKS_FLOOD_BITS, encryptedConv2d, encryptedHeldOutAgreement, encryptedLinear, encryptedLinearBatch,
   encryptedStudentInference, warmFHE, type CnnStudentWeights, type FHEResult } from "./clientFHE";
 import { encryptedHeldOutAgreementSquare, type FinanceSquare, SQUARE_KEY, squareOneRow } from "./clientFinanceSquare";
+import { squareHeldOutAgreement } from "./clientSquareAgreement";
+import { primaryEncryptedModel } from "./pageEncryptedModels";
 import { plainLogits } from "./clientFHESquareTabular";
 import { quadraticShap } from "./quadraticShap";
 import type { OcclusionMap } from "./cnnSaliency";
@@ -45,7 +47,7 @@ import { FED_HEART, fedHeart, fedHeartComparisons, fedHeartDp, loadHeartSites } 
 import { dpCount, GENOMICS_DP, genomicsDp } from "./clientDp";
 import { recordRelease } from "./dpLedger";
 import { heldOutCorpus, realInput, realInputCorpus, realSatelliteAnomaly, realFederatedSet,
-  type HeldOutCorpus, niddFederated, niddStudentHeldOut, type RealInput, realAlleleCounts } from "./realData";
+  type HeldOutCorpus, niddFederated, niddSquareHeldOut, type RealInput, realAlleleCounts } from "./realData";
 import { hybridCombine, hybridCombinerInfo, kemNameFor } from "./hybridCombiner";
 import { isClientDemo } from "./demoMode";
 import { oprfPSI, psiLearnedSummary } from "./oprfPsi";
@@ -732,8 +734,10 @@ function archDims(usecase: string | undefined, modelSize: string, workload: stri
   // them without removing what it selected, leaving the benchmark silently costing a fiction at
   // "medium". Prefer the t1_crypto student's measured parameter count: it is the model CKKS
   // actually evaluates, so it is the right thing for an encrypted-cost row to describe.
-  const student = usecase ? studentModel(usecase) : null;
-  const studentParams = studentParamCount(student) ?? 0;
+  // The model the page encrypts, declared once (pageEncryptedModels.ts): finance's square network since F7b, which this
+  // row named the linear student beside for three days after it was replaced; the registry student elsewhere.
+  const student = usecase ? primaryEncryptedModel(usecase) : null;
+  const studentParams = student?.params ?? 0;
   if (studentParams > 0) {
     const inDim = demoFeatureDim();
     // Two layers whose parameter count matches the student's, so tierOps tracks a real model's
@@ -742,12 +746,11 @@ function archDims(usecase: string | undefined, modelSize: string, workload: stri
     const width = Math.max(2, Math.round((studentParams - 2) / Math.max(1, inDim + 1)));
     const dims = [inDim, width, 2];
     const params = studentParams;
-    // The label names the published student whose size this cost row takes. It is NOT always the
-    // model CKKS evaluated on the page: finance's CKKS run scores the bundled four-feature PaySim model,
-    // and the row's `fhe_model` metric says which ran.
-    // Round 86: it read "CKKS-linear fraud student (33 params, sizing this row; ...)", which named the
-    // AMLworld student beside timings that are the PaySim surrogate's. It now leads with what the row is.
-    return { dims, label: `cost row sized by ${student?.label ?? "the encrypted student"} (${params} params); its CKKS timing is of the model named by fhe_model`, params };
+    // The label names the model whose size this cost row takes, the one the page encrypts, and the row's `fhe_model`
+    // metric says which model the timing is of. Round 86: it read "CKKS-linear fraud student (33 params, sizing this
+    // row; ...)", which named the AMLworld student beside timings that are the PaySim surrogate's, and after F7b it named
+    // the linear student (115 params) beside the square network's timing.
+    return { dims, label: `cost row sized by ${student?.label ?? "the encrypted model"} (${params.toLocaleString("en-US")} params); its CKKS timing is of the model named by fhe_model`, params };
   }
   const a = usecase ? tierArchitectures()[usecase] : undefined;
   const base = a ? (a.hidden[modelSize] ?? [16]) : (genericArchitecture()[modelSize] ?? [16]);
@@ -2041,25 +2044,30 @@ export function runClientPipeline(
     }
   }
 
-  /** The 5G-NIDD detector's pre-registered CKKS student over the 2,048 held-out flows the page ships (Round 86, batch 6).
+  /** The 5G-NIDD detector's square network over the 2,048 test flows the page ships (Round 86, batch 12; until then the
+   * pre-registered linear CKKS student of batch 6 ran here, which this network replaced on the owner's choice of
+   * 2026-11-28 after its own pre-registered run met every criterion: references/telecom-nidd-square-student-
+   * preregistration.md).
    *
    * Real traffic from a 5G test network, where the page's other encrypted student reads synthetic QKD telemetry. Its own
    * metrics (`nidd_*`) and figure (`encrypted_agreement_plot_nidd`), so neither is mistaken for the QKD student's. The
-   * pre-registration's criterion 2: every decision on a row whose plaintext top-two margin exceeds twice the largest CKKS
-   * deviation equals the plaintext one, and that deviation is below 1e-3. */
+   * pre-registration's criterion 3, checked on this run: the largest CKKS deviation is at most 1e-3, and every decision
+   * on a flow whose two largest plaintext logits differ by more than twice it equals the plaintext one. */
   async function scoreNiddStudent(stage: string) {
-    const held = await niddStudentHeldOut();
-    if (!held) {
-      emit("log", stage, "5G-NIDD encrypted tier: its held-out rows could not be read, so no figure is drawn");
+    const held = await niddSquareHeldOut();
+    if (!held?.squareK) {
+      emit("log", stage, "5G-NIDD encrypted tier: the square network's file could not be read, so no figure is drawn");
       return;
     }
-    const ho = await encryptedHeldOutAgreement(held);
+    const net = held.squareK;
+    const ho = await squareHeldOutAgreement(held, net, net.default_set);
     const bt = ho.batch;
-    const margins = ho.plot.points.map((q) => Math.abs(q.plain));
+    const gaps = bt.plainLogits.map((l) => { const s = [...l].sort((x, y) => y - x); return s[0] - s[1]; });
     let decidedFlips = 0;
-    ho.plot.points.forEach((q, i) => { if (!q.agree && margins[i] > 2 * bt.maxAbsError) decidedFlips++; });
-    const criterion2 = decidedFlips === 0 && bt.maxAbsError < 1e-3;
+    ho.plot.points.forEach((q, i) => { if (!q.agree && gaps[i] > 2 * bt.maxAbsError) decidedFlips++; });
+    const criterion3 = decidedFlips === 0 && bt.maxAbsError <= 1e-3;
     metric(stage, "nidd_encrypted_model", held.modelKey);
+    metric(stage, "nidd_encrypted_parameter_set", net.default_set);
     metric(stage, "nidd_encrypted_rows", bt.rows);
     metric(stage, "nidd_encrypted_ciphertexts", bt.ciphertexts);
     metric(stage, "nidd_encrypted_ms", r2(bt.fheMs));
@@ -2068,13 +2076,15 @@ export function runClientPipeline(
     metric(stage, "nidd_encrypted_flips_beyond_twice_the_error", decidedFlips);
     metric(stage, "nidd_encrypted_accuracy", ho.encryptedAccuracy);
     metric(stage, "nidd_plaintext_accuracy", ho.plaintextAccuracy);
-    metric(stage, "nidd_criterion_2", criterion2 ? 1 : 0);
+    metric(stage, "nidd_criterion_3", criterion3 ? 1 : 0);
     artifacts.encrypted_agreement_plot_nidd = ho.plot;
-    emit("log", stage, `5G-NIDD detector under CKKS: ${held.modelLabel}, over ${bt.rows.toLocaleString("en-US")} held-out flows of real 5G traffic in `
-      + `${bt.ciphertexts} ciphertext(s), ${r2(bt.fheMs)} ms; max |decrypted - plaintext logit| ${bt.maxAbsError.toExponential(3)}; `
+    artifacts.nidd_square = { figures: net.figures, set: net.default_set, record: net.record, split: held.split };
+    emit("log", stage, `5G-NIDD detector under CKKS: ${held.modelLabel}, in place of the linear student since Round 86's batch 12, `
+      + `over ${bt.rows.toLocaleString("en-US")} test flows of real 5G traffic (${held.split.split(":")[0]}) under ${net.default_set}, `
+      + `${bt.ciphertexts} input ciphertext(s), ${r2(bt.fheMs)} ms; max |decrypted - plaintext logit| ${bt.maxAbsError.toExponential(3)}; `
       + `${ho.mismatches} class(es) differ, ${decidedFlips} of them where the plaintext margin exceeds twice that error; `
       + `accuracy ${ho.encryptedAccuracy?.toFixed(4)} encrypted, ${ho.plaintextAccuracy?.toFixed(4)} in plaintext. `
-      + `Criterion 2 of its pre-registration ${criterion2 ? "holds" : "FAILS"}. Rows: ${held.licence.name}.`);
+      + `Criterion 3 of its pre-registration ${criterion3 ? "holds" : "FAILS"} on this run. Rows: ${held.licence.name}.`);
   }
 
   /** The model 5G-NIDD's two base stations federated (Round 86, batch 6; the owner's choice of 2026-11-26).

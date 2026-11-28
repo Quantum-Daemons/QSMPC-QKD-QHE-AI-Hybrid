@@ -81,6 +81,7 @@ import { hasTreeAttribution, modelsFor } from "../lib/config";
 import { USECASE_META } from "../lib/useCases";
 import { hasTrainedQcnn, usePipelineRun } from "../lib/usePipelineRun";
 import { clientFlow } from "../lib/clientCompute";
+import { NiddSquareNote, type NiddSquareShown } from "../components/NiddSquareNote";
 
 const DEMO = isClientDemo();
 
@@ -337,16 +338,14 @@ function UseCaseView({ usecase }: { usecase: string }) {
       ) : hasRun && !lending ? (
         <NoEncryptedComparison />
       ) : null}
-      {/* Telecom's real-data detector (Round 86, batch 6): 5G-NIDD's pre-registered CKKS student on real 5G traffic, a figure
-          of its own beside the QKD student's, which reads synthetic telemetry. */}
+      {/* Telecom's real-data detector (Round 86): a figure of its own beside the QKD student's, which reads synthetic
+          telemetry. Since batch 12 the square network, which replaced the linear student here on the owner's choice of
+          2026-11-28 after its pre-registered run; the caption's figures are the run's record's, from the network's file. */}
       {artifacts?.encrypted_agreement_plot_nidd ? (
         <div className="card">
-          <h3 style={{ margin: "0 0 4px" }}>The 5G-NIDD detector&apos;s student under CKKS, real 5G traffic, this run</h3>
+          <h3 style={{ margin: "0 0 4px" }}>The 5G-NIDD detector&apos;s square network under CKKS, real 5G traffic, this run</h3>
           <EncryptedAgreementChart plot={artifacts.encrypted_agreement_plot_nidd as EncryptedAgreementPlot} />
-          <p className="small muted" style={{ marginTop: 6 }}>
-            The agreement is between the encrypted and the plaintext student on the same flows and does not depend on the
-            split; the student&apos;s accuracy does (see the federation card&apos;s note).
-          </p>
+          <NiddSquareNote square={artifacts.nidd_square as NiddSquareShown | undefined} />
         </div>
       ) : null}
       {/* The model 5G-NIDD's two base stations federated (Round 86, batch 6; the owner's choice of 2026-11-26): the offline
@@ -577,8 +576,10 @@ function UseCaseView({ usecase }: { usecase: string }) {
         {["finance_aml", "medical_fl", "genomics"].includes(usecase) && (
           <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
             Hybrid split: linear layers to FHE and non-linear ones to MPC, the line of work from Gazelle to BLB
-            and the preprint <i>EncFormer</i>. In this tab only the argmax runs as MPC, over scores the client has
-            already decrypted, so it measures the protocol&apos;s cost and hides nothing. See <code>references/</code>.
+            and the preprint <i>EncFormer</i>. In this tab the pipeline&apos;s argmax runs as MPC over scores the client
+            has already decrypted, so it measures the protocol&apos;s cost and hides nothing; the MPC panels below run
+            whole networks with their ReLUs in garbled circuits (finance&apos;s MLP and compact GNN, medical&apos;s CNN
+            student), and finance&apos;s square network runs its square under CKKS, not MPC. See <code>references/</code>.
           </div>
         )}
       </div>
