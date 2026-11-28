@@ -767,8 +767,13 @@ file carries (`web/public/data/telecom_nidd/square_network.json`, written from t
 from that file. It runs under B. The page encrypts afresh on every run, and under A2 the largest logit error was then
 found to vary from run to run across the page's $`10^{-3}`$ rule, which one encryption per set could not show; the
 owner chose B, and an addendum states it and the measurement of the spread
-(`references/telecom-nidd-square-student-preregistration-addendum-spread.md`). The linear student's files stay,
-because the federation card compares against it. The margins were chosen after the
+(`references/telecom-nidd-square-student-preregistration-addendum-spread.md`). Measured as the addendum states
+(`docs/measurements/telecom-nidd-square-ckks-spread-2026-11-28.json`; the page's module in node, 30 runs a set on the
+2,048 flows the page ships, each with fresh keys): under A2 the largest logit error runs from $`3.0 \times 10^{-4}`$ to
+$`1.07 \times 10^{-3}`$ (median $`5.7 \times 10^{-4}`$) and passes $`10^{-3}`$ once, under B from
+$`9.1 \times 10^{-6}`$ to $`2.5 \times 10^{-5}`$ (median $`1.6 \times 10^{-5}`$) and never; no run changes a
+decision, and every run scores the same accuracy. The linear student's files stay, because the federation card
+compares against it. The margins were chosen after the
 re-run's figures, as the pre-registration says. One thing found on the way: the control's refit depends on the BLAS
 thread count (L-BFGS-B stops by its relative-reduction test on a nearly flat objective; under four OpenBLAS threads it
 scored 0.9665), so the linear student's figures carry that much of the machine.
@@ -795,6 +800,44 @@ it are compared; the liquidation check names Aave's e-mode bonus, which override
 spell their flow folder three ways and the teacher's recipe names the GPU, so the script finds every run and sets the
 CPU; and the BUS-BRA check scores ResNet-18 from both its graphs, the int8 one the page loads and the fp32 one its
 figure comes from, after the fp32 copy here was found not to be the pinned file and replaced by it.
+
+As run on 2026-11-28:
+
+- **BUS-BRA** (`docs/measurements/medical-busbra-external-2026-11-28.json`): every published model falls far on
+  images from another site. The malignant class's AUC on all 1,875 images, with a 95 percent interval resampled by
+  patient, beside the same graph on BreastMNIST's test split: ResNet-18 0.66 (0.63 to 0.69) against 0.92 on its int8
+  graph and 0.66 against 0.91 on its fp32 graph, ResNet-50 0.61 against 0.80, the CKKS student 0.61 against 0.79, and
+  the square student 0.59 against 0.82; on each of the three devices with at least 100 images every model stays
+  between 0.54 and 0.68. At its own rule ResNet-18 finds 177 of the 607 malignant images. BUS-BRA's images are framed
+  differently from BUSI's, so the fall is not the site's alone. The students' encrypted paths agree with their
+  float64 networks on every BUS-BRA image under the page's rule: the CKKS student to $`1.2 \times 10^{-8}`$, the square
+  student to $`2.3 \times 10^{-5}`$ under A2 and $`9.0 \times 10^{-6}`$ under B, with no decision changed.
+- **SatQKD** (`docs/measurements/satellite-satqkd-key-length-2026-11-28.json` and
+  `docs/measurements/satellite-satqkd-key-length-b-prime-2026-11-28.json`): Check A met its criterion, Eq. (2)
+  giving every Fig5a row's key length from the row's own terms. Check B, as pre-registered, found no key on the four
+  zenith-pass rows: it read the rows' `SysLoss`, the link's total loss at zenith, as a loss to add, and counted about
+  20 dB twice. Check B', chosen after that result and labelled so
+  (`references/satellite-satqkd-key-length-preregistration-addendum-loss.md`), takes the loss from Fig7's total:
+  this project's counts then come within 1.4 to 6 percent of SatQuMA's on the 8, 16 and 32 s windows (20 percent on
+  the 2 s one), its single-photon bound and error-correction term within a few percent, and its key is 0.42 to 0.43 of
+  SatQuMA's on those windows (0.04 on the 2 s one), because its phase-error bound is about three times SatQuMA's (0.14
+  against 0.041 to 0.052). The pre-registration named the two bounds' statistics as a difference; which part of the
+  phase-error bound differs is not resolved here.
+- **RED-LIQ** (`docs/measurements/defi-red-liq-arithmetic-2026-11-28.json`): the liquidation protocol fee read at the
+  preset's block is 20 percent for WETH, WBTC and USDC. USDC's 16 events with one asset as debt and collateral sit on
+  Aave's rule with that fee to integer rounding; WBTC's two sit where a 10 percent fee would put them, a constant
+  offset that a change of the fee between the events (May to July 2026) and the read (November) would give; WETH's nine
+  split between the reserve's bonus with a 10 percent fee (a ratio of 1.045) and an e-mode bonus near 1 percent
+  (1.009). The page's rule, one plus a 5 percent bonus with no fee, overstates every asset's ratio, by up to 0.041 for
+  WETH. The one stablecoin pair whose collateral the preset reads sits within 0.08 percent of Aave's rule at par.
+- **PFCP** (`docs/measurements/telecom-pfcp-held-out-day-2026-11-28.json`): a detector trained on three attack days
+  recognises the two session-modification days (the teacher's AUC 1.000 on both, the student's 0.993 and 0.997),
+  ranks the deletion day (the student 0.971, the teacher 0.66) but at the threshold fixed on validation the student
+  flags only 15 percent of its malicious flows, and does not recognise the establishment day (the student's AUC 0.011,
+  its attack scored as the most normal traffic, the teacher's 0.65), where a third of the day's normal flows also pass
+  the threshold. The days are small, 264 to 486 flows, and the intervals are in the record.
+
+None of these changes the page; whether a card shows any of them is the owner's choice.
 
 #### The finance QCNN on AMLworld, pre-registered, and on the page since Round 86's batch 6
 
