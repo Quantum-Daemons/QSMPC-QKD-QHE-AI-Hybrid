@@ -5,7 +5,7 @@ import {
 
 import { api } from "../lib/api";
 import { qkdCfg } from "../lib/config";
-import { bb84, e91, FIBER, fibreIntensities, h2, qsdcLink, type ChannelParams } from "../lib/quantumSim";
+import { bb84, e91, e91ZeroKeyPoints, FIBER, fibreIntensities, qsdcLink, type ChannelParams } from "../lib/quantumSim";
 import { rangeAtElevationKm } from "../lib/satNetwork";
 import { ChartReadout, HINT_KEYBOARD, ReadoutTooltip } from "./ChartReadout";
 
@@ -109,14 +109,11 @@ export function FibreDistanceCharts({ misalignment, eve, intensities }: { misali
     // The finite key's share of the asymptotic rate, over the distances that have both.
     const shares = out.filter((r) => r.finite != null && r.decoy != null)
       .map((r) => (r.finite as number) / (r.decoy as number));
-    // The two E91 thresholds at the configured error-correction efficiency, as the security facts
-    // state them: device-dependent zero key, and the device-independent (Acin et al. 2007) point.
-    const chsh = (q: number) => 2 * Math.SQRT2 * (1 - 2 * q);
-    const solve = (r: (q: number) => number) => { let lo = 0, hi = (1 - Math.SQRT1_2) / 2;
-      for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (r(m) > 0) lo = m; else hi = m; } return lo; };
-    const qDd = solve((q) => 1 - (1 + fEC) * h2(q));
-    const qDi = solve((q) => 1 - fEC * h2(q) - h2((1 + Math.sqrt(Math.max(0, (chsh(q) / 2) ** 2 - 1))) / 2));
-    return { rows: out, sDi: chsh(qDi), sDd: chsh(qDd), noDecoyNowhere: out.every((r) => r.nodecoy == null),
+    // The two E91 thresholds at the configured error-correction efficiency, from the function the security facts
+    // state them with (device-dependent zero key, and the device-independent point of Acin et al. 2007), so the chart's
+    // captions print the facts' figures (Round 86, batch 12: it bisected its own, from Q unrounded).
+    const { sDi, sDd } = e91ZeroKeyPoints(fEC);
+    return { rows: out, sDi, sDd, noDecoyNowhere: out.every((r) => r.nodecoy == null),
              share: shares.length ? [Math.min(...shares), Math.max(...shares)] : null };
   }, [misalignment, eve, fEC, pair.muSignal, pair.muDecoy]);
   // Where this axis's 50 km falls on Rusca et al.'s: both are fibre at the same dB/km, theirs with

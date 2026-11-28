@@ -592,10 +592,12 @@ multinomial logistic regression on the 36 numeric 5G-NIDD features, standardised
 clipped to $`[-20, 20]`$. The distilled arm was dropped on the owner's choice of 2026-11-26, since it needed a download
 the owner declined. On the 233,591 test flows: macro-F1 0.974 (criterion 1 asks 0.95; the gradient-boosted teacher
 scores 0.997 on all 46 features, the repository's earlier linear probe 0.969), expected calibration error 0.0042 after a
-temperature of 0.840. Under CKKS in the browser, on the 2,048 test flows the page ships (stratified, CC BY 4.0): 32
-ciphertexts, about 7.4 s, the largest logit error $`2.3 \times 10^{-7}`$, no decision changed (criterion 2,
-`tests/test_r86_nidd_student_under_ckks.py`). The telecom page draws it as a figure of its own beside the QKD student's,
-which reads synthetic telemetry.
+temperature of 0.840. Under CKKS in the browser, on the 2,048 test flows the page shipped for it (stratified, CC BY
+4.0): 32 ciphertexts, about 7.4 s, the largest logit error $`2.3 \times 10^{-7}`$, no decision changed (criterion 2).
+The telecom page drew it as a figure of its own beside the QKD student's, which reads synthetic telemetry, until Round
+86's batch 12, when the square network below replaced it there on the owner's choice; its files stay, because the
+federation card compares against it, and `tests/test_r86_nidd_student_under_ckks.py` now runs the square network's
+path.
 
 #### 5G-NIDD's two base stations, federated: the first station's own model is the best
 
@@ -739,6 +741,105 @@ each matched task; a classifier tells the corpora apart at 0.993). On the shippe
 student used its fit and validation rows. Every student and federation fit chose the grid's smallest penalty, as
 before; 12 of the 15 MLP seeds chose an epoch from 27 to 30 of their 30. Stated as measured; nothing here changes the
 page's models or the published ones, and the telecom page shows these figures on a card of their own.
+
+#### A square network for the telecom page's encrypted path, pre-registered (Round 86, batch 12)
+
+On the owner's choices of 2026-11-27 and 2026-11-28, whether the telecom page's encrypted 5G-NIDD path should offer the
+square MLP above (the time split, without the six) beside or in place of the linear student is pre-registered before
+any of its new seeds is trained
+([`references/telecom-nidd-square-student-preregistration.md`](../references/telecom-nidd-square-student-preregistration.md);
+`scripts/train/telecom_nidd_square_student.py`): the recipe unchanged on seeds 5 to 9, against the linear student by
+margins stated as chosen after the figures above; its fidelity under the page's own CKKS module, which takes any number
+of classes since this batch (`web/src/lib/clientFHESquareTabular.ts`, held to a NumPy reference for a nine-class
+network as for finance's two); and its time and memory in a Web Worker. The result is recorded whatever it is.
+
+As measured on 2026-11-28 (`docs/measurements/telecom-nidd-square-student-2026-11-28.json`; the GPU for training, the
+default BLAS threads): the control, the re-run's linear student refitted and found equal to its record, scores a test
+FLamby metric of 0.9632. Seeds 5 to 9 score 0.9905 to 0.9919 (mean 0.9911), every class above an F1 of 0.95, each
+seed's epoch kept by validation macro-F1 (21 to 30 of 30); the exported seed, 9, best on validation, has a 95 percent
+interval of 0.9903 to 0.9915 over test flows, and its weights in float64, as the page computes them, decide every test
+flow as the trained network does. On 2,048 test flows drawn as the shipped student's were, through the page's own
+module in node, the largest logit error is $`4.1 \times 10^{-4}`$ under A2 and $`2.2 \times 10^{-5}`$ under B, and no
+decision differs; in a Web Worker in headless Chrome, three runs a set, the slowest takes 3.4 s from key generation to
+the last decryption under A2 and 6.9 s under B, the worker's memory 0.05 and 0.09 GB. Every criterion is met under
+both sets, so by the pre-registration the network may be offered on the page, and on the owner's choice of 2026-11-28
+it replaced the linear student there: the telecom page's 5G-NIDD path encrypts this network on the 2,048 test flows its
+file carries (`web/public/data/telecom_nidd/square_network.json`, written from the record and the exported seed by
+`scripts/export_telecom_square_network.py`, whose `--check` rebuilds it), and the card's caption gives the run's figures
+from that file. It runs under B. The page encrypts afresh on every run, and under A2 the largest logit error was then
+found to vary from run to run across the page's $`10^{-3}`$ rule, which one encryption per set could not show; the
+owner chose B, and an addendum states it and the measurement of the spread
+(`references/telecom-nidd-square-student-preregistration-addendum-spread.md`). Measured as the addendum states
+(`docs/measurements/telecom-nidd-square-ckks-spread-2026-11-28.json`; the page's module in node, 30 runs a set on the
+2,048 flows the page ships, each with fresh keys): under A2 the largest logit error runs from $`3.0 \times 10^{-4}`$ to
+$`1.07 \times 10^{-3}`$ (median $`5.7 \times 10^{-4}`$) and passes $`10^{-3}`$ once, under B from
+$`9.1 \times 10^{-6}`$ to $`2.5 \times 10^{-5}`$ (median $`1.6 \times 10^{-5}`$) and never; no run changes a
+decision, and every run scores the same accuracy. The linear student's files stay, because the federation card
+compares against it. The margins were chosen after the
+re-run's figures, as the pre-registration says. One thing found on the way: the control's refit depends on the BLAS
+thread count (L-BFGS-B stops by its relative-reduction test on a nearly flat objective; under four OpenBLAS threads it
+scored 0.9665), so the linear student's figures carry that much of the machine.
+
+#### Four checks against outside data, pre-registered (Round 86, batch 12)
+
+On the owner's choices of 2026-11-28 (each dataset downloaded on approval, its check pre-registered after an EDA of its
+structure only, and frozen at its SHA-256 in its script before any figure), four checks hold the page's models and
+formulas to data from outside the project: the four published BreastMNIST models on BUS-BRA, a breast ultrasound
+corpus from another site
+([`references/medical-busbra-external-test-preregistration.md`](../references/medical-busbra-external-test-preregistration.md);
+`scripts/check_busbra_external.py`); SatQuMA's published key lengths recomputed from their own terms, and this
+project's bound on the same zenith pass
+([`references/satellite-satqkd-key-length-preregistration.md`](../references/satellite-satqkd-key-length-preregistration.md);
+`scripts/check_satqkd_key_length.py`); the lending page's liquidation arithmetic against Aave V3 liquidations that need
+no price, with the protocol fee read on chain
+([`references/defi-red-liq-liquidation-arithmetic-preregistration.md`](../references/defi-red-liq-liquidation-arithmetic-preregistration.md);
+`scripts/check_red_liq_arithmetic.py`); and a detector of PFCP attacks tested on an attack day it never saw
+([`references/telecom-pfcp-held-out-day-preregistration.md`](../references/telecom-pfcp-held-out-day-preregistration.md);
+`scripts/check_pfcp_held_out_day.py`). None decides anything on the page; each is recorded whatever it shows. Four
+corrections were made to the drafts before they were frozen, each from reading the deposit's inputs or the code they
+check, never an outcome: the satellite check's pass is the one Fig7 gives, the zenith pass, so only the four rows on
+it are compared; the liquidation check names Aave's e-mode bonus, which overrides the reserve's; the PFCP archives
+spell their flow folder three ways and the teacher's recipe names the GPU, so the script finds every run and sets the
+CPU; and the BUS-BRA check scores ResNet-18 from both its graphs, the int8 one the page loads and the fp32 one its
+figure comes from, after the fp32 copy here was found not to be the pinned file and replaced by it.
+
+As run on 2026-11-28:
+
+- **BUS-BRA** (`docs/measurements/medical-busbra-external-2026-11-28.json`): every published model falls far on
+  images from another site. The malignant class's AUC on all 1,875 images, with a 95 percent interval resampled by
+  patient, beside the same graph on BreastMNIST's test split: ResNet-18 0.66 (0.63 to 0.69) against 0.92 on its int8
+  graph and 0.66 against 0.91 on its fp32 graph, ResNet-50 0.61 against 0.80, the CKKS student 0.61 against 0.79, and
+  the square student 0.59 against 0.82; on each of the three devices with at least 100 images every model stays
+  between 0.54 and 0.68. At its own rule ResNet-18 finds 177 of the 607 malignant images. BUS-BRA's images are framed
+  differently from BUSI's, so the fall is not the site's alone. The students' encrypted paths agree with their
+  float64 networks on every BUS-BRA image under the page's rule: the CKKS student to $`1.2 \times 10^{-8}`$, the square
+  student to $`2.3 \times 10^{-5}`$ under A2 and $`9.0 \times 10^{-6}`$ under B, with no decision changed.
+- **SatQKD** (`docs/measurements/satellite-satqkd-key-length-2026-11-28.json` and
+  `docs/measurements/satellite-satqkd-key-length-b-prime-2026-11-28.json`): Check A met its criterion, Eq. (2)
+  giving every Fig5a row's key length from the row's own terms. Check B, as pre-registered, found no key on the four
+  zenith-pass rows: it read the rows' `SysLoss`, the link's total loss at zenith, as a loss to add, and counted about
+  20 dB twice. Check B', chosen after that result and labelled so
+  (`references/satellite-satqkd-key-length-preregistration-addendum-loss.md`), takes the loss from Fig7's total:
+  this project's counts then come within 1.4 to 6 percent of SatQuMA's on the 8, 16 and 32 s windows (20 percent on
+  the 2 s one), its single-photon bound and error-correction term within a few percent, and its key is 0.42 to 0.43 of
+  SatQuMA's on those windows (0.04 on the 2 s one), because its phase-error bound is about three times SatQuMA's (0.14
+  against 0.041 to 0.052). The pre-registration named the two bounds' statistics as a difference; which part of the
+  phase-error bound differs is not resolved here.
+- **RED-LIQ** (`docs/measurements/defi-red-liq-arithmetic-2026-11-28.json`): the liquidation protocol fee read at the
+  preset's block is 20 percent for WETH, WBTC and USDC. USDC's 16 events with one asset as debt and collateral sit on
+  Aave's rule with that fee to integer rounding; WBTC's two sit where a 10 percent fee would put them, a constant
+  offset that a change of the fee between the events (May to July 2026) and the read (November) would give; WETH's nine
+  split between the reserve's bonus with a 10 percent fee (a ratio of 1.045) and an e-mode bonus near 1 percent
+  (1.009). The page's rule, one plus a 5 percent bonus with no fee, overstates every asset's ratio, by up to 0.041 for
+  WETH. The one stablecoin pair whose collateral the preset reads sits within 0.08 percent of Aave's rule at par.
+- **PFCP** (`docs/measurements/telecom-pfcp-held-out-day-2026-11-28.json`): a detector trained on three attack days
+  recognises the two session-modification days (the teacher's AUC 1.000 on both, the student's 0.993 and 0.997),
+  ranks the deletion day (the student 0.971, the teacher 0.66) but at the threshold fixed on validation the student
+  flags only 15 percent of its malicious flows, and does not recognise the establishment day (the student's AUC 0.011,
+  its attack scored as the most normal traffic, the teacher's 0.65), where a third of the day's normal flows also pass
+  the threshold. The days are small, 264 to 486 flows, and the intervals are in the record.
+
+None of these changes the page; whether a card shows any of them is the owner's choice.
 
 #### The finance QCNN on AMLworld, pre-registered, and on the page since Round 86's batch 6
 
@@ -910,19 +1011,19 @@ Traffic grows much faster than the circuit because WRK17b authenticates each AND
 #### The CNN student under MPC
 
 The published medical student, on one held-out BreastMNIST image per run, with no activation in either party's hands: CKKS for the convolution and both dense layers, a mask over every slot before the client decrypts, Polytune garbled circuits for the 800 ReLUs and the argmax, and average pooling on each
-party's own share ([what it hides and what it does not](threat-model.md#the-medical-cnn-under-mpc)). It runs in a Web Worker. Measured on 2026-11-08 under Node on this project's machine, over all 156 images of the official test split:
+party's own share ([what it hides and what it does not](threat-model.md#the-medical-cnn-under-mpc)). It runs in a Web Worker. Measured on 2026-11-28 under Node 22 on this project's machine, over all 156 images of the official test split (`docs/measurements/medical-cnn-mpc-2026-11-28.json`, written by `web/scripts/check_hybrid_cnn.mjs --all`, every image held to the one-image checks; the first such run, on 2026-11-08, left no record):
 
 | | |
 |---|---|
 | class from the 2PC argmax against the clear network | the same on 156 of 156 |
 | accuracy on the 156 images | 0.7692, the recorded figure |
 | malignant images detected | 24 of 42, as the page's clear evaluation |
-| largest logit error, shares against the clear network | $`4.9 \times 10^{-4}`$; the smallest logit gap is 0.018 |
+| largest logit error, shares against the clear network | $`5.1 \times 10^{-4}`$; the smallest logit gap is 0.017 |
 | statistical distance of everything masked, per run | $`2^{-22.5}`$ to $`2^{-24.2}`$ |
 | AND gates | 69,167: 800 ReLUs at 86 each, and the 2-class argmax's 367 |
 | garbled-circuit traffic | 174.4 MB in 15 batches and the argmax |
 | CKKS | 28 rotations and 6 conjugations, 3.5 MB of ciphertexts, 14.7 MB of keys |
-| wall-clock, median | 17.1 s: garbled circuits 16.9 s, CKKS 0.18 s |
+| wall-clock, median | 16.2 s: garbled circuits 16.0 s, CKKS 0.16 s |
 
 A ReLU costs 86 AND gates at a 20-bit ring and a 48-bit output mask because its adders are written bit by bit, one AND per bit, where Garble's own `+` costs three. Compiling all 800 at once took 75 s and 4 GB natively, so they run in batches of 56, compiled once.
 

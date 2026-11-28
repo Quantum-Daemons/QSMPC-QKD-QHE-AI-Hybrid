@@ -2,8 +2,9 @@
 
 The use-case page's "Results (JSON)" button (web/src/lib/resultsBundle.ts) writes one run's parameters, metrics, log,
 each card's rows, every published model's re-scoring and the signed record. Held here, on runs of the browser pipeline
-in node built as the client-only demo (the harness of tests/test_r84_signed_record_names_what_ran.py), for finance and
-genomics:
+in node built as the client-only demo (the harness of tests/test_r84_signed_record_names_what_ran.py), for finance,
+genomics and, since Round 86's batch 12, the medical page and the DeFi page (served and stood in for as
+tests/test_r86_run_timeline.py serves them):
 
 1. the signature verifies from the bundle alone, after a JSON round trip, and fails on a changed metric. Until this
    round the record kept only the signature's first 12 bytes, so the public key and payload it recorded "so a reader
@@ -11,7 +12,9 @@ genomics:
 2. nothing a party keeps is in it: no key named like a secret anywhere, no parameter beginning with an underscore
    (a `_sessionKey` is passed in to be sure), none of the genomics cohorts' own noisy contributions, and none of the
    PSI's member IDs;
-3. each page's cards are there: finance's count as published and every model's re-scoring, genomics' release.
+3. each page's cards are there: finance's count as published and every model's re-scoring, genomics' release, the
+   published-figure comparison's rows the page passes in, and on each page its left_out names the cards with their own
+   download that it does not carry (`tests/test_r86_results_bundle_names_every_card.py` classifies every such card).
 """
 
 from __future__ import annotations
@@ -35,6 +38,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 const WEB = process.argv[2];
+const HUB = JSON.parse(process.argv[4]);
 const { build } = createRequire(WEB + "/package.json")("esbuild");
 const dir = mkdtempSync(join(tmpdir(), "qsh-r86-bundle-"));
 const out = join(dir, "bundle.mjs");
@@ -56,6 +60,15 @@ export { buildResultsBundle } from ${JSON.stringify(resolve(WEB, "src/lib/result
       export async function secureArgmax(l) {
         let b = 0; for (let i = 1; i < l.length; i++) if (l[i] > l[b]) b = i;
         return { out: [b], compares: Math.max(0, l.length - 1), commBytes: 0, mpcMs: 0, messages: 0, clearOut: [b] };
+      }
+      export async function secureArgmaxShares(a, b) {
+        const q = Array.from(a, (x, k) => (x + b[k]) % 4294967296);
+        let arg = 0; for (let i = 1; i < q.length; i++) if (q[i] > q[arg]) arg = i;
+        return { arg, mpcMs: 0, bytes: 0, messages: 0, andOps: 0 };
+      }
+      export async function secureSignMod(a, b, t) {
+        const v = (a + b) % t;
+        return { negative: v > t / 2, compileMs: 0, mpcMs: 0, bytes: 0, messages: 0, andOps: 0 };
       }` }));
     b.onResolve({ filter: /\.wasm\?url$|qsh_mpc\.js$/ }, (a) => ({ path: a.path, namespace: "stub" }));
     b.onLoad({ filter: /.*/, namespace: "stub" }, () => ({ contents: "export default '';", loader: "js" }));
@@ -65,7 +78,16 @@ globalThis.fetch = async (url) => {
   const p = String(url);
   const miss = { ok: false, status: 404, headers: { get: () => null },
                  json: async () => { throw new Error("404"); }, text: async () => "" };
-  if (/^[a-z]+:/i.test(p)) return miss;
+  if (/^[a-z]+:/i.test(p)) {
+    // A published model's file at its pinned Hub address, from models/ (gitignored graphs are absent and stay a miss).
+    const hit = /huggingface\.co\/[^/]+\/([^/]+)\/resolve\/[0-9a-f]{40}\/(.+)$/.exec(p);
+    const hd = hit && HUB[hit[1]];
+    if (!hd) return miss;
+    let hubText;
+    try { hubText = readFileSync(join(WEB, "..", "models", hd, hit[2]), "utf8"); } catch { return miss; }
+    return { ok: true, status: 200, headers: { get: () => "application/json" }, json: async () => JSON.parse(hubText),
+             text: async () => hubText, arrayBuffer: async () => new TextEncoder().encode(hubText).buffer };
+  }
   let text;
   try { text = readFileSync(join(WEB, "public", p.replace(/^\/+/, "")), "utf8"); } catch { return miss; }
   return { ok: true, status: 200, headers: { get: () => "application/json" },
@@ -76,7 +98,7 @@ const { ml_dsa65 } = await import(pathToFileURL(resolve(WEB, "node_modules/@nobl
 rmSync(dir, { recursive: true, force: true });
 const hex = (h) => Uint8Array.from(h.match(/../g).map((b) => parseInt(b, 16)));
 const result = {};
-for (const usecase of ["finance_aml", "genomics"]) {
+for (const usecase of ["finance_aml", "genomics", "medical_fl", "defi_lending"]) {
   const metrics = {}, events = [];
   const artifacts = await new Promise((done) => {
     const timer = setTimeout(() => done(null), 600_000);
@@ -86,7 +108,8 @@ for (const usecase of ["finance_aml", "genomics"]) {
     });
   });
   const bundle = m.buildResultsBundle({ usecase, metrics, artifacts, events, bundleAsset: "assets/index-test.js",
-    params: { seed: 0, kem: "ml-kem-768+x25519", _sessionKey: new Uint8Array(32).fill(7), nested: { a: 1 } } });
+    params: { seed: 0, kem: "ml-kem-768+x25519", _sessionKey: new Uint8Array(32).fill(7), nested: { a: 1 } },
+    publishedComparison: [{ figure: "a row the page passes in", published: "0.9", thisRun: "0.8" }] });
   const text = JSON.stringify(bundle);
   const b = JSON.parse(text);
   const s = b.signature;
@@ -98,7 +121,7 @@ for (const usecase of ["finance_aml", "genomics"]) {
                                            hex(s.public_key_hex));
   result[usecase] = {
     algorithm: s.algorithm, verifies, tamperedVerifies, signatureBytes: s.signature_hex.length / 2,
-    text, params: b.params, cards: Object.keys(b.cards),
+    text, params: b.params, cards: Object.keys(b.cards), leftOut: b.left_out,
     contributions: artifacts.genomicsDp?.contributions ?? null,
     psiMembers: artifacts.psi_intersection ?? null,
   };
@@ -129,8 +152,10 @@ def runs(tmp_path_factory) -> dict:
     d = tmp_path_factory.mktemp("r86bundle")
     script, out = d / "harness.mjs", d / "result.json"
     script.write_text(HARNESS)
-    proc = subprocess.run(["node", str(script), str(WEB), str(out)], cwd=WEB, capture_output=True, text=True,
-                          timeout=1500)
+    from test_r86_run_timeline import _hub_dirs
+
+    proc = subprocess.run(["node", str(script), str(WEB), str(out), json.dumps(_hub_dirs())], cwd=WEB, capture_output=True,
+                          text=True, timeout=2400)
     assert proc.returncode == 0, f"the browser pipeline did not run:\n{proc.stderr[-3000:]}"
     return json.loads(out.read_text())
 
@@ -146,7 +171,7 @@ def _keys(o, out: set[str]) -> set[str]:
     return out
 
 
-@pytest.mark.parametrize("usecase", ["finance_aml", "genomics"])
+@pytest.mark.parametrize("usecase", ["finance_aml", "genomics", "medical_fl", "defi_lending"])
 def test_the_signature_verifies_from_the_bundle_alone(runs, usecase) -> None:
     r = runs[usecase]
     assert r["algorithm"].startswith("ML-DSA"), r["algorithm"]
@@ -155,7 +180,7 @@ def test_the_signature_verifies_from_the_bundle_alone(runs, usecase) -> None:
     assert r["tamperedVerifies"] is False
 
 
-@pytest.mark.parametrize("usecase", ["finance_aml", "genomics"])
+@pytest.mark.parametrize("usecase", ["finance_aml", "genomics", "medical_fl", "defi_lending"])
 def test_nothing_a_party_keeps_is_in_the_bundle(runs, usecase) -> None:
     r = runs[usecase]
     bundle = json.loads(r["text"])
@@ -176,3 +201,27 @@ def test_each_page_carries_its_cards(runs) -> None:
     assert fin["epsilon_asked"] == 1 and fin["delta"] == 1e-8 and fin["variance"] == 30
     gen = json.loads(runs["genomics"]["text"])["cards"]["differential_privacy"]["rows"][0]
     assert gen["released_count"] is not None and "contributions" not in gen
+
+
+@pytest.mark.parametrize("usecase", ["finance_aml", "genomics", "medical_fl", "defi_lending"])
+def test_the_bundle_carries_the_comparison_and_names_what_it_leaves_out(runs, usecase) -> None:
+    r = runs[usecase]
+    cards = json.loads(r["text"])["cards"]
+    assert cards["published_comparison"]["rows"][0]["figure"] == "a row the page passes in", cards.get("published_comparison")
+    left = " | ".join(r["leftOut"])
+    assert "the WebGPU and WASM comparison: run on request by its own button" in left, left
+    own = {"medical_fl": ["the four-hospital", "the murmur DP figures", "the heart-sound federation table",
+                          "the chest X-ray federation table", "the encrypted-aggregation comparison"],
+           "satellite_comms": ["the VUS-PR figures", "the boundary slice"]}
+    for label in own.get(usecase, []):
+        if label == "the four-hospital":
+            assert "four_hospitals" in cards, cards.keys()
+        else:
+            assert label in left, (label, left)
+    if usecase != "medical_fl":
+        assert "the murmur DP figures" not in left and "the encrypted-aggregation comparison" not in left, left
+
+
+def test_the_medical_page_carries_its_hospitals(runs) -> None:
+    cards = runs["medical_fl"]["cards"]
+    assert {"four_hospitals", "differential_privacy", "verifications", "published_comparison"} <= set(cards), cards

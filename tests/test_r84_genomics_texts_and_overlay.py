@@ -144,3 +144,21 @@ def test_no_source_line_calls_genomics_commercial_ok() -> None:
     assert "Use REAL commercial-OK data" not in cc
     py = (REPO / "src" / "qsh" / "usecases" / "genomics" / "__init__.py").read_text()
     assert "exact CKKS dot-product" not in py and "top quartile = the clinical risk cut" not in py
+
+
+def test_the_blurb_s_shares_above_the_cut_are_the_record_s() -> None:
+    """2026-11-28 (the review's gap 8): the blurb's shares of each super-population above the global cut were typed in,
+    and the previous score's had to be rewritten by hand when the score changed; each is now the record's, to the one
+    decimal it prints, for the score the blurb names (158 of PGS000783's 162 variants)."""
+    blurb = (REPO / "web" / "src" / "lib" / "useCases.ts").read_text()
+    measured = json.loads((REPO / "models" / "metrics.json").read_text())["genomics.prs"]["measured"]
+    found = re.findall(r"flags ([0-9.]+)% of the (\w+) individuals, ([0-9.]+)% of (\w+), ([0-9.]+)% of (\w+), "
+                       r"([0-9.]+)% of (\w+) and ([0-9.]+)% of (\w+)", blurb)
+    assert len(found) == 1, found
+    printed = dict(zip(found[0][1::2], found[0][0::2], strict=True))
+    by = measured["by_super_population"]
+    assert sorted(printed) == sorted(by)
+    for group, share in printed.items():
+        assert share == f"{by[group]['frac_above_global_cut'] * 100:.1f}", group
+    assert measured["n_variants"] == 158 and "158 of its 162 variants" in blurb
+

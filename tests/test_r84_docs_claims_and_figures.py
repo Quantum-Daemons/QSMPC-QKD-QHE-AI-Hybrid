@@ -38,6 +38,7 @@ copy went with it, unchanged; what stays here checks the copies that are publish
 
 from __future__ import annotations
 
+import hashlib
 import re
 from pathlib import Path
 
@@ -164,6 +165,13 @@ def test_the_corrected_facts_are_stated() -> None:
 
 #: Code spans of ID shape that are not checklist rows: a KEM shared secret and a vacuum yield.
 _NOT_ROWS = {"K1", "Y0"}
+#: Tokens that look like a row ID but name something else, in one frozen file at its hash only: the SatQKD
+#: pre-registration (frozen 2026-11-28 and run) writes SatQuMA's CSV columns `P1` and `P2`, the intensities'
+#: probabilities, where the checklist has rows of those names; the exemption lapses the moment the file changes.
+_NOT_ROWS_IN = {
+    "satellite-satqkd-key-length-preregistration.md":
+        ("fba1775109a21ba2e9f76bde55758995938cc79f1927eae0a3263b7c97ca70d7", {"P1", "P2"}),
+}
 
 
 def test_reference_notes_cite_no_private_checklist_row() -> None:
@@ -172,8 +180,10 @@ def test_reference_notes_cite_no_private_checklist_row() -> None:
     bad = []
     for path in sorted((REPO / "references").glob("*.md")):
         text = path.read_text()
+        frozen = _NOT_ROWS_IN.get(path.name)
+        exempt = frozen[1] if frozen and hashlib.sha256(path.read_bytes()).hexdigest() == frozen[0] else set()
         for m in re.finditer(r"`([A-Z]{1,3}[0-9]{1,3}[a-z]?)`", text):
-            if m.group(1) not in _NOT_ROWS:
+            if m.group(1) not in _NOT_ROWS and m.group(1) not in exempt:
                 bad.append(f"{path.name}: `{m.group(1)}`")
         for m in re.finditer(r"[Cc]hecklist (?:row|item)s?\s+`?[A-Z]{1,3}[0-9]|survives S3\b|^S3 applied",
                              text, flags=re.M):

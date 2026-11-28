@@ -1133,9 +1133,11 @@ M_NIDD_FED = MetricSpec(
         "No published figure on this split: no peer-reviewed federation of 5G-NIDD by base station was found "
         "(2026-11-26). The comparison is the pre-registered one in references/telecom-nidd-federated-preregistration.md, "
         "on the same rows and by the same metric: station 1's own model 0.985, pooling every flow in one place (the "
-        "page's CKKS student) 0.974, station 2's own model 0.959 (docs/measurements/telecom-nidd-federated-2026-11-26.json)."),
+        "linear CKKS student of batch 6, which the page ran until its square network replaced it in batch 12) 0.974, "
+        "station 2's own model 0.959 (docs/measurements/telecom-nidd-federated-2026-11-26.json)."),
     companion="pooled_flamby_macro_f1",
-    companion_note="the same procedure on every flow in one place, the page's CKKS student, scored by the same metric",
+    companion_note=("the same procedure on every flow in one place, batch 6's linear CKKS student, scored by the same "
+                    "metric"),
 )
 
 
@@ -1206,9 +1208,10 @@ _SPECS: tuple[ModelSpec, ...] = (
                "message passing at scoring time. That row is not stateless - its per-account and "
                "structural features are computed from the account's earlier transactions - so a "
                "deployment needs that history to score a new transaction. It is not evaluated under "
-               "encryption: the public page encrypts finance_aml.student, distilled from this model, "
-               "on the 8,192 test-window rows of this model's sample, and a four-feature PaySim "
-               "surrogate for its one-row CKKS step."),
+               "encryption: since F7b (2026-11-25) the public page encrypts F7b's square network, trained on the "
+               "labels rather than distilled, on the 8,192 test-window rows of this model's sample and on one of them "
+               "for its one-row CKKS step; until then it encrypted finance_aml.student, distilled from this model, on "
+               "those rows, and a four-feature PaySim surrogate for the one-row step."),
     ),
     ModelSpec(
         usecase="finance_aml",
@@ -1226,16 +1229,19 @@ _SPECS: tuple[ModelSpec, ...] = (
             "the rows of finance_aml.gbm's sample, a draw from the held-out temporal test window, "
             "the last 30 percent of the transactions in time order, enriched to 2 percent "
             "laundering"),
-        # `runs_encrypted=True` is true of the public page since Round 84, when its private-inference
-        # figure moved to this student on held-out rows (`emitHeldOutAgreement` in clientCompute.ts).
-        notes=("Encrypted on the public page since Round 84: its private-inference figure scores "
-               "this 115-parameter AMLworld student under CKKS on the 8,192 test-window rows of "
-               "finance_aml.gbm's sample (256 ciphertexts, 32 rows each), against the same model in plaintext. The "
-               "page's one-row CKKS step, its MPC argmax, the reported class and the SHAP bars still "
-               "use the four-feature linear model bundled with the PaySim sample (log amount, a "
-               "TRANSFER or CASH_OUT flag, a night-hour flag and a first-seen-payee flag; no feature "
-               "built from PaySim's balance columns), and the full deployment's finance pipeline "
-               "encrypts its own PaySim-trained surrogate over the same four. Its "
+        # `runs_encrypted=True` is true of the MODEL, which CKKS evaluates as its card says. The public page encrypted it
+        # from Round 84, when its private-inference figure moved to this student on held-out rows, until F7b
+        # (2026-11-25), when F7b's square network replaced it on both of the page's encrypted paths.
+        notes=("Encrypted on the public page from Round 84 until F7b (2026-11-25): its private-inference figure "
+               "scored this 115-parameter AMLworld student under CKKS on the 8,192 test-window rows of "
+               "finance_aml.gbm's sample (256 ciphertexts, 32 rows each), against the same model in plaintext. Since "
+               "F7b both of the page's encrypted paths run F7b's square network instead "
+               "(references/finance-square-student-page-preregistration.md): the figure on those rows, and the one-row "
+               "CKKS step, its MPC argmax, the reported class and the SHAP bars on one of them, where until F7b the "
+               "four-feature linear model bundled with the PaySim sample ran (log amount, a TRANSFER or CASH_OUT flag, a "
+               "night-hour flag and a first-seen-payee flag; no feature built from PaySim's balance columns). This "
+               "student stays published, and the page re-scores it in plaintext with the other published models; the "
+               "full deployment's finance pipeline encrypts its own PaySim-trained surrogate over those four. Its "
                "agreement with the teacher (`agreement`) is measured offline, at training time, in "
                "plaintext; each browser run measures `encrypted_agreement`, CKKS against plaintext "
                "for the model it encrypts."),
@@ -1865,8 +1871,10 @@ _SPECS: tuple[ModelSpec, ...] = (
             "that means for the published figures on these rows. "
             "NO STUDENT IS DISTILLED FROM THIS MODEL: the page's QKD-layer encrypted tier runs "
             "telecom_ids.student, distilled from the QKD-attack random forest (telecom_ids.qml). Since Round 86 the "
-            "page also scores 5G-NIDD flows under CKKS, with a linear model trained on the labels and with one the "
-            "corpus's two base stations federated (telecom_ids.nidd_federated), neither distilled from this model. "
+            "page also scores 5G-NIDD flows under CKKS: with a square network trained on the labels (since batch 12, "
+            "in place of batch 6's linear model, on a time split in each capture file without LEAF's six columns; "
+            "references/telecom-nidd-square-student-preregistration.md), and with the linear model the corpus's two "
+            "base stations federated (telecom_ids.nidd_federated), none distilled from this model. "
             "UNDER LEAKAGE-AWARE PROTOCOLS (Round 86, batch 9). Hameed and Ibrahim (J. Cybersecur. Priv. 6(6):205, 2026) "
             "find that random splits of flows and six identifier-like columns inflate 5G-NIDD scores, so this recipe was "
             "run again, as pre-registered before any fit (references/telecom-nidd-clean-protocols-preregistration.md), "
@@ -1895,13 +1903,13 @@ _SPECS: tuple[ModelSpec, ...] = (
     #: `tests/test_r86_linear_student_graph.py` holds byte-identical to the published file.
     #:
     #: `runs_encrypted=True` is true of the MODEL: `clientCompute.runEncryptedTelecomStudent`
-    #: evaluates these 8 dot products under real CKKS in the tab. It does NOT claim the argmax is
-    #: encrypted - all 8 scores are decrypted and the maximum is taken in the clear, because CKKS
-    #: has no native comparison. The weights file and the run log both say so. With these public,
-    #: bundled weights that exposes nothing; in a client-server deployment, raw scores of a linear
-    #: model would let the key holder recover it with about as many queries as it has parameters per
-    #: class (Tramer et al., USENIX Security 2016), so a private model would need signs only or an MPC
-    #: argmax.
+    #: evaluates these 8 dot products under real CKKS in the tab, masks the scores, and takes the
+    #: argmax in a garbled circuit on additive shares of the masked scores (since 2026-11-23, the
+    #: owner's choice; the run log's `encrypted_argmax_location` says so). Until then all 8 scores
+    #: were decrypted and the maximum taken in the clear, which the published weights file's note
+    #: still describes. Raw scores of a linear model would let a key holder recover it with about as
+    #: many queries as it has parameters per class (Tramer et al., USENIX Security 2016), which is
+    #: what the 2PC argmax releases less of.
     ModelSpec(
         usecase="telecom_ids",
         tier="t1_crypto",
@@ -1922,10 +1930,11 @@ _SPECS: tuple[ModelSpec, ...] = (
             "distillation is a defect this project has already made once. Read n_classes_predicted "
             "before macro_f1 - a linear student that stops emitting a class scores 0 on it by "
             "construction, which reads as poor discrimination rather than an absent output. "
-            "Under CKKS the page evaluates the 8 dot products on the encrypted row, then decrypts all 8 scores and "
-            "takes the argmax in the clear, since CKKS has no native comparison; with these public weights that "
-            "exposes nothing, but a private linear model's raw scores would let the key holder recover it with "
-            "about as many queries as it has parameters per class (Tramer et al., USENIX Security 2016). The ONNX "
+            "Under CKKS the page evaluates the 8 dot products on the encrypted row, masks the scores, and takes the "
+            "argmax in a garbled circuit on additive shares of the masked scores (since 2026-11-23; until then all 8 "
+            "scores were decrypted and the argmax taken in the clear, as this model's weights file still says). A "
+            "linear model's raw scores would let a key holder recover it with about as many queries as it has "
+            "parameters per class (Tramer et al., USENIX Security 2016), which the 2PC argmax releases less of. The ONNX "
             "graph is built from weights.json (qsh.models.linear_onnx), not refitted, so the page's plaintext "
             "re-score and its encrypted tier evaluate the same model."),
     ),

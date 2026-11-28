@@ -34,6 +34,8 @@ export default function ShapPanel({ explanation, provenance, baseline, published
 }) {
   const aiAct = usecase ? AI_ACT_SCOPE[usecase] : undefined;
   const tops = explanation?.top_features as any[] | undefined;
+  // Finance since F7b explains its square network with exact quadratic Shapley values; the other pages a linear model.
+  const quadratic = explanation?.method === "exact-quadratic-shap";
   if (!tops?.length) return null;
   const max = Math.max(...tops.map((t) => Math.abs(t.contribution)), 1e-6);
   return (
@@ -51,8 +53,8 @@ export default function ShapPanel({ explanation, provenance, baseline, published
         {baseline ? <> · reference point: {baseline}</> : null}
         {publishedModel ? (
           <> · <b>{publishedModel}</b> also ran this page, on its own corpus, and has <b>no</b> SHAP
-          here: exact linear SHAP applies only to a linear model, not to a neural network (a ResNet or
-          an LSTM), a tree ensemble or a quantum circuit.</>
+          here: exact {quadratic ? "Shapley values are computed here for a quadratic network" : "linear SHAP applies only to a linear model"},
+          not for a neural network of another form (a ResNet or an LSTM), a tree ensemble or a quantum circuit.</>
         ) : null}
         {/* The tree-ensemble attribution exists on ONE page, and getting this gate right took two
             attempts worth recording.
@@ -89,7 +91,7 @@ export default function ShapPanel({ explanation, provenance, baseline, published
         </p>
       ) : (
         <p className="muted small" style={{ marginTop: -2 }}>
-          These bars explain the <b>bundled linear model</b> on this input. On the default CKKS path the
+          These bars explain the <b>bundled {quadratic ? "square network" : "linear model"}</b> on this input. On the default CKKS path the
           class this page reports is that same model&apos;s decision, computed under CKKS with a
           garbled-circuit argmax; if the trained QCNN surfaced the class instead, the note below says so,
           and the bars are then not an attribution of it.
@@ -123,7 +125,9 @@ export default function ShapPanel({ explanation, provenance, baseline, published
         </dl>
       ) : null}
       <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
-        red = pushes toward the flagged class · blue = away · exact linear SHAP for independent features, signed with ML-DSA under a key made for this run: it shows the record is unchanged, not who signed it
+        red = pushes toward the flagged class · blue = away · {quadratic
+          ? "exact Shapley values of the quadratic network, its pairwise terms split evenly between their two features"
+          : "exact linear SHAP"} for independent features, signed with ML-DSA under a key made for this run: it shows the record is unchanged, not who signed it
       </p>
       {aiAct ? (
         <p className="muted" style={{ fontSize: 12, marginTop: 2 }}>

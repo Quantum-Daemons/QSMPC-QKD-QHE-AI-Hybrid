@@ -233,7 +233,7 @@ export default function BenchmarkPanel(
           {!compact && split && (
             <div className="card" style={{ marginTop: 14, borderColor: MPC_COLOR }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
-                <h3 style={{ margin: 0 }}>Hybrid split - linear layers to FHE, argmax to MPC</h3>
+                <h3 style={{ margin: 0 }}>Hybrid split - layers to FHE, argmax to MPC</h3>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   <span className="tag">{(split.device || "cpu").toUpperCase()}</span>
                   <span className="tag">{split.model_size}</span>
@@ -247,7 +247,8 @@ export default function BenchmarkPanel(
                 </p>
               )}
               <p className="muted" style={{ fontSize: 12, margin: "2px 0 10px" }}>
-                Linear layers (matmul/conv) run under CKKS/FHE{split.device === "gpu" ? " (GPU)" : ""}. On the
+                The model&apos;s layers run under CKKS/FHE{split.device === "gpu" ? " (GPU)" : ""}: linear layers (matmul/conv),
+                and on finance the square network&apos;s square as well, since F7b. On the
                 server, ReLU and argmax run under MPyC secret sharing; in the browser only the argmax runs as
                 a <code>Polytune</code> garbled-circuit 2PC, and the medical student&apos;s ReLU and pooling run in the
                 clear in the client after each layer is decrypted (MPyC is pure Python and is not in the
@@ -267,7 +268,7 @@ export default function BenchmarkPanel(
                   </ResponsiveContainer>
                 </ChartReadout>
                 <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: 10 }}>
-                  <div><span style={{ color: FHE_COLOR }}>■</span> FHE-linear: <b>{split.fhe_linear_ms} ms</b>
+                  <div><span style={{ color: FHE_COLOR }}>■</span> FHE layers: <b>{split.fhe_linear_ms} ms</b>
                     {split.fhe_student_ms != null
                       ? <span className="small muted"> (the encrypted CNN student {split.fhe_student_ms} ms, the bundled Wisconsin
                           regression {Math.round((split.fhe_linear_ms - split.fhe_student_ms) * 100) / 100} ms)</span>
@@ -365,8 +366,8 @@ export default function BenchmarkPanel(
                 <p className="muted" style={{ fontSize: 12, margin: "6px 0 0" }}>
                   The plaintext row is a reference point, not a denominator. It is a different model
                   from the encrypted rows - the published Hugging Face model on its own corpus, against
-                  the page&apos;s bundled linear model (on medical, the CNN student) that the FHE path
-                  evaluates - so dividing one latency by the other does not give an FHE overhead. Compare
+                  the model the page&apos;s FHE path evaluates (finance&apos;s square network, medical&apos;s CNN
+                  student, a linear model elsewhere) - so dividing one latency by the other does not give an FHE overhead. Compare
                   the model column before comparing the times.
                 </p>
               )}

@@ -1,0 +1,39 @@
+{
+ "what": "the medical CNN student under MPC (clientHybridCnn.ts's hybridStudentInference) on every image of its published sample, in node with the real node-seal and Polytune",
+ "sample": "models/medical_breastmnist_student/eval_sample.json: the official BreastMNIST test split, all 156 images",
+ "date": "2026-11-28",
+ "node": "v22.23.2",
+ "images": 156,
+ "class_matches_the_clear_network": 156,
+ "accuracy": 0.7692307692307693,
+ "malignant_images": 42,
+ "malignant_detected": 24,
+ "largest_logit_error": 0.0005050558874826194,
+ "smallest_logit_gap": 0.01742023229598999,
+ "statistical_distance_log2": {
+  "min": -24.191688209581056,
+  "max": -22.4630545896379
+ },
+ "and_gates_per_image": [
+  69167
+ ],
+ "relus_per_image": [
+  800
+ ],
+ "batches_per_image": [
+  15
+ ],
+ "gc_megabytes_per_image": 174.382183,
+ "ckks_rotations_per_image": [
+  28
+ ],
+ "conjugations_per_image": [
+  6
+ ],
+ "ckks_megabytes_per_image": 3.539961,
+ "key_megabytes": 14.74882,
+ "wall_clock_s_median": 16.2211235935,
+ "gc_s_median": 15.999488166999999,
+ "ckks_s_median": 0.16303360849997262,
+ "every_image_passed_the_checks": true
+}

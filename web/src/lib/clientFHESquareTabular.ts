@@ -6,7 +6,7 @@
  * into the last bias (scripts/train/finance_square_student.py). The client scales and clips each row, then encrypts each
  * of the 114 inputs as its own ciphertext over a block of rows (N / 2 rows a block) and holds the secret key; the
  * evaluator computes every hidden unit as a plaintext-weight combination of the input ciphertexts, squares it, and folds
- * it into the two logits, which come back as two ciphertexts only the client can decrypt. Three levels: a
+ * it into the logits, which come back as one ciphertext a class (two for finance) only the client can decrypt. Three levels: a
  * plaintext-weight product, a ciphertext square, a plaintext-weight product, so the medical square students' sets
  * (A2: N = 8192, 202 bits; B: N = 16384, 240 bits) hold it. No rotation, so no Galois keys.
  *
@@ -23,15 +23,20 @@
  * student on the finance page, through `runSquareTabularOffThread` below. The trainers run this module on every test row
  * for the records (`scripts/train/finance_square_student.py ckks`, `scripts/train/finance_square_student_page.py ckks`),
  * and tests/test_r86_finance_square_ckks_in_node.py holds it to a NumPy reference.
+ *
+ * K OUTPUTS (Round 86, batch 12). The output layer may have any number of classes from two, one logit and one ciphertext
+ * a class in `classes`' order, the decision the first class with the largest logit (`argmaxAt`), which for two outputs is
+ * the finance rule unchanged: class 1 only when its logit is larger. The same test holds a nine-class network of the
+ * telecom shape (30 inputs, 64 units) to its NumPy reference.
  */
 import sealWasmUrl from "/node_modules/node-seal/dist/seal_throws.wasm?url";
-import { plainLogits, scaleRow, type SquareTabParams, type SquareTabWeights } from "./squareTabularMath";
-export { plainLogits, scaleRow } from "./squareTabularMath";
+import { argmaxAt, plainLogits, scaleRow, type SquareTabParams, type SquareTabWeights } from "./squareTabularMath";
+export { argmaxAt, plainLogits, scaleRow } from "./squareTabularMath";
 export type { SquareTabParams, SquareTabWeights } from "./squareTabularMath";
 
 export interface SquareTabRun {
   set: string; rows: number; blocks: number;
-  /** Decrypted logits, row-major: [2 r] licit, [2 r + 1] laundering. */
+  /** Decrypted logits, row-major, one a class in `classes`' order (finance: [2 r] licit, [2 r + 1] laundering). */
   logits: Float64Array;
   /** The same in the clear, float64. */
   plain: Float64Array;
@@ -43,10 +48,11 @@ export interface SquareTabRun {
 }
 
 function check(w: SquareTabWeights): void {
-  if (w.kind !== "dense-bn-square-dense" || w.w1.length !== w.width || w.w1[0]?.length !== w.n_in || w.b1.length !== w.width
-      || w.w2.length !== 2 || w.w2[0]?.length !== w.width || w.b2.length !== 2 || w.centre.length !== w.n_in
-      || w.scale.length !== w.n_in) {
-    throw new Error("these weights are not the finance square student's layout");
+  const nOut = Array.isArray(w.b2) ? w.b2.length : 0;
+  if (w.kind !== "dense-bn-square-dense" || w.w1.length !== w.width || w.w1.some((row) => row.length !== w.n_in)
+      || w.b1.length !== w.width || nOut < 2 || w.w2.length !== nOut || w.w2.some((row) => row.length !== w.width)
+      || !Array.isArray(w.classes) || w.classes.length !== nOut || w.centre.length !== w.n_in || w.scale.length !== w.n_in) {
+    throw new Error("these weights are not a tabular square network's layout (dense, square, dense to two or more classes)");
   }
 }
 
@@ -73,6 +79,7 @@ const median = (xs: number[]) => {
 export async function runSquareTabular(w: SquareTabWeights, z: ArrayLike<number>, rows: number, set: string,
                                        progress?: (done: number, total: number) => void): Promise<SquareTabRun> {
   check(w);
+  const nOut = w.b2.length;
   const p = w.ckks[set];
   if (!p) throw new Error(`no parameter set ${set} in these weights`);
   if (z.length < rows * w.n_in) throw new Error(`${z.length} values for ${rows} rows of ${w.n_in}`);
@@ -112,7 +119,7 @@ export async function runSquareTabular(w: SquareTabWeights, z: ArrayLike<number>
     };
 
     const nBlocks = Math.ceil(rows / slots);
-    const logits = new Float64Array(rows * 2);
+    const logits = new Float64Array(rows * nOut);
     const enc: number[] = [], evalMs: number[] = [], dec: number[] = [];
     let upBytes = 0, downBytes = 0, blocksDone = 0;
     for (let g0 = 0; g0 < nBlocks; g0 += group) {
@@ -137,7 +144,7 @@ export async function runSquareTabular(w: SquareTabWeights, z: ArrayLike<number>
 
       // The evaluator: each hidden unit for every block of the group, its weights encoded once for the group.
       t = performance.now();
-      const acc: (any | null)[][] = blocks.map(() => [null, null]);
+      const acc: (any | null)[][] = blocks.map(() => new Array(nOut).fill(null));
       for (let k = 0; k < w.width; k++) {
         const h: any[] = blocks.map(() => null);
         for (let j = 0; j < w.n_in; j++) {
@@ -170,7 +177,7 @@ export async function runSquareTabular(w: SquareTabWeights, z: ArrayLike<number>
           return s;
         });
         free(bp);
-        for (let c = 0; c < 2; c++) {
+        for (let c = 0; c < nOut; c++) {
           const vp = plainAt(w.w2[c][k], sq[0], delta);
           for (let g = 0; g < blocks.length; g++) {
             if (acc[g][c] === null) {
@@ -188,9 +195,9 @@ export async function runSquareTabular(w: SquareTabWeights, z: ArrayLike<number>
         for (const s of sq) free(s);
       }
       // A unit with no weights contributes w2[c][k] * b1[k]^2, a constant.
-      const offset = [0, 1].map((c) => w.b2[c] + w.w1.reduce((a, row, k) => (row.every((v) => v === 0) ? a + w.w2[c][k] * w.b1[k] ** 2 : a), 0));
+      const offset = Array.from({ length: nOut }, (_, c) => w.b2[c] + w.w1.reduce((a, row, k) => (row.every((v) => v === 0) ? a + w.w2[c][k] * w.b1[k] ** 2 : a), 0));
       for (let g = 0; g < blocks.length; g++) {
-        for (let c = 0; c < 2; c++) {
+        for (let c = 0; c < nOut; c++) {
           ev.rescaleToNextInplace(acc[g][c]);
           const op = plainAt(offset[c], acc[g][c], acc[g][c].scale());
           ev.addPlain(acc[g][c], op, acc[g][c]);
@@ -198,18 +205,18 @@ export async function runSquareTabular(w: SquareTabWeights, z: ArrayLike<number>
         }
       }
       evalMs.push((performance.now() - t) / blocks.length);
-      if (g0 === 0) downBytes = acc[0][0].saveToArray(seal.ComprModeType.none).length * 2;
+      if (g0 === 0) downBytes = acc[0][0].saveToArray(seal.ComprModeType.none).length * nOut;
 
-      // The client: decrypt the two logits of each block.
+      // The client: decrypt the logits of each block, one ciphertext a class.
       t = performance.now();
       for (let g = 0; g < blocks.length; g++) {
         const lo = blocks[g] * slots, hi = Math.min(rows, lo + slots);
-        for (let c = 0; c < 2; c++) {
+        for (let c = 0; c < nOut; c++) {
           const pt = new seal.Plaintext();
           decryptor.decrypt(acc[g][c], pt);
           const vals: Float64Array = encoder.decodeFloat64(pt);
           free(pt);
-          for (let r = lo; r < hi; r++) logits[2 * r + c] = vals[r - lo];
+          for (let r = lo; r < hi; r++) logits[nOut * r + c] = vals[r - lo];
         }
       }
       dec.push((performance.now() - t) / blocks.length);
@@ -219,19 +226,20 @@ export async function runSquareTabular(w: SquareTabWeights, z: ArrayLike<number>
       progress?.(blocksDone, nBlocks);
     }
 
-    const plain = new Float64Array(rows * 2);
+    const plain = new Float64Array(rows * nOut);
     let maxAbsError = 0, decisionsDiffer = 0;
     for (let r = 0; r < rows; r++) {
-      const [a, b] = plainLogits(w, z, r * w.n_in);
-      plain[2 * r] = a;
-      plain[2 * r + 1] = b;
-      maxAbsError = Math.max(maxAbsError, Math.abs(logits[2 * r] - a), Math.abs(logits[2 * r + 1] - b));
-      if ((logits[2 * r + 1] > logits[2 * r]) !== (b > a)) decisionsDiffer++;
+      const ref = plainLogits(w, z, r * w.n_in);
+      for (let c = 0; c < nOut; c++) {
+        plain[nOut * r + c] = ref[c];
+        maxAbsError = Math.max(maxAbsError, Math.abs(logits[nOut * r + c] - ref[c]));
+      }
+      if (argmaxAt(logits, nOut * r, nOut) !== argmaxAt(plain, nOut * r, nOut)) decisionsDiffer++;
     }
     return {
       set, rows, blocks: nBlocks, logits, plain, maxAbsError, decisionsDiffer, keyMs, keyBytes,
       per_block: { rows: slots, encrypt_ms: median(enc), evaluate_ms: median(evalMs), decrypt_ms: median(dec),
-                   ciphertexts: { input: w.n_in, output: 2 }, bytes: { input: upBytes * w.n_in, output: downBytes } },
+                   ciphertexts: { input: w.n_in, output: nOut }, bytes: { input: upBytes * w.n_in, output: downBytes } },
     };
   } finally {
     for (const o of groupLive.reverse()) free(o);
@@ -243,7 +251,8 @@ export async function runSquareTabular(w: SquareTabWeights, z: ArrayLike<number>
 /** One run over many raw rows: each worker's block, put back in row order. */
 export interface SquareTabBatch {
   set: string; rows: number; blocks: number;
-  /** Row-major, [2 r] licit and [2 r + 1] laundering: decrypted, and in the clear in float64. */
+  /** Row-major, one a class in `classes`' order (finance: [2 r] licit, [2 r + 1] laundering): decrypted, and in the
+   *  clear in float64. */
   logits: Float64Array; plain: Float64Array;
   maxAbsError: number; decisionsDiffer: number;
   /** The slowest worker's time from its key generation to its last decryption, and its key generation alone. */
@@ -264,7 +273,7 @@ export async function runSquareTabularOffThread(w: SquareTabWeights, rows: numbe
                                                 onBlock?: (done: number, total: number) => void): Promise<SquareTabBatch> {
   const p = w.ckks[set];
   if (!p) throw new Error(`parameter set ${set} is not one these weights offer`);
-  const slots = p.N / 2;
+  const slots = p.N / 2, nOut = w.b2.length;
   const blocks: number[][][] = [];
   for (let i = 0; i < rows.length; i += slots) blocks.push(rows.slice(i, i + slots));
   type Part = { run: SquareTabRun; totalMs: number };
@@ -310,12 +319,12 @@ export async function runSquareTabularOffThread(w: SquareTabWeights, rows: numbe
     }
     ranIn = workers.length === 1 ? "a Web Worker" : `${workers.length} Web Workers at once`;
   }
-  const logits = new Float64Array(rows.length * 2), plain = new Float64Array(rows.length * 2);
+  const logits = new Float64Array(rows.length * nOut), plain = new Float64Array(rows.length * nOut);
   let at = 0;
   for (const { run } of parts) {
     logits.set(run.logits, at);
     plain.set(run.plain, at);
-    at += run.rows * 2;
+    at += run.rows * nOut;
   }
   const first = parts[0].run;
   return {

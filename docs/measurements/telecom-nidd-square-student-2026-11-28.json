@@ -1,0 +1,883 @@
+{
+ "preregistration": {
+  "file": "references/telecom-nidd-square-student-preregistration.md",
+  "sha256": "e23f2515e064475d558ccf07fa6695071e10843d168caa88db1f0bfebd00cdb4"
+ },
+ "data": {
+  "corpus": "5G-NIDD (CC BY 4.0)",
+  "protocol": "P2",
+  "inputs": "F30",
+  "input_names": [
+   "Dur",
+   "sTos",
+   "dTos",
+   "sTtl",
+   "dTtl",
+   "TotPkts",
+   "SrcPkts",
+   "DstPkts",
+   "TotBytes",
+   "SrcBytes",
+   "DstBytes",
+   "sMeanPktSz",
+   "dMeanPktSz",
+   "Load",
+   "SrcLoad",
+   "DstLoad",
+   "Loss",
+   "SrcLoss",
+   "DstLoss",
+   "pLoss",
+   "SrcGap",
+   "DstGap",
+   "Rate",
+   "SrcRate",
+   "DstRate",
+   "SrcWin",
+   "DstWin",
+   "TcpRtt",
+   "SynAck",
+   "AckDat"
+  ],
+  "classes": [
+   "Benign",
+   "HTTPFlood",
+   "ICMPFlood",
+   "SYNFlood",
+   "SYNScan",
+   "SlowrateDoS",
+   "TCPConnectScan",
+   "UDPFlood",
+   "UDPScan"
+  ],
+  "rows": 934361,
+  "parts": [
+   654036,
+   140151,
+   140174
+  ],
+  "from": "the re-run's loader, splits and inputs (scripts/train/telecom_nidd_clean_protocols.py)"
+ },
+ "device": {
+  "requested": "cuda",
+  "torch": "2.13.0+cu130",
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Workstation Edition",
+  "cuda": "13.0",
+  "python": "3.12.15",
+  "blas": [
+   {
+    "internal_api": "openblas",
+    "num_threads": 20,
+    "version": "0.3.33.112.0"
+   },
+   {
+    "internal_api": "openmp",
+    "num_threads": 14,
+    "version": null
+   },
+   {
+    "internal_api": "openblas",
+    "num_threads": 20,
+    "version": "0.3.31.dev"
+   },
+   {
+    "internal_api": "openmp",
+    "num_threads": 20,
+    "version": null
+   }
+  ],
+  "thread_variables": {
+   "OMP_NUM_THREADS": null,
+   "OPENBLAS_NUM_THREADS": null,
+   "MKL_NUM_THREADS": null
+  }
+ },
+ "control": {
+  "what": "the re-run's linear student under P2 on F30, refitted and found equal to its record",
+  "threads": "the control is the re-run's linear student, refitted under the re-run's default BLAS threading and found equal to its record; under 4 OpenBLAS threads the same procedure stops elsewhere (test FLamby 0.966538 against 0.963155), since L-BFGS-B ends by its relative-reduction test on a nearly flat objective",
+  "penalty_table": [
+   {
+    "l2": 1e-06,
+    "validation_log_loss": 0.06215641
+   },
+   {
+    "l2": 1e-05,
+    "validation_log_loss": 0.08546196
+   },
+   {
+    "l2": 0.0001,
+    "validation_log_loss": 0.15628968
+   },
+   {
+    "l2": 0.001,
+    "validation_log_loss": 0.30207632
+   },
+   {
+    "l2": 0.01,
+    "validation_log_loss": 0.4705326
+   },
+   {
+    "l2": 0.1,
+    "validation_log_loss": 0.77212607
+   }
+  ],
+  "l2": 1e-06,
+  "temperature": 0.7365517102644357,
+  "test": {
+   "macro_f1": 0.962465,
+   "weighted_f1": 0.984141,
+   "accuracy": 0.984255,
+   "classes_absent": [],
+   "station_macro_f1": {
+    "station_1": 0.955478,
+    "station_2": 0.970832
+   },
+   "flamby_metric": 0.963155
+  }
+ },
+ "arms": {
+  "square": {
+   "5": {
+    "seed": 5,
+    "device": "cuda",
+    "epoch": 28,
+    "validation_macro_f1": 0.991263,
+    "test": {
+     "macro_f1": 0.990761,
+     "weighted_f1": 0.99104,
+     "accuracy": 0.991083,
+     "classes_absent": [],
+     "station_macro_f1": {
+      "station_1": 0.991283,
+      "station_2": 0.989689
+     },
+     "flamby_metric": 0.990486
+    },
+    "validation": {
+     "macro_f1": 0.991263,
+     "weighted_f1": 0.99338,
+     "accuracy": 0.993414,
+     "classes_absent": [],
+     "station_macro_f1": {
+      "station_1": 0.991573,
+      "station_2": 0.990876
+     },
+     "flamby_metric": 0.991224
+    },
+    "test_class_f1": {
+     "Benign": 0.993877,
+     "HTTPFlood": 0.97193,
+     "ICMPFlood": 1.0,
+     "SYNFlood": 0.998631,
+     "SYNScan": 1.0,
+     "SlowrateDoS": 0.957504,
+     "TCPConnectScan": 0.997018,
+     "UDPFlood": 0.999993,
+     "UDPScan": 0.997901
+    },
+    "validation_class_f1": {
+     "Benign": 0.999082,
+     "HTTPFlood": 0.979564,
+     "ICMPFlood": 0.994253,
+     "SYNFlood": 0.997605,
+     "SYNScan": 0.997008,
+     "SlowrateDoS": 0.959914,
+     "TCPConnectScan": 0.997504,
+     "UDPFlood": 1.0,
+     "UDPScan": 0.996434
+    },
+    "float64": {
+     "note": "the kept weights in float64 NumPy, as the page computes them; the figures above are the trained network's own (float32 on the device)",
+     "test": {
+      "macro_f1": 0.990761,
+      "weighted_f1": 0.99104,
+      "accuracy": 0.991083,
+      "classes_absent": [],
+      "station_macro_f1": {
+       "station_1": 0.991283,
+       "station_2": 0.989689
+      },
+      "flamby_metric": 0.990486
+     },
+     "test_decisions_differing_from_the_device": 0
+    }
+   },
+   "6": {
+    "seed": 6,
+    "device": "cuda",
+    "epoch": 30,
+    "validation_macro_f1": 0.991232,
+    "test": {
+     "macro_f1": 0.991117,
+     "weighted_f1": 0.991716,
+     "accuracy": 0.991746,
+     "classes_absent": [],
+     "station_macro_f1": {
+      "station_1": 0.991267,
+      "station_2": 0.990639
+     },
+     "flamby_metric": 0.990953
+    },
+    "validation": {
+     "macro_f1": 0.991232,
+     "weighted_f1": 0.993298,
+     "accuracy": 0.993329,
+     "classes_absent": [],
+     "station_macro_f1": {
+      "station_1": 0.991438,
+      "station_2": 0.990956
+     },
+     "flamby_metric": 0.991197
+    },
+    "test_class_f1": {
+     "Benign": 0.996255,
+     "HTTPFlood": 0.9739,
+     "ICMPFlood": 1.0,
+     "SYNFlood": 0.999315,
+     "SYNScan": 1.0,
+     "SlowrateDoS": 0.955871,
+     "TCPConnectScan": 0.997018,
+     "UDPFlood": 1.0,
+     "UDPScan": 0.997692
+    },
+    "validation_class_f1": {
+     "Benign": 0.999167,
+     "HTTPFlood": 0.979209,
+     "ICMPFlood": 0.994253,
+     "SYNFlood": 0.997947,
+     "SYNScan": 0.996841,
+     "SlowrateDoS": 0.959192,
+     "TCPConnectScan": 0.997837,
+     "UDPFlood": 1.0,
+     "UDPScan": 0.996644
+    },
+    "float64": {
+     "note": "the kept weights in float64 NumPy, as the page computes them; the figures above are the trained network's own (float32 on the device)",
+     "test": {
+      "macro_f1": 0.991117,
+      "weighted_f1": 0.991716,
+      "accuracy": 0.991746,
+      "classes_absent": [],
+      "station_macro_f1": {
+       "station_1": 0.991267,
+       "station_2": 0.990639
+      },
+      "flamby_metric": 0.990953
+     },
+     "test_decisions_differing_from_the_device": 0
+    }
+   },
+   "7": {
+    "seed": 7,
+    "device": "cuda",
+    "epoch": 21,
+    "validation_macro_f1": 0.991351,
+    "test": {
+     "macro_f1": 0.991225,
+     "weighted_f1": 0.992316,
+     "accuracy": 0.992345,
+     "classes_absent": [],
+     "station_macro_f1": {
+      "station_1": 0.990396,
+      "station_2": 0.992036
+     },
+     "flamby_metric": 0.991216
+    },
+    "validation": {
+     "macro_f1": 0.991351,
+     "weighted_f1": 0.993267,
+     "accuracy": 0.9933,
+     "classes_absent": [],
+     "station_macro_f1": {
+      "station_1": 0.991636,
+      "station_2": 0.990983
+     },
+     "flamby_metric": 0.991309
+    },
+    "test_class_f1": {
+     "Benign": 0.997159,
+     "HTTPFlood": 0.976819,
+     "ICMPFlood": 1.0,
+     "SYNFlood": 0.997948,
+     "SYNScan": 1.0,
+     "SlowrateDoS": 0.956214,
+     "TCPConnectScan": 0.995204,
+     "UDPFlood": 0.999993,
+     "UDPScan": 0.997692
+    },
+    "validation_class_f1": {
+     "Benign": 0.998759,
+     "HTTPFlood": 0.979182,
+     "ICMPFlood": 0.994253,
+     "SYNFlood": 0.99863,
+     "SYNScan": 0.997008,
+     "SlowrateDoS": 0.959851,
+     "TCPConnectScan": 0.997837,
+     "UDPFlood": 0.999993,
+     "UDPScan": 0.996644
+    },
+    "float64": {
+     "note": "the kept weights in float64 NumPy, as the page computes them; the figures above are the trained network's own (float32 on the device)",
+     "test": {
+      "macro_f1": 0.991225,
+      "weighted_f1": 0.992316,
+      "accuracy": 0.992345,
+      "classes_absent": [],
+      "station_macro_f1": {
+       "station_1": 0.990396,
+       "station_2": 0.992036
+      },
+      "flamby_metric": 0.991216
+     },
+     "test_decisions_differing_from_the_device": 0
+    }
+   },
+   "8": {
+    "seed": 8,
+    "device": "cuda",
+    "epoch": 28,
+    "validation_macro_f1": 0.991327,
+    "test": {
+     "macro_f1": 0.99194,
+     "weighted_f1": 0.992721,
+     "accuracy": 0.992752,
+     "classes_absent": [],
+     "station_macro_f1": {
+      "station_1": 0.991184,
+      "station_2": 0.99261
+     },
+     "flamby_metric": 0.991897
+    },
+    "validation": {
+     "macro_f1": 0.991327,
+     "weighted_f1": 0.993345,
+     "accuracy": 0.993379,
+     "classes_absent": [],
+     "station_macro_f1": {
+      "station_1": 0.991597,
+      "station_2": 0.990985
+     },
+     "flamby_metric": 0.991291
+    },
+    "test_class_f1": {
+     "Benign": 0.997605,
+     "HTTPFlood": 0.977705,
+     "ICMPFlood": 1.0,
+     "SYNFlood": 0.999315,
+     "SYNScan": 1.0,
+     "SlowrateDoS": 0.95763,
+     "TCPConnectScan": 0.997514,
+     "UDPFlood": 1.0,
+     "UDPScan": 0.997692
+    },
+    "validation_class_f1": {
+     "Benign": 0.999048,
+     "HTTPFlood": 0.979423,
+     "ICMPFlood": 0.994253,
+     "SYNFlood": 0.998288,
+     "SYNScan": 0.997009,
+     "SlowrateDoS": 0.959653,
+     "TCPConnectScan": 0.997837,
+     "UDPFlood": 1.0,
+     "UDPScan": 0.996434
+    },
+    "float64": {
+     "note": "the kept weights in float64 NumPy, as the page computes them; the figures above are the trained network's own (float32 on the device)",
+     "test": {
+      "macro_f1": 0.99194,
+      "weighted_f1": 0.992721,
+      "accuracy": 0.992752,
+      "classes_absent": [],
+      "station_macro_f1": {
+       "station_1": 0.991184,
+       "station_2": 0.99261
+      },
+      "flamby_metric": 0.991897
+     },
+     "test_decisions_differing_from_the_device": 0
+    }
+   },
+   "9": {
+    "seed": 9,
+    "device": "cuda",
+    "epoch": 30,
+    "validation_macro_f1": 0.991522,
+    "test": {
+     "macro_f1": 0.991086,
+     "weighted_f1": 0.991592,
+     "accuracy": 0.991639,
+     "classes_absent": [],
+     "station_macro_f1": {
+      "station_1": 0.991517,
+      "station_2": 0.990269
+     },
+     "flamby_metric": 0.990893
+    },
+    "validation": {
+     "macro_f1": 0.991522,
+     "weighted_f1": 0.993297,
+     "accuracy": 0.993336,
+     "classes_absent": [],
+     "station_macro_f1": {
+      "station_1": 0.992076,
+      "station_2": 0.990838
+     },
+     "flamby_metric": 0.991457
+    },
+    "test_class_f1": {
+     "Benign": 0.995546,
+     "HTTPFlood": 0.973842,
+     "ICMPFlood": 1.0,
+     "SYNFlood": 0.999315,
+     "SYNScan": 0.999667,
+     "SlowrateDoS": 0.956298,
+     "TCPConnectScan": 0.997844,
+     "UDPFlood": 0.999993,
+     "UDPScan": 0.997273
+    },
+    "validation_class_f1": {
+     "Benign": 0.999031,
+     "HTTPFlood": 0.979284,
+     "ICMPFlood": 0.997118,
+     "SYNFlood": 0.998288,
+     "SYNScan": 0.99684,
+     "SlowrateDoS": 0.959487,
+     "TCPConnectScan": 0.997837,
+     "UDPFlood": 1.0,
+     "UDPScan": 0.995807
+    },
+    "float64": {
+     "note": "the kept weights in float64 NumPy, as the page computes them; the figures above are the trained network's own (float32 on the device)",
+     "test": {
+      "macro_f1": 0.991086,
+      "weighted_f1": 0.991592,
+      "accuracy": 0.991639,
+      "classes_absent": [],
+      "station_macro_f1": {
+       "station_1": 0.991517,
+       "station_2": 0.990269
+      },
+      "flamby_metric": 0.990893
+     },
+     "test_decisions_differing_from_the_device": 0
+    }
+   }
+  }
+ },
+ "export_seed": 9,
+ "export_bootstrap": {
+  "resamples": 2000,
+  "seed": 0,
+  "low": 0.990339,
+  "high": 0.991458,
+  "method": "percentile; the test flows resampled with replacement, each station's macro-F1 over the classes present in its resample, then their mean"
+ },
+ "weights_sha256": "14d8c5830a279ff4b459cc812f7293f24457d7e0c6b13999bcf89ea59adaed7b",
+ "criteria": {
+  "1_accuracy": true,
+  "1_figures": {
+   "control_test_flamby": 0.963155,
+   "square_mean": 0.991089,
+   "square_min": 0.990486,
+   "mean_margin": 0.015,
+   "each_margin": 0.01
+  },
+  "2_no_collapse": true,
+  "3_fidelity": {
+   "A2": true,
+   "B": true
+  },
+  "4_page": {
+   "A2": true,
+   "B": true
+  },
+  "sets_offered": [
+   "A2",
+   "B"
+  ],
+  "adopted": true,
+  "outcome": "criteria met under A2, B: the network may be offered on the page; beside or in place of the linear student is the owner's choice"
+ },
+ "ckks": {
+  "node": "v22.23.2",
+  "rows": 2048,
+  "class_counts": {
+   "Benign": 430,
+   "HTTPFlood": 309,
+   "ICMPFlood": 3,
+   "SYNFlood": 21,
+   "SYNScan": 44,
+   "SlowrateDoS": 160,
+   "TCPConnectScan": 44,
+   "UDPFlood": 1002,
+   "UDPScan": 35
+  },
+  "draw": "the shipped student's held-out draw from P2's test part (held_out_draw)",
+  "module": "web/src/lib/clientFHESquareTabular.ts (runSquareTabular), one flow a slot",
+  "sets": {
+   "A2": {
+    "max_abs_error": 0.00041022245704880334,
+    "decisions_differ": 0,
+    "flows_within_twice_the_error": 0,
+    "decisions_differ_on_the_other_flows": 0,
+    "meets": true,
+    "rows": 2048,
+    "blocks": 1,
+    "module_max_abs_error": 0.00041022245704880334,
+    "module_decisions_differ": 0,
+    "plaintext_matches_numpy_max_abs": 7.275957614183426e-12,
+    "encrypted_accuracy": 0.991699,
+    "plaintext_accuracy": 0.991699,
+    "key_ms": 290.36097700000005,
+    "key_bytes": 3277429,
+    "per_block": {
+     "rows": 4096,
+     "encrypt_ms": 164.86288300000007,
+     "evaluate_ms": 2861.429087,
+     "decrypt_ms": 5.084847999999965,
+     "ciphertexts": {
+      "input": 30,
+      "output": 9
+     },
+     "bytes": {
+      "input": 15732030,
+      "output": 1180665
+     }
+    }
+   },
+   "B": {
+    "max_abs_error": 2.2013122361386195e-05,
+    "decisions_differ": 0,
+    "flows_within_twice_the_error": 0,
+    "decisions_differ_on_the_other_flows": 0,
+    "meets": true,
+    "rows": 2048,
+    "blocks": 1,
+    "module_max_abs_error": 2.2013122361386195e-05,
+    "module_decisions_differ": 0,
+    "plaintext_matches_numpy_max_abs": 7.275957614183426e-12,
+    "encrypted_accuracy": 0.991699,
+    "plaintext_accuracy": 0.991699,
+    "key_ms": 549.4111459999999,
+    "key_bytes": 6554229,
+    "per_block": {
+     "rows": 8192,
+     "encrypt_ms": 308.23006499999974,
+     "evaluate_ms": 5959.526196000001,
+     "decrypt_ms": 5.875371999998606,
+     "ciphertexts": {
+      "input": 30,
+      "output": 9
+     },
+     "bytes": {
+      "input": 31460670,
+      "output": 2360313
+     }
+    }
+   }
+  }
+ },
+ "browser": {
+  "browser": "Chrome/157.0.8103.78",
+  "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/157.0.0.0 Safari/537.36",
+  "runs_per_set": 3,
+  "budget": {
+   "total_ms": 30000,
+   "wasm_memory_bytes": 1500000000.0
+  },
+  "rows": "the ckks stage's 2,048 flows, raw, scaled in the worker",
+  "sets": {
+   "A2": {
+    "rows": 2048,
+    "blocks": 1,
+    "runs": [
+     {
+      "set": "A2",
+      "rows": 2048,
+      "blocks": 1,
+      "total_ms": 3418.5049999952316,
+      "scale_ms": 2.990000009536743,
+      "key_ms": 275.40499997138977,
+      "key_bytes": 3277429,
+      "per_block": {
+       "rows": 4096,
+       "encrypt_ms": 150.19000005722046,
+       "evaluate_ms": 2955.3599999547005,
+       "decrypt_ms": 5.375,
+       "ciphertexts": {
+        "input": 30,
+        "output": 9
+       },
+       "bytes": {
+        "input": 15732030,
+        "output": 1180665
+       }
+      },
+      "max_abs_error": 0.00043746153414758737,
+      "decisions_differ": 0,
+      "flagged_decrypted": null,
+      "decided_counts": [
+       433,
+       316,
+       3,
+       21,
+       44,
+       150,
+       44,
+       1002,
+       35
+      ],
+      "wasm_memory_bytes": 50331648,
+      "load_average_before": [
+       1.04,
+       1.52,
+       2.57
+      ],
+      "decisions_differ_on_flows_clear_of_twice_the_error": 0,
+      "meets": true
+     },
+     {
+      "set": "A2",
+      "rows": 2048,
+      "blocks": 1,
+      "total_ms": 3411.9449999928474,
+      "scale_ms": 2.2149999737739563,
+      "key_ms": 275.8700000047684,
+      "key_bytes": 3277429,
+      "per_block": {
+       "rows": 4096,
+       "encrypt_ms": 149.22500002384186,
+       "evaluate_ms": 2959.939999997616,
+       "decrypt_ms": 4.294999957084656,
+       "ciphertexts": {
+        "input": 30,
+        "output": 9
+       },
+       "bytes": {
+        "input": 15732030,
+        "output": 1180665
+       }
+      },
+      "max_abs_error": 0.0004416791671246756,
+      "decisions_differ": 0,
+      "flagged_decrypted": null,
+      "decided_counts": [
+       433,
+       316,
+       3,
+       21,
+       44,
+       150,
+       44,
+       1002,
+       35
+      ],
+      "wasm_memory_bytes": 50331648,
+      "load_average_before": [
+       1.03,
+       1.51,
+       2.56
+      ],
+      "decisions_differ_on_flows_clear_of_twice_the_error": 0,
+      "meets": true
+     },
+     {
+      "set": "A2",
+      "rows": 2048,
+      "blocks": 1,
+      "total_ms": 3325.4549999833107,
+      "scale_ms": 1.4850000143051147,
+      "key_ms": 274.3899999856949,
+      "key_bytes": 3277429,
+      "per_block": {
+       "rows": 4096,
+       "encrypt_ms": 150.70500004291534,
+       "evaluate_ms": 2874.810000002384,
+       "decrypt_ms": 4.049999952316284,
+       "ciphertexts": {
+        "input": 30,
+        "output": 9
+       },
+       "bytes": {
+        "input": 15732030,
+        "output": 1180665
+       }
+      },
+      "max_abs_error": 0.00032929951794358203,
+      "decisions_differ": 0,
+      "flagged_decrypted": null,
+      "decided_counts": [
+       433,
+       316,
+       3,
+       21,
+       44,
+       150,
+       44,
+       1002,
+       35
+      ],
+      "wasm_memory_bytes": 50331648,
+      "load_average_before": [
+       1.11,
+       1.52,
+       2.55
+      ],
+      "decisions_differ_on_flows_clear_of_twice_the_error": 0,
+      "meets": true
+     }
+    ],
+    "js_plain_matches_numpy_max_abs": 7.275957614183426e-12,
+    "slowest_total_ms": 3418.5049999952316,
+    "largest_wasm_memory_bytes": 50331648,
+    "criterion_4": true
+   },
+   "B": {
+    "rows": 2048,
+    "blocks": 1,
+    "runs": [
+     {
+      "set": "B",
+      "rows": 2048,
+      "blocks": 1,
+      "total_ms": 6918.349999964237,
+      "scale_ms": 2.060000002384186,
+      "key_ms": 534.5749999880791,
+      "key_bytes": 6554229,
+      "per_block": {
+       "rows": 8192,
+       "encrypt_ms": 308.21499997377396,
+       "evaluate_ms": 6046.504999995232,
+       "decrypt_ms": 7.485000014305115,
+       "ciphertexts": {
+        "input": 30,
+        "output": 9
+       },
+       "bytes": {
+        "input": 31460670,
+        "output": 2360313
+       }
+      },
+      "max_abs_error": 1.6539072021259926e-05,
+      "decisions_differ": 0,
+      "flagged_decrypted": null,
+      "decided_counts": [
+       433,
+       316,
+       3,
+       21,
+       44,
+       150,
+       44,
+       1002,
+       35
+      ],
+      "wasm_memory_bytes": 87097344,
+      "load_average_before": [
+       1.11,
+       1.52,
+       2.55
+      ],
+      "decisions_differ_on_flows_clear_of_twice_the_error": 0,
+      "meets": true
+     },
+     {
+      "set": "B",
+      "rows": 2048,
+      "blocks": 1,
+      "total_ms": 6916.539999961853,
+      "scale_ms": 2.4050000309944153,
+      "key_ms": 536.6650000214577,
+      "key_bytes": 6554229,
+      "per_block": {
+       "rows": 8192,
+       "encrypt_ms": 309.9200000166893,
+       "evaluate_ms": 6042.399999976158,
+       "decrypt_ms": 7.349999964237213,
+       "ciphertexts": {
+        "input": 30,
+        "output": 9
+       },
+       "bytes": {
+        "input": 31460670,
+        "output": 2360313
+       }
+      },
+      "max_abs_error": 1.8824775906978175e-05,
+      "decisions_differ": 0,
+      "flagged_decrypted": null,
+      "decided_counts": [
+       433,
+       316,
+       3,
+       21,
+       44,
+       150,
+       44,
+       1002,
+       35
+      ],
+      "wasm_memory_bytes": 87097344,
+      "load_average_before": [
+       1.25,
+       1.54,
+       2.55
+      ],
+      "decisions_differ_on_flows_clear_of_twice_the_error": 0,
+      "meets": true
+     },
+     {
+      "set": "B",
+      "rows": 2048,
+      "blocks": 1,
+      "total_ms": 6938.664999961853,
+      "scale_ms": 2.450000047683716,
+      "key_ms": 535.964999973774,
+      "key_bytes": 6554229,
+      "per_block": {
+       "rows": 8192,
+       "encrypt_ms": 309.5100000500679,
+       "evaluate_ms": 6063.864999949932,
+       "decrypt_ms": 7.180000007152557,
+       "ciphertexts": {
+        "input": 30,
+        "output": 9
+       },
+       "bytes": {
+        "input": 31460670,
+        "output": 2360313
+       }
+      },
+      "max_abs_error": 1.032853833748959e-05,
+      "decisions_differ": 0,
+      "flagged_decrypted": null,
+      "decided_counts": [
+       433,
+       316,
+       3,
+       21,
+       44,
+       150,
+       44,
+       1002,
+       35
+      ],
+      "wasm_memory_bytes": 87097344,
+      "load_average_before": [
+       1.23,
+       1.53,
+       2.54
+      ],
+      "decisions_differ_on_flows_clear_of_twice_the_error": 0,
+      "meets": true
+     }
+    ],
+    "js_plain_matches_numpy_max_abs": 7.275957614183426e-12,
+    "slowest_total_ms": 6938.664999961853,
+    "largest_wasm_memory_bytes": 87097344,
+    "criterion_4": true
+   }
+  },
+  "machine": "x86_64, 20 logical cores, headless, no other job"
+ }
+}

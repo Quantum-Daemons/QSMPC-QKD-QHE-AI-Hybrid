@@ -23,8 +23,8 @@ const f4 = (v: number) => v.toFixed(4);
 const show = (c?: Cell) => (!c ? "-" : c.sd == null ? f4(c.mean) : `${f4(c.mean)} (${f4(c.sd)})`);
 const signed = (v: number) => `${v >= 0 ? "+" : ""}${f4(v)}`;
 const ARMS: { key: keyof Clean["arms"]; label: string }[] = [
-  { key: "teacher", label: "Teacher (XGBoost)" }, { key: "student", label: "CKKS student (linear)" },
-  { key: "mlp", label: "Square MLP (new)" }, { key: "federation", label: "Two-station federation" },
+  { key: "teacher", label: "Teacher (XGBoost)" }, { key: "student", label: "Linear student (batch 6)" },
+  { key: "mlp", label: "Square network" }, { key: "federation", label: "Two-station federation" },
 ];
 
 export default function NiddCleanProtocolsCard() {
@@ -107,7 +107,9 @@ export default function NiddCleanProtocolsCard() {
       </ul>
       <p className="small muted" style={{ marginTop: 6 }}>
         Stated as measured; none decides what ships. The page&apos;s models and the published ones are unchanged by this
-        card. Pre-registration: <code>{d.preregistration.file}</code>; record: <code>{d.record}</code>. Data:{" "}
+        card: the square network the page has run for 5G-NIDD since batch 12, in place of the linear student, is this
+        recipe on new seeds, adopted by a pre-registration of its own
+        (<code>references/telecom-nidd-square-student-preregistration.md</code>). Pre-registration: <code>{d.preregistration.file}</code>; record: <code>{d.record}</code>. Data:{" "}
         {d.attribution.dataset}, <a href={d.attribution.licence_url} target="_blank" rel="noreferrer">{d.attribution.licence}</a>;{" "}
         {d.attribution.citation}{ct ? <> Across testbeds: <a href={ct.source} target="_blank" rel="noreferrer">{ct.citation}</a>.</> : null}
       </p>

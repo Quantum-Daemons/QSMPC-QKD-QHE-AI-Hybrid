@@ -2,7 +2,10 @@
 /**
  * F7b's criterion 4 (references/finance-square-student-page-preregistration.md): the finance square network, by the
  * page's own module (src/lib/clientFHESquareTabular.ts), in a Web Worker in headless Chrome, on one block of the rows the
- * finance page ships. Each run is a fresh worker, as the page would start one: it scales the rows, generates the keys,
+ * finance page ships. Since Round 86, batch 12, the same for the telecom square network's criterion 4
+ * (references/telecom-nidd-square-student-preregistration.md): a network with more than two classes also returns each
+ * run's decrypted decision on every row (the first class with the largest logit) and the count per class, so that the
+ * pre-registered margin rule can be read against the plaintext logits; a two-class run's figures are as before. Each run is a fresh worker, as the page would start one: it scales the rows, generates the keys,
  * encrypts, evaluates and decrypts, and reports the time from the start of key generation to the last decryption, the
  * size of its WebAssembly memory after the run (a wasm memory only grows, so that is its peak), and the decrypted
  * decisions against the plaintext ones, which the same module computes in float64.
@@ -11,8 +14,10 @@
  * module is loaded and keeps the Memory the instance exports.
  *
  * Usage: node web/scripts/measure_square_tabular_browser.mjs WEIGHTS.json ROWS.json OUT.json [RUNS]
- *   WEIGHTS: the exported seed's weights.json, as scripts/train/finance_square_student_page.py writes it
- *   ROWS: web/public/data/finance/student_heldout.json (raw inputs in `samples`, their names in `feature_names`)
+ *   WEIGHTS: the exported seed's weights.json, as scripts/train/finance_square_student_page.py (or the telecom trainer,
+ *            scripts/train/telecom_nidd_square_student.py) writes it
+ *   ROWS: web/public/data/finance/student_heldout.json, or a file of the same shape (raw inputs in `samples`, their
+ *         names in `feature_names`)
  *   OUT: per set, each run's figures, the browser's version and the load average before each run
  */
 import { spawn } from "node:child_process";
@@ -48,7 +53,7 @@ if (streaming) WebAssembly.instantiateStreaming = (...a) => streaming.apply(WebA
 WebAssembly.instantiate = (...a) => plain.apply(WebAssembly, a).then(keep);
 self.onmessage = async (e) => {
   try {
-    const { w, samples, set, withPlain } = e.data;
+    const { w, samples, set, withPlain, withDecided } = e.data;
     const ts = performance.now();
     const z = new Float64Array(samples.length * w.n_in);
     for (let i = 0; i < samples.length; i++) z.set(scaleRow(w, samples[i]), i * w.n_in);
@@ -56,11 +61,18 @@ self.onmessage = async (e) => {
     const t0 = performance.now();
     const r = await runSquareTabular(w, z, samples.length, set, () => {});
     const totalMs = performance.now() - t0;
-    let flagged = 0;
-    for (let i = 0; i < r.rows; i++) if (r.logits[2 * i + 1] > r.logits[2 * i]) flagged++;
+    const k = w.b2.length;
+    const decided = new Array(r.rows), counts = new Array(k).fill(0);
+    for (let i = 0; i < r.rows; i++) {
+      let best = 0;
+      for (let c = 1; c < k; c++) if (r.logits[k * i + c] > r.logits[k * i + best]) best = c;
+      decided[i] = best;
+      counts[best]++;
+    }
+    const more = withDecided ? { decided_counts: counts, decided } : {};
     self.postMessage({ ok: true, set, rows: r.rows, blocks: r.blocks, total_ms: totalMs, scale_ms: scaleMs,
       key_ms: r.keyMs, key_bytes: r.keyBytes, per_block: r.per_block, max_abs_error: r.maxAbsError,
-      decisions_differ: r.decisionsDiffer, flagged_decrypted: flagged,
+      decisions_differ: r.decisionsDiffer, flagged_decrypted: k === 2 ? counts[1] : null, ...more,
       wasm_memory_bytes: memory ? memory.buffer.byteLength : null,
       plain: withPlain ? Array.from(r.plain) : null });
   } catch (err) {
@@ -69,15 +81,15 @@ self.onmessage = async (e) => {
 };
 `;
 
-const PAGE = `<!doctype html><meta charset="utf-8"><title>F7b criterion 4</title>
+const PAGE = `<!doctype html><meta charset="utf-8"><title>square network, criterion 4</title>
 <script type="module">
 const w = await (await fetch("/weights.json")).json();
 const rows = await (await fetch("/rows.json")).json();
-window.__run = (set, n, withPlain) => new Promise((ok, bad) => {
+window.__run = (set, n, withPlain, withDecided) => new Promise((ok, bad) => {
   const worker = new Worker("/worker.js", { type: "module" });
   worker.onmessage = (e) => { worker.terminate(); e.data.ok ? ok(e.data) : bad(e.data.error); };
   worker.onerror = (e) => { worker.terminate(); bad(String(e.message || e)); };
-  worker.postMessage({ w, samples: rows.samples.slice(0, n), set, withPlain });
+  worker.postMessage({ w, samples: rows.samples.slice(0, n), set, withPlain, withDecided });
 });
 window.__ready = { n: rows.samples.length, names: rows.feature_names.length };
 </script>`;
@@ -147,7 +159,7 @@ try {
     out.sets[set] = [];
     for (let k = 0; k < RUNS; k++) {
       const before = loadavg().map((x) => Math.round(x * 100) / 100);
-      const r = await evaluate(`window.__run(${JSON.stringify(set)}, ${n}, ${k === 0})`);
+      const r = await evaluate(`window.__run(${JSON.stringify(set)}, ${n}, ${k === 0}, ${w.b2.length > 2})`);
       out.sets[set].push({ ...r, load_average_before: before });
       console.log(`${set} run ${k + 1}: ${r.rows} rows, ${(r.total_ms / 1000).toFixed(2)} s keys to last decryption `
         + `(keys ${r.key_ms.toFixed(0)} ms), wasm memory ${(r.wasm_memory_bytes / 1e9).toFixed(3)} GB, `

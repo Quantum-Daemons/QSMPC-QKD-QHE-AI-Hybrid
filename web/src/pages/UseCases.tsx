@@ -3,7 +3,8 @@ import KeyPoints from "../components/KeyPoints";
 import StageBadge from "../components/StageBadge";
 import { DEMO_BANNER, isClientDemo } from "../lib/demoMode";
 import { USECASES } from "../lib/useCases";
-import { modelsFor, studentModel, studentParamCount, teacherModel } from "../lib/config";
+import { modelsFor, teacherModel } from "../lib/config";
+import { primaryEncryptedModel } from "../lib/pageEncryptedModels";
 
 const DEMO = isClientDemo();
 
@@ -65,12 +66,12 @@ export default function UseCases() {
           // Everything below is read from the registry. A card cannot claim a model, a metric or a
           // licence this repository did not record, and it cannot go stale when one changes.
           const teacher = teacherModel(u.id);
-          const student = studentModel(u.id);
+          const encrypted = primaryEncryptedModel(u.id);
           const pinned = modelsFor(u.id).filter((m) => m.hf_repo_id && m.hf_revision);
           const achieved = teacher?.achieved as Record<string, number> | null | undefined;
           const headline = teacher?.metric?.name;
           const score = headline && achieved ? achieved[headline] : undefined;
-          const studentParams = studentParamCount(student);
+
           // How many events an event-wise headline was divided by, and whether the published figure
           // is a different measurement. Both are the registry's, as on the model panel.
           const scoredOver = typeof achieved?.n_events_scored === "number" ? achieved.n_events_scored : null;
@@ -116,7 +117,7 @@ export default function UseCases() {
               {teacher && (
                 <p className="muted" style={{ fontSize: 12, marginBottom: 2 }}>
                   <b>Data</b> {teacher.dataset.name} · {teacher.dataset.licence}
-                  {studentParams != null && <> · encrypted student {studentParams} params</>}
+                  {encrypted && <> · encrypted {encrypted.kind === "square network" ? "square network" : "student"} {encrypted.params.toLocaleString("en-US")} params</>}
                 </p>
               )}
               {u.id !== "defi_lending" && <p className="muted" style={{ fontSize: 12 }}>

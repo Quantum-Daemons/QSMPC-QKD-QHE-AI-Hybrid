@@ -1,0 +1,155 @@
+{
+ "addendum": {
+  "file": "references/satellite-satqkd-key-length-preregistration-addendum-loss.md",
+  "sha256": "2186bb42575ff2e876c39a4895b86cf72bb35659e59787a68733153686f9f76f"
+ },
+ "preregistration": {
+  "file": "references/satellite-satqkd-key-length-preregistration.md",
+  "sha256": "fba1775109a21ba2e9f76bde55758995938cc79f1927eae0a3263b7c97ca70d7"
+ },
+ "deposit": {
+  "doi": "10.5281/zenodo.8101679",
+  "licence": "CC-BY-4.0",
+  "archive_sha256": "6f287876626049693e106bd707d3847a37284a6e9125b9ea2f5dd85705b222bd"
+ },
+ "check_b_prime": {
+  "rows": [
+   {
+    "file": "Fig5a_LeftAxis_4GB",
+    "row": 0,
+    "dt_s": 8.0,
+    "sys_loss_db": 39.99999999998711,
+    "fig7_total_loss_at_peak_db": 40.00000000000001,
+    "fig7_elevation_at_dt_deg": 83.04853382793601,
+    "row_start_elevation_deg": 83.04814872158354,
+    "satquma": {
+     "key": 62033.0,
+     "n_key_basis": 266709.3262884066,
+     "n_test_basis": 21362.16317376821,
+     "s1": 114595.25002200247,
+     "s0": 52.23272539450673,
+     "phase_error": 0.05202470072558472,
+     "lambda_ec": 18558.717626170623
+    },
+    "computed": true,
+    "segments_per_half": 14,
+    "deviation": "tighter",
+    "this_project": {
+     "key": 26625.068086777017,
+     "n_key_basis": 250924.29780824063,
+     "n_test_basis": 20097.856601559146,
+     "s1": 107698.71131639197,
+     "s0": 18.533979279290598,
+     "phase_error": 0.1420349654656361,
+     "lambda_ec": 17342.535880642805
+    },
+    "key_ratio": 0.4292081325548823,
+    "key_basis_count_ratio": 0.9408156111380341
+   },
+   {
+    "file": "Fig5a_LeftAxis_8GB",
+    "row": 0,
+    "dt_s": 16.0,
+    "sys_loss_db": 39.99999999998711,
+    "fig7_total_loss_at_peak_db": 40.00000000000001,
+    "fig7_elevation_at_dt_deg": 76.27515167223407,
+    "row_start_elevation_deg": 76.27425445498554,
+    "satquma": {
+     "key": 151424.0,
+     "n_key_basis": 595780.6046501768,
+     "n_test_basis": 31115.623808132565,
+     "s1": 260859.5448419734,
+     "s0": 431.5055313571226,
+     "phase_error": 0.045700757264808184,
+     "lambda_ec": 39739.677145271125
+    },
+    "computed": true,
+    "segments_per_half": 28,
+    "deviation": "tighter",
+    "this_project": {
+     "key": 65862.21989819112,
+     "n_key_basis": 577869.4327928983,
+     "n_test_basis": 30180.18334376711,
+     "s1": 253030.78847343338,
+     "s0": 388.22431366112454,
+     "phase_error": 0.1400268894378327,
+     "lambda_ec": 39452.00119062054
+    },
+    "key_ratio": 0.434952318642957,
+    "key_basis_count_ratio": 0.9699366315091854
+   },
+   {
+    "file": "Fig5a_LeftAxis_16GB",
+    "row": 0,
+    "dt_s": 32.0,
+    "sys_loss_db": 39.99999999998711,
+    "fig7_total_loss_at_peak_db": 40.00000000000001,
+    "fig7_elevation_at_dt_deg": 63.822058362891326,
+    "row_start_elevation_deg": 63.820475726948935,
+    "satquma": {
+     "key": 336358.0,
+     "n_key_basis": 1250447.0260586292,
+     "n_test_basis": 44464.82417342295,
+     "s1": 554365.7863719981,
+     "s0": 1352.0736995302261,
+     "phase_error": 0.041188387286349895,
+     "lambda_ec": 81778.78057370742
+    },
+    "computed": true,
+    "segments_per_half": 53,
+    "deviation": "tighter",
+    "this_project": {
+     "key": 141942.95921270803,
+     "n_key_basis": 1232891.4781102042,
+     "n_test_basis": 43840.56393966061,
+     "s1": 546725.6756588288,
+     "s0": 1297.3214427211258,
+     "phase_error": 0.14154581077866268,
+     "lambda_ec": 84199.58410904997
+    },
+    "key_ratio": 0.42199965278871926,
+    "key_basis_count_ratio": 0.9859605824296616
+   },
+   {
+    "file": "Fig5a_RightAxis",
+    "row": 37,
+    "dt_s": 2.0,
+    "sys_loss_db": 39.9999999999871,
+    "fig7_total_loss_at_peak_db": 40.00000000000001,
+    "fig7_elevation_at_dt_deg": 88.25497823929858,
+    "row_start_elevation_deg": 88.2548613495643,
+    "satquma": {
+     "key": 8399.0,
+     "n_key_basis": 53020.5112372345,
+     "n_test_basis": 11915.5584754239,
+     "s1": 20383.0607335385,
+     "s0": 1e-10,
+     "phase_error": 0.0707587344806278,
+     "lambda_ec": 4210.7959565451
+    },
+    "computed": true,
+    "segments_per_half": 4,
+    "deviation": "tighter",
+    "this_project": {
+     "key": 311.4644587343252,
+     "n_key_basis": 42380.03789295668,
+     "n_test_basis": 9524.272926089281,
+     "s1": 15792.047462832521,
+     "s0": 0.0,
+     "phase_error": 0.22735877486448847,
+     "lambda_ec": 3010.7850733072473
+    },
+    "key_ratio": 0.037083516934673794,
+    "key_basis_count_ratio": 0.7993140183679447
+   }
+  ],
+  "chosen_after_check_b": true,
+  "loss": "Fig7's TotLoss at the segment's middle time, minus its value at the peak, plus the row's SysLoss",
+  "bound": "this project's vacuum_decoy_key_length (Lim et al., three intensities)",
+  "differences_named": [
+   "error-correction term: f_EC h(E) n with f_EC 1.16 here, SatQuMA's lambda_EC as it records it",
+   "statistics: this project's configured deviation",
+   "after-pulsing: none here; dead time: none here"
+  ]
+ }
+}

@@ -218,9 +218,13 @@ def federation_arm(X, y, k, cols, fit, val, test, station) -> dict:
             "standardisation_max_relative_difference": dev, "test": scores(y[test], pred, k, st)}
 
 
-def mlp_arm(X, y, k, cols, fit, val, test, station, seed, device) -> dict:
+def mlp_arm(X, y, k, cols, fit, val, test, station, seed, device, weights: bool = False) -> dict:
     """The square MLP: inputs -> 64 -> x^2 -> k; Adam 1e-3, batch 512, unweighted cross-entropy, 30 epochs, the epoch
-    reported chosen by validation macro-F1; standardised and clipped as the student."""
+    reported chosen by validation macro-F1; standardised and clipped as the student.
+
+    `weights=True` (the square network's pre-registration, Round 86, batch 12) runs the same steps and returns, besides,
+    the kept epoch's weights and scaling, its validation and test predictions, and its validation scores per station;
+    nothing it trains or keeps changes."""
     import torch
 
     torch.manual_seed(seed)
@@ -258,8 +262,18 @@ def mlp_arm(X, y, k, cols, fit, val, test, station, seed, device) -> dict:
     with torch.no_grad():
         pred = net(Zt).argmax(1).cpu().numpy()
     st = {f"station_{s + 1}": station[test] == s for s in (0, 1)}
-    return {"seed": seed, "device": device, "epoch": best[1], "validation_macro_f1": round(best[0], 6),
-            "test": scores(y[test], pred, k, st)}
+    out = {"seed": seed, "device": device, "epoch": best[1], "validation_macro_f1": round(best[0], 6),
+           "test": scores(y[test], pred, k, st)}
+    if weights:
+        with torch.no_grad():
+            pv = net(Zv).argmax(1).cpu().numpy()
+        sv = {f"station_{s + 1}": station[val] == s for s in (0, 1)}
+        out["validation"] = scores(y[val], pv, k, sv)
+        sd = {key: t.detach().cpu().double().numpy() for key, t in net.state_dict().items()}
+        out["_weights"] = {"w1": sd["0.weight"], "b1": sd["0.bias"], "w2": sd["2.weight"], "b2": sd["2.bias"],
+                           "centre": centre, "scale": scale}
+        out["_pred"] = {"validation": pv, "test": pred}
+    return out
 
 
 MAPPED = ("Dur", "SrcPkts", "DstPkts", "TotPkts", "SrcBytes", "DstBytes", "TotBytes", "Rate", "SrcRate", "DstRate",
@@ -333,6 +347,18 @@ def crosstestbed_arm(X, y, k, classes, feat, fit, val, path: Path, device: str) 
 
 
 HELD_OUT_ROWS = 2048
+
+
+def held_out_draw(y_test: np.ndarray, k: int, rows: int = HELD_OUT_ROWS) -> np.ndarray:
+    """The shipped student's held-out draw from a test part: each class in its share, `numpy.random.default_rng(0)`,
+    the first `rows` kept and sorted. Arm 2's CKKS re-check and the square network's pre-registration (batch 12) use it."""
+    rng = np.random.default_rng(0)
+    take = []
+    for c in range(k):
+        idx = np.flatnonzero(y_test == c)
+        take.extend(rng.choice(idx, size=max(1, round(rows * len(idx) / len(y_test))), replace=False).tolist())
+    return np.sort(np.asarray(take[:rows]))
+
 # The page's own CKKS module, bundled for node as scripts/export_nidd_federated.py bundles it, run on one held-out file.
 CKKS_HARNESS = r"""
 import { createRequire } from "node:module";
@@ -373,12 +399,7 @@ def ckks_recheck_arm(X, y, k, classes, cols, fit, val, test, station, recorded: 
     if st["test"] != recorded["test"] or st["l2"] != recorded["l2"]:
         raise SystemExit("the refitted student is not the record's: run nothing")
     yte = y[test]
-    rng = np.random.default_rng(0)
-    take = []
-    for c in range(k):                                   # the shipped draw: each class in its share of the test part
-        idx = np.flatnonzero(yte == c)
-        take.extend(rng.choice(idx, size=max(1, round(HELD_OUT_ROWS * len(idx) / len(yte))), replace=False).tolist())
-    take = np.sort(np.asarray(take[:HELD_OUT_ROWS]))
+    take = held_out_draw(yte, k)                         # the shipped draw: each class in its share of the test part
     rows = np.round(np.clip((X[np.ix_(test[take], cols)] - centre) / scale, -S.CLIP, S.CLIP), 6)
     Wr, br, labels = W.round(9), b.round(9), yte[take].astype(int)
     held = {"usecase": "telecom_ids", "modelKey": None, "modelLabel": "the re-run's student, P2 on F30",

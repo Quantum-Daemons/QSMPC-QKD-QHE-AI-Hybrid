@@ -29,6 +29,28 @@ export function h2(x: number): number {
   return -x * Math.log2(x) - (1 - x) * Math.log2(1 - x);
 }
 
+/**
+ * The E91 model's two zero-key points at error-correction efficiency `fEC`, in one place for the security facts and the
+ * E91 chart (Round 86, batch 12: each computed them, and at most efficiencies other than the shipped 1.16 the two
+ * captions would print different CHSH values in the third decimal, the chart's from Q unrounded): where the
+ * device-dependent rate 1 - h(Q) - fEC h(Q) reaches zero, and where a device-independent analysis of the same noise
+ * stops certifying key (Acin et al., PRL 98, 230501, 2007): 1 - fEC h(Q) - h((1 + sqrt((S/2)^2 - 1))/2), with
+ * S = 2 sqrt(2) (1 - 2Q). Each Q by bisection to four places, as the facts state it; each S from that Q, to three.
+ */
+export function e91ZeroKeyPoints(fEC: number): { qDd: number; qDi: number; sDd: number; sDi: number } {
+  const chsh = (q: number) => 2 * Math.SQRT2 * (1 - 2 * q);
+  const zero = (r: (q: number) => number, top: number) => {
+    let lo = 0, hi = top;
+    for (let i = 0; i < 60; i++) { const m = (lo + hi) / 2; if (r(m) > 0) lo = m; else hi = m; }
+    return Math.round(lo * 1e4) / 1e4;
+  };
+  const qDd = zero((q) => 1 - (1 + fEC) * h2(q), 0.5);
+  // S = 2 at the upper end of the device-independent bracket.
+  const qDi = zero((q) => 1 - fEC * h2(q) - h2((1 + Math.sqrt(Math.max(0, (chsh(q) / 2) ** 2 - 1))) / 2),
+                   (1 - Math.SQRT1_2) / 2);
+  return { qDd, qDi, sDd: Math.round(chsh(qDd) * 1000) / 1000, sDi: Math.round(chsh(qDi) * 1000) / 1000 };
+}
+
 /** QSDC secrecy capacity, Qi et al., Light Sci. Appl. 8, 22 (2019), Eq. (8).
  *
  *      Cs = 1 - h(e) - g * h(e_x + e_z)

@@ -86,11 +86,13 @@ def test_the_check_fails_on_the_one_caption_for_all() -> None:
     """The seeded negative for Round 81: the MPC-FHE sentence on every canvas, as it was."""
     _require_browser_or_skip()
     src = MODULE.read_text()
-    conditional = '    infers ? "MPC-FHE hybrid:'
+    # Since Round 86's batch 12 the sentence names finance's square network apart from the linear models elsewhere, so
+    # the condition guards a choice of two sentences; forcing it true still claims the inference on every canvas.
+    conditional = '    infers ? (usecase === "finance_aml" ? "MPC-FHE hybrid:'
     assert src.count(conditional) == 1, "the caption's inference sentence moved; re-derive this seed"
     seeded = MODULE.with_name("zz_seeded_useCaseFlows.ts")
     try:
-        seeded.write_text(src.replace(conditional, '    true ? "MPC-FHE hybrid:'))
+        seeded.write_text(src.replace(conditional, '    true ? (usecase === "finance_aml" ? "MPC-FHE hybrid:'))
         r = _run(seeded)
     finally:
         seeded.unlink(missing_ok=True)
