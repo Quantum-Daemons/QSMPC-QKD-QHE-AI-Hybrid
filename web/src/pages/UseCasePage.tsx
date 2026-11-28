@@ -28,6 +28,9 @@ import SatThresholdsCard from "../components/SatThresholdsCard";
 import SatJinanPassCard from "../components/SatJinanPassCard";
 import NiddFederatedCard, { type NiddFederatedLive } from "../components/NiddFederatedCard";
 import NiddCleanProtocolsCard from "../components/NiddCleanProtocolsCard";
+import BusbraExternalCard from "../components/BusbraExternalCard";
+import SatqkdCheckCard from "../components/SatqkdCheckCard";
+import PfcpHeldOutDayCard from "../components/PfcpHeldOutDayCard";
 import type { FedHeartDpResult, FedHeartResult } from "../lib/clientFedHeart";
 import GenomicsDpCard, { type GenomicsDpArtifact } from "../components/GenomicsDpCard";
 import FinanceAccuracyCost from "../components/FinanceAccuracyCost";
@@ -361,6 +364,8 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "telecom_ids" && <NiddFederatedCard live={(artifacts?.nidd_federated as NiddFederatedLive | undefined) ?? null} />}
       {/* The 5G-NIDD models re-run under leakage-aware protocols (Round 86, batch 9), pre-registered: figures only. */}
       {usecase === "telecom_ids" && <NiddCleanProtocolsCard />}
+      {/* Three checks against outside data (Round 86, batch 13): offline records, read from their page files. */}
+      {usecase === "telecom_ids" && <PfcpHeldOutDayCard />}
 
       {artifacts?.verification?.plot ? (
         <div className="card">
@@ -461,12 +466,14 @@ function UseCaseView({ usecase }: { usecase: string }) {
       {usecase === "medical_fl" && <Nodule3dCard />}
       {usecase === "medical_fl" && <PcgFlCard />}
       {usecase === "medical_fl" && <MurmurDpCard />}
+      {usecase === "medical_fl" && <BusbraExternalCard />}
       {usecase === "satellite_comms" && <SatVusPrCard />}
       {usecase === "satellite_comms" && <SatThresholdsCard />}
       {/* Jinan-1's measured pass against the downlink model (Round 86, batch 6): a post-hoc comparison, and it says so. */}
       {usecase === "satellite_comms" && <SatJinanPassCard />}
       {usecase === "satellite_comms" && <SatBoundaryCard />}
       {usecase === "satellite_comms" && <SatelliteQcnnCard />}
+      {usecase === "satellite_comms" && <SatqkdCheckCard />}
       {usecase === "satellite_comms" && artifacts?.forecast_residual ? <SatForecastResidual report={artifacts.forecast_residual as ForecastResidualReport} /> : null}
       {usecase === "genomics" && artifacts?.genomicsDp ? <GenomicsDpCard dp={artifacts.genomicsDp as GenomicsDpArtifact} /> : null}
       {artifacts?.qcnn_ckks ? <QcnnCkksPanel report={artifacts.qcnn_ckks as QcnnCkksReport} rescore={(artifacts.qcnn_rescore as QcnnRescore | undefined) ?? null} /> : null}

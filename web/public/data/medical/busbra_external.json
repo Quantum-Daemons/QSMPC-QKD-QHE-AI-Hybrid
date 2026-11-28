@@ -1,0 +1,124 @@
+{
+ "_generated_by": "scripts/export_outside_data_cards.py; do not edit by hand",
+ "preregistration": "references/medical-busbra-external-test-preregistration.md",
+ "record": "docs/measurements/medical-busbra-external-2026-11-28.json",
+ "images": 1875,
+ "patients": 1064,
+ "malignant": 607,
+ "devices": {
+  "GE Logiq 5 @10-12MHz": 809,
+  "GE Logiq 7 @10-14MHz": 902,
+  "Toshiba Aplio 300 @12-14 MHz": 139,
+  "U-Systems @10-14MHz": 25
+ },
+ "models": [
+  {
+   "key": "medical_fl.resnet18 (int8)",
+   "label": "ResNet-18, its int8 graph (the page's build)",
+   "breastmnist_auc": 0.9162,
+   "busbra_auc": 0.6607,
+   "busbra_auc_ci95": [
+    0.6258,
+    0.6945
+   ],
+   "busbra_auprc": 0.4664,
+   "busbra_accuracy": 0.6859,
+   "malignant_detected": 177,
+   "per_device_auc": {
+    "GE Logiq 5 @10-12MHz": 0.6498,
+    "GE Logiq 7 @10-14MHz": 0.6744,
+    "Toshiba Aplio 300 @12-14 MHz": 0.6013
+   }
+  },
+  {
+   "key": "medical_fl.resnet18 (fp32)",
+   "label": "ResNet-18, its fp32 graph",
+   "breastmnist_auc": 0.9146,
+   "busbra_auc": 0.6616,
+   "busbra_auc_ci95": [
+    0.6266,
+    0.6954
+   ],
+   "busbra_auprc": 0.4672,
+   "busbra_accuracy": 0.6843,
+   "malignant_detected": 174,
+   "per_device_auc": {
+    "GE Logiq 5 @10-12MHz": 0.6518,
+    "GE Logiq 7 @10-14MHz": 0.6751,
+    "Toshiba Aplio 300 @12-14 MHz": 0.604
+   }
+  },
+  {
+   "key": "medical_fl.resnet50",
+   "label": "ResNet-50",
+   "breastmnist_auc": 0.7993,
+   "busbra_auc": 0.6121,
+   "busbra_auc_ci95": [
+    0.5782,
+    0.6456
+   ],
+   "busbra_auprc": 0.424,
+   "busbra_accuracy": 0.6789,
+   "malignant_detected": 33,
+   "per_device_auc": {
+    "GE Logiq 5 @10-12MHz": 0.5824,
+    "GE Logiq 7 @10-14MHz": 0.6254,
+    "Toshiba Aplio 300 @12-14 MHz": 0.6218
+   }
+  },
+  {
+   "key": "medical_fl.student",
+   "label": "CKKS student (14 x 14)",
+   "breastmnist_auc": 0.7882,
+   "busbra_auc": 0.6107,
+   "busbra_auc_ci95": [
+    0.5744,
+    0.645
+   ],
+   "busbra_auprc": 0.4496,
+   "busbra_accuracy": 0.6528,
+   "malignant_detected": 207,
+   "per_device_auc": {
+    "GE Logiq 5 @10-12MHz": 0.5882,
+    "GE Logiq 7 @10-14MHz": 0.6144,
+    "Toshiba Aplio 300 @12-14 MHz": 0.6183
+   }
+  },
+  {
+   "key": "medical_fl.square_student",
+   "label": "Square student, fully encrypted (14 x 14)",
+   "breastmnist_auc": 0.8198,
+   "busbra_auc": 0.5858,
+   "busbra_auc_ci95": [
+    0.5493,
+    0.6224
+   ],
+   "busbra_auprc": 0.4225,
+   "busbra_accuracy": 0.5893,
+   "malignant_detected": 297,
+   "per_device_auc": {
+    "GE Logiq 5 @10-12MHz": 0.5774,
+    "GE Logiq 7 @10-14MHz": 0.594,
+    "Toshiba Aplio 300 @12-14 MHz": 0.5356
+   }
+  }
+ ],
+ "ckks": {
+  "student_largest_logit_error": 1.1574853076012914e-08,
+  "student_decisions_changed": 0,
+  "square_student": {
+   "A2": {
+    "largest_logit_error": 2.3495835481751604e-05,
+    "decisions_changed": 0
+   },
+   "B": {
+    "largest_logit_error": 8.991580389909604e-06,
+    "decisions_changed": 0
+   }
+  }
+ },
+ "licence": "CC-BY-4.0",
+ "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+ "attribution": "W. Gomez-Flores, M. J. Gregorio-Calas and W. C. de Albuquerque Pereira, 'BUS-BRA: A breast ultrasound dataset for assessing computer-aided diagnosis systems', Medical Physics 51(4):3110-3123 (2024), doi:10.1002/mp.16812; dataset Zenodo 8231412, CC BY 4.0 on the record, whose LICENSE.txt asks that work using it cite that article",
+ "modifications": "figures computed from BUS-BRA by the pre-registered check; no image or per-patient figure is shipped"
+}

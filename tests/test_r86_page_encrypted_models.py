@@ -90,6 +90,8 @@ def test_the_kind_dependent_words_follow_the_kind() -> None:
     assert "F7b's square network was fitted on the earlier fit window" in real
     # The card and the cost row read the declaration, not the registry's first encrypted student.
     cards = (WEB / "src" / "pages" / "UseCases.tsx").read_text()
-    assert "primaryEncryptedModel(u.id)" in cards and "studentModel(u.id)" not in cards
+    # Every model the page encrypts (batch 13: telecom's card named its QKD-layer student only, after its 5G-NIDD figure
+    # began to encrypt the square network).
+    assert "pageEncryptedModels(u.id)" in cards and "studentModel(u.id)" not in cards and "primaryEncryptedModel(u.id)" not in cards
     compute = (LIB / "clientCompute.ts").read_text()
     assert "const student = usecase ? primaryEncryptedModel(usecase) : null;" in compute

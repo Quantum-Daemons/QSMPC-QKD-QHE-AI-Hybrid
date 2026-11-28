@@ -1,0 +1,65 @@
+{
+ "addendum": {
+  "file": "references/defi-red-liq-liquidation-arithmetic-preregistration-addendum-fee-history.md",
+  "sha256": "9cab3fa059b5f9aec0545bd013d5b8d8e2e487f1327a5162e55ae13e16f152f1"
+ },
+ "chosen_after_the_result": true,
+ "deposit": {
+  "doi": "10.5281/zenodo.23020998",
+  "licence": "CC-BY-4.0",
+  "file_sha256": "369b407fd90cce8cedb49246b0588b2ae4fe3e2361513be41085e351b3608da8"
+ },
+ "events_checked": 28,
+ "events_before_the_fee_change": 28,
+ "per_asset": {
+  "WBTC": {
+   "events": 2,
+   "on_the_rule": {
+    "reserve": 2
+   },
+   "on_none": [],
+   "rule_values": {
+    "reserve": 1.045
+   },
+   "fee_at_the_events": 0.1
+  },
+  "WETH": {
+   "events": 9,
+   "on_the_rule": {
+    "reserve": 8,
+    "e-mode 1": 1
+   },
+   "on_none": [],
+   "rule_values": {
+    "reserve": 1.045,
+    "e-mode 1": 1.009
+   },
+   "fee_at_the_events": 0.1
+  },
+  "USDC": {
+   "events": 16,
+   "on_the_rule": {
+    "reserve": 16
+   },
+   "on_none": [],
+   "rule_values": {
+    "reserve": 1.036
+   },
+   "fee_at_the_events": 0.2
+  },
+  "wstETH": {
+   "events": 1,
+   "on_the_rule": {
+    "reserve": 1
+   },
+   "on_none": [],
+   "rule_values": {
+    "reserve": 1.054,
+    "e-mode 1": 1.009
+   },
+   "fee_at_the_events": 0.1
+  }
+ },
+ "every_event_on_the_rule": true,
+ "not_covered": "bonus changes by Aave's risk stewards in 2026 beyond the cited payloads"
+}

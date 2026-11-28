@@ -86,7 +86,7 @@
       "opset": null
     },
     "git_sha": "0a5ed44-dirty",
-    "hf_revision": "6bc79977618fedc176729adf2abb134e715940ed",
+    "hf_revision": "7daa1a0794464acece7bc8bb1d03668acda23697",
     "minority_class_f1": 0.6160558464223386,
     "n_features": 114,
     "n_test": 1523504,
@@ -1413,7 +1413,7 @@
       "student_flagged": 5497,
       "teacher_flagged": 1117
     },
-    "hf_revision": "4dc494c57f0d4e334ff6e23b06f902bbd1395d72",
+    "hf_revision": "353dc08d21f1606c8757e1b077fc55bda37a93d3",
     "metric_delta": 0.307281,
     "metric_delta_pp": 30.7281,
     "metric_name": "minority_class_f1",
@@ -3167,7 +3167,7 @@
     },
     "framing": "Real 5G network traffic, 9 attack classes, 46 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. TWO CORRECTIONS MADE IN ROUND 86 EXPLAIN THE NUMBERS. The published file holds one attacker's UDP flood twice, the same 281,529 flows labelled Benign in one base station's file and UDPFlood in the other's; the Benign copies are removed, leaving 934,361 flows. And the model no longer reads `IdleTime`, which names the attack-session file a flow came from. Accuracy is 0.9979 and macro F1 0.9972. On the rows as published the same fit scores accuracy 0.7616, and no model reading these columns could pass 0.7685 there (`contradictory_copies`). `file_label_counterfactual` and `leak_counterfactual_accuracy` restore bookkeeping columns and reach about 1.0000, which is not a better model but a leak. `cross_base_station` trains on one base station and tests on the other: accuracy 0.9973 and 0.9877, against 0.4199 and 0.6059 on the rows as published. Two weak spots remain. Trained on the second base station, SYNFlood on the first scores F1 0.22. And without the TTL and hop columns, UDPScan across base stations falls to F1 0.05 (`without_ttl_and_hops`).",
     "git_sha": "9377d27-dirty",
-    "hf_revision": "1dc49c4f0ff90ab3036905d4bd4e8ad9f0ce1231",
+    "hf_revision": "a400d8522cb997fd27d5c4ee4fb8822fa4244c70",
     "leak_counterfactual_accuracy": 0.999987,
     "leak_counterfactual_accuracy_gain": 0.002055,
     "leak_counterfactual_features": [
@@ -3445,7 +3445,7 @@
       "same_class_as_the_page": 2048
     },
     "flamby_macro_f1": 0.970821,
-    "hf_revision": "3fc4f358ed7088265cee2d5970f7f92054f13fda",
+    "hf_revision": "da5ac050f2489b81efdb50274f19e1026c244be9",
     "l2": 1e-06,
     "local_iterations": 20,
     "masked_messages": 270,
@@ -3552,7 +3552,7 @@
     "agreement": 0.995,
     "argmax_location": "a garbled circuit, on additive shares of the 8 masked class scores (the page, since 2026-11-23)",
     "distilled_on": "teacher predict_proba (soft targets), weighted one-copy-per-class",
-    "hf_revision": "95b8f7e0cd0e8c17f4b984d512d62fd2f382e3b4",
+    "hf_revision": "276f3390de6acd931d7c9c119a9de526df656ade",
     "macro_f1": 0.988329,
     "metric_note": "Read `n_classes_predicted` before `macro_f1`. A linear student that stops predicting a class scores 0 on it by construction, and macro F1 then averages in a zero that looks like poor discrimination rather than an absent output - this repo's own QNN carries exactly that defect and is documented as doing so, so the check is not hypothetical. `agreement` is recorded but is NOT evidence the minority classes survived: agreement on the finance student rose from 0.884 to 0.947 across a change that left minority-class F1 unmoved, which is why per-class F1 is the headline here and the aggregate is a companion.",
     "n_classes": 8,

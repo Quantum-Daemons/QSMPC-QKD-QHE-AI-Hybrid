@@ -1,0 +1,88 @@
+{
+ "_generated_by": "scripts/export_outside_data_cards.py; do not edit by hand",
+ "preregistration": "references/satellite-satqkd-key-length-preregistration.md",
+ "addenda": [
+  "references/satellite-satqkd-key-length-preregistration-addendum-loss.md",
+  "references/satellite-satqkd-key-length-preregistration-addendum-cap.md"
+ ],
+ "records": [
+  "docs/measurements/satellite-satqkd-key-length-2026-11-28.json",
+  "docs/measurements/satellite-satqkd-key-length-b-prime-2026-11-28.json",
+  "docs/measurements/satellite-satqkd-key-length-b-double-prime-2026-11-28.json"
+ ],
+ "satellite_statistics": "free_space_finite_key_deviation = 'chernoff'",
+ "check_a": {
+  "rows": 158,
+  "rows_with_a_key": 142,
+  "keyed_equal": 142,
+  "rows_without_a_key": 16,
+  "meets": true
+ },
+ "check_b_found_a_key": false,
+ "check_b_prime": [
+  {
+   "file": "Fig5a_LeftAxis_4GB",
+   "half_window_s": 8.0,
+   "satquma_key": 62033.0,
+   "this_project_key": 26625,
+   "key_ratio": 0.4292,
+   "key_basis_count_ratio": 0.9408,
+   "satquma_phase_error": 0.052,
+   "this_project_phase_error": 0.142,
+   "with_cap_key_ratio": 0.9474,
+   "with_cap_and_satellite_statistics_key_ratio": 0.9378,
+   "with_cap_statistics_and_slots_key_ratio": 1.0216,
+   "with_cap_statistics_and_slots_key_basis_count_ratio": 0.999,
+   "with_cap_statistics_and_slots_phase_error": 0.0494
+  },
+  {
+   "file": "Fig5a_LeftAxis_8GB",
+   "half_window_s": 16.0,
+   "satquma_key": 151424.0,
+   "this_project_key": 65862,
+   "key_ratio": 0.435,
+   "key_basis_count_ratio": 0.9699,
+   "satquma_phase_error": 0.0457,
+   "this_project_phase_error": 0.14,
+   "with_cap_key_ratio": 0.9772,
+   "with_cap_and_satellite_statistics_key_ratio": 0.973,
+   "with_cap_statistics_and_slots_key_ratio": 1.0114,
+   "with_cap_statistics_and_slots_key_basis_count_ratio": 0.9991,
+   "with_cap_statistics_and_slots_phase_error": 0.0433
+  },
+  {
+   "file": "Fig5a_LeftAxis_16GB",
+   "half_window_s": 32.0,
+   "satquma_key": 336358.0,
+   "this_project_key": 141943,
+   "key_ratio": 0.422,
+   "key_basis_count_ratio": 0.986,
+   "satquma_phase_error": 0.0412,
+   "this_project_phase_error": 0.1415,
+   "with_cap_key_ratio": 0.9909,
+   "with_cap_and_satellite_statistics_key_ratio": 0.9891,
+   "with_cap_statistics_and_slots_key_ratio": 1.0056,
+   "with_cap_statistics_and_slots_key_basis_count_ratio": 0.9993,
+   "with_cap_statistics_and_slots_phase_error": 0.0389
+  },
+  {
+   "file": "Fig5a_RightAxis",
+   "half_window_s": 2.0,
+   "satquma_key": 8399.0,
+   "this_project_key": 311,
+   "key_ratio": 0.0371,
+   "key_basis_count_ratio": 0.7993,
+   "satquma_phase_error": 0.0708,
+   "this_project_phase_error": 0.2274,
+   "with_cap_key_ratio": 0.7015,
+   "with_cap_and_satellite_statistics_key_ratio": 0.6699,
+   "with_cap_statistics_and_slots_key_ratio": 1.0814,
+   "with_cap_statistics_and_slots_key_basis_count_ratio": 0.999,
+   "with_cap_statistics_and_slots_phase_error": 0.0675
+  }
+ ],
+ "licence": "CC-BY-4.0",
+ "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+ "attribution": "J. S. Sidhu, 'SatQKD_sim_data', Zenodo 8101679 (2023), CC BY 4.0: the data behind J. S. Sidhu et al., 'Finite key performance of satellite quantum key distribution under practical constraints', arXiv:2301.13209",
+ "modifications": "figures recomputed from the deposit's terms by the pre-registered check and its two addenda; no row is shipped"
+}

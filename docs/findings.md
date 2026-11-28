@@ -239,10 +239,33 @@ federated model under CKKS ([models-and-benchmarks](models-and-benchmarks.md)).
 - **The lending page's liquidation rule has no protocol fee and no e-mode bonus (2026-11-28).** Aave V3's
   `LiquidationCall` reports the collateral less the fee, and an e-mode borrower's bonus is the category's; the page's
   one bonus overstates every asset's ratio in RED-LIQ-2026's same-asset events, by up to 0.041 for WETH
-  (`docs/measurements/defi-red-liq-arithmetic-2026-11-28.json`). Whether the page adds the fee is the owner's choice.
+  (`docs/measurements/defi-red-liq-arithmetic-2026-11-28.json`). On the owner's choice the page's rule takes the fee
+  since batch 13, and with the fee in force at each event's time (AIP 534 raised WETH's and WBTC's on 2026-10-24) every
+  same-asset event of the four assets checked sits on Aave's rule.
 - **A local graph can drift from its pin unseen (2026-11-28).** Two fp32 graphs on this machine were not the pinned
   files while the per-row re-score passed, because it checks only the graphs the records name; they were replaced by
   the pinned files and `tests/test_r86_local_graphs_match_their_pins.py` now holds every local graph to its pin.
+- **The satellite bound keeps less key than SatQuMA because SatQuMA caps a term the papers leave uncapped
+  (2026-11-28).** SatQuMA bounds the single-photon errors in the test basis by every error observed there as well as by
+  the decoy bound; with that cap, the satellite page's statistics and SatQuMA's one-second slots, this project's key is
+  1.01 to 1.08 of SatQuMA's on the deposit's zenith pass, against 0.04 to 0.43 without
+  (`docs/measurements/satellite-satqkd-key-length-b-double-prime-2026-11-28.json`). The cap is valid, but applied to the
+  page it puts the reproductions of Rusca et al.'s Table I and Liao et al.'s pass above the published keys, so on the
+  owner's choice it is a named option, off by default, that only the SatQuMA comparison uses, and the card says SatQuMA
+  caps and the page does not. The comparisons B and B' also ran the configured default statistics rather than the
+  satellite page's; a check of a page's bound should name the page's own settings.
+- **The PFCP dataset's labels follow its endpoints and disagree with three runs' attack messages (2026-11-28).** Each
+  address pair carries one label in every run, and on the application-layer flows the Malicious flows of both
+  session-modification runs almost never carry a modification request (1.5 and 0.8 percent) while every Normal flow
+  does; the deletion run's flows carry no deletion request under either label
+  (`docs/measurements/telecom-pfcp-audit-app-layer-normal-only-2026-11-28.json`). The held-out-day figures for those
+  three days may measure the labelled endpoint rather than the attack. Recommendation: no card states a PFCP detection
+  figure for those days until the labels are settled (the creators are the ones who can say), and a second 5G-core
+  dataset is tested only once its labels are reconstructed and audited the same way.
+- **The BreastMNIST models fall on a second site too, and framing or label-free adaptation does not lift them
+  (2026-11-28).** On BrEaST-Lesions-USG they score an AUC of 0.49 to 0.63
+  (`docs/measurements/medical-breast-framing-normalisation-second-site-2026-11-28.json`). Recommendation: the medical
+  page's figures stay labelled as within one dataset; a model meant for another site is trained on more than one.
 
 - **CKKS-friendly students: planned on 2026-11-02 (the owner's decision), the medical half done on 2026-11-19.** The Round 86
   review found the encrypted tier evaluating students that are weak or fed out of domain, and the

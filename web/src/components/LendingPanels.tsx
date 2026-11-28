@@ -189,10 +189,11 @@ function Market({ report, check }: { report: LendingMarketReport; check?: Lendin
       <Details summary={`Liquidations, one row each (${run.events.length})`}>
         <div style={{ overflowX: "auto" }}>
           <table className="table small">
-            <thead><tr><th>Hour</th><th>Borrower</th><th>Health factor before</th><th>Debt repaid</th><th>Collateral value seized</th><th>Bad debt</th></tr></thead>
+            <thead><tr><th>Hour</th><th>Borrower</th><th>Health factor before</th><th>Debt repaid</th><th>Collateral value the borrower lost</th>
+              <th>To the liquidator</th><th>To the protocol (fee)</th><th>Bad debt</th></tr></thead>
             <tbody>
               {run.events.map((e, i) => (
-                <tr key={i}><td>{e.hour}</td><td>{e.borrower === 0 ? "Bob" : `#${e.borrower}`}</td><td>{e.hfBefore.toFixed(3)}</td><td>{money(e.repaid)}</td><td>{money(e.seizedValue)}</td><td>{money(e.badDebt)}</td></tr>
+                <tr key={i}><td>{e.hour}</td><td>{e.borrower === 0 ? "Bob" : `#${e.borrower}`}</td><td>{e.hfBefore.toFixed(3)}</td><td>{money(e.repaid)}</td><td>{money(e.seizedValue)}</td><td>{money(e.liquidatorValue)}</td><td>{money(e.protocolFee)}</td><td>{money(e.badDebt)}</td></tr>
               ))}
             </tbody>
           </table>

@@ -3,7 +3,8 @@
  * The lending simulator against closed forms and its own books (Round 86).
  *
  * The page draws what `web/src/lib/lending/model.ts` returns, so the model is checked here: the health factor on Aave's own worked figures, the two-slope rate at its
- * knots, the close factor at its boundary, a run's accounting, and that a run is what its seed says.
+ * knots, the close factor at its boundary, a run's accounting, that a run is what its seed says, and (Round 86, batch 13) Aave's split of what a liquidation
+ * takes between the liquidator and the protocol's fee, and the e-mode bonus rule.
  *
  * Run: npm run check:lending
  */
@@ -22,7 +23,8 @@ const near = (a, b, eps = 1e-9) => Math.abs(a - b) <= eps;
 
 try {
   await build({
-    stdin: { contents: `export * from ${JSON.stringify(join(WEB, "src/lib/lending/model"))};`, resolveDir: WEB, loader: "ts" },
+    stdin: { contents: `export * from ${JSON.stringify(join(WEB, "src/lib/lending/model"))};
+export { liquidationBonusFor, liquidationSplit } from ${JSON.stringify(join(WEB, "src/lib/lending/aaveRule"))};`, resolveDir: WEB, loader: "ts" },
     bundle: true, format: "esm", platform: "node", outfile: join(tmp, "b.mjs"), logLevel: "error",
   });
   const m = await import(pathToFileURL(join(tmp, "b.mjs")).href);
@@ -75,6 +77,22 @@ try {
   check(fall < 1 - c.shock_fraction + 0.05 && fall > 1 - c.shock_fraction - 0.05, `the stated shock happens at its hour (price ratio ${fall.toFixed(3)})`);
   check(a.events.some((e) => e.hour === c.shock_hour), `the shock liquidates positions (${a.events.filter((e) => e.hour === c.shock_hour).length} at its hour, ${a.events.length} in the run)`);
   check(a.events.every((e) => e.hfBefore < 1 && e.repaid >= 0 && e.seizedValue >= e.repaid - 1e-6), "every liquidation had a health factor below 1 and paid the bonus or all there was");
+  // Aave's split (LiquidationLogic.sol, v3.7.0): the borrower loses C, the treasury takes fee x (C - C / LB), the liquidator the rest.
+  check(a.events.length > 0 && a.events.every((e) => near(e.liquidatorValue + e.protocolFee, e.seizedValue, 1e-9 * Math.max(1, e.seizedValue))
+    && near(e.protocolFee, c.liquidation_protocol_fee * (e.seizedValue - e.seizedValue / (1 + c.liquidation_bonus)), 1e-9 * Math.max(1, e.seizedValue))),
+        `every liquidation's two parts add up to what the borrower lost, the treasury's the fee's share of the bonus part (fee ${c.liquidation_protocol_fee})`);
+  // A same-asset liquidation's ratio, liquidator's collateral over debt repaid, is LB - fee x (LB - 1): RED-LIQ-2026's USDC events sit at 1.036 (LB 1.045, fee 20%).
+  const usdc = m.liquidationSplit(1.045, 0.045, 0.2);
+  check(near(usdc.liquidator, 1.036, 1e-12) && near(usdc.protocolFee, 0.009, 1e-12), "a same-asset ratio is LB - fee x (LB - 1): 1.036 at LB 1.045 and a 20% fee");
+  check(near(m.liquidationSplit(1.05, 0.05, 0.1).liquidator, 1.045, 1e-12) && near(m.liquidationSplit(1.01, 0.01, 0.1).liquidator, 1.009, 1e-12),
+        "WETH's ratios before 2026-10-24, 1.045 at its reserve's bonus and 1.009 at e-mode's 1%, under the 10% fee of the time");
+  check(m.liquidationSplit(100, 0.05, 0).protocolFee === 0, "no fee, no treasury part");
+  const eth = { bonus: 0.01, collateral: ["WETH", "wstETH"] };
+  check(m.liquidationBonusFor(0.05, "WETH", eth) === 0.01 && m.liquidationBonusFor(0.05, "WBTC", eth) === 0.05 && m.liquidationBonusFor(0.05, "WETH", null) === 0.05,
+        "the e-mode bonus applies only when the borrower's category holds the collateral; otherwise the reserve's");
+  let refused = false;
+  try { m.liquidationSplit(1, 0.05, 1.5); } catch { refused = true; }
+  check(refused, "a fee outside [0, 1] is refused");
   check(a.bobHealth[0] > 1, `Bob starts healthy (${a.bobHealth[0].toFixed(3)})`);
   check(a.bobHealth.some((h) => h < 1), "Bob's position can be liquidated in the default run, so the private check has a positive case");
 

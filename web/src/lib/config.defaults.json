@@ -232,6 +232,7 @@
     "jump_sd": 0.05,
     "jumps_per_year": 6.0,
     "liquidation_bonus": 0.05,
+    "liquidation_protocol_fee": 0.1,
     "liquidation_thresholds": [
       0.83,
       0.78
@@ -250,6 +251,7 @@
         ],
         "label": "Aave V3 Ethereum Core, read on chain at block 26,492,593 (2026-11-25)",
         "liquidation_bonus": 0.05,
+        "liquidation_protocol_fee": 0.2,
         "liquidation_thresholds": [
           0.84,
           0.85
@@ -1099,7 +1101,7 @@
             "opset": null
           },
           "git_sha": "0a5ed44-dirty",
-          "hf_revision": "6bc79977618fedc176729adf2abb134e715940ed",
+          "hf_revision": "7daa1a0794464acece7bc8bb1d03668acda23697",
           "minority_class_f1": 0.6160558464223386,
           "n_features": 114,
           "n_test": 1523504,
@@ -1148,7 +1150,7 @@
           "onnx/model.onnx": "d69b65320c55496001d7b6b77ed2b9c4ee6d88495ab4e1e12f967903947db8a5"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-gbm",
-        "hf_revision": "6bc79977618fedc176729adf2abb134e715940ed",
+        "hf_revision": "7daa1a0794464acece7bc8bb1d03668acda23697",
         "hf_revision_stale": null,
         "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "finance_aml.gbm",
@@ -1235,7 +1237,7 @@
             "student_flagged": 5497,
             "teacher_flagged": 1117
           },
-          "hf_revision": "4dc494c57f0d4e334ff6e23b06f902bbd1395d72",
+          "hf_revision": "353dc08d21f1606c8757e1b077fc55bda37a93d3",
           "metric_delta": 0.307281,
           "metric_delta_pp": 30.7281,
           "metric_name": "minority_class_f1",
@@ -1283,7 +1285,7 @@
           "weights.json": "dd58191c8279e7f6d36522db5545e46e1a6dda135abffb741eaba545d6a66528"
         },
         "hf_repo_id": "Daemons-Q/qsh-finance-aml-ckks-student",
-        "hf_revision": "4dc494c57f0d4e334ff6e23b06f902bbd1395d72",
+        "hf_revision": "353dc08d21f1606c8757e1b077fc55bda37a93d3",
         "hf_revision_stale": null,
         "int8_withheld_reason": "ai.onnx.ml linear model: coefficients live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "finance_aml.student",
@@ -5412,7 +5414,7 @@
           },
           "framing": "Real 5G network traffic, 9 attack classes, 46 flow-statistic features. This is a NETWORK-LAYER model and a different task from the QKD-layer classifier on the same page - no shared labels, no shared features, so the two scores are not a comparison. TWO CORRECTIONS MADE IN ROUND 86 EXPLAIN THE NUMBERS. The published file holds one attacker's UDP flood twice, the same 281,529 flows labelled Benign in one base station's file and UDPFlood in the other's; the Benign copies are removed, leaving 934,361 flows. And the model no longer reads `IdleTime`, which names the attack-session file a flow came from. Accuracy is 0.9979 and macro F1 0.9972. On the rows as published the same fit scores accuracy 0.7616, and no model reading these columns could pass 0.7685 there (`contradictory_copies`). `file_label_counterfactual` and `leak_counterfactual_accuracy` restore bookkeeping columns and reach about 1.0000, which is not a better model but a leak. `cross_base_station` trains on one base station and tests on the other: accuracy 0.9973 and 0.9877, against 0.4199 and 0.6059 on the rows as published. Two weak spots remain. Trained on the second base station, SYNFlood on the first scores F1 0.22. And without the TTL and hop columns, UDPScan across base stations falls to F1 0.05 (`without_ttl_and_hops`).",
           "git_sha": "9377d27-dirty",
-          "hf_revision": "1dc49c4f0ff90ab3036905d4bd4e8ad9f0ce1231",
+          "hf_revision": "a400d8522cb997fd27d5c4ee4fb8822fa4244c70",
           "leak_counterfactual_accuracy": 0.999987,
           "leak_counterfactual_accuracy_gain": 0.002055,
           "leak_counterfactual_features": [
@@ -5707,7 +5709,7 @@
           "onnx/model.onnx": "de6444c2af766a45a354f0e839f64db904fcbc6eb854a585ce6685ab6ec51213"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-gbm",
-        "hf_revision": "1dc49c4f0ff90ab3036905d4bd4e8ad9f0ce1231",
+        "hf_revision": "a400d8522cb997fd27d5c4ee4fb8822fa4244c70",
         "hf_revision_stale": null,
         "int8_withheld_reason": "tree ensemble: parameters live in node attributes, not weight tensors, so dynamic int8 quantisation has nothing to quantise",
         "key": "telecom_ids.nidd",
@@ -5737,7 +5739,7 @@
           "agreement": 0.995,
           "argmax_location": "a garbled circuit, on additive shares of the 8 masked class scores (the page, since 2026-11-23)",
           "distilled_on": "teacher predict_proba (soft targets), weighted one-copy-per-class",
-          "hf_revision": "95b8f7e0cd0e8c17f4b984d512d62fd2f382e3b4",
+          "hf_revision": "276f3390de6acd931d7c9c119a9de526df656ade",
           "macro_f1": 0.988329,
           "metric_note": "Read `n_classes_predicted` before `macro_f1`. A linear student that stops predicting a class scores 0 on it by construction, and macro F1 then averages in a zero that looks like poor discrimination rather than an absent output - this repo's own QNN carries exactly that defect and is documented as doing so, so the check is not hypothetical. `agreement` is recorded but is NOT evidence the minority classes survived: agreement on the finance student rose from 0.884 to 0.947 across a change that left minority-class F1 unmoved, which is why per-class F1 is the headline here and the aggregate is a companion.",
           "n_classes": 8,
@@ -5788,7 +5790,7 @@
           "weights.json": "da3a4dae31afaf6d42057197befd843143d6c9a8ca59f022a31349c21020bacd"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-ids-ckks-student",
-        "hf_revision": "95b8f7e0cd0e8c17f4b984d512d62fd2f382e3b4",
+        "hf_revision": "276f3390de6acd931d7c9c119a9de526df656ade",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "telecom_ids.student",
@@ -5834,7 +5836,7 @@
             "same_class_as_the_page": 2048
           },
           "flamby_macro_f1": 0.970821,
-          "hf_revision": "3fc4f358ed7088265cee2d5970f7f92054f13fda",
+          "hf_revision": "da5ac050f2489b81efdb50274f19e1026c244be9",
           "l2": 1e-06,
           "local_iterations": 20,
           "masked_messages": 270,
@@ -5890,7 +5892,7 @@
           "weights.json": "f0f9a21d46c38bc510ffe86d16568e380e7ea26d3aa674f016db6611e2a8d3d2"
         },
         "hf_repo_id": "Daemons-Q/qsh-telecom-5g-nidd-federated-ckks",
-        "hf_revision": "3fc4f358ed7088265cee2d5970f7f92054f13fda",
+        "hf_revision": "da5ac050f2489b81efdb50274f19e1026c244be9",
         "hf_revision_stale": null,
         "int8_withheld_reason": null,
         "key": "telecom_ids.nidd_federated",

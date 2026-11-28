@@ -244,6 +244,8 @@ class FiniteKeyParams:
     deviation: str = field(default_factory=lambda: _qkd_cfg().finite_key_deviation)
     # The key basis (Round 84): "one", the paper's protocol, or "both". See THE KEY BASIS.
     key_basis: str = "one"
+    # Off unless a caller names it (Round 86, batch 13): see THE SINGLE-PHOTON ERROR CAP.
+    cap_single_photon_errors: bool = False
 
     def __post_init__(self) -> None:
         if self.deviation not in DEVIATIONS:
@@ -483,6 +485,8 @@ def one_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
             n_minus_2 - (mu2 ** 2 / mu1 ** 2) * n_plus_1
             - ((mu1 ** 2 - mu2 ** 2) / mu1 ** 2) * (s0_upper / t0))
         v1_upper = t1 / (mu1 - mu2) * (m_plus_1 - m_minus_2)                        # (A22)
+        if p.cap_single_photon_errors:                    # off by default: THE SINGLE-PHOTON ERROR CAP
+            v1_upper = min(v1_upper, m_tot)
         per_basis[basis] = dict(n=n_tot, m=m_tot, s0=s0, s1=s1, v1=v1_upper,
                                 qber=(m_tot / n_tot if n_tot > 0 else 0.5))
 
@@ -622,6 +626,17 @@ def optimise_parameters(channel: ChannelParams | None = None,
 # leak_EC = f_EC n_Z h(m_Z / n_Z), Lim et al.'s own model. They require mu1 > mu2 + mu3 and
 # mu2 > mu3 >= 0, and the vacuum here is mu3 = 0 exactly, where (2) is tau0 n^-_{B,mu3}.
 #
+# THE SINGLE-PHOTON ERROR CAP (Round 86, batch 13; the owner's choice of 2026-11-28: a named option,
+# the page unchanged). The single-photon errors in the test basis are some of the errors observed
+# there, so all of them bound them too, at no cost in failure probability, and the smaller of that and
+# the decoy bound - Eq. (4) of Lim et al., (A22) of Rusca et al. - is still an upper bound. SatQuMA
+# takes the smaller (cnqo-qcomms/SatQuMA v2.0.0, key/protocols/key_efficient_BB84.py, line 371); the
+# papers this module reproduces print the decoy bound alone. With the option on, Rusca's Table I comes
+# out 8 to 16 percent above the paper, Lim's two-decoy rows 3 to 4 percent above, Liao's pass above the
+# key Liao reports and the refuted block-size band positive, so the default keeps the papers' bound and
+# only a caller that names `cap_single_photon_errors=True` - the SatQuMA comparison - gets the cap.
+# `finiteKey.ts` carries the same option as `capSinglePhotonErrors`.
+
 # THE BOUND TAKES COUNTS, NOT A CHANNEL. A satellite pass is not one channel - the loss changes by
 # about ten decibels between the top of Liao's pass and its end - and the bound never needed one:
 # it needs the detections and errors per basis and per intensity, which over a pass are SUMS over
@@ -650,6 +665,7 @@ class VacuumDecoyParams:
     f_ec: float = 1.16
     deviation: str = field(default_factory=lambda: _qkd_cfg().finite_key_deviation)
     key_basis: str = "one"         # Round 84: "one" or "both"; see THE KEY BASIS
+    cap_single_photon_errors: bool = False   # Round 86, batch 13: see THE SINGLE-PHOTON ERROR CAP
 
     def __post_init__(self) -> None:
         if self.deviation not in DEVIATIONS:
@@ -724,6 +740,8 @@ def vacuum_decoy_key_length(z: DecoyCounts, x: DecoyCounts,
     m_lo, m_hi = _bounds(x.m, eps, p.deviation)
     v_x1 = p.tau(1) * (math.exp(mu2) / p2 * m_hi[1]                                     # (4)
                        - math.exp(mu3) / p3 * m_lo[2]) / (mu2 - mu3)
+    if p.cap_single_photon_errors:                        # off by default: THE SINGLE-PHOTON ERROR CAP
+        v_x1 = min(v_x1, x.errors)
     b = min(0.5, max(0.0, v_x1 / s_x1))
     phi = 0.0 if b <= 0.0 else min(0.5, b + _gamma(p.eps_sec, b, s_x1, s_z1))            # (5)
     key = (s_z0 + s_z1 * (1.0 - _h2(phi)) - lambda_ec                                    # (1)
@@ -753,20 +771,22 @@ def key_length(z: DecoyCounts, x: DecoyCounts,
 
 def params_for_source(source, *, eps_sec: float = 1e-9, f_ec: float | None = None,
                       deviation: str | None = None,
-                      key_basis: str = "one") -> FiniteKeyParams | VacuumDecoyParams:
+                      key_basis: str = "one",
+                      cap_single_photon_errors: bool = False) -> FiniteKeyParams | VacuumDecoyParams:
     """The finite-key bound a BB84 source supports, with its own intensities and shares.
 
     `source` is a `bb84.QKDParams`. Lim et al. 2014 when it sends the vacuum, Rusca et al. 2018's
     1-decoy bound when it does not; the basis bias is the source's, and f_EC defaults to the config's
     error-correction efficiency, the one the asymptotic rate uses. Round 80: one place decides it for
     every caller, fibre and satellite. The statistics are the config's unless `deviation` names one,
-    and the key basis one unless `key_basis` says both (Round 84).
+    and the key basis one unless `key_basis` says both (Round 84); the single-photon error cap is off
+    unless named (Round 86, batch 13).
     """
     f = _qkd_cfg().error_correction_eff if f_ec is None else float(f_ec)
     common = dict(mu_signal=float(source.mu_signal), mu_decoy=float(source.mu_decoy),
                   p_signal=float(source.p_signal), p_z=float(source.basis_prob), eps_sec=float(eps_sec),
                   f_ec=f, deviation=str(deviation or _qkd_cfg().finite_key_deviation),
-                  key_basis=str(key_basis))
+                  key_basis=str(key_basis), cap_single_photon_errors=bool(cap_single_photon_errors))
     if source.vacuum_decoy:
         return VacuumDecoyParams(p_decoy=float(source.p_decoy), **common)
     return FiniteKeyParams(**common)

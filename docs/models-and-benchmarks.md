@@ -820,24 +820,75 @@ As run on 2026-11-28:
   zenith-pass rows: it read the rows' `SysLoss`, the link's total loss at zenith, as a loss to add, and counted about
   20 dB twice. Check B', chosen after that result and labelled so
   (`references/satellite-satqkd-key-length-preregistration-addendum-loss.md`), takes the loss from Fig7's total:
-  this project's counts then come within 1.4 to 6 percent of SatQuMA's on the 8, 16 and 32 s windows (20 percent on
-  the 2 s one), its single-photon bound and error-correction term within a few percent, and its key is 0.42 to 0.43 of
-  SatQuMA's on those windows (0.04 on the 2 s one), because its phase-error bound is about three times SatQuMA's (0.14
-  against 0.041 to 0.052). The pre-registration named the two bounds' statistics as a difference; which part of the
-  phase-error bound differs is not resolved here.
+  this project's counts then come within 1.4 to 6 percent of SatQuMA's on the windows of 8, 16 and 32 s either side of
+  the peak (20 percent on the 2 s one), its single-photon bound and error-correction term within a few percent, and its
+  key is 0.42 to 0.43 of SatQuMA's on those windows (0.04 on the 2 s one), because its phase-error bound is about three
+  times SatQuMA's (0.14
+  against 0.041 to 0.052). Check B'' (`docs/measurements/satellite-satqkd-key-length-b-double-prime-2026-11-28.json`,
+  a second addendum written after these results and an exploration of them, and saying so,
+  `references/satellite-satqkd-key-length-preregistration-addendum-cap.md`) finds the cause. SatQuMA bounds the
+  single-photon errors in the test basis by the decoy bound and by every error observed there, and keeps the smaller
+  (SatQuMA v2.0.0, `key/protocols/key_efficient_BB84.py`, line 371); this project's bound keeps the decoy bound alone,
+  as Lim et al. print it. With that cap on, the key is 0.95, 0.98 and 0.99 of SatQuMA's on the 8, 16 and 32 s windows
+  (0.70 on the 2 s one); with the satellite page's own statistics ("chernoff", where Checks B and B' ran the configured
+  default, "tighter") too, 0.94, 0.97 and 0.99 (0.67); and on SatQuMA's window of one-second slots at the whole seconds
+  either side of the peak as well, 1.02, 1.01 and 1.01 (1.08), with the key-basis counts at 0.999 of SatQuMA's. What
+  still differs is SatQuMA's after-pulsing, its error-correction term, its errors per intensity at the basis's average
+  rate and its unfloored lower bounds. The cap is a named option of both bounds, `cap_single_photon_errors` in
+  `finite_key.py` and `capSinglePhotonErrors` in `finiteKey.ts`, off by default (the owner's choice of 2026-11-28): on
+  everywhere, it put the fibre page's reproduction of Rusca et al.'s Table I 8 to 16 percent above the paper and Liao's
+  pass above the key Liao reports, so the page keeps the papers' bound and only the SatQuMA comparison names the cap.
 - **RED-LIQ** (`docs/measurements/defi-red-liq-arithmetic-2026-11-28.json`): the liquidation protocol fee read at the
   preset's block is 20 percent for WETH, WBTC and USDC. USDC's 16 events with one asset as debt and collateral sit on
   Aave's rule with that fee to integer rounding; WBTC's two sit where a 10 percent fee would put them, a constant
   offset that a change of the fee between the events (May to July 2026) and the read (November) would give; WETH's nine
   split between the reserve's bonus with a 10 percent fee (a ratio of 1.045) and an e-mode bonus near 1 percent
   (1.009). The page's rule, one plus a 5 percent bonus with no fee, overstates every asset's ratio, by up to 0.041 for
-  WETH. The one stablecoin pair whose collateral the preset reads sits within 0.08 percent of Aave's rule at par.
+  WETH. The one stablecoin pair whose collateral the preset reads sits within 0.08 percent of Aave's rule at par. Read
+  afterwards at the sources, Aave governance raised the fee of WETH, WBTC and wstETH from 10 to 20 percent on 2026-10-24
+  (AIP 534), after the events; with the fee in force at each event's time, all 28 same-asset events of WETH, WBTC,
+  wstETH and USDC sit on Aave's rule to rounding, eight of WETH's at the reserve's bonus and one at e-mode category 1's
+  (`references/defi-red-liq-liquidation-arithmetic-preregistration-addendum-fee-history.md`, written after the result;
+  `docs/measurements/defi-red-liq-fee-history-2026-11-28.json`). Since Round 86's batch 13 the page's rule takes the fee
+  (its illustrative pool 10 percent, the `aave_v3_core` preset the 20 percent read at its block) and names e-mode.
 - **PFCP** (`docs/measurements/telecom-pfcp-held-out-day-2026-11-28.json`): a detector trained on three attack days
   recognises the two session-modification days (the teacher's AUC 1.000 on both, the student's 0.993 and 0.997),
   ranks the deletion day (the student 0.971, the teacher 0.66) but at the threshold fixed on validation the student
   flags only 15 percent of its malicious flows, and does not recognise the establishment day (the student's AUC 0.011,
   its attack scored as the most normal traffic, the teacher's 0.65), where a third of the day's normal flows also pass
   the threshold. The days are small, 264 to 486 flows, and the intervals are in the record.
+
+Three follow-ups ran the same day, each pre-registered and frozen before any of its figures, on the owner's choices of
+2026-11-28 after these results:
+
+- **BreastMNIST models on a second site, framed on the lesion and adapted without labels**
+  ([`references/medical-breast-framing-normalisation-second-site-preregistration.md`](../references/medical-breast-framing-normalisation-second-site-preregistration.md);
+  `docs/measurements/medical-breast-framing-normalisation-second-site-2026-11-28.json`). On BrEaST-Lesions-USG (TCIA,
+  256 patients from Poland, labels confirmed by biopsy or follow-up) the five graphs score a malignant-class AUC of 0.49
+  to 0.63, most intervals spanning 0.5, against 0.79 to 0.92 for the same graphs on BreastMNIST's test split; the
+  students' CKKS paths agree with their float64 networks on every image within the page's rule
+  ($`1.2 \times 10^{-8}`$ for the CKKS student; $`1.2 \times 10^{-5}`$ under A2 and $`5.5 \times 10^{-6}`$ under B for the
+  square student; no decision changed). Cropping each image to its lesion's box, at margins of 0, 0.12 (Wang et al.
+  2026's) and 0.5 of the box, gives no consistent gain on either site: these models were trained on BUSI's whole frames,
+  not on crops. Neither label-free adaptation on a seeded half of each site's patients, of the inputs' mean and spread
+  to BreastMNIST's training split's or of the two ResNets' batch-normalisation statistics (from their unfused training
+  checkpoints, which reproduce the published graphs to $`3.8 \times 10^{-5}`$), moves an AUC beyond its interval on the
+  other half.
+- **The PFCP labels audited, the application-layer messages, and normal-only detectors**
+  ([`references/telecom-pfcp-audit-app-layer-normal-only-preregistration.md`](../references/telecom-pfcp-audit-app-layer-normal-only-preregistration.md);
+  `docs/measurements/telecom-pfcp-audit-app-layer-normal-only-2026-11-28.json`). The audit, run first: in every run each
+  address pair carries one label, on the CICFlowMeter and the application-layer files alike, so the labels follow the
+  endpoints. On the application-layer file the establishment run's Malicious flows carry its attack's message (99
+  percent carry a session-establishment request, no Normal flow does), but in both modification runs 1.5 and 0.8 percent
+  of the Malicious flows carry a session-modification request and every Normal flow does, and in the deletion run no
+  flow of either label carries a deletion request. On the message counters, the student recognises the establishment
+  day (AUC 0.99) where the teacher ranks it inverted (0.00), both recognise the modification days (0.99 to 1.00), and
+  both rank the deletion day's flows inverted (0.04 and 0.30); IForest, kNN and HBOS fitted on Normal
+  flows only find the establishment day (AUC 0.96 to 0.99 on the messages, 0.58 to 1.00 on CICFlowMeter's features)
+  and score the other three days' Malicious flows as more normal than their Normal flows (0.01 to 0.38 on the
+  messages). The three runs whose labels disagree with their attack's message type are the ones the supervised and
+  normal-only arms rank as they do; whether their labels are swapped or the attack's messages lie elsewhere is not
+  resolved here, and the held-out-day figures for those days are read with that caveat.
 
 None of these changes the page; whether a card shows any of them is the owner's choice.
 

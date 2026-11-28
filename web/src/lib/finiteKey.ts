@@ -43,6 +43,10 @@ export interface FiniteKeySource {
   deviation: Deviation;
   /** Which bases the key comes from (Round 84): "one" (absent: the default) or "both". */
   keyBasis?: KeyBasis;
+  /** The single-photon errors in the test basis capped at every error observed there (Round 86,
+   *  batch 13): absent or false, the papers' bound, the page's; true, SatQuMA's, which only its
+   *  comparison names. `finite_key.py`, THE SINGLE-PHOTON ERROR CAP. */
+  capSinglePhotonErrors?: boolean;
 }
 
 /** "one": the Z basis, X for the phase error, as Lim et al. and Rusca et al. write the protocol.
@@ -204,7 +208,8 @@ export function oneDecoyKeyLength(z: DecoyCounts, x: DecoyCounts, src: FiniteKey
     const s0Upper = 2 * vacuumErrorsExpectation(v0, nTot, eps1, src.deviation);
     const s1 = ((t1 * mu1) / (mu2 * (mu1 - mu2))) * (
       nMinus2 - ((mu2 ** 2) / (mu1 ** 2)) * nPlus1 - (((mu1 ** 2) - (mu2 ** 2)) / (mu1 ** 2)) * (s0Upper / t0));
-    const v1 = (t1 / (mu1 - mu2)) * (mPlus1 - mMinus2);
+    const v1Decoy = (t1 / (mu1 - mu2)) * (mPlus1 - mMinus2);
+    const v1 = src.capSinglePhotonErrors ? Math.min(v1Decoy, mTot) : v1Decoy;   // off unless named
     return { n: nTot, m: mTot, s0, s1, v1, qber: nTot > 0 ? mTot / nTot : 0.5 };
   };
   const Z = basis(z), X = basis(x);
@@ -240,7 +245,8 @@ export function vacuumDecoyKeyLength(z: DecoyCounts, x: DecoyCounts, src: Finite
   const lambdaEC = src.fEC * nZ * h2(qber);
   if (sZ1 <= 0 || sX1 <= 0) return { keyBits: -Infinity, nZ, nX, sZ0, sZ1, phiZ: NaN, lambdaEC, qber };
   const [mLo, mHi] = bounds(x.m, eps, src.deviation);
-  const vX1 = (t1 * ((Math.exp(mu2) / p2) * mHi[1] - (Math.exp(mu3) / p3) * mLo[2])) / (mu2 - mu3);  // (4)
+  const vX1Decoy = (t1 * ((Math.exp(mu2) / p2) * mHi[1] - (Math.exp(mu3) / p3) * mLo[2])) / (mu2 - mu3);  // (4)
+  const vX1 = src.capSinglePhotonErrors ? Math.min(vX1Decoy, sum(x.m)) : vX1Decoy;            // off unless named
   const b = Math.min(0.5, Math.max(0, vX1 / sX1));
   const phi = b <= 0 ? 0 : Math.min(0.5, b + gamma(src.epsSec, b, sX1, sZ1));                    // (5)
   const keyBits = sZ0 + sZ1 * (1 - h2(phi)) - lambdaEC - 6 * Math.log2(21 / src.epsSec) - Math.log2(2 / src.epsCor);

@@ -18,9 +18,11 @@
    "DefaultReserveInterestRateStrategyV2.getInterestRateDataBps",
    "Pool.getVirtualUnderlyingBalance",
    "Pool.getReserveDeficit",
-   "AaveOracle.getAssetPrice"
+   "AaveOracle.getAssetPrice",
+   "AaveProtocolDataProvider.getLiquidationProtocolFee"
   ],
-  "terms": "Facts read from public chain state, which carry no licence instrument of their own; the addresses are from an MIT-licensed address book. Aave's contracts (aave-v3-origin, Business Source License) are not copied: the page re-derives the mechanics."
+  "terms": "Facts read from public chain state, which carry no licence instrument of their own; the addresses are from an MIT-licensed address book. Aave's contracts (aave-v3-origin, Business Source License) are not copied: the page re-derives the mechanics.",
+  "fee_read": "getLiquidationProtocolFee for WETH, WBTC and USDC read on 2026-11-28 at the same block through another public node (eth.drpc.org; the first serves past state only with a token), by scripts/check_red_liq_arithmetic.py, whose record is docs/measurements/defi-red-liq-arithmetic-2026-11-28.json; the fee of WETH and WBTC was 10% until AIP 534 raised it on 2026-10-24"
  },
  "reserves": {
   "WETH": {
@@ -50,7 +52,8 @@
    },
    "virtual_underlying_balance": 304005517144409682286061,
    "deficit": 52964453912595963038573,
-   "oracle_price_usd_8dp": 163172303377
+   "oracle_price_usd_8dp": 163172303377,
+   "liquidation_protocol_fee_bps": 2000
   },
   "WBTC": {
    "asset": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599",
@@ -79,7 +82,8 @@
    },
    "virtual_underlying_balance": 3585989472149,
    "deficit": 146505,
-   "oracle_price_usd_8dp": 5817702335814
+   "oracle_price_usd_8dp": 5817702335814,
+   "liquidation_protocol_fee_bps": 2000
   },
   "USDC": {
    "asset": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
@@ -108,7 +112,8 @@
    },
    "virtual_underlying_balance": 922627646595319,
    "deficit": 1753002,
-   "oracle_price_usd_8dp": 99988512
+   "oracle_price_usd_8dp": 99988512,
+   "liquidation_protocol_fee_bps": 2000
   }
  }
 }

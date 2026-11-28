@@ -975,6 +975,10 @@ class LendingConfig:
     initial_prices: tuple = (3000.0, 60000.0)
     liquidation_thresholds: tuple = (0.83, 0.78)   # illustrative, like every value here; the `aave_v3_core` preset below carries Aave's own
     liquidation_bonus: float = 0.05
+    # The liquidation protocol fee (Round 86, batch 13): the treasury's share of the bonus part of the collateral a
+    # liquidation takes (web/src/lib/lending/aaveRule.ts). 10%, Aave V3 Ethereum Core's setting for WETH and WBTC until
+    # 2026-10-24 (AIP 534 raised it to 20%), as an illustrative value like every other here.
+    liquidation_protocol_fee: float = 0.10
     close_factor: float = 0.5
     full_close_at_or_below_hf: float = 0.95
     collateral_log_mean: float = 11.0   # log of a borrower's opening collateral in stable units: exp(11) is about 60,000
@@ -1000,6 +1004,7 @@ class LendingConfig:
             "block": 26492593,
             "liquidation_thresholds": (0.84, 0.85),
             "liquidation_bonus": 0.05,
+            "liquidation_protocol_fee": 0.20,
             "base_rate": 0.0,
             "optimal_utilisation": 0.94,
             "slope1": 0.046,

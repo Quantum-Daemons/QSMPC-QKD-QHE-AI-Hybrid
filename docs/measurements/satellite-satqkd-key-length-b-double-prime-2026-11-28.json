@@ -1,0 +1,313 @@
+{
+ "addendum": {
+  "file": "references/satellite-satqkd-key-length-preregistration-addendum-cap.md",
+  "sha256": "f5bc1f1366d24353adf0a1ba8a6b712a134263a02b2a4d35a1400e3e6c35b1e5"
+ },
+ "preregistration": {
+  "file": "references/satellite-satqkd-key-length-preregistration.md",
+  "sha256": "fba1775109a21ba2e9f76bde55758995938cc79f1927eae0a3263b7c97ca70d7"
+ },
+ "check_b_prime_record": "docs/measurements/satellite-satqkd-key-length-b-prime-2026-11-28.json",
+ "check_b_prime_reproduced": true,
+ "deposit": {
+  "doi": "10.5281/zenodo.8101679",
+  "licence": "CC-BY-4.0",
+  "archive_sha256": "6f287876626049693e106bd707d3847a37284a6e9125b9ea2f5dd85705b222bd"
+ },
+ "check_b_double_prime": {
+  "rows": [
+   {
+    "file": "Fig5a_LeftAxis_4GB",
+    "row": 0,
+    "dt_s": 8.0,
+    "satquma": {
+     "key": 62033.0,
+     "n_key_basis": 266709.3262884066,
+     "n_test_basis": 21362.16317376821,
+     "phase_error": 0.05202470072558472,
+     "after_pulsing": 0.001
+    },
+    "variants": {
+     "b_prime": {
+      "cap_single_photon_errors": false,
+      "deviation": "tighter",
+      "window": "continuous",
+      "segments": 14,
+      "seconds": 16.0,
+      "key": 26625.068086777017,
+      "key_ratio": 0.4292081325548823,
+      "n_key_basis": 250924.29780824063,
+      "key_basis_count_ratio": 0.9408156111380341,
+      "n_test_basis": 20097.856601559146,
+      "test_basis_count_ratio": 0.9408156111380341,
+      "phase_error": 0.1420349654656361
+     },
+     "a": {
+      "cap_single_photon_errors": true,
+      "deviation": "tighter",
+      "window": "continuous",
+      "segments": 14,
+      "seconds": 16.0,
+      "key": 58770.04485207498,
+      "key_ratio": 0.947399688102703,
+      "n_key_basis": 250924.29780824063,
+      "key_basis_count_ratio": 0.9408156111380341,
+      "n_test_basis": 20097.856601559146,
+      "test_basis_count_ratio": 0.9408156111380341,
+      "phase_error": 0.051104921203569784
+     },
+     "b": {
+      "cap_single_photon_errors": true,
+      "deviation": "chernoff",
+      "window": "continuous",
+      "segments": 14,
+      "seconds": 16.0,
+      "key": 58172.17853978227,
+      "key_ratio": 0.9377618129025239,
+      "n_key_basis": 250924.29780824063,
+      "key_basis_count_ratio": 0.9408156111380341,
+      "n_test_basis": 20097.856601559146,
+      "test_basis_count_ratio": 0.9408156111380341,
+      "phase_error": 0.05190688555502563
+     },
+     "c": {
+      "cap_single_photon_errors": true,
+      "deviation": "chernoff",
+      "window": "satquma_slots",
+      "segments": 9,
+      "seconds": 17.0,
+      "key": 63372.68666061236,
+      "key_ratio": 1.0215963545308522,
+      "n_key_basis": 266447.0512732128,
+      "key_basis_count_ratio": 0.9990166260068829,
+      "n_test_basis": 21341.156178066405,
+      "test_basis_count_ratio": 0.999016626006883,
+      "phase_error": 0.04937258067334811
+     }
+    }
+   },
+   {
+    "file": "Fig5a_LeftAxis_8GB",
+    "row": 0,
+    "dt_s": 16.0,
+    "satquma": {
+     "key": 151424.0,
+     "n_key_basis": 595780.6046501768,
+     "n_test_basis": 31115.623808132565,
+     "phase_error": 0.045700757264808184,
+     "after_pulsing": 0.001
+    },
+    "variants": {
+     "b_prime": {
+      "cap_single_photon_errors": false,
+      "deviation": "tighter",
+      "window": "continuous",
+      "segments": 28,
+      "seconds": 32.0,
+      "key": 65862.21989819112,
+      "key_ratio": 0.434952318642957,
+      "n_key_basis": 577869.4327928983,
+      "key_basis_count_ratio": 0.9699366315091854,
+      "n_test_basis": 30180.18334376711,
+      "test_basis_count_ratio": 0.9699366315091853,
+      "phase_error": 0.1400268894378327
+     },
+     "a": {
+      "cap_single_photon_errors": true,
+      "deviation": "tighter",
+      "window": "continuous",
+      "segments": 28,
+      "seconds": 32.0,
+      "key": 147974.4486671145,
+      "key_ratio": 0.9772192563075504,
+      "n_key_basis": 577869.4327928983,
+      "key_basis_count_ratio": 0.9699366315091854,
+      "n_test_basis": 30180.18334376711,
+      "test_basis_count_ratio": 0.9699366315091853,
+      "phase_error": 0.04387708704405818
+     },
+     "b": {
+      "cap_single_photon_errors": true,
+      "deviation": "chernoff",
+      "window": "continuous",
+      "segments": 28,
+      "seconds": 32.0,
+      "key": 147329.3137365526,
+      "key_ratio": 0.9729588026769377,
+      "n_key_basis": 577869.4327928983,
+      "key_basis_count_ratio": 0.9699366315091854,
+      "n_test_basis": 30180.18334376711,
+      "test_basis_count_ratio": 0.9699366315091853,
+      "phase_error": 0.04420202264343507
+     },
+     "c": {
+      "cap_single_photon_errors": true,
+      "deviation": "chernoff",
+      "window": "satquma_slots",
+      "segments": 17,
+      "seconds": 33.0,
+      "key": 153150.77629261653,
+      "key_ratio": 1.0114035839273599,
+      "n_key_basis": 595235.7607715351,
+      "key_basis_count_ratio": 0.9990854957774907,
+      "n_test_basis": 31087.16843877401,
+      "test_basis_count_ratio": 0.9990854957774905,
+      "phase_error": 0.04325676655684538
+     }
+    }
+   },
+   {
+    "file": "Fig5a_LeftAxis_16GB",
+    "row": 0,
+    "dt_s": 32.0,
+    "satquma": {
+     "key": 336358.0,
+     "n_key_basis": 1250447.0260586292,
+     "n_test_basis": 44464.82417342295,
+     "phase_error": 0.041188387286349895,
+     "after_pulsing": 0.001
+    },
+    "variants": {
+     "b_prime": {
+      "cap_single_photon_errors": false,
+      "deviation": "tighter",
+      "window": "continuous",
+      "segments": 53,
+      "seconds": 64.0,
+      "key": 141942.95921270803,
+      "key_ratio": 0.42199965278871926,
+      "n_key_basis": 1232891.4781102042,
+      "key_basis_count_ratio": 0.9859605824296616,
+      "n_test_basis": 43840.56393966061,
+      "test_basis_count_ratio": 0.9859605824296621,
+      "phase_error": 0.14154581077866268
+     },
+     "a": {
+      "cap_single_photon_errors": true,
+      "deviation": "tighter",
+      "window": "continuous",
+      "segments": 53,
+      "seconds": 64.0,
+      "key": 333282.00013220403,
+      "key_ratio": 0.9908549822873368,
+      "n_key_basis": 1232891.4781102042,
+      "key_basis_count_ratio": 0.9859605824296616,
+      "n_test_basis": 43840.56393966061,
+      "test_basis_count_ratio": 0.9859605824296621,
+      "phase_error": 0.039132438606170244
+     },
+     "b": {
+      "cap_single_photon_errors": true,
+      "deviation": "chernoff",
+      "window": "continuous",
+      "segments": 53,
+      "seconds": 64.0,
+      "key": 332708.4448382468,
+      "key_ratio": 0.9891497893263927,
+      "n_key_basis": 1232891.4781102042,
+      "key_basis_count_ratio": 0.9859605824296616,
+      "n_test_basis": 43840.56393966061,
+      "test_basis_count_ratio": 0.9859605824296621,
+      "phase_error": 0.039239851544003584
+     },
+     "c": {
+      "cap_single_photon_errors": true,
+      "deviation": "chernoff",
+      "window": "satquma_slots",
+      "segments": 33,
+      "seconds": 65.0,
+      "key": 338235.7429527377,
+      "key_ratio": 1.0055825725944907,
+      "n_key_basis": 1249592.7565057909,
+      "key_basis_count_ratio": 0.9993168286740376,
+      "n_test_basis": 44434.44708053372,
+      "test_basis_count_ratio": 0.9993168286740378,
+      "phase_error": 0.0389139552197145
+     }
+    }
+   },
+   {
+    "file": "Fig5a_RightAxis",
+    "row": 37,
+    "dt_s": 2.0,
+    "satquma": {
+     "key": 8399.0,
+     "n_key_basis": 53020.5112372345,
+     "n_test_basis": 11915.5584754239,
+     "phase_error": 0.0707587344806278,
+     "after_pulsing": 0.001
+    },
+    "variants": {
+     "b_prime": {
+      "cap_single_photon_errors": false,
+      "deviation": "tighter",
+      "window": "continuous",
+      "segments": 4,
+      "seconds": 4.0,
+      "key": 311.4644587343252,
+      "key_ratio": 0.037083516934673794,
+      "n_key_basis": 42380.03789295668,
+      "key_basis_count_ratio": 0.7993140183679447,
+      "n_test_basis": 9524.272926089281,
+      "test_basis_count_ratio": 0.7993140183679432,
+      "phase_error": 0.22735877486448847
+     },
+     "a": {
+      "cap_single_photon_errors": true,
+      "deviation": "tighter",
+      "window": "continuous",
+      "segments": 4,
+      "seconds": 4.0,
+      "key": 5891.983760088879,
+      "key_ratio": 0.7015101512190592,
+      "n_key_basis": 42380.03789295668,
+      "key_basis_count_ratio": 0.7993140183679447,
+      "n_test_basis": 9524.272926089281,
+      "test_basis_count_ratio": 0.7993140183679432,
+      "phase_error": 0.08513036975446533
+     },
+     "b": {
+      "cap_single_photon_errors": true,
+      "deviation": "chernoff",
+      "window": "continuous",
+      "segments": 4,
+      "seconds": 4.0,
+      "key": 5626.856908937169,
+      "key_ratio": 0.6699436729297736,
+      "n_key_basis": 42380.03789295668,
+      "key_basis_count_ratio": 0.7993140183679447,
+      "n_test_basis": 9524.272926089281,
+      "test_basis_count_ratio": 0.7993140183679432,
+      "phase_error": 0.08838091946097333
+     },
+     "c": {
+      "cap_single_photon_errors": true,
+      "deviation": "chernoff",
+      "window": "satquma_slots",
+      "segments": 3,
+      "seconds": 5.0,
+      "key": 9082.812132563588,
+      "key_ratio": 1.0814158986264542,
+      "n_key_basis": 52967.0208700341,
+      "key_basis_count_ratio": 0.9989911382226953,
+      "n_test_basis": 11903.537323922783,
+      "test_basis_count_ratio": 0.9989911382226934,
+      "phase_error": 0.0674755301355855
+     }
+    }
+   }
+  ],
+  "chosen_after_checks_b_and_b_prime_and_an_exploration": true,
+  "statistics": {
+   "check_b_prime": "the configured default, finite_key_deviation",
+   "satellite_page": "free_space_finite_key_deviation = 'chernoff'"
+  },
+  "bound": "this project's vacuum_decoy_key_length (Lim et al., three intensities)",
+  "differences_still_named": [
+   "after-pulsing: SatQuMA's Pap on these rows, none here",
+   "error-correction term: SatQuMA's lambda_EC as it records it, f_EC h(E) n with f_EC 1.16 here",
+   "errors per intensity: SatQuMA's at the basis's average error rate, each intensity's own rate here",
+   "Chernoff lower bounds: SatQuMA's not floored at zero, floored here"
+  ]
+ }
+}

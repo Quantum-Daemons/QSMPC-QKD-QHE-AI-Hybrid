@@ -1,0 +1,2254 @@
+{
+ "preregistration": {
+  "file": "references/telecom-pfcp-audit-app-layer-normal-only-preregistration.md",
+  "sha256": "0209f741613d48e5786d1c94b01272a24f0fbee0f756cb987177c65479ae51e9"
+ },
+ "deposit": {
+  "doi": "10.21227/e0gj-ev03",
+  "zenodo": "7888347",
+  "licence": "CC-BY-4.0",
+  "archives_sha256": {
+   "PFCP Session Establishment DoS Attack.zip": "11995304dac82e476f09f3cc1e6e549b49753b36cbb0359acaa9e13ae7f25d0e",
+   "PFCP Session Deletion DoS Attack.zip": "105962839e40820a7dcae4f90ce37d41ce9751c364cb9877818b217d851f8e82",
+   "PFCP Session Modification DoS Attack.zip": "3c28866b1c9ddbd969e8326ade2ab1912f33711e45b668b062bf83dba2f752bf"
+  }
+ },
+ "arm_a_audit": {
+  "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h": {
+   "attack": "Establishment",
+   "cic": {
+    "flows": {
+     "Normal": 366,
+     "Malicious": 120
+    },
+    "rows_dropped_malformed": 0,
+    "source_addresses": {
+     "distinct_per_label": {
+      "Malicious": 1,
+      "Normal": 4
+     },
+     "under_both_labels": 1
+    },
+    "destination_addresses": {
+     "distinct_per_label": {
+      "Malicious": 1,
+      "Normal": 4
+     },
+     "under_both_labels": 0
+    },
+    "address_pairs": {
+     "distinct_per_label": {
+      "Malicious": 1,
+      "Normal": 6
+     },
+     "under_both_labels": 0
+    },
+    "share_whose_label_is_their_address_pairs_majority": 1.0
+   },
+   "app": {
+    "flows": {
+     "Malicious": 120,
+     "Normal": 114
+    },
+    "rows_dropped_malformed": 0,
+    "source_addresses": {
+     "distinct_per_label": {
+      "Malicious": 2,
+      "Normal": 1
+     },
+     "under_both_labels": 1
+    },
+    "destination_addresses": {
+     "distinct_per_label": {
+      "Malicious": 2,
+      "Normal": 1
+     },
+     "under_both_labels": 0
+    },
+    "address_pairs": {
+     "distinct_per_label": {
+      "Malicious": 2,
+      "Normal": 1
+     },
+     "under_both_labels": 0
+    },
+    "share_whose_label_is_their_address_pairs_majority": 1.0,
+    "attack_counter": {
+     "column": "PFCPSessionEstablishmentRequest_counter",
+     "share_non_zero_per_label": {
+      "Malicious": 0.9916666666666667,
+      "Normal": 0.0
+     }
+    }
+   }
+  },
+  "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h": {
+   "attack": "Modification",
+   "cic": {
+    "flows": {
+     "Normal": 135,
+     "Malicious": 129
+    },
+    "rows_dropped_malformed": 0,
+    "source_addresses": {
+     "distinct_per_label": {
+      "Malicious": 1,
+      "Normal": 4
+     },
+     "under_both_labels": 0
+    },
+    "destination_addresses": {
+     "distinct_per_label": {
+      "Malicious": 1,
+      "Normal": 3
+     },
+     "under_both_labels": 1
+    },
+    "address_pairs": {
+     "distinct_per_label": {
+      "Malicious": 1,
+      "Normal": 4
+     },
+     "under_both_labels": 0
+    },
+    "share_whose_label_is_their_address_pairs_majority": 1.0
+   },
+   "app": {
+    "flows": {
+     "Malicious": 130,
+     "Normal": 129
+    },
+    "rows_dropped_malformed": 0,
+    "source_addresses": {
+     "distinct_per_label": {
+      "Malicious": 2,
+      "Normal": 2
+     },
+     "under_both_labels": 1
+    },
+    "destination_addresses": {
+     "distinct_per_label": {
+      "Malicious": 2,
+      "Normal": 2
+     },
+     "under_both_labels": 1
+    },
+    "address_pairs": {
+     "distinct_per_label": {
+      "Malicious": 2,
+      "Normal": 2
+     },
+     "under_both_labels": 0
+    },
+    "share_whose_label_is_their_address_pairs_majority": 1.0,
+    "attack_counter": {
+     "column": "PFCPSessionModificationRequest_counter",
+     "share_non_zero_per_label": {
+      "Malicious": 0.015384615384615385,
+      "Normal": 1.0
+     }
+    }
+   }
+  },
+  "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h": {
+   "attack": "Modification",
+   "cic": {
+    "flows": {
+     "Normal": 365,
+     "Malicious": 121
+    },
+    "rows_dropped_malformed": 0,
+    "source_addresses": {
+     "distinct_per_label": {
+      "Malicious": 1,
+      "Normal": 4
+     },
+     "under_both_labels": 1
+    },
+    "destination_addresses": {
+     "distinct_per_label": {
+      "Malicious": 1,
+      "Normal": 3
+     },
+     "under_both_labels": 0
+    },
+    "address_pairs": {
+     "distinct_per_label": {
+      "Malicious": 1,
+      "Normal": 4
+     },
+     "under_both_labels": 0
+    },
+    "share_whose_label_is_their_address_pairs_majority": 1.0
+   },
+   "app": {
+    "flows": {
+     "Malicious": 122,
+     "Normal": 122
+    },
+    "rows_dropped_malformed": 0,
+    "source_addresses": {
+     "distinct_per_label": {
+      "Malicious": 2,
+      "Normal": 1
+     },
+     "under_both_labels": 0
+    },
+    "destination_addresses": {
+     "distinct_per_label": {
+      "Malicious": 2,
+      "Normal": 1
+     },
+     "under_both_labels": 1
+    },
+    "address_pairs": {
+     "distinct_per_label": {
+      "Malicious": 2,
+      "Normal": 1
+     },
+     "under_both_labels": 0
+    },
+    "share_whose_label_is_their_address_pairs_majority": 1.0,
+    "attack_counter": {
+     "column": "PFCPSessionModificationRequest_counter",
+     "share_non_zero_per_label": {
+      "Malicious": 0.00819672131147541,
+      "Normal": 1.0
+     }
+    }
+   }
+  },
+  "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h": {
+   "attack": "Deletion",
+   "cic": {
+    "flows": {
+     "Normal": 274,
+     "Malicious": 129
+    },
+    "rows_dropped_malformed": 0,
+    "source_addresses": {
+     "distinct_per_label": {
+      "Malicious": 1,
+      "Normal": 4
+     },
+     "under_both_labels": 1
+    },
+    "destination_addresses": {
+     "distinct_per_label": {
+      "Malicious": 1,
+      "Normal": 5
+     },
+     "under_both_labels": 0
+    },
+    "address_pairs": {
+     "distinct_per_label": {
+      "Malicious": 1,
+      "Normal": 5
+     },
+     "under_both_labels": 0
+    },
+    "share_whose_label_is_their_address_pairs_majority": 1.0
+   },
+   "app": {
+    "flows": {
+     "Normal": 130,
+     "Malicious": 115
+    },
+    "rows_dropped_malformed": 0,
+    "source_addresses": {
+     "distinct_per_label": {
+      "Malicious": 2,
+      "Normal": 2
+     },
+     "under_both_labels": 1
+    },
+    "destination_addresses": {
+     "distinct_per_label": {
+      "Malicious": 2,
+      "Normal": 2
+     },
+     "under_both_labels": 1
+    },
+    "address_pairs": {
+     "distinct_per_label": {
+      "Malicious": 2,
+      "Normal": 2
+     },
+     "under_both_labels": 0
+    },
+    "share_whose_label_is_their_address_pairs_majority": 1.0,
+    "attack_counter": {
+     "column": "PFCPSessionDeletionRequest_counter",
+     "share_non_zero_per_label": {
+      "Malicious": 0.0,
+      "Normal": 0.0
+     }
+    }
+   }
+  }
+ },
+ "inputs_named": {
+  "cic": 77,
+  "app": 29
+ },
+ "arm_p_app_layer": {
+  "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h": {
+   "scorable": true,
+   "train_days": [
+    "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h",
+    "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h",
+    "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h"
+   ],
+   "inputs": 10,
+   "fit_rows": 598,
+   "validation_rows": 150,
+   "held_out_rows": 234,
+   "held_out_malicious": 120,
+   "input_names": [
+    "duration",
+    "fwd_packets",
+    "bwd_packets",
+    "PFCPHeartbeatRequest_counter",
+    "PFCPHeartbeatResponse_counter",
+    "PFCPSessionEstablishmentRequest_counter",
+    "PFCPSessionEstablishmentResponse_counter",
+    "PFCPSessionModificationRequest_counter",
+    "PFCPSessionModificationResponse_counter",
+    "PFCPSessionDeletionResponse_counter"
+   ],
+   "teacher": {
+    "per_seed": [
+     {
+      "seed": 0,
+      "auc": 0.00029239766081871346,
+      "threshold_from_validation": 0.9965123534202576,
+      "detection_rate": 0.0,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.0,
+       0.001174
+      ],
+      "detection_rate_ci95": [
+       0.0,
+       0.0
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "seed": 1,
+      "auc": 0.00029239766081871346,
+      "threshold_from_validation": 0.9963060617446899,
+      "detection_rate": 0.0,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.0,
+       0.001174
+      ],
+      "detection_rate_ci95": [
+       0.0,
+       0.0
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "seed": 2,
+      "auc": 0.00029239766081871346,
+      "threshold_from_validation": 0.9962607026100159,
+      "detection_rate": 0.0,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.0,
+       0.001174
+      ],
+      "detection_rate_ci95": [
+       0.0,
+       0.0
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "seed": 3,
+      "auc": 0.00029239766081871346,
+      "threshold_from_validation": 0.9963610768318176,
+      "detection_rate": 0.0,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.0,
+       0.001174
+      ],
+      "detection_rate_ci95": [
+       0.0,
+       0.0
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "seed": 4,
+      "auc": 0.00029239766081871346,
+      "threshold_from_validation": 0.9969137907028198,
+      "detection_rate": 0.0,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.0,
+       0.001174
+      ],
+      "detection_rate_ci95": [
+       0.0,
+       0.0
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     }
+    ],
+    "auc": {
+     "mean": 0.00029239766081871346,
+     "min": 0.00029239766081871346,
+     "max": 0.00029239766081871346
+    },
+    "detection_rate": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    },
+    "false_positive_rate": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    }
+   },
+   "student": {
+    "l2": 0.01,
+    "temperature": 0.9741042537656893,
+    "auc": 0.9918859649122806,
+    "threshold_from_validation": 4.521144590381124,
+    "detection_rate": 0.9916666666666667,
+    "false_positive_rate": 0.0,
+    "auc_ci95": [
+     0.974351,
+     1.0
+    ],
+    "detection_rate_ci95": [
+     0.973913,
+     1.0
+    ],
+    "false_positive_rate_ci95": [
+     0.0,
+     0.0
+    ]
+   }
+  },
+  "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h": {
+   "scorable": true,
+   "train_days": [
+    "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h",
+    "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h",
+    "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h"
+   ],
+   "inputs": 10,
+   "fit_rows": 578,
+   "validation_rows": 145,
+   "held_out_rows": 259,
+   "held_out_malicious": 130,
+   "input_names": [
+    "duration",
+    "fwd_packets",
+    "bwd_packets",
+    "PFCPHeartbeatRequest_counter",
+    "PFCPHeartbeatResponse_counter",
+    "PFCPSessionEstablishmentRequest_counter",
+    "PFCPSessionEstablishmentResponse_counter",
+    "PFCPSessionModificationRequest_counter",
+    "PFCPSessionModificationResponse_counter",
+    "PFCPSessionDeletionResponse_counter"
+   ],
+   "teacher": {
+    "per_seed": [
+     {
+      "seed": 0,
+      "auc": 0.9998211091234347,
+      "threshold_from_validation": 0.9815805554389954,
+      "detection_rate": 0.26153846153846155,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.999165,
+       1.0
+      ],
+      "detection_rate_ci95": [
+       0.190075,
+       0.338465
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "seed": 1,
+      "auc": 0.9998211091234347,
+      "threshold_from_validation": 0.984863817691803,
+      "detection_rate": 0.2230769230769231,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.999165,
+       1.0
+      ],
+      "detection_rate_ci95": [
+       0.15447,
+       0.294596
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "seed": 2,
+      "auc": 0.9997018485390579,
+      "threshold_from_validation": 0.981719434261322,
+      "detection_rate": 0.2230769230769231,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.998922,
+       1.0
+      ],
+      "detection_rate_ci95": [
+       0.15447,
+       0.294596
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "seed": 3,
+      "auc": 0.9997614788312462,
+      "threshold_from_validation": 0.9827015995979309,
+      "detection_rate": 0.24615384615384617,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.999044,
+       1.0
+      ],
+      "detection_rate_ci95": [
+       0.176,
+       0.320618
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "seed": 4,
+      "auc": 0.9997018485390579,
+      "threshold_from_validation": 0.9849622249603271,
+      "detection_rate": 0.2230769230769231,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.998922,
+       1.0
+      ],
+      "detection_rate_ci95": [
+       0.15447,
+       0.294596
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     }
+    ],
+    "auc": {
+     "mean": 0.9997614788312463,
+     "min": 0.9997018485390579,
+     "max": 0.9998211091234347
+    },
+    "detection_rate": {
+     "mean": 0.2353846153846154,
+     "min": 0.2230769230769231,
+     "max": 0.26153846153846155
+    },
+    "false_positive_rate": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    }
+   },
+   "student": {
+    "l2": 1e-06,
+    "temperature": 2.8988804440077827,
+    "auc": 1.0,
+    "threshold_from_validation": 1.1133036805681118,
+    "detection_rate": 0.0,
+    "false_positive_rate": 0.0,
+    "auc_ci95": [
+     1.0,
+     1.0
+    ],
+    "detection_rate_ci95": [
+     0.0,
+     0.0
+    ],
+    "false_positive_rate_ci95": [
+     0.0,
+     0.0
+    ]
+   }
+  },
+  "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h": {
+   "scorable": true,
+   "train_days": [
+    "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h",
+    "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h",
+    "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h"
+   ],
+   "inputs": 10,
+   "fit_rows": 590,
+   "validation_rows": 148,
+   "held_out_rows": 244,
+   "held_out_malicious": 122,
+   "input_names": [
+    "duration",
+    "fwd_packets",
+    "bwd_packets",
+    "PFCPHeartbeatRequest_counter",
+    "PFCPHeartbeatResponse_counter",
+    "PFCPSessionEstablishmentRequest_counter",
+    "PFCPSessionEstablishmentResponse_counter",
+    "PFCPSessionModificationRequest_counter",
+    "PFCPSessionModificationResponse_counter",
+    "PFCPSessionDeletionResponse_counter"
+   ],
+   "teacher": {
+    "per_seed": [
+     {
+      "seed": 0,
+      "auc": 0.999865627519484,
+      "threshold_from_validation": 0.9803406000137329,
+      "detection_rate": 0.3360655737704918,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.999328,
+       1.0
+      ],
+      "detection_rate_ci95": [
+       0.25,
+       0.423423
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "seed": 1,
+      "auc": 0.999865627519484,
+      "threshold_from_validation": 0.9836018681526184,
+      "detection_rate": 0.2540983606557377,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.999328,
+       1.0
+      ],
+      "detection_rate_ci95": [
+       0.177966,
+       0.333333
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "seed": 2,
+      "auc": 0.999865627519484,
+      "threshold_from_validation": 0.983481228351593,
+      "detection_rate": 0.2540983606557377,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.999328,
+       1.0
+      ],
+      "detection_rate_ci95": [
+       0.177966,
+       0.333333
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "seed": 3,
+      "auc": 0.999865627519484,
+      "threshold_from_validation": 0.9812492728233337,
+      "detection_rate": 0.3114754098360656,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.999328,
+       1.0
+      ],
+      "detection_rate_ci95": [
+       0.228059,
+       0.398305
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     },
+     {
+      "seed": 4,
+      "auc": 0.999865627519484,
+      "threshold_from_validation": 0.9857511520385742,
+      "detection_rate": 0.2540983606557377,
+      "false_positive_rate": 0.0,
+      "auc_ci95": [
+       0.999328,
+       1.0
+      ],
+      "detection_rate_ci95": [
+       0.177966,
+       0.333333
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.0
+      ]
+     }
+    ],
+    "auc": {
+     "mean": 0.9998656275194839,
+     "min": 0.999865627519484,
+     "max": 0.999865627519484
+    },
+    "detection_rate": {
+     "mean": 0.28196721311475403,
+     "min": 0.2540983606557377,
+     "max": 0.3360655737704918
+    },
+    "false_positive_rate": {
+     "mean": 0.0,
+     "min": 0.0,
+     "max": 0.0
+    }
+   },
+   "student": {
+    "l2": 0.001,
+    "temperature": 1.371040396737193,
+    "auc": 0.9918704649287826,
+    "threshold_from_validation": 2.788136531532144,
+    "detection_rate": 0.00819672131147541,
+    "false_positive_rate": 0.00819672131147541,
+    "auc_ci95": [
+     0.973887,
+     1.0
+    ],
+    "detection_rate_ci95": [
+     0.0,
+     0.026087
+    ],
+    "false_positive_rate_ci95": [
+     0.0,
+     0.026316
+    ]
+   }
+  },
+  "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h": {
+   "scorable": true,
+   "train_days": [
+    "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h",
+    "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h",
+    "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h"
+   ],
+   "inputs": 10,
+   "fit_rows": 589,
+   "validation_rows": 148,
+   "held_out_rows": 245,
+   "held_out_malicious": 115,
+   "input_names": [
+    "duration",
+    "fwd_packets",
+    "bwd_packets",
+    "PFCPHeartbeatRequest_counter",
+    "PFCPHeartbeatResponse_counter",
+    "PFCPSessionEstablishmentRequest_counter",
+    "PFCPSessionEstablishmentResponse_counter",
+    "PFCPSessionModificationRequest_counter",
+    "PFCPSessionModificationResponse_counter",
+    "PFCPSessionDeletionResponse_counter"
+   ],
+   "teacher": {
+    "per_seed": [
+     {
+      "seed": 0,
+      "auc": 0.2919732441471572,
+      "threshold_from_validation": 0.9704790115356445,
+      "detection_rate": 0.09565217391304348,
+      "false_positive_rate": 0.015384615384615385,
+      "auc_ci95": [
+       0.212349,
+       0.373313
+      ],
+      "detection_rate_ci95": [
+       0.045035,
+       0.152542
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.03907
+      ]
+     },
+     {
+      "seed": 1,
+      "auc": 0.30187290969899666,
+      "threshold_from_validation": 0.9672885537147522,
+      "detection_rate": 0.0782608695652174,
+      "false_positive_rate": 0.015384615384615385,
+      "auc_ci95": [
+       0.223779,
+       0.380857
+      ],
+      "detection_rate_ci95": [
+       0.033898,
+       0.128211
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.03907
+      ]
+     },
+     {
+      "seed": 2,
+      "auc": 0.2959866220735786,
+      "threshold_from_validation": 0.9657928347587585,
+      "detection_rate": 0.09565217391304348,
+      "false_positive_rate": 0.015384615384615385,
+      "auc_ci95": [
+       0.218302,
+       0.375687
+      ],
+      "detection_rate_ci95": [
+       0.045035,
+       0.152542
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.03907
+      ]
+     },
+     {
+      "seed": 3,
+      "auc": 0.29003344481605353,
+      "threshold_from_validation": 0.9758015871047974,
+      "detection_rate": 0.0782608695652174,
+      "false_positive_rate": 0.015384615384615385,
+      "auc_ci95": [
+       0.21353,
+       0.366955
+      ],
+      "detection_rate_ci95": [
+       0.033898,
+       0.128211
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.03907
+      ]
+     },
+     {
+      "seed": 4,
+      "auc": 0.2956521739130435,
+      "threshold_from_validation": 0.973261833190918,
+      "detection_rate": 0.08695652173913043,
+      "false_positive_rate": 0.015384615384615385,
+      "auc_ci95": [
+       0.217267,
+       0.375597
+      ],
+      "detection_rate_ci95": [
+       0.040984,
+       0.140351
+      ],
+      "false_positive_rate_ci95": [
+       0.0,
+       0.03907
+      ]
+     }
+    ],
+    "auc": {
+     "mean": 0.29510367892976597,
+     "min": 0.29003344481605353,
+     "max": 0.30187290969899666
+    },
+    "detection_rate": {
+     "mean": 0.08695652173913043,
+     "min": 0.0782608695652174,
+     "max": 0.09565217391304348
+    },
+    "false_positive_rate": {
+     "mean": 0.015384615384615385,
+     "min": 0.015384615384615385,
+     "max": 0.015384615384615385
+    }
+   },
+   "student": {
+    "l2": 1e-06,
+    "temperature": 1.579690637416246,
+    "auc": 0.035652173913043476,
+    "threshold_from_validation": 0.9492975047722105,
+    "detection_rate": 0.008695652173913044,
+    "false_positive_rate": 0.9615384615384616,
+    "auc_ci95": [
+     0.007374,
+     0.068031
+    ],
+    "detection_rate_ci95": [
+     0.0,
+     0.029712
+    ],
+    "false_positive_rate_ci95": [
+     0.926994,
+     0.992248
+    ]
+   }
+  }
+ },
+ "arm_o_normal_only": {
+  "cic": {
+   "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h": {
+    "scorable": true,
+    "train_days": [
+     "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h",
+     "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h",
+     "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h"
+    ],
+    "inputs": 56,
+    "fit_rows": 922,
+    "validation_rows": 231,
+    "held_out_rows": 486,
+    "held_out_malicious": 120,
+    "fitted_normal_flows": 618,
+    "iforest": {
+     "per_seed": [
+      {
+       "seed": 0,
+       "auc": 0.3656648451730419,
+       "threshold_from_validation": 0.714280275798567,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.01092896174863388,
+       "auc_ci95": [
+        0.314916,
+        0.415055
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.002674,
+        0.022286
+       ]
+      },
+      {
+       "seed": 1,
+       "auc": 0.5715619307832422,
+       "threshold_from_validation": 0.7051514210193881,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.01092896174863388,
+       "auc_ci95": [
+        0.52128,
+        0.620544
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.002674,
+        0.022286
+       ]
+      },
+      {
+       "seed": 2,
+       "auc": 0.6540755919854281,
+       "threshold_from_validation": 0.7052812561950564,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.01092896174863388,
+       "auc_ci95": [
+        0.604415,
+        0.702204
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.002674,
+        0.022286
+       ]
+      },
+      {
+       "seed": 3,
+       "auc": 0.6575364298724955,
+       "threshold_from_validation": 0.7138055350929389,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.01092896174863388,
+       "auc_ci95": [
+        0.607806,
+        0.705157
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.002674,
+        0.022286
+       ]
+      },
+      {
+       "seed": 4,
+       "auc": 0.6539617486338798,
+       "threshold_from_validation": 0.7157561701126703,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.01092896174863388,
+       "auc_ci95": [
+        0.60439,
+        0.701761
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.002674,
+        0.022286
+       ]
+      }
+     ],
+     "auc": {
+      "mean": 0.5805601092896175,
+      "min": 0.3656648451730419,
+      "max": 0.6575364298724955
+     },
+     "detection_rate": {
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "false_positive_rate": {
+      "mean": 0.01092896174863388,
+      "min": 0.01092896174863388,
+      "max": 0.01092896174863388
+     }
+    },
+    "knn": {
+     "auc": 0.9923269581056466,
+     "threshold_from_validation": 24.28106942922174,
+     "detection_rate": 0.9916666666666667,
+     "false_positive_rate": 0.00819672131147541,
+     "auc_ci95": [
+      0.975016,
+      1.0
+     ],
+     "detection_rate_ci95": [
+      0.972727,
+      1.0
+     ],
+     "false_positive_rate_ci95": [
+      0.0,
+      0.018919
+     ]
+    },
+    "hbos": {
+     "auc": 0.9971311475409836,
+     "threshold_from_validation": 127.35267306350006,
+     "detection_rate": 0.9916666666666667,
+     "false_positive_rate": 0.00819672131147541,
+     "auc_ci95": [
+      0.990691,
+      1.0
+     ],
+     "detection_rate_ci95": [
+      0.972727,
+      1.0
+     ],
+     "false_positive_rate_ci95": [
+      0.0,
+      0.018817
+     ]
+    }
+   },
+   "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h": {
+    "scorable": true,
+    "train_days": [
+     "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h",
+     "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h",
+     "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h"
+    ],
+    "inputs": 56,
+    "fit_rows": 1100,
+    "validation_rows": 275,
+    "held_out_rows": 264,
+    "held_out_malicious": 129,
+    "fitted_normal_flows": 804,
+    "iforest": {
+     "per_seed": [
+      {
+       "seed": 0,
+       "auc": 0.8077519379844961,
+       "threshold_from_validation": 0.6586379057342174,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.014814814814814815,
+       "auc_ci95": [
+        0.749864,
+        0.859824
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.03876
+       ]
+      },
+      {
+       "seed": 1,
+       "auc": 0.6922767728969279,
+       "threshold_from_validation": 0.656401481892878,
+       "detection_rate": 0.007751937984496124,
+       "false_positive_rate": 0.014814814814814815,
+       "auc_ci95": [
+        0.624026,
+        0.757556
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.02439
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.03876
+       ]
+      },
+      {
+       "seed": 2,
+       "auc": 0.7363192650014355,
+       "threshold_from_validation": 0.6625058779927303,
+       "detection_rate": 0.007751937984496124,
+       "false_positive_rate": 0.014814814814814815,
+       "auc_ci95": [
+        0.672737,
+        0.795399
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.02439
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.03876
+       ]
+      },
+      {
+       "seed": 3,
+       "auc": 0.6709158771174275,
+       "threshold_from_validation": 0.6587667864827823,
+       "detection_rate": 0.007751937984496124,
+       "false_positive_rate": 0.007407407407407408,
+       "auc_ci95": [
+        0.600626,
+        0.737226
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.02439
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.02381
+       ]
+      },
+      {
+       "seed": 4,
+       "auc": 0.788458225667528,
+       "threshold_from_validation": 0.6600603288840523,
+       "detection_rate": 0.007751937984496124,
+       "false_positive_rate": 0.007407407407407408,
+       "auc_ci95": [
+        0.729143,
+        0.842774
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.02439
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.02381
+       ]
+      }
+     ],
+     "auc": {
+      "mean": 0.7391444157335629,
+      "min": 0.6709158771174275,
+      "max": 0.8077519379844961
+     },
+     "detection_rate": {
+      "mean": 0.006201550387596899,
+      "min": 0.0,
+      "max": 0.007751937984496124
+     },
+     "false_positive_rate": {
+      "mean": 0.011851851851851853,
+      "min": 0.007407407407407408,
+      "max": 0.014814814814814815
+     }
+    },
+    "knn": {
+     "auc": 0.6173987941429802,
+     "threshold_from_validation": 18.728868689868698,
+     "detection_rate": 0.015503875968992248,
+     "false_positive_rate": 0.0,
+     "auc_ci95": [
+      0.54181,
+      0.69202
+     ],
+     "detection_rate_ci95": [
+      0.0,
+      0.039683
+     ],
+     "false_positive_rate_ci95": [
+      0.0,
+      0.0
+     ]
+    },
+    "hbos": {
+     "auc": 0.03083548664944014,
+     "threshold_from_validation": 107.01616366805867,
+     "detection_rate": 0.007751937984496124,
+     "false_positive_rate": 0.07407407407407407,
+     "auc_ci95": [
+      0.005823,
+      0.061493
+     ],
+     "detection_rate_ci95": [
+      0.0,
+      0.02439
+     ],
+     "false_positive_rate_ci95": [
+      0.036232,
+      0.121212
+     ]
+    }
+   },
+   "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h": {
+    "scorable": true,
+    "train_days": [
+     "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h",
+     "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h",
+     "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h"
+    ],
+    "inputs": 56,
+    "fit_rows": 922,
+    "validation_rows": 231,
+    "held_out_rows": 486,
+    "held_out_malicious": 121,
+    "fitted_normal_flows": 619,
+    "iforest": {
+     "per_seed": [
+      {
+       "seed": 0,
+       "auc": 0.28846371561190987,
+       "threshold_from_validation": 0.7040729966120779,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.235957,
+        0.344308
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 1,
+       "auc": 0.36327408581455906,
+       "threshold_from_validation": 0.6718582590203759,
+       "detection_rate": 0.008264462809917356,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.294489,
+        0.436936
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.026786
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 2,
+       "auc": 0.253005773802785,
+       "threshold_from_validation": 0.6886454713923322,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.204162,
+        0.308744
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 3,
+       "auc": 0.2564247707460659,
+       "threshold_from_validation": 0.6826853681663636,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.207589,
+        0.311852
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 4,
+       "auc": 0.33173327295369637,
+       "threshold_from_validation": 0.6979504923837455,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.27263,
+        0.393114
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      }
+     ],
+     "auc": {
+      "mean": 0.29858032378580324,
+      "min": 0.253005773802785,
+      "max": 0.36327408581455906
+     },
+     "detection_rate": {
+      "mean": 0.001652892561983471,
+      "min": 0.0,
+      "max": 0.008264462809917356
+     },
+     "false_positive_rate": {
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     }
+    },
+    "knn": {
+     "auc": 0.03663534472998981,
+     "threshold_from_validation": 35.919707991815805,
+     "detection_rate": 0.008264462809917356,
+     "false_positive_rate": 0.0,
+     "auc_ci95": [
+      0.014719,
+      0.064679
+     ],
+     "detection_rate_ci95": [
+      0.0,
+      0.027523
+     ],
+     "false_positive_rate_ci95": [
+      0.0,
+      0.0
+     ]
+    },
+    "hbos": {
+     "auc": 0.6573078229367146,
+     "threshold_from_validation": 106.09708265752985,
+     "detection_rate": 0.008264462809917356,
+     "false_positive_rate": 0.005479452054794521,
+     "auc_ci95": [
+      0.603866,
+      0.709251
+     ],
+     "detection_rate_ci95": [
+      0.0,
+      0.026786
+     ],
+     "false_positive_rate_ci95": [
+      0.0,
+      0.014085
+     ]
+    }
+   },
+   "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h": {
+    "scorable": true,
+    "train_days": [
+     "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h",
+     "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h",
+     "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h"
+    ],
+    "inputs": 56,
+    "fit_rows": 989,
+    "validation_rows": 247,
+    "held_out_rows": 403,
+    "held_out_malicious": 129,
+    "fitted_normal_flows": 692,
+    "iforest": {
+     "per_seed": [
+      {
+       "seed": 0,
+       "auc": 0.03395009336275675,
+       "threshold_from_validation": 0.6764751125481534,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0364963503649635,
+       "auc_ci95": [
+        0.016861,
+        0.054511
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.01487,
+        0.059041
+       ]
+      },
+      {
+       "seed": 1,
+       "auc": 0.04190007355853562,
+       "threshold_from_validation": 0.6531284741761957,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.051094890510948905,
+       "auc_ci95": [
+        0.021776,
+        0.065683
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.025733,
+        0.078855
+       ]
+      },
+      {
+       "seed": 2,
+       "auc": 0.04235274147003904,
+       "threshold_from_validation": 0.6571986892536845,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.051094890510948905,
+       "auc_ci95": [
+        0.022508,
+        0.065739
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.025828,
+        0.078073
+       ]
+      },
+      {
+       "seed": 3,
+       "auc": 0.04554970859503197,
+       "threshold_from_validation": 0.6603112457816523,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.043795620437956206,
+       "auc_ci95": [
+        0.022474,
+        0.073589
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0212,
+        0.068351
+       ]
+      },
+      {
+       "seed": 4,
+       "auc": 0.04082498726871499,
+       "threshold_from_validation": 0.6581810367308213,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.058394160583941604,
+       "auc_ci95": [
+        0.020682,
+        0.063978
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.032374,
+        0.086022
+       ]
+      }
+     ],
+     "auc": {
+      "mean": 0.04091552085101567,
+      "min": 0.03395009336275675,
+      "max": 0.04554970859503197
+     },
+     "detection_rate": {
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "false_positive_rate": {
+      "mean": 0.04817518248175182,
+      "min": 0.0364963503649635,
+      "max": 0.058394160583941604
+     }
+    },
+    "knn": {
+     "auc": 0.013608329089571663,
+     "threshold_from_validation": 22.000644724525856,
+     "detection_rate": 0.0,
+     "false_positive_rate": 0.025547445255474453,
+     "auc_ci95": [
+      0.001779,
+      0.032326
+     ],
+     "detection_rate_ci95": [
+      0.0,
+      0.0
+     ],
+     "false_positive_rate_ci95": [
+      0.007692,
+      0.044444
+     ]
+    },
+    "hbos": {
+     "auc": 0.4893623040796696,
+     "threshold_from_validation": 103.29468822201827,
+     "detection_rate": 0.0,
+     "false_positive_rate": 0.4854014598540146,
+     "auc_ci95": [
+      0.427117,
+      0.547242
+     ],
+     "detection_rate_ci95": [
+      0.0,
+      0.0
+     ],
+     "false_positive_rate_ci95": [
+      0.426913,
+      0.54839
+     ]
+    }
+   }
+  },
+  "app": {
+   "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h": {
+    "scorable": true,
+    "train_days": [
+     "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h",
+     "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h",
+     "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h"
+    ],
+    "inputs": 10,
+    "fit_rows": 598,
+    "validation_rows": 150,
+    "held_out_rows": 234,
+    "held_out_malicious": 120,
+    "fitted_normal_flows": 303,
+    "iforest": {
+     "per_seed": [
+      {
+       "seed": 0,
+       "auc": 0.9250730994152047,
+       "threshold_from_validation": 0.8091495536743952,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.879632,
+        0.96193
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 1,
+       "auc": 0.991812865497076,
+       "threshold_from_validation": 0.82350943484316,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.974132,
+        1.0
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 2,
+       "auc": 0.991812865497076,
+       "threshold_from_validation": 0.8129908595105394,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.974132,
+        1.0
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 3,
+       "auc": 0.991812865497076,
+       "threshold_from_validation": 0.7998960606250983,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.974132,
+        1.0
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 4,
+       "auc": 0.8958333333333334,
+       "threshold_from_validation": 0.8190640746640834,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.839116,
+        0.94666
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      }
+     ],
+     "auc": {
+      "mean": 0.9592690058479532,
+      "min": 0.8958333333333334,
+      "max": 0.991812865497076
+     },
+     "detection_rate": {
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "false_positive_rate": {
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     }
+    },
+    "knn": {
+     "auc": 0.991812865497076,
+     "threshold_from_validation": 28.161940590612925,
+     "detection_rate": 0.9916666666666667,
+     "false_positive_rate": 0.0,
+     "auc_ci95": [
+      0.974132,
+      1.0
+     ],
+     "detection_rate_ci95": [
+      0.973913,
+      1.0
+     ],
+     "false_positive_rate_ci95": [
+      0.0,
+      0.0
+     ]
+    },
+    "hbos": {
+     "auc": 0.9916666666666667,
+     "threshold_from_validation": 31.439001100927154,
+     "detection_rate": 0.9916666666666667,
+     "false_positive_rate": 0.0,
+     "auc_ci95": [
+      0.973913,
+      1.0
+     ],
+     "detection_rate_ci95": [
+      0.973913,
+      1.0
+     ],
+     "false_positive_rate_ci95": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h": {
+    "scorable": true,
+    "train_days": [
+     "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h",
+     "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h",
+     "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h"
+    ],
+    "inputs": 10,
+    "fit_rows": 578,
+    "validation_rows": 145,
+    "held_out_rows": 259,
+    "held_out_malicious": 130,
+    "fitted_normal_flows": 286,
+    "iforest": {
+     "per_seed": [
+      {
+       "seed": 0,
+       "auc": 0.3840787119856887,
+       "threshold_from_validation": 0.737820283686356,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.007751937984496124,
+       "auc_ci95": [
+        0.317438,
+        0.451342
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.025
+       ]
+      },
+      {
+       "seed": 1,
+       "auc": 0.38771615980918306,
+       "threshold_from_validation": 0.738312547993002,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.318999,
+        0.4555
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 2,
+       "auc": 0.3167561121049493,
+       "threshold_from_validation": 0.7521886705801041,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.253589,
+        0.381679
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 3,
+       "auc": 0.37286821705426354,
+       "threshold_from_validation": 0.7605455797796968,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.305492,
+        0.441253
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 4,
+       "auc": 0.4318425760286225,
+       "threshold_from_validation": 0.7275039234338749,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.007751937984496124,
+       "auc_ci95": [
+        0.362186,
+        0.502517
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.025
+       ]
+      }
+     ],
+     "auc": {
+      "mean": 0.37865235539654146,
+      "min": 0.3167561121049493,
+      "max": 0.4318425760286225
+     },
+     "detection_rate": {
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "false_positive_rate": {
+      "mean": 0.0031007751937984496,
+      "min": 0.0,
+      "max": 0.007751937984496124
+     }
+    },
+    "knn": {
+     "auc": 0.022957662492546212,
+     "threshold_from_validation": 29.48497791495958,
+     "detection_rate": 0.0,
+     "false_positive_rate": 0.0,
+     "auc_ci95": [
+      0.0,
+      0.050005
+     ],
+     "detection_rate_ci95": [
+      0.0,
+      0.0
+     ],
+     "false_positive_rate_ci95": [
+      0.0,
+      0.0
+     ]
+    },
+    "hbos": {
+     "auc": 0.09970184853905784,
+     "threshold_from_validation": 29.878708184882917,
+     "detection_rate": 0.0,
+     "false_positive_rate": 0.007751937984496124,
+     "auc_ci95": [
+      0.056878,
+      0.147138
+     ],
+     "detection_rate_ci95": [
+      0.0,
+      0.0
+     ],
+     "false_positive_rate_ci95": [
+      0.0,
+      0.025
+     ]
+    }
+   },
+   "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h": {
+    "scorable": true,
+    "train_days": [
+     "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h",
+     "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h",
+     "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h"
+    ],
+    "inputs": 10,
+    "fit_rows": 590,
+    "validation_rows": 148,
+    "held_out_rows": 244,
+    "held_out_malicious": 122,
+    "fitted_normal_flows": 290,
+    "iforest": {
+     "per_seed": [
+      {
+       "seed": 0,
+       "auc": 0.3040849234076861,
+       "threshold_from_validation": 0.7378251076228481,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.00819672131147541,
+       "auc_ci95": [
+        0.237059,
+        0.375132
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.026316
+       ]
+      },
+      {
+       "seed": 1,
+       "auc": 0.3316984681537221,
+       "threshold_from_validation": 0.7479674275613212,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.00819672131147541,
+       "auc_ci95": [
+        0.26061,
+        0.406386
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.026316
+       ]
+      },
+      {
+       "seed": 2,
+       "auc": 0.2346815372211771,
+       "threshold_from_validation": 0.7397503708899346,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.00819672131147541,
+       "auc_ci95": [
+        0.175256,
+        0.298431
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.026316
+       ]
+      },
+      {
+       "seed": 3,
+       "auc": 0.3378124160171997,
+       "threshold_from_validation": 0.7462503303709188,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.00819672131147541,
+       "auc_ci95": [
+        0.268149,
+        0.410707
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.026316
+       ]
+      },
+      {
+       "seed": 4,
+       "auc": 0.3415076592313894,
+       "threshold_from_validation": 0.7440342429882021,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.00819672131147541,
+       "auc_ci95": [
+        0.273512,
+        0.415646
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.026316
+       ]
+      }
+     ],
+     "auc": {
+      "mean": 0.3099570008062349,
+      "min": 0.2346815372211771,
+      "max": 0.3415076592313894
+     },
+     "detection_rate": {
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "false_positive_rate": {
+      "mean": 0.00819672131147541,
+      "min": 0.00819672131147541,
+      "max": 0.00819672131147541
+     }
+    },
+    "knn": {
+     "auc": 0.016930932545014783,
+     "threshold_from_validation": 24.24788593564414,
+     "detection_rate": 0.00819672131147541,
+     "false_positive_rate": 0.00819672131147541,
+     "auc_ci95": [
+      0.0,
+      0.042003
+     ],
+     "detection_rate_ci95": [
+      0.0,
+      0.026087
+     ],
+     "false_positive_rate_ci95": [
+      0.0,
+      0.026316
+     ]
+    },
+    "hbos": {
+     "auc": 0.09688255845202902,
+     "threshold_from_validation": 29.95361918115454,
+     "detection_rate": 0.0,
+     "false_positive_rate": 0.0,
+     "auc_ci95": [
+      0.050472,
+      0.150617
+     ],
+     "detection_rate_ci95": [
+      0.0,
+      0.0
+     ],
+     "false_positive_rate_ci95": [
+      0.0,
+      0.0
+     ]
+    }
+   },
+   "20221310_PFCP_PFCP_Sess_Deletion_DoS_Test_07_4h": {
+    "scorable": true,
+    "train_days": [
+     "20221005_PFCP_Sess_Establishment_DoS_Test_05_4h",
+     "20221122_PFCP_PFCP_Sess_Modification_DoS_DUPL_Test_08_4h",
+     "20221101_PFCP_PFCP_Sess_Modification_DoS_DROP_Test_07_4h"
+    ],
+    "inputs": 10,
+    "fit_rows": 589,
+    "validation_rows": 148,
+    "held_out_rows": 245,
+    "held_out_malicious": 115,
+    "fitted_normal_flows": 288,
+    "iforest": {
+     "per_seed": [
+      {
+       "seed": 0,
+       "auc": 0.015117056856187291,
+       "threshold_from_validation": 0.8032304671944013,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.002084,
+        0.037151
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 1,
+       "auc": 0.015384615384615385,
+       "threshold_from_validation": 0.8134269569953454,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.002158,
+        0.037165
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 2,
+       "auc": 0.015117056856187291,
+       "threshold_from_validation": 0.806497823103919,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.00214,
+        0.037158
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 3,
+       "auc": 0.015183946488294315,
+       "threshold_from_validation": 0.808055375117868,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.002084,
+        0.037153
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      },
+      {
+       "seed": 4,
+       "auc": 0.015117056856187291,
+       "threshold_from_validation": 0.837557287574029,
+       "detection_rate": 0.0,
+       "false_positive_rate": 0.0,
+       "auc_ci95": [
+        0.002081,
+        0.037151
+       ],
+       "detection_rate_ci95": [
+        0.0,
+        0.0
+       ],
+       "false_positive_rate_ci95": [
+        0.0,
+        0.0
+       ]
+      }
+     ],
+     "auc": {
+      "mean": 0.015183946488294315,
+      "min": 0.015117056856187291,
+      "max": 0.015384615384615385
+     },
+     "detection_rate": {
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     },
+     "false_positive_rate": {
+      "mean": 0.0,
+      "min": 0.0,
+      "max": 0.0
+     }
+    },
+    "knn": {
+     "auc": 0.013645484949832776,
+     "threshold_from_validation": 27.148182044720603,
+     "detection_rate": 0.0,
+     "false_positive_rate": 0.0,
+     "auc_ci95": [
+      0.000538,
+      0.035837
+     ],
+     "detection_rate_ci95": [
+      0.0,
+      0.0
+     ],
+     "false_positive_rate_ci95": [
+      0.0,
+      0.0
+     ]
+    },
+    "hbos": {
+     "auc": 0.012107023411371237,
+     "threshold_from_validation": 22.06230754280392,
+     "detection_rate": 0.008695652173913044,
+     "false_positive_rate": 0.046153846153846156,
+     "auc_ci95": [
+      0.0012,
+      0.033356
+     ],
+     "detection_rate_ci95": [
+      0.0,
+      0.029712
+     ],
+     "false_positive_rate_ci95": [
+      0.015035,
+      0.084615
+     ]
+    }
+   }
+  }
+ },
+ "tools": {
+  "scikit-learn": "1.9.0",
+  "numpy": "2.5.1"
+ }
+}
