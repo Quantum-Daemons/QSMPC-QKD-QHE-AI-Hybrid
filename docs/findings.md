@@ -239,7 +239,9 @@ federated model under CKKS ([models-and-benchmarks](models-and-benchmarks.md)).
 - **The lending page's liquidation rule has no protocol fee and no e-mode bonus (2026-11-28).** Aave V3's
   `LiquidationCall` reports the collateral less the fee, and an e-mode borrower's bonus is the category's; the page's
   one bonus overstates every asset's ratio in RED-LIQ-2026's same-asset events, by up to 0.041 for WETH
-  (`docs/measurements/defi-red-liq-arithmetic-2026-11-28.json`). Whether the page adds the fee is the owner's choice.
+  (`docs/measurements/defi-red-liq-arithmetic-2026-11-28.json`). On the owner's choice the page's rule takes the fee
+  since batch 13, and with the fee in force at each event's time (AIP 534 raised WETH's and WBTC's on 2026-10-24) every
+  same-asset event of the four assets checked sits on Aave's rule.
 - **A local graph can drift from its pin unseen (2026-11-28).** Two fp32 graphs on this machine were not the pinned
   files while the per-row re-score passed, because it checks only the graphs the records name; they were replaced by
   the pinned files and `tests/test_r86_local_graphs_match_their_pins.py` now holds every local graph to its pin.

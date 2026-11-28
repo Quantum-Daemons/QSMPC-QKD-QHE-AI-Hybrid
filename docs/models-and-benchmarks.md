@@ -832,7 +832,13 @@ As run on 2026-11-28:
   offset that a change of the fee between the events (May to July 2026) and the read (November) would give; WETH's nine
   split between the reserve's bonus with a 10 percent fee (a ratio of 1.045) and an e-mode bonus near 1 percent
   (1.009). The page's rule, one plus a 5 percent bonus with no fee, overstates every asset's ratio, by up to 0.041 for
-  WETH. The one stablecoin pair whose collateral the preset reads sits within 0.08 percent of Aave's rule at par.
+  WETH. The one stablecoin pair whose collateral the preset reads sits within 0.08 percent of Aave's rule at par. Read
+  afterwards at the sources, Aave governance raised the fee of WETH, WBTC and wstETH from 10 to 20 percent on 2026-10-24
+  (AIP 534), after the events; with the fee in force at each event's time, all 28 same-asset events of WETH, WBTC,
+  wstETH and USDC sit on Aave's rule to rounding, eight of WETH's at the reserve's bonus and one at e-mode category 1's
+  (`references/defi-red-liq-liquidation-arithmetic-preregistration-addendum-fee-history.md`, written after the result;
+  `docs/measurements/defi-red-liq-fee-history-2026-11-28.json`). Since Round 86's batch 13 the page's rule takes the fee
+  (its illustrative pool 10 percent, the `aave_v3_core` preset the 20 percent read at its block) and names e-mode.
 - **PFCP** (`docs/measurements/telecom-pfcp-held-out-day-2026-11-28.json`): a detector trained on three attack days
   recognises the two session-modification days (the teacher's AUC 1.000 on both, the student's 0.993 and 0.997),
   ranks the deletion day (the student 0.971, the teacher 0.66) but at the threshold fixed on validation the student
