@@ -1,0 +1,2117 @@
+{
+ "preregistration": {
+  "file": "references/medical-breast-framing-normalisation-second-site-preregistration.md",
+  "sha256": "e986882ad2ff663711cd55321327b8e1812909613cf088c14f5feb337583c081"
+ },
+ "graphs": {
+  "medical_fl.resnet18 (int8)": "a1e5b6ce9cef59d06e3d6a48aa99444150523e8e4e00ac661a18348eb77de088",
+  "medical_fl.resnet18 (fp32)": "e25b8dc2cba9294e2adfa81358627b2239208a7cf890820a323c6c8447bd169f",
+  "medical_fl.resnet50": "44f10daaf4d24b8ed1130da25f5e033471bb35307328b91fdb99817907dab5bb",
+  "medical_fl.student": "3550db7b5ff71393b7c0382224c42c8f9ad51ed8b5857603a3921c12f517ddbc",
+  "medical_fl.square_student": "f41f50c6fc357859b037cf7298893fa12c69fa10a2876906b373938eeca61b88"
+ },
+ "checkpoint_check": {
+  "resnet18": {
+   "checkpoint_sha256": "6c1499d461865522c8e6c7034b6509ff6fdd6a60ff359b2dd889d6070e66ef85",
+   "graph": "medical_fl.resnet18 (fp32)",
+   "largest_abs_logit_difference": 1.481175422668457e-05,
+   "decisions_same": true,
+   "images": 156
+  },
+  "resnet50": {
+   "checkpoint_sha256": "b17d62629369e3222753150d60dcabd022e83e502e5c86c3819898e3ecf6df50",
+   "graph": "medical_fl.resnet50",
+   "largest_abs_logit_difference": 3.814697265625e-05,
+   "decisions_same": true,
+   "images": 156
+  }
+ },
+ "arm_n2_ran": true,
+ "datasets": {
+  "busbra": {
+   "images": 1875,
+   "patients": 1064,
+   "malignant": 607,
+   "archive_sha256": "ba3e6ed19cc37c682d8d39e25435bbf8a555a12cb7e641b5f2117685c95580ff",
+   "whole": {
+    "medical_fl.resnet18 (int8)": {
+     "images": 1875,
+     "malignant": 607,
+     "auc": 0.6606533138619367,
+     "auprc": 0.4663570418711666,
+     "accuracy": 0.6858666666666666,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       177,
+       430
+      ],
+      [
+       159,
+       1109
+      ]
+     ],
+     "patients": 1064,
+     "auc_ci95": [
+      0.6258308218302158,
+      0.6945031302544183
+     ],
+     "auprc_ci95": [
+      0.4157792596259277,
+      0.5225177517989317
+     ],
+     "resamples_used": 2000
+    },
+    "medical_fl.resnet18 (fp32)": {
+     "images": 1875,
+     "malignant": 607,
+     "auc": 0.6615913709145147,
+     "auprc": 0.4672473838346786,
+     "accuracy": 0.6842666666666667,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       174,
+       433
+      ],
+      [
+       159,
+       1109
+      ]
+     ],
+     "patients": 1064,
+     "auc_ci95": [
+      0.6265879257388958,
+      0.6953738356241715
+     ],
+     "auprc_ci95": [
+      0.41690281886486186,
+      0.5235538363460818
+     ],
+     "resamples_used": 2000
+    },
+    "medical_fl.resnet50": {
+     "images": 1875,
+     "malignant": 607,
+     "auc": 0.6121458899588919,
+     "auprc": 0.4239643708302124,
+     "accuracy": 0.6789333333333334,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       33,
+       574
+      ],
+      [
+       28,
+       1240
+      ]
+     ],
+     "patients": 1064,
+     "auc_ci95": [
+      0.5782121384659344,
+      0.6455670086430438
+     ],
+     "auprc_ci95": [
+      0.3776521361544997,
+      0.4762520259762942
+     ],
+     "resamples_used": 2000
+    },
+    "medical_fl.student": {
+     "images": 1875,
+     "malignant": 607,
+     "auc": 0.6107453006200012,
+     "auprc": 0.44958157178114283,
+     "accuracy": 0.6528,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       207,
+       400
+      ],
+      [
+       251,
+       1017
+      ]
+     ],
+     "patients": 1064,
+     "auc_ci95": [
+      0.5743756857123321,
+      0.6450338887484208
+     ],
+     "auprc_ci95": [
+      0.3994194745566646,
+      0.502906929860019
+     ],
+     "resamples_used": 2000
+    },
+    "medical_fl.square_student": {
+     "images": 1875,
+     "malignant": 607,
+     "auc": 0.585772454903102,
+     "auprc": 0.4225196776002996,
+     "accuracy": 0.5893333333333334,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       297,
+       310
+      ],
+      [
+       460,
+       808
+      ]
+     ],
+     "patients": 1064,
+     "auc_ci95": [
+      0.549325928691591,
+      0.6223847373237091
+     ],
+     "auprc_ci95": [
+      0.3743255370236498,
+      0.4770896830615573
+     ],
+     "resamples_used": 2000
+    }
+   },
+   "arm_f": {
+    "m=0.0": {
+     "medical_fl.resnet18 (int8)": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.5919646708485129,
+      "auprc": 0.4064201333812746,
+      "accuracy": 0.6074666666666667,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        273,
+        334
+       ],
+       [
+        402,
+        866
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.5582820907965816,
+       0.6266570597096712
+      ],
+      "auprc_ci95": [
+       0.36226856964016635,
+       0.4586834983302024
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.06868864301342381
+     },
+     "medical_fl.resnet18 (fp32)": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.5942331578482374,
+      "auprc": 0.4071179260035067,
+      "accuracy": 0.6101333333333333,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        281,
+        326
+       ],
+       [
+        405,
+        863
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.5601994825630011,
+       0.6288281478845645
+      ],
+      "auprc_ci95": [
+       0.3637779905235452,
+       0.4594255162212664
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.06735821306627732
+     },
+     "medical_fl.resnet50": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.5814680462948045,
+      "auprc": 0.39129333529335797,
+      "accuracy": 0.6736,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        27,
+        580
+       ],
+       [
+        32,
+        1236
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.550158443767011,
+       0.6135999146376846
+      ],
+      "auprc_ci95": [
+       0.35198161452419385,
+       0.43842974485755254
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.030677843664087323
+     },
+     "medical_fl.student": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.6450883228787179,
+      "auprc": 0.4622252841368377,
+      "accuracy": 0.6848,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        138,
+        469
+       ],
+       [
+        122,
+        1146
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.611258522587583,
+       0.6773004407804029
+      ],
+      "auprc_ci95": [
+       0.4158607217194487,
+       0.5164894171562695
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.03434302225871666
+     },
+     "medical_fl.square_student": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.5678168476086041,
+      "auprc": 0.3889498024552316,
+      "accuracy": 0.5626666666666666,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        291,
+        316
+       ],
+       [
+        504,
+        764
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.532682864009933,
+       0.6055332516476857
+      ],
+      "auprc_ci95": [
+       0.3445604150658215,
+       0.4429484440606183
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.017955607294497966
+     }
+    },
+    "m=0.12": {
+     "medical_fl.resnet18 (int8)": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.5495974929710684,
+      "auprc": 0.37067774420669763,
+      "accuracy": 0.5210666666666667,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        341,
+        266
+       ],
+       [
+        632,
+        636
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.5154709686029798,
+       0.5861909744905945
+      ],
+      "auprc_ci95": [
+       0.3302218406137341,
+       0.4169344426456055
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.1110558208908683
+     },
+     "medical_fl.resnet18 (fp32)": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.55152687624403,
+      "auprc": 0.3716618854263485,
+      "accuracy": 0.5194666666666666,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        347,
+        260
+       ],
+       [
+        641,
+        627
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.5176787444071077,
+       0.588155841313892
+      ],
+      "auprc_ci95": [
+       0.3312286961246123,
+       0.4180444314436344
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.11006449467048474
+     },
+     "medical_fl.resnet50": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.5406040983478763,
+      "auprc": 0.37210830993263955,
+      "accuracy": 0.672,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        52,
+        555
+       ],
+       [
+        60,
+        1208
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.509399543236672,
+       0.5733833913375188
+      ],
+      "auprc_ci95": [
+       0.3355562337806999,
+       0.4205188720233058
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.07154179161101559
+     },
+     "medical_fl.student": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.5446460588611313,
+      "auprc": 0.3465764726056099,
+      "accuracy": 0.5248,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        351,
+        256
+       ],
+       [
+        635,
+        633
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.5095348083971016,
+       0.5789080381395513
+      ],
+      "auprc_ci95": [
+       0.3112110745038505,
+       0.3914132209858829
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.06609924175886994
+     },
+     "medical_fl.square_student": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.5560118803236687,
+      "auprc": 0.378582097238481,
+      "accuracy": 0.5584,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        306,
+        301
+       ],
+       [
+        527,
+        741
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.5209947639449531,
+       0.5933635907083847
+      ],
+      "auprc_ci95": [
+       0.3372030639749156,
+       0.43111005168006805
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.029760574579433374
+     }
+    },
+    "m=0.5": {
+     "medical_fl.resnet18 (int8)": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.5748938514387872,
+      "auprc": 0.37555108295189815,
+      "accuracy": 0.6016,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        254,
+        353
+       ],
+       [
+        394,
+        874
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.5399969551323633,
+       0.6114116047235285
+      ],
+      "auprc_ci95": [
+       0.33577336890837994,
+       0.4237506673551211
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.08575946242314947
+     },
+     "medical_fl.resnet18 (fp32)": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.5756526122680192,
+      "auprc": 0.3760945265295231,
+      "accuracy": 0.5984,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        253,
+        354
+       ],
+       [
+        399,
+        869
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.5400929574416532,
+       0.6128045077908424
+      ],
+      "auprc_ci95": [
+       0.33648894256274575,
+       0.42503926896369265
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.08593875864649547
+     },
+     "medical_fl.resnet50": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.5579074831487535,
+      "auprc": 0.3682804703596533,
+      "accuracy": 0.6704,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        40,
+        567
+       ],
+       [
+        51,
+        1217
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.5218835923496384,
+       0.5905932932742958
+      ],
+      "auprc_ci95": [
+       0.3289355267347384,
+       0.41654488913568266
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.05423840681013836
+     },
+     "medical_fl.student": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.5272322379806568,
+      "auprc": 0.3272057547417093,
+      "accuracy": 0.5450666666666667,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        295,
+        312
+       ],
+       [
+        541,
+        727
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.49237797628798513,
+       0.5635571630973535
+      ],
+      "auprc_ci95": [
+       0.2930191392266828,
+       0.36941000883878167
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.08351306263934444
+     },
+     "medical_fl.square_student": {
+      "images": 1875,
+      "malignant": 607,
+      "auc": 0.6130865455074602,
+      "auprc": 0.4312723233373399,
+      "accuracy": 0.6197333333333334,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        288,
+        319
+       ],
+       [
+        394,
+        874
+       ]
+      ],
+      "patients": 1064,
+      "auc_ci95": [
+       0.580377573051365,
+       0.646616109485565
+      ],
+      "auprc_ci95": [
+       0.3826567931730089,
+       0.4861345162784306
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.027314090604358188
+     }
+    }
+   },
+   "arm_n": {
+    "adaptation_images": 944,
+    "test_images": 931,
+    "test_malignant": 306,
+    "test_patients": 532,
+    "n0": {
+     "medical_fl.resnet18 (int8)": {
+      "images": 931,
+      "malignant": 306,
+      "auc": 0.6599581699346406,
+      "auprc": 0.4589431939212325,
+      "accuracy": 0.6831364124597207,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        85,
+        221
+       ],
+       [
+        74,
+        551
+       ]
+      ],
+      "patients": 532,
+      "auc_ci95": [
+       0.6099302885634602,
+       0.708377298295209
+      ],
+      "auprc_ci95": [
+       0.39406220548487997,
+       0.5363196723147475
+      ],
+      "resamples_used": 2000
+     },
+     "medical_fl.resnet18 (fp32)": {
+      "images": 931,
+      "malignant": 306,
+      "auc": 0.660235294117647,
+      "auprc": 0.4593204724516926,
+      "accuracy": 0.6809881847475833,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        84,
+        222
+       ],
+       [
+        75,
+        550
+       ]
+      ],
+      "patients": 532,
+      "auc_ci95": [
+       0.6105641035949816,
+       0.7084710090724934
+      ],
+      "auprc_ci95": [
+       0.3948422969593959,
+       0.5362867329602575
+      ],
+      "resamples_used": 2000
+     },
+     "medical_fl.resnet50": {
+      "images": 931,
+      "malignant": 306,
+      "auc": 0.5899032679738562,
+      "auprc": 0.40476261954870096,
+      "accuracy": 0.6670247046186896,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        15,
+        291
+       ],
+       [
+        19,
+        606
+       ]
+      ],
+      "patients": 532,
+      "auc_ci95": [
+       0.5398635252705314,
+       0.6392669232339906
+      ],
+      "auprc_ci95": [
+       0.34630588266784557,
+       0.4743394472842544
+      ],
+      "resamples_used": 2000
+     },
+     "medical_fl.student": {
+      "images": 931,
+      "malignant": 306,
+      "auc": 0.6089359477124183,
+      "auprc": 0.4569739734948134,
+      "accuracy": 0.6466165413533834,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        100,
+        206
+       ],
+       [
+        123,
+        502
+       ]
+      ],
+      "patients": 532,
+      "auc_ci95": [
+       0.5602100039435165,
+       0.659623646805751
+      ],
+      "auprc_ci95": [
+       0.3887259261341825,
+       0.5344009873280995
+      ],
+      "resamples_used": 2000
+     },
+     "medical_fl.square_student": {
+      "images": 931,
+      "malignant": 306,
+      "auc": 0.599602614379085,
+      "auprc": 0.45903464320442955,
+      "accuracy": 0.5907626208378088,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        163,
+        143
+       ],
+       [
+        238,
+        387
+       ]
+      ],
+      "patients": 532,
+      "auc_ci95": [
+       0.5476591392006527,
+       0.6488108894871661
+      ],
+      "auprc_ci95": [
+       0.38493969664237876,
+       0.5356620032044836
+      ],
+      "resamples_used": 2000
+     }
+    },
+    "n1": {
+     "adaptation_mean": -0.33910688757896423,
+     "adaptation_sd": 0.3480967879295349,
+     "models": {
+      "medical_fl.resnet18 (int8)": {
+       "images": 931,
+       "malignant": 306,
+       "auc": 0.6422640522875817,
+       "auprc": 0.4641440384285418,
+       "accuracy": 0.6928034371643395,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         95,
+         211
+        ],
+        [
+         75,
+         550
+        ]
+       ],
+       "patients": 532,
+       "auc_ci95": [
+        0.5873725693303994,
+        0.6923224716252027
+       ],
+       "auprc_ci95": [
+        0.39524075137657877,
+        0.5435732367442246
+       ],
+       "resamples_used": 2000
+      },
+      "medical_fl.resnet18 (fp32)": {
+       "images": 931,
+       "malignant": 306,
+       "auc": 0.6427503267973856,
+       "auprc": 0.46517122307442393,
+       "accuracy": 0.6970998925886144,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         94,
+         212
+        ],
+        [
+         70,
+         555
+        ]
+       ],
+       "patients": 532,
+       "auc_ci95": [
+        0.5877858309844949,
+        0.693218267479551
+       ],
+       "auprc_ci95": [
+        0.3961201652106714,
+        0.544370471742587
+       ],
+       "resamples_used": 2000
+      },
+      "medical_fl.resnet50": {
+       "images": 931,
+       "malignant": 306,
+       "auc": 0.5865568627450981,
+       "auprc": 0.420678621570742,
+       "accuracy": 0.6756176154672395,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         32,
+         274
+        ],
+        [
+         28,
+         597
+        ]
+       ],
+       "patients": 532,
+       "auc_ci95": [
+        0.533912769654869,
+        0.6397773940204173
+       ],
+       "auprc_ci95": [
+        0.35921748750490134,
+        0.49348486719580853
+       ],
+       "resamples_used": 2000
+      },
+      "medical_fl.student": {
+       "images": 931,
+       "malignant": 306,
+       "auc": 0.6026875816993464,
+       "auprc": 0.45233202003777195,
+       "accuracy": 0.631578947368421,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         101,
+         205
+        ],
+        [
+         138,
+         487
+        ]
+       ],
+       "patients": 532,
+       "auc_ci95": [
+        0.553842528788559,
+        0.653559175344779
+       ],
+       "auprc_ci95": [
+        0.3838139755459095,
+        0.5286588162802841
+       ],
+       "resamples_used": 2000
+      },
+      "medical_fl.square_student": {
+       "images": 931,
+       "malignant": 306,
+       "auc": 0.5988392156862745,
+       "auprc": 0.45826431254204064,
+       "accuracy": 0.5832438238453276,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         161,
+         145
+        ],
+        [
+         243,
+         382
+        ]
+       ],
+       "patients": 532,
+       "auc_ci95": [
+        0.5466401361625206,
+        0.64842637661595
+       ],
+       "auprc_ci95": [
+        0.38370589694631746,
+        0.5343486851850909
+       ],
+       "resamples_used": 2000
+      }
+     }
+    },
+    "n2": {
+     "resnet18": {
+      "unadapted_checkpoint": {
+       "images": 931,
+       "malignant": 306,
+       "auc": 0.660235294117647,
+       "auprc": 0.4593204724516926,
+       "accuracy": 0.6809881847475833,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         84,
+         222
+        ],
+        [
+         75,
+         550
+        ]
+       ],
+       "patients": 532,
+       "auc_ci95": [
+        0.6105641035949816,
+        0.7084710090724934
+       ],
+       "auprc_ci95": [
+        0.3948422969593959,
+        0.5362867329602575
+       ],
+       "resamples_used": 2000
+      },
+      "adapted": {
+       "images": 931,
+       "malignant": 306,
+       "auc": 0.6433045751633987,
+       "auprc": 0.4720599565179748,
+       "accuracy": 0.6702470461868958,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         140,
+         166
+        ],
+        [
+         141,
+         484
+        ]
+       ],
+       "patients": 532,
+       "auc_ci95": [
+        0.5885588877332708,
+        0.6935027658145292
+       ],
+       "auprc_ci95": [
+        0.40035165191741134,
+        0.5489610685111883
+       ],
+       "resamples_used": 2000
+      },
+      "batches": 15
+     },
+     "resnet50": {
+      "unadapted_checkpoint": {
+       "images": 931,
+       "malignant": 306,
+       "auc": 0.5899032679738562,
+       "auprc": 0.40476261954870096,
+       "accuracy": 0.6670247046186896,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         15,
+         291
+        ],
+        [
+         19,
+         606
+        ]
+       ],
+       "patients": 532,
+       "auc_ci95": [
+        0.5398635252705314,
+        0.6392669232339906
+       ],
+       "auprc_ci95": [
+        0.34630588266784557,
+        0.4743394472842544
+       ],
+       "resamples_used": 2000
+      },
+      "adapted": {
+       "images": 931,
+       "malignant": 306,
+       "auc": 0.5841986928104574,
+       "auprc": 0.411118147062563,
+       "accuracy": 0.6348012889366272,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         97,
+         209
+        ],
+        [
+         131,
+         494
+        ]
+       ],
+       "patients": 532,
+       "auc_ci95": [
+        0.5314065327624864,
+        0.6356561098048472
+       ],
+       "auprc_ci95": [
+        0.3503600777098548,
+        0.4855743384371504
+       ],
+       "resamples_used": 2000
+      },
+      "batches": 15
+     }
+    }
+   }
+  },
+  "breast": {
+   "images": 256,
+   "patients": 256,
+   "malignant": 98,
+   "archive_sha256": "c32e49cdfa54042e065582d0cb35978b5fc5e5b5e461b33bf773fb50cfdad355",
+   "sheet_sha256": "89a8874496a6f1f93960390b963f7369b90f7e72ee08a738f2d17e37f5eff8bf",
+   "images_with_alpha_below_255": 31,
+   "classification": {
+    "benign": 154,
+    "malignant": 98,
+    "normal": 4
+   },
+   "images_without_a_tumour_box": 4,
+   "whole": {
+    "medical_fl.resnet18 (int8)": {
+     "images": 256,
+     "malignant": 98,
+     "auc": 0.4954146215448204,
+     "auprc": 0.418837274259809,
+     "accuracy": 0.58984375,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       16,
+       82
+      ],
+      [
+       23,
+       135
+      ]
+     ],
+     "patients": 256,
+     "auc_ci95": [
+      0.419547968987032,
+      0.573363175588819
+     ],
+     "auprc_ci95": [
+      0.337845830827497,
+      0.5193015934097363
+     ],
+     "resamples_used": 2000
+    },
+    "medical_fl.resnet18 (fp32)": {
+     "images": 256,
+     "malignant": 98,
+     "auc": 0.4967708602428313,
+     "auprc": 0.41956230081894924,
+     "accuracy": 0.5859375,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       16,
+       82
+      ],
+      [
+       24,
+       134
+      ]
+     ],
+     "patients": 256,
+     "auc_ci95": [
+      0.420045254481822,
+      0.5733200088101655
+     ],
+     "auprc_ci95": [
+      0.33758974051493756,
+      0.519763323488299
+     ],
+     "resamples_used": 2000
+    },
+    "medical_fl.resnet50": {
+     "images": 256,
+     "malignant": 98,
+     "auc": 0.5648411263239473,
+     "auprc": 0.44751181799407913,
+     "accuracy": 0.6171875,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       4,
+       94
+      ],
+      [
+       4,
+       154
+      ]
+     ],
+     "patients": 256,
+     "auc_ci95": [
+      0.4954622065832257,
+      0.6401665720583808
+     ],
+     "auprc_ci95": [
+      0.36492311222219,
+      0.5573923885123215
+     ],
+     "resamples_used": 2000
+    },
+    "medical_fl.student": {
+     "images": 256,
+     "malignant": 98,
+     "auc": 0.4873417721518987,
+     "auprc": 0.39565413841528774,
+     "accuracy": 0.56640625,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       22,
+       76
+      ],
+      [
+       35,
+       123
+      ]
+     ],
+     "patients": 256,
+     "auc_ci95": [
+      0.41339583333333335,
+      0.5602273210989362
+     ],
+     "auprc_ci95": [
+      0.3200744715995212,
+      0.4963858074541711
+     ],
+     "resamples_used": 2000
+    },
+    "medical_fl.square_student": {
+     "images": 256,
+     "malignant": 98,
+     "auc": 0.6289718419013175,
+     "auprc": 0.5210515769077241,
+     "accuracy": 0.5703125,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       54,
+       44
+      ],
+      [
+       66,
+       92
+      ]
+     ],
+     "patients": 256,
+     "auc_ci95": [
+      0.5588287934071033,
+      0.6959890743111571
+     ],
+     "auprc_ci95": [
+      0.42921816273629376,
+      0.6242680854880537
+     ],
+     "resamples_used": 2000
+    }
+   },
+   "arm_s": {
+    "breastmnist_test_same_graph": {
+     "medical_fl.resnet18 (int8)": {
+      "images": 156,
+      "malignant": 42,
+      "auc": 0.91624895572264,
+      "auprc": 0.7934921432577579,
+      "accuracy": 0.8589743589743589,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        30,
+        12
+       ],
+       [
+        10,
+        104
+       ]
+      ]
+     },
+     "medical_fl.resnet18 (fp32)": {
+      "images": 156,
+      "malignant": 42,
+      "auc": 0.914578111946533,
+      "auprc": 0.7955811656652476,
+      "accuracy": 0.8653846153846154,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        30,
+        12
+       ],
+       [
+        9,
+        105
+       ]
+      ]
+     },
+     "medical_fl.resnet50": {
+      "images": 156,
+      "malignant": 42,
+      "auc": 0.7992898913951545,
+      "auprc": 0.5838135368688813,
+      "accuracy": 0.782051282051282,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        13,
+        29
+       ],
+       [
+        5,
+        109
+       ]
+      ]
+     },
+     "medical_fl.student": {
+      "images": 156,
+      "malignant": 42,
+      "auc": 0.7882205513784462,
+      "auprc": 0.6431794970986817,
+      "accuracy": 0.7692307692307693,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        24,
+        18
+       ],
+       [
+        18,
+        96
+       ]
+      ]
+     },
+     "medical_fl.square_student": {
+      "images": 156,
+      "malignant": 42,
+      "auc": 0.8197577276524646,
+      "auprc": 0.6669075845047431,
+      "accuracy": 0.7051282051282052,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        31,
+        11
+       ],
+       [
+        35,
+        79
+       ]
+      ]
+     }
+    },
+    "float64_network_vs_graph_largest_abs_logit_difference": {
+     "medical_fl.student": 1.2472701622634474e-06,
+     "medical_fl.square_student": 1.8968488340043166e-06
+    },
+    "ckks": {
+     "medical_fl.student": {
+      "page_context": {
+       "largest_abs_logit_difference": 1.1673691568958589e-08,
+       "decisions_changed": 0,
+       "decisions_changed_where_margin_exceeds_twice_the_difference": 0,
+       "meets_the_page_rule": true
+      }
+     },
+     "medical_fl.square_student": {
+      "A2": {
+       "largest_abs_logit_difference": 1.2042708317450135e-05,
+       "decisions_changed": 0,
+       "decisions_changed_where_margin_exceeds_twice_the_difference": 0,
+       "meets_the_page_rule": true
+      },
+      "B": {
+       "largest_abs_logit_difference": 5.4663587953918125e-06,
+       "decisions_changed": 0,
+       "decisions_changed_where_margin_exceeds_twice_the_difference": 0,
+       "meets_the_page_rule": true
+      }
+     }
+    }
+   },
+   "arm_f": {
+    "m=0.0": {
+     "medical_fl.resnet18 (int8)": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.5113665719452338,
+      "auprc": 0.3989525927624693,
+      "accuracy": 0.5078125,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        48,
+        50
+       ],
+       [
+        76,
+        82
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.43876615441517197,
+       0.5875090705191635
+      ],
+      "auprc_ci95": [
+       0.3177901256497781,
+       0.49996256191524224
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.015951950400413417
+     },
+     "medical_fl.resnet18 (fp32)": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.5204727460604495,
+      "auprc": 0.4128454981004983,
+      "accuracy": 0.5078125,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        50,
+        48
+       ],
+       [
+        78,
+        80
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.4461653403147865,
+       0.5945567810457516
+      ],
+      "auprc_ci95": [
+       0.327423238432197,
+       0.5142130219363517
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.023701885817618173
+     },
+     "medical_fl.resnet50": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.5207956600361663,
+      "auprc": 0.4217763020184969,
+      "accuracy": 0.60546875,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        10,
+        88
+       ],
+       [
+        13,
+        145
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.4473425979013247,
+       0.5917609398780189
+      ],
+      "auprc_ci95": [
+       0.3425460569689117,
+       0.5182250408133251
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.044045466287781054
+     },
+     "medical_fl.student": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.593128390596745,
+      "auprc": 0.46580419455758715,
+      "accuracy": 0.59375,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        44,
+        54
+       ],
+       [
+        50,
+        108
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.5206063664596273,
+       0.6628632025972451
+      ],
+      "auprc_ci95": [
+       0.37862824637490267,
+       0.572943345487212
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.10578661844484633
+     },
+     "medical_fl.square_student": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.6156032033066391,
+      "auprc": 0.47895657314957607,
+      "accuracy": 0.5625,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        59,
+        39
+       ],
+       [
+        73,
+        85
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.5441400505514706,
+       0.6865061165364666
+      ],
+      "auprc_ci95": [
+       0.38876050841191545,
+       0.580760877899689
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.013368638594678406
+     }
+    },
+    "m=0.12": {
+     "medical_fl.resnet18 (int8)": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.55838284680961,
+      "auprc": 0.4211933675023131,
+      "accuracy": 0.5390625,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        56,
+        42
+       ],
+       [
+        76,
+        82
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.487348945054473,
+       0.6280137669417051
+      ],
+      "auprc_ci95": [
+       0.3434643185682909,
+       0.5196004813365221
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.06296822526478962
+     },
+     "medical_fl.resnet18 (fp32)": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.5629682252647895,
+      "auprc": 0.4252342511978189,
+      "accuracy": 0.54296875,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        57,
+        41
+       ],
+       [
+        76,
+        82
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.4918574237598919,
+       0.6328512895033953
+      ],
+      "auprc_ci95": [
+       0.34758930953471046,
+       0.5251759802609842
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.06619736502195822
+     },
+     "medical_fl.resnet50": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.5495995866701111,
+      "auprc": 0.3978082691598719,
+      "accuracy": 0.58984375,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        10,
+        88
+       ],
+       [
+        17,
+        141
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.48268094924966537,
+       0.6222680709641263
+      ],
+      "auprc_ci95": [
+       0.3258805289195687,
+       0.49224078866528753
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.015241539653836234
+     },
+     "medical_fl.student": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.5696202531645569,
+      "auprc": 0.4131655430129989,
+      "accuracy": 0.515625,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        71,
+        27
+       ],
+       [
+        97,
+        61
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.4988351388589722,
+       0.6381909411184836
+      ],
+      "auprc_ci95": [
+       0.3400612512842067,
+       0.5082587311741702
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.08227848101265817
+     },
+     "medical_fl.square_student": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.6271635236373031,
+      "auprc": 0.46686921355861327,
+      "accuracy": 0.6015625,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        66,
+        32
+       ],
+       [
+        70,
+        88
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.5577990824775666,
+       0.6958648730753453
+      ],
+      "auprc_ci95": [
+       0.3824074881399462,
+       0.5743734099138793
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": -0.0018083182640143969
+     }
+    },
+    "m=0.5": {
+     "medical_fl.resnet18 (int8)": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.5476621028158098,
+      "auprc": 0.42666529578680146,
+      "accuracy": 0.57421875,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        31,
+        67
+       ],
+       [
+        42,
+        116
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.4743580903598634,
+       0.6216836182602667
+      ],
+      "auprc_ci95": [
+       0.3459168742214895,
+       0.5250045509313652
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.05224748127098944
+     },
+     "medical_fl.resnet18 (fp32)": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.5522474812709895,
+      "auprc": 0.4295300435123955,
+      "accuracy": 0.5859375,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        33,
+        65
+       ],
+       [
+        41,
+        117
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.47930222436551856,
+       0.6270581238166487
+      ],
+      "auprc_ci95": [
+       0.3496766685785438,
+       0.5280036656306737
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.05547662102815826
+     },
+     "medical_fl.resnet50": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.5955825368121933,
+      "auprc": 0.5051997737819425,
+      "accuracy": 0.640625,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        8,
+        90
+       ],
+       [
+        2,
+        156
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.5249200564773752,
+       0.6666356611068905
+      ],
+      "auprc_ci95": [
+       0.4087902965159063,
+       0.6116393450860165
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.030741410488245968
+     },
+     "medical_fl.student": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.49651252906225785,
+      "auprc": 0.3781428712060369,
+      "accuracy": 0.48828125,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        39,
+        59
+       ],
+       [
+        72,
+        86
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.4257290992101574,
+       0.5723764570477028
+      ],
+      "auprc_ci95": [
+       0.3079972953144906,
+       0.47075209769960247
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.009170756910359124
+     },
+     "medical_fl.square_student": {
+      "images": 256,
+      "malignant": 98,
+      "auc": 0.6773443554637044,
+      "auprc": 0.5487620240566302,
+      "accuracy": 0.62109375,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        63,
+        35
+       ],
+       [
+        62,
+        96
+       ]
+      ],
+      "patients": 256,
+      "auc_ci95": [
+       0.6124936787142936,
+       0.7428519353128312
+      ],
+      "auprc_ci95": [
+       0.45392481864030465,
+       0.6545014894088835
+      ],
+      "resamples_used": 2000,
+      "auc_change_from_whole": 0.04837251356238692
+     }
+    }
+   },
+   "arm_n": {
+    "adaptation_images": 128,
+    "test_images": 128,
+    "test_malignant": 49,
+    "test_patients": 128,
+    "n0": {
+     "medical_fl.resnet18 (int8)": {
+      "images": 128,
+      "malignant": 49,
+      "auc": 0.45104624128132265,
+      "auprc": 0.3896167206844543,
+      "accuracy": 0.5859375,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        7,
+        42
+       ],
+       [
+        11,
+        68
+       ]
+      ],
+      "patients": 128,
+      "auc_ci95": [
+       0.35370481999618025,
+       0.5581403498477647
+      ],
+      "auprc_ci95": [
+       0.29392454794652756,
+       0.5284102949916223
+      ],
+      "resamples_used": 2000
+     },
+     "medical_fl.resnet18 (fp32)": {
+      "images": 128,
+      "malignant": 49,
+      "auc": 0.4531128907259106,
+      "auprc": 0.3915570977400199,
+      "accuracy": 0.578125,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        7,
+        42
+       ],
+       [
+        12,
+        67
+       ]
+      ],
+      "patients": 128,
+      "auc_ci95": [
+       0.35598899147727275,
+       0.5584354014324511
+      ],
+      "auprc_ci95": [
+       0.2950922349015501,
+       0.5336027457007082
+      ],
+      "resamples_used": 2000
+     },
+     "medical_fl.resnet50": {
+      "images": 128,
+      "malignant": 49,
+      "auc": 0.565486954275381,
+      "auprc": 0.47994256910485644,
+      "accuracy": 0.6171875,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        1,
+        48
+       ],
+       [
+        1,
+        78
+       ]
+      ],
+      "patients": 128,
+      "auc_ci95": [
+       0.458773155354919,
+       0.6730824735937115
+      ],
+      "auprc_ci95": [
+       0.36465643444270435,
+       0.637977317309408
+      ],
+      "resamples_used": 2000
+     },
+     "medical_fl.student": {
+      "images": 128,
+      "malignant": 49,
+      "auc": 0.4786876776026866,
+      "auprc": 0.38790806742279527,
+      "accuracy": 0.5625,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        8,
+        41
+       ],
+       [
+        15,
+        64
+       ]
+      ],
+      "patients": 128,
+      "auc_ci95": [
+       0.37828937268096546,
+       0.5831391225278472
+      ],
+      "auprc_ci95": [
+       0.2913608335624744,
+       0.517210898310261
+      ],
+      "resamples_used": 2000
+     },
+     "medical_fl.square_student": {
+      "images": 128,
+      "malignant": 49,
+      "auc": 0.6104365796951692,
+      "auprc": 0.5298130846142145,
+      "accuracy": 0.5546875,
+      "confusion_rows_true_cols_predicted_malignant_benign": [
+       [
+        25,
+        24
+       ],
+       [
+        33,
+        46
+       ]
+      ],
+      "patients": 128,
+      "auc_ci95": [
+       0.5044327229916039,
+       0.7079660657476139
+      ],
+      "auprc_ci95": [
+       0.40516114549717985,
+       0.6592165667364349
+      ],
+      "resamples_used": 2000
+     }
+    },
+    "n1": {
+     "adaptation_mean": -0.46612635254859924,
+     "adaptation_sd": 0.2668270170688629,
+     "models": {
+      "medical_fl.resnet18 (int8)": {
+       "images": 128,
+       "malignant": 49,
+       "auc": 0.516920692327564,
+       "auprc": 0.487173276761425,
+       "accuracy": 0.6640625,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         7,
+         42
+        ],
+        [
+         1,
+         78
+        ]
+       ],
+       "patients": 128,
+       "auc_ci95": [
+        0.41168648785425105,
+        0.6299449928033881
+       ],
+       "auprc_ci95": [
+        0.36841332063990917,
+        0.6272092379269278
+       ],
+       "resamples_used": 2000
+      },
+      "medical_fl.resnet18 (fp32)": {
+       "images": 128,
+       "malignant": 49,
+       "auc": 0.513820718160682,
+       "auprc": 0.47997025248663483,
+       "accuracy": 0.6640625,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         7,
+         42
+        ],
+        [
+         1,
+         78
+        ]
+       ],
+       "patients": 128,
+       "auc_ci95": [
+        0.40812246963562754,
+        0.6254197881684319
+       ],
+       "auprc_ci95": [
+        0.3592570557469498,
+        0.6221910453333528
+       ],
+       "resamples_used": 2000
+      },
+      "medical_fl.resnet50": {
+       "images": 128,
+       "malignant": 49,
+       "auc": 0.516404029966417,
+       "auprc": 0.4431096699027006,
+       "accuracy": 0.625,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         2,
+         47
+        ],
+        [
+         1,
+         78
+        ]
+       ],
+       "patients": 128,
+       "auc_ci95": [
+        0.41416867469879515,
+        0.6212192139001348
+       ],
+       "auprc_ci95": [
+        0.32568508856730377,
+        0.5733772403617263
+       ],
+       "resamples_used": 2000
+      },
+      "medical_fl.student": {
+       "images": 128,
+       "malignant": 49,
+       "auc": 0.5091707569103591,
+       "auprc": 0.429331307736759,
+       "accuracy": 0.59375,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         10,
+         39
+        ],
+        [
+         13,
+         66
+        ]
+       ],
+       "patients": 128,
+       "auc_ci95": [
+        0.40832262335313874,
+        0.6138822539419683
+       ],
+       "auprc_ci95": [
+        0.32051892892288925,
+        0.561562748389185
+       ],
+       "resamples_used": 2000
+      },
+      "medical_fl.square_student": {
+       "images": 128,
+       "malignant": 49,
+       "auc": 0.5882200981658485,
+       "auprc": 0.4770651624520059,
+       "accuracy": 0.59375,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         14,
+         35
+        ],
+        [
+         17,
+         62
+        ]
+       ],
+       "patients": 128,
+       "auc_ci95": [
+        0.48491103498795046,
+        0.6861174425521102
+       ],
+       "auprc_ci95": [
+        0.36493806758846403,
+        0.6209462640761542
+       ],
+       "resamples_used": 2000
+      }
+     }
+    },
+    "n2": {
+     "resnet18": {
+      "unadapted_checkpoint": {
+       "images": 128,
+       "malignant": 49,
+       "auc": 0.4531128907259106,
+       "auprc": 0.3915570977400199,
+       "accuracy": 0.578125,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         7,
+         42
+        ],
+        [
+         12,
+         67
+        ]
+       ],
+       "patients": 128,
+       "auc_ci95": [
+        0.35598899147727275,
+        0.5584354014324511
+       ],
+       "auprc_ci95": [
+        0.2950922349015501,
+        0.5336027457007082
+       ],
+       "resamples_used": 2000
+      },
+      "adapted": {
+       "images": 128,
+       "malignant": 49,
+       "auc": 0.5435288039266339,
+       "auprc": 0.4914450951433472,
+       "accuracy": 0.625,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         12,
+         37
+        ],
+        [
+         11,
+         68
+        ]
+       ],
+       "patients": 128,
+       "auc_ci95": [
+        0.4411560245906103,
+        0.6554225767618314
+       ],
+       "auprc_ci95": [
+        0.3639517865595935,
+        0.6346209122523087
+       ],
+       "resamples_used": 2000
+      },
+      "batches": 2
+     },
+     "resnet50": {
+      "unadapted_checkpoint": {
+       "images": 128,
+       "malignant": 49,
+       "auc": 0.565486954275381,
+       "auprc": 0.47994256910485644,
+       "accuracy": 0.6171875,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         1,
+         48
+        ],
+        [
+         1,
+         78
+        ]
+       ],
+       "patients": 128,
+       "auc_ci95": [
+        0.458773155354919,
+        0.6730824735937115
+       ],
+       "auprc_ci95": [
+        0.36465643444270435,
+        0.637977317309408
+       ],
+       "resamples_used": 2000
+      },
+      "adapted": {
+       "images": 128,
+       "malignant": 49,
+       "auc": 0.49263756135365533,
+       "auprc": 0.40821802480624514,
+       "accuracy": 0.625,
+       "confusion_rows_true_cols_predicted_malignant_benign": [
+        [
+         10,
+         39
+        ],
+        [
+         9,
+         70
+        ]
+       ],
+       "patients": 128,
+       "auc_ci95": [
+        0.3846358467741831,
+        0.5969371069182389
+       ],
+       "auprc_ci95": [
+        0.3102699762318144,
+        0.5548637087834735
+       ],
+       "resamples_used": 2000
+      },
+      "batches": 2
+     }
+    }
+   }
+  }
+ },
+ "breastmnist_train": {
+  "file_sha256": "3a22d2a4625e7dd8903f0f59030e81a3d0c222bece2e5e10927456cb50efdec1",
+  "images": 546,
+  "mean": -0.3448389768600464,
+  "sd": 0.41146034002304077
+ },
+ "tools": {
+  "onnxruntime": "1.31.1",
+  "scikit-image": "0.26.0",
+  "pillow": "13.0.0",
+  "scikit-learn": "1.9.0",
+  "numpy": "2.5.1",
+  "torch": "2.13.0+cu130"
+ },
+ "licences": {
+  "BUS-BRA": "CC-BY-4.0 (Zenodo 8231412); cite doi:10.1002/mp.16812",
+  "BrEaST-Lesions-USG": "CC-BY-4.0 (TCIA, doi:10.7937/9WKK-Q141; TCIA Data Usage Policy); descriptor doi:10.1038/s41597-024-02984-z"
+ }
+}
