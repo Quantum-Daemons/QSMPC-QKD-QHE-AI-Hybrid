@@ -1,0 +1,763 @@
+{
+ "preregistration": {
+  "file": "references/medical-busbra-external-test-preregistration.md",
+  "sha256": "33b3e5abc0c15ef590a0d3e6536abbc750393ae7515495b7459e82b1a06b38c2"
+ },
+ "deposit": {
+  "zenodo": "8231412",
+  "licence": "CC-BY-4.0 on the record; the archive's LICENSE.txt asks that work using it cite doi:10.1002/mp.16812",
+  "archive_sha256": "ba3e6ed19cc37c682d8d39e25435bbf8a555a12cb7e641b5f2117685c95580ff"
+ },
+ "images": 1875,
+ "patients": 1064,
+ "malignant": 607,
+ "devices": {
+  "GE Logiq 5 @10-12MHz": 809,
+  "GE Logiq 7 @10-14MHz": 902,
+  "Toshiba Aplio 300 @12-14 MHz": 139,
+  "U-Systems @10-14MHz": 25
+ },
+ "tools": {
+  "onnxruntime": "1.31.1",
+  "scikit-image": "0.26.0",
+  "pillow": "13.0.0",
+  "scikit-learn": "1.9.0",
+  "numpy": "2.5.1"
+ },
+ "models": {
+  "medical_fl.resnet18 (int8)": {
+   "registry_key": "medical_fl.resnet18",
+   "graph": "models/medical_breastmnist_resnet18/onnx/model_int8.onnx",
+   "graph_sha256": "a1e5b6ce9cef59d06e3d6a48aa99444150523e8e4e00ac661a18348eb77de088",
+   "busbra": {
+    "images": 1875,
+    "malignant": 607,
+    "auc": 0.6606533138619367,
+    "auprc": 0.4663570418711666,
+    "accuracy": 0.6858666666666666,
+    "confusion_rows_true_cols_predicted_malignant_benign": [
+     [
+      177,
+      430
+     ],
+     [
+      159,
+      1109
+     ]
+    ],
+    "patients": 1064,
+    "auc_ci95": [
+     0.6258308218302158,
+     0.6945031302544183
+    ],
+    "auprc_ci95": [
+     0.4157792596259277,
+     0.5225177517989317
+    ],
+    "resamples_used": 2000
+   },
+   "breastmnist_test_same_graph": {
+    "images": 156,
+    "malignant": 42,
+    "auc": 0.91624895572264,
+    "auprc": 0.7934921432577579,
+    "accuracy": 0.8589743589743589,
+    "confusion_rows_true_cols_predicted_malignant_benign": [
+     [
+      30,
+      12
+     ],
+     [
+      10,
+      104
+     ]
+    ]
+   },
+   "registry_recorded": {
+    "auc": 0.9146825396825395,
+    "accuracy": 0.8653846153846154
+   },
+   "per_device": {
+    "GE Logiq 5 @10-12MHz": {
+     "images": 809,
+     "malignant": 243,
+     "auc": 0.6497913303959633,
+     "auprc": 0.44343346481223256,
+     "accuracy": 0.7045735475896168,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       30,
+       213
+      ],
+      [
+       26,
+       540
+      ]
+     ],
+     "patients": 490,
+     "auc_ci95": [
+      0.597530794132114,
+      0.7041498795428045
+     ],
+     "auprc_ci95": [
+      0.37776822245034275,
+      0.526706448093748
+     ],
+     "resamples_used": 2000
+    },
+    "GE Logiq 7 @10-14MHz": {
+     "images": 902,
+     "malignant": 285,
+     "auc": 0.6743609428758282,
+     "auprc": 0.4673357083864699,
+     "accuracy": 0.6917960088691796,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       103,
+       182
+      ],
+      [
+       96,
+       521
+      ]
+     ],
+     "patients": 488,
+     "auc_ci95": [
+      0.6283485554135634,
+      0.7189328739943964
+     ],
+     "auprc_ci95": [
+      0.39949376333004266,
+      0.5486305172690727
+     ],
+     "resamples_used": 2000
+    },
+    "Toshiba Aplio 300 @12-14 MHz": {
+     "images": 139,
+     "malignant": 68,
+     "auc": 0.6012841756420878,
+     "auprc": 0.5770661199138991,
+     "accuracy": 0.5467625899280576,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       40,
+       28
+      ],
+      [
+       35,
+       36
+      ]
+     ],
+     "patients": 72,
+     "auc_ci95": [
+      0.47450899978676375,
+      0.7216808538890134
+     ],
+     "auprc_ci95": [
+      0.43220500451414606,
+      0.7598651398717434
+     ],
+     "resamples_used": 2000
+    },
+    "U-Systems @10-14MHz": {
+     "images": 25,
+     "malignant": 11,
+     "patients": 14,
+     "counts_only": true
+    }
+   }
+  },
+  "medical_fl.resnet18 (fp32)": {
+   "registry_key": "medical_fl.resnet18",
+   "graph": "models/medical_breastmnist_resnet18/onnx/model.onnx",
+   "graph_sha256": "e25b8dc2cba9294e2adfa81358627b2239208a7cf890820a323c6c8447bd169f",
+   "busbra": {
+    "images": 1875,
+    "malignant": 607,
+    "auc": 0.6615913709145147,
+    "auprc": 0.4672473838346786,
+    "accuracy": 0.6842666666666667,
+    "confusion_rows_true_cols_predicted_malignant_benign": [
+     [
+      174,
+      433
+     ],
+     [
+      159,
+      1109
+     ]
+    ],
+    "patients": 1064,
+    "auc_ci95": [
+     0.6265879257388958,
+     0.6953738356241715
+    ],
+    "auprc_ci95": [
+     0.41690281886486186,
+     0.5235538363460818
+    ],
+    "resamples_used": 2000
+   },
+   "breastmnist_test_same_graph": {
+    "images": 156,
+    "malignant": 42,
+    "auc": 0.914578111946533,
+    "auprc": 0.7955811656652476,
+    "accuracy": 0.8653846153846154,
+    "confusion_rows_true_cols_predicted_malignant_benign": [
+     [
+      30,
+      12
+     ],
+     [
+      9,
+      105
+     ]
+    ]
+   },
+   "registry_recorded": {
+    "auc": 0.9146825396825395,
+    "accuracy": 0.8653846153846154
+   },
+   "per_device": {
+    "GE Logiq 5 @10-12MHz": {
+     "images": 809,
+     "malignant": 243,
+     "auc": 0.6518271314109554,
+     "auprc": 0.4450276717973417,
+     "accuracy": 0.7033374536464772,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       28,
+       215
+      ],
+      [
+       25,
+       541
+      ]
+     ],
+     "patients": 490,
+     "auc_ci95": [
+      0.5995663623503954,
+      0.7065700238054258
+     ],
+     "auprc_ci95": [
+      0.3791404729313831,
+      0.5277784570393727
+     ],
+     "resamples_used": 2000
+    },
+    "GE Logiq 7 @10-14MHz": {
+     "images": 902,
+     "malignant": 285,
+     "auc": 0.6750604225312065,
+     "auprc": 0.4695102846156879,
+     "accuracy": 0.6873614190687362,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       101,
+       184
+      ],
+      [
+       98,
+       519
+      ]
+     ],
+     "patients": 488,
+     "auc_ci95": [
+      0.6290025046616423,
+      0.7192310225967482
+     ],
+     "auprc_ci95": [
+      0.40107980542333693,
+      0.550868808554425
+     ],
+     "resamples_used": 2000
+    },
+    "Toshiba Aplio 300 @12-14 MHz": {
+     "images": 139,
+     "malignant": 68,
+     "auc": 0.603976801988401,
+     "auprc": 0.5784350621080752,
+     "accuracy": 0.5611510791366906,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       41,
+       27
+      ],
+      [
+       34,
+       37
+      ]
+     ],
+     "patients": 72,
+     "auc_ci95": [
+      0.4783616704666654,
+      0.7240990021307184
+     ],
+     "auprc_ci95": [
+      0.4329814090416683,
+      0.7605552518053802
+     ],
+     "resamples_used": 2000
+    },
+    "U-Systems @10-14MHz": {
+     "images": 25,
+     "malignant": 11,
+     "patients": 14,
+     "counts_only": true
+    }
+   }
+  },
+  "medical_fl.resnet50": {
+   "registry_key": "medical_fl.resnet50",
+   "graph": "models/medical_breastmnist_resnet50/onnx/model.onnx",
+   "graph_sha256": "44f10daaf4d24b8ed1130da25f5e033471bb35307328b91fdb99817907dab5bb",
+   "busbra": {
+    "images": 1875,
+    "malignant": 607,
+    "auc": 0.6121458899588919,
+    "auprc": 0.4239643708302124,
+    "accuracy": 0.6789333333333334,
+    "confusion_rows_true_cols_predicted_malignant_benign": [
+     [
+      33,
+      574
+     ],
+     [
+      28,
+      1240
+     ]
+    ],
+    "patients": 1064,
+    "auc_ci95": [
+     0.5782121384659344,
+     0.6455670086430438
+    ],
+    "auprc_ci95": [
+     0.3776521361544997,
+     0.4762520259762942
+    ],
+    "resamples_used": 2000
+   },
+   "breastmnist_test_same_graph": {
+    "images": 156,
+    "malignant": 42,
+    "auc": 0.7992898913951545,
+    "auprc": 0.5838135368688813,
+    "accuracy": 0.782051282051282,
+    "confusion_rows_true_cols_predicted_malignant_benign": [
+     [
+      13,
+      29
+     ],
+     [
+      5,
+      109
+     ]
+    ]
+   },
+   "registry_recorded": {
+    "auc": 0.7987677527151211,
+    "accuracy": 0.782051282051282
+   },
+   "per_device": {
+    "GE Logiq 5 @10-12MHz": {
+     "images": 809,
+     "malignant": 243,
+     "auc": 0.5823917753638995,
+     "auprc": 0.36946256467357974,
+     "accuracy": 0.7008652657601978,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       4,
+       239
+      ],
+      [
+       3,
+       563
+      ]
+     ],
+     "patients": 490,
+     "auc_ci95": [
+      0.5305511876366811,
+      0.6359682554453954
+     ],
+     "auprc_ci95": [
+      0.3122930880052663,
+      0.44298044930643854
+     ],
+     "resamples_used": 2000
+    },
+    "GE Logiq 7 @10-14MHz": {
+     "images": 902,
+     "malignant": 285,
+     "auc": 0.6254428616110779,
+     "auprc": 0.41400282924831616,
+     "accuracy": 0.6829268292682927,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       17,
+       268
+      ],
+      [
+       18,
+       599
+      ]
+     ],
+     "patients": 488,
+     "auc_ci95": [
+      0.5791669036863533,
+      0.6697478481239573
+     ],
+     "auprc_ci95": [
+      0.35332784590802646,
+      0.486534288220839
+     ],
+     "resamples_used": 2000
+    },
+    "Toshiba Aplio 300 @12-14 MHz": {
+     "images": 139,
+     "malignant": 68,
+     "auc": 0.6217895608947804,
+     "auprc": 0.5938095298859758,
+     "accuracy": 0.539568345323741,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       11,
+       57
+      ],
+      [
+       7,
+       64
+      ]
+     ],
+     "patients": 72,
+     "auc_ci95": [
+      0.5110463890069153,
+      0.7319065707478004
+     ],
+     "auprc_ci95": [
+      0.44953763255141066,
+      0.7659563187895126
+     ],
+     "resamples_used": 2000
+    },
+    "U-Systems @10-14MHz": {
+     "images": 25,
+     "malignant": 11,
+     "patients": 14,
+     "counts_only": true
+    }
+   }
+  },
+  "medical_fl.student": {
+   "registry_key": "medical_fl.student",
+   "graph": "models/medical_breastmnist_student/onnx/model.onnx",
+   "graph_sha256": "3550db7b5ff71393b7c0382224c42c8f9ad51ed8b5857603a3921c12f517ddbc",
+   "busbra": {
+    "images": 1875,
+    "malignant": 607,
+    "auc": 0.6107453006200012,
+    "auprc": 0.44958157178114283,
+    "accuracy": 0.6528,
+    "confusion_rows_true_cols_predicted_malignant_benign": [
+     [
+      207,
+      400
+     ],
+     [
+      251,
+      1017
+     ]
+    ],
+    "patients": 1064,
+    "auc_ci95": [
+     0.5743756857123321,
+     0.6450338887484208
+    ],
+    "auprc_ci95": [
+     0.3994194745566646,
+     0.502906929860019
+    ],
+    "resamples_used": 2000
+   },
+   "breastmnist_test_same_graph": {
+    "images": 156,
+    "malignant": 42,
+    "auc": 0.7882205513784462,
+    "auprc": 0.6431794970986817,
+    "accuracy": 0.7692307692307693,
+    "confusion_rows_true_cols_predicted_malignant_benign": [
+     [
+      24,
+      18
+     ],
+     [
+      18,
+      96
+     ]
+    ]
+   },
+   "registry_recorded": {
+    "auc": 0.788221,
+    "accuracy": null
+   },
+   "per_device": {
+    "GE Logiq 5 @10-12MHz": {
+     "images": 809,
+     "malignant": 243,
+     "auc": 0.5881938082566273,
+     "auprc": 0.3933925724808395,
+     "accuracy": 0.695920889987639,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       35,
+       208
+      ],
+      [
+       38,
+       528
+      ]
+     ],
+     "patients": 490,
+     "auc_ci95": [
+      0.5370986970542256,
+      0.6429593803178267
+     ],
+     "auprc_ci95": [
+      0.3297250507108266,
+      0.4712551717327947
+     ],
+     "resamples_used": 2000
+    },
+    "GE Logiq 7 @10-14MHz": {
+     "images": 902,
+     "malignant": 285,
+     "auc": 0.6143990446131536,
+     "auprc": 0.45411136375080796,
+     "accuracy": 0.6330376940133038,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       114,
+       171
+      ],
+      [
+       160,
+       457
+      ]
+     ],
+     "patients": 488,
+     "auc_ci95": [
+      0.5606112689266073,
+      0.6648641211532879
+     ],
+     "auprc_ci95": [
+      0.38409846176990464,
+      0.531677310165523
+     ],
+     "resamples_used": 2000
+    },
+    "Toshiba Aplio 300 @12-14 MHz": {
+     "images": 139,
+     "malignant": 68,
+     "auc": 0.6182684341342172,
+     "auprc": 0.6103308573716625,
+     "accuracy": 0.5539568345323741,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       58,
+       10
+      ],
+      [
+       52,
+       19
+      ]
+     ],
+     "patients": 72,
+     "auc_ci95": [
+      0.49582536500695074,
+      0.7297410136494643
+     ],
+     "auprc_ci95": [
+      0.45698388447735355,
+      0.7683029493227684
+     ],
+     "resamples_used": 2000
+    },
+    "U-Systems @10-14MHz": {
+     "images": 25,
+     "malignant": 11,
+     "patients": 14,
+     "counts_only": true
+    }
+   },
+   "float64_network_vs_graph_largest_abs_logit_difference": 1.3967939542780528e-06,
+   "ckks": {
+    "page_context": {
+     "largest_abs_logit_difference": 1.1574853076012914e-08,
+     "decisions_changed": 0,
+     "decisions_changed_where_margin_exceeds_twice_the_difference": 0,
+     "meets_the_page_rule": true
+    }
+   }
+  },
+  "medical_fl.square_student": {
+   "registry_key": "medical_fl.square_student",
+   "graph": "models/medical_breastmnist_square_student/onnx/model.onnx",
+   "graph_sha256": "f41f50c6fc357859b037cf7298893fa12c69fa10a2876906b373938eeca61b88",
+   "busbra": {
+    "images": 1875,
+    "malignant": 607,
+    "auc": 0.585772454903102,
+    "auprc": 0.4225196776002996,
+    "accuracy": 0.5893333333333334,
+    "confusion_rows_true_cols_predicted_malignant_benign": [
+     [
+      297,
+      310
+     ],
+     [
+      460,
+      808
+     ]
+    ],
+    "patients": 1064,
+    "auc_ci95": [
+     0.549325928691591,
+     0.6223847373237091
+    ],
+    "auprc_ci95": [
+     0.3743255370236498,
+     0.4770896830615573
+    ],
+    "resamples_used": 2000
+   },
+   "breastmnist_test_same_graph": {
+    "images": 156,
+    "malignant": 42,
+    "auc": 0.8197577276524646,
+    "auprc": 0.6669075845047431,
+    "accuracy": 0.7051282051282052,
+    "confusion_rows_true_cols_predicted_malignant_benign": [
+     [
+      31,
+      11
+     ],
+     [
+      35,
+      79
+     ]
+    ]
+   },
+   "registry_recorded": {
+    "auc": 0.819758,
+    "accuracy": null
+   },
+   "per_device": {
+    "GE Logiq 5 @10-12MHz": {
+     "images": 809,
+     "malignant": 243,
+     "auc": 0.5774113335950792,
+     "auprc": 0.350734217452107,
+     "accuracy": 0.6674907292954264,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       50,
+       193
+      ],
+      [
+       76,
+       490
+      ]
+     ],
+     "patients": 490,
+     "auc_ci95": [
+      0.526822465362037,
+      0.6280292211879324
+     ],
+     "auprc_ci95": [
+      0.295538401721832,
+      0.41722846367792255
+     ],
+     "resamples_used": 2000
+    },
+    "GE Logiq 7 @10-14MHz": {
+     "images": 902,
+     "malignant": 285,
+     "auc": 0.5940402058631181,
+     "auprc": 0.45585832364119594,
+     "accuracy": 0.5354767184035477,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       186,
+       99
+      ],
+      [
+       320,
+       297
+      ]
+     ],
+     "patients": 488,
+     "auc_ci95": [
+      0.5441444209121541,
+      0.6421408158725325
+     ],
+     "auprc_ci95": [
+      0.38489034702198266,
+      0.5304574605378102
+     ],
+     "resamples_used": 2000
+    },
+    "Toshiba Aplio 300 @12-14 MHz": {
+     "images": 139,
+     "malignant": 68,
+     "auc": 0.5356255178127589,
+     "auprc": 0.5205129866887523,
+     "accuracy": 0.5035971223021583,
+     "confusion_rows_true_cols_predicted_malignant_benign": [
+      [
+       50,
+       18
+      ],
+      [
+       51,
+       20
+      ]
+     ],
+     "patients": 72,
+     "auc_ci95": [
+      0.4119432679004785,
+      0.6566970996732026
+     ],
+     "auprc_ci95": [
+      0.38609323353248304,
+      0.6930798601993182
+     ],
+     "resamples_used": 2000
+    },
+    "U-Systems @10-14MHz": {
+     "images": 25,
+     "malignant": 11,
+     "patients": 14,
+     "counts_only": true
+    }
+   },
+   "float64_network_vs_graph_largest_abs_logit_difference": 2.02223974454796e-06,
+   "ckks": {
+    "A2": {
+     "largest_abs_logit_difference": 2.3495835481751604e-05,
+     "decisions_changed": 0,
+     "decisions_changed_where_margin_exceeds_twice_the_difference": 0,
+     "meets_the_page_rule": true
+    },
+    "B": {
+     "largest_abs_logit_difference": 8.991580389909604e-06,
+     "decisions_changed": 0,
+     "decisions_changed_where_margin_exceeds_twice_the_difference": 0,
+     "meets_the_page_rule": true
+    }
+   }
+  }
+ }
+}
