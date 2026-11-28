@@ -24,6 +24,7 @@ SATQKD = MEAS / "satellite-satqkd-key-length-2026-11-28.json"
 SATQKD_B_PRIME = MEAS / "satellite-satqkd-key-length-b-prime-2026-11-28.json"
 SATQKD_B_DOUBLE_PRIME = MEAS / "satellite-satqkd-key-length-b-double-prime-2026-11-28.json"
 PFCP = MEAS / "telecom-pfcp-held-out-day-2026-11-28.json"
+PFCP_AUDIT = MEAS / "telecom-pfcp-audit-app-layer-normal-only-2026-11-28.json"
 
 OUT = {
     "busbra": REPO / "web" / "public" / "data" / "medical" / "busbra_external.json",
@@ -121,14 +122,23 @@ def satqkd() -> dict:
 
 def pfcp() -> dict:
     r = json.loads(PFCP.read_text())
+    audit = json.loads(PFCP_AUDIT.read_text())["arm_a_audit"]
     days = []
     for run, (attack, day) in RUNS.items():
         v = r["held_out_days"][run]
+        # The audit (pre-registered, run after this check): does each label follow the address pairs, and how often
+        # do each label's application-layer flows carry the day's attack message?
+        a = audit[run]
+        share = a["app"]["attack_counter"]["share_non_zero_per_label"]
+        labels = {"follow_address_pairs": a["cic"]["share_whose_label_is_their_address_pairs_majority"] == 1.0,
+                  "attack_message_in_malicious": r4(share.get("Malicious")), "attack_message_in_normal": r4(share.get("Normal")),
+                  "attack_message": a["app"]["attack_counter"]["column"]}
+        labels["consistent_with_the_attack"] = bool(labels["attack_message_in_malicious"] > labels["attack_message_in_normal"])
         if not v.get("scorable"):
-            days.append({"attack": attack, "date": day, "scorable": False})
+            days.append({"attack": attack, "date": day, "scorable": False, "labels": labels})
             continue
         s, t = v["student"], v["teacher"]
-        days.append({"attack": attack, "date": day, "scorable": True, "flows": v["held_out_rows"],
+        days.append({"attack": attack, "date": day, "scorable": True, "labels": labels, "flows": v["held_out_rows"],
                      "malicious": v["held_out_malicious"],
                      "teacher_auc": {k: r4(t["auc"][k]) for k in ("mean", "min", "max")},
                      "teacher_detection_rate": r4(t["detection_rate"]["mean"]),
@@ -137,6 +147,8 @@ def pfcp() -> dict:
                      "student_detection_rate": r4(s["detection_rate"]), "student_false_positive_rate": r4(s["false_positive_rate"])})
     return {"_generated_by": "scripts/export_outside_data_cards.py; do not edit by hand",
             "preregistration": r["preregistration"]["file"], "record": str(PFCP.relative_to(REPO)), "days": days,
+            "audit": {"preregistration": json.loads(PFCP_AUDIT.read_text())["preregistration"]["file"],
+                      "record": str(PFCP_AUDIT.relative_to(REPO))},
             "licence": "CC-BY-4.0", "licence_url": CC_BY,
             "attribution": ("G. Amponis, P. Radoglou-Grammatikis, G. Nakas, M. Zevgara, S. Giannakidou, S. Ouzounidis, "
                             "G. Kakamoukas and A. Sarigiannidis, '5GC PFCP Intrusion Detection Dataset', IEEE DataPort / Zenodo "

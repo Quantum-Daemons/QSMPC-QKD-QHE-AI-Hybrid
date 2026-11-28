@@ -7,6 +7,13 @@
    "attack": "session establishment",
    "date": "2022-10-05",
    "scorable": true,
+   "labels": {
+    "follow_address_pairs": true,
+    "attack_message_in_malicious": 0.9917,
+    "attack_message_in_normal": 0.0,
+    "attack_message": "PFCPSessionEstablishmentRequest_counter",
+    "consistent_with_the_attack": true
+   },
    "flows": 486,
    "malicious": 120,
    "teacher_auc": {
@@ -28,6 +35,13 @@
    "attack": "session deletion",
    "date": "2022-10-13",
    "scorable": true,
+   "labels": {
+    "follow_address_pairs": true,
+    "attack_message_in_malicious": 0.0,
+    "attack_message_in_normal": 0.0,
+    "attack_message": "PFCPSessionDeletionRequest_counter",
+    "consistent_with_the_attack": false
+   },
    "flows": 403,
    "malicious": 129,
    "teacher_auc": {
@@ -49,6 +63,13 @@
    "attack": "session modification, DROP flag",
    "date": "2022-11-01",
    "scorable": true,
+   "labels": {
+    "follow_address_pairs": true,
+    "attack_message_in_malicious": 0.0154,
+    "attack_message_in_normal": 1.0,
+    "attack_message": "PFCPSessionModificationRequest_counter",
+    "consistent_with_the_attack": false
+   },
    "flows": 264,
    "malicious": 129,
    "teacher_auc": {
@@ -70,6 +91,13 @@
    "attack": "session modification, DUPL flag",
    "date": "2022-11-22",
    "scorable": true,
+   "labels": {
+    "follow_address_pairs": true,
+    "attack_message_in_malicious": 0.0082,
+    "attack_message_in_normal": 1.0,
+    "attack_message": "PFCPSessionModificationRequest_counter",
+    "consistent_with_the_attack": false
+   },
    "flows": 486,
    "malicious": 121,
    "teacher_auc": {
@@ -88,6 +116,10 @@
    "student_false_positive_rate": 0.0027
   }
  ],
+ "audit": {
+  "preregistration": "references/telecom-pfcp-audit-app-layer-normal-only-preregistration.md",
+  "record": "docs/measurements/telecom-pfcp-audit-app-layer-normal-only-2026-11-28.json"
+ },
  "licence": "CC-BY-4.0",
  "licence_url": "https://creativecommons.org/licenses/by/4.0/",
  "attribution": "G. Amponis, P. Radoglou-Grammatikis, G. Nakas, M. Zevgara, S. Giannakidou, S. Ouzounidis, G. Kakamoukas and A. Sarigiannidis, '5GC PFCP Intrusion Detection Dataset', IEEE DataPort / Zenodo 7888347 (2023), doi:10.21227/e0gj-ev03, CC BY 4.0",

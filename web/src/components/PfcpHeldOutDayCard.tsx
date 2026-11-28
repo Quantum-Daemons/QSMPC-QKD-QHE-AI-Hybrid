@@ -6,12 +6,19 @@ import { useEffect, useState } from "react";
 import CardExport from "./CardExport";
 import StageBadge from "./StageBadge";
 
+interface Labels {
+  follow_address_pairs: boolean; attack_message: string; attack_message_in_malicious: number;
+  attack_message_in_normal: number; consistent_with_the_attack: boolean;
+}
 interface Day {
-  attack: string; date: string; scorable: boolean; flows?: number; malicious?: number;
+  attack: string; date: string; scorable: boolean; labels: Labels; flows?: number; malicious?: number;
   teacher_auc?: { mean: number; min: number; max: number }; teacher_detection_rate?: number; teacher_false_positive_rate?: number;
   student_auc?: number; student_auc_ci95?: [number, number]; student_detection_rate?: number; student_false_positive_rate?: number;
 }
-interface Pfcp { preregistration: string; record: string; days: Day[]; attribution: string }
+interface Pfcp {
+  preregistration: string; record: string; days: Day[]; attribution: string;
+  audit: { preregistration: string; record: string };
+}
 
 const f3 = (v: number) => v.toFixed(3);
 const pct = (v: number) => `${(100 * v).toFixed(1)}%`;
@@ -28,6 +35,8 @@ export default function PfcpHeldOutDayCard() {
   }, []);
   if (!d) return null;
   const missed = d.days.filter((x) => x.scorable && (x.teacher_auc?.mean ?? 1) < 0.7 && (x.student_auc ?? 1) < 0.7);
+  const doubtful = d.days.filter((x) => !x.labels.consistent_with_the_attack);
+  const allFollow = d.days.every((x) => x.labels.follow_address_pairs);
   return (
     <div className="card" id="telecom-pfcp" style={{ marginTop: 14 }}>
       <h3>A 5G-core PFCP attack detector on attack days it never saw <StageBadge kind="offline" /></h3>
@@ -39,10 +48,20 @@ export default function PfcpHeldOutDayCard() {
         page&apos;s 5G-NIDD models read another testbed&apos;s flows and cannot score these.
         {missed.length ? <> Neither model recognises the {missed.map((x) => x.attack).join(" and ")} day&apos;s attack.</> : null}
       </p>
+      {doubtful.length ? (
+        <p className="small" style={{ marginTop: 6 }}>
+          <strong>Read these labels with care.</strong> An audit run afterwards (pre-registered) found that
+          {allFollow ? <> every day&apos;s labels follow its endpoints, each address pair carrying one label, and that</> : null} on
+          the {doubtful.length} days marked doubtful in the last column the flows labelled malicious carry the day&apos;s attack
+          message no more often than the normal ones. On those days these figures may measure the labelled endpoint rather
+          than the attack; the dataset&apos;s creators can settle which.
+        </p>
+      ) : null}
       <div style={{ overflowX: "auto" }}>
         <table className="table small">
           <thead><tr><th>Day held out</th><th>Flows (malicious)</th><th>Teacher AUC, 5 seeds</th><th>Student AUC (95%)</th>
-            <th>Student: attack flows flagged / normal flows flagged</th></tr></thead>
+            <th>Student: attack flows flagged / normal flows flagged</th>
+            <th>Flows carrying the attack message: malicious / normal</th></tr></thead>
           <tbody>
             {d.days.map((x) => x.scorable ? (
               <tr key={x.date}>
@@ -50,17 +69,21 @@ export default function PfcpHeldOutDayCard() {
                 <td>{f3(x.teacher_auc!.mean)}{x.teacher_auc!.max - x.teacher_auc!.min > 5e-4 ? <> ({f3(x.teacher_auc!.min)}-{f3(x.teacher_auc!.max)})</> : null}</td>
                 <td><b>{f3(x.student_auc!)}</b> ({f3(x.student_auc_ci95![0])}-{f3(x.student_auc_ci95![1])})</td>
                 <td>{pct(x.student_detection_rate!)} / {pct(x.student_false_positive_rate!)}</td>
+                <td>{pct(x.labels.attack_message_in_malicious)} / {pct(x.labels.attack_message_in_normal)}{x.labels.consistent_with_the_attack ? null : <> (doubtful)</>}</td>
               </tr>
-            ) : <tr key={x.date}><td>{x.attack}, {x.date}</td><td colSpan={4}>not scorable</td></tr>)}
+            ) : <tr key={x.date}><td>{x.attack}, {x.date}</td><td colSpan={5}>not scorable</td></tr>)}
           </tbody>
         </table>
       </div>
       <p className="muted small" style={{ marginTop: 6 }}>
         The days are small, so the intervals are wide. Pre-registered (<code>{d.preregistration}</code>); record{" "}
-        <code>{d.record}</code>. Data: {d.attribution}.
+        <code>{d.record}</code>; the audit <code>{d.audit.preregistration}</code>, record <code>{d.audit.record}</code>.
+        Data: {d.attribution}.
       </p>
       <CardExport name="telecom_ids-pfcp-held-out-day" label="the PFCP figures" rows={d.days.map((x) => ({ ...x,
-        teacher_auc: x.teacher_auc?.mean ?? null, student_auc_ci95: x.student_auc_ci95?.join(" to ") ?? null }))} json={d} />
+        teacher_auc: x.teacher_auc?.mean ?? null, student_auc_ci95: x.student_auc_ci95?.join(" to ") ?? null,
+        labels: undefined, attack_message_in_malicious: x.labels.attack_message_in_malicious,
+        attack_message_in_normal: x.labels.attack_message_in_normal, labels_consistent_with_the_attack: x.labels.consistent_with_the_attack }))} json={d} />
     </div>
   );
 }

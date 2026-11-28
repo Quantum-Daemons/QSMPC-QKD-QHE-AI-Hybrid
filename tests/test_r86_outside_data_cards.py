@@ -63,6 +63,25 @@ def test_the_figures_are_the_records() -> None:
         assert v["c"]["window"] == "satquma_slots" and v["c"]["deviation"] == "chernoff"
 
 
+def test_the_pfcp_card_carries_the_audit_and_its_caveat() -> None:
+    """The audit run after the held-out-day check: each day's label figures are the audit record's, and the card warns
+    where the malicious flows carry the attack message no more often than the normal ones."""
+    page = _page("data/telecom/pfcp_held_out_day.json")
+    audit = _record("telecom-pfcp-audit-app-layer-normal-only-2026-11-28.json")["arm_a_audit"]
+    by_attack = {}
+    for run, v in audit.items():
+        share = v["app"]["attack_counter"]["share_non_zero_per_label"]
+        by_attack[run] = (round(share["Malicious"], 4), round(share["Normal"], 4))
+    seen = sorted((x["labels"]["attack_message_in_malicious"], x["labels"]["attack_message_in_normal"]) for x in page["days"])
+    assert seen == sorted(by_attack.values())
+    for x in page["days"]:
+        lab = x["labels"]
+        assert lab["consistent_with_the_attack"] == (lab["attack_message_in_malicious"] > lab["attack_message_in_normal"])
+    assert sum(not x["labels"]["consistent_with_the_attack"] for x in page["days"]) == 3
+    card = (REPO / "web" / "src" / "components" / "PfcpHeldOutDayCard.tsx").read_text(encoding="utf-8")
+    assert "Read these labels with care." in card and "consistent_with_the_attack" in card
+
+
 def test_the_satellite_card_says_satquma_caps_and_the_page_does_not() -> None:
     """The owner's choice of 2026-11-28: the page keeps the papers' bound, the cap is a named option, and the card says so."""
     card = (REPO / "web" / "src" / "components" / "SatqkdCheckCard.tsx").read_text(encoding="utf-8")
