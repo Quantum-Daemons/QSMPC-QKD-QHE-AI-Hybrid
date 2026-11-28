@@ -1,0 +1,153 @@
+{
+ "preregistration": {
+  "file": "references/defi-red-liq-liquidation-arithmetic-preregistration.md",
+  "sha256": "8fc961e67158e0a991dbd119e0d3607932d80d2c4d5ee334ed6a2ce41bf16b04"
+ },
+ "deposit": {
+  "doi": "10.5281/zenodo.23020998",
+  "licence": "CC-BY-4.0",
+  "file_sha256": "369b407fd90cce8cedb49246b0588b2ae4fe3e2361513be41085e351b3608da8"
+ },
+ "fee_read": {
+  "block": 26492593,
+  "contract": "0x0a16f2FCC0D44FaE41cc54e079281D84A363bECD",
+  "call": "getLiquidationProtocolFee(address)",
+  "endpoint": "eth.drpc.org",
+  "fees": {
+   "WETH": 0.2,
+   "WBTC": 0.2,
+   "USDC": 0.2
+  }
+ },
+ "events_2026": 2547,
+ "same_asset": {
+  "0xcbb7c0\u2026": {
+   "events": 1,
+   "ratio_min": 1.0674996698172368,
+   "ratio_max": 1.0674996698172368,
+   "ratio_median": 1.0674996698172368
+  },
+  "DAI": {
+   "events": 1,
+   "ratio_min": 1.0399999999998715,
+   "ratio_max": 1.0399999999998715,
+   "ratio_median": 1.0399999999998715
+  },
+  "USDC": {
+   "events": 16,
+   "ratio_min": 1.0350418410041842,
+   "ratio_max": 1.0360000000522631,
+   "ratio_median": 1.035999999360302,
+   "preset_bonus": 0.045,
+   "fee_read": 0.2,
+   "aave_rule": 1.036,
+   "page_rule": 1.05,
+   "events_at_aave_rule_to_rounding": 16,
+   "largest_abs_difference_from_aave_rule": 0.0009581589958158995,
+   "largest_abs_difference_from_aave_rule_among_events_at_it": 0.0009581589958158995,
+   "largest_abs_difference_from_page_rule": 0.0149581589958159,
+   "implied_fee": {
+    "min": 0.19999999883859504,
+    "max": 0.22129242212924222
+   },
+   "implied_bonus_under_fee_read": {
+    "min": 1.0438023012552302,
+    "max": 1.045000000065329,
+    "distinct_to_1e-6": [
+     1.043802,
+     1.044984,
+     1.044999,
+     1.045
+    ]
+   }
+  },
+  "USDT": {
+   "events": 14,
+   "ratio_min": 1.0,
+   "ratio_max": 1.0405000000359605,
+   "ratio_median": 1.0404998848225773
+  },
+  "WBTC": {
+   "events": 2,
+   "ratio_min": 1.0449955725420608,
+   "ratio_max": 1.0449973987175518,
+   "ratio_median": 1.0449964856298064,
+   "preset_bonus": 0.05,
+   "fee_read": 0.2,
+   "aave_rule": 1.04,
+   "page_rule": 1.05,
+   "events_at_aave_rule_to_rounding": 0,
+   "largest_abs_difference_from_aave_rule": 0.004997398717551794,
+   "largest_abs_difference_from_aave_rule_among_events_at_it": null,
+   "largest_abs_difference_from_page_rule": 0.00500442745793915,
+   "implied_fee": {
+    "min": 0.10005202564896412,
+    "max": 0.10008854915878299
+   },
+   "implied_bonus_under_fee_read": {
+    "min": 1.056244465677576,
+    "max": 1.0562467483969398,
+    "distinct_to_1e-6": [
+     1.056244,
+     1.056247
+    ]
+   }
+  },
+  "WETH": {
+   "events": 9,
+   "ratio_min": 1.009,
+   "ratio_max": 1.0450000000000002,
+   "ratio_median": 1.045,
+   "preset_bonus": 0.05,
+   "fee_read": 0.2,
+   "aave_rule": 1.04,
+   "page_rule": 1.05,
+   "events_at_aave_rule_to_rounding": 0,
+   "largest_abs_difference_from_aave_rule": 0.031,
+   "largest_abs_difference_from_aave_rule_among_events_at_it": null,
+   "largest_abs_difference_from_page_rule": 0.041,
+   "implied_fee": {
+    "min": 0.09999999999999855,
+    "max": 0.82
+   },
+   "implied_bonus_under_fee_read": {
+    "min": 1.01125,
+    "max": 1.0562500000000001,
+    "distinct_to_1e-6": [
+     1.01125,
+     1.05625
+    ]
+   }
+  },
+  "weETH": {
+   "events": 1,
+   "ratio_min": 1.0089999999999826,
+   "ratio_max": 1.0089999999999826,
+   "ratio_median": 1.0089999999999826
+  },
+  "wstETH": {
+   "events": 1,
+   "ratio_min": 1.054,
+   "ratio_max": 1.054,
+   "ratio_median": 1.054
+  }
+ },
+ "stable_pairs": {
+  "DAI debt, USDT collateral": {
+   "events": 1,
+   "ratio_min": 1.0415728197617717,
+   "ratio_max": 1.0415728197617717
+  },
+  "USDC debt, USDT collateral": {
+   "events": 5,
+   "ratio_min": 1.041120263525534,
+   "ratio_max": 1.041709190454962
+  },
+  "USDT debt, USDC collateral": {
+   "events": 3,
+   "ratio_min": 1.0351657030888728,
+   "ratio_max": 1.0358066518043825,
+   "largest_abs_difference_from_aave_rule_at_par": 0.0008342969111272248
+  }
+ }
+}
