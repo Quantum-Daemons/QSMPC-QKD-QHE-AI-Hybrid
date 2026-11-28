@@ -3,7 +3,10 @@
 The timeline (`web/src/lib/runTimeline.ts`, the owner's choice of 2026-11-14) draws the canvas, the log, the metrics table
 and "Who holds what" from the recorded log at a cursor, and draws a finished run's animation by replaying it. Held here
 on runs of the browser pipeline in node, built as the client-only demo (the harness of
-tests/test_r84_signed_record_names_what_ran.py), for finance, genomics and the satellite page:
+tests/test_r84_signed_record_names_what_ran.py), for finance, genomics, the satellite page, and since Round 86's batch 12 the
+medical page (its published students served from models/ at the Hub address the page asks for, as
+tests/test_r84_medtel_pipeline_says_what_ran.py serves them) and the DeFi page (its garbled circuits on shares by a plaintext
+stand-in, as the argmax's):
 
 1. the replay is the run: the log folded to its end gives every stage done, none active, and exactly the metrics the
    run ended with, so nothing a page shows at the end is missing from the log; at each stage boundary the fold names
@@ -38,6 +41,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 const WEB = process.argv[2];
+const HUB = JSON.parse(process.argv[4]);
 const { build } = createRequire(WEB + "/package.json")("esbuild");
 const dir = mkdtempSync(join(tmpdir(), "qsh-r86-timeline-"));
 const out = join(dir, "bundle.mjs");
@@ -59,6 +63,15 @@ export { toMermaidSequence, mermaidText } from ${JSON.stringify(resolve(WEB, "sr
       export async function secureArgmax(l) {
         let b = 0; for (let i = 1; i < l.length; i++) if (l[i] > l[b]) b = i;
         return { out: [b], compares: Math.max(0, l.length - 1), commBytes: 0, mpcMs: 0, messages: 0, clearOut: [b] };
+      }
+      export async function secureArgmaxShares(a, b) {
+        const q = Array.from(a, (x, k) => (x + b[k]) % 4294967296);
+        let arg = 0; for (let i = 1; i < q.length; i++) if (q[i] > q[arg]) arg = i;
+        return { arg, mpcMs: 0, bytes: 0, messages: 0, andOps: 0 };
+      }
+      export async function secureSignMod(a, b, t) {
+        const v = (a + b) % t;
+        return { negative: v > t / 2, compileMs: 0, mpcMs: 0, bytes: 0, messages: 0, andOps: 0 };
       }` }));
     b.onResolve({ filter: /\.wasm\?url$|qsh_mpc\.js$/ }, (a) => ({ path: a.path, namespace: "stub" }));
     b.onLoad({ filter: /.*/, namespace: "stub" }, () => ({ contents: "export default '';", loader: "js" }));
@@ -68,7 +81,16 @@ globalThis.fetch = async (url) => {
   const p = String(url);
   const miss = { ok: false, status: 404, headers: { get: () => null },
                  json: async () => { throw new Error("404"); }, text: async () => "" };
-  if (/^[a-z]+:/i.test(p)) return miss;
+  if (/^[a-z]+:/i.test(p)) {
+    // A published model's file at its pinned Hub address, from models/ (gitignored graphs are absent and stay a miss).
+    const hit = /huggingface\.co\/[^/]+\/([^/]+)\/resolve\/[0-9a-f]{40}\/(.+)$/.exec(p);
+    const dir = hit && HUB[hit[1]];
+    if (!dir) return miss;
+    let hubText;
+    try { hubText = readFileSync(join(WEB, "..", "models", dir, hit[2]), "utf8"); } catch { return miss; }
+    return { ok: true, status: 200, headers: { get: () => "application/json" }, json: async () => JSON.parse(hubText),
+             text: async () => hubText, arrayBuffer: async () => new TextEncoder().encode(hubText).buffer };
+  }
   let text;
   try { text = readFileSync(join(WEB, "public", p.replace(/^\/+/, "")), "utf8"); } catch { return miss; }
   return { ok: true, status: 200, headers: { get: () => "application/json" },
@@ -78,7 +100,8 @@ const m = await import(pathToFileURL(out).href);
 rmSync(dir, { recursive: true, force: true });
 const toHex = (u) => [...u].map((b) => b.toString(16).padStart(2, "0")).join("");
 const result = { runs: {} };
-for (const usecase of ["finance_aml", "genomics", "satellite_comms"]) {
+const USE_CASES = ["finance_aml", "genomics", "satellite_comms", "medical_fl", "defi_lending"];
+for (const usecase of USE_CASES) {
   // `qfl` as the page sets it on finance (usePipelineRun's buildConfig), so the federated stage runs there.
   const config = { seed: 0, usecase, ...(usecase === "finance_aml" ? { qfl: true } : {}) };
   const events = [];
@@ -129,6 +152,31 @@ writeFileSync(process.argv[3], JSON.stringify(result));
 process.exit(0);
 """
 
+USE_CASES = ["finance_aml", "genomics", "satellite_comms", "medical_fl", "defi_lending"]
+
+
+def _hub_dirs() -> dict[str, str]:
+    """Each published repo's name to its models/ directory, from the shipped config and the registry's artefact map."""
+    import re
+
+    cfg = json.loads((WEB / "src" / "lib" / "config.defaults.json").read_text())
+    dirs = dict(re.findall(r'"([a-z_]+\.[a-z_0-9]+)": "models/([a-z_0-9]+)"', (REPO / "src" / "qsh" / "models" / "registry.py").read_text()))
+    out: dict[str, str] = {}
+
+    def walk(o) -> None:
+        if isinstance(o, dict):
+            if o.get("hf_repo_id") and o.get("key") in dirs:
+                out[o["hf_repo_id"].split("/")[-1]] = dirs[o["key"]]
+            for v in o.values():
+                walk(v)
+        elif isinstance(o, list):
+            for v in o:
+                walk(v)
+
+    walk(cfg)
+    return out
+
+
 PROTECTIONS = {"public", "session key", "CKKS", "BGV", "garbled circuit", "additive shares", "pairwise masks",
                "photons (simulated)", "classical (simulated)"}
 SECRET_KEYS = ("secretkey", "privatekey", "secret_key", "private_key", "sessionkey", "_sessionkey", "seeds", "pairseeds")
@@ -151,8 +199,8 @@ def result(tmp_path_factory) -> dict:
     d = tmp_path_factory.mktemp("r86timeline")
     script, out = d / "harness.mjs", d / "result.json"
     script.write_text(HARNESS)
-    proc = subprocess.run(["node", str(script), str(WEB), str(out)], cwd=WEB, capture_output=True, text=True,
-                          timeout=1800)
+    proc = subprocess.run(["node", str(script), str(WEB), str(out), json.dumps(_hub_dirs())], cwd=WEB,
+                          capture_output=True, text=True, timeout=2400)
     assert proc.returncode == 0, f"the browser pipeline did not run:\n{proc.stderr[-3000:]}"
     return json.loads(out.read_text())
 
@@ -168,7 +216,7 @@ def _keys(o, out: set[str]) -> set[str]:
     return out
 
 
-@pytest.mark.parametrize("usecase", ["finance_aml", "genomics", "satellite_comms"])
+@pytest.mark.parametrize("usecase", USE_CASES)
 def test_the_replay_ends_where_the_run_ended(result, usecase) -> None:
     r = result["runs"][usecase]
     assert r["state"] == "done", r["state"]
@@ -180,7 +228,7 @@ def test_the_replay_ends_where_the_run_ended(result, usecase) -> None:
         [k for k in r["endMetrics"] if r["endMetrics"][k] != r["foldedMetrics"].get(k)])
 
 
-@pytest.mark.parametrize("usecase", ["finance_aml", "genomics", "satellite_comms"])
+@pytest.mark.parametrize("usecase", USE_CASES)
 def test_each_stage_boundary_replays_its_stage(result, usecase) -> None:
     r = result["runs"][usecase]
     assert r["marks"][0] == 0 and r["marks"][-1] == r["n"]
@@ -193,7 +241,7 @@ def test_each_stage_boundary_replays_its_stage(result, usecase) -> None:
             assert at["active"] is None and e["stage"] in at["done"], (e, at)
 
 
-@pytest.mark.parametrize("usecase", ["finance_aml", "genomics", "satellite_comms"])
+@pytest.mark.parametrize("usecase", USE_CASES)
 def test_every_per_party_event_says_only_what_may_be_said(result, usecase) -> None:
     r = result["runs"][usecase]
     assert r["messages"], "the run reported no message between its parties"
@@ -210,7 +258,7 @@ def test_every_per_party_event_says_only_what_may_be_said(result, usecase) -> No
     assert not bad, f"per-party events carry keys named like a secret: {bad}"
 
 
-@pytest.mark.parametrize("usecase", ["finance_aml", "genomics", "satellite_comms"])
+@pytest.mark.parametrize("usecase", USE_CASES)
 def test_the_session_key_is_nowhere_in_the_log(result, usecase) -> None:
     r = result["runs"][usecase]
     assert r["sessionHex"] and len(r["sessionHex"]) == 64, "the run made no session key to look for"
@@ -250,7 +298,7 @@ def test_the_helpers_on_a_log_written_by_hand(result) -> None:
     assert h["hex"] == "000102ff10204080..." and h["hexShort"] == "0a0b"
 
 
-@pytest.mark.parametrize("usecase", ["finance_aml", "genomics", "satellite_comms"])
+@pytest.mark.parametrize("usecase", USE_CASES)
 def test_the_sequence_text_is_the_ledger_as_mermaid(result, usecase) -> None:
     """One numbered arrow per message, one participant per party, each stage a closed block, a dotted arrow for a
     simulated channel only, and no character Mermaid reads as syntax inside a label."""
@@ -275,3 +323,21 @@ def test_the_sequence_text_is_the_ledger_as_mermaid(result, usecase) -> None:
 def test_mermaid_text_drops_what_mermaid_reads_as_syntax(result) -> None:
     assert result["hand"]["mtext"] == "a, b , c d e f g - h"
 
+
+
+def test_the_medical_and_defi_ledgers_carry_their_parties_messages(result) -> None:
+    """The four hospitals' and the lending parties' messages, which no test checked before Round 86's batch 12: each page's
+    run ends done with no error logged, and its ledger carries what its parties send, under the protection each is sent
+    under (the DeFi check's garbled circuit by the plaintext stand-in, so its size is "not measured", never 0)."""
+    for usecase in ("medical_fl", "defi_lending"):
+        r = result["runs"][usecase]
+        assert r["state"] == "done", (usecase, r["state"])
+        errors = [e for e in json.loads(r["logText"]) if e["type"] == "log" and str(e.get("message", "")).startswith("error")]
+        assert not errors, (usecase, errors[:2])
+    med = {m["protection"] for m in result["runs"]["medical_fl"]["messages"]}
+    assert {"pairwise masks", "CKKS", "garbled circuit"} <= med, med
+    defi = result["runs"]["defi_lending"]["messages"]
+    whats = " | ".join(m["what"] for m in defi)
+    assert "signed and sealed, once" in whats and "the margin's sign in a garbled circuit" in whats, whats
+    gc = [m for m in defi if m["protection"] == "garbled circuit"]
+    assert gc and all(m["bytes"] is None or m["bytes"] > 0 for m in gc), gc

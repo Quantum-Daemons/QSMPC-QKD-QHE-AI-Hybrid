@@ -118,6 +118,12 @@ function UseCaseView({ usecase }: { usecase: string }) {
   useEffect(() => setCanvasView("run"), [usecase]);
   const { events, active, done, metrics, signature, artifacts, state, logRef, gifBusy, webmBusy, benchmark,
     downloadGif, downloadWebm, downloadPng, downloadEvents, downloadMetricsCsv } = run;
+  // The published-figure comparison's rows, drawn by its card and carried by Results (JSON): one list for both.
+  const publishedComparison = [
+    ...modelRows(modelsFor(usecase), artifacts?.verifications as VerificationSummary[] | undefined),
+    ...(usecase === "medical_fl" && artifacts?.fedHeart ? flambyRows(artifacts.fedHeart as FedHeartResult) : []),
+    ...qcnnRows(usecase, qcnnRecord, (artifacts?.qcnn_rescore as QcnnRescore | undefined) ?? null),
+  ];
 
   return (
     <div>
@@ -190,9 +196,11 @@ function UseCaseView({ usecase }: { usecase: string }) {
         <button className="btn ghost" onClick={() => downloadMetricsCsv(`${usecase}-metrics.csv`)}
           disabled={!hasRun} title={hasRun ? undefined : "Run the simulator first"}>⬇ Metrics (CSV)</button>
         <button className="btn ghost" onClick={() => downloadJSON(buildResultsBundle({ usecase, params: run.params,
-            metrics, artifacts: artifacts ?? {}, events, bundleAsset: loadedBundleAsset() }), `${usecase}-results.json`)}
+            metrics, artifacts: artifacts ?? {}, events, bundleAsset: loadedBundleAsset(),
+            publishedComparison: publishedComparison as unknown as Record<string, unknown>[] }), `${usecase}-results.json`)}
           disabled={!hasRun}
-          title={hasRun ? "This run's parameters, metrics, log, every card's rows, every model's re-scoring and the signed record"
+          title={hasRun ? "This run's parameters, metrics, log, its cards' rows, every model's re-scoring and the signed record; "
+            + "its left_out list names each card it does not carry (a committed record's, or one run by its own button) and why"
             : "Run the simulator first"}>⬇ Results (JSON)</button>
         <span className="muted" style={{ fontSize: 12, alignSelf: "center" }}>
           ▶ Start plays the protocol · Pause/Step advance it · ↻ Restart replays
@@ -424,11 +432,7 @@ function UseCaseView({ usecase }: { usecase: string }) {
       ) : null}
       {Array.isArray(artifacts?.verifications) && artifacts.verifications.length > 0
         ? <VerificationsCard usecase={usecase} list={artifacts.verifications as VerificationSummary[]} /> : null}
-      <PublishedComparisonCard usecase={usecase} note={PAGE_NOTES[usecase]} rows={[
-        ...modelRows(modelsFor(usecase), artifacts?.verifications as VerificationSummary[] | undefined),
-        ...(usecase === "medical_fl" && artifacts?.fedHeart ? flambyRows(artifacts.fedHeart as FedHeartResult) : []),
-        ...qcnnRows(usecase, qcnnRecord, (artifacts?.qcnn_rescore as QcnnRescore | undefined) ?? null),
-      ]} />
+      <PublishedComparisonCard usecase={usecase} note={PAGE_NOTES[usecase]} rows={publishedComparison} />
       <BackendCompareCard usecase={usecase} />
 
       {/* `surfacedBackend` is the backend that RAN, not the control that was set. Passing

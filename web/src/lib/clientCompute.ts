@@ -4695,8 +4695,9 @@ export function runClientPipeline(
             message(stage, { from: g.from, to: g.to, what: `${what}, each check`, bytes: g.bytes, count: g.count,
               protection: g.to === "anyone" ? "public" : report.committee ? "BGV" : "session key" });
           }
+          // A garbled circuit is never zero bytes: 0 is a run that did not measure it, said as "not measured", as finance's.
           message(stage, { from: "a", to: "b", what: "the margin's sign in a garbled circuit, both ways, each check",
-            bytes: report.gcBytes, count: report.gcMessages, protection: "garbled circuit" });
+            bytes: report.gcBytes > 0 ? report.gcBytes : null, count: report.gcMessages, protection: "garbled circuit" });
           holds(stage, { party: "a", what: `whether the position can be liquidated, at each of ${report.outcomes.length} hours, and no balance`, kept: false });
         }
         if (report.committee) {
