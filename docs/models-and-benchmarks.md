@@ -773,6 +773,29 @@ re-run's figures, as the pre-registration says. One thing found on the way: the 
 thread count (L-BFGS-B stops by its relative-reduction test on a nearly flat objective; under four OpenBLAS threads it
 scored 0.9665), so the linear student's figures carry that much of the machine.
 
+#### Four checks against outside data, pre-registered (Round 86, batch 12)
+
+On the owner's choices of 2026-11-28 (each dataset downloaded on approval, its check pre-registered after an EDA of its
+structure only, and frozen at its SHA-256 in its script before any figure), four checks hold the page's models and
+formulas to data from outside the project: the four published BreastMNIST models on BUS-BRA, a breast ultrasound
+corpus from another site
+([`references/medical-busbra-external-test-preregistration.md`](../references/medical-busbra-external-test-preregistration.md);
+`scripts/check_busbra_external.py`); SatQuMA's published key lengths recomputed from their own terms, and this
+project's bound on the same zenith pass
+([`references/satellite-satqkd-key-length-preregistration.md`](../references/satellite-satqkd-key-length-preregistration.md);
+`scripts/check_satqkd_key_length.py`); the lending page's liquidation arithmetic against Aave V3 liquidations that need
+no price, with the protocol fee read on chain
+([`references/defi-red-liq-liquidation-arithmetic-preregistration.md`](../references/defi-red-liq-liquidation-arithmetic-preregistration.md);
+`scripts/check_red_liq_arithmetic.py`); and a detector of PFCP attacks tested on an attack day it never saw
+([`references/telecom-pfcp-held-out-day-preregistration.md`](../references/telecom-pfcp-held-out-day-preregistration.md);
+`scripts/check_pfcp_held_out_day.py`). None decides anything on the page; each is recorded whatever it shows. Four
+corrections were made to the drafts before they were frozen, each from reading the deposit's inputs or the code they
+check, never an outcome: the satellite check's pass is the one Fig7 gives, the zenith pass, so only the four rows on
+it are compared; the liquidation check names Aave's e-mode bonus, which overrides the reserve's; the PFCP archives
+spell their flow folder three ways and the teacher's recipe names the GPU, so the script finds every run and sets the
+CPU; and the BUS-BRA check scores ResNet-18 from both its graphs, the int8 one the page loads and the fp32 one its
+figure comes from, after the fp32 copy here was found not to be the pinned file and replaced by it.
+
 #### The finance QCNN on AMLworld, pre-registered, and on the page since Round 86's batch 6
 
 On the owner's choice of 2026-11-25, pre-registered before any input was scored
