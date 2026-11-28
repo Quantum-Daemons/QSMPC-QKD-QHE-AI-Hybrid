@@ -13,9 +13,14 @@
  *   - the class that holds the weights was never handed a decryptor.
  *
  * Run: npm run check:hybrid-cnn (about 20 s)
+ *
+ * `--all [--out FILE]` (Round 86, batch 12) runs every image of the published sample, the official test split's 156, and
+ * writes the record the Models panel's "its class matched the clear network on all 156 test images" and the models doc's
+ * table rest on (`docs/measurements/medical-cnn-mpc-<date>.json`, `tests/test_r86_cnn_mpc_record.py` holds both to it);
+ * every image is held to the same checks as the one. About 45 minutes; its timings want a quiet machine.
  */
 import { createRequire } from "node:module";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -48,10 +53,18 @@ try {
   const m = await import(pathToFileURL(join(tmp, "b.mjs")).href);
   const weights = JSON.parse(readFileSync(join(MODEL, "weights.json"), "utf8"));
   const sample = JSON.parse(readFileSync(join(MODEL, "eval_sample.json"), "utf8"));
-  const flat = sample.samples[1];
-  const size = Math.sqrt(flat.length);
-  const image = Array.from({ length: size }, (_, y) => flat.slice(y * size, (y + 1) * size));
-  const r = await m.hybridStudentInference(weights, image);
+  const all = process.argv.includes("--all");
+  const toImage = (flat) => {
+    const size = Math.sqrt(flat.length);
+    return Array.from({ length: size }, (_, y) => flat.slice(y * size, (y + 1) * size));
+  };
+  const runs = [];
+  for (const k of all ? sample.samples.map((_, i) => i) : [1]) {
+    const one = await m.hybridStudentInference(weights, toImage(sample.samples[k]));
+    runs.push({ k, r: one });
+    if (all && (k + 1) % 13 === 0) console.log(`  ${k + 1} of ${sample.samples.length} images`);
+  }
+  const r = runs[0].r;
 
   const cfg = JSON.parse(readFileSync(join(WEB, "src/lib/config.defaults.json"), "utf8")).hybrid_cnn;
   const andPerRelu = (bits) => (cfg.relu_ring_bits - 1) * 2 + cfg.frac_bits + bits;
@@ -66,6 +79,48 @@ try {
   check(r.andGates === wantAnd, `the circuits are the size the design says (${r.andGates} AND gates, expected ${wantAnd})`);
   check(r.statisticalDistanceLog2 < -20, `the run's bound on the masks is below 2^-20 (2^${r.statisticalDistanceLog2.toFixed(1)})`);
   check(r.conjugations === weights.conv.out_ch + weights.dense.length, `every ciphertext the client decrypts had its imaginary half cancelled (${r.conjugations})`);
+
+  if (all) {
+    const labels = sample.labels.map((y) => (Array.isArray(y) ? y[0] : y));
+    const med = (xs) => { const s = [...xs].sort((p, q) => p - q); const n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; };
+    for (const { k, r: one } of runs) {
+      if (!one.matchesClear || !(one.logitMaxAbsError < 2e-3) || one.andGates !== wantAnd || !(one.statisticalDistanceLog2 < -20)) {
+        check(false, `image ${k}: class ${one.prediction} against ${one.clearPrediction}, error ${one.logitMaxAbsError.toExponential(2)}, ${one.andGates} AND gates`);
+      }
+    }
+    const gaps = runs.map(({ r: one }) => Math.abs(one.logits[0] - one.logits[1]));
+    const malignant = runs.filter(({ k }) => labels[k] === 0);
+    const record = {
+      what: "the medical CNN student under MPC (clientHybridCnn.ts's hybridStudentInference) on every image of its published sample, in node with the real node-seal and Polytune",
+      sample: "models/medical_breastmnist_student/eval_sample.json: the official BreastMNIST test split, all 156 images",
+      date: new Date().toISOString().slice(0, 10), node: process.version,
+      images: runs.length,
+      class_matches_the_clear_network: runs.filter(({ r: one }) => one.matchesClear).length,
+      accuracy: runs.filter(({ k, r: one }) => one.prediction === labels[k]).length / runs.length,
+      malignant_images: malignant.length,
+      malignant_detected: malignant.filter(({ r: one }) => one.prediction === 0).length,
+      largest_logit_error: Math.max(...runs.map(({ r: one }) => one.logitMaxAbsError)),
+      smallest_logit_gap: Math.min(...gaps),
+      statistical_distance_log2: { min: Math.min(...runs.map(({ r: one }) => one.statisticalDistanceLog2)),
+                                   max: Math.max(...runs.map(({ r: one }) => one.statisticalDistanceLog2)) },
+      and_gates_per_image: [...new Set(runs.map(({ r: one }) => one.andGates))],
+      relus_per_image: [...new Set(runs.map(({ r: one }) => one.reluCount))],
+      batches_per_image: [...new Set(runs.map(({ r: one }) => one.batches))],
+      gc_megabytes_per_image: med(runs.map(({ r: one }) => one.gcBytes / 1e6)),
+      ckks_rotations_per_image: [...new Set(runs.map(({ r: one }) => one.rotations))],
+      conjugations_per_image: [...new Set(runs.map(({ r: one }) => one.conjugations))],
+      ckks_megabytes_per_image: med(runs.map(({ r: one }) => one.ckksBytes / 1e6)),
+      key_megabytes: med(runs.map(({ r: one }) => one.keyBytes / 1e6)),
+      wall_clock_s_median: med(runs.map(({ r: one }) => one.totalMs / 1000)),
+      gc_s_median: med(runs.map(({ r: one }) => one.gcMs / 1000)),
+      ckks_s_median: med(runs.map(({ r: one }) => one.ckksMs / 1000)),
+      every_image_passed_the_checks: failed === 0,
+    };
+    const i = process.argv.indexOf("--out");
+    const outFile = i > 0 ? process.argv[i + 1] : join(REPO, "docs", "measurements", `medical-cnn-mpc-${record.date}.json`);
+    writeFileSync(outFile, JSON.stringify(record, null, 1) + "\n");
+    console.log(`wrote ${outFile}: ${record.class_matches_the_clear_network} of ${record.images} match, accuracy ${record.accuracy.toFixed(4)}`);
+  }
 
   const src = readFileSync(join(WEB, "src/lib/clientHybridCnn.ts"), "utf8");
   const server = src.slice(src.indexOf("class Server {"), src.indexOf("/** The garbled circuits' running totals. */"));
