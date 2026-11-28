@@ -1,0 +1,95 @@
+{
+ "_generated_by": "scripts/export_outside_data_cards.py; do not edit by hand",
+ "preregistration": "references/telecom-pfcp-held-out-day-preregistration.md",
+ "record": "docs/measurements/telecom-pfcp-held-out-day-2026-11-28.json",
+ "days": [
+  {
+   "attack": "session establishment",
+   "date": "2022-10-05",
+   "scorable": true,
+   "flows": 486,
+   "malicious": 120,
+   "teacher_auc": {
+    "mean": 0.6508,
+    "min": 0.6508,
+    "max": 0.6508
+   },
+   "teacher_detection_rate": 0.015,
+   "teacher_false_positive_rate": 0.3393,
+   "student_auc": 0.0111,
+   "student_auc_ci95": [
+    0.0,
+    0.0307
+   ],
+   "student_detection_rate": 0.0083,
+   "student_false_positive_rate": 0.3333
+  },
+  {
+   "attack": "session deletion",
+   "date": "2022-10-13",
+   "scorable": true,
+   "flows": 403,
+   "malicious": 129,
+   "teacher_auc": {
+    "mean": 0.6624,
+    "min": 0.6241,
+    "max": 0.6955
+   },
+   "teacher_detection_rate": 0.3814,
+   "teacher_false_positive_rate": 0.0555,
+   "student_auc": 0.9705,
+   "student_auc_ci95": [
+    0.9509,
+    0.9867
+   ],
+   "student_detection_rate": 0.1473,
+   "student_false_positive_rate": 0.0219
+  },
+  {
+   "attack": "session modification, DROP flag",
+   "date": "2022-11-01",
+   "scorable": true,
+   "flows": 264,
+   "malicious": 129,
+   "teacher_auc": {
+    "mean": 0.9999,
+    "min": 0.9998,
+    "max": 1.0
+   },
+   "teacher_detection_rate": 0.7473,
+   "teacher_false_positive_rate": 0.0,
+   "student_auc": 0.9927,
+   "student_auc_ci95": [
+    0.9769,
+    1.0
+   ],
+   "student_detection_rate": 0.907,
+   "student_false_positive_rate": 0.0074
+  },
+  {
+   "attack": "session modification, DUPL flag",
+   "date": "2022-11-22",
+   "scorable": true,
+   "flows": 486,
+   "malicious": 121,
+   "teacher_auc": {
+    "mean": 1.0,
+    "min": 1.0,
+    "max": 1.0
+   },
+   "teacher_detection_rate": 0.5901,
+   "teacher_false_positive_rate": 0.0,
+   "student_auc": 0.9973,
+   "student_auc_ci95": [
+    0.9915,
+    1.0
+   ],
+   "student_detection_rate": 0.4215,
+   "student_false_positive_rate": 0.0027
+  }
+ ],
+ "licence": "CC-BY-4.0",
+ "licence_url": "https://creativecommons.org/licenses/by/4.0/",
+ "attribution": "G. Amponis, P. Radoglou-Grammatikis, G. Nakas, M. Zevgara, S. Giannakidou, S. Ouzounidis, G. Kakamoukas and A. Sarigiannidis, '5GC PFCP Intrusion Detection Dataset', IEEE DataPort / Zenodo 7888347 (2023), doi:10.21227/e0gj-ev03, CC BY 4.0",
+ "modifications": "figures computed from the dataset's UPF flows by the pre-registered check; no flow is shipped"
+}

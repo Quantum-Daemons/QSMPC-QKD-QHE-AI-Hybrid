@@ -45,6 +45,9 @@ export const CARD_EXPORT_CLASSES: Record<string, { card: string; pages?: string[
   "cxr-federation": { leftOut: "a committed record's figures, the same on every run, which its own download carries", label: "the chest X-ray federation table", pages: ["medical_fl"] },
   "vus-pr": { leftOut: "a committed record's figures, the same on every run, which its own download carries", label: "the VUS-PR figures", pages: ["satellite_comms"] },
   "boundary": { leftOut: "a committed record's figures, the same on every run, which its own download carries", label: "the boundary slice", pages: ["satellite_comms"] },
+  "busbra-external": { leftOut: "a committed record's figures, the same on every run, which its own download carries", label: "the BUS-BRA figures", pages: ["medical_fl"] },
+  "satqkd-check": { leftOut: "a committed record's figures, the same on every run, which its own download carries", label: "the SatQKD figures", pages: ["satellite_comms"] },
+  "pfcp-held-out-day": { leftOut: "a committed record's figures, the same on every run, which its own download carries", label: "the PFCP figures", pages: ["telecom_ids"] },
 };
 
 /** The cards on this page that the bundle leaves out, each with its reason. */

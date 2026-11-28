@@ -820,9 +820,10 @@ As run on 2026-11-28:
   zenith-pass rows: it read the rows' `SysLoss`, the link's total loss at zenith, as a loss to add, and counted about
   20 dB twice. Check B', chosen after that result and labelled so
   (`references/satellite-satqkd-key-length-preregistration-addendum-loss.md`), takes the loss from Fig7's total:
-  this project's counts then come within 1.4 to 6 percent of SatQuMA's on the 8, 16 and 32 s windows (20 percent on
-  the 2 s one), its single-photon bound and error-correction term within a few percent, and its key is 0.42 to 0.43 of
-  SatQuMA's on those windows (0.04 on the 2 s one), because its phase-error bound is about three times SatQuMA's (0.14
+  this project's counts then come within 1.4 to 6 percent of SatQuMA's on the windows of 8, 16 and 32 s either side of
+  the peak (20 percent on the 2 s one), its single-photon bound and error-correction term within a few percent, and its
+  key is 0.42 to 0.43 of SatQuMA's on those windows (0.04 on the 2 s one), because its phase-error bound is about three
+  times SatQuMA's (0.14
   against 0.041 to 0.052). The pre-registration named the two bounds' statistics as a difference; which part of the
   phase-error bound differs is not resolved here.
 - **RED-LIQ** (`docs/measurements/defi-red-liq-arithmetic-2026-11-28.json`): the liquidation protocol fee read at the
