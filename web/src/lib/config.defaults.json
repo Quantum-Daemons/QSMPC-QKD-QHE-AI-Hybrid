@@ -232,6 +232,7 @@
     "jump_sd": 0.05,
     "jumps_per_year": 6.0,
     "liquidation_bonus": 0.05,
+    "liquidation_protocol_fee": 0.1,
     "liquidation_thresholds": [
       0.83,
       0.78
@@ -250,6 +251,7 @@
         ],
         "label": "Aave V3 Ethereum Core, read on chain at block 26,492,593 (2026-11-25)",
         "liquidation_bonus": 0.05,
+        "liquidation_protocol_fee": 0.2,
         "liquidation_thresholds": [
           0.84,
           0.85

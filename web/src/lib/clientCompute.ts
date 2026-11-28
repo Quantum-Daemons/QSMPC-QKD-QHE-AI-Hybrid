@@ -4619,10 +4619,12 @@ export function runClientPipeline(
           + `of ${(cfg.shock_fraction * 100).toFixed(0)}% at hour ${cfg.shock_hour}; ${run.events.length} liquidations, ${bobEvents} of them Bob's. `
           + (preset
             ? `Parameters: ${preset.label}: liquidation thresholds ${cfg.liquidation_thresholds.map((t) => (t * 100).toFixed(0) + "%").join(" and ")}, `
-              + `bonus ${(cfg.liquidation_bonus * 100).toFixed(1)}%, the debt asset's rate curve ${(cfg.optimal_utilisation * 100).toFixed(0)}% optimal, `
+              + `bonus ${(cfg.liquidation_bonus * 100).toFixed(1)}%, of whose part the protocol's treasury takes a fee of `
+              + `${(cfg.liquidation_protocol_fee * 100).toFixed(0)}%, the debt asset's rate curve ${(cfg.optimal_utilisation * 100).toFixed(0)}% optimal, `
               + `slopes ${(cfg.slope1 * 100).toFixed(1)}% and ${(cfg.slope2 * 100).toFixed(1)}%, opening prices the oracle's at that block; the borrowers, `
               + `the price path and the fall are generated, so this is Aave's parameters on a simulated market, not Aave's market. `
-            : "Parameters: illustrative, no live market's. ")
+            : `Parameters: illustrative, no live market's (a liquidation's bonus ${(cfg.liquidation_bonus * 100).toFixed(1)}%, of whose part `
+              + `the protocol's treasury takes ${(cfg.liquidation_protocol_fee * 100).toFixed(0)}%). `)
           + "No chain is involved.");
         // The sweep moves only volatility, from the configured one, so this run's multiplier does not move the curve's axis.
         const sweepCfg = { ...cfg, annual_vol: base.annual_vol };

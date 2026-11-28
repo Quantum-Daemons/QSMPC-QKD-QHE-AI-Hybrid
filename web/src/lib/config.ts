@@ -78,7 +78,7 @@ export const lendingCfg = (): LendingCfg => CONFIG.lending as unknown as Lending
 /** The lending simulator's parameters, from `LendingConfig` in defaults.py. */
 export interface LendingCfg {
   hours: number; borrowers: number; max_borrowers: number; supply: number;
-  initial_prices: number[]; liquidation_thresholds: number[]; liquidation_bonus: number;
+  initial_prices: number[]; liquidation_thresholds: number[]; liquidation_bonus: number; liquidation_protocol_fee: number;
   close_factor: number; full_close_at_or_below_hf: number;
   collateral_log_mean: number; collateral_log_sd: number; ltv_min: number; ltv_max: number; bob_initial_ltv: number;
   base_rate: number; optimal_utilisation: number; slope1: number; slope2: number; reserve_factor: number;
@@ -91,7 +91,7 @@ export interface LendingCfg {
 }
 /** One real market's parameters for the lending page, as `LendingConfig.market_presets` derives them from its raw reads. */
 export interface LendingMarketPreset {
-  label: string; block: number; liquidation_thresholds: number[]; liquidation_bonus: number;
+  label: string; block: number; liquidation_thresholds: number[]; liquidation_bonus: number; liquidation_protocol_fee: number;
   base_rate: number; optimal_utilisation: number; slope1: number; slope2: number; reserve_factor: number; initial_prices: number[];
 }
 export const webCfg = () => CONFIG.web;

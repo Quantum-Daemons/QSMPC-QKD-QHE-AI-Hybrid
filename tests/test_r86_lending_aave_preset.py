@@ -43,6 +43,9 @@ def test_the_preset_is_the_reads_derived() -> None:
     assert tuple(p["liquidation_thresholds"]) == tuple(r[a]["liquidation_threshold_bps"] / 1e4 for a in ("WETH", "WBTC"))
     bonus = {(r[a]["liquidation_bonus_bps"] - 10_000) / 1e4 for a in ("WETH", "WBTC")}
     assert bonus == {p["liquidation_bonus"]}, bonus
+    # The fee (Round 86, batch 13): read at the same block, the collateral reserves' own, one value for both.
+    fee = {r[a]["liquidation_protocol_fee_bps"] / 1e4 for a in ("WETH", "WBTC")}
+    assert fee == {p["liquidation_protocol_fee"]}, fee
     usdc = r["USDC"]["rate_bps"]
     assert (p["base_rate"], p["optimal_utilisation"], p["slope1"], p["slope2"]) == (
         usdc["base_variable_borrow_rate"] / 1e4, usdc["optimal_usage_ratio"] / 1e4,

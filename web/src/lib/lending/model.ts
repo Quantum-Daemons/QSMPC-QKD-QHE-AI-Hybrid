@@ -6,13 +6,16 @@
  *   - below 1 it can be liquidated, up to 50% of the debt in one step, or 100% at or below 0.95. That is V3's rule for a position whose collateral and debt
  *     in the reserve are each at least USD 2,000 (`MIN_BASE_MAX_CLOSE_FACTOR_THRESHOLD`, LiquidationLogic.sol at v3.7.0, read 2026-11-25); V3 also lets a
  *     smaller position be liquidated whole and refuses a liquidation that leaves less than USD 1,000 (`MIN_LEFTOVER_BASE`). Neither rule is modelled here;
- *   - the liquidator takes collateral worth the repaid debt plus a bonus;
+ *   - the borrower loses collateral worth the repaid debt plus a bonus, and of that the protocol's treasury takes its liquidation protocol fee's
+ *     share of the bonus part and the liquidator the rest (`aaveRule.ts`; since Round 86's batch 13: until then the liquidator was shown taking it
+ *     all). The bonus is the collateral reserve's: none of this market's borrowers, who borrow the stable asset, can be in an e-mode category;
  *   - the borrow rate is a two-slope function of utilisation, and debt grows through a public index, so a position is stored as a scaled balance.
  *
  * Every parameter here is this project's illustrative choice, read from config, and none is a claim about any live market.
  */
 
 import type { LendingCfg } from "../config";
+import { liquidationBonusFor, liquidationSplit } from "./aaveRule";
 
 /** The borrow rate at utilisation u, per year. */
 export function twoSlopeRate(u: number, r: Pick<LendingCfg, "base_rate" | "optimal_utilisation" | "slope1" | "slope2">): number {
@@ -52,6 +55,7 @@ export function withRunParams(c: LendingCfg, p: Record<string, unknown>): Lendin
   const preset = typeof p.lending_market === "string" ? c.market_presets?.[p.lending_market] : undefined;
   const market = preset
     ? { liquidation_thresholds: preset.liquidation_thresholds.slice(), liquidation_bonus: preset.liquidation_bonus,
+        liquidation_protocol_fee: preset.liquidation_protocol_fee,
         base_rate: preset.base_rate, optimal_utilisation: preset.optimal_utilisation, slope1: preset.slope1, slope2: preset.slope2,
         reserve_factor: preset.reserve_factor, initial_prices: preset.initial_prices.slice() }
     : {};
@@ -89,7 +93,11 @@ export interface LiquidationEvent {
   borrower: number;
   hfBefore: number;
   repaid: number;
+  /** What the borrower loses: the collateral value taken. */
   seizedValue: number;
+  /** Of that, the liquidator's part and the protocol's treasury's (the fee's share of the bonus part). */
+  liquidatorValue: number;
+  protocolFee: number;
   badDebt: number;
 }
 
@@ -176,10 +184,13 @@ export function simulate(c: LendingCfg, seed: number): LendingRun {
       if (b === 0 && !bobLiquidatedFlagged) { checkpointHours.add(hour); bobLiquidatedFlagged = true; }
       if (checkpointHours.has(hour) && b === 0) pushCheckpoint();
       const repay = closeFactor(hf, c) * debt;
-      const want = repay * (1 + c.liquidation_bonus);
+      // The reserve's bonus: a borrower of the stable asset is in no e-mode category (aaveRule.ts says why).
+      const bonus = liquidationBonusFor(c.liquidation_bonus, "collateral", null);
+      const want = repay * (1 + bonus);
       const have = p.amounts.reduce((s, a, i) => s + a * price[i], 0);
       const seized = Math.min(want, have);
-      const repaidCovered = seized / (1 + c.liquidation_bonus);
+      const repaidCovered = seized / (1 + bonus);
+      const split = liquidationSplit(seized, bonus, c.liquidation_protocol_fee);
       const share = have > 0 ? seized / have : 0;
       if (b === 0) p.amounts.forEach((a, i) => { bobSettled.seized[i] += a * share; });
       p.amounts = p.amounts.map((a) => a * (1 - share));
@@ -192,7 +203,8 @@ export function simulate(c: LendingCfg, seed: number): LendingRun {
       liquidity += repaidCovered;
       badDebt += lost;
       liquidatedNow += repaidCovered;
-      events.push({ hour, borrower: b, hfBefore: hf, repaid: repaidCovered, seizedValue: seized, badDebt: lost });
+      events.push({ hour, borrower: b, hfBefore: hf, repaid: repaidCovered, seizedValue: seized, liquidatorValue: split.liquidator,
+                    protocolFee: split.protocolFee, badDebt: lost });
     });
 
     function pushCheckpoint() {
