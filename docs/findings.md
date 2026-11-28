@@ -245,6 +245,15 @@ federated model under CKKS ([models-and-benchmarks](models-and-benchmarks.md)).
 - **A local graph can drift from its pin unseen (2026-11-28).** Two fp32 graphs on this machine were not the pinned
   files while the per-row re-score passed, because it checks only the graphs the records name; they were replaced by
   the pinned files and `tests/test_r86_local_graphs_match_their_pins.py` now holds every local graph to its pin.
+- **The satellite bound keeps less key than SatQuMA because SatQuMA caps a term the papers leave uncapped
+  (2026-11-28).** SatQuMA bounds the single-photon errors in the test basis by every error observed there as well as by
+  the decoy bound; with that cap, the satellite page's statistics and SatQuMA's one-second slots, this project's key is
+  1.01 to 1.08 of SatQuMA's on the deposit's zenith pass, against 0.04 to 0.43 without
+  (`docs/measurements/satellite-satqkd-key-length-b-double-prime-2026-11-28.json`). The cap is valid, but applied to the
+  page it puts the reproductions of Rusca et al.'s Table I and Liao et al.'s pass above the published keys, so on the
+  owner's choice it is a named option, off by default, that only the SatQuMA comparison uses, and the card says SatQuMA
+  caps and the page does not. The comparisons B and B' also ran the configured default statistics rather than the
+  satellite page's; a check of a page's bound should name the page's own settings.
 
 - **CKKS-friendly students: planned on 2026-11-02 (the owner's decision), the medical half done on 2026-11-19.** The Round 86
   review found the encrypted tier evaluating students that are weak or fed out of domain, and the

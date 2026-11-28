@@ -824,8 +824,20 @@ As run on 2026-11-28:
   the peak (20 percent on the 2 s one), its single-photon bound and error-correction term within a few percent, and its
   key is 0.42 to 0.43 of SatQuMA's on those windows (0.04 on the 2 s one), because its phase-error bound is about three
   times SatQuMA's (0.14
-  against 0.041 to 0.052). The pre-registration named the two bounds' statistics as a difference; which part of the
-  phase-error bound differs is not resolved here.
+  against 0.041 to 0.052). Check B'' (`docs/measurements/satellite-satqkd-key-length-b-double-prime-2026-11-28.json`,
+  a second addendum written after these results and an exploration of them, and saying so,
+  `references/satellite-satqkd-key-length-preregistration-addendum-cap.md`) finds the cause. SatQuMA bounds the
+  single-photon errors in the test basis by the decoy bound and by every error observed there, and keeps the smaller
+  (SatQuMA v2.0.0, `key/protocols/key_efficient_BB84.py`, line 371); this project's bound keeps the decoy bound alone,
+  as Lim et al. print it. With that cap on, the key is 0.95, 0.98 and 0.99 of SatQuMA's on the 8, 16 and 32 s windows
+  (0.70 on the 2 s one); with the satellite page's own statistics ("chernoff", where Checks B and B' ran the configured
+  default, "tighter") too, 0.94, 0.97 and 0.99 (0.67); and on SatQuMA's window of one-second slots at the whole seconds
+  either side of the peak as well, 1.02, 1.01 and 1.01 (1.08), with the key-basis counts at 0.999 of SatQuMA's. What
+  still differs is SatQuMA's after-pulsing, its error-correction term, its errors per intensity at the basis's average
+  rate and its unfloored lower bounds. The cap is a named option of both bounds, `cap_single_photon_errors` in
+  `finite_key.py` and `capSinglePhotonErrors` in `finiteKey.ts`, off by default (the owner's choice of 2026-11-28): on
+  everywhere, it put the fibre page's reproduction of Rusca et al.'s Table I 8 to 16 percent above the paper and Liao's
+  pass above the key Liao reports, so the page keeps the papers' bound and only the SatQuMA comparison names the cap.
 - **RED-LIQ** (`docs/measurements/defi-red-liq-arithmetic-2026-11-28.json`): the liquidation protocol fee read at the
   preset's block is 20 percent for WETH, WBTC and USDC. USDC's 16 events with one asset as debt and collateral sit on
   Aave's rule with that fee to integer rounding; WBTC's two sit where a 10 percent fee would put them, a constant
