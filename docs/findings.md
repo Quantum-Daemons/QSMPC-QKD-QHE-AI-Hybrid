@@ -226,6 +226,24 @@ federated model under CKKS ([models-and-benchmarks](models-and-benchmarks.md)).
 
 ## Concerns & recommendations
 
+- **A CKKS fidelity criterion measured once is a sample of one (found 2026-11-28).** The page encrypts afresh on every
+  run, so the largest logit error is a random variable of the run. The telecom square network met criterion 3 under
+  A2 in its one measured run ($`4.1 \times 10^{-4}`$), and 30 runs of the page's module then ranged to
+  $`1.07 \times 10^{-3}`$, past the page's $`10^{-3}`$ rule once; the page runs B since
+  (`references/telecom-nidd-square-student-preregistration-addendum-spread.md`). Recommendation: every fidelity
+  criterion states its number of runs, as the square-network pre-registrations drafted that day do (30).
+- **The BreastMNIST models do not transfer to another site (2026-11-28).** On BUS-BRA the four published models score a
+  malignant-class AUC of 0.59 to 0.66 against 0.79 to 0.92 on BreastMNIST's test split
+  (`docs/measurements/medical-busbra-external-2026-11-28.json`); the framing differs as well as the site. Their figures
+  on the page are within one dataset, and whether a card says so is the owner's choice.
+- **The lending page's liquidation rule has no protocol fee and no e-mode bonus (2026-11-28).** Aave V3's
+  `LiquidationCall` reports the collateral less the fee, and an e-mode borrower's bonus is the category's; the page's
+  one bonus overstates every asset's ratio in RED-LIQ-2026's same-asset events, by up to 0.041 for WETH
+  (`docs/measurements/defi-red-liq-arithmetic-2026-11-28.json`). Whether the page adds the fee is the owner's choice.
+- **A local graph can drift from its pin unseen (2026-11-28).** Two fp32 graphs on this machine were not the pinned
+  files while the per-row re-score passed, because it checks only the graphs the records name; they were replaced by
+  the pinned files and `tests/test_r86_local_graphs_match_their_pins.py` now holds every local graph to its pin.
+
 - **CKKS-friendly students: planned on 2026-11-02 (the owner's decision), the medical half done on 2026-11-19.** The Round 86
   review found the encrypted tier evaluating students that are weak or fed out of domain, and the
   owner chose to plan a replacement as research rather than retrain now. The facts the plan starts from:
