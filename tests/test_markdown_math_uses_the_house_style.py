@@ -214,6 +214,25 @@ FROZEN = {
     # protocols, committed before any model was fitted under them.
     "references/telecom-nidd-clean-protocols-preregistration.md":
         "7d4feebfdccb8c2626e614445999ef48ac23dff2c8071f20b2fb1140d5750aed",
+    # Round 86's batch 12, the owner's choices of 2026-11-27 and 2026-11-28. The telecom square network: committed
+    # (e2d92f1) before any of its seeds was trained, and its addendum on the run-to-run spread before its measurement.
+    "references/telecom-nidd-square-student-preregistration.md":
+        "e23f2515e064475d558ccf07fa6695071e10843d168caa88db1f0bfebd00cdb4",
+    "references/telecom-nidd-square-student-preregistration-addendum-spread.md":
+        "dabdd902f2c67a1c97cc696f9acf395bd680bb0bd02ad8d5e0ca5d5593794271",
+    # The four checks against outside data: committed (cbf8592) before any figure, and run as frozen. The BUS-BRA text
+    # names a CKKS scale as 2^40 and the SatQKD text writes SatQuMA's Eq. (2) and a transmittance as prose, so these two
+    # need the exemption; the SatQKD addendum (8e814fe) was written after its check B's result, and says so.
+    "references/medical-busbra-external-test-preregistration.md":
+        "33b3e5abc0c15ef590a0d3e6536abbc750393ae7515495b7459e82b1a06b38c2",
+    "references/satellite-satqkd-key-length-preregistration.md":
+        "fba1775109a21ba2e9f76bde55758995938cc79f1927eae0a3263b7c97ca70d7",
+    "references/satellite-satqkd-key-length-preregistration-addendum-loss.md":
+        "2186bb42575ff2e876c39a4895b86cf72bb35659e59787a68733153686f9f76f",
+    "references/defi-red-liq-liquidation-arithmetic-preregistration.md":
+        "8fc961e67158e0a991dbd119e0d3607932d80d2c4d5ee334ed6a2ce41bf16b04",
+    "references/telecom-pfcp-held-out-day-preregistration.md":
+        "bf469fc90783dd3f7ef9f090b1678c9ecfd49eb921521322996dc0b97d62bebe",
 }
 
 

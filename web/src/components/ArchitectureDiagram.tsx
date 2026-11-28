@@ -41,7 +41,7 @@ const BOXES: Box[] = [
   { id: "fl", x: 200, y: ROW2, w: 176, title: "Federated training",
     lines: ["finance, medical:", "FedAvg; pairwise masks", "seeded by X25519 per pair"], kind: "notional" },
   { id: "pi", x: 396, y: ROW2, w: 180, title: "Private inference",
-    lines: ["CKKS (node-seal): linear", "and square layers + garbled-", "circuit 2PC argmax (Polytune)"], kind: "notional" },
+    lines: ["CKKS (node-seal): linear", "or square layers, then a", "2PC argmax (Polytune)"], kind: "notional" },
   { id: "qhe", x: 596, y: ROW2, w: 180, title: "QSMPC-FHE",
     lines: ["comparison, an untrained", "QOTP + Clifford+T circuit,", "state-vector simulation"], kind: "seeded" },
   { id: "sig", x: 796, y: ROW2, w: 170, title: "Signed result",
