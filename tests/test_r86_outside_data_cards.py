@@ -49,6 +49,27 @@ def test_the_figures_are_the_records() -> None:
     assert s["check_a"]["meets"] is a["check_a"]["meets"] is True
     assert s["check_a"]["keyed_equal"] == s["check_a"]["rows_with_a_key"]
     assert s["check_b_found_a_key"] is False and len(s["check_b_prime"]) == 4
+    # The second addendum's Check B'' (SatQuMA's differences one at a time), each ratio its record's.
+    c = _record("satellite-satqkd-key-length-b-double-prime-2026-11-28.json")
+    assert c["check_b_prime_reproduced"] is True and len(s["addenda"]) == 2
+    by = {(x["file"], x["dt_s"]): x["variants"] for x in c["check_b_double_prime"]["rows"]}
+    for r in s["check_b_prime"]:
+        v = by[(r["file"], r["half_window_s"])]
+        assert r["key_ratio"] == round(v["b_prime"]["key_ratio"], 4)
+        assert r["with_cap_key_ratio"] == round(v["a"]["key_ratio"], 4)
+        assert r["with_cap_and_satellite_statistics_key_ratio"] == round(v["b"]["key_ratio"], 4)
+        assert r["with_cap_statistics_and_slots_key_ratio"] == round(v["c"]["key_ratio"], 4)
+        assert v["a"]["cap_single_photon_errors"] and not v["b_prime"]["cap_single_photon_errors"]
+        assert v["c"]["window"] == "satquma_slots" and v["c"]["deviation"] == "chernoff"
+
+
+def test_the_satellite_card_says_satquma_caps_and_the_page_does_not() -> None:
+    """The owner's choice of 2026-11-28: the page keeps the papers' bound, the cap is a named option, and the card says so."""
+    card = (REPO / "web" / "src" / "components" / "SatqkdCheckCard.tsx").read_text(encoding="utf-8")
+    assert "SatQuMA caps; this page does not." in card
+    assert "not resolved here" not in card
+    for key in ("with_cap_key_ratio", "with_cap_and_satellite_statistics_key_ratio", "with_cap_statistics_and_slots_key_ratio"):
+        assert f"r.{key}" in card, key
     p, pr = _page("data/telecom/pfcp_held_out_day.json"), _record("telecom-pfcp-held-out-day-2026-11-28.json")
     assert len(p["days"]) == 4 == len(pr["held_out_days"])
     assert sum(d["flows"] for d in p["days"]) == sum(v["held_out_rows"] for v in pr["held_out_days"].values())

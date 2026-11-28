@@ -22,6 +22,7 @@ CC_BY = "https://creativecommons.org/licenses/by/4.0/"
 BUSBRA = MEAS / "medical-busbra-external-2026-11-28.json"
 SATQKD = MEAS / "satellite-satqkd-key-length-2026-11-28.json"
 SATQKD_B_PRIME = MEAS / "satellite-satqkd-key-length-b-prime-2026-11-28.json"
+SATQKD_B_DOUBLE_PRIME = MEAS / "satellite-satqkd-key-length-b-double-prime-2026-11-28.json"
 PFCP = MEAS / "telecom-pfcp-held-out-day-2026-11-28.json"
 
 OUT = {
@@ -80,16 +81,29 @@ def busbra() -> dict:
 
 def satqkd() -> dict:
     a, b = json.loads(SATQKD.read_text()), json.loads(SATQKD_B_PRIME.read_text())
+    c = json.loads(SATQKD_B_DOUBLE_PRIME.read_text())
+    if not c["check_b_prime_reproduced"]:
+        raise SystemExit(f"{SATQKD_B_DOUBLE_PRIME.name} did not reproduce Check B': export nothing")
     files = {k: v for k, v in a["check_a"].items() if k != "meets"}
+    variants = {(x["file"], x["dt_s"]): x["variants"] for x in c["check_b_double_prime"]["rows"]}
     rows = []
     for x in b["check_b_prime"]["rows"]:
         s, o = x["satquma"], x["this_project"]
+        v = variants[(x["file"], x["dt_s"])]
         rows.append({"file": x["file"], "half_window_s": x["dt_s"], "satquma_key": s["key"], "this_project_key": round(o["key"]),
                      "key_ratio": r4(x["key_ratio"]), "key_basis_count_ratio": r4(x["key_basis_count_ratio"]),
-                     "satquma_phase_error": r4(s["phase_error"]), "this_project_phase_error": r4(o["phase_error"])})
+                     "satquma_phase_error": r4(s["phase_error"]), "this_project_phase_error": r4(o["phase_error"]),
+                     # Check B'' (the second addendum): SatQuMA's differences added one at a time, each a ratio to its key.
+                     "with_cap_key_ratio": r4(v["a"]["key_ratio"]),
+                     "with_cap_and_satellite_statistics_key_ratio": r4(v["b"]["key_ratio"]),
+                     "with_cap_statistics_and_slots_key_ratio": r4(v["c"]["key_ratio"]),
+                     "with_cap_statistics_and_slots_key_basis_count_ratio": r4(v["c"]["key_basis_count_ratio"]),
+                     "with_cap_statistics_and_slots_phase_error": r4(v["c"]["phase_error"])})
     return {"_generated_by": "scripts/export_outside_data_cards.py; do not edit by hand",
-            "preregistration": a["preregistration"]["file"], "addendum": b["addendum"]["file"],
-            "records": [str(SATQKD.relative_to(REPO)), str(SATQKD_B_PRIME.relative_to(REPO))],
+            "preregistration": a["preregistration"]["file"], "addenda": [b["addendum"]["file"], c["addendum"]["file"]],
+            "records": [str(SATQKD.relative_to(REPO)), str(SATQKD_B_PRIME.relative_to(REPO)),
+                        str(SATQKD_B_DOUBLE_PRIME.relative_to(REPO))],
+            "satellite_statistics": c["check_b_double_prime"]["statistics"]["satellite_page"],
             "check_a": {"rows": sum(v["rows"] for v in files.values()),
                         "rows_with_a_key": sum(v["rows_with_a_key"] for v in files.values()),
                         "keyed_equal": sum(v["keyed_equal"] for v in files.values()),
@@ -102,7 +116,7 @@ def satqkd() -> dict:
             "attribution": ("J. S. Sidhu, 'SatQKD_sim_data', Zenodo 8101679 (2023), CC BY 4.0: the data behind J. S. Sidhu et "
                             "al., 'Finite key performance of satellite quantum key distribution under practical constraints', "
                             "arXiv:2301.13209"),
-            "modifications": "figures recomputed from the deposit's terms by the pre-registered check and its addendum; no row is shipped"}
+            "modifications": "figures recomputed from the deposit's terms by the pre-registered check and its two addenda; no row is shipped"}
 
 
 def pfcp() -> dict:
