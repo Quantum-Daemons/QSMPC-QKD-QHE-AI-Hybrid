@@ -16,14 +16,12 @@ from __future__ import annotations
 
 import argparse
 import csv
-import hashlib
 import importlib.util
 import io
 import json
 import math
 import os
 import re
-import sys
 import zipfile
 from datetime import date
 from pathlib import Path
@@ -63,11 +61,12 @@ MALIGNANT = B.MALIGNANT
 def _xlsx_rows(path: Path) -> list[list]:
     """The first sheet of an .xlsx as rows, with the standard library only."""
     ns = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
+    tag = "{" + ns["m"] + "}t"
     z = zipfile.ZipFile(path)
     shared = []
     if "xl/sharedStrings.xml" in z.namelist():
         for si in ET.fromstring(z.read("xl/sharedStrings.xml")).findall("m:si", ns):
-            shared.append("".join(t.text or "" for t in si.iter("{%s}t" % ns["m"])))
+            shared.append("".join(t.text or "" for t in si.iter(tag)))
     out = []
     for r in ET.fromstring(z.read("xl/worksheets/sheet1.xml")).find("m:sheetData", ns).findall("m:row", ns):
         vals = {}
@@ -77,7 +76,7 @@ def _xlsx_rows(path: Path) -> list[list]:
                 col = col * 26 + (ord(ch) - 64)
             v, t = c.find("m:v", ns), c.get("t")
             if t == "inlineStr":
-                vals[col - 1] = "".join(x.text or "" for x in c.iter("{%s}t" % ns["m"]))
+                vals[col - 1] = "".join(x.text or "" for x in c.iter(tag))
             elif v is not None:
                 vals[col - 1] = shared[int(v.text)] if t == "s" else v.text
         out.append([vals.get(i) for i in range(max(vals) + 1)] if vals else [])
@@ -289,7 +288,7 @@ def main() -> int:
         # Arm S: BrEaST in full, beside each graph's BreastMNIST figure, with the students' float64 and CKKS checks.
         if key == "breast":
             same_graph = {}
-            for name, (key_, directory, graph, side) in B.MODELS.items():
+            for name, (_key, directory, _graph, side) in B.MODELS.items():
                 sample = json.loads((REPO / "models" / directory / "eval_sample.json").read_text())
                 xs = np.array(sample["samples"], dtype=np.float32)
                 xs = B.normalise(xs.reshape(-1, 28, 28).astype(np.uint8)) if side == 28 else xs.reshape(-1, 1, 14, 14)
