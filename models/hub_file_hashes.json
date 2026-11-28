@@ -5,7 +5,7 @@
    "feature_spec.json": "38deeb419fc9863735bdc68db1f6580f55c19347e606679cbade02fbb4ddd3e8",
    "onnx/model.onnx": "d69b65320c55496001d7b6b77ed2b9c4ee6d88495ab4e1e12f967903947db8a5"
   },
-  "revision": "6bc79977618fedc176729adf2abb134e715940ed"
+  "revision": "7daa1a0794464acece7bc8bb1d03668acda23697"
  },
  "finance_aml.gnn": {
   "files": {
@@ -42,7 +42,7 @@
    "onnx/model.onnx": "bb9216552451632aac9acf9e42cd38f16cc2583e23cd4afe411df86cbbca3fd7",
    "weights.json": "dd58191c8279e7f6d36522db5545e46e1a6dda135abffb741eaba545d6a66528"
   },
-  "revision": "4dc494c57f0d4e334ff6e23b06f902bbd1395d72"
+  "revision": "353dc08d21f1606c8757e1b077fc55bda37a93d3"
  },
  "medical_fl.cxr_fedavg": {
   "files": {
@@ -135,7 +135,7 @@
    "feature_spec.json": "584a6dd4ce618af8adf2544de61f7f5a15017f7cc3cad02a7275b56e302d6831",
    "onnx/model.onnx": "de6444c2af766a45a354f0e839f64db904fcbc6eb854a585ce6685ab6ec51213"
   },
-  "revision": "1dc49c4f0ff90ab3036905d4bd4e8ad9f0ce1231"
+  "revision": "a400d8522cb997fd27d5c4ee4fb8822fa4244c70"
  },
  "telecom_ids.nidd_federated": {
   "files": {
@@ -143,7 +143,7 @@
    "onnx/model.onnx": "8cf293bb89a07692128c160f6e153c8f6f9fda3f6dd989c1463e6e26ed2206df",
    "weights.json": "f0f9a21d46c38bc510ffe86d16568e380e7ea26d3aa674f016db6611e2a8d3d2"
   },
-  "revision": "3fc4f358ed7088265cee2d5970f7f92054f13fda"
+  "revision": "da5ac050f2489b81efdb50274f19e1026c244be9"
  },
  "telecom_ids.qml": {
   "files": {
@@ -159,6 +159,6 @@
    "onnx/model.onnx": "416fb8420048ac6cb139bf2eb0be5f39fe6c38abed3ecb3ecd2ec7c8deb59891",
    "weights.json": "da3a4dae31afaf6d42057197befd843143d6c9a8ca59f022a31349c21020bacd"
   },
-  "revision": "95b8f7e0cd0e8c17f4b984d512d62fd2f382e3b4"
+  "revision": "276f3390de6acd931d7c9c119a9de526df656ade"
  }
 }
