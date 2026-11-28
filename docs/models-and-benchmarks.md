@@ -592,10 +592,12 @@ multinomial logistic regression on the 36 numeric 5G-NIDD features, standardised
 clipped to $`[-20, 20]`$. The distilled arm was dropped on the owner's choice of 2026-11-26, since it needed a download
 the owner declined. On the 233,591 test flows: macro-F1 0.974 (criterion 1 asks 0.95; the gradient-boosted teacher
 scores 0.997 on all 46 features, the repository's earlier linear probe 0.969), expected calibration error 0.0042 after a
-temperature of 0.840. Under CKKS in the browser, on the 2,048 test flows the page ships (stratified, CC BY 4.0): 32
-ciphertexts, about 7.4 s, the largest logit error $`2.3 \times 10^{-7}`$, no decision changed (criterion 2,
-`tests/test_r86_nidd_student_under_ckks.py`). The telecom page draws it as a figure of its own beside the QKD student's,
-which reads synthetic telemetry.
+temperature of 0.840. Under CKKS in the browser, on the 2,048 test flows the page shipped for it (stratified, CC BY
+4.0): 32 ciphertexts, about 7.4 s, the largest logit error $`2.3 \times 10^{-7}`$, no decision changed (criterion 2).
+The telecom page drew it as a figure of its own beside the QKD student's, which reads synthetic telemetry, until Round
+86's batch 12, when the square network below replaced it there on the owner's choice; its files stay, because the
+federation card compares against it, and `tests/test_r86_nidd_student_under_ckks.py` now runs the square network's
+path.
 
 #### 5G-NIDD's two base stations, federated: the first station's own model is the best
 
