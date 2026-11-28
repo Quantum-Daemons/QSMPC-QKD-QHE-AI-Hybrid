@@ -858,6 +858,38 @@ As run on 2026-11-28:
   its attack scored as the most normal traffic, the teacher's 0.65), where a third of the day's normal flows also pass
   the threshold. The days are small, 264 to 486 flows, and the intervals are in the record.
 
+Three follow-ups ran the same day, each pre-registered and frozen before any of its figures, on the owner's choices of
+2026-11-28 after these results:
+
+- **BreastMNIST models on a second site, framed on the lesion and adapted without labels**
+  ([`references/medical-breast-framing-normalisation-second-site-preregistration.md`](../references/medical-breast-framing-normalisation-second-site-preregistration.md);
+  `docs/measurements/medical-breast-framing-normalisation-second-site-2026-11-28.json`). On BrEaST-Lesions-USG (TCIA,
+  256 patients from Poland, labels confirmed by biopsy or follow-up) the five graphs score a malignant-class AUC of 0.49
+  to 0.63, most intervals spanning 0.5, against 0.79 to 0.92 for the same graphs on BreastMNIST's test split; the
+  students' CKKS paths agree with their float64 networks on every image within the page's rule
+  ($`1.2 \times 10^{-8}`$ for the CKKS student; $`1.2 \times 10^{-5}`$ under A2 and $`5.5 \times 10^{-6}`$ under B for the
+  square student; no decision changed). Cropping each image to its lesion's box, at margins of 0, 0.12 (Wang et al.
+  2026's) and 0.5 of the box, gives no consistent gain on either site: these models were trained on BUSI's whole frames,
+  not on crops. Neither label-free adaptation on a seeded half of each site's patients, of the inputs' mean and spread
+  to BreastMNIST's training split's or of the two ResNets' batch-normalisation statistics (from their unfused training
+  checkpoints, which reproduce the published graphs to $`3.8 \times 10^{-5}`$), moves an AUC beyond its interval on the
+  other half.
+- **The PFCP labels audited, the application-layer messages, and normal-only detectors**
+  ([`references/telecom-pfcp-audit-app-layer-normal-only-preregistration.md`](../references/telecom-pfcp-audit-app-layer-normal-only-preregistration.md);
+  `docs/measurements/telecom-pfcp-audit-app-layer-normal-only-2026-11-28.json`). The audit, run first: in every run each
+  address pair carries one label, on the CICFlowMeter and the application-layer files alike, so the labels follow the
+  endpoints. On the application-layer file the establishment run's Malicious flows carry its attack's message (99
+  percent carry a session-establishment request, no Normal flow does), but in both modification runs 1.5 and 0.8 percent
+  of the Malicious flows carry a session-modification request and every Normal flow does, and in the deletion run no
+  flow of either label carries a deletion request. On the message counters, the student recognises the establishment
+  day (AUC 0.99) where the teacher ranks it inverted (0.00), both recognise the modification days (0.99 to 1.00), and
+  both rank the deletion day's flows inverted (0.04 and 0.30); IForest, kNN and HBOS fitted on Normal
+  flows only find the establishment day (AUC 0.96 to 0.99 on the messages, 0.58 to 1.00 on CICFlowMeter's features)
+  and score the other three days' Malicious flows as more normal than their Normal flows (0.01 to 0.38 on the
+  messages). The three runs whose labels disagree with their attack's message type are the ones the supervised and
+  normal-only arms rank as they do; whether their labels are swapped or the attack's messages lie elsewhere is not
+  resolved here, and the held-out-day figures for those days are read with that caveat.
+
 None of these changes the page; whether a card shows any of them is the owner's choice.
 
 #### The finance QCNN on AMLworld, pre-registered, and on the page since Round 86's batch 6

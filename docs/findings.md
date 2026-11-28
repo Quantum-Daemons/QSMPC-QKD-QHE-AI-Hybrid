@@ -254,6 +254,18 @@ federated model under CKKS ([models-and-benchmarks](models-and-benchmarks.md)).
   owner's choice it is a named option, off by default, that only the SatQuMA comparison uses, and the card says SatQuMA
   caps and the page does not. The comparisons B and B' also ran the configured default statistics rather than the
   satellite page's; a check of a page's bound should name the page's own settings.
+- **The PFCP dataset's labels follow its endpoints and disagree with three runs' attack messages (2026-11-28).** Each
+  address pair carries one label in every run, and on the application-layer flows the Malicious flows of both
+  session-modification runs almost never carry a modification request (1.5 and 0.8 percent) while every Normal flow
+  does; the deletion run's flows carry no deletion request under either label
+  (`docs/measurements/telecom-pfcp-audit-app-layer-normal-only-2026-11-28.json`). The held-out-day figures for those
+  three days may measure the labelled endpoint rather than the attack. Recommendation: no card states a PFCP detection
+  figure for those days until the labels are settled (the creators are the ones who can say), and a second 5G-core
+  dataset is tested only once its labels are reconstructed and audited the same way.
+- **The BreastMNIST models fall on a second site too, and framing or label-free adaptation does not lift them
+  (2026-11-28).** On BrEaST-Lesions-USG they score an AUC of 0.49 to 0.63
+  (`docs/measurements/medical-breast-framing-normalisation-second-site-2026-11-28.json`). Recommendation: the medical
+  page's figures stay labelled as within one dataset; a model meant for another site is trained on more than one.
 
 - **CKKS-friendly students: planned on 2026-11-02 (the owner's decision), the medical half done on 2026-11-19.** The Round 86
   review found the encrypted tier evaluating students that are weak or fed out of domain, and the
